@@ -23,6 +23,7 @@ Read in this order:
 | Pause | Runtime Pause state drives Gate blockers, resident `UIGlobal` Pause surface and basic simulation pause through `Time.timeScale = 0`. |
 | Pause input | Use `PauseInputActionTrigger` for simple keyboard/controller Pause through `Global/Pause`; reserve `PauseInputActionRuntimeBridgeTrigger` + `PauseInputModeUnityPlayerInputRuntimeBridge` for explicit typed InputMode / PlayerInput ownership cuts. |
 | RuntimeContent / ContentAnchor | Logical runtime, Unity materialization adapters, bridge/set authoring and composite release helpers are available. |
+| Object Reset | Single-target Object Reset is available through `ObjectResetTrigger`; multi-target reset sets are available through `ObjectResetGroupAsset` and `ObjectResetGroupTrigger`. |
 | QA | `FrameworkQaCanvas` exposes package smokes for setup and regression validation. |
 
 ## Documentation classification
@@ -82,3 +83,20 @@ PlayerPrototype
 ```
 
 The adapter is not a Player/Actor lifecycle, does not spawn players, does not own `PlayerInputManager`, and does not replace future movement architecture.
+
+## Object Reset Group
+
+`ObjectResetGroupTrigger` is an opt-in Unity authoring surface for resetting several logical `ObjectEntryDeclaration` targets in sequence. It composes existing Object Reset requests; it does not restart an Activity, reload scenes, discover participants automatically, or perform physical reset side effects itself.
+
+Recommended First Game use:
+
+```text
+Button_ResetRoom
+  ObjectResetGroupTrigger
+    Group Id = firstgame.room-reset
+    Allow No Participants = false
+    Stop On Failure = true
+    Entries[0] = firstgame.player
+```
+
+For project asset groups, prefer string `Object Entry Id` entries. For scene-local buttons, inline entries may reference scene `ObjectEntryDeclaration` components directly.

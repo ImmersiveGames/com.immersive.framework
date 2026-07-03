@@ -75,6 +75,7 @@ Current order:
 | F36 | [Global Pause Input Action](F36-ADR-PAUSE-006-Global-Pause-Input-Action.md) | Accepted / FIRSTGAME-2D / preview.7 |
 | F37 | [Transition Gate Policy](F37-ADR-TRANSITION-001-Transition-Gate-Policy.md) | Accepted / preview.8 |
 | F38 | [Unity PlayerInput Gate Adapter](F38-ADR-INPUT-001-Unity-PlayerInput-Gate-Adapter.md) | Accepted / preview.9 |
+| F39 | [Object Reset Group](F39-ADR-RESET-006-Object-Reset-Group.md) | Accepted / preview.10 |
 | POST-F33-A | `Assets/_Documentation/Notes/POST-F33-A-Matrix-Reconciliation-Closeout.md` | Accepted / documentation / roadmap governance |
 | POST-F33-B | `Assets/_Documentation/Notes/POST-F33-B-Officialize-Reclassify-F28-F33.md` | Accepted / documentation / roadmap governance |
 | F8R-A | `Assets/_Documentation/Audits/F8R-A-RuntimeContent-ContentAnchor-Materialization-Audit.md` | Draft / audit-only / documentation governance |
