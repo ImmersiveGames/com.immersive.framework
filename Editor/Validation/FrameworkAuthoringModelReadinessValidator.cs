@@ -5,7 +5,6 @@ using Immersive.Framework.Loading;
 using Immersive.Framework.Pause;
 using Immersive.Framework.TransitionEffects;
 using UnityEditor;
-using UnityEditor.SceneManagement;
 using UnityEngine;
 
 namespace Immersive.Framework.Editor.Editor.Validation
@@ -240,10 +239,11 @@ namespace Immersive.Framework.Editor.Editor.Validation
 
             ValidateSceneBuildSettings(report, gameApplication, gameApplication.GlobalUiScenePath, "UIGlobal Scene", true);
 
-            var scene = default(UnityEngine.SceneManagement.Scene);
+            var sceneScope = default(SceneValidationScope);
             try
             {
-                scene = EditorSceneManager.OpenScene(gameApplication.GlobalUiScenePath, OpenSceneMode.Additive);
+                sceneScope = FrameworkEditorSceneValidationUtility.OpenSceneForValidation(gameApplication.GlobalUiScenePath);
+                var scene = sceneScope.Scene;
                 if (!scene.IsValid() || !scene.isLoaded)
                 {
                     report.AddError(
@@ -291,10 +291,7 @@ namespace Immersive.Framework.Editor.Editor.Validation
             }
             finally
             {
-                if (scene.IsValid())
-                {
-                    EditorSceneManager.CloseScene(scene, true);
-                }
+                sceneScope.CloseIfOwned();
             }
         }
 

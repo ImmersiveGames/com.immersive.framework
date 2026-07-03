@@ -10,7 +10,6 @@ using Immersive.Framework.Editor.Editor.Authoring;
 using Immersive.Framework.RouteLifecycle;
 using Immersive.Framework.TransitionEffects;
 using UnityEditor;
-using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.UI;
 using Object = UnityEngine.Object;
@@ -291,10 +290,11 @@ namespace Immersive.Framework.Editor.Editor.Validation
                 return;
             }
 
-            var scene = default(UnityEngine.SceneManagement.Scene);
+            var sceneScope = default(SceneValidationScope);
             try
             {
-                scene = EditorSceneManager.OpenScene(scenePath, OpenSceneMode.Additive);
+                sceneScope = FrameworkEditorSceneValidationUtility.OpenSceneForValidation(scenePath);
+                var scene = sceneScope.Scene;
                 if (!scene.IsValid() || !scene.isLoaded)
                 {
                     report.AddError(
@@ -340,10 +340,7 @@ namespace Immersive.Framework.Editor.Editor.Validation
             }
             finally
             {
-                if (scene.IsValid())
-                {
-                    EditorSceneManager.CloseScene(scene, true);
-                }
+                sceneScope.CloseIfOwned();
             }
         }
 
