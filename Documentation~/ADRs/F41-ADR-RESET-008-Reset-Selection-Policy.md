@@ -74,3 +74,8 @@ The button should call only:
 ```text
 ActivityRestartTrigger.RequestActivityRestart()
 ```
+
+
+## Validation
+
+F43 adds authoring validation around this policy. In particular, `ExplicitTargets` must have explicit entries or a group asset, while scoped policies should not keep explicit entries configured because they are ignored.

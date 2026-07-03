@@ -12,8 +12,10 @@ using Immersive.Framework.SessionLifecycle;
 using Immersive.Framework.RuntimeContent;
 using Immersive.Framework.CycleReset;
 using Immersive.Framework.Loading;
+using Immersive.Framework.Identity;
 using Immersive.Framework.ObjectEntry;
 using Immersive.Framework.ObjectReset;
+using Immersive.Framework.RuntimeObjects;
 using UnityEngine;
 using Immersive.Framework.ApiStatus;
 using Immersive.Logging.Records;
@@ -49,7 +51,8 @@ namespace Immersive.Framework.ApplicationLifecycle
         private RuntimeScopeLifecycleResult _runtimeSessionScopeResult;
         private ObjectEntryRuntimeContextSnapshot _objectEntryRuntimeContextSnapshot;
         private ObjectResetRuntime _objectResetRuntime;
-        private IObjectResetParticipantSource _objectResetParticipantSource;
+        private readonly List<IObjectResetParticipantSource> _objectResetParticipantSources = new();
+        private RuntimeObjectParticipationRegistry _runtimeObjectParticipationRegistry;
         private LoadingSurfaceRuntime _loadingSurfaceRuntime;
         private GlobalUiSceneRuntime _globalUiSceneRuntime;
         private bool _objectResetRequestInFlight;
@@ -124,23 +127,98 @@ namespace Immersive.Framework.ApplicationLifecycle
 
         internal void SetObjectResetParticipantSource(IObjectResetParticipantSource participantSource)
         {
-            _objectResetParticipantSource = participantSource;
+            if (participantSource == null || _objectResetParticipantSources.Contains(participantSource))
+            {
+                return;
+            }
+
+            _objectResetParticipantSources.Add(participantSource);
         }
 
         internal bool ClearObjectResetParticipantSource(IObjectResetParticipantSource participantSource)
         {
-            if (participantSource == null || !ReferenceEquals(_objectResetParticipantSource, participantSource))
+            if (participantSource == null)
             {
                 return false;
             }
 
-            _objectResetParticipantSource = null;
-            return true;
+            return _objectResetParticipantSources.Remove(participantSource);
         }
 
         internal bool IsObjectResetParticipantSourceRegistered(IObjectResetParticipantSource participantSource)
         {
-            return participantSource != null && ReferenceEquals(_objectResetParticipantSource, participantSource);
+            return participantSource != null && _objectResetParticipantSources.Contains(participantSource);
+        }
+
+        internal bool RegisterRuntimeObjectParticipation(
+            ObjectEntryDescriptor descriptor,
+            IReadOnlyList<IObjectResetParticipant> resetParticipants,
+            UnityEngine.Object owner,
+            string source,
+            string reason,
+            out RuntimeObjectParticipationHandle handle,
+            out string issue)
+        {
+            EnsureRuntimeObjectParticipationRegistry();
+            bool registered = _runtimeObjectParticipationRegistry.TryRegister(
+                descriptor,
+                resetParticipants,
+                owner,
+                source,
+                reason,
+                out handle,
+                out issue);
+            if (!registered)
+            {
+                return false;
+            }
+
+            InvalidateObjectEntryRuntimeContextSnapshot($"runtime-object-register:{NormalizeLifecycleSource(source)}");
+            RefreshObjectEntryRuntimeContextSnapshotIfReady($"FrameworkRuntimeHost:runtime-object-register:{NormalizeLifecycleSource(source)}");
+            return true;
+        }
+
+        internal bool UnregisterRuntimeObjectParticipation(
+            RuntimeObjectParticipationHandle handle,
+            UnityEngine.Object owner,
+            string source,
+            string reason,
+            out string issue)
+        {
+            issue = string.Empty;
+            if (_runtimeObjectParticipationRegistry == null)
+            {
+                issue = "Runtime object participation registry is unavailable.";
+                return false;
+            }
+
+            bool unregistered = _runtimeObjectParticipationRegistry.TryUnregister(
+                handle,
+                owner,
+                out _,
+                out issue);
+            if (!unregistered)
+            {
+                return false;
+            }
+
+            InvalidateObjectEntryRuntimeContextSnapshot($"runtime-object-unregister:{NormalizeLifecycleSource(source)}");
+            RefreshObjectEntryRuntimeContextSnapshotIfReady($"FrameworkRuntimeHost:runtime-object-unregister:{NormalizeLifecycleSource(source)}");
+            return true;
+        }
+
+        internal bool TryResolveCurrentObjectEntryOwnerIdentity(
+            ObjectEntryScope scope,
+            out FrameworkIdentityKey ownerIdentity)
+        {
+            var context = CreateCurrentObjectEntryScopedCollectionContext();
+            if (!context.TryValidate(out _))
+            {
+                ownerIdentity = default;
+                return false;
+            }
+
+            return context.TryResolveOwnerIdentity(scope, out ownerIdentity);
         }
 
         internal int ContentAnchorBindingCount => _contentAnchorBindingRuntime?.BindingCount ?? 0;
@@ -160,16 +238,9 @@ namespace Immersive.Framework.ApplicationLifecycle
         internal ObjectEntryRuntimeContextSnapshot RefreshObjectEntryRuntimeContextSnapshot(string source)
         {
             var declarationSource = new ObjectEntryDeclarationSource(includeInactiveDeclarations: true);
-            var context = new ObjectEntryScopedCollectionContext(
-                _runtimeSessionScopeResult.HasOwner
-                    ? _runtimeSessionScopeResult.Owner.OwnerIdentity
-                    : default,
-                _state.CurrentRoute,
-                _state.RouteState.RouteIdentity,
-                _state.RouteSceneCompositionResult,
-                _state.CurrentActivity,
-                _state.ActivityState.ActivityIdentity);
-            var result = declarationSource.CollectScoped(context);
+            var context = CreateCurrentObjectEntryScopedCollectionContext();
+            var sceneResult = declarationSource.CollectScoped(context);
+            var result = CombineSceneAndRuntimeObjectEntries(sceneResult, context);
             _objectEntryRuntimeContextSnapshot = result.ToRuntimeContextSnapshot(source);
             _objectEntryRuntimeContextRevision++;
             return _objectEntryRuntimeContextSnapshot;
@@ -648,7 +719,7 @@ namespace Immersive.Framework.ApplicationLifecycle
             {
                 await Awaitable.NextFrameAsync();
                 var snapshot = _objectEntryRuntimeContextSnapshot;
-                var result = _objectResetRuntime.Execute(snapshot, request, _objectResetParticipantSource);
+                var result = _objectResetRuntime.Execute(snapshot, request, CreateObjectResetParticipantSource());
                 LogObjectResetResult(result);
                 return result;
             }
@@ -656,6 +727,122 @@ namespace Immersive.Framework.ApplicationLifecycle
             {
                 _objectResetRequestInFlight = false;
             }
+        }
+
+        private IObjectResetParticipantSource CreateObjectResetParticipantSource()
+        {
+            var sources = new List<IObjectResetParticipantSource>(_objectResetParticipantSources.Count + 1);
+            for (int i = 0; i < _objectResetParticipantSources.Count; i++)
+            {
+                var source = _objectResetParticipantSources[i];
+                if (source != null)
+                {
+                    sources.Add(source);
+                }
+            }
+
+            if (_runtimeObjectParticipationRegistry != null)
+            {
+                sources.Add(_runtimeObjectParticipationRegistry);
+            }
+
+            return sources.Count == 0
+                ? null
+                : new CompositeObjectResetParticipantSource(sources);
+        }
+
+        private void EnsureRuntimeObjectParticipationRegistry()
+        {
+            _runtimeObjectParticipationRegistry ??= new RuntimeObjectParticipationRegistry();
+        }
+
+        private ObjectEntryScopedCollectionContext CreateCurrentObjectEntryScopedCollectionContext()
+        {
+            return new ObjectEntryScopedCollectionContext(
+                _runtimeSessionScopeResult.HasOwner
+                    ? _runtimeSessionScopeResult.Owner.OwnerIdentity
+                    : default,
+                _state.CurrentRoute,
+                _state.RouteState.RouteIdentity,
+                _state.RouteSceneCompositionResult,
+                _state.CurrentActivity,
+                _state.ActivityState.ActivityIdentity);
+        }
+
+        private ObjectEntryDeclarationSourceResult CombineSceneAndRuntimeObjectEntries(
+            ObjectEntryDeclarationSourceResult sceneResult,
+            ObjectEntryScopedCollectionContext context)
+        {
+            if (_runtimeObjectParticipationRegistry == null || !_runtimeObjectParticipationRegistry.HasRegistrations)
+            {
+                return sceneResult;
+            }
+
+            var runtimeResult = _runtimeObjectParticipationRegistry.CollectScoped(context);
+            var descriptors = new List<ObjectEntryDescriptor>(sceneResult.ObjectEntries.Count + runtimeResult.Descriptors.Count);
+            descriptors.AddRange(sceneResult.ObjectEntries.Entries);
+            descriptors.AddRange(runtimeResult.Descriptors);
+
+            var issues = new List<ObjectEntryIssue>(sceneResult.Issues.Count + runtimeResult.Issues.Count);
+            issues.AddRange(sceneResult.Issues);
+            issues.AddRange(runtimeResult.Issues);
+
+            ObjectEntrySet set;
+            bool aggregateRejected = false;
+            try
+            {
+                set = new ObjectEntrySet(descriptors);
+            }
+            catch (ArgumentException exception)
+            {
+                aggregateRejected = true;
+                set = ObjectEntrySet.Empty();
+                issues.Add(ObjectEntryIssue.Error(
+                    ObjectEntryIssueKind.DuplicateIdentity,
+                    $"Runtime Object Entry context rejected duplicate identity while merging scene and runtime entries. {exception.Message}"));
+            }
+
+            bool hasBlockingIssue = aggregateRejected;
+            for (int i = 0; i < issues.Count; i++)
+            {
+                if (issues[i].IsBlocking)
+                {
+                    hasBlockingIssue = true;
+                    break;
+                }
+            }
+
+            var status = hasBlockingIssue
+                ? ObjectEntryResultStatus.Rejected
+                : issues.Count == 0
+                    ? ObjectEntryResultStatus.Accepted
+                    : ObjectEntryResultStatus.AcceptedWithWarnings;
+
+            int declarationCount = sceneResult.DeclarationCount + runtimeResult.CandidateDescriptorCount;
+            int filteredCount = sceneResult.FilteredDeclarationCount + runtimeResult.FilteredDescriptorCount;
+            int acceptedCount = status == ObjectEntryResultStatus.Rejected ? 0 : set.Count;
+            int rejectedCount = Math.Max(0, declarationCount - acceptedCount - filteredCount);
+
+            return new ObjectEntryDeclarationSourceResult(
+                set,
+                status,
+                declarationCount,
+                sceneResult.CandidateDescriptorCount + runtimeResult.CandidateDescriptorCount,
+                acceptedCount,
+                rejectedCount,
+                filteredCount,
+                issues);
+        }
+
+        private void RefreshObjectEntryRuntimeContextSnapshotIfReady(string source)
+        {
+            var context = CreateCurrentObjectEntryScopedCollectionContext();
+            if (!context.TryValidate(out _))
+            {
+                return;
+            }
+
+            RefreshObjectEntryRuntimeContextSnapshot(source);
         }
 
         private GateEvaluationResult EvaluateObjectResetRequestAdmission(ObjectResetRequest request)
@@ -683,6 +870,7 @@ namespace Immersive.Framework.ApplicationLifecycle
         {
             _gameApplication = application;
             _runtimeContentRuntime = new RuntimeContentRuntime();
+            _runtimeObjectParticipationRegistry = new RuntimeObjectParticipationRegistry();
             _contentAnchorBindingRuntime = new RuntimeContentAnchorBinding();
             _pauseRuntime = new PauseRuntime();
             _pauseTimeScaleRuntime = new PauseTimeScaleRuntime();

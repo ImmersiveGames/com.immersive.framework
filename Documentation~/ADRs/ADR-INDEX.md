@@ -25,6 +25,8 @@ Current order:
 19. F39 - Object Reset Group
 20. F40 - Activity Restart via Object Reset Group
 21. F41 - Reset Selection Policy
+22. F42 - Runtime Awaitable Reset/Restart Flow
+23. F43 - Reset/Restart Authoring Validation
 14. POST-F33-A - Matrix Reconciliation Closeout
 15. POST-F33-B - Officialize/Reclassify F28-F33
 16. F8R-A - RuntimeContent / ContentAnchor Materialization Audit
@@ -81,6 +83,8 @@ Current order:
 | F39 | [Object Reset Group](F39-ADR-RESET-006-Object-Reset-Group.md) | Accepted / preview.10 |
 | F40 | [Activity Restart via Object Reset Group](F40-ADR-RESET-007-Activity-Restart-Via-Object-Reset-Group.md) | Accepted / preview.11 |
 | F41 | [Reset Selection Policy](F41-ADR-RESET-008-Reset-Selection-Policy.md) | Accepted / preview.11 corrective patch |
+| F42 | [Runtime Awaitable Reset/Restart Flow](F42-ADR-RESET-009-Runtime-Awaitable-Reset-Restart.md) | Accepted / preview.11 |
+| F43 | [Reset/Restart Authoring Validation](F43-ADR-RESET-010-Reset-Restart-Authoring-Validation.md) | Accepted / preview.11 |
 | POST-F33-A | `Assets/_Documentation/Notes/POST-F33-A-Matrix-Reconciliation-Closeout.md` | Accepted / documentation / roadmap governance |
 | POST-F33-B | `Assets/_Documentation/Notes/POST-F33-B-Officialize-Reclassify-F28-F33.md` | Accepted / documentation / roadmap governance |
 | F8R-A | `Assets/_Documentation/Audits/F8R-A-RuntimeContent-ContentAnchor-Materialization-Audit.md` | Draft / audit-only / documentation governance |
@@ -360,3 +364,25 @@ Status: Accepted.
 F38 adds `UnityPlayerInputGateAdapter`, an opt-in Unity Input System component that disables a configured gameplay action map while the framework Gate blocks input acceptance or gameplay action. It bridges Gate to temporary/consumer gameplay input without making movement scripts framework-aware and without introducing Player/Actor lifecycle.
 
 Reference: `F38-ADR-INPUT-001-Unity-PlayerInput-Gate-Adapter.md`
+
+
+## F42 - Runtime Awaitable Reset/Restart Flow
+
+Scope: Object Reset / Activity Restart / Unity runtime async orchestration.
+
+Status: Accepted.
+
+F42 accepts that new reset/restart runtime orchestration introduced for preview.11 uses `UnityEngine.Awaitable<T>` when the flow is Unity runtime/main-thread bound. Legacy `Task` APIs outside this cut are not migrated by this ADR.
+
+Reference: `F42-ADR-RESET-009-Runtime-Awaitable-Reset-Restart.md`
+
+## F43 - Reset/Restart Authoring Validation
+
+Scope: Object Reset / Activity Restart / Authoring Validation.
+
+Status: Accepted.
+
+F43 adds open-scene validation for `ObjectResetGroupTrigger` and `ActivityRestartTrigger` so missing targets, invalid explicit target policies, scoped-policy confusion and trigger stacking are reported before smoke.
+
+Reference: `F43-ADR-RESET-010-Reset-Restart-Authoring-Validation.md`
+- [F44 ADR RUNTIME OBJECT 001 — Runtime Object Participation Foundation](F44-ADR-RUNTIME-OBJECT-001-Runtime-Object-Participation-Foundation.md)

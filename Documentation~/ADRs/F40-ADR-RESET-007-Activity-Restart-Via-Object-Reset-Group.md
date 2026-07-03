@@ -38,3 +38,10 @@ resetStatus='Succeeded'
 clearStatus='Succeeded'
 reenterStatus='Succeeded'
 ```
+
+
+## Preview.11 follow-up decisions
+
+- F41 corrected the authoring shape so `ActivityRestartTrigger` owns Reset Selection Policy directly and does not depend on `ObjectResetGroupTrigger`.
+- F42 migrated the new Unity runtime reset/restart orchestration to `UnityEngine.Awaitable<T>`.
+- F43 added open-scene authoring validation for reset/restart trigger configuration.

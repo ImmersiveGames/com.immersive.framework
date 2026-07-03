@@ -61,6 +61,7 @@ namespace Immersive.Framework.Editor.Editor.Validation
                 ValidateOpenSceneActivityContentAnchors(report, validationMode);
                 ValidateOpenSceneUnityContentAnchorMaterializationBridges(report, validationMode);
                 ValidateOpenSceneCycleResetTriggers(report, validationMode);
+                FrameworkResetRestartAuthoringValidator.ValidateOpenScenes(report);
             }
 
             if (!report.HasIssues)
