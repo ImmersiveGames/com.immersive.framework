@@ -11,7 +11,8 @@ namespace Immersive.Framework.Pause
     /// <summary>
     /// API status: Experimental. Minimal Unity InputAction trigger for logical Pause requests.
     /// This component subscribes to explicit InputAction callbacks and submits PauseRequest directly to the current FrameworkRuntimeHost.
-    /// It does not switch action maps, validate InputMode, own PlayerInputManager, call JoinPlayer, spawn actors or read gameplay commands.
+    /// It can optionally switch a supplied PlayerInput between gameplay and pause UI action maps.
+    /// It does not validate InputMode, own PlayerInputManager, call JoinPlayer, spawn actors or read gameplay commands.
     /// </summary>
     [DisallowMultipleComponent]
     [AddComponentMenu("Immersive Framework/Pause/Pause Input Action Trigger")]
@@ -52,9 +53,18 @@ namespace Immersive.Framework.Pause
         [SerializeField] private bool enableResolvedActionsOnEnable = true;
         [SerializeField] private PauseRequestKind requestKind = PauseRequestKind.Toggle;
         [SerializeField] private string reason = "pause.input.action.trigger";
+
+        [Header("Action Map Switching")]
+        [Tooltip("When enabled, a successful Pause request switches the configured PlayerInput to the pause UI map while Paused and back to the gameplay map while Running.")]
+        [SerializeField] private bool switchPlayerInputActionMap = true;
+        [SerializeField] private string gameplayActionMapName = "Player";
+        [SerializeField] private string pauseUiActionMapName = "UI";
+
+        [Header("Diagnostics")]
         [SerializeField] private bool logReadyOnEnable = true;
         [SerializeField] private bool logPerformedInput = true;
         [SerializeField] private bool logIgnoredInput = true;
+        [SerializeField] private bool logActionMapSwitching = true;
 
         public PlayerInput PlayerInput => playerInput;
 
@@ -67,6 +77,12 @@ namespace Immersive.Framework.Pause
         public string PauseActionName => pauseActionName.NormalizeTextOrFallback("Pause");
 
         public bool IsSubscribed => _subscribed;
+
+        public bool SwitchPlayerInputActionMap => switchPlayerInputActionMap;
+
+        public string GameplayActionMapName => gameplayActionMapName.NormalizeTextOrFallback("Player");
+
+        public string PauseUiActionMapName => pauseUiActionMapName.NormalizeTextOrFallback("UI");
 
         public string LastHandledAction => _lastHandledAction.NormalizeText();
 
@@ -149,6 +165,9 @@ namespace Immersive.Framework.Pause
                         Immersive.Logging.Records.LogFields.Field("uiAction", FormatAction(_uiAction)),
                         Immersive.Logging.Records.LogFields.Field("requestKind", requestKind.ToString()),
                         Immersive.Logging.Records.LogFields.Field("enabledOnSubscribe", enableResolvedActionsOnEnable),
+                        Immersive.Logging.Records.LogFields.Field("actionMapSwitching", switchPlayerInputActionMap),
+                        Immersive.Logging.Records.LogFields.Field("gameplayActionMap", GameplayActionMapName),
+                        Immersive.Logging.Records.LogFields.Field("pauseUiActionMap", PauseUiActionMapName),
                         Immersive.Logging.Records.LogFields.Field("source", DefaultSource),
                         Immersive.Logging.Records.LogFields.Field("reason", ResolveReason("pause.input.action.trigger.ready"))));
             }
@@ -281,6 +300,8 @@ namespace Immersive.Framework.Pause
                 return;
             }
 
+            string actionMapSwitchStatus = ApplyPlayerInputActionMapForPauseResult(result, out string selectedActionMap);
+
             _lastHandledAction = actionPath.NormalizeText();
             _lastIgnoredReason = string.Empty;
             _lastStatus = result.Status;
@@ -301,9 +322,101 @@ namespace Immersive.Framework.Pause
                         Immersive.Logging.Records.LogFields.Field("applied", result.Applied),
                         Immersive.Logging.Records.LogFields.Field("ignoredNoChange", result.IgnoredNoChange),
                         Immersive.Logging.Records.LogFields.Field("stateChanged", result.StateChanged),
+                        Immersive.Logging.Records.LogFields.Field("actionMapSwitching", switchPlayerInputActionMap),
+                        Immersive.Logging.Records.LogFields.Field("actionMapSwitchStatus", actionMapSwitchStatus),
+                        Immersive.Logging.Records.LogFields.Field("selectedActionMap", selectedActionMap.NormalizeTextOrFallback("<none>")),
                         Immersive.Logging.Records.LogFields.Field("source", source.NormalizeTextOrFallback(DefaultSource)),
                         Immersive.Logging.Records.LogFields.Field("reason", requestReason.NormalizeTextOrFallback(DefaultReasonPrefix))));
             }
+        }
+
+
+        private string ApplyPlayerInputActionMapForPauseResult(PauseResult result, out string selectedActionMap)
+        {
+            selectedActionMap = GetCurrentPlayerInputActionMapName();
+
+            if (!switchPlayerInputActionMap)
+            {
+                return "Disabled";
+            }
+
+            if (playerInput == null)
+            {
+                return "SkippedNoPlayerInput";
+            }
+
+            if (!result.Completed)
+            {
+                return "SkippedRequestNotCompleted";
+            }
+
+            string targetActionMapName = result.CurrentState == PauseState.Paused
+                ? PauseUiActionMapName
+                : GameplayActionMapName;
+
+            if (string.IsNullOrWhiteSpace(targetActionMapName))
+            {
+                return "SkippedMissingTargetActionMap";
+            }
+
+            if (playerInput.actions == null)
+            {
+                return "FailedNoPlayerInputActions";
+            }
+
+            InputActionMap targetActionMap = playerInput.actions.FindActionMap(targetActionMapName, false);
+            if (targetActionMap == null)
+            {
+                return "FailedTargetActionMapMissing";
+            }
+
+            string currentActionMapName = GetCurrentPlayerInputActionMapName();
+            if (string.Equals(currentActionMapName, targetActionMapName, StringComparison.Ordinal))
+            {
+                selectedActionMap = currentActionMapName;
+                return "AlreadySelected";
+            }
+
+            try
+            {
+                playerInput.SwitchCurrentActionMap(targetActionMapName);
+                selectedActionMap = GetCurrentPlayerInputActionMapName();
+
+                if (logActionMapSwitching)
+                {
+                    _logger.Info(
+                        "Pause Input Action Trigger switched PlayerInput action map.",
+                        Immersive.Logging.Records.LogFields.Of(
+                            Immersive.Logging.Records.LogFields.Field("previousActionMap", currentActionMapName.NormalizeTextOrFallback("<none>")),
+                            Immersive.Logging.Records.LogFields.Field("targetActionMap", targetActionMapName),
+                            Immersive.Logging.Records.LogFields.Field("selectedActionMap", selectedActionMap.NormalizeTextOrFallback("<none>")),
+                            Immersive.Logging.Records.LogFields.Field("pauseState", result.CurrentState.ToString()),
+                            Immersive.Logging.Records.LogFields.Field("source", DefaultSource)));
+                }
+
+                return string.Equals(selectedActionMap, targetActionMapName, StringComparison.Ordinal)
+                    ? "Selected"
+                    : "SelectedDifferentMap";
+            }
+            catch (Exception exception)
+            {
+                selectedActionMap = GetCurrentPlayerInputActionMapName();
+                _logger.Warning(
+                    "Pause Input Action Trigger failed to switch PlayerInput action map.",
+                    Immersive.Logging.Records.LogFields.Of(
+                        Immersive.Logging.Records.LogFields.Field("targetActionMap", targetActionMapName),
+                        Immersive.Logging.Records.LogFields.Field("selectedActionMap", selectedActionMap.NormalizeTextOrFallback("<none>")),
+                        Immersive.Logging.Records.LogFields.Field("exception", exception.Message),
+                        Immersive.Logging.Records.LogFields.Field("source", DefaultSource)));
+                return "FailedException";
+            }
+        }
+
+        private string GetCurrentPlayerInputActionMapName()
+        {
+            return playerInput == null || playerInput.currentActionMap == null
+                ? string.Empty
+                : playerInput.currentActionMap.name.NormalizeText();
         }
 
         private InputActionAsset ResolveActionsAsset()

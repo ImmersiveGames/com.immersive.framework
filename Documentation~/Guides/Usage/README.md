@@ -23,6 +23,9 @@ Documentation~/Guides/Usage/index.html
 ## Current content
 
 ```text
-com.immersive.framework v1.0.0-preview.4
+com.immersive.framework v1.0.0-preview.6
 FIRSTGAME-1 — Minimal Playable Framework Flow
+FIRSTGAME-2 — Minimal Pause Model Flow
+FIRSTGAME-2B — Pause Keyboard Toggle
+FIRSTGAME-2C — Pause TimeScale and Action Map Switching
 ```

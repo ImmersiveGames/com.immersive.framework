@@ -502,7 +502,7 @@
     <div class="sidebar-section">
       <div class="sidebar-section-label">Início</div>
       <a href="#intro" class="active"><span class="icon">🏠</span> Visão Geral</a>
-      <a href="#escopo"><span class="icon">🎯</span> Escopo do Preview 4</a>
+      <a href="#escopo"><span class="icon">🎯</span> Escopo do Preview 6</a>
       <a href="#conceitos"><span class="icon">🧠</span> Conceitos Mínimos</a>
       <a href="#ordem-boot"><span class="icon">⚙️</span> Ordem de Boot</a>
     </div>
@@ -515,6 +515,14 @@
       <a href="#uiglobal"><span class="icon">🖥️</span> UIGlobal</a>
       <a href="#menu"><span class="icon">▶️</span> Menu Route</a>
       <a href="#gameplay"><span class="icon">🎮</span> Gameplay Route</a>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-section-label">Pause FIRSTGAME-2</div>
+      <a href="#pause-model"><span class="icon">⏸️</span> Modelo de Pause</a>
+      <a href="#pause-surface"><span class="icon">🖼️</span> Pause Surface</a>
+      <a href="#pause-ui"><span class="icon">🧭</span> Pause por UI</a>
+      <a href="#pause-keyboard"><span class="icon">⌨️</span> Pause por Tecla</a>
     </div>
 
     <div class="sidebar-section">
@@ -536,12 +544,12 @@
   <main class="content">
 
     <div class="hero" id="intro">
-      <div class="eyebrow">Manual de Uso · v1.0.0-preview.4</div>
-      <h1>Immersive Framework<br>Preview 4</h1>
-      <p>Guia prático para criar o fluxo mínimo jogável validado no FIRSTGAME-1: Menu, Gameplay, Activity A/B, Clear/Restore, UIGlobal, Loading, Transition e Model Readiness sem blockers.</p>
+      <div class="eyebrow">Manual de Uso · v1.0.0-preview.6</div>
+      <h1>Immersive Framework<br>Preview 6</h1>
+      <p>Guia prático para o fluxo mínimo jogável validado até o Preview 6: Menu, Gameplay, Activity A/B, Loading, Transition, Pause visual, Pause por botão, Pause por tecla, pausa real via TimeScale, troca simples de action map e Model Readiness sem blockers.</p>
       <div class="badge-row">
-        <span class="badge badge-green">✓ FIRSTGAME-1 PASS</span>
-        <span class="badge badge-blue">v1.0.0-preview.4</span>
+        <span class="badge badge-green">✓ FIRSTGAME-1/2/2B/2C PASS</span>
+        <span class="badge badge-blue">v1.0.0-preview.6</span>
         <span class="badge badge-yellow">Git Package Preview</span>
         <span class="badge badge-purple">Unity 6.5</span>
       </div>
@@ -555,8 +563,8 @@
       </div>
     </div>
 
-    <h2 id="escopo">Escopo do Preview 4</h2>
-    <p>O <strong>v1.0.0-preview.4</strong> consolida o uso real do framework como package Git em projeto consumidor. O objetivo não é criar o jogo final; é provar que o fluxo principal do framework é usável no dia a dia.</p>
+    <h2 id="escopo">Escopo do Preview 6</h2>
+    <p>O <strong>v1.0.0-preview.6</strong> consolida o uso real do framework como package Git em projeto consumidor e fecha o primeiro modelo prático de Pause: superfície visual residente na <code>UIGlobal</code>, requests por UI, toggle por tecla via Unity Input System, pausa básica da simulação com <code>Time.timeScale = 0</code> e troca simples do <code>PlayerInput</code> para o mapa <code>UI</code> enquanto pausado.</p>
 
     <div class="flow">
       <div class="flow-box accent">Boot</div>
@@ -568,11 +576,13 @@
       <div class="flow-box green">Gameplay Route</div>
       <span class="flow-arrow">▶</span>
       <div class="flow-box purple">Activity A/B</div>
+      <span class="flow-arrow">▶</span>
+      <div class="flow-box accent">Pause</div>
     </div>
 
     <div class="table-wrap">
       <table>
-        <thead><tr><th>Validado no Preview 4</th><th>Status</th></tr></thead>
+        <thead><tr><th>Validado no Preview 6</th><th>Status</th></tr></thead>
         <tbody>
           <tr><td>GameApplication como raiz do projeto</td><td><span class="badge badge-green">PASS</span></td></tr>
           <tr><td>Startup Route de Menu sem Activity inicial</td><td><span class="badge badge-green">PASS</span></td></tr>
@@ -582,12 +592,18 @@
           <tr><td>ActivityClear e restore manual de Activity</td><td><span class="badge badge-green">PASS</span></td></tr>
           <tr><td>UIGlobal aditiva com Loading e Transition</td><td><span class="badge badge-green">PASS</span></td></tr>
           <tr><td>Model Readiness: 0 errors / 0 warnings / 0 blockers</td><td><span class="badge badge-green">PASS</span></td></tr>
+          <tr><td>Pause surface residente na UIGlobal</td><td><span class="badge badge-green">PASS</span></td></tr>
+          <tr><td>Pause/Resume por botões UI</td><td><span class="badge badge-green">PASS</span></td></tr>
+          <tr><td>Pause Toggle por tecla <code>Escape</code></td><td><span class="badge badge-green">PASS</span></td></tr>
+          <tr><td>Gate blockers de input/interação durante Pause</td><td><span class="badge badge-green">PASS</span></td></tr>
+          <tr><td><code>Time.timeScale</code> 1 → 0 → 1 durante Pause/Resume</td><td><span class="badge badge-green">PASS</span></td></tr>
+          <tr><td><code>PlayerInput</code> troca Player → UI → Player</td><td><span class="badge badge-green">PASS</span></td></tr>
         </tbody>
       </table>
     </div>
 
     <h2 id="conceitos">Conceitos mínimos</h2>
-    <p>Para usar o Preview 4, você precisa dominar apenas cinco conceitos.</p>
+    <p>Para usar o Preview 6, você precisa dominar apenas seis conceitos.</p>
 
     <div class="asset-grid">
       <div class="asset-card">
@@ -612,7 +628,7 @@
         <div class="asset-icon">🖥️</div>
         <div class="asset-name">UIGlobal Scene</div>
         <h4>UI Global</h4>
-        <p>Cena aditiva persistente com Loading, Transition e, futuramente, Pause visual.</p>
+        <p>Cena aditiva persistente com Loading, Transition e Pause visual residente.</p>
       </div>
       <div class="asset-card">
         <div class="asset-icon">👁️</div>
@@ -620,10 +636,16 @@
         <h4>Visibilidade local</h4>
         <p>Componente que ativa/desativa um GameObject quando uma Activity entra ou sai.</p>
       </div>
+      <div class="asset-card">
+        <div class="asset-icon">⏸️</div>
+        <div class="asset-name">PauseRuntime</div>
+        <h4>Pause global</h4>
+        <p>Estado global que aplica surface, blockers, <code>Time.timeScale</code> e, opcionalmente, troca de action map.</p>
+      </div>
     </div>
 
-    <h2 id="ordem-boot">Ordem de boot canônica no Preview 4</h2>
-    <p>O Preview 4 fixa uma fragilidade importante: a cena principal da Startup Route agora é preparada antes da UIGlobal. Isso evita duplicação de câmera, <code>AudioListener</code> e <code>EventSystem</code> quando o designer dá Play com outra cena aberta.</p>
+    <h2 id="ordem-boot">Ordem de boot canônica no Preview 6</h2>
+    <p>O Preview 6 fixa uma fragilidade importante: a cena principal da Startup Route agora é preparada antes da UIGlobal. Isso evita duplicação de câmera, <code>AudioListener</code> e <code>EventSystem</code> quando o designer dá Play com outra cena aberta.</p>
 
     <div class="flow" style="flex-wrap:wrap; row-gap:10px;">
       <div class="flow-box accent">1. Startup Route<br><small style="opacity:.65">Primary Scene / Single</small></div>
@@ -664,6 +686,9 @@
 │           ├── FG_Activity_A.asset
 │           └── FG_Activity_B.asset
 │
+├── Input/
+│   └── InputSystem_Actions.inputactions
+│
 └── Settings/
     └── ImmersiveFramework/
         └── Resources/
@@ -683,7 +708,7 @@
         <thead><tr><th>Cena</th><th>Função</th><th>Modo de carga</th></tr></thead>
         <tbody>
           <tr><td><code>FG_Menu</code></td><td>Primary Scene da Startup/Menu Route. Contém botão Start Game.</td><td><code>Single</code></td></tr>
-          <tr><td><code>FG_UIGlobal</code></td><td>Cena global persistente com Transition e Loading.</td><td><code>Additive</code></td></tr>
+          <tr><td><code>FG_UIGlobal</code></td><td>Cena global persistente com Transition, Loading, Pause surface e Pause input.</td><td><code>Additive</code></td></tr>
           <tr><td><code>FG_Gameplay</code></td><td>Primary Scene da Gameplay Route. Contém Activity A/B e botões de teste.</td><td><code>Single</code></td></tr>
         </tbody>
       </table>
@@ -731,7 +756,7 @@
     </div>
 
     <h2 id="uiglobal">Configurando a UIGlobal</h2>
-    <p>A <code>FG_UIGlobal</code> deve conter as superfícies globais do framework. No Preview 4, o fluxo validado usa Loading e Transition; Pause visual fica ausente e é tratado como skip informativo.</p>
+    <p>A <code>FG_UIGlobal</code> deve conter as superfícies globais do framework. No Preview 6, o fluxo validado usa Loading, Transition e Pause visual residente. A Pause Surface não é opcional neste fluxo: ela confirma o estado pausado junto com <code>Time.timeScale = 0</code>.</p>
 
     <pre><code>FG_UIGlobal
 ├── Main Camera
@@ -784,6 +809,163 @@
       <div class="callout-body">
         <div class="callout-title">AudioListener e EventSystem</div>
         <p>Garanta que exista exatamente <strong>um</strong> <code>AudioListener</code> e exatamente <strong>um</strong> <code>EventSystem</code> no runtime. Se eles vivem na <code>FG_UIGlobal</code>, remova das cenas <code>FG_Menu</code> e <code>FG_Gameplay</code>.</p>
+      </div>
+    </div>
+
+
+    <h2 id="pause-model">Modelo de Pause no Preview 6</h2>
+    <p>Pause é um <strong>estado lógico global</strong> da aplicação com um efeito concreto de simulação. Ele não é uma Route, não é uma Activity e não é um menu de opções completo. O runtime de Pause produz um snapshot que atualiza a superfície visual, os Gate blockers e o <code>Time.timeScale</code>.</p>
+
+    <div class="flow" style="flex-wrap:wrap; row-gap:10px;">
+      <div class="flow-box accent">Request<br><small style="opacity:.65">UI ou tecla</small></div>
+      <span class="flow-arrow">▶</span>
+      <div class="flow-box">PauseRuntime<br><small style="opacity:.65">Running / Paused</small></div>
+      <span class="flow-arrow">▶</span>
+      <div class="flow-box green">TimeScale<br><small style="opacity:.65">0 / restore</small></div>
+      <span class="flow-arrow">▶</span>
+      <div class="flow-box">PauseSurface<br><small style="opacity:.65">UIGlobal</small></div>
+      <span class="flow-arrow">▶</span>
+      <div class="flow-box purple">Gate blockers<br><small style="opacity:.65">Input / Interaction</small></div>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Regra</th><th>Decisão Preview 6</th></tr></thead>
+        <tbody>
+          <tr><td>Escopo</td><td>Pause é global e fica acima de Route/Activity.</td></tr>
+          <tr><td>Visual</td><td>Pause surface residente na <code>FG_UIGlobal</code>.</td></tr>
+          <tr><td>Entrada UI</td><td><code>PauseRequestTrigger</code> para botões de Pause/Resume/Toggle.</td></tr>
+          <tr><td>Entrada por tecla</td><td><code>PauseInputActionTrigger</code> para Unity Input System.</td></tr>
+          <tr><td>Simulação</td><td>Ao pausar, captura o valor running e aplica <code>Time.timeScale = 0</code>; ao resumir, restaura o valor capturado.</td></tr>
+          <tr><td>Input map</td><td><code>PauseInputActionTrigger</code> pode trocar <code>PlayerInput</code>: <code>Player → UI → Player</code>.</td></tr>
+          <tr><td>Bloqueio</td><td>Pause gera blockers de <code>InputAcceptance</code> e <code>InteractionAcceptance</code>.</td></tr>
+          <tr><td>Contrato</td><td>O contrato é o estado/snapshot do <code>PauseRuntime</code>; <code>Time.timeScale</code> é o efeito básico de simulação.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="callout warn">
+      <span class="callout-icon">⚠️</span>
+      <div class="callout-body">
+        <div class="callout-title">Não modele Pause como Activity</div>
+        <p>Activity continua sendo estado local dentro de uma Route. Pause fica acima disso: ele pode pausar enquanto qualquer Route/Activity está ativa, sem trocar cena e sem limpar Activity.</p>
+      </div>
+    </div>
+
+    <h2 id="pause-surface">Configurando a Pause Surface na UIGlobal</h2>
+    <p>A Pause Surface é um painel visual residente na <code>FG_UIGlobal</code>. Ela é acionada pelo snapshot de Pause, não por lógica manual de cena.</p>
+
+    <pre><code>FG_UIGlobal
+└── Canvas_UIGlobal
+    └── PauseSurface
+        ├── UnityPauseResidentSurfaceAdapter
+        ├── CanvasGroup
+        └── PausePanel
+            ├── Text_Title_GamePaused
+            └── Button_Resume</code></pre>
+
+    <div class="component-card">
+      <div class="comp-header">
+        <div class="comp-icon">⏸️</div>
+        <div class="comp-meta">
+          <div class="comp-name">UnityPauseResidentSurfaceAdapter</div>
+          <h4>Pause Surface residente</h4>
+          <div class="comp-menu">Add Component → Immersive Framework → Pause → Unity Pause Resident Surface Adapter</div>
+        </div>
+      </div>
+      <div class="comp-fields">
+        <div class="comp-field"><span class="field-name">Surface Root</span><span class="field-desc">GameObject raiz da superfície, normalmente <code>PauseSurface</code>.</span></div>
+        <div class="comp-field"><span class="field-name">Canvas Group</span><span class="field-desc">CanvasGroup usado para alpha, raycast e interactable.</span></div>
+        <div class="comp-field"><span class="field-name">Hidden Alpha</span><span class="field-desc"><code>0</code>, para esconder quando Running.</span></div>
+        <div class="comp-field"><span class="field-name">Visible Alpha</span><span class="field-desc"><code>1</code>, para exibir quando Paused.</span></div>
+        <div class="comp-field"><span class="field-name">Block Raycasts When Paused</span><span class="field-desc">Ativo, para o overlay receber clique enquanto pausado.</span></div>
+        <div class="comp-field"><span class="field-name">Interactable When Paused</span><span class="field-desc">Ativo, para botões do painel funcionarem durante Pause.</span></div>
+      </div>
+    </div>
+
+    <div class="screenshot-placeholder">
+      <div class="shot-label">Placeholder de Screenshot</div>
+      <strong>Screenshot sugerido:</strong> Inspector do <code>UnityPauseResidentSurfaceAdapter</code> no GameObject <code>PauseSurface</code>.
+    </div>
+
+    <h2 id="pause-ui">Pause por UI Canvas</h2>
+    <p>Use <code>PauseRequestTrigger</code> quando a origem do Pause for um botão, menu, QA Canvas ou outro Unity Event.</p>
+
+    <pre><code>FG_UIGlobal
+└── PauseControls
+    ├── PauseRequestTrigger
+    └── Button_Pause
+
+PauseSurface/PausePanel
+└── Button_Resume</code></pre>
+
+    <ol class="steps">
+      <li><div class="step-body"><strong>Crie um GameObject <code>PauseControls</code></strong>Ele pode ficar na <code>FG_UIGlobal</code>, fora do painel visual.</div></li>
+      <li><div class="step-body"><strong>Adicione <code>PauseRequestTrigger</code></strong>Preencha <code>Reason</code> com algo legível, por exemplo <code>firstgame.pause.ui</code>.</div></li>
+      <li><div class="step-body"><strong>Configure o botão Pause</strong>No <code>Button_Pause → OnClick</code>, chame <code>PauseRequestTrigger.TogglePause()</code>.</div></li>
+      <li><div class="step-body"><strong>Configure o botão Resume</strong>No botão dentro do <code>PausePanel</code>, chame <code>PauseRequestTrigger.RequestResume()</code>.</div></li>
+    </ol>
+
+    <div class="callout tip">
+      <span class="callout-icon">✅</span>
+      <div class="callout-body">
+        <div class="callout-title">Botão Pause deve usar Toggle</div>
+        <p>Para um botão genérico de Pause, prefira <code>TogglePause()</code>. Se usar <code>RequestPause()</code> enquanto já está pausado, o runtime responde corretamente com <code>IgnoredNoChange</code>.</p>
+      </div>
+    </div>
+
+    <h2 id="pause-keyboard">Pause por tecla com Unity Input System</h2>
+    <p>O Preview 6 usa <code>PauseInputActionTrigger</code> como caminho simples para Pause por teclado ou controle. Ele escuta ações do Unity Input System, envia um request direto ao <code>PauseRuntime</code> e, opcionalmente, troca o mapa do <code>PlayerInput</code> entre gameplay e UI após o resultado.</p>
+
+    <pre><code>FG_UIGlobal
+└── PauseInput
+    ├── FG_PlayerInput
+    │   └── PlayerInput
+    └── FG_PauseKeyboard
+        └── PauseInputActionTrigger</code></pre>
+
+    <h3>Input Actions mínimo</h3>
+    <p>Crie um asset de Input Actions, por exemplo <code>InputSystem_Actions.inputactions</code>, com duas ações:</p>
+
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Action Map</th><th>Action</th><th>Binding</th><th>Motivo</th></tr></thead>
+        <tbody>
+          <tr><td><code>Player</code></td><td><code>Pause</code></td><td><code>&lt;Keyboard&gt;/escape</code></td><td>Pausar enquanto o jogo está rodando.</td></tr>
+          <tr><td><code>UI</code></td><td><code>Pause</code></td><td><code>&lt;Keyboard&gt;/escape</code></td><td>Resumir enquanto o overlay está visível.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Configuração do PauseInputActionTrigger</h3>
+    <div class="component-card">
+      <div class="comp-header">
+        <div class="comp-icon">⌨️</div>
+        <div class="comp-meta">
+          <div class="comp-name">PauseInputActionTrigger</div>
+          <h4>Keyboard Pause Toggle</h4>
+          <div class="comp-menu">Add Component → Immersive Framework → Pause → Pause Input Action Trigger</div>
+        </div>
+      </div>
+      <div class="comp-fields">
+        <div class="comp-field"><span class="field-name">Player Input</span><span class="field-desc">O <code>PlayerInput</code> que referencia o asset de Input Actions.</span></div>
+        <div class="comp-field"><span class="field-name">Player Action Map Name</span><span class="field-desc"><code>Player</code>.</span></div>
+        <div class="comp-field"><span class="field-name">UI Action Map Name</span><span class="field-desc"><code>UI</code>.</span></div>
+        <div class="comp-field"><span class="field-name">Pause Action Name</span><span class="field-desc"><code>Pause</code>.</span></div>
+        <div class="comp-field"><span class="field-name">Request Kind</span><span class="field-desc"><code>Toggle</code>.</span></div>
+        <div class="comp-field"><span class="field-name">Enable Resolved Actions On Enable</span><span class="field-desc">Ativo no FIRSTGAME para garantir que as ações estejam habilitadas.</span></div>
+        <div class="comp-field"><span class="field-name">Switch Player Input Action Map</span><span class="field-desc">Ativo no Preview 6 para trocar <code>PlayerInput</code> para o mapa <code>UI</code> durante Pause e voltar para <code>Player</code> no Resume.</span></div>
+        <div class="comp-field"><span class="field-name">Gameplay Action Map Name</span><span class="field-desc"><code>Player</code>.</span></div>
+        <div class="comp-field"><span class="field-name">Pause UI Action Map Name</span><span class="field-desc"><code>UI</code>.</span></div>
+        <div class="comp-field"><span class="field-name">Reason</span><span class="field-desc">Use algo como <code>firstgame.pause.keyboard.toggle</code>.</span></div>
+      </div>
+    </div>
+
+    <div class="callout info">
+      <span class="callout-icon">ℹ️</span>
+      <div class="callout-body">
+        <div class="callout-title">Por que não usar o bridge pesado aqui?</div>
+        <p><code>PauseInputActionRuntimeBridgeTrigger</code> + <code>PauseInputModeUnityPlayerInputRuntimeBridge</code> ficam reservados para cortes futuros de InputMode, troca de action map e ownership de PlayerInput. Para Pause simples por tecla, use <code>PauseInputActionTrigger</code>.</p>
       </div>
     </div>
 
@@ -867,7 +1049,7 @@
     </div>
 
     <h2 id="build-profile">Build Profile / Build Settings</h2>
-    <p>Todas as cenas usadas pelo framework precisam estar no Build Profile. Para Preview 4, a cena de boot do Player deve ser a Primary Scene da Startup Route, não a UIGlobal.</p>
+    <p>Todas as cenas usadas pelo framework precisam estar no Build Profile. Para Preview 6, a cena de boot do Player deve ser a Primary Scene da Startup Route, não a UIGlobal.</p>
 
     <div class="table-wrap">
       <table>
@@ -917,10 +1099,12 @@
     <p>Use este roteiro para validar o fluxo em Play Mode.</p>
 
     <ol class="steps">
-      <li><div class="step-body"><strong>Abra qualquer cena</strong>Inclusive <code>FG_UIGlobal</code>. No Preview 4 o framework prepara a Primary Scene da Startup Route antes da UIGlobal.</div></li>
+      <li><div class="step-body"><strong>Abra qualquer cena</strong>Inclusive <code>FG_UIGlobal</code>. No Preview 6 o framework prepara a Primary Scene da Startup Route antes da UIGlobal.</div></li>
       <li><div class="step-body"><strong>Dê Play</strong>Confirme que o boot começa em <code>FG_Menu</code>.</div></li>
       <li><div class="step-body"><strong>Clique Start Game</strong>Confirme a troca para <code>FG_Gameplay</code> com Loading e Transition.</div></li>
       <li><div class="step-body"><strong>Confirme Activity A</strong>A <code>FG_Activity_A</code> deve entrar automaticamente.</div></li>
+      <li><div class="step-body"><strong>Teste Pause por tecla</strong>Pressione <code>Escape</code>: o overlay de Pause deve aparecer, <code>Time.timeScale</code> deve ir para <code>0</code> e o <code>PlayerInput</code> deve ficar no mapa <code>UI</code>. Pressione <code>Escape</code> novamente: o overlay deve sumir, <code>Time.timeScale</code> deve ser restaurado e o mapa deve voltar para <code>Player</code>.</div></li>
+      <li><div class="step-body"><strong>Teste Pause por UI</strong>Use o botão de Pause e depois o botão Resume do painel.</div></li>
       <li><div class="step-body"><strong>Clique Go Activity B</strong>Confirme troca para <code>FG_Activity_B</code> com Transition.</div></li>
       <li><div class="step-body"><strong>Clique Clear Activity</strong>Confirme Activity limpa, sem Activity ativa.</div></li>
       <li><div class="step-body"><strong>Clique Restore Activity A</strong>Confirme volta para <code>FG_Activity_A</code>.</div></li>
@@ -928,7 +1112,7 @@
 
     <h2 id="logs">Logs de PASS</h2>
 
-    <h3>Boot Preview 4 correto</h3>
+    <h3>Boot Preview 6 correto</h3>
     <div class="log-block">
       <div class="log-label">Console — ordem canônica</div>
       Startup Route Primary Scene prepared before UIGlobal load.<br>
@@ -943,7 +1127,7 @@
       UIGlobal scene 'FG_UIGlobal' loaded and persisted<br>
       <span class="log-key">transitionAdapterCount</span><span class="log-sep">='</span><span class="log-val">1</span><span class="log-sep">'</span>
       <span class="log-key"> loadingAdapterCount</span><span class="log-sep">='</span><span class="log-val">1</span><span class="log-sep">'</span>
-      <span class="log-key"> pauseAdapterCount</span><span class="log-sep">='</span><span class="log-val">0</span><span class="log-sep">'</span>
+      <span class="log-key"> pauseAdapterCount</span><span class="log-sep">='</span><span class="log-val">1</span><span class="log-sep">'</span>
     </div>
 
     <h3>Boot succeeded</h3>
@@ -976,24 +1160,73 @@
       <span class="log-key"> activityReadiness</span><span class="log-sep">='</span><span class="log-val">Ready</span><span class="log-sep">'</span>
     </div>
 
+
+    <h3>Pause por tecla</h3>
+    <div class="log-block">
+      <div class="log-label">Console — Pause Input OK</div>
+      Pause Input Action Trigger completed.<br>
+      <span class="log-key">action</span><span class="log-sep">='</span><span class="log-val">Player/Pause</span><span class="log-sep">'</span>
+      <span class="log-key"> requestKind</span><span class="log-sep">='</span><span class="log-val">Toggle</span><span class="log-sep">'</span>
+      <span class="log-key"> status</span><span class="log-sep">='</span><span class="log-val">Applied</span><span class="log-sep">'</span>
+      <span class="log-key"> currentState</span><span class="log-sep">='</span><span class="log-val">Paused</span><span class="log-sep">'</span>
+      <span class="log-key"> actionMapSwitching</span><span class="log-sep">='</span><span class="log-val">True</span><span class="log-sep">'</span>
+      <span class="log-key"> selectedActionMap</span><span class="log-sep">='</span><span class="log-val">UI</span><span class="log-sep">'</span>
+    </div>
+
+    <h3>PauseRuntime aplicado</h3>
+    <div class="log-block">
+      <div class="log-label">Console — Pause Runtime OK</div>
+      Pause Request completed.<br>
+      <span class="log-key">kind</span><span class="log-sep">='</span><span class="log-val">Toggle</span><span class="log-sep">'</span>
+      <span class="log-key"> source</span><span class="log-sep">='</span><span class="log-val">PauseInputActionTrigger</span><span class="log-sep">'</span>
+      <span class="log-key"> gateBlockers</span><span class="log-sep">='</span><span class="log-val">2</span><span class="log-sep">'</span>
+      <span class="log-key"> timeScale</span><span class="log-sep">='</span><span class="log-val">AppliedPausedTimeScale</span><span class="log-sep">'</span>
+      <span class="log-key"> currentTimeScale</span><span class="log-sep">='</span><span class="log-val">0</span><span class="log-sep">'</span>
+      <span class="log-key"> pauseSurfacePaused</span><span class="log-sep">='</span><span class="log-val">True</span><span class="log-sep">'</span>
+    </div>
+
+    <h3>Resume por tecla</h3>
+    <div class="log-block">
+      <div class="log-label">Console — Resume OK</div>
+      Pause Request completed.<br>
+      <span class="log-key">previousState</span><span class="log-sep">='</span><span class="log-val">Paused</span><span class="log-sep">'</span>
+      <span class="log-key"> currentState</span><span class="log-sep">='</span><span class="log-val">Running</span><span class="log-sep">'</span>
+      <span class="log-key"> gateBlockers</span><span class="log-sep">='</span><span class="log-val">0</span><span class="log-sep">'</span>
+      <span class="log-key"> timeScale</span><span class="log-sep">='</span><span class="log-val">RestoredRunningTimeScale</span><span class="log-sep">'</span>
+      <span class="log-key"> currentTimeScale</span><span class="log-sep">='</span><span class="log-val">1</span><span class="log-sep">'</span>
+      <span class="log-key"> pauseSurfacePaused</span><span class="log-sep">='</span><span class="log-val">False</span><span class="log-sep">'</span>
+    </div>
+
     <h2 id="erros">Erros comuns e correções</h2>
 
     <div class="component-card">
       <h4 style="color:var(--red); margin-bottom:8px;">🔴 Dois AudioListeners ou dois EventSystems</h4>
-      <p style="font-size:13.5px; color:var(--text-soft);"><strong>Causa comum:</strong> <code>FG_UIGlobal</code> e a Route Scene têm câmera/EventSystem ao mesmo tempo, ou o package é anterior ao Preview 4 e duplica a UIGlobal aberta no Editor.<br>
-      <strong>Solução:</strong> use <code>v1.0.0-preview.4</code>; mantenha apenas um <code>AudioListener</code> e um <code>EventSystem</code> no runtime.</p>
+      <p style="font-size:13.5px; color:var(--text-soft);"><strong>Causa comum:</strong> <code>FG_UIGlobal</code> e a Route Scene têm câmera/EventSystem ao mesmo tempo, ou o package é anterior ao Preview 6 e duplica a UIGlobal aberta no Editor.<br>
+      <strong>Solução:</strong> use <code>v1.0.0-preview.6</code>; mantenha apenas um <code>AudioListener</code> e um <code>EventSystem</code> no runtime.</p>
     </div>
 
     <div class="component-card">
       <h4 style="color:var(--red); margin-bottom:8px;">🔴 "Unloading the last loaded scene is not supported"</h4>
       <p style="font-size:13.5px; color:var(--text-soft);"><strong>Causa:</strong> versão antiga do validator tentando fechar a última cena aberta ao validar a UIGlobal.<br>
-      <strong>Solução:</strong> atualizar para <code>v1.0.0-preview.4</code>. O validator agora trata ownership de cena com segurança.</p>
+      <strong>Solução:</strong> atualizar para <code>v1.0.0-preview.6</code>. O validator agora trata ownership de cena com segurança.</p>
     </div>
 
     <div class="component-card">
       <h4 style="color:var(--yellow); margin-bottom:8px;">⚠️ Loading parece não animar</h4>
       <p style="font-size:13.5px; color:var(--text-soft);"><strong>Causa provável:</strong> cena leve demais; o progresso vai de 0 a 1 quase instantaneamente.<br>
       <strong>Solução:</strong> se o log mostra <code>loadingProgressPercent='100'</code> e sem failures, está funcional.</p>
+    </div>
+
+    <div class="component-card">
+      <h4 style="color:var(--yellow); margin-bottom:8px;">⚠️ Escape não pausa</h4>
+      <p style="font-size:13.5px; color:var(--text-soft);"><strong>Causa comum:</strong> Input Actions sem <code>Player/Pause</code> ou <code>UI/Pause</code>, <code>PlayerInput</code> não atribuído, ou uso do bridge avançado sem os targets exigidos.<br>
+      <strong>Solução:</strong> para FIRSTGAME, use <code>PauseInputActionTrigger</code>, aponte para o <code>PlayerInput</code> correto, configure <code>Pause Action Name = Pause</code> e mantenha as ações <code>Player/Pause</code> e <code>UI/Pause</code>.</p>
+    </div>
+
+    <div class="component-card">
+      <h4 style="color:var(--yellow); margin-bottom:8px;">⚠️ FailedBridgeRequest / FailedPreflight no Pause input</h4>
+      <p style="font-size:13.5px; color:var(--text-soft);"><strong>Causa:</strong> o caminho <code>PauseInputActionRuntimeBridgeTrigger</code> + <code>PauseInputModeUnityPlayerInputRuntimeBridge</code> exige preflight de InputMode/PlayerInput e não é o caminho simples do FIRSTGAME.<br>
+      <strong>Solução:</strong> substitua pelo <code>PauseInputActionTrigger</code> quando o objetivo for apenas <code>Escape → Toggle Pause</code>.</p>
     </div>
 
     <div class="component-card">
@@ -1006,19 +1239,22 @@
     <div class="callout stop">
       <span class="callout-icon">🚫</span>
       <div class="callout-body">
-        <div class="callout-title">Fora do escopo do Preview 4 / FIRSTGAME-1</div>
+        <div class="callout-title">Fora do escopo do Preview 6 / FIRSTGAME-1/2</div>
         <p>
           Não edite o package Git dentro do consumidor.<br><br>
           Não copie assets, cenas ou ProjectSettings do projeto QA antigo.<br><br>
           Não abra Save, Snapshot, Player, Actor, Inventory ou gameplay complexo.<br><br>
           Não crie service locator, singleton ou manager genérico.<br><br>
           Não use <code>SceneManager</code> direto para trocar telas do jogo. Use <code>RouteRequestTrigger</code> e os assets do framework.<br><br>
-          Não trate Pause visual como obrigatório. Neste preview, ausência de Pause adapter é skip informativo.
+          Não trate Pause como Activity ou Route.<br><br>
+          Não use <code>Input.GetKeyDown</code> solto como caminho canônico de Pause.<br><br>
+          Não use o bridge avançado de InputMode quando o objetivo for apenas <code>Escape → Toggle Pause</code>.<br><br>
+          <code>Time.timeScale</code> é efeito básico do Pause no Preview 6, mas não substitui o contrato do <code>PauseRuntime</code>. Não escreva scripts paralelos mudando <code>Time.timeScale</code> fora do runtime de Pause.
         </p>
       </div>
     </div>
 
-    <h2 id="glossario">Glossário Preview 4</h2>
+    <h2 id="glossario">Glossário Preview 6</h2>
     <div class="table-wrap">
       <table>
         <thead><tr><th>Termo</th><th>Definição</th></tr></thead>
@@ -1030,6 +1266,9 @@
           <tr><td><code>UIGlobal</code></td><td>Cena global aditiva e persistente com surfaces como Loading e Transition.</td></tr>
           <tr><td><code>Transition Surface</code></td><td>Superfície visual usada para fades entre Route/Activity.</td></tr>
           <tr><td><code>Loading Surface</code></td><td>Superfície visual usada quando há carga real de cena.</td></tr>
+          <tr><td><code>PauseRuntime</code></td><td>Runtime autoritativo do estado <code>Running/Paused</code>, gate snapshot, surface e efeito básico de <code>Time.timeScale</code>.</td></tr>
+          <tr><td><code>TimeScale Pause</code></td><td>Efeito de simulação do Preview 6: captura o valor running, aplica <code>Time.timeScale = 0</code> durante Pause e restaura no Resume.</td></tr>
+          <tr><td><code>PauseInputActionTrigger</code></td><td>Componente simples para <code>Escape → Toggle Pause</code>, com opção de trocar <code>PlayerInput</code> entre <code>Player</code> e <code>UI</code>.</td></tr>
           <tr><td><code>ActivityClear</code></td><td>Operação que remove a Activity ativa sem trocar de Route.</td></tr>
           <tr><td><code>Model Readiness</code></td><td>Validação de authoring do framework. Para PASS, precisa de 0 blockers.</td></tr>
           <tr><td><code>AlreadyLoaded</code></td><td>Indica que a cena já estava preparada quando o lifecycle tentou compor a Route.</td></tr>
@@ -1038,8 +1277,8 @@
     </div>
 
     <div style="margin-top:56px; padding-top:24px; border-top:1px solid var(--border-soft); color:var(--text-muted); font-size:13px;">
-      <p><strong style="color:var(--text-soft);">Immersive Framework</strong> — Guia Preview 4 para Game Designers &nbsp;·&nbsp; <code>com.immersive.framework v1.0.0-preview.4</code></p>
-      <p style="margin-top:4px;">Este guia cobre apenas o escopo validado no FIRSTGAME-1. Atualizar ao fechar FIRSTGAME-2 ou uma nova tag preview.</p>
+      <p><strong style="color:var(--text-soft);">Immersive Framework</strong> — Guia Preview 6 para Game Designers &nbsp;·&nbsp; <code>com.immersive.framework v1.0.0-preview.6</code></p>
+      <p style="margin-top:4px;">Este guia cobre o escopo validado em FIRSTGAME-1, FIRSTGAME-2, FIRSTGAME-2B e FIRSTGAME-2C. Atualizar ao fechar uma nova tag preview.</p>
     </div>
 
   </main>

@@ -20,8 +20,8 @@ Read in this order:
 | UIGlobal | Shared app/session scene for Transition, Loading and Pause presentation adapters. |
 | Loading | Loading surface adapters are collected from `UIGlobal`; progress contracts are available for diagnostics/presentation. |
 | Transition | Transition orchestration can use effect adapters such as `UnityFadeCurtainEffectAdapter`. |
-| Pause | Standard presentation is a resident `UIGlobal` Pause surface. |
-| Pause input | Use `PauseInputActionRuntimeBridgeTrigger` with `PauseInputModeUnityPlayerInputRuntimeBridge`. |
+| Pause | Runtime Pause state drives Gate blockers, resident `UIGlobal` Pause surface and basic simulation pause through `Time.timeScale = 0`. |
+| Pause input | Use `PauseInputActionTrigger` for simple keyboard/controller Pause and optional `PlayerInput` map switching; reserve `PauseInputActionRuntimeBridgeTrigger` + `PauseInputModeUnityPlayerInputRuntimeBridge` for explicit typed InputMode / PlayerInput ownership cuts. |
 | RuntimeContent / ContentAnchor | Logical runtime, Unity materialization adapters, bridge/set authoring and composite release helpers are available. |
 | QA | `FrameworkQaCanvas` exposes package smokes for setup and regression validation. |
 

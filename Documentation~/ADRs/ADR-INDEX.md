@@ -17,6 +17,8 @@ Current order:
 11. F31 - PlayerActor Identity and Unity Input Evidence
 12. F32 - InputMode Unity Adapter Application
 13. F33 - Pause Runtime PlayerInput Wiring
+14. F34 - Direct Pause Input Trigger for Consumer Keyboard Toggle
+15. F35 - Pause TimeScale and Simple PlayerInput Map Switching
 14. POST-F33-A - Matrix Reconciliation Closeout
 15. POST-F33-B - Officialize/Reclassify F28-F33
 16. F8R-A - RuntimeContent / ContentAnchor Materialization Audit
@@ -65,6 +67,8 @@ Current order:
 | F25R | [Activity Scene Operation Architecture Reset](F25R-ADR-ACTIVITY-001-Activity-Scene-Operation-Architecture-Reset.md) | Accepted / Documentation reset |
 | F27 | [Gate as Capability Admission Boundary](F27-ADR-GATE-INPUT-001-Capability-Gate-Boundary.md) | Accepted / F27D runtime reframe |
 | F28 | [Roadmap Reconciliation and Adapter Module Spine](F28-ADR-INPUT-001-InputMode-Adapter-Boundary.md) | Accepted / F28A-F28F closed / F29 selected |
+| F34 | [Direct Pause Input Trigger for Consumer Keyboard Toggle](F34-ADR-PAUSE-004-Direct-Pause-Input-Trigger.md) | Accepted / FIRSTGAME-2B PASS / preview.5 / amended by F35 |
+| F35 | [Pause TimeScale and Simple PlayerInput Map Switching](F35-ADR-PAUSE-005-TimeScale-and-Simple-Map-Switching.md) | Accepted / FIRSTGAME-2C PASS / preview.6 |
 | POST-F33-A | `Assets/_Documentation/Notes/POST-F33-A-Matrix-Reconciliation-Closeout.md` | Accepted / documentation / roadmap governance |
 | POST-F33-B | `Assets/_Documentation/Notes/POST-F33-B-Officialize-Reclassify-F28-F33.md` | Accepted / documentation / roadmap governance |
 | F8R-A | `Assets/_Documentation/Audits/F8R-A-RuntimeContent-ContentAnchor-Materialization-Audit.md` | Draft / audit-only / documentation governance |
@@ -82,6 +86,20 @@ Current order:
 - F25R1 is folded into the F25R history record and documents that the planner stays synchronous while the future executor boundary may use `UnityEngine.Awaitable`.
 - Core contracts must not depend on concrete Unity UI, gameplay modules or backend implementations.
 - Adapter modules consume framework contracts; they do not redefine route, activity, transition, pause, loading, save or reset ownership.
+
+
+## F34 — Direct Pause Input Trigger
+
+F34 accepts `PauseInputActionTrigger` as the canonical simple consumer path for keyboard Pause. It submits `Pause`, `Resume` or `Toggle` directly to `FrameworkRuntimeHost.RequestPause(...)` from Unity Input System actions. It does not switch InputMode, apply PlayerInput action maps, require Player/Actor evidence, join players, spawn actors or read gameplay commands.
+
+The advanced path `PauseInputActionRuntimeBridgeTrigger + PauseInputModeUnityPlayerInputRuntimeBridge` remains reserved for explicit InputMode / PlayerInput ownership cuts.
+
+## F35 — Pause TimeScale and Simple Map Switching
+
+F35 accepts that the playable consumer Pause must pause the basic Unity simulation by default. `PauseRuntime` captures the current running `Time.timeScale`, applies `Time.timeScale = 0` when entering Pause, and restores the captured value when resuming. The Pause contract remains the runtime state/result snapshot; `Time.timeScale` is the default simulation effect, not the whole identity of Pause.
+
+F35 also extends `PauseInputActionTrigger` with optional direct Unity `PlayerInput` action map switching after successful Pause requests: `Paused -> UI` and `Running -> Player`. This keeps FIRSTGAME input simple while reserving the heavier bridge path for future typed InputMode/PlayerInput ownership cuts.
+
 
 
 ## F27 Gate/Input correction
