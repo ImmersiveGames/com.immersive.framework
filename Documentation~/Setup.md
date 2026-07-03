@@ -50,7 +50,7 @@ Create a `GameApplicationAsset` and assign:
 
 - Startup route: a `RouteAsset`.
 - Validation mode: `Strict`, `Standard` or `Release` according to the project's readiness policy.
-- `UIGlobal` scene policy: `NoneConfigured` for explicit no-op visuals, or `Required` when shared visual surfaces must be loaded before the startup route.
+- `UIGlobal` scene policy: `NoneConfigured` for explicit no-op visuals, or `Required` when shared visual surfaces must be loaded additively after the startup route primary scene is prepared.
 - `UIGlobal` scene path/name when the policy requires it.
 
 The runtime host loads the Game Application, then starts route/activity runtime state from the authored assets.

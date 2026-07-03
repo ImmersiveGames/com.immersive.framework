@@ -6,8 +6,8 @@ namespace Immersive.Framework.Authoring
 
     /// <summary>
     /// API status: Experimental. Policy for the canonical app/session scoped Unity UI scene.
-    /// The Global UI scene is loaded before the Startup Route, its roots are persisted under the FrameworkRuntimeHost,
-    /// and Transition/Loading adapters are discovered from that scene.
+    /// The Startup Route Primary Scene is prepared first; then Global UI is loaded additively,
+    /// its roots are persisted under the FrameworkRuntimeHost, and Transition/Loading adapters are discovered from that scene.
     /// </summary>
     [FrameworkApiStatus(FrameworkApiStatus.Experimental, "F24E canonical UIGlobal scene policy for GameApplication authoring.")]
     public enum GlobalUiScenePolicy
@@ -36,7 +36,7 @@ namespace Immersive.Framework.Authoring
         private RouteAsset startupRoute;
 
         [SerializeField]
-        [Tooltip("Controls whether this Game Application uses a canonical app/session scoped UIGlobal scene. Required loads the scene before Startup Route, persists its UI roots under the FrameworkRuntimeHost, and discovers Transition/Loading adapters from it.")]
+        [Tooltip("Controls whether this Game Application uses a canonical app/session scoped UIGlobal scene. Required loads it additively after the Startup Route Primary Scene is prepared, persists its UI roots under the FrameworkRuntimeHost, and discovers Transition/Loading adapters from it.")]
         private GlobalUiScenePolicy globalUiScenePolicy = GlobalUiScenePolicy.NoneConfigured;
 
         [SerializeField]

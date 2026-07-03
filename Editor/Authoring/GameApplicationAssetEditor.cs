@@ -99,7 +99,7 @@ namespace Immersive.Framework.Editor.Editor.Authoring
             }
 
             EditorGUILayout.HelpBox(
-                "Optional canonical app/session UI scene. When Required, FrameworkRuntimeHost loads it before Startup Route, persists its UI roots, discovers Transition/Loading adapters from it, then lets Route SceneLifecycle continue normally.",
+                "Optional canonical app/session UI scene. When Required, FrameworkRuntimeHost prepares the Startup Route Primary Scene first, then loads UIGlobal additively, persists its UI roots, discovers Transition/Loading adapters from it, and lets Route SceneLifecycle continue normally.",
                 MessageType.Info);
         }
 

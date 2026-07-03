@@ -13,8 +13,9 @@ using UnityEngine.SceneManagement;
 namespace Immersive.Framework.GlobalUi
 {
     /// <summary>
-    /// API status: Internal. Loads the canonical app/session-scoped UIGlobal scene before route startup,
-    /// moves its authored UI roots under the persistent FrameworkRuntimeHost, and exposes visual adapters.
+    /// API status: Internal. Loads the canonical app/session-scoped UIGlobal scene additively after the
+    /// Startup Route Primary Scene is prepared, moves its authored UI roots under the persistent
+    /// FrameworkRuntimeHost, and exposes visual adapters.
     /// It does not own RouteLifecycle, ActivityFlow, SceneLifecycle, Loading lifecycle or Transition lifecycle.
     /// </summary>
     [FrameworkApiStatus(FrameworkApiStatus.Internal, "F24E canonical UIGlobal scene loader; scene-authored visual surfaces only.")]

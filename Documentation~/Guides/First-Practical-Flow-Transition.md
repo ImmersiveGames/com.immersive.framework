@@ -15,7 +15,7 @@ F57 inserts a Model/Authorship gate before FIRSTGAME. Use this guide as the prac
 Create or confirm these pieces:
 
 - `GameApplicationAsset`: selects the startup `RouteAsset` and, when shared UI surfaces are needed, uses `GlobalUiScenePolicy.Required`.
-- `UIGlobal` scene: loaded before the startup route and persisted by `FrameworkRuntimeHost`.
+- `UIGlobal` scene: loaded additively after the startup route primary scene is prepared, then persisted by `FrameworkRuntimeHost`.
 - Transition surface/adapter: usually `UnityFadeCurtainEffectAdapter` in `UIGlobal`.
 - Loading surface/adapter: `UnityLoadingSurfaceAdapter` in `UIGlobal` when the flow also needs loading/progress presentation.
 - Gameplay `RouteAsset`: declares the primary scene for the gameplay route.

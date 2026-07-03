@@ -7,6 +7,7 @@ using Immersive.Framework.Authoring;
 using Immersive.Framework.Diagnostics;
 using Immersive.Framework.GameFlow;
 using Immersive.Framework.RouteLifecycle;
+using Immersive.Framework.SceneLifecycle;
 using Immersive.Framework.SessionLifecycle;
 using Immersive.Framework.RuntimeContent;
 using Immersive.Framework.CycleReset;
@@ -175,6 +176,15 @@ namespace Immersive.Framework.ApplicationLifecycle
         internal async Task<FrameworkGameFlowStartResult> StartAsync()
         {
             InvalidateObjectEntryRuntimeContextSnapshot("framework-start");
+
+            var startupPrimaryScenePreparation = await PrepareStartupPrimarySceneBeforeGlobalUiAsync();
+            if (!startupPrimaryScenePreparation.Loaded)
+            {
+                var failed = FrameworkGameFlowStartResult.Failed(startupPrimaryScenePreparation.Message);
+                _state = FrameworkRuntimeState.FromGameFlowResult(_gameApplication, failed);
+                return failed;
+            }
+
             _globalUiSceneRuntime = await GlobalUiSceneRuntime.LoadAndPersistAsync(_gameApplication, transform, _logger);
             if (_globalUiSceneRuntime.HasBlockingConfigurationIssue)
             {
@@ -197,6 +207,36 @@ namespace Immersive.Framework.ApplicationLifecycle
             }
 
             return result;
+        }
+
+        private async Task<SceneLifecycleLoadResult> PrepareStartupPrimarySceneBeforeGlobalUiAsync()
+        {
+            var sceneLifecycleRuntime = new SceneLifecycleRuntime();
+            var result = await sceneLifecycleRuntime.LoadPrimarySceneAsync(_gameApplication.StartupRoute);
+            if (!result.Loaded)
+            {
+                _logger.Error(
+                    "Startup Route Primary Scene preparation failed before UIGlobal load.",
+                    BuildStartupPrimaryScenePreparationFields(result));
+                return result;
+            }
+
+            _logger.Info(
+                "Startup Route Primary Scene prepared before UIGlobal load.",
+                BuildStartupPrimaryScenePreparationFields(result));
+
+            return result;
+        }
+
+        private static LogField[] BuildStartupPrimaryScenePreparationFields(SceneLifecycleLoadResult result)
+        {
+            return LogFields.Of(
+                LogFields.Field("scene", result.SceneName),
+                LogFields.Field("scenePath", result.ScenePath),
+                LogFields.Field("alreadyLoaded", result.AlreadyLoaded),
+                LogFields.Field("loadMode", result.LoadMode),
+                LogFields.Field("loaded", result.Loaded),
+                LogFields.Field("message", result.Message));
         }
 
         internal async Task<FrameworkRouteRequestResult> RequestRouteAsync(
