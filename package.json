@@ -1,6 +1,6 @@
 {
   "name": "com.immersive.framework",
-  "version": "1.0.0-preview.3",
+  "version": "1.0.0-preview.4",
   "displayName": "Immersive Framework",
   "description": "Immersive Framework runtime, authoring, diagnostics and validation surfaces for Unity projects.",
   "unity": "6000.0",

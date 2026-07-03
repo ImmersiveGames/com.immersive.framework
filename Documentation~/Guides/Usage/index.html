@@ -1,0 +1,1064 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Immersive Framework — User Guide</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500&family=JetBrains+Mono:wght@400;500&display=swap');
+
+    :root {
+      --bg: #0d1117;
+      --surface: #161b22;
+      --surface-2: #1c2330;
+      --border: #30363d;
+      --border-soft: #21262d;
+      --text: #e6edf3;
+      --text-muted: #7d8590;
+      --text-soft: #b1bac4;
+      --accent: #58a6ff;
+      --accent-soft: #1c3251;
+      --accent-glow: rgba(88,166,255,0.15);
+      --green: #3fb950;
+      --green-bg: #0d2919;
+      --green-border: #1a3d24;
+      --yellow: #d29922;
+      --yellow-bg: #2b2000;
+      --yellow-border: #4a3800;
+      --red: #f85149;
+      --red-bg: #2d1215;
+      --red-border: #4a1c1f;
+      --purple: #bc8cff;
+      --purple-bg: #1e1040;
+      --tag-bg: #1c2330;
+      --tag-border: #30363d;
+      --code-bg: #0d1117;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: 'Inter', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.65;
+      font-size: 15px;
+    }
+
+    /* ── LAYOUT ── */
+    .layout { display: flex; min-height: 100vh; }
+
+    .sidebar {
+      width: 260px;
+      flex-shrink: 0;
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      overflow-y: auto;
+      padding: 0 0 32px;
+    }
+
+    .sidebar-logo {
+      padding: 20px 20px 16px;
+      border-bottom: 1px solid var(--border-soft);
+      margin-bottom: 8px;
+    }
+    .sidebar-logo .eyebrow {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px;
+      color: var(--accent);
+      letter-spacing: .1em;
+      text-transform: uppercase;
+      margin-bottom: 4px;
+    }
+    .sidebar-logo h2 {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--text);
+      line-height: 1.3;
+    }
+
+    .sidebar-section { padding: 4px 0; }
+    .sidebar-section-label {
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      padding: 12px 20px 4px;
+    }
+    .sidebar-section a {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 20px;
+      color: var(--text-soft);
+      text-decoration: none;
+      font-size: 13px;
+      border-radius: 0;
+      transition: background .15s, color .15s;
+      border-left: 2px solid transparent;
+    }
+    .sidebar-section a:hover { background: var(--surface-2); color: var(--text); }
+    .sidebar-section a.active { color: var(--accent); border-left-color: var(--accent); background: var(--accent-soft); }
+    .sidebar-section a .icon { width: 16px; text-align: center; opacity: .7; flex-shrink: 0; }
+
+    .content {
+      flex: 1;
+      min-width: 0;
+      padding: 48px 56px;
+      max-width: 860px;
+    }
+
+    /* ── TYPOGRAPHY ── */
+    h1 {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 2.2rem;
+      font-weight: 700;
+      line-height: 1.15;
+      color: var(--text);
+      margin-bottom: 16px;
+    }
+    h2 {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 1.4rem;
+      font-weight: 700;
+      color: var(--text);
+      margin: 48px 0 16px;
+      padding-top: 48px;
+      border-top: 1px solid var(--border-soft);
+    }
+    h2:first-of-type { border-top: none; padding-top: 0; margin-top: 0; }
+    h3 {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 1.05rem;
+      font-weight: 600;
+      color: var(--text);
+      margin: 28px 0 10px;
+    }
+    p { color: var(--text-soft); margin-bottom: 12px; }
+    p:last-child { margin-bottom: 0; }
+    strong { color: var(--text); font-weight: 600; }
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    /* ── PAGE HERO ── */
+    .hero {
+      background: linear-gradient(135deg, var(--surface) 0%, var(--surface-2) 100%);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 36px 40px;
+      margin-bottom: 40px;
+      position: relative;
+      overflow: hidden;
+    }
+    .hero::before {
+      content: '';
+      position: absolute;
+      top: -40px; right: -40px;
+      width: 200px; height: 200px;
+      background: radial-gradient(circle, rgba(88,166,255,.12) 0%, transparent 70%);
+      border-radius: 50%;
+      pointer-events: none;
+    }
+    .hero .eyebrow {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      color: var(--accent);
+      letter-spacing: .12em;
+      text-transform: uppercase;
+      margin-bottom: 12px;
+    }
+    .hero h1 { font-size: 2rem; margin-bottom: 12px; }
+    .hero p { font-size: 15px; color: var(--text-soft); max-width: 560px; }
+    .hero .badge-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 16px; }
+
+    /* ── BADGES / TAGS ── */
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      font-weight: 500;
+      padding: 3px 10px;
+      border-radius: 20px;
+      border: 1px solid;
+    }
+    .badge-green { background: var(--green-bg); border-color: var(--green-border); color: var(--green); }
+    .badge-blue { background: var(--accent-soft); border-color: #2d4a7a; color: var(--accent); }
+    .badge-yellow { background: var(--yellow-bg); border-color: var(--yellow-border); color: var(--yellow); }
+    .badge-purple { background: var(--purple-bg); border-color: #3d2070; color: var(--purple); }
+
+    /* ── CALLOUTS ── */
+    .callout {
+      border-radius: 8px;
+      border-left: 3px solid;
+      padding: 14px 16px;
+      margin: 16px 0;
+      display: flex;
+      gap: 12px;
+      align-items: flex-start;
+    }
+    .callout-icon { font-size: 16px; flex-shrink: 0; margin-top: 1px; }
+    .callout-body p { margin-bottom: 6px; }
+    .callout-body p:last-child { margin-bottom: 0; }
+    .callout-title { font-weight: 600; font-size: 13px; margin-bottom: 4px; }
+    .callout.tip { background: var(--green-bg); border-color: var(--green); color: #a7d9b0; }
+    .callout.tip .callout-title { color: var(--green); }
+    .callout.warn { background: var(--yellow-bg); border-color: var(--yellow); color: #c9a84c; }
+    .callout.warn .callout-title { color: var(--yellow); }
+    .callout.info { background: var(--accent-soft); border-color: var(--accent); color: #8bbce8; }
+    .callout.info .callout-title { color: var(--accent); }
+    .callout.stop { background: var(--red-bg); border-color: var(--red); color: #e8908d; }
+    .callout.stop .callout-title { color: var(--red); }
+
+    /* ── CODE ── */
+    code {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: .85em;
+      background: var(--surface-2);
+      color: var(--accent);
+      padding: 2px 6px;
+      border-radius: 4px;
+      border: 1px solid var(--border-soft);
+    }
+    pre {
+      background: var(--code-bg);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 20px;
+      overflow-x: auto;
+      margin: 14px 0 20px;
+      position: relative;
+    }
+    pre code {
+      font-size: 13px;
+      background: none;
+      border: none;
+      padding: 0;
+      color: var(--text-soft);
+      line-height: 1.7;
+    }
+    .pre-label {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px;
+      color: var(--text-muted);
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      margin-bottom: 6px;
+    }
+
+    /* ── TABLES ── */
+    .table-wrap { overflow-x: auto; margin: 14px 0 20px; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      overflow: hidden;
+      font-size: 13.5px;
+    }
+    thead th {
+      background: var(--surface-2);
+      text-align: left;
+      padding: 12px 16px;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: .05em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      border-bottom: 1px solid var(--border);
+    }
+    tbody td {
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--border-soft);
+      color: var(--text-soft);
+      vertical-align: top;
+    }
+    tbody tr:last-child td { border-bottom: none; }
+    tbody tr:hover { background: var(--surface-2); }
+    td code { font-size: 12px; }
+
+    /* ── STEPS ── */
+    .steps { counter-reset: step; list-style: none; margin: 16px 0; padding: 0; }
+    .steps li {
+      counter-increment: step;
+      display: flex;
+      gap: 16px;
+      margin-bottom: 20px;
+      position: relative;
+    }
+    .steps li::before {
+      content: counter(step);
+      flex-shrink: 0;
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: var(--accent-soft);
+      border: 1.5px solid var(--accent);
+      color: var(--accent);
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 13px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-top: 2px;
+    }
+    .step-body { flex: 1; }
+    .step-body strong { display: block; color: var(--text); font-size: 14px; margin-bottom: 4px; }
+
+    /* ── ASSET CARDS ── */
+    .asset-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 14px; margin: 18px 0; }
+    .asset-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 18px 18px 16px;
+      transition: border-color .15s, background .15s;
+    }
+    .asset-card:hover { border-color: var(--accent); background: var(--surface-2); }
+    .asset-card .asset-icon { font-size: 24px; margin-bottom: 10px; }
+    .asset-card .asset-name {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      color: var(--accent);
+      margin-bottom: 4px;
+    }
+    .asset-card h4 { font-family: 'Space Grotesk', sans-serif; font-size: 14px; font-weight: 600; margin-bottom: 6px; color: var(--text); }
+    .asset-card p { font-size: 13px; line-height: 1.5; }
+    .asset-card .asset-menu {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-top: 10px;
+      padding-top: 10px;
+      border-top: 1px solid var(--border-soft);
+    }
+
+    /* ── COMPONENT CARDS ── */
+    .component-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 20px;
+      margin: 14px 0;
+    }
+    .component-card .comp-header {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+    .comp-icon { font-size: 28px; flex-shrink: 0; }
+    .comp-meta .comp-name {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      color: var(--accent);
+      margin-bottom: 2px;
+    }
+    .comp-meta h4 { font-family: 'Space Grotesk', sans-serif; font-size: 15px; font-weight: 600; color: var(--text); }
+    .comp-meta .comp-menu { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+    .comp-fields { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
+    .comp-field {
+      background: var(--surface-2);
+      border: 1px solid var(--border-soft);
+      border-radius: 6px;
+      padding: 10px 12px;
+      display: flex;
+      gap: 12px;
+      align-items: flex-start;
+    }
+    .comp-field .field-name {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      color: var(--purple);
+      flex-shrink: 0;
+      min-width: 140px;
+    }
+    .comp-field .field-desc { font-size: 13px; color: var(--text-soft); line-height: 1.5; }
+
+    /* ── FLOW DIAGRAM ── */
+    .flow {
+      display: flex;
+      align-items: center;
+      gap: 0;
+      flex-wrap: wrap;
+      margin: 20px 0;
+      row-gap: 12px;
+    }
+    .flow-box {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px 16px;
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 13px;
+      font-weight: 600;
+      text-align: center;
+      min-width: 110px;
+    }
+    .flow-box.accent { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); }
+    .flow-box.green { border-color: var(--green-border); background: var(--green-bg); color: var(--green); }
+    .flow-box.purple { border-color: #3d2070; background: var(--purple-bg); color: var(--purple); }
+    .flow-arrow {
+      color: var(--text-muted);
+      font-size: 18px;
+      padding: 0 8px;
+    }
+
+    /* ── LOG BLOCK ── */
+    .log-block {
+      background: #0a0f14;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 16px 18px;
+      margin: 12px 0;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      line-height: 1.9;
+    }
+    .log-key { color: #79c0ff; }
+    .log-val { color: #a5d6a7; }
+    .log-sep { color: var(--text-muted); }
+    .log-label { color: var(--text-muted); font-size: 10px; margin-bottom: 8px; text-transform: uppercase; letter-spacing: .08em; }
+
+    /* ── DIVIDER ── */
+    .section-divider {
+      height: 1px;
+      background: linear-gradient(90deg, var(--accent) 0%, transparent 60%);
+      margin: 0 0 0;
+      opacity: .5;
+    }
+
+    /* ── TOC PAGE ── */
+    .toc-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 20px 0; }
+    .toc-item {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 16px 18px;
+      text-decoration: none;
+      transition: border-color .15s, background .15s;
+      display: block;
+    }
+    .toc-item:hover { border-color: var(--accent); background: var(--surface-2); text-decoration: none; }
+    .toc-item .toc-num { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--accent); margin-bottom: 4px; }
+    .toc-item .toc-title { font-family: 'Space Grotesk', sans-serif; font-size: 14px; font-weight: 600; color: var(--text); margin-bottom: 4px; }
+    .toc-item .toc-desc { font-size: 12px; color: var(--text-muted); line-height: 1.5; }
+
+    /* ── SCROLLBAR ── */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: var(--bg); }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+
+    /* ── SCREENSHOT PLACEHOLDERS ── */
+    .screenshot-placeholder {
+      border: 1px dashed var(--accent);
+      background: rgba(88,166,255,.06);
+      border-radius: 10px;
+      padding: 18px;
+      margin: 16px 0 22px;
+      color: var(--text-soft);
+    }
+    .screenshot-placeholder .shot-label {
+      font-family: 'JetBrains Mono', monospace;
+      color: var(--accent);
+      font-size: 11px;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      margin-bottom: 6px;
+    }
+    .screenshot-placeholder strong { color: var(--text); }
+
+    /* ── RESPONSIVE ── */
+    @media (max-width: 800px) {
+      .sidebar { display: none; }
+      .content { padding: 28px 22px; }
+      .toc-grid { grid-template-columns: 1fr; }
+      .asset-grid { grid-template-columns: 1fr; }
+      h1 { font-size: 1.6rem; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="layout">
+
+  <nav class="sidebar">
+    <div class="sidebar-logo">
+      <div class="eyebrow">com.immersive.framework</div>
+      <h2>User Guide<br>Game Designer</h2>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-section-label">Início</div>
+      <a href="#intro" class="active"><span class="icon">🏠</span> Visão Geral</a>
+      <a href="#escopo"><span class="icon">🎯</span> Escopo do Preview 4</a>
+      <a href="#conceitos"><span class="icon">🧠</span> Conceitos Mínimos</a>
+      <a href="#ordem-boot"><span class="icon">⚙️</span> Ordem de Boot</a>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-section-label">Setup FIRSTGAME-1</div>
+      <a href="#estrutura"><span class="icon">📁</span> Estrutura de Pastas</a>
+      <a href="#cenas"><span class="icon">🎬</span> Cenas</a>
+      <a href="#assets"><span class="icon">📋</span> Assets</a>
+      <a href="#uiglobal"><span class="icon">🖥️</span> UIGlobal</a>
+      <a href="#menu"><span class="icon">▶️</span> Menu Route</a>
+      <a href="#gameplay"><span class="icon">🎮</span> Gameplay Route</a>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-section-label">Validação</div>
+      <a href="#build-profile"><span class="icon">📦</span> Build Profile</a>
+      <a href="#model-readiness"><span class="icon">✅</span> Model Readiness</a>
+      <a href="#play-smoke"><span class="icon">🧪</span> Play Smoke</a>
+      <a href="#logs"><span class="icon">📊</span> Logs de PASS</a>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-section-label">Diagnóstico</div>
+      <a href="#erros"><span class="icon">🔴</span> Erros Comuns</a>
+      <a href="#limites"><span class="icon">🚧</span> O que não fazer</a>
+      <a href="#glossario"><span class="icon">📖</span> Glossário</a>
+    </div>
+  </nav>
+
+  <main class="content">
+
+    <div class="hero" id="intro">
+      <div class="eyebrow">Manual de Uso · v1.0.0-preview.4</div>
+      <h1>Immersive Framework<br>Preview 4</h1>
+      <p>Guia prático para criar o fluxo mínimo jogável validado no FIRSTGAME-1: Menu, Gameplay, Activity A/B, Clear/Restore, UIGlobal, Loading, Transition e Model Readiness sem blockers.</p>
+      <div class="badge-row">
+        <span class="badge badge-green">✓ FIRSTGAME-1 PASS</span>
+        <span class="badge badge-blue">v1.0.0-preview.4</span>
+        <span class="badge badge-yellow">Git Package Preview</span>
+        <span class="badge badge-purple">Unity 6.5</span>
+      </div>
+    </div>
+
+    <div class="callout info">
+      <span class="callout-icon">💡</span>
+      <div class="callout-body">
+        <div class="callout-title">Para quem é este guia</div>
+        <p>Este guia é para game designers trabalhando em um projeto consumidor limpo. Ele assume que o package <code>com.immersive.framework</code> já está instalado via Git e que você quer montar um fluxo jogável mínimo sem escrever código.</p>
+      </div>
+    </div>
+
+    <h2 id="escopo">Escopo do Preview 4</h2>
+    <p>O <strong>v1.0.0-preview.4</strong> consolida o uso real do framework como package Git em projeto consumidor. O objetivo não é criar o jogo final; é provar que o fluxo principal do framework é usável no dia a dia.</p>
+
+    <div class="flow">
+      <div class="flow-box accent">Boot</div>
+      <span class="flow-arrow">▶</span>
+      <div class="flow-box">Menu Route</div>
+      <span class="flow-arrow">▶</span>
+      <div class="flow-box">Start Game</div>
+      <span class="flow-arrow">▶</span>
+      <div class="flow-box green">Gameplay Route</div>
+      <span class="flow-arrow">▶</span>
+      <div class="flow-box purple">Activity A/B</div>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Validado no Preview 4</th><th>Status</th></tr></thead>
+        <tbody>
+          <tr><td>GameApplication como raiz do projeto</td><td><span class="badge badge-green">PASS</span></td></tr>
+          <tr><td>Startup Route de Menu sem Activity inicial</td><td><span class="badge badge-green">PASS</span></td></tr>
+          <tr><td>Gameplay Route com Startup Activity</td><td><span class="badge badge-green">PASS</span></td></tr>
+          <tr><td>Troca Menu → Gameplay por botão</td><td><span class="badge badge-green">PASS</span></td></tr>
+          <tr><td>Activity A → Activity B</td><td><span class="badge badge-green">PASS</span></td></tr>
+          <tr><td>ActivityClear e restore manual de Activity</td><td><span class="badge badge-green">PASS</span></td></tr>
+          <tr><td>UIGlobal aditiva com Loading e Transition</td><td><span class="badge badge-green">PASS</span></td></tr>
+          <tr><td>Model Readiness: 0 errors / 0 warnings / 0 blockers</td><td><span class="badge badge-green">PASS</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h2 id="conceitos">Conceitos mínimos</h2>
+    <p>Para usar o Preview 4, você precisa dominar apenas cinco conceitos.</p>
+
+    <div class="asset-grid">
+      <div class="asset-card">
+        <div class="asset-icon">🎯</div>
+        <div class="asset-name">GameApplicationAsset</div>
+        <h4>Game Application</h4>
+        <p>Asset raiz do jogo. Define a primeira Route, o modo de validação e a cena global de UI.</p>
+      </div>
+      <div class="asset-card">
+        <div class="asset-icon">🗺️</div>
+        <div class="asset-name">RouteAsset</div>
+        <h4>Route</h4>
+        <p>Área ou tela principal do jogo. Cada Route tem uma Primary Scene carregada em modo <code>Single</code>.</p>
+      </div>
+      <div class="asset-card">
+        <div class="asset-icon">🎮</div>
+        <div class="asset-name">ActivityAsset</div>
+        <h4>Activity</h4>
+        <p>Modo local dentro de uma Route. Controla visibilidade de conteúdo local e pode ter transition visual.</p>
+      </div>
+      <div class="asset-card">
+        <div class="asset-icon">🖥️</div>
+        <div class="asset-name">UIGlobal Scene</div>
+        <h4>UI Global</h4>
+        <p>Cena aditiva persistente com Loading, Transition e, futuramente, Pause visual.</p>
+      </div>
+      <div class="asset-card">
+        <div class="asset-icon">👁️</div>
+        <div class="asset-name">ActivityLocalVisibilityAdapter</div>
+        <h4>Visibilidade local</h4>
+        <p>Componente que ativa/desativa um GameObject quando uma Activity entra ou sai.</p>
+      </div>
+    </div>
+
+    <h2 id="ordem-boot">Ordem de boot canônica no Preview 4</h2>
+    <p>O Preview 4 fixa uma fragilidade importante: a cena principal da Startup Route agora é preparada antes da UIGlobal. Isso evita duplicação de câmera, <code>AudioListener</code> e <code>EventSystem</code> quando o designer dá Play com outra cena aberta.</p>
+
+    <div class="flow" style="flex-wrap:wrap; row-gap:10px;">
+      <div class="flow-box accent">1. Startup Route<br><small style="opacity:.65">Primary Scene / Single</small></div>
+      <span class="flow-arrow">▶</span>
+      <div class="flow-box">2. UIGlobal<br><small style="opacity:.65">Additive</small></div>
+      <span class="flow-arrow">▶</span>
+      <div class="flow-box green">3. GameFlow<br><small style="opacity:.65">Route já Loaded</small></div>
+      <span class="flow-arrow">▶</span>
+      <div class="flow-box purple">4. Activity<br><small style="opacity:.65">Startup Activity</small></div>
+    </div>
+
+    <div class="callout tip">
+      <span class="callout-icon">✅</span>
+      <div class="callout-body">
+        <div class="callout-title">Regra simples</div>
+        <p><strong>Route Primary Scene</strong> é sempre base de tela e entra como <code>Single</code>. <strong>UIGlobal</strong> entra como <code>Additive</code>. Cenas extras de perfil/conteúdo também entram como <code>Additive</code>.</p>
+      </div>
+    </div>
+
+    <h2 id="estrutura">Estrutura de pastas recomendada</h2>
+    <p>O projeto consumidor deve organizar seus arquivos dentro de <code>Assets/_Project</code>. Não edite o package Git dentro do consumidor.</p>
+
+    <pre><code>Assets/_Project/
+├── Scenes/
+│   ├── Menu/
+│   │   ├── FG_Menu.unity
+│   │   └── FG_UIGlobal.unity
+│   └── Gameplay/
+│       └── FG_Gameplay.unity
+│
+├── ScriptableObjects/
+│   └── ImmersiveFramework/
+│       ├── FG_GameApplication.asset
+│       ├── Routes/
+│       │   ├── FG_MenuRoute.asset
+│       │   └── FG_GameplayRoute.asset
+│       └── Activity/
+│           ├── FG_Activity_A.asset
+│           └── FG_Activity_B.asset
+│
+└── Settings/
+    └── ImmersiveFramework/
+        └── Resources/
+            └── ImmersiveFrameworkSettings.asset</code></pre>
+
+    <div class="callout warn">
+      <span class="callout-icon">⚠️</span>
+      <div class="callout-body">
+        <div class="callout-title">Não copie assets do QA antigo</div>
+        <p>Crie cenas, assets e configurações próprias do consumidor. O projeto antigo serve apenas como referência intelectual, não como base direta de produto.</p>
+      </div>
+    </div>
+
+    <h2 id="cenas">Cenas necessárias</h2>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Cena</th><th>Função</th><th>Modo de carga</th></tr></thead>
+        <tbody>
+          <tr><td><code>FG_Menu</code></td><td>Primary Scene da Startup/Menu Route. Contém botão Start Game.</td><td><code>Single</code></td></tr>
+          <tr><td><code>FG_UIGlobal</code></td><td>Cena global persistente com Transition e Loading.</td><td><code>Additive</code></td></tr>
+          <tr><td><code>FG_Gameplay</code></td><td>Primary Scene da Gameplay Route. Contém Activity A/B e botões de teste.</td><td><code>Single</code></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="screenshot-placeholder">
+      <div class="shot-label">Placeholder de Screenshot</div>
+      <strong>Project Window:</strong> capturar a estrutura <code>Assets/_Project/Scenes</code> e <code>Assets/_Project/ScriptableObjects/ImmersiveFramework</code>.
+    </div>
+
+    <h2 id="assets">Assets a criar</h2>
+    <p>Crie os assets pelo menu <code>Create → Immersive Framework</code>.</p>
+
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Asset</th><th>Configuração essencial</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><code>FG_GameApplication</code></td>
+            <td><code>Startup Route = FG_MenuRoute</code><br><code>UIGlobal Scene Policy = Required</code><br><code>UIGlobal Scene = FG_UIGlobal</code><br><code>Validation Mode = Standard</code></td>
+          </tr>
+          <tr>
+            <td><code>FG_MenuRoute</code></td>
+            <td><code>Primary Scene = FG_Menu</code><br><code>Startup Activity = None</code></td>
+          </tr>
+          <tr>
+            <td><code>FG_GameplayRoute</code></td>
+            <td><code>Primary Scene = FG_Gameplay</code><br><code>Startup Activity = FG_Activity_A</code></td>
+          </tr>
+          <tr>
+            <td><code>FG_Activity_A</code></td>
+            <td><code>Visual Transition Mode = Fade</code></td>
+          </tr>
+          <tr>
+            <td><code>FG_Activity_B</code></td>
+            <td><code>Visual Transition Mode = Fade</code></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="screenshot-placeholder">
+      <div class="shot-label">Placeholder de Screenshot</div>
+      <strong>Inspector:</strong> capturar o asset <code>FG_GameApplication</code> mostrando Startup Route, UIGlobal Scene e Validation Mode.
+    </div>
+
+    <h2 id="uiglobal">Configurando a UIGlobal</h2>
+    <p>A <code>FG_UIGlobal</code> deve conter as superfícies globais do framework. No Preview 4, o fluxo validado usa Loading e Transition; Pause visual fica ausente e é tratado como skip informativo.</p>
+
+    <pre><code>FG_UIGlobal
+├── Main Camera
+│   └── AudioListener  // opcional, mas deve existir somente um no runtime
+├── EventSystem        // preferencialmente único no projeto em runtime
+└── Canvas_UIGlobal
+    ├── TransitionFadeSurface
+    │   ├── CanvasGroup
+    │   └── UnityFadeCurtainEffectAdapter
+    └── LoadingSurface
+        ├── CanvasGroup
+        ├── ImageBackground
+        ├── ImageProgress
+        └── UnityLoadingSurfaceAdapter</code></pre>
+
+    <div class="component-card">
+      <div class="comp-header">
+        <div class="comp-icon">🌘</div>
+        <div class="comp-meta">
+          <div class="comp-name">UnityFadeCurtainEffectAdapter</div>
+          <h4>Transition Fade Surface</h4>
+        </div>
+      </div>
+      <div class="comp-fields">
+        <div class="comp-field"><span class="field-name">Canvas Group</span><span class="field-desc">CanvasGroup da superfície de fade.</span></div>
+        <div class="comp-field"><span class="field-name">Surface Root</span><span class="field-desc">GameObject raiz que será ativado/desativado.</span></div>
+        <div class="comp-field"><span class="field-name">Hidden / Visible Alpha</span><span class="field-desc"><code>0</code> e <code>1</code>.</span></div>
+        <div class="comp-field"><span class="field-name">Fade Seconds</span><span class="field-desc">Use algo curto para teste, como <code>0.25</code>.</span></div>
+      </div>
+    </div>
+
+    <div class="component-card">
+      <div class="comp-header">
+        <div class="comp-icon">📊</div>
+        <div class="comp-meta">
+          <div class="comp-name">UnityLoadingSurfaceAdapter</div>
+          <h4>Loading Surface</h4>
+        </div>
+      </div>
+      <div class="comp-fields">
+        <div class="comp-field"><span class="field-name">Canvas Group</span><span class="field-desc">CanvasGroup da superfície de Loading.</span></div>
+        <div class="comp-field"><span class="field-name">Surface Image</span><span class="field-desc">Imagem de fundo ou painel do loading.</span></div>
+        <div class="comp-field"><span class="field-name">Progress Fill Image</span><span class="field-desc">Imagem do tipo <code>Filled</code>, com Fill Method horizontal.</span></div>
+        <div class="comp-field"><span class="field-name">Apply Hidden On Awake</span><span class="field-desc">Ativado. O adapter deve esconder a superfície no início.</span></div>
+      </div>
+    </div>
+
+    <div class="callout warn">
+      <span class="callout-icon">⚠️</span>
+      <div class="callout-body">
+        <div class="callout-title">AudioListener e EventSystem</div>
+        <p>Garanta que exista exatamente <strong>um</strong> <code>AudioListener</code> e exatamente <strong>um</strong> <code>EventSystem</code> no runtime. Se eles vivem na <code>FG_UIGlobal</code>, remova das cenas <code>FG_Menu</code> e <code>FG_Gameplay</code>.</p>
+      </div>
+    </div>
+
+    <h2 id="menu">Configurando a Menu Route</h2>
+    <p>A Menu Route é a primeira tela do fluxo. Ela não precisa de Activity inicial.</p>
+
+    <ol class="steps">
+      <li>
+        <div class="step-body">
+          <strong>Configure o asset <code>FG_MenuRoute</code></strong>
+          <code>Primary Scene = FG_Menu</code> e <code>Startup Activity = None</code>.
+        </div>
+      </li>
+      <li>
+        <div class="step-body">
+          <strong>Crie um botão Start Game</strong>
+          Na cena <code>FG_Menu</code>, crie um botão UGUI chamado <code>Button_StartGame</code>.
+        </div>
+      </li>
+      <li>
+        <div class="step-body">
+          <strong>Adicione RouteRequestTrigger</strong>
+          No botão ou em um GameObject auxiliar, adicione <code>RouteRequestTrigger</code> com <code>Target Route = FG_GameplayRoute</code> e <code>Reason = Start Game</code>.
+        </div>
+      </li>
+      <li>
+        <div class="step-body">
+          <strong>Conecte o OnClick</strong>
+          No <code>Button → On Click()</code>, arraste o GameObject com <code>RouteRequestTrigger</code> e selecione <code>RouteRequestTrigger.RequestRoute()</code>.
+        </div>
+      </li>
+    </ol>
+
+    <div class="screenshot-placeholder">
+      <div class="shot-label">Placeholder de Screenshot</div>
+      <strong>Inspector:</strong> capturar <code>Button_StartGame</code> com o <code>RouteRequestTrigger</code> apontando para <code>FG_GameplayRoute</code>.
+    </div>
+
+    <h2 id="gameplay">Configurando a Gameplay Route e Activities</h2>
+    <p>A Gameplay Route prova Activity inicial, troca de Activity, clear e restore manual.</p>
+
+    <pre><code>FG_Gameplay
+├── ActivityA_ContentRoot
+│   └── ActivityLocalVisibilityAdapter → FG_Activity_A
+├── ActivityB_ContentRoot
+│   └── ActivityLocalVisibilityAdapter → FG_Activity_B
+└── Canvas_Gameplay
+    ├── Button_GoActivityB
+    ├── Button_ClearActivity
+    └── Button_RestoreActivityA</code></pre>
+
+    <h3>Activity Local Visibility</h3>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>GameObject</th><th>Activity</th><th>Local Content Id</th></tr></thead>
+        <tbody>
+          <tr><td><code>ActivityA_ContentRoot</code></td><td><code>FG_Activity_A</code></td><td><code>fg1-activity-a-root</code></td></tr>
+          <tr><td><code>ActivityB_ContentRoot</code></td><td><code>FG_Activity_B</code></td><td><code>fg1-activity-b-root</code></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Botões de Activity</h3>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Botão</th><th>Trigger</th><th>Método</th></tr></thead>
+        <tbody>
+          <tr><td><code>Go Activity B</code></td><td><code>Target Activity = FG_Activity_B</code></td><td><code>RequestActivity()</code></td></tr>
+          <tr><td><code>Clear Activity</code></td><td><code>Target Activity = None</code></td><td><code>ClearActivity()</code></td></tr>
+          <tr><td><code>Restore Activity A</code></td><td><code>Target Activity = FG_Activity_A</code></td><td><code>RequestActivity()</code></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="callout tip">
+      <span class="callout-icon">✅</span>
+      <div class="callout-body">
+        <div class="callout-title">Restore neste guia não é Save</div>
+        <p>O botão <strong>Restore Activity A</strong> apenas solicita novamente a <code>FG_Activity_A</code>. Não envolve Snapshot, Save, Progression ou persistência.</p>
+      </div>
+    </div>
+
+    <h2 id="build-profile">Build Profile / Build Settings</h2>
+    <p>Todas as cenas usadas pelo framework precisam estar no Build Profile. Para Preview 4, a cena de boot do Player deve ser a Primary Scene da Startup Route, não a UIGlobal.</p>
+
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Índice recomendado</th><th>Cena</th><th>Motivo</th></tr></thead>
+        <tbody>
+          <tr><td><code>0</code></td><td><code>FG_Menu</code></td><td>Primary Scene da Startup Route.</td></tr>
+          <tr><td><code>1</code></td><td><code>FG_UIGlobal</code></td><td>Carregada pelo framework como Additive.</td></tr>
+          <tr><td><code>2</code></td><td><code>FG_Gameplay</code></td><td>Primary Scene da Gameplay Route.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="callout stop">
+      <span class="callout-icon">🚫</span>
+      <div class="callout-body">
+        <div class="callout-title">Não use UIGlobal como cena inicial do build</div>
+        <p>A <code>FG_UIGlobal</code> deve estar no Build Profile, mas não deve ser a primeira cena do Player Build. Ela é uma cena global aditiva gerenciada pelo framework.</p>
+      </div>
+    </div>
+
+    <h2 id="model-readiness">Model Readiness</h2>
+    <p>Depois de montar o setup, rode <code>Project Settings → Immersive Framework → Model Readiness</code>.</p>
+
+    <div class="log-block">
+      <div class="log-label">Resultado esperado</div>
+      <span class="log-key">errors</span><span class="log-sep">='</span><span class="log-val">0</span><span class="log-sep">'</span>
+      <span class="log-key"> warnings</span><span class="log-sep">='</span><span class="log-val">0</span><span class="log-sep">'</span>
+      <span class="log-key"> blockingIssues</span><span class="log-sep">='</span><span class="log-val">0</span><span class="log-sep">'</span>
+      <span class="log-key"> optionalSkips</span><span class="log-sep">='</span><span class="log-val">3</span><span class="log-sep">'</span>
+    </div>
+
+    <h3>Infos esperadas</h3>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Mensagem</th><th>Por que é aceitável</th></tr></thead>
+        <tbody>
+          <tr><td><code>Route has no Startup Activity</code></td><td>A Menu Route não precisa de Activity inicial.</td></tr>
+          <tr><td><code>UIGlobal contains 1 Transition adapter</code></td><td>É desejado.</td></tr>
+          <tr><td><code>UIGlobal contains 1 Loading adapter</code></td><td>É desejado.</td></tr>
+          <tr><td><code>UIGlobal has no resident Pause adapter</code></td><td>Pause visual não faz parte do FIRSTGAME-1.</td></tr>
+          <tr><td><code>No Activity Local Visibility Adapter components were found in open scenes</code></td><td>É normal se a cena aberta no Editor não for <code>FG_Gameplay</code>.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h2 id="play-smoke">Play Smoke manual</h2>
+    <p>Use este roteiro para validar o fluxo em Play Mode.</p>
+
+    <ol class="steps">
+      <li><div class="step-body"><strong>Abra qualquer cena</strong>Inclusive <code>FG_UIGlobal</code>. No Preview 4 o framework prepara a Primary Scene da Startup Route antes da UIGlobal.</div></li>
+      <li><div class="step-body"><strong>Dê Play</strong>Confirme que o boot começa em <code>FG_Menu</code>.</div></li>
+      <li><div class="step-body"><strong>Clique Start Game</strong>Confirme a troca para <code>FG_Gameplay</code> com Loading e Transition.</div></li>
+      <li><div class="step-body"><strong>Confirme Activity A</strong>A <code>FG_Activity_A</code> deve entrar automaticamente.</div></li>
+      <li><div class="step-body"><strong>Clique Go Activity B</strong>Confirme troca para <code>FG_Activity_B</code> com Transition.</div></li>
+      <li><div class="step-body"><strong>Clique Clear Activity</strong>Confirme Activity limpa, sem Activity ativa.</div></li>
+      <li><div class="step-body"><strong>Clique Restore Activity A</strong>Confirme volta para <code>FG_Activity_A</code>.</div></li>
+    </ol>
+
+    <h2 id="logs">Logs de PASS</h2>
+
+    <h3>Boot Preview 4 correto</h3>
+    <div class="log-block">
+      <div class="log-label">Console — ordem canônica</div>
+      Startup Route Primary Scene prepared before UIGlobal load.<br>
+      <span class="log-key">scene</span><span class="log-sep">='</span><span class="log-val">FG_Menu</span><span class="log-sep">'</span>
+      <span class="log-key"> loadMode</span><span class="log-sep">='</span><span class="log-val">Single</span><span class="log-sep">'</span>
+      <span class="log-key"> loaded</span><span class="log-sep">='</span><span class="log-val">True</span><span class="log-sep">'</span>
+    </div>
+
+    <h3>UIGlobal resolvida</h3>
+    <div class="log-block">
+      <div class="log-label">Console — UIGlobal</div>
+      UIGlobal scene 'FG_UIGlobal' loaded and persisted<br>
+      <span class="log-key">transitionAdapterCount</span><span class="log-sep">='</span><span class="log-val">1</span><span class="log-sep">'</span>
+      <span class="log-key"> loadingAdapterCount</span><span class="log-sep">='</span><span class="log-val">1</span><span class="log-sep">'</span>
+      <span class="log-key"> pauseAdapterCount</span><span class="log-sep">='</span><span class="log-val">0</span><span class="log-sep">'</span>
+    </div>
+
+    <h3>Boot succeeded</h3>
+    <div class="log-block">
+      <div class="log-label">Console — Boot OK</div>
+      Boot succeeded. Application Runtime started.<br>
+      <span class="log-key">primaryScene</span><span class="log-sep">='</span><span class="log-val">FG_Menu</span><span class="log-sep">'</span>
+      <span class="log-key"> alreadyLoaded</span><span class="log-sep">='</span><span class="log-val">True</span><span class="log-sep">'</span>
+      <span class="log-key"> loadMode</span><span class="log-sep">='</span><span class="log-val">AlreadyLoaded</span><span class="log-sep">'</span>
+    </div>
+
+    <h3>Start Game</h3>
+    <div class="log-block">
+      <div class="log-label">Console — Route Request OK</div>
+      Route Request completed.<br>
+      <span class="log-key">targetRoute</span><span class="log-sep">='</span><span class="log-val">Gameplay Route</span><span class="log-sep">'</span>
+      <span class="log-key"> scene</span><span class="log-sep">='</span><span class="log-val">FG_Gameplay</span><span class="log-sep">'</span>
+      <span class="log-key"> transition</span><span class="log-sep">='</span><span class="log-val">SucceededWithUnitySurface</span><span class="log-sep">'</span>
+      <span class="log-key"> loading</span><span class="log-sep">='</span><span class="log-val">SucceededWithUnitySurface</span><span class="log-sep">'</span>
+      <span class="log-key"> activity</span><span class="log-sep">='</span><span class="log-val">FG Activity A</span><span class="log-sep">'</span>
+    </div>
+
+    <h3>Activity flow</h3>
+    <div class="log-block">
+      <div class="log-label">Console — Activity OK</div>
+      Activity Request completed.<br>
+      <span class="log-key">transitionScope</span><span class="log-sep">='</span><span class="log-val">Activity</span><span class="log-sep">'</span>
+      <span class="log-key"> transition</span><span class="log-sep">='</span><span class="log-val">SucceededWithUnitySurface</span><span class="log-sep">'</span>
+      <span class="log-key"> activityState</span><span class="log-sep">='</span><span class="log-val">Active</span><span class="log-sep">'</span>
+      <span class="log-key"> activityReadiness</span><span class="log-sep">='</span><span class="log-val">Ready</span><span class="log-sep">'</span>
+    </div>
+
+    <h2 id="erros">Erros comuns e correções</h2>
+
+    <div class="component-card">
+      <h4 style="color:var(--red); margin-bottom:8px;">🔴 Dois AudioListeners ou dois EventSystems</h4>
+      <p style="font-size:13.5px; color:var(--text-soft);"><strong>Causa comum:</strong> <code>FG_UIGlobal</code> e a Route Scene têm câmera/EventSystem ao mesmo tempo, ou o package é anterior ao Preview 4 e duplica a UIGlobal aberta no Editor.<br>
+      <strong>Solução:</strong> use <code>v1.0.0-preview.4</code>; mantenha apenas um <code>AudioListener</code> e um <code>EventSystem</code> no runtime.</p>
+    </div>
+
+    <div class="component-card">
+      <h4 style="color:var(--red); margin-bottom:8px;">🔴 "Unloading the last loaded scene is not supported"</h4>
+      <p style="font-size:13.5px; color:var(--text-soft);"><strong>Causa:</strong> versão antiga do validator tentando fechar a última cena aberta ao validar a UIGlobal.<br>
+      <strong>Solução:</strong> atualizar para <code>v1.0.0-preview.4</code>. O validator agora trata ownership de cena com segurança.</p>
+    </div>
+
+    <div class="component-card">
+      <h4 style="color:var(--yellow); margin-bottom:8px;">⚠️ Loading parece não animar</h4>
+      <p style="font-size:13.5px; color:var(--text-soft);"><strong>Causa provável:</strong> cena leve demais; o progresso vai de 0 a 1 quase instantaneamente.<br>
+      <strong>Solução:</strong> se o log mostra <code>loadingProgressPercent='100'</code> e sem failures, está funcional.</p>
+    </div>
+
+    <div class="component-card">
+      <h4 style="color:var(--yellow); margin-bottom:8px;">⚠️ Activity não aparece</h4>
+      <p style="font-size:13.5px; color:var(--text-soft);"><strong>Causa comum:</strong> <code>FG_GameplayRoute</code> sem Startup Activity, ou <code>ActivityLocalVisibilityAdapter</code> apontando para a Activity errada.<br>
+      <strong>Solução:</strong> confirme <code>Startup Activity = FG_Activity_A</code> e os adapters com <code>Local Content Id</code> explícito.</p>
+    </div>
+
+    <h2 id="limites">O que não fazer neste Preview</h2>
+    <div class="callout stop">
+      <span class="callout-icon">🚫</span>
+      <div class="callout-body">
+        <div class="callout-title">Fora do escopo do Preview 4 / FIRSTGAME-1</div>
+        <p>
+          Não edite o package Git dentro do consumidor.<br><br>
+          Não copie assets, cenas ou ProjectSettings do projeto QA antigo.<br><br>
+          Não abra Save, Snapshot, Player, Actor, Inventory ou gameplay complexo.<br><br>
+          Não crie service locator, singleton ou manager genérico.<br><br>
+          Não use <code>SceneManager</code> direto para trocar telas do jogo. Use <code>RouteRequestTrigger</code> e os assets do framework.<br><br>
+          Não trate Pause visual como obrigatório. Neste preview, ausência de Pause adapter é skip informativo.
+        </p>
+      </div>
+    </div>
+
+    <h2 id="glossario">Glossário Preview 4</h2>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Termo</th><th>Definição</th></tr></thead>
+        <tbody>
+          <tr><td><code>GameApplication</code></td><td>Asset raiz que diz qual é o jogo e qual Route inicia primeiro.</td></tr>
+          <tr><td><code>Route</code></td><td>Tela, área ou fase com Primary Scene própria.</td></tr>
+          <tr><td><code>Activity</code></td><td>Estado local dentro de uma Route, usado para alternar conteúdo.</td></tr>
+          <tr><td><code>Primary Scene</code></td><td>Cena principal de uma Route. Carregada como <code>Single</code>.</td></tr>
+          <tr><td><code>UIGlobal</code></td><td>Cena global aditiva e persistente com surfaces como Loading e Transition.</td></tr>
+          <tr><td><code>Transition Surface</code></td><td>Superfície visual usada para fades entre Route/Activity.</td></tr>
+          <tr><td><code>Loading Surface</code></td><td>Superfície visual usada quando há carga real de cena.</td></tr>
+          <tr><td><code>ActivityClear</code></td><td>Operação que remove a Activity ativa sem trocar de Route.</td></tr>
+          <tr><td><code>Model Readiness</code></td><td>Validação de authoring do framework. Para PASS, precisa de 0 blockers.</td></tr>
+          <tr><td><code>AlreadyLoaded</code></td><td>Indica que a cena já estava preparada quando o lifecycle tentou compor a Route.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div style="margin-top:56px; padding-top:24px; border-top:1px solid var(--border-soft); color:var(--text-muted); font-size:13px;">
+      <p><strong style="color:var(--text-soft);">Immersive Framework</strong> — Guia Preview 4 para Game Designers &nbsp;·&nbsp; <code>com.immersive.framework v1.0.0-preview.4</code></p>
+      <p style="margin-top:4px;">Este guia cobre apenas o escopo validado no FIRSTGAME-1. Atualizar ao fechar FIRSTGAME-2 ou uma nova tag preview.</p>
+    </div>
+
+  </main>
+</div>
+
+<script>
+  const sections = document.querySelectorAll('[id]');
+  const links = document.querySelectorAll('.sidebar-section a');
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        links.forEach(l => l.classList.remove('active'));
+        const active = document.querySelector(`.sidebar-section a[href="#${entry.target.id}"]`);
+        if (active) active.classList.add('active');
+      }
+    });
+  }, { rootMargin: '-20% 0px -70% 0px' });
+  sections.forEach(s => observer.observe(s));
+</script>
+
+</body>
+</html>

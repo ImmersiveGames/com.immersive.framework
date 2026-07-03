@@ -94,8 +94,6 @@ namespace Immersive.Framework.Editor.Editor.Settings
 
             serializedSettings.ApplyModifiedProperties();
 
-            FrameworkEditorPlayModeStartSceneGuard.SyncConfiguredPlayModeStartScene();
-
             EditorGUILayout.Space(8);
             DrawBootStatus(settings);
 

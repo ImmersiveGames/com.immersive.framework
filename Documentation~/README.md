@@ -47,3 +47,15 @@ Needs manual decision:
 - Whether historical guides should be archived, deleted or kept for deep reference.
 - Whether old ADRs and roadmap files should receive a stronger historical banner in a future documentation cleanup.
 - Whether any user-facing examples in the old guides should be promoted into these top-level docs.
+---
+
+## Guia de uso canônico
+
+O botão `Open Usage Guide` em `Project Settings > Immersive Framework` abre:
+
+```text
+Documentation~/Guides/Usage/index.html
+```
+
+Esse path deve permanecer estável. Atualize o conteúdo do `index.html` conforme o package evolui, sem mudar o link público do Project Settings.
+
