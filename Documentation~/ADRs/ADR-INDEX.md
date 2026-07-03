@@ -333,10 +333,10 @@ References:
 
 ## F37 - Transition Gate Policy
 
-Scope: Transition / Gate / Route and Activity authoring.
+Scope: Transition / Gate / Route, Activity and ActivityClear authoring.
 
 Status: Accepted.
 
-F37 adds explicit Route/Activity `TransitionGateMode` policy so visual transition windows can block lifecycle requests, input acceptance, interaction acceptance and gameplay actions without using Pause or `Time.timeScale`.
+F37 adds explicit Route/Activity/ActivityClear `TransitionGateMode` policy so visual transition windows can block lifecycle requests, input acceptance, interaction acceptance and gameplay actions without using Pause or `Time.timeScale`. Preview 8 validates the logical Gate and raycast/UI blocking; temporary consumer movement still requires an adapter/receiver to obey gameplay gate blockers.
 
 Reference: `F37-ADR-TRANSITION-001-Transition-Gate-Policy.md`
