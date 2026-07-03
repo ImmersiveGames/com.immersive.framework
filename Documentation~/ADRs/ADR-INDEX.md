@@ -19,6 +19,7 @@ Current order:
 13. F33 - Pause Runtime PlayerInput Wiring
 14. F34 - Direct Pause Input Trigger for Consumer Keyboard Toggle
 15. F35 - Pause TimeScale and Simple PlayerInput Map Switching
+16. F36 - Global Pause Input Action
 14. POST-F33-A - Matrix Reconciliation Closeout
 15. POST-F33-B - Officialize/Reclassify F28-F33
 16. F8R-A - RuntimeContent / ContentAnchor Materialization Audit
@@ -68,7 +69,8 @@ Current order:
 | F27 | [Gate as Capability Admission Boundary](F27-ADR-GATE-INPUT-001-Capability-Gate-Boundary.md) | Accepted / F27D runtime reframe |
 | F28 | [Roadmap Reconciliation and Adapter Module Spine](F28-ADR-INPUT-001-InputMode-Adapter-Boundary.md) | Accepted / F28A-F28F closed / F29 selected |
 | F34 | [Direct Pause Input Trigger for Consumer Keyboard Toggle](F34-ADR-PAUSE-004-Direct-Pause-Input-Trigger.md) | Accepted / FIRSTGAME-2B PASS / preview.5 / amended by F35 |
-| F35 | [Pause TimeScale and Simple PlayerInput Map Switching](F35-ADR-PAUSE-005-TimeScale-and-Simple-Map-Switching.md) | Accepted / FIRSTGAME-2C PASS / preview.6 |
+| F35 | [Pause TimeScale and Simple PlayerInput Map Switching](F35-ADR-PAUSE-005-TimeScale-and-Simple-Map-Switching.md) | Accepted / FIRSTGAME-2C PASS / preview.6 / amended by F36 |
+| F36 | [Global Pause Input Action](F36-ADR-PAUSE-006-Global-Pause-Input-Action.md) | Accepted / FIRSTGAME-2D / preview.7 |
 | POST-F33-A | `Assets/_Documentation/Notes/POST-F33-A-Matrix-Reconciliation-Closeout.md` | Accepted / documentation / roadmap governance |
 | POST-F33-B | `Assets/_Documentation/Notes/POST-F33-B-Officialize-Reclassify-F28-F33.md` | Accepted / documentation / roadmap governance |
 | F8R-A | `Assets/_Documentation/Audits/F8R-A-RuntimeContent-ContentAnchor-Materialization-Audit.md` | Draft / audit-only / documentation governance |
@@ -98,7 +100,11 @@ The advanced path `PauseInputActionRuntimeBridgeTrigger + PauseInputModeUnityPla
 
 F35 accepts that the playable consumer Pause must pause the basic Unity simulation by default. `PauseRuntime` captures the current running `Time.timeScale`, applies `Time.timeScale = 0` when entering Pause, and restores the captured value when resuming. The Pause contract remains the runtime state/result snapshot; `Time.timeScale` is the default simulation effect, not the whole identity of Pause.
 
-F35 also extends `PauseInputActionTrigger` with optional direct Unity `PlayerInput` action map switching after successful Pause requests: `Paused -> UI` and `Running -> Player`. This keeps FIRSTGAME input simple while reserving the heavier bridge path for future typed InputMode/PlayerInput ownership cuts.
+F35 also accepted optional direct Unity `PlayerInput` action map switching. F36 amends the input authoring path: Pause input now uses one global `Global/Pause` command, and direct action-map switching is optional/explicit rather than part of the normal Pause input lane.
+
+## F36 — Global Pause Input Action
+
+F36 replaces the duplicated `Player/Pause + UI/Pause` normal path with a single global/system action. `PauseInputActionTrigger` resolves `Global/Pause` by default, and same-frame dedupe remains only defensive. UI click/point/submit must stay on the EventSystem/UI input lane, not on a hidden keep-alive side effect inside the Pause trigger.
 
 
 

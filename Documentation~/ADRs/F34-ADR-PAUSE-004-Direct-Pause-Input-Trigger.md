@@ -1,6 +1,6 @@
 # F34-ADR-PAUSE-004 — Direct Pause Input Trigger for Consumer Keyboard Toggle
 
-Status: Accepted / Amended by F35-ADR-PAUSE-005  
+Status: Accepted / Amended by F35-ADR-PAUSE-005 and F36-ADR-PAUSE-006  
 Phase: F34 / FIRSTGAME-2B — Pause Keyboard Toggle  
 Type: Runtime / Authoring Boundary  
 Last updated: 2026-07-03
@@ -69,14 +69,13 @@ FG_UIGlobal
     PauseInputActionTrigger
 ```
 
-With an Input Actions asset containing:
+With an Input Actions asset containing a single global/system action:
 
 ```text
-Player/Pause = <Keyboard>/escape
-UI/Pause     = <Keyboard>/escape
+Global/Pause = <Keyboard>/escape
 ```
 
-The trigger may listen to both actions so `Escape` can pause while the game is running and resume while the Pause overlay is visible. Same-frame dedupe is required so identical bindings in both maps do not cause a double toggle.
+F36 supersedes the earlier `Player/Pause + UI/Pause` normal path. Same-frame dedupe may remain defensive, but it is no longer the expected Pause route.
 
 ## Runtime model
 
@@ -195,3 +194,12 @@ F35 keeps this ADR accepted for the simple input authoring path, but amends two 
 - `PauseRuntime` now applies a basic simulation pause effect by setting `Time.timeScale = 0` while paused and restoring the captured running value on resume.
 
 The direct trigger remains the canonical FIRSTGAME path for `Escape -> Toggle Pause`. The advanced bridge path remains reserved for typed `InputMode` ownership work.
+
+
+## F36 amendment
+
+F36 keeps this ADR accepted for the simple direct Pause trigger, but amends the input track:
+
+- The canonical action is now `Global/Pause`, not duplicate `Player/Pause` and `UI/Pause` actions.
+- Same-frame dedupe is defensive only, not the normal success path.
+- Optional PlayerInput map switching remains explicit and must not be used to keep UI buttons alive.

@@ -9,25 +9,23 @@ using UnityEngine.InputSystem;
 namespace Immersive.Framework.Pause
 {
     /// <summary>
-    /// API status: Experimental. Minimal Unity InputAction trigger for logical Pause requests.
-    /// This component subscribes to explicit InputAction callbacks and submits PauseRequest directly to the current FrameworkRuntimeHost.
-    /// It can optionally switch a supplied PlayerInput between gameplay and pause UI action maps.
+    /// API status: Experimental. Minimal Unity InputAction trigger for Pause requests.
+    /// This component listens to one explicit global Pause action and submits PauseRequest directly to the current FrameworkRuntimeHost.
+    /// It can optionally switch a supplied gameplay PlayerInput between gameplay and pause UI action maps.
     /// It does not validate InputMode, own PlayerInputManager, call JoinPlayer, spawn actors or read gameplay commands.
     /// </summary>
     [DisallowMultipleComponent]
     [AddComponentMenu("Immersive Framework/Pause/Pause Input Action Trigger")]
-    [FrameworkApiStatus(FrameworkApiStatus.Experimental, "FIRSTGAME-2B direct Pause InputAction trigger for minimal Pause keyboard flow.")]
+    [FrameworkApiStatus(FrameworkApiStatus.Experimental, "FIRSTGAME-2D direct Global/Pause InputAction trigger for minimal Pause keyboard flow.")]
     public sealed class PauseInputActionTrigger : MonoBehaviour
     {
         private const string DefaultSource = nameof(PauseInputActionTrigger);
         private const string DefaultReasonPrefix = "pause.input.action";
 
         private FrameworkLogger _logger;
-        private InputAction _playerAction;
-        private InputAction _uiAction;
+        private InputAction _pauseAction;
         private bool _subscribed;
-        private bool _playerActionEnabledByThis;
-        private bool _uiActionEnabledByThis;
+        private bool _pauseActionEnabledByThis;
         private int _lastHandledFrame = -1;
         private string _lastHandledAction = string.Empty;
         private string _lastIgnoredReason = string.Empty;
@@ -41,22 +39,20 @@ namespace Immersive.Framework.Pause
         [Tooltip("Optional explicit InputActionAsset. When filled, it takes precedence over PlayerInput.actions.")]
         [SerializeField] private InputActionAsset actionsAsset;
 
-        [Header("Action Names")]
-        [SerializeField] private string playerActionMapName = "Player";
-        [SerializeField] private string uiActionMapName = "UI";
+        [Header("Pause Action")]
+        [Tooltip("Canonical action map for global/system commands. Recommended: Global.")]
+        [SerializeField] private string pauseActionMapName = "Global";
+        [Tooltip("Canonical Pause action name inside the global/system action map. Recommended: Pause.")]
         [SerializeField] private string pauseActionName = "Pause";
-        [SerializeField] private bool requirePlayerAction = true;
-        [SerializeField] private bool requireUiAction = true;
-
         [Header("Runtime")]
         [SerializeField] private bool subscribeOnEnable = true;
         [SerializeField] private bool enableResolvedActionsOnEnable = true;
         [SerializeField] private PauseRequestKind requestKind = PauseRequestKind.Toggle;
         [SerializeField] private string reason = "pause.input.action.trigger";
 
-        [Header("Action Map Switching")]
-        [Tooltip("When enabled, a successful Pause request switches the configured PlayerInput to the pause UI map while Paused and back to the gameplay map while Running.")]
-        [SerializeField] private bool switchPlayerInputActionMap = true;
+        [Header("Optional Gameplay Action Map Switching")]
+        [Tooltip("Optional. Use only when the referenced PlayerInput is gameplay-owned and the EventSystem/UI input lane is independent. It is disabled by default to avoid disabling UI buttons after Resume.")]
+        [SerializeField] private bool switchPlayerInputActionMap;
         [SerializeField] private string gameplayActionMapName = "Player";
         [SerializeField] private string pauseUiActionMapName = "UI";
 
@@ -70,9 +66,7 @@ namespace Immersive.Framework.Pause
 
         public InputActionAsset ActionsAsset => actionsAsset;
 
-        public string PlayerActionMapName => playerActionMapName.NormalizeTextOrFallback("Player");
-
-        public string UiActionMapName => uiActionMapName.NormalizeTextOrFallback("UI");
+        public string PauseActionMapName => pauseActionMapName.NormalizeTextOrFallback("Global");
 
         public string PauseActionName => pauseActionName.NormalizeTextOrFallback("Pause");
 
@@ -141,18 +135,14 @@ namespace Immersive.Framework.Pause
                 return;
             }
 
-            string actionName = PauseActionName;
-            _playerAction = ResolveAction(asset, PlayerActionMapName, actionName, requirePlayerAction);
-            _uiAction = ResolveAction(asset, UiActionMapName, actionName, requireUiAction);
-
-            if (_playerAction == null && _uiAction == null)
+            _pauseAction = ResolveAction(asset, PauseActionMapName, PauseActionName, true);
+            if (_pauseAction == null)
             {
-                IgnoreConfiguration("pause_actions_missing", "Pause Input Action Trigger did not resolve any Pause action.");
+                IgnoreConfiguration("pause_action_missing", "Pause Input Action Trigger did not resolve the configured global Pause action.");
                 return;
             }
 
-            Subscribe(_playerAction, ref _playerActionEnabledByThis);
-            Subscribe(_uiAction, ref _uiActionEnabledByThis);
+            Subscribe(_pauseAction, ref _pauseActionEnabledByThis);
             _subscribed = true;
 
             if (logReadyOnEnable)
@@ -161,8 +151,8 @@ namespace Immersive.Framework.Pause
                     "Pause Input Action Trigger ready.",
                     Immersive.Logging.Records.LogFields.Of(
                         Immersive.Logging.Records.LogFields.Field("asset", asset.name),
-                        Immersive.Logging.Records.LogFields.Field("playerAction", FormatAction(_playerAction)),
-                        Immersive.Logging.Records.LogFields.Field("uiAction", FormatAction(_uiAction)),
+                        Immersive.Logging.Records.LogFields.Field("pauseAction", FormatAction(_pauseAction)),
+                        Immersive.Logging.Records.LogFields.Field("pauseActionMap", PauseActionMapName),
                         Immersive.Logging.Records.LogFields.Field("requestKind", requestKind.ToString()),
                         Immersive.Logging.Records.LogFields.Field("enabledOnSubscribe", enableResolvedActionsOnEnable),
                         Immersive.Logging.Records.LogFields.Field("actionMapSwitching", switchPlayerInputActionMap),
@@ -193,12 +183,9 @@ namespace Immersive.Framework.Pause
 
         private void UnsubscribeResolvedActions()
         {
-            Unsubscribe(_playerAction, _playerActionEnabledByThis);
-            Unsubscribe(_uiAction, _uiActionEnabledByThis);
-            _playerAction = null;
-            _uiAction = null;
-            _playerActionEnabledByThis = false;
-            _uiActionEnabledByThis = false;
+            Unsubscribe(_pauseAction, _pauseActionEnabledByThis);
+            _pauseAction = null;
+            _pauseActionEnabledByThis = false;
             _subscribed = false;
         }
 
@@ -329,7 +316,6 @@ namespace Immersive.Framework.Pause
                         Immersive.Logging.Records.LogFields.Field("reason", requestReason.NormalizeTextOrFallback(DefaultReasonPrefix))));
             }
         }
-
 
         private string ApplyPlayerInputActionMapForPauseResult(PauseResult result, out string selectedActionMap)
         {

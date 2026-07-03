@@ -1,6 +1,6 @@
 # F35-ADR-PAUSE-005 — Pause TimeScale and Simple PlayerInput Map Switching
 
-Status: Accepted  
+Status: Accepted / Amended by F36-ADR-PAUSE-006  
 Phase: F35 / FIRSTGAME-2C — Pause Simulation Effect  
 Type: Runtime / Authoring Boundary  
 Last updated: 2026-07-03
@@ -39,29 +39,21 @@ Running timeScale 0.5 -> Pause -> 0 -> Resume -> 0.5
 
 `Time.timeScale` is therefore an accepted default simulation effect of Pause. It is not the complete identity of Pause; the authoritative Pause state remains `PauseRuntime`.
 
-## Simple action map switching
+## Global Pause input correction
 
-`PauseInputActionTrigger` may directly switch the referenced Unity `PlayerInput` action map after a successful request:
-
-```text
-Paused  -> UI action map
-Running -> Player/action gameplay map
-```
-
-This is intentionally a small authoring convenience for FIRSTGAME. It does not reintroduce the advanced bridge preflight path and does not require Player/Actor/InputTarget evidence.
-
-The minimal flow is now:
+F36 amends the input authoring part of this ADR. The minimal flow is now:
 
 ```text
-Escape
+Global/Pause
 -> PauseInputActionTrigger
 -> FrameworkRuntimeHost.RequestPause(Toggle)
 -> PauseRuntime
 -> Time.timeScale effect
 -> PauseSurfaceRuntime
 -> Gate snapshot
--> optional PlayerInput action map switch
 ```
+
+`PauseInputActionTrigger` may still directly switch a referenced Unity `PlayerInput` action map after a successful request, but this is optional and disabled by default. Enable it only when that `PlayerInput` is a gameplay input lane and the EventSystem/UI input lane is independent.
 
 ## Accepted authoring model
 
@@ -76,28 +68,24 @@ FG_UIGlobal
       PauseInputActionTrigger
 ```
 
-Recommended fields:
+Recommended fields after F36:
 
 ```text
-Player Input = FG_PlayerInput
-Player Action Map Name = Player
-UI Action Map Name = UI
+Player Input = optional FG_PlayerInput or explicit Actions Asset
+Pause Action Map Name = Global
 Pause Action Name = Pause
 Request Kind = Toggle
-Switch Player Input Action Map = true
-Gameplay Action Map Name = Player
-Pause UI Action Map Name = UI
+Switch Player Input Action Map = false
 Reason = firstgame.pause.keyboard.toggle
 ```
 
 The Input Actions asset should contain:
 
 ```text
-Player/Pause = <Keyboard>/escape
-UI/Pause     = <Keyboard>/escape
+Global/Pause = <Keyboard>/escape
 ```
 
-Same-frame dedupe remains required because both actions may observe the same physical key.
+Do not use `Player/Pause + UI/Pause` as the canonical path. Same-frame dedupe is defensive only.
 
 ## Explicit non-goals
 
@@ -152,7 +140,7 @@ capturedRunningTimeScale='1'
 pauseSurfacePaused='False'
 ```
 
-The input trigger also confirmed simple action map switching:
+The preview.6 input trigger also confirmed simple action map switching, but F36 later amended the canonical input track to use `Global/Pause`:
 
 ```text
 Pause Input Action Trigger ready.
@@ -180,3 +168,12 @@ Logical Pause
 ```
 
 It must no longer say that `Time.timeScale` is outside the Pause model.
+
+
+## F36 amendment
+
+F36 keeps the TimeScale decision accepted and changes the input lane decision:
+
+- Canonical Pause input is one action: `Global/Pause`.
+- Duplicate `Player/Pause` and `UI/Pause` are no longer the normal authoring path.
+- Direct PlayerInput map switching is optional, disabled by default, and must not be used as a UI action-map keep-alive workaround.
