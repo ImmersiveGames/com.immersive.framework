@@ -1,0 +1,2516 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Immersive Framework — Manual do Game Designer</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500&family=JetBrains+Mono:wght@400;500&display=swap');
+
+    :root {
+      --bg: #0d1117;
+      --surface: #161b22;
+      --surface-2: #1c2330;
+      --border: #30363d;
+      --border-soft: #21262d;
+      --text: #e6edf3;
+      --text-muted: #7d8590;
+      --text-soft: #b1bac4;
+      --accent: #58a6ff;
+      --accent-soft: #1c3251;
+      --accent-glow: rgba(88,166,255,0.15);
+      --green: #3fb950;
+      --green-bg: #0d2919;
+      --green-border: #1a3d24;
+      --yellow: #d29922;
+      --yellow-bg: #2b2000;
+      --yellow-border: #4a3800;
+      --red: #f85149;
+      --red-bg: #2d1215;
+      --red-border: #4a1c1f;
+      --purple: #bc8cff;
+      --purple-bg: #1e1040;
+      --tag-bg: #1c2330;
+      --tag-border: #30363d;
+      --code-bg: #0d1117;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: 'Inter', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.65;
+      font-size: 15px;
+    }
+
+    /* ── LAYOUT ── */
+    .layout { display: flex; min-height: 100vh; }
+
+    .sidebar {
+      width: 260px;
+      flex-shrink: 0;
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      overflow-y: auto;
+      padding: 0 0 32px;
+    }
+
+    .sidebar-logo {
+      padding: 20px 20px 16px;
+      border-bottom: 1px solid var(--border-soft);
+      margin-bottom: 8px;
+    }
+    .sidebar-logo .eyebrow {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px;
+      color: var(--accent);
+      letter-spacing: .1em;
+      text-transform: uppercase;
+      margin-bottom: 4px;
+    }
+    .sidebar-logo h2 {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--text);
+      line-height: 1.3;
+    }
+
+    .sidebar-section { padding: 4px 0; }
+    .sidebar-section-label {
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      padding: 12px 20px 4px;
+    }
+    .sidebar-section a {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 20px;
+      color: var(--text-soft);
+      text-decoration: none;
+      font-size: 13px;
+      border-radius: 0;
+      transition: background .15s, color .15s;
+      border-left: 2px solid transparent;
+    }
+    .sidebar-section a:hover { background: var(--surface-2); color: var(--text); }
+    .sidebar-section a.active { color: var(--accent); border-left-color: var(--accent); background: var(--accent-soft); }
+    .sidebar-section a .icon { width: 16px; text-align: center; opacity: .7; flex-shrink: 0; }
+
+    .content {
+      flex: 1;
+      min-width: 0;
+      padding: 48px 56px;
+      max-width: 860px;
+    }
+
+    /* ── TYPOGRAPHY ── */
+    h1 {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 2.2rem;
+      font-weight: 700;
+      line-height: 1.15;
+      color: var(--text);
+      margin-bottom: 16px;
+    }
+    h2 {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 1.4rem;
+      font-weight: 700;
+      color: var(--text);
+      margin: 48px 0 16px;
+      padding-top: 48px;
+      border-top: 1px solid var(--border-soft);
+    }
+    h2:first-of-type { border-top: none; padding-top: 0; margin-top: 0; }
+    h3 {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 1.05rem;
+      font-weight: 600;
+      color: var(--text);
+      margin: 28px 0 10px;
+    }
+    p { color: var(--text-soft); margin-bottom: 12px; }
+    p:last-child { margin-bottom: 0; }
+    strong { color: var(--text); font-weight: 600; }
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    /* ── PAGE HERO ── */
+    .hero {
+      background: linear-gradient(135deg, var(--surface) 0%, var(--surface-2) 100%);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 36px 40px;
+      margin-bottom: 40px;
+      position: relative;
+      overflow: hidden;
+    }
+    .hero::before {
+      content: '';
+      position: absolute;
+      top: -40px; right: -40px;
+      width: 200px; height: 200px;
+      background: radial-gradient(circle, rgba(88,166,255,.12) 0%, transparent 70%);
+      border-radius: 50%;
+      pointer-events: none;
+    }
+    .hero .eyebrow {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      color: var(--accent);
+      letter-spacing: .12em;
+      text-transform: uppercase;
+      margin-bottom: 12px;
+    }
+    .hero h1 { font-size: 2rem; margin-bottom: 12px; }
+    .hero p { font-size: 15px; color: var(--text-soft); max-width: 560px; }
+    .hero .badge-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 16px; }
+
+    /* ── BADGES / TAGS ── */
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      font-weight: 500;
+      padding: 3px 10px;
+      border-radius: 20px;
+      border: 1px solid;
+    }
+    .badge-green { background: var(--green-bg); border-color: var(--green-border); color: var(--green); }
+    .badge-blue { background: var(--accent-soft); border-color: #2d4a7a; color: var(--accent); }
+    .badge-yellow { background: var(--yellow-bg); border-color: var(--yellow-border); color: var(--yellow); }
+    .badge-purple { background: var(--purple-bg); border-color: #3d2070; color: var(--purple); }
+
+    /* ── CALLOUTS ── */
+    .callout {
+      border-radius: 8px;
+      border-left: 3px solid;
+      padding: 14px 16px;
+      margin: 16px 0;
+      display: flex;
+      gap: 12px;
+      align-items: flex-start;
+    }
+    .callout-icon { font-size: 16px; flex-shrink: 0; margin-top: 1px; }
+    .callout-body p { margin-bottom: 6px; }
+    .callout-body p:last-child { margin-bottom: 0; }
+    .callout-title { font-weight: 600; font-size: 13px; margin-bottom: 4px; }
+    .callout.tip { background: var(--green-bg); border-color: var(--green); color: #a7d9b0; }
+    .callout.tip .callout-title { color: var(--green); }
+    .callout.warn { background: var(--yellow-bg); border-color: var(--yellow); color: #c9a84c; }
+    .callout.warn .callout-title { color: var(--yellow); }
+    .callout.info { background: var(--accent-soft); border-color: var(--accent); color: #8bbce8; }
+    .callout.info .callout-title { color: var(--accent); }
+    .callout.stop { background: var(--red-bg); border-color: var(--red); color: #e8908d; }
+    .callout.stop .callout-title { color: var(--red); }
+
+    /* ── CODE ── */
+    code {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: .85em;
+      background: var(--surface-2);
+      color: var(--accent);
+      padding: 2px 6px;
+      border-radius: 4px;
+      border: 1px solid var(--border-soft);
+    }
+    pre {
+      background: var(--code-bg);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 20px;
+      overflow-x: auto;
+      margin: 14px 0 20px;
+      position: relative;
+    }
+    pre code {
+      font-size: 13px;
+      background: none;
+      border: none;
+      padding: 0;
+      color: var(--text-soft);
+      line-height: 1.7;
+    }
+    .pre-label {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px;
+      color: var(--text-muted);
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      margin-bottom: 6px;
+    }
+
+    /* ── TABLES ── */
+    .table-wrap { overflow-x: auto; margin: 14px 0 20px; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      overflow: hidden;
+      font-size: 13.5px;
+    }
+    thead th {
+      background: var(--surface-2);
+      text-align: left;
+      padding: 12px 16px;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: .05em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      border-bottom: 1px solid var(--border);
+    }
+    tbody td {
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--border-soft);
+      color: var(--text-soft);
+      vertical-align: top;
+    }
+    tbody tr:last-child td { border-bottom: none; }
+    tbody tr:hover { background: var(--surface-2); }
+    td code { font-size: 12px; }
+
+    /* ── STEPS ── */
+    .steps { counter-reset: step; list-style: none; margin: 16px 0; padding: 0; }
+    .steps li {
+      counter-increment: step;
+      display: flex;
+      gap: 16px;
+      margin-bottom: 20px;
+      position: relative;
+    }
+    .steps li::before {
+      content: counter(step);
+      flex-shrink: 0;
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: var(--accent-soft);
+      border: 1.5px solid var(--accent);
+      color: var(--accent);
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 13px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-top: 2px;
+    }
+    .step-body { flex: 1; }
+    .step-body strong { display: block; color: var(--text); font-size: 14px; margin-bottom: 4px; }
+
+    /* ── ASSET CARDS ── */
+    .asset-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 14px; margin: 18px 0; }
+    .asset-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 18px 18px 16px;
+      transition: border-color .15s, background .15s;
+    }
+    .asset-card:hover { border-color: var(--accent); background: var(--surface-2); }
+    .asset-card .asset-icon { font-size: 24px; margin-bottom: 10px; }
+    .asset-card .asset-name {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      color: var(--accent);
+      margin-bottom: 4px;
+    }
+    .asset-card h4 { font-family: 'Space Grotesk', sans-serif; font-size: 14px; font-weight: 600; margin-bottom: 6px; color: var(--text); }
+    .asset-card p { font-size: 13px; line-height: 1.5; }
+    .asset-card .asset-menu {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-top: 10px;
+      padding-top: 10px;
+      border-top: 1px solid var(--border-soft);
+    }
+
+    /* ── COMPONENT CARDS ── */
+    .component-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 20px;
+      margin: 14px 0;
+    }
+    .component-card .comp-header {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+    .comp-icon { font-size: 28px; flex-shrink: 0; }
+    .comp-meta .comp-name {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      color: var(--accent);
+      margin-bottom: 2px;
+    }
+    .comp-meta h4 { font-family: 'Space Grotesk', sans-serif; font-size: 15px; font-weight: 600; color: var(--text); }
+    .comp-meta .comp-menu { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+    .comp-fields { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
+    .comp-field {
+      background: var(--surface-2);
+      border: 1px solid var(--border-soft);
+      border-radius: 6px;
+      padding: 10px 12px;
+      display: flex;
+      gap: 12px;
+      align-items: flex-start;
+    }
+    .comp-field .field-name {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      color: var(--purple);
+      flex-shrink: 0;
+      min-width: 140px;
+    }
+    .comp-field .field-desc { font-size: 13px; color: var(--text-soft); line-height: 1.5; }
+
+    /* ── FLOW DIAGRAM ── */
+    .flow {
+      display: flex;
+      align-items: center;
+      gap: 0;
+      flex-wrap: wrap;
+      margin: 20px 0;
+      row-gap: 12px;
+    }
+    .flow-box {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px 16px;
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 13px;
+      font-weight: 600;
+      text-align: center;
+      min-width: 110px;
+    }
+    .flow-box.accent { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); }
+    .flow-box.green { border-color: var(--green-border); background: var(--green-bg); color: var(--green); }
+    .flow-box.purple { border-color: #3d2070; background: var(--purple-bg); color: var(--purple); }
+    .flow-arrow {
+      color: var(--text-muted);
+      font-size: 18px;
+      padding: 0 8px;
+    }
+
+    /* ── LOG BLOCK ── */
+    .log-block {
+      background: #0a0f14;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 16px 18px;
+      margin: 12px 0;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      line-height: 1.9;
+    }
+    .log-key { color: #79c0ff; }
+    .log-val { color: #a5d6a7; }
+    .log-sep { color: var(--text-muted); }
+    .log-label { color: var(--text-muted); font-size: 10px; margin-bottom: 8px; text-transform: uppercase; letter-spacing: .08em; }
+
+    /* ── DIVIDER ── */
+    .section-divider {
+      height: 1px;
+      background: linear-gradient(90deg, var(--accent) 0%, transparent 60%);
+      margin: 0 0 0;
+      opacity: .5;
+    }
+
+    /* ── TOC PAGE ── */
+    .toc-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 20px 0; }
+    .toc-item {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 16px 18px;
+      text-decoration: none;
+      transition: border-color .15s, background .15s;
+      display: block;
+    }
+    .toc-item:hover { border-color: var(--accent); background: var(--surface-2); text-decoration: none; }
+    .toc-item .toc-num { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--accent); margin-bottom: 4px; }
+    .toc-item .toc-title { font-family: 'Space Grotesk', sans-serif; font-size: 14px; font-weight: 600; color: var(--text); margin-bottom: 4px; }
+    .toc-item .toc-desc { font-size: 12px; color: var(--text-muted); line-height: 1.5; }
+
+    /* ── SCROLLBAR ── */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: var(--bg); }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+    /* ── RESPONSIVE ── */
+    @media (max-width: 800px) {
+      .sidebar { display: none; }
+      .content { padding: 28px 22px; }
+      .toc-grid { grid-template-columns: 1fr; }
+      .asset-grid { grid-template-columns: 1fr; }
+      h1 { font-size: 1.6rem; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="layout">
+
+  <!-- ── SIDEBAR ── -->
+  <nav class="sidebar">
+    <div class="sidebar-logo">
+      <div class="eyebrow">com.immersive.framework</div>
+      <h2>Manual do<br>Game Designer</h2>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-section-label">Início</div>
+      <a href="#intro" class="active"><span class="icon">🏠</span> Visão Geral</a>
+      <a href="#conceitos"><span class="icon">🧠</span> Conceitos Essenciais</a>
+      <a href="#como-funciona"><span class="icon">⚙️</span> Como Funciona</a>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-section-label">Setup</div>
+      <a href="#instalacao"><span class="icon">📦</span> Instalação do Package</a>
+      <a href="#primeiro-setup"><span class="icon">🔧</span> Configuração Inicial</a>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-section-label">Assets & Componentes</div>
+      <a href="#assets"><span class="icon">📋</span> Assets de Authoring</a>
+      <a href="#componentes"><span class="icon">🧩</span> Componentes de Cena</a>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-section-label">Guias Práticos</div>
+      <a href="#guia-route"><span class="icon">🗺️</span> Criando sua Primeira Route</a>
+      <a href="#guia-activity"><span class="icon">🎮</span> Criando uma Activity</a>
+      <a href="#guia-content-profile"><span class="icon">🎬</span> Cenas Adicionais</a>
+      <a href="#guia-anchor"><span class="icon">⚓</span> Content Anchors</a>
+      <a href="#guia-visibilidade"><span class="icon">👁️</span> Visibilidade por Activity</a>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-section-label">Diagnóstico</div>
+      <a href="#logs"><span class="icon">📊</span> Entendendo os Logs</a>
+      <a href="#erros"><span class="icon">🔴</span> Erros Comuns</a>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-section-label">Recursos Avançados (F3–F10)</div>
+      <a href="#avancado-intro"><span class="icon">⚡</span> Visão Geral</a>
+      <a href="#route-binding"><span class="icon">🔗</span> Route Content Binding</a>
+      <a href="#activity-lifecycle-events"><span class="icon">📡</span> Activity Lifecycle Events</a>
+      <a href="#request-bridges"><span class="icon">🌉</span> Unity Event Bridges</a>
+      <a href="#participant"><span class="icon">🧪</span> Execution Participants</a>
+      <a href="#qa-canvas"><span class="icon">🎛️</span> QA Canvas</a>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-section-label">Novidades F11–F15</div>
+      <a href="#f11-intro"><span class="icon">🔄</span> Visão Geral F11–F15</a>
+      <a href="#cycle-reset"><span class="icon">🔁</span> Cycle Reset</a>
+      <a href="#object-entry"><span class="icon">🏷️</span> Object Entry</a>
+      <a href="#object-reset"><span class="icon">🎯</span> Object Reset</a>
+      <a href="#transform-participant"><span class="icon">📐</span> Transform Reset</a>
+      <a href="#f11-bridges"><span class="icon">🌉</span> Bridges F11–F15</a>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-section-label">Referência</div>
+      <a href="#limites"><span class="icon">🚧</span> O que ainda NÃO existe</a>
+      <a href="#glossario"><span class="icon">📖</span> Glossário</a>
+    </div>
+  </nav>
+
+  <!-- ── CONTENT ── -->
+  <main class="content">
+
+    <!-- ══════════════════════════════════════════
+         HERO / INTRO
+    ══════════════════════════════════════════ -->
+    <div class="hero" id="intro">
+      <div class="eyebrow">Manual de Uso · Versão F10</div>
+      <h1>Immersive Framework<br>para Game Designers</h1>
+      <p>Tudo que você precisa para usar o framework no Unity sem precisar escrever código. Configure Routes, Activities e cenas usando apenas o Inspector.</p>
+      <div class="badge-row">
+        <span class="badge badge-green">✓ F10 — Fechado</span>
+        <span class="badge badge-blue">Unity Package</span>
+        <span class="badge badge-yellow">⚠ API Experimental</span>
+      </div>
+    </div>
+
+    <div class="callout info">
+      <span class="callout-icon">💡</span>
+      <div class="callout-body">
+        <div class="callout-title">Para quem é este manual</div>
+        <p>Este guia foi escrito para game designers com conhecimento básico de Unity (sabe criar cenas, GameObjects, usar o Inspector e o Project). Você <strong>não precisa escrever código</strong> para usar as funcionalidades disponíveis nesta versão do framework.</p>
+      </div>
+    </div>
+
+    <!-- SUMÁRIO -->
+    <h2 id="sumario" style="margin-top:32px">O que você vai encontrar aqui</h2>
+    <div class="toc-grid">
+      <a href="#conceitos" class="toc-item">
+        <div class="toc-num">01</div>
+        <div class="toc-title">Conceitos Essenciais</div>
+        <div class="toc-desc">O que é uma Route, Activity e o fluxo geral do framework.</div>
+      </a>
+      <a href="#primeiro-setup" class="toc-item">
+        <div class="toc-num">02</div>
+        <div class="toc-title">Configuração Inicial</div>
+        <div class="toc-desc">Do zero ao primeiro Play sem erros.</div>
+      </a>
+      <a href="#guia-route" class="toc-item">
+        <div class="toc-num">03</div>
+        <div class="toc-title">Criando sua Primeira Route</div>
+        <div class="toc-desc">Passo a passo visual: asset + cena + boot.</div>
+      </a>
+      <a href="#guia-activity" class="toc-item">
+        <div class="toc-num">04</div>
+        <div class="toc-title">Criando uma Activity</div>
+        <div class="toc-desc">Trocar de estado dentro de uma Route.</div>
+      </a>
+      <a href="#guia-content-profile" class="toc-item">
+        <div class="toc-num">05</div>
+        <div class="toc-title">Cenas Adicionais</div>
+        <div class="toc-desc">Carregar e descarregar cenas extras por Route.</div>
+      </a>
+      <a href="#logs" class="toc-item">
+        <div class="toc-num">06</div>
+        <div class="toc-title">Entendendo os Logs</div>
+        <div class="toc-desc">O que cada mensagem no Console significa.</div>
+      </a>
+    </div>
+
+    <!-- ══════════════════════════════════════════
+         CONCEITOS
+    ══════════════════════════════════════════ -->
+    <h2 id="conceitos">Conceitos Essenciais</h2>
+    <p>O Immersive Framework organiza seu jogo em três camadas hierárquicas. Cada camada tem um papel claro e não pode ser invertida.</p>
+
+    <div class="flow">
+      <div class="flow-box accent">🎯 Session</div>
+      <span class="flow-arrow">▶</span>
+      <div class="flow-box">🗺️ Route</div>
+      <span class="flow-arrow">▶</span>
+      <div class="flow-box green">🎮 Activity</div>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>Conceito</th><th>Analogia de jogo</th><th>O que controla</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>Session</code></td>
+            <td>A "sessão de jogo" inteira, desde o boot até fechar o app</td>
+            <td>Contexto global, estado da aplicação</td>
+          </tr>
+          <tr>
+            <td><code>Route</code></td>
+            <td>Uma "fase" ou "área" do jogo — ex: Menu Principal, World 1, Cutscene</td>
+            <td>Qual cena principal está ativa, cenas adicionais, qual Activity inicial</td>
+          </tr>
+          <tr>
+            <td><code>Activity</code></td>
+            <td>Um "modo" dentro de uma Route — ex: Gameplay, Pausa, Inventário, Diálogo</td>
+            <td>Qual conteúdo de cena está visível/ativo naquele momento</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>O fluxo de boot</h3>
+    <p>Quando você dá Play no Unity, o framework inicializa automaticamente:</p>
+
+    <div class="flow" style="flex-wrap:nowrap; overflow-x:auto; gap:0; padding-bottom:4px;">
+      <div class="flow-box" style="min-width:90px; font-size:12px;">Unity carrega a cena</div>
+      <span class="flow-arrow">▶</span>
+      <div class="flow-box" style="min-width:90px; font-size:12px;">Framework lê Settings</div>
+      <span class="flow-arrow">▶</span>
+      <div class="flow-box" style="min-width:90px; font-size:12px;">Resolve Game Application</div>
+      <span class="flow-arrow">▶</span>
+      <div class="flow-box accent" style="min-width:90px; font-size:12px;">Entra na Startup Route</div>
+      <span class="flow-arrow">▶</span>
+      <div class="flow-box green" style="min-width:90px; font-size:12px;">Inicia Activity inicial</div>
+    </div>
+
+    <div class="callout warn">
+      <span class="callout-icon">⚠️</span>
+      <div class="callout-body">
+        <div class="callout-title">Importante sobre cenas</div>
+        <p>O framework gerencia qual cena está ativa. <strong>Não use SceneManager diretamente no código de jogo</strong>. Use os assets e componentes do framework para transitar entre Routes.</p>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════
+         COMO FUNCIONA
+    ══════════════════════════════════════════ -->
+    <h2 id="como-funciona">Como o Framework funciona na prática</h2>
+    <p>Tudo que você vai criar como game designer são <strong>Assets</strong> (arquivos ScriptableObject) e <strong>Componentes</strong> que você adiciona em GameObjects na cena. Não é necessário escrever scripts.</p>
+
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Tipo</th><th>Onde fica</th><th>Para que serve</th></tr></thead>
+        <tbody>
+          <tr><td><strong>Assets</strong></td><td>Project (pasta Assets)</td><td>Definem a estrutura: quem é o jogo, quais Routes existem, quais Activities</td></tr>
+          <tr><td><strong>Componentes de Cena</strong></td><td>GameObjects nas cenas</td><td>Fazem coisas acontecerem: trocar de Route, ativar Activity, declarar âncoras</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- ══════════════════════════════════════════
+         INSTALAÇÃO
+    ══════════════════════════════════════════ -->
+    <h2 id="instalacao">Instalação do Package</h2>
+    <p>O framework é distribuído como um Unity Package. Para instalá-lo:</p>
+
+    <ol class="steps">
+      <li>
+        <div class="step-body">
+          <strong>Abra o Package Manager</strong>
+          No menu do Unity, vá em <code>Window → Package Manager</code>.
+        </div>
+      </li>
+      <li>
+        <div class="step-body">
+          <strong>Adicione via caminho local</strong>
+          Clique no botão <code>+</code> no canto superior esquerdo e escolha <strong>"Add package from disk..."</strong> (ou "from local folder"). Navegue até a pasta <code>com.immersive.framework</code> e selecione o arquivo <code>package.json</code>.
+        </div>
+      </li>
+      <li>
+        <div class="step-body">
+          <strong>Aguarde a compilação</strong>
+          O Unity vai importar e compilar o package. Se aparecerem erros de compilação no Console, verifique se o package de dependências (<code>com.immersive.foundation</code>) também está instalado.
+        </div>
+      </li>
+    </ol>
+
+    <div class="callout tip">
+      <span class="callout-icon">✅</span>
+      <div class="callout-body">
+        <div class="callout-title">Confirmando que funcionou</div>
+        <p>Se a instalação funcionou, você verá no menu <code>Assets → Create</code> uma nova categoria chamada <strong>"Immersive Framework"</strong> com os assets disponíveis.</p>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════
+         PRIMEIRO SETUP
+    ══════════════════════════════════════════ -->
+    <h2 id="primeiro-setup">Configuração Inicial (do zero ao Play)</h2>
+    <p>Siga estes passos para colocar o framework funcionando em um projeto novo. Você vai criar 3 assets e configurar as Settings.</p>
+
+    <h3>Passo 1 — Criar o Game Application asset</h3>
+
+    <ol class="steps">
+      <li>
+        <div class="step-body">
+          <strong>Crie a pasta de assets</strong>
+          No Project, crie uma pasta chamada <code>Framework</code> (ou o nome que preferir) para organizar seus assets.
+        </div>
+      </li>
+      <li>
+        <div class="step-body">
+          <strong>Crie o Game Application</strong>
+          Clique com botão direito na pasta → <code>Create → Immersive Framework → Game Application</code>. Nomeie o arquivo como <code>GameApplication</code>.
+        </div>
+      </li>
+      <li>
+        <div class="step-body">
+          <strong>Preencha o Inspector</strong>
+          Clique no asset e no Inspector defina:<br>
+          • <strong>Application Name:</strong> o nome do seu jogo<br>
+          • <strong>Startup Route:</strong> deixe em branco por enquanto (vamos criar na etapa seguinte)<br>
+          • <strong>Validation Mode:</strong> mantenha <code>Standard</code>
+        </div>
+      </li>
+    </ol>
+
+    <h3>Passo 2 — Criar uma Route e sua cena</h3>
+
+    <ol class="steps">
+      <li>
+        <div class="step-body">
+          <strong>Crie uma cena Unity</strong>
+          No Project, <code>Create → Scene</code>. Nomeie como <code>MainMenu</code> (ou o nome da sua primeira tela).<br>
+          <strong>Adicione essa cena ao Build Settings</strong> (<code>File → Build Settings → Add Open Scenes</code>).
+        </div>
+      </li>
+      <li>
+        <div class="step-body">
+          <strong>Crie o Route asset</strong>
+          Botão direito na pasta → <code>Create → Immersive Framework → Route</code>. Nomeie como <code>Route_MainMenu</code>.
+        </div>
+      </li>
+      <li>
+        <div class="step-body">
+          <strong>Conecte a cena ao Route</strong>
+          Clique no Route asset. No Inspector, no campo <strong>Primary Scene</strong>, selecione a cena <code>MainMenu</code> que você criou.
+        </div>
+      </li>
+      <li>
+        <div class="step-body">
+          <strong>Conecte o Route ao Game Application</strong>
+          Volte ao asset <code>GameApplication</code> e arraste o <code>Route_MainMenu</code> para o campo <strong>Startup Route</strong>.
+        </div>
+      </li>
+    </ol>
+
+    <h3>Passo 3 — Configurar as Project Settings</h3>
+
+    <ol class="steps">
+      <li>
+        <div class="step-body">
+          <strong>Abra as Settings do Framework</strong>
+          Menu <code>Edit → Project Settings</code> → procure na lista lateral por <strong>Immersive Framework</strong>.
+        </div>
+      </li>
+      <li>
+        <div class="step-body">
+          <strong>Defina o Active Game Application</strong>
+          Arraste o asset <code>GameApplication</code> para o campo <strong>Active Game Application</strong>.
+        </div>
+      </li>
+      <li>
+        <div class="step-body">
+          <strong>Defina o Editor Play Mode Startup</strong>
+          Mantenha em <code>Framework Startup</code> para o framework inicializar normalmente ao dar Play.
+        </div>
+      </li>
+    </ol>
+
+    <h3>Passo 4 — Dar Play e verificar</h3>
+    <p>Com tudo configurado, abra a cena <code>MainMenu</code> no Unity e dê Play. Abra o Console e procure a mensagem:</p>
+
+    <div class="log-block">
+      <div class="log-label">Console do Unity</div>
+      Boot succeeded. Application Runtime started.
+      <br><span class="log-key">gameApplication</span><span class="log-sep">='</span><span class="log-val">Meu Jogo</span><span class="log-sep">'</span>
+      <br><span class="log-key">startupRoute</span><span class="log-sep">='</span><span class="log-val">Route_MainMenu</span><span class="log-sep">'</span>
+      <br><span class="log-key">primaryScene</span><span class="log-sep">='</span><span class="log-val">MainMenu</span><span class="log-sep">'</span>
+    </div>
+
+    <div class="callout stop">
+      <span class="callout-icon">🔴</span>
+      <div class="callout-body">
+        <div class="callout-title">Se aparecer "Boot failed"</div>
+        <p>Verifique se: (1) o <code>GameApplication</code> está definido nas Settings, (2) o <code>Startup Route</code> tem uma cena atribuída, e (3) essa cena está no Build Settings. A mensagem de erro no Console vai indicar qual campo está faltando.</p>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════
+         ASSETS
+    ══════════════════════════════════════════ -->
+    <h2 id="assets">Assets de Authoring</h2>
+    <p>Estes são todos os assets que você cria no Project. Acesse pelo menu <code>Assets → Create → Immersive Framework</code>.</p>
+
+    <div class="asset-grid">
+      <div class="asset-card">
+        <div class="asset-icon">🎯</div>
+        <div class="asset-name">GameApplicationAsset</div>
+        <h4>Game Application</h4>
+        <p>A raiz de tudo. Define qual é a primeira Route e o modo de validação. Existe <strong>um por projeto</strong>.</p>
+        <div class="asset-menu">Create → Game Application</div>
+      </div>
+      <div class="asset-card">
+        <div class="asset-icon">🗺️</div>
+        <div class="asset-name">RouteAsset</div>
+        <h4>Route</h4>
+        <p>Representa uma "área" ou "fase". Aponta para uma cena principal e pode ter cenas extras e uma Activity inicial.</p>
+        <div class="asset-menu">Create → Route</div>
+      </div>
+      <div class="asset-card">
+        <div class="asset-icon">🎮</div>
+        <div class="asset-name">ActivityAsset</div>
+        <h4>Activity</h4>
+        <p>Representa um "modo de jogo" dentro de uma Route. Identifica qual conteúdo local deve ficar visível.</p>
+        <div class="asset-menu">Create → Activity</div>
+      </div>
+      <div class="asset-card">
+        <div class="asset-icon">🎬</div>
+        <div class="asset-name">RouteContentProfileAsset</div>
+        <h4>Route Content Profile</h4>
+        <p>Lista de cenas adicionais que devem ser carregadas junto com a Primary Scene de uma Route.</p>
+        <div class="asset-menu">Create → Route Content Profile</div>
+      </div>
+    </div>
+
+    <h3>Campos de cada asset</h3>
+
+    <div class="component-card">
+      <div class="comp-header">
+        <div class="comp-icon">🎯</div>
+        <div class="comp-meta">
+          <div class="comp-name">GameApplicationAsset</div>
+          <h4>Game Application</h4>
+        </div>
+      </div>
+      <div class="comp-fields">
+        <div class="comp-field">
+          <span class="field-name">Application Name</span>
+          <span class="field-desc">Nome do jogo exibido nos logs de diagnóstico. Se vazio, usa o nome do asset.</span>
+        </div>
+        <div class="comp-field">
+          <span class="field-name">Startup Route</span>
+          <span class="field-desc">A primeira Route que o framework vai iniciar ao dar Play. <strong>Obrigatório.</strong></span>
+        </div>
+        <div class="comp-field">
+          <span class="field-name">Validation Mode</span>
+          <span class="field-desc"><code>Standard</code> (recomendado), <code>Strict</code> (mais rigoroso), <code>Release</code> (menos logs). Use Standard durante desenvolvimento.</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="component-card">
+      <div class="comp-header">
+        <div class="comp-icon">🗺️</div>
+        <div class="comp-meta">
+          <div class="comp-name">RouteAsset</div>
+          <h4>Route</h4>
+        </div>
+      </div>
+      <div class="comp-fields">
+        <div class="comp-field">
+          <span class="field-name">Route Name</span>
+          <span class="field-desc">Nome legível para diagnóstico. Opcional, usa o nome do asset se vazio.</span>
+        </div>
+        <div class="comp-field">
+          <span class="field-name">Primary Scene</span>
+          <span class="field-desc">A cena Unity principal desta Route. É carregada no modo <code>Single</code> (substitui a cena atual). <strong>Obrigatório.</strong></span>
+        </div>
+        <div class="comp-field">
+          <span class="field-name">Content Profile</span>
+          <span class="field-desc">Opcional. Aponta para um <code>RouteContentProfileAsset</code> que lista cenas adicionais a serem carregadas em modo Additive.</span>
+        </div>
+        <div class="comp-field">
+          <span class="field-name">Startup Activity</span>
+          <span class="field-desc">Opcional. Activity que será iniciada automaticamente quando esta Route carregar.</span>
+        </div>
+        <div class="comp-field">
+          <span class="field-name">Description</span>
+          <span class="field-desc">Nota de authoring. Sem efeito em runtime — só para você lembrar o que é cada Route.</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="component-card">
+      <div class="comp-header">
+        <div class="comp-icon">🎮</div>
+        <div class="comp-meta">
+          <div class="comp-name">ActivityAsset</div>
+          <h4>Activity</h4>
+        </div>
+      </div>
+      <div class="comp-fields">
+        <div class="comp-field">
+          <span class="field-name">Activity Name</span>
+          <span class="field-desc">Nome legível para diagnóstico.</span>
+        </div>
+        <div class="comp-field">
+          <span class="field-name">Description</span>
+          <span class="field-desc">Nota de authoring. Sem efeito em runtime.</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="component-card">
+      <div class="comp-header">
+        <div class="comp-icon">🎬</div>
+        <div class="comp-meta">
+          <div class="comp-name">RouteContentProfileAsset</div>
+          <h4>Route Content Profile</h4>
+        </div>
+      </div>
+      <div class="comp-fields">
+        <div class="comp-field">
+          <span class="field-name">Profile Id</span>
+          <span class="field-desc">ID estável para diagnóstico. Se vazio, usa o nome do asset.</span>
+        </div>
+        <div class="comp-field">
+          <span class="field-name">Additional Scenes</span>
+          <span class="field-desc">Lista de cenas adicionais. Cada entrada tem: <code>Content Id</code> (texto único e estável), <code>Scene</code> (referência Unity), <code>Requiredness</code> e <code>Ownership</code>.</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════
+         COMPONENTES
+    ══════════════════════════════════════════ -->
+    <h2 id="componentes">Componentes de Cena</h2>
+    <p>Adicione estes componentes em GameObjects nas suas cenas. Acesse via <code>Add Component → Immersive Framework</code>.</p>
+
+    <div class="component-card">
+      <div class="comp-header">
+        <div class="comp-icon">🔀</div>
+        <div class="comp-meta">
+          <div class="comp-name">RouteRequestTrigger</div>
+          <h4>Route Request Trigger</h4>
+          <div class="comp-menu">Add Component → Immersive Framework → Route Request Trigger</div>
+        </div>
+      </div>
+      <p style="font-size:13.5px; color:var(--text-soft); margin-top:10px; margin-bottom:12px;">Permite trocar de Route em resposta a eventos (ex: clique de botão). Funciona perfeitamente com <strong>Unity Events</strong> e botões de UI.</p>
+      <div class="comp-fields">
+        <div class="comp-field">
+          <span class="field-name">Target Route</span>
+          <span class="field-desc">Qual Route deve ser ativada quando o trigger for chamado.</span>
+        </div>
+        <div class="comp-field">
+          <span class="field-name">Reason</span>
+          <span class="field-desc">Texto opcional que aparece nos logs para identificar por que a Route foi solicitada.</span>
+        </div>
+      </div>
+      <div style="margin-top:14px;">
+        <div class="pre-label">Como chamar via Unity Event / Botão</div>
+        <div class="log-block" style="font-size:13px; line-height:1.7;">
+          No componente Button da UI:<br>
+          <span class="log-key">On Click ()</span> → arraste o GameObject com <code>RouteRequestTrigger</code><br>
+          → selecione <span class="log-val">RouteRequestTrigger.RequestRoute</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="component-card">
+      <div class="comp-header">
+        <div class="comp-icon">🎭</div>
+        <div class="comp-meta">
+          <div class="comp-name">ActivityRequestTrigger</div>
+          <h4>Activity Request Trigger</h4>
+          <div class="comp-menu">Add Component → Immersive Framework → Activity Request Trigger</div>
+        </div>
+      </div>
+      <p style="font-size:13.5px; color:var(--text-soft); margin-top:10px; margin-bottom:12px;">Permite ativar ou limpar uma Activity via Unity Events. Use para abrir/fechar modos dentro de uma Route.</p>
+      <div class="comp-fields">
+        <div class="comp-field">
+          <span class="field-name">Target Activity</span>
+          <span class="field-desc">Qual Activity deve ser ativada.</span>
+        </div>
+        <div class="comp-field">
+          <span class="field-name">Reason</span>
+          <span class="field-desc">Texto opcional para identificar a ação nos logs.</span>
+        </div>
+      </div>
+      <div style="margin-top:14px;">
+        <div class="pre-label">Métodos disponíveis para Unity Events</div>
+        <div class="log-block" style="font-size:13px; line-height:1.9;">
+          <span class="log-val">ActivityRequestTrigger.RequestActivity</span> — ativa a Activity<br>
+          <span class="log-val">ActivityRequestTrigger.ClearActivity</span> — limpa a Activity ativa
+        </div>
+      </div>
+    </div>
+
+    <div class="component-card">
+      <div class="comp-header">
+        <div class="comp-icon">👁️</div>
+        <div class="comp-meta">
+          <div class="comp-name">ActivityLocalVisibilityAdapter</div>
+          <h4>Activity Local Visibility Adapter</h4>
+          <div class="comp-menu">Add Component → Immersive Framework → Activity Local Visibility Adapter</div>
+        </div>
+      </div>
+      <p style="font-size:13.5px; color:var(--text-soft); margin-top:10px; margin-bottom:12px;">Liga a visibilidade de um GameObject a uma Activity. O framework ativa/desativa este GameObject automaticamente quando a Activity entra ou sai.</p>
+      <div class="comp-fields">
+        <div class="comp-field">
+          <span class="field-name">Activity</span>
+          <span class="field-desc">Qual Activity deve controlar a visibilidade deste GameObject.</span>
+        </div>
+        <div class="comp-field">
+          <span class="field-name">Local Content Id</span>
+          <span class="field-desc">Um ID de texto único e estável para este conteúdo. Ex: <code>ui-pause-menu</code>. <strong>Não use o nome do GameObject.</strong></span>
+        </div>
+        <div class="comp-field">
+          <span class="field-name">Requiredness</span>
+          <span class="field-desc"><code>Required</code> (padrão) ou <code>Optional</code>. Afeta diagnósticos futuros.</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="component-card">
+      <div class="comp-header">
+        <div class="comp-icon">⚓</div>
+        <div class="comp-meta">
+          <div class="comp-name">RouteContentAnchor</div>
+          <h4>Route Content Anchor</h4>
+          <div class="comp-menu">Add Component → Immersive Framework → Route Content Anchor</div>
+        </div>
+      </div>
+      <p style="font-size:13.5px; color:var(--text-soft); margin-top:10px; margin-bottom:12px;">Declara um ponto de ancoragem na cena para conteúdo gerenciado pela Route. <strong>Só declara — não materializa conteúdo ainda.</strong></p>
+      <div class="comp-fields">
+        <div class="comp-field">
+          <span class="field-name">Route</span>
+          <span class="field-desc">Qual Route é dona desta âncora.</span>
+        </div>
+        <div class="comp-field">
+          <span class="field-name">Anchor Id</span>
+          <span class="field-desc">ID único e estável. Ex: <code>player-spawn-point</code>.</span>
+        </div>
+        <div class="comp-field">
+          <span class="field-name">Kind</span>
+          <span class="field-desc"><code>Slot</code> (ponto de encaixe de conteúdo), <code>Root</code> (container semântico), <code>Point</code> (referência de posição).</span>
+        </div>
+        <div class="comp-field">
+          <span class="field-name">Requiredness</span>
+          <span class="field-desc"><code>Required</code> ou <code>Optional</code>. Reportado em diagnósticos.</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="component-card">
+      <div class="comp-header">
+        <div class="comp-icon">⚓</div>
+        <div class="comp-meta">
+          <div class="comp-name">ActivityContentAnchor</div>
+          <h4>Activity Content Anchor</h4>
+          <div class="comp-menu">Add Component → Immersive Framework → Activity Content Anchor</div>
+        </div>
+      </div>
+      <p style="font-size:13.5px; color:var(--text-soft); margin-top:10px; margin-bottom:12px;">Igual ao Route Content Anchor, mas com escopo de Activity. Declara uma âncora que pertence a uma Activity específica.</p>
+      <div class="comp-fields">
+        <div class="comp-field">
+          <span class="field-name">Activity</span>
+          <span class="field-desc">Qual Activity é dona desta âncora.</span>
+        </div>
+        <div class="comp-field">
+          <span class="field-name">Anchor Id</span>
+          <span class="field-desc">ID único e estável para esta âncora.</span>
+        </div>
+        <div class="comp-field">
+          <span class="field-name">Kind / Requiredness</span>
+          <span class="field-desc">Igual ao Route Content Anchor.</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════
+         GUIA: PRIMEIRA ROUTE
+    ══════════════════════════════════════════ -->
+    <h2 id="guia-route">Guia: Criando sua Primeira Route</h2>
+    <p>Aqui está um exemplo completo de como criar a estrutura de um jogo simples com duas Routes: Menu Principal e Gameplay.</p>
+
+    <h3>Estrutura que vamos criar</h3>
+    <div class="flow" style="flex-wrap:wrap; row-gap:10px;">
+      <div class="flow-box accent" style="min-width:130px;">GameApplication</div>
+      <span class="flow-arrow">▶</span>
+      <div class="flow-box" style="min-width:130px;">Route_MainMenu<br><small style="opacity:.6">Scene: MainMenu</small></div>
+      <span class="flow-arrow" style="display:flex; align-items:center;">▼</span>
+    </div>
+    <div class="flow" style="flex-wrap:wrap; row-gap:10px; margin-top:8px; margin-left:60px;">
+      <div class="flow-box green" style="min-width:130px;">Route_Gameplay<br><small style="opacity:.6">Scene: Gameplay</small></div>
+    </div>
+
+    <ol class="steps" style="margin-top:24px;">
+      <li>
+        <div class="step-body">
+          <strong>Crie as duas cenas Unity</strong>
+          <code>MainMenu.unity</code> e <code>Gameplay.unity</code>. Adicione ambas ao Build Settings (<code>File → Build Settings → Add Open Scenes</code>).
+        </div>
+      </li>
+      <li>
+        <div class="step-body">
+          <strong>Crie os dois Route assets</strong>
+          <code>Route_MainMenu</code> apontando para <code>MainMenu.unity</code>.<br>
+          <code>Route_Gameplay</code> apontando para <code>Gameplay.unity</code>.
+        </div>
+      </li>
+      <li>
+        <div class="step-body">
+          <strong>Configure o Game Application</strong>
+          No <code>GameApplication</code>, defina o <strong>Startup Route</strong> como <code>Route_MainMenu</code>.
+        </div>
+      </li>
+      <li>
+        <div class="step-body">
+          <strong>Crie o botão "Iniciar Jogo" na cena MainMenu</strong>
+          Na cena <code>MainMenu</code>, crie um <code>Canvas → Button</code>. No GameObject do botão (ou em um GameObject vazio na cena), adicione o componente <strong>Route Request Trigger</strong>.<br>
+          • Defina o <strong>Target Route</strong> como <code>Route_Gameplay</code>.<br>
+          • No componente <code>Button</code>, em <strong>On Click ()</strong>, arraste o GameObject com <code>RouteRequestTrigger</code> e selecione <code>RouteRequestTrigger → RequestRoute</code>.
+        </div>
+      </li>
+      <li>
+        <div class="step-body">
+          <strong>Abra a cena MainMenu e dê Play</strong>
+          O framework vai inicializar na <code>Route_MainMenu</code>. Clicando no botão, você verá a transição para <code>Route_Gameplay</code> no Console.
+        </div>
+      </li>
+    </ol>
+
+    <!-- ══════════════════════════════════════════
+         GUIA: ACTIVITY
+    ══════════════════════════════════════════ -->
+    <h2 id="guia-activity">Guia: Criando uma Activity</h2>
+    <p>Activities permitem alternar entre estados de conteudo dentro de uma mesma cena/Route, como Gameplay e Inventory. Pause nao deve ser modelado como Activity; o plano atual trata Pause como estado + Gate blocker.</p>
+
+    <h3>Exemplo: Route_Gameplay com Activities</h3>
+    <div class="flow" style="flex-wrap:wrap; row-gap:10px;">
+      <div class="flow-box" style="min-width:130px;">Route_Gameplay</div>
+      <span class="flow-arrow">▶</span>
+      <div class="flow-box green" style="min-width:130px;">Activity_Gameplay<br><small style="opacity:.6">(startup activity)</small></div>
+      <span class="flow-arrow">↔</span>
+      <div class="flow-box purple" style="min-width:130px;">Activity_Inventory</div>
+    </div>
+
+    <ol class="steps" style="margin-top:24px;">
+      <li>
+        <div class="step-body">
+          <strong>Crie os Activity assets</strong>
+          <code>Activity_Gameplay</code> e <code>Activity_Inventory</code> via <code>Create → Immersive Framework → Activity</code>.
+        </div>
+      </li>
+      <li>
+        <div class="step-body">
+          <strong>Defina o Startup Activity na Route</strong>
+          Abra o asset <code>Route_Gameplay</code> e arraste <code>Activity_Gameplay</code> para o campo <strong>Startup Activity</strong>. Assim quando a Route Gameplay iniciar, a Activity_Gameplay começa automaticamente.
+        </div>
+      </li>
+      <li>
+        <div class="step-body">
+          <strong>Configure os GameObjects de cada Activity na cena Gameplay</strong>
+          Na cena <code>Gameplay.unity</code>, crie dois GameObjects: <code>GO_GameplayContent</code> e <code>GO_InventoryPanel</code>.
+          <br><br>
+          Em cada um, adicione o componente <strong>Activity Local Visibility Adapter</strong>:<br>
+          • <code>GO_GameplayContent</code> → <strong>Activity</strong> = <code>Activity_Gameplay</code>, <strong>Local Content Id</strong> = <code>gameplay-content</code><br>
+          • <code>GO_InventoryPanel</code> → <strong>Activity</strong> = <code>Activity_Inventory</code>, <strong>Local Content Id</strong> = <code>inventory-panel</code>
+        </div>
+      </li>
+      <li>
+        <div class="step-body">
+          <strong>Crie o botao de Inventory</strong>
+          Dentro de <code>GO_GameplayContent</code>, crie um botao "Inventory". Em um GameObject (pode ser no botao mesmo), adicione <strong>Activity Request Trigger</strong>.<br>
+          • <strong>Target Activity</strong> = <code>Activity_Inventory</code><br>
+          • No <code>Button → On Click ()</code> → <code>ActivityRequestTrigger.RequestActivity</code>
+        </div>
+      </li>
+      <li>
+        <div class="step-body">
+          <strong>Crie o botao "Voltar" no Inventory Panel</strong>
+          Dentro de <code>GO_InventoryPanel</code>, crie um botão "Voltar". Adicione <strong>Activity Request Trigger</strong>.<br>
+          • Deixe <strong>Target Activity</strong> vazio<br>
+          • No <code>Button → On Click ()</code> → <code>ActivityRequestTrigger.ClearActivity</code>
+        </div>
+      </li>
+    </ol>
+
+    <div class="callout tip">
+      <span class="callout-icon">✅</span>
+      <div class="callout-body">
+        <div class="callout-title">Como o framework gerencia a visibilidade</div>
+        <p>O framework ativa automaticamente os GameObjects com <code>ActivityLocalVisibilityAdapter</code> cuja <strong>Activity</strong> está ativa, e desativa os demais. Você não precisa escrever código para isso.</p>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════
+         GUIA: CONTENT PROFILE
+    ══════════════════════════════════════════ -->
+    <h2 id="guia-content-profile">Guia: Cenas Adicionais por Route</h2>
+    <p>Use o <strong>Route Content Profile</strong> quando quiser carregar uma cena extra de forma <em>Additive</em> junto com a Primary Scene de uma Route — por exemplo, uma cena de ambiente ou UI global.</p>
+
+    <div class="callout info">
+      <span class="callout-icon">ℹ️</span>
+      <div class="callout-body">
+        <div class="callout-title">Diferença de cenas</div>
+        <p><strong>Primary Scene</strong>: carregada em modo <code>Single</code> (substitui a cena atual). <strong>Additional Scenes</strong>: carregadas em modo <code>Additive</code> (somam-se à Primary). Quando você troca de Route, as cenas adicionais <em>owned</em> são descarregadas automaticamente.</p>
+      </div>
+    </div>
+
+    <ol class="steps">
+      <li>
+        <div class="step-body">
+          <strong>Crie a cena adicional</strong>
+          Ex: <code>UI_HUD.unity</code>. Adicione ao Build Settings.
+        </div>
+      </li>
+      <li>
+        <div class="step-body">
+          <strong>Crie um Route Content Profile asset</strong>
+          <code>Create → Immersive Framework → Route Content Profile</code>. Nomeie como <code>ContentProfile_Gameplay</code>.
+        </div>
+      </li>
+      <li>
+        <div class="step-body">
+          <strong>Configure o Content Profile</strong>
+          No Inspector do <code>ContentProfile_Gameplay</code>, clique em <strong>+</strong> na lista <strong>Additional Scenes</strong> e preencha:<br>
+          • <strong>Content Id</strong>: um texto único e estável, ex: <code>gameplay-hud</code><br>
+          • <strong>Scene</strong>: arraste <code>UI_HUD.unity</code><br>
+          • <strong>Requiredness</strong>: <code>Required</code> (bloqueia a Route se falhar) ou <code>Optional</code><br>
+          • <strong>Ownership</strong>: mantenha <code>Owned</code> para o framework descarregar ao sair da Route
+        </div>
+      </li>
+      <li>
+        <div class="step-body">
+          <strong>Conecte o Profile à Route</strong>
+          No asset <code>Route_Gameplay</code>, arraste <code>ContentProfile_Gameplay</code> para o campo <strong>Content Profile</strong>.
+        </div>
+      </li>
+    </ol>
+
+    <div class="callout warn">
+      <span class="callout-icon">⚠️</span>
+      <div class="callout-body">
+        <div class="callout-title">Regras importantes para cenas adicionais</div>
+        <p>• <strong>Não coloque outro bootstrap do framework</strong> dentro de uma cena adicional.<br>
+        • <strong>Não use</strong> a cena adicional como sua própria Route de boot.<br>
+        • Use sempre um <strong>Content Id explícito e estável</strong> — não confie no nome da cena como identidade funcional.</p>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════
+         GUIA: ANCHORS
+    ══════════════════════════════════════════ -->
+    <h2 id="guia-anchor">Guia: Content Anchors</h2>
+    <p>Um <strong>Content Anchor</strong> é um ponto declarado na cena que indica "aqui pode ser colocado conteúdo gerenciado". Nesta versão, os anchors são <strong>declarativos apenas</strong> — eles dizem onde o conteúdo vai, mas ainda não materializam nada automaticamente.</p>
+
+    <div class="callout warn">
+      <span class="callout-icon">⚠️</span>
+      <div class="callout-body">
+        <div class="callout-title">Estado atual dos Content Anchors (F9/F10)</div>
+        <p>Content Anchors estão disponíveis para declaração e validação de authoring. A <strong>materialização física</strong> (Instantiate, placement real de prefabs) será adicionada em fases futuras.</p>
+      </div>
+    </div>
+
+    <h3>Quando usar um Content Anchor</h3>
+    <p>Use quando você quer marcar posições na cena que futuramente receberão conteúdo dinâmico. Exemplos:</p>
+    <ul style="color: var(--text-soft); padding-left:22px; margin-bottom:16px;">
+      <li>Ponto de spawn do personagem</li>
+      <li>Slot de UI dinâmica</li>
+      <li>Container de conteúdo de terceiros</li>
+    </ul>
+
+    <ol class="steps">
+      <li>
+        <div class="step-body">
+          <strong>Crie um GameObject na posição desejada</strong>
+          Ex: um Empty chamado <code>Anchor_PlayerSpawn</code>.
+        </div>
+      </li>
+      <li>
+        <div class="step-body">
+          <strong>Adicione o componente</strong>
+          Use <strong>Route Content Anchor</strong> para âncoras de Route ou <strong>Activity Content Anchor</strong> para âncoras de Activity.
+        </div>
+      </li>
+      <li>
+        <div class="step-body">
+          <strong>Configure o componente</strong>
+          • <strong>Route / Activity</strong>: qual asset é dono desta âncora<br>
+          • <strong>Anchor Id</strong>: texto único e estável — ex: <code>player-spawn-slot</code><br>
+          • <strong>Kind</strong>: <code>Slot</code> (para encaixes de conteúdo), <code>Root</code> (container), <code>Point</code> (referência)<br>
+          • <strong>Display Name</strong>: nome legível para diagnóstico
+        </div>
+      </li>
+    </ol>
+
+    <!-- ══════════════════════════════════════════
+         GUIA: VISIBILIDADE
+    ══════════════════════════════════════════ -->
+    <h2 id="guia-visibilidade">Guia: Visibilidade por Activity</h2>
+    <p>O padrão mais usado no dia a dia: um grupo de GameObjects que aparece quando uma Activity fica ativa e some quando ela termina.</p>
+
+    <h3>Estrutura recomendada na hierarquia</h3>
+    <pre><code>Gameplay (Scene)
+├── [Activity_Gameplay]
+│   ├── GameplayContent (ActivityLocalVisibilityAdapter → Activity_Gameplay)
+│   │   ├── Player HUD
+│   │   ├── World Objects
+│   │   └── Inventory Button
+│   
+└── [Activity_Inventory]
+    └── InventoryPanel (ActivityLocalVisibilityAdapter -> Activity_Inventory)
+        ├── Inventory Panel
+        ├── Resume Button
+        └── Quit Button</code></pre>
+
+    <div class="callout tip">
+      <span class="callout-icon">💡</span>
+      <div class="callout-body">
+        <div class="callout-title">Dica de organização</div>
+        <p>Use um <strong>GameObject pai vazio</strong> por Activity como ponto único de visibilidade. Adicione o <code>ActivityLocalVisibilityAdapter</code> apenas nesse pai — não em cada filho. O Unity vai ativar/desativar o pai inteiro automaticamente.</p>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════
+         LOGS
+    ══════════════════════════════════════════ -->
+    <h2 id="logs">Entendendo os Logs</h2>
+    <p>O framework é verboso por design. Aqui está o que as principais mensagens significam.</p>
+
+    <h3>Boot com sucesso</h3>
+    <div class="log-block">
+      <div class="log-label">Console — Boot OK</div>
+      Boot succeeded. Application Runtime started.<br>
+      <span class="log-key">gameApplication</span><span class="log-sep">='</span><span class="log-val">Meu Jogo</span><span class="log-sep">'</span>
+      <span class="log-key"> startupRoute</span><span class="log-sep">='</span><span class="log-val">Route_MainMenu</span><span class="log-sep">'</span>
+      <span class="log-key"> primaryScene</span><span class="log-sep">='</span><span class="log-val">MainMenu</span><span class="log-sep">'</span>
+    </div>
+
+    <h3>Route com cenas adicionais</h3>
+    <div class="log-block">
+      <div class="log-label">Console — Com Content Profile</div>
+      <span class="log-key">routeSceneComposition</span><span class="log-sep">='</span><span class="log-val">Succeeded</span><span class="log-sep">'</span>
+      <span class="log-key"> routeSceneLoaded</span><span class="log-sep">='</span><span class="log-val">2</span><span class="log-sep">'</span>
+      <span class="log-key"> routeSceneFailed</span><span class="log-sep">='</span><span class="log-val">0</span><span class="log-sep">'</span>
+      <span class="log-key"> routeContentHandles</span><span class="log-sep">='</span><span class="log-val">2</span><span class="log-sep">'</span>
+    </div>
+
+    <h3>Ao trocar de Route (release de cenas)</h3>
+    <div class="log-block">
+      <div class="log-label">Console — Route Switch</div>
+      <span class="log-key">routeRelease</span><span class="log-sep">='</span><span class="log-val">Succeeded</span><span class="log-sep">'</span>
+      <span class="log-key"> routeReleaseReleased</span><span class="log-sep">='</span><span class="log-val">1</span><span class="log-sep">'</span>  ← cena adicional owned descarregada<br>
+      <span class="log-key">routeReleaseSkipped</span><span class="log-sep">='</span><span class="log-val">1</span><span class="log-sep">'</span>   ← Primary Scene (controlada por LoadSceneMode.Single)
+    </div>
+
+    <h3>Referência de campos de log</h3>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Campo no Log</th><th>O que significa</th><th>Valor esperado</th></tr></thead>
+        <tbody>
+          <tr><td><code>routeSceneComposition</code></td><td>Status da composição de cenas da Route</td><td><code>Succeeded</code></td></tr>
+          <tr><td><code>routeSceneLoaded</code></td><td>Quantas cenas foram carregadas (Primary + Additionais)</td><td>1 ou mais</td></tr>
+          <tr><td><code>routeSceneFailed</code></td><td>Quantas cenas falharam ao carregar</td><td><code>0</code></td></tr>
+          <tr><td><code>routeSceneBlockingIssues</code></td><td>Erros que bloqueiam a Route</td><td><code>0</code></td></tr>
+          <tr><td><code>routeContentHandles</code></td><td>Total de conteúdos registrados na Route</td><td>≥ 1</td></tr>
+          <tr><td><code>activity</code></td><td>Nome da Activity ativa</td><td>Nome do seu Activity asset</td></tr>
+          <tr><td><code>activityContentHandles</code></td><td>Conteúdos locais registrados para a Activity</td><td>0 ou mais</td></tr>
+          <tr><td><code>activityContentDiscoverySceneRoots</code></td><td>Cenas Activity-owned carregadas pelo ledger e usadas no discovery da Activity</td><td>0 ou mais</td></tr>
+          <tr><td><code>activityContentLifecycle</code></td><td>Enter/Exit de <code>ActivityLocalVisibilityAdapter</code> e receivers locais</td><td><code>Executed</code> quando adapters locais foram processados</td></tr>
+          <tr><td><code>activityContentParticipantExecution</code></td><td>Execucao de participants explicitos, nao de adapters locais</td><td><code>SucceededNoContent</code> se nenhuma source forneceu participants</td></tr>
+          <tr><td><code>contentAnchors</code></td><td>Quantidade de Content Anchors descobertos na cena</td><td>0 ou mais</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- ══════════════════════════════════════════
+         ERROS COMUNS
+    ══════════════════════════════════════════ -->
+    <h2 id="erros">Erros Comuns e Como Resolver</h2>
+
+    <div class="component-card">
+      <h4 style="color:var(--red); margin-bottom:8px;">🔴 "Boot failed. reason='Game Application is not configured'"</h4>
+      <p style="font-size:13.5px; color:var(--text-soft);"><strong>Causa:</strong> O campo <code>Active Game Application</code> nas Project Settings do framework está vazio.<br>
+      <strong>Solução:</strong> Vá em <code>Edit → Project Settings → Immersive Framework</code> e arraste seu asset <code>GameApplication</code> para o campo.</p>
+    </div>
+
+    <div class="component-card">
+      <h4 style="color:var(--red); margin-bottom:8px;">🔴 "Boot failed. reason='Startup Route has no Primary Scene'"</h4>
+      <p style="font-size:13.5px; color:var(--text-soft);"><strong>Causa:</strong> O campo <strong>Primary Scene</strong> no Route asset está vazio.<br>
+      <strong>Solução:</strong> Abra o asset <code>Route</code> no Inspector e atribua uma cena Unity ao campo Primary Scene.</p>
+    </div>
+
+    <div class="component-card">
+      <h4 style="color:var(--yellow); margin-bottom:8px;">⚠️ Scene não está no Build Settings</h4>
+      <p style="font-size:13.5px; color:var(--text-soft);"><strong>Sintoma:</strong> <code>routeSceneFailed='1'</code> no log.<br>
+      <strong>Causa:</strong> A cena atribuída na Route ou no Content Profile não está no Build Settings.<br>
+      <strong>Solução:</strong> <code>File → Build Settings → Add Open Scenes</code> (ou arraste manualmente).</p>
+    </div>
+
+    <div class="component-card">
+      <h4 style="color:var(--yellow); margin-bottom:8px;">⚠️ Content Anchor com "routeMismatch"</h4>
+      <p style="font-size:13.5px; color:var(--text-soft);"><strong>Sintoma:</strong> <code>contentAnchorRouteMismatch='1'</code> no log.<br>
+      <strong>Causa:</strong> Um componente <code>RouteContentAnchor</code> na cena aponta para um Route diferente da Route ativa.<br>
+      <strong>Solução:</strong> Verifique o campo <strong>Route</strong> no componente e certifique-se que aponta para o Route correto.</p>
+    </div>
+
+    <div class="component-card">
+      <h4 style="color:var(--yellow); margin-bottom:8px;">⚠️ ActivityLocalVisibilityAdapter não ativa o GameObject</h4>
+      <p style="font-size:13.5px; color:var(--text-soft);"><strong>Causa:</strong> O campo <strong>Activity</strong> no componente está vazio ou aponta para a Activity errada.<br>
+      <strong>Solução:</strong> Verifique se o campo <strong>Activity</strong> no componente aponta para o asset correto, e se o <strong>Local Content Id</strong> foi preenchido.</p>
+    </div>
+
+    <div class="component-card">
+      <h4 style="color:var(--text-muted); margin-bottom:8px;">⬛ Framework não inicializa no Editor</h4>
+      <p style="font-size:13.5px; color:var(--text-soft);"><strong>Causa:</strong> O campo <strong>Editor Play Mode Startup</strong> nas Settings está como <code>CurrentSceneOnly</code>.<br>
+      <strong>Solução:</strong> Mude para <code>Framework Startup</code> em <code>Edit → Project Settings → Immersive Framework</code>.</p>
+    </div>
+
+    <!-- ══════════════════════════════════════════
+         SEÇÃO AVANÇADA
+    ══════════════════════════════════════════ -->
+    <h2 id="avancado-intro">Recursos Avançados — O que o framework faz além da visibilidade</h2>
+    <p>Tudo que vimos até aqui funciona sem escrever uma linha de código. Esta seção documenta funcionalidades que <strong>já existem no framework</strong> mas exigem pelo menos um script simples para serem usadas. São todas "só lógica" — nenhuma delas faz <code>Instantiate</code> ou altera GameObjects por conta própria.</p>
+
+    <div class="callout info">
+      <span class="callout-icon">ℹ️</span>
+      <div class="callout-body">
+        <div class="callout-title">Para quem é esta seção</div>
+        <p>Aqui você vai precisar de um programador (ou de você mesmo, se já sabe escrever um MonoBehaviour básico em C#). Os exemplos de código são mínimos e autoexplicativos.</p>
+      </div>
+    </div>
+
+    <!-- ─────────────────────────────────────── -->
+    <h2 id="route-binding">Route Content Binding — Reagir à entrada e saída de uma Route</h2>
+    <p>Quando uma Route entra ou sai, o framework chama callbacks em qualquer MonoBehaviour que esteja sob um <strong>Route Content Binding</strong>. Isso permite que seu script saiba exatamente quando a Route ficou ativa, sem polling nem gambiarra.</p>
+
+    <h3>Componente: Route Content Binding</h3>
+    <div class="component-card">
+      <div class="comp-header">
+        <div class="comp-icon">🔗</div>
+        <div class="comp-meta">
+          <div class="comp-name">RouteContentBinding</div>
+          <h4>Route Content Binding</h4>
+          <div class="comp-menu">Add Component → Immersive Framework → Route Content Binding</div>
+        </div>
+      </div>
+      <p style="font-size:13.5px; color:var(--text-soft); margin-top:10px; margin-bottom:12px;">
+        Coloca este GameObject como "raiz de conteúdo" de uma Route. O framework descobre automaticamente todos os scripts filhos que implementam o callback de lifecycle.
+      </p>
+      <div class="comp-fields">
+        <div class="comp-field">
+          <span class="field-name">Route</span>
+          <span class="field-desc">Qual Route é dona deste conteúdo. Se vazio, o framework tenta inferir pela cena, mas <strong>prefira sempre definir explicitamente</strong>.</span>
+        </div>
+        <div class="comp-field">
+          <span class="field-name">Local Content Id</span>
+          <span class="field-desc">ID único e estável para este conteúdo. Ex: <code>main-menu-root</code>.</span>
+        </div>
+        <div class="comp-field">
+          <span class="field-name">Requiredness</span>
+          <span class="field-desc"><code>Required</code> ou <code>Optional</code>. Afeta o registro no sistema de Local Contribution.</span>
+        </div>
+      </div>
+    </div>
+
+    <h3>Opção A — Sem escrever código: Route Content Lifecycle Events</h3>
+    <p>Se você só precisa acionar Unity Events quando a Route entra ou sai (ex: tocar uma música, ativar uma animação), use este componente diretamente no Inspector — sem código:</p>
+
+    <div class="component-card">
+      <div class="comp-header">
+        <div class="comp-icon">📡</div>
+        <div class="comp-meta">
+          <div class="comp-name">RouteContentLifecycleEvents</div>
+          <h4>Route Content Lifecycle Events</h4>
+          <div class="comp-menu">Add Component → Immersive Framework → Route Content Lifecycle Events</div>
+        </div>
+      </div>
+      <p style="font-size:13.5px; color:var(--text-soft); margin-top:10px; margin-bottom:12px;">
+        Deve estar no <strong>mesmo GameObject</strong> que tem o <code>RouteContentBinding</code> (ou num filho). Expõe dois Unity Events no Inspector.
+      </p>
+      <div class="comp-fields">
+        <div class="comp-field">
+          <span class="field-name">Entered</span>
+          <span class="field-desc">Disparado quando a Route ficou ativa e este conteúdo entrou.</span>
+        </div>
+        <div class="comp-field">
+          <span class="field-name">Exited</span>
+          <span class="field-desc">Disparado quando a Route está saindo e este conteúdo está sendo desativado.</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="callout tip">
+      <span class="callout-icon">💡</span>
+      <div class="callout-body">
+        <div class="callout-title">Exemplo de uso sem código</div>
+        <p>No <code>Entered</code> do <code>RouteContentLifecycleEvents</code>, conecte <code>AudioSource.Play</code> para tocar a música da fase assim que a Route entrar. No <code>Exited</code>, conecte <code>AudioSource.Stop</code>. Zero código.</p>
+      </div>
+    </div>
+
+    <h3>Opção B — Com script: RouteContentBehaviour</h3>
+    <p>Para lógica mais complexa (ex: inicializar sistemas, passar dados entre Routes), herde de <code>RouteContentBehaviour</code> no seu script:</p>
+
+    <div class="pre-label">C# — Exemplo mínimo de RouteContentBehaviour</div>
+    <pre><code>using Immersive.Framework.RouteLifecycle;
+using UnityEngine;
+
+// Coloque este script num filho do GameObject com RouteContentBinding
+public class MinhaLogicaDeRoute : RouteContentBehaviour
+{
+    protected override void OnRouteContentEntered(RouteContentLifecycleContext context)
+    {
+        // Chamado quando esta Route ficou ativa
+        Debug.Log($"Route entrou: {context.RouteName}");
+        Debug.Log($"Route anterior: {context.PreviousRouteName}");
+        
+        // Inicialize seus sistemas aqui
+    }
+
+    protected override void OnRouteContentExited(RouteContentLifecycleContext context)
+    {
+        // Chamado quando esta Route está saindo
+        Debug.Log($"Próxima Route será: {context.NextRouteName}");
+        
+        // Limpe seus sistemas aqui
+    }
+}</code></pre>
+
+    <h3>O que o contexto de Route te diz</h3>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Propriedade</th><th>Tipo</th><th>O que retorna</th></tr></thead>
+        <tbody>
+          <tr><td><code>context.RouteName</code></td><td>string</td><td>Nome da Route que está entrando/saindo</td></tr>
+          <tr><td><code>context.PreviousRouteName</code></td><td>string</td><td>Nome da Route anterior (vazio no primeiro boot)</td></tr>
+          <tr><td><code>context.NextRouteName</code></td><td>string</td><td>Nome da próxima Route (disponível no Exit)</td></tr>
+          <tr><td><code>context.Route</code></td><td>RouteAsset</td><td>Referência ao asset da Route ativa</td></tr>
+          <tr><td><code>context.Phase</code></td><td>enum</td><td><code>Entered</code> ou <code>Exited</code></td></tr>
+          <tr><td><code>context.Reason</code></td><td>string</td><td>Razão da transição (ex: texto do campo Reason no Trigger)</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="callout warn">
+      <span class="callout-icon">⚠️</span>
+      <div class="callout-body">
+        <div class="callout-title">Regra de hierarquia obrigatória</div>
+        <p>O <code>RouteContentBinding</code> define a raiz. Os scripts com <code>RouteContentBehaviour</code> ou <code>RouteContentLifecycleEvents</code> devem estar <strong>no mesmo GameObject ou em filhos</strong> desse root. O framework só procura receivers dentro dessa hierarquia.</p>
+      </div>
+    </div>
+
+    <!-- ─────────────────────────────────────── -->
+    <h2 id="route-lifecycle-events" style="display:none"></h2><!-- anchor already covered above -->
+
+    <!-- ─────────────────────────────────────── -->
+    <h2 id="activity-lifecycle-events">Activity Content Lifecycle Events — Reagir à entrada e saída de uma Activity</h2>
+    <p>O mesmo padrão existe para Activities. Qualquer filho do GameObject com <code>ActivityLocalVisibilityAdapter</code> pode receber callbacks de entrada e saída.</p>
+
+    <h3>Opção A — Sem código: Activity Content Lifecycle Events</h3>
+
+    <div class="component-card">
+      <div class="comp-header">
+        <div class="comp-icon">📡</div>
+        <div class="comp-meta">
+          <div class="comp-name">ActivityContentLifecycleEvents</div>
+          <h4>Activity Content Lifecycle Events</h4>
+          <div class="comp-menu">Add Component → Immersive Framework → Activity Content Lifecycle Events</div>
+        </div>
+      </div>
+      <p style="font-size:13.5px; color:var(--text-soft); margin-top:10px; margin-bottom:12px;">
+        Coloque no mesmo GameObject que tem o <code>ActivityLocalVisibilityAdapter</code> (ou num filho). Expõe dois Unity Events no Inspector — igual ao Route, só que para Activity.
+      </p>
+      <div class="comp-fields">
+        <div class="comp-field">
+          <span class="field-name">Entered</span>
+          <span class="field-desc">Disparado quando esta Activity ficou ativa.</span>
+        </div>
+        <div class="comp-field">
+          <span class="field-name">Exited</span>
+          <span class="field-desc">Disparado quando esta Activity está saindo.</span>
+        </div>
+      </div>
+    </div>
+
+    <h3>Opção B — Com script: ActivityContentBehaviour</h3>
+
+    <div class="pre-label">C# — Exemplo mínimo de ActivityContentBehaviour</div>
+    <pre><code>using Immersive.Framework.ActivityFlow;
+using UnityEngine;
+
+// Coloque num filho do GameObject com ActivityLocalVisibilityAdapter
+public class MinhaLogicaDeActivity : ActivityContentBehaviour
+{
+    protected override void OnActivityContentEntered(ActivityContentLifecycleContext context)
+    {
+        // A Activity ficou ativa — configure o modo de jogo
+        Debug.Log($"Activity entrou: {context.ActivityName}");
+        Debug.Log($"Activity anterior: {context.PreviousActivityName}");
+        
+        // Ex: reiniciar timer, ativar input, ajustar câmera
+    }
+
+    protected override void OnActivityContentExited(ActivityContentLifecycleContext context)
+    {
+        // A Activity está saindo — limpe o estado
+        Debug.Log($"Próxima Activity: {context.NextActivityName}");
+        
+        // Ex: pausar timer, desativar input
+    }
+}</code></pre>
+
+    <h3>O que o contexto de Activity te diz</h3>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Propriedade</th><th>Tipo</th><th>O que retorna</th></tr></thead>
+        <tbody>
+          <tr><td><code>context.ActivityName</code></td><td>string</td><td>Nome da Activity que está entrando/saindo</td></tr>
+          <tr><td><code>context.PreviousActivityName</code></td><td>string</td><td>Nome da Activity anterior (vazio na primeira)</td></tr>
+          <tr><td><code>context.NextActivityName</code></td><td>string</td><td>Nome da próxima Activity (disponível no Exit)</td></tr>
+          <tr><td><code>context.Activity</code></td><td>ActivityAsset</td><td>Referência ao asset da Activity ativa</td></tr>
+          <tr><td><code>context.Phase</code></td><td>enum</td><td><code>Entered</code> ou <code>Exited</code></td></tr>
+          <tr><td><code>context.Reason</code></td><td>string</td><td>Razão da transição</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Nota de planejamento: Pause</h3>
+    <div class="callout warn">
+      <span class="callout-icon">!</span>
+      <div class="callout-body">
+        <div class="callout-title">Pause nao e Activity nem contrato de tempo</div>
+        <p>O plano atual trata Pause como estado + Gate blocker. Overlay, input e politica de tempo ficam para fases futuras; <code>Time.timeScale</code> nao e contrato canonico de Pause.</p>
+      </div>
+    </div>
+
+    <!-- ─────────────────────────────────────── -->
+    <h2 id="request-bridges">Unity Event Bridges — Reagir ao resultado de uma Request</h2>
+    <p>Quando você usa um <code>RouteRequestTrigger</code> ou <code>ActivityRequestTrigger</code>, às vezes quer saber <em>o que aconteceu</em> depois da request: ela foi aceita? falhou? ainda está processando? Os <strong>Unity Event Bridges</strong> expõem esses resultados como Unity Events puro — sem código.</p>
+
+    <div class="flow">
+      <div class="flow-box" style="min-width:160px;">RouteRequestTrigger<br><small style="opacity:.6">dispara a request</small></div>
+      <span class="flow-arrow">+</span>
+      <div class="flow-box accent" style="min-width:180px;">RouteRequestTrigger<br>UnityEventBridge<br><small style="opacity:.6">expõe o resultado</small></div>
+    </div>
+
+    <div class="component-card">
+      <div class="comp-header">
+        <div class="comp-icon">🌉</div>
+        <div class="comp-meta">
+          <div class="comp-name">RouteRequestTriggerUnityEventBridge</div>
+          <h4>Route Request Trigger Unity Event Bridge</h4>
+          <div class="comp-menu">Add Component → Immersive Framework → Route Request Trigger Unity Event Bridge</div>
+        </div>
+      </div>
+      <p style="font-size:13.5px; color:var(--text-soft); margin-top:10px; margin-bottom:12px;">
+        <strong>Requer</strong> um <code>RouteRequestTrigger</code> no mesmo GameObject. Adiciona Unity Events para cada fase da request.
+      </p>
+      <div class="comp-fields">
+        <div class="comp-field">
+          <span class="field-name">Request Submitted</span>
+          <span class="field-desc">Disparado assim que a request foi enviada (ainda processando).</span>
+        </div>
+        <div class="comp-field">
+          <span class="field-name">Request Succeeded</span>
+          <span class="field-desc">Disparado quando a Route foi trocada com sucesso.</span>
+        </div>
+        <div class="comp-field">
+          <span class="field-name">Request Ignored</span>
+          <span class="field-desc">Disparado quando a request foi ignorada (ex: Route já está ativa, ou já tem uma request em curso).</span>
+        </div>
+        <div class="comp-field">
+          <span class="field-name">Request Failed</span>
+          <span class="field-desc">Disparado quando a request falhou (ex: runtime não disponível).</span>
+        </div>
+        <div class="comp-field">
+          <span class="field-name">Request Completed</span>
+          <span class="field-desc">Disparado ao final — independente do resultado (sucesso, falha ou ignorado).</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="component-card">
+      <div class="comp-header">
+        <div class="comp-icon">🌉</div>
+        <div class="comp-meta">
+          <div class="comp-name">ActivityRequestTriggerUnityEventBridge</div>
+          <h4>Activity Request Trigger Unity Event Bridge</h4>
+          <div class="comp-menu">Add Component → Immersive Framework → Activity Request Trigger Unity Event Bridge</div>
+        </div>
+      </div>
+      <p style="font-size:13.5px; color:var(--text-soft); margin-top:10px; margin-bottom:12px;">
+        Idêntico ao de Route, mas para <code>ActivityRequestTrigger</code>. Requer um <code>ActivityRequestTrigger</code> no mesmo GameObject. Campos iguais: Submitted, Succeeded, Ignored, Failed, Completed.
+      </p>
+    </div>
+
+    <h3>Exemplo de uso: Desativar botão durante transição</h3>
+    <p>Você pode usar os events do Bridge para desativar um botão enquanto a request está em voo e reativá-lo ao completar — sem escrever código:</p>
+    <div class="log-block" style="font-size:13px; line-height:1.8;">
+      <div class="log-label">Inspector — RouteRequestTriggerUnityEventBridge</div>
+      <span class="log-key">Request Submitted</span> → <span class="log-val">Button.interactable = false</span><br>
+      <span class="log-key">Request Completed</span> → <span class="log-val">Button.interactable = true</span><br>
+      <span class="log-key">Request Failed</span> → <span class="log-val">ErrorPanel.SetActive(true)</span>
+    </div>
+
+    <!-- ─────────────────────────────────────── -->
+    <h2 id="participant">Activity Content Execution Participants — Lógica de Enter/Exit de Activity</h2>
+    <p>Este é o sistema mais avançado disponível no F10. Ele permite que um script declare <strong>"eu quero ser notificado quando uma Activity entra ou sai"</strong> e execute lógica customizada nesse momento, de forma ordenada e com resultado reportado ao framework.</p>
+
+    <div class="callout warn">
+      <span class="callout-icon">⚠️</span>
+      <div class="callout-body">
+        <div class="callout-title">Para quem é isso</div>
+        <p>Este sistema é para programadores. Ele é a base para integrar sistemas de gameplay (câmera, input, audio state, etc.) no ciclo de vida de Activities. O game designer define <em>quais</em> Activities existem; o programador implementa <em>o que acontece</em> ao entrar/sair.</p>
+      </div>
+    </div>
+
+    <h3>Conceito: o que é um Participant</h3>
+    <p>Um <strong>Participant</strong> é qualquer objeto que implementa <code>IActivityContentExecutionParticipant</code>. Quando uma Activity entra ou sai, o framework chama <code>ExecuteActivityContent(request)</code> em todos os participants registrados, em ordem definida pelo campo <code>Order</code> do descritor.</p>
+
+    <div class="flow">
+      <div class="flow-box" style="min-width:110px; font-size:12px;">Activity entra</div>
+      <span class="flow-arrow">▶</span>
+      <div class="flow-box" style="min-width:130px; font-size:12px;">Framework coleta<br>Participants via Source</div>
+      <span class="flow-arrow">▶</span>
+      <div class="flow-box" style="min-width:110px; font-size:12px;">Executa Enter<br>em ordem</div>
+      <span class="flow-arrow">▶</span>
+      <div class="flow-box green" style="min-width:110px; font-size:12px;">Coleta resultados<br>e status</div>
+    </div>
+
+    <h3>Implementando um Participant</h3>
+
+    <div class="pre-label">C# — Exemplo mínimo de IActivityContentExecutionParticipant</div>
+    <pre><code>using Immersive.Framework.ActivityFlow;
+using Immersive.Framework.RuntimeContent;
+
+public class MeuParticipant : IActivityContentExecutionParticipant
+{
+    // Descreve este participant para o framework
+    public ActivityContentExecutionParticipantDescriptor GetActivityContentExecutionDescriptor()
+    {
+        return new ActivityContentExecutionParticipantDescriptor(
+            contentId: RuntimeContentId.From("meu-sistema-audio"),
+            requiredness: ActivityContentExecutionRequiredness.Optional,
+            supportsEnter: true,   // quero ser chamado no Enter
+            supportsExit: true,    // quero ser chamado no Exit
+            order: 10,             // ordem de execução (menor = primeiro)
+            displayName: "Meu Sistema de Audio",
+            source: "MeuParticipant",
+            reason: "Inicializa audio ao entrar na Activity"
+        );
+    }
+
+    // Executa a lógica quando o framework chama este participant
+    public ActivityContentExecutionResult ExecuteActivityContent(ActivityContentExecutionRequest request)
+    {
+        if (request.Phase == ActivityContentExecutionPhase.Enter)
+        {
+            // Lógica de ENTER — ex: ativar estado de audio
+            AudioManager.SetState(request.Activity.ActivityName);
+        }
+        else if (request.Phase == ActivityContentExecutionPhase.Exit)
+        {
+            // Lógica de EXIT — ex: limpar estado de audio
+            AudioManager.ClearState();
+        }
+
+        // Retorne Succeeded para indicar que correu bem
+        return ActivityContentExecutionResult.Succeeded(request, "MeuParticipant", "ok");
+    }
+}</code></pre>
+
+    <h3>Fornecendo Participants ao framework: IActivityContentExecutionParticipantSource</h3>
+    <p>Activity additive scenes podem conter <code>ActivityContentAnchor</code> e <code>ActivityLocalVisibilityAdapter</code>. Quando a cena e carregada por Activity scene composition, o <code>ActivitySceneLedger</code> inclui essa cena no discovery da Activity; ela nao vira Route content.</p>
+    <p><code>activityContentHandles</code>, <code>activityContentBindings</code> e <code>activityContentLifecycle</code> descrevem adapters e handles locais. <code>activityContentParticipantExecution</code> descreve somente participants explicitos.</p>
+    <p>O framework não descobre participants por busca de cena. Você precisa implementar um <code>IActivityContentExecutionParticipantSource</code> e registrá-lo no runtime host:</p>
+
+    <div class="pre-label">C# — Exemplo de Participant Source</div>
+    <pre><code>using Immersive.Framework.ActivityFlow;
+using Immersive.Framework.ApplicationLifecycle;
+using UnityEngine;
+
+public class MeuParticipantSource : MonoBehaviour, IActivityContentExecutionParticipantSource
+{
+    private MeuParticipant _audioParticipant = new MeuParticipant();
+
+    private void Awake()
+    {
+        // Registra esta source no framework no boot
+        if (FrameworkRuntimeHost.TryGetCurrent(out var host))
+        {
+            host.SetActivityContentExecutionParticipantSource(this);
+        }
+    }
+
+    public ActivityContentExecutionParticipantSourceResult ResolveActivityContentExecutionParticipants(
+        ActivityContentExecutionParticipantSourceRequest request)
+    {
+        // Retorne quais participants devem executar para esta Activity
+        var participants = new IActivityContentExecutionParticipant[]
+        {
+            _audioParticipant
+        };
+
+        return ActivityContentExecutionParticipantSourceResult.Succeeded(
+            request, participants, "MeuParticipantSource", "ok");
+    }
+}</code></pre>
+
+    <div class="callout tip">
+      <span class="callout-icon">💡</span>
+      <div class="callout-body">
+        <div class="callout-title">Ordem de execução</div>
+        <p>O campo <code>order</code> no descritor controla a sequência. Participants com valores menores executam primeiro. Use isso para garantir que, por exemplo, o sistema de câmera configure antes do sistema de input, ou que o áudio espere a cena estar pronta.</p>
+      </div>
+    </div>
+
+    <!-- ─────────────────────────────────────── -->
+    <h2 id="qa-canvas">QA Canvas — Painel de teste em desenvolvimento</h2>
+    <p>O framework inclui uma interface de desenvolvimento para testar transitions, rodar smokes e inspecionar o estado em tempo real. Disponível apenas no Editor e em Development Builds.</p>
+
+    <div class="component-card">
+      <div class="comp-header">
+        <div class="comp-icon">🎛️</div>
+        <div class="comp-meta">
+          <div class="comp-name">FrameworkQaCanvas</div>
+          <h4>Framework QA Canvas</h4>
+          <div class="comp-menu">Add Component → Immersive Framework → QA → Framework QA Canvas</div>
+        </div>
+      </div>
+      <p style="font-size:13.5px; color:var(--text-soft); margin-top:10px; margin-bottom:12px;">
+        Renderiza uma janela de debug em overlay (IMGUI) durante o Play Mode. Não tem dependência de UGUI/Canvas. Configure e esqueça — só aparece no Editor e Development Builds.
+      </p>
+      <div class="comp-fields">
+        <div class="comp-field">
+          <span class="field-name">Show Canvas</span>
+          <span class="field-desc">Exibe ou oculta a janela no Play Mode.</span>
+        </div>
+        <div class="comp-field">
+          <span class="field-name">Route Targets</span>
+          <span class="field-desc">Lista de Routes que aparecem como botões de navegação rápida no painel.</span>
+        </div>
+        <div class="comp-field">
+          <span class="field-name">Canonical Route / Alternate Route</span>
+          <span class="field-desc">Routes usadas pelos smokes automáticos de composição e release.</span>
+        </div>
+        <div class="comp-field">
+          <span class="field-name">Primary Activity / Secondary Activity</span>
+          <span class="field-desc">Activities usadas nos smokes de Activity flow.</span>
+        </div>
+        <div class="comp-field">
+          <span class="field-name">Expected Route Scene Loaded Count</span>
+          <span class="field-desc">Quantas cenas o smoke espera ver carregadas (Primary + Addicionais). Default: 2.</span>
+        </div>
+        <div class="comp-field">
+          <span class="field-name">Expected Route Release Released Count</span>
+          <span class="field-desc">Quantas cenas o smoke espera que sejam descarregadas ao trocar de Route. Default: 1.</span>
+        </div>
+        <div class="comp-field">
+          <span class="field-name">Persist Across Scene Loads</span>
+          <span class="field-desc">Mantém o QA Canvas ativo ao trocar de cena (<code>DontDestroyOnLoad</code>).</span>
+        </div>
+      </div>
+    </div>
+
+    <h3>Smokes disponíveis no QA Canvas</h3>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Smoke</th><th>O que valida</th></tr></thead>
+        <tbody>
+          <tr><td><code>Standard Smoke</code></td><td>Regressão geral: boot, Route, Activity, logs.</td></tr>
+          <tr><td><code>Activity Baseline Smoke</code></td><td>Fluxo completo de Activity: enter, content, exit.</td></tr>
+          <tr><td><code>Route Scene Composition Smoke</code></td><td>Contagem de cenas carregadas pelo Content Profile.</td></tr>
+          <tr><td><code>Route Release Smoke</code></td><td>Contagem de cenas descarregadas ao sair da Route.</td></tr>
+          <tr><td><code>Route Callback Smoke</code></td><td>Callbacks locais de Route (RouteContentBinding/Receivers).</td></tr>
+          <tr><td><code>Local Contribution Smoke</code></td><td>Discovery de local contributions na cena carregada.</td></tr>
+          <tr><td><code>Content Anchor Diagnostics Smoke</code></td><td>Contagem e validação de Content Anchors declarados na cena.</td></tr>
+          <tr><td><code>Activity Content Anchor Smoke</code></td><td>Âncoras de Activity: count, invalid, mismatch.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="callout tip">
+      <span class="callout-icon">✅</span>
+      <div class="callout-body">
+        <div class="callout-title">Use o QA Canvas para validar seu setup</div>
+        <p>Antes de entregar uma fase ou Activity para testes, rode o <strong>Standard Smoke</strong> e o <strong>Route Scene Composition Smoke</strong> no QA Canvas. Se ambos passarem verdes, a estrutura do framework está íntegra.</p>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════
+         NOVIDADES F11–F15
+    ══════════════════════════════════════════ -->
+    <h2 id="f11-intro">Novidades F11–F15 — Três novos sistemas</h2>
+    <p>As fases F11 a F15 adicionaram três sistemas independentes que se encaixam sobre o que já existia. Cada um tem componentes de cena próprios e pode ser usado sem código quando combinado com os Event Bridges correspondentes.</p>
+
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Sistema</th><th>Para que serve</th><th>Fase</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><strong>Cycle Reset</strong></td>
+            <td>Reiniciar o ciclo lógico de uma Route ou Activity — notifica todos os sistemas registrados para "zerar" seu estado de jogo para aquele escopo.</td>
+            <td><span class="badge badge-yellow">F11</span></td>
+          </tr>
+          <tr>
+            <td><strong>Object Entry</strong></td>
+            <td>Declarar que um objeto de jogo específico pertence a uma Route ou Activity. É a identidade do objeto no mundo do framework — base para o Object Reset saber <em>quem</em> resetar.</td>
+            <td><span class="badge badge-yellow">F13</span></td>
+          </tr>
+          <tr>
+            <td><strong>Object Reset</strong></td>
+            <td>Resetar propriedades físicas de um objeto individual (ex: Transform) de volta ao baseline. Usa Object Entry como alvo e participants para executar o reset concreto.</td>
+            <td><span class="badge badge-yellow">F14–F15</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="callout info">
+      <span class="callout-icon">ℹ️</span>
+      <div class="callout-body">
+        <div class="callout-title">Diferença fundamental entre os sistemas de reset</div>
+        <p><strong>Cycle Reset</strong> é um sinal de alto nível: "recomeça o ciclo desta Route/Activity" — os sistemas de jogo decidem o que isso significa para eles. <strong>Object Reset</strong> é granular: "restaura este objeto específico" com valores concretos (posição, rotação, escala). Os dois podem ser usados em conjunto.</p>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════ -->
+    <h2 id="cycle-reset">Cycle Reset — Reiniciar o ciclo de uma Route ou Activity</h2>
+    <p>O Cycle Reset é um sinal que o framework envia para todos os sistemas registrados dizendo <em>"este ciclo de Route ou Activity está recomeçando"</em>. É a forma padronizada de implementar "restart de fase" ou "reiniciar rodada" sem trocar de Route.</p>
+
+    <h3>Fluxo do Cycle Reset</h3>
+    <div class="flow" style="flex-wrap:wrap; row-gap:10px;">
+      <div class="flow-box" style="min-width:120px; font-size:12px;">Trigger dispara<br>RequestReset</div>
+      <span class="flow-arrow">▶</span>
+      <div class="flow-box accent" style="min-width:120px; font-size:12px;">Runtime consulta<br>ICycleResetParticipantSource</div>
+      <span class="flow-arrow">▶</span>
+      <div class="flow-box" style="min-width:120px; font-size:12px;">Chama ResetCycle()<br>em cada Participant</div>
+      <span class="flow-arrow">▶</span>
+      <div class="flow-box green" style="min-width:120px; font-size:12px;">Agrega resultado<br>e dispara Bridge</div>
+    </div>
+
+    <h3>Componentes de Cena</h3>
+
+    <div class="component-card">
+      <div class="comp-header">
+        <div class="comp-icon">🔁</div>
+        <div class="comp-meta">
+          <div class="comp-name">ActivityCycleResetTrigger</div>
+          <h4>Activity Cycle Reset Trigger</h4>
+          <div class="comp-menu">Add Component → Immersive Framework → Cycle Reset → Activity Cycle Reset Trigger</div>
+        </div>
+      </div>
+      <p style="font-size:13.5px; color:var(--text-soft); margin-top:10px; margin-bottom:12px;">
+        Dispara um reset do ciclo da Activity ativa. Use para "reiniciar rodada" sem sair da Route. Conecte ao <code>On Click</code> de um botão ou chame <code>RequestActivityCycleReset()</code> via Unity Event.
+      </p>
+      <div class="comp-fields">
+        <div class="comp-field">
+          <span class="field-name">Reason</span>
+          <span class="field-desc">Texto opcional que aparece nos logs para identificar por que o reset foi pedido. Ex: <code>player-died</code>, <code>round-restart</code>.</span>
+        </div>
+      </div>
+      <div style="margin-top:12px;">
+        <div class="pre-label">Método público para Unity Events</div>
+        <div class="log-block" style="font-size:12.5px; line-height:1.8;">
+          <span class="log-val">ActivityCycleResetTrigger.RequestActivityCycleReset()</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="component-card">
+      <div class="comp-header">
+        <div class="comp-icon">🔁</div>
+        <div class="comp-meta">
+          <div class="comp-name">RouteCycleResetTrigger</div>
+          <h4>Route Cycle Reset Trigger</h4>
+          <div class="comp-menu">Add Component → Immersive Framework → Cycle Reset → Route Cycle Reset Trigger</div>
+        </div>
+      </div>
+      <p style="font-size:13.5px; color:var(--text-soft); margin-top:10px; margin-bottom:12px;">
+        Idêntico ao Activity, mas reinicia o ciclo da Route inteira. A policy padrão de Route já inclui a Activity ativa no reset automaticamente (<code>IncludeActiveActivity = true</code>).
+      </p>
+      <div class="comp-fields">
+        <div class="comp-field">
+          <span class="field-name">Reason</span>
+          <span class="field-desc">Mesmo comportamento do Activity Cycle Reset Trigger.</span>
+        </div>
+      </div>
+      <div style="margin-top:12px;">
+        <div class="pre-label">Método público para Unity Events</div>
+        <div class="log-block" style="font-size:12.5px; line-height:1.8;">
+          <span class="log-val">RouteCycleResetTrigger.RequestRouteCycleReset()</span>
+        </div>
+      </div>
+    </div>
+
+    <h3>Diferença entre Route e Activity Cycle Reset</h3>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Tipo</th><th>Escopo</th><th>Inclui Activity?</th><th>Quando usar</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><code>Activity Reset</code></td>
+            <td>Só a Activity ativa</td>
+            <td>Não</td>
+            <td>Reiniciar uma rodada/modo sem resetar o contexto maior da fase</td>
+          </tr>
+          <tr>
+            <td><code>Route Reset</code></td>
+            <td>Route + Activity ativa</td>
+            <td>Sim (policy padrão)</td>
+            <td>Reiniciar a fase inteira, equivalente a "retry da fase"</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Implementando um Participant de Cycle Reset (código)</h3>
+    <p>Para que o reset faça algo, você precisa de pelo menos um script que implemente <code>ICycleResetParticipant</code> e um <code>ICycleResetParticipantSource</code> registrado no runtime.</p>
+
+    <div class="pre-label">C# — Exemplo mínimo de ICycleResetParticipant</div>
+    <pre><code>using Immersive.Framework.CycleReset;
+
+public class MeuResetDeRodada : ICycleResetParticipant
+{
+    public CycleResetParticipantDescriptor GetCycleResetDescriptor()
+    {
+        return new CycleResetParticipantDescriptor(
+            participantId: CycleResetParticipantId.From("reset-rodada"),
+            participantScope: CycleResetScope.Activity, // Route ou Activity
+            requiredness: CycleResetParticipantRequiredness.Optional,
+            order: 0,
+            displayName: "Reset de Rodada",
+            source: "MeuResetDeRodada",
+            reason: "reiniciar-estado-rodada"
+        );
+    }
+
+    public CycleResetParticipantResult ResetCycle(CycleResetContext context)
+    {
+        // Sua lógica de reset aqui
+        // context.ActiveRoute — qual Route está ativa
+        // context.ActiveActivity — qual Activity está ativa
+        // context.IsRouteReset / context.IsActivityReset
+
+        ResetarPlacar();
+        ReposicionarInimigos();
+        ZerarTimer();
+
+        return CycleResetParticipantResult.Succeeded(
+            context, "MeuResetDeRodada", "rodada-reiniciada", "Estado de rodada restaurado.");
+    }
+
+    private void ResetarPlacar() { /* ... */ }
+    private void ReposicionarInimigos() { /* ... */ }
+    private void ZerarTimer() { /* ... */ }
+}</code></pre>
+
+    <div class="pre-label">C# — Registrando o Participant via ICycleResetParticipantSource</div>
+    <pre><code>using System.Collections.Generic;
+using Immersive.Framework.CycleReset;
+using Immersive.Framework.ApplicationLifecycle;
+using UnityEngine;
+
+public class MinhaCycleResetSource : MonoBehaviour, ICycleResetParticipantSource
+{
+    private readonly MeuResetDeRodada _resetRodada = new MeuResetDeRodada();
+
+    private void OnEnable()
+    {
+        if (FrameworkRuntimeHost.TryGetCurrent(out var host))
+            host.SetCycleResetParticipantSource(this);
+    }
+
+    private void OnDisable()
+    {
+        if (FrameworkRuntimeHost.TryGetCurrent(out var host))
+            host.ClearCycleResetParticipantSource(this);
+    }
+
+    public IReadOnlyList&lt;ICycleResetParticipant&gt; ResolveCycleResetParticipants(CycleResetRequest request)
+    {
+        // Retorne apenas os participants que fazem sentido para este request
+        return new ICycleResetParticipant[] { _resetRodada };
+    }
+}</code></pre>
+
+    <div class="callout tip">
+      <span class="callout-icon">💡</span>
+      <div class="callout-body">
+        <div class="callout-title">Nenhum participant é válido</div>
+        <p>Se nenhum participant for registrado, o resultado é <code>SucceededNoParticipants</code> — não é um erro. A policy padrão (<code>AllowNoParticipants = true</code>) aceita isso. Útil durante desenvolvimento quando você ainda não implementou os sistemas de reset.</p>
+      </div>
+    </div>
+
+    <h3>Status de resultado do Cycle Reset</h3>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Status</th><th>Significa</th></tr></thead>
+        <tbody>
+          <tr><td><code>Succeeded</code></td><td>Todos os participants obrigatórios completaram sem erros.</td></tr>
+          <tr><td><code>SucceededNoParticipants</code></td><td>Nenhum participant foi registrado, mas policy permite isso.</td></tr>
+          <tr><td><code>CompletedWithWarnings</code></td><td>Algum participant opcional falhou. Reset continua.</td></tr>
+          <tr><td><code>Failed</code></td><td>Um participant obrigatório falhou ou a policy não permitia o estado atual.</td></tr>
+          <tr><td><code>RejectedInvalidRequest</code></td><td>O request era inválido (ex: sem Route/Activity ativa).</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- ═══════════════════════════════════════ -->
+    <h2 id="object-entry">Object Entry — Declarar um objeto de jogo no framework</h2>
+    <p>Um <strong>Object Entry</strong> é a forma de dizer ao framework "este GameObject existe e pertence a esta Route/Activity". É uma <em>declaração de identidade</em> — não cria, destrói ou move nada. A razão de existir é dar ao <strong>Object Reset</strong> um alvo com identidade estável.</p>
+
+    <div class="component-card">
+      <div class="comp-header">
+        <div class="comp-icon">🏷️</div>
+        <div class="comp-meta">
+          <div class="comp-name">ObjectEntryDeclaration</div>
+          <h4>Object Entry Declaration</h4>
+          <div class="comp-menu">Add Component → Immersive Framework → Object Entry → Object Entry Declaration</div>
+        </div>
+      </div>
+      <p style="font-size:13.5px; color:var(--text-soft); margin-top:10px; margin-bottom:12px;">
+        Adicione este componente no GameObject do objeto de jogo que você quer que o framework conheça. Um componente por GameObject — <code>DisallowMultipleComponent</code>.
+      </p>
+      <div class="comp-fields">
+        <div class="comp-field">
+          <span class="field-name">Object Entry Id</span>
+          <span class="field-desc">ID único e estável para este objeto. Ex: <code>player-character</code>, <code>enemy-boss-1</code>. <strong>Não use o nome do GameObject.</strong></span>
+        </div>
+        <div class="comp-field">
+          <span class="field-name">Scope</span>
+          <span class="field-desc"><code>Activity</code> (padrão), <code>Route</code> ou <code>Session</code>. Define o ciclo de vida ao qual este objeto pertence.</span>
+        </div>
+        <div class="comp-field">
+          <span class="field-name">Route Owner</span>
+          <span class="field-desc">Se Scope = Route, arraste aqui o asset da Route dona. Obrigatório para scope Route.</span>
+        </div>
+        <div class="comp-field">
+          <span class="field-name">Activity Owner</span>
+          <span class="field-desc">Se Scope = Activity, arraste aqui o asset da Activity dona. Obrigatório para scope Activity.</span>
+        </div>
+        <div class="comp-field">
+          <span class="field-name">Requiredness</span>
+          <span class="field-desc"><code>Required</code> ou <code>Optional</code>. Afeta diagnósticos e como falhas são reportadas.</span>
+        </div>
+        <div class="comp-field">
+          <span class="field-name">Display Name</span>
+          <span class="field-desc">Nome legível para diagnóstico. Se vazio, usa o nome do GameObject (só para display).</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="callout warn">
+      <span class="callout-icon">⚠️</span>
+      <div class="callout-body">
+        <div class="callout-title">Regra do Scope e Owner</div>
+        <p>Se você escolher <code>Scope = Route</code>, o campo <strong>Route Owner</strong> precisa de um asset com Primary Scene definida. Se escolher <code>Scope = Activity</code>, o campo <strong>Activity Owner</strong> precisa de um asset com nome definido. Scope = Session não precisa de owner.</p>
+      </div>
+    </div>
+
+    <h3>Exemplo de hierarquia com Object Entry</h3>
+    <pre><code>Gameplay (Scene)
+├── Player (GameObject)
+│   └── ObjectEntryDeclaration
+│       • Object Entry Id: "player-character"
+│       • Scope: Activity
+│       • Activity Owner: Activity_Gameplay
+│       • Requiredness: Required
+│
+└── BossEnemy (GameObject)
+    └── ObjectEntryDeclaration
+        • Object Entry Id: "enemy-boss"
+        • Scope: Route
+        • Route Owner: Route_Gameplay
+        • Requiredness: Optional</code></pre>
+
+    <!-- ═══════════════════════════════════════ -->
+    <h2 id="object-reset">Object Reset — Resetar um objeto individual</h2>
+    <p>O <strong>Object Reset</strong> é o sistema que executa reset físico em um objeto específico — identificado por um <code>ObjectEntryDeclaration</code>. É separado do Cycle Reset: você pode disparar um Object Reset para um único objeto a qualquer momento, independente do ciclo de Route ou Activity.</p>
+
+    <div class="component-card">
+      <div class="comp-header">
+        <div class="comp-icon">🎯</div>
+        <div class="comp-meta">
+          <div class="comp-name">ObjectResetTrigger</div>
+          <h4>Object Reset Trigger</h4>
+          <div class="comp-menu">Add Component → Immersive Framework → Object Reset → Object Reset Trigger</div>
+        </div>
+      </div>
+      <p style="font-size:13.5px; color:var(--text-soft); margin-top:10px; margin-bottom:12px;">
+        Dispara o reset de um objeto específico via Unity Event. Precisa saber qual objeto resetar — informe via <strong>Target Declaration</strong> ou <strong>Object Entry Id</strong>.
+      </p>
+      <div class="comp-fields">
+        <div class="comp-field">
+          <span class="field-name">Target Declaration</span>
+          <span class="field-desc">Arraste aqui o <code>ObjectEntryDeclaration</code> do objeto que deve ser resetado. <strong>Prefira este campo</strong> — é mais explícito e menos sujeito a erro de digitação.</span>
+        </div>
+        <div class="comp-field">
+          <span class="field-name">Object Entry Id</span>
+          <span class="field-desc">Alternativa ao campo acima: texto do ID do Object Entry alvo. Usado quando o Declaration não pode ser arrastado diretamente.</span>
+        </div>
+        <div class="comp-field">
+          <span class="field-name">Reason</span>
+          <span class="field-desc">Texto para diagnóstico. Ex: <code>player-respawn</code>, <code>enemy-revive</code>.</span>
+        </div>
+        <div class="comp-field">
+          <span class="field-name">Allow No Participants</span>
+          <span class="field-desc">Se ativado, um reset sem nenhum participant registrado não é tratado como falha. Padrão: true.</span>
+        </div>
+      </div>
+      <div style="margin-top:12px;">
+        <div class="pre-label">Método público para Unity Events</div>
+        <div class="log-block" style="font-size:12.5px; line-height:1.8;">
+          <span class="log-val">ObjectResetTrigger.RequestObjectReset()</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════ -->
+    <h2 id="transform-participant">Transform Reset Participant — Resetar posição, rotação e escala</h2>
+    <p>Este é o primeiro participant concreto de Object Reset incluído no framework. Ele restaura o <strong>Transform local</strong> (posição, rotação, escala) de um GameObject para um baseline capturado previamente no Inspector — sem código.</p>
+
+    <div class="component-card">
+      <div class="comp-header">
+        <div class="comp-icon">📐</div>
+        <div class="comp-meta">
+          <div class="comp-name">ObjectResetTransformParticipant</div>
+          <h4>Transform Reset Participant</h4>
+          <div class="comp-menu">Add Component → Immersive Framework → Object Reset → Transform Reset Participant</div>
+        </div>
+      </div>
+      <p style="font-size:13.5px; color:var(--text-soft); margin-top:10px; margin-bottom:12px;">
+        Coloque este componente <strong>no mesmo GameObject</strong> que tem o <code>ObjectEntryDeclaration</code> (ou em qualquer filho). Capture o baseline de Transform uma vez; o framework restaura automaticamente quando o reset é disparado.
+      </p>
+      <div class="comp-fields">
+        <div class="comp-field">
+          <span class="field-name">Target Declaration</span>
+          <span class="field-desc">Arraste o <code>ObjectEntryDeclaration</code> do objeto dono. Este campo define <em>a qual objeto</em> este participant pertence.</span>
+        </div>
+        <div class="comp-field">
+          <span class="field-name">Participant Id</span>
+          <span class="field-desc">ID estável para este participant. Ex: <code>transform-reset-player</code>.</span>
+        </div>
+        <div class="comp-field">
+          <span class="field-name">Target Transform Override</span>
+          <span class="field-desc">Opcional. Se preenchido, reseta este Transform em vez do Transform do próprio GameObject.</span>
+        </div>
+        <div class="comp-field">
+          <span class="field-name">Reset Local Position / Rotation / Scale</span>
+          <span class="field-desc">Toggles individuais para cada propriedade. Desative as que não precisam ser resetadas.</span>
+        </div>
+        <div class="comp-field">
+          <span class="field-name">Baseline Local Position / Euler Angles / Scale</span>
+          <span class="field-desc">Os valores que serão restaurados. <strong>Capture via Context Menu</strong> em vez de digitar manualmente.</span>
+        </div>
+        <div class="comp-field">
+          <span class="field-name">Requiredness</span>
+          <span class="field-desc"><code>Required</code>: falha bloqueia o reset. <code>Optional</code>: falha vira warning.</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="callout tip">
+      <span class="callout-icon">✅</span>
+      <div class="callout-body">
+        <div class="callout-title">Como capturar o baseline</div>
+        <p>Posicione o GameObject na posição/rotação/escala inicial desejada. Então, no Inspector, clique com botão direito no componente <code>ObjectResetTransformParticipant</code> e selecione <strong>"Capture Current Transform Baseline"</strong>. Os valores são salvos automaticamente.</p>
+      </div>
+    </div>
+
+    <h3>Registrando participants com Object Reset Unity Participant Source</h3>
+    <p>Para que o framework encontre os <code>ObjectResetTransformParticipant</code> da cena, adicione este componente em um GameObject persistente:</p>
+
+    <div class="component-card">
+      <div class="comp-header">
+        <div class="comp-icon">📋</div>
+        <div class="comp-meta">
+          <div class="comp-name">ObjectResetUnityParticipantSource</div>
+          <h4>Object Reset Unity Participant Source</h4>
+          <div class="comp-menu">Add Component → Immersive Framework → Object Reset → Object Reset Unity Participant Source</div>
+        </div>
+      </div>
+      <p style="font-size:13.5px; color:var(--text-soft); margin-top:10px; margin-bottom:12px;">
+        Registra-se automaticamente no framework ao ficar ativo (<code>OnEnable</code>) e se desregistra ao ser desativado. Funciona como "lista explícita" dos participants — o framework não busca na hierarquia sozinho.
+      </p>
+      <div class="comp-fields">
+        <div class="comp-field">
+          <span class="field-name">Register On Enable</span>
+          <span class="field-desc">Se ativo, registra-se no runtime quando o GameObject ativar. Padrão: true.</span>
+        </div>
+        <div class="comp-field">
+          <span class="field-name">Participants</span>
+          <span class="field-desc">Lista de <code>ObjectResetUnityParticipantBehaviour</code> (ex: <code>ObjectResetTransformParticipant</code>) que devem ser consultados em cada reset. Arraste todos os participants aqui.</span>
+        </div>
+      </div>
+    </div>
+
+    <h3>Setup completo: resetar Transform do Player ao morrer</h3>
+    <ol class="steps">
+      <li>
+        <div class="step-body">
+          <strong>No GameObject do Player</strong>, adicione dois componentes:<br>
+          • <code>ObjectEntryDeclaration</code> com Id <code>player-character</code>, Scope <code>Activity</code>, Activity Owner = <code>Activity_Gameplay</code><br>
+          • <code>ObjectResetTransformParticipant</code>, arraste o <code>ObjectEntryDeclaration</code> acima para <strong>Target Declaration</strong>, preencha o Participant Id como <code>transform-reset-player</code>, depois use <em>Capture Current Transform Baseline</em> no Context Menu
+        </div>
+      </li>
+      <li>
+        <div class="step-body">
+          <strong>Crie um GameObject de gerenciamento</strong> (ex: <code>ResetManager</code>), adicione <code>ObjectResetUnityParticipantSource</code> e arraste o <code>ObjectResetTransformParticipant</code> do Player para a lista <strong>Participants</strong>.
+        </div>
+      </li>
+      <li>
+        <div class="step-body">
+          <strong>Crie um botão "Respawn"</strong> (ou use o evento de morte do Player). Adicione <code>ObjectResetTrigger</code> num GameObject, defina <strong>Target Declaration</strong> apontando para o <code>ObjectEntryDeclaration</code> do Player. No botão ou evento, conecte <code>ObjectResetTrigger.RequestObjectReset()</code>.
+        </div>
+      </li>
+      <li>
+        <div class="step-body">
+          <strong>Dê Play e teste.</strong> Ao disparar o trigger, o Transform do Player volta ao baseline capturado. Verifique nos logs: <code>status='Succeeded' participants='1' participantSucceeded='1'</code>.
+        </div>
+      </li>
+    </ol>
+
+    <!-- ═══════════════════════════════════════ -->
+    <h2 id="f11-bridges">Unity Event Bridges — F11–F15</h2>
+    <p>Cada novo sistema tem seu próprio Event Bridge, com eventos mais granulares que os bridges anteriores. Todos funcionam da mesma forma: exigem o trigger correspondente no mesmo GameObject.</p>
+
+    <div class="component-card">
+      <div class="comp-header">
+        <div class="comp-icon">🌉</div>
+        <div class="comp-meta">
+          <div class="comp-name">ActivityCycleResetTriggerUnityEventBridge</div>
+          <h4>Activity Cycle Reset Trigger Unity Event Bridge</h4>
+          <div class="comp-menu">Add Component → Immersive Framework → Cycle Reset → Activity Cycle Reset Trigger Unity Event Bridge</div>
+        </div>
+      </div>
+      <p style="font-size:13.5px; color:var(--text-soft); margin-top:10px; margin-bottom:12px;">
+        Requer <code>ActivityCycleResetTrigger</code> no mesmo GameObject. Expõe 8 Unity Events.
+      </p>
+      <div class="comp-fields">
+        <div class="comp-field"><span class="field-name">Request Submitted</span><span class="field-desc">Reset iniciado, ainda processando.</span></div>
+        <div class="comp-field"><span class="field-name">Request Succeeded</span><span class="field-desc">Reset completou — com ou sem participants.</span></div>
+        <div class="comp-field"><span class="field-name">Request Succeeded With Participants</span><span class="field-desc">Completou e havia participants registrados.</span></div>
+        <div class="comp-field"><span class="field-name">Request Succeeded No Participants</span><span class="field-desc">Completou mas nenhum participant foi encontrado (policy permitia).</span></div>
+        <div class="comp-field"><span class="field-name">Request Completed With Warnings</span><span class="field-desc">Algum participant opcional falhou; reset continuou.</span></div>
+        <div class="comp-field"><span class="field-name">Request Ignored</span><span class="field-desc">Reset ignorado (outro em andamento).</span></div>
+        <div class="comp-field"><span class="field-name">Request Failed</span><span class="field-desc">Reset falhou (participant obrigatório ou runtime indisponível).</span></div>
+        <div class="comp-field"><span class="field-name">Request Completed</span><span class="field-desc">Sempre dispara ao final, independente do resultado.</span></div>
+      </div>
+    </div>
+
+    <div class="component-card">
+      <div class="comp-header">
+        <div class="comp-icon">🌉</div>
+        <div class="comp-meta">
+          <div class="comp-name">RouteCycleResetTriggerUnityEventBridge</div>
+          <h4>Route Cycle Reset Trigger Unity Event Bridge</h4>
+          <div class="comp-menu">Add Component → Immersive Framework → Cycle Reset → Route Cycle Reset Trigger Unity Event Bridge</div>
+        </div>
+      </div>
+      <p style="font-size:13.5px; color:var(--text-soft); margin-top:10px; margin-bottom:12px;">
+        Idêntico ao de Activity, mas para <code>RouteCycleResetTrigger</code>. Mesmos 8 Unity Events.
+      </p>
+    </div>
+
+    <div class="component-card">
+      <div class="comp-header">
+        <div class="comp-icon">🌉</div>
+        <div class="comp-meta">
+          <div class="comp-name">ObjectResetTriggerUnityEventBridge</div>
+          <h4>Object Reset Trigger Unity Event Bridge</h4>
+          <div class="comp-menu">Add Component → Immersive Framework → Object Reset → Object Reset Trigger Unity Event Bridge</div>
+        </div>
+      </div>
+      <p style="font-size:13.5px; color:var(--text-soft); margin-top:10px; margin-bottom:12px;">
+        Requer <code>ObjectResetTrigger</code> no mesmo GameObject. Mesmos 8 Unity Events que os bridges de Cycle Reset, adaptados para Object Reset.
+      </p>
+    </div>
+
+    <h3>Exemplo: exibir efeito de respawn após reset</h3>
+    <div class="log-block" style="font-size:13px; line-height:1.8;">
+      <div class="log-label">Inspector — ObjectResetTriggerUnityEventBridge</div>
+      <span class="log-key">Request Submitted</span> → <span class="log-val">RespawnEffect.SetActive(false)</span> (esconde antes)<br>
+      <span class="log-key">Request Succeeded With Participants</span> → <span class="log-val">RespawnEffect.SetActive(true)</span><br>
+      <span class="log-key">Request Failed</span> → <span class="log-val">ErrorUI.Show("Respawn falhou")</span>
+    </div>
+
+    <h3>Comparativo: qual Bridge usar em cada situação</h3>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Situação</th><th>Bridge recomendado</th></tr></thead>
+        <tbody>
+          <tr><td>Restart de rodada (ex: F clicou em "Tentar Novamente")</td><td><code>ActivityCycleResetTriggerUnityEventBridge</code></td></tr>
+          <tr><td>Restart de fase (ex: "Repetir Fase")</td><td><code>RouteCycleResetTriggerUnityEventBridge</code></td></tr>
+          <tr><td>Reposicionar player ao morrer</td><td><code>ObjectResetTriggerUnityEventBridge</code></td></tr>
+          <tr><td>Tudo junto em um evento de morte</td><td>Chame o <code>ObjectResetTrigger</code> primeiro (reposiciona), depois o <code>ActivityCycleResetTrigger</code> (zera o estado)</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- ══════════════════════════════════════════
+         LIMITES
+    ══════════════════════════════════════════ -->
+    <h2 id="limites">O que ainda NÃO existe nesta versão</h2>
+    <p>Esta versão (F15) avançou bastante em relação à F10. As funcionalidades abaixo continuam fora do escopo e <strong>não devem ser esperadas</strong>.</p>
+
+    <div class="callout stop">
+      <span class="callout-icon">🚫</span>
+      <div class="callout-body">
+        <div class="callout-title">Ainda não disponível em F15</div>
+        <p>
+          <strong>Materialização física</strong> — O framework ainda não faz <code>Instantiate</code>, <code>Destroy</code> ou posicionamento automático de prefabs. Content Anchors continuam declarativos.<br><br>
+          <strong>Addressables</strong> — Sem carregamento assíncrono de assets por endereço.<br><br>
+          <strong>Sistema de Actors / Player</strong> — Não existe gerenciamento de personagens, câmera ou câmera pelo framework.<br><br>
+          <strong>Object Reset além de Transform</strong> — O único participant concreto incluído é o <code>ObjectResetTransformParticipant</code>. Reset de Rigidbody, Animator, AudioSource, etc. precisam de código próprio (<code>IObjectResetParticipant</code>).<br><br>
+          <strong>Object Reset para múltiplos objetos de uma vez</strong> — Cada <code>ObjectResetTrigger</code> reseta um único Object Entry por request.<br><br>
+          <strong>Snapshot de estado para restore</strong> — O framework captura baseline de Transform via authoring, mas não faz snapshot dinâmico em runtime do estado atual para restaurar depois.<br><br>
+          <strong>Save/Load</strong> — Sem sistema de persistência de dados.<br><br>
+          <strong>Pooling</strong> — Sem sistema de object pooling integrado.<br><br>
+          <strong>Input Management</strong> — Sem integração com sistemas de input pelo framework.<br><br>
+          <strong>UI/Presentation layer</strong> — Sem gerenciamento de UI automatizado além da visibilidade por Activity.
+        </p>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════
+         GLOSSÁRIO
+    ══════════════════════════════════════════ -->
+    <h2 id="glossario">Glossário</h2>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Termo</th><th>Definição</th></tr></thead>
+        <tbody>
+          <tr><td><code>Session</code></td><td>O ciclo de vida completo da aplicação, do boot ao fechamento.</td></tr>
+          <tr><td><code>Route</code></td><td>Uma área ou fase do jogo com sua própria Primary Scene.</td></tr>
+          <tr><td><code>Activity</code></td><td>Um modo de estado dentro de uma Route (ex: Gameplay, Inventory, Inspection). Pause e planejado separadamente como estado + Gate blocker.</td></tr>
+          <tr><td><code>Primary Scene</code></td><td>A cena Unity principal de uma Route, carregada em modo <code>Single</code>.</td></tr>
+          <tr><td><code>Additional Scene</code></td><td>Cena extra carregada em modo <code>Additive</code> via Route Content Profile.</td></tr>
+          <tr><td><code>Content Profile</code></td><td>Asset que lista as cenas adicionais de uma Route.</td></tr>
+          <tr><td><code>Content Anchor</code></td><td>Ponto declarativo na cena que marca onde conteúdo dinâmico será colocado (futuro).</td></tr>
+          <tr><td><code>Local Visibility Adapter</code></td><td>Componente que liga a visibilidade de um GameObject a uma Activity.</td></tr>
+          <tr><td><code>Content Id</code></td><td>Texto único e estável que identifica um conteúdo. Não use nomes de cenas ou GameObjects como IDs.</td></tr>
+          <tr><td><code>Requiredness</code></td><td><code>Required</code> = bloqueia o fluxo se falhar; <code>Optional</code> = apenas reporta o problema.</td></tr>
+          <tr><td><code>Ownership</code></td><td><code>Owned</code> = o framework descarrega ao sair; <code>Registered</code> = só registra, sem release.</td></tr>
+          <tr><td><code>Cycle Reset</code></td><td>Sinal de alto nível que diz "recomeça o ciclo desta Route ou Activity". Os participants decidem o que fazer.</td></tr>
+          <tr><td><code>CycleResetScope</code></td><td><code>Route</code> = reseta a Route inteira (e a Activity ativa por policy); <code>Activity</code> = reseta só a Activity ativa.</td></tr>
+          <tr><td><code>ICycleResetParticipant</code></td><td>Interface que um script implementa para receber e executar a lógica de Cycle Reset.</td></tr>
+          <tr><td><code>ICycleResetParticipantSource</code></td><td>Interface que fornece a lista de participants ao framework quando um Cycle Reset é disparado.</td></tr>
+          <tr><td><code>Object Entry</code></td><td>Declaração de identidade de um objeto de jogo no framework. Define a quem pertence (Route/Activity) e qual é seu ID estável.</td></tr>
+          <tr><td><code>ObjectEntryDeclaration</code></td><td>Componente Unity que declara um Object Entry. Um por GameObject.</td></tr>
+          <tr><td><code>Object Reset</code></td><td>Reset granular de um objeto individual: restaura propriedades físicas (ex: Transform) para um baseline definido.</td></tr>
+          <tr><td><code>ObjectResetTransformParticipant</code></td><td>Participant concreto incluído no framework que restaura Transform local (posição, rotação, escala) para baseline capturado.</td></tr>
+          <tr><td><code>ObjectResetUnityParticipantSource</code></td><td>Componente MonoBehaviour que registra a lista explícita de participants de Object Reset no runtime.</td></tr>
+          <tr><td><code>Baseline</code></td><td>Os valores de referência capturados em authoring (ex: posição inicial de um objeto) que serão restaurados pelo Object Reset.</td></tr>
+          <tr><td><code>Participant</code></td><td>Qualquer implementação de <code>ICycleResetParticipant</code> ou <code>IObjectResetParticipant</code> que recebe e executa um reset.</td></tr>
+          <tr><td><code>SucceededNoParticipants</code></td><td>Status de reset que indica que nenhum participant foi encontrado, mas a policy permitia isso — não é um erro.</td></tr>
+          <tr><td><code>CompletedWithWarnings</code></td><td>Status de reset que indica que algum participant opcional falhou, mas o reset continuou.</td></tr>
+          <tr><td><code>Smoke</code></td><td>Teste rápido de regressão do framework (visível no QA Canvas em modo desenvolvimento).</td></tr>
+          <tr><td><code>Experimental</code></td><td>Status de API: funciona, mas pode mudar em versões futuras do framework.</td></tr>
+          <tr><td><code>Bootstrap</code></td><td>Código interno do framework que inicializa tudo automaticamente ao dar Play — você não interage com ele diretamente.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- FOOTER -->
+    <div style="margin-top:56px; padding-top:24px; border-top:1px solid var(--border-soft); color:var(--text-muted); font-size:13px;">
+      <p><strong style="color:var(--text-soft);">Immersive Framework</strong> — Manual do Game Designer &nbsp;·&nbsp; Versão F15</p>
+      <p style="margin-top:4px;">Este manual cobre as funcionalidades fechadas até F15. Atualizar ao fechar F16+.</p>
+    </div>
+
+  </main>
+</div>
+
+<script>
+  // Active sidebar highlight on scroll
+  const sections = document.querySelectorAll('[id]');
+  const links = document.querySelectorAll('.sidebar-section a');
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        links.forEach(l => l.classList.remove('active'));
+        const active = document.querySelector(`.sidebar-section a[href="#${entry.target.id}"]`);
+        if (active) active.classList.add('active');
+      }
+    });
+  }, { rootMargin: '-20% 0px -70% 0px' });
+  sections.forEach(s => observer.observe(s));
+</script>
+
+</body>
+</html>

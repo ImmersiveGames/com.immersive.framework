@@ -1,0 +1,20 @@
+{
+  "name": "Immersive.Framework.Editor",
+  "rootNamespace": "Immersive.Framework.Editor",
+  "references": [
+    "Immersive.Framework.Runtime",
+    "Immersive.Logging.Runtime",
+    "Immersive.Logging.Unity"
+  ],
+  "includePlatforms": [
+    "Editor"
+  ],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": true,
+  "defineConstraints": [],
+  "versionDefines": [],
+  "noEngineReferences": false
+}
