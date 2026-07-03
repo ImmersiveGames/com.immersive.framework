@@ -1,5 +1,6 @@
 using UnityEngine;
 using Immersive.Framework.ApiStatus;
+using Immersive.Framework.Transition;
 
 namespace Immersive.Framework.Authoring
 {
@@ -32,6 +33,10 @@ namespace Immersive.Framework.Authoring
         [Tooltip("Defines whether Activity operations use the session TransitionSurface and, for scene side-effects, the canonical LoadingSurface. Seamless/Fade/FadeWithLoading are all valid with Activity-owned scene load/release; they select presentation.")]
         private ActivityVisualTransitionMode visualTransitionMode = ActivityVisualTransitionMode.Seamless;
 
+        [SerializeField]
+        [Tooltip("Controls which requests/capabilities are blocked while this Activity transition is running. For Fade/FadeWithLoading, InputInteractionAndGameplay is recommended.")]
+        private TransitionGateMode transitionGateMode = TransitionGateMode.LifecycleRequestsOnly;
+
         public string ActivityName
         {
             get
@@ -60,6 +65,16 @@ namespace Immersive.Framework.Authoring
                 return System.Enum.IsDefined(typeof(ActivityVisualTransitionMode), visualTransitionMode)
                     ? visualTransitionMode
                     : ActivityVisualTransitionMode.Seamless;
+            }
+        }
+
+        public TransitionGateMode TransitionGateMode
+        {
+            get
+            {
+                return System.Enum.IsDefined(typeof(TransitionGateMode), transitionGateMode)
+                    ? transitionGateMode
+                    : TransitionGateMode.LifecycleRequestsOnly;
             }
         }
     }

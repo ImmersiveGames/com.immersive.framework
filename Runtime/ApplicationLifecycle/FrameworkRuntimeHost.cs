@@ -550,6 +550,21 @@ namespace Immersive.Framework.ApplicationLifecycle
             return _pauseRuntime.EvaluateGate(scope, domain, subject, source, reason);
         }
 
+        internal GateEvaluationResult EvaluateTransitionGateAdmission(
+            GateScope scope,
+            GateDomain domain,
+            string subject,
+            string source,
+            string reason)
+        {
+            if (_gameFlowRuntime == null)
+            {
+                throw new InvalidOperationException("Game Flow runtime is not initialized.");
+            }
+
+            return _gameFlowRuntime.EvaluateTransitionGateAdmission(scope, domain, subject, source, reason);
+        }
+
         internal async Task<ObjectResetResult> RequestObjectResetAsync(ObjectResetRequest request)
         {
             if (_objectResetRuntime == null)
@@ -1255,6 +1270,15 @@ namespace Immersive.Framework.ApplicationLifecycle
                 LogFields.Field("transitionEffectAdapterEvidenceBlockingIssues", result.TransitionDiagnostics.EffectAdapterEvidenceBlockingIssueCount),
                 LogFields.Field("transitionEffectAdapterEvidenceNames", result.TransitionDiagnostics.EffectAdapterEvidenceNamesText),
                 LogFields.Field("transitionEffectAdapterEvidenceStatuses", result.TransitionDiagnostics.EffectAdapterEvidenceStatusesText),
+                LogFields.Field("transitionGate", result.TransitionGateDiagnostics.GateText),
+                LogFields.Field("transitionGateMode", result.TransitionGateDiagnostics.ModeText),
+                LogFields.Field("transitionGateApplied", result.TransitionGateDiagnostics.Applied),
+                LogFields.Field("transitionGateReleased", result.TransitionGateDiagnostics.Released),
+                LogFields.Field("transitionGateBlockers", result.TransitionGateDiagnostics.BlockersText),
+                LogFields.Field("blocksInputAcceptance", result.TransitionGateDiagnostics.BlocksInputAcceptance),
+                LogFields.Field("blocksInteractionAcceptance", result.TransitionGateDiagnostics.BlocksInteractionAcceptance),
+                LogFields.Field("blocksGameplayAction", result.TransitionGateDiagnostics.BlocksGameplayAction),
+                LogFields.Field("transitionGateBlockingIssues", result.TransitionGateDiagnostics.BlockingIssuesText),
                 LogFields.Field("previousRoute", GetRouteName(routeLifecycle.PreviousRoute)),
                 LogFields.Field("targetRoute", GetRouteName(result.TargetRoute)),
                 LogFields.Field("scene", routeLifecycle.SceneLifecycleResult.SceneName),
@@ -1486,6 +1510,15 @@ namespace Immersive.Framework.ApplicationLifecycle
                 LogFields.Field("transitionEffectAdapterEvidenceBlockingIssues", result.TransitionDiagnostics.EffectAdapterEvidenceBlockingIssueCount),
                 LogFields.Field("transitionEffectAdapterEvidenceNames", result.TransitionDiagnostics.EffectAdapterEvidenceNamesText),
                 LogFields.Field("transitionEffectAdapterEvidenceStatuses", result.TransitionDiagnostics.EffectAdapterEvidenceStatusesText),
+                LogFields.Field("transitionGate", result.TransitionGateDiagnostics.GateText),
+                LogFields.Field("transitionGateMode", result.TransitionGateDiagnostics.ModeText),
+                LogFields.Field("transitionGateApplied", result.TransitionGateDiagnostics.Applied),
+                LogFields.Field("transitionGateReleased", result.TransitionGateDiagnostics.Released),
+                LogFields.Field("transitionGateBlockers", result.TransitionGateDiagnostics.BlockersText),
+                LogFields.Field("blocksInputAcceptance", result.TransitionGateDiagnostics.BlocksInputAcceptance),
+                LogFields.Field("blocksInteractionAcceptance", result.TransitionGateDiagnostics.BlocksInteractionAcceptance),
+                LogFields.Field("blocksGameplayAction", result.TransitionGateDiagnostics.BlocksGameplayAction),
+                LogFields.Field("transitionGateBlockingIssues", result.TransitionGateDiagnostics.BlockingIssuesText),
                 LogFields.Field("activityTransitionMode", result.ActivityTransitionMode.ToString()),
                 LogFields.Field("activityLoadingMode", result.ActivityLoadingMode),
                 LogFields.Field("targetActivity", GetActivityName(result.TargetActivity)),

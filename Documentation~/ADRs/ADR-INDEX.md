@@ -330,3 +330,13 @@ References:
 
 - `F9R-A-ADR-ContentAnchor-Runtime-Binding-Reentry.md`
 - `Assets/_Documentation/Plans/F9R-A-PLAN-ContentAnchor-Runtime-Binding-Reentry.md`
+
+## F37 - Transition Gate Policy
+
+Scope: Transition / Gate / Route and Activity authoring.
+
+Status: Accepted.
+
+F37 adds explicit Route/Activity `TransitionGateMode` policy so visual transition windows can block lifecycle requests, input acceptance, interaction acceptance and gameplay actions without using Pause or `Time.timeScale`.
+
+Reference: `F37-ADR-TRANSITION-001-Transition-Gate-Policy.md`

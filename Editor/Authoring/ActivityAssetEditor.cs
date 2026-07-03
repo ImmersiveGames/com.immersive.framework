@@ -12,6 +12,7 @@ namespace Immersive.Framework.Editor.Editor.Authoring
         private SerializedProperty _description;
         private SerializedProperty _activityContentProfile;
         private SerializedProperty _visualTransitionMode;
+        private SerializedProperty _transitionGateMode;
 
         private void OnEnable()
         {
@@ -19,6 +20,7 @@ namespace Immersive.Framework.Editor.Editor.Authoring
             _description = serializedObject.FindProperty("description");
             _activityContentProfile = serializedObject.FindProperty("activityContentProfile");
             _visualTransitionMode = serializedObject.FindProperty("visualTransitionMode");
+            _transitionGateMode = serializedObject.FindProperty("transitionGateMode");
         }
 
         public override void OnInspectorGUI()
@@ -91,10 +93,18 @@ namespace Immersive.Framework.Editor.Editor.Authoring
                 new GUIContent(
                     "Transition Mode",
                     "Controls whether Activity requests use the Session UIGlobal TransitionSurface. Route transitions remain mandatory and are not configured here."));
+            EditorGUILayout.PropertyField(
+                _transitionGateMode,
+                new GUIContent(
+                    "Transition Gate",
+                    "Controls which capabilities are blocked while the Activity transition/lifecycle window is running."));
 
             var mode = _visualTransitionMode != null && !_visualTransitionMode.hasMultipleDifferentValues
                 ? (ActivityVisualTransitionMode)_visualTransitionMode.intValue
                 : ActivityVisualTransitionMode.Seamless;
+            var gateMode = _transitionGateMode != null && !_transitionGateMode.hasMultipleDifferentValues
+                ? (Immersive.Framework.Transition.TransitionGateMode)_transitionGateMode.intValue
+                : Immersive.Framework.Transition.TransitionGateMode.LifecycleRequestsOnly;
 
             switch (mode)
             {
@@ -113,6 +123,13 @@ namespace Immersive.Framework.Editor.Editor.Authoring
                         "Activity operations use the Session UIGlobal TransitionSurface and the canonical LoadingSurface when the Activity operation requests loading presentation.",
                         MessageType.Info);
                     break;
+            }
+
+            if (mode != ActivityVisualTransitionMode.Seamless && gateMode != Immersive.Framework.Transition.TransitionGateMode.InputInteractionAndGameplay)
+            {
+                EditorGUILayout.HelpBox(
+                    "For visible Activity fades, Transition Gate = InputInteractionAndGameplay is recommended so repeated UI clicks do not reach ActivityRequestTrigger during the fade.",
+                    MessageType.Warning);
             }
         }
 

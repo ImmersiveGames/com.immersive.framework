@@ -20,7 +20,8 @@ namespace Immersive.Framework.GameFlow
             string source,
             string reason,
             RouteLifecycleStartResult routeLifecycleResult,
-            FrameworkTransitionDiagnostics transitionDiagnostics = default)
+            FrameworkTransitionDiagnostics transitionDiagnostics = default,
+            TransitionGateDiagnostics transitionGateDiagnostics = default)
         {
             Kind = kind;
             Message = message.NormalizeText();
@@ -29,6 +30,7 @@ namespace Immersive.Framework.GameFlow
             Reason = reason.NormalizeTextOrFallback("None");
             RouteLifecycleResult = routeLifecycleResult;
             TransitionDiagnostics = transitionDiagnostics;
+            TransitionGateDiagnostics = transitionGateDiagnostics;
         }
 
         public FrameworkRouteRequestKind Kind { get; }
@@ -45,13 +47,16 @@ namespace Immersive.Framework.GameFlow
 
         internal FrameworkTransitionDiagnostics TransitionDiagnostics { get; }
 
+        internal TransitionGateDiagnostics TransitionGateDiagnostics { get; }
+
         public bool Succeeded => Kind == FrameworkRouteRequestKind.Succeeded;
 
         public static FrameworkRouteRequestResult FailedInvalidConfig(
             string message,
             RouteAsset targetRoute = null,
             string source = null,
-            string reason = null)
+            string reason = null,
+            TransitionGateDiagnostics transitionGateDiagnostics = default)
         {
             return new FrameworkRouteRequestResult(
                 FrameworkRouteRequestKind.FailedInvalidConfig,
@@ -59,7 +64,9 @@ namespace Immersive.Framework.GameFlow
                 targetRoute,
                 source,
                 reason,
-                default);
+                default,
+                default,
+                transitionGateDiagnostics);
         }
 
         public static FrameworkRouteRequestResult FailedRuntimeUnavailable(
@@ -110,16 +117,22 @@ namespace Immersive.Framework.GameFlow
             RouteAsset targetRoute,
             string source,
             string reason,
-            GateEvaluationResult gateEvaluation)
+            GateEvaluationResult gateEvaluation,
+            TransitionGateDiagnostics transitionGateDiagnostics = default)
         {
             string routeName = targetRoute.ToDiagnosticText(x => x.RouteName, "<missing>");
+            bool blockedByTransitionGate = transitionGateDiagnostics.HasBlockingEvaluation;
             return new FrameworkRouteRequestResult(
-                FrameworkRouteRequestKind.IgnoredAlreadyInFlight,
+                blockedByTransitionGate
+                    ? FrameworkRouteRequestKind.RejectedByTransitionGate
+                    : FrameworkRouteRequestKind.IgnoredAlreadyInFlight,
                 $"Route Request ignored. {FormatRequestContext(source, reason)} targetRoute='{routeName}'. {GateRequestAdmission.FormatBlockedMessage("Route Request", gateEvaluation)}",
                 targetRoute,
                 source,
                 reason,
-                default);
+                default,
+                default,
+                transitionGateDiagnostics);
         }
 
         internal static FrameworkRouteRequestResult SucceededWith(
@@ -127,7 +140,8 @@ namespace Immersive.Framework.GameFlow
             string source,
             string reason,
             RouteLifecycleStartResult routeLifecycleResult,
-            FrameworkTransitionDiagnostics transitionDiagnostics = default)
+            FrameworkTransitionDiagnostics transitionDiagnostics = default,
+            TransitionGateDiagnostics transitionGateDiagnostics = default)
         {
             return new FrameworkRouteRequestResult(
                 FrameworkRouteRequestKind.Succeeded,
@@ -136,7 +150,8 @@ namespace Immersive.Framework.GameFlow
                 source,
                 reason,
                 routeLifecycleResult,
-                transitionDiagnostics);
+                transitionDiagnostics,
+                transitionGateDiagnostics);
         }
 
         private static string FormatRequestContext(string source, string reason)

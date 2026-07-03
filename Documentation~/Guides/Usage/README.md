@@ -23,10 +23,11 @@ Documentation~/Guides/Usage/index.html
 ## Current content
 
 ```text
-com.immersive.framework v1.0.0-preview.7
+com.immersive.framework v1.0.0-preview.8
 FIRSTGAME-1 — Minimal Playable Framework Flow
 FIRSTGAME-2 — Minimal Pause Model Flow
 FIRSTGAME-2B — Pause Keyboard Toggle
 FIRSTGAME-2C — Pause TimeScale
 FIRSTGAME-2D — Global Pause Input Action
+FIRSTGAME-2E — Transition Gate Policy
 ```

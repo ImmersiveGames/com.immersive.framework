@@ -21,6 +21,7 @@ namespace Immersive.Framework.GameFlow
             string reason,
             ActivityFlowStartResult activityFlowResult,
             FrameworkTransitionDiagnostics transitionDiagnostics = default,
+            TransitionGateDiagnostics transitionGateDiagnostics = default,
             ActivityVisualTransitionMode activityTransitionMode = ActivityVisualTransitionMode.Seamless,
             GameFlowRequestOperationKind operationKind = GameFlowRequestOperationKind.Activity)
         {
@@ -31,6 +32,7 @@ namespace Immersive.Framework.GameFlow
             Reason = reason.NormalizeTextOrFallback("None");
             ActivityFlowResult = activityFlowResult;
             TransitionDiagnostics = transitionDiagnostics;
+            TransitionGateDiagnostics = transitionGateDiagnostics;
             ActivityTransitionMode = NormalizeActivityTransitionMode(activityTransitionMode);
             ActivityLoadingMode = DetermineActivityLoadingMode(ActivityFlowResult, ActivityTransitionMode);
             OperationKind = NormalizeOperationKind(operationKind);
@@ -50,6 +52,8 @@ namespace Immersive.Framework.GameFlow
 
         internal FrameworkTransitionDiagnostics TransitionDiagnostics { get; }
 
+        internal TransitionGateDiagnostics TransitionGateDiagnostics { get; }
+
         internal ActivityVisualTransitionMode ActivityTransitionMode { get; }
 
         internal string ActivityLoadingMode { get; }
@@ -64,7 +68,8 @@ namespace Immersive.Framework.GameFlow
             string source = null,
             string reason = null,
             ActivityVisualTransitionMode activityTransitionMode = ActivityVisualTransitionMode.Seamless,
-            GameFlowRequestOperationKind operationKind = GameFlowRequestOperationKind.Activity)
+            GameFlowRequestOperationKind operationKind = GameFlowRequestOperationKind.Activity,
+            TransitionGateDiagnostics transitionGateDiagnostics = default)
         {
             return new FrameworkActivityRequestResult(
                 FrameworkActivityRequestKind.FailedInvalidConfig,
@@ -74,6 +79,7 @@ namespace Immersive.Framework.GameFlow
                 reason,
                 default,
                 default,
+                transitionGateDiagnostics,
                 activityTransitionMode,
                 operationKind);
         }
@@ -127,17 +133,22 @@ namespace Immersive.Framework.GameFlow
             string source,
             string reason,
             GateEvaluationResult gateEvaluation,
+            TransitionGateDiagnostics transitionGateDiagnostics = default,
             GameFlowRequestOperationKind operationKind = GameFlowRequestOperationKind.Activity)
         {
             string activityName = targetActivity.ToDiagnosticText(x => x.ActivityName);
+            bool blockedByTransitionGate = transitionGateDiagnostics.HasBlockingEvaluation;
             return new FrameworkActivityRequestResult(
-                FrameworkActivityRequestKind.IgnoredAlreadyInFlight,
+                blockedByTransitionGate
+                    ? FrameworkActivityRequestKind.RejectedByTransitionGate
+                    : FrameworkActivityRequestKind.IgnoredAlreadyInFlight,
                 $"Activity Request ignored. {FormatRequestContext(source, reason)} targetActivity='{activityName}'. {GateRequestAdmission.FormatBlockedMessage("Activity Request", gateEvaluation)}",
                 targetActivity,
                 source,
                 reason,
                 default,
                 default,
+                transitionGateDiagnostics,
                 ActivityVisualTransitionMode.Seamless,
                 operationKind);
         }
@@ -154,6 +165,7 @@ namespace Immersive.Framework.GameFlow
                 reason.NormalizeTextOrFallback("None"),
                 default,
                 default,
+                default,
                 ActivityVisualTransitionMode.Seamless,
                 GameFlowRequestOperationKind.ActivityClear);
         }
@@ -164,7 +176,8 @@ namespace Immersive.Framework.GameFlow
             string reason,
             ActivityFlowStartResult activityFlowResult,
             FrameworkTransitionDiagnostics transitionDiagnostics = default,
-            ActivityVisualTransitionMode activityTransitionMode = ActivityVisualTransitionMode.Seamless)
+            ActivityVisualTransitionMode activityTransitionMode = ActivityVisualTransitionMode.Seamless,
+            TransitionGateDiagnostics transitionGateDiagnostics = default)
         {
             return new FrameworkActivityRequestResult(
                 FrameworkActivityRequestKind.Succeeded,
@@ -174,6 +187,7 @@ namespace Immersive.Framework.GameFlow
                 reason,
                 activityFlowResult,
                 transitionDiagnostics,
+                transitionGateDiagnostics,
                 activityTransitionMode,
                 targetActivity == null ? GameFlowRequestOperationKind.ActivityClear : GameFlowRequestOperationKind.Activity);
         }

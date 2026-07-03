@@ -3,6 +3,7 @@ using Immersive.Framework.Authoring;
 using Immersive.Framework.ContentFlow;
 using Immersive.Framework.Loading;
 using Immersive.Framework.Pause;
+using Immersive.Framework.Transition;
 using Immersive.Framework.TransitionEffects;
 using UnityEditor;
 using UnityEngine;
@@ -76,6 +77,11 @@ namespace Immersive.Framework.Editor.Editor.Validation
             }
 
             ValidateSceneBuildSettings(report, route, route.PrimaryScenePath, $"{label} Primary Scene", true);
+            ValidateEnumField<TransitionGateMode>(
+                report,
+                route,
+                "transitionGateMode",
+                $"{label} Transition Gate");
 
             if (route.StartupActivity == null)
             {
@@ -115,6 +121,11 @@ namespace Immersive.Framework.Editor.Editor.Validation
                 activity,
                 "visualTransitionMode",
                 $"{label} Visual Transition Mode");
+            ValidateEnumField<TransitionGateMode>(
+                report,
+                activity,
+                "transitionGateMode",
+                $"{label} Transition Gate");
 
             if (activity.ActivityContentProfile == null)
             {
@@ -262,6 +273,12 @@ namespace Immersive.Framework.Editor.Editor.Validation
                         $"Model Readiness: UIGlobal Scene '{gameApplication.GlobalUiScenePath}' contains {transitionAdapterCount} Transition adapter(s).",
                         gameApplication);
                 }
+                else if (RequiresTransitionInteractionBlocking(gameApplication))
+                {
+                    report.AddWarning(
+                        $"Model Readiness: UIGlobal Scene '{gameApplication.GlobalUiScenePath}' has no Transition adapter, but Route/Activity Transition Gate policy expects interaction blocking during visual transitions.",
+                        gameApplication);
+                }
 
                 if (loadingAdapterCount > 0)
                 {
@@ -293,6 +310,25 @@ namespace Immersive.Framework.Editor.Editor.Validation
             {
                 sceneScope.CloseIfOwned();
             }
+        }
+
+        private static bool RequiresTransitionInteractionBlocking(GameApplicationAsset gameApplication)
+        {
+            if (gameApplication == null || gameApplication.StartupRoute == null)
+            {
+                return false;
+            }
+
+            var route = gameApplication.StartupRoute;
+            if (TransitionGateBlockerPolicy.BlocksInteractionAcceptance(route.TransitionGateMode))
+            {
+                return true;
+            }
+
+            var activity = route.StartupActivity;
+            return activity != null
+                && activity.VisualTransitionMode != ActivityVisualTransitionMode.Seamless
+                && TransitionGateBlockerPolicy.BlocksInteractionAcceptance(activity.TransitionGateMode);
         }
 
         private static void ValidateEnumField<TEnum>(

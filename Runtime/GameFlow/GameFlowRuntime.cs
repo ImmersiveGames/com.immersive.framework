@@ -29,6 +29,8 @@ namespace Immersive.Framework.GameFlow
         private bool _routeRequestInFlight;
         private bool _activityRequestInFlight;
         private bool _cycleResetRequestInFlight;
+        private GateSnapshot _transitionGateSnapshot;
+        private TransitionGateMode _transitionGateMode;
 
         internal bool HasLifecycleRequestInFlight => _routeRequestInFlight
             || _activityRequestInFlight
@@ -174,7 +176,8 @@ namespace Immersive.Framework.GameFlow
                     targetRoute,
                     resolvedSource,
                     resolvedReason,
-                    gateEvaluation);
+                    gateEvaluation,
+                    CreateBlockedTransitionGateDiagnostics(gateEvaluation));
             }
 
             if (_routeLifecycleRuntime.IsRouteActive(targetRoute))
@@ -183,11 +186,19 @@ namespace Immersive.Framework.GameFlow
             }
 
             _routeRequestInFlight = true;
+            TransitionGateDiagnostics transitionGateDiagnostics = default;
             try
             {
                 var previousRoute = _routeLifecycleRuntime.CurrentRoute;
                 var previousActivity = _routeLifecycleRuntime.CurrentActivity;
                 var operationId = CreateTransitionOperationId(TransitionScope.Route);
+                var transitionGateMode = ResolveRouteTransitionGateMode(targetRoute);
+                var transitionGateSnapshot = ApplyTransitionGate(
+                    operationId,
+                    TransitionKind.RouteSwitch,
+                    transitionGateMode,
+                    resolvedSource,
+                    resolvedReason);
                 var transitionBefore = await ExecuteTransitionAsync(
                     TransitionRequest.Before(
                         operationId,
@@ -225,6 +236,7 @@ namespace Immersive.Framework.GameFlow
                     TransitionScope.Route,
                     transitionBefore,
                     transitionAfter);
+                transitionGateDiagnostics = ReleaseTransitionGate(transitionGateMode, transitionGateSnapshot);
 
                 if (!routeLifecycleResult.Started)
                 {
@@ -232,7 +244,8 @@ namespace Immersive.Framework.GameFlow
                         routeLifecycleResult.Message,
                         targetRoute,
                         resolvedSource,
-                        resolvedReason);
+                        resolvedReason,
+                        transitionGateDiagnostics);
                 }
 
                 return FrameworkRouteRequestResult.SucceededWith(
@@ -240,10 +253,12 @@ namespace Immersive.Framework.GameFlow
                     resolvedSource,
                     resolvedReason,
                     routeLifecycleResult,
-                    transitionDiagnostics);
+                    transitionDiagnostics,
+                    transitionGateDiagnostics);
             }
             finally
             {
+                ReleaseTransitionGateIfStillActive();
                 _routeRequestInFlight = false;
             }
         }
@@ -313,7 +328,8 @@ namespace Immersive.Framework.GameFlow
                     targetActivity,
                     resolvedSource,
                     resolvedReason,
-                    gateEvaluation);
+                    gateEvaluation,
+                    CreateBlockedTransitionGateDiagnostics(gateEvaluation));
             }
 
             if (_routeLifecycleRuntime.IsActivityActive(targetActivity))
@@ -343,9 +359,17 @@ namespace Immersive.Framework.GameFlow
             }
 
             _activityRequestInFlight = true;
+            TransitionGateDiagnostics transitionGateDiagnostics = default;
             try
             {
                 var operationId = CreateTransitionOperationId(TransitionScope.Activity);
+                var transitionGateMode = ResolveActivityTransitionGateMode(targetActivity);
+                var transitionGateSnapshot = ApplyTransitionGate(
+                    operationId,
+                    TransitionKind.ActivitySwitch,
+                    transitionGateMode,
+                    resolvedSource,
+                    resolvedReason);
                 var transitionBefore = await ExecuteActivityTransitionAsync(
                     TransitionRequest.Before(
                         operationId,
@@ -385,6 +409,7 @@ namespace Immersive.Framework.GameFlow
                     TransitionScope.Activity,
                     transitionBefore,
                     transitionAfter);
+                transitionGateDiagnostics = ReleaseTransitionGate(transitionGateMode, transitionGateSnapshot);
 
                 if (!activityFlowResult.Completed)
                 {
@@ -393,7 +418,9 @@ namespace Immersive.Framework.GameFlow
                         targetActivity,
                         resolvedSource,
                         resolvedReason,
-                        activityTransitionMode);
+                        activityTransitionMode,
+                        GameFlowRequestOperationKind.Activity,
+                        transitionGateDiagnostics);
                 }
 
                 return FrameworkActivityRequestResult.SucceededWith(
@@ -402,10 +429,12 @@ namespace Immersive.Framework.GameFlow
                     resolvedReason,
                     activityFlowResult,
                     transitionDiagnostics,
-                    activityTransitionMode);
+                    transitionGateDiagnostics: transitionGateDiagnostics,
+                    activityTransitionMode: activityTransitionMode);
             }
             finally
             {
+                ReleaseTransitionGateIfStillActive();
                 _activityRequestInFlight = false;
             }
         }
@@ -458,6 +487,7 @@ namespace Immersive.Framework.GameFlow
                     resolvedSource,
                     resolvedReason,
                     gateEvaluation,
+                    CreateBlockedTransitionGateDiagnostics(gateEvaluation),
                     GameFlowRequestOperationKind.ActivityClear);
             }
 
@@ -488,9 +518,17 @@ namespace Immersive.Framework.GameFlow
             }
 
             _activityRequestInFlight = true;
+            TransitionGateDiagnostics transitionGateDiagnostics = default;
             try
             {
                 var operationId = CreateTransitionOperationId(TransitionScope.ActivityClear);
+                var transitionGateMode = ResolveActivityTransitionGateMode(previousActivity);
+                var transitionGateSnapshot = ApplyTransitionGate(
+                    operationId,
+                    TransitionKind.ActivityClear,
+                    transitionGateMode,
+                    resolvedSource,
+                    resolvedReason);
                 var transitionBefore = await ExecuteActivityTransitionAsync(
                     TransitionRequest.Before(
                         operationId,
@@ -530,6 +568,7 @@ namespace Immersive.Framework.GameFlow
                     TransitionScope.ActivityClear,
                     transitionBefore,
                     transitionAfter);
+                transitionGateDiagnostics = ReleaseTransitionGate(transitionGateMode, transitionGateSnapshot);
 
                 if (!activityFlowResult.Completed)
                 {
@@ -539,7 +578,8 @@ namespace Immersive.Framework.GameFlow
                         resolvedSource,
                         resolvedReason,
                         activityTransitionMode,
-                        GameFlowRequestOperationKind.ActivityClear);
+                        GameFlowRequestOperationKind.ActivityClear,
+                        transitionGateDiagnostics);
                 }
 
                 return FrameworkActivityRequestResult.SucceededWith(
@@ -548,10 +588,12 @@ namespace Immersive.Framework.GameFlow
                     resolvedReason,
                     activityFlowResult,
                     transitionDiagnostics,
-                    activityTransitionMode);
+                    transitionGateDiagnostics: transitionGateDiagnostics,
+                    activityTransitionMode: activityTransitionMode);
             }
             finally
             {
+                ReleaseTransitionGateIfStillActive();
                 _activityRequestInFlight = false;
             }
         }
@@ -633,6 +675,20 @@ namespace Immersive.Framework.GameFlow
             string reason,
             bool objectResetRequestInFlight)
         {
+            if (_transitionGateSnapshot.HasBlockers && TransitionGateBlockerPolicy.BlocksLifecycleRequests(_transitionGateMode))
+            {
+                var transitionGateEvaluation = EvaluateTransitionGateAdmission(
+                    GateScope.GameFlow,
+                    GateDomain.LifecycleRequest,
+                    subject,
+                    source,
+                    reason);
+                if (!transitionGateEvaluation.IsAllowed)
+                {
+                    return transitionGateEvaluation;
+                }
+            }
+
             return GateRequestAdmission.EvaluateLifecycleRequest(
                 subject,
                 source,
@@ -653,6 +709,23 @@ namespace Immersive.Framework.GameFlow
                 source,
                 reason,
                 objectResetRequestInFlight: false);
+        }
+
+        internal GateEvaluationResult EvaluateTransitionGateAdmission(
+            GateScope scope,
+            GateDomain domain,
+            string subject,
+            string source,
+            string reason)
+        {
+            return _transitionGateSnapshot.Evaluate(
+                scope,
+                domain,
+                default,
+                subject.NormalizeTextOrFallback("TransitionGateAdmission"),
+                source,
+                reason,
+                TransitionGateBlockerPolicy.PolicySource);
         }
 
         private Task<RouteLifecycleStartResult> StartRouteCoreAsync(RouteAsset route, string source, string reason)
@@ -698,6 +771,16 @@ namespace Immersive.Framework.GameFlow
             return activity != null ? activity.VisualTransitionMode : ActivityVisualTransitionMode.Seamless;
         }
 
+        private static TransitionGateMode ResolveRouteTransitionGateMode(RouteAsset route)
+        {
+            return route != null ? route.TransitionGateMode : TransitionGateMode.InputInteractionAndGameplay;
+        }
+
+        private static TransitionGateMode ResolveActivityTransitionGateMode(ActivityAsset activity)
+        {
+            return activity != null ? activity.TransitionGateMode : TransitionGateMode.LifecycleRequestsOnly;
+        }
+
         private static bool ShouldExecuteActivityTransition(ActivityVisualTransitionMode mode)
         {
             return mode is ActivityVisualTransitionMode.Fade or ActivityVisualTransitionMode.FadeWithLoading;
@@ -736,6 +819,56 @@ namespace Immersive.Framework.GameFlow
         private Awaitable<TransitionResult> ExecuteTransitionAsync(TransitionRequest request)
         {
             return _transitionOrchestrator.ExecuteAsync(request);
+        }
+
+        private GateSnapshot ApplyTransitionGate(
+            TransitionOperationId operationId,
+            TransitionKind kind,
+            TransitionGateMode mode,
+            string source,
+            string reason)
+        {
+            _transitionGateMode = Enum.IsDefined(typeof(TransitionGateMode), mode)
+                ? mode
+                : TransitionGateMode.None;
+            _transitionGateSnapshot = TransitionGateBlockerPolicy.CreateRunningSnapshot(
+                operationId,
+                kind,
+                _transitionGateMode,
+                source,
+                reason);
+            return _transitionGateSnapshot;
+        }
+
+        private TransitionGateDiagnostics ReleaseTransitionGate(TransitionGateMode mode, GateSnapshot appliedSnapshot)
+        {
+            _transitionGateSnapshot = TransitionGateBlockerPolicy.CreateReleasedSnapshot();
+            _transitionGateMode = TransitionGateMode.None;
+
+            return appliedSnapshot.HasBlockers
+                ? TransitionGateDiagnostics.AppliedAndReleased(mode, appliedSnapshot)
+                : TransitionGateDiagnostics.NotApplied(mode);
+        }
+
+        private void ReleaseTransitionGateIfStillActive()
+        {
+            if (!_transitionGateSnapshot.HasBlockers)
+            {
+                return;
+            }
+
+            _transitionGateSnapshot = TransitionGateBlockerPolicy.CreateReleasedSnapshot();
+            _transitionGateMode = TransitionGateMode.None;
+        }
+
+        private TransitionGateDiagnostics CreateBlockedTransitionGateDiagnostics(GateEvaluationResult gateEvaluation)
+        {
+            if (!_transitionGateSnapshot.HasBlockers || !gateEvaluation.IsValid || gateEvaluation.IsAllowed)
+            {
+                return default;
+            }
+
+            return TransitionGateDiagnostics.Rejected(_transitionGateMode, _transitionGateSnapshot, gateEvaluation);
         }
 
         private TransitionOperationId CreateTransitionOperationId(TransitionScope scope)

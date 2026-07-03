@@ -1,5 +1,6 @@
 using UnityEngine;
 using Immersive.Framework.ApiStatus;
+using Immersive.Framework.Transition;
 
 namespace Immersive.Framework.Authoring
 {
@@ -34,6 +35,10 @@ namespace Immersive.Framework.Authoring
         [SerializeField]
         [Tooltip("Optional first Activity started after this route primary scene is resolved.")]
         private ActivityAsset startupActivity;
+
+        [SerializeField]
+        [Tooltip("Controls which requests/capabilities are blocked while this Route transition is running. Route transitions should normally block input, interaction and gameplay.")]
+        private TransitionGateMode transitionGateMode = TransitionGateMode.InputInteractionAndGameplay;
 
         [SerializeField]
         [TextArea(2, 4)]
@@ -86,6 +91,16 @@ namespace Immersive.Framework.Authoring
         public ActivityAsset StartupActivity => startupActivity;
 
         public bool HasStartupActivity => startupActivity != null;
+
+        public TransitionGateMode TransitionGateMode
+        {
+            get
+            {
+                return System.Enum.IsDefined(typeof(TransitionGateMode), transitionGateMode)
+                    ? transitionGateMode
+                    : TransitionGateMode.InputInteractionAndGameplay;
+            }
+        }
 
         public string Description => description ?? string.Empty;
     }

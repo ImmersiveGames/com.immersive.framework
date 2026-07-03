@@ -37,11 +37,13 @@ namespace Immersive.Framework.Diagnostics
 
             bool blockerCreatedPassed = ValidateBlockerCreated(logger, blocker, operationId, kind);
             bool runningBlocksPassed = ValidateRunningBlocksLifecycleRequest(logger, operationId, kind, normalizedSource);
+            bool fullPolicyBlocksPassed = ValidateFullPolicyBlocksCapabilities(logger, operationId, kind, normalizedSource);
             bool completedReleasesPassed = ValidateCompletedReleasesBlocker(logger, operationId, kind, normalizedSource);
             bool failedReleasesPassed = ValidateFailedReleasesBlocker(logger, operationId, kind, normalizedSource);
 
             return Task.FromResult(blockerCreatedPassed
                 && runningBlocksPassed
+                && fullPolicyBlocksPassed
                 && completedReleasesPassed
                 && failedReleasesPassed);
         }
@@ -68,6 +70,7 @@ namespace Immersive.Framework.Diagnostics
             var snapshot = TransitionGateBlockerPolicy.CreateRunningSnapshot(
                 operationId,
                 kind,
+                TransitionGateMode.LifecycleRequestsOnly,
                 source,
                 "qa.transition.gate-blocker.running");
 
@@ -84,6 +87,29 @@ namespace Immersive.Framework.Diagnostics
                 && evaluation is { IsBlocked: true, BlockingBlockerCount: 1, Decision: { Status: GateDecisionStatus.Blocked, Scope: GateScope.GameFlow, Domain: GateDomain.LifecycleRequest, PolicySource: TransitionGateBlockerPolicy.PolicySource } };
 
             LogEvaluationStep(logger, "running-blocks-lifecycle", passed, operationId, kind, evaluation, snapshot.BlockerCount);
+            return passed;
+        }
+
+        private static bool ValidateFullPolicyBlocksCapabilities(
+            FrameworkLogger logger,
+            TransitionOperationId operationId,
+            TransitionKind kind,
+            string source)
+        {
+            var snapshot = TransitionGateBlockerPolicy.CreateRunningSnapshot(
+                operationId,
+                kind,
+                TransitionGateMode.InputInteractionAndGameplay,
+                source,
+                "qa.transition.gate-blocker.full-policy");
+
+            bool passed = snapshot is { HasBlockers: true, BlockerCount: 4 }
+                && snapshot.IsBlocked(GateScope.GameFlow, GateDomain.LifecycleRequest)
+                && snapshot.IsBlocked(GateScope.Input, GateDomain.InputAcceptance)
+                && snapshot.IsBlocked(GateScope.Interaction, GateDomain.InteractionAcceptance)
+                && snapshot.IsBlocked(GateScope.Gameplay, GateDomain.GameplayAction);
+
+            LogSnapshotStep(logger, "full-policy-blocks-capabilities", passed, operationId, kind, snapshot);
             return passed;
         }
 
@@ -229,6 +255,34 @@ namespace Immersive.Framework.Diagnostics
 
             logger.Warning("QA Transition Gate Blocker Smoke step failed.", fields);
             logger.Debug("QA Transition Gate Blocker Smoke evaluation failure diagnostics.", LogFields.Field("details", evaluation.ToDiagnosticString()));
+        }
+
+        private static void LogSnapshotStep(
+            FrameworkLogger logger,
+            string step,
+            bool passed,
+            TransitionOperationId operationId,
+            TransitionKind kind,
+            GateSnapshot snapshot)
+        {
+            LogField[] fields = LogFields.Of(
+                LogFields.Field("step", step),
+                LogFields.Field("passed", passed),
+                LogFields.Field("operation", operationId.StableText),
+                LogFields.Field("kind", kind.ToString()),
+                LogFields.Field("blockers", snapshot.BlockerCount),
+                LogFields.Field("blocksLifecycle", snapshot.IsBlocked(GateScope.GameFlow, GateDomain.LifecycleRequest)),
+                LogFields.Field("blocksInputAcceptance", snapshot.IsBlocked(GateScope.Input, GateDomain.InputAcceptance)),
+                LogFields.Field("blocksInteractionAcceptance", snapshot.IsBlocked(GateScope.Interaction, GateDomain.InteractionAcceptance)),
+                LogFields.Field("blocksGameplayAction", snapshot.IsBlocked(GateScope.Gameplay, GateDomain.GameplayAction)));
+
+            if (passed)
+            {
+                logger.Info("QA Transition Gate Blocker Smoke step completed.", fields);
+                return;
+            }
+
+            logger.Warning("QA Transition Gate Blocker Smoke step failed.", fields);
         }
 
         private static void LogReleaseStep(

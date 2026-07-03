@@ -12,6 +12,7 @@ namespace Immersive.Framework.Editor.Editor.Authoring
         private SerializedProperty _primarySceneName;
         private SerializedProperty _routeContentProfile;
         private SerializedProperty _startupActivity;
+        private SerializedProperty _transitionGateMode;
         private SerializedProperty _description;
 
         private void OnEnable()
@@ -21,6 +22,7 @@ namespace Immersive.Framework.Editor.Editor.Authoring
             _primarySceneName = serializedObject.FindProperty("primarySceneName");
             _routeContentProfile = serializedObject.FindProperty("routeContentProfile");
             _startupActivity = serializedObject.FindProperty("startupActivity");
+            _transitionGateMode = serializedObject.FindProperty("transitionGateMode");
             _description = serializedObject.FindProperty("description");
         }
 
@@ -46,6 +48,9 @@ namespace Immersive.Framework.Editor.Editor.Authoring
 
             EditorGUILayout.Space(6);
             DrawStartupActivity();
+
+            EditorGUILayout.Space(6);
+            DrawTransitionPolicy();
 
             EditorGUILayout.Space(6);
             EditorGUILayout.LabelField("Current Scope", EditorStyles.boldLabel);
@@ -150,6 +155,19 @@ namespace Immersive.Framework.Editor.Editor.Authoring
                     }
                 }
             }
+        }
+
+        private void DrawTransitionPolicy()
+        {
+            EditorGUILayout.LabelField("Transition", EditorStyles.boldLabel);
+            EditorGUILayout.PropertyField(
+                _transitionGateMode,
+                new GUIContent(
+                    "Transition Gate",
+                    "Controls which capabilities are blocked while this Route transition/lifecycle window is running."));
+            EditorGUILayout.HelpBox(
+                "Route transitions normally use the UIGlobal TransitionSurface. Use InputInteractionAndGameplay for First Game style fades so UI clicks and gameplay actions are blocked until the transition closes.",
+                MessageType.Info);
         }
 
         private SceneAsset LoadCurrentSceneAsset()

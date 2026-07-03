@@ -12,6 +12,7 @@ namespace Immersive.Framework.GameFlow
         FailedInvalidConfig = 1,
         IgnoredAlreadyActive = 2,
         IgnoredAlreadyInFlight = 3,
-        FailedRuntimeUnavailable = 4
+        FailedRuntimeUnavailable = 4,
+        RejectedByTransitionGate = 5
     }
 }

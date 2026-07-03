@@ -502,7 +502,7 @@
     <div class="sidebar-section">
       <div class="sidebar-section-label">Início</div>
       <a href="#intro" class="active"><span class="icon">🏠</span> Visão Geral</a>
-      <a href="#escopo"><span class="icon">🎯</span> Escopo do Preview 7</a>
+      <a href="#escopo"><span class="icon">🎯</span> Escopo do Preview 8</a>
       <a href="#conceitos"><span class="icon">🧠</span> Conceitos Mínimos</a>
       <a href="#ordem-boot"><span class="icon">⚙️</span> Ordem de Boot</a>
     </div>
@@ -544,12 +544,12 @@
   <main class="content">
 
     <div class="hero" id="intro">
-      <div class="eyebrow">Manual de Uso · v1.0.0-preview.7</div>
-      <h1>Immersive Framework<br>Preview 7</h1>
-      <p>Guia prático para o fluxo mínimo jogável validado até o Preview 7: Menu, Gameplay, Activity A/B, Loading, Transition, Pause visual, Pause por botão, Pause por tecla via Global/Pause, pausa real via TimeScale e Model Readiness sem blockers.</p>
+      <div class="eyebrow">Manual de Uso · v1.0.0-preview.8</div>
+      <h1>Immersive Framework<br>Preview 8</h1>
+      <p>Guia prático para o fluxo mínimo jogável validado até o Preview 8: Menu, Gameplay, Activity A/B, Loading, Transition Gate, Pause visual, Pause por botão, Pause por tecla via Global/Pause, pausa real via TimeScale e Model Readiness sem blockers.</p>
       <div class="badge-row">
         <span class="badge badge-green">✓ FIRSTGAME-1/2/2B/2C PASS</span>
-        <span class="badge badge-blue">v1.0.0-preview.7</span>
+        <span class="badge badge-blue">v1.0.0-preview.8</span>
         <span class="badge badge-yellow">Git Package Preview</span>
         <span class="badge badge-purple">Unity 6.5</span>
       </div>
@@ -563,8 +563,8 @@
       </div>
     </div>
 
-    <h2 id="escopo">Escopo do Preview 7</h2>
-    <p>O <strong>v1.0.0-preview.7</strong> consolida o uso real do framework como package Git em projeto consumidor e corrige o trilho de Pause input: superfície visual residente na <code>UIGlobal</code>, requests por UI, toggle por tecla via uma única ação <code>Global/Pause</code>, pausa básica da simulação com <code>Time.timeScale = 0</code> e troca de <code>PlayerInput</code> somente como efeito opcional/explicitamente configurado.</p>
+    <h2 id="escopo">Escopo do Preview 8</h2>
+    <p>O <strong>v1.0.0-preview.8</strong> consolida o uso real do framework como package Git em projeto consumidor e adiciona Transition Gate: Route/Activity podem bloquear requests de lifecycle, input, interação e gameplay durante a janela de transition. Pause continua separado: superfície visual residente na <code>UIGlobal</code>, requests por UI, toggle por tecla via uma única ação <code>Global/Pause</code> e pausa básica da simulação com <code>Time.timeScale = 0</code>.</p>
 
     <div class="flow">
       <div class="flow-box accent">Boot</div>
@@ -582,7 +582,7 @@
 
     <div class="table-wrap">
       <table>
-        <thead><tr><th>Validado no Preview 7</th><th>Status</th></tr></thead>
+        <thead><tr><th>Validado no Preview 8</th><th>Status</th></tr></thead>
         <tbody>
           <tr><td>GameApplication como raiz do projeto</td><td><span class="badge badge-green">PASS</span></td></tr>
           <tr><td>Startup Route de Menu sem Activity inicial</td><td><span class="badge badge-green">PASS</span></td></tr>
@@ -596,6 +596,7 @@
           <tr><td>Pause/Resume por botões UI</td><td><span class="badge badge-green">PASS</span></td></tr>
           <tr><td>Pause Toggle por tecla <code>Escape</code></td><td><span class="badge badge-green">PASS</span></td></tr>
           <tr><td>Gate blockers de input/interação durante Pause</td><td><span class="badge badge-green">PASS</span></td></tr>
+          <tr><td>Transition Gate em fades de Route/Activity</td><td><span class="badge badge-green">EXPECTED</span></td></tr>
           <tr><td><code>Time.timeScale</code> 1 → 0 → 1 durante Pause/Resume</td><td><span class="badge badge-green">PASS</span></td></tr>
           <tr><td><code>PlayerInput</code> troca Player → UI → Player</td><td><span class="badge badge-green">PASS</span></td></tr>
         </tbody>
@@ -603,7 +604,7 @@
     </div>
 
     <h2 id="conceitos">Conceitos mínimos</h2>
-    <p>Para usar o Preview 7, você precisa dominar apenas seis conceitos.</p>
+    <p>Para usar o Preview 8, você precisa dominar apenas sete conceitos.</p>
 
     <div class="asset-grid">
       <div class="asset-card">
@@ -644,7 +645,7 @@
       </div>
     </div>
 
-    <h2 id="ordem-boot">Ordem de boot canônica no Preview 7</h2>
+    <h2 id="ordem-boot">Ordem de boot canônica no Preview 8</h2>
     <p>O Preview 6 fixa uma fragilidade importante: a cena principal da Startup Route agora é preparada antes da UIGlobal. Isso evita duplicação de câmera, <code>AudioListener</code> e <code>EventSystem</code> quando o designer dá Play com outra cena aberta.</p>
 
     <div class="flow" style="flex-wrap:wrap; row-gap:10px;">
@@ -740,11 +741,11 @@
           </tr>
           <tr>
             <td><code>FG_Activity_A</code></td>
-            <td><code>Visual Transition Mode = Fade</code></td>
+            <td><code>Visual Transition Mode = Fade</code><br><code>Transition Gate = InputInteractionAndGameplay</code></td>
           </tr>
           <tr>
             <td><code>FG_Activity_B</code></td>
-            <td><code>Visual Transition Mode = Fade</code></td>
+            <td><code>Visual Transition Mode = Fade</code><br><code>Transition Gate = InputInteractionAndGameplay</code></td>
           </tr>
         </tbody>
       </table>
@@ -756,7 +757,8 @@
     </div>
 
     <h2 id="uiglobal">Configurando a UIGlobal</h2>
-    <p>A <code>FG_UIGlobal</code> deve conter as superfícies globais do framework. No Preview 7, o fluxo validado usa Loading, Transition, Pause visual residente e Pause por Global/Pause. A Pause Surface não é opcional neste fluxo: ela confirma o estado pausado junto com <code>Time.timeScale = 0</code>.</p>
+    <p>A <code>FG_UIGlobal</code> deve conter as superfícies globais do framework. No Preview 8, o fluxo validado usa Loading, Transition, Transition Gate, Pause visual residente e Pause por Global/Pause. A Pause Surface não é opcional neste fluxo: ela confirma o estado pausado junto com <code>Time.timeScale = 0</code>.</p>
+    <p>No Preview 8, o <code>TransitionFadeSurface</code> também é a barreira visual mínima para Transition Gate. Mantenha <code>Block Raycasts When Visible</code> ativo no <code>UnityFadeCurtainEffectAdapter</code> para que cliques repetidos durante fade não alcancem <code>ActivityRequestTrigger</code> ou <code>RouteRequestTrigger</code>.</p>
 
     <pre><code>FG_UIGlobal
 ├── Main Camera
@@ -788,6 +790,21 @@
       </div>
     </div>
 
+    <h2 id="transition-gate">Transition Gate no Preview 8</h2>
+    <p>Transition Gate é a política de bloqueio durante janelas de Route/Activity transition. Ele não é Pause, não usa <code>Time.timeScale</code>, não substitui <code>Global/Pause</code> e não torna <code>PauseKeepUiActionMap</code> uma decisão canônica.</p>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Asset</th><th>Configuração recomendada para First Game</th></tr></thead>
+        <tbody>
+          <tr><td><code>FG_GameplayRoute</code></td><td><code>Transition Gate = InputInteractionAndGameplay</code></td></tr>
+          <tr><td><code>FG_Activity_A</code></td><td><code>Visual Transition Mode = Fade</code><br><code>Transition Gate = InputInteractionAndGameplay</code></td></tr>
+          <tr><td><code>FG_Activity_B</code></td><td><code>Visual Transition Mode = Fade</code><br><code>Transition Gate = InputInteractionAndGameplay</code></td></tr>
+          <tr><td><code>TransitionFadeSurface</code></td><td><code>Block Raycasts When Visible = true</code></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>Smoke esperado: clique <code>Go Activity B</code> e, durante o fade, clique novamente. O segundo clique não deve chegar como <code>IgnoredAlreadyActive</code>. Após a transition, os botões voltam a funcionar e <code>Restore Activity A</code> continua operacional.</p>
+
     <div class="component-card">
       <div class="comp-header">
         <div class="comp-icon">📊</div>
@@ -813,7 +830,7 @@
     </div>
 
 
-    <h2 id="pause-model">Modelo de Pause no Preview 7</h2>
+    <h2 id="pause-model">Modelo de Pause no Preview 8</h2>
     <p>Pause é um <strong>estado lógico global</strong> da aplicação com um efeito concreto de simulação. Ele não é uma Route, não é uma Activity e não é um menu de opções completo. O runtime de Pause produz um snapshot que atualiza a superfície visual, os Gate blockers e o <code>Time.timeScale</code>.</p>
 
     <div class="flow" style="flex-wrap:wrap; row-gap:10px;">
@@ -830,7 +847,7 @@
 
     <div class="table-wrap">
       <table>
-        <thead><tr><th>Regra</th><th>Decisão Preview 7</th></tr></thead>
+        <thead><tr><th>Regra</th><th>Decisão Preview 8</th></tr></thead>
         <tbody>
           <tr><td>Escopo</td><td>Pause é global e fica acima de Route/Activity.</td></tr>
           <tr><td>Visual</td><td>Pause surface residente na <code>FG_UIGlobal</code>.</td></tr>
@@ -915,7 +932,7 @@ PauseSurface/PausePanel
     </div>
 
     <h2 id="pause-keyboard">Pause por tecla com Unity Input System</h2>
-    <p>O Preview 7 usa <code>PauseInputActionTrigger</code> como caminho simples para Pause por teclado ou controle. Ele escuta uma única ação global do Unity Input System, envia um request direto ao <code>PauseRuntime</code> e deixa troca de mapa do <code>PlayerInput</code> como efeito opcional, não como requisito do Pause.</p>
+    <p>O Preview 8 usa <code>PauseInputActionTrigger</code> como caminho simples para Pause por teclado ou controle. Ele escuta uma única ação global do Unity Input System, envia um request direto ao <code>PauseRuntime</code> e deixa troca de mapa do <code>PlayerInput</code> como efeito opcional, não como requisito do Pause.</p>
 
     <pre><code>FG_UIGlobal
 └── PauseInput
@@ -939,7 +956,7 @@ PauseSurface/PausePanel
       <span class="callout-icon">⚠️</span>
       <div class="callout-body">
         <div class="callout-title">Não duplique Pause em Player e UI</div>
-        <p>O trilho canônico do Preview 7 é <code>Global/Pause</code>. Evite <code>Player/Pause</code> + <code>UI/Pause</code> como caminho normal; isso cria dedupe e pode interferir na UI depois do Resume.</p>
+        <p>O trilho canônico do Preview 8 é <code>Global/Pause</code>. Evite <code>Player/Pause</code> + <code>UI/Pause</code> como caminho normal; isso cria dedupe e pode interferir na UI depois do Resume.</p>
       </div>
     </div>
 
@@ -1054,7 +1071,7 @@ PauseSurface/PausePanel
     </div>
 
     <h2 id="build-profile">Build Profile / Build Settings</h2>
-    <p>Todas as cenas usadas pelo framework precisam estar no Build Profile. Para Preview 7, a cena de boot do Player deve ser a Primary Scene da Startup Route, não a UIGlobal.</p>
+    <p>Todas as cenas usadas pelo framework precisam estar no Build Profile. Para Preview 8, a cena de boot do Player deve ser a Primary Scene da Startup Route, não a UIGlobal.</p>
 
     <div class="table-wrap">
       <table>
@@ -1104,7 +1121,7 @@ PauseSurface/PausePanel
     <p>Use este roteiro para validar o fluxo em Play Mode.</p>
 
     <ol class="steps">
-      <li><div class="step-body"><strong>Abra qualquer cena</strong>Inclusive <code>FG_UIGlobal</code>. No Preview 7 o framework mantém a Primary Scene da Startup Route preparada antes da UIGlobal.</div></li>
+      <li><div class="step-body"><strong>Abra qualquer cena</strong>Inclusive <code>FG_UIGlobal</code>. No Preview 8 o framework mantém a Primary Scene da Startup Route preparada antes da UIGlobal.</div></li>
       <li><div class="step-body"><strong>Dê Play</strong>Confirme que o boot começa em <code>FG_Menu</code>.</div></li>
       <li><div class="step-body"><strong>Clique Start Game</strong>Confirme a troca para <code>FG_Gameplay</code> com Loading e Transition.</div></li>
       <li><div class="step-body"><strong>Confirme Activity A</strong>A <code>FG_Activity_A</code> deve entrar automaticamente.</div></li>
@@ -1117,7 +1134,7 @@ PauseSurface/PausePanel
 
     <h2 id="logs">Logs de PASS</h2>
 
-    <h3>Boot Preview 7 correto</h3>
+    <h3>Boot Preview 8 correto</h3>
     <div class="log-block">
       <div class="log-label">Console — ordem canônica</div>
       Startup Route Primary Scene prepared before UIGlobal load.<br>
@@ -1207,13 +1224,13 @@ PauseSurface/PausePanel
     <div class="component-card">
       <h4 style="color:var(--red); margin-bottom:8px;">🔴 Dois AudioListeners ou dois EventSystems</h4>
       <p style="font-size:13.5px; color:var(--text-soft);"><strong>Causa comum:</strong> <code>FG_UIGlobal</code> e a Route Scene têm câmera/EventSystem ao mesmo tempo, ou o package é anterior ao Preview 6 e duplica a UIGlobal aberta no Editor.<br>
-      <strong>Solução:</strong> use <code>v1.0.0-preview.7</code>; mantenha apenas um <code>AudioListener</code> e um <code>EventSystem</code> no runtime.</p>
+      <strong>Solução:</strong> use <code>v1.0.0-preview.8</code>; mantenha apenas um <code>AudioListener</code> e um <code>EventSystem</code> no runtime.</p>
     </div>
 
     <div class="component-card">
       <h4 style="color:var(--red); margin-bottom:8px;">🔴 "Unloading the last loaded scene is not supported"</h4>
       <p style="font-size:13.5px; color:var(--text-soft);"><strong>Causa:</strong> versão antiga do validator tentando fechar a última cena aberta ao validar a UIGlobal.<br>
-      <strong>Solução:</strong> atualizar para <code>v1.0.0-preview.7</code>. O validator agora trata ownership de cena com segurança.</p>
+      <strong>Solução:</strong> atualizar para <code>v1.0.0-preview.8</code>. O validator agora trata ownership de cena com segurança.</p>
     </div>
 
     <div class="component-card">
@@ -1240,11 +1257,17 @@ PauseSurface/PausePanel
       <strong>Solução:</strong> confirme <code>Startup Activity = FG_Activity_A</code> e os adapters com <code>Local Content Id</code> explícito.</p>
     </div>
 
+    <div class="component-card">
+      <h4 style="color:var(--yellow); margin-bottom:8px;">⚠️ Segundo clique durante fade chega no runtime</h4>
+      <p style="font-size:13.5px; color:var(--text-soft);"><strong>Causa comum:</strong> Activity com <code>Transition Gate = None</code>/<code>LifecycleRequestsOnly</code> ou <code>UnityFadeCurtainEffectAdapter</code> sem bloquear raycasts quando visível.<br>
+      <strong>Solução:</strong> para First Game, use <code>InputInteractionAndGameplay</code> nas Activities com Fade e mantenha <code>Block Raycasts When Visible</code> ativo no Transition surface.</p>
+    </div>
+
     <h2 id="limites">O que não fazer neste Preview</h2>
     <div class="callout stop">
       <span class="callout-icon">🚫</span>
       <div class="callout-body">
-        <div class="callout-title">Fora do escopo do Preview 7 / FIRSTGAME-1/2/3</div>
+        <div class="callout-title">Fora do escopo do Preview 8 / FIRSTGAME-1/2/3</div>
         <p>
           Não edite o package Git dentro do consumidor.<br><br>
           Não copie assets, cenas ou ProjectSettings do projeto QA antigo.<br><br>
@@ -1254,12 +1277,12 @@ PauseSurface/PausePanel
           Não trate Pause como Activity ou Route.<br><br>
           Não use <code>Input.GetKeyDown</code> solto como caminho canônico de Pause.<br><br>
           Não use o bridge avançado de InputMode quando o objetivo for apenas <code>Escape → Toggle Pause</code>.<br><br>
-          <code>Time.timeScale</code> é efeito básico do Pause no Preview 7, mas não substitui o contrato do <code>PauseRuntime</code>. Não escreva scripts paralelos mudando <code>Time.timeScale</code> fora do runtime de Pause.
+          <code>Time.timeScale</code> é efeito básico do Pause no Preview 8, mas não substitui o contrato do <code>PauseRuntime</code>. Não escreva scripts paralelos mudando <code>Time.timeScale</code> fora do runtime de Pause.
         </p>
       </div>
     </div>
 
-    <h2 id="glossario">Glossário Preview 7</h2>
+    <h2 id="glossario">Glossário Preview 8</h2>
     <div class="table-wrap">
       <table>
         <thead><tr><th>Termo</th><th>Definição</th></tr></thead>
@@ -1272,7 +1295,8 @@ PauseSurface/PausePanel
           <tr><td><code>Transition Surface</code></td><td>Superfície visual usada para fades entre Route/Activity.</td></tr>
           <tr><td><code>Loading Surface</code></td><td>Superfície visual usada quando há carga real de cena.</td></tr>
           <tr><td><code>PauseRuntime</code></td><td>Runtime autoritativo do estado <code>Running/Paused</code>, gate snapshot, surface e efeito básico de <code>Time.timeScale</code>.</td></tr>
-          <tr><td><code>TimeScale Pause</code></td><td>Efeito de simulação do Preview 7: captura o valor running, aplica <code>Time.timeScale = 0</code> durante Pause e restaura no Resume.</td></tr>
+          <tr><td><code>Transition Gate</code></td><td>Policy de Route/Activity que bloqueia lifecycle/input/interação/gameplay durante transition sem usar Pause ou <code>Time.timeScale</code>.</td></tr>
+          <tr><td><code>TimeScale Pause</code></td><td>Efeito de simulação do Preview 8: captura o valor running, aplica <code>Time.timeScale = 0</code> durante Pause e restaura no Resume.</td></tr>
           <tr><td><code>PauseInputActionTrigger</code></td><td>Componente simples para <code>Escape → Toggle Pause</code>, com opção de trocar <code>PlayerInput</code> entre <code>Player</code> e <code>UI</code>.</td></tr>
           <tr><td><code>ActivityClear</code></td><td>Operação que remove a Activity ativa sem trocar de Route.</td></tr>
           <tr><td><code>Model Readiness</code></td><td>Validação de authoring do framework. Para PASS, precisa de 0 blockers.</td></tr>
@@ -1282,7 +1306,7 @@ PauseSurface/PausePanel
     </div>
 
     <div style="margin-top:56px; padding-top:24px; border-top:1px solid var(--border-soft); color:var(--text-muted); font-size:13px;">
-      <p><strong style="color:var(--text-soft);">Immersive Framework</strong> — Guia Preview 7 para Game Designers &nbsp;·&nbsp; <code>com.immersive.framework v1.0.0-preview.7</code></p>
+      <p><strong style="color:var(--text-soft);">Immersive Framework</strong> — Guia Preview 8 para Game Designers &nbsp;·&nbsp; <code>com.immersive.framework v1.0.0-preview.8</code></p>
       <p style="margin-top:4px;">Este guia cobre o escopo validado em FIRSTGAME-1, FIRSTGAME-2, FIRSTGAME-2B, FIRSTGAME-2C e FIRSTGAME-2D. Atualizar ao fechar uma nova tag preview.</p>
     </div>
 

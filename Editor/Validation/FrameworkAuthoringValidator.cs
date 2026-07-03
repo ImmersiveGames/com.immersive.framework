@@ -9,6 +9,7 @@ using Immersive.Framework.Loading;
 using Immersive.Framework.Editor.Editor.Authoring;
 using Immersive.Framework.RouteLifecycle;
 using Immersive.Framework.TransitionEffects;
+using Immersive.Framework.Transition;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.UI;
@@ -415,6 +416,13 @@ namespace Immersive.Framework.Editor.Editor.Validation
                 ValidatePrimarySceneReference(report, route);
             }
 
+            if (!Enum.IsDefined(typeof(TransitionGateMode), route.TransitionGateMode))
+            {
+                report.AddError(
+                    "Route Transition Gate has an invalid value.",
+                    route);
+            }
+
             if (route.StartupActivity == null)
             {
                 report.AddInfo(
@@ -470,6 +478,20 @@ namespace Immersive.Framework.Editor.Editor.Validation
                         "Activity Transition Mode is FadeWithLoading. Activity requests use the Session TransitionSurface and canonical LoadingSurface when the operation performs Activity scene load/release side-effects.",
                         activity);
                     break;
+            }
+
+            if (!Enum.IsDefined(typeof(TransitionGateMode), activity.TransitionGateMode))
+            {
+                report.AddError(
+                    "Activity Transition Gate has an invalid value.",
+                    activity);
+            }
+            else if (activity.VisualTransitionMode != ActivityVisualTransitionMode.Seamless
+                && activity.TransitionGateMode != TransitionGateMode.InputInteractionAndGameplay)
+            {
+                report.AddWarning(
+                    "Activity uses a visible Transition Mode. Transition Gate = InputInteractionAndGameplay is recommended to block repeated UI/input/gameplay during the fade.",
+                    activity);
             }
 
             if (activity.ActivityContentProfile == null)

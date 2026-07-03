@@ -208,6 +208,7 @@ namespace Immersive.Framework.GameFlow
                     return FlowRequestOutcome.Succeeded;
                 case FrameworkRouteRequestKind.IgnoredAlreadyActive:
                 case FrameworkRouteRequestKind.IgnoredAlreadyInFlight:
+                case FrameworkRouteRequestKind.RejectedByTransitionGate:
                     return FlowRequestOutcome.Ignored;
                 default:
                     return FlowRequestOutcome.Failed;
