@@ -36,6 +36,10 @@ namespace Immersive.Framework.GameFlow
             || _activityRequestInFlight
             || _cycleResetRequestInFlight;
 
+        internal GateSnapshot CurrentTransitionGateSnapshot => _transitionGateSnapshot;
+
+        internal TransitionGateMode CurrentTransitionGateMode => _transitionGateMode;
+
         internal GameFlowRuntime(
             RuntimeContentRuntime runtimeContentRuntime,
             RuntimeContentAnchorBinding contentAnchorBindingRuntime)

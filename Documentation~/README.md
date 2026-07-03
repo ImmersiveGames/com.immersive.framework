@@ -19,24 +19,11 @@ Read in this order:
 | Route/Activity | Route lifecycle and Activity flow are the baseline navigation model. |
 | UIGlobal | Shared app/session scene for Transition, Loading and Pause presentation adapters. |
 | Loading | Loading surface adapters are collected from `UIGlobal`; progress contracts are available for diagnostics/presentation. |
-| Transition | Transition orchestration can use effect adapters such as `UnityFadeCurtainEffectAdapter`; Route/Activity/ActivityClear `TransitionGateMode` can block lifecycle requests, input, interaction and gameplay during transition windows. |
+| Transition | Transition orchestration can use effect adapters such as `UnityFadeCurtainEffectAdapter`; Route/Activity `TransitionGateMode` can block lifecycle requests, input, interaction and gameplay during transition windows; `UnityPlayerInputGateAdapter` can make gameplay `PlayerInput` obey those Gate blockers. |
 | Pause | Runtime Pause state drives Gate blockers, resident `UIGlobal` Pause surface and basic simulation pause through `Time.timeScale = 0`. |
-| Pause input | Use `PauseInputActionTrigger` with `Global/Pause` for simple keyboard/controller Pause. Do not use `Player/Pause + UI/Pause` as the canonical path; reserve the bridge path for explicit typed InputMode / PlayerInput ownership cuts. |
-| Object Entry / Object Reset | Route-scoped Object Entry and explicit Object Reset participants are usable in First Game. `firstgame.player` reset is validated through `ObjectResetTransformParticipant` and `ObjectResetUnityParticipantSource`. |
+| Pause input | Use `PauseInputActionTrigger` for simple keyboard/controller Pause through `Global/Pause`; reserve `PauseInputActionRuntimeBridgeTrigger` + `PauseInputModeUnityPlayerInputRuntimeBridge` for explicit typed InputMode / PlayerInput ownership cuts. |
 | RuntimeContent / ContentAnchor | Logical runtime, Unity materialization adapters, bridge/set authoring and composite release helpers are available. |
 | QA | `FrameworkQaCanvas` exposes package smokes for setup and regression validation. |
-
-## First Game preview.8 status
-
-Validated through `v1.0.0-preview.8`:
-
-- Boot, Menu Route and Gameplay Route.
-- Activity A/B flow, ActivityClear and manual restore.
-- Pause with `Global/Pause`, resident Pause surface and `Time.timeScale = 0`.
-- Object Reset for `ObjectEntry:firstgame.player`.
-- Transition Gate for Route, Activity and ActivityClear using `InputInteractionAndGameplay`.
-
-Accepted limitation: `FirstGamePlayerMover` is a temporary consumer-side script. It reads `InputAction` directly and does not participate in the framework Gate system by itself. Gameplay movement blocking during Transition Gate belongs to a future PlayerInput/Gameplay Gate Adapter or mature Player/Actor movement flow.
 
 ## Documentation classification
 
@@ -74,4 +61,24 @@ Esse path deve permanecer estável. Atualize o conteúdo do `index.html` conform
 
 ## Transition Gate
 
-Transition Gate is separate from Pause. It does not use `Time.timeScale`, does not replace `Global/Pause`, and does not make `PauseKeepUiActionMap` canonical. For First Game style Route/Activity/ActivityClear fades, configure `Transition Gate = InputInteractionAndGameplay` on the relevant Route and Activity assets. Transition Gate is logical; gameplay scripts that read input directly must participate through an adapter/receiver to obey it.
+Transition Gate is separate from Pause. It does not use `Time.timeScale`, does not replace `Global/Pause`, and does not make `PauseKeepUiActionMap` canonical. For First Game style Route/Activity fades, configure `Transition Gate = InputInteractionAndGameplay` on the relevant Route and Activity assets.
+
+## Unity PlayerInput Gate Adapter
+
+`UnityPlayerInputGateAdapter` is an opt-in Unity Input System adapter for gameplay-owned `PlayerInput` components. It watches the current framework Gate snapshot and disables the configured gameplay action map, normally `Player`, while `InputAcceptance` or `GameplayAction` is blocked. This makes temporary or consumer-side movement scripts that read `Player/Move` obey Pause and Transition Gate without making those scripts framework-aware.
+
+Recommended First Game setup:
+
+```text
+PlayerPrototype
+  PlayerInput
+  FirstGamePlayerMover
+  UnityPlayerInputGateAdapter
+    Player Input = PlayerPrototype/PlayerInput
+    Gameplay Action Map Name = Player
+    Block On Input Acceptance = true
+    Block On Gameplay Action = true
+    Block Mode = Disable Action Map
+```
+
+The adapter is not a Player/Actor lifecycle, does not spawn players, does not own `PlayerInputManager`, and does not replace future movement architecture.

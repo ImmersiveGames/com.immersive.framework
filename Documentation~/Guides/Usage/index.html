@@ -502,7 +502,7 @@
     <div class="sidebar-section">
       <div class="sidebar-section-label">Início</div>
       <a href="#intro" class="active"><span class="icon">🏠</span> Visão Geral</a>
-      <a href="#escopo"><span class="icon">🎯</span> Escopo do Preview 8</a>
+      <a href="#escopo"><span class="icon">🎯</span> Escopo do Preview 9</a>
       <a href="#conceitos"><span class="icon">🧠</span> Conceitos Mínimos</a>
       <a href="#ordem-boot"><span class="icon">⚙️</span> Ordem de Boot</a>
     </div>
@@ -526,9 +526,9 @@
     </div>
 
     <div class="sidebar-section">
-      <div class="sidebar-section-label">Gameplay FIRSTGAME-3</div>
-      <a href="#player-prototype"><span class="icon">🧍</span> Player Prototype</a>
+      <div class="sidebar-section-label">FIRSTGAME-3</div>
       <a href="#object-reset"><span class="icon">♻️</span> Object Reset</a>
+      <a href="#playerinput-gate"><span class="icon">🎛️</span> PlayerInput Gate</a>
       <a href="#transition-gate"><span class="icon">🚦</span> Transition Gate</a>
     </div>
 
@@ -551,12 +551,12 @@
   <main class="content">
 
     <div class="hero" id="intro">
-      <div class="eyebrow">Manual de Uso · v1.0.0-preview.8</div>
-      <h1>Immersive Framework<br>Preview 8</h1>
-      <p>Guia prático para o fluxo mínimo jogável validado até o Preview 8: Menu, Gameplay, Activity A/B, Loading, Transition Gate, Pause visual, Pause por botão, Pause por tecla via Global/Pause, pausa real via TimeScale, Object Reset do player protótipo e Model Readiness sem blockers.</p>
+      <div class="eyebrow">Manual de Uso · v1.0.0-preview.9</div>
+      <h1>Immersive Framework<br>Preview 9</h1>
+      <p>Guia prático para o fluxo mínimo jogável validado até o Preview 9: Menu, Gameplay, Activity A/B, Loading, Transition Gate, Pause visual, Pause por botão, Pause por tecla via Global/Pause, pausa real via TimeScale, Transition Gate e PlayerInput Gate Adapter para gameplay input temporário.</p>
       <div class="badge-row">
-        <span class="badge badge-green">✓ FIRSTGAME-1/2/3 + preview.8 PASS</span>
-        <span class="badge badge-blue">v1.0.0-preview.8</span>
+        <span class="badge badge-green">✓ FIRSTGAME-1/2/3/3B PASS</span>
+        <span class="badge badge-blue">v1.0.0-preview.9</span>
         <span class="badge badge-yellow">Git Package Preview</span>
         <span class="badge badge-purple">Unity 6.5</span>
       </div>
@@ -570,8 +570,8 @@
       </div>
     </div>
 
-    <h2 id="escopo">Escopo do Preview 8</h2>
-    <p>O <strong>v1.0.0-preview.8</strong> consolida o uso real do framework como package Git em projeto consumidor e adiciona Transition Gate: Route/Activity/ActivityClear podem bloquear requests de lifecycle, input, interação e gameplay durante a janela de transition. Também valida Object Reset de um player protótipo no consumidor. Pause continua separado: superfície visual residente na <code>UIGlobal</code>, requests por UI, toggle por tecla via uma única ação <code>Global/Pause</code> e pausa básica da simulação com <code>Time.timeScale = 0</code>.</p>
+    <h2 id="escopo">Escopo do Preview 9</h2>
+    <p>O <strong>v1.0.0-preview.9</strong> consolida o uso real do framework como package Git em projeto consumidor. Route/Activity podem bloquear requests de lifecycle, input, interação e gameplay durante transition, e o novo <code>UnityPlayerInputGateAdapter</code> permite que um <code>PlayerInput</code> de gameplay obedeça esses blockers. Pause continua separado: superfície visual residente na <code>UIGlobal</code>, requests por UI, toggle por tecla via uma única ação <code>Global/Pause</code> e pausa básica da simulação com <code>Time.timeScale = 0</code>.</p>
 
     <div class="flow">
       <div class="flow-box accent">Boot</div>
@@ -584,14 +584,12 @@
       <span class="flow-arrow">▶</span>
       <div class="flow-box purple">Activity A/B</div>
       <span class="flow-arrow">▶</span>
-      <div class="flow-box green">Object Reset</div>
-      <span class="flow-arrow">▶</span>
       <div class="flow-box accent">Pause</div>
     </div>
 
     <div class="table-wrap">
       <table>
-        <thead><tr><th>Validado no Preview 8</th><th>Status</th></tr></thead>
+        <thead><tr><th>Validado no Preview 9</th><th>Status</th></tr></thead>
         <tbody>
           <tr><td>GameApplication como raiz do projeto</td><td><span class="badge badge-green">PASS</span></td></tr>
           <tr><td>Startup Route de Menu sem Activity inicial</td><td><span class="badge badge-green">PASS</span></td></tr>
@@ -605,16 +603,15 @@
           <tr><td>Pause/Resume por botões UI</td><td><span class="badge badge-green">PASS</span></td></tr>
           <tr><td>Pause Toggle por tecla <code>Escape</code></td><td><span class="badge badge-green">PASS</span></td></tr>
           <tr><td>Gate blockers de input/interação durante Pause</td><td><span class="badge badge-green">PASS</span></td></tr>
-          <tr><td>Transition Gate em fades de Route/Activity/ActivityClear</td><td><span class="badge badge-green">PASS</span></td></tr>
-          <tr><td>Object Reset do <code>firstgame.player</code></td><td><span class="badge badge-green">PASS</span></td></tr>
+          <tr><td>Transition Gate em fades de Route/Activity</td><td><span class="badge badge-green">PASS</span></td></tr>
           <tr><td><code>Time.timeScale</code> 1 → 0 → 1 durante Pause/Resume</td><td><span class="badge badge-green">PASS</span></td></tr>
-          <tr><td><code>FirstGamePlayerMover</code> temporário</td><td><span class="badge badge-yellow">PROTÓTIPO</span></td></tr>
+          <tr><td><code>UnityPlayerInputGateAdapter</code> bloqueia action map de gameplay</td><td><span class="badge badge-green">READY</span></td></tr>
         </tbody>
       </table>
     </div>
 
     <h2 id="conceitos">Conceitos mínimos</h2>
-    <p>Para usar o Preview 8, você precisa dominar estes conceitos mínimos.</p>
+    <p>Para usar o Preview 9, você precisa dominar apenas sete conceitos.</p>
 
     <div class="asset-grid">
       <div class="asset-card">
@@ -651,23 +648,11 @@
         <div class="asset-icon">⏸️</div>
         <div class="asset-name">PauseRuntime</div>
         <h4>Pause global</h4>
-        <p>Estado global que aplica surface, blockers e <code>Time.timeScale</code>. O input simples usa <code>Global/Pause</code>.</p>
-      </div>
-      <div class="asset-card">
-        <div class="asset-icon">♻️</div>
-        <div class="asset-name">Object Reset</div>
-        <h4>Reset local de objeto</h4>
-        <p>Reset explícito de um objeto declarado por <code>ObjectEntryDeclaration</code> e executado por participants registrados.</p>
-      </div>
-      <div class="asset-card">
-        <div class="asset-icon">🚦</div>
-        <div class="asset-name">Transition Gate</div>
-        <h4>Bloqueio de transition</h4>
-        <p>Política de Route/Activity/ActivityClear para bloquear lifecycle, input, interação e gameplay durante fades.</p>
+        <p>Estado global que aplica surface, blockers, <code>Time.timeScale</code> e, opcionalmente, troca de action map.</p>
       </div>
     </div>
 
-    <h2 id="ordem-boot">Ordem de boot canônica no Preview 8</h2>
+    <h2 id="ordem-boot">Ordem de boot canônica no Preview 9</h2>
     <p>O Preview 6 fixa uma fragilidade importante: a cena principal da Startup Route agora é preparada antes da UIGlobal. Isso evita duplicação de câmera, <code>AudioListener</code> e <code>EventSystem</code> quando o designer dá Play com outra cena aberta.</p>
 
     <div class="flow" style="flex-wrap:wrap; row-gap:10px;">
@@ -698,10 +683,6 @@
 │   │   └── FG_UIGlobal.unity
 │   └── Gameplay/
 │       └── FG_Gameplay.unity
-│
-├── Scripts/
-│   └── FirstGame/
-│       └── FirstGamePlayerMover.cs
 │
 ├── ScriptableObjects/
 │   └── ImmersiveFramework/
@@ -783,8 +764,8 @@
     </div>
 
     <h2 id="uiglobal">Configurando a UIGlobal</h2>
-    <p>A <code>FG_UIGlobal</code> deve conter as superfícies globais do framework. No Preview 8, o fluxo validado usa Loading, Transition, Transition Gate, Pause visual residente e Pause por Global/Pause. A Pause Surface não é opcional neste fluxo: ela confirma o estado pausado junto com <code>Time.timeScale = 0</code>.</p>
-    <p>No Preview 8, o <code>TransitionFadeSurface</code> também é a barreira visual mínima para Transition Gate. Mantenha <code>Block Raycasts When Visible</code> ativo no <code>UnityFadeCurtainEffectAdapter</code> para que cliques repetidos durante fade não alcancem <code>ActivityRequestTrigger</code> ou <code>RouteRequestTrigger</code>.</p>
+    <p>A <code>FG_UIGlobal</code> deve conter as superfícies globais do framework. No Preview 9, o fluxo validado usa Loading, Transition, Transition Gate, Pause visual residente e Pause por Global/Pause. A Pause Surface não é opcional neste fluxo: ela confirma o estado pausado junto com <code>Time.timeScale = 0</code>.</p>
+    <p>No Preview 9, o <code>TransitionFadeSurface</code> também é a barreira visual mínima para Transition Gate. Mantenha <code>Block Raycasts When Visible</code> ativo no <code>UnityFadeCurtainEffectAdapter</code> para que cliques repetidos durante fade não alcancem <code>ActivityRequestTrigger</code> ou <code>RouteRequestTrigger</code>.</p>
 
     <pre><code>FG_UIGlobal
 ├── Main Camera
@@ -816,19 +797,8 @@
       </div>
     </div>
 
-    <h2 id="transition-gate">Transition Gate no Preview 8</h2>
-    <p>Transition Gate é a política de bloqueio durante janelas de Route/Activity/ActivityClear transition. Ele não é Pause, não usa <code>Time.timeScale</code>, não substitui <code>Global/Pause</code> e não torna <code>PauseKeepUiActionMap</code> uma decisão canônica.</p>
-    <div class="table-wrap">
-      <table>
-        <thead><tr><th>Modo</th><th>Comportamento</th></tr></thead>
-        <tbody>
-          <tr><td><code>None</code></td><td>Sem bloqueio extra. A transição é apenas visual.</td></tr>
-          <tr><td><code>LifecycleRequestsOnly</code></td><td>Bloqueia requests concorrentes de lifecycle/gameflow, mas não bloqueia UI/input/gameplay.</td></tr>
-          <tr><td><code>InputAndInteraction</code></td><td>Bloqueia input acceptance e interaction acceptance durante a transição.</td></tr>
-          <tr><td><code>InputInteractionAndGameplay</code></td><td>Bloqueia lifecycle request, input acceptance, interaction acceptance e gameplay action. É o recomendado para fades do First Game.</td></tr>
-        </tbody>
-      </table>
-    </div>
+    <h2 id="transition-gate">Transition Gate no Preview 9</h2>
+    <p>Transition Gate é a política de bloqueio durante janelas de Route/Activity transition. Ele não é Pause, não usa <code>Time.timeScale</code>, não substitui <code>Global/Pause</code> e não torna <code>PauseKeepUiActionMap</code> uma decisão canônica.</p>
     <div class="table-wrap">
       <table>
         <thead><tr><th>Asset</th><th>Configuração recomendada para First Game</th></tr></thead>
@@ -836,19 +806,11 @@
           <tr><td><code>FG_GameplayRoute</code></td><td><code>Transition Gate = InputInteractionAndGameplay</code></td></tr>
           <tr><td><code>FG_Activity_A</code></td><td><code>Visual Transition Mode = Fade</code><br><code>Transition Gate = InputInteractionAndGameplay</code></td></tr>
           <tr><td><code>FG_Activity_B</code></td><td><code>Visual Transition Mode = Fade</code><br><code>Transition Gate = InputInteractionAndGameplay</code></td></tr>
-          <tr><td><code>ActivityClear</code></td><td>Usa o modo de transition/gate da operação de Activity. Para First Game, validar com <code>InputInteractionAndGameplay</code>.</td></tr>
           <tr><td><code>TransitionFadeSurface</code></td><td><code>Block Raycasts When Visible = true</code></td></tr>
         </tbody>
       </table>
     </div>
-    <p>Smoke esperado: clique <code>Go Activity B</code> e, durante o fade, clique novamente. O segundo clique não deve chegar como <code>IgnoredAlreadyActive</code> enquanto a cortina está bloqueando raycast. Após a transition, os botões voltam a funcionar e <code>Restore Activity A</code> continua operacional.</p>
-    <div class="callout warning">
-      <span class="callout-icon">⚠️</span>
-      <div class="callout-body">
-        <div class="callout-title">Gate lógico não controla scripts temporários sozinho</div>
-        <p>O Gate pode reportar <code>blocksGameplayAction='True'</code>, mas um script temporário que lê <code>InputAction</code> diretamente só obedece se tiver um adapter/receiver ou se consultar o Gate explicitamente. O <code>FirstGamePlayerMover</code> atual é protótipo consumer-side; o bloqueio de movimento por Gate fica para um corte futuro de PlayerInput/Gameplay Gate Adapter.</p>
-      </div>
-    </div>
+    <p>Smoke esperado: clique <code>Go Activity B</code> e, durante o fade, clique novamente. O segundo clique não deve chegar como <code>IgnoredAlreadyActive</code>. Após a transition, os botões voltam a funcionar e <code>Restore Activity A</code> continua operacional.</p>
 
     <div class="component-card">
       <div class="comp-header">
@@ -875,7 +837,7 @@
     </div>
 
 
-    <h2 id="pause-model">Modelo de Pause no Preview 8</h2>
+    <h2 id="pause-model">Modelo de Pause no Preview 9</h2>
     <p>Pause é um <strong>estado lógico global</strong> da aplicação com um efeito concreto de simulação. Ele não é uma Route, não é uma Activity e não é um menu de opções completo. O runtime de Pause produz um snapshot que atualiza a superfície visual, os Gate blockers e o <code>Time.timeScale</code>.</p>
 
     <div class="flow" style="flex-wrap:wrap; row-gap:10px;">
@@ -892,14 +854,14 @@
 
     <div class="table-wrap">
       <table>
-        <thead><tr><th>Regra</th><th>Decisão Preview 8</th></tr></thead>
+        <thead><tr><th>Regra</th><th>Decisão Preview 9</th></tr></thead>
         <tbody>
           <tr><td>Escopo</td><td>Pause é global e fica acima de Route/Activity.</td></tr>
           <tr><td>Visual</td><td>Pause surface residente na <code>FG_UIGlobal</code>.</td></tr>
           <tr><td>Entrada UI</td><td><code>PauseRequestTrigger</code> para botões de Pause/Resume/Toggle.</td></tr>
           <tr><td>Entrada por tecla</td><td><code>PauseInputActionTrigger</code> para Unity Input System.</td></tr>
           <tr><td>Simulação</td><td>Ao pausar, captura o valor running e aplica <code>Time.timeScale = 0</code>; ao resumir, restaura o valor capturado.</td></tr>
-          <tr><td>Input map</td><td><code>PauseInputActionTrigger</code> pode trocar <code>PlayerInput</code>: <code>Player → UI → Player</code>.</td></tr>
+          <tr><td>Input por tecla</td><td><code>PauseInputActionTrigger</code> escuta <code>Global/Pause</code>. Troca de <code>PlayerInput</code> é opcional e não é requisito do FIRSTGAME.</td></tr>
           <tr><td>Bloqueio</td><td>Pause gera blockers de <code>InputAcceptance</code> e <code>InteractionAcceptance</code>.</td></tr>
           <tr><td>Contrato</td><td>O contrato é o estado/snapshot do <code>PauseRuntime</code>; <code>Time.timeScale</code> é o efeito básico de simulação.</td></tr>
         </tbody>
@@ -977,7 +939,7 @@ PauseSurface/PausePanel
     </div>
 
     <h2 id="pause-keyboard">Pause por tecla com Unity Input System</h2>
-    <p>O Preview 8 usa <code>PauseInputActionTrigger</code> como caminho simples para Pause por teclado ou controle. Ele escuta uma única ação global do Unity Input System, envia um request direto ao <code>PauseRuntime</code> e deixa troca de mapa do <code>PlayerInput</code> como efeito opcional, não como requisito do Pause.</p>
+    <p>O Preview 9 usa <code>PauseInputActionTrigger</code> como caminho simples para Pause por teclado ou controle. Ele escuta uma única ação global do Unity Input System, envia um request direto ao <code>PauseRuntime</code> e deixa troca de mapa do <code>PlayerInput</code> como efeito opcional, não como requisito do Pause.</p>
 
     <pre><code>FG_UIGlobal
 └── PauseInput
@@ -999,7 +961,7 @@ PauseSurface/PausePanel
       <span class="callout-icon">⚠️</span>
       <div class="callout-body">
         <div class="callout-title">Não duplique Pause em Player e UI</div>
-        <p>O trilho canônico do Preview 8 é <code>Global/Pause</code>. Evite <code>Player/Pause</code> + <code>UI/Pause</code> como caminho normal; isso cria dedupe e pode interferir na UI depois do Resume.</p>
+        <p>O trilho canônico do Preview 9 é <code>Global/Pause</code>. Evite <code>Player/Pause</code> + <code>UI/Pause</code> como caminho normal; isso cria dedupe e pode interferir na UI depois do Resume.</p>
       </div>
     </div>
 
@@ -1014,8 +976,7 @@ PauseSurface/PausePanel
         </div>
       </div>
       <div class="comp-fields">
-        <div class="comp-field"><span class="field-name">Actions Asset</span><span class="field-desc"><code>InputSystem_Actions</code>. Use o asset diretamente para o Pause global.</span></div>
-        <div class="comp-field"><span class="field-name">Player Input</span><span class="field-desc">Vazio no FIRSTGAME. O Pause não deve disputar devices com o <code>PlayerInput</code> do <code>PlayerPrototype</code>.</span></div>
+        <div class="comp-field"><span class="field-name">Player Input</span><span class="field-desc">Deixe vazio no FIRSTGAME. Use <code>Actions Asset</code> diretamente para <code>Global/Pause</code>.</span></div>
         <div class="comp-field"><span class="field-name">Pause Action Map Name</span><span class="field-desc"><code>Global</code>.</span></div>
         <div class="comp-field"><span class="field-name">Pause Action Name</span><span class="field-desc"><code>Pause</code>.</span></div>
         <div class="comp-field"><span class="field-name">Request Kind</span><span class="field-desc"><code>Toggle</code>.</span></div>
@@ -1114,98 +1075,8 @@ PauseSurface/PausePanel
       </div>
     </div>
 
-    <h2 id="player-prototype">FIRSTGAME-3 — PlayerPrototype temporário</h2>
-    <p>O First Game usa um player mínimo no projeto consumidor para provar movimento, Pause, Transition visual e Object Reset. Esse script <strong>não é parte do framework</strong> e não representa o futuro sistema oficial de Player/Actor/Movement.</p>
-
-    <pre><code>Assets/_Project/Scripts/FirstGame/
-└── FirstGamePlayerMover.cs</code></pre>
-
-    <pre><code>FG_Gameplay
-└── GameplayRoot
-    ├── PlayerPrototype
-    │   ├── PlayerInput
-    │   ├── FirstGamePlayerMover
-    │   ├── ObjectEntryDeclaration
-    │   ├── ObjectResetTransformParticipant
-    │   └── Capsule
-    │
-    └── ObjectResetRuntimeSource
-        └── ObjectResetUnityParticipantSource</code></pre>
-
-    <div class="callout info">
-      <span class="callout-icon">ℹ️</span>
-      <div class="callout-body">
-        <div class="callout-title">Movimento temporário</div>
-        <p>O <code>FirstGamePlayerMover</code> lê <code>Player/Move</code> diretamente. Ele para durante Pause por causa de <code>Time.timeScale = 0</code>, mas ainda não participa do Transition Gate. Quando o framework tiver um adapter de PlayerInput/Gate ou um fluxo Player/Actor maduro, este mover deve ser substituído.</p>
-      </div>
-    </div>
-
-    <h2 id="object-reset">Object Reset do player</h2>
-    <p>Object Reset é reset local de um objeto declarado. Ele não é Restart de Activity, não é Save/Load e não é Progression. No First Game, ele reposiciona o <code>PlayerPrototype</code> para o baseline capturado.</p>
-
-    <h3>ObjectEntryDeclaration</h3>
-    <div class="component-card">
-      <div class="comp-header">
-        <div class="comp-icon">🧍</div>
-        <div class="comp-meta">
-          <div class="comp-name">ObjectEntryDeclaration</div>
-          <h4>Identidade do player protótipo</h4>
-        </div>
-      </div>
-      <div class="comp-fields">
-        <div class="comp-field"><span class="field-name">Object Entry Id</span><span class="field-desc"><code>firstgame.player</code>.</span></div>
-        <div class="comp-field"><span class="field-name">Scope</span><span class="field-desc"><code>Route</code>.</span></div>
-        <div class="comp-field"><span class="field-name">Route Owner</span><span class="field-desc"><code>Gameplay Route</code>.</span></div>
-        <div class="comp-field"><span class="field-name">Requiredness</span><span class="field-desc"><code>Required</code>.</span></div>
-        <div class="comp-field"><span class="field-name">Display Name</span><span class="field-desc"><code>First Game Player</code>.</span></div>
-      </div>
-    </div>
-    <p>O player é Route-scoped porque deve sobreviver entre <code>FG_Activity_A</code> e <code>FG_Activity_B</code>. Use Activity-scoped entries apenas para objetos que existem em uma Activity específica.</p>
-
-    <h3>ObjectResetTransformParticipant</h3>
-    <div class="component-card">
-      <div class="comp-header">
-        <div class="comp-icon">♻️</div>
-        <div class="comp-meta">
-          <div class="comp-name">ObjectResetTransformParticipant</div>
-          <h4>Reset de Transform</h4>
-        </div>
-      </div>
-      <div class="comp-fields">
-        <div class="comp-field"><span class="field-name">Target Declaration</span><span class="field-desc"><code>PlayerPrototype/ObjectEntryDeclaration</code>.</span></div>
-        <div class="comp-field"><span class="field-name">Participant Id</span><span class="field-desc"><code>firstgame.player.transform-reset</code>.</span></div>
-        <div class="comp-field"><span class="field-name">Requiredness</span><span class="field-desc"><code>Required</code>.</span></div>
-        <div class="comp-field"><span class="field-name">Target Transform Override</span><span class="field-desc"><code>PlayerPrototype/Transform</code>.</span></div>
-        <div class="comp-field"><span class="field-name">Reset Local Position / Rotation / Scale</span><span class="field-desc">Ativos para o smoke do First Game.</span></div>
-        <div class="comp-field"><span class="field-name">Baseline Configured</span><span class="field-desc">Deve estar configurado depois de capturar o baseline.</span></div>
-      </div>
-    </div>
-    <div class="callout tip">
-      <span class="callout-icon">✅</span>
-      <div class="callout-body">
-        <div class="callout-title">Capture o baseline</div>
-        <p>Posicione o <code>PlayerPrototype</code> no ponto inicial e use o Context Menu <code>Capture Current Transform Baseline</code>. Esse baseline é a posição/rotação/escala para onde o reset volta.</p>
-      </div>
-    </div>
-
-    <h3>ObjectResetUnityParticipantSource</h3>
-    <pre><code>ObjectResetRuntimeSource
-└── ObjectResetUnityParticipantSource
-    ├── Register On Enable = true
-    └── Participants[0] = PlayerPrototype/ObjectResetTransformParticipant</code></pre>
-    <p>O framework não faz scene search automático de reset participants. O registro explícito é intencional: ele deixa o authoring determinístico e evita participantes escondidos.</p>
-
-    <h3>ObjectResetTrigger</h3>
-    <pre><code>GameplayControls
-└── Button_ResetPlayer
-    └── ObjectResetTrigger
-        ├── Target Declaration = PlayerPrototype/ObjectEntryDeclaration
-        ├── Reason = firstgame.reset.player
-        └── Allow No Participants = false</code></pre>
-    <p>No <code>Button_ResetPlayer → OnClick()</code>, chame <code>ObjectResetTrigger.RequestObjectReset()</code>.</p>
-
     <h2 id="build-profile">Build Profile / Build Settings</h2>
-    <p>Todas as cenas usadas pelo framework precisam estar no Build Profile. Para Preview 8, a cena de boot do Player deve ser a Primary Scene da Startup Route, não a UIGlobal.</p>
+    <p>Todas as cenas usadas pelo framework precisam estar no Build Profile. Para Preview 9, a cena de boot do Player deve ser a Primary Scene da Startup Route, não a UIGlobal.</p>
 
     <div class="table-wrap">
       <table>
@@ -1251,25 +1122,115 @@ PauseSurface/PausePanel
       </table>
     </div>
 
-    <h2 id="play-smoke">Play Smoke manual</h2>
+    
+    <h2 id="object-reset">FIRSTGAME-3 — PlayerPrototype e Object Reset</h2>
+    <p>O First Game usa um <code>PlayerPrototype</code> temporário no consumidor para provar gameplay mínimo, Pause, Transition e Object Reset. Esse mover não é o sistema oficial de Player/Actor/Movement do framework.</p>
+
+    <pre><code>FG_Gameplay
+└── GameplayRoot
+    ├── PlayerPrototype
+    │   ├── PlayerInput
+    │   ├── FirstGamePlayerMover
+    │   ├── UnityPlayerInputGateAdapter
+    │   ├── ObjectEntryDeclaration
+    │   └── ObjectResetTransformParticipant
+    └── ObjectResetRuntimeSource
+        └── ObjectResetUnityParticipantSource</code></pre>
+
+    <div class="component-card">
+      <h4>ObjectEntryDeclaration</h4>
+      <p>Configuração recomendada para o player temporário:</p>
+      <pre><code>Object Entry Id = firstgame.player
+Scope = Route
+Route Owner = Gameplay Route
+Requiredness = Required
+Display Name = First Game Player</code></pre>
+    </div>
+
+    <div class="component-card">
+      <h4>ObjectResetTransformParticipant</h4>
+      <pre><code>Target Declaration = PlayerPrototype/ObjectEntryDeclaration
+Participant Id = firstgame.player.transform-reset
+Requiredness = Required
+Target Transform Override = PlayerPrototype/Transform
+Reset Local Position = true
+Reset Local Rotation = true
+Reset Local Scale = true</code></pre>
+      <p>Use o Context Menu <code>Capture Current Transform Baseline</code> antes do smoke. O baseline é a posição/rotação/escala para onde o objeto volta.</p>
+    </div>
+
+    <div class="component-card">
+      <h4>ObjectResetUnityParticipantSource e ObjectResetTrigger</h4>
+      <pre><code>ObjectResetRuntimeSource
+  ObjectResetUnityParticipantSource
+    Register On Enable = true
+    Participants[0] = PlayerPrototype/ObjectResetTransformParticipant
+
+Button_ResetPlayer
+  ObjectResetTrigger
+    Target Declaration = PlayerPrototype/ObjectEntryDeclaration
+    Reason = firstgame.reset.player
+    Allow No Participants = false</code></pre>
+      <p>O framework não faz scene search automático de reset participants. O registro explícito mantém o authoring determinístico.</p>
+    </div>
+
+    <h2 id="playerinput-gate">FIRSTGAME-3B — Unity PlayerInput Gate Adapter</h2>
+    <p>O <code>UnityPlayerInputGateAdapter</code> é a ponte entre o Gate lógico do framework e o Unity Input System. Ele é opt-in: scripts temporários que leem <code>InputAction</code> diretamente só obedecem ao Gate quando um adapter desabilita o action map ou quando o próprio script consulta o Gate.</p>
+
+    <div class="component-card">
+      <div class="comp-header">
+        <div class="comp-icon">🎛️</div>
+        <div class="comp-meta">
+          <div class="comp-name">UnityPlayerInputGateAdapter</div>
+          <h4>Gameplay Input Gate Adapter</h4>
+          <div class="comp-menu">Add Component → Immersive Framework → Unity Input → Unity PlayerInput Gate Adapter</div>
+        </div>
+      </div>
+      <div class="comp-fields">
+        <div class="comp-field"><span class="field-name">Player Input</span><span class="field-desc"><code>PlayerPrototype/PlayerInput</code>.</span></div>
+        <div class="comp-field"><span class="field-name">Gameplay Action Map Name</span><span class="field-desc"><code>Player</code>.</span></div>
+        <div class="comp-field"><span class="field-name">Block On Input Acceptance</span><span class="field-desc">Ativo.</span></div>
+        <div class="comp-field"><span class="field-name">Block On Gameplay Action</span><span class="field-desc">Ativo.</span></div>
+        <div class="comp-field"><span class="field-name">Block Mode</span><span class="field-desc"><code>Disable Action Map</code>.</span></div>
+        <div class="comp-field"><span class="field-name">Restore Previous State</span><span class="field-desc">Ativo.</span></div>
+      </div>
+    </div>
+
+    <div class="callout info">
+      <span class="callout-icon">ℹ️</span>
+      <div class="callout-body">
+        <div class="callout-title">Gate lógico versus efeito Unity</div>
+        <p>O Gate levanta a regra de bloqueio. O adapter aplica essa regra no Unity desabilitando o action map <code>Player</code>. Assim o <code>FirstGamePlayerMover</code> continua simples, mas deixa de receber <code>Player/Move</code> durante Pause ou Transition Gate.</p>
+      </div>
+    </div>
+
+    <h3>Log esperado do PlayerInput Gate</h3>
+    <div class="log-block">
+      <div class="log-label">Console — UnityPlayerInputGateAdapter</div>
+      Unity PlayerInput Gate Adapter blocked gameplay action map.<br>
+      <span class="log-key">status</span><span class="log-sep">='</span><span class="log-val">BlockedActionMap</span><span class="log-sep">'</span>
+      <span class="log-key"> blockMode</span><span class="log-sep">='</span><span class="log-val">DisableActionMap</span><span class="log-sep">'</span>
+      <span class="log-key"> blocksGameplayAction</span><span class="log-sep">='</span><span class="log-val">True</span><span class="log-sep">'</span>
+    </div>
+
+<h2 id="play-smoke">Play Smoke manual</h2>
     <p>Use este roteiro para validar o fluxo em Play Mode.</p>
 
     <ol class="steps">
-      <li><div class="step-body"><strong>Abra qualquer cena</strong>Inclusive <code>FG_UIGlobal</code>. No Preview 8 o framework mantém a Primary Scene da Startup Route preparada antes da UIGlobal.</div></li>
+      <li><div class="step-body"><strong>Abra qualquer cena</strong>Inclusive <code>FG_UIGlobal</code>. No Preview 9 o framework mantém a Primary Scene da Startup Route preparada antes da UIGlobal.</div></li>
       <li><div class="step-body"><strong>Dê Play</strong>Confirme que o boot começa em <code>FG_Menu</code>.</div></li>
       <li><div class="step-body"><strong>Clique Start Game</strong>Confirme a troca para <code>FG_Gameplay</code> com Loading e Transition.</div></li>
       <li><div class="step-body"><strong>Confirme Activity A</strong>A <code>FG_Activity_A</code> deve entrar automaticamente.</div></li>
-      <li><div class="step-body"><strong>Teste Pause por tecla</strong>Pressione <code>Escape</code>: o overlay de Pause deve aparecer e <code>Time.timeScale</code> deve ir para <code>0</code>. Pressione <code>Escape</code> novamente: o overlay deve sumir e <code>Time.timeScale</code> deve ser restaurado. No FIRSTGAME, <code>Switch Player Input Action Map</code> fica desativado.</div></li>
+      <li><div class="step-body"><strong>Teste Pause por tecla</strong>Pressione <code>Escape</code>: o overlay de Pause deve aparecer e <code>Time.timeScale</code> deve ir para <code>0</code>. Pressione <code>Escape</code> novamente: o overlay deve sumir e <code>Time.timeScale</code> deve ser restaurado. O Pause usa <code>Global/Pause</code>, não troca obrigatória de <code>PlayerInput</code>.</div></li>
       <li><div class="step-body"><strong>Teste Pause por UI</strong>Use o botão de Pause e depois o botão Resume do painel.</div></li>
-      <li><div class="step-body"><strong>Teste Reset Player</strong>Mova o <code>PlayerPrototype</code>, clique <code>Reset Player</code> e confirme que ele volta para o baseline.</div></li>
-      <li><div class="step-body"><strong>Clique Go Activity B</strong>Confirme troca para <code>FG_Activity_B</code> com Transition Gate.</div></li>
+      <li><div class="step-body"><strong>Clique Go Activity B</strong>Confirme troca para <code>FG_Activity_B</code> com Transition. Com <code>UnityPlayerInputGateAdapter</code> no <code>PlayerPrototype</code>, o action map <code>Player</code> deve ser bloqueado durante a janela do Gate e liberado depois.</div></li>
       <li><div class="step-body"><strong>Clique Clear Activity</strong>Confirme Activity limpa, sem Activity ativa.</div></li>
       <li><div class="step-body"><strong>Clique Restore Activity A</strong>Confirme volta para <code>FG_Activity_A</code>.</div></li>
     </ol>
 
     <h2 id="logs">Logs de PASS</h2>
 
-    <h3>Boot Preview 8 correto</h3>
+    <h3>Boot Preview 9 correto</h3>
     <div class="log-block">
       <div class="log-label">Console — ordem canônica</div>
       Startup Route Primary Scene prepared before UIGlobal load.<br>
@@ -1304,8 +1265,6 @@ PauseSurface/PausePanel
       <span class="log-key"> scene</span><span class="log-sep">='</span><span class="log-val">FG_Gameplay</span><span class="log-sep">'</span>
       <span class="log-key"> transition</span><span class="log-sep">='</span><span class="log-val">SucceededWithUnitySurface</span><span class="log-sep">'</span>
       <span class="log-key"> loading</span><span class="log-sep">='</span><span class="log-val">SucceededWithUnitySurface</span><span class="log-sep">'</span>
-      <span class="log-key"> transitionGateMode</span><span class="log-sep">='</span><span class="log-val">InputInteractionAndGameplay</span><span class="log-sep">'</span>
-      <span class="log-key"> blocksGameplayAction</span><span class="log-sep">='</span><span class="log-val">True</span><span class="log-sep">'</span>
       <span class="log-key"> activity</span><span class="log-sep">='</span><span class="log-val">FG Activity A</span><span class="log-sep">'</span>
     </div>
 
@@ -1315,36 +1274,10 @@ PauseSurface/PausePanel
       Activity Request completed.<br>
       <span class="log-key">transitionScope</span><span class="log-sep">='</span><span class="log-val">Activity</span><span class="log-sep">'</span>
       <span class="log-key"> transition</span><span class="log-sep">='</span><span class="log-val">SucceededWithUnitySurface</span><span class="log-sep">'</span>
-      <span class="log-key"> transitionGateMode</span><span class="log-sep">='</span><span class="log-val">InputInteractionAndGameplay</span><span class="log-sep">'</span>
-      <span class="log-key"> blocksInputAcceptance</span><span class="log-sep">='</span><span class="log-val">True</span><span class="log-sep">'</span>
-      <span class="log-key"> blocksInteractionAcceptance</span><span class="log-sep">='</span><span class="log-val">True</span><span class="log-sep">'</span>
-      <span class="log-key"> blocksGameplayAction</span><span class="log-sep">='</span><span class="log-val">True</span><span class="log-sep">'</span>
       <span class="log-key"> activityState</span><span class="log-sep">='</span><span class="log-val">Active</span><span class="log-sep">'</span>
       <span class="log-key"> activityReadiness</span><span class="log-sep">='</span><span class="log-val">Ready</span><span class="log-sep">'</span>
     </div>
 
-
-    <h3>Object Reset</h3>
-    <div class="log-block">
-      <div class="log-label">Console — Object Reset OK</div>
-      Object Reset Request completed.<br>
-      <span class="log-key">status</span><span class="log-sep">='</span><span class="log-val">Succeeded</span><span class="log-sep">'</span>
-      <span class="log-key"> objectEntry</span><span class="log-sep">='</span><span class="log-val">ObjectEntry:firstgame.player</span><span class="log-sep">'</span>
-      <span class="log-key"> scope</span><span class="log-sep">='</span><span class="log-val">Route</span><span class="log-sep">'</span>
-      <span class="log-key"> participants</span><span class="log-sep">='</span><span class="log-val">1</span><span class="log-sep">'</span>
-      <span class="log-key"> participantSucceeded</span><span class="log-sep">='</span><span class="log-val">1</span><span class="log-sep">'</span>
-      <span class="log-key"> blockingIssues</span><span class="log-sep">='</span><span class="log-val">0</span><span class="log-sep">'</span>
-    </div>
-
-    <h3>ActivityClear com Transition Gate</h3>
-    <div class="log-block">
-      <div class="log-label">Console — ActivityClear Gate OK</div>
-      Activity Request completed.<br>
-      <span class="log-key">transitionScope</span><span class="log-sep">='</span><span class="log-val">ActivityClear</span><span class="log-sep">'</span>
-      <span class="log-key"> transitionGateMode</span><span class="log-sep">='</span><span class="log-val">InputInteractionAndGameplay</span><span class="log-sep">'</span>
-      <span class="log-key"> transitionGateApplied</span><span class="log-sep">='</span><span class="log-val">True</span><span class="log-sep">'</span>
-      <span class="log-key"> transitionGateReleased</span><span class="log-sep">='</span><span class="log-val">True</span><span class="log-sep">'</span>
-    </div>
 
     <h3>Pause por tecla</h3>
     <div class="log-block">
@@ -1387,13 +1320,13 @@ PauseSurface/PausePanel
     <div class="component-card">
       <h4 style="color:var(--red); margin-bottom:8px;">🔴 Dois AudioListeners ou dois EventSystems</h4>
       <p style="font-size:13.5px; color:var(--text-soft);"><strong>Causa comum:</strong> <code>FG_UIGlobal</code> e a Route Scene têm câmera/EventSystem ao mesmo tempo, ou o package é anterior ao Preview 6 e duplica a UIGlobal aberta no Editor.<br>
-      <strong>Solução:</strong> use <code>v1.0.0-preview.8</code>; mantenha apenas um <code>AudioListener</code> e um <code>EventSystem</code> no runtime.</p>
+      <strong>Solução:</strong> use <code>v1.0.0-preview.9</code>; mantenha apenas um <code>AudioListener</code> e um <code>EventSystem</code> no runtime.</p>
     </div>
 
     <div class="component-card">
       <h4 style="color:var(--red); margin-bottom:8px;">🔴 "Unloading the last loaded scene is not supported"</h4>
       <p style="font-size:13.5px; color:var(--text-soft);"><strong>Causa:</strong> versão antiga do validator tentando fechar a última cena aberta ao validar a UIGlobal.<br>
-      <strong>Solução:</strong> atualizar para <code>v1.0.0-preview.8</code>. O validator agora trata ownership de cena com segurança.</p>
+      <strong>Solução:</strong> atualizar para <code>v1.0.0-preview.9</code>. O validator agora trata ownership de cena com segurança.</p>
     </div>
 
     <div class="component-card">
@@ -1422,44 +1355,38 @@ PauseSurface/PausePanel
 
     <div class="component-card">
       <h4 style="color:var(--yellow); margin-bottom:8px;">⚠️ Segundo clique durante fade chega no runtime</h4>
-      <p style="font-size:13.5px; color:var(--text-soft);"><strong>Causa comum:</strong> Activity com <code>Transition Gate = None</code>/<code>LifecycleRequestsOnly</code>, <code>UnityFadeCurtainEffectAdapter</code> sem bloquear raycasts quando visível, ou clique feito depois que a transition terminou.<br>
-      <strong>Solução:</strong> para First Game, use <code>InputInteractionAndGameplay</code> nas Activities com Fade, mantenha <code>Block Raycasts When Visible</code> ativo no Transition surface e aumente temporariamente o tempo de fade para testar a janela de bloqueio.</p>
+      <p style="font-size:13.5px; color:var(--text-soft);"><strong>Causa comum:</strong> Activity com <code>Transition Gate = None</code>/<code>LifecycleRequestsOnly</code> ou <code>UnityFadeCurtainEffectAdapter</code> sem bloquear raycasts quando visível.<br>
+      <strong>Solução:</strong> para First Game, use <code>InputInteractionAndGameplay</code> nas Activities com Fade e mantenha <code>Block Raycasts When Visible</code> ativo no Transition surface.</p>
     </div>
 
+    
     <div class="component-card">
-      <h4 style="color:var(--yellow); margin-bottom:8px;">⚠️ Movimento ainda funciona durante transition</h4>
-      <p style="font-size:13.5px; color:var(--text-soft);"><strong>Causa:</strong> o Gate lógico está ativo, mas o <code>FirstGamePlayerMover</code> é um protótipo consumer-side que lê input diretamente e não participa do Gate.<br>
-      <strong>Solução futura:</strong> usar um <code>PlayerInput</code> Gate Adapter ou um sistema oficial de Player/Actor/Movement que consulte o Gate. Isso é limitação aceita do Preview 8.</p>
+      <h4 style="color:var(--yellow); margin-bottom:8px;">⚠️ Movimento ainda funciona durante Transition Gate</h4>
+      <p style="font-size:13.5px; color:var(--text-soft);"><strong>Causa comum:</strong> o script de movimento lê <code>InputAction</code> diretamente e não participa do Gate.<br>
+      <strong>Solução:</strong> adicione <code>UnityPlayerInputGateAdapter</code> no <code>PlayerPrototype</code> e configure <code>Gameplay Action Map Name = Player</code>, <code>Block On Input Acceptance = true</code> e <code>Block On Gameplay Action = true</code>.</p>
     </div>
 
-    <div class="component-card">
-      <h4 style="color:var(--yellow); margin-bottom:8px;">⚠️ Cannot find matching control scheme for PlayerPrototype</h4>
-      <p style="font-size:13.5px; color:var(--text-soft);"><strong>Causa:</strong> dois <code>PlayerInput</code> disputando o mesmo device/control scheme.<br>
-      <strong>Solução:</strong> configure <code>PauseInputActionTrigger</code> com <code>Actions Asset + Global/Pause</code> diretamente e deixe o <code>PlayerInput</code> apenas no <code>PlayerPrototype</code> para gameplay.</p>
-    </div>
-
-    <h2 id="limites">O que não fazer neste Preview</h2>
+<h2 id="limites">O que não fazer neste Preview</h2>
     <div class="callout stop">
       <span class="callout-icon">🚫</span>
       <div class="callout-body">
-        <div class="callout-title">Fora do escopo do Preview 8 / FIRSTGAME-1/2/3</div>
+        <div class="callout-title">Fora do escopo do Preview 9 / FIRSTGAME-1/2/3</div>
         <p>
           Não edite o package Git dentro do consumidor.<br><br>
           Não copie assets, cenas ou ProjectSettings do projeto QA antigo.<br><br>
           Não abra Save, Snapshot, Player, Actor, Inventory ou gameplay complexo.<br><br>
-          Não trate o <code>FirstGamePlayerMover</code> como sistema oficial de movimento; ele é temporário e consumer-side.<br><br>
           Não crie service locator, singleton ou manager genérico.<br><br>
           Não use <code>SceneManager</code> direto para trocar telas do jogo. Use <code>RouteRequestTrigger</code> e os assets do framework.<br><br>
           Não trate Pause como Activity ou Route.<br><br>
           Não use <code>Input.GetKeyDown</code> solto como caminho canônico de Pause.<br><br>
+          Não trate <code>UnityPlayerInputGateAdapter</code> como Player/Actor lifecycle; ele é apenas um adapter opt-in de Gate para o Unity Input System.<br><br>
           Não use o bridge avançado de InputMode quando o objetivo for apenas <code>Escape → Toggle Pause</code>.<br><br>
-          <code>Time.timeScale</code> é efeito básico do Pause no Preview 8, mas não substitui o contrato do <code>PauseRuntime</code>. Não escreva scripts paralelos mudando <code>Time.timeScale</code> fora do runtime de Pause.<br><br>
-          Não espere que o Gate bloqueie automaticamente scripts que leem input direto; objetos de gameplay precisam participar por adapter/receiver ou consulta explícita.
+          <code>Time.timeScale</code> é efeito básico do Pause no Preview 9, mas não substitui o contrato do <code>PauseRuntime</code>. Não escreva scripts paralelos mudando <code>Time.timeScale</code> fora do runtime de Pause.
         </p>
       </div>
     </div>
 
-    <h2 id="glossario">Glossário Preview 8</h2>
+    <h2 id="glossario">Glossário Preview 9</h2>
     <div class="table-wrap">
       <table>
         <thead><tr><th>Termo</th><th>Definição</th></tr></thead>
@@ -1472,12 +1399,10 @@ PauseSurface/PausePanel
           <tr><td><code>Transition Surface</code></td><td>Superfície visual usada para fades entre Route/Activity.</td></tr>
           <tr><td><code>Loading Surface</code></td><td>Superfície visual usada quando há carga real de cena.</td></tr>
           <tr><td><code>PauseRuntime</code></td><td>Runtime autoritativo do estado <code>Running/Paused</code>, gate snapshot, surface e efeito básico de <code>Time.timeScale</code>.</td></tr>
-          <tr><td><code>Transition Gate</code></td><td>Policy de Route/Activity/ActivityClear que bloqueia lifecycle/input/interação/gameplay durante transition sem usar Pause ou <code>Time.timeScale</code>.</td></tr>
-          <tr><td><code>TimeScale Pause</code></td><td>Efeito de simulação do Preview 8: captura o valor running, aplica <code>Time.timeScale = 0</code> durante Pause e restaura no Resume.</td></tr>
-          <tr><td><code>PauseInputActionTrigger</code></td><td>Componente simples para <code>Escape → Toggle Pause</code> usando <code>Global/Pause</code>. No FIRSTGAME, não troca action map.</td></tr>
-          <tr><td><code>ObjectEntryDeclaration</code></td><td>Declara a identidade e o owner lógico de um objeto que pode participar de sistemas como Object Reset.</td></tr>
-          <tr><td><code>ObjectResetTransformParticipant</code></td><td>Participant que restaura posição, rotação e escala locais para um baseline capturado.</td></tr>
-          <tr><td><code>FirstGamePlayerMover</code></td><td>Script temporário do consumidor para movimento mínimo. Não é framework core e não participa do Gate sozinho.</td></tr>
+          <tr><td><code>Transition Gate</code></td><td>Policy de Route/Activity que bloqueia lifecycle/input/interação/gameplay durante transition sem usar Pause ou <code>Time.timeScale</code>.</td></tr>
+          <tr><td><code>UnityPlayerInputGateAdapter</code></td><td>Adapter opt-in que faz um <code>PlayerInput</code> de gameplay obedecer Gate desabilitando o action map configurado enquanto input/gameplay estiver bloqueado.</td></tr>
+          <tr><td><code>TimeScale Pause</code></td><td>Efeito de simulação do Preview 9: captura o valor running, aplica <code>Time.timeScale = 0</code> durante Pause e restaura no Resume.</td></tr>
+          <tr><td><code>PauseInputActionTrigger</code></td><td>Componente simples para <code>Escape → Toggle Pause</code> via <code>Global/Pause</code>. Troca de <code>PlayerInput</code> é opcional e não faz parte do caminho normal do FIRSTGAME.</td></tr>
           <tr><td><code>ActivityClear</code></td><td>Operação que remove a Activity ativa sem trocar de Route.</td></tr>
           <tr><td><code>Model Readiness</code></td><td>Validação de authoring do framework. Para PASS, precisa de 0 blockers.</td></tr>
           <tr><td><code>AlreadyLoaded</code></td><td>Indica que a cena já estava preparada quando o lifecycle tentou compor a Route.</td></tr>
@@ -1486,8 +1411,8 @@ PauseSurface/PausePanel
     </div>
 
     <div style="margin-top:56px; padding-top:24px; border-top:1px solid var(--border-soft); color:var(--text-muted); font-size:13px;">
-      <p><strong style="color:var(--text-soft);">Immersive Framework</strong> — Guia Preview 8 para Game Designers &nbsp;·&nbsp; <code>com.immersive.framework v1.0.0-preview.8</code></p>
-      <p style="margin-top:4px;">Este guia cobre o escopo validado em FIRSTGAME-1, FIRSTGAME-2 e FIRSTGAME-3 até <code>v1.0.0-preview.8</code>. Atualizar ao fechar uma nova tag preview.</p>
+      <p><strong style="color:var(--text-soft);">Immersive Framework</strong> — Guia Preview 9 para Game Designers &nbsp;·&nbsp; <code>com.immersive.framework v1.0.0-preview.9</code></p>
+      <p style="margin-top:4px;">Este guia cobre o escopo validado em FIRSTGAME-1, FIRSTGAME-2, FIRSTGAME-3 e FIRSTGAME-3B. Atualizar ao fechar uma nova tag preview.</p>
     </div>
 
   </main>

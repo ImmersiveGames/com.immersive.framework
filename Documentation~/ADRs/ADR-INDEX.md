@@ -20,6 +20,8 @@ Current order:
 14. F34 - Direct Pause Input Trigger for Consumer Keyboard Toggle
 15. F35 - Pause TimeScale and Simple PlayerInput Map Switching
 16. F36 - Global Pause Input Action
+17. F37 - Transition Gate Policy
+18. F38 - Unity PlayerInput Gate Adapter
 14. POST-F33-A - Matrix Reconciliation Closeout
 15. POST-F33-B - Officialize/Reclassify F28-F33
 16. F8R-A - RuntimeContent / ContentAnchor Materialization Audit
@@ -71,6 +73,8 @@ Current order:
 | F34 | [Direct Pause Input Trigger for Consumer Keyboard Toggle](F34-ADR-PAUSE-004-Direct-Pause-Input-Trigger.md) | Accepted / FIRSTGAME-2B PASS / preview.5 / amended by F35 |
 | F35 | [Pause TimeScale and Simple PlayerInput Map Switching](F35-ADR-PAUSE-005-TimeScale-and-Simple-Map-Switching.md) | Accepted / FIRSTGAME-2C PASS / preview.6 / amended by F36 |
 | F36 | [Global Pause Input Action](F36-ADR-PAUSE-006-Global-Pause-Input-Action.md) | Accepted / FIRSTGAME-2D / preview.7 |
+| F37 | [Transition Gate Policy](F37-ADR-TRANSITION-001-Transition-Gate-Policy.md) | Accepted / preview.8 |
+| F38 | [Unity PlayerInput Gate Adapter](F38-ADR-INPUT-001-Unity-PlayerInput-Gate-Adapter.md) | Accepted / preview.9 |
 | POST-F33-A | `Assets/_Documentation/Notes/POST-F33-A-Matrix-Reconciliation-Closeout.md` | Accepted / documentation / roadmap governance |
 | POST-F33-B | `Assets/_Documentation/Notes/POST-F33-B-Officialize-Reclassify-F28-F33.md` | Accepted / documentation / roadmap governance |
 | F8R-A | `Assets/_Documentation/Audits/F8R-A-RuntimeContent-ContentAnchor-Materialization-Audit.md` | Draft / audit-only / documentation governance |
@@ -333,10 +337,20 @@ References:
 
 ## F37 - Transition Gate Policy
 
-Scope: Transition / Gate / Route, Activity and ActivityClear authoring.
+Scope: Transition / Gate / Route and Activity authoring.
 
 Status: Accepted.
 
-F37 adds explicit Route/Activity/ActivityClear `TransitionGateMode` policy so visual transition windows can block lifecycle requests, input acceptance, interaction acceptance and gameplay actions without using Pause or `Time.timeScale`. Preview 8 validates the logical Gate and raycast/UI blocking; temporary consumer movement still requires an adapter/receiver to obey gameplay gate blockers.
+F37 adds explicit Route/Activity `TransitionGateMode` policy so visual transition windows can block lifecycle requests, input acceptance, interaction acceptance and gameplay actions without using Pause or `Time.timeScale`.
 
 Reference: `F37-ADR-TRANSITION-001-Transition-Gate-Policy.md`
+
+## F38 - Unity PlayerInput Gate Adapter
+
+Scope: Unity Input / Gate / First Game gameplay input.
+
+Status: Accepted.
+
+F38 adds `UnityPlayerInputGateAdapter`, an opt-in Unity Input System component that disables a configured gameplay action map while the framework Gate blocks input acceptance or gameplay action. It bridges Gate to temporary/consumer gameplay input without making movement scripts framework-aware and without introducing Player/Actor lifecycle.
+
+Reference: `F38-ADR-INPUT-001-Unity-PlayerInput-Gate-Adapter.md`

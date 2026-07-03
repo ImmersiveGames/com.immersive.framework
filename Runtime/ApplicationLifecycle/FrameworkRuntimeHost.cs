@@ -67,6 +67,10 @@ namespace Immersive.Framework.ApplicationLifecycle
 
         internal GateSnapshot PauseGateSnapshot => _pauseRuntime?.GateSnapshot ?? GateSnapshot.Empty();
 
+        internal GateSnapshot TransitionGateSnapshot => _gameFlowRuntime?.CurrentTransitionGateSnapshot ?? GateSnapshot.Empty();
+
+        internal GateSnapshot CurrentGateSnapshot => CreateCombinedGateSnapshot(PauseGateSnapshot, TransitionGateSnapshot);
+
         internal bool TryGetPauseSnapshot(out PauseSnapshot snapshot)
         {
             if (_pauseRuntime == null)
@@ -80,6 +84,33 @@ namespace Immersive.Framework.ApplicationLifecycle
         }
 
         internal RuntimeContentRuntime RuntimeContentRuntime => _runtimeContentRuntime;
+
+        private static GateSnapshot CreateCombinedGateSnapshot(GateSnapshot first, GateSnapshot second)
+        {
+            if (!first.HasBlockers && !second.HasBlockers)
+            {
+                return GateSnapshot.Empty();
+            }
+
+            var blockers = new List<GateBlocker>(first.BlockerCount + second.BlockerCount);
+            AddBlockers(blockers, first);
+            AddBlockers(blockers, second);
+            return new GateSnapshot(blockers);
+        }
+
+        private static void AddBlockers(List<GateBlocker> target, GateSnapshot snapshot)
+        {
+            if (target == null || !snapshot.HasBlockers)
+            {
+                return;
+            }
+
+            var blockers = snapshot.Blockers;
+            for (int i = 0; i < blockers.Count; i++)
+            {
+                target.Add(blockers[i]);
+            }
+        }
 
         internal void SetActivityContentExecutionParticipantSource(IActivityContentExecutionParticipantSource participantSource)
         {
