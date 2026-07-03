@@ -58,7 +58,8 @@ namespace Immersive.Framework.ObjectReset
         public bool Failed => Status is ObjectResetGroupResultStatus.Failed
             or ObjectResetGroupResultStatus.RejectedInvalidRequest
             or ObjectResetGroupResultStatus.RejectedRuntimeUnavailable
-            or ObjectResetGroupResultStatus.RejectedRuntimeContextUnavailable;
+            or ObjectResetGroupResultStatus.RejectedRuntimeContextUnavailable
+            or ObjectResetGroupResultStatus.RejectedAlreadyInFlight;
 
         public int TargetCount => TargetResults.Count;
 

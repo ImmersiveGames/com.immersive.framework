@@ -23,7 +23,7 @@ Documentation~/Guides/Usage/index.html
 ## Current content
 
 ```text
-com.immersive.framework v1.0.0-preview.10
+com.immersive.framework v1.0.0-preview.11
 FIRSTGAME-1 — Minimal Playable Framework Flow
 FIRSTGAME-2 — Minimal Pause Model Flow
 FIRSTGAME-2B — Pause Keyboard Toggle
@@ -33,4 +33,5 @@ FIRSTGAME-2E — Transition Gate Policy
 FIRSTGAME-3 — PlayerPrototype and Object Reset
 FIRSTGAME-3B — Unity PlayerInput Gate Adapter
 FIRSTGAME-4 — Object Reset Group
+FIRSTGAME-5 — Activity Restart via Object Reset Group
 ```

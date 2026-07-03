@@ -502,7 +502,7 @@
     <div class="sidebar-section">
       <div class="sidebar-section-label">Início</div>
       <a href="#intro" class="active"><span class="icon">🏠</span> Visão Geral</a>
-      <a href="#escopo"><span class="icon">🎯</span> Escopo do Preview 10</a>
+      <a href="#escopo"><span class="icon">🎯</span> Escopo do Preview 11</a>
       <a href="#conceitos"><span class="icon">🧠</span> Conceitos Mínimos</a>
       <a href="#ordem-boot"><span class="icon">⚙️</span> Ordem de Boot</a>
     </div>
@@ -526,9 +526,11 @@
     </div>
 
     <div class="sidebar-section">
-      <div class="sidebar-section-label">FIRSTGAME-3</div>
+      <div class="sidebar-section-label">FIRSTGAME-3/4/5</div>
       <a href="#object-reset"><span class="icon">♻️</span> Object Reset</a>
+      <a href="#reset-roles"><span class="icon">🧩</span> Reset Roles</a>
       <a href="#object-reset-group"><span class="icon">🔁</span> Reset Group</a>
+      <a href="#activity-restart"><span class="icon">🔄</span> Activity Restart</a>
       <a href="#playerinput-gate"><span class="icon">🎛️</span> PlayerInput Gate</a>
       <a href="#transition-gate"><span class="icon">🚦</span> Transition Gate</a>
     </div>
@@ -552,12 +554,12 @@
   <main class="content">
 
     <div class="hero" id="intro">
-      <div class="eyebrow">Manual de Uso · v1.0.0-preview.10</div>
-      <h1>Immersive Framework<br>Preview 10</h1>
-      <p>Guia prático para o fluxo mínimo jogável validado até o Preview 10: Menu, Gameplay, Activity A/B, Loading, Transition Gate, Pause visual, Pause por botão, Pause por tecla via Global/Pause, pausa real via TimeScale, Transition Gate e PlayerInput Gate Adapter para gameplay input temporário.</p>
+      <div class="eyebrow">Manual de Uso · v1.0.0-preview.11</div>
+      <h1>Immersive Framework<br>Preview 11</h1>
+      <p>Guia prático para o fluxo mínimo jogável validado até o Preview 11: Menu, Gameplay, Activity A/B, Loading, Transition Gate, Pause visual, Pause por botão, Pause por tecla via Global/Pause, pausa real via TimeScale, PlayerInput Gate Adapter, Object Reset, Reset Group e Activity Restart com uma única transição visual.</p>
       <div class="badge-row">
-        <span class="badge badge-green">✓ FIRSTGAME-1/2/3/3B PASS</span>
-        <span class="badge badge-blue">v1.0.0-preview.10</span>
+        <span class="badge badge-green">✓ FIRSTGAME-1/2/3/3B/4/5 PASS</span>
+        <span class="badge badge-blue">v1.0.0-preview.11</span>
         <span class="badge badge-yellow">Git Package Preview</span>
         <span class="badge badge-purple">Unity 6.5</span>
       </div>
@@ -571,8 +573,8 @@
       </div>
     </div>
 
-    <h2 id="escopo">Escopo do Preview 10</h2>
-    <p>O <strong>v1.0.0-preview.10</strong> consolida o uso real do framework como package Git em projeto consumidor. Route/Activity podem bloquear requests de lifecycle, input, interação e gameplay durante transition, o <code>UnityPlayerInputGateAdapter</code> permite que um <code>PlayerInput</code> de gameplay obedeça esses blockers, e o novo <code>ObjectResetGroupTrigger</code> permite resetar vários <code>ObjectEntry</code> em sequência. Pause continua separado: superfície visual residente na <code>UIGlobal</code>, requests por UI, toggle por tecla via uma única ação <code>Global/Pause</code> e pausa básica da simulação com <code>Time.timeScale = 0</code>.</p>
+    <h2 id="escopo">Escopo do Preview 11</h2>
+    <p>O <strong>v1.0.0-preview.11</strong> consolida o uso real do framework como package Git em projeto consumidor. Route/Activity podem bloquear requests de lifecycle, input, interação e gameplay durante transition, o <code>UnityPlayerInputGateAdapter</code> permite que um <code>PlayerInput</code> de gameplay obedeça esses blockers, o <code>ObjectResetGroupTrigger</code> permite resetar vários <code>ObjectEntry</code> em sequência, e o <code>ActivityRestartTrigger</code> usa <strong>Reset Selection Policy</strong> para resetar alvos e reiniciar a Activity atual em uma única janela visual de transition. Pause continua separado: superfície visual residente na <code>UIGlobal</code>, requests por UI, toggle por tecla via uma única ação <code>Global/Pause</code> e pausa básica da simulação com <code>Time.timeScale = 0</code>.</p>
 
     <div class="flow">
       <div class="flow-box accent">Boot</div>
@@ -590,7 +592,7 @@
 
     <div class="table-wrap">
       <table>
-        <thead><tr><th>Validado no Preview 10</th><th>Status</th></tr></thead>
+        <thead><tr><th>Validado no Preview 11</th><th>Status</th></tr></thead>
         <tbody>
           <tr><td>GameApplication como raiz do projeto</td><td><span class="badge badge-green">PASS</span></td></tr>
           <tr><td>Startup Route de Menu sem Activity inicial</td><td><span class="badge badge-green">PASS</span></td></tr>
@@ -606,13 +608,16 @@
           <tr><td>Gate blockers de input/interação durante Pause</td><td><span class="badge badge-green">PASS</span></td></tr>
           <tr><td>Transition Gate em fades de Route/Activity</td><td><span class="badge badge-green">PASS</span></td></tr>
           <tr><td><code>Time.timeScale</code> 1 → 0 → 1 durante Pause/Resume</td><td><span class="badge badge-green">PASS</span></td></tr>
-          <tr><td><code>UnityPlayerInputGateAdapter</code> bloqueia action map de gameplay</td><td><span class="badge badge-green">READY</span></td></tr>
+          <tr><td><code>UnityPlayerInputGateAdapter</code> bloqueia action map de gameplay</td><td><span class="badge badge-green">PASS</span></td></tr>
+          <tr><td><code>ObjectResetGroupTrigger</code> reseta grupo de objetos</td><td><span class="badge badge-green">PASS</span></td></tr>
+          <tr><td>Reset Selection Policy separa escolha de alvos do processo de reset</td><td><span class="badge badge-green">PASS</span></td></tr>
+          <tr><td><code>ActivityRestartTrigger</code> reinicia Activity com reset + clear/re-enter em uma única transição visual</td><td><span class="badge badge-green">PASS</span></td></tr>
         </tbody>
       </table>
     </div>
 
     <h2 id="conceitos">Conceitos mínimos</h2>
-    <p>Para usar o Preview 10, você precisa dominar apenas sete conceitos.</p>
+    <p>Para usar o Preview 11, você precisa dominar apenas oito conceitos.</p>
 
     <div class="asset-grid">
       <div class="asset-card">
@@ -653,7 +658,7 @@
       </div>
     </div>
 
-    <h2 id="ordem-boot">Ordem de boot canônica no Preview 10</h2>
+    <h2 id="ordem-boot">Ordem de boot canônica no Preview 11</h2>
     <p>O Preview 6 fixa uma fragilidade importante: a cena principal da Startup Route agora é preparada antes da UIGlobal. Isso evita duplicação de câmera, <code>AudioListener</code> e <code>EventSystem</code> quando o designer dá Play com outra cena aberta.</p>
 
     <div class="flow" style="flex-wrap:wrap; row-gap:10px;">
@@ -765,8 +770,8 @@
     </div>
 
     <h2 id="uiglobal">Configurando a UIGlobal</h2>
-    <p>A <code>FG_UIGlobal</code> deve conter as superfícies globais do framework. No Preview 10, o fluxo validado usa Loading, Transition, Transition Gate, Pause visual residente e Pause por Global/Pause. A Pause Surface não é opcional neste fluxo: ela confirma o estado pausado junto com <code>Time.timeScale = 0</code>.</p>
-    <p>No Preview 10, o <code>TransitionFadeSurface</code> também é a barreira visual mínima para Transition Gate. Mantenha <code>Block Raycasts When Visible</code> ativo no <code>UnityFadeCurtainEffectAdapter</code> para que cliques repetidos durante fade não alcancem <code>ActivityRequestTrigger</code> ou <code>RouteRequestTrigger</code>.</p>
+    <p>A <code>FG_UIGlobal</code> deve conter as superfícies globais do framework. No Preview 11, o fluxo validado usa Loading, Transition, Transition Gate, Pause visual residente e Pause por Global/Pause. A Pause Surface não é opcional neste fluxo: ela confirma o estado pausado junto com <code>Time.timeScale = 0</code>.</p>
+    <p>No Preview 11, o <code>TransitionFadeSurface</code> também é a barreira visual mínima para Transition Gate. Mantenha <code>Block Raycasts When Visible</code> ativo no <code>UnityFadeCurtainEffectAdapter</code> para que cliques repetidos durante fade não alcancem <code>ActivityRequestTrigger</code> ou <code>RouteRequestTrigger</code>.</p>
 
     <pre><code>FG_UIGlobal
 ├── Main Camera
@@ -798,7 +803,7 @@
       </div>
     </div>
 
-    <h2 id="transition-gate">Transition Gate no Preview 10</h2>
+    <h2 id="transition-gate">Transition Gate no Preview 11</h2>
     <p>Transition Gate é a política de bloqueio durante janelas de Route/Activity transition. Ele não é Pause, não usa <code>Time.timeScale</code>, não substitui <code>Global/Pause</code> e não torna <code>PauseKeepUiActionMap</code> uma decisão canônica.</p>
     <div class="table-wrap">
       <table>
@@ -838,7 +843,7 @@
     </div>
 
 
-    <h2 id="pause-model">Modelo de Pause no Preview 10</h2>
+    <h2 id="pause-model">Modelo de Pause no Preview 11</h2>
     <p>Pause é um <strong>estado lógico global</strong> da aplicação com um efeito concreto de simulação. Ele não é uma Route, não é uma Activity e não é um menu de opções completo. O runtime de Pause produz um snapshot que atualiza a superfície visual, os Gate blockers e o <code>Time.timeScale</code>.</p>
 
     <div class="flow" style="flex-wrap:wrap; row-gap:10px;">
@@ -855,7 +860,7 @@
 
     <div class="table-wrap">
       <table>
-        <thead><tr><th>Regra</th><th>Decisão Preview 10</th></tr></thead>
+        <thead><tr><th>Regra</th><th>Decisão Preview 11</th></tr></thead>
         <tbody>
           <tr><td>Escopo</td><td>Pause é global e fica acima de Route/Activity.</td></tr>
           <tr><td>Visual</td><td>Pause surface residente na <code>FG_UIGlobal</code>.</td></tr>
@@ -940,7 +945,7 @@ PauseSurface/PausePanel
     </div>
 
     <h2 id="pause-keyboard">Pause por tecla com Unity Input System</h2>
-    <p>O Preview 10 usa <code>PauseInputActionTrigger</code> como caminho simples para Pause por teclado ou controle. Ele escuta uma única ação global do Unity Input System, envia um request direto ao <code>PauseRuntime</code> e deixa troca de mapa do <code>PlayerInput</code> como efeito opcional, não como requisito do Pause.</p>
+    <p>O Preview 11 usa <code>PauseInputActionTrigger</code> como caminho simples para Pause por teclado ou controle. Ele escuta uma única ação global do Unity Input System, envia um request direto ao <code>PauseRuntime</code> e deixa troca de mapa do <code>PlayerInput</code> como efeito opcional, não como requisito do Pause.</p>
 
     <pre><code>FG_UIGlobal
 └── PauseInput
@@ -962,7 +967,7 @@ PauseSurface/PausePanel
       <span class="callout-icon">⚠️</span>
       <div class="callout-body">
         <div class="callout-title">Não duplique Pause em Player e UI</div>
-        <p>O trilho canônico do Preview 10 é <code>Global/Pause</code>. Evite <code>Player/Pause</code> + <code>UI/Pause</code> como caminho normal; isso cria dedupe e pode interferir na UI depois do Resume.</p>
+        <p>O trilho canônico do Preview 11 é <code>Global/Pause</code>. Evite <code>Player/Pause</code> + <code>UI/Pause</code> como caminho normal; isso cria dedupe e pode interferir na UI depois do Resume.</p>
       </div>
     </div>
 
@@ -1077,7 +1082,7 @@ PauseSurface/PausePanel
     </div>
 
     <h2 id="build-profile">Build Profile / Build Settings</h2>
-    <p>Todas as cenas usadas pelo framework precisam estar no Build Profile. Para Preview 10, a cena de boot do Player deve ser a Primary Scene da Startup Route, não a UIGlobal.</p>
+    <p>Todas as cenas usadas pelo framework precisam estar no Build Profile. Para Preview 11, a cena de boot do Player deve ser a Primary Scene da Startup Route, não a UIGlobal.</p>
 
     <div class="table-wrap">
       <table>
@@ -1175,6 +1180,28 @@ Button_ResetPlayer
       <p>O framework não faz scene search automático de reset participants. O registro explícito mantém o authoring determinístico.</p>
     </div>
 
+    <h2 id="reset-roles">Reset: papéis e superfície de authoring</h2>
+    <p>Depois do Preview 11, o reset tem um processo comum e superfícies diferentes de authoring. O processo comum é: selecionar alvos, criar <code>ObjectResetRequest</code>, executar participants registrados e agregar resultado. O que muda entre os botões é apenas o contexto da seleção.</p>
+
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Ferramenta</th><th>Quando usar</th><th>Quem escolhe os alvos</th></tr></thead>
+        <tbody>
+          <tr><td><code>ObjectResetTrigger</code></td><td>Resetar um único <code>ObjectEntry</code>, como o player.</td><td>Referência direta ou id do alvo.</td></tr>
+          <tr><td><code>ObjectResetGroupTrigger</code></td><td>Resetar uma lista explícita de objetos sem reiniciar Activity.</td><td>Lista local do trigger ou <code>ObjectResetGroupAsset</code>.</td></tr>
+          <tr><td><code>ActivityRestartTrigger</code></td><td>Resetar alvos e reiniciar a Activity atual.</td><td><code>Reset Selection Mode</code> + entries/asset quando necessário.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="callout warning">
+      <span class="callout-icon">⚠️</span>
+      <div class="callout-body">
+        <div class="callout-title">Não empilhe triggers no mesmo OnClick</div>
+        <p>Um botão deve chamar apenas a superfície desejada. <code>Button_ResetPlayer</code> chama só <code>ObjectResetTrigger</code>, <code>Button_ResetRoom</code> chama só <code>ObjectResetGroupTrigger</code>, e <code>Button_RestartActivity</code> chama só <code>ActivityRestartTrigger</code>. Se o mesmo botão chamar Reset Group e Restart, o reset parecerá duplicado.</p>
+      </div>
+    </div>
+
     <h2 id="object-reset-group">FIRSTGAME-4 — Object Reset Group</h2>
     <p>O <code>ObjectResetGroupTrigger</code> é uma ferramenta para resetar vários <code>ObjectEntry</code> em sequência. Ele compõe o Object Reset já existente: cada alvo ainda usa <code>ObjectEntryDeclaration</code> e participants registrados explicitamente.</p>
 
@@ -1237,6 +1264,82 @@ Entries[0]
       <span class="log-key"> blockingIssues</span><span class="log-sep">='</span><span class="log-val">0</span><span class="log-sep">'</span>
     </div>
 
+
+    <h2 id="activity-restart">FIRSTGAME-5 — Activity Restart via Reset Selection Policy</h2>
+    <p>O <code>ActivityRestartTrigger</code> cria um restart simples de Activity sem depender de um <code>ObjectResetGroupTrigger</code>. Ele usa o executor comum de reset, escolhe alvos por policy e depois executa Clear/Re-enter como um fluxo composto com <strong>uma única transição visual</strong>.</p>
+
+    <div class="callout warning">
+      <span class="callout-icon">⚠️</span>
+      <div class="callout-body">
+        <div class="callout-title">Activity Restart não é CycleReset completo</div>
+        <p>Este corte não cria lifecycle de Player/Actor, não recarrega Route, não descobre participants automaticamente e não substitui o sistema futuro de Restart/CycleReset. Ele é uma composição útil para sala, puzzle ou encounter.</p>
+      </div>
+    </div>
+
+    <pre><code>Canvas_Gameplay
+└── Button_RestartActivity
+    └── ActivityRestartTrigger
+        ├── Target Activity = vazio para usar Activity atual
+        ├── Use Current Activity When Target Missing = true
+        ├── Require Target Activity Is Current = true
+        ├── Reason = firstgame.restart.activity
+        ├── Reset Selection Mode = ExplicitTargets
+        ├── Reset Group Asset = vazio
+        ├── Reset Group Id = firstgame.activity-restart-reset
+        ├── Allow No Participants = false
+        ├── Stop On Failure = true
+        └── Reset Entries[0] = PlayerPrototype/ObjectEntryDeclaration</code></pre>
+
+    <div class="component-card">
+      <h4>Reset Selection Mode</h4>
+      <p>A policy responde uma pergunta: <em>quais ObjectEntries entram neste reset?</em> O processo de reset é o mesmo para todos os modos.</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Modo</th><th>Uso recomendado</th></tr></thead>
+          <tbody>
+            <tr><td><code>ExplicitTargets</code></td><td>Lista manual no trigger. É o modo recomendado para o FIRSTGAME agora.</td></tr>
+            <tr><td><code>CurrentActivityEntries</code></td><td>Objetos próprios da Activity atual. Não pega o player do FIRSTGAME porque ele é Route-scoped.</td></tr>
+            <tr><td><code>CurrentRouteEntries</code></td><td>Objetos Route-scoped atuais, como o <code>firstgame.player</code>.</td></tr>
+            <tr><td><code>CurrentRouteAndActivityEntries</code></td><td>Combina objetos da Route atual e da Activity atual. Bom para restart de sala quando o player é Route-scoped e objetos de puzzle são Activity-scoped.</td></tr>
+            <tr><td><code>AllCurrentEntries</code></td><td>Todos os entries conhecidos no snapshot atual. Use com cuidado.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="component-card">
+      <h4>Ordem de execução</h4>
+      <pre><code>ActivityRestartTrigger.RequestActivityRestart()
+  1. Resolve Reset Selection Policy
+  2. ObjectResetGroupExecutor executa os targets selecionados
+  3. FrameworkRuntimeHost.RestartActivityAsync(activity)
+     3.1 abre uma única Activity transition
+     3.2 limpa a Activity atual internamente
+     3.3 reentra na mesma Activity internamente
+     3.4 fecha a Activity transition</code></pre>
+      <p>O reset roda antes do Clear para que os <code>ObjectEntry</code> e reset participants da Activity atual ainda estejam disponíveis. O Clear/Re-enter não deve aparecer como dois fades separados; os status <code>clearStatus</code> e <code>reenterStatus</code> ficam agregados no resultado final do restart.</p>
+    </div>
+
+    <div class="callout info">
+      <span class="callout-icon">ℹ️</span>
+      <div class="callout-body">
+        <div class="callout-title">Como saber que o fade duplo foi corrigido</div>
+        <p>No console, o restart deve terminar com <code>Activity Restart Request completed</code>. Não deve aparecer como duas requests públicas separadas com <code>reason='firstgame.restart.activity:clear'</code> e <code>reason='firstgame.restart.activity:reenter'</code>. Esses detalhes agora são internos ao fluxo composto.</p>
+      </div>
+    </div>
+
+    <h3>Log esperado do Activity Restart</h3>
+    <div class="log-block">
+      <div class="log-label">Console — ActivityRestartTrigger</div>
+      Activity Restart Request completed.<br>
+      <span class="log-key">source</span><span class="log-sep">='</span><span class="log-val">ActivityRestartTrigger</span><span class="log-sep">'</span>
+      <span class="log-key"> status</span><span class="log-sep">='</span><span class="log-val">Succeeded</span><span class="log-sep">'</span>
+      <span class="log-key"> resetStatus</span><span class="log-sep">='</span><span class="log-val">Succeeded</span><span class="log-sep">'</span>
+      <span class="log-key"> clearStatus</span><span class="log-sep">='</span><span class="log-val">Succeeded</span><span class="log-sep">'</span>
+      <span class="log-key"> reenterStatus</span><span class="log-sep">='</span><span class="log-val">Succeeded</span><span class="log-sep">'</span>
+      <span class="log-key"> resetTargetSucceeded</span><span class="log-sep">='</span><span class="log-val">1</span><span class="log-sep">'</span>
+    </div>
+
     <h2 id="playerinput-gate">FIRSTGAME-3B — Unity PlayerInput Gate Adapter</h2>
     <p>O <code>UnityPlayerInputGateAdapter</code> é a ponte entre o Gate lógico do framework e o Unity Input System. Ele é opt-in: scripts temporários que leem <code>InputAction</code> diretamente só obedecem ao Gate quando um adapter desabilita o action map ou quando o próprio script consulta o Gate.</p>
 
@@ -1280,7 +1383,7 @@ Entries[0]
     <p>Use este roteiro para validar o fluxo em Play Mode.</p>
 
     <ol class="steps">
-      <li><div class="step-body"><strong>Abra qualquer cena</strong>Inclusive <code>FG_UIGlobal</code>. No Preview 10 o framework mantém a Primary Scene da Startup Route preparada antes da UIGlobal.</div></li>
+      <li><div class="step-body"><strong>Abra qualquer cena</strong>Inclusive <code>FG_UIGlobal</code>. No Preview 11 o framework mantém a Primary Scene da Startup Route preparada antes da UIGlobal.</div></li>
       <li><div class="step-body"><strong>Dê Play</strong>Confirme que o boot começa em <code>FG_Menu</code>.</div></li>
       <li><div class="step-body"><strong>Clique Start Game</strong>Confirme a troca para <code>FG_Gameplay</code> com Loading e Transition.</div></li>
       <li><div class="step-body"><strong>Confirme Activity A</strong>A <code>FG_Activity_A</code> deve entrar automaticamente.</div></li>
@@ -1288,6 +1391,7 @@ Entries[0]
       <li><div class="step-body"><strong>Teste Pause por UI</strong>Use o botão de Pause e depois o botão Resume do painel.</div></li>
       <li><div class="step-body"><strong>Teste Reset Player</strong>Clique o botão de reset single-target e confirme <code>Object Reset Request completed</code> para <code>firstgame.player</code>.</div></li>
       <li><div class="step-body"><strong>Teste Reset Group</strong>Clique o botão de Reset Group e confirme <code>Object Reset Group Request completed</code> com <code>targetSucceeded='1'</code>.</div></li>
+      <li><div class="step-body"><strong>Teste Restart Activity</strong>Mova o player, clique <code>Button_RestartActivity</code>, confirme que o player volta ao baseline e que há apenas uma transição visual. O log final deve ser <code>Activity Restart Request completed</code> com <code>status='Succeeded'</code>, <code>clearStatus='Succeeded'</code> e <code>reenterStatus='Succeeded'</code>.</div></li>
       <li><div class="step-body"><strong>Clique Go Activity B</strong>Confirme troca para <code>FG_Activity_B</code> com Transition. Com <code>UnityPlayerInputGateAdapter</code> no <code>PlayerPrototype</code>, o action map <code>Player</code> deve ser bloqueado durante a janela do Gate e liberado depois.</div></li>
       <li><div class="step-body"><strong>Clique Clear Activity</strong>Confirme Activity limpa, sem Activity ativa.</div></li>
       <li><div class="step-body"><strong>Clique Restore Activity A</strong>Confirme volta para <code>FG_Activity_A</code>.</div></li>
@@ -1295,7 +1399,7 @@ Entries[0]
 
     <h2 id="logs">Logs de PASS</h2>
 
-    <h3>Boot Preview 10 correto</h3>
+    <h3>Boot Preview 11 correto</h3>
     <div class="log-block">
       <div class="log-label">Console — ordem canônica</div>
       Startup Route Primary Scene prepared before UIGlobal load.<br>
@@ -1385,13 +1489,13 @@ Entries[0]
     <div class="component-card">
       <h4 style="color:var(--red); margin-bottom:8px;">🔴 Dois AudioListeners ou dois EventSystems</h4>
       <p style="font-size:13.5px; color:var(--text-soft);"><strong>Causa comum:</strong> <code>FG_UIGlobal</code> e a Route Scene têm câmera/EventSystem ao mesmo tempo, ou o package é anterior ao Preview 6 e duplica a UIGlobal aberta no Editor.<br>
-      <strong>Solução:</strong> use <code>v1.0.0-preview.10</code>; mantenha apenas um <code>AudioListener</code> e um <code>EventSystem</code> no runtime.</p>
+      <strong>Solução:</strong> use <code>v1.0.0-preview.11</code>; mantenha apenas um <code>AudioListener</code> e um <code>EventSystem</code> no runtime.</p>
     </div>
 
     <div class="component-card">
       <h4 style="color:var(--red); margin-bottom:8px;">🔴 "Unloading the last loaded scene is not supported"</h4>
       <p style="font-size:13.5px; color:var(--text-soft);"><strong>Causa:</strong> versão antiga do validator tentando fechar a última cena aberta ao validar a UIGlobal.<br>
-      <strong>Solução:</strong> atualizar para <code>v1.0.0-preview.10</code>. O validator agora trata ownership de cena com segurança.</p>
+      <strong>Solução:</strong> atualizar para <code>v1.0.0-preview.11</code>. O validator agora trata ownership de cena com segurança.</p>
     </div>
 
     <div class="component-card">
@@ -1431,11 +1535,23 @@ Entries[0]
       <strong>Solução:</strong> adicione <code>UnityPlayerInputGateAdapter</code> no <code>PlayerPrototype</code> e configure <code>Gameplay Action Map Name = Player</code>, <code>Block On Input Acceptance = true</code> e <code>Block On Gameplay Action = true</code>.</p>
     </div>
 
+    <div class="component-card">
+      <h4 style="color:var(--yellow); margin-bottom:8px;">⚠️ Restart Activity faz dois fades</h4>
+      <p style="font-size:13.5px; color:var(--text-soft);"><strong>Causa:</strong> versão intermediária do Preview 11 executava <code>ActivityClear</code> e <code>Activity</code> como duas requests visuais públicas.<br>
+      <strong>Solução:</strong> use o patch de Activity Restart com transição única. O log não deve mostrar <code>firstgame.restart.activity:clear</code> e <code>firstgame.restart.activity:reenter</code> como duas requests públicas separadas.</p>
+    </div>
+
+    <div class="component-card">
+      <h4 style="color:var(--yellow); margin-bottom:8px;">⚠️ Restart parece resetar duas vezes</h4>
+      <p style="font-size:13.5px; color:var(--text-soft);"><strong>Causa comum:</strong> o mesmo botão chama <code>ObjectResetGroupTrigger.RequestObjectResetGroup()</code> e também <code>ActivityRestartTrigger.RequestActivityRestart()</code>.<br>
+      <strong>Solução:</strong> no botão de restart, deixe apenas <code>ActivityRestartTrigger</code> e apenas uma chamada no <code>Button.OnClick</code>.</p>
+    </div>
+
 <h2 id="limites">O que não fazer neste Preview</h2>
     <div class="callout stop">
       <span class="callout-icon">🚫</span>
       <div class="callout-body">
-        <div class="callout-title">Fora do escopo do Preview 10 / FIRSTGAME-1/2/3</div>
+        <div class="callout-title">Fora do escopo do Preview 11 / FIRSTGAME-1/2/3</div>
         <p>
           Não edite o package Git dentro do consumidor.<br><br>
           Não copie assets, cenas ou ProjectSettings do projeto QA antigo.<br><br>
@@ -1446,12 +1562,12 @@ Entries[0]
           Não use <code>Input.GetKeyDown</code> solto como caminho canônico de Pause.<br><br>
           Não trate <code>UnityPlayerInputGateAdapter</code> como Player/Actor lifecycle; ele é apenas um adapter opt-in de Gate para o Unity Input System.<br><br>
           Não use o bridge avançado de InputMode quando o objetivo for apenas <code>Escape → Toggle Pause</code>.<br><br>
-          <code>Time.timeScale</code> é efeito básico do Pause no Preview 10, mas não substitui o contrato do <code>PauseRuntime</code>. Não escreva scripts paralelos mudando <code>Time.timeScale</code> fora do runtime de Pause.
+          <code>Time.timeScale</code> é efeito básico do Pause no Preview 11, mas não substitui o contrato do <code>PauseRuntime</code>. Não escreva scripts paralelos mudando <code>Time.timeScale</code> fora do runtime de Pause.
         </p>
       </div>
     </div>
 
-    <h2 id="glossario">Glossário Preview 10</h2>
+    <h2 id="glossario">Glossário Preview 11</h2>
     <div class="table-wrap">
       <table>
         <thead><tr><th>Termo</th><th>Definição</th></tr></thead>
@@ -1466,7 +1582,7 @@ Entries[0]
           <tr><td><code>PauseRuntime</code></td><td>Runtime autoritativo do estado <code>Running/Paused</code>, gate snapshot, surface e efeito básico de <code>Time.timeScale</code>.</td></tr>
           <tr><td><code>Transition Gate</code></td><td>Policy de Route/Activity que bloqueia lifecycle/input/interação/gameplay durante transition sem usar Pause ou <code>Time.timeScale</code>.</td></tr>
           <tr><td><code>UnityPlayerInputGateAdapter</code></td><td>Adapter opt-in que faz um <code>PlayerInput</code> de gameplay obedecer Gate desabilitando o action map configurado enquanto input/gameplay estiver bloqueado.</td></tr>
-          <tr><td><code>TimeScale Pause</code></td><td>Efeito de simulação do Preview 10: captura o valor running, aplica <code>Time.timeScale = 0</code> durante Pause e restaura no Resume.</td></tr>
+          <tr><td><code>TimeScale Pause</code></td><td>Efeito de simulação do Preview 11: captura o valor running, aplica <code>Time.timeScale = 0</code> durante Pause e restaura no Resume.</td></tr>
           <tr><td><code>PauseInputActionTrigger</code></td><td>Componente simples para <code>Escape → Toggle Pause</code> via <code>Global/Pause</code>. Troca de <code>PlayerInput</code> é opcional e não faz parte do caminho normal do FIRSTGAME.</td></tr>
           <tr><td><code>ActivityClear</code></td><td>Operação que remove a Activity ativa sem trocar de Route.</td></tr>
           <tr><td><code>Model Readiness</code></td><td>Validação de authoring do framework. Para PASS, precisa de 0 blockers.</td></tr>
@@ -1476,8 +1592,8 @@ Entries[0]
     </div>
 
     <div style="margin-top:56px; padding-top:24px; border-top:1px solid var(--border-soft); color:var(--text-muted); font-size:13px;">
-      <p><strong style="color:var(--text-soft);">Immersive Framework</strong> — Guia Preview 10 para Game Designers &nbsp;·&nbsp; <code>com.immersive.framework v1.0.0-preview.10</code></p>
-      <p style="margin-top:4px;">Este guia cobre o escopo validado em FIRSTGAME-1, FIRSTGAME-2, FIRSTGAME-3, FIRSTGAME-3B e FIRSTGAME-4. Atualizar ao fechar uma nova tag preview.</p>
+      <p><strong style="color:var(--text-soft);">Immersive Framework</strong> — Guia Preview 11 para Game Designers &nbsp;·&nbsp; <code>com.immersive.framework v1.0.0-preview.11</code></p>
+      <p style="margin-top:4px;">Este guia cobre o escopo validado em FIRSTGAME-1, FIRSTGAME-2, FIRSTGAME-3, FIRSTGAME-3B, FIRSTGAME-4 e FIRSTGAME-5. Atualizar ao fechar uma nova tag preview.</p>
     </div>
 
   </main>

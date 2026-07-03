@@ -520,6 +520,29 @@ namespace Immersive.Framework.ApplicationLifecycle
         }
 
 
+        internal async Awaitable<FrameworkActivityRestartFlowResult> RestartActivityAsync(
+            ActivityAsset targetActivity,
+            string source,
+            string reason)
+        {
+            InvalidateObjectEntryRuntimeContextSnapshot($"activity-restart:{NormalizeLifecycleSource(source)}");
+            var result = await _gameFlowRuntime.RestartActivityAsync(targetActivity, source, reason);
+
+            if (result.ClearSucceeded)
+            {
+                _state = FrameworkRuntimeState.FromActivityRequestResult(_state, result.ClearResult);
+            }
+
+            if (result.ReenterSucceeded)
+            {
+                _state = FrameworkRuntimeState.FromActivityRequestResult(_state, result.ReenterResult);
+            }
+
+            RefreshObjectEntryRuntimeContextSnapshot($"FrameworkRuntimeHost:activity-restart:{NormalizeLifecycleSource(source)}");
+            return result;
+        }
+
+
         private static FrameworkLoadingDiagnostics CreateSkippedActivityLoadingDiagnostics(FrameworkActivityRequestResult result)
         {
             var activityFlowResult = result.ActivityFlowResult;
@@ -623,7 +646,7 @@ namespace Immersive.Framework.ApplicationLifecycle
             _objectResetRequestInFlight = true;
             try
             {
-                await Task.Yield();
+                await Awaitable.NextFrameAsync();
                 var snapshot = _objectEntryRuntimeContextSnapshot;
                 var result = _objectResetRuntime.Execute(snapshot, request, _objectResetParticipantSource);
                 LogObjectResetResult(result);

@@ -108,6 +108,11 @@ namespace Immersive.Framework.ObjectReset
         [ContextMenu("Request Object Reset Group")]
         public async void RequestObjectResetGroup()
         {
+            await RequestObjectResetGroupAsync();
+        }
+
+        public async Awaitable<ObjectResetGroupResult> RequestObjectResetGroupAsync()
+        {
             EnsureLogger();
 
             string resolvedGroupId = ResolveGroupId();
@@ -118,9 +123,15 @@ namespace Immersive.Framework.ObjectReset
             if (_requestInFlight)
             {
                 string message = "Object Reset Group ignored. This Object Reset Group Trigger already has a request in flight.";
+                var result = ObjectResetGroupResult.Rejected(
+                    resolvedGroupId,
+                    DefaultSource,
+                    resolvedReason,
+                    ObjectResetGroupResultStatus.RejectedAlreadyInFlight,
+                    message);
                 _logger.Warning(message, BuildGroupFields(resolvedGroupId, resolvedReason));
-                PublishCompleted(FlowRequestOutcome.Ignored, resolvedReason, message, null, false);
-                return;
+                PublishCompleted(FlowRequestOutcome.Ignored, resolvedReason, message, result, true);
+                return result;
             }
 
             IReadOnlyList<ObjectResetGroupEntry> resolvedEntries = ResolveEntries();
@@ -135,7 +146,7 @@ namespace Immersive.Framework.ObjectReset
                     message);
                 LogGroupResult(result);
                 PublishCompleted(FlowRequestOutcome.Failed, resolvedReason, message, result, true);
-                return;
+                return result;
             }
 
             if (!FrameworkRuntimeHost.TryGetCurrent(out var runtimeHost))
@@ -149,21 +160,7 @@ namespace Immersive.Framework.ObjectReset
                     message);
                 LogGroupResult(result);
                 PublishCompleted(FlowRequestOutcome.Failed, resolvedReason, message, result, true);
-                return;
-            }
-
-            if (!runtimeHost.TryGetObjectEntryRuntimeContextSnapshot(out var snapshot) || snapshot == null || !snapshot.IsAvailable)
-            {
-                string message = "Object Reset Group failed. Current Object Entry runtime context snapshot is unavailable.";
-                var result = ObjectResetGroupResult.Rejected(
-                    resolvedGroupId,
-                    DefaultSource,
-                    resolvedReason,
-                    ObjectResetGroupResultStatus.RejectedRuntimeContextUnavailable,
-                    message);
-                LogGroupResult(result);
-                PublishCompleted(FlowRequestOutcome.Failed, resolvedReason, message, result, true);
-                return;
+                return result;
             }
 
             _requestInFlight = true;
@@ -172,61 +169,15 @@ namespace Immersive.Framework.ObjectReset
             ObjectResetGroupResult groupResult;
             try
             {
-                var targetResults = new List<ObjectResetGroupTargetResult>(resolvedEntries.Count);
-                bool stoppedOnFailure = false;
-
-                for (int i = 0; i < resolvedEntries.Count; i++)
-                {
-                    ObjectResetGroupEntry entry = resolvedEntries[i];
-                    if (entry == null)
-                    {
-                        targetResults.Add(ObjectResetGroupTargetResult.SkippedTarget(i, string.Empty, "Object Reset Group entry is null."));
-                        continue;
-                    }
-
-                    string targetIdText = entry.ResolveObjectEntryIdText();
-                    if (!entry.Enabled)
-                    {
-                        targetResults.Add(ObjectResetGroupTargetResult.SkippedTarget(i, targetIdText, "Object Reset Group entry is disabled."));
-                        continue;
-                    }
-
-                    if (!TryCreateRequest(
-                            snapshot,
-                            entry,
-                            i,
-                            resolvedAllowNoParticipants,
-                            resolvedReason,
-                            out ObjectResetRequest request,
-                            out string failedTargetId,
-                            out string failureMessage))
-                    {
-                        targetResults.Add(ObjectResetGroupTargetResult.FailedTarget(i, failedTargetId, failureMessage));
-                        if (resolvedStopOnFailure)
-                        {
-                            stoppedOnFailure = true;
-                            break;
-                        }
-
-                        continue;
-                    }
-
-                    ObjectResetResult resetResult = await runtimeHost.RequestObjectResetAsync(request);
-                    targetResults.Add(ObjectResetGroupTargetResult.FromResetResult(i, request.Target.ObjectEntryId.StableText, resetResult));
-
-                    if (resolvedStopOnFailure && resetResult.Failed)
-                    {
-                        stoppedOnFailure = true;
-                        break;
-                    }
-                }
-
-                groupResult = ObjectResetGroupResult.FromTargets(
+                groupResult = await ObjectResetGroupExecutor.ExecuteAsync(
+                    runtimeHost,
+                    ObjectResetSelectionMode.ExplicitTargets,
+                    resolvedEntries,
                     resolvedGroupId,
                     DefaultSource,
                     resolvedReason,
-                    targetResults,
-                    stoppedOnFailure);
+                    resolvedAllowNoParticipants,
+                    resolvedStopOnFailure);
             }
             finally
             {
@@ -235,6 +186,7 @@ namespace Immersive.Framework.ObjectReset
 
             LogGroupResult(groupResult);
             PublishCompleted(MapOutcome(groupResult), resolvedReason, groupResult.Message, groupResult, true);
+            return groupResult;
         }
 
         [ContextMenu("Clear Last Object Reset Group Result")]

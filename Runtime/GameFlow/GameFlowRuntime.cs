@@ -602,6 +602,316 @@ namespace Immersive.Framework.GameFlow
             }
         }
 
+        internal async Awaitable<FrameworkActivityRestartFlowResult> RestartActivityAsync(
+            ActivityAsset targetActivity,
+            string source,
+            string reason)
+        {
+            string resolvedSource = source.NormalizeTextOrFallback("Unknown");
+            string resolvedReason = reason.NormalizeTextOrFallback("None");
+
+            if (targetActivity == null)
+            {
+                var clearMissingTarget = FrameworkActivityRequestResult.FailedInvalidConfig(
+                    "Activity Restart failed. Target Activity is missing.",
+                    null,
+                    resolvedSource,
+                    resolvedReason,
+                    ActivityVisualTransitionMode.Seamless,
+                    GameFlowRequestOperationKind.ActivityClear);
+                var reenterMissingTarget = FrameworkActivityRequestResult.FailedInvalidConfig(
+                    "Activity Restart failed. Target Activity is missing.",
+                    null,
+                    resolvedSource,
+                    resolvedReason,
+                    ActivityVisualTransitionMode.Seamless,
+                    GameFlowRequestOperationKind.Activity);
+                return FrameworkActivityRestartFlowResult.FailedClear(
+                    clearMissingTarget,
+                    reenterMissingTarget,
+                    "Activity Restart failed. Target Activity is missing.");
+            }
+
+            if (!_routeLifecycleRuntime.HasActiveRoute)
+            {
+                var clearNoRoute = FrameworkActivityRequestResult.FailedInvalidConfig(
+                    "Activity Restart failed. No active Route is available.",
+                    targetActivity,
+                    resolvedSource,
+                    resolvedReason,
+                    ActivityVisualTransitionMode.Seamless,
+                    GameFlowRequestOperationKind.ActivityClear);
+                var reenterNoRoute = FrameworkActivityRequestResult.FailedInvalidConfig(
+                    "Activity Restart failed. No active Route is available.",
+                    targetActivity,
+                    resolvedSource,
+                    resolvedReason,
+                    ActivityVisualTransitionMode.Seamless,
+                    GameFlowRequestOperationKind.Activity);
+                return FrameworkActivityRestartFlowResult.FailedClear(
+                    clearNoRoute,
+                    reenterNoRoute,
+                    "Activity Restart failed. No active Route is available.");
+            }
+
+            var gateEvaluation = EvaluateLifecycleRequestAdmission("ActivityRestartRequest", resolvedSource, resolvedReason);
+            if (!gateEvaluation.IsAllowed)
+            {
+                var blockedTransitionGateDiagnostics = CreateBlockedTransitionGateDiagnostics(gateEvaluation);
+                var clearBlocked = FrameworkActivityRequestResult.IgnoredBlockedByGate(
+                    null,
+                    resolvedSource,
+                    resolvedReason,
+                    gateEvaluation,
+                    blockedTransitionGateDiagnostics,
+                    GameFlowRequestOperationKind.ActivityClear);
+                var reenterBlocked = FrameworkActivityRequestResult.IgnoredBlockedByGate(
+                    targetActivity,
+                    resolvedSource,
+                    resolvedReason,
+                    gateEvaluation,
+                    blockedTransitionGateDiagnostics,
+                    GameFlowRequestOperationKind.Activity);
+                return FrameworkActivityRestartFlowResult.FailedClear(
+                    clearBlocked,
+                    reenterBlocked,
+                    "Activity Restart ignored. Request is blocked by Gate admission.");
+            }
+
+            if (!_routeLifecycleRuntime.HasActiveActivity)
+            {
+                var clearNoActivity = FrameworkActivityRequestResult.IgnoredNoActiveActivity(resolvedSource, resolvedReason);
+                var reenterNoActivity = FrameworkActivityRequestResult.FailedInvalidConfig(
+                    "Activity Restart failed. No active Activity is available to restart.",
+                    targetActivity,
+                    resolvedSource,
+                    resolvedReason,
+                    ActivityVisualTransitionMode.Seamless,
+                    GameFlowRequestOperationKind.Activity);
+                return FrameworkActivityRestartFlowResult.FailedClear(
+                    clearNoActivity,
+                    reenterNoActivity,
+                    "Activity Restart failed. No active Activity is available to restart.");
+            }
+
+            if (!_routeLifecycleRuntime.IsActivityActive(targetActivity))
+            {
+                var currentActivity = _routeLifecycleRuntime.CurrentActivity;
+                var clearMismatch = FrameworkActivityRequestResult.FailedInvalidConfig(
+                    $"Activity Restart failed. Target Activity must be the current active Activity. current='{(currentActivity != null ? currentActivity.ActivityName : string.Empty)}' target='{targetActivity.ActivityName}'.",
+                    null,
+                    resolvedSource,
+                    resolvedReason,
+                    ActivityVisualTransitionMode.Seamless,
+                    GameFlowRequestOperationKind.ActivityClear);
+                var reenterMismatch = FrameworkActivityRequestResult.FailedInvalidConfig(
+                    $"Activity Restart failed. Target Activity must be the current active Activity. current='{(currentActivity != null ? currentActivity.ActivityName : string.Empty)}' target='{targetActivity.ActivityName}'.",
+                    targetActivity,
+                    resolvedSource,
+                    resolvedReason,
+                    ActivityVisualTransitionMode.Seamless,
+                    GameFlowRequestOperationKind.Activity);
+                return FrameworkActivityRestartFlowResult.FailedClear(
+                    clearMismatch,
+                    reenterMismatch,
+                    "Activity Restart failed. Target Activity must be the current active Activity.");
+            }
+
+            var currentRoute = _routeLifecycleRuntime.CurrentRoute;
+            var previousActivity = _routeLifecycleRuntime.CurrentActivity;
+            var activityTransitionMode = ResolveActivityTransitionMode(targetActivity);
+            var clearPreview = PreviewActivityOperation(
+                ActivityOperationKind.Clear,
+                previousActivity,
+                null,
+                activityTransitionMode,
+                resolvedSource,
+                BuildRestartStageReason(resolvedReason, "clear"));
+            if (clearPreview.IsBlocked)
+            {
+                var clearBlocked = FrameworkActivityRequestResult.FailedInvalidConfig(
+                    "Activity Restart clear stage blocked by ActivityOperationPlan. " + clearPreview.ToDiagnosticString(),
+                    null,
+                    resolvedSource,
+                    resolvedReason,
+                    activityTransitionMode,
+                    GameFlowRequestOperationKind.ActivityClear);
+                var reenterBlocked = FrameworkActivityRequestResult.FailedInvalidConfig(
+                    "Activity Restart clear stage blocked by ActivityOperationPlan. Activity re-enter was not requested.",
+                    targetActivity,
+                    resolvedSource,
+                    resolvedReason,
+                    activityTransitionMode,
+                    GameFlowRequestOperationKind.Activity);
+                return FrameworkActivityRestartFlowResult.FailedClear(
+                    clearBlocked,
+                    reenterBlocked,
+                    "Activity Restart failed. Clear stage was blocked by ActivityOperationPlan.");
+            }
+
+            var reenterPreview = PreviewActivityOperation(
+                ActivityOperationKind.Start,
+                null,
+                targetActivity,
+                activityTransitionMode,
+                resolvedSource,
+                BuildRestartStageReason(resolvedReason, "reenter"));
+            if (reenterPreview.IsBlocked)
+            {
+                var clearBlocked = FrameworkActivityRequestResult.FailedInvalidConfig(
+                    "Activity Restart re-enter stage blocked by ActivityOperationPlan. Activity clear was not requested.",
+                    null,
+                    resolvedSource,
+                    resolvedReason,
+                    activityTransitionMode,
+                    GameFlowRequestOperationKind.ActivityClear);
+                var reenterBlocked = FrameworkActivityRequestResult.FailedInvalidConfig(
+                    "Activity Restart re-enter stage blocked by ActivityOperationPlan. " + reenterPreview.ToDiagnosticString(),
+                    targetActivity,
+                    resolvedSource,
+                    resolvedReason,
+                    activityTransitionMode,
+                    GameFlowRequestOperationKind.Activity);
+                return FrameworkActivityRestartFlowResult.FailedReenter(
+                    clearBlocked,
+                    reenterBlocked,
+                    "Activity Restart failed. Re-enter stage was blocked by ActivityOperationPlan.");
+            }
+
+            _activityRequestInFlight = true;
+            TransitionGateDiagnostics transitionGateDiagnostics = default;
+            try
+            {
+                var operationId = CreateTransitionOperationId(TransitionScope.Activity);
+                var transitionGateMode = ResolveActivityTransitionGateMode(targetActivity);
+                var transitionGateSnapshot = ApplyTransitionGate(
+                    operationId,
+                    TransitionKind.ActivitySwitch,
+                    transitionGateMode,
+                    resolvedSource,
+                    resolvedReason);
+                var transitionBefore = await ExecuteActivityTransitionAsync(
+                    TransitionRequest.Before(
+                        operationId,
+                        TransitionScope.Activity,
+                        resolvedSource,
+                        resolvedReason,
+                        currentRoute,
+                        currentRoute,
+                        previousActivity,
+                        targetActivity),
+                    activityTransitionMode);
+
+                var clearFlowResult = await _routeLifecycleRuntime.ClearActivityAsync(
+                    resolvedSource,
+                    BuildRestartStageReason(resolvedReason, "clear"),
+                    NoOpFrameworkLoadingProgressReporter.Instance);
+
+                if (!clearFlowResult.Completed)
+                {
+                    await ExecuteActivityTransitionAsync(
+                        TransitionRequest.After(
+                            operationId,
+                            TransitionScope.Activity,
+                            resolvedSource,
+                            resolvedReason,
+                            currentRoute,
+                            currentRoute,
+                            previousActivity,
+                            clearFlowResult.Activity),
+                        activityTransitionMode);
+                    transitionGateDiagnostics = ReleaseTransitionGate(transitionGateMode, transitionGateSnapshot);
+                    var clearResult = FrameworkActivityRequestResult.FailedInvalidConfig(
+                        clearFlowResult.Message,
+                        null,
+                        resolvedSource,
+                        BuildRestartStageReason(resolvedReason, "clear"),
+                        activityTransitionMode,
+                        GameFlowRequestOperationKind.ActivityClear,
+                        transitionGateDiagnostics);
+                    var reenterSkippedResult = FrameworkActivityRequestResult.FailedInvalidConfig(
+                        "Activity Restart failed. Activity Clear did not complete; Activity re-enter was not requested.",
+                        targetActivity,
+                        resolvedSource,
+                        BuildRestartStageReason(resolvedReason, "reenter"),
+                        activityTransitionMode,
+                        GameFlowRequestOperationKind.Activity,
+                        transitionGateDiagnostics);
+                    return FrameworkActivityRestartFlowResult.FailedClear(
+                        clearResult,
+                        reenterSkippedResult,
+                        "Activity Restart failed. Activity Clear did not complete.");
+                }
+
+                var reenterFlowResult = await _routeLifecycleRuntime.StartActivityAsync(
+                    targetActivity,
+                    resolvedSource,
+                    BuildRestartStageReason(resolvedReason, "reenter"),
+                    NoOpFrameworkLoadingProgressReporter.Instance);
+                var transitionAfter = await ExecuteActivityTransitionAsync(
+                    TransitionRequest.After(
+                        operationId,
+                        TransitionScope.Activity,
+                        resolvedSource,
+                        resolvedReason,
+                        currentRoute,
+                        currentRoute,
+                        previousActivity,
+                        reenterFlowResult.Activity),
+                    activityTransitionMode);
+                var transitionDiagnostics = FrameworkTransitionDiagnostics.Completed(
+                    TransitionScope.Activity,
+                    transitionBefore,
+                    transitionAfter);
+                transitionGateDiagnostics = ReleaseTransitionGate(transitionGateMode, transitionGateSnapshot);
+
+                var clearSucceededResult = FrameworkActivityRequestResult.SucceededWith(
+                    null,
+                    resolvedSource,
+                    BuildRestartStageReason(resolvedReason, "clear"),
+                    clearFlowResult,
+                    transitionDiagnostics,
+                    transitionGateDiagnostics: transitionGateDiagnostics,
+                    activityTransitionMode: activityTransitionMode);
+
+                if (!reenterFlowResult.Completed)
+                {
+                    var reenterFailedResult = FrameworkActivityRequestResult.FailedInvalidConfig(
+                        reenterFlowResult.Message,
+                        targetActivity,
+                        resolvedSource,
+                        BuildRestartStageReason(resolvedReason, "reenter"),
+                        activityTransitionMode,
+                        GameFlowRequestOperationKind.Activity,
+                        transitionGateDiagnostics);
+                    return FrameworkActivityRestartFlowResult.FailedReenter(
+                        clearSucceededResult,
+                        reenterFailedResult,
+                        "Activity Restart failed. Activity re-enter did not complete.");
+                }
+
+                var reenterSucceededResult = FrameworkActivityRequestResult.SucceededWith(
+                    targetActivity,
+                    resolvedSource,
+                    BuildRestartStageReason(resolvedReason, "reenter"),
+                    reenterFlowResult,
+                    transitionDiagnostics,
+                    transitionGateDiagnostics: transitionGateDiagnostics,
+                    activityTransitionMode: activityTransitionMode);
+
+                return FrameworkActivityRestartFlowResult.Completed(
+                    clearSucceededResult,
+                    reenterSucceededResult,
+                    "Activity Restart flow completed with a single Activity transition.");
+            }
+            finally
+            {
+                ReleaseTransitionGateIfStillActive();
+                _activityRequestInFlight = false;
+            }
+        }
+
+
         internal async Task<CycleResetResult> RequestRouteCycleResetAsync(string source, string reason)
         {
             return await RequestCycleResetAsync(CycleResetScope.Route, CycleResetPolicy.RouteDefault(), source, reason);
@@ -757,6 +1067,12 @@ namespace Immersive.Framework.GameFlow
 
             return await ExecuteTransitionAsync(request);
         }
+
+        private static string BuildRestartStageReason(string resolvedReason, string stage)
+        {
+            return $"{resolvedReason.NormalizeTextOrFallback("Activity Restart")}:{stage}";
+        }
+
 
         private static ActivityOperationKind ResolveActivityOperationKind(ActivityAsset previousActivity, ActivityAsset targetActivity)
         {

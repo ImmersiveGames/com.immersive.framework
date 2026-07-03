@@ -15,6 +15,7 @@ namespace Immersive.Framework.ObjectReset
         Failed = 4,
         RejectedInvalidRequest = 5,
         RejectedRuntimeUnavailable = 6,
-        RejectedRuntimeContextUnavailable = 7
+        RejectedRuntimeContextUnavailable = 7,
+        RejectedAlreadyInFlight = 8
     }
 }

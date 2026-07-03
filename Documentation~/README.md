@@ -23,7 +23,7 @@ Read in this order:
 | Pause | Runtime Pause state drives Gate blockers, resident `UIGlobal` Pause surface and basic simulation pause through `Time.timeScale = 0`. |
 | Pause input | Use `PauseInputActionTrigger` for simple keyboard/controller Pause through `Global/Pause`; reserve `PauseInputActionRuntimeBridgeTrigger` + `PauseInputModeUnityPlayerInputRuntimeBridge` for explicit typed InputMode / PlayerInput ownership cuts. |
 | RuntimeContent / ContentAnchor | Logical runtime, Unity materialization adapters, bridge/set authoring and composite release helpers are available. |
-| Object Reset | Single-target Object Reset is available through `ObjectResetTrigger`; multi-target reset sets are available through `ObjectResetGroupAsset` and `ObjectResetGroupTrigger`. |
+| Object Reset | Single-target Object Reset is available through `ObjectResetTrigger`; multi-target reset sets are available through `ObjectResetGroupAsset` and `ObjectResetGroupTrigger`; authored Activity restart uses reset selection policy directly and composes reset execution with Activity Clear/Re-enter through one visual transition in `ActivityRestartTrigger`. |
 | QA | `FrameworkQaCanvas` exposes package smokes for setup and regression validation. |
 
 ## Documentation classification
@@ -100,3 +100,7 @@ Button_ResetRoom
 ```
 
 For project asset groups, prefer string `Object Entry Id` entries. For scene-local buttons, inline entries may reference scene `ObjectEntryDeclaration` components directly.
+
+## Activity Restart via Object Reset Group
+
+`ActivityRestartTrigger` is an authored composition surface for small gameplay restart flows. It now owns reset selection policy directly instead of depending on an `ObjectResetGroupTrigger`: explicit targets, an `ObjectResetGroupAsset`, current Activity entries, current Route entries, Route + Activity entries, or all current entries. It then clears the current Activity and requests the same Activity again. This is not Cycle Reset, does not reload the Route, and does not create Player/Actor lifecycle ownership.

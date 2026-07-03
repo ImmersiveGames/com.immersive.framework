@@ -22,6 +22,9 @@ Current order:
 16. F36 - Global Pause Input Action
 17. F37 - Transition Gate Policy
 18. F38 - Unity PlayerInput Gate Adapter
+19. F39 - Object Reset Group
+20. F40 - Activity Restart via Object Reset Group
+21. F41 - Reset Selection Policy
 14. POST-F33-A - Matrix Reconciliation Closeout
 15. POST-F33-B - Officialize/Reclassify F28-F33
 16. F8R-A - RuntimeContent / ContentAnchor Materialization Audit
@@ -76,6 +79,8 @@ Current order:
 | F37 | [Transition Gate Policy](F37-ADR-TRANSITION-001-Transition-Gate-Policy.md) | Accepted / preview.8 |
 | F38 | [Unity PlayerInput Gate Adapter](F38-ADR-INPUT-001-Unity-PlayerInput-Gate-Adapter.md) | Accepted / preview.9 |
 | F39 | [Object Reset Group](F39-ADR-RESET-006-Object-Reset-Group.md) | Accepted / preview.10 |
+| F40 | [Activity Restart via Object Reset Group](F40-ADR-RESET-007-Activity-Restart-Via-Object-Reset-Group.md) | Accepted / preview.11 |
+| F41 | [Reset Selection Policy](F41-ADR-RESET-008-Reset-Selection-Policy.md) | Accepted / preview.11 corrective patch |
 | POST-F33-A | `Assets/_Documentation/Notes/POST-F33-A-Matrix-Reconciliation-Closeout.md` | Accepted / documentation / roadmap governance |
 | POST-F33-B | `Assets/_Documentation/Notes/POST-F33-B-Officialize-Reclassify-F28-F33.md` | Accepted / documentation / roadmap governance |
 | F8R-A | `Assets/_Documentation/Audits/F8R-A-RuntimeContent-ContentAnchor-Materialization-Audit.md` | Draft / audit-only / documentation governance |
