@@ -16,3 +16,11 @@ Old phase-specific guides were consolidated into:
 ```
 
 Do not add new phase-specific guide files by default. Update the current HTML guide unless the topic is a durable, standalone reference.
+
+Consumer project role split:
+
+```text
+../Current/03-Consumer-Project-Roles.md
+```
+
+Do not duplicate long framework guidance inside QA or FIRSTGAME. Keep consumer READMEs local and link back to package docs.

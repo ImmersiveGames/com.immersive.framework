@@ -27,6 +27,7 @@ Do not treat historical phase numbers as an active queue. Some phases are closed
 
 | Lane | Status | Scope |
 |---|---|---|
+| CONSUMER-ROLES-A - Consumer project separation | Active | Freeze package/QA/FIRSTGAME roles and keep consumer cleanup bounded to safe non-runtime changes. |
 | POST-RESET-A — Documentation reconciliation | Active | Consolidate current docs, numbered history and roadmap after Reset Reform. |
 
 ## Closed stable lanes
@@ -39,6 +40,7 @@ Do not treat historical phase numbers as an active queue. Some phases are closed
 | Save boundaries | Closed/Frozen | Snapshot/preferences/progression-adapter boundary exists; save engine remains future. |
 | Reset Reform preview.12 | Closed | Current reset/restart model. |
 | FIRSTGAME reset usage model | Closed | Real usage proof passed. |
+| Consumer role rule | Frozen | QA proves technical behavior; FIRSTGAME proves game-start usability; package owns canonical docs/contracts. |
 
 ## Superseded reset history
 
@@ -73,3 +75,9 @@ Option A — FIRSTGAME Usage Model Hardening
 ```
 
 Reason: after Reset Reform, the largest near-term risk is not missing core behavior; it is unclear developer usage. Lock the model with examples before expanding runtime scope.
+
+## Consumer cleanup guardrail
+
+Future cleanup must preserve the split in [`03-Consumer-Project-Roles.md`](03-Consumer-Project-Roles.md).
+
+Do not rename or move Unity serialized scenes, prefabs, assets or attached MonoBehaviour scripts from consumer projects without a Unity Editor migration plan.

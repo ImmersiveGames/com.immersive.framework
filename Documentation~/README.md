@@ -12,8 +12,9 @@ Use this folder as a **small current surface** plus a **numbered history**. Do n
 | 2 | [`Guides/Usage/index.html`](Guides/Usage/index.html) | Current user-facing HTML guide opened from Project Settings. |
 | 3 | [`Current/01-Roadmap.md`](Current/01-Roadmap.md) | Selected current roadmap and next candidate lanes. |
 | 4 | [`Current/02-Usage-Map.md`](Current/02-Usage-Map.md) | Which runtime surface to use for common game tasks. |
-| 5 | [`History/000-INDEX.md`](History/000-INDEX.md) | Numbered historical navigation. |
-| 6 | [`ADRs/ADR-INDEX.md`](ADRs/ADR-INDEX.md) | Detailed decision archive. |
+| 5 | [`Current/03-Consumer-Project-Roles.md`](Current/03-Consumer-Project-Roles.md) | Frozen split between package, QA project and FIRSTGAME. |
+| 6 | [`History/000-INDEX.md`](History/000-INDEX.md) | Numbered historical navigation. |
+| 7 | [`ADRs/ADR-INDEX.md`](ADRs/ADR-INDEX.md) | Detailed decision archive. |
 
 ## Documentation policy
 
@@ -25,6 +26,7 @@ Use this folder as a **small current surface** plus a **numbered history**. Do n
 | History | Keep consolidated phase/guide/roadmap history in numbered files. |
 | Planning drafts | Avoid long-lived active drafts. Promote decisions to `Current/` or archive to `History/`. |
 | Old phase guides | Do not keep one file per old cut unless it is still directly useful. Summarize in numbered history. |
+| Consumer project docs | Keep only local-purpose READMEs in consumer projects. Canonical framework docs stay in this package. |
 
 ## Current model summary
 
@@ -70,3 +72,15 @@ Do not rename this path unless editor settings are changed in the same cut:
 ```text
 Documentation~/Guides/Usage/index.html
 ```
+
+## Consumer project role split
+
+Canonical rule:
+
+```text
+QA proves technical correctness.
+FIRSTGAME proves practical game-start usability.
+The package owns official framework docs and contracts.
+```
+
+See [`Current/03-Consumer-Project-Roles.md`](Current/03-Consumer-Project-Roles.md).

@@ -23,6 +23,7 @@ Status: **canonical current state after Reset Reform preview.12**.
 | Runtime prefab reset | Runtime id generation uses authored prefix + monotonic runtime counter. |
 | Restart | `ActivityRestartTrigger` wraps reset + clear + re-enter inside one visual transition window. |
 | FIRSTGAME | Reset Room and Activity Restart usage model passed with runtime objects. |
+| Consumer project split | QA, FIRSTGAME and package roles are frozen in [`03-Consumer-Project-Roles.md`](03-Consumer-Project-Roles.md). |
 
 ## Closed Reset Reform sequence
 
@@ -63,3 +64,15 @@ Use both layers when relevant:
 ```
 
 For Reset Reform, both layers passed.
+
+## Consumer project ownership
+
+Current ownership rule:
+
+```text
+Framework package: contracts, runtime, editor tooling, validators, diagnostics and official docs.
+QA Project: synthetic smokes, probes, artificial scenarios and negative cases.
+FIRSTGAME: minimal real game usage proof.
+```
+
+Do not move canonical framework docs into consumer `Assets/` folders. Consumer projects may keep local READMEs only for project-specific operation.

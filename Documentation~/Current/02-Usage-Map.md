@@ -2,6 +2,8 @@
 
 Use this map when deciding which framework surface to use in game code or scene authoring.
 
+Consumer role reference: [`03-Consumer-Project-Roles.md`](03-Consumer-Project-Roles.md).
+
 ## Common tasks
 
 | Task | Use | Do not use |
@@ -20,6 +22,14 @@ Use this map when deciding which framework surface to use in game code or scene 
 | Reset a room/activity scope | `ObjectResetGroupTrigger` + `ResetSelectionConfig` | Manual list iteration in game code. |
 | Restart current activity | `ActivityRestartTrigger` | Reset group trigger + separate activity request on the same button. |
 | Runtime prefab reset | Prefab has `UnityResetSubjectAdapter` with runtime id generation | Legacy runtime object participation path. |
+
+## Consumer project mapping
+
+| Need | Project/root | Use |
+|---|---|---|
+| Validate framework technical behavior | QA Project / `Assets/ImmersiveFrameworkQA/` | Synthetic scenes, QA buttons, probes and negative cases. |
+| Prove a real starting game is usable | FIRSTGAME / `Assets/_Project/` | Minimal player, menu, gameplay, reset, pause, transition and runtime object examples. |
+| Record official framework decisions | Package / `Documentation~/` | Current docs, ADRs, guides, planning and history. |
 
 ## Reset examples
 

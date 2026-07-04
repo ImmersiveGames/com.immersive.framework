@@ -11,6 +11,7 @@ This folder keeps historical context in numbered, consolidated files.
 | 020 | ADR history. |
 | 030 | Guide history. |
 | 040 | Cleanup/deletion history. |
+| 050 | Consumer project separation cleanup. |
 
 ## Files
 
@@ -20,6 +21,7 @@ This folder keeps historical context in numbered, consolidated files.
 | [`020-ADR-History.md`](020-ADR-History.md) | Consolidated ADR list by phase/code. Detailed ADRs remain in `../ADRs/`. |
 | [`030-Guide-History.md`](030-Guide-History.md) | Historical guide consolidation and replacement map. |
 | [`040-Removed-Files.md`](040-Removed-Files.md) | Files intentionally removed from the active documentation surface. |
+| [`050-Consumer-Project-Separation-Cleanup.md`](050-Consumer-Project-Separation-Cleanup.md) | Controlled cleanup report for package/QA/FIRSTGAME role separation. |
 
 ## Current-vs-history rule
 
