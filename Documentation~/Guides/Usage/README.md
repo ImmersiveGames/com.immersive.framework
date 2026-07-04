@@ -24,19 +24,14 @@ Documentation~/Guides/Usage/index.html
 
 ```text
 com.immersive.framework v1.0.0-preview.12
-FIRSTGAME-1 - Minimal Playable Framework Flow
-FIRSTGAME-2 - Minimal Pause Model Flow
-FIRSTGAME-2B - Pause Keyboard Toggle
-FIRSTGAME-2C - Pause TimeScale
-FIRSTGAME-2D - Global Pause Input Action
-FIRSTGAME-2E - Transition Gate Policy
-FIRSTGAME-3 - ResetSubject and Unity reset participants
-FIRSTGAME-3B - Unity PlayerInput Gate Adapter
-FIRSTGAME-4 - Object Reset Group via ResetSelectionConfig
-FIRSTGAME-5 - Activity Restart via Reset Selection
-FIRSTGAME-5B - Runtime Awaitable reset/restart flow
-FIRSTGAME-5C - Reset/Restart authoring validation
-FIRSTGAME-5D - Runtime prefab reset through UnityResetSubjectAdapter
+FIRSTGAME Usage Model Hardening / POST-RESET-C
+C1 - Player reset model hardening
+C2 - UI, buttons and reasons cleanup
+C3 - Script naming and runtime object spawner hardening
+C4 - Runtime Box prefab cleanup
+C5 - FIRSTGAME README and manual smoke
+C6 - Local cleanup
+C7 - Framework usage guide sync
 ```
 
 ## Preview 12 reset/restart notes
@@ -51,22 +46,46 @@ FIRSTGAME-5D - Runtime prefab reset through UnityResetSubjectAdapter
 - New reset/restart runtime orchestration uses `UnityEngine.Awaitable<T>` for Unity-bound async flow.
 - Authoring validation scans reset/restart triggers in loaded scenes and reports missing subjects or ambiguous trigger stacking.
 
-## Runtime prefab reset
+## FIRSTGAME canonical runtime reset model
 
 Use `UnityResetSubjectAdapter` on scene objects or runtime-instantiated prefabs that must participate in framework reset/restart flows.
 
-Recommended prefab shape:
+Canonical FIRSTGAME player shape:
 
 ```text
-RuntimeObjectPrefab
+PlayerPrototype
+  ObjectEntryDeclaration
+    objectEntryId = firstgame.player
+  PlayerInput
+  FirstGamePlayerMover
+  UnityPlayerInputGateAdapter
+  UnityResetSubjectAdapter
+    Subject Id = firstgame.player
+    Scope = Activity
+  UnityTransformResetParticipant
+  FirstGamePlayerResettableState : IUnityResettable
+    ResetParticipantId = firstgame.player.resettable-state
+```
+
+Canonical runtime prefab shape:
+
+```text
+FG_RuntimeBox
+  BoxVisual
+    MeshFilter = Cube
+    BoxCollider
   UnityResetSubjectAdapter
     Subject Id Generation = Runtime Instance
-    Runtime Id Prefix = firstgame.runtime-object
+    Runtime Id Prefix = firstgame.runtime.box
   UnityTransformResetParticipant
-  UnityGameObjectActiveResetParticipant
-  <gameplay components>
 ```
 
 The adapter registers a `ResetSubject` and its local reset participants with the current `ResetRegistry`. It does not spawn the object, own input, create PlayerActor, save progress or perform pooling.
 
-For the next FIRSTGAME smoke, instantiate a prefab at runtime, let `UnityResetSubjectAdapter` register it, then verify that `Reset Room` and `Restart Activity` can reset it.
+Current smoke expectations:
+
+```text
+Player only: subjects='1' participants='2'
+Player + 1 Runtime Box: subjects='2' participants='3'
+Player + 2 Runtime Boxes: subjects='3' participants='4'
+```

@@ -1,6 +1,6 @@
 # 01 — Roadmap
 
-Status: **canonical roadmap after Reset Reform closure**.
+Status: **canonical roadmap after Consumer Project Separation closure**.
 
 ## Reading rule
 
@@ -27,7 +27,6 @@ Do not treat historical phase numbers as an active queue. Some phases are closed
 
 | Lane | Status | Scope |
 |---|---|---|
-| CONSUMER-ROLES-A - Consumer project separation | Active | Freeze package/QA/FIRSTGAME roles and keep consumer cleanup bounded to safe non-runtime changes. |
 | POST-RESET-A — Documentation reconciliation | Active | Consolidate current docs, numbered history and roadmap after Reset Reform. |
 
 ## Closed stable lanes
@@ -41,6 +40,7 @@ Do not treat historical phase numbers as an active queue. Some phases are closed
 | Reset Reform preview.12 | Closed | Current reset/restart model. |
 | FIRSTGAME reset usage model | Closed | Real usage proof passed. |
 | Consumer role rule | Frozen | QA proves technical behavior; FIRSTGAME proves game-start usability; package owns canonical docs/contracts. |
+| Consumer project separation POST-RESET-B1-B6F | Closed | Package, QA Project and FIRSTGAME roles are documented and frozen; consumer cleanup remains bounded by Unity serialization rules. |
 
 ## Superseded reset history
 
@@ -68,13 +68,13 @@ Choose explicitly. Do not run all in parallel.
 
 ## Recommendation
 
-Next selected lane should be:
+Next recommended lane:
 
 ```text
-Option A — FIRSTGAME Usage Model Hardening
+FIRSTGAME Usage Model Hardening or Transition/Loading Surface Hardening.
 ```
 
-Reason: after Reset Reform, the largest near-term risk is not missing core behavior; it is unclear developer usage. Lock the model with examples before expanding runtime scope.
+Do not select one automatically. The next lane requires an explicit decision before implementation.
 
 ## Consumer cleanup guardrail
 

@@ -55,6 +55,8 @@ Responsibilities:
 
 The QA project may reference framework concepts to validate behavior. It must not become a game example and must not contain final FIRSTGAME assets.
 
+`Assets/_Project` is not a valid QA Project root after the project separation cleanup. QA operational documentation belongs under `Assets/ImmersiveFrameworkQA/Documentation/`. The legacy `Assets/_Documentation` root was removed from the QA Project and must not be recreated.
+
 ## FIRSTGAME
 
 Owner:
@@ -79,6 +81,8 @@ Responsibilities:
 
 FIRSTGAME must not contain QA synthetic smoke runners, QA-only objects or historical framework documentation.
 
+`Assets/_Project` is valid for FIRSTGAME because it is the real consumer game root. That same root is not valid for the QA Project.
+
 ## Documentation policy
 
 Canonical framework documentation belongs only in:
@@ -88,6 +92,8 @@ Packages/com.immersive.framework/Documentation~/
 ```
 
 Consumer READMEs may explain local project purpose, manual flows and what should not enter the project. They must link back to package docs instead of duplicating canonical framework history.
+
+The QA Project must not restore `Assets/_Documentation`. FIRSTGAME must not carry canonical framework documentation in consumer assets; local FIRSTGAME notes should remain operational and game-usage focused.
 
 ## Framework Settings Location Policy
 

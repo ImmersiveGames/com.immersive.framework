@@ -76,3 +76,28 @@ FIRSTGAME: minimal real game usage proof.
 ```
 
 Do not move canonical framework docs into consumer `Assets/` folders. Consumer projects may keep local READMEs only for project-specific operation.
+
+## Consumer Project Separation
+
+Status after the controlled reset cleanup sequence:
+
+```text
+POST-RESET-B1 — PASS
+POST-RESET-B2 — PASS
+POST-RESET-B3 — PASS
+POST-RESET-B4 — PASS
+POST-RESET-B5 — PASS
+POST-RESET-B5A — PASS
+POST-RESET-B6A — PASS
+POST-RESET-B6B0 — PASS
+POST-RESET-B6B — PASS
+POST-RESET-B6F — PASS
+```
+
+Current separation rule:
+
+```text
+Framework package: canonical documentation and framework-owned code.
+QA Project: Assets/ImmersiveFrameworkQA only for QA operation.
+FIRSTGAME: Assets/_Project only for real minimal game usage.
+```

@@ -502,13 +502,13 @@
     <div class="sidebar-section">
       <div class="sidebar-section-label">Início</div>
       <a href="#intro" class="active"><span class="icon">🏠</span> Visão Geral</a>
-      <a href="#escopo"><span class="icon">🎯</span> Escopo do Preview 11</a>
+      <a href="#escopo"><span class="icon">🎯</span> Escopo do Preview 12</a>
       <a href="#conceitos"><span class="icon">🧠</span> Conceitos Mínimos</a>
       <a href="#ordem-boot"><span class="icon">⚙️</span> Ordem de Boot</a>
     </div>
 
     <div class="sidebar-section">
-      <div class="sidebar-section-label">Setup FIRSTGAME-1</div>
+      <div class="sidebar-section-label">Setup FIRSTGAME</div>
       <a href="#estrutura"><span class="icon">📁</span> Estrutura de Pastas</a>
       <a href="#cenas"><span class="icon">🎬</span> Cenas</a>
       <a href="#assets"><span class="icon">📋</span> Assets</a>
@@ -559,7 +559,7 @@
       <h1>Immersive Framework<br>Preview 12</h1>
       <p>Guia prático para o fluxo mínimo jogável validado até o Preview 12: Menu, Gameplay, Activity A/B, Loading, Transition Gate, Pause visual, Pause por botão, Pause por tecla via Global/Pause, pausa real via TimeScale, PlayerInput Gate Adapter, Object Reset, Reset Group e Activity Restart com uma única transição visual.</p>
       <div class="badge-row">
-        <span class="badge badge-green">✓ FIRSTGAME-1/2/3/3B/4/5 PASS</span>
+        <span class="badge badge-green">✓ FIRSTGAME Usage Model PASS</span>
         <span class="badge badge-blue">v1.0.0-preview.12</span>
         <span class="badge badge-yellow">Git Package Preview</span>
         <span class="badge badge-purple">Unity 6.5</span>
@@ -771,8 +771,8 @@
     </div>
 
     <h2 id="uiglobal">Configurando a UIGlobal</h2>
-    <p>A <code>FG_UIGlobal</code> deve conter as superfícies globais do framework. No Preview 11, o fluxo validado usa Loading, Transition, Transition Gate, Pause visual residente e Pause por Global/Pause. A Pause Surface não é opcional neste fluxo: ela confirma o estado pausado junto com <code>Time.timeScale = 0</code>.</p>
-    <p>No Preview 11, o <code>TransitionFadeSurface</code> também é a barreira visual mínima para Transition Gate. Mantenha <code>Block Raycasts When Visible</code> ativo no <code>UnityFadeCurtainEffectAdapter</code> para que cliques repetidos durante fade não alcancem <code>ActivityRequestTrigger</code> ou <code>RouteRequestTrigger</code>.</p>
+    <p>A <code>FG_UIGlobal</code> deve conter as superfícies globais do framework. No Preview 12, o fluxo validado usa Loading, Transition, Transition Gate, Pause visual residente e Pause por Global/Pause. A Pause Surface não é opcional neste fluxo: ela confirma o estado pausado junto com <code>Time.timeScale = 0</code>.</p>
+    <p>No Preview 12, o <code>TransitionFadeSurface</code> também é a barreira visual mínima para Transition Gate. Mantenha <code>Block Raycasts When Visible</code> ativo no <code>UnityFadeCurtainEffectAdapter</code> para que cliques repetidos durante fade não alcancem <code>ActivityRequestTrigger</code> ou <code>RouteRequestTrigger</code>.</p>
 
     <pre><code>FG_UIGlobal
 ├── Main Camera
@@ -804,7 +804,7 @@
       </div>
     </div>
 
-    <h2 id="transition-gate">Transition Gate no Preview 11</h2>
+    <h2 id="transition-gate">Transition Gate no Preview 12</h2>
     <p>Transition Gate é a política de bloqueio durante janelas de Route/Activity transition. Ele não é Pause, não usa <code>Time.timeScale</code>, não substitui <code>Global/Pause</code> e não torna <code>PauseKeepUiActionMap</code> uma decisão canônica.</p>
     <div class="table-wrap">
       <table>
@@ -844,7 +844,7 @@
     </div>
 
 
-    <h2 id="pause-model">Modelo de Pause no Preview 11</h2>
+    <h2 id="pause-model">Modelo de Pause no Preview 12</h2>
     <p>Pause é um <strong>estado lógico global</strong> da aplicação com um efeito concreto de simulação. Ele não é uma Route, não é uma Activity e não é um menu de opções completo. O runtime de Pause produz um snapshot que atualiza a superfície visual, os Gate blockers e o <code>Time.timeScale</code>.</p>
 
     <div class="flow" style="flex-wrap:wrap; row-gap:10px;">
@@ -861,7 +861,7 @@
 
     <div class="table-wrap">
       <table>
-        <thead><tr><th>Regra</th><th>Decisão Preview 11</th></tr></thead>
+        <thead><tr><th>Regra</th><th>Decisão Preview 12</th></tr></thead>
         <tbody>
           <tr><td>Escopo</td><td>Pause é global e fica acima de Route/Activity.</td></tr>
           <tr><td>Visual</td><td>Pause surface residente na <code>FG_UIGlobal</code>.</td></tr>
@@ -946,7 +946,7 @@ PauseSurface/PausePanel
     </div>
 
     <h2 id="pause-keyboard">Pause por tecla com Unity Input System</h2>
-    <p>O Preview 11 usa <code>PauseInputActionTrigger</code> como caminho simples para Pause por teclado ou controle. Ele escuta uma única ação global do Unity Input System, envia um request direto ao <code>PauseRuntime</code> e deixa troca de mapa do <code>PlayerInput</code> como efeito opcional, não como requisito do Pause.</p>
+    <p>O Preview 12 usa <code>PauseInputActionTrigger</code> como caminho simples para Pause por teclado ou controle. Ele escuta uma única ação global do Unity Input System, envia um request direto ao <code>PauseRuntime</code> e deixa troca de mapa do <code>PlayerInput</code> como efeito opcional, não como requisito do Pause.</p>
 
     <pre><code>FG_UIGlobal
 └── PauseInput
@@ -968,7 +968,7 @@ PauseSurface/PausePanel
       <span class="callout-icon">⚠️</span>
       <div class="callout-body">
         <div class="callout-title">Não duplique Pause em Player e UI</div>
-        <p>O trilho canônico do Preview 11 é <code>Global/Pause</code>. Evite <code>Player/Pause</code> + <code>UI/Pause</code> como caminho normal; isso cria dedupe e pode interferir na UI depois do Resume.</p>
+        <p>O trilho canônico do Preview 12 é <code>Global/Pause</code>. Evite <code>Player/Pause</code> + <code>UI/Pause</code> como caminho normal; isso cria dedupe e pode interferir na UI depois do Resume.</p>
       </div>
     </div>
 
@@ -1022,7 +1022,7 @@ PauseSurface/PausePanel
       <li>
         <div class="step-body">
           <strong>Adicione RouteRequestTrigger</strong>
-          No botão ou em um GameObject auxiliar, adicione <code>RouteRequestTrigger</code> com <code>Target Route = FG_GameplayRoute</code> e <code>Reason = Start Game</code>.
+          No botão ou em um GameObject auxiliar, adicione <code>RouteRequestTrigger</code> com <code>Target Route = FG_GameplayRoute</code> e <code>Reason = firstgame.start.game</code>.
         </div>
       </li>
       <li>
@@ -1083,7 +1083,7 @@ PauseSurface/PausePanel
     </div>
 
     <h2 id="build-profile">Build Profile / Build Settings</h2>
-    <p>Todas as cenas usadas pelo framework precisam estar no Build Profile. Para Preview 11, a cena de boot do Player deve ser a Primary Scene da Startup Route, não a UIGlobal.</p>
+    <p>Todas as cenas usadas pelo framework precisam estar no Build Profile. Para Preview 12, a cena de boot do Player deve ser a Primary Scene da Startup Route, não a UIGlobal.</p>
 
     <div class="table-wrap">
       <table>
@@ -1123,7 +1123,7 @@ PauseSurface/PausePanel
           <tr><td><code>Route has no Startup Activity</code></td><td>A Menu Route não precisa de Activity inicial.</td></tr>
           <tr><td><code>UIGlobal contains 1 Transition adapter</code></td><td>É desejado.</td></tr>
           <tr><td><code>UIGlobal contains 1 Loading adapter</code></td><td>É desejado.</td></tr>
-          <tr><td><code>UIGlobal has no resident Pause adapter</code></td><td>Pause visual não faz parte do FIRSTGAME-1.</td></tr>
+          <tr><td><code>UIGlobal contains 1 Pause adapter</code></td><td>É desejado: o FIRSTGAME atual usa Pause Surface residente na <code>FG_UIGlobal</code>.</td></tr>
           <tr><td><code>No Activity Local Visibility Adapter components were found in open scenes</code></td><td>É normal se a cena aberta no Editor não for <code>FG_Gameplay</code>.</td></tr>
         </tbody>
       </table>
@@ -1136,12 +1136,13 @@ PauseSurface/PausePanel
     <pre><code>FG_Gameplay
 └── GameplayRoot
     ├── PlayerPrototype
+    │   ├── ObjectEntryDeclaration
     │   ├── PlayerInput
     │   ├── FirstGamePlayerMover
     │   ├── UnityPlayerInputGateAdapter
     │   ├── UnityResetSubjectAdapter
     │   ├── UnityTransformResetParticipant
-    │   └── FirstGamePlayerResetProbe : IUnityResettable</code></pre>
+    │   └── FirstGamePlayerResettableState : IUnityResettable</code></pre>
 
     <div class="component-card">
       <h4>UnityResetSubjectAdapter</h4>
@@ -1176,38 +1177,33 @@ UnityGameObjectActiveResetParticipant
 using Immersive.Framework.Reset.Unity;
 using UnityEngine;
 
-public sealed class FirstGamePlayerResetProbe : MonoBehaviour, IUnityResettable, IUnityResettableMetadata
+public sealed class FirstGamePlayerResettableState : MonoBehaviour, IUnityResettable, IUnityResettableMetadata
 {
     private int _resetCount;
-    private Vector3 _baselinePosition;
+    private int _state;
 
-    public string ResetParticipantId =&gt; "firstgame.player.reset-probe";
+    public string ResetParticipantId =&gt; "firstgame.player.resettable-state";
     public ResetParticipantRequiredness ResetRequiredness =&gt; ResetParticipantRequiredness.Required;
     public int ResetOrder =&gt; 100;
-    public string ResetDisplayName =&gt; "FirstGame Player Reset Probe";
-    public string ResetSource =&gt; nameof(FirstGamePlayerResetProbe);
-    public string ResetReason =&gt; "firstgame.player.reset-probe";
-
-    private void Awake()
-    {
-        _baselinePosition = transform.position;
-    }
+    public string ResetDisplayName =&gt; "FirstGame Player Resettable State";
+    public string ResetSource =&gt; nameof(FirstGamePlayerResettableState);
+    public string ResetReason =&gt; "firstgame.player.resettable-state";
 
     public ResetParticipantResult Reset(ResetContext context)
     {
         _resetCount++;
-        transform.position = _baselinePosition;
+        _state = 0;
 
-        Debug.Log($"[FIRSTGAME_RESETTABLE] id='{ResetParticipantId}' resetCount='{_resetCount}' reason='{context.Reason}'");
+        Debug.Log($"[FIRSTGAME_RESETTABLE] id='{ResetParticipantId}' resetCount='{_resetCount}' state='{_state}' reason='{context.Reason}'");
 
         return ResetParticipantResult.CreateSucceeded(
             context.Participant,
-            nameof(FirstGamePlayerResetProbe),
+            nameof(FirstGamePlayerResettableState),
             context.Reason,
-            $"FirstGame player reset probe executed. resetCount='{_resetCount}'.");
+            $"FirstGame player resettable state executed. resetCount='{_resetCount}'.");
     }
 }</code></pre>
-      <p>Critério de smoke: se você tinha <code>PlayerPrototype + RuntimeBox #1</code>, o reset deve subir de <code>subjects='2' participants='2'</code> para <code>subjects='2' participants='3'</code> quando um componente <code>IUnityResettable</code> é adicionado ao player.</p>
+      <p>Critério de smoke atual: <code>PlayerPrototype</code> sozinho registra <code>subjects='1' participants='2'</code>. Com uma <code>FG_RuntimeBox</code> spawnada, o Reset Room deve registrar <code>subjects='2' participants='3'</code>. Com duas boxes, <code>subjects='3' participants='4'</code>.</p>
     </div>
 
     <div class="component-card">
@@ -1260,7 +1256,7 @@ public sealed class FirstGamePlayerResetProbe : MonoBehaviour, IUnityResettable,
     <pre><code>Canvas_Gameplay
 └── Button_ResetRoom
     └── ObjectResetGroupTrigger
-        ├── Group Id = firstgame.room-reset
+        ├── Group Id = firstgame.reset.room
         └── Selection
             ├── Mode = CurrentRouteAndActivitySubjects
             ├── Allow No Subjects = false
@@ -1271,7 +1267,7 @@ public sealed class FirstGamePlayerResetProbe : MonoBehaviour, IUnityResettable,
     <div class="component-card">
       <h4>ObjectResetGroupTrigger</h4>
       <p>Use este componente quando um botão ou evento precisa resetar um conjunto de objetos.</p>
-      <pre><code>Group Id = firstgame.room-reset
+      <pre><code>Group Id = firstgame.reset.room
 Reason = firstgame.reset.room
 Selection
   Mode = CurrentRouteAndActivitySubjects
@@ -1288,8 +1284,9 @@ Selection
       Object Reset Group Request completed.<br>
       <span class="log-key">status</span><span class="log-sep">='</span><span class="log-val">Succeeded</span><span class="log-sep">'</span>
       <span class="log-key"> groupId</span><span class="log-sep">='</span><span class="log-val">firstgame.reset.room</span><span class="log-sep">'</span>
-      <span class="log-key"> subjects</span><span class="log-sep">='</span><span class="log-val">2+</span><span class="log-sep">'</span>
-      <span class="log-key"> subjectSucceeded</span><span class="log-sep">='</span><span class="log-val">1</span><span class="log-sep">'</span>
+      <span class="log-key"> subjects</span><span class="log-sep">='</span><span class="log-val">2</span><span class="log-sep">'</span>
+      <span class="log-key"> participants</span><span class="log-sep">='</span><span class="log-val">3</span><span class="log-sep">'</span>
+      <span class="log-key"> participantSucceeded</span><span class="log-sep">='</span><span class="log-val">3</span><span class="log-sep">'</span>
       <span class="log-key"> blockingIssues</span><span class="log-sep">='</span><span class="log-val">0</span><span class="log-sep">'</span>
     </div>
 
@@ -1326,10 +1323,10 @@ Selection
         <table>
           <thead><tr><th>Modo</th><th>Uso recomendado</th></tr></thead>
           <tbody>
-            <tr><td><code>ExplicitSubjects</code></td><td>Lista manual no trigger. É o modo recomendado para o FIRSTGAME agora.</td></tr>
-            <tr><td><code>CurrentActivitySubjects</code></td><td>Subjects próprios da Activity atual. Não pega o player do FIRSTGAME se ele é Route-scoped.</td></tr>
-            <tr><td><code>CurrentRouteSubjects</code></td><td>Subjects Route-scoped atuais, como o <code>firstgame.player</code>.</td></tr>
-            <tr><td><code>CurrentRouteAndActivitySubjects</code></td><td>Combina subjects da Route atual e da Activity atual.</td></tr>
+            <tr><td><code>ExplicitSubjects</code></td><td>Lista manual no trigger. Use quando a sala é fixa e você quer evitar seleção dinâmica.</td></tr>
+            <tr><td><code>CurrentActivitySubjects</code></td><td>Subjects próprios da Activity atual, como o <code>firstgame.player</code> quando o adapter está em <code>Scope = Activity</code>.</td></tr>
+            <tr><td><code>CurrentRouteSubjects</code></td><td>Subjects Route-scoped atuais, caso o jogo tenha objetos que sobrevivem à Activity.</td></tr>
+            <tr><td><code>CurrentRouteAndActivitySubjects</code></td><td>Modo usado no FIRSTGAME atual para pegar Player + Runtime Boxes no mesmo Reset Room/Restart.</td></tr>
             <tr><td><code>AllCurrentSubjects</code></td><td>Todos os subjects conhecidos no ResetRegistry atual. Use com cuidado.</td></tr>
           </tbody>
         </table>
@@ -1366,7 +1363,8 @@ Selection
       <span class="log-key"> resetStatus</span><span class="log-sep">='</span><span class="log-val">Succeeded</span><span class="log-sep">'</span>
       <span class="log-key"> clearStatus</span><span class="log-sep">='</span><span class="log-val">Succeeded</span><span class="log-sep">'</span>
       <span class="log-key"> reenterStatus</span><span class="log-sep">='</span><span class="log-val">Succeeded</span><span class="log-sep">'</span>
-      <span class="log-key"> resetTargetSucceeded</span><span class="log-sep">='</span><span class="log-val">1</span><span class="log-sep">'</span>
+      <span class="log-key"> resetSubjects</span><span class="log-sep">='</span><span class="log-val">1</span><span class="log-sep">'</span>
+      <span class="log-key"> resetParticipants</span><span class="log-sep">='</span><span class="log-val">2</span><span class="log-sep">'</span>
     </div>
 
     <h2 id="reset-avancado">Fase avançada — Reset programático</h2>
@@ -1389,6 +1387,9 @@ public sealed class FirstGameRuntimeObjectSpawner : MonoBehaviour
 {
     [SerializeField] private GameObject runtimeBoxPrefab;
     [SerializeField] private Transform spawnPoint;
+    [SerializeField] private string spawnReason = "firstgame.runtime.box";
+
+    private int _spawnCount;
 
     public GameObject Spawn()
     {
@@ -1400,11 +1401,20 @@ public sealed class FirstGameRuntimeObjectSpawner : MonoBehaviour
 
         Vector3 position = spawnPoint != null ? spawnPoint.position : transform.position;
         Quaternion rotation = spawnPoint != null ? spawnPoint.rotation : Quaternion.identity;
-        return Instantiate(runtimeBoxPrefab, position, rotation);
+        GameObject instance = Instantiate(runtimeBoxPrefab, position, rotation);
+        _spawnCount++;
+        instance.name = $"{runtimeBoxPrefab.name} (Runtime {_spawnCount})";
+
+        Debug.Log($"[FIRSTGAME_RUNTIME_OBJECT] spawned. reason='{spawnReason}' prefab='{runtimeBoxPrefab.name}' instance='{instance.name}' count='{_spawnCount}'");
+        return instance;
     }
 }</code></pre>
       <p>Configuração do prefab:</p>
       <pre><code>FG_RuntimeBox.prefab
+  BoxVisual
+    MeshFilter = Cube
+    BoxCollider
+
   UnityResetSubjectAdapter
     Id Generation = RuntimeInstanceId
     Runtime Subject Id Prefix = firstgame.runtime.box
@@ -1541,23 +1551,24 @@ public sealed class FirstGameResetStatusLabel : MonoBehaviour
     <p>Use este roteiro para validar o fluxo em Play Mode.</p>
 
     <ol class="steps">
-      <li><div class="step-body"><strong>Abra qualquer cena</strong>Inclusive <code>FG_UIGlobal</code>. No Preview 11 o framework mantém a Primary Scene da Startup Route preparada antes da UIGlobal.</div></li>
+      <li><div class="step-body"><strong>Abra <code>FG_Menu</code></strong>Use a cena de menu como entrada manual do FIRSTGAME. A <code>FG_UIGlobal</code> é carregada como cena global persistente pelo runtime.</div></li>
       <li><div class="step-body"><strong>Dê Play</strong>Confirme que o boot começa em <code>FG_Menu</code>.</div></li>
       <li><div class="step-body"><strong>Clique Start Game</strong>Confirme a troca para <code>FG_Gameplay</code> com Loading e Transition.</div></li>
       <li><div class="step-body"><strong>Confirme Activity A</strong>A <code>FG_Activity_A</code> deve entrar automaticamente.</div></li>
       <li><div class="step-body"><strong>Teste Pause por tecla</strong>Pressione <code>Escape</code>: o overlay de Pause deve aparecer e <code>Time.timeScale</code> deve ir para <code>0</code>. Pressione <code>Escape</code> novamente: o overlay deve sumir e <code>Time.timeScale</code> deve ser restaurado. O Pause usa <code>Global/Pause</code>, não troca obrigatória de <code>PlayerInput</code>.</div></li>
       <li><div class="step-body"><strong>Teste Pause por UI</strong>Use o botão de Pause e depois o botão Resume do painel.</div></li>
       <li><div class="step-body"><strong>Teste Reset Player</strong>Clique o botão de reset single-target e confirme <code>Object Reset Request completed</code> para <code>firstgame.player</code>.</div></li>
-      <li><div class="step-body"><strong>Teste Reset Group</strong>Clique o botão de Reset Group e confirme <code>Object Reset Group Request completed</code> com <code>targetSucceeded='1'</code>.</div></li>
+      <li><div class="step-body"><strong>Spawn Runtime Box</strong>Clique <code>Spawn Runtime Box</code> e confirme o log <code>[FIRSTGAME_RUNTIME_OBJECT]</code> com <code>reason='firstgame.runtime.box'</code>.</div></li>
+      <li><div class="step-body"><strong>Teste Reset Room</strong>Clique <code>Reset Room</code> e confirme <code>Object Reset Group Request completed</code>. Com Player + 1 Runtime Box, o esperado é <code>subjects='2'</code> e <code>participants='3'</code>.</div></li>
       <li><div class="step-body"><strong>Teste Restart Activity</strong>Mova o player, clique <code>Button_RestartActivity</code>, confirme que o player volta ao baseline e que há apenas uma transição visual. O log final deve ser <code>Activity Restart Request completed</code> com <code>status='Succeeded'</code>, <code>clearStatus='Succeeded'</code> e <code>reenterStatus='Succeeded'</code>.</div></li>
       <li><div class="step-body"><strong>Clique Go Activity B</strong>Confirme troca para <code>FG_Activity_B</code> com Transition. Com <code>UnityPlayerInputGateAdapter</code> no <code>PlayerPrototype</code>, o action map <code>Player</code> deve ser bloqueado durante a janela do Gate e liberado depois.</div></li>
-      <li><div class="step-body"><strong>Clique Clear Activity</strong>Confirme Activity limpa, sem Activity ativa.</div></li>
       <li><div class="step-body"><strong>Clique Restore Activity A</strong>Confirme volta para <code>FG_Activity_A</code>.</div></li>
+      <li><div class="step-body"><strong>Clique Clear Activity por último</strong>Confirme Activity limpa, sem Activity ativa. Depois disso, <code>Restart Activity</code> deve falhar com <code>RejectedNoActiveActivity</code>; isso é comportamento correto porque não há Activity ativa para reiniciar.</div></li>
     </ol>
 
     <h2 id="logs">Logs de PASS</h2>
 
-    <h3>Boot Preview 11 correto</h3>
+    <h3>Boot Preview 12 correto</h3>
     <div class="log-block">
       <div class="log-label">Console — ordem canônica</div>
       Startup Route Primary Scene prepared before UIGlobal load.<br>
@@ -1647,13 +1658,13 @@ public sealed class FirstGameResetStatusLabel : MonoBehaviour
     <div class="component-card">
       <h4 style="color:var(--red); margin-bottom:8px;">🔴 Dois AudioListeners ou dois EventSystems</h4>
       <p style="font-size:13.5px; color:var(--text-soft);"><strong>Causa comum:</strong> <code>FG_UIGlobal</code> e a Route Scene têm câmera/EventSystem ao mesmo tempo, ou o package é anterior ao Preview 6 e duplica a UIGlobal aberta no Editor.<br>
-      <strong>Solução:</strong> use <code>v1.0.0-preview.11</code>; mantenha apenas um <code>AudioListener</code> e um <code>EventSystem</code> no runtime.</p>
+      <strong>Solução:</strong> use <code>v1.0.0-preview.12</code>; mantenha apenas um <code>AudioListener</code> e um <code>EventSystem</code> no runtime.</p>
     </div>
 
     <div class="component-card">
       <h4 style="color:var(--red); margin-bottom:8px;">🔴 "Unloading the last loaded scene is not supported"</h4>
       <p style="font-size:13.5px; color:var(--text-soft);"><strong>Causa:</strong> versão antiga do validator tentando fechar a última cena aberta ao validar a UIGlobal.<br>
-      <strong>Solução:</strong> atualizar para <code>v1.0.0-preview.11</code>. O validator agora trata ownership de cena com segurança.</p>
+      <strong>Solução:</strong> atualizar para <code>v1.0.0-preview.12</code>. O validator agora trata ownership de cena com segurança.</p>
     </div>
 
     <div class="component-card">
@@ -1695,7 +1706,7 @@ public sealed class FirstGameResetStatusLabel : MonoBehaviour
 
     <div class="component-card">
       <h4 style="color:var(--yellow); margin-bottom:8px;">⚠️ Restart Activity faz dois fades</h4>
-      <p style="font-size:13.5px; color:var(--text-soft);"><strong>Causa:</strong> versão intermediária do Preview 11 executava <code>ActivityClear</code> e <code>Activity</code> como duas requests visuais públicas.<br>
+      <p style="font-size:13.5px; color:var(--text-soft);"><strong>Causa:</strong> versão intermediária do Preview 12 executava <code>ActivityClear</code> e <code>Activity</code> como duas requests visuais públicas.<br>
       <strong>Solução:</strong> use o patch de Activity Restart com transição única. O log não deve mostrar <code>firstgame.restart.activity:clear</code> e <code>firstgame.restart.activity:reenter</code> como duas requests públicas separadas.</p>
     </div>
 
@@ -1709,7 +1720,7 @@ public sealed class FirstGameResetStatusLabel : MonoBehaviour
     <div class="callout stop">
       <span class="callout-icon">🚫</span>
       <div class="callout-body">
-        <div class="callout-title">Fora do escopo do Preview 11 / FIRSTGAME-1/2/3</div>
+        <div class="callout-title">Fora do escopo do FIRSTGAME Usage Model</div>
         <p>
           Não edite o package Git dentro do consumidor.<br><br>
           Não copie assets, cenas ou ProjectSettings do projeto QA antigo.<br><br>
@@ -1720,12 +1731,12 @@ public sealed class FirstGameResetStatusLabel : MonoBehaviour
           Não use <code>Input.GetKeyDown</code> solto como caminho canônico de Pause.<br><br>
           Não trate <code>UnityPlayerInputGateAdapter</code> como Player/Actor lifecycle; ele é apenas um adapter opt-in de Gate para o Unity Input System.<br><br>
           Não use o bridge avançado de InputMode quando o objetivo for apenas <code>Escape → Toggle Pause</code>.<br><br>
-          <code>Time.timeScale</code> é efeito básico do Pause no Preview 11, mas não substitui o contrato do <code>PauseRuntime</code>. Não escreva scripts paralelos mudando <code>Time.timeScale</code> fora do runtime de Pause.
+          <code>Time.timeScale</code> é efeito básico do Pause no Preview 12, mas não substitui o contrato do <code>PauseRuntime</code>. Não escreva scripts paralelos mudando <code>Time.timeScale</code> fora do runtime de Pause.
         </p>
       </div>
     </div>
 
-    <h2 id="glossario">Glossário Preview 11</h2>
+    <h2 id="glossario">Glossário Preview 12</h2>
     <div class="table-wrap">
       <table>
         <thead><tr><th>Termo</th><th>Definição</th></tr></thead>
@@ -1740,7 +1751,7 @@ public sealed class FirstGameResetStatusLabel : MonoBehaviour
           <tr><td><code>PauseRuntime</code></td><td>Runtime autoritativo do estado <code>Running/Paused</code>, gate snapshot, surface e efeito básico de <code>Time.timeScale</code>.</td></tr>
           <tr><td><code>Transition Gate</code></td><td>Policy de Route/Activity que bloqueia lifecycle/input/interação/gameplay durante transition sem usar Pause ou <code>Time.timeScale</code>.</td></tr>
           <tr><td><code>UnityPlayerInputGateAdapter</code></td><td>Adapter opt-in que faz um <code>PlayerInput</code> de gameplay obedecer Gate desabilitando o action map configurado enquanto input/gameplay estiver bloqueado.</td></tr>
-          <tr><td><code>TimeScale Pause</code></td><td>Efeito de simulação do Preview 11: captura o valor running, aplica <code>Time.timeScale = 0</code> durante Pause e restaura no Resume.</td></tr>
+          <tr><td><code>TimeScale Pause</code></td><td>Efeito de simulação do Preview 12: captura o valor running, aplica <code>Time.timeScale = 0</code> durante Pause e restaura no Resume.</td></tr>
           <tr><td><code>PauseInputActionTrigger</code></td><td>Componente simples para <code>Escape → Toggle Pause</code> via <code>Global/Pause</code>. Troca de <code>PlayerInput</code> é opcional e não faz parte do caminho normal do FIRSTGAME.</td></tr>
           <tr><td><code>ActivityClear</code></td><td>Operação que remove a Activity ativa sem trocar de Route.</td></tr>
           <tr><td><code>Model Readiness</code></td><td>Validação de authoring do framework. Para PASS, precisa de 0 blockers.</td></tr>
@@ -1750,8 +1761,8 @@ public sealed class FirstGameResetStatusLabel : MonoBehaviour
     </div>
 
     <div style="margin-top:56px; padding-top:24px; border-top:1px solid var(--border-soft); color:var(--text-muted); font-size:13px;">
-      <p><strong style="color:var(--text-soft);">Immersive Framework</strong> — Guia Preview 11 para Game Designers &nbsp;·&nbsp; <code>com.immersive.framework v1.0.0-preview.11</code></p>
-      <p style="margin-top:4px;">Este guia cobre o escopo validado em FIRSTGAME-1, FIRSTGAME-2, FIRSTGAME-3, FIRSTGAME-3B, FIRSTGAME-4 e FIRSTGAME-5. Atualizar ao fechar uma nova tag preview.</p>
+      <p><strong style="color:var(--text-soft);">Immersive Framework</strong> — Guia Preview 12 para Game Designers &nbsp;·&nbsp; <code>com.immersive.framework v1.0.0-preview.12</code></p>
+      <p style="margin-top:4px;">Este guia cobre o escopo validado no POST-RESET-C: FIRSTGAME Usage Model Hardening, incluindo Player resettable state, Runtime Box, Reset Room, Restart Activity, Pause, Loading e Transition.</p>
     </div>
 
   </main>
