@@ -8,12 +8,15 @@ using Immersive.Framework.Authoring;
 using Immersive.Framework.GameFlow;
 using Immersive.Framework.RouteLifecycle;
 using Immersive.Framework.ActivityFlow;
+using Immersive.Framework.ActivityRestart;
 using Immersive.Framework.LocalContribution;
 using Immersive.Framework.ContentAnchor;
 using Immersive.Framework.RuntimeContent;
 using Immersive.Framework.CycleReset;
 using Immersive.Framework.ObjectEntry;
 using Immersive.Framework.ObjectReset;
+using Immersive.Framework.Reset;
+using Immersive.Framework.Reset.Unity;
 using Immersive.Framework.InputMode;
 using Immersive.Framework.Pause;
 using UnityEngine;
@@ -313,6 +316,41 @@ namespace Immersive.Framework.Diagnostics
                     RunParticipantExecutorSyntheticSmoke();
                 }
 
+                if (GUILayout.Button("Run Reset Registry Synthetic Smoke"))
+                {
+                    RunResetRegistrySyntheticSmoke();
+                }
+
+                if (GUILayout.Button("Run Unity Reset Subject Adapter Synthetic Smoke"))
+                {
+                    RunUnityResetSubjectAdapterSyntheticSmoke();
+                }
+
+                if (GUILayout.Button("Run Reset Executor Synthetic Smoke"))
+                {
+                    RunResetExecutorSyntheticSmoke();
+                }
+
+                if (GUILayout.Button("Run Object Reset Trigger Rewrite Synthetic Smoke"))
+                {
+                    RunObjectResetTriggerRewriteSyntheticSmoke();
+                }
+
+                if (GUILayout.Button("Run Object Reset Trigger Rewrite Expected Failure Smoke"))
+                {
+                    RunObjectResetTriggerRewriteExpectedFailureSmoke();
+                }
+
+                if (GUILayout.Button("Run Activity Restart Trigger Reset Executor Synthetic Smoke"))
+                {
+                    RunActivityRestartTriggerResetExecutorSyntheticSmoke();
+                }
+
+                if (GUILayout.Button("Run Runtime Prefab Reset Synthetic Smoke"))
+                {
+                    RunRuntimePrefabResetSyntheticSmoke();
+                }
+
                 if (GUILayout.Button("Run Cycle Reset Runtime Host Smoke"))
                 {
                     RunCycleResetRuntimeHostSmoke();
@@ -328,30 +366,6 @@ namespace Immersive.Framework.Diagnostics
                     RunCycleResetBridgeSmoke();
                 }
 
-                if (GUILayout.Button("Run Object Reset Runtime Executor Smoke"))
-                {
-                    RunObjectResetRuntimeExecutorSmoke();
-                }
-
-                if (GUILayout.Button("Run Object Reset Runtime Host Integration Smoke"))
-                {
-                    RunObjectResetRuntimeHostIntegrationSmoke();
-                }
-
-                if (GUILayout.Button("Run Object Reset Trigger Smoke"))
-                {
-                    RunObjectResetTriggerSmoke();
-                }
-
-                if (GUILayout.Button("Run Object Reset Bridge Smoke"))
-                {
-                    RunObjectResetBridgeSmoke();
-                }
-
-                if (GUILayout.Button("Run Object Reset Foundation Closure Smoke"))
-                {
-                    RunObjectResetFoundationClosureSmoke();
-                }
             }
         }
 
@@ -724,6 +738,49 @@ namespace Immersive.Framework.Diagnostics
                 ScopeTailOperationSyntheticSmokeRunner.RunDiagnosticsSmokeAsync(_logger, QaSource));
         }
 
+        private async void RunResetRegistrySyntheticSmoke()
+        {
+            await RunSmokeAsync(ResetRegistryQaSmokeRunner.SmokeName, runtimeHost =>
+                ResetRegistryQaSmokeRunner.RunDiagnosticsSmokeAsync(_logger, QaSource));
+        }
+
+        private async void RunUnityResetSubjectAdapterSyntheticSmoke()
+        {
+            await RunSmokeAsync(UnityResetSubjectAdapterQaSmokeRunner.SmokeName, runtimeHost =>
+                UnityResetSubjectAdapterQaSmokeRunner.RunDiagnosticsSmokeAsync(runtimeHost, _logger, QaSource));
+        }
+
+        private async void RunResetExecutorSyntheticSmoke()
+        {
+            await RunSmokeAsync(ResetExecutorQaSmokeRunner.SmokeName, runtimeHost =>
+                ResetExecutorQaSmokeRunner.RunDiagnosticsSmokeAsync(runtimeHost, _logger, QaSource));
+        }
+
+        private async void RunObjectResetTriggerRewriteSyntheticSmoke()
+        {
+            await RunSmokeAsync(ObjectResetTriggerRewriteQaSmokeRunner.SmokeName, runtimeHost =>
+                ObjectResetTriggerRewriteQaSmokeRunner.RunDiagnosticsSmokeAsync(runtimeHost, _logger, QaSource));
+        }
+
+        private async void RunObjectResetTriggerRewriteExpectedFailureSmoke()
+        {
+            await RunSmokeAsync(ObjectResetTriggerRewriteQaSmokeRunner.ExpectedFailureSmokeName, runtimeHost =>
+                ObjectResetTriggerRewriteQaSmokeRunner.RunExpectedFailureSmokeAsync(runtimeHost, _logger, QaSource));
+        }
+
+
+        private async void RunActivityRestartTriggerResetExecutorSyntheticSmoke()
+        {
+            await RunSmokeAsync(ActivityRestartTriggerQaSmokeRunner.SmokeName, runtimeHost =>
+                ActivityRestartTriggerQaSmokeRunner.RunDiagnosticsSmokeAsync(runtimeHost, _logger, QaSource));
+        }
+
+        private async void RunRuntimePrefabResetSyntheticSmoke()
+        {
+            await RunSmokeAsync(UnityResetRuntimePrefabQaSmokeRunner.SmokeName, runtimeHost =>
+                UnityResetRuntimePrefabQaSmokeRunner.RunDiagnosticsSmokeAsync(runtimeHost, _logger, QaSource));
+        }
+
         private async void RunGateAdmissionDiagnosticsSmoke()
         {
             await RunSmokeAsync(GateAdmissionQaSmokeRunner.SmokeName, runtimeHost =>
@@ -979,48 +1036,6 @@ namespace Immersive.Framework.Diagnostics
                 ObjectEntryQaSmokeRunner.RunFoundationClosureSmokeAsync(runtimeHost, _logger, QaSource));
         }
 
-
-        private async void RunObjectResetRuntimeExecutorSmoke()
-        {
-            await RunSmokeAsync(ObjectResetQaSmokeRunner.RuntimeExecutorSmokeName, runtimeHost =>
-                ObjectResetQaSmokeRunner.RunRuntimeExecutorSmokeAsync(_logger, QaSource));
-        }
-
-        private async void RunObjectResetRuntimeHostIntegrationSmoke()
-        {
-            await RunSmokeAsync(ObjectResetQaSmokeRunner.RuntimeHostIntegrationSmokeName, runtimeHost =>
-                ObjectResetQaSmokeRunner.RunRuntimeHostIntegrationSmokeAsync(runtimeHost, _logger, QaSource));
-        }
-
-        private async void RunObjectResetTriggerSmoke()
-        {
-            await RunSmokeAsync(ObjectResetQaSmokeRunner.TriggerSmokeName, runtimeHost =>
-                ObjectResetQaSmokeRunner.RunTriggerSmokeAsync(runtimeHost, _logger, QaSource));
-        }
-
-        private async void RunObjectResetBridgeSmoke()
-        {
-            await RunSmokeAsync(ObjectResetQaSmokeRunner.BridgeSmokeName, runtimeHost =>
-                ObjectResetQaSmokeRunner.RunBridgeSmokeAsync(runtimeHost, _logger, QaSource));
-        }
-
-        private async void RunObjectResetFoundationClosureSmoke()
-        {
-            await RunSmokeAsync(ObjectResetQaSmokeRunner.FoundationClosureSmokeName, runtimeHost =>
-                ObjectResetQaSmokeRunner.RunFoundationClosureSmokeAsync(runtimeHost, _logger, QaSource));
-        }
-
-        private async void RunObjectResetUnityAdaptersClosureSmoke()
-        {
-            await RunSmokeAsync(ObjectResetQaSmokeRunner.UnityAdaptersClosureSmokeName, runtimeHost =>
-                ObjectResetQaSmokeRunner.RunUnityAdaptersClosureSmokeAsync(runtimeHost, _logger, QaSource));
-        }
-
-        private async void RunObjectResetGameObjectActiveClosureSmoke()
-        {
-            await RunSmokeAsync(ObjectResetQaSmokeRunner.GameObjectActiveClosureSmokeName, runtimeHost =>
-                ObjectResetQaSmokeRunner.RunGameObjectActiveClosureSmokeAsync(runtimeHost, _logger, QaSource));
-        }
 
         private async void RunStandardSmoke()
         {
@@ -8739,37 +8754,14 @@ private async void RunNoActivityRouteSmoke()
                         $"ObjectResetTrigger object='{FormatValue(objectName)}' scene='{FormatValue(sceneName)}' issue='Trigger GameObject is inactive in hierarchy'.");
                 }
 
-                string targetId = trigger.ResolvedAuthoringObjectEntryId;
+                string targetId = trigger.ResolvedTargetSubjectId;
                 if (string.IsNullOrWhiteSpace(targetId))
                 {
                     AddQaAuthoringIssue(
                         ref issueCount,
                         ref errorCount,
-                        $"ObjectResetTrigger object='{FormatValue(objectName)}' scene='{FormatValue(sceneName)}' issue='Target Object Entry Id is missing'.");
+                        $"ObjectResetTrigger object='{FormatValue(objectName)}' scene='{FormatValue(sceneName)}' issue='Target Reset Subject Id is missing'.");
                     continue;
-                }
-
-                bool targetDeclared = false;
-                if (objectEntryDescriptors != null)
-                {
-                    for (int descriptorIndex = 0; descriptorIndex < objectEntryDescriptors.Count; descriptorIndex++)
-                    {
-                        var descriptor = objectEntryDescriptors[descriptorIndex];
-                        if (descriptor.Id.IsValid
-                            && string.Equals(descriptor.Id.Value.Value, targetId.Trim(), StringComparison.Ordinal))
-                        {
-                            targetDeclared = true;
-                            break;
-                        }
-                    }
-                }
-
-                if (!targetDeclared)
-                {
-                    AddQaAuthoringWarning(
-                        ref issueCount,
-                        ref warningCount,
-                        $"ObjectResetTrigger object='{FormatValue(objectName)}' scene='{FormatValue(sceneName)}' objectEntry='{FormatValue(targetId)}' issue='Target Object Entry Id is not declared in loaded Object Entry authoring'.");
                 }
             }
         }

@@ -1,7 +1,7 @@
 using System;
 using Immersive.Framework.ActivityRestart;
-using Immersive.Framework.ObjectEntry;
 using Immersive.Framework.ObjectReset;
+using Immersive.Framework.Reset;
 using UnityEditor;
 using UnityEngine;
 using Object = UnityEngine.Object;
@@ -89,41 +89,8 @@ namespace Immersive.Framework.Editor.Editor.Validation
             }
 
             var serializedObject = new SerializedObject(trigger);
-            var groupAssetProperty = serializedObject.FindProperty("groupAsset");
-            var entriesProperty = serializedObject.FindProperty("entries");
-
-            bool hasGroupAsset = groupAssetProperty != null && groupAssetProperty.objectReferenceValue != null;
-            int inlineEntryCount = CountArray(entriesProperty);
-            int groupAssetEntryCount = hasGroupAsset
-                ? CountGroupAssetEntries(groupAssetProperty.objectReferenceValue as ObjectResetGroupAsset)
-                : 0;
-
-            if (!hasGroupAsset && inlineEntryCount == 0)
-            {
-                report.AddError(
-                    "Object Reset Group Trigger has no Group Asset and no inline Reset Entries. Configure at least one target or assign an Object Reset Group Asset.",
-                    trigger);
-                return;
-            }
-
-            if (hasGroupAsset)
-            {
-                if (groupAssetEntryCount == 0)
-                {
-                    report.AddError(
-                        "Object Reset Group Trigger references an Object Reset Group Asset with no targets.",
-                        trigger);
-                }
-
-                if (inlineEntryCount > 0)
-                {
-                    report.AddWarning(
-                        "Object Reset Group Trigger has both Group Asset and inline entries. The Group Asset provides the resolved entries; keep only one authoring source to avoid designer confusion.",
-                        trigger);
-                }
-            }
-
-            ValidateEntryArray(report, entriesProperty, trigger, "Object Reset Group Trigger inline entry");
+            var selectionProperty = serializedObject.FindProperty("selection");
+            ValidateResetSelectionConfig(report, selectionProperty, trigger, "Object Reset Group Trigger");
         }
 
         private static void ValidateActivityRestartTrigger(
@@ -139,19 +106,11 @@ namespace Immersive.Framework.Editor.Editor.Validation
             var targetActivityProperty = serializedObject.FindProperty("targetActivity");
             var useCurrentActivityWhenTargetMissingProperty = serializedObject.FindProperty("useCurrentActivityWhenTargetMissing");
             var requireTargetActivityIsCurrentProperty = serializedObject.FindProperty("requireTargetActivityIsCurrent");
-            var resetSelectionModeProperty = serializedObject.FindProperty("resetSelectionMode");
-            var resetGroupAssetProperty = serializedObject.FindProperty("resetGroupAsset");
-            var resetEntriesProperty = serializedObject.FindProperty("resetEntries");
+            var resetSelectionProperty = serializedObject.FindProperty("resetSelection");
 
             bool hasTargetActivity = targetActivityProperty != null && targetActivityProperty.objectReferenceValue != null;
             bool useCurrentActivityWhenTargetMissing = useCurrentActivityWhenTargetMissingProperty == null || useCurrentActivityWhenTargetMissingProperty.boolValue;
             bool requireTargetActivityIsCurrent = requireTargetActivityIsCurrentProperty == null || requireTargetActivityIsCurrentProperty.boolValue;
-            var resetSelectionMode = ResolveSelectionMode(resetSelectionModeProperty);
-            bool hasResetGroupAsset = resetGroupAssetProperty != null && resetGroupAssetProperty.objectReferenceValue != null;
-            int inlineEntryCount = CountArray(resetEntriesProperty);
-            int resetGroupAssetEntryCount = hasResetGroupAsset
-                ? CountGroupAssetEntries(resetGroupAssetProperty.objectReferenceValue as ObjectResetGroupAsset)
-                : 0;
 
             if (!hasTargetActivity && !useCurrentActivityWhenTargetMissing)
             {
@@ -167,57 +126,102 @@ namespace Immersive.Framework.Editor.Editor.Validation
                     trigger);
             }
 
-            if (!Enum.IsDefined(typeof(ObjectResetSelectionMode), resetSelectionMode) || resetSelectionMode == ObjectResetSelectionMode.Unknown)
+            ValidateResetSelectionConfig(report, resetSelectionProperty, trigger, "Activity Restart Trigger");
+            ValidateTriggerStacking(report, trigger);
+        }
+
+        private static void ValidateResetSelectionConfig(
+            FrameworkAuthoringValidationReport report,
+            SerializedProperty resetSelectionProperty,
+            Object context,
+            string label)
+        {
+            if (resetSelectionProperty == null)
             {
-                report.AddError(
-                    "Activity Restart Trigger has invalid Reset Selection Mode. Choose ExplicitTargets, CurrentActivityEntries, CurrentRouteEntries, CurrentRouteAndActivityEntries or AllCurrentEntries.",
-                    trigger);
+                report.AddError($"{label} has no Reset Selection config.", context);
                 return;
             }
 
-            if (resetSelectionMode == ObjectResetSelectionMode.ExplicitTargets)
+            var modeProperty = resetSelectionProperty.FindPropertyRelative("mode");
+            var explicitSubjectsProperty = resetSelectionProperty.FindPropertyRelative("explicitSubjects");
+            var allowNoSubjectsProperty = resetSelectionProperty.FindPropertyRelative("allowNoSubjects");
+            ResetSelectionMode mode = ResolveResetSelectionMode(modeProperty);
+            bool allowNoSubjects = allowNoSubjectsProperty != null && allowNoSubjectsProperty.boolValue;
+            int explicitSubjectCount = CountArray(explicitSubjectsProperty);
+
+            if (!Enum.IsDefined(typeof(ResetSelectionMode), mode) || mode == ResetSelectionMode.Unknown)
             {
-                if (!hasResetGroupAsset && inlineEntryCount == 0)
-                {
-                    report.AddError(
-                        "Activity Restart Trigger uses ExplicitTargets but has no Reset Group Asset and no inline Reset Entries.",
-                        trigger);
-                }
-
-                if (hasResetGroupAsset && resetGroupAssetEntryCount == 0)
-                {
-                    report.AddError(
-                        "Activity Restart Trigger uses ExplicitTargets with an Object Reset Group Asset that has no targets.",
-                        trigger);
-                }
-
-                if (hasResetGroupAsset && inlineEntryCount > 0)
-                {
-                    report.AddWarning(
-                        "Activity Restart Trigger has both Reset Group Asset and inline Reset Entries. In ExplicitTargets mode the Reset Group Asset provides the resolved entries; remove inline entries or remove the asset to make authoring unambiguous.",
-                        trigger);
-                }
-
-                ValidateEntryArray(report, resetEntriesProperty, trigger, "Activity Restart Trigger inline reset entry");
-            }
-            else
-            {
-                if (hasResetGroupAsset || inlineEntryCount > 0)
-                {
-                    report.AddWarning(
-                        $"Activity Restart Trigger uses scoped Reset Selection Mode '{resetSelectionMode}', so explicit Reset Group Asset/inline entries are ignored. Remove explicit targets or switch to ExplicitTargets.",
-                        trigger);
-                }
-
-                if (resetSelectionMode == ObjectResetSelectionMode.CurrentActivityEntries)
-                {
-                    report.AddInfo(
-                        "Activity Restart Trigger uses CurrentActivityEntries. Route-scoped ObjectEntries such as a route-owned player are not included by this policy.",
-                        trigger);
-                }
+                report.AddError(
+                    $"{label} has invalid Reset Selection Mode. Choose ExplicitSubjects, CurrentActivitySubjects, CurrentRouteSubjects, CurrentRouteAndActivitySubjects, AllCurrentSubjects, RuntimeOnlySubjects or SceneOnlySubjects.",
+                    context);
+                return;
             }
 
-            ValidateTriggerStacking(report, trigger);
+            if (mode == ResetSelectionMode.ExplicitSubjects)
+            {
+                if (explicitSubjectCount == 0 && !allowNoSubjects)
+                {
+                    report.AddError(
+                        $"{label} uses ExplicitSubjects but has no explicit Reset Subjects and Allow No Subjects is disabled.",
+                        context);
+                }
+
+                ValidateResetSubjectReferences(report, explicitSubjectsProperty, context, $"{label} explicit subject");
+            }
+            else if (explicitSubjectCount > 0)
+            {
+                report.AddWarning(
+                    $"{label} uses scoped Reset Selection Mode '{mode}', so explicit Reset Subjects are ignored. Remove explicit subjects or switch to ExplicitSubjects.",
+                    context);
+            }
+
+            if (mode == ResetSelectionMode.CurrentActivitySubjects)
+            {
+                report.AddInfo(
+                    "Activity Restart Trigger uses CurrentActivitySubjects. Route-scoped ResetSubjects such as a route-owned player are not included by this policy.",
+                    context);
+            }
+        }
+
+        private static void ValidateResetSubjectReferences(
+            FrameworkAuthoringValidationReport report,
+            SerializedProperty explicitSubjectsProperty,
+            Object context,
+            string label)
+        {
+            if (explicitSubjectsProperty == null || !explicitSubjectsProperty.isArray)
+            {
+                return;
+            }
+
+            for (int i = 0; i < explicitSubjectsProperty.arraySize; i++)
+            {
+                var referenceProperty = explicitSubjectsProperty.GetArrayElementAtIndex(i);
+                if (referenceProperty == null)
+                {
+                    report.AddError($"{label} index '{i}' is null.", context);
+                    continue;
+                }
+
+                var adapterProperty = referenceProperty.FindPropertyRelative("subjectAdapter");
+                var subjectIdProperty = referenceProperty.FindPropertyRelative("subjectId");
+                bool hasAdapter = adapterProperty != null && adapterProperty.objectReferenceValue != null;
+                string subjectId = subjectIdProperty != null ? subjectIdProperty.stringValue : string.Empty;
+
+                if (!hasAdapter && string.IsNullOrWhiteSpace(subjectId))
+                {
+                    report.AddError(
+                        $"{label} index '{i}' has no UnityResetSubjectAdapter and no ResetSubjectId text.",
+                        context);
+                }
+
+                if (hasAdapter && !string.IsNullOrWhiteSpace(subjectId))
+                {
+                    report.AddWarning(
+                        $"{label} index '{i}' has both UnityResetSubjectAdapter and ResetSubjectId text. The adapter wins at runtime; remove the extra id unless this is deliberate documentation.",
+                        context);
+                }
+            }
         }
 
         private static void ValidateTriggerStacking(
@@ -244,119 +248,14 @@ namespace Immersive.Framework.Editor.Editor.Validation
             }
         }
 
-        private static void ValidateEntryArray(
-            FrameworkAuthoringValidationReport report,
-            SerializedProperty entriesProperty,
-            Object context,
-            string label)
-        {
-            if (entriesProperty == null || !entriesProperty.isArray)
-            {
-                return;
-            }
-
-            for (int i = 0; i < entriesProperty.arraySize; i++)
-            {
-                var entryProperty = entriesProperty.GetArrayElementAtIndex(i);
-                if (entryProperty == null)
-                {
-                    report.AddError($"{label} index '{i}' is null.", context);
-                    continue;
-                }
-
-                var enabledProperty = entryProperty.FindPropertyRelative("enabled");
-                if (enabledProperty != null && !enabledProperty.boolValue)
-                {
-                    continue;
-                }
-
-                var targetDeclarationProperty = entryProperty.FindPropertyRelative("targetDeclaration");
-                var objectEntryIdProperty = entryProperty.FindPropertyRelative("objectEntryId");
-                var targetDeclaration = targetDeclarationProperty != null
-                    ? targetDeclarationProperty.objectReferenceValue as ObjectEntryDeclaration
-                    : null;
-                string objectEntryId = objectEntryIdProperty != null ? objectEntryIdProperty.stringValue : string.Empty;
-
-                if (targetDeclaration == null && string.IsNullOrWhiteSpace(objectEntryId))
-                {
-                    report.AddError(
-                        $"{label} index '{i}' has no Target Declaration and no Object Entry Id.",
-                        context);
-                    continue;
-                }
-
-                if (targetDeclaration != null)
-                {
-                    ValidateTargetDeclaration(report, targetDeclaration, context, $"{label} index '{i}'");
-                }
-
-                if (targetDeclaration != null && !string.IsNullOrWhiteSpace(objectEntryId))
-                {
-                    report.AddWarning(
-                        $"{label} index '{i}' has both Target Declaration and Object Entry Id. Target Declaration wins; remove the extra id unless this is deliberate documentation.",
-                        context);
-                }
-            }
-        }
-
-        private static void ValidateTargetDeclaration(
-            FrameworkAuthoringValidationReport report,
-            ObjectEntryDeclaration declaration,
-            Object context,
-            string label)
-        {
-            if (declaration == null)
-            {
-                return;
-            }
-
-            if (!declaration.HasObjectEntryId)
-            {
-                report.AddError($"{label} references an ObjectEntryDeclaration with no Object Entry Id.", context);
-                return;
-            }
-
-            if (!declaration.HasRequiredAuthoredOwner)
-            {
-                report.AddError(
-                    $"{label} references ObjectEntry '{declaration.ObjectEntryIdText}' without the required authored owner for scope '{declaration.Scope}'.",
-                    context);
-                return;
-            }
-
-            if (!declaration.TryCreateDescriptor(out _, out string issue))
-            {
-                report.AddError(
-                    $"{label} references ObjectEntry '{declaration.ObjectEntryIdText}' that cannot create a descriptor. {issue}",
-                    context);
-            }
-        }
-
-        private static ObjectResetSelectionMode ResolveSelectionMode(SerializedProperty property)
+        private static ResetSelectionMode ResolveResetSelectionMode(SerializedProperty property)
         {
             if (property == null)
             {
-                return ObjectResetSelectionMode.Unknown;
+                return ResetSelectionMode.Unknown;
             }
 
-            return (ObjectResetSelectionMode)property.intValue;
-        }
-
-        private static int CountGroupAssetEntries(ObjectResetGroupAsset groupAsset)
-        {
-            if (groupAsset == null)
-            {
-                return 0;
-            }
-
-            try
-            {
-                return groupAsset.EntryCount;
-            }
-            catch (Exception)
-            {
-                return 0;
-            }
+            return (ResetSelectionMode)property.intValue;
         }
 
         private static int CountArray(SerializedProperty property)

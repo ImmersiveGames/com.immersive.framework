@@ -15,9 +15,8 @@ namespace Immersive.Framework.ActivityRestart
         RejectedRuntimeUnavailable = 4,
         RejectedNoActiveActivity = 5,
         RejectedTargetMismatch = 6,
-        RejectedResetGroupMissing = 7,
-        ResetGroupFailed = 8,
-        ActivityClearFailed = 9,
-        ActivityReenterFailed = 10
+        ResetExecutionFailed = 7,
+        ActivityClearFailed = 8,
+        ActivityReenterFailed = 9
     }
 }

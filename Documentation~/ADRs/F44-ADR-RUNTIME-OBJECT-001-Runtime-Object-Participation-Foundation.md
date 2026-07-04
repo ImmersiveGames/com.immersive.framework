@@ -2,9 +2,12 @@
 
 ## Status
 
-Accepted for `v1.0.0-preview.12`.
+Superseded / removed in preview.12G.
 
-## Context
+
+> Supersession note — preview.12G: this runtime participation layer was removed because it mixed ObjectEntry runtime participation with reset participants. Runtime reset is now handled by `UnityResetSubjectAdapter` with `RuntimeInstanceId` generation and local `UnityResetParticipantBehaviour` components. Runtime materialization/participation may return later as a separate non-reset module.
+
+## Historical context
 
 The framework now supports Object Reset, Object Reset Group, Reset Selection Policy and Activity Restart. These flows were validated with scene-authored `ObjectEntryDeclaration` and serialized `ObjectResetUnityParticipantSource` references.
 

@@ -54,7 +54,7 @@ namespace Immersive.Framework.Diagnostics
                 logger,
                 normalizedSource,
                 "cycle-reset-in-flight",
-                "ObjectResetRequest",
+                "ResetRequest",
                 routeRequestInFlight: false,
                 activityRequestInFlight: false,
                 cycleResetRequestInFlight: true,
