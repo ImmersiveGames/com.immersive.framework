@@ -1,4 +1,7 @@
+using System;
+using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using Immersive.Framework.Authoring;
 using Immersive.Logging.Unity;
 using UnityEditor;
@@ -18,20 +21,40 @@ namespace Immersive.Framework.Editor.Editor.Settings
 
         internal static ImmersiveFrameworkSettingsAsset LoadOrCreateSettingsAsset()
         {
-            var settings = AssetDatabase.LoadAssetAtPath<ImmersiveFrameworkSettingsAsset>(SettingsPath);
-            if (settings != null)
+            var existingSettings = FindExistingSettingsAssets();
+            if (existingSettings.Count == 1)
             {
-                return settings;
+                return existingSettings[0];
+            }
+
+            if (existingSettings.Count > 1)
+            {
+                var paths = string.Join("\n", existingSettings.Select(AssetDatabase.GetAssetPath));
+                Debug.LogError(
+                    $"Multiple Immersive Framework settings assets were found in Resources folders. Keep exactly one {nameof(ImmersiveFrameworkSettingsAsset)} named {ImmersiveFrameworkSettingsAsset.ResourcesPath}.asset.\n{paths}");
+                return null;
             }
 
             EnsureDirectory("Assets/_Project/Settings/ImmersiveFramework/Resources");
 
-            settings = ScriptableObject.CreateInstance<ImmersiveFrameworkSettingsAsset>();
+            var settings = ScriptableObject.CreateInstance<ImmersiveFrameworkSettingsAsset>();
+            settings.name = ImmersiveFrameworkSettingsAsset.ResourcesPath;
             AssetDatabase.CreateAsset(settings, SettingsPath);
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
 
             return settings;
+        }
+
+        internal static string GetSettingsAssetPath(ImmersiveFrameworkSettingsAsset settings)
+        {
+            if (settings == null)
+            {
+                return "Not found";
+            }
+
+            var path = AssetDatabase.GetAssetPath(settings);
+            return string.IsNullOrWhiteSpace(path) ? "Not saved" : path;
         }
 
         internal static GameApplicationAsset CreateGameApplicationAsset()
@@ -207,6 +230,33 @@ namespace Immersive.Framework.Editor.Editor.Settings
 
                 current = next;
             }
+        }
+
+        private static List<ImmersiveFrameworkSettingsAsset> FindExistingSettingsAssets()
+        {
+            return AssetDatabase.FindAssets($"t:{nameof(ImmersiveFrameworkSettingsAsset)}")
+                .Select(AssetDatabase.GUIDToAssetPath)
+                .Where(IsValidSettingsResourcesPath)
+                .Select(AssetDatabase.LoadAssetAtPath<ImmersiveFrameworkSettingsAsset>)
+                .Where(asset => asset != null)
+                .ToList();
+        }
+
+        private static bool IsValidSettingsResourcesPath(string assetPath)
+        {
+            if (string.IsNullOrWhiteSpace(assetPath))
+            {
+                return false;
+            }
+
+            var normalizedPath = assetPath.Replace('\\', '/');
+            if (!normalizedPath.EndsWith($"/{ImmersiveFrameworkSettingsAsset.ResourcesPath}.asset", StringComparison.Ordinal))
+            {
+                return false;
+            }
+
+            var directory = Path.GetDirectoryName(normalizedPath)?.Replace('\\', '/');
+            return string.Equals(Path.GetFileName(directory), "Resources", StringComparison.Ordinal);
         }
     }
 }

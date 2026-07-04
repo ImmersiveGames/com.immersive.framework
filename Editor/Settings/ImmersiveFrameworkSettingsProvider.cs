@@ -101,7 +101,7 @@ namespace Immersive.Framework.Editor.Editor.Settings
             DrawModelReadiness(settings);
 
             EditorGUILayout.Space(8);
-            DrawConfigurationFiles(loggingConfig.objectReferenceValue);
+            DrawConfigurationFiles(settings, loggingConfig.objectReferenceValue);
 
             EditorGUILayout.Space(8);
             DrawCurrentScope();
@@ -197,13 +197,13 @@ namespace Immersive.Framework.Editor.Editor.Settings
         }
 
 
-        private static void DrawConfigurationFiles(Object loggingConfig)
+        private static void DrawConfigurationFiles(ImmersiveFrameworkSettingsAsset settings, Object loggingConfig)
         {
             EditorGUILayout.LabelField("Configuration Files", EditorStyles.boldLabel);
 
             using (new EditorGUI.DisabledScope(true))
             {
-                EditorGUILayout.TextField("Settings Asset", ImmersiveFrameworkEditorSettingsUtility.SettingsPath);
+                EditorGUILayout.TextField("Settings Asset", ImmersiveFrameworkEditorSettingsUtility.GetSettingsAssetPath(settings));
                 string loggingConfigPath = loggingConfig != null
                     ? AssetDatabase.GetAssetPath(loggingConfig)
                     : "Not assigned";

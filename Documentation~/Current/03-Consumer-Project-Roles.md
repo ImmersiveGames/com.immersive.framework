@@ -89,6 +89,30 @@ Packages/com.immersive.framework/Documentation~/
 
 Consumer READMEs may explain local project purpose, manual flows and what should not enter the project. They must link back to package docs instead of duplicating canonical framework history.
 
+## Framework Settings Location Policy
+
+Runtime loads framework settings through Unity Resources:
+
+```text
+Resources.Load("ImmersiveFrameworkSettings")
+```
+
+The settings asset must be named:
+
+```text
+ImmersiveFrameworkSettings.asset
+```
+
+and must live directly inside one consumer-owned `Resources` folder. The package does not require this folder to be under `Assets/_Project`.
+
+Consumer projects own their local settings location:
+
+- FIRSTGAME may keep game-owned settings under `Assets/_Project/.../Resources/`.
+- The Framework QA Project should keep QA operational settings under `Assets/ImmersiveFrameworkQA/.../Resources/`.
+- Other consumers may choose their own asset root, provided the asset remains directly inside a `Resources` folder and keeps the required file name.
+
+Editor tooling must discover an existing valid settings asset before creating a default. It must not recreate `Assets/_Project` when a valid settings asset already exists elsewhere, and it must not silently continue when multiple valid `ImmersiveFrameworkSettings.asset` files are present.
+
 ## Serialization policy
 
 Unity serialized assets must not be renamed or moved automatically unless the move preserves `.meta` files and references are verified.
