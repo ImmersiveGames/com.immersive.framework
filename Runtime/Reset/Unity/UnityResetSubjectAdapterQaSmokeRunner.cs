@@ -1,6 +1,7 @@
 using Immersive.Framework.Common;
 #if UNITY_EDITOR || DEVELOPMENT_BUILD
 using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 using Immersive.Framework.ApiStatus;
 using Immersive.Framework.ApplicationLifecycle;
@@ -35,6 +36,7 @@ namespace Immersive.Framework.Reset.Unity
             int baselineParticipants = runtimeHost.ResetRegistryParticipantCount;
 
             bool sceneAuthoredPassed = ValidateSceneAuthoredSubjectWithParticipants(runtimeHost, logger, normalizedSource);
+            bool resettableComponentPassed = await ValidateUnityResettableComponentParticipantAsync(runtimeHost, logger, normalizedSource);
             bool runtimeInstancesPassed = await ValidateRuntimeInstanceSubjectsAsync(runtimeHost, logger, normalizedSource);
             bool cleanupPassed = runtimeHost.ResetRegistrySubjectCount == baselineSubjects
                 && runtimeHost.ResetRegistryParticipantCount == baselineParticipants;
@@ -46,13 +48,14 @@ namespace Immersive.Framework.Reset.Unity
                     && runtimeHost.ResetRegistryParticipantCount == baselineParticipants;
             }
 
-            bool passed = sceneAuthoredPassed && runtimeInstancesPassed && cleanupPassed;
+            bool passed = sceneAuthoredPassed && resettableComponentPassed && runtimeInstancesPassed && cleanupPassed;
             logger.Info(
                 "QA Unity Reset Subject Adapter Synthetic Smoke completed.",
                 LogFields.Of(
                     LogFields.Field("status", passed ? "Succeeded" : "Failed"),
                     LogFields.Field("source", normalizedSource),
                     LogFields.Field("sceneAuthored", sceneAuthoredPassed),
+                    LogFields.Field("resettableComponent", resettableComponentPassed),
                     LogFields.Field("runtimeInstances", runtimeInstancesPassed),
                     LogFields.Field("cleanup", cleanupPassed),
                     LogFields.Field("subjects", runtimeHost.ResetRegistrySubjectCount.ToString()),
@@ -173,6 +176,91 @@ namespace Immersive.Framework.Reset.Unity
             }
         }
 
+
+        private static async Task<bool> ValidateUnityResettableComponentParticipantAsync(
+            FrameworkRuntimeHost runtimeHost,
+            FrameworkLogger logger,
+            string source)
+        {
+            GameObject root = null;
+            UnityResetSubjectAdapter adapter = null;
+            QaUnityResettableComponent resettable = null;
+            try
+            {
+                root = new GameObject("QA_UnityReset_ResettableComponentSubject");
+                root.SetActive(false);
+
+                adapter = root.AddComponent<UnityResetSubjectAdapter>();
+                resettable = root.AddComponent<QaUnityResettableComponent>();
+
+                adapter.ConfigureForQa(
+                    false,
+                    true,
+                    false,
+                    UnityResetSubjectIdGenerationMode.AuthoredStableId,
+                    "qa.reset.unity.resettable-component.subject",
+                    string.Empty,
+                    ResetSubjectScope.Activity,
+                    "QA Unity Resettable Component Subject",
+                    "Smoke:UnityResetSubjectAdapter:ResettableComponent",
+                    UnityResetParticipantDiscoveryMode.SameGameObject,
+                    true,
+                    true);
+
+                root.SetActive(true);
+                bool registered = adapter.RegisterWithCurrentHost("qa.unity-reset.resettable-component.register");
+                IReadOnlyList<ResetParticipantDescriptor> participants = runtimeHost.ResetRegistry.GetParticipants(adapter.SubjectHandle);
+                bool participantDescriptorFound = participants.Count == 1
+                    && participants[0].ParticipantId == ResetParticipantId.From(QaUnityResettableComponent.ParticipantIdText)
+                    && participants[0].Requiredness == ResetParticipantRequiredness.Required
+                    && participants[0].Order == QaUnityResettableComponent.ExpectedOrder;
+
+                var executor = new ResetExecutor(runtimeHost.ResetRegistry);
+                ResetExecutionResult execution = await executor.ExecuteAsync(
+                    ResetExecutionRequest.ForSingleSubject(
+                        adapter.SubjectId,
+                        allowNoParticipants: false,
+                        source,
+                        "qa.unity-reset.resettable-component.execute"));
+
+                bool resetExecuted = resettable.ResetCalls == 1
+                    && string.Equals(resettable.LastReason, "qa.unity-reset.resettable-component.execute", StringComparison.Ordinal)
+                    && resettable.LastSubjectId == adapter.SubjectId
+                    && resettable.LastParticipantId == ResetParticipantId.From(QaUnityResettableComponent.ParticipantIdText);
+
+                bool passed = registered
+                    && adapter.IsRegistered
+                    && adapter.RegisteredParticipantCount == 1
+                    && participantDescriptorFound
+                    && execution.Succeeded
+                    && execution.SubjectCount == 1
+                    && execution.ParticipantCount == 1
+                    && execution.ParticipantSucceeded == 1
+                    && resetExecuted;
+
+                LogUnityStep(
+                    logger,
+                    "interface-resettable-component",
+                    passed,
+                    runtimeHost,
+                    registered ? execution.Status.ToString() : "Rejected",
+                    $"participants='{participants.Count}' resetCalls='{resettable.ResetCalls}' executionStatus='{execution.Status}' participantSucceeded='{execution.ParticipantSucceeded}' participantId='{QaUnityResettableComponent.ParticipantIdText}'");
+
+                adapter.ClearRegistration("qa.unity-reset.resettable-component.cleanup");
+                await Task.Yield();
+                return passed;
+            }
+            finally
+            {
+                if (adapter != null && adapter.IsRegistered)
+                {
+                    adapter.ClearRegistration("qa.unity-reset.resettable-component.finally-cleanup");
+                }
+
+                DestroyIfNeeded(root);
+            }
+        }
+
         private static async Task<bool> ValidateRuntimeInstanceSubjectsAsync(
             FrameworkRuntimeHost runtimeHost,
             FrameworkLogger logger,
@@ -283,6 +371,47 @@ namespace Immersive.Framework.Reset.Unity
                 UnityResetParticipantDiscoveryMode.Children,
                 true);
             return root;
+        }
+
+
+        private sealed class QaUnityResettableComponent : MonoBehaviour, IUnityResettable, IUnityResettableMetadata
+        {
+            internal const string ParticipantIdText = "qa.reset.unity.resettable-component";
+            internal const int ExpectedOrder = 25;
+
+            public string ResetParticipantId => ParticipantIdText;
+
+            public ResetParticipantRequiredness ResetRequiredness => ResetParticipantRequiredness.Required;
+
+            public int ResetOrder => ExpectedOrder;
+
+            public string ResetDisplayName => "QA Unity Resettable Component";
+
+            public string ResetSource => nameof(QaUnityResettableComponent);
+
+            public string ResetReason => "qa.unity-reset.resettable-component";
+
+            public int ResetCalls { get; private set; }
+
+            public string LastReason { get; private set; }
+
+            public ResetSubjectId LastSubjectId { get; private set; }
+
+            public ResetParticipantId LastParticipantId { get; private set; }
+
+            public ResetParticipantResult Reset(ResetContext context)
+            {
+                ResetCalls++;
+                LastReason = context.Reason;
+                LastSubjectId = context.Subject.SubjectId;
+                LastParticipantId = context.Participant.ParticipantId;
+
+                return ResetParticipantResult.CreateSucceeded(
+                    context.Participant,
+                    nameof(QaUnityResettableComponent),
+                    context.Reason,
+                    $"QA unity resettable component executed. resetCalls='{ResetCalls}'.");
+            }
         }
 
         private static void LogUnityStep(

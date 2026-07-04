@@ -35,12 +35,17 @@ namespace Immersive.Framework.Reset.Unity
         [Header("Participants")]
         [SerializeField] private UnityResetParticipantDiscoveryMode participantDiscovery = UnityResetParticipantDiscoveryMode.Children;
         [SerializeField] private bool includeInactiveParticipants = true;
+        [SerializeField] private bool includeUnityResettableComponents = true;
 
         private readonly List<ResetRegistrationHandle> _participantHandles = new();
+        private readonly List<UnityResettableComponentParticipant> _resettableComponentParticipants = new();
         private ResetRegistrationHandle _subjectHandle;
         private ResetSubject _subject;
         private FrameworkRuntimeHost _registeredHost;
         private bool _registrationAttempted;
+        private bool _runtimeUnavailableLogged;
+        private bool _ownerUnavailableLogged;
+        private string _lastOwnerUnavailableIssue;
         private FrameworkLogger _logger;
 
         public bool IsRegistered => _subjectHandle.IsSubject && _registeredHost != null;
@@ -113,30 +118,19 @@ namespace Immersive.Framework.Reset.Unity
 
             if (!FrameworkRuntimeHost.TryGetCurrent(out var runtimeHost) || runtimeHost == null)
             {
-                Logger.Info(
-                    "Unity Reset Subject Adapter skipped because FrameworkRuntimeHost is not available. The adapter will retry if retry is enabled.",
-                    LogFields.Field("status", "SkippedNoRuntime"),
-                    LogFields.Field("idGeneration", idGeneration.ToString()),
-                    LogFields.Field("subjectId", subjectId),
-                    LogFields.Field("runtimeSubjectIdPrefix", runtimeSubjectIdPrefix),
-                    LogFields.Field("scope", scope.ToString()),
-                    LogFields.Field("reason", reason));
+                LogRuntimeUnavailable(reason);
                 return false;
             }
 
             if (!runtimeHost.TryResolveCurrentResetOwner(scope, out RuntimeContentOwner owner, out string issue))
             {
-                Logger.Warning(
-                    "Unity Reset Subject Adapter registration rejected.",
-                    LogFields.Field("status", "RejectedMissingOwner"),
-                    LogFields.Field("idGeneration", idGeneration.ToString()),
-                    LogFields.Field("subjectId", subjectId),
-                    LogFields.Field("runtimeSubjectIdPrefix", runtimeSubjectIdPrefix),
-                    LogFields.Field("scope", scope.ToString()),
-                    LogFields.Field("issue", issue),
-                    LogFields.Field("reason", reason));
+                LogOwnerUnavailable(reason, issue);
                 return false;
             }
+
+            _runtimeUnavailableLogged = false;
+            _ownerUnavailableLogged = false;
+            _lastOwnerUnavailableIssue = null;
 
             ResetRegistryOperationResult subjectResult = CreateAndRegisterSubject(runtimeHost, owner, reason);
             if (!subjectResult.Succeeded)
@@ -185,6 +179,7 @@ namespace Immersive.Framework.Reset.Unity
                 _subject = default;
                 _registeredHost = null;
                 _participantHandles.Clear();
+                _resettableComponentParticipants.Clear();
                 return false;
             }
 
@@ -222,7 +217,86 @@ namespace Immersive.Framework.Reset.Unity
             _subject = default;
             _registeredHost = null;
             _participantHandles.Clear();
+            _resettableComponentParticipants.Clear();
             return unregistered;
+        }
+
+        private void LogRuntimeUnavailable(string reason)
+        {
+            if (IsExpectedDeferredRegistration(reason))
+            {
+                if (_runtimeUnavailableLogged)
+                {
+                    return;
+                }
+
+                _runtimeUnavailableLogged = true;
+                Logger.Info(
+                    "Unity Reset Subject Adapter is waiting for FrameworkRuntimeHost before registering reset subject.",
+                    LogFields.Field("status", "WaitingForRuntime"),
+                    LogFields.Field("idGeneration", idGeneration.ToString()),
+                    LogFields.Field("subjectId", subjectId),
+                    LogFields.Field("runtimeSubjectIdPrefix", runtimeSubjectIdPrefix),
+                    LogFields.Field("scope", scope.ToString()),
+                    LogFields.Field("retryUntilRuntimeAvailable", retryUntilRuntimeAvailable.ToString()),
+                    LogFields.Field("reason", reason));
+                return;
+            }
+
+            Logger.Warning(
+                "Unity Reset Subject Adapter registration rejected because FrameworkRuntimeHost is not available.",
+                LogFields.Field("status", "RejectedNoRuntime"),
+                LogFields.Field("idGeneration", idGeneration.ToString()),
+                LogFields.Field("subjectId", subjectId),
+                LogFields.Field("runtimeSubjectIdPrefix", runtimeSubjectIdPrefix),
+                LogFields.Field("scope", scope.ToString()),
+                LogFields.Field("retryUntilRuntimeAvailable", retryUntilRuntimeAvailable.ToString()),
+                LogFields.Field("reason", reason));
+        }
+
+        private void LogOwnerUnavailable(string reason, string issue)
+        {
+            if (IsExpectedDeferredRegistration(reason))
+            {
+                if (_ownerUnavailableLogged && string.Equals(_lastOwnerUnavailableIssue, issue, StringComparison.Ordinal))
+                {
+                    return;
+                }
+
+                _ownerUnavailableLogged = true;
+                _lastOwnerUnavailableIssue = issue;
+                Logger.Info(
+                    "Unity Reset Subject Adapter is waiting for a reset owner before registering reset subject.",
+                    LogFields.Field("status", "WaitingForOwner"),
+                    LogFields.Field("idGeneration", idGeneration.ToString()),
+                    LogFields.Field("subjectId", subjectId),
+                    LogFields.Field("runtimeSubjectIdPrefix", runtimeSubjectIdPrefix),
+                    LogFields.Field("scope", scope.ToString()),
+                    LogFields.Field("issue", issue),
+                    LogFields.Field("retryUntilRuntimeAvailable", retryUntilRuntimeAvailable.ToString()),
+                    LogFields.Field("reason", reason));
+                return;
+            }
+
+            Logger.Warning(
+                "Unity Reset Subject Adapter registration rejected.",
+                LogFields.Field("status", "RejectedMissingOwner"),
+                LogFields.Field("idGeneration", idGeneration.ToString()),
+                LogFields.Field("subjectId", subjectId),
+                LogFields.Field("runtimeSubjectIdPrefix", runtimeSubjectIdPrefix),
+                LogFields.Field("scope", scope.ToString()),
+                LogFields.Field("issue", issue),
+                LogFields.Field("retryUntilRuntimeAvailable", retryUntilRuntimeAvailable.ToString()),
+                LogFields.Field("reason", reason));
+        }
+
+        private bool IsExpectedDeferredRegistration(string reason)
+        {
+            return retryUntilRuntimeAvailable
+                && registerOnEnable
+                && (string.Equals(reason, "on-enable", StringComparison.Ordinal)
+                    || string.Equals(reason, "start", StringComparison.Ordinal)
+                    || string.Equals(reason, "update-retry", StringComparison.Ordinal));
         }
 
         private ResetRegistryOperationResult CreateAndRegisterSubject(
@@ -295,6 +369,18 @@ namespace Immersive.Framework.Reset.Unity
         private void RegisterParticipants(string reason)
         {
             _participantHandles.Clear();
+            _resettableComponentParticipants.Clear();
+
+            RegisterUnityResetParticipantBehaviours(reason);
+
+            if (includeUnityResettableComponents)
+            {
+                RegisterUnityResettableComponents(reason);
+            }
+        }
+
+        private void RegisterUnityResetParticipantBehaviours(string reason)
+        {
             var participants = ResolveParticipants();
             for (int i = 0; i < participants.Count; i++)
             {
@@ -316,15 +402,67 @@ namespace Immersive.Framework.Reset.Unity
                     continue;
                 }
 
-                Logger.Warning(
-                    "Unity Reset Subject Adapter participant registration rejected.",
-                    LogFields.Field("status", result.Status.ToString()),
-                    LogFields.Field("subjectId", _subject.SubjectId.StableText),
-                    LogFields.Field("participant", participant.GetType().Name),
-                    LogFields.Field("issues", result.Issues.Count.ToString()),
-                    LogFields.Field("issue", result.Issues.Count > 0 ? result.Issues[0].Message : string.Empty),
-                    LogFields.Field("reason", reason));
+                LogParticipantRegistrationRejected(
+                    result,
+                    participant.GetType().Name,
+                    participant.ParticipantIdText,
+                    reason);
             }
+        }
+
+        private void RegisterUnityResettableComponents(string reason)
+        {
+            var components = ResolveResettableComponents();
+            for (int i = 0; i < components.Count; i++)
+            {
+                MonoBehaviour component = components[i];
+                if (component == null || component is UnityResetParticipantBehaviour)
+                {
+                    continue;
+                }
+
+                if (component is not IUnityResettable resettable)
+                {
+                    continue;
+                }
+
+                var participant = new UnityResettableComponentParticipant(component, resettable);
+                ResetRegistryOperationResult result = _registeredHost.RegisterResetParticipant(
+                    _subjectHandle,
+                    participant,
+                    component,
+                    nameof(UnityResetSubjectAdapter),
+                    reason);
+                if (result.Succeeded)
+                {
+                    _participantHandles.Add(result.Handle);
+                    _resettableComponentParticipants.Add(participant);
+                    continue;
+                }
+
+                LogParticipantRegistrationRejected(
+                    result,
+                    component.GetType().Name,
+                    resettable.ResetParticipantId,
+                    reason);
+            }
+        }
+
+        private void LogParticipantRegistrationRejected(
+            ResetRegistryOperationResult result,
+            string participantType,
+            string participantIdText,
+            string reason)
+        {
+            Logger.Warning(
+                "Unity Reset Subject Adapter participant registration rejected.",
+                LogFields.Field("status", result.Status.ToString()),
+                LogFields.Field("subjectId", _subject.SubjectId.StableText),
+                LogFields.Field("participant", participantType),
+                LogFields.Field("participantId", participantIdText.NormalizeText()),
+                LogFields.Field("issues", result.Issues.Count.ToString()),
+                LogFields.Field("issue", result.Issues.Count > 0 ? result.Issues[0].Message : string.Empty),
+                LogFields.Field("reason", reason));
         }
 
         private IReadOnlyList<UnityResetParticipantBehaviour> ResolveParticipants()
@@ -337,6 +475,19 @@ namespace Immersive.Framework.Reset.Unity
                     return GetComponentsInChildren<UnityResetParticipantBehaviour>(includeInactiveParticipants);
                 default:
                     return Array.Empty<UnityResetParticipantBehaviour>();
+            }
+        }
+
+        private IReadOnlyList<MonoBehaviour> ResolveResettableComponents()
+        {
+            switch (participantDiscovery)
+            {
+                case UnityResetParticipantDiscoveryMode.SameGameObject:
+                    return GetComponents<MonoBehaviour>();
+                case UnityResetParticipantDiscoveryMode.Children:
+                    return GetComponentsInChildren<MonoBehaviour>(includeInactiveParticipants);
+                default:
+                    return Array.Empty<MonoBehaviour>();
             }
         }
 
@@ -372,7 +523,8 @@ namespace Immersive.Framework.Reset.Unity
             string qaDisplayName,
             string qaDiagnosticTag,
             UnityResetParticipantDiscoveryMode qaParticipantDiscovery,
-            bool qaIncludeInactiveParticipants)
+            bool qaIncludeInactiveParticipants,
+            bool qaIncludeUnityResettableComponents = true)
         {
             registerOnEnable = qaRegisterOnEnable;
             unregisterOnDisable = qaUnregisterOnDisable;
@@ -385,6 +537,7 @@ namespace Immersive.Framework.Reset.Unity
             diagnosticTag = qaDiagnosticTag;
             participantDiscovery = qaParticipantDiscovery;
             includeInactiveParticipants = qaIncludeInactiveParticipants;
+            includeUnityResettableComponents = qaIncludeUnityResettableComponents;
         }
 #endif
     }

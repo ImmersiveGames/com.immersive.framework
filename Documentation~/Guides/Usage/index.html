@@ -531,6 +531,7 @@
       <a href="#reset-roles"><span class="icon">🧩</span> Reset Roles</a>
       <a href="#object-reset-group"><span class="icon">🔁</span> Reset Group</a>
       <a href="#activity-restart"><span class="icon">🔄</span> Activity Restart</a>
+      <a href="#reset-avancado"><span class="icon">🧪</span> Reset Avançado</a>
       <a href="#playerinput-gate"><span class="icon">🎛️</span> PlayerInput Gate</a>
       <a href="#transition-gate"><span class="icon">🚦</span> Transition Gate</a>
     </div>
@@ -554,12 +555,12 @@
   <main class="content">
 
     <div class="hero" id="intro">
-      <div class="eyebrow">Manual de Uso · v1.0.0-preview.11</div>
-      <h1>Immersive Framework<br>Preview 11</h1>
-      <p>Guia prático para o fluxo mínimo jogável validado até o Preview 11: Menu, Gameplay, Activity A/B, Loading, Transition Gate, Pause visual, Pause por botão, Pause por tecla via Global/Pause, pausa real via TimeScale, PlayerInput Gate Adapter, Object Reset, Reset Group e Activity Restart com uma única transição visual.</p>
+      <div class="eyebrow">Manual de Uso · v1.0.0-preview.12</div>
+      <h1>Immersive Framework<br>Preview 12</h1>
+      <p>Guia prático para o fluxo mínimo jogável validado até o Preview 12: Menu, Gameplay, Activity A/B, Loading, Transition Gate, Pause visual, Pause por botão, Pause por tecla via Global/Pause, pausa real via TimeScale, PlayerInput Gate Adapter, Object Reset, Reset Group e Activity Restart com uma única transição visual.</p>
       <div class="badge-row">
         <span class="badge badge-green">✓ FIRSTGAME-1/2/3/3B/4/5 PASS</span>
-        <span class="badge badge-blue">v1.0.0-preview.11</span>
+        <span class="badge badge-blue">v1.0.0-preview.12</span>
         <span class="badge badge-yellow">Git Package Preview</span>
         <span class="badge badge-purple">Unity 6.5</span>
       </div>
@@ -573,7 +574,7 @@
       </div>
     </div>
 
-    <h2 id="escopo">Escopo do Preview 11</h2>
+    <h2 id="escopo">Escopo do Preview 12</h2>
     <p>O <strong>v1.0.0-preview.12</strong> consolida o uso real do framework como package Git em projeto consumidor. Route/Activity podem bloquear requests de lifecycle, input, interação e gameplay durante transition, o <code>UnityPlayerInputGateAdapter</code> permite que um <code>PlayerInput</code> de gameplay obedeça esses blockers, o <code>ObjectResetGroupTrigger</code> permite resetar vários <code>ResetSubject</code> em sequência, e o <code>ActivityRestartTrigger</code> usa <strong>ResetSelectionConfig</strong> para resetar subjects e reiniciar a Activity atual em uma única janela visual de transition. Pause continua separado: superfície visual residente na <code>UIGlobal</code>, requests por UI, toggle por tecla via uma única ação <code>Global/Pause</code> e pausa básica da simulação com <code>Time.timeScale = 0</code>.</p>
 
     <div class="flow">
@@ -592,7 +593,7 @@
 
     <div class="table-wrap">
       <table>
-        <thead><tr><th>Validado no Preview 11</th><th>Status</th></tr></thead>
+        <thead><tr><th>Validado no Preview 12</th><th>Status</th></tr></thead>
         <tbody>
           <tr><td>GameApplication como raiz do projeto</td><td><span class="badge badge-green">PASS</span></td></tr>
           <tr><td>Startup Route de Menu sem Activity inicial</td><td><span class="badge badge-green">PASS</span></td></tr>
@@ -617,7 +618,7 @@
     </div>
 
     <h2 id="conceitos">Conceitos mínimos</h2>
-    <p>Para usar o Preview 11, você precisa dominar apenas oito conceitos.</p>
+    <p>Para usar o Preview 12, você precisa dominar os conceitos abaixo.</p>
 
     <div class="asset-grid">
       <div class="asset-card">
@@ -658,7 +659,7 @@
       </div>
     </div>
 
-    <h2 id="ordem-boot">Ordem de boot canônica no Preview 11</h2>
+    <h2 id="ordem-boot">Ordem de boot canônica no Preview 12</h2>
     <p>O Preview 6 fixa uma fragilidade importante: a cena principal da Startup Route agora é preparada antes da UIGlobal. Isso evita duplicação de câmera, <code>AudioListener</code> e <code>EventSystem</code> quando o designer dá Play com outra cena aberta.</p>
 
     <div class="flow" style="flex-wrap:wrap; row-gap:10px;">
@@ -1130,7 +1131,7 @@ PauseSurface/PausePanel
 
     
     <h2 id="object-reset">FIRSTGAME-3 — PlayerPrototype e Object Reset</h2>
-    <p>O First Game usa um <code>PlayerPrototype</code> temporário no consumidor para provar gameplay mínimo, Pause, Transition e Object Reset. Esse mover não é o sistema oficial de Player/Actor/Movement do framework.</p>
+    <p>O First Game usa um <code>PlayerPrototype</code> temporário no consumidor para provar gameplay mínimo, Pause, Transition, Object Reset, Reset Group, Runtime Objects e Activity Restart. Esse mover não é o sistema oficial de Player/Actor/Movement do framework.</p>
 
     <pre><code>FG_Gameplay
 └── GameplayRoot
@@ -1139,26 +1140,74 @@ PauseSurface/PausePanel
     │   ├── FirstGamePlayerMover
     │   ├── UnityPlayerInputGateAdapter
     │   ├── UnityResetSubjectAdapter
-    │   └── UnityTransformResetParticipant</code></pre>
+    │   ├── UnityTransformResetParticipant
+    │   └── FirstGamePlayerResetProbe : IUnityResettable</code></pre>
 
     <div class="component-card">
       <h4>UnityResetSubjectAdapter</h4>
-      <p>Configuração recomendada para o player temporário:</p>
+      <p>O adapter é a faceta de reset do objeto. Ele registra um <code>ResetSubject</code> no <code>ResetRegistry</code> e descobre os participantes locais.</p>
       <pre><code>Subject Id = firstgame.player
-Scope = Route
-Route Owner = Gameplay Route
-Display Name = First Game Player</code></pre>
+Id Generation = AuthoredStableId
+Scope = Activity
+Display Name = First Game Player
+Participant Discovery = Children
+Include Inactive Participants = true
+Include Unity Resettable Components = true</code></pre>
+      <p>Use <code>Scope = Activity</code> quando o objeto pertence à Activity atual. Use <code>Scope = Route</code> somente quando o objeto deve sobreviver/participar do escopo da Route inteira. Objetos runtime instanciados, como caixas de teste, usam <code>Id Generation = RuntimeInstanceId</code> e um prefixo como <code>firstgame.runtime.box</code>.</p>
     </div>
 
     <div class="component-card">
-      <h4>UnityTransformResetParticipant</h4>
-      <pre><code>Participant Id = firstgame.player.transform-reset
-Requiredness = Required
-Target Transform Override = PlayerPrototype/Transform
-Reset Local Position = true
-Reset Local Rotation = true
-Reset Local Scale = true</code></pre>
-      <p>Use o Context Menu <code>Capture Current Transform Baseline</code> antes do smoke. O baseline é a posição/rotação/escala para onde o objeto volta.</p>
+      <h4>Built-in participants</h4>
+      <p>Use participants prontos quando o reset é simples e visualmente authorável.</p>
+      <pre><code>UnityTransformResetParticipant
+  Reset Position = true
+  Reset Rotation = true
+  Reset Scale = true
+
+UnityGameObjectActiveResetParticipant
+  Reset Active State = true</code></pre>
+      <p>O <code>UnityTransformResetParticipant</code> é ideal para player temporário, caixas, props e objetos de puzzle que precisam voltar para uma posição/rotação/escala conhecida.</p>
+    </div>
+
+    <div class="component-card">
+      <h4>Gameplay component mode: IUnityResettable</h4>
+      <p>Para objetos grandes, como player, NPC ou puzzle controller, não crie um participant separado para cada estado. O script de gameplay implementa <code>IUnityResettable</code> e o <code>UnityResetSubjectAdapter</code> registra esse componente como participant internamente.</p>
+      <pre><code>using Immersive.Framework.Reset;
+using Immersive.Framework.Reset.Unity;
+using UnityEngine;
+
+public sealed class FirstGamePlayerResetProbe : MonoBehaviour, IUnityResettable, IUnityResettableMetadata
+{
+    private int _resetCount;
+    private Vector3 _baselinePosition;
+
+    public string ResetParticipantId =&gt; "firstgame.player.reset-probe";
+    public ResetParticipantRequiredness ResetRequiredness =&gt; ResetParticipantRequiredness.Required;
+    public int ResetOrder =&gt; 100;
+    public string ResetDisplayName =&gt; "FirstGame Player Reset Probe";
+    public string ResetSource =&gt; nameof(FirstGamePlayerResetProbe);
+    public string ResetReason =&gt; "firstgame.player.reset-probe";
+
+    private void Awake()
+    {
+        _baselinePosition = transform.position;
+    }
+
+    public ResetParticipantResult Reset(ResetContext context)
+    {
+        _resetCount++;
+        transform.position = _baselinePosition;
+
+        Debug.Log($"[FIRSTGAME_RESETTABLE] id='{ResetParticipantId}' resetCount='{_resetCount}' reason='{context.Reason}'");
+
+        return ResetParticipantResult.CreateSucceeded(
+            context.Participant,
+            nameof(FirstGamePlayerResetProbe),
+            context.Reason,
+            $"FirstGame player reset probe executed. resetCount='{_resetCount}'.");
+    }
+}</code></pre>
+      <p>Critério de smoke: se você tinha <code>PlayerPrototype + RuntimeBox #1</code>, o reset deve subir de <code>subjects='2' participants='2'</code> para <code>subjects='2' participants='3'</code> quando um componente <code>IUnityResettable</code> é adicionado ao player.</p>
     </div>
 
     <div class="component-card">
@@ -1167,20 +1216,24 @@ Reset Local Scale = true</code></pre>
   ObjectResetTrigger
     Target Subject = PlayerPrototype/UnityResetSubjectAdapter
     Reason = firstgame.reset.player
-    Allow No Participants = false</code></pre>
-      <p>O <code>UnityResetSubjectAdapter</code> registra o subject e seus participants no <code>ResetRegistry</code>. O reset nao usa <code>ObjectEntryDeclaration</code> como target.</p>
+    Allow No Participants = false
+    Stop On Failure = true</code></pre>
+      <p>O reset não usa <code>ObjectEntryDeclaration</code> nem snapshot de <code>ObjectEntry</code> como target. O alvo canônico é o <code>ResetSubject</code>.</p>
     </div>
 
     <h2 id="reset-roles">Reset: papéis e superfície de authoring</h2>
-    <p>Depois do Preview 12, o reset tem um processo comum e superfícies diferentes de authoring. O processo comum é: selecionar <code>ResetSubject</code>, criar <code>ResetExecutionRequest</code>, executar participants registrados no <code>ResetRegistry</code> via <code>ResetExecutor</code> e agregar resultado. O que muda entre os botões é apenas o contexto da seleção.</p>
+    <p>Depois do Preview 12, o reset tem um processo comum e superfícies diferentes de authoring. O processo comum é: selecionar <code>ResetSubject</code>, criar <code>ResetExecutionRequest</code>, executar participants registrados no <code>ResetRegistry</code> via <code>ResetExecutor</code> e agregar resultado. O que muda entre botões, scripts e prefabs é apenas como o subject é registrado e como a seleção é disparada.</p>
 
     <div class="table-wrap">
       <table>
-        <thead><tr><th>Ferramenta</th><th>Quando usar</th><th>Quem escolhe os alvos</th></tr></thead>
+        <thead><tr><th>Peça</th><th>Responsabilidade</th><th>Uso no FIRSTGAME</th></tr></thead>
         <tbody>
-          <tr><td><code>ObjectResetTrigger</code></td><td>Resetar um único <code>ResetSubject</code>, como o player.</td><td><code>ResetSubjectReference</code>.</td></tr>
-          <tr><td><code>ObjectResetGroupTrigger</code></td><td>Resetar uma seleção de subjects sem reiniciar Activity.</td><td><code>ResetSelectionConfig</code>.</td></tr>
-          <tr><td><code>ActivityRestartTrigger</code></td><td>Resetar subjects e reiniciar a Activity atual.</td><td><code>ResetSelectionConfig</code>.</td></tr>
+          <tr><td><code>UnityResetSubjectAdapter</code></td><td>Registra o objeto como <code>ResetSubject</code>.</td><td>Fica no root do player, prefab runtime ou objeto resetável.</td></tr>
+          <tr><td><code>UnityResetParticipantBehaviour</code></td><td>Participant explícito authorável no Inspector.</td><td><code>UnityTransformResetParticipant</code> para posição/rotação/escala.</td></tr>
+          <tr><td><code>IUnityResettable</code></td><td>Componente de gameplay participa diretamente do reset.</td><td>Health, inventory runtime state, puzzle state, player flags.</td></tr>
+          <tr><td><code>ObjectResetTrigger</code></td><td>Resetar um único <code>ResetSubject</code>.</td><td><code>Button_ResetPlayer</code>.</td></tr>
+          <tr><td><code>ObjectResetGroupTrigger</code></td><td>Resetar uma seleção de subjects sem reiniciar Activity.</td><td><code>Button_ResetRoom</code>.</td></tr>
+          <tr><td><code>ActivityRestartTrigger</code></td><td>Resetar subjects e reiniciar a Activity atual em uma janela visual.</td><td><code>Button_RestartActivity</code>.</td></tr>
         </tbody>
       </table>
     </div>
@@ -1194,7 +1247,7 @@ Reset Local Scale = true</code></pre>
     </div>
 
     <h2 id="object-reset-group">FIRSTGAME-4 — Object Reset Group</h2>
-    <p>O <code>ObjectResetGroupTrigger</code> é uma ferramenta para resetar vários <code>ResetSubject</code> em sequência. Ele executa uma <code>ResetSelectionConfig</code> pelo <code>ResetExecutor</code>.</p>
+    <p>O <code>ObjectResetGroupTrigger</code> é uma ferramenta para resetar vários <code>ResetSubject</code> em sequência. Ele executa uma <code>ResetSelectionConfig</code> pelo <code>ResetExecutor</code>. No FIRSTGAME, ele deve pegar player + runtime boxes + componentes <code>IUnityResettable</code> descobertos pelo adapter.</p>
 
     <div class="callout info">
       <span class="callout-icon">ℹ️</span>
@@ -1209,11 +1262,11 @@ Reset Local Scale = true</code></pre>
     └── ObjectResetGroupTrigger
         ├── Group Id = firstgame.room-reset
         └── Selection
-            ├── Mode = ExplicitSubjects
-            ├── Explicit Subjects[0] = PlayerPrototype/UnityResetSubjectAdapter
+            ├── Mode = CurrentRouteAndActivitySubjects
             ├── Allow No Subjects = false
             ├── Allow No Participants = false
-            └── Stop On Failure = true</code></pre>
+            ├── Stop On Failure = true
+            └── Yield Between Subjects = false</code></pre>
 
     <div class="component-card">
       <h4>ObjectResetGroupTrigger</h4>
@@ -1221,11 +1274,11 @@ Reset Local Scale = true</code></pre>
       <pre><code>Group Id = firstgame.room-reset
 Reason = firstgame.reset.room
 Selection
-  Mode = ExplicitSubjects
-  Explicit Subjects[0] = PlayerPrototype/UnityResetSubjectAdapter
+  Mode = CurrentRouteAndActivitySubjects
   Allow No Subjects = false
   Allow No Participants = false
-  Stop On Failure = true</code></pre>
+  Stop On Failure = true
+  Yield Between Subjects = false</code></pre>
       <p>Para grupos locais de cena, prefira referência direta ao <code>UnityResetSubjectAdapter</code>. Para runtime ou referências indiretas, use texto de Reset Subject Id.</p>
     </div>
 
@@ -1234,8 +1287,8 @@ Selection
       <div class="log-label">Console — ObjectResetGroupTrigger</div>
       Object Reset Group Request completed.<br>
       <span class="log-key">status</span><span class="log-sep">='</span><span class="log-val">Succeeded</span><span class="log-sep">'</span>
-      <span class="log-key"> groupId</span><span class="log-sep">='</span><span class="log-val">firstgame.room-reset</span><span class="log-sep">'</span>
-      <span class="log-key"> subjects</span><span class="log-sep">='</span><span class="log-val">1</span><span class="log-sep">'</span>
+      <span class="log-key"> groupId</span><span class="log-sep">='</span><span class="log-val">firstgame.reset.room</span><span class="log-sep">'</span>
+      <span class="log-key"> subjects</span><span class="log-sep">='</span><span class="log-val">2+</span><span class="log-sep">'</span>
       <span class="log-key"> subjectSucceeded</span><span class="log-sep">='</span><span class="log-val">1</span><span class="log-sep">'</span>
       <span class="log-key"> blockingIssues</span><span class="log-sep">='</span><span class="log-val">0</span><span class="log-sep">'</span>
     </div>
@@ -1260,11 +1313,11 @@ Selection
         ├── Require Target Activity Is Current = true
         ├── Reason = firstgame.restart.activity
         └── Reset Selection
-            ├── Mode = ExplicitSubjects
-            ├── Explicit Subjects[0] = PlayerPrototype/UnityResetSubjectAdapter
+            ├── Mode = CurrentRouteAndActivitySubjects
             ├── Allow No Subjects = false
             ├── Allow No Participants = false
-            └── Stop On Failure = true</code></pre>
+            ├── Stop On Failure = true
+            └── Yield Between Subjects = false</code></pre>
 
     <div class="component-card">
       <h4>Reset Selection Mode</h4>
@@ -1287,20 +1340,20 @@ Selection
       <h4>Ordem de execução</h4>
       <pre><code>ActivityRestartTrigger.RequestActivityRestart()
   1. Resolve ResetSelectionConfig
-  2. ResetExecutor executa os subjects selecionados
-  3. FrameworkRuntimeHost.RestartActivityAsync(activity)
-     3.1 abre uma única Activity transition
-     3.2 limpa a Activity atual internamente
-     3.3 reentra na mesma Activity internamente
-     3.4 fecha a Activity transition</code></pre>
-      <p>O reset roda antes do Clear para que os <code>ResetSubject</code> e reset participants da Activity atual ainda estejam disponíveis. O Clear/Re-enter não deve aparecer como dois fades separados; os status <code>clearStatus</code> e <code>reenterStatus</code> ficam agregados no resultado final do restart.</p>
+  2. FrameworkRuntimeHost.RestartActivityAsync(activity, beforeRestartLifecycle)
+     2.1 transitionBefore fecha o fade
+     2.2 ResetExecutor executa os subjects selecionados
+     2.3 limpa a Activity atual internamente
+     2.4 reentra na mesma Activity internamente
+     2.5 transitionAfter abre o fade</code></pre>
+      <p>O reset roda dentro da janela visual do restart, depois do fade fechar e antes do Clear/Re-enter. O Clear/Re-enter não deve aparecer como dois fades separados; os status <code>clearStatus</code> e <code>reenterStatus</code> ficam agregados no resultado final do restart.</p>
     </div>
 
     <div class="callout info">
       <span class="callout-icon">ℹ️</span>
       <div class="callout-body">
         <div class="callout-title">Como saber que o fade duplo foi corrigido</div>
-        <p>No console, o restart deve terminar com <code>Activity Restart Request completed</code>. Não deve aparecer como duas requests públicas separadas com <code>reason='firstgame.restart.activity:clear'</code> e <code>reason='firstgame.restart.activity:reenter'</code>. Esses detalhes agora são internos ao fluxo composto.</p>
+        <p>No console, o restart deve mostrar <code>Activity Restart reset stage completed inside restart transition</code> antes de <code>Activity Restart Request completed</code>. Não deve aparecer como duas requests públicas separadas com <code>reason='firstgame.restart.activity:clear'</code> e <code>reason='firstgame.restart.activity:reenter'</code>. Esses detalhes agora são internos ao fluxo composto.</p>
       </div>
     </div>
 
@@ -1314,6 +1367,135 @@ Selection
       <span class="log-key"> clearStatus</span><span class="log-sep">='</span><span class="log-val">Succeeded</span><span class="log-sep">'</span>
       <span class="log-key"> reenterStatus</span><span class="log-sep">='</span><span class="log-val">Succeeded</span><span class="log-sep">'</span>
       <span class="log-key"> resetTargetSucceeded</span><span class="log-sep">='</span><span class="log-val">1</span><span class="log-sep">'</span>
+    </div>
+
+    <h2 id="reset-avancado">Fase avançada — Reset programático</h2>
+    <p>Esta fase é para programadores. O authoring canônico continua sendo pelo Inspector, mas scripts do jogo podem criar objetos resetáveis, chamar triggers e reagir aos resultados sem acessar diretamente o <code>ResetRegistry</code>.</p>
+
+    <div class="callout warning">
+      <span class="callout-icon">⚠️</span>
+      <div class="callout-body">
+        <div class="callout-title">Limite público atual</div>
+        <p>Em código de jogo, prefira chamar <code>ObjectResetTrigger</code>, <code>ObjectResetGroupTrigger</code> e <code>ActivityRestartTrigger</code>. Não acesse <code>ResetRegistry</code> diretamente no projeto consumidor. O registry é infraestrutura do framework; os triggers são a API pública de request.</p>
+      </div>
+    </div>
+
+    <div class="component-card">
+      <h4>1. Criar um runtime object resetável por código</h4>
+      <p>O prefab deve conter <code>UnityResetSubjectAdapter</code> com <code>Id Generation = RuntimeInstanceId</code>, prefixo estável e pelo menos um participant ou componente <code>IUnityResettable</code>. O script apenas instancia o prefab; o adapter registra o subject no <code>OnEnable</code>.</p>
+      <pre><code>using UnityEngine;
+
+public sealed class FirstGameRuntimeObjectSpawner : MonoBehaviour
+{
+    [SerializeField] private GameObject runtimeBoxPrefab;
+    [SerializeField] private Transform spawnPoint;
+
+    public GameObject Spawn()
+    {
+        if (runtimeBoxPrefab == null)
+        {
+            Debug.LogWarning("Runtime box prefab is missing.");
+            return null;
+        }
+
+        Vector3 position = spawnPoint != null ? spawnPoint.position : transform.position;
+        Quaternion rotation = spawnPoint != null ? spawnPoint.rotation : Quaternion.identity;
+        return Instantiate(runtimeBoxPrefab, position, rotation);
+    }
+}</code></pre>
+      <p>Configuração do prefab:</p>
+      <pre><code>FG_RuntimeBox.prefab
+  UnityResetSubjectAdapter
+    Id Generation = RuntimeInstanceId
+    Runtime Subject Id Prefix = firstgame.runtime.box
+    Scope = Runtime
+    Participant Discovery = Children
+    Include Unity Resettable Components = true
+
+  UnityTransformResetParticipant</code></pre>
+    </div>
+
+    <div class="component-card">
+      <h4>2. Disparar reset por script usando triggers</h4>
+      <p>Configure os triggers no Inspector e use um script fino para chamar os métodos públicos. Isso permite conectar input, UI customizada, dev hotkeys ou ferramentas internas sem duplicar a lógica de reset.</p>
+      <pre><code>using Immersive.Framework.ActivityRestart;
+using Immersive.Framework.ObjectReset;
+using Immersive.Framework.Reset;
+using UnityEngine;
+
+public sealed class FirstGameResetActions : MonoBehaviour
+{
+    [SerializeField] private ObjectResetTrigger resetPlayer;
+    [SerializeField] private ObjectResetGroupTrigger resetRoom;
+    [SerializeField] private ActivityRestartTrigger restartActivity;
+
+    public void ResetPlayer()
+    {
+        resetPlayer?.RequestObjectReset();
+    }
+
+    public async void ResetRoom()
+    {
+        if (resetRoom == null)
+        {
+            return;
+        }
+
+        ResetExecutionResult result = await resetRoom.RequestObjectResetGroupAsync();
+        Debug.Log($"[FIRSTGAME_RESET] room status='{result.Status}' subjects='{result.SubjectCount}' participants='{result.ParticipantCount}'");
+    }
+
+    public async void RestartActivity()
+    {
+        if (restartActivity == null)
+        {
+            return;
+        }
+
+        ActivityRestartResult result = await restartActivity.RequestActivityRestartAsync();
+        Debug.Log($"[FIRSTGAME_RESET] restart status='{result.Status}' resetParticipants='{result.ResetParticipantCount}' clear='{result.ClearStatus}' reenter='{result.ReenterStatus}'");
+    }
+}</code></pre>
+      <p>Use <code>async void</code> apenas em fronteiras Unity/OnClick/ContextMenu. Em sistemas próprios, prefira encapsular o fluxo em métodos que retornem <code>Awaitable</code> quando o contexto permitir.</p>
+    </div>
+
+    <div class="component-card">
+      <h4>3. Reagir a resultado sem ler console</h4>
+      <p>Os triggers mantêm o último resultado. Isso é útil para UI, debug overlays e validação manual.</p>
+      <pre><code>using Immersive.Framework.ObjectReset;
+using UnityEngine;
+
+public sealed class FirstGameResetStatusLabel : MonoBehaviour
+{
+    [SerializeField] private ObjectResetGroupTrigger resetRoom;
+
+    public void PrintLastResetRoomResult()
+    {
+        if (resetRoom == null || !resetRoom.HasLastResult)
+        {
+            Debug.Log("Reset Room ainda não rodou.");
+            return;
+        }
+
+        Debug.Log($"Reset Room last status='{resetRoom.LastExecutionStatus}' participants='{resetRoom.LastParticipantCount}' succeeded='{resetRoom.LastSucceededParticipantCount}' failed='{resetRoom.LastFailedParticipantCount}'");
+    }
+}</code></pre>
+    </div>
+
+    <div class="component-card">
+      <h4>4. Quando usar cada forma</h4>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Necessidade</th><th>Forma recomendada</th></tr></thead>
+          <tbody>
+            <tr><td>Reset simples de Transform/Active</td><td>Built-in <code>UnityResetParticipantBehaviour</code>.</td></tr>
+            <tr><td>Reset de estado de gameplay</td><td>Componente do jogo implementando <code>IUnityResettable</code>.</td></tr>
+            <tr><td>Botão ou UI</td><td>Trigger no Inspector + <code>OnClick</code>.</td></tr>
+            <tr><td>Hotkey/dev tool</td><td>Script chama <code>RequestObjectResetGroupAsync()</code> no trigger configurado.</td></tr>
+            <tr><td>Prefab runtime</td><td><code>Instantiate(prefab)</code>; o adapter registra no <code>OnEnable</code>.</td></tr>
+          </tbody>
+        </table>
+      </div>
     </div>
 
     <h2 id="playerinput-gate">FIRSTGAME-3B — Unity PlayerInput Gate Adapter</h2>
