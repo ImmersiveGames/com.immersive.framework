@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 using Immersive.Foundation.Events;
 using Immersive.Framework.ApiStatus;
 using Immersive.Framework.ApplicationLifecycle;
@@ -7,19 +6,19 @@ using Immersive.Framework.Authoring;
 using Immersive.Framework.Common;
 using Immersive.Framework.Diagnostics;
 using Immersive.Framework.GameFlow;
-using Immersive.Framework.ObjectReset;
+using Immersive.Framework.Reset;
 using Immersive.Logging.Records;
 using UnityEngine;
 
 namespace Immersive.Framework.ActivityRestart
 {
     /// <summary>
-    /// API status: Experimental. Scene-authored Activity Restart composed from reset selection + Activity Clear + Activity Request.
+    /// API status: Experimental. Scene-authored Activity Restart composed from ResetSelectionConfig + ResetExecutor + Activity Restart flow.
     /// This is not Cycle Reset and does not introduce Player/Actor lifecycle ownership.
     /// </summary>
     [DisallowMultipleComponent]
     [AddComponentMenu("Immersive Framework/Activity Restart/Activity Restart Trigger")]
-    [FrameworkApiStatus(FrameworkApiStatus.Experimental, "F40B public authored trigger for Activity Restart via reset selection policy.")]
+    [FrameworkApiStatus(FrameworkApiStatus.Experimental, "preview.12E Activity Restart trigger over ResetSelectionConfig + ResetExecutor.")]
     public sealed class ActivityRestartTrigger : MonoBehaviour
     {
         private const string DefaultSource = nameof(ActivityRestartTrigger);
@@ -33,6 +32,8 @@ namespace Immersive.Framework.ActivityRestart
         private string _lastReason = string.Empty;
         private string _lastMessage = string.Empty;
         private ActivityRestartResult _lastResult;
+        private ResetExecutionResult _lastResetExecutionResult;
+        private ResetSelectionResolution _lastSelectionResolution;
         private bool _hasLastResult;
 
         [Header("Activity Restart")]
@@ -42,12 +43,7 @@ namespace Immersive.Framework.ActivityRestart
         [SerializeField] private string reason;
 
         [Header("Reset Selection")]
-        [SerializeField] private ObjectResetSelectionMode resetSelectionMode = ObjectResetSelectionMode.ExplicitTargets;
-        [SerializeField] private ObjectResetGroupAsset resetGroupAsset;
-        [SerializeField] private string resetGroupId = "activity-restart-reset";
-        [SerializeField] private bool allowNoParticipants = true;
-        [SerializeField] private bool stopOnFailure = true;
-        [SerializeField] private List<ObjectResetGroupEntry> resetEntries = new List<ObjectResetGroupEntry>();
+        [SerializeField] private ResetSelectionConfig resetSelection = new ResetSelectionConfig();
 
         public bool IsRequestInFlight => _requestInFlight;
 
@@ -60,6 +56,10 @@ namespace Immersive.Framework.ActivityRestart
         public string LastMessage => _lastMessage;
 
         public ActivityRestartResult LastResult => _lastResult;
+
+        public ResetExecutionResult LastResetExecutionResult => _lastResetExecutionResult;
+
+        public ResetSelectionResolution LastSelectionResolution => _lastSelectionResolution;
 
         public bool HasLastResult => _hasLastResult;
 
@@ -79,19 +79,9 @@ namespace Immersive.Framework.ActivityRestart
             set => targetActivity = value;
         }
 
-        public ObjectResetSelectionMode ResetSelectionMode
-        {
-            get => resetSelectionMode;
-            set => resetSelectionMode = value;
-        }
+        public ResetSelectionConfig ResetSelection => resetSelection;
 
-        public ObjectResetGroupAsset ResetGroupAsset
-        {
-            get => resetGroupAsset;
-            set => resetGroupAsset = value;
-        }
-
-        public string ResetGroupId => ResolveResetGroupId();
+        public ResetSelectionMode ResetSelectionMode => resetSelection != null ? resetSelection.Mode : ResetSelectionMode.ExplicitSubjects;
 
         public IEventBinding SubscribeRequestEvents(Action<ActivityRestartTriggerEvent> handler)
         {
@@ -126,7 +116,7 @@ namespace Immersive.Framework.ActivityRestart
                     resolvedReason,
                     message);
                 _logger.Warning(message, BuildResultFields(result));
-                PublishCompleted(FlowRequestOutcome.Ignored, resolvedReason, message, result, true);
+                PublishCompleted(FlowRequestOutcome.Ignored, resolvedReason, message, result, true, default, default);
                 return result;
             }
 
@@ -141,7 +131,7 @@ namespace Immersive.Framework.ActivityRestart
                     resolvedReason,
                     message);
                 LogRestartResult(result);
-                PublishCompleted(FlowRequestOutcome.Failed, resolvedReason, message, result, true);
+                PublishCompleted(FlowRequestOutcome.Failed, resolvedReason, message, result, true, default, default);
                 return result;
             }
 
@@ -160,7 +150,7 @@ namespace Immersive.Framework.ActivityRestart
                     resolvedReason,
                     message);
                 LogRestartResult(result);
-                PublishCompleted(FlowRequestOutcome.Failed, resolvedReason, message, result, true);
+                PublishCompleted(FlowRequestOutcome.Failed, resolvedReason, message, result, true, default, default);
                 return result;
             }
 
@@ -175,51 +165,103 @@ namespace Immersive.Framework.ActivityRestart
                     resolvedReason,
                     message);
                 LogRestartResult(result);
-                PublishCompleted(FlowRequestOutcome.Failed, resolvedReason, message, result, true);
+                PublishCompleted(FlowRequestOutcome.Failed, resolvedReason, message, result, true, default, default);
                 return result;
             }
+
+            ResetSelectionConfig resolvedSelection = ResolveSelection();
+            ResetSelectionResolution selectionResolution = resolvedSelection.Resolve(
+                runtimeHost,
+                DefaultSource,
+                BuildStageReason(resolvedReason, "reset"));
+            if (selectionResolution.Failed)
+            {
+                ResetIssue issue = selectionResolution.Issues.Count > 0
+                    ? selectionResolution.Issues[0]
+                    : ResetIssue.Error(ResetIssueKind.InvalidRequest, "Activity Restart reset selection failed.");
+                ResetExecutionResult resetSelectionFailure = ResetExecutionResult.RejectedInvalidRequest(
+                    issue,
+                    DefaultSource,
+                    BuildStageReason(resolvedReason, "reset"));
+                string message = "Activity Restart failed. Reset selection failed.";
+                var result = new ActivityRestartResult(
+                    ActivityRestartResultStatus.ResetExecutionFailed,
+                    resolvedActivity,
+                    resolvedActivityName,
+                    DefaultSource,
+                    resolvedReason,
+                    resetSelectionFailure,
+                    string.Empty,
+                    string.Empty,
+                    string.Empty,
+                    string.Empty,
+                    message);
+                LogRestartResult(result);
+                PublishCompleted(FlowRequestOutcome.Failed, resolvedReason, message, result, true, selectionResolution, resetSelectionFailure);
+                return result;
+            }
+
+            ResetExecutionRequest resetRequest = resolvedSelection.CreateExecutionRequest(selectionResolution);
 
             _requestInFlight = true;
             PublishSubmitted(resolvedReason);
 
             ActivityRestartResult restartResult;
+            ResetExecutionResult resetExecutionResult = default;
+            ResetSelectionResolution completedSelectionResolution = selectionResolution;
             try
             {
-                ObjectResetGroupResult resetResult = await ObjectResetGroupExecutor.ExecuteAsync(
-                    runtimeHost,
-                    resetSelectionMode,
-                    ResolveResetEntries(),
-                    ResolveResetGroupId(),
+                var executor = new ResetExecutor(runtimeHost.ResetRegistry);
+                FrameworkActivityRestartFlowResult restartFlowResult = await runtimeHost.RestartActivityAsync(
+                    resolvedActivity,
                     DefaultSource,
-                    BuildStageReason(resolvedReason, "reset"),
-                    ResolveAllowNoParticipants(),
-                    ResolveStopOnFailure());
-                if (resetResult == null || resetResult.Failed)
+                    BuildStageReason(resolvedReason, "flow"),
+                    async () =>
+                    {
+                        try
+                        {
+                            resetExecutionResult = await executor.ExecuteAsync(resetRequest);
+                            _logger.Info(
+                                "Activity Restart reset stage completed inside restart transition.",
+                                LogFields.Of(
+                                    LogFields.Field("stage", "pre-clear-reset"),
+                                    LogFields.Field("reason", BuildStageReason(resolvedReason, "reset")),
+                                    LogFields.Field("resetStatus", resetExecutionResult.Status.ToString()),
+                                    LogFields.Field("resetSubjects", resetExecutionResult.SubjectCount.ToString()),
+                                    LogFields.Field("resetParticipants", resetExecutionResult.ParticipantCount.ToString()),
+                                    LogFields.Field("resetBlockingIssues", resetExecutionResult.BlockingIssueCount.ToString())));
+                            return !resetExecutionResult.Failed;
+                        }
+                        catch (Exception ex)
+                        {
+                            resetExecutionResult = ResetExecutionResult.RejectedInvalidRequest(
+                                ResetIssue.Error(ResetIssueKind.Exception, $"Activity Restart reset execution threw an exception. {ex.Message}"),
+                                DefaultSource,
+                                BuildStageReason(resolvedReason, "reset"));
+                            return false;
+                        }
+                    });
+
+                if (resetExecutionResult.Failed)
                 {
-                    string message = resetResult == null
-                        ? "Activity Restart failed. Object Reset Group returned no result."
-                        : "Activity Restart failed. Object Reset Group failed.";
+                    string message = "Activity Restart failed. Reset execution failed.";
                     restartResult = new ActivityRestartResult(
-                        ActivityRestartResultStatus.ResetGroupFailed,
+                        ActivityRestartResultStatus.ResetExecutionFailed,
                         resolvedActivity,
                         resolvedActivityName,
                         DefaultSource,
                         resolvedReason,
-                        resetResult,
+                        resetExecutionResult,
                         string.Empty,
+                        restartFlowResult.ClearResult.Message,
                         string.Empty,
-                        string.Empty,
-                        string.Empty,
+                        restartFlowResult.ReenterResult.Message,
                         message);
                     LogRestartResult(restartResult);
-                    PublishCompleted(FlowRequestOutcome.Failed, resolvedReason, message, restartResult, true);
+                    PublishCompleted(FlowRequestOutcome.Failed, resolvedReason, message, restartResult, true, completedSelectionResolution, resetExecutionResult);
                     return restartResult;
                 }
 
-                FrameworkActivityRestartFlowResult restartFlowResult = await runtimeHost.RestartActivityAsync(
-                    resolvedActivity,
-                    DefaultSource,
-                    BuildStageReason(resolvedReason, "flow"));
                 FrameworkActivityRequestResult clearResult = restartFlowResult.ClearResult;
                 FrameworkActivityRequestResult reenterResult = restartFlowResult.ReenterResult;
 
@@ -232,14 +274,14 @@ namespace Immersive.Framework.ActivityRestart
                         resolvedActivityName,
                         DefaultSource,
                         resolvedReason,
-                        resetResult,
+                        resetExecutionResult,
                         clearResult.Kind.ToString(),
                         clearResult.Message,
                         reenterResult.Kind.ToString(),
                         reenterResult.Message,
                         message);
                     LogRestartResult(restartResult);
-                    PublishCompleted(FlowRequestOutcome.Failed, resolvedReason, message, restartResult, true);
+                    PublishCompleted(FlowRequestOutcome.Failed, resolvedReason, message, restartResult, true, completedSelectionResolution, resetExecutionResult);
                     return restartResult;
                 }
 
@@ -252,22 +294,22 @@ namespace Immersive.Framework.ActivityRestart
                         resolvedActivityName,
                         DefaultSource,
                         resolvedReason,
-                        resetResult,
+                        resetExecutionResult,
                         clearResult.Kind.ToString(),
                         clearResult.Message,
                         reenterResult.Kind.ToString(),
                         reenterResult.Message,
                         message);
                     LogRestartResult(restartResult);
-                    PublishCompleted(FlowRequestOutcome.Failed, resolvedReason, message, restartResult, true);
+                    PublishCompleted(FlowRequestOutcome.Failed, resolvedReason, message, restartResult, true, completedSelectionResolution, resetExecutionResult);
                     return restartResult;
                 }
 
-                ActivityRestartResultStatus status = resetResult.CompletedWithWarnings
+                ActivityRestartResultStatus status = resetExecutionResult.NonBlockingIssueCount > 0
                     ? ActivityRestartResultStatus.CompletedWithWarnings
                     : ActivityRestartResultStatus.Succeeded;
                 string successMessage = status == ActivityRestartResultStatus.CompletedWithWarnings
-                    ? "Activity Restart completed with reset group warnings."
+                    ? "Activity Restart completed with reset warnings."
                     : "Activity Restart completed successfully.";
 
                 restartResult = new ActivityRestartResult(
@@ -276,7 +318,7 @@ namespace Immersive.Framework.ActivityRestart
                     resolvedActivityName,
                     DefaultSource,
                     resolvedReason,
-                    resetResult,
+                    resetExecutionResult,
                     clearResult.Kind.ToString(),
                     clearResult.Message,
                     reenterResult.Kind.ToString(),
@@ -289,15 +331,43 @@ namespace Immersive.Framework.ActivityRestart
             }
 
             LogRestartResult(restartResult);
-            PublishCompleted(MapOutcome(restartResult), resolvedReason, restartResult.Message, restartResult, true);
+            PublishCompleted(MapOutcome(restartResult), resolvedReason, restartResult.Message, restartResult, true, completedSelectionResolution, resetExecutionResult);
             return restartResult;
         }
 
         [ContextMenu("Clear Last Activity Restart Result")]
         public void ClearLastResult()
         {
-            SetRequestState(FlowRequestEventPhase.Completed, FlowRequestOutcome.None, string.Empty, string.Empty, null, false);
+            SetRequestState(FlowRequestEventPhase.Completed, FlowRequestOutcome.None, string.Empty, string.Empty, null, false, default, default);
         }
+
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+        internal void ConfigureForQa(
+            ActivityAsset qaTargetActivity,
+            bool qaUseCurrentActivityWhenTargetMissing,
+            bool qaRequireTargetActivityIsCurrent,
+            string qaReason,
+            ResetSelectionMode qaSelectionMode,
+            System.Collections.Generic.IReadOnlyList<ResetSubjectReference> qaExplicitSubjects,
+            bool qaAllowNoSubjects,
+            bool qaAllowNoParticipants,
+            bool qaStopOnFailure,
+            bool qaYieldBetweenSubjects)
+        {
+            targetActivity = qaTargetActivity;
+            useCurrentActivityWhenTargetMissing = qaUseCurrentActivityWhenTargetMissing;
+            requireTargetActivityIsCurrent = qaRequireTargetActivityIsCurrent;
+            reason = qaReason;
+            resetSelection ??= new ResetSelectionConfig();
+            resetSelection.ConfigureForQa(
+                qaSelectionMode,
+                qaExplicitSubjects,
+                qaAllowNoSubjects,
+                qaAllowNoParticipants,
+                qaStopOnFailure,
+                qaYieldBetweenSubjects);
+        }
+#endif
 
         private void EnsureLogger()
         {
@@ -312,44 +382,10 @@ namespace Immersive.Framework.ActivityRestart
             return reason.NormalizeTextOrFallback(DefaultReason);
         }
 
-        private string ResolveResetGroupId()
+        private ResetSelectionConfig ResolveSelection()
         {
-            if (resetSelectionMode == ObjectResetSelectionMode.ExplicitTargets && resetGroupAsset != null)
-            {
-                return resetGroupAsset.GroupId;
-            }
-
-            return resetGroupId.NormalizeTextOrFallback("activity-restart-reset");
-        }
-
-        private IReadOnlyList<ObjectResetGroupEntry> ResolveResetEntries()
-        {
-            if (resetSelectionMode == ObjectResetSelectionMode.ExplicitTargets && resetGroupAsset != null)
-            {
-                return resetGroupAsset.Entries;
-            }
-
-            return resetEntries != null ? (IReadOnlyList<ObjectResetGroupEntry>)resetEntries : Array.Empty<ObjectResetGroupEntry>();
-        }
-
-        private bool ResolveAllowNoParticipants()
-        {
-            if (resetSelectionMode == ObjectResetSelectionMode.ExplicitTargets && resetGroupAsset != null)
-            {
-                return resetGroupAsset.AllowNoParticipants;
-            }
-
-            return allowNoParticipants;
-        }
-
-        private bool ResolveStopOnFailure()
-        {
-            if (resetSelectionMode == ObjectResetSelectionMode.ExplicitTargets && resetGroupAsset != null)
-            {
-                return resetGroupAsset.StopOnFailure;
-            }
-
-            return stopOnFailure;
+            resetSelection ??= new ResetSelectionConfig();
+            return resetSelection;
         }
 
         private ActivityAsset ResolveActivity(ActivityAsset currentActivity)
@@ -375,7 +411,7 @@ namespace Immersive.Framework.ActivityRestart
         private void PublishSubmitted(string resolvedReason)
         {
             string message = $"Activity Restart submitted. source='{DefaultSource}' reason='{resolvedReason}'.";
-            SetRequestState(FlowRequestEventPhase.Submitted, FlowRequestOutcome.Submitted, resolvedReason, message, null, false);
+            SetRequestState(FlowRequestEventPhase.Submitted, FlowRequestOutcome.Submitted, resolvedReason, message, null, false, default, default);
 
             _requestEvents.Publish(new ActivityRestartTriggerEvent(
                 this,
@@ -393,9 +429,11 @@ namespace Immersive.Framework.ActivityRestart
             string resolvedReason,
             string message,
             ActivityRestartResult result,
-            bool hasResult)
+            bool hasResult,
+            ResetSelectionResolution selectionResolution,
+            ResetExecutionResult resetExecutionResult)
         {
-            SetRequestState(FlowRequestEventPhase.Completed, outcome, resolvedReason, message, result, hasResult);
+            SetRequestState(FlowRequestEventPhase.Completed, outcome, resolvedReason, message, result, hasResult, selectionResolution, resetExecutionResult);
 
             _requestEvents.Publish(new ActivityRestartTriggerEvent(
                 this,
@@ -414,7 +452,9 @@ namespace Immersive.Framework.ActivityRestart
             string resolvedReason,
             string message,
             ActivityRestartResult result,
-            bool hasResult)
+            bool hasResult,
+            ResetSelectionResolution selectionResolution,
+            ResetExecutionResult resetExecutionResult)
         {
             _lastEventPhase = phase;
             _lastOutcome = outcome;
@@ -422,6 +462,8 @@ namespace Immersive.Framework.ActivityRestart
             _lastMessage = message ?? string.Empty;
             _lastResult = result;
             _hasLastResult = hasResult;
+            _lastSelectionResolution = selectionResolution;
+            _lastResetExecutionResult = resetExecutionResult;
         }
 
         private void LogRestartResult(ActivityRestartResult result)
@@ -449,13 +491,17 @@ namespace Immersive.Framework.ActivityRestart
                 LogFields.Field("reason", result.Reason),
                 LogFields.Field("status", result.Status.ToString()),
                 LogFields.Field("activity", result.ActivityName),
-                LogFields.Field("resetStatus", result.HasResetGroupResult ? result.ResetGroupResult.Status.ToString() : "None"),
-                LogFields.Field("resetTargets", result.ResetTargetCount),
-                LogFields.Field("resetTargetSucceeded", result.ResetTargetSucceededCount),
-                LogFields.Field("resetTargetWarnings", result.ResetTargetWarningCount),
-                LogFields.Field("resetTargetFailed", result.ResetTargetFailedCount),
-                LogFields.Field("resetBlockingIssues", result.ResetBlockingIssueCount),
-                LogFields.Field("resetNonBlockingIssues", result.ResetNonBlockingIssueCount),
+                LogFields.Field("resetStatus", result.ResetStatus),
+                LogFields.Field("resetSubjects", result.ResetSubjectCount.ToString()),
+                LogFields.Field("resetSubjectSucceeded", result.ResetSubjectSucceededCount.ToString()),
+                LogFields.Field("resetSubjectWarnings", result.ResetSubjectWarningCount.ToString()),
+                LogFields.Field("resetSubjectFailed", result.ResetSubjectFailedCount.ToString()),
+                LogFields.Field("resetParticipants", result.ResetParticipantCount.ToString()),
+                LogFields.Field("resetParticipantSucceeded", result.ResetParticipantSucceededCount.ToString()),
+                LogFields.Field("resetParticipantSkipped", result.ResetParticipantSkippedCount.ToString()),
+                LogFields.Field("resetParticipantFailed", result.ResetParticipantFailedCount.ToString()),
+                LogFields.Field("resetBlockingIssues", result.ResetBlockingIssueCount.ToString()),
+                LogFields.Field("resetNonBlockingIssues", result.ResetNonBlockingIssueCount.ToString()),
                 LogFields.Field("clearStatus", result.ClearStatus),
                 LogFields.Field("reenterStatus", result.ReenterStatus));
         }
@@ -467,7 +513,7 @@ namespace Immersive.Framework.ActivityRestart
                 return string.IsNullOrWhiteSpace(_lastMessage) ? "No Activity Restart result yet." : _lastMessage;
             }
 
-            return $"status='{_lastResult.Status}' activity='{_lastResult.ActivityName}' resetStatus='{(_lastResult.HasResetGroupResult ? _lastResult.ResetGroupResult.Status.ToString() : "None")}' clearStatus='{_lastResult.ClearStatus}' reenterStatus='{_lastResult.ReenterStatus}' resetTargets='{_lastResult.ResetTargetCount}' resetTargetSucceeded='{_lastResult.ResetTargetSucceededCount}' resetTargetFailed='{_lastResult.ResetTargetFailedCount}' resetBlockingIssues='{_lastResult.ResetBlockingIssueCount}'";
+            return $"status='{_lastResult.Status}' activity='{_lastResult.ActivityName}' resetStatus='{_lastResult.ResetStatus}' resetSubjects='{_lastResult.ResetSubjectCount}' resetSubjectSucceeded='{_lastResult.ResetSubjectSucceededCount}' resetSubjectFailed='{_lastResult.ResetSubjectFailedCount}' resetParticipants='{_lastResult.ResetParticipantCount}' resetBlockingIssues='{_lastResult.ResetBlockingIssueCount}' clearStatus='{_lastResult.ClearStatus}' reenterStatus='{_lastResult.ReenterStatus}'";
         }
 
         private static FlowRequestOutcome MapOutcome(ActivityRestartResult result)

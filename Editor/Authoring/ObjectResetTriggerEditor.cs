@@ -8,17 +8,17 @@ namespace Immersive.Framework.Editor.Editor.Authoring
     [CanEditMultipleObjects]
     internal sealed class ObjectResetTriggerEditor : UnityEditor.Editor
     {
-        private SerializedProperty _targetDeclaration;
-        private SerializedProperty _objectEntryId;
+        private SerializedProperty _targetSubject;
         private SerializedProperty _reason;
         private SerializedProperty _allowNoParticipants;
+        private SerializedProperty _stopOnFailure;
 
         private void OnEnable()
         {
-            _targetDeclaration = serializedObject.FindProperty("targetDeclaration");
-            _objectEntryId = serializedObject.FindProperty("objectEntryId");
+            _targetSubject = serializedObject.FindProperty("targetSubject");
             _reason = serializedObject.FindProperty("reason");
             _allowNoParticipants = serializedObject.FindProperty("allowNoParticipants");
+            _stopOnFailure = serializedObject.FindProperty("stopOnFailure");
         }
 
         public override void OnInspectorGUI()
@@ -27,39 +27,28 @@ namespace Immersive.Framework.Editor.Editor.Authoring
 
             EditorGUILayout.LabelField("Object Reset Trigger", EditorStyles.boldLabel);
             EditorGUILayout.HelpBox(
-                "Requests Object Reset for one logical ObjectEntry through the framework runtime. The target owner is resolved from the current Object Entry snapshot; this trigger does not reset Transform, Rigidbody, Animator, GameObject activation, Player, Actor, prefab, pool, save or scene reload state.",
+                "Requests reset for one ResetSubject through ResetExecutor. This trigger no longer resolves targets through ObjectEntryDeclaration or ObjectEntry snapshots.",
                 MessageType.Info);
 
-            EditorGUILayout.PropertyField(
-                _targetDeclaration,
-                new GUIContent(
-                    "Target Declaration",
-                    "Optional Object Entry Declaration to use as the reset target. This is the preferred path for scene-authored objects."));
-
-            var hasDeclaration = _targetDeclaration != null
-                && !_targetDeclaration.hasMultipleDifferentValues
-                && _targetDeclaration.objectReferenceValue != null;
-
-            using (new EditorGUI.DisabledScope(hasDeclaration))
+            if (_targetSubject != null)
             {
                 EditorGUILayout.PropertyField(
-                    _objectEntryId,
+                    _targetSubject,
                     new GUIContent(
-                        "Object Entry Id",
-                        "Manual Object Entry Id when Target Declaration is empty. The id must exist in the current Object Entry snapshot."));
+                        "Target Subject",
+                        "Assign a UnityResetSubjectAdapter or provide an explicit ResetSubjectId text."),
+                    includeChildren: true);
             }
 
-            if (hasDeclaration)
+            if (targets.Length == 1)
             {
-                EditorGUILayout.HelpBox(
-                    "Target Declaration is assigned. The trigger will use its Object Entry Id and resolve scope/owner from the current Object Entry snapshot.",
-                    MessageType.Info);
-            }
-            else if (_objectEntryId != null && !_objectEntryId.hasMultipleDifferentValues && string.IsNullOrWhiteSpace(_objectEntryId.stringValue))
-            {
-                EditorGUILayout.HelpBox(
-                    "Assign a Target Declaration or provide an Object Entry Id that exists in the current Object Entry snapshot.",
-                    MessageType.Error);
+                var trigger = target as ObjectResetTrigger;
+                if (trigger != null && string.IsNullOrWhiteSpace(trigger.ResolvedTargetSubjectId))
+                {
+                    EditorGUILayout.HelpBox(
+                        "Assign a Target Subject adapter or provide a ResetSubjectId text. The adapter must be registered before the request is executed.",
+                        MessageType.Error);
+                }
             }
 
             EditorGUILayout.PropertyField(
@@ -72,11 +61,17 @@ namespace Immersive.Framework.Editor.Editor.Authoring
                 _allowNoParticipants,
                 new GUIContent(
                     "Allow No Participants",
-                    "When enabled, a valid target with no Object Reset participants reports SucceededNoParticipants. This is expected until Unity reset adapters exist."));
+                    "When enabled, a selected ResetSubject with no participants succeeds as SucceededNoParticipants."));
+
+            EditorGUILayout.PropertyField(
+                _stopOnFailure,
+                new GUIContent(
+                    "Stop On Failure",
+                    "Stops execution after the first blocking failure inside this single-subject request."));
 
             EditorGUILayout.Space(6);
             EditorGUILayout.HelpBox(
-                "F14 Object Reset is logical foundation only. Physical reset of Transform, Rigidbody, Animator and GameObject state belongs to F15 adapters.",
+                "preview.12D: ObjectResetTrigger is now a request surface over ResetSubject + ResetExecutor. ObjectEntryDeclaration is no longer a reset target.",
                 MessageType.Info);
 
             DrawRuntimeResult();
@@ -104,10 +99,9 @@ namespace Immersive.Framework.Editor.Editor.Authoring
             EditorGUILayout.LabelField("Last Outcome", trigger.LastOutcome.ToString());
             EditorGUILayout.LabelField("Last Result Status", trigger.LastResultStatus.ToString());
 
-            var resolvedTarget = trigger.ResolvedAuthoringObjectEntryId;
-            if (!string.IsNullOrWhiteSpace(resolvedTarget))
+            if (!string.IsNullOrWhiteSpace(trigger.ResolvedTargetSubjectId))
             {
-                EditorGUILayout.LabelField("Resolved Object Entry Id", resolvedTarget);
+                EditorGUILayout.LabelField("Resolved Reset Subject Id", trigger.ResolvedTargetSubjectId);
             }
 
             if (!string.IsNullOrWhiteSpace(trigger.LastReason))

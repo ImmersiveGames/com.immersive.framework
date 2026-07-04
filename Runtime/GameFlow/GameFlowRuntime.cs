@@ -602,10 +602,19 @@ namespace Immersive.Framework.GameFlow
             }
         }
 
-        internal async Awaitable<FrameworkActivityRestartFlowResult> RestartActivityAsync(
+        internal Awaitable<FrameworkActivityRestartFlowResult> RestartActivityAsync(
             ActivityAsset targetActivity,
             string source,
             string reason)
+        {
+            return RestartActivityAsync(targetActivity, source, reason, beforeRestartLifecycle: null);
+        }
+
+        internal async Awaitable<FrameworkActivityRestartFlowResult> RestartActivityAsync(
+            ActivityAsset targetActivity,
+            string source,
+            string reason,
+            Func<Awaitable<bool>> beforeRestartLifecycle)
         {
             string resolvedSource = source.NormalizeTextOrFallback("Unknown");
             string resolvedReason = reason.NormalizeTextOrFallback("None");
@@ -801,6 +810,55 @@ namespace Immersive.Framework.GameFlow
                         previousActivity,
                         targetActivity),
                     activityTransitionMode);
+
+                if (beforeRestartLifecycle != null)
+                {
+                    bool shouldContinue;
+                    try
+                    {
+                        shouldContinue = await beforeRestartLifecycle();
+                    }
+                    catch
+                    {
+                        shouldContinue = false;
+                    }
+
+                    if (!shouldContinue)
+                    {
+                        await ExecuteActivityTransitionAsync(
+                            TransitionRequest.After(
+                                operationId,
+                                TransitionScope.Activity,
+                                resolvedSource,
+                                resolvedReason,
+                                currentRoute,
+                                currentRoute,
+                                previousActivity,
+                                previousActivity),
+                            activityTransitionMode);
+                        transitionGateDiagnostics = ReleaseTransitionGate(transitionGateMode, transitionGateSnapshot);
+                        var clearPreStageFailed = FrameworkActivityRequestResult.FailedInvalidConfig(
+                            "Activity Restart failed. Pre-clear restart stage failed; Activity clear was not requested.",
+                            null,
+                            resolvedSource,
+                            BuildRestartStageReason(resolvedReason, "clear"),
+                            activityTransitionMode,
+                            GameFlowRequestOperationKind.ActivityClear,
+                            transitionGateDiagnostics);
+                        var reenterPreStageSkipped = FrameworkActivityRequestResult.FailedInvalidConfig(
+                            "Activity Restart failed. Pre-clear restart stage failed; Activity re-enter was not requested.",
+                            targetActivity,
+                            resolvedSource,
+                            BuildRestartStageReason(resolvedReason, "reenter"),
+                            activityTransitionMode,
+                            GameFlowRequestOperationKind.Activity,
+                            transitionGateDiagnostics);
+                        return FrameworkActivityRestartFlowResult.FailedClear(
+                            clearPreStageFailed,
+                            reenterPreStageSkipped,
+                            "Activity Restart failed. Pre-clear restart stage failed.");
+                    }
+                }
 
                 var clearFlowResult = await _routeLifecycleRuntime.ClearActivityAsync(
                     resolvedSource,

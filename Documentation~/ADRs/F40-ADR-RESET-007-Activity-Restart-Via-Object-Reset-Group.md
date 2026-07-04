@@ -1,8 +1,11 @@
 # F40 ADR RESET 007 — Activity Restart via Object Reset Group
 
-Status: Accepted / preview.11
+Status: Amended by preview.12G / current trigger uses ResetSelectionConfig + ResetExecutor
 
-## Context
+
+> Amendment note — preview.12G: Activity Restart no longer runs through any Object Reset Group adapter/executor. The current canonical implementation is `ActivityRestartTrigger` + `ResetSelectionConfig` + `ResetExecutor`, followed by `FrameworkRuntimeHost.RestartActivityAsync(...)` for clear + re-enter in one transition window.
+
+## Historical context
 
 After `ObjectResetTrigger` and `ObjectResetGroupTrigger`, the framework has enough object-level reset tooling to support a small authored restart flow without introducing full Cycle Reset, PlayerActor lifecycle or scene reload semantics.
 

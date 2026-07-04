@@ -14,8 +14,7 @@ using Immersive.Framework.CycleReset;
 using Immersive.Framework.Loading;
 using Immersive.Framework.Identity;
 using Immersive.Framework.ObjectEntry;
-using Immersive.Framework.ObjectReset;
-using Immersive.Framework.RuntimeObjects;
+using Immersive.Framework.Reset;
 using UnityEngine;
 using Immersive.Framework.ApiStatus;
 using Immersive.Logging.Records;
@@ -50,12 +49,9 @@ namespace Immersive.Framework.ApplicationLifecycle
         private RuntimeContentAnchorBinding _contentAnchorBindingRuntime;
         private RuntimeScopeLifecycleResult _runtimeSessionScopeResult;
         private ObjectEntryRuntimeContextSnapshot _objectEntryRuntimeContextSnapshot;
-        private ObjectResetRuntime _objectResetRuntime;
-        private readonly List<IObjectResetParticipantSource> _objectResetParticipantSources = new();
-        private RuntimeObjectParticipationRegistry _runtimeObjectParticipationRegistry;
+        private ResetRegistry _resetRegistry;
         private LoadingSurfaceRuntime _loadingSurfaceRuntime;
         private GlobalUiSceneRuntime _globalUiSceneRuntime;
-        private bool _objectResetRequestInFlight;
         private int _objectEntryRuntimeContextRevision;
         private int _objectEntryRuntimeContextInvalidationCount;
         private string _lastObjectEntryRuntimeContextInvalidationReason = string.Empty;
@@ -87,6 +83,12 @@ namespace Immersive.Framework.ApplicationLifecycle
         }
 
         internal RuntimeContentRuntime RuntimeContentRuntime => _runtimeContentRuntime;
+
+        internal ResetRegistry ResetRegistry => _resetRegistry ??= new ResetRegistry();
+
+        internal int ResetRegistrySubjectCount => _resetRegistry?.SubjectCount ?? 0;
+
+        internal int ResetRegistryParticipantCount => _resetRegistry?.ParticipantCount ?? 0;
 
         private static GateSnapshot CreateCombinedGateSnapshot(GateSnapshot first, GateSnapshot second)
         {
@@ -125,100 +127,128 @@ namespace Immersive.Framework.ApplicationLifecycle
             _gameFlowRuntime?.SetCycleResetParticipantSource(participantSource);
         }
 
-        internal void SetObjectResetParticipantSource(IObjectResetParticipantSource participantSource)
-        {
-            if (participantSource == null || _objectResetParticipantSources.Contains(participantSource))
-            {
-                return;
-            }
-
-            _objectResetParticipantSources.Add(participantSource);
-        }
-
-        internal bool ClearObjectResetParticipantSource(IObjectResetParticipantSource participantSource)
-        {
-            if (participantSource == null)
-            {
-                return false;
-            }
-
-            return _objectResetParticipantSources.Remove(participantSource);
-        }
-
-        internal bool IsObjectResetParticipantSourceRegistered(IObjectResetParticipantSource participantSource)
-        {
-            return participantSource != null && _objectResetParticipantSources.Contains(participantSource);
-        }
-
-        internal bool RegisterRuntimeObjectParticipation(
-            ObjectEntryDescriptor descriptor,
-            IReadOnlyList<IObjectResetParticipant> resetParticipants,
+        internal ResetRegistryOperationResult RegisterResetSubject(
+            ResetSubject subject,
             UnityEngine.Object owner,
             string source,
-            string reason,
-            out RuntimeObjectParticipationHandle handle,
-            out string issue)
+            string reason)
         {
-            EnsureRuntimeObjectParticipationRegistry();
-            bool registered = _runtimeObjectParticipationRegistry.TryRegister(
-                descriptor,
-                resetParticipants,
+            return ResetRegistry.RegisterSubject(subject, owner, source, reason);
+        }
+
+        internal ResetRegistryOperationResult RegisterRuntimeResetSubject(
+            string authoredPrefix,
+            ResetSubjectScope scope,
+            RuntimeContentOwner owner,
+            UnityEngine.Object ownerObject,
+            string displayName,
+            string diagnosticTag,
+            string source,
+            string reason)
+        {
+            return ResetRegistry.RegisterRuntimeSubject(
+                authoredPrefix,
+                scope,
                 owner,
+                ownerObject,
+                displayName,
+                diagnosticTag,
                 source,
-                reason,
-                out handle,
-                out issue);
-            if (!registered)
-            {
-                return false;
-            }
-
-            InvalidateObjectEntryRuntimeContextSnapshot($"runtime-object-register:{NormalizeLifecycleSource(source)}");
-            RefreshObjectEntryRuntimeContextSnapshotIfReady($"FrameworkRuntimeHost:runtime-object-register:{NormalizeLifecycleSource(source)}");
-            return true;
+                reason);
         }
 
-        internal bool UnregisterRuntimeObjectParticipation(
-            RuntimeObjectParticipationHandle handle,
+        internal ResetRegistryOperationResult RegisterResetParticipant(
+            ResetRegistrationHandle subjectHandle,
+            IResetParticipant participant,
             UnityEngine.Object owner,
             string source,
-            string reason,
-            out string issue)
+            string reason)
         {
-            issue = string.Empty;
-            if (_runtimeObjectParticipationRegistry == null)
-            {
-                issue = "Runtime object participation registry is unavailable.";
-                return false;
-            }
-
-            bool unregistered = _runtimeObjectParticipationRegistry.TryUnregister(
-                handle,
-                owner,
-                out _,
-                out issue);
-            if (!unregistered)
-            {
-                return false;
-            }
-
-            InvalidateObjectEntryRuntimeContextSnapshot($"runtime-object-unregister:{NormalizeLifecycleSource(source)}");
-            RefreshObjectEntryRuntimeContextSnapshotIfReady($"FrameworkRuntimeHost:runtime-object-unregister:{NormalizeLifecycleSource(source)}");
-            return true;
+            return ResetRegistry.RegisterParticipant(subjectHandle, participant, owner, source, reason);
         }
 
-        internal bool TryResolveCurrentObjectEntryOwnerIdentity(
-            ObjectEntryScope scope,
-            out FrameworkIdentityKey ownerIdentity)
+        internal ResetRegistryOperationResult UnregisterResetRegistration(
+            ResetRegistrationHandle handle,
+            UnityEngine.Object owner,
+            string source,
+            string reason)
         {
-            var context = CreateCurrentObjectEntryScopedCollectionContext();
-            if (!context.TryValidate(out _))
+            return _resetRegistry == null
+                ? ResetRegistryOperationResult.AlreadyUnregistered(
+                    handle,
+                    ResetIssue.Warning(ResetIssueKind.InvalidHandle, "Reset registry is unavailable."),
+                    "Reset unregister ignored because the ResetRegistry has not been created.")
+                : _resetRegistry.Unregister(handle, owner, source, reason);
+        }
+
+        internal bool TryResolveCurrentResetOwner(
+            ResetSubjectScope scope,
+            out RuntimeContentOwner owner,
+            out string issue)
+        {
+            owner = default;
+            issue = string.Empty;
+
+            if (!Enum.IsDefined(typeof(ResetSubjectScope), scope) || scope == ResetSubjectScope.Unknown)
             {
-                ownerIdentity = default;
+                issue = "Reset subject scope must be explicit.";
                 return false;
             }
 
-            return context.TryResolveOwnerIdentity(scope, out ownerIdentity);
+            var context = CreateCurrentObjectEntryScopedCollectionContext();
+            switch (scope)
+            {
+                case ResetSubjectScope.Route:
+                    return TryResolveResetOwnerFromContext(
+                        context,
+                        ObjectEntryScope.Route,
+                        RuntimeContentScope.Route,
+                        _state.CurrentRouteName,
+                        out owner,
+                        out issue);
+                case ResetSubjectScope.Activity:
+                    return TryResolveResetOwnerFromContext(
+                        context,
+                        ObjectEntryScope.Activity,
+                        RuntimeContentScope.Activity,
+                        _state.CurrentActivityName,
+                        out owner,
+                        out issue);
+                case ResetSubjectScope.Runtime:
+                    if (TryResolveResetOwnerFromContext(
+                            context,
+                            ObjectEntryScope.Activity,
+                            RuntimeContentScope.Activity,
+                            _state.CurrentActivityName,
+                            out owner,
+                            out _))
+                    {
+                        return true;
+                    }
+
+                    if (TryResolveResetOwnerFromContext(
+                            context,
+                            ObjectEntryScope.Route,
+                            RuntimeContentScope.Route,
+                            _state.CurrentRouteName,
+                            out owner,
+                            out _))
+                    {
+                        return true;
+                    }
+
+                    if (_runtimeSessionScopeResult.HasOwner)
+                    {
+                        owner = _runtimeSessionScopeResult.Owner;
+                        return true;
+                    }
+
+                    issue = "No active runtime owner identity is available for Runtime reset scope.";
+                    return false;
+                default:
+                    issue = $"Unsupported reset subject scope '{scope}'.";
+                    return false;
+            }
         }
 
         internal int ContentAnchorBindingCount => _contentAnchorBindingRuntime?.BindingCount ?? 0;
@@ -240,8 +270,7 @@ namespace Immersive.Framework.ApplicationLifecycle
             var declarationSource = new ObjectEntryDeclarationSource(includeInactiveDeclarations: true);
             var context = CreateCurrentObjectEntryScopedCollectionContext();
             var sceneResult = declarationSource.CollectScoped(context);
-            var result = CombineSceneAndRuntimeObjectEntries(sceneResult, context);
-            _objectEntryRuntimeContextSnapshot = result.ToRuntimeContextSnapshot(source);
+            _objectEntryRuntimeContextSnapshot = sceneResult.ToRuntimeContextSnapshot(source);
             _objectEntryRuntimeContextRevision++;
             return _objectEntryRuntimeContextSnapshot;
         }
@@ -591,13 +620,22 @@ namespace Immersive.Framework.ApplicationLifecycle
         }
 
 
-        internal async Awaitable<FrameworkActivityRestartFlowResult> RestartActivityAsync(
+        internal Awaitable<FrameworkActivityRestartFlowResult> RestartActivityAsync(
             ActivityAsset targetActivity,
             string source,
             string reason)
         {
+            return RestartActivityAsync(targetActivity, source, reason, beforeRestartLifecycle: null);
+        }
+
+        internal async Awaitable<FrameworkActivityRestartFlowResult> RestartActivityAsync(
+            ActivityAsset targetActivity,
+            string source,
+            string reason,
+            Func<Awaitable<bool>> beforeRestartLifecycle)
+        {
             InvalidateObjectEntryRuntimeContextSnapshot($"activity-restart:{NormalizeLifecycleSource(source)}");
-            var result = await _gameFlowRuntime.RestartActivityAsync(targetActivity, source, reason);
+            var result = await _gameFlowRuntime.RestartActivityAsync(targetActivity, source, reason, beforeRestartLifecycle);
 
             if (result.ClearSucceeded)
             {
@@ -690,70 +728,39 @@ namespace Immersive.Framework.ApplicationLifecycle
             return _gameFlowRuntime.EvaluateTransitionGateAdmission(scope, domain, subject, source, reason);
         }
 
-        internal async Task<ObjectResetResult> RequestObjectResetAsync(ObjectResetRequest request)
+        private static bool TryResolveResetOwnerFromContext(
+            ObjectEntryScopedCollectionContext context,
+            ObjectEntryScope objectEntryScope,
+            RuntimeContentScope runtimeContentScope,
+            string ownerName,
+            out RuntimeContentOwner owner,
+            out string issue)
         {
-            if (_objectResetRuntime == null)
+            owner = default;
+
+            if (!context.TryValidate(out issue))
             {
-                _objectResetRuntime = new ObjectResetRuntime();
+                return false;
             }
 
-            var gateEvaluation = EvaluateObjectResetRequestAdmission(request);
-            if (!gateEvaluation.IsAllowed)
+            if (!context.TryResolveOwnerIdentity(objectEntryScope, out FrameworkIdentityKey ownerIdentity))
             {
-                string blockedMessage = GateRequestAdmission.FormatBlockedMessage(
-                    "Object Reset Request",
-                    gateEvaluation);
-                var inFlightResult = ObjectResetResult.Rejected(
-                    request,
-                    ObjectResetResultStatus.RejectedInvalidRequest,
-                    ObjectResetIssue.Error(
-                        ObjectResetIssueKind.RequestAlreadyInFlight,
-                        blockedMessage),
-                    blockedMessage);
-                LogObjectResetResult(inFlightResult);
-                return inFlightResult;
+                issue = $"No active runtime owner identity is available for scope '{objectEntryScope}'.";
+                return false;
             }
 
-            _objectResetRequestInFlight = true;
             try
             {
-                await Awaitable.NextFrameAsync();
-                var snapshot = _objectEntryRuntimeContextSnapshot;
-                var result = _objectResetRuntime.Execute(snapshot, request, CreateObjectResetParticipantSource());
-                LogObjectResetResult(result);
-                return result;
+                owner = new RuntimeContentOwner(runtimeContentScope, ownerIdentity, ownerName);
+                issue = string.Empty;
+                return true;
             }
-            finally
+            catch (Exception exception) when (exception is ArgumentException or ArgumentOutOfRangeException)
             {
-                _objectResetRequestInFlight = false;
+                issue = exception.Message;
+                owner = default;
+                return false;
             }
-        }
-
-        private IObjectResetParticipantSource CreateObjectResetParticipantSource()
-        {
-            var sources = new List<IObjectResetParticipantSource>(_objectResetParticipantSources.Count + 1);
-            for (int i = 0; i < _objectResetParticipantSources.Count; i++)
-            {
-                var source = _objectResetParticipantSources[i];
-                if (source != null)
-                {
-                    sources.Add(source);
-                }
-            }
-
-            if (_runtimeObjectParticipationRegistry != null)
-            {
-                sources.Add(_runtimeObjectParticipationRegistry);
-            }
-
-            return sources.Count == 0
-                ? null
-                : new CompositeObjectResetParticipantSource(sources);
-        }
-
-        private void EnsureRuntimeObjectParticipationRegistry()
-        {
-            _runtimeObjectParticipationRegistry ??= new RuntimeObjectParticipationRegistry();
         }
 
         private ObjectEntryScopedCollectionContext CreateCurrentObjectEntryScopedCollectionContext()
@@ -769,108 +776,10 @@ namespace Immersive.Framework.ApplicationLifecycle
                 _state.ActivityState.ActivityIdentity);
         }
 
-        private ObjectEntryDeclarationSourceResult CombineSceneAndRuntimeObjectEntries(
-            ObjectEntryDeclarationSourceResult sceneResult,
-            ObjectEntryScopedCollectionContext context)
-        {
-            if (_runtimeObjectParticipationRegistry == null || !_runtimeObjectParticipationRegistry.HasRegistrations)
-            {
-                return sceneResult;
-            }
-
-            var runtimeResult = _runtimeObjectParticipationRegistry.CollectScoped(context);
-            var descriptors = new List<ObjectEntryDescriptor>(sceneResult.ObjectEntries.Count + runtimeResult.Descriptors.Count);
-            descriptors.AddRange(sceneResult.ObjectEntries.Entries);
-            descriptors.AddRange(runtimeResult.Descriptors);
-
-            var issues = new List<ObjectEntryIssue>(sceneResult.Issues.Count + runtimeResult.Issues.Count);
-            issues.AddRange(sceneResult.Issues);
-            issues.AddRange(runtimeResult.Issues);
-
-            ObjectEntrySet set;
-            bool aggregateRejected = false;
-            try
-            {
-                set = new ObjectEntrySet(descriptors);
-            }
-            catch (ArgumentException exception)
-            {
-                aggregateRejected = true;
-                set = ObjectEntrySet.Empty();
-                issues.Add(ObjectEntryIssue.Error(
-                    ObjectEntryIssueKind.DuplicateIdentity,
-                    $"Runtime Object Entry context rejected duplicate identity while merging scene and runtime entries. {exception.Message}"));
-            }
-
-            bool hasBlockingIssue = aggregateRejected;
-            for (int i = 0; i < issues.Count; i++)
-            {
-                if (issues[i].IsBlocking)
-                {
-                    hasBlockingIssue = true;
-                    break;
-                }
-            }
-
-            var status = hasBlockingIssue
-                ? ObjectEntryResultStatus.Rejected
-                : issues.Count == 0
-                    ? ObjectEntryResultStatus.Accepted
-                    : ObjectEntryResultStatus.AcceptedWithWarnings;
-
-            int declarationCount = sceneResult.DeclarationCount + runtimeResult.CandidateDescriptorCount;
-            int filteredCount = sceneResult.FilteredDeclarationCount + runtimeResult.FilteredDescriptorCount;
-            int acceptedCount = status == ObjectEntryResultStatus.Rejected ? 0 : set.Count;
-            int rejectedCount = Math.Max(0, declarationCount - acceptedCount - filteredCount);
-
-            return new ObjectEntryDeclarationSourceResult(
-                set,
-                status,
-                declarationCount,
-                sceneResult.CandidateDescriptorCount + runtimeResult.CandidateDescriptorCount,
-                acceptedCount,
-                rejectedCount,
-                filteredCount,
-                issues);
-        }
-
-        private void RefreshObjectEntryRuntimeContextSnapshotIfReady(string source)
-        {
-            var context = CreateCurrentObjectEntryScopedCollectionContext();
-            if (!context.TryValidate(out _))
-            {
-                return;
-            }
-
-            RefreshObjectEntryRuntimeContextSnapshot(source);
-        }
-
-        private GateEvaluationResult EvaluateObjectResetRequestAdmission(ObjectResetRequest request)
-        {
-            if (_gameFlowRuntime != null)
-            {
-                return _gameFlowRuntime.EvaluateExternalLifecycleRequestAdmission(
-                    "ObjectResetRequest",
-                    request.Source,
-                    request.Reason,
-                    _objectResetRequestInFlight);
-            }
-
-            return GateRequestAdmission.EvaluateLifecycleRequest(
-                "ObjectResetRequest",
-                request.Source,
-                request.Reason,
-                routeRequestInFlight: false,
-                activityRequestInFlight: false,
-                cycleResetRequestInFlight: false,
-                objectResetRequestInFlight: _objectResetRequestInFlight);
-        }
-
         private void Initialize(GameApplicationAsset application)
         {
             _gameApplication = application;
             _runtimeContentRuntime = new RuntimeContentRuntime();
-            _runtimeObjectParticipationRegistry = new RuntimeObjectParticipationRegistry();
             _contentAnchorBindingRuntime = new RuntimeContentAnchorBinding();
             _pauseRuntime = new PauseRuntime();
             _pauseTimeScaleRuntime = new PauseTimeScaleRuntime();
@@ -1317,36 +1226,6 @@ namespace Immersive.Framework.ApplicationLifecycle
             }
 
             _logger.Error("Cycle Reset Request failed. " + result.ToDiagnosticString());
-        }
-
-        private void LogObjectResetResult(ObjectResetResult result)
-        {
-            if (result.Succeeded || result.CompletedWithWarnings)
-            {
-                _logger.Info("Object Reset Request completed.", BuildObjectResetFields(result));
-                _logger.Debug("Object Reset Request diagnostics. " + result.ToDiagnosticString());
-                return;
-            }
-
-            _logger.Error("Object Reset Request failed. " + result.ToDiagnosticString());
-        }
-
-        private LogField[] BuildObjectResetFields(ObjectResetResult result)
-        {
-            return LogFields.Of(
-                LogFields.Field("source", result.Request.Source),
-                LogFields.Field("reason", result.Request.Reason),
-                LogFields.Field("status", result.Status.ToString()),
-                LogFields.Field("objectEntry", result.Request.Target.ObjectEntryId.IsValid ? result.Request.Target.ObjectEntryId.StableText : "<invalid>"),
-                LogFields.Field("scope", result.Request.Target.Scope.ToString()),
-                LogFields.Field("owner", result.Request.Target.OwnerIdentity.IsValid ? result.Request.Target.OwnerIdentity.StableText : "<invalid>"),
-                LogFields.Field("participants", result.ParticipantCount),
-                LogFields.Field("participantSucceeded", result.ParticipantSucceededCount),
-                LogFields.Field("participantSkipped", result.ParticipantSkippedCount),
-                LogFields.Field("participantFailed", result.ParticipantFailedCount),
-                LogFields.Field("participantBlockingFailures", result.ParticipantBlockingFailureCount),
-                LogFields.Field("blockingIssues", result.BlockingIssueCount),
-                LogFields.Field("nonBlockingIssues", result.NonBlockingIssueCount));
         }
 
         private LogField[] BuildPauseRequestFields(

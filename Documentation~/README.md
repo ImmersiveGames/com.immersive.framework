@@ -23,9 +23,10 @@ Read in this order:
 | Pause | Runtime Pause state drives Gate blockers, resident `UIGlobal` Pause surface and basic simulation pause through `Time.timeScale = 0`. |
 | Pause input | Use `PauseInputActionTrigger` for simple keyboard/controller Pause through `Global/Pause`; reserve `PauseInputActionRuntimeBridgeTrigger` + `PauseInputModeUnityPlayerInputRuntimeBridge` for explicit typed InputMode / PlayerInput ownership cuts. |
 | RuntimeContent / ContentAnchor | Logical runtime, Unity materialization adapters, bridge/set authoring and composite release helpers are available. |
-| Object Reset | Single-target Object Reset is available through `ObjectResetTrigger`; multi-target reset sets are available through `ObjectResetGroupAsset` and `ObjectResetGroupTrigger`; authored Activity restart uses reset selection policy directly and composes reset execution with Activity Clear/Re-enter through one visual transition in `ActivityRestartTrigger`. |
-| Reset/Restart async | New Unity runtime reset/restart orchestration uses `UnityEngine.Awaitable<T>` wrappers where the flow is tied to Unity runtime/main thread. Older route/activity APIs may still expose `Task` until migrated in a separate cut. |
-| Reset/Restart validation | Open-scene authoring validation now scans `ObjectResetGroupTrigger` and `ActivityRestartTrigger` for missing targets, ambiguous explicit/scoped target policies and misleading trigger stacking on the same GameObject. |
+| Reset | The canonical reset path is `ResetSubject` / `ResetParticipant` / `ResetRegistry` / `ResetSelectionConfig` / `ResetExecutor`. Unity authoring uses `UnityResetSubjectAdapter`, `UnityResetParticipantBehaviour`, `UnityTransformResetParticipant` and `UnityGameObjectActiveResetParticipant`. |
+| Object Reset surfaces | `ObjectResetTrigger` resets one `ResetSubject`; `ObjectResetGroupTrigger` resets a `ResetSelectionConfig`; `ActivityRestartTrigger` composes reset execution with Activity Clear/Re-enter through one visual transition. |
+| Reset/Restart async | Unity runtime reset/restart orchestration uses `UnityEngine.Awaitable<T>` where the flow is tied to Unity runtime/main thread. Older route/activity APIs may still expose `Task` until migrated in a separate cut. |
+| Reset/Restart validation | Open-scene authoring validation scans `ObjectResetGroupTrigger` and `ActivityRestartTrigger` for missing `ResetSelectionConfig` targets, ambiguous explicit/scoped subject policies and misleading trigger stacking on the same GameObject. |
 | QA | `FrameworkQaCanvas` exposes package smokes for setup and regression validation. |
 
 ## Documentation classification
@@ -43,24 +44,23 @@ Read in this order:
 
 ## Historical / Not Active
 
-The old `Guides/`, `ADRs/` and `Planning/` folders remain available as historical source material. They are not the package documentation entry point and should not be used as the primary setup, QA or troubleshooting path.
+The old `Guides/`, `ADRs` and `Planning` folders remain available as historical source material. They are not the package documentation entry point and should not be used as the primary setup, QA or troubleshooting path.
 
 Needs manual decision:
 
 - Whether historical guides should be archived, deleted or kept for deep reference.
 - Whether old ADRs and roadmap files should receive a stronger historical banner in a future documentation cleanup.
 - Whether any user-facing examples in the old guides should be promoted into these top-level docs.
----
 
-## Guia de uso canônico
+## Guia de uso canonico
 
-O botão `Open Usage Guide` em `Project Settings > Immersive Framework` abre:
+O botao `Open Usage Guide` em `Project Settings > Immersive Framework` abre:
 
 ```text
 Documentation~/Guides/Usage/index.html
 ```
 
-Esse path deve permanecer estável. Atualize o conteúdo do `index.html` conforme o package evolui, sem mudar o link público do Project Settings.
+Esse path deve permanecer estavel. Atualize o conteudo do `index.html` conforme o package evolui, sem mudar o link publico do Project Settings.
 
 ## Transition Gate
 
@@ -86,9 +86,24 @@ PlayerPrototype
 
 The adapter is not a Player/Actor lifecycle, does not spawn players, does not own `PlayerInputManager`, and does not replace future movement architecture.
 
+## Reset authoring
+
+A resettable Unity object uses a reset subject and one or more reset participants:
+
+```text
+ResettableObject
+  UnityResetSubjectAdapter
+    Subject Id = firstgame.resettable.object
+    Scope = Route / Activity / Runtime
+  UnityTransformResetParticipant
+  UnityGameObjectActiveResetParticipant
+```
+
+`ObjectResetTrigger` should target a `ResetSubjectReference`, either through `UnityResetSubjectAdapter` or an explicit Reset Subject Id. It does not require `ObjectEntryDeclaration`.
+
 ## Object Reset Group
 
-`ObjectResetGroupTrigger` is an opt-in Unity authoring surface for resetting several logical `ObjectEntryDeclaration` targets in sequence. It composes existing Object Reset requests; it does not restart an Activity, reload scenes, discover participants automatically, or perform physical reset side effects itself.
+`ObjectResetGroupTrigger` is an opt-in Unity authoring surface for resetting a selected set of `ResetSubject` entries through `ResetExecutor`. It does not restart an Activity, reload scenes, create participants automatically or perform physical reset side effects itself.
 
 Recommended First Game use:
 
@@ -96,17 +111,19 @@ Recommended First Game use:
 Button_ResetRoom
   ObjectResetGroupTrigger
     Group Id = firstgame.room-reset
-    Allow No Participants = false
-    Stop On Failure = true
-    Entries[0] = firstgame.player
+    Selection
+      Mode = ExplicitSubjects
+      Explicit Subjects[0] = PlayerPrototype/UnityResetSubjectAdapter
+      Allow No Subjects = false
+      Allow No Participants = false
+      Stop On Failure = true
 ```
 
-For project asset groups, prefer string `Object Entry Id` entries. For scene-local buttons, inline entries may reference scene `ObjectEntryDeclaration` components directly.
+For scoped reset, use `CurrentActivitySubjects`, `CurrentRouteSubjects`, `CurrentRouteAndActivitySubjects`, `AllCurrentSubjects`, `RuntimeOnlySubjects` or `SceneOnlySubjects`.
 
-## Activity Restart via Object Reset Group
+## Activity Restart via Reset Selection
 
-`ActivityRestartTrigger` is an authored composition surface for small gameplay restart flows. It now owns reset selection policy directly instead of depending on an `ObjectResetGroupTrigger`: explicit targets, an `ObjectResetGroupAsset`, current Activity entries, current Route entries, Route + Activity entries, or all current entries. It then clears the current Activity and requests the same Activity again. This is not Cycle Reset, does not reload the Route, and does not create Player/Actor lifecycle ownership.
-
+`ActivityRestartTrigger` is an authored composition surface for small gameplay restart flows. It owns reset selection directly through `ResetSelectionConfig`, then clears the current Activity and requests the same Activity again. This is not Cycle Reset, does not reload the Route, and does not create Player/Actor lifecycle ownership.
 
 ## Reset / Restart authoring validation
 
@@ -117,12 +134,8 @@ ObjectResetGroupTrigger
 ActivityRestartTrigger
 ```
 
-The validator reports missing reset targets, invalid `ExplicitTargets` setup, scoped policies that ignore explicit entries, and ambiguous button GameObjects that stack `ObjectResetTrigger`, `ObjectResetGroupTrigger` and `ActivityRestartTrigger`. This does not execute reset or restart; it only checks authoring shape.
+The validator reports missing reset subjects, invalid `ExplicitSubjects` setup, scoped policies that ignore explicit subjects, and ambiguous button GameObjects that stack `ObjectResetTrigger`, `ObjectResetGroupTrigger` and `ActivityRestartTrigger`. This does not execute reset or restart; it only checks authoring shape.
 
-## Runtime Awaitable policy
+## Runtime prefab reset
 
-For preview.11 reset/restart additions, Unity runtime orchestration should use `UnityEngine.Awaitable<T>` when the flow depends on the Unity runtime/main thread. This applies to the new Object Reset Group and Activity Restart authored flows. Legacy `Task` APIs outside this cut remain unchanged until a dedicated migration.
-
-### v1.0.0-preview.12 — Runtime Object Participation Foundation
-
-Adds `UnityRuntimeObjectParticipationAdapter`, allowing runtime-enabled or runtime-instantiated objects to register `ObjectEntry` descriptors and reset participants without requiring scene-authored `ObjectEntryDeclaration` components. This is a small participation layer, not PlayerActor or a spawner system.
+Runtime-instantiated objects participate in reset by registering `ResetSubject` and participants through `UnityResetSubjectAdapter` with runtime id generation. The old runtime object participation path is not part of the reset model.

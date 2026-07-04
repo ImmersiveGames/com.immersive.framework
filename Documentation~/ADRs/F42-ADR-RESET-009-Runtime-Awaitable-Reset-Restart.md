@@ -1,8 +1,11 @@
 # F42 ADR RESET 009 — Runtime Awaitable Reset/Restart Flow
 
-Status: Accepted / preview.11
+Status: Accepted / amended by preview.12G
 
-## Context
+
+> Amendment note — preview.12G: the async boundary remains `UnityEngine.Awaitable<T>`, but the reset execution target is now `ResetExecutor.ExecuteAsync(...)`. Individual `IResetParticipant.Reset(...)` remains synchronous. `ObjectResetGroupExecutor` was removed.
+
+## Historical context
 
 Unity 6.5 provides `UnityEngine.Awaitable` for Unity-bound async orchestration. The reset/restart flow added in preview.11 runs on Unity runtime surfaces: scene-authored triggers, framework runtime host, GameFlow, Transition Gate and Object Reset participants.
 
@@ -16,7 +19,7 @@ Targeted methods include the new authored Object Reset Group and Activity Restar
 
 ```text
 ObjectResetGroupTrigger.RequestObjectResetGroupAsync
-ObjectResetGroupExecutor.ExecuteAsync
+ResetExecutor.ExecuteAsync
 ActivityRestartTrigger.RequestActivityRestartAsync
 FrameworkRuntimeHost.RestartActivityAsync
 GameFlowRuntime.RestartActivityAsync

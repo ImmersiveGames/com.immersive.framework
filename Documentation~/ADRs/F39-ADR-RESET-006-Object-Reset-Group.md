@@ -1,8 +1,11 @@
 # F39 — Object Reset Group
 
-Status: Accepted / preview.10
+Status: Superseded / historical / replaced by preview.12 ResetSubject reform
 
-## Context
+
+> Supersession note — preview.12G: this ADR documents the old ObjectEntry/ObjectResetGroupAsset design. The current canonical implementation is `ObjectResetGroupTrigger` + `ResetSelectionConfig` + `ResetExecutor` over `ResetSubject` entries. It no longer requires `ObjectEntryDeclaration`, `ObjectResetGroupAsset`, `ObjectResetGroupEntry`, `ObjectResetRuntime` or `ObjectResetGroupExecutor`.
+
+## Historical context
 
 `ObjectResetTrigger` resets one logical `ObjectEntryDeclaration` target. FIRSTGAME now needs a reusable way to reset a small set of route or activity objects together without introducing full Activity Restart or Cycle Reset semantics.
 

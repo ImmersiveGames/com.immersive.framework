@@ -1,8 +1,11 @@
 # F41 ADR RESET 008 — Reset Selection Policy
 
-Status: Accepted / preview.11 corrective patch
+Status: Superseded / historical / replaced by preview.12 ResetSelectionConfig
 
-## Context
+
+> Supersession note — preview.12G: this ADR records the old `ObjectResetSelectionMode` / `ObjectResetGroupExecutor` correction. The current canonical model is `ResetSelectionConfig`, `ResetSelectionMode`, `ResetSubjectReference` and `ResetExecutor` over `ResetRegistry`. Selection no longer reads `ObjectEntryRuntimeContextSnapshot`.
+
+## Historical context
 
 The first `ActivityRestartTrigger` implementation depended on an authored `ObjectResetGroupTrigger`. That worked for the smoke, but it made authoring misleading: a restart button needed two triggers, and the framework effectively composed one public adapter through another public adapter.
 

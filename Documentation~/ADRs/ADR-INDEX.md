@@ -80,10 +80,10 @@ Current order:
 | F36 | [Global Pause Input Action](F36-ADR-PAUSE-006-Global-Pause-Input-Action.md) | Accepted / FIRSTGAME-2D / preview.7 |
 | F37 | [Transition Gate Policy](F37-ADR-TRANSITION-001-Transition-Gate-Policy.md) | Accepted / preview.8 |
 | F38 | [Unity PlayerInput Gate Adapter](F38-ADR-INPUT-001-Unity-PlayerInput-Gate-Adapter.md) | Accepted / preview.9 |
-| F39 | [Object Reset Group](F39-ADR-RESET-006-Object-Reset-Group.md) | Accepted / preview.10 |
-| F40 | [Activity Restart via Object Reset Group](F40-ADR-RESET-007-Activity-Restart-Via-Object-Reset-Group.md) | Accepted / preview.11 |
-| F41 | [Reset Selection Policy](F41-ADR-RESET-008-Reset-Selection-Policy.md) | Accepted / preview.11 corrective patch |
-| F42 | [Runtime Awaitable Reset/Restart Flow](F42-ADR-RESET-009-Runtime-Awaitable-Reset-Restart.md) | Accepted / preview.11 |
+| F39 | [Object Reset Group](F39-ADR-RESET-006-Object-Reset-Group.md) | Superseded / historical / replaced by preview.12 ResetSubject reform |
+| F40 | [Activity Restart via Object Reset Group](F40-ADR-RESET-007-Activity-Restart-Via-Object-Reset-Group.md) | Amended by preview.12G / current trigger uses ResetSelectionConfig + ResetExecutor |
+| F41 | [Reset Selection Policy](F41-ADR-RESET-008-Reset-Selection-Policy.md) | Superseded / historical / replaced by preview.12 ResetSelectionConfig |
+| F42 | [Runtime Awaitable Reset/Restart Flow](F42-ADR-RESET-009-Runtime-Awaitable-Reset-Restart.md) | Accepted / amended by preview.12G |
 | F43 | [Reset/Restart Authoring Validation](F43-ADR-RESET-010-Reset-Restart-Authoring-Validation.md) | Accepted / preview.11 |
 | POST-F33-A | `Assets/_Documentation/Notes/POST-F33-A-Matrix-Reconciliation-Closeout.md` | Accepted / documentation / roadmap governance |
 | POST-F33-B | `Assets/_Documentation/Notes/POST-F33-B-Officialize-Reclassify-F28-F33.md` | Accepted / documentation / roadmap governance |
@@ -370,9 +370,9 @@ Reference: `F38-ADR-INPUT-001-Unity-PlayerInput-Gate-Adapter.md`
 
 Scope: Object Reset / Activity Restart / Unity runtime async orchestration.
 
-Status: Accepted.
+Status: Accepted / amended by preview.12G.
 
-F42 accepts that new reset/restart runtime orchestration introduced for preview.11 uses `UnityEngine.Awaitable<T>` when the flow is Unity runtime/main-thread bound. Legacy `Task` APIs outside this cut are not migrated by this ADR.
+F42 accepts that reset/restart runtime orchestration uses `UnityEngine.Awaitable<T>` when the flow is Unity runtime/main-thread bound. preview.12G replaced `ObjectResetGroupExecutor` with `ResetExecutor.ExecuteAsync(...)`; individual reset participants remain synchronous.
 
 Reference: `F42-ADR-RESET-009-Runtime-Awaitable-Reset-Restart.md`
 
@@ -385,4 +385,4 @@ Status: Accepted.
 F43 adds open-scene validation for `ObjectResetGroupTrigger` and `ActivityRestartTrigger` so missing targets, invalid explicit target policies, scoped-policy confusion and trigger stacking are reported before smoke.
 
 Reference: `F43-ADR-RESET-010-Reset-Restart-Authoring-Validation.md`
-- [F44 ADR RUNTIME OBJECT 001 — Runtime Object Participation Foundation](F44-ADR-RUNTIME-OBJECT-001-Runtime-Object-Participation-Foundation.md)
+- [F44 ADR RUNTIME OBJECT 001 — Runtime Object Participation Foundation](F44-ADR-RUNTIME-OBJECT-001-Runtime-Object-Participation-Foundation.md) — Superseded / removed in preview.12G. Runtime reset now uses `UnityResetSubjectAdapter` + `RuntimeInstanceId`.

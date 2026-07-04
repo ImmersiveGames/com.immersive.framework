@@ -2,14 +2,15 @@ using System;
 using Immersive.Foundation.Events;
 using Immersive.Framework.ApiStatus;
 using Immersive.Framework.GameFlow;
+using Immersive.Framework.Reset;
 
 namespace Immersive.Framework.ObjectReset
 {
     /// <summary>
     /// API status: Experimental. Event payload emitted by ObjectResetGroupTrigger when a group request is submitted or completed.
     /// </summary>
-    [FrameworkApiStatus(FrameworkApiStatus.Experimental, "F39A Object Reset Group trigger event payload.")]
-    public sealed class ObjectResetGroupTriggerEvent : IEquatable<ObjectResetGroupTriggerEvent>,IEvent
+    [FrameworkApiStatus(FrameworkApiStatus.Experimental, "preview.12G Object Reset Group trigger event payload.")]
+    public sealed class ObjectResetGroupTriggerEvent : IEquatable<ObjectResetGroupTriggerEvent>, IEvent
     {
         public ObjectResetGroupTriggerEvent(
             ObjectResetGroupTrigger trigger,
@@ -18,7 +19,7 @@ namespace Immersive.Framework.ObjectReset
             string source,
             string reason,
             string message,
-            ObjectResetGroupResult result,
+            ResetExecutionResult result,
             bool hasResult)
         {
             Trigger = trigger;
@@ -43,7 +44,7 @@ namespace Immersive.Framework.ObjectReset
 
         public string Message { get; }
 
-        public ObjectResetGroupResult Result { get; }
+        public ResetExecutionResult Result { get; }
 
         public bool HasResult { get; }
 
@@ -60,7 +61,7 @@ namespace Immersive.Framework.ObjectReset
                 && string.Equals(Source, other.Source, StringComparison.Ordinal)
                 && string.Equals(Reason, other.Reason, StringComparison.Ordinal)
                 && string.Equals(Message, other.Message, StringComparison.Ordinal)
-                && Equals(Result, other.Result)
+                && Result.Equals(other.Result)
                 && HasResult == other.HasResult;
         }
 
@@ -79,7 +80,7 @@ namespace Immersive.Framework.ObjectReset
                 hashCode = hashCode * 397 ^ StringComparer.Ordinal.GetHashCode(Source ?? string.Empty);
                 hashCode = hashCode * 397 ^ StringComparer.Ordinal.GetHashCode(Reason ?? string.Empty);
                 hashCode = hashCode * 397 ^ StringComparer.Ordinal.GetHashCode(Message ?? string.Empty);
-                hashCode = hashCode * 397 ^ (Result != null ? Result.GetHashCode() : 0);
+                hashCode = hashCode * 397 ^ Result.GetHashCode();
                 hashCode = hashCode * 397 ^ (HasResult ? 1 : 0);
                 return hashCode;
             }

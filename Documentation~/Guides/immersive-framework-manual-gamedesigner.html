@@ -1934,7 +1934,7 @@ public class MeuParticipantSource : MonoBehaviour, IActivityContentExecutionPart
           </tr>
           <tr>
             <td><strong>Object Reset</strong></td>
-            <td>Resetar propriedades físicas de um objeto individual (ex: Transform) de volta ao baseline. Usa Object Entry como alvo e participants para executar o reset concreto.</td>
+            <td>Resetar propriedades físicas de um objeto individual (ex: Transform) de volta ao baseline. O alvo atual e um ResetSubject registrado no ResetRegistry.</td>
             <td><span class="badge badge-yellow">F14–F15</span></td>
           </tr>
         </tbody>
@@ -2133,7 +2133,7 @@ public class MinhaCycleResetSource : MonoBehaviour, ICycleResetParticipantSource
 
     <!-- ═══════════════════════════════════════ -->
     <h2 id="object-entry">Object Entry — Declarar um objeto de jogo no framework</h2>
-    <p>Um <strong>Object Entry</strong> é a forma de dizer ao framework "este GameObject existe e pertence a esta Route/Activity". É uma <em>declaração de identidade</em> — não cria, destrói ou move nada. A razão de existir é dar ao <strong>Object Reset</strong> um alvo com identidade estável.</p>
+    <p>Um <strong>Object Entry</strong> é a forma de dizer ao framework "este GameObject existe e pertence a esta Route/Activity". É uma <em>declaração de identidade</em> — não cria, destrói ou move nada. No reset atual, Object Entry não é target obrigatório: use <code>UnityResetSubjectAdapter</code>.</p>
 
     <div class="component-card">
       <div class="comp-header">
@@ -2201,7 +2201,7 @@ public class MinhaCycleResetSource : MonoBehaviour, ICycleResetParticipantSource
 
     <!-- ═══════════════════════════════════════ -->
     <h2 id="object-reset">Object Reset — Resetar um objeto individual</h2>
-    <p>O <strong>Object Reset</strong> é o sistema que executa reset físico em um objeto específico — identificado por um <code>ObjectEntryDeclaration</code>. É separado do Cycle Reset: você pode disparar um Object Reset para um único objeto a qualquer momento, independente do ciclo de Route ou Activity.</p>
+    <p>O <strong>Object Reset</strong> é o sistema que executa reset físico em um objeto específico — identificado por um <code>ResetSubject</code>. É separado do Cycle Reset: você pode disparar um Object Reset para um único objeto a qualquer momento, independente do ciclo de Route ou Activity.</p>
 
     <div class="component-card">
       <div class="comp-header">
@@ -2213,16 +2213,16 @@ public class MinhaCycleResetSource : MonoBehaviour, ICycleResetParticipantSource
         </div>
       </div>
       <p style="font-size:13.5px; color:var(--text-soft); margin-top:10px; margin-bottom:12px;">
-        Dispara o reset de um objeto específico via Unity Event. Precisa saber qual objeto resetar — informe via <strong>Target Declaration</strong> ou <strong>Object Entry Id</strong>.
+        Dispara o reset de um objeto específico via Unity Event. Precisa saber qual subject resetar — informe via <strong>Target Subject</strong> ou <strong>Reset Subject Id</strong>.
       </p>
       <div class="comp-fields">
         <div class="comp-field">
-          <span class="field-name">Target Declaration</span>
-          <span class="field-desc">Arraste aqui o <code>ObjectEntryDeclaration</code> do objeto que deve ser resetado. <strong>Prefira este campo</strong> — é mais explícito e menos sujeito a erro de digitação.</span>
+          <span class="field-name">Target Subject</span>
+          <span class="field-desc">Arraste aqui o <code>UnityResetSubjectAdapter</code> do objeto que deve ser resetado.</span>
         </div>
         <div class="comp-field">
-          <span class="field-name">Object Entry Id</span>
-          <span class="field-desc">Alternativa ao campo acima: texto do ID do Object Entry alvo. Usado quando o Declaration não pode ser arrastado diretamente.</span>
+          <span class="field-name">Reset Subject Id</span>
+          <span class="field-desc">Alternativa ao campo acima: texto do ID do ResetSubject alvo.</span>
         </div>
         <div class="comp-field">
           <span class="field-name">Reason</span>
@@ -2249,18 +2249,18 @@ public class MinhaCycleResetSource : MonoBehaviour, ICycleResetParticipantSource
       <div class="comp-header">
         <div class="comp-icon">📐</div>
         <div class="comp-meta">
-          <div class="comp-name">ObjectResetTransformParticipant</div>
+          <div class="comp-name">UnityTransformResetParticipant</div>
           <h4>Transform Reset Participant</h4>
           <div class="comp-menu">Add Component → Immersive Framework → Object Reset → Transform Reset Participant</div>
         </div>
       </div>
       <p style="font-size:13.5px; color:var(--text-soft); margin-top:10px; margin-bottom:12px;">
-        Coloque este componente <strong>no mesmo GameObject</strong> que tem o <code>ObjectEntryDeclaration</code> (ou em qualquer filho). Capture o baseline de Transform uma vez; o framework restaura automaticamente quando o reset é disparado.
+        Coloque este componente <strong>no mesmo GameObject</strong> que tem o <code>UnityResetSubjectAdapter</code> (ou em qualquer filho). Capture o baseline de Transform uma vez; o framework restaura automaticamente quando o reset é disparado.
       </p>
       <div class="comp-fields">
         <div class="comp-field">
-          <span class="field-name">Target Declaration</span>
-          <span class="field-desc">Arraste o <code>ObjectEntryDeclaration</code> do objeto dono. Este campo define <em>a qual objeto</em> este participant pertence.</span>
+          <span class="field-name">Subject Adapter</span>
+          <span class="field-desc">O participant recebe o subject pelo <code>UnityResetSubjectAdapter</code> do mesmo objeto ou pai configurado.</span>
         </div>
         <div class="comp-field">
           <span class="field-name">Participant Id</span>
@@ -2289,24 +2289,24 @@ public class MinhaCycleResetSource : MonoBehaviour, ICycleResetParticipantSource
       <span class="callout-icon">✅</span>
       <div class="callout-body">
         <div class="callout-title">Como capturar o baseline</div>
-        <p>Posicione o GameObject na posição/rotação/escala inicial desejada. Então, no Inspector, clique com botão direito no componente <code>ObjectResetTransformParticipant</code> e selecione <strong>"Capture Current Transform Baseline"</strong>. Os valores são salvos automaticamente.</p>
+        <p>Posicione o GameObject na posição/rotação/escala inicial desejada. Então, no Inspector, clique com botão direito no componente <code>UnityTransformResetParticipant</code> e selecione <strong>"Capture Current Transform Baseline"</strong>. Os valores são salvos automaticamente.</p>
       </div>
     </div>
 
-    <h3>Registrando participants com Object Reset Unity Participant Source</h3>
-    <p>Para que o framework encontre os <code>ObjectResetTransformParticipant</code> da cena, adicione este componente em um GameObject persistente:</p>
+    <h3>Registrando participants com UnityResetSubjectAdapter</h3>
+    <p>Para que o framework encontre os <code>UnityTransformResetParticipant</code> da cena, adicione <code>UnityResetSubjectAdapter</code> no objeto resetavel. O adapter registra subject e participants no <code>ResetRegistry</code>.</p>
 
     <div class="component-card">
       <div class="comp-header">
         <div class="comp-icon">📋</div>
         <div class="comp-meta">
-          <div class="comp-name">ObjectResetUnityParticipantSource</div>
-          <h4>Object Reset Unity Participant Source</h4>
-          <div class="comp-menu">Add Component → Immersive Framework → Object Reset → Object Reset Unity Participant Source</div>
+          <div class="comp-name">UnityResetSubjectAdapter</div>
+          <h4>Unity Reset Subject Adapter</h4>
+          <div class="comp-menu">Add Component → Immersive Framework → Reset → Unity Reset Subject Adapter</div>
         </div>
       </div>
       <p style="font-size:13.5px; color:var(--text-soft); margin-top:10px; margin-bottom:12px;">
-        Registra-se automaticamente no framework ao ficar ativo (<code>OnEnable</code>) e se desregistra ao ser desativado. Funciona como "lista explícita" dos participants — o framework não busca na hierarquia sozinho.
+        Registra-se automaticamente no framework ao ficar ativo (<code>OnEnable</code>) e se desregistra ao ser destruído/desativado. Ele é a faceta resetável do objeto.
       </p>
       <div class="comp-fields">
         <div class="comp-field">
@@ -2314,8 +2314,8 @@ public class MinhaCycleResetSource : MonoBehaviour, ICycleResetParticipantSource
           <span class="field-desc">Se ativo, registra-se no runtime quando o GameObject ativar. Padrão: true.</span>
         </div>
         <div class="comp-field">
-          <span class="field-name">Participants</span>
-          <span class="field-desc">Lista de <code>ObjectResetUnityParticipantBehaviour</code> (ex: <code>ObjectResetTransformParticipant</code>) que devem ser consultados em cada reset. Arraste todos os participants aqui.</span>
+          <span class="field-name">Subject Id</span>
+          <span class="field-desc">Id estável do <code>ResetSubject</code>. Para prefabs runtime, use geração de Runtime Instance Id.</span>
         </div>
       </div>
     </div>
@@ -2325,18 +2325,18 @@ public class MinhaCycleResetSource : MonoBehaviour, ICycleResetParticipantSource
       <li>
         <div class="step-body">
           <strong>No GameObject do Player</strong>, adicione dois componentes:<br>
-          • <code>ObjectEntryDeclaration</code> com Id <code>player-character</code>, Scope <code>Activity</code>, Activity Owner = <code>Activity_Gameplay</code><br>
-          • <code>ObjectResetTransformParticipant</code>, arraste o <code>ObjectEntryDeclaration</code> acima para <strong>Target Declaration</strong>, preencha o Participant Id como <code>transform-reset-player</code>, depois use <em>Capture Current Transform Baseline</em> no Context Menu
+          • <code>UnityResetSubjectAdapter</code> com Subject Id <code>player-character</code>, Scope <code>Activity</code>, Activity Owner = <code>Activity_Gameplay</code><br>
+          • <code>UnityTransformResetParticipant</code>, preencha o Participant Id como <code>transform-reset-player</code>, depois use <em>Capture Current Transform Baseline</em> no Context Menu
         </div>
       </li>
       <li>
         <div class="step-body">
-          <strong>Crie um GameObject de gerenciamento</strong> (ex: <code>ResetManager</code>), adicione <code>ObjectResetUnityParticipantSource</code> e arraste o <code>ObjectResetTransformParticipant</code> do Player para a lista <strong>Participants</strong>.
+          <strong>Nao crie source manual.</strong> O <code>UnityResetSubjectAdapter</code> do Player registra o subject e seus participants.
         </div>
       </li>
       <li>
         <div class="step-body">
-          <strong>Crie um botão "Respawn"</strong> (ou use o evento de morte do Player). Adicione <code>ObjectResetTrigger</code> num GameObject, defina <strong>Target Declaration</strong> apontando para o <code>ObjectEntryDeclaration</code> do Player. No botão ou evento, conecte <code>ObjectResetTrigger.RequestObjectReset()</code>.
+          <strong>Crie um botão "Respawn"</strong> (ou use o evento de morte do Player). Adicione <code>ObjectResetTrigger</code> num GameObject, defina <strong>Target Subject</strong> apontando para o <code>UnityResetSubjectAdapter</code> do Player. No botão ou evento, conecte <code>ObjectResetTrigger.RequestObjectReset()</code>.
         </div>
       </li>
       <li>
@@ -2437,8 +2437,8 @@ public class MinhaCycleResetSource : MonoBehaviour, ICycleResetParticipantSource
           <strong>Materialização física</strong> — O framework ainda não faz <code>Instantiate</code>, <code>Destroy</code> ou posicionamento automático de prefabs. Content Anchors continuam declarativos.<br><br>
           <strong>Addressables</strong> — Sem carregamento assíncrono de assets por endereço.<br><br>
           <strong>Sistema de Actors / Player</strong> — Não existe gerenciamento de personagens, câmera ou câmera pelo framework.<br><br>
-          <strong>Object Reset além de Transform</strong> — O único participant concreto incluído é o <code>ObjectResetTransformParticipant</code>. Reset de Rigidbody, Animator, AudioSource, etc. precisam de código próprio (<code>IObjectResetParticipant</code>).<br><br>
-          <strong>Object Reset para múltiplos objetos de uma vez</strong> — Cada <code>ObjectResetTrigger</code> reseta um único Object Entry por request.<br><br>
+          <strong>Object Reset além de Transform</strong> — Os participants concretos incluídos são <code>UnityTransformResetParticipant</code> e <code>UnityGameObjectActiveResetParticipant</code>. Reset de Rigidbody, Animator, AudioSource, etc. precisam de código próprio (<code>IResetParticipant</code>).<br><br>
+          <strong>Object Reset para múltiplos objetos de uma vez</strong> — Use <code>ObjectResetGroupTrigger</code> com <code>ResetSelectionConfig</code>.<br><br>
           <strong>Snapshot de estado para restore</strong> — O framework captura baseline de Transform via authoring, mas não faz snapshot dinâmico em runtime do estado atual para restaurar depois.<br><br>
           <strong>Save/Load</strong> — Sem sistema de persistência de dados.<br><br>
           <strong>Pooling</strong> — Sem sistema de object pooling integrado.<br><br>
@@ -2473,11 +2473,11 @@ public class MinhaCycleResetSource : MonoBehaviour, ICycleResetParticipantSource
           <tr><td><code>ICycleResetParticipantSource</code></td><td>Interface que fornece a lista de participants ao framework quando um Cycle Reset é disparado.</td></tr>
           <tr><td><code>Object Entry</code></td><td>Declaração de identidade de um objeto de jogo no framework. Define a quem pertence (Route/Activity) e qual é seu ID estável.</td></tr>
           <tr><td><code>ObjectEntryDeclaration</code></td><td>Componente Unity que declara um Object Entry. Um por GameObject.</td></tr>
-          <tr><td><code>Object Reset</code></td><td>Reset granular de um objeto individual: restaura propriedades físicas (ex: Transform) para um baseline definido.</td></tr>
-          <tr><td><code>ObjectResetTransformParticipant</code></td><td>Participant concreto incluído no framework que restaura Transform local (posição, rotação, escala) para baseline capturado.</td></tr>
-          <tr><td><code>ObjectResetUnityParticipantSource</code></td><td>Componente MonoBehaviour que registra a lista explícita de participants de Object Reset no runtime.</td></tr>
+          <tr><td><code>Object Reset</code></td><td>Reset granular de um ResetSubject: restaura propriedades físicas (ex: Transform) para um baseline definido.</td></tr>
+          <tr><td><code>UnityTransformResetParticipant</code></td><td>Participant concreto incluído no framework que restaura Transform local (posição, rotação, escala) para baseline capturado.</td></tr>
+          <tr><td><code>UnityResetSubjectAdapter</code></td><td>Componente MonoBehaviour que registra um ResetSubject e seus participants no ResetRegistry.</td></tr>
           <tr><td><code>Baseline</code></td><td>Os valores de referência capturados em authoring (ex: posição inicial de um objeto) que serão restaurados pelo Object Reset.</td></tr>
-          <tr><td><code>Participant</code></td><td>Qualquer implementação de <code>ICycleResetParticipant</code> ou <code>IObjectResetParticipant</code> que recebe e executa um reset.</td></tr>
+          <tr><td><code>Participant</code></td><td>Qualquer implementação de <code>ICycleResetParticipant</code> ou <code>IResetParticipant</code> que recebe e executa um reset.</td></tr>
           <tr><td><code>SucceededNoParticipants</code></td><td>Status de reset que indica que nenhum participant foi encontrado, mas a policy permitia isso — não é um erro.</td></tr>
           <tr><td><code>CompletedWithWarnings</code></td><td>Status de reset que indica que algum participant opcional falhou, mas o reset continuou.</td></tr>
           <tr><td><code>Smoke</code></td><td>Teste rápido de regressão do framework (visível no QA Canvas em modo desenvolvimento).</td></tr>

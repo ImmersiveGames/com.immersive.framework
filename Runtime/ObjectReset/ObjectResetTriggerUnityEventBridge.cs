@@ -47,7 +47,7 @@ namespace Immersive.Framework.ObjectReset
         private void OnEnable()
         {
             _trigger = GetComponent<ObjectResetTrigger>();
-            _binding = _trigger.SubscribeRequestEvents(OnObjectResetRequestEvent);
+            _binding = _trigger.SubscribeRequestEvents(OnObjectResetTriggerEvent);
         }
 
         private void OnDisable()
@@ -57,7 +57,7 @@ namespace Immersive.Framework.ObjectReset
             _trigger = null;
         }
 
-        private void OnObjectResetRequestEvent(ObjectResetTriggerEvent requestEvent)
+        private void OnObjectResetTriggerEvent(ObjectResetTriggerEvent requestEvent)
         {
             if (requestEvent == null)
             {
