@@ -1,58 +1,49 @@
 # Immersive Framework
 
-`com.immersive.framework` is the Unity package for Immersive Framework runtime, authoring, diagnostics and QA surfaces.
+`com.immersive.framework` is the official Unity package for Immersive Framework runtime, authoring, diagnostics and validation surfaces.
 
-Package version: `1.0.0-preview.1`
+Current package version: `1.0.0-preview.12`
 
-Source repository: `https://github.com/ImmersiveGames/com.immersive.framework`
+## Current State
 
-## Install from Git
+The package has the supported Preview 12 baseline for application boot, route/activity flow, scene lifecycle, transition/loading surfaces, pause, reset and activity restart. It consumes technical primitives from `com.immersive.foundation`, `com.immersive.logging` and other package dependencies instead of reimplementing them here.
 
-Install private Immersive package dependencies in the consumer project's `Packages/manifest.json` before installing the framework package:
+## Project Roles
 
-```json
-{
-  "dependencies": {
-    "com.immersive.foundation": "https://github.com/ImmersiveGames/com.immersive.foundation.git#v1.0.0-preview.1",
-    "com.immersive.logging": "https://github.com/ImmersiveGames/com.immersive.logging.git#v1.0.0-preview.1",
-    "com.immersive.framework": "https://github.com/ImmersiveGames/com.immersive.framework.git#v1.0.0-preview.1"
-  }
-}
-```
+- `com.immersive.framework`: official framework package and public documentation.
+- QA Harness: technical smoke coverage for package behavior.
+- FIRSTGAME: real consumer project for usability and practical game-start validation.
 
-Unity package manifests do not support Git URLs as transitive dependencies inside `package.json`. `com.immersive.framework/package.json` therefore declares package/version dependencies only. If `com.immersive.foundation` and `com.immersive.logging` are not available from a scoped registry, the consumer project must install those sibling packages directly by Git URL.
+FIRSTGAME is not the primary technical QA harness, and QA assets should not be copied into consumer projects as canonical setup.
 
-Do not use unpinned branch URLs for reproducible setup. Use tag `v1.0.0-preview.1` after the tag exists and after clean consumer validation has passed.
+## Current Surface
 
-## Documentation
+- Game Application boot and startup route.
+- Route and Activity lifecycle.
+- Scene lifecycle for route/activity flow.
+- RuntimeContent handles and ContentAnchor materialization surfaces.
+- Pause runtime, pause input and pause surface.
+- Transition and Loading surfaces.
+- Reset subjects, reset participants and reset execution.
+- Object reset, reset group and Activity Restart.
+- Runtime logging with `Info`, `Debug` and `Trace` levels.
 
-Start here:
+## Start Reading
 
-- [Package documentation](Documentation~/README.md)
-- [Git package install](Documentation~/Git-Package-Install.md)
-- [Setup](Documentation~/Setup.md)
-- [Authoring](Documentation~/Authoring.md)
+- User-facing guide: [`Documentation~/Guides/Usage/index.html`](Documentation~/Guides/Usage/index.html)
+- Guide notes and current preview semantics: [`Documentation~/Guides/Usage/README.md`](Documentation~/Guides/Usage/README.md)
+- Package documentation index: [`Documentation~/README.md`](Documentation~/README.md)
 
-The package documentation is for setup, authoring, runtime surfaces, QA smokes and troubleshooting. Project-side architecture tracking, closeouts, audits and consolidation roadmaps are not package usage documentation.
+## Logging Policy
 
-## Current public surface
+- `Info`: operational summaries.
+- `Debug`: technical diagnostics.
+- `Trace`: waiting, retry and polling noise.
 
-- Game Application authoring through `GameApplicationAsset`.
-- Route and Activity baseline through `RouteAsset`, `ActivityAsset`, route lifecycle and activity flow runtime surfaces.
-- Optional app/session scoped `UIGlobal` scene for shared visual surfaces.
-- Loading surface through `UnityLoadingSurfaceAdapter`.
-- Transition surface through transition orchestration and `UnityFadeCurtainEffectAdapter`.
-- Pause surface through resident `UIGlobal` presentation with `UnityPauseResidentSurfaceAdapter`.
-- Pause input through `PauseInputActionRuntimeBridgeTrigger` and `PauseInputModeUnityPlayerInputRuntimeBridge`.
-- RuntimeContent and ContentAnchor logical runtime, Unity materialization adapters, materialization bridges and composite release helpers.
-- QA Canvas and smoke runners for package validation.
+## Do Not
 
-## Package boundaries
-
-- Framework contracts and framework-specific Unity adapters live in this package.
-- Technical primitives are consumed from `com.immersive.foundation`, `com.immersive.logging` and `com.immersive.pooling` instead of being reimplemented here.
-- Runtime, Editor, package metadata and Unity assets are not documented as historical cuts. Use the package docs for the current supported state.
-
-## Readiness status
-
-FIRSTGAME remains deferred. After installing the package, configure the minimum Model 1.0 authoring assets and run Project Settings > Immersive Framework > Model Readiness > `Run Model Readiness Check`.
+- Do not copy QA Harness assets into a consumer project as the canonical setup.
+- Do not use FIRSTGAME as the main technical QA harness.
+- Do not copy old `ProjectSettings`, scenes, configs or runtime architecture from older projects.
+- Do not depend on paid assets as canonical package setup.
+- Do not edit installed package files inside a consumer project; update the package source instead.

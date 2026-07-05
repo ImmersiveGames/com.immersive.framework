@@ -27,7 +27,17 @@ com.immersive.framework v1.0.0-preview.12
 POST-RESET-D - Transition / Loading Surface Hardening
 D1 - Pause During Transition Policy
 D2 - Framework Runtime Log Level Hygiene
+D3 - Loading / Transition Semantics Documentation
 ```
+
+## Preview 12 loading / transition semantics
+
+- Transition and Loading are separate concepts.
+- Route switch with scene load should report `transition='SucceededWithUnitySurface'` and `loading='SucceededWithUnitySurface'`.
+- Activity switch without scene load should report `transition='SucceededWithUnitySurface'` and `loading='SkippedNoSceneLoad'`. This is correct and is not an error.
+- Activity Restart uses reset + clear + reenter. It may use transition; loading appears only if there is scene load or release side-effect.
+- Pause during transition/loading is rejected with `status='Rejected'` and `policyStatus='RejectedTransitionInProgress'`. It does not open the PauseSurface, does not change TimeScale and does not enqueue the request.
+- After D2, runtime log levels are: `Info` for operational summaries, `Debug` for technical diagnostics and `Trace` for waiting/retry/polling noise.
 
 ## Preview 12 reset/restart notes
 

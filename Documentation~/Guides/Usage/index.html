@@ -541,6 +541,7 @@
       <a href="#build-profile"><span class="icon">📦</span> Build Profile</a>
       <a href="#model-readiness"><span class="icon">✅</span> Model Readiness</a>
       <a href="#play-smoke"><span class="icon">🧪</span> Play Smoke</a>
+      <a href="#loading-transition-semantics"><span class="icon">🧭</span> Loading / Transition</a>
       <a href="#logs"><span class="icon">📊</span> Logs de PASS</a>
     </div>
 
@@ -818,6 +819,36 @@
       </table>
     </div>
     <p>Smoke esperado: clique <code>Go Activity B</code> e, durante o fade, clique novamente. O segundo clique não deve chegar como <code>IgnoredAlreadyActive</code>. Após a transition, os botões voltam a funcionar e <code>Restore Activity A</code> continua operacional.</p>
+
+    <h2 id="loading-transition-semantics">Loading / Transition Semantics</h2>
+    <p><strong>Transition</strong> e <strong>Loading</strong> são conceitos separados. Transition cobre a janela visual de troca; Loading cobre carga real de cena. Um fluxo pode ter transition sem loading.</p>
+
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Fluxo</th><th>Transition</th><th>Loading</th><th>Leitura correta</th></tr></thead>
+        <tbody>
+          <tr><td>Route switch com scene load</td><td><code>SucceededWithUnitySurface</code></td><td><code>SucceededWithUnitySurface</code></td><td>Troca de Route com cena carregada e superfícies Unity aplicadas.</td></tr>
+          <tr><td>Activity switch sem scene load</td><td><code>SucceededWithUnitySurface</code></td><td><code>SkippedNoSceneLoad</code></td><td>Correto. Não é erro; a Activity mudou sem carregar cena.</td></tr>
+          <tr><td>Activity Restart</td><td>Pode usar transition</td><td>Aparece só se houver scene load ou release side-effect</td><td>Restart usa reset + clear + reenter; loading não é obrigatório.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="callout info">
+      <span class="callout-icon">ℹ️</span>
+      <div class="callout-body">
+        <div class="callout-title">Pause durante transition/loading</div>
+        <p>Durante transition ou loading, Pause é rejeitado pela policy com <code>status='Rejected'</code> e <code>policyStatus='RejectedTransitionInProgress'</code>. O request não abre <code>PauseSurface</code>, não muda <code>Time.timeScale</code> e não fica enfileirado para depois.</p>
+      </div>
+    </div>
+
+    <div class="callout info">
+      <span class="callout-icon">ℹ️</span>
+      <div class="callout-body">
+        <div class="callout-title">Logs após D2</div>
+        <p><code>Info</code> é resumo operacional. <code>Debug</code> é diagnóstico técnico. <code>Trace</code> é waiting, retry, polling e lifecycle ruidoso de adapter.</p>
+      </div>
+    </div>
 
     <div class="component-card">
       <div class="comp-header">
@@ -1340,7 +1371,7 @@ Selection
      2.3 limpa a Activity atual internamente
      2.4 reentra na mesma Activity internamente
      2.5 transitionAfter abre o fade</code></pre>
-      <p>O reset roda dentro da janela visual do restart, depois do fade fechar e antes do Clear/Re-enter. O Clear/Re-enter não deve aparecer como dois fades separados; os status <code>clearStatus</code> e <code>reenterStatus</code> ficam agregados no resultado final do restart.</p>
+      <p>O reset roda dentro da janela visual do restart, depois do fade fechar e antes do Clear/Re-enter. O Clear/Re-enter não deve aparecer como dois fades separados; os status <code>clearStatus</code> e <code>reenterStatus</code> ficam agregados no resultado final do restart. Loading só deve aparecer se houver scene load ou release side-effect; restart sem scene load não precisa de Loading.</p>
     </div>
 
     <div class="callout info">
@@ -1594,20 +1625,25 @@ public sealed class FirstGameResetStatusLabel : MonoBehaviour
     <div class="log-block">
       <div class="log-label">Console — Route Request OK</div>
       Route Request completed.<br>
+      <span class="log-key">reason</span><span class="log-sep">='</span><span class="log-val">firstgame.start.game</span><span class="log-sep">'</span>
       <span class="log-key">targetRoute</span><span class="log-sep">='</span><span class="log-val">Gameplay Route</span><span class="log-sep">'</span>
       <span class="log-key"> scene</span><span class="log-sep">='</span><span class="log-val">FG_Gameplay</span><span class="log-sep">'</span>
       <span class="log-key"> transition</span><span class="log-sep">='</span><span class="log-val">SucceededWithUnitySurface</span><span class="log-sep">'</span>
       <span class="log-key"> loading</span><span class="log-sep">='</span><span class="log-val">SucceededWithUnitySurface</span><span class="log-sep">'</span>
       <span class="log-key"> activity</span><span class="log-sep">='</span><span class="log-val">FG Activity A</span><span class="log-sep">'</span>
+      <span class="log-key"> blockingIssues</span><span class="log-sep">='</span><span class="log-val">0</span><span class="log-sep">'</span>
     </div>
 
     <h3>Activity flow</h3>
     <div class="log-block">
       <div class="log-label">Console — Activity OK</div>
       Activity Request completed.<br>
+      <span class="log-key">reason</span><span class="log-sep">='</span><span class="log-val">firstgame.activity.go-b</span><span class="log-sep">'</span>
       <span class="log-key">transition</span><span class="log-sep">='</span><span class="log-val">SucceededWithUnitySurface</span><span class="log-sep">'</span>
+      <span class="log-key"> loading</span><span class="log-sep">='</span><span class="log-val">SkippedNoSceneLoad</span><span class="log-sep">'</span>
       <span class="log-key"> activityState</span><span class="log-sep">='</span><span class="log-val">Active</span><span class="log-sep">'</span>
       <span class="log-key"> activityReadiness</span><span class="log-sep">='</span><span class="log-val">Ready</span><span class="log-sep">'</span>
+      <span class="log-key"> blockingIssues</span><span class="log-sep">='</span><span class="log-val">0</span><span class="log-sep">'</span>
     </div>
 
 
@@ -1632,6 +1668,19 @@ public sealed class FirstGameResetStatusLabel : MonoBehaviour
       <span class="log-key"> status</span><span class="log-sep">='</span><span class="log-val">Applied</span><span class="log-sep">'</span>
       <span class="log-key"> currentState</span><span class="log-sep">='</span><span class="log-val">Paused</span><span class="log-sep">'</span>
       <span class="log-key"> pauseSurface</span><span class="log-sep">='</span><span class="log-val">Applied</span><span class="log-sep">'</span>
+    </div>
+
+    <h3>Pause rejeitado durante transition/loading</h3>
+    <div class="log-block">
+      <div class="log-label">Console — Pause Policy</div>
+      Pause Request rejected by transition policy.<br>
+      <span class="log-key">reason</span><span class="log-sep">='</span><span class="log-val">firstgame.pause.keyboard.toggle</span><span class="log-sep">'</span>
+      <span class="log-key"> status</span><span class="log-sep">='</span><span class="log-val">Rejected</span><span class="log-sep">'</span>
+      <span class="log-key"> policyStatus</span><span class="log-sep">='</span><span class="log-val">RejectedTransitionInProgress</span><span class="log-sep">'</span>
+      <span class="log-key"> previousState</span><span class="log-sep">='</span><span class="log-val">Running</span><span class="log-sep">'</span>
+      <span class="log-key"> currentState</span><span class="log-sep">='</span><span class="log-val">Running</span><span class="log-sep">'</span>
+      <span class="log-key"> applied</span><span class="log-sep">='</span><span class="log-val">False</span><span class="log-sep">'</span>
+      <span class="log-key"> stateChanged</span><span class="log-sep">='</span><span class="log-val">False</span><span class="log-sep">'</span>
     </div>
 
     <h3>Resume por tecla</h3>
