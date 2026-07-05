@@ -153,7 +153,7 @@ namespace Immersive.Framework.Reset.Unity
             _subject = subjectResult.Subject;
             RegisterParticipants(reason);
 
-            Logger.Info(
+            Logger.Debug(
                 "Unity Reset Subject Adapter registered reset subject.",
                 LogFields.Field("status", "Registered"),
                 LogFields.Field("subjectId", _subject.SubjectId.StableText),
@@ -194,7 +194,7 @@ namespace Immersive.Framework.Reset.Unity
             bool unregistered = result.Succeeded || result.Status == ResetRegistryOperationStatus.AlreadyUnregistered;
             if (unregistered)
             {
-                Logger.Info(
+                Logger.Debug(
                     "Unity Reset Subject Adapter unregistered reset subject.",
                     LogFields.Field("status", result.Status.ToString()),
                     LogFields.Field("subjectId", subject.SubjectId.StableText),
@@ -231,7 +231,7 @@ namespace Immersive.Framework.Reset.Unity
                 }
 
                 _runtimeUnavailableLogged = true;
-                Logger.Info(
+                Logger.Trace(
                     "Unity Reset Subject Adapter is waiting for FrameworkRuntimeHost before registering reset subject.",
                     LogFields.Field("status", "WaitingForRuntime"),
                     LogFields.Field("idGeneration", idGeneration.ToString()),
@@ -265,7 +265,7 @@ namespace Immersive.Framework.Reset.Unity
 
                 _ownerUnavailableLogged = true;
                 _lastOwnerUnavailableIssue = issue;
-                Logger.Info(
+                Logger.Trace(
                     "Unity Reset Subject Adapter is waiting for a reset owner before registering reset subject.",
                     LogFields.Field("status", "WaitingForOwner"),
                     LogFields.Field("idGeneration", idGeneration.ToString()),
