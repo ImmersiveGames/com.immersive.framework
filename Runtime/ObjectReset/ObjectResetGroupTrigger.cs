@@ -305,15 +305,17 @@ namespace Immersive.Framework.ObjectReset
             ResetExecutionResult result,
             ResetSelectionResolution selectionResolution)
         {
-            LogField[] fields = BuildGroupFields(result, selectionResolution);
+            LogField[] summaryFields = BuildGroupSummaryFields(result);
+            LogField[] diagnosticFields = BuildGroupDiagnosticFields(result, selectionResolution);
             if (result.Succeeded)
             {
-                _logger.Info("Object Reset Group Request completed.", fields);
-                _logger.Debug("Object Reset Group Request diagnostics. " + result);
+                _logger.Info("Object Reset Group Request completed.", summaryFields);
+                _logger.Debug("Object Reset Group Request diagnostics. " + result, diagnosticFields);
                 return;
             }
 
-            _logger.Error("Object Reset Group Request failed. " + result, fields);
+            _logger.Error("Object Reset Group Request failed.", summaryFields);
+            _logger.Debug("Object Reset Group Request diagnostics. " + result, diagnosticFields);
         }
 
         private LogField[] BuildGroupFields(string resolvedGroupId, string resolvedReason)
@@ -324,7 +326,17 @@ namespace Immersive.Framework.ObjectReset
                 LogFields.Field("groupId", resolvedGroupId));
         }
 
-        private LogField[] BuildGroupFields(
+        private LogField[] BuildGroupSummaryFields(ResetExecutionResult result)
+        {
+            return LogFields.Of(
+                LogFields.Field("source", result.Source),
+                LogFields.Field("reason", result.Reason),
+                LogFields.Field("status", result.Status.ToString()),
+                LogFields.Field("groupId", ResolveGroupId()),
+                LogFields.Field("blockingIssues", result.BlockingIssueCount));
+        }
+
+        private LogField[] BuildGroupDiagnosticFields(
             ResetExecutionResult result,
             ResetSelectionResolution selectionResolution)
         {

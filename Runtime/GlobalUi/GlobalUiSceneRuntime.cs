@@ -7,6 +7,7 @@ using Immersive.Framework.Loading;
 using Immersive.Framework.Pause;
 using Immersive.Framework.TransitionEffects;
 using Immersive.Framework.Common;
+using Immersive.Logging.Records;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
@@ -208,7 +209,15 @@ namespace Immersive.Framework.GlobalUi
                     $"UIGlobal scene '{label}' loaded and persisted with rootCount='{persistedRoots.Count}' transitionAdapterCount='{transitionAdapters.Count}' loadingAdapterCount='{loadingAdapters.Count}' pauseAdapterCount='{pauseAdapters.Count}'.");
             }
 
-            logger.Info($"UIGlobal scene '{label}' loaded and persisted with rootCount='{persistedRoots.Count}' transitionAdapterCount='{transitionAdapters.Count}' loadingAdapterCount='{loadingAdapters.Count}' pauseAdapterCount='{pauseAdapters.Count}'.");
+            logger.Info("UIGlobal scene loaded.", LogFields.Field("scene", label));
+            logger.Debug(
+                "UIGlobal scene diagnostics.",
+                LogFields.Of(
+                    LogFields.Field("scene", label),
+                    LogFields.Field("rootCount", persistedRoots.Count),
+                    LogFields.Field("transitionAdapterCount", transitionAdapters.Count),
+                    LogFields.Field("loadingAdapterCount", loadingAdapters.Count),
+                    LogFields.Field("pauseAdapterCount", pauseAdapters.Count)));
 
             return new GlobalUiSceneRuntime(
                 application.GlobalUiScenePolicyValue,

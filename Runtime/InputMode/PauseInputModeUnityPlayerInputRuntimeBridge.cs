@@ -95,7 +95,7 @@ namespace Immersive.Framework.InputMode
             if (logResults && _lastResult != null)
             {
                 EnsureLogger();
-                _logger.Info(
+                _logger.Debug(
                     "Pause InputMode PlayerInput Runtime Bridge completed.",
                     Logging.Records.LogFields.Of(
                         Logging.Records.LogFields.Field("status", _lastResult.Status.ToString()),

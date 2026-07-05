@@ -48,7 +48,12 @@ namespace Immersive.Framework.Pause
                 return new PauseSurfaceRuntime("Pause Surface", Array.Empty<IPauseSurfaceAdapter>());
             }
 
-            logger.Info($"Pause surface resolved from UIGlobal scene '{resolvedSceneLabel}' with adapterCount='{sceneAdapters.Count}'.");
+            logger.Info("Pause surface resolved.", LogFields.Field("scene", resolvedSceneLabel));
+            logger.Debug(
+                "Pause surface diagnostics.",
+                LogFields.Of(
+                    LogFields.Field("scene", resolvedSceneLabel),
+                    LogFields.Field("adapterCount", sceneAdapters.Count)));
             return new PauseSurfaceRuntime(resolvedSceneLabel, sceneAdapters);
         }
 

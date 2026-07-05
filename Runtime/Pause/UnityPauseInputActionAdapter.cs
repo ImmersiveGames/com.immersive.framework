@@ -158,7 +158,7 @@ namespace Immersive.Framework.Pause
 
             if (logReadyOnEnable)
             {
-                _logger.Info(
+                _logger.Debug(
                     "Pause Input Action Adapter ready. "
                     + $"asset='{actionsAsset.name}' "
                     + $"playerAction='{FormatAction(_playerPauseToggleAction)}' "
@@ -306,7 +306,7 @@ namespace Immersive.Framework.Pause
 
             if (logPerformedInput)
             {
-                _logger.Info(
+                _logger.Debug(
                     "Pause Input Action performed. "
                     + $"action='{actionPath}' "
                     + $"request='{result.Request.RequestId.StableText}' "
@@ -338,7 +338,7 @@ namespace Immersive.Framework.Pause
             _lastIgnoredReason = reason ?? string.Empty;
             if (logIgnoredInput)
             {
-                _logger.Info(
+                _logger.Trace(
                     "Pause Input Action ignored. "
                     + $"reason='{_lastIgnoredReason}' "
                     + $"action='{FormatAction(action)}' "

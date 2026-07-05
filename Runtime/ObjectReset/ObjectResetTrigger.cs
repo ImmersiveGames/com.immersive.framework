@@ -270,7 +270,13 @@ namespace Immersive.Framework.ObjectReset
 
         private void LogResetExecutionResult(ResetExecutionResult result, ResetSubjectId subjectId)
         {
-            LogField[] fields = LogFields.Of(
+            LogField[] summaryFields = LogFields.Of(
+                LogFields.Field("source", DefaultSource),
+                LogFields.Field("reason", result.Reason),
+                LogFields.Field("status", result.Status.ToString()),
+                LogFields.Field("subjectId", subjectId.IsValid ? subjectId.StableText : ResolvedTargetSubjectId),
+                LogFields.Field("blockingIssues", result.BlockingIssueCount));
+            LogField[] diagnosticFields = LogFields.Of(
                 LogFields.Field("source", DefaultSource),
                 LogFields.Field("reason", result.Reason),
                 LogFields.Field("status", result.Status.ToString()),
@@ -287,12 +293,13 @@ namespace Immersive.Framework.ObjectReset
 
             if (result.Succeeded)
             {
-                _logger.Info("Object Reset Request completed.", fields);
-                _logger.Debug("Object Reset Request diagnostics. " + result);
+                _logger.Info("Object Reset Request completed.", summaryFields);
+                _logger.Debug("Object Reset Request diagnostics. " + result, diagnosticFields);
                 return;
             }
 
-            _logger.Error("Object Reset Request failed. " + result, fields);
+            _logger.Error("Object Reset Request failed.", summaryFields);
+            _logger.Debug("Object Reset Request diagnostics. " + result, diagnosticFields);
         }
 
         private string BuildLastResultSummary()

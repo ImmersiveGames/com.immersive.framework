@@ -1284,9 +1284,6 @@ Selection
       Object Reset Group Request completed.<br>
       <span class="log-key">status</span><span class="log-sep">='</span><span class="log-val">Succeeded</span><span class="log-sep">'</span>
       <span class="log-key"> groupId</span><span class="log-sep">='</span><span class="log-val">firstgame.reset.room</span><span class="log-sep">'</span>
-      <span class="log-key"> subjects</span><span class="log-sep">='</span><span class="log-val">2</span><span class="log-sep">'</span>
-      <span class="log-key"> participants</span><span class="log-sep">='</span><span class="log-val">3</span><span class="log-sep">'</span>
-      <span class="log-key"> participantSucceeded</span><span class="log-sep">='</span><span class="log-val">3</span><span class="log-sep">'</span>
       <span class="log-key"> blockingIssues</span><span class="log-sep">='</span><span class="log-val">0</span><span class="log-sep">'</span>
     </div>
 
@@ -1350,7 +1347,7 @@ Selection
       <span class="callout-icon">ℹ️</span>
       <div class="callout-body">
         <div class="callout-title">Como saber que o fade duplo foi corrigido</div>
-        <p>No console, o restart deve mostrar <code>Activity Restart reset stage completed inside restart transition</code> antes de <code>Activity Restart Request completed</code>. Não deve aparecer como duas requests públicas separadas com <code>reason='firstgame.restart.activity:clear'</code> e <code>reason='firstgame.restart.activity:reenter'</code>. Esses detalhes agora são internos ao fluxo composto.</p>
+        <p>Com Debug habilitado, o restart mostra <code>Activity Restart reset stage completed inside restart transition</code> antes de <code>Activity Restart Request completed</code>. Em Info, deve aparecer apenas a conclusão pública do restart. Não deve aparecer como duas requests públicas separadas com <code>reason='firstgame.restart.activity:clear'</code> e <code>reason='firstgame.restart.activity:reenter'</code>. Esses detalhes agora são internos ao fluxo composto.</p>
       </div>
     </div>
 
@@ -1559,7 +1556,7 @@ public sealed class FirstGameResetStatusLabel : MonoBehaviour
       <li><div class="step-body"><strong>Teste Pause por UI</strong>Use o botão de Pause e depois o botão Resume do painel.</div></li>
       <li><div class="step-body"><strong>Teste Reset Player</strong>Clique o botão de reset single-target e confirme <code>Object Reset Request completed</code> para <code>firstgame.player</code>.</div></li>
       <li><div class="step-body"><strong>Spawn Runtime Box</strong>Clique <code>Spawn Runtime Box</code> e confirme o log <code>[FIRSTGAME_RUNTIME_OBJECT]</code> com <code>reason='firstgame.runtime.box'</code>.</div></li>
-      <li><div class="step-body"><strong>Teste Reset Room</strong>Clique <code>Reset Room</code> e confirme <code>Object Reset Group Request completed</code>. Com Player + 1 Runtime Box, o esperado é <code>subjects='2'</code> e <code>participants='3'</code>.</div></li>
+      <li><div class="step-body"><strong>Teste Reset Room</strong>Clique <code>Reset Room</code> e confirme <code>Object Reset Group Request completed</code>. Com Debug habilitado, Player + 1 Runtime Box deve mostrar <code>subjects='2'</code> e <code>participants='3'</code>.</div></li>
       <li><div class="step-body"><strong>Teste Restart Activity</strong>Mova o player, clique <code>Button_RestartActivity</code>, confirme que o player volta ao baseline e que há apenas uma transição visual. O log final deve ser <code>Activity Restart Request completed</code> com <code>status='Succeeded'</code>, <code>clearStatus='Succeeded'</code> e <code>reenterStatus='Succeeded'</code>.</div></li>
       <li><div class="step-body"><strong>Clique Go Activity B</strong>Confirme troca para <code>FG_Activity_B</code> com Transition. Com <code>UnityPlayerInputGateAdapter</code> no <code>PlayerPrototype</code>, o action map <code>Player</code> deve ser bloqueado durante a janela do Gate e liberado depois.</div></li>
       <li><div class="step-body"><strong>Clique Restore Activity A</strong>Confirme volta para <code>FG_Activity_A</code>.</div></li>
@@ -1580,10 +1577,8 @@ public sealed class FirstGameResetStatusLabel : MonoBehaviour
     <h3>UIGlobal resolvida</h3>
     <div class="log-block">
       <div class="log-label">Console — UIGlobal</div>
-      UIGlobal scene 'FG_UIGlobal' loaded and persisted<br>
-      <span class="log-key">transitionAdapterCount</span><span class="log-sep">='</span><span class="log-val">1</span><span class="log-sep">'</span>
-      <span class="log-key"> loadingAdapterCount</span><span class="log-sep">='</span><span class="log-val">1</span><span class="log-sep">'</span>
-      <span class="log-key"> pauseAdapterCount</span><span class="log-sep">='</span><span class="log-val">1</span><span class="log-sep">'</span>
+      UIGlobal scene loaded.<br>
+      <span class="log-key">scene</span><span class="log-sep">='</span><span class="log-val">FG_UIGlobal</span><span class="log-sep">'</span>
     </div>
 
     <h3>Boot succeeded</h3>
@@ -1591,8 +1586,8 @@ public sealed class FirstGameResetStatusLabel : MonoBehaviour
       <div class="log-label">Console — Boot OK</div>
       Boot succeeded. Application Runtime started.<br>
       <span class="log-key">primaryScene</span><span class="log-sep">='</span><span class="log-val">FG_Menu</span><span class="log-sep">'</span>
-      <span class="log-key"> alreadyLoaded</span><span class="log-sep">='</span><span class="log-val">True</span><span class="log-sep">'</span>
-      <span class="log-key"> loadMode</span><span class="log-sep">='</span><span class="log-val">AlreadyLoaded</span><span class="log-sep">'</span>
+      <span class="log-key"> routeSceneComposition</span><span class="log-sep">='</span><span class="log-val">Succeeded</span><span class="log-sep">'</span>
+      <span class="log-key"> blockingIssues</span><span class="log-sep">='</span><span class="log-val">0</span><span class="log-sep">'</span>
     </div>
 
     <h3>Start Game</h3>
@@ -1610,8 +1605,7 @@ public sealed class FirstGameResetStatusLabel : MonoBehaviour
     <div class="log-block">
       <div class="log-label">Console — Activity OK</div>
       Activity Request completed.<br>
-      <span class="log-key">transitionScope</span><span class="log-sep">='</span><span class="log-val">Activity</span><span class="log-sep">'</span>
-      <span class="log-key"> transition</span><span class="log-sep">='</span><span class="log-val">SucceededWithUnitySurface</span><span class="log-sep">'</span>
+      <span class="log-key">transition</span><span class="log-sep">='</span><span class="log-val">SucceededWithUnitySurface</span><span class="log-sep">'</span>
       <span class="log-key"> activityState</span><span class="log-sep">='</span><span class="log-val">Active</span><span class="log-sep">'</span>
       <span class="log-key"> activityReadiness</span><span class="log-sep">='</span><span class="log-val">Ready</span><span class="log-sep">'</span>
     </div>
@@ -1619,7 +1613,7 @@ public sealed class FirstGameResetStatusLabel : MonoBehaviour
 
     <h3>Pause por tecla</h3>
     <div class="log-block">
-      <div class="log-label">Console — Pause Input OK</div>
+      <div class="log-label">Console Debug — Pause Input OK</div>
       Pause Input Action Trigger completed.<br>
       <span class="log-key">action</span><span class="log-sep">='</span><span class="log-val">Global/Pause</span><span class="log-sep">'</span>
       <span class="log-key"> requestKind</span><span class="log-sep">='</span><span class="log-val">Toggle</span><span class="log-sep">'</span>
@@ -1635,10 +1629,9 @@ public sealed class FirstGameResetStatusLabel : MonoBehaviour
       Pause Request completed.<br>
       <span class="log-key">kind</span><span class="log-sep">='</span><span class="log-val">Toggle</span><span class="log-sep">'</span>
       <span class="log-key"> source</span><span class="log-sep">='</span><span class="log-val">PauseInputActionTrigger</span><span class="log-sep">'</span>
-      <span class="log-key"> gateBlockers</span><span class="log-sep">='</span><span class="log-val">2</span><span class="log-sep">'</span>
-      <span class="log-key"> timeScale</span><span class="log-sep">='</span><span class="log-val">AppliedPausedTimeScale</span><span class="log-sep">'</span>
-      <span class="log-key"> currentTimeScale</span><span class="log-sep">='</span><span class="log-val">0</span><span class="log-sep">'</span>
-      <span class="log-key"> pauseSurfacePaused</span><span class="log-sep">='</span><span class="log-val">True</span><span class="log-sep">'</span>
+      <span class="log-key"> status</span><span class="log-sep">='</span><span class="log-val">Applied</span><span class="log-sep">'</span>
+      <span class="log-key"> currentState</span><span class="log-sep">='</span><span class="log-val">Paused</span><span class="log-sep">'</span>
+      <span class="log-key"> pauseSurface</span><span class="log-sep">='</span><span class="log-val">Applied</span><span class="log-sep">'</span>
     </div>
 
     <h3>Resume por tecla</h3>
@@ -1647,10 +1640,8 @@ public sealed class FirstGameResetStatusLabel : MonoBehaviour
       Pause Request completed.<br>
       <span class="log-key">previousState</span><span class="log-sep">='</span><span class="log-val">Paused</span><span class="log-sep">'</span>
       <span class="log-key"> currentState</span><span class="log-sep">='</span><span class="log-val">Running</span><span class="log-sep">'</span>
-      <span class="log-key"> gateBlockers</span><span class="log-sep">='</span><span class="log-val">0</span><span class="log-sep">'</span>
-      <span class="log-key"> timeScale</span><span class="log-sep">='</span><span class="log-val">RestoredRunningTimeScale</span><span class="log-sep">'</span>
-      <span class="log-key"> currentTimeScale</span><span class="log-sep">='</span><span class="log-val">1</span><span class="log-sep">'</span>
-      <span class="log-key"> pauseSurfacePaused</span><span class="log-sep">='</span><span class="log-val">False</span><span class="log-sep">'</span>
+      <span class="log-key"> status</span><span class="log-sep">='</span><span class="log-val">Applied</span><span class="log-sep">'</span>
+      <span class="log-key"> pauseSurface</span><span class="log-sep">='</span><span class="log-val">Applied</span><span class="log-sep">'</span>
     </div>
 
     <h2 id="erros">Erros comuns e correções</h2>

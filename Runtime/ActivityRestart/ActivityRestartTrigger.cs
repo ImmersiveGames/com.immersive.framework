@@ -115,7 +115,8 @@ namespace Immersive.Framework.ActivityRestart
                     DefaultSource,
                     resolvedReason,
                     message);
-                _logger.Warning(message, BuildResultFields(result));
+                _logger.Warning(message, BuildResultSummaryFields(result));
+                _logger.Debug("Activity Restart Request diagnostics. " + result.ToDiagnosticString(), BuildResultDiagnosticFields(result));
                 PublishCompleted(FlowRequestOutcome.Ignored, resolvedReason, message, result, true, default, default);
                 return result;
             }
@@ -221,7 +222,7 @@ namespace Immersive.Framework.ActivityRestart
                         try
                         {
                             resetExecutionResult = await executor.ExecuteAsync(resetRequest);
-                            _logger.Info(
+                            _logger.Debug(
                                 "Activity Restart reset stage completed inside restart transition.",
                                 LogFields.Of(
                                     LogFields.Field("stage", "pre-clear-reset"),
@@ -476,15 +477,28 @@ namespace Immersive.Framework.ActivityRestart
 
             if (result.Succeeded || result.CompletedWithWarnings)
             {
-                _logger.Info("Activity Restart Request completed.", BuildResultFields(result));
-                _logger.Debug("Activity Restart Request diagnostics. " + result.ToDiagnosticString());
+                _logger.Info("Activity Restart Request completed.", BuildResultSummaryFields(result));
+                _logger.Debug("Activity Restart Request diagnostics. " + result.ToDiagnosticString(), BuildResultDiagnosticFields(result));
                 return;
             }
 
-            _logger.Error("Activity Restart Request failed. " + result.ToDiagnosticString(), BuildResultFields(result));
+            _logger.Error("Activity Restart Request failed.", BuildResultSummaryFields(result));
+            _logger.Debug("Activity Restart Request diagnostics. " + result.ToDiagnosticString(), BuildResultDiagnosticFields(result));
         }
 
-        private LogField[] BuildResultFields(ActivityRestartResult result)
+        private LogField[] BuildResultSummaryFields(ActivityRestartResult result)
+        {
+            return LogFields.Of(
+                LogFields.Field("source", result.Source),
+                LogFields.Field("reason", result.Reason),
+                LogFields.Field("status", result.Status.ToString()),
+                LogFields.Field("activity", result.ActivityName),
+                LogFields.Field("resetStatus", result.ResetStatus),
+                LogFields.Field("clearStatus", result.ClearStatus),
+                LogFields.Field("reenterStatus", result.ReenterStatus));
+        }
+
+        private LogField[] BuildResultDiagnosticFields(ActivityRestartResult result)
         {
             return LogFields.Of(
                 LogFields.Field("source", result.Source),

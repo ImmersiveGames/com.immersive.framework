@@ -147,7 +147,7 @@ namespace Immersive.Framework.Pause
 
             if (logReadyOnEnable)
             {
-                _logger.Info(
+                _logger.Debug(
                     "Pause Input Action Trigger ready.",
                     Immersive.Logging.Records.LogFields.Of(
                         Immersive.Logging.Records.LogFields.Field("asset", asset.name),
@@ -255,7 +255,7 @@ namespace Immersive.Framework.Pause
                 _lastCurrentState = PauseState.Unknown;
                 if (logIgnoredInput)
                 {
-                    _logger.Info(
+                    _logger.Trace(
                         "Pause Input Action Trigger ignored input.",
                         Immersive.Logging.Records.LogFields.Of(
                             Immersive.Logging.Records.LogFields.Field("reason", _lastIgnoredReason),
@@ -297,7 +297,7 @@ namespace Immersive.Framework.Pause
 
             if (logPerformedInput)
             {
-                _logger.Info(
+                _logger.Debug(
                     "Pause Input Action Trigger completed.",
                     Immersive.Logging.Records.LogFields.Of(
                         Immersive.Logging.Records.LogFields.Field("action", actionPath.NormalizeTextOrFallback("<none>")),
@@ -370,7 +370,7 @@ namespace Immersive.Framework.Pause
 
                 if (logActionMapSwitching)
                 {
-                    _logger.Info(
+                    _logger.Debug(
                         "Pause Input Action Trigger switched PlayerInput action map.",
                         Immersive.Logging.Records.LogFields.Of(
                             Immersive.Logging.Records.LogFields.Field("previousActionMap", currentActionMapName.NormalizeTextOrFallback("<none>")),
@@ -477,7 +477,7 @@ namespace Immersive.Framework.Pause
             _lastIgnoredReason = reasonCode.NormalizeText();
             if (logIgnoredInput)
             {
-                _logger.Info(
+                _logger.Trace(
                     "Pause Input Action Trigger ignored input.",
                     Immersive.Logging.Records.LogFields.Of(
                         Immersive.Logging.Records.LogFields.Field("reason", _lastIgnoredReason),

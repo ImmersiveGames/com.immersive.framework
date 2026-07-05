@@ -133,7 +133,7 @@ namespace Immersive.Framework.UnityInput
                 if (logMissingRuntimeOnce && !_loggedMissingRuntime)
                 {
                     _loggedMissingRuntime = true;
-                    _logger.Info(
+                    _logger.Trace(
                         "Unity PlayerInput Gate Adapter skipped because FrameworkRuntimeHost is not available. The adapter will retry on Update.",
                         BuildLogFields("SkippedNoRuntime", reason, false, false, false));
                 }
@@ -325,7 +325,7 @@ namespace Immersive.Framework.UnityInput
                 return;
             }
 
-            _logger.Info(
+            _logger.Debug(
                 message,
                 BuildLogFields(status, reason, blocked, blocksInput, blocksGameplay));
         }

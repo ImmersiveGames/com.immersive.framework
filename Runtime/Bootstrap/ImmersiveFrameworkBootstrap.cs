@@ -55,8 +55,8 @@ namespace Immersive.Framework.Bootstrap
 
                 logger.Info(
                     "Boot succeeded. Application Runtime started.",
-                    BuildBootFields(result, gameFlowResult, runtimeHost));
-                logger.Debug("Boot diagnostics. " + gameFlowResult.Message);
+                    BuildBootSummaryFields(result, gameFlowResult));
+                logger.Debug("Boot diagnostics. " + gameFlowResult.Message, BuildBootDiagnosticFields(result, gameFlowResult, runtimeHost));
                 LogActivityContentObservability(logger, gameFlowResult.RouteLifecycleResult.ActivityFlowResult.ActivityContentResult);
             }
             catch (Exception exception)
@@ -70,7 +70,24 @@ namespace Immersive.Framework.Bootstrap
             return FrameworkBootValidator.Validate(LoadSettings());
         }
 
-        private static LogField[] BuildBootFields(
+        private static LogField[] BuildBootSummaryFields(
+            FrameworkBootResult result,
+            FrameworkGameFlowStartResult gameFlowResult)
+        {
+            RouteLifecycleStartResult routeLifecycleResult = gameFlowResult.RouteLifecycleResult;
+            ActivityFlowStartResult activityFlowResult = routeLifecycleResult.ActivityFlowResult;
+            return LogFields.Of(
+                LogFields.Field("gameApplication", result.GameApplication != null ? result.GameApplication.ApplicationName : null),
+                LogFields.Field("startupRoute", result.StartupRoute != null ? result.StartupRoute.RouteName : null),
+                LogFields.Field("primaryScene", result.StartupRoute != null ? result.StartupRoute.PrimarySceneName : null),
+                LogFields.Field("validationMode", result.ValidationMode),
+                LogFields.Field("routeSceneComposition", routeLifecycleResult.RouteSceneCompositionResult.Status),
+                LogFields.Field("activity", FormatDiagnosticValue(activityFlowResult.ActivityState.ActivityName)),
+                LogFields.Field("activityReadiness", activityFlowResult.ActivityReadinessState.DiagnosticStatus),
+                LogFields.Field("blockingIssues", routeLifecycleResult.RouteSceneCompositionResult.BlockingIssueCount + activityFlowResult.ActivityReadinessState.BlockingIssueCount));
+        }
+
+        private static LogField[] BuildBootDiagnosticFields(
             FrameworkBootResult result,
             FrameworkGameFlowStartResult gameFlowResult,
             FrameworkRuntimeHost runtimeHost)

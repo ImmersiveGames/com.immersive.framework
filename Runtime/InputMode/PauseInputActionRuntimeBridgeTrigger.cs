@@ -356,7 +356,7 @@ namespace Immersive.Framework.InputMode
                 _logger = FrameworkLogger.Create<PauseInputActionRuntimeBridgeTrigger>();
             }
 
-            _logger.Info(
+            _logger.Debug(
                 "Pause InputAction Runtime Bridge Trigger completed.",
                 LogFields.Of(
                     LogFields.Field("status", _lastResult.Status.ToString()),

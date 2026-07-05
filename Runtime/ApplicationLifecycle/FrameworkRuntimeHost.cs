@@ -36,6 +36,8 @@ namespace Immersive.Framework.ApplicationLifecycle
     internal sealed class FrameworkRuntimeHost : MonoBehaviour
     {
         private const string RuntimeHostName = "Immersive Framework Runtime";
+        private const string PauseTransitionInProgressIssueCode = "pause.transition-in-progress";
+        private const string PauseTransitionInProgressStatus = "RejectedTransitionInProgress";
 
         private static FrameworkRuntimeHost _current;
 
@@ -349,18 +351,31 @@ namespace Immersive.Framework.ApplicationLifecycle
             {
                 _logger.Error(
                     "Startup Route Primary Scene preparation failed before UIGlobal load.",
-                    BuildStartupPrimaryScenePreparationFields(result));
+                    BuildStartupPrimaryScenePreparationSummaryFields(result));
+                _logger.Debug(
+                    "Startup Route Primary Scene preparation diagnostics.",
+                    BuildStartupPrimaryScenePreparationDiagnosticFields(result));
                 return result;
             }
 
             _logger.Info(
                 "Startup Route Primary Scene prepared before UIGlobal load.",
-                BuildStartupPrimaryScenePreparationFields(result));
+                BuildStartupPrimaryScenePreparationSummaryFields(result));
+            _logger.Debug(
+                "Startup Route Primary Scene preparation diagnostics.",
+                BuildStartupPrimaryScenePreparationDiagnosticFields(result));
 
             return result;
         }
 
-        private static LogField[] BuildStartupPrimaryScenePreparationFields(SceneLifecycleLoadResult result)
+        private static LogField[] BuildStartupPrimaryScenePreparationSummaryFields(SceneLifecycleLoadResult result)
+        {
+            return LogFields.Of(
+                LogFields.Field("scene", result.SceneName),
+                LogFields.Field("loaded", result.Loaded));
+        }
+
+        private static LogField[] BuildStartupPrimaryScenePreparationDiagnosticFields(SceneLifecycleLoadResult result)
         {
             return LogFields.Of(
                 LogFields.Field("scene", result.SceneName),
@@ -689,13 +704,49 @@ namespace Immersive.Framework.ApplicationLifecycle
                 throw new InvalidOperationException("Pause runtime is not initialized.");
             }
 
-            var result = _pauseRuntime.Request(request);
+            var result = TryCreateTransitionBlockedPauseResult(request, out var transitionBlockedResult)
+                ? transitionBlockedResult
+                : _pauseRuntime.Request(request);
             var timeScaleResult = _pauseTimeScaleRuntime != null
                 ? _pauseTimeScaleRuntime.Apply(result)
                 : default;
             var pauseSurfaceResult = ApplyPauseSurfaceSnapshot(request.Source, request.Reason);
             LogPauseRequestResult(result, pauseSurfaceResult, timeScaleResult);
             return result;
+        }
+
+        private bool TryCreateTransitionBlockedPauseResult(PauseRequest request, out PauseResult result)
+        {
+            if (_gameFlowRuntime == null || _pauseRuntime == null)
+            {
+                result = default;
+                return false;
+            }
+
+            GateSnapshot transitionGateSnapshot = TransitionGateSnapshot;
+            if (!transitionGateSnapshot.HasBlockers)
+            {
+                result = default;
+                return false;
+            }
+
+            string source = request.Source.NormalizeTextOrFallback(nameof(FrameworkRuntimeHost));
+            string reason = request.Reason.NormalizeTextOrFallback("pause.request");
+            var issues = new[]
+            {
+                PauseIssue.Blocking(
+                    PauseTransitionInProgressIssueCode,
+                    source,
+                    reason,
+                    "Pause request was rejected because a framework transition or loading operation is in progress.")
+            };
+
+            result = PauseResult.RejectedResult(
+                request,
+                _pauseRuntime.State,
+                "Pause request rejected by transition policy because a framework transition or loading operation is in progress.",
+                issues);
+            return true;
         }
 
         internal GateEvaluationResult EvaluatePauseGateAdmission(
@@ -1004,7 +1055,12 @@ namespace Immersive.Framework.ApplicationLifecycle
                 return NoOpTransitionOrchestrator.Instance;
             }
 
-            _logger.Info($"Transition surface resolved from UIGlobal scene '{sceneLabel}' with adapterCount='{sceneAdapters.Count}'.");
+            _logger.Info("Transition surface resolved.", LogFields.Field("scene", sceneLabel));
+            _logger.Debug(
+                "Transition surface diagnostics.",
+                LogFields.Of(
+                    LogFields.Field("scene", sceneLabel),
+                    LogFields.Field("adapterCount", sceneAdapters.Count)));
             return new TransitionEffectOrchestrator(sceneAdapters, sceneLabel);
         }
 
@@ -1154,38 +1210,42 @@ namespace Immersive.Framework.ApplicationLifecycle
         {
             if (result.Succeeded)
             {
-                _logger.Info("Route Request completed.", BuildRouteRequestFields(result, loadingDiagnostics));
-                _logger.Debug("Route Request diagnostics. " + result.Message);
+                _logger.Info("Route Request completed.", BuildRouteRequestSummaryFields(result, loadingDiagnostics));
+                _logger.Debug("Route Request diagnostics. " + result.Message, BuildRouteRequestDiagnosticFields(result, loadingDiagnostics));
                 LogActivityContentObservability(result.RouteLifecycleResult.ActivityFlowResult.ActivityContentResult);
                 return;
             }
 
             if (result.Kind is FrameworkRouteRequestKind.IgnoredAlreadyActive or FrameworkRouteRequestKind.IgnoredAlreadyInFlight)
             {
-                _logger.Warning(result.Message, BuildRouteRequestFields(result, loadingDiagnostics));
+                _logger.Warning(result.Message, BuildRouteRequestSummaryFields(result, loadingDiagnostics));
+                _logger.Debug("Route Request diagnostics. " + result.Message, BuildRouteRequestDiagnosticFields(result, loadingDiagnostics));
                 return;
             }
 
-            _logger.Error(result.Message, BuildRouteRequestFields(result, loadingDiagnostics));
+            _logger.Error(result.Message, BuildRouteRequestSummaryFields(result, loadingDiagnostics));
+            _logger.Debug("Route Request diagnostics. " + result.Message, BuildRouteRequestDiagnosticFields(result, loadingDiagnostics));
         }
 
         private void LogActivityRequestResult(FrameworkActivityRequestResult result, FrameworkLoadingDiagnostics loadingDiagnostics)
         {
             if (result.Succeeded)
             {
-                _logger.Info("Activity Request completed.", BuildActivityRequestFields(result, loadingDiagnostics));
-                _logger.Debug("Activity Request diagnostics. " + result.Message);
+                _logger.Info("Activity Request completed.", BuildActivityRequestSummaryFields(result, loadingDiagnostics));
+                _logger.Debug("Activity Request diagnostics. " + result.Message, BuildActivityRequestDiagnosticFields(result, loadingDiagnostics));
                 LogActivityContentObservability(result.ActivityFlowResult.ActivityContentResult);
                 return;
             }
 
             if (result.Kind is FrameworkActivityRequestKind.IgnoredAlreadyActive or FrameworkActivityRequestKind.IgnoredAlreadyInFlight or FrameworkActivityRequestKind.IgnoredNoActiveActivity)
             {
-                _logger.Warning(result.Message, BuildActivityRequestFields(result, loadingDiagnostics));
+                _logger.Warning(result.Message, BuildActivityRequestSummaryFields(result, loadingDiagnostics));
+                _logger.Debug("Activity Request diagnostics. " + result.Message, BuildActivityRequestDiagnosticFields(result, loadingDiagnostics));
                 return;
             }
 
-            _logger.Error(result.Message, BuildActivityRequestFields(result, loadingDiagnostics));
+            _logger.Error(result.Message, BuildActivityRequestSummaryFields(result, loadingDiagnostics));
+            _logger.Debug("Activity Request diagnostics. " + result.Message, BuildActivityRequestDiagnosticFields(result, loadingDiagnostics));
         }
 
         private void LogPauseRequestResult(
@@ -1195,40 +1255,69 @@ namespace Immersive.Framework.ApplicationLifecycle
         {
             if (result.Applied || result.IgnoredNoChange)
             {
-                _logger.Info("Pause Request completed.", BuildPauseRequestFields(result, pauseSurfaceResult, timeScaleResult));
-                _logger.Debug("Pause Request diagnostics. " + result.ToDiagnosticString());
+                _logger.Info("Pause Request completed.", BuildPauseRequestSummaryFields(result, pauseSurfaceResult));
+                _logger.Debug("Pause Request diagnostics. " + result.ToDiagnosticString(), BuildPauseRequestDiagnosticFields(result, pauseSurfaceResult, timeScaleResult));
                 return;
             }
 
             if (result.Rejected)
             {
-                _logger.Warning("Pause Request rejected.", BuildPauseRequestFields(result, pauseSurfaceResult, timeScaleResult));
-                _logger.Debug("Pause Request diagnostics. " + result.ToDiagnosticString());
+                if (IsPauseRejectedByTransitionPolicy(result))
+                {
+                    _logger.Info("Pause Request rejected by transition policy.", BuildPauseRequestSummaryFields(result, pauseSurfaceResult));
+                    _logger.Debug("Pause Request diagnostics. " + result.ToDiagnosticString(), BuildPauseRequestDiagnosticFields(result, pauseSurfaceResult, timeScaleResult));
+                    _logger.Debug("Pause transition gate diagnostics.", BuildPauseTransitionGateDiagnosticFields());
+                    return;
+                }
+
+                _logger.Warning("Pause Request rejected.", BuildPauseRequestSummaryFields(result, pauseSurfaceResult));
+                _logger.Debug("Pause Request diagnostics. " + result.ToDiagnosticString(), BuildPauseRequestDiagnosticFields(result, pauseSurfaceResult, timeScaleResult));
                 return;
             }
 
-            _logger.Error("Pause Request failed. " + result.ToDiagnosticString(), BuildPauseRequestFields(result, pauseSurfaceResult, timeScaleResult));
+            _logger.Error("Pause Request failed.", BuildPauseRequestSummaryFields(result, pauseSurfaceResult));
+            _logger.Debug("Pause Request diagnostics. " + result.ToDiagnosticString(), BuildPauseRequestDiagnosticFields(result, pauseSurfaceResult, timeScaleResult));
         }
 
         private void LogCycleResetResult(CycleResetResult result)
         {
             if (result.Succeeded || result.CompletedWithWarnings)
             {
-                _logger.Info("Cycle Reset Request completed.", BuildCycleResetFields(result));
-                _logger.Debug("Cycle Reset Request diagnostics. " + result.ToDiagnosticString());
+                _logger.Info("Cycle Reset Request completed.", BuildCycleResetSummaryFields(result));
+                _logger.Debug("Cycle Reset Request diagnostics. " + result.ToDiagnosticString(), BuildCycleResetDiagnosticFields(result));
                 return;
             }
 
             if (result.Status == CycleResetStatus.SucceededNoParticipants)
             {
-                _logger.Info("Cycle Reset Request completed with no participants.", BuildCycleResetFields(result));
+                _logger.Info("Cycle Reset Request completed with no participants.", BuildCycleResetSummaryFields(result));
+                _logger.Debug("Cycle Reset Request diagnostics. " + result.ToDiagnosticString(), BuildCycleResetDiagnosticFields(result));
                 return;
             }
 
             _logger.Error("Cycle Reset Request failed. " + result.ToDiagnosticString());
         }
 
-        private LogField[] BuildPauseRequestFields(
+        private LogField[] BuildPauseRequestSummaryFields(
+            PauseResult result,
+            PauseSurfaceApplicationResult pauseSurfaceResult)
+        {
+            return LogFields.Of(
+                LogFields.Field("request", result.RequestId.StableText),
+                LogFields.Field("kind", result.Kind.ToString()),
+                LogFields.Field("source", result.Request.Source),
+                LogFields.Field("reason", result.Request.Reason),
+                LogFields.Field("status", result.Status.ToString()),
+                LogFields.Field("policyStatus", IsPauseRejectedByTransitionPolicy(result) ? PauseTransitionInProgressStatus : string.Empty),
+                LogFields.Field("previousState", result.PreviousState.ToString()),
+                LogFields.Field("currentState", result.CurrentState.ToString()),
+                LogFields.Field("applied", result.Applied),
+                LogFields.Field("stateChanged", result.StateChanged),
+                LogFields.Field("blockingIssues", result.BlockingIssueCount),
+                LogFields.Field("pauseSurface", pauseSurfaceResult.StatusText));
+        }
+
+        private LogField[] BuildPauseRequestDiagnosticFields(
             PauseResult result,
             PauseSurfaceApplicationResult pauseSurfaceResult,
             PauseTimeScaleApplicationResult timeScaleResult)
@@ -1240,6 +1329,8 @@ namespace Immersive.Framework.ApplicationLifecycle
                 LogFields.Field("source", result.Request.Source),
                 LogFields.Field("reason", result.Request.Reason),
                 LogFields.Field("status", result.Status.ToString()),
+                LogFields.Field("policyStatus", IsPauseRejectedByTransitionPolicy(result) ? PauseTransitionInProgressStatus : string.Empty),
+                LogFields.Field("message", result.Message),
                 LogFields.Field("previousState", result.PreviousState.ToString()),
                 LogFields.Field("currentState", result.CurrentState.ToString()),
                 LogFields.Field("completed", result.Completed),
@@ -1273,7 +1364,49 @@ namespace Immersive.Framework.ApplicationLifecycle
                 LogFields.Field("pauseSurfacePaused", pauseSurfaceResult.Snapshot.IsPaused));
         }
 
-        private LogField[] BuildCycleResetFields(CycleResetResult result)
+        private static bool IsPauseRejectedByTransitionPolicy(PauseResult result)
+        {
+            if (!result.Rejected || !result.HasBlockingIssues)
+            {
+                return false;
+            }
+
+            IReadOnlyList<PauseIssue> issues = result.Issues;
+            for (int i = 0; i < issues.Count; i++)
+            {
+                if (string.Equals(issues[i].Code, PauseTransitionInProgressIssueCode, StringComparison.Ordinal))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        private LogField[] BuildPauseTransitionGateDiagnosticFields()
+        {
+            GateSnapshot transitionGateSnapshot = TransitionGateSnapshot;
+            return LogFields.Of(
+                LogFields.Field("transitionGateBlockers", transitionGateSnapshot.BlockerCount),
+                LogFields.Field("transitionBlocksLifecycleRequest", transitionGateSnapshot.IsBlocked(GateScope.GameFlow, GateDomain.LifecycleRequest)),
+                LogFields.Field("transitionBlocksInputAcceptance", transitionGateSnapshot.IsBlocked(GateScope.Input, GateDomain.InputAcceptance)),
+                LogFields.Field("transitionBlocksInteractionAcceptance", transitionGateSnapshot.IsBlocked(GateScope.Interaction, GateDomain.InteractionAcceptance)),
+                LogFields.Field("transitionBlocksGameplayAction", transitionGateSnapshot.IsBlocked(GateScope.Gameplay, GateDomain.GameplayAction)));
+        }
+
+        private LogField[] BuildCycleResetSummaryFields(CycleResetResult result)
+        {
+            return LogFields.Of(
+                LogFields.Field("scope", result.Request.Scope.ToString()),
+                LogFields.Field("source", result.Source),
+                LogFields.Field("reason", result.Reason),
+                LogFields.Field("route", GetRouteName(result.Request.ActiveRoute)),
+                LogFields.Field("activity", GetActivityName(result.Request.ActiveActivity)),
+                LogFields.Field("status", result.Status.ToString()),
+                LogFields.Field("blockingIssues", result.BlockingIssueCount));
+        }
+
+        private LogField[] BuildCycleResetDiagnosticFields(CycleResetResult result)
         {
             return LogFields.Of(
                 LogFields.Field("scope", result.Request.Scope.ToString()),
@@ -1290,7 +1423,27 @@ namespace Immersive.Framework.ApplicationLifecycle
                 LogFields.Field("nonBlockingIssues", result.NonBlockingIssueCount));
         }
 
-        private LogField[] BuildRouteRequestFields(
+        private LogField[] BuildRouteRequestSummaryFields(
+            FrameworkRouteRequestResult result,
+            FrameworkLoadingDiagnostics loadingDiagnostics)
+        {
+            RouteLifecycleStartResult routeLifecycle = result.RouteLifecycleResult;
+            ActivityFlowStartResult activityFlow = routeLifecycle.ActivityFlowResult;
+            return LogFields.Of(
+                LogFields.Field("kind", result.Kind),
+                LogFields.Field("source", result.Source),
+                LogFields.Field("reason", result.Reason),
+                LogFields.Field("previousRoute", GetRouteName(routeLifecycle.PreviousRoute)),
+                LogFields.Field("targetRoute", GetRouteName(result.TargetRoute)),
+                LogFields.Field("scene", routeLifecycle.SceneLifecycleResult.SceneName),
+                LogFields.Field("transition", result.TransitionDiagnostics.TransitionText),
+                LogFields.Field("loading", loadingDiagnostics.LoadingText),
+                LogFields.Field("activity", FormatDiagnosticValue(activityFlow.ActivityState.ActivityName)),
+                LogFields.Field("activityReadiness", activityFlow.ActivityReadinessState.DiagnosticStatus),
+                LogFields.Field("blockingIssues", result.TransitionDiagnostics.BlockingIssueCount + loadingDiagnostics.BlockingIssueCount + routeLifecycle.RouteSceneCompositionResult.BlockingIssueCount + activityFlow.ActivityReadinessState.BlockingIssueCount));
+        }
+
+        private LogField[] BuildRouteRequestDiagnosticFields(
             FrameworkRouteRequestResult result,
             FrameworkLoadingDiagnostics loadingDiagnostics)
         {
@@ -1530,7 +1683,26 @@ namespace Immersive.Framework.ApplicationLifecycle
                 LogFields.Field("loadingProgress", loadingDiagnostics.ProgressText));
         }
 
-        private LogField[] BuildActivityRequestFields(
+        private LogField[] BuildActivityRequestSummaryFields(
+            FrameworkActivityRequestResult result,
+            FrameworkLoadingDiagnostics loadingDiagnostics)
+        {
+            ActivityFlowStartResult activityFlow = result.ActivityFlowResult;
+            return LogFields.Of(
+                LogFields.Field("kind", result.Kind),
+                LogFields.Field("source", result.Source),
+                LogFields.Field("reason", result.Reason),
+                LogFields.Field("previousActivity", GetActivityName(activityFlow.PreviousActivity)),
+                LogFields.Field("targetActivity", GetActivityName(result.TargetActivity)),
+                LogFields.Field("currentActivity", FormatDiagnosticValue(activityFlow.ActivityState.ActivityName)),
+                LogFields.Field("activityState", activityFlow.ActivityState.DiagnosticStatus),
+                LogFields.Field("activityReadiness", activityFlow.ActivityReadinessState.DiagnosticStatus),
+                LogFields.Field("transition", result.TransitionDiagnostics.TransitionText),
+                LogFields.Field("loading", loadingDiagnostics.LoadingText),
+                LogFields.Field("blockingIssues", result.TransitionDiagnostics.BlockingIssueCount + loadingDiagnostics.BlockingIssueCount + activityFlow.ActivityReadinessState.BlockingIssueCount));
+        }
+
+        private LogField[] BuildActivityRequestDiagnosticFields(
             FrameworkActivityRequestResult result,
             FrameworkLoadingDiagnostics loadingDiagnostics)
         {

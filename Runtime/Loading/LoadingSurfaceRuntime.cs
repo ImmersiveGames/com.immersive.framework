@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using Immersive.Framework.ApiStatus;
 using Immersive.Framework.Diagnostics;
+using Immersive.Logging.Records;
 using UnityEngine;
 using Immersive.Framework.Common;
 
@@ -83,7 +84,12 @@ namespace Immersive.Framework.Loading
                     infoMessage);
             }
 
-            logger.Info($"Loading surface resolved from UIGlobal scene '{resolvedSceneLabel}' with adapterCount='{sceneAdapters.Count}'.");
+            logger.Info("Loading surface resolved.", LogFields.Field("scene", resolvedSceneLabel));
+            logger.Debug(
+                "Loading surface diagnostics.",
+                LogFields.Of(
+                    LogFields.Field("scene", resolvedSceneLabel),
+                    LogFields.Field("adapterCount", sceneAdapters.Count)));
             return new LoadingSurfaceRuntime(
                 LoadingSurfacePolicy.NoneConfigured,
                 resolvedSceneLabel,

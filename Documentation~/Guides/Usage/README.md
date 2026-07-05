@@ -24,14 +24,9 @@ Documentation~/Guides/Usage/index.html
 
 ```text
 com.immersive.framework v1.0.0-preview.12
-FIRSTGAME Usage Model Hardening / POST-RESET-C
-C1 - Player reset model hardening
-C2 - UI, buttons and reasons cleanup
-C3 - Script naming and runtime object spawner hardening
-C4 - Runtime Box prefab cleanup
-C5 - FIRSTGAME README and manual smoke
-C6 - Local cleanup
-C7 - Framework usage guide sync
+POST-RESET-D - Transition / Loading Surface Hardening
+D1 - Pause During Transition Policy
+D2 - Framework Runtime Log Level Hygiene
 ```
 
 ## Preview 12 reset/restart notes
