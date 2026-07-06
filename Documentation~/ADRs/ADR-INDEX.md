@@ -27,6 +27,7 @@ Current order:
 21. F41 - Reset Selection Policy
 22. F42 - Runtime Awaitable Reset/Restart Flow
 23. F43 - Reset/Restart Authoring Validation
+24. F45 - Actor / PlayerSlot Identity Boundary
 14. POST-F33-A - Matrix Reconciliation Closeout
 15. POST-F33-B - Officialize/Reclassify F28-F33
 16. F8R-A - RuntimeContent / ContentAnchor Materialization Audit
@@ -85,6 +86,7 @@ Current order:
 | F41 | [Reset Selection Policy](F41-ADR-RESET-008-Reset-Selection-Policy.md) | Superseded / historical / replaced by preview.12 ResetSelectionConfig |
 | F42 | [Runtime Awaitable Reset/Restart Flow](F42-ADR-RESET-009-Runtime-Awaitable-Reset-Restart.md) | Accepted / amended by preview.12G |
 | F43 | [Reset/Restart Authoring Validation](F43-ADR-RESET-010-Reset-Restart-Authoring-Validation.md) | Accepted / preview.11 |
+| F45 | [Actor / PlayerSlot Identity Boundary](F45-ADR-ACTOR-001-Actor-PlayerSlot-Identity-Boundary.md) | Proposed / Actor / PlayerSlot / Runtime Gameplay Identity |
 | POST-F33-A | `Assets/_Documentation/Notes/POST-F33-A-Matrix-Reconciliation-Closeout.md` | Accepted / documentation / roadmap governance |
 | POST-F33-B | `Assets/_Documentation/Notes/POST-F33-B-Officialize-Reclassify-F28-F33.md` | Accepted / documentation / roadmap governance |
 | F8R-A | `Assets/_Documentation/Audits/F8R-A-RuntimeContent-ContentAnchor-Materialization-Audit.md` | Draft / audit-only / documentation governance |
@@ -386,3 +388,14 @@ F43 adds open-scene validation for `ObjectResetGroupTrigger` and `ActivityRestar
 
 Reference: `F43-ADR-RESET-010-Reset-Restart-Authoring-Validation.md`
 - [F44 ADR RUNTIME OBJECT 001 — Runtime Object Participation Foundation](F44-ADR-RUNTIME-OBJECT-001-Runtime-Object-Participation-Foundation.md) — Superseded / removed in preview.12G. Runtime reset now uses `UnityResetSubjectAdapter` + `RuntimeInstanceId`.
+
+
+## F45 - Actor / PlayerSlot Identity Boundary
+
+Scope: Actor / PlayerSlot / Identity / Input / Camera / Runtime Gameplay Boundary.
+
+Status: Proposed.
+
+F45 accepts the conceptual separation between `Actor`, `PlayerSlot`, `PlayerSlotOccupancy`, `ActorCapability` and framework-specific participants. Actor identifies a gameplay entity; PlayerSlot identifies the stable player seat such as Player 1; occupancy relates the seat to the current Actor; ActorDeclaration carries Unity-side identity; PlayerInput is evidence for a PlayerSlot, not identity; Camera/AudioListener/UI belong to PlayerSlot view concerns; Reset/Snapshot/Input/Camera remain orthogonal capabilities or participants. F45 refines F31 PlayerActor identity without implementing a full ActorRegistry, player lifecycle, spawn manager, movement system, IActorCapability hierarchy or runtime materialization layer.
+
+Reference: `F45-ADR-ACTOR-001-Actor-PlayerSlot-Identity-Boundary.md`
