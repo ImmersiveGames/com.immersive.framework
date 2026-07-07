@@ -1,0 +1,26 @@
+{
+  "name": "Immersive.Framework.Audio",
+  "rootNamespace": "Immersive.Framework.Audio",
+  "references": [
+    "Immersive.Framework.Runtime",
+    "Immersive.Audio.Runtime",
+    "Immersive.Audio.Unity"
+  ],
+  "includePlatforms": [],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": true,
+  "defineConstraints": [
+    "IMMERSIVE_FRAMEWORK_AUDIO"
+  ],
+  "versionDefines": [
+    {
+      "name": "com.immersive.audio",
+      "expression": "0.2.0",
+      "define": "IMMERSIVE_FRAMEWORK_AUDIO"
+    }
+  ],
+  "noEngineReferences": false
+}
