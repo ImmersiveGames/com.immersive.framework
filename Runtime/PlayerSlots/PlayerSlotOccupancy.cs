@@ -21,7 +21,9 @@ namespace Immersive.Framework.PlayerSlots
         [SerializeField] private string slotId = "player.1";
         [Tooltip("Optional Actor declaration evidence. If present, the ActorId is resolved from this declaration.")]
         [SerializeField] private ActorDeclaration actorDeclaration;
-        [Tooltip("Explicit occupied ActorId used when no ActorDeclaration is assigned.")]
+        [Tooltip("Optional PlayerActor declaration evidence. If present, the ActorId is resolved from this declaration.")]
+        [SerializeField] private PlayerActorDeclaration playerActorDeclaration;
+        [Tooltip("Explicit occupied ActorId used when no Actor declaration is assigned.")]
         [SerializeField] private string occupiedActorId;
         [Tooltip("Human-readable diagnostic label only.")]
         [SerializeField] private string displayName = "Player Slot Occupancy";
@@ -31,6 +33,10 @@ namespace Immersive.Framework.PlayerSlots
         public bool HasSlotDeclaration => slotDeclaration != null;
 
         public bool HasActorDeclaration => actorDeclaration != null;
+
+        public bool HasPlayerActorDeclaration => playerActorDeclaration != null;
+
+        public bool HasActorIdentityDeclaration => actorDeclaration != null || playerActorDeclaration != null;
 
         public string DisplayName => displayName.NormalizeTextOrFallback(name);
 
@@ -60,7 +66,7 @@ namespace Immersive.Framework.PlayerSlots
                 descriptor = new PlayerSlotOccupancyDescriptor(
                     resolvedSlotId,
                     resolvedActorId,
-                    HasActorDeclaration,
+                    HasActorIdentityDeclaration,
                     DisplayName,
                     gameObject.scene.IsValid() ? gameObject.scene.name : string.Empty,
                     gameObject.name,
@@ -86,11 +92,13 @@ namespace Immersive.Framework.PlayerSlots
             ActorDeclaration actorReference,
             string actorId,
             string label,
-            string declarationReason)
+            string declarationReason,
+            PlayerActorDeclaration playerActorReference = null)
         {
             slotDeclaration = slotReference;
             slotId = id.NormalizeText();
             actorDeclaration = actorReference;
+            playerActorDeclaration = playerActorReference;
             occupiedActorId = actorId.NormalizeText();
             displayName = label.NormalizeTextOrFallback(name);
             reason = declarationReason.NormalizeText();
@@ -161,43 +169,127 @@ namespace Immersive.Framework.PlayerSlots
             resolvedActorId = default;
             issue = default;
 
-            if (actorDeclaration != null)
-            {
-                try
-                {
-                    resolvedActorId = actorDeclaration.ActorId;
-                    return true;
-                }
-                catch (Exception exception)
-                {
-                    issue = PlayerSlotSetIssue.BlockingIssue(
-                        PlayerSlotSetIssueKind.InvalidOccupiedActorId,
-                        slotIdText,
-                        string.Empty,
-                        normalizedSource,
-                        exception.Message);
-                    return false;
-                }
-            }
-
-            string normalizedActorId = occupiedActorId.NormalizeText();
-            if (string.IsNullOrWhiteSpace(normalizedActorId))
-            {
-                issue = PlayerSlotSetIssue.BlockingIssue(
-                    PlayerSlotSetIssueKind.MissingOccupiedActor,
-                    slotIdText,
-                    string.Empty,
+            bool hasResolvedActorId = false;
+            if (!TryUseActorIdentitySource(
+                    actorDeclaration,
+                    nameof(ActorDeclaration),
                     normalizedSource,
-                    "PlayerSlot occupancy requires an ActorDeclaration or explicit occupied ActorId.");
+                    slotIdText,
+                    ref hasResolvedActorId,
+                    ref resolvedActorId,
+                    out issue))
+            {
                 return false;
             }
 
-            try
+            if (!TryUseActorIdentitySource(
+                    playerActorDeclaration,
+                    nameof(PlayerActorDeclaration),
+                    normalizedSource,
+                    slotIdText,
+                    ref hasResolvedActorId,
+                    ref resolvedActorId,
+                    out issue))
             {
-                resolvedActorId = new ActorId(normalizedActorId);
+                return false;
+            }
+
+            if (!TryUseExplicitActorIdSource(
+                    normalizedSource,
+                    slotIdText,
+                    ref hasResolvedActorId,
+                    ref resolvedActorId,
+                    out issue))
+            {
+                return false;
+            }
+
+            if (hasResolvedActorId)
+            {
                 return true;
             }
-            catch (Exception exception)
+
+            issue = PlayerSlotSetIssue.BlockingIssue(
+                PlayerSlotSetIssueKind.MissingOccupiedActor,
+                slotIdText,
+                string.Empty,
+                normalizedSource,
+                "PlayerSlot occupancy requires an ActorDeclaration, PlayerActorDeclaration or explicit occupied ActorId.");
+            return false;
+        }
+
+        private bool TryUseActorIdentitySource(
+            IActor actor,
+            string sourceLabel,
+            string normalizedSource,
+            string slotIdText,
+            ref bool hasResolvedActorId,
+            ref ActorId resolvedActorId,
+            out PlayerSlotSetIssue issue)
+        {
+            issue = default;
+            if (actor == null)
+            {
+                return true;
+            }
+
+            ActorId candidateActorId;
+            try
+            {
+                candidateActorId = actor.ActorId;
+            }
+            catch (Exception exception) when (exception is ArgumentException or ArgumentOutOfRangeException)
+            {
+                issue = PlayerSlotSetIssue.BlockingIssue(
+                    PlayerSlotSetIssueKind.InvalidOccupiedActorId,
+                    slotIdText,
+                    string.Empty,
+                    normalizedSource,
+                    $"{sourceLabel} has an invalid ActorId. {exception.Message}");
+                return false;
+            }
+
+            if (!hasResolvedActorId)
+            {
+                resolvedActorId = candidateActorId;
+                hasResolvedActorId = true;
+                return true;
+            }
+
+            if (resolvedActorId == candidateActorId)
+            {
+                return true;
+            }
+
+            issue = PlayerSlotSetIssue.BlockingIssue(
+                PlayerSlotSetIssueKind.ConflictingOccupiedActorSources,
+                slotIdText,
+                candidateActorId.StableText,
+                normalizedSource,
+                $"PlayerSlot occupancy has conflicting occupied Actor identity sources. Existing='{resolvedActorId.StableText}' {sourceLabel}='{candidateActorId.StableText}'.");
+            return false;
+        }
+
+        private bool TryUseExplicitActorIdSource(
+            string normalizedSource,
+            string slotIdText,
+            ref bool hasResolvedActorId,
+            ref ActorId resolvedActorId,
+            out PlayerSlotSetIssue issue)
+        {
+            issue = default;
+            string normalizedActorId = occupiedActorId.NormalizeText();
+            if (string.IsNullOrWhiteSpace(normalizedActorId))
+            {
+                return true;
+            }
+
+            ActorId explicitActorId;
+            try
+            {
+                explicitActorId = new ActorId(normalizedActorId);
+            }
+            catch (Exception exception) when (exception is ArgumentException or ArgumentOutOfRangeException)
             {
                 issue = PlayerSlotSetIssue.BlockingIssue(
                     PlayerSlotSetIssueKind.InvalidOccupiedActorId,
@@ -207,6 +299,26 @@ namespace Immersive.Framework.PlayerSlots
                     exception.Message);
                 return false;
             }
+
+            if (!hasResolvedActorId)
+            {
+                resolvedActorId = explicitActorId;
+                hasResolvedActorId = true;
+                return true;
+            }
+
+            if (resolvedActorId == explicitActorId)
+            {
+                return true;
+            }
+
+            issue = PlayerSlotSetIssue.BlockingIssue(
+                PlayerSlotSetIssueKind.ConflictingOccupiedActorSources,
+                slotIdText,
+                explicitActorId.StableText,
+                normalizedSource,
+                $"PlayerSlot occupancy has conflicting occupied Actor identity sources. Existing='{resolvedActorId.StableText}' ExplicitActorId='{explicitActorId.StableText}'.");
+            return false;
         }
 
         private void Reset()
@@ -219,6 +331,11 @@ namespace Immersive.Framework.PlayerSlots
             if (actorDeclaration == null)
             {
                 actorDeclaration = GetComponent<ActorDeclaration>();
+            }
+
+            if (playerActorDeclaration == null)
+            {
+                playerActorDeclaration = GetComponent<PlayerActorDeclaration>();
             }
 
             if (string.IsNullOrWhiteSpace(displayName))

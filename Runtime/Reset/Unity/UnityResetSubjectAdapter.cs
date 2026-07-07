@@ -35,6 +35,7 @@ namespace Immersive.Framework.Reset.Unity
 
         [Header("Actor Identity Bridge")]
         [SerializeField] private ActorDeclaration sourceActor;
+        [SerializeField] private PlayerActorDeclaration sourcePlayerActor;
 
         [Header("Participants")]
         [SerializeField] private UnityResetParticipantDiscoveryMode participantDiscovery = UnityResetParticipantDiscoveryMode.Children;
@@ -69,6 +70,10 @@ namespace Immersive.Framework.Reset.Unity
         public ActorDeclaration SourceActor => sourceActor;
 
         public bool HasSourceActor => sourceActor != null;
+
+        public PlayerActorDeclaration SourcePlayerActor => sourcePlayerActor;
+
+        public bool HasSourcePlayerActor => sourcePlayerActor != null;
 
         private FrameworkLogger Logger => _logger ??= FrameworkLogger.Create<UnityResetSubjectAdapter>();
 
@@ -109,6 +114,12 @@ namespace Immersive.Framework.Reset.Unity
         private void OnDestroy()
         {
             ClearRegistration("on-destroy");
+        }
+
+        private void Reset()
+        {
+            sourceActor = GetComponent<ActorDeclaration>();
+            sourcePlayerActor = GetComponent<PlayerActorDeclaration>();
         }
 
         public bool RegisterWithCurrentHost()
@@ -361,7 +372,7 @@ namespace Immersive.Framework.Reset.Unity
                 return ResetRegistryOperationResult.Rejected(
                     ResetRegistryOperationStatus.RejectedInvalidSubject,
                     ResetIssue.Error(ResetIssueKind.InvalidSubject, exception.Message),
-                    "Unity reset subject registration rejected because source actor id is invalid.");
+                    "Unity reset subject registration rejected because source actor identity is invalid or conflicting.");
             }
 
             if (string.IsNullOrWhiteSpace(normalizedSubjectId))
@@ -525,9 +536,10 @@ namespace Immersive.Framework.Reset.Unity
 
         private string ResolveAuthoredStableSubjectId()
         {
-            if (sourceActor != null)
+            IActor actor = ResolveSourceActorIdentity();
+            if (actor != null)
             {
-                return sourceActor.ActorId.StableText;
+                return actor.ActorId.StableText;
             }
 
             return subjectId.NormalizeText();
@@ -540,6 +552,16 @@ namespace Immersive.Framework.Reset.Unity
                 case UnityResetSubjectIdGenerationMode.RuntimeInstanceId:
                     return "RuntimePrefix";
                 case UnityResetSubjectIdGenerationMode.AuthoredStableId:
+                    if (sourceActor != null && sourcePlayerActor != null)
+                    {
+                        return "ActorDeclaration+PlayerActorDeclaration";
+                    }
+
+                    if (sourcePlayerActor != null)
+                    {
+                        return "PlayerActorDeclaration";
+                    }
+
                     return sourceActor != null ? "ActorDeclaration" : "AuthoredText";
                 default:
                     return "Unknown";
@@ -548,7 +570,43 @@ namespace Immersive.Framework.Reset.Unity
 
         private string ResolveSourceActorDiagnosticText()
         {
-            if (sourceActor == null)
+            if (sourceActor == null && sourcePlayerActor == null)
+            {
+                return "<none>";
+            }
+
+            string actorDeclarationText = ResolveActorDiagnosticText(sourceActor, nameof(ActorDeclaration));
+            string playerActorDeclarationText = ResolveActorDiagnosticText(sourcePlayerActor, nameof(PlayerActorDeclaration));
+            return $"actorDeclaration='{actorDeclarationText}' playerActorDeclaration='{playerActorDeclarationText}'";
+        }
+
+        private IActor ResolveSourceActorIdentity()
+        {
+            IActor resolvedActor = sourceActor;
+            if (sourcePlayerActor == null)
+            {
+                return resolvedActor;
+            }
+
+            if (resolvedActor == null)
+            {
+                return sourcePlayerActor;
+            }
+
+            ActorId actorId = resolvedActor.ActorId;
+            ActorId playerActorId = sourcePlayerActor.ActorId;
+            if (actorId != playerActorId)
+            {
+                throw new ArgumentException(
+                    $"Unity Reset Subject Adapter has conflicting actor identity sources. ActorDeclaration='{actorId.StableText}' PlayerActorDeclaration='{playerActorId.StableText}'.");
+            }
+
+            return resolvedActor;
+        }
+
+        private static string ResolveActorDiagnosticText(IActor actor, string sourceLabel)
+        {
+            if (actor == null)
             {
                 return "<none>";
             }
@@ -556,15 +614,16 @@ namespace Immersive.Framework.Reset.Unity
             string actorIdText;
             try
             {
-                actorIdText = sourceActor.ActorId.StableText;
+                actorIdText = actor.ActorId.StableText;
             }
             catch (Exception exception) when (exception is ArgumentException or ArgumentOutOfRangeException)
             {
                 actorIdText = $"<invalid:{exception.Message}>";
             }
 
-            string displayNameText = sourceActor.ActorDisplayName.NormalizeTextOrFallback(sourceActor.name);
-            string objectName = sourceActor.gameObject != null ? sourceActor.gameObject.name : "<none>";
+            var behaviour = actor as MonoBehaviour;
+            string displayNameText = actor.ActorDisplayName.NormalizeTextOrFallback(behaviour != null ? behaviour.name : sourceLabel);
+            string objectName = behaviour != null && behaviour.gameObject != null ? behaviour.gameObject.name : "<none>";
             return $"name='{objectName}' displayName='{displayNameText}' actorId='{actorIdText}'";
         }
 
@@ -602,7 +661,8 @@ namespace Immersive.Framework.Reset.Unity
             UnityResetParticipantDiscoveryMode qaParticipantDiscovery,
             bool qaIncludeInactiveParticipants,
             bool qaIncludeUnityResettableComponents = true,
-            ActorDeclaration qaSourceActor = null)
+            ActorDeclaration qaSourceActor = null,
+            PlayerActorDeclaration qaSourcePlayerActor = null)
         {
             registerOnEnable = qaRegisterOnEnable;
             unregisterOnDisable = qaUnregisterOnDisable;
@@ -617,6 +677,7 @@ namespace Immersive.Framework.Reset.Unity
             includeInactiveParticipants = qaIncludeInactiveParticipants;
             includeUnityResettableComponents = qaIncludeUnityResettableComponents;
             sourceActor = qaSourceActor;
+            sourcePlayerActor = qaSourcePlayerActor;
         }
 #endif
     }

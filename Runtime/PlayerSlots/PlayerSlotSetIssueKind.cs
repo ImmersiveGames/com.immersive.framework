@@ -14,6 +14,7 @@ namespace Immersive.Framework.PlayerSlots
         DuplicatePlayerSlotId = 30,
         MissingOccupiedActor = 40,
         InvalidOccupiedActorId = 50,
-        DuplicatePlayerSlotOccupancy = 60
+        DuplicatePlayerSlotOccupancy = 60,
+        ConflictingOccupiedActorSources = 70
     }
 }
