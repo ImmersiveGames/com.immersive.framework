@@ -1,0 +1,25 @@
+{
+  "name": "Immersive.Framework.Camera.Cinemachine",
+  "rootNamespace": "Immersive.Framework.Camera.Cinemachine",
+  "references": [
+    "Immersive.Framework.Runtime",
+    "Unity.Cinemachine"
+  ],
+  "includePlatforms": [],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": true,
+  "defineConstraints": [
+    "IMMERSIVE_FRAMEWORK_CINEMACHINE"
+  ],
+  "versionDefines": [
+    {
+      "name": "com.unity.cinemachine",
+      "expression": "3.0.0",
+      "define": "IMMERSIVE_FRAMEWORK_CINEMACHINE"
+    }
+  ],
+  "noEngineReferences": false
+}
