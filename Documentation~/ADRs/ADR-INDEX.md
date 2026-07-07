@@ -28,6 +28,7 @@ Current order:
 22. F42 - Runtime Awaitable Reset/Restart Flow
 23. F43 - Reset/Restart Authoring Validation
 24. F45 - Actor / PlayerSlot Identity Boundary
+25. F47B - Framework Audio BGM Adapter
 14. POST-F33-A - Matrix Reconciliation Closeout
 15. POST-F33-B - Officialize/Reclassify F28-F33
 16. F8R-A - RuntimeContent / ContentAnchor Materialization Audit
@@ -87,6 +88,7 @@ Current order:
 | F42 | [Runtime Awaitable Reset/Restart Flow](F42-ADR-RESET-009-Runtime-Awaitable-Reset-Restart.md) | Accepted / amended by preview.12G |
 | F43 | [Reset/Restart Authoring Validation](F43-ADR-RESET-010-Reset-Restart-Authoring-Validation.md) | Accepted / preview.11 |
 | F45 | [Actor / PlayerSlot Identity Boundary](F45-ADR-ACTOR-001-Actor-PlayerSlot-Identity-Boundary.md) | Proposed / Actor / PlayerSlot / Runtime Gameplay Identity |
+| F47B | [Framework Audio BGM Adapter](F47B-ADR-AUDIO-001-Framework-Audio-BGM-Adapter.md) | Accepted / Optional Framework + Audio Adapter Boundary |
 | POST-F33-A | `Assets/_Documentation/Notes/POST-F33-A-Matrix-Reconciliation-Closeout.md` | Accepted / documentation / roadmap governance |
 | POST-F33-B | `Assets/_Documentation/Notes/POST-F33-B-Officialize-Reclassify-F28-F33.md` | Accepted / documentation / roadmap governance |
 | F8R-A | `Assets/_Documentation/Audits/F8R-A-RuntimeContent-ContentAnchor-Materialization-Audit.md` | Draft / audit-only / documentation governance |
@@ -399,3 +401,13 @@ Status: Proposed.
 F45 accepts the conceptual separation between `Actor`, `PlayerSlot`, `PlayerSlotOccupancy`, `ActorCapability` and framework-specific participants. Actor identifies a gameplay entity; PlayerSlot identifies the stable player seat such as Player 1; occupancy relates the seat to the current Actor; ActorDeclaration carries Unity-side identity; PlayerInput is evidence for a PlayerSlot, not identity; Camera/AudioListener/UI belong to PlayerSlot view concerns; Reset/Snapshot/Input/Camera remain orthogonal capabilities or participants. F45 refines F31 PlayerActor identity without implementing a full ActorRegistry, player lifecycle, spawn manager, movement system, IActorCapability hierarchy or runtime materialization layer.
 
 Reference: `F45-ADR-ACTOR-001-Actor-PlayerSlot-Identity-Boundary.md`
+
+## F47B - Framework Audio BGM Adapter
+
+Scope: Optional Framework + Audio Adapter Boundary.
+
+Status: Accepted / Planning ADR.
+
+F47B accepts an optional `Immersive.Framework.Audio` assembly inside `com.immersive.framework`, compiled only when `com.immersive.audio` is installed. Framework owns Route/Activity BGM semantics; `com.immersive.audio` keeps playback primitives; FIRSTGAME keeps only concrete authored BGM content.
+
+Reference: `F47B-ADR-AUDIO-001-Framework-Audio-BGM-Adapter.md`
