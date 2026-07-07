@@ -84,6 +84,21 @@ namespace Immersive.Framework.GameFlow
                 default);
         }
 
+        public static FrameworkRouteRequestResult RejectedRuntimeNotReady(
+            string message,
+            RouteAsset targetRoute = null,
+            string source = null,
+            string reason = null)
+        {
+            return new FrameworkRouteRequestResult(
+                FrameworkRouteRequestKind.RejectedRuntimeNotReady,
+                message,
+                targetRoute,
+                source,
+                reason,
+                default);
+        }
+
         public static FrameworkRouteRequestResult IgnoredAlreadyActive(
             RouteAsset targetRoute,
             string source,

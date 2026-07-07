@@ -107,6 +107,13 @@ namespace Immersive.Framework.GameFlow
             {
                 result = await runtimeHost.RequestRouteAsync(targetRoute, DefaultSource, resolvedReason);
             }
+            catch (Exception exception)
+            {
+                string message = $"Route Request failed with an exception. source='{DefaultSource}' reason='{resolvedReason}' exception='{exception.GetType().Name}'.";
+                _logger.Error(message, exception);
+                PublishCompleted(FlowRequestOutcome.Failed, resolvedReason, message);
+                return;
+            }
             finally
             {
                 _requestInFlight = false;
@@ -209,6 +216,7 @@ namespace Immersive.Framework.GameFlow
                 case FrameworkRouteRequestKind.IgnoredAlreadyActive:
                 case FrameworkRouteRequestKind.IgnoredAlreadyInFlight:
                 case FrameworkRouteRequestKind.RejectedByTransitionGate:
+                case FrameworkRouteRequestKind.RejectedRuntimeNotReady:
                     return FlowRequestOutcome.Ignored;
                 default:
                     return FlowRequestOutcome.Failed;

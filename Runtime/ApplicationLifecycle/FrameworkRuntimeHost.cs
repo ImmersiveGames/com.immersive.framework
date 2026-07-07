@@ -391,6 +391,17 @@ namespace Immersive.Framework.ApplicationLifecycle
             string source,
             string reason)
         {
+            if (_gameFlowRuntime == null)
+            {
+                var result = FrameworkRouteRequestResult.RejectedRuntimeNotReady(
+                    "Route request rejected because Game Flow runtime is not initialized yet.",
+                    targetRoute,
+                    NormalizeLifecycleSource(source),
+                    reason.NormalizeTextOrFallback("None"));
+                LogRouteRequestRuntimeNotReady(result);
+                return result;
+            }
+
             InvalidateObjectEntryRuntimeContextSnapshot($"route-request:{NormalizeLifecycleSource(source)}");
             if (targetRoute != null && ReferenceEquals(_state.CurrentRoute, targetRoute))
             {
@@ -1225,6 +1236,18 @@ namespace Immersive.Framework.ApplicationLifecycle
 
             _logger.Error(result.Message, BuildRouteRequestSummaryFields(result, loadingDiagnostics));
             _logger.Debug("Route Request diagnostics. " + result.Message, BuildRouteRequestDiagnosticFields(result, loadingDiagnostics));
+        }
+
+        private void LogRouteRequestRuntimeNotReady(FrameworkRouteRequestResult result)
+        {
+            _logger.Warning(
+                result.Message,
+                LogFields.Of(
+                    LogFields.Field("kind", result.Kind),
+                    LogFields.Field("source", result.Source),
+                    LogFields.Field("reason", result.Reason),
+                    LogFields.Field("targetRoute", GetRouteName(result.TargetRoute)),
+                    LogFields.Field("gameFlowRuntimeInitialized", false)));
         }
 
         private void LogActivityRequestResult(FrameworkActivityRequestResult result, FrameworkLoadingDiagnostics loadingDiagnostics)
