@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Immersive.Framework.Actors;
 using Immersive.Framework.ApiStatus;
 using Immersive.Framework.ApplicationLifecycle;
 using Immersive.Framework.Common;
@@ -32,6 +33,9 @@ namespace Immersive.Framework.Reset.Unity
         [SerializeField] private string displayName;
         [SerializeField] private string diagnosticTag;
 
+        [Header("Actor Identity Bridge")]
+        [SerializeField] private ActorDeclaration sourceActor;
+
         [Header("Participants")]
         [SerializeField] private UnityResetParticipantDiscoveryMode participantDiscovery = UnityResetParticipantDiscoveryMode.Children;
         [SerializeField] private bool includeInactiveParticipants = true;
@@ -61,6 +65,10 @@ namespace Immersive.Framework.Reset.Unity
         public UnityResetSubjectIdGenerationMode IdGeneration => idGeneration;
 
         public ResetSubjectScope Scope => scope;
+
+        public ActorDeclaration SourceActor => sourceActor;
+
+        public bool HasSourceActor => sourceActor != null;
 
         private FrameworkLogger Logger => _logger ??= FrameworkLogger.Create<UnityResetSubjectAdapter>();
 
@@ -140,6 +148,8 @@ namespace Immersive.Framework.Reset.Unity
                     LogFields.Field("status", subjectResult.Status.ToString()),
                     LogFields.Field("idGeneration", idGeneration.ToString()),
                     LogFields.Field("subjectId", subjectId),
+                    LogFields.Field("subjectIdSource", ResolveSubjectIdSourceLabel()),
+                    LogFields.Field("sourceActor", ResolveSourceActorDiagnosticText()),
                     LogFields.Field("runtimeSubjectIdPrefix", runtimeSubjectIdPrefix),
                     LogFields.Field("scope", scope.ToString()),
                     LogFields.Field("issues", subjectResult.Issues.Count.ToString()),
@@ -157,6 +167,8 @@ namespace Immersive.Framework.Reset.Unity
                 "Unity Reset Subject Adapter registered reset subject.",
                 LogFields.Field("status", "Registered"),
                 LogFields.Field("subjectId", _subject.SubjectId.StableText),
+                LogFields.Field("subjectIdSource", ResolveSubjectIdSourceLabel()),
+                LogFields.Field("sourceActor", ResolveSourceActorDiagnosticText()),
                 LogFields.Field("scope", _subject.Scope.ToString()),
                 LogFields.Field("origin", _subject.Origin.ToString()),
                 LogFields.Field("owner", _subject.OwnerStableText),
@@ -236,6 +248,8 @@ namespace Immersive.Framework.Reset.Unity
                     LogFields.Field("status", "WaitingForRuntime"),
                     LogFields.Field("idGeneration", idGeneration.ToString()),
                     LogFields.Field("subjectId", subjectId),
+                    LogFields.Field("subjectIdSource", ResolveSubjectIdSourceLabel()),
+                    LogFields.Field("sourceActor", ResolveSourceActorDiagnosticText()),
                     LogFields.Field("runtimeSubjectIdPrefix", runtimeSubjectIdPrefix),
                     LogFields.Field("scope", scope.ToString()),
                     LogFields.Field("retryUntilRuntimeAvailable", retryUntilRuntimeAvailable.ToString()),
@@ -248,6 +262,8 @@ namespace Immersive.Framework.Reset.Unity
                 LogFields.Field("status", "RejectedNoRuntime"),
                 LogFields.Field("idGeneration", idGeneration.ToString()),
                 LogFields.Field("subjectId", subjectId),
+                LogFields.Field("subjectIdSource", ResolveSubjectIdSourceLabel()),
+                LogFields.Field("sourceActor", ResolveSourceActorDiagnosticText()),
                 LogFields.Field("runtimeSubjectIdPrefix", runtimeSubjectIdPrefix),
                 LogFields.Field("scope", scope.ToString()),
                 LogFields.Field("retryUntilRuntimeAvailable", retryUntilRuntimeAvailable.ToString()),
@@ -270,6 +286,8 @@ namespace Immersive.Framework.Reset.Unity
                     LogFields.Field("status", "WaitingForOwner"),
                     LogFields.Field("idGeneration", idGeneration.ToString()),
                     LogFields.Field("subjectId", subjectId),
+                    LogFields.Field("subjectIdSource", ResolveSubjectIdSourceLabel()),
+                    LogFields.Field("sourceActor", ResolveSourceActorDiagnosticText()),
                     LogFields.Field("runtimeSubjectIdPrefix", runtimeSubjectIdPrefix),
                     LogFields.Field("scope", scope.ToString()),
                     LogFields.Field("issue", issue),
@@ -283,6 +301,8 @@ namespace Immersive.Framework.Reset.Unity
                 LogFields.Field("status", "RejectedMissingOwner"),
                 LogFields.Field("idGeneration", idGeneration.ToString()),
                 LogFields.Field("subjectId", subjectId),
+                LogFields.Field("subjectIdSource", ResolveSubjectIdSourceLabel()),
+                LogFields.Field("sourceActor", ResolveSourceActorDiagnosticText()),
                 LogFields.Field("runtimeSubjectIdPrefix", runtimeSubjectIdPrefix),
                 LogFields.Field("scope", scope.ToString()),
                 LogFields.Field("issue", issue),
@@ -331,7 +351,19 @@ namespace Immersive.Framework.Reset.Unity
             RuntimeContentOwner owner,
             string reason)
         {
-            string normalizedSubjectId = subjectId.NormalizeText();
+            string normalizedSubjectId;
+            try
+            {
+                normalizedSubjectId = ResolveAuthoredStableSubjectId();
+            }
+            catch (Exception exception) when (exception is ArgumentException or ArgumentOutOfRangeException)
+            {
+                return ResetRegistryOperationResult.Rejected(
+                    ResetRegistryOperationStatus.RejectedInvalidSubject,
+                    ResetIssue.Error(ResetIssueKind.InvalidSubject, exception.Message),
+                    "Unity reset subject registration rejected because source actor id is invalid.");
+            }
+
             if (string.IsNullOrWhiteSpace(normalizedSubjectId))
             {
                 return ResetRegistryOperationResult.Rejected(
@@ -491,6 +523,51 @@ namespace Immersive.Framework.Reset.Unity
             }
         }
 
+        private string ResolveAuthoredStableSubjectId()
+        {
+            if (sourceActor != null)
+            {
+                return sourceActor.ActorId.StableText;
+            }
+
+            return subjectId.NormalizeText();
+        }
+
+        private string ResolveSubjectIdSourceLabel()
+        {
+            switch (idGeneration)
+            {
+                case UnityResetSubjectIdGenerationMode.RuntimeInstanceId:
+                    return "RuntimePrefix";
+                case UnityResetSubjectIdGenerationMode.AuthoredStableId:
+                    return sourceActor != null ? "ActorDeclaration" : "AuthoredText";
+                default:
+                    return "Unknown";
+            }
+        }
+
+        private string ResolveSourceActorDiagnosticText()
+        {
+            if (sourceActor == null)
+            {
+                return "<none>";
+            }
+
+            string actorIdText;
+            try
+            {
+                actorIdText = sourceActor.ActorId.StableText;
+            }
+            catch (Exception exception) when (exception is ArgumentException or ArgumentOutOfRangeException)
+            {
+                actorIdText = $"<invalid:{exception.Message}>";
+            }
+
+            string displayNameText = sourceActor.ActorDisplayName.NormalizeTextOrFallback(sourceActor.name);
+            string objectName = sourceActor.gameObject != null ? sourceActor.gameObject.name : "<none>";
+            return $"name='{objectName}' displayName='{displayNameText}' actorId='{actorIdText}'";
+        }
+
         private string ResolveDisplayName(string fallback)
         {
             if (!string.IsNullOrWhiteSpace(displayName))
@@ -524,7 +601,8 @@ namespace Immersive.Framework.Reset.Unity
             string qaDiagnosticTag,
             UnityResetParticipantDiscoveryMode qaParticipantDiscovery,
             bool qaIncludeInactiveParticipants,
-            bool qaIncludeUnityResettableComponents = true)
+            bool qaIncludeUnityResettableComponents = true,
+            ActorDeclaration qaSourceActor = null)
         {
             registerOnEnable = qaRegisterOnEnable;
             unregisterOnDisable = qaUnregisterOnDisable;
@@ -538,6 +616,7 @@ namespace Immersive.Framework.Reset.Unity
             participantDiscovery = qaParticipantDiscovery;
             includeInactiveParticipants = qaIncludeInactiveParticipants;
             includeUnityResettableComponents = qaIncludeUnityResettableComponents;
+            sourceActor = qaSourceActor;
         }
 #endif
     }

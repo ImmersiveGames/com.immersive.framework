@@ -36,6 +36,7 @@ namespace Immersive.Framework.Identity
         Loading = 200,
         UnityInput = 210,
         InputMode = 220,
-        Actor = 230
+        Actor = 230,
+        PlayerSlot = 240
     }
 }

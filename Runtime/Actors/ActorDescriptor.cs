@@ -5,36 +5,16 @@ using Immersive.Framework.Common;
 namespace Immersive.Framework.Actors
 {
     /// <summary>
-    /// API status: Experimental. Passive description of a framework-recognized PlayerActor.
-    /// This is evidence only; it does not read input, switch action maps, move an actor or spawn an actor.
+    /// API status: Experimental. Passive description of an actor declaration known to validation.
+    /// It does not own actor lifetime, materialization, movement, input, reset, snapshot or save behavior.
     /// </summary>
-    [FrameworkApiStatus(FrameworkApiStatus.Experimental, "F31A/F45A PlayerActor passive descriptor.")]
-    public readonly struct PlayerActorDescriptor : IEquatable<PlayerActorDescriptor>
+    [FrameworkApiStatus(FrameworkApiStatus.Experimental, "F45A generic actor passive descriptor.")]
+    public readonly struct ActorDescriptor : IEquatable<ActorDescriptor>
     {
-        public PlayerActorDescriptor(
+        public ActorDescriptor(
             ActorId actorId,
-            bool hasPlayerInputEvidence,
-            string displayName,
-            string sceneName,
-            string objectName,
-            string source,
-            string reason)
-            : this(
-                actorId,
-                ActorRole.Protagonist,
-                hasPlayerInputEvidence,
-                displayName,
-                sceneName,
-                objectName,
-                source,
-                reason)
-        {
-        }
-
-        public PlayerActorDescriptor(
-            ActorId actorId,
+            ActorKind actorKind,
             ActorRole actorRole,
-            bool hasPlayerInputEvidence,
             string displayName,
             string sceneName,
             string objectName,
@@ -43,7 +23,12 @@ namespace Immersive.Framework.Actors
         {
             if (!actorId.IsValid)
             {
-                throw new ArgumentException("PlayerActor descriptor requires a valid actor id.", nameof(actorId));
+                throw new ArgumentException("Actor descriptor requires a valid actor id.", nameof(actorId));
+            }
+
+            if (!Enum.IsDefined(typeof(ActorKind), actorKind))
+            {
+                throw new ArgumentOutOfRangeException(nameof(actorKind), actorKind, "Actor kind must be defined.");
             }
 
             if (!Enum.IsDefined(typeof(ActorRole), actorRole))
@@ -52,22 +37,20 @@ namespace Immersive.Framework.Actors
             }
 
             ActorId = actorId;
+            ActorKind = actorKind;
             ActorRole = actorRole;
-            HasPlayerInputEvidence = hasPlayerInputEvidence;
             DisplayName = displayName.NormalizeTextOrFallback(actorId.StableText);
             SceneName = sceneName.NormalizeText();
             ObjectName = objectName.NormalizeText();
-            Source = source.NormalizeTextOrFallback(nameof(PlayerActorDescriptor));
+            Source = source.NormalizeTextOrFallback(nameof(ActorDescriptor));
             Reason = reason.NormalizeText();
         }
 
         public ActorId ActorId { get; }
 
-        public ActorKind ActorKind => ActorKind.Player;
+        public ActorKind ActorKind { get; }
 
         public ActorRole ActorRole { get; }
-
-        public bool HasPlayerInputEvidence { get; }
 
         public string DisplayName { get; }
 
@@ -79,30 +62,17 @@ namespace Immersive.Framework.Actors
 
         public string Reason { get; }
 
-        public bool SwitchesActionMaps => false;
+        public bool OwnsLifetime => false;
 
         public bool AppliesInputBehavior => false;
 
         public bool SpawnsActor => false;
 
-        public ActorDescriptor ToActorDescriptor()
-        {
-            return new ActorDescriptor(
-                ActorId,
-                ActorKind,
-                ActorRole,
-                DisplayName,
-                SceneName,
-                ObjectName,
-                Source,
-                Reason);
-        }
-
-        public bool Equals(PlayerActorDescriptor other)
+        public bool Equals(ActorDescriptor other)
         {
             return ActorId.Equals(other.ActorId)
+                && ActorKind == other.ActorKind
                 && ActorRole == other.ActorRole
-                && HasPlayerInputEvidence == other.HasPlayerInputEvidence
                 && string.Equals(DisplayName, other.DisplayName, StringComparison.Ordinal)
                 && string.Equals(SceneName, other.SceneName, StringComparison.Ordinal)
                 && string.Equals(ObjectName, other.ObjectName, StringComparison.Ordinal)
@@ -112,7 +82,7 @@ namespace Immersive.Framework.Actors
 
         public override bool Equals(object obj)
         {
-            return obj is PlayerActorDescriptor other && Equals(other);
+            return obj is ActorDescriptor other && Equals(other);
         }
 
         public override int GetHashCode()
@@ -120,8 +90,8 @@ namespace Immersive.Framework.Actors
             unchecked
             {
                 int hash = ActorId.GetHashCode();
+                hash = (hash * 397) ^ (int)ActorKind;
                 hash = (hash * 397) ^ (int)ActorRole;
-                hash = (hash * 397) ^ HasPlayerInputEvidence.GetHashCode();
                 hash = (hash * 397) ^ StringComparer.Ordinal.GetHashCode(DisplayName ?? string.Empty);
                 hash = (hash * 397) ^ StringComparer.Ordinal.GetHashCode(SceneName ?? string.Empty);
                 hash = (hash * 397) ^ StringComparer.Ordinal.GetHashCode(ObjectName ?? string.Empty);

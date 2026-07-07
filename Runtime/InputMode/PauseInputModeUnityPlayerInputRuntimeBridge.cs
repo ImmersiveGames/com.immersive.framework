@@ -5,6 +5,7 @@ using Immersive.Framework.ApplicationLifecycle;
 using Immersive.Framework.Common;
 using Immersive.Framework.Diagnostics;
 using Immersive.Framework.Pause;
+using Immersive.Framework.PlayerSlots;
 using Immersive.Framework.UnityInput;
 using UnityEngine;
 using UnityEngine.InputSystem;
@@ -31,6 +32,9 @@ namespace Immersive.Framework.InputMode
         [Header("Unity PlayerInput")]
         [SerializeField] private PlayerInput playerInput;
 
+        [Header("Player Slot Identity Bridge")]
+        [SerializeField] private PlayerSlotDeclaration sourceSlot;
+
         [Header("Framework References")]
         [SerializeField] private UnityInputTargetDeclaration[] unityInputTargets;
         [SerializeField] private PlayerActorDeclaration[] playerActors;
@@ -47,6 +51,12 @@ namespace Immersive.Framework.InputMode
         [SerializeField] private bool logResults = true;
 
         public PlayerInput PlayerInput => playerInput;
+
+        public PlayerSlotDeclaration SourceSlot => sourceSlot;
+
+        public bool HasSourceSlot => sourceSlot != null;
+
+        public string SourceSlotIdText => ResolveSourceSlotIdText();
 
         public bool AutoDiscoverMissingReferences => autoDiscoverMissingReferences;
 
@@ -97,20 +107,7 @@ namespace Immersive.Framework.InputMode
                 EnsureLogger();
                 _logger.Debug(
                     "Pause InputMode PlayerInput Runtime Bridge completed.",
-                    Logging.Records.LogFields.Of(
-                        Logging.Records.LogFields.Field("status", _lastResult.Status.ToString()),
-                        Logging.Records.LogFields.Field("failedStage", _lastResult.FailedStage.ToString()),
-                        Logging.Records.LogFields.Field("pauseStatus", _lastResult.PauseStatus.ToString()),
-                        Logging.Records.LogFields.Field("requestedMode", _lastResult.RequestedMode.ToString()),
-                        Logging.Records.LogFields.Field("operation", _lastResult.Operation.ToString()),
-                        Logging.Records.LogFields.Field("previousActionMap", _lastResult.PreviousActionMapName.ToString()),
-                        Logging.Records.LogFields.Field("appliedActionMap", _lastResult.AppliedActionMapName.ToString()),
-                        Logging.Records.LogFields.Field("actionMapSwitching", _lastResult.SwitchesActionMaps),
-                        Logging.Records.LogFields.Field("inputBehavior", _lastResult.AppliesInputBehavior),
-                        Logging.Records.LogFields.Field("pauseRuntimeWiring", _lastResult.PauseRuntimeWiring),
-                        Logging.Records.LogFields.Field("playerJoin", _lastResult.CallsPlayerJoin),
-                        Logging.Records.LogFields.Field("actorSpawning", _lastResult.SpawnsActor),
-                        Logging.Records.LogFields.Field("diagnostics", _lastResult.ToDiagnosticString())));
+                    BuildLogFields());
             }
         }
 
@@ -131,9 +128,11 @@ namespace Immersive.Framework.InputMode
             string playerMap,
             string uiMap,
             bool autoDiscover,
-            bool requireSessionManager)
+            bool requireSessionManager,
+            PlayerSlotDeclaration diagnosticsSourceSlot = null)
         {
             playerInput = input;
+            sourceSlot = diagnosticsSourceSlot;
             unityInputTargets = targets;
             playerActors = actors;
             sessionPlayerInputManagers = sessionManagers;
@@ -285,6 +284,57 @@ namespace Immersive.Framework.InputMode
         private string ResolveReason(string fallbackReason)
         {
             return reason.NormalizeTextOrFallback(fallbackReason);
+        }
+
+        private Logging.Records.LogField[] BuildLogFields()
+        {
+            return Logging.Records.LogFields.Of(
+                Logging.Records.LogFields.Field("status", _lastResult.Status.ToString()),
+                Logging.Records.LogFields.Field("failedStage", _lastResult.FailedStage.ToString()),
+                Logging.Records.LogFields.Field("pauseStatus", _lastResult.PauseStatus.ToString()),
+                Logging.Records.LogFields.Field("requestedMode", _lastResult.RequestedMode.ToString()),
+                Logging.Records.LogFields.Field("operation", _lastResult.Operation.ToString()),
+                Logging.Records.LogFields.Field("previousActionMap", _lastResult.PreviousActionMapName.ToString()),
+                Logging.Records.LogFields.Field("appliedActionMap", _lastResult.AppliedActionMapName.ToString()),
+                Logging.Records.LogFields.Field("actionMapSwitching", _lastResult.SwitchesActionMaps),
+                Logging.Records.LogFields.Field("inputBehavior", _lastResult.AppliesInputBehavior),
+                Logging.Records.LogFields.Field("pauseRuntimeWiring", _lastResult.PauseRuntimeWiring),
+                Logging.Records.LogFields.Field("playerJoin", _lastResult.CallsPlayerJoin),
+                Logging.Records.LogFields.Field("actorSpawning", _lastResult.SpawnsActor),
+                Logging.Records.LogFields.Field("playerSlotSource", sourceSlot != null ? "PlayerSlotDeclaration" : "None"),
+                Logging.Records.LogFields.Field("playerSlotId", ResolveSourceSlotIdText().NormalizeTextOrFallback("<none>")),
+                Logging.Records.LogFields.Field("sourceSlot", ResolveSourceSlotDiagnosticText()),
+                Logging.Records.LogFields.Field("diagnostics", _lastResult.ToDiagnosticString()));
+        }
+
+        private string ResolveSourceSlotIdText()
+        {
+            if (sourceSlot == null)
+            {
+                return string.Empty;
+            }
+
+            try
+            {
+                return sourceSlot.PlayerSlotId.StableText;
+            }
+            catch (Exception exception) when (exception is ArgumentException or ArgumentOutOfRangeException)
+            {
+                return $"<invalid:{exception.Message}>";
+            }
+        }
+
+        private string ResolveSourceSlotDiagnosticText()
+        {
+            if (sourceSlot == null)
+            {
+                return "<none>";
+            }
+
+            string slotIdText = ResolveSourceSlotIdText().NormalizeTextOrFallback("<none>");
+            string displayNameText = sourceSlot.DisplayName.NormalizeTextOrFallback(sourceSlot.name);
+            string objectName = sourceSlot.gameObject != null ? sourceSlot.gameObject.name : "<none>";
+            return $"name='{objectName}' displayName='{displayNameText}' playerSlotId='{slotIdText}'";
         }
 
         private void EnsureLogger()

@@ -14,7 +14,7 @@ namespace Immersive.Framework.Actors
     [DisallowMultipleComponent]
     [RequireComponent(typeof(PlayerInput))]
     [AddComponentMenu("Immersive Framework/Actors/Player Actor Declaration")]
-    [FrameworkApiStatus(FrameworkApiStatus.Experimental, "F31A PlayerActor identity declaration requiring Unity PlayerInput evidence.")]
+    [FrameworkApiStatus(FrameworkApiStatus.Experimental, "F31A/F45A PlayerActor identity declaration requiring Unity PlayerInput evidence.")]
     public sealed class PlayerActorDeclaration : MonoBehaviour, IActor
     {
         [Tooltip("Stable framework actor id. Do not use GameObject names or scene paths as functional keys.")]
@@ -26,9 +26,11 @@ namespace Immersive.Framework.Actors
         [Tooltip("Diagnostic reason/source for this declaration.")]
         [SerializeField] private string reason = "player.actor.declaration";
 
-        public ActorId ActorId => new ActorId(actorId.NormalizeTextOrFallback("qa.actor.player.primary"));
+        public ActorId ActorId => new ActorId(actorId.NormalizeText());
 
         public ActorKind ActorKind => ActorKind.Player;
+
+        public ActorRole ActorRole => ActorRole.Protagonist;
 
         public string ActorDisplayName => displayName.NormalizeTextOrFallback(name);
 
@@ -62,6 +64,7 @@ namespace Immersive.Framework.Actors
             {
                 descriptor = new PlayerActorDescriptor(
                     new ActorId(normalizedActorId),
+                    ActorRole,
                     HasPlayerInputEvidence,
                     ActorDisplayName,
                     gameObject.scene.IsValid() ? gameObject.scene.name : string.Empty,
