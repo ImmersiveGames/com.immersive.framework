@@ -24,3 +24,11 @@ Consumer project role split:
 ```
 
 Do not duplicate long framework guidance inside QA or FIRSTGAME. Keep consumer READMEs local and link back to package docs.
+
+## Standalone references
+
+| Topic | Path |
+|---|---|
+| Player architecture and flow (code-derived) | [`Player-Architecture-Flow.md`](Player-Architecture-Flow.md) |
+| Reset architecture and flow (code-derived) | [`Reset-Architecture-Flow.md`](Reset-Architecture-Flow.md) |
+| Camera architecture and flow (code-derived) | [`Camera-Architecture-Flow.md`](Camera-Architecture-Flow.md) |
