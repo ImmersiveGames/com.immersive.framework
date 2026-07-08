@@ -13,8 +13,9 @@ Use this folder as a **small current surface** plus a **numbered history**. Do n
 | 3 | [`Current/01-Roadmap.md`](Current/01-Roadmap.md) | Selected current roadmap and next candidate lanes. |
 | 4 | [`Current/02-Usage-Map.md`](Current/02-Usage-Map.md) | Which runtime surface to use for common game tasks. |
 | 5 | [`Current/03-Consumer-Project-Roles.md`](Current/03-Consumer-Project-Roles.md) | Frozen split between package, QA project and FIRSTGAME. |
-| 6 | [`History/000-INDEX.md`](History/000-INDEX.md) | Numbered historical navigation. |
-| 7 | [`ADRs/ADR-INDEX.md`](ADRs/ADR-INDEX.md) | Detailed decision archive. |
+| 6 | [`Current/04-Player-Passive-Binding-Foundation.md`](Current/04-Player-Passive-Binding-Foundation.md) | Closed F49 passive player binding foundation. |
+| 7 | [`History/000-INDEX.md`](History/000-INDEX.md) | Numbered historical navigation. |
+| 8 | [`ADRs/ADR-INDEX.md`](ADRs/ADR-INDEX.md) | Detailed decision archive. |
 
 ## Documentation policy
 
@@ -47,7 +48,33 @@ UnityResetSubjectAdapter
 UnityResetParticipantBehaviour
 IUnityResettable gameplay component bridge
 FIRSTGAME reset usage proof
+PlayerSlot / Actor identity boundary
+Actor readiness
+PlayerEntry
+PlayerTopology validation
+PlayerView passive contract and topology validation
+PlayerControl passive contract and topology validation
+PlayerBindingReadiness summary
+PlayerBindingDiagnostics report
 ```
+
+## Player passive binding model summary
+
+Canonical passive chain:
+
+```text
+PlayerSlot
+  -> PlayerEntry
+  -> PlayerTopology
+  -> PlayerView
+  -> PlayerViewTopology
+  -> PlayerControl
+  -> PlayerControlTopology
+  -> PlayerBindingReadiness
+  -> PlayerBindingDiagnostics
+```
+
+This chain is validation and diagnostics only. It does not activate camera, input, movement, control binding, view binding or actor spawning.
 
 ## Reset model summary
 

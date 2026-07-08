@@ -1,6 +1,6 @@
 # 01 — Roadmap
 
-Status: **canonical roadmap after F49 lane selection**.
+Status: **canonical roadmap after F49M passive player binding foundation consolidation**.
 
 ## Reading rule
 
@@ -27,19 +27,19 @@ Do not treat historical phase numbers as an active queue. Some phases are closed
 
 | Lane | Status | Scope |
 |---|---|---|
-| F49 — Player Topology, Player Entry and PlayerView Ownership | Active | Implement player-facing boundaries from Actor readiness to PlayerEntry, PlayerView, control binding and optional Unity PlayerInput integration. |
+| F49M — Player Passive Binding Foundation Consolidation | Closed / Documentation-only | F49 passive player contracts, topology validators, readiness and diagnostics are closed as a validated foundation. |
 
 ## Active lane rule
 
-F49 must run package-first and QA-first:
+F49 ran package-first and QA-first:
 
 ```text
 1. Implement or adjust contracts/runtime/editor/docs in com.immersive.framework.
 2. Validate technical behavior in QAFramework.
-3. Validate practical usability in planet-devourer / FIRSTGAME only after QA is clean.
+3. Validate practical usability in planet-devourer / FIRSTGAME only after QA is clean and the cut requires real usability proof.
 ```
 
-FIRSTGAME is not the laboratory for new F49 contracts.
+FIRSTGAME was intentionally not used for F49 passive contracts because no real binding behavior exists yet.
 
 ## Closed stable lanes
 
@@ -53,48 +53,67 @@ FIRSTGAME is not the laboratory for new F49 contracts.
 | FIRSTGAME reset usage model | Closed | Real usage proof passed. |
 | Consumer role rule | Frozen | QA proves technical behavior; FIRSTGAME proves game-start usability; package owns canonical docs/contracts. |
 | Consumer project separation POST-RESET-B1-B6F | Closed | Package, QA Project and FIRSTGAME roles are documented and frozen; consumer cleanup remains bounded by Unity serialization rules. |
+| F49 passive player binding foundation | Closed | Actor readiness, PlayerEntry, topology, view, control, readiness and diagnostics are validated passively through QA. |
 
-## Superseded reset history
-
-These historical ADRs remain for traceability, but the implementation model is now Reset Reform preview.12:
-
-| Historical item | Current replacement |
-|---|---|
-| F39 Object Reset Group old path | `ResetSelectionConfig` + `ResetExecutor`. |
-| F40 Activity Restart via old group dependency | `ActivityRestartTrigger` owns selection and executes inside restart transition. |
-| F41 Reset Selection draft | Current `ResetSelectionConfig`. |
-| F42 Awaitable reset draft | Current `ResetExecutor.ExecuteAsync` and restart composition. |
-| F44 Runtime Object Participation | `UnityResetSubjectAdapter` runtime subject id generation. |
-
-## Candidate next lanes
-
-Do not run these in parallel with F49 unless explicitly selected by a later decision.
-
-| Option | Candidate lane | Why it matters | Risk if skipped |
-|---|---|---|---|
-| A | FIRSTGAME Usage Model Hardening | Turn validated pieces into clear developer/game-designer usage. | Framework works but usage remains tribal knowledge. |
-| B | Transition / Loading Surface Hardening | Improve progress/fade/readiness evidence and failure clarity. | Visual lifecycle becomes hard to debug. |
-| C | Runtime Spawned Object / Materialization Track | Clarify runtime prefab/materialization ownership beyond reset. | Runtime objects remain ad-hoc per game. |
-| D | Progression Save Adapter Track | Start real game-save handoff while keeping engine interchangeable. | Save boundary stays theoretical. |
-
-## F49 recommendation
-
-Current selected sequence:
+## F49 closed sequence
 
 ```text
 F49A — ADR normalization and package boundary cleanup
 F49B — Actor Readiness passive contracts
 F49C — Actor Readiness Unity adapter + QA smoke
 F49D — PlayerEntry passive model
-F49E — PlayerTopology policy contracts + validator foundation
-F49F — PlayerEntry transition rules
-F49G — PlayerView passive declaration + camera precedence contract
-F49H — CameraDirector integration point for Active PlayerView
-F49I — ControlBinding boundary + permission diagnostics
-F49J — Optional PlayerInput / PlayerInputManager bridge
-F49K — FIRSTGAME validation pass
-F49L — Documentation, ADR acceptance and next-phase handoff
+F49E — PlayerEntry Unity adapter
+F49F — PlayerTopology passive validation
+F49G — PlayerView passive contract
+F49H — PlayerView topology validation
+F49I — PlayerControl passive contract
+F49J — PlayerControl topology validation
+F49K — Player binding readiness summary
+F49L — Player binding diagnostic reporter
+F49M — Documentation consolidation and next-phase handoff
 ```
+
+## F49 boundary
+
+The closed F49 foundation remains passive:
+
+```text
+viewBinding = false
+controlBinding = false
+cameraActivation = false
+inputActivation = false
+movement = false
+actorSpawning = false
+```
+
+## Recommended next implementation block
+
+Do not continue adding passive taxonomy unless a concrete missing invariant is found.
+
+Recommended order:
+
+| Order | Candidate cut | Purpose |
+|---:|---|---|
+| 1 | Player Binding Authoring Validator | Editor/QA validation for complete authored chain before runtime binding. |
+| 2 | PlayerView Binding Adapter | First real view binding surface, still behind readiness diagnostics. |
+| 3 | PlayerControl Binding Adapter | First real control binding surface, still without broad gameplay movement assumptions. |
+| 4 | Optional Unity PlayerInput Bridge | Explicit Unity Input System bridge after control binding boundary is stable. |
+| 5 | FIRSTGAME usability proof | Real game integration only after QA technical behavior is clean. |
+
+## Candidate next lanes
+
+Do not run these in parallel with a selected player binding implementation unless explicitly decided.
+
+| Option | Candidate lane | Why it matters | Risk if skipped |
+|---|---|---|---|
+| A | Player Binding Authoring Validator | Turns the passive foundation into editor-diagnosable authoring feedback. | Runtime binding begins without clear authoring gates. |
+| B | PlayerView Binding Adapter | Connects validated PlayerView evidence to real camera/view selection. | View ownership remains theoretical. |
+| C | PlayerControl Binding Adapter | Connects validated PlayerControl evidence to real control ownership. | Control remains theoretical. |
+| D | Unity PlayerInput Bridge | Integrates optional Unity Input after ownership is explicit. | Input integration remains ad-hoc. |
+| E | FIRSTGAME Usage Model Hardening | Proves practical usability after technical QA. | Framework works technically but remains hard to use. |
+| F | Transition / Loading Surface Hardening | Improve progress/fade/readiness evidence and failure clarity. | Visual lifecycle becomes hard to debug. |
+| G | Runtime Spawned Object / Materialization Track | Clarify runtime prefab/materialization ownership beyond reset. | Runtime objects remain ad-hoc per game. |
+| H | Progression Save Adapter Track | Start real game-save handoff while keeping engine interchangeable. | Save boundary stays theoretical. |
 
 ## Consumer cleanup guardrail
 
