@@ -4,6 +4,17 @@ Use this map when deciding which framework surface to use in game code or scene 
 
 Consumer role reference: [`03-Consumer-Project-Roles.md`](03-Consumer-Project-Roles.md).
 
+## How to create scene objects
+
+| You are creating | Put it in | Add at minimum |
+|---|---|---|
+| Resettable prop / puzzle / crate | Activity content root (`ActivityLocalVisibilityAdapter` child) | `UnityResetSubjectAdapter` + `UnityTransformResetParticipant` (+ `IUnityResettable` for logic state) |
+| Runtime spawned object | Instantiate prefab; prefab owns adapter | `UnityResetSubjectAdapter` with `RuntimeInstanceId` + prefix |
+| Player | `GameplayRoot` (outside Activity visibility toggle) | `PlayerInput` + mover script + `UnityPlayerInputGateAdapter` + `UnityResetSubjectAdapter` |
+| NPC | Activity content root for that Activity | `ActorDeclaration` (`NonPlayer`) + `ActorReadinessBehaviour` + `UnityResetSubjectAdapter` + gameplay AI script |
+
+Player uses `PlayerActorDeclaration`; NPC uses `ActorDeclaration`. Neither uses the other's declaration type.
+
 ## Common tasks
 
 | Task | Use | Do not use |
@@ -15,6 +26,10 @@ Consumer role reference: [`03-Consumer-Project-Roles.md`](03-Consumer-Project-Ro
 | Show loading state | UIGlobal loading surface adapter | Loading UI that does not observe framework operation. |
 | Toggle pause | `PauseInputActionTrigger` / pause request surface | Directly setting `Time.timeScale` from random UI. |
 | Block PlayerInput during pause/transition | `UnityPlayerInputGateAdapter` | Gameplay script polling Pause directly. |
+| Switch gameplay camera by Route/Activity | `FrameworkCameraDirector` + `FrameworkRouteCameraBinding` + `FrameworkActivityCameraBinding` | Manual `Camera.main` swap or `PlayerViewBehaviour` as camera driver. |
+| Follow/look-at targets for camera rig | `FrameworkCameraAnchorHost` + optional `FrameworkCinemachineRigApplier` | Hard-coded target references in gameplay mover. |
+| Declare player slot/actor evidence | `PlayerSlotDeclaration` + `PlayerActorDeclaration` + `PlayerSlotOccupancy` + `PlayerEntryBehaviour` | `PlayerInput.playerIndex` as functional id or expecting auto join/spawn. |
+| Declare passive view/control evidence | `PlayerViewBehaviour` / `PlayerControlBehaviour` | Expecting automatic camera activation or input routing. |
 | Make scene object resettable | `UnityResetSubjectAdapter` + participants/components | `ObjectEntryDeclaration` reset path. |
 | Reset transform/active state | `UnityTransformResetParticipant`, `UnityGameObjectActiveResetParticipant` | Custom participant unless custom semantics are needed. |
 | Reset gameplay state | Gameplay component implements `IUnityResettable` | One extra participant component per gameplay variable. |

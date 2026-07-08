@@ -512,9 +512,11 @@
       <a href="#estrutura"><span class="icon">📁</span> Estrutura de Pastas</a>
       <a href="#cenas"><span class="icon">🎬</span> Cenas</a>
       <a href="#assets"><span class="icon">📋</span> Assets</a>
+      <a href="#como-criar"><span class="icon">🛠️</span> Como Criar</a>
       <a href="#uiglobal"><span class="icon">🖥️</span> UIGlobal</a>
       <a href="#menu"><span class="icon">▶️</span> Menu Route</a>
       <a href="#gameplay"><span class="icon">🎮</span> Gameplay Route</a>
+      <a href="#camera"><span class="icon">📷</span> Camera Director</a>
     </div>
 
     <div class="sidebar-section">
@@ -533,6 +535,7 @@
       <a href="#activity-restart"><span class="icon">🔄</span> Activity Restart</a>
       <a href="#reset-avancado"><span class="icon">🧪</span> Reset Avançado</a>
       <a href="#playerinput-gate"><span class="icon">🎛️</span> PlayerInput Gate</a>
+      <a href="#player-evidence"><span class="icon">🧍</span> Player Evidence</a>
       <a href="#transition-gate"><span class="icon">🚦</span> Transition Gate</a>
     </div>
 
@@ -558,7 +561,7 @@
     <div class="hero" id="intro">
       <div class="eyebrow">Manual de Uso · v1.0.0-preview.12</div>
       <h1>Immersive Framework<br>Preview 12</h1>
-      <p>Guia prático para o fluxo mínimo jogável validado até o Preview 12: Menu, Gameplay, Activity A/B, Loading, Transition Gate, Pause visual, Pause por botão, Pause por tecla via Global/Pause, pausa real via TimeScale, PlayerInput Gate Adapter, Object Reset, Reset Group e Activity Restart com uma única transição visual.</p>
+      <p>Guia prático para o fluxo mínimo jogável validado até o Preview 12: Menu, Gameplay, Activity A/B, Camera Director, Loading, Transition Gate, Pause visual, Pause por botão, Pause por tecla via Global/Pause, pausa real via TimeScale, PlayerInput Gate Adapter, Object Reset, Reset Group, Activity Restart com uma única transição visual e authoring opcional de Player Evidence.</p>
       <div class="badge-row">
         <span class="badge badge-green">✓ FIRSTGAME Usage Model PASS</span>
         <span class="badge badge-blue">v1.0.0-preview.12</span>
@@ -770,6 +773,209 @@
       <div class="shot-label">Placeholder de Screenshot</div>
       <strong>Inspector:</strong> capturar o asset <code>FG_GameApplication</code> mostrando Startup Route, UIGlobal Scene e Validation Mode.
     </div>
+
+    <h2 id="como-criar">Como criar objetos que participam do fluxo</h2>
+    <p>Esta seção responde: <em>“montei a Route/Activity — como coloco um objeto, um player e um NPC na cena de forma correta?”</em> Use a receita que combina com o papel do objeto. O framework não spawna nem gerencia lifecycle automaticamente: você coloca o GameObject na hierarquia certa e adiciona os componentes certos.</p>
+
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Tipo</th><th>Onde colocar na cena</th><th>Identidade</th><th>Reset</th><th>Input / Gate</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><strong>Objeto</strong> (caixa, prop, puzzle)</td>
+            <td>Filho do root da Activity (<code>ActivityA_ContentRoot</code>)</td>
+            <td><code>ResetSubject</code> via adapter</td>
+            <td><code>UnityResetSubjectAdapter</code> + participants</td>
+            <td>Não</td>
+          </tr>
+          <tr>
+            <td><strong>Player</strong></td>
+            <td><code>GameplayRoot</code> (persiste na Route)</td>
+            <td><code>PlayerActorDeclaration</code> + slot opcional</td>
+            <td><code>UnityResetSubjectAdapter</code> + <code>IUnityResettable</code></td>
+            <td><code>PlayerInput</code> + <code>UnityPlayerInputGateAdapter</code></td>
+          </tr>
+          <tr>
+            <td><strong>NPC</strong></td>
+            <td>Filho do root da Activity onde ele aparece</td>
+            <td><code>ActorDeclaration</code> (<code>NonPlayer</code>)</td>
+            <td><code>UnityResetSubjectAdapter</code> + <code>IUnityResettable</code></td>
+            <td>Não usa <code>PlayerInput</code> do framework</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="callout tip">
+      <span class="callout-icon">✅</span>
+      <div class="callout-body">
+        <div class="callout-title">Regra de ouro</div>
+        <p>Todo objeto que deve voltar ao estado inicial com <strong>Reset Room</strong> ou <strong>Restart Activity</strong> precisa de <code>UnityResetSubjectAdapter</code> com <code>Scope</code> coerente (<code>Activity</code> para conteúdo da sala, <code>Route</code> para persistir na Route, <code>Runtime</code> para prefabs instanciados).</p>
+      </div>
+    </div>
+
+    <h3 id="criar-objeto">1. Criar um objeto resetável (prop, caixa, puzzle)</h3>
+    <p>Use para qualquer coisa que entra e sai com a Activity, pode ser resetada, mas não é personagem.</p>
+
+    <pre><code>FG_Gameplay
+└── ActivityA_ContentRoot
+    └── ActivityLocalVisibilityAdapter → FG_Activity_A
+        └── PuzzleCrate
+            ├── UnityResetSubjectAdapter
+            │     Subject Id = firstgame.puzzle.crate.a
+            │     Id Generation = AuthoredStableId
+            │     Scope = Activity
+            │     Participant Discovery = Children
+            │     Include Unity Resettable Components = true
+            ├── UnityTransformResetParticipant
+            └── PuzzleCrateState : IUnityResettable   opcional se tiver estado lógico</code></pre>
+
+    <div class="component-card">
+      <h4>Passo a passo — objeto</h4>
+      <ol class="steps">
+        <li><div class="step-body"><strong>Crie o GameObject</strong>dentro do <code>ActivityA_ContentRoot</code> (ou equivalente com <code>ActivityLocalVisibilityAdapter</code>).</div></li>
+        <li><div class="step-body"><strong>Add Component → Unity Reset Subject Adapter</strong><code>Subject Id</code> único e estável. <code>Scope = Activity</code>.</div></li>
+        <li><div class="step-body"><strong>Add participants</strong><code>Unity Transform Reset Participant</code> para posição. <code>Unity Game Object Active Reset Participant</code> se precisar restaurar active.</div></li>
+        <li><div class="step-body"><strong>Estado de gameplay</strong>Se o objeto guarda flags/contadores, implemente <code>IUnityResettable</code> em um script do jogo — não crie um participant por variável.</div></li>
+        <li><div class="step-body"><strong>Reset individual (opcional)</strong>Se um botão reseta só este objeto, crie <code>ObjectResetTrigger</code> apontando para o adapter deste crate.</div></li>
+      </ol>
+    </div>
+
+    <div class="component-card">
+      <h4>Prefab runtime (spawn por script)</h4>
+      <p>Caixas spawnadas em Play Mode usam id gerado em runtime — o script só faz <code>Instantiate</code>.</p>
+      <pre><code>FG_RuntimeBox.prefab
+  UnityResetSubjectAdapter
+    Id Generation = RuntimeInstanceId
+    Runtime Subject Id Prefix = firstgame.runtime.box
+    Scope = Runtime
+  UnityTransformResetParticipant</code></pre>
+      <p>Depois do spawn, o adapter registra no <code>OnEnable</code>. <code>Reset Room</code> com <code>CurrentRouteAndActivitySubjects</code> pega player + boxes automaticamente.</p>
+    </div>
+
+    <h3 id="criar-player">2. Criar o Player</h3>
+    <p>O player do FIRSTGAME é um protótipo no projeto consumidor. Movimento fica no seu script; o framework cuida de reset, Gate de input e (opcionalmente) evidência de identidade.</p>
+
+    <pre><code>FG_Gameplay
+└── GameplayRoot
+    └── PlayerPrototype
+        ├── PlayerInput
+        ├── FirstGamePlayerMover              script do consumidor
+        ├── UnityPlayerInputGateAdapter
+        ├── UnityResetSubjectAdapter
+        │     Subject Id = firstgame.player
+        │     Scope = Activity
+        ├── UnityTransformResetParticipant
+        ├── FirstGamePlayerResettableState : IUnityResettable
+        │
+        │   --- camada opcional de evidência (QA / futuro) ---
+        ├── PlayerSlotDeclaration             player.1
+        ├── PlayerActorDeclaration            exige PlayerInput
+        ├── ActorReadinessBehaviour
+        ├── PlayerSlotOccupancy               player.1 → actor do player
+        └── PlayerEntryBehaviour</code></pre>
+
+    <div class="component-card">
+      <h4>Passo a passo — player</h4>
+      <ol class="steps">
+        <li><div class="step-body"><strong>Base Unity Input</strong>Adicione <code>PlayerInput</code> com action map <code>Player</code> (Move, etc.).</div></li>
+        <li><div class="step-body"><strong>Movimento</strong>Script do jogo lê <code>InputAction</code> — no FIRSTGAME, <code>FirstGamePlayerMover</code>.</div></li>
+        <li><div class="step-body"><strong>Gate</strong><code>UnityPlayerInputGateAdapter</code> com <code>Gameplay Action Map Name = Player</code>. Bloqueia movimento em Pause/Transition.</div></li>
+        <li><div class="step-body"><strong>Reset</strong><code>UnityResetSubjectAdapter</code> + transform participant + <code>IUnityResettable</code> para estado (vida, flags, etc.).</div></li>
+        <li><div class="step-body"><strong>Botões</strong><code>Button_ResetPlayer</code> → <code>ObjectResetTrigger</code> apontando para este adapter. Reset Room/Restart pegam o player pela seleção de escopo.</div></li>
+        <li><div class="step-body"><strong>Evidência opcional</strong>Só se precisar validar topologia: slot, actor, occupancy, entry. Detalhes em <a href="#player-evidence">Player Evidence</a>. Não substitui movimento nem reset.</div></li>
+      </ol>
+    </div>
+
+    <div class="callout warning">
+      <span class="callout-icon">⚠️</span>
+      <div class="callout-body">
+        <div class="callout-title">Player não vai dentro do ActivityLocalVisibility root</div>
+        <p>O player costuma ficar em <code>GameplayRoot</code> fora do toggle de Activity A/B, para não sumir ao trocar Activity. Props e NPCs da sala ficam <strong>dentro</strong> do content root da Activity.</p>
+      </div>
+    </div>
+
+    <h3 id="criar-npc">3. Criar um NPC</h3>
+    <p>NPC usa <code>ActorDeclaration</code> genérico — <strong>não</strong> use <code>PlayerSlotDeclaration</code>, <code>PlayerActorDeclaration</code> nem <code>PlayerInput</code> só porque o personagem se move. NPC não ocupa assento de jogador.</p>
+
+    <pre><code>FG_Gameplay
+└── ActivityA_ContentRoot
+    └── ActivityLocalVisibilityAdapter → FG_Activity_A
+        └── GuardNPC
+            ├── ActorDeclaration
+            │     Actor Id = firstgame.npc.guard.a
+            │     Actor Kind = NonPlayer
+            │     Actor Role = Enemy        ou Neutral / Ally
+            ├── ActorReadinessBehaviour
+            │     Ready For View = true     quando modelo/colisão estiverem prontos
+            ├── FirstGameNpcPatrol          script do consumidor (IA, animação)
+            ├── UnityResetSubjectAdapter
+            │     Subject Id = firstgame.npc.guard.a
+            │     Scope = Activity
+            ├── UnityTransformResetParticipant
+            └── FirstGameNpcState : IUnityResettable</code></pre>
+
+    <div class="component-card">
+      <h4>Passo a passo — NPC</h4>
+      <ol class="steps">
+        <li><div class="step-body"><strong>Hierarchy</strong>Crie o NPC como filho do content root da Activity onde ele aparece (<code>ActivityA_ContentRoot</code>).</div></li>
+        <li><div class="step-body"><strong>Identidade</strong><code>Add Component → Actor Declaration</code>. <code>Actor Kind = NonPlayer</code>. <code>Actor Role</code> conforme papel (Enemy, Neutral, Ally…).</div></li>
+        <li><div class="step-body"><strong>Readiness</strong><code>Actor Readiness</code> marca quando o NPC está pronto para view/control consumers futuros.</div></li>
+        <li><div class="step-body"><strong>Gameplay</strong>IA, pathing e animação ficam em scripts do consumidor — o framework não fornece mover de NPC.</div></li>
+        <li><div class="step-body"><strong>Reset</strong>Mesmo padrão do objeto: <code>UnityResetSubjectAdapter</code> com <code>Subject Id</code> estável (pode repetir o id do actor para facilitar diagnóstico), transform participant e <code>IUnityResettable</code> para estado de IA.</div></li>
+        <li><div class="step-body"><strong>Câmera</strong>Se a câmera segue o player, aponte <code>FrameworkCameraAnchorHost.Tracking Target</code> para <code>PlayerPrototype</code>, não para o NPC.</div></li>
+      </ol>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th></th><th>Player</th><th>NPC</th></tr></thead>
+        <tbody>
+          <tr><td>Declaration</td><td><code>PlayerActorDeclaration</code> (+ slot opcional)</td><td><code>ActorDeclaration</code></td></tr>
+          <tr><td><code>ActorKind</code></td><td><code>Player</code> (fixo no PlayerActor)</td><td><code>NonPlayer</code></td></tr>
+          <tr><td><code>PlayerInput</code></td><td>Sim</td><td>Não</td></tr>
+          <tr><td><code>PlayerSlotOccupancy</code></td><td>Sim, se usar evidência de player</td><td>Não</td></tr>
+          <tr><td>Posição na cena</td><td><code>GameplayRoot</code></td><td>Root da Activity</td></tr>
+          <tr><td>Reset</td><td><code>UnityResetSubjectAdapter</code></td><td><code>UnityResetSubjectAdapter</code></td></tr>
+          <tr><td>Entra no Reset Room</td><td>Sim (<code>Scope = Activity</code>)</td><td>Sim, se <code>Scope = Activity</code> na mesma Activity</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="component-card">
+      <h4>Exemplo mínimo — estado resetável do NPC</h4>
+      <pre><code>using Immersive.Framework.Reset;
+using Immersive.Framework.Reset.Unity;
+using UnityEngine;
+
+public sealed class FirstGameNpcState : MonoBehaviour, IUnityResettable
+{
+    [SerializeField] private int patrolIndex;
+    private int _alertLevel;
+
+    public string ResetParticipantId =&gt; "firstgame.npc.guard.state";
+
+    public ResetParticipantResult Reset(ResetContext context)
+    {
+        _alertLevel = 0;
+        patrolIndex = 0;
+        return ResetParticipantResult.CreateSucceeded(
+            context.Participant,
+            nameof(FirstGameNpcState),
+            context.Reason,
+            "NPC state reset.");
+    }
+}</code></pre>
+    </div>
+
+    <h3 id="criar-checklist">Checklist antes de dar Play</h3>
+    <ol class="steps">
+      <li><div class="step-body"><strong>Ids únicos</strong>Cada <code>ResetSubject</code>, <code>ActorId</code> e <code>PlayerSlotId</code> deve ser único na cena.</div></li>
+      <li><div class="step-body"><strong>Scope</strong>Conteúdo da sala → <code>Activity</code>. Player/objetos de Route inteira → <code>Route</code>. Spawn runtime → <code>Runtime</code> + prefixo.</div></li>
+      <li><div class="step-body"><strong>Adapter registrado</strong>Com Play Mode ativo, reset single-target ou Debug deve mostrar o subject no log do <code>UnityResetSubjectAdapter</code>.</div></li>
+      <li><div class="step-body"><strong>Seleção de grupo</strong><code>Reset Room</code> / <code>Restart Activity</code> com <code>CurrentRouteAndActivitySubjects</code> inclui player + NPCs + props da Activity atual.</div></li>
+      <li><div class="step-body"><strong>Model Readiness</strong>Rode a validação do Project Settings após adicionar muitos actors na cena.</div></li>
+    </ol>
 
     <h2 id="uiglobal">Configurando a UIGlobal</h2>
     <p>A <code>FG_UIGlobal</code> deve conter as superfícies globais do framework. No Preview 12, o fluxo validado usa Loading, Transition, Transition Gate, Pause visual residente e Pause por Global/Pause. A Pause Surface não é opcional neste fluxo: ela confirma o estado pausado junto com <code>Time.timeScale = 0</code>.</p>
@@ -1112,6 +1318,111 @@ PauseSurface/PausePanel
         <p>O botão <strong>Restore Activity A</strong> apenas solicita novamente a <code>FG_Activity_A</code>. Não envolve Snapshot, Save, Progression ou persistência.</p>
       </div>
     </div>
+
+    <h2 id="camera">Camera Director — câmera por Route e Activity</h2>
+    <p>O <code>FrameworkCameraDirector</code> escolhe qual <strong>camera rig</strong> fica ativo quando uma Route ou Activity entra/sai. Você não precisa trocar câmera manualmente em script de gameplay: configure bindings na cena e deixe o lifecycle chamar o director.</p>
+
+    <div class="callout info">
+      <span class="callout-icon">ℹ️</span>
+      <div class="callout-body">
+        <div class="callout-title">UIGlobal não é a câmera de gameplay</div>
+        <p>A <code>FG_UIGlobal</code> pode ter <code>Main Camera</code> para UI, mas a câmera de jogo deve vir dos rigs da Route/Activity ou do fallback do director. Evite duas câmeras ativas com <code>AudioListener</code> ao mesmo tempo.</p>
+      </div>
+    </div>
+
+    <pre><code>Session / objeto persistente
+└── FrameworkCameraDirector
+      defaultCameraRig = MainCameraFallback
+      defaultAnchors = opcional
+      routePriority = 20
+      activityPriority = 100
+      setRigActiveState = true
+      rigApplier = FrameworkCinemachineRigApplier   opcional
+
+FG_Gameplay (Route content)
+├── FrameworkRouteCameraBinding
+│     routeCameraRig = RouteCameraRig
+│     routeAnchors = RouteAnchorHost
+│     director → ref ao director da sessão
+│     startupActivityCameraBinding → opcional
+└── RouteCameraRig (GameObject)
+
+FG_Gameplay (Activity content)
+├── FrameworkActivityCameraBinding
+│     assignedActivity = FG_Activity_A
+│     activityCameraRig = ActivityACameraRig
+│     policy = UseOwnOrRoute
+│     anchors = ActivityAAnchorHost
+│     director → ref ao director da sessão
+└── ActivityACameraRig (GameObject)</code></pre>
+
+    <div class="component-card">
+      <h4>FrameworkCameraDirector</h4>
+      <p>Fica em um objeto persistente (sessão ou bootstrap da Route). É o único lugar que decide qual rig está efetivo.</p>
+      <pre><code>Add Component → Immersive Framework → Camera → Camera Director
+
+Default Camera Rig = fallback quando Route/Activity não fornecem rig
+Route Priority = 20
+Activity Priority = 100
+Set Rig Active State = true
+Rig Applier = FrameworkCinemachineRigApplier   se usar Cinemachine 3</code></pre>
+    </div>
+
+    <div class="component-card">
+      <h4>FrameworkRouteCameraBinding</h4>
+      <p>Coloque na cena de Route (ou no root de conteúdo da Route). Ao entrar na Route, o binding chama <code>SetRouteCamera</code>.</p>
+      <pre><code>Route Camera Rig = RouteCameraRig
+Route Anchors = RouteAnchorHost
+Director = FrameworkCameraDirector da sessão
+Startup Activity Camera Binding = opcional   evita flash antes da Startup Activity</code></pre>
+    </div>
+
+    <div class="component-card">
+      <h4>FrameworkActivityCameraBinding</h4>
+      <p>Coloque no conteúdo de cada Activity. Ao entrar na Activity, o binding chama <code>SetActivityCamera</code>.</p>
+      <pre><code>Assigned Activity = FG_Activity_A
+Activity Camera Rig = ActivityACameraRig
+Policy = UseOwnOrRoute
+Anchors = ActivityAAnchorHost
+Director = mesmo FrameworkCameraDirector</code></pre>
+      <div class="table-wrap" style="margin-top:12px;">
+        <table>
+          <thead><tr><th>Policy</th><th>Quando usar</th></tr></thead>
+          <tbody>
+            <tr><td><code>UseOwnOrRoute</code></td><td>Padrão. Usa rig da Activity se existir; senão cai para Route/default.</td></tr>
+            <tr><td><code>UseRoute</code></td><td>Activity sem câmera própria — sempre mantém câmera da Route.</td></tr>
+            <tr><td><code>UseOwnOrRetainActivityUntilRouteExit</code></td><td>Útil quando você quer manter a última câmera de Activity até sair da Route.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="component-card">
+      <h4>FrameworkCameraAnchorHost + Cinemachine opcional</h4>
+      <p>Define follow/look-at sem script customizado. O applier repassa para <code>CinemachineCamera</code> quando presente.</p>
+      <pre><code>FrameworkCameraAnchorHost
+  Tracking Target = PlayerPrototype
+  Look At Target = PlayerPrototype
+
+FrameworkCinemachineRigApplier   no mesmo objeto do director ou no rig
+  requer define IMMERSIVE_FRAMEWORK_CINEMACHINE e Cinemachine 3</code></pre>
+    </div>
+
+    <div class="callout warning">
+      <span class="callout-icon">⚠️</span>
+      <div class="callout-body">
+        <div class="callout-title">PlayerView não substitui o Camera Director</div>
+        <p><code>PlayerViewBehaviour</code> guarda evidência de câmera para diagnóstico/validação. Ele <strong>não</strong> ativa câmera nem conversa com o director. Para câmera jogável, use Route/Activity bindings.</p>
+      </div>
+    </div>
+
+    <h3>Checklist rápido de câmera</h3>
+    <ol class="steps">
+      <li><div class="step-body"><strong>Um director por sessão</strong>Todos os bindings apontam para a mesma referência.</div></li>
+      <li><div class="step-body"><strong>Rig como GameObject</strong>O binding referencia o root do rig, não só a <code>Camera</code> solta.</div></li>
+      <li><div class="step-body"><strong>Prioridade Activity &gt; Route</strong>Com ambos configurados, Activity ganha quando <code>policy</code> permite rig próprio.</div></li>
+      <li><div class="step-body"><strong>Log</strong>Com <code>Log Transitions</code> ativo, procure <code>[FRAMEWORK_CAMERA] Camera applied</code> ao trocar Activity.</div></li>
+    </ol>
 
     <h2 id="build-profile">Build Profile / Build Settings</h2>
     <p>Todas as cenas usadas pelo framework precisam estar no Build Profile. Para Preview 12, a cena de boot do Player deve ser a Primary Scene da Startup Route, não a UIGlobal.</p>
@@ -1575,6 +1886,73 @@ public sealed class FirstGameResetStatusLabel : MonoBehaviour
       <span class="log-key"> blocksGameplayAction</span><span class="log-sep">='</span><span class="log-val">True</span><span class="log-sep">'</span>
     </div>
 
+    <h2 id="player-evidence">Player Evidence — identidade e topologia (opcional)</h2>
+    <p>O FIRSTGAME continua usando <code>FirstGamePlayerMover</code> + <code>PlayerInput</code> para movimento. Os componentes abaixo são <strong>evidência passiva</strong> para declarar slot, actor, entry, view e control — úteis para validação, QA e preparação de cortes futuros. Eles <strong>não</strong> fazem join, spawn, binding de câmera ou roteamento de input.</p>
+
+    <div class="callout stop">
+      <span class="callout-icon">🚫</span>
+      <div class="callout-body">
+        <div class="callout-title">Não espere lifecycle automático de player</div>
+        <p>Adicionar <code>PlayerEntryBehaviour</code> não spawna personagem, não troca action map e não liga câmera. Movimento, reset e Gate continuam nos caminhos já documentados neste guia (<code>FirstGamePlayerMover</code>, <code>UnityResetSubjectAdapter</code>, <code>UnityPlayerInputGateAdapter</code>).</p>
+      </div>
+    </div>
+
+    <pre><code>PlayerPrototype   shape opcional para evidência + reset
+├── PlayerInput                          movimento (consumidor)
+├── FirstGamePlayerMover                 movimento (consumidor)
+├── UnityPlayerInputGateAdapter          Gate (este guia)
+├── UnityResetSubjectAdapter             reset (este guia)
+├── PlayerSlotDeclaration                slot estável, ex.: player.1
+├── PlayerActorDeclaration               actor + evidência PlayerInput
+├── ActorReadinessBehaviour              ReadyForView / ReadyForControl
+├── PlayerSlotOccupancy                  slot player.1 → actor do player
+├── PlayerEntryBehaviour                 conecta slot + actor + readiness
+├── PlayerViewBehaviour                  opcional: camera/target evidence
+└── PlayerControlBehaviour               opcional: control target evidence</code></pre>
+
+    <div class="component-card">
+      <h4>Ordem mínima recomendada no Inspector</h4>
+      <ol class="steps">
+        <li><div class="step-body"><strong>PlayerSlotDeclaration</strong><code>Slot Id = player.1</code>. Não use <code>playerIndex</code> do Unity como id funcional.</div></li>
+        <li><div class="step-body"><strong>PlayerActorDeclaration</strong>Exige <code>PlayerInput</code> no mesmo GameObject. <code>Actor Id</code> estável, ex.: <code>firstgame.player.actor</code>.</div></li>
+        <li><div class="step-body"><strong>ActorReadinessBehaviour</strong>Marque <code>Ready For View</code> / <code>Ready For Control</code> quando o objeto estiver pronto para consumidores futuros.</div></li>
+        <li><div class="step-body"><strong>PlayerSlotOccupancy</strong>Liga <code>player.1</code> ao <code>Actor Id</code> do player.</div></li>
+        <li><div class="step-body"><strong>PlayerEntryBehaviour</strong><code>Rebuild On Awake = true</code>. Referencie os declarations acima; não duplique ids conflitantes.</div></li>
+      </ol>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Componente</th><th>Use quando</th><th>Não use para</th></tr></thead>
+        <tbody>
+          <tr><td><code>PlayerSlotDeclaration</code></td><td>Declarar assento lógico do jogador (<code>player.1</code>).</td><td>Join, input routing, spawn.</td></tr>
+          <tr><td><code>PlayerActorDeclaration</code></td><td>Declarar actor com evidência de <code>PlayerInput</code>.</td><td>Movimento ou troca de action map.</td></tr>
+          <tr><td><code>PlayerEntryBehaviour</code></td><td>Conectar slot + actor + readiness em um snapshot.</td><td>Spawn, view bind, control bind.</td></tr>
+          <tr><td><code>PlayerViewBehaviour</code></td><td>Registrar evidência de câmera/alvo para validação.</td><td>Ativar câmera — use <code>FrameworkCameraDirector</code>.</td></tr>
+          <tr><td><code>PlayerControlBehaviour</code></td><td>Registrar evidência de alvo de controle.</td><td>Roteamento de <code>InputActions</code>.</td></tr>
+          <tr><td><code>UnityPlayerInputGateAdapter</code></td><td>Bloquear input durante Pause/Transition Gate.</td><td>Substituir PlayerEntry ou PlayerActor.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="callout tip">
+      <span class="callout-icon">✅</span>
+      <div class="callout-body">
+        <div class="callout-title">Bridge opcional no Gate Adapter</div>
+        <p>Em <code>UnityPlayerInputGateAdapter</code>, o campo <code>Source Slot</code> aceita um <code>PlayerSlotDeclaration</code> só para diagnóstico. Não altera qual <code>PlayerInput</code> é bloqueado.</p>
+      </div>
+    </div>
+
+    <h3>Session com múltiplos jogadores (futuro)</h3>
+    <p>Para local multiplayer, cada jogador precisa de <code>PlayerSlotId</code> distinto (<code>player.1</code>, <code>player.2</code>, …), <code>PlayerActorDeclaration</code> próprio e occupancy coerente. O framework ainda não coordena join/spawn — configure evidência manualmente por slot.</p>
+
+    <h3>Validação de topologia (QA / diagnóstico)</h3>
+    <p>Quando precisar provar coerência entre slot, occupancy e entry, use os validadores em código de QA — não é passo obrigatório do FIRSTGAME mínimo:</p>
+    <pre><code>PlayerSlotValidator.ValidateLoadedSceneDeclarations(...)
+PlayerActorValidator.ValidateLoadedSceneDeclarations(...)
+PlayerTopologyValidator.Validate(playerSlotSet, playerEntrySnapshots)
+PlayerViewTopologyValidator.Validate(playerTopology, playerViewSnapshots)</code></pre>
+
 <h2 id="play-smoke">Play Smoke manual</h2>
     <p>Use este roteiro para validar o fluxo em Play Mode.</p>
 
@@ -1756,6 +2134,12 @@ public sealed class FirstGameResetStatusLabel : MonoBehaviour
       <strong>Solução:</strong> no botão de restart, deixe apenas <code>ActivityRestartTrigger</code> e apenas uma chamada no <code>Button.OnClick</code>.</p>
     </div>
 
+    <div class="component-card">
+      <h4 style="color:var(--yellow); margin-bottom:8px;">⚠️ Câmera errada ao trocar Activity</h4>
+      <p style="font-size:13.5px; color:var(--text-soft);"><strong>Causa comum:</strong> falta <code>FrameworkActivityCameraBinding</code>, <code>Assigned Activity</code> incorreto, ou <code>Director</code> apontando para outro objeto.<br>
+      <strong>Solução:</strong> confirme que Route e Activity bindings usam o mesmo <code>FrameworkCameraDirector</code>, que o rig da Activity está atribuído e que a policy é <code>UseOwnOrRoute</code> (ou <code>UseRoute</code> se a Activity não tiver rig próprio).</p>
+    </div>
+
 <h2 id="limites">O que não fazer neste Preview</h2>
     <div class="callout stop">
       <span class="callout-icon">🚫</span>
@@ -1764,7 +2148,9 @@ public sealed class FirstGameResetStatusLabel : MonoBehaviour
         <p>
           Não edite o package Git dentro do consumidor.<br><br>
           Não copie assets, cenas ou ProjectSettings do projeto QA antigo.<br><br>
-          Não abra Save, Snapshot, Player, Actor, Inventory ou gameplay complexo.<br><br>
+          Não abra Save, Snapshot, Inventory ou gameplay complexo além do FIRSTGAME mínimo.<br><br>
+          Não trate <code>PlayerEntryBehaviour</code> / <code>PlayerViewBehaviour</code> como spawn, câmera ativa ou controle automático — são evidência passiva.<br><br>
+          Não ligue câmera de gameplay via <code>PlayerViewBehaviour</code>; use <code>FrameworkRouteCameraBinding</code> e <code>FrameworkActivityCameraBinding</code>.<br><br>
           Não crie service locator, singleton ou manager genérico.<br><br>
           Não use <code>SceneManager</code> direto para trocar telas do jogo. Use <code>RouteRequestTrigger</code> e os assets do framework.<br><br>
           Não trate Pause como Activity ou Route.<br><br>
@@ -1796,13 +2182,19 @@ public sealed class FirstGameResetStatusLabel : MonoBehaviour
           <tr><td><code>ActivityClear</code></td><td>Operação que remove a Activity ativa sem trocar de Route.</td></tr>
           <tr><td><code>Model Readiness</code></td><td>Validação de authoring do framework. Para PASS, precisa de 0 blockers.</td></tr>
           <tr><td><code>AlreadyLoaded</code></td><td>Indica que a cena já estava preparada quando o lifecycle tentou compor a Route.</td></tr>
+          <tr><td><code>FrameworkCameraDirector</code></td><td>Componente que escolhe qual camera rig fica ativo por Route/Activity.</td></tr>
+          <tr><td><code>FrameworkCameraActivityPolicy</code></td><td>Define se a Activity usa rig próprio, mantém Route ou retém a última Activity.</td></tr>
+          <tr><td><code>PlayerSlotDeclaration</code></td><td>Assento lógico do jogador (<code>player.1</code>). Não é <code>PlayerInput.playerIndex</code>.</td></tr>
+          <tr><td><code>PlayerEntryBehaviour</code></td><td>Evidência passiva que liga slot, actor e readiness. Não faz spawn nem bind de view/control.</td></tr>
+          <tr><td><code>ActorDeclaration</code></td><td>Identidade de NPC ou actor genérico (<code>NonPlayer</code>). Não substitui reset nem movimento.</td></tr>
+          <tr><td><code>ResetSubject</code></td><td>Alvo registrado no <code>ResetRegistry</code> para Object Reset. Independente de <code>ObjectEntryDeclaration</code>.</td></tr>
         </tbody>
       </table>
     </div>
 
     <div style="margin-top:56px; padding-top:24px; border-top:1px solid var(--border-soft); color:var(--text-muted); font-size:13px;">
       <p><strong style="color:var(--text-soft);">Immersive Framework</strong> — Guia Preview 12 para Game Designers &nbsp;·&nbsp; <code>com.immersive.framework v1.0.0-preview.12</code></p>
-      <p style="margin-top:4px;">Este guia cobre o escopo validado no POST-RESET-C: FIRSTGAME Usage Model Hardening, incluindo Player resettable state, Runtime Box, Reset Room, Restart Activity, Pause, Loading e Transition.</p>
+      <p style="margin-top:4px;">Este guia cobre o escopo validado no POST-RESET-C: FIRSTGAME Usage Model Hardening, incluindo Camera Director, Player resettable state, Runtime Box, Reset Room, Restart Activity, Pause, Loading e Transition. Player Evidence e arquitetura detalhada ficam em <code>Documentation~/Guides/*-Architecture-Flow.md</code>.</p>
     </div>
 
   </main>

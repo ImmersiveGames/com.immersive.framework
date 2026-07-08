@@ -39,6 +39,27 @@ D3 - Loading / Transition Semantics Documentation
 - Pause during transition/loading is rejected with `status='Rejected'` and `policyStatus='RejectedTransitionInProgress'`. It does not open the PauseSurface, does not change TimeScale and does not enqueue the request.
 - After D2, runtime log levels are: `Info` for operational summaries, `Debug` for technical diagnostics and `Trace` for waiting/retry/polling noise.
 
+## Preview 12 — como criar objetos no fluxo
+
+- **Objeto resetável:** filho do Activity content root + `UnityResetSubjectAdapter` (`Scope = Activity`) + participants.
+- **Player:** `GameplayRoot` + `PlayerInput` + mover do consumidor + Gate + Reset adapter. Evidência de slot/entry é opcional.
+- **NPC:** filho do Activity content root + `ActorDeclaration` (`NonPlayer`) + Reset adapter. Sem `PlayerSlot` / `PlayerInput`.
+- Detalhes passo a passo: seção **Como criar** em `Usage/index.html` (`#como-criar`).
+
+## Preview 12 camera notes
+
+- Put one `FrameworkCameraDirector` on a persistent session object; point all Route/Activity bindings to it.
+- Route camera enters via `FrameworkRouteCameraBinding` on Route content; Activity camera via `FrameworkActivityCameraBinding`.
+- `PlayerViewBehaviour` is passive evidence only — it does not activate cameras. Use Camera Director bindings for gameplay camera.
+- Optional Cinemachine path: assign `FrameworkCinemachineRigApplier` to `rigApplier` on the director.
+
+## Preview 12 player evidence notes
+
+- FIRSTGAME movement stays on consumer scripts (`FirstGamePlayerMover` + `PlayerInput`).
+- Framework player components (`PlayerSlotDeclaration`, `PlayerActorDeclaration`, `PlayerEntryBehaviour`, etc.) are optional passive evidence for validation/QA.
+- They do not join players, spawn actors, bind cameras or route input.
+- `UnityPlayerInputGateAdapter.SourceSlot` is diagnostic only.
+
 ## Preview 12 reset/restart notes
 
 - `Button_ResetPlayer` should call only `ObjectResetTrigger.RequestObjectReset()`.

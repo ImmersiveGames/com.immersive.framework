@@ -32,3 +32,5 @@ Do not duplicate long framework guidance inside QA or FIRSTGAME. Keep consumer R
 | Player architecture and flow (code-derived) | [`Player-Architecture-Flow.md`](Player-Architecture-Flow.md) |
 | Reset architecture and flow (code-derived) | [`Reset-Architecture-Flow.md`](Reset-Architecture-Flow.md) |
 | Camera architecture and flow (code-derived) | [`Camera-Architecture-Flow.md`](Camera-Architecture-Flow.md) |
+
+Architecture docs are for maintainers. Practical how-to for designers remains in [`Usage/index.html`](Usage/index.html).
