@@ -1,6 +1,6 @@
 # 01 — Roadmap
 
-Status: **canonical roadmap after Consumer Project Separation closure**.
+Status: **canonical roadmap after F49 lane selection**.
 
 ## Reading rule
 
@@ -27,7 +27,19 @@ Do not treat historical phase numbers as an active queue. Some phases are closed
 
 | Lane | Status | Scope |
 |---|---|---|
-| POST-RESET-A — Documentation reconciliation | Active | Consolidate current docs, numbered history and roadmap after Reset Reform. |
+| F49 — Player Topology, Player Entry and PlayerView Ownership | Active | Implement player-facing boundaries from Actor readiness to PlayerEntry, PlayerView, control binding and optional Unity PlayerInput integration. |
+
+## Active lane rule
+
+F49 must run package-first and QA-first:
+
+```text
+1. Implement or adjust contracts/runtime/editor/docs in com.immersive.framework.
+2. Validate technical behavior in QAFramework.
+3. Validate practical usability in planet-devourer / FIRSTGAME only after QA is clean.
+```
+
+FIRSTGAME is not the laboratory for new F49 contracts.
 
 ## Closed stable lanes
 
@@ -56,25 +68,33 @@ These historical ADRs remain for traceability, but the implementation model is n
 
 ## Candidate next lanes
 
-Choose explicitly. Do not run all in parallel.
+Do not run these in parallel with F49 unless explicitly selected by a later decision.
 
 | Option | Candidate lane | Why it matters | Risk if skipped |
 |---|---|---|---|
 | A | FIRSTGAME Usage Model Hardening | Turn validated pieces into clear developer/game-designer usage. | Framework works but usage remains tribal knowledge. |
 | B | Transition / Loading Surface Hardening | Improve progress/fade/readiness evidence and failure clarity. | Visual lifecycle becomes hard to debug. |
 | C | Runtime Spawned Object / Materialization Track | Clarify runtime prefab/materialization ownership beyond reset. | Runtime objects remain ad-hoc per game. |
-| D | Player / Actor / Camera Practical Track | Move from reset/flow into player-facing gameplay usage. | FIRSTGAME remains a reset demo instead of a gameplay proof. |
-| E | Progression Save Adapter Track | Start real game-save handoff while keeping engine interchangeable. | Save boundary stays theoretical. |
+| D | Progression Save Adapter Track | Start real game-save handoff while keeping engine interchangeable. | Save boundary stays theoretical. |
 
-## Recommendation
+## F49 recommendation
 
-Next recommended lane:
+Current selected sequence:
 
 ```text
-FIRSTGAME Usage Model Hardening or Transition/Loading Surface Hardening.
+F49A — ADR normalization and package boundary cleanup
+F49B — Actor Readiness passive contracts
+F49C — Actor Readiness Unity adapter + QA smoke
+F49D — PlayerEntry passive model
+F49E — PlayerTopology policy contracts + validator foundation
+F49F — PlayerEntry transition rules
+F49G — PlayerView passive declaration + camera precedence contract
+F49H — CameraDirector integration point for Active PlayerView
+F49I — ControlBinding boundary + permission diagnostics
+F49J — Optional PlayerInput / PlayerInputManager bridge
+F49K — FIRSTGAME validation pass
+F49L — Documentation, ADR acceptance and next-phase handoff
 ```
-
-Do not select one automatically. The next lane requires an explicit decision before implementation.
 
 ## Consumer cleanup guardrail
 

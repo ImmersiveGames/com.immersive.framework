@@ -2,17 +2,17 @@
 
 `com.immersive.framework` is the official Unity package for Immersive Framework runtime, authoring, diagnostics and validation surfaces.
 
-Current package version: `1.0.0-preview.12`
+Current package version: `1.0.0-preview.14`
 
 ## Current State
 
-The package has the supported Preview 12 baseline for application boot, route/activity flow, scene lifecycle, transition/loading surfaces, pause, reset and activity restart. It consumes technical primitives from `com.immersive.foundation`, `com.immersive.logging` and other package dependencies instead of reimplementing them here.
+The package has the supported Preview 14 baseline for application boot, route/activity flow, scene lifecycle, transition/loading surfaces, pause, reset, activity restart, player/actor identity boundaries, route/activity camera, route/activity BGM and the current F49 planning surface. It consumes technical primitives from `com.immersive.foundation`, `com.immersive.logging` and other package dependencies instead of reimplementing them here.
 
 ## Project Roles
 
-- `com.immersive.framework`: official framework package and public documentation.
-- QA Harness: technical smoke coverage for package behavior.
-- FIRSTGAME: real consumer project for usability and practical game-start validation.
+- `ImmersiveGames/com.immersive.framework`: official framework package and public documentation.
+- `rinnocenti/QAFramework`: technical smoke coverage for package behavior.
+- `ImmersiveGames/planet-devourer`: FIRSTGAME real consumer project for usability and practical game-start validation.
 
 FIRSTGAME is not the primary technical QA harness, and QA assets should not be copied into consumer projects as canonical setup.
 
@@ -26,6 +26,8 @@ FIRSTGAME is not the primary technical QA harness, and QA assets should not be c
 - Transition and Loading surfaces.
 - Reset subjects, reset participants and reset execution.
 - Object reset, reset group and Activity Restart.
+- PlayerSlot / Actor identity boundary and Unity PlayerInput evidence boundary.
+- Route/Activity camera and BGM integration boundaries.
 - Runtime logging with `Info`, `Debug` and `Trace` levels.
 
 ## Start Reading
@@ -33,6 +35,8 @@ FIRSTGAME is not the primary technical QA harness, and QA assets should not be c
 - User-facing guide: [`Documentation~/Guides/Usage/index.html`](Documentation~/Guides/Usage/index.html)
 - Guide notes and current preview semantics: [`Documentation~/Guides/Usage/README.md`](Documentation~/Guides/Usage/README.md)
 - Package documentation index: [`Documentation~/README.md`](Documentation~/README.md)
+- Current roadmap: [`Documentation~/Current/01-Roadmap.md`](Documentation~/Current/01-Roadmap.md)
+- F49 implementation plan: [`Documentation~/ADRs/F49-IMPLEMENTATION-PLAN.md`](Documentation~/ADRs/F49-IMPLEMENTATION-PLAN.md)
 
 ## Logging Policy
 
