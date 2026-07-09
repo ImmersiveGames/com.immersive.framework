@@ -14,8 +14,9 @@ Use this folder as a **small current surface** plus a **numbered history**. Do n
 | 4 | [`Current/02-Usage-Map.md`](Current/02-Usage-Map.md) | Which runtime surface to use for common game tasks. |
 | 5 | [`Current/03-Consumer-Project-Roles.md`](Current/03-Consumer-Project-Roles.md) | Frozen split between package, QA project and FIRSTGAME. |
 | 6 | [`Current/04-Player-Passive-Binding-Foundation.md`](Current/04-Player-Passive-Binding-Foundation.md) | Closed F49 passive player binding foundation. |
-| 7 | [`History/000-INDEX.md`](History/000-INDEX.md) | Numbered historical navigation. |
-| 8 | [`ADRs/ADR-INDEX.md`](ADRs/ADR-INDEX.md) | Detailed decision archive. |
+| 7 | [`Current/10-Player-Identity-Typed-Binding-Audit.md`](Current/10-Player-Identity-Typed-Binding-Audit.md) | F53C0 player identity, typed binding and adapter chain audit. |
+| 8 | [`History/000-INDEX.md`](History/000-INDEX.md) | Numbered historical navigation. |
+| 9 | [`ADRs/ADR-INDEX.md`](ADRs/ADR-INDEX.md) | Detailed decision archive. |
 
 ## Documentation policy
 
@@ -56,6 +57,7 @@ PlayerView passive contract and topology validation
 PlayerControl passive contract and topology validation
 PlayerBindingReadiness summary
 PlayerBindingDiagnostics report
+Player identity typed-binding audit
 ```
 
 ## Player passive binding model summary

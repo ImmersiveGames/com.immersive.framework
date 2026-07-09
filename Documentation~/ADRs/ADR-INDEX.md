@@ -89,6 +89,7 @@ Current order:
 | F43 | [Reset/Restart Authoring Validation](F43-ADR-RESET-010-Reset-Restart-Authoring-Validation.md) | Accepted / preview.11 |
 | F45 | [Actor / PlayerSlot Identity Boundary](F45-ADR-ACTOR-001-Actor-PlayerSlot-Identity-Boundary.md) | Proposed / Actor / PlayerSlot / Runtime Gameplay Identity |
 | F47B | [Framework Audio BGM Adapter](F47B-ADR-AUDIO-001-Framework-Audio-BGM-Adapter.md) | Accepted / Optional Framework + Audio Adapter Boundary |
+| F53C0 | [Player Identity and Typed Binding Audit](F53C0-Player-Identity-Typed-Binding-Audit-Note.md) | Accepted / audit-only / player identity and binding boundary |
 | POST-F33-A | `Assets/_Documentation/Notes/POST-F33-A-Matrix-Reconciliation-Closeout.md` | Accepted / documentation / roadmap governance |
 | POST-F33-B | `Assets/_Documentation/Notes/POST-F33-B-Officialize-Reclassify-F28-F33.md` | Accepted / documentation / roadmap governance |
 | F8R-A | `Assets/_Documentation/Audits/F8R-A-RuntimeContent-ContentAnchor-Materialization-Audit.md` | Draft / audit-only / documentation governance |
