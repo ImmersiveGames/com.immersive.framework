@@ -16,8 +16,8 @@ namespace Immersive.Framework.PlayerAuthoring
     public sealed class PlayerComposer : MonoBehaviour
     {
         [Header("Designer")]
-        [Tooltip("Optional reusable player intent asset. The first MVP supports local composer fields even when this is empty.")]
-        [SerializeField] private Object recipe;
+        [Tooltip("Optional reusable player intent asset. Use Apply Recipe Defaults to copy reusable defaults into this Composer; local fields remain editable.")]
+        [SerializeField] private PlayerRecipe recipe;
         [Tooltip("Stable ActorId for the player. This is not a GameObject name.")]
         [SerializeField] private string actorId = "player.actor";
         [Tooltip("Stable PlayerSlotId for the player. This is not PlayerInput.playerIndex.")]
@@ -54,7 +54,7 @@ namespace Immersive.Framework.PlayerAuthoring
         [SerializeField] private string lastBlockingIssue;
         [SerializeField] private string lastMaterializationSummary;
 
-        public Object Recipe => recipe;
+        public PlayerRecipe Recipe => recipe;
         public string ActorId => actorId.NormalizeText();
         public string PlayerSlotId => playerSlotId.NormalizeText();
         public PlayerInput PlayerInput => playerInput != null ? playerInput : GetComponent<PlayerInput>();
@@ -157,6 +157,44 @@ namespace Immersive.Framework.PlayerAuthoring
         }
 
 #if UNITY_EDITOR
+        public bool EditorApplyRecipeDefaults(bool overwriteExisting, out string issue)
+        {
+            issue = string.Empty;
+            if (recipe == null)
+            {
+                issue = "PlayerComposer requires a PlayerRecipe before recipe defaults can be applied.";
+                return false;
+            }
+
+            if (overwriteExisting || string.IsNullOrWhiteSpace(actorId))
+            {
+                actorId = recipe.ActorId;
+            }
+
+            if (overwriteExisting || string.IsNullOrWhiteSpace(playerSlotId))
+            {
+                playerSlotId = recipe.PlayerSlotId;
+            }
+
+            if (overwriteExisting || string.IsNullOrWhiteSpace(gameplayActionMap))
+            {
+                gameplayActionMap = recipe.GameplayActionMap;
+            }
+
+            resetEnabled = recipe.ResetEnabled;
+            validationMode = recipe.ValidationMode;
+            createBindingsRootIfMissing = recipe.CreateBindingsRootIfMissing;
+            createAnchorsIfMissing = recipe.CreateAnchorsIfMissing;
+            inputBindingRequired = recipe.InputBindingRequired;
+            cameraBindingRequired = recipe.CameraBindingRequired;
+            resetScope = recipe.ResetScope;
+            resetParticipantPolicy = recipe.ResetParticipantPolicy;
+            materializeSlotOccupancy = recipe.MaterializeSlotOccupancy;
+            materializePassiveEntryViewControl = recipe.MaterializePassiveEntryViewControl;
+            logApplyRebuildDiagnostics = recipe.LogApplyRebuildDiagnostics;
+            return true;
+        }
+
         public void EditorSetGeneratedReferences(Transform bindingsRoot, Transform generatedCameraTarget, Transform generatedLookAtTarget)
         {
             frameworkBindingsRoot = bindingsRoot;

@@ -75,6 +75,14 @@ namespace Immersive.Framework.Editor.PlayerAuthoring
             EditorGUILayout.Space();
             EditorGUILayout.LabelField("Designer", EditorStyles.boldLabel);
             EditorGUILayout.PropertyField(_recipe);
+            using (new EditorGUI.DisabledScope(_recipe.objectReferenceValue == null))
+            {
+                if (GUILayout.Button("Apply Recipe Defaults"))
+                {
+                    ApplyRecipeDefaults();
+                }
+            }
+
             EditorGUILayout.PropertyField(_actorId);
             EditorGUILayout.PropertyField(_playerSlotId);
             EditorGUILayout.PropertyField(_playerInput);
@@ -160,6 +168,23 @@ namespace Immersive.Framework.Editor.PlayerAuthoring
         {
             serializedObject.ApplyModifiedProperties();
             PlayerComposerApplyRebuildUtility.Validate((PlayerComposer)target, true);
+            serializedObject.Update();
+        }
+
+        private void ApplyRecipeDefaults()
+        {
+            serializedObject.ApplyModifiedProperties();
+            var composer = (PlayerComposer)target;
+            Undo.RecordObject(composer, "Apply Player Recipe Defaults");
+            if (!composer.EditorApplyRecipeDefaults(true, out string issue))
+            {
+                Debug.LogWarning($"[Immersive.Framework][PlayerComposer] Apply Recipe Defaults failed. player='{composer.name}' issue='{issue}'", composer);
+                serializedObject.Update();
+                return;
+            }
+
+            EditorUtility.SetDirty(composer);
+            Debug.Log($"[Immersive.Framework][PlayerComposer] Recipe defaults applied. player='{composer.name}' recipe='{composer.Recipe.name}' actorId='{composer.ActorId}' playerSlotId='{composer.PlayerSlotId}' actionMap='{composer.GameplayActionMap}' resetEnabled='{composer.ResetEnabled}' resetParticipantPolicy='{composer.ResetParticipantPolicy}'.", composer);
             serializedObject.Update();
         }
 
