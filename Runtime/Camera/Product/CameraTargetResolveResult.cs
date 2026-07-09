@@ -36,9 +36,9 @@ namespace Immersive.Framework.Camera
 
         public string DiagnosticSummary { get; }
 
-        public bool Succeeded => Status == CameraOperationStatus.Succeeded || Status == CameraOperationStatus.SucceededWithWarnings;
+        public bool IsSucceeded => Status == CameraOperationStatus.Succeeded || Status == CameraOperationStatus.SucceededWithWarnings;
 
-        public bool Blocked => Status == CameraOperationStatus.Blocked;
+        public bool IsBlocked => Status == CameraOperationStatus.Blocked;
 
         public static CameraTargetResolveResult NotRun(CameraTargetSourceDescriptor source)
         {
