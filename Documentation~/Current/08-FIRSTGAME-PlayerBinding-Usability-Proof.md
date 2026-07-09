@@ -1,6 +1,6 @@
 # 08 — FIRSTGAME Player Binding Usability Proof
 
-Status: **planned / F53A preflight**.
+Status: **F53A preflight with F53A-B1 strictness patch**.
 
 This document defines the first FIRSTGAME usability proof after the validated PlayerView and PlayerControl input chains.
 
@@ -34,8 +34,20 @@ FIRSTGAME project imports framework package
 FIRSTGAME project imports Unity Input System
 FIRSTGAME can compile against F51/F52 public components
 FIRSTGAME can create explicit proof GameObjects/components
+FIRSTGAME can reference the real scene PlayerInput
+FIRSTGAME can verify the expected gameplay action map exists
 FIRSTGAME can verify the non-goals remain non-goals
 ```
+
+## F53A-B1 strictness
+
+F53A-B1 tightens acceptance:
+
+```text
+expectedGameplayActionMap='True' is required for status='Succeeded'
+```
+
+The FIRSTGAME preflight creator must not create a temporary duplicate `PlayerInput`, because that can compete with the real player input device pairing. It must reuse an existing scene `PlayerInput` and fail explicitly if the required action map cannot be found.
 
 ## F53A non-goals
 
@@ -77,6 +89,9 @@ F53A is accepted when FIRSTGAME:
 compiles after the delta
 can run the editor preflight menu
 logs F53A_FIRSTGAME_PLAYER_BINDING_PREFLIGHT status='Succeeded'
+logs playerInput='True'
+logs inputActions='True'
+logs expectedGameplayActionMap='True'
 keeps movement='False'
 keeps actorSpawning='False'
 keeps gameplayCommandExecution='False'
@@ -84,6 +99,6 @@ keeps gameplayCommandExecution='False'
 
 ## Next after F53A
 
-Only after F53A passes should a later F53B attempt a real scene/prefab wiring proof in FIRSTGAME.
+Only after F53A passes with strict action-map validation should a later F53B attempt a real scene/prefab wiring proof in FIRSTGAME.
 
 F53B still must not introduce new framework contracts in the consumer.
