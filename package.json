@@ -10,6 +10,7 @@
   "dependencies": {
     "com.immersive.foundation": "0.1.0",
     "com.immersive.logging": "0.2.1",
+    "com.unity.cinemachine": "3.1.0",
     "com.unity.inputsystem": "1.19.0"
   }
 }

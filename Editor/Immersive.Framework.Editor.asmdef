@@ -4,7 +4,8 @@
   "references": [
     "Immersive.Framework.Runtime",
     "Immersive.Logging.Runtime",
-    "Immersive.Logging.Unity"
+    "Immersive.Logging.Unity",
+    "Unity.Cinemachine"
   ],
   "includePlatforms": [
     "Editor"
