@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using Immersive.Framework.Actors;
 using Immersive.Framework.PlayerAuthoring;
-using Immersive.Framework.PlayerBinding;
 using Immersive.Framework.PlayerSlots;
 using UnityEditor;
 using UnityEngine;
@@ -10,43 +9,48 @@ using UnityEngine;
 namespace Immersive.Framework.Editor.PlayerAuthoring
 {
     /// <summary>
-    /// Editor-only Apply/Rebuild entry point for PlayerComposer.
-    /// This is the public technical surface used by the Inspector and by QA harnesses.
-    /// It does not execute gameplay and does not create runtime authority.
+    /// Canonical editor-only Apply/Rebuild entry point for PlayerComposer.
+    /// P3A materializes only concrete runtime owners/adapters and removes obsolete passive binding components.
     /// </summary>
     public static class PlayerComposerApplyRebuildUtility
     {
+        private static readonly string[] LegacyMaterializationTypeNames =
+        {
+            "PlayerControlBindingTargetBehaviour",
+            "UnityPlayerInputBridgeTargetBehaviour",
+            "UnityPlayerInputActivationTargetBehaviour",
+            "PlayerSlotOccupancy",
+            "PlayerEntryBehaviour",
+            "PlayerViewBehaviour",
+            "PlayerControlBehaviour",
+            "FrameworkCameraAnchorHost"
+        };
+
         public static PlayerComposerApplyRebuildResult Validate(PlayerComposer composer, bool logDiagnostics = true)
         {
             if (composer == null)
             {
-                const string nullIssue = "PlayerComposer validation requires a target composer.";
-                if (logDiagnostics)
-                {
-                    Debug.LogWarning($"[Immersive.Framework][PlayerComposer] Validation failed. issue='{nullIssue}'");
-                }
-
-                return PlayerComposerApplyRebuildResult.ValidationFailed(nullIssue);
+                return FailValidation("PlayerComposer validation requires a target composer.", logDiagnostics, null);
             }
 
-            if (!TryValidateComposer(composer, out string issue))
+            if (!composer.TryValidateForApply(out string issue))
             {
                 composer.EditorSetApplyRebuildResult("ValidationFailed", issue, string.Empty);
                 EditorUtility.SetDirty(composer);
-                if (logDiagnostics)
-                {
-                    Debug.LogWarning($"[Immersive.Framework][PlayerComposer] Validation failed. player='{composer.name}' issue='{issue}'", composer);
-                }
-
-                return PlayerComposerApplyRebuildResult.ValidationFailed(issue);
+                return FailValidation(issue, logDiagnostics, composer);
             }
 
-            const string summary = "Validation completed. No materialization was changed.";
+            const string summary = "Validation completed. Minimal Player materialization is valid; no scene content was changed.";
             composer.EditorSetApplyRebuildResult("ValidationSucceeded", string.Empty, summary);
             EditorUtility.SetDirty(composer);
+
             if (logDiagnostics)
             {
-                Debug.Log($"[Immersive.Framework][PlayerComposer] Validation succeeded. player='{composer.name}' actorId='{composer.ActorId}' playerSlotId='{composer.PlayerSlotId}'", composer);
+                Debug.Log(
+                    $"[Immersive.Framework][PlayerComposer] Validation succeeded. player='{composer.name}' " +
+                    $"actorId='{composer.ActorId}' playerSlotId='{composer.PlayerSlotId}' " +
+                    $"authoredDefaultActionMap='{composer.GameplayActionMap}'.",
+                    composer);
             }
 
             return PlayerComposerApplyRebuildResult.ValidationSucceeded(summary);
@@ -59,210 +63,160 @@ namespace Immersive.Framework.Editor.PlayerAuthoring
         {
             if (composer == null)
             {
-                const string nullIssue = "PlayerComposer Apply/Rebuild requires a target composer.";
+                const string nullComposerIssue = "PlayerComposer Apply/Rebuild requires a target composer.";
                 if (logDiagnostics)
                 {
-                    Debug.LogWarning($"[Immersive.Framework][PlayerComposer] Apply/Rebuild failed. issue='{nullIssue}'");
+                    Debug.LogWarning($"[Immersive.Framework][PlayerComposer] Apply/Rebuild failed. issue='{nullComposerIssue}'");
                 }
 
-                return PlayerComposerApplyRebuildResult.ApplyFailed(nullIssue);
+                return PlayerComposerApplyRebuildResult.ApplyFailed(nullComposerIssue);
             }
 
-            int undoGroup = -1;
-            if (useUndo)
-            {
-                Undo.SetCurrentGroupName("Apply Player Composer");
-                undoGroup = Undo.GetCurrentGroup();
-            }
+            int undoGroup = BeginUndo(useUndo);
 
-            if (!TryValidateComposer(composer, out string issue))
+            if (!composer.TryValidateForApply(out string validationIssue))
             {
-                composer.EditorSetApplyRebuildResult("ApplyFailed", issue, string.Empty);
+                composer.EditorSetApplyRebuildResult("ApplyFailed", validationIssue, string.Empty);
                 EditorUtility.SetDirty(composer);
+                EndUndo(useUndo, undoGroup);
+
                 if (logDiagnostics)
                 {
-                    Debug.LogWarning($"[Immersive.Framework][PlayerComposer] Apply/Rebuild failed. player='{composer.name}' issue='{issue}'", composer);
+                    Debug.LogWarning(
+                        $"[Immersive.Framework][PlayerComposer] Apply/Rebuild failed. player='{composer.name}' issue='{validationIssue}'",
+                        composer);
                 }
 
-                CollapseUndoIfNeeded(useUndo, undoGroup);
-                return PlayerComposerApplyRebuildResult.ApplyFailed(issue);
+                return PlayerComposerApplyRebuildResult.ApplyFailed(validationIssue);
             }
-
-            var serializedComposer = new SerializedObject(composer);
-            serializedComposer.Update();
-            SerializedProperty playerInputProperty = serializedComposer.FindProperty("playerInput");
-            SerializedProperty cameraTargetProperty = serializedComposer.FindProperty("cameraTarget");
-            SerializedProperty lookAtTargetProperty = serializedComposer.FindProperty("lookAtTarget");
-
-            UnityEngine.Object playerInputReference = playerInputProperty != null ? playerInputProperty.objectReferenceValue : null;
-            UnityEngine.Object cameraTargetReference = cameraTargetProperty != null ? cameraTargetProperty.objectReferenceValue : null;
-            UnityEngine.Object lookAtTargetReference = lookAtTargetProperty != null ? lookAtTargetProperty.objectReferenceValue : null;
 
             var report = new PlayerComposerMaterializationReport();
-            Transform bindingsRoot = EnsureBindingsRoot(composer, report, useUndo);
-            Transform cameraTarget = EnsureAnchor(composer, "CameraTarget", report, useUndo);
-            Transform lookAtTarget = EnsureAnchor(composer, "LookAtTarget", report, useUndo);
 
-            composer.EditorSetGeneratedReferences(bindingsRoot, cameraTarget, lookAtTarget);
-            serializedComposer.Update();
-
-            PlayerActorDeclaration actorDeclaration = EnsureComponent(composer.gameObject, "Immersive.Framework.Actors.PlayerActorDeclaration", "PlayerActorDeclaration", true, report, useUndo, component =>
+            if (composer.ControlEnabled && composer.PlayerInput != null)
             {
-                bool changed = false;
-                changed |= SetSerialized(component, "actorId", composer.ActorId);
-                changed |= SetSerialized(component, "displayName", composer.name);
-                changed |= SetSerialized(component, "playerInput", playerInputReference);
-                changed |= SetSerialized(component, "reason", "player-composer.apply");
-                return changed;
-            }) as PlayerActorDeclaration;
-
-            PlayerSlotDeclaration slotDeclaration = EnsureComponent(composer.gameObject, "Immersive.Framework.PlayerSlots.PlayerSlotDeclaration", "PlayerSlotDeclaration", true, report, useUndo, component =>
-            {
-                bool changed = false;
-                changed |= SetSerialized(component, "slotId", composer.PlayerSlotId);
-                changed |= SetSerialized(component, "displayName", composer.name);
-                changed |= SetSerialized(component, "playerInput", playerInputReference);
-                changed |= SetSerialized(component, "reason", "player-composer.apply");
-                return changed;
-            }) as PlayerSlotDeclaration;
-
-            bool materializeControl = composer.ControlEnabled && composer.HasCompleteControlConfiguration;
-            if (materializeControl && composer.GateParticipation)
-            {
-                EnsureOptionalRootComponent(composer, "UnityPlayerInputGateAdapter", report, useUndo, component =>
+                if (!string.Equals(
+                        composer.PlayerInput.defaultActionMap,
+                        composer.GameplayActionMap,
+                        StringComparison.Ordinal))
                 {
-                    bool changed = false;
-                    changed |= SetSerialized(component, "playerInput", playerInputReference);
-                    changed |= SetSerialized(component, "sourceSlot", slotDeclaration);
-                    changed |= SetSerialized(component, "gameplayActionMapName", composer.GameplayActionMap);
-                    return changed;
-                });
-            }
-            else if (!composer.ControlEnabled)
-            {
-                report.SkippedByPolicy("control:disabled");
-            }
-            else if (!materializeControl)
-            {
-                report.SkippedByPolicy("control:optional-incomplete");
-            }
-            else
-            {
-                report.SkippedByPolicy("gate-participation:disabled");
+                    if (useUndo)
+                    {
+                        Undo.RecordObject(composer.PlayerInput, "Apply Player Default Action Map");
+                    }
+
+                    composer.PlayerInput.defaultActionMap = composer.GameplayActionMap;
+                    EditorUtility.SetDirty(composer.PlayerInput);
+                    report.Repaired($"PlayerInput.defaultActionMap:{composer.GameplayActionMap}");
+                }
+                else
+                {
+                    report.AlreadyValid($"PlayerInput.defaultActionMap:{composer.GameplayActionMap}");
+                }
             }
 
-            if (composer.ResetEnabled)
-            {
-                EnsureOptionalRootComponent(composer, "UnityResetSubjectAdapter", report, useUndo, component =>
-                {
-                    bool changed = false;
-                    changed |= SetSerialized(component, "sourcePlayerActor", actorDeclaration);
-                    changed |= SetSerialized(component, "displayName", composer.name);
-                    changed |= SetSerialized(component, "diagnosticTag", "player-composer");
-                    changed |= SetSerialized(component, "scope", composer.ResetScope);
-                    return changed;
-                });
-            }
-            else
-            {
-                report.SkippedByPolicy("reset-subject:reset-disabled");
-            }
-
-            if (materializeControl)
-            {
-                EnsureBindingComponent(bindingsRoot, "Immersive.Framework.PlayerBinding.PlayerControlBindingTargetBehaviour", "PlayerControlBindingTargetBehaviour", true, report, useUndo, component =>
-                {
-                    return SetSerialized(component, "bindingTargetName", "Player Control Binding Target");
-                });
-
-                EnsureBindingComponent(bindingsRoot, "Immersive.Framework.PlayerBinding.UnityPlayerInputBridgeTargetBehaviour", "UnityPlayerInputBridgeTargetBehaviour", true, report, useUndo, component =>
-                {
-                    bool changed = false;
-                    changed |= SetSerialized(component, "bridgeTargetName", "Unity PlayerInput Bridge Target");
-                    changed |= SetSerialized(component, "expectedPlayerSlotId", composer.PlayerSlotId);
-                    changed |= SetSerialized(component, "playerInput", playerInputReference);
-                    return changed;
-                });
-
-                EnsureBindingComponent(bindingsRoot, "Immersive.Framework.PlayerBinding.UnityPlayerInputActivationTargetBehaviour", "UnityPlayerInputActivationTargetBehaviour", true, report, useUndo, component =>
-                {
-                    bool changed = false;
-                    changed |= SetSerialized(component, "activationTargetName", "Unity PlayerInput Activation Target");
-                    changed |= SetSerialized(component, "expectedPlayerSlotId", composer.PlayerSlotId);
-                    changed |= SetSerialized(component, "playerInput", playerInputReference);
-                    changed |= SetSerialized(component, "actionMapName", composer.GameplayActionMap);
-                    return changed;
-                });
-            }
-            else
-            {
-                report.SkippedByPolicy("control-targets:not-materialized");
-            }
-
-            if (composer.MaterializeSlotOccupancy)
-            {
-                EnsureBindingComponent(bindingsRoot, "Immersive.Framework.PlayerSlots.PlayerSlotOccupancy", "PlayerSlotOccupancy", true, report, useUndo, component =>
-                {
-                    bool changed = false;
-                    changed |= SetSerialized(component, "slotDeclaration", slotDeclaration);
-                    changed |= SetSerialized(component, "slotId", composer.PlayerSlotId);
-                    changed |= SetSerialized(component, "playerActorDeclaration", actorDeclaration);
-                    changed |= SetSerialized(component, "occupiedActorId", composer.ActorId);
-                    changed |= SetSerialized(component, "displayName", "Player Slot Occupancy");
-                    changed |= SetSerialized(component, "reason", "player-composer.apply");
-                    return changed;
-                });
-            }
-            else
-            {
-                report.SkippedByPolicy("slot-occupancy:policy-disabled");
-            }
+            Transform technicalRoot = EnsureTechnicalRoot(composer, report, useUndo);
+            Transform cameraTarget = composer.CameraTarget;
+            Transform lookAtTarget = composer.LookAtTarget;
 
             if (composer.CameraBindingRequired)
             {
-                EnsureBindingComponent(bindingsRoot, null, "FrameworkCameraAnchorHost", false, report, useUndo, component =>
+                cameraTarget = EnsureAnchor(
+                    composer,
+                    "CameraTarget",
+                    composer.CameraTarget,
+                    true,
+                    report,
+                    useUndo);
+
+                lookAtTarget = composer.LookAtPolicy == PlayerComposerLookAtPolicy.UseFollowTarget
+                    ? cameraTarget
+                    : EnsureAnchor(
+                        composer,
+                        "LookAtTarget",
+                        composer.LookAtTarget,
+                        true,
+                        report,
+                        useUndo);
+
+                composer.EditorSetGeneratedReferences(technicalRoot, cameraTarget, lookAtTarget);
+
+                if (composer.CameraTarget == null)
+                {
+                    report.Blocked("camera-anchor:CameraTarget:materialization-failed");
+                }
+
+                if (composer.LookAtTarget == null)
+                {
+                    report.Blocked("camera-anchor:LookAtTarget:materialization-failed");
+                }
+            }
+            else
+            {
+                // Camera integration is disabled. Existing authored/generated anchors are preserved,
+                // but Apply/Rebuild must not create new camera objects or rewrite references.
+                composer.EditorSetGeneratedReferences(technicalRoot, null, null);
+                report.SkippedByPolicy("camera-anchors:camera-binding-disabled");
+            }
+
+            PlayerActorDeclaration actorDeclaration = EnsureComponent<PlayerActorDeclaration>(
+                composer.gameObject,
+                report,
+                useUndo,
+                component =>
                 {
                     bool changed = false;
-                    changed |= SetSerialized(component, "trackingTarget", cameraTargetReference != null ? cameraTargetReference : cameraTarget);
-                    changed |= SetSerialized(component, "lookAtTarget", lookAtTargetReference != null ? lookAtTargetReference : lookAtTarget);
+                    changed |= SetSerialized(component, "actorId", composer.ActorId);
+                    changed |= SetSerialized(component, "displayName", composer.name);
+                    changed |= SetSerialized(component, "playerInput", composer.PlayerInput);
+                    changed |= SetSerialized(component, "reason", "player-composer.apply");
                     return changed;
                 });
-            }
-            else
-            {
-                report.SkippedByPolicy("camera-binding:policy-disabled");
-            }
 
-            if (composer.ResetEnabled && composer.ResetParticipantPolicy == PlayerComposerResetParticipantPolicy.Transform)
-            {
-                EnsureBindingComponent(bindingsRoot, "Immersive.Framework.Reset.Unity.UnityTransformResetParticipant", "UnityTransformResetParticipant", true, report, useUndo, component =>
+            PlayerSlotDeclaration slotDeclaration = EnsureComponent<PlayerSlotDeclaration>(
+                composer.gameObject,
+                report,
+                useUndo,
+                component =>
                 {
-                    return SetSerialized(component, "target", composer.transform);
+                    bool changed = false;
+                    changed |= SetSerialized(component, "slotId", composer.PlayerSlotId);
+                    changed |= SetSerialized(component, "displayName", composer.name);
+                    changed |= SetSerialized(component, "playerInput", composer.PlayerInput);
+                    changed |= SetSerialized(component, "reason", "player-composer.apply");
+                    return changed;
                 });
-            }
-            else
-            {
-                report.SkippedByPolicy($"reset-participant:{composer.ResetParticipantPolicy}");
-            }
+
+            ConfigureGate(composer, slotDeclaration, report, useUndo);
+            ConfigureReset(composer, actorDeclaration, technicalRoot, report, useUndo);
+            RemoveLegacyMaterialization(composer, report, useUndo);
+            RemoveEmptyBindingsContainer(composer, report, useUndo);
 
             string summary = report.CreateSummary();
-            string status = report.BlockedCount > 0 ? "ApplyCompletedWithBlockingIssues" : "ApplySucceeded";
-            string blockingIssue = report.BlockedCount > 0 ? report.FirstBlockingIssue : string.Empty;
-            composer.EditorSetApplyRebuildResult(status, blockingIssue, summary);
+            bool succeeded = report.BlockedCount == 0;
+            string status = succeeded ? "ApplySucceeded" : "ApplyCompletedWithBlockingIssues";
+            string issue = succeeded ? string.Empty : report.FirstBlockingIssue;
+
+            composer.EditorSetApplyRebuildResult(status, issue, summary);
             EditorUtility.SetDirty(composer);
             EditorUtility.SetDirty(composer.gameObject);
-            serializedComposer.Update();
-            CollapseUndoIfNeeded(useUndo, undoGroup);
+            EndUndo(useUndo, undoGroup);
 
             if (logDiagnostics && composer.LogApplyRebuildDiagnostics)
             {
-                Debug.Log($"[Immersive.Framework][PlayerComposer] Apply/Rebuild completed. player='{composer.name}' actorId='{composer.ActorId}' playerSlotId='{composer.PlayerSlotId}' controlEnabled='{composer.ControlEnabled}' startupPolicy='{composer.ControlStartupPolicy}' requiredness='{composer.ControlRequiredness}' gateParticipation='{composer.GateParticipation}' created='{report.CreatedCount}' repaired='{report.RepairedCount}' alreadyValid='{report.AlreadyValidCount}' skippedByPolicy='{report.SkippedByPolicyCount}' blocked='{report.BlockedCount}' resetEnabled='{composer.ResetEnabled}' resetParticipantPolicy='{composer.ResetParticipantPolicy}'", composer);
+                Debug.Log(
+                    $"[Immersive.Framework][PlayerComposer] Apply/Rebuild completed. player='{composer.name}' " +
+                    $"actorId='{composer.ActorId}' playerSlotId='{composer.PlayerSlotId}' " +
+                    $"authoredDefaultActionMap='{composer.GameplayActionMap}' created='{report.CreatedCount}' " +
+                    $"repaired='{report.RepairedCount}' removedLegacy='{report.RemovedCount}' " +
+                    $"alreadyValid='{report.AlreadyValidCount}' skippedByPolicy='{report.SkippedByPolicyCount}' " +
+                    $"blocked='{report.BlockedCount}'.",
+                    composer);
             }
 
             return PlayerComposerApplyRebuildResult.ApplyCompleted(
-                report.BlockedCount == 0,
+                succeeded,
                 status,
-                blockingIssue,
+                issue,
                 summary,
                 report.CreatedCount,
                 report.RepairedCount,
@@ -271,191 +225,220 @@ namespace Immersive.Framework.Editor.PlayerAuthoring
                 report.BlockedCount);
         }
 
-        private static bool TryValidateComposer(PlayerComposer composer, out string issue)
+        private static void ConfigureGate(
+            PlayerComposer composer,
+            PlayerSlotDeclaration slotDeclaration,
+            PlayerComposerMaterializationReport report,
+            bool useUndo)
         {
-            issue = string.Empty;
-            if (!composer.TryValidateForApply(out issue))
+            Type gateType = ResolveMonoBehaviourType("UnityPlayerInputGateAdapter");
+            Component existing = gateType != null ? composer.GetComponent(gateType) : null;
+
+            if (!composer.ControlEnabled || !composer.GateParticipation)
             {
-                return false;
-            }
-
-            return TryValidateCanonicalMaterialization(composer, out issue);
-        }
-
-        private static bool TryValidateCanonicalMaterialization(PlayerComposer composer, out string issue)
-        {
-            issue = string.Empty;
-            Transform canonicalBindingsRoot = ResolveCanonicalBindingsRoot(composer);
-            if (composer.FrameworkBindingsRoot != null
-                && composer.FrameworkBindingsRoot != canonicalBindingsRoot)
-            {
-                issue =
-                    "PlayerComposer Framework Bindings Root must reference the canonical " +
-                    $"'_Framework/_Bindings' child. assigned='{GetDiagnosticPath(composer.transform, composer.FrameworkBindingsRoot)}'.";
-                return false;
-            }
-
-            var findings = new List<string>();
-            AddNonCanonicalComponents(
-                composer.GetComponentsInChildren<PlayerActorDeclaration>(true),
-                composer.transform,
-                composer.transform,
-                nameof(PlayerActorDeclaration),
-                findings);
-            AddNonCanonicalComponents(
-                composer.GetComponentsInChildren<PlayerSlotDeclaration>(true),
-                composer.transform,
-                composer.transform,
-                nameof(PlayerSlotDeclaration),
-                findings);
-            AddNonCanonicalComponents(
-                composer.GetComponentsInChildren<PlayerControlBindingTargetBehaviour>(true),
-                canonicalBindingsRoot,
-                composer.transform,
-                nameof(PlayerControlBindingTargetBehaviour),
-                findings);
-            AddNonCanonicalComponents(
-                composer.GetComponentsInChildren<UnityPlayerInputBridgeTargetBehaviour>(true),
-                canonicalBindingsRoot,
-                composer.transform,
-                nameof(UnityPlayerInputBridgeTargetBehaviour),
-                findings);
-            AddNonCanonicalComponents(
-                composer.GetComponentsInChildren<UnityPlayerInputActivationTargetBehaviour>(true),
-                canonicalBindingsRoot,
-                composer.transform,
-                nameof(UnityPlayerInputActivationTargetBehaviour),
-                findings);
-
-            if (findings.Count == 0)
-            {
-                return true;
-            }
-
-            findings.Sort(StringComparer.Ordinal);
-            issue =
-                "PlayerComposer found duplicate or non-canonical control owners/targets. " +
-                "Canonical owners are the Player root and '_Framework/_Bindings'. " +
-                "No component was selected or removed. Correct or migrate manually. findings='" +
-                string.Join("; ", findings) + "'.";
-            return false;
-        }
-
-        private static Transform ResolveCanonicalBindingsRoot(PlayerComposer composer)
-        {
-            Transform frameworkRoot = FindDirectChild(composer.transform, "_Framework");
-            return frameworkRoot != null ? FindDirectChild(frameworkRoot, "_Bindings") : null;
-        }
-
-        private static void AddNonCanonicalComponents<T>(
-            T[] components,
-            Transform canonicalOwner,
-            Transform diagnosticRoot,
-            string componentName,
-            List<string> findings)
-            where T : Component
-        {
-            int canonicalCount = 0;
-            for (int i = 0; i < components.Length; i++)
-            {
-                T component = components[i];
-                if (component != null && component.transform == canonicalOwner)
+                if (existing != null)
                 {
-                    canonicalCount++;
-                    continue;
+                    Destroy(existing, useUndo);
+                    report.Removed("root:UnityPlayerInputGateAdapter:policy-disabled");
+                }
+                else
+                {
+                    report.SkippedByPolicy("gate:disabled");
                 }
 
-                if (component != null)
+                return;
+            }
+
+            if (!composer.HasCompleteControlConfiguration)
+            {
+                if (composer.InputBindingRequired)
                 {
-                    findings.Add(
-                        $"{componentName}@{GetDiagnosticPath(diagnosticRoot, component.transform)}");
+                    report.Blocked("gate:required-control-configuration-incomplete");
                 }
-            }
-
-            if (canonicalCount > 1)
-            {
-                findings.Add(
-                    $"{componentName}@{GetDiagnosticPath(diagnosticRoot, canonicalOwner)}:count={canonicalCount}");
-            }
-        }
-
-        private static string GetDiagnosticPath(Transform root, Transform target)
-        {
-            if (target == null)
-            {
-                return "<none>";
-            }
-
-            var segments = new List<string>();
-            Transform current = target;
-            while (current != null)
-            {
-                segments.Add(current.name);
-                if (current == root)
+                else
                 {
-                    break;
+                    report.SkippedByPolicy("gate:optional-control-configuration-incomplete");
                 }
 
-                current = current.parent;
+                return;
             }
 
-            segments.Reverse();
-            return string.Join("/", segments);
-        }
-
-        private static void CollapseUndoIfNeeded(bool useUndo, int undoGroup)
-        {
-            if (useUndo && undoGroup >= 0)
+            if (gateType == null)
             {
-                Undo.CollapseUndoOperations(undoGroup);
+                report.Blocked("missing-type:UnityPlayerInputGateAdapter");
+                return;
+            }
+
+            Component gate = existing ?? AddComponent(composer.gameObject, gateType, useUndo);
+            bool changed = false;
+            changed |= SetSerialized(gate, "playerInput", composer.PlayerInput);
+            changed |= SetSerialized(gate, "sourceSlot", slotDeclaration);
+
+            // Unity's PlayerInput remains the authority. The adapter receives its effective default map.
+            changed |= SetSerialized(gate, "gameplayActionMapName", composer.GameplayActionMap);
+            changed |= SetSerialized(gate, "actionMapName", composer.GameplayActionMap);
+            changed |= SetSerialized(gate, "gameplayActionMap", composer.GameplayActionMap);
+
+            if (existing == null)
+            {
+                report.Created("root:UnityPlayerInputGateAdapter");
+            }
+            else if (changed)
+            {
+                report.Repaired("root:UnityPlayerInputGateAdapter");
+            }
+            else
+            {
+                report.AlreadyValid("root:UnityPlayerInputGateAdapter");
             }
         }
 
-        private static Transform EnsureBindingsRoot(PlayerComposer composer, PlayerComposerMaterializationReport report, bool useUndo)
+        private static void ConfigureReset(
+            PlayerComposer composer,
+            PlayerActorDeclaration actorDeclaration,
+            Transform technicalRoot,
+            PlayerComposerMaterializationReport report,
+            bool useUndo)
         {
-            if (composer.FrameworkBindingsRoot != null)
+            Type subjectType = ResolveMonoBehaviourType("UnityResetSubjectAdapter");
+            Component subject = subjectType != null ? composer.GetComponent(subjectType) : null;
+
+            if (!composer.ResetEnabled)
             {
-                report.AlreadyValid($"bindings-root:assigned:{composer.FrameworkBindingsRoot.name}");
-                return composer.FrameworkBindingsRoot;
+                if (subject != null)
+                {
+                    Destroy(subject, useUndo);
+                    report.Removed("root:UnityResetSubjectAdapter:reset-disabled");
+                }
+                else
+                {
+                    report.SkippedByPolicy("reset-subject:reset-disabled");
+                }
+
+                RemoveTransformResetParticipants(technicalRoot, report, useUndo);
+                return;
+            }
+
+            if (subjectType == null)
+            {
+                report.Blocked("missing-type:UnityResetSubjectAdapter");
+                return;
+            }
+
+            Component effectiveSubject = subject ?? AddComponent(composer.gameObject, subjectType, useUndo);
+            bool subjectChanged = false;
+            subjectChanged |= SetSerialized(effectiveSubject, "sourcePlayerActor", actorDeclaration);
+            subjectChanged |= SetSerialized(effectiveSubject, "displayName", composer.name);
+            subjectChanged |= SetSerialized(effectiveSubject, "diagnosticTag", "player-composer");
+            subjectChanged |= SetSerialized(effectiveSubject, "scope", composer.ResetScope);
+
+            if (subject == null)
+            {
+                report.Created("root:UnityResetSubjectAdapter");
+            }
+            else if (subjectChanged)
+            {
+                report.Repaired("root:UnityResetSubjectAdapter");
+            }
+            else
+            {
+                report.AlreadyValid("root:UnityResetSubjectAdapter");
+            }
+
+            if (composer.ResetParticipantPolicy != PlayerComposerResetParticipantPolicy.Transform)
+            {
+                RemoveTransformResetParticipants(technicalRoot, report, useUndo);
+                report.SkippedByPolicy($"reset-participant:{composer.ResetParticipantPolicy}");
+                return;
+            }
+
+            if (technicalRoot == null)
+            {
+                report.Blocked("reset-participant:no-technical-root");
+                return;
+            }
+
+            Type participantType = ResolveMonoBehaviourType("UnityTransformResetParticipant");
+            if (participantType == null)
+            {
+                report.Blocked("missing-type:UnityTransformResetParticipant");
+                return;
+            }
+
+            Component participant = technicalRoot.GetComponent(participantType);
+            Component effectiveParticipant = participant ?? AddComponent(technicalRoot.gameObject, participantType, useUndo);
+            bool changed = SetSerialized(effectiveParticipant, "target", composer.transform);
+
+            if (participant == null)
+            {
+                report.Created("technical:UnityTransformResetParticipant");
+            }
+            else if (changed)
+            {
+                report.Repaired("technical:UnityTransformResetParticipant");
+            }
+            else
+            {
+                report.AlreadyValid("technical:UnityTransformResetParticipant");
+            }
+        }
+
+        private static Transform EnsureTechnicalRoot(
+            PlayerComposer composer,
+            PlayerComposerMaterializationReport report,
+            bool useUndo)
+        {
+            Transform assigned = composer.FrameworkBindingsRoot;
+            if (assigned != null && assigned.parent == composer.transform && assigned.name == "_Framework")
+            {
+                report.AlreadyValid("technical-root:_Framework");
+                return assigned;
+            }
+
+            Transform root = FindDirectChild(composer.transform, "_Framework");
+            if (root != null)
+            {
+                report.AlreadyValid("technical-root:_Framework");
+                return root;
             }
 
             if (!composer.CreateBindingsRootIfMissing)
             {
-                report.Blocked("bindings-root:missing-and-creation-disabled");
+                report.Blocked("technical-root:missing-and-creation-disabled");
                 return null;
             }
 
-            Transform frameworkRoot = FindDirectChild(composer.transform, "_Framework");
-            if (frameworkRoot == null)
-            {
-                frameworkRoot = CreateChild(composer.transform, "_Framework", useUndo);
-                report.Created("container:_Framework");
-            }
-            else
-            {
-                report.AlreadyValid("container:_Framework");
-            }
-
-            Transform bindingsRoot = FindDirectChild(frameworkRoot, "_Bindings");
-            if (bindingsRoot == null)
-            {
-                bindingsRoot = CreateChild(frameworkRoot, "_Bindings", useUndo);
-                report.Created("bindings-root:_Framework/_Bindings");
-            }
-            else
-            {
-                report.AlreadyValid("bindings-root:_Framework/_Bindings");
-            }
-
-            return bindingsRoot;
+            root = CreateChild(composer.transform, "_Framework", useUndo);
+            report.Created("technical-root:_Framework");
+            return root;
         }
 
-        private static Transform EnsureAnchor(PlayerComposer composer, string anchorName, PlayerComposerMaterializationReport report, bool useUndo)
+        private static Transform EnsureAnchor(
+            PlayerComposer composer,
+            string anchorName,
+            Transform assigned,
+            bool required,
+            PlayerComposerMaterializationReport report,
+            bool useUndo)
         {
+            if (assigned != null)
+            {
+                report.AlreadyValid($"anchor:assigned:{anchorName}");
+                return assigned;
+            }
+
             if (!composer.CreateAnchorsIfMissing)
             {
-                report.SkippedByPolicy($"anchor:{anchorName}:anchor-creation-disabled");
-                return composer.transform;
+                if (required)
+                {
+                    report.Blocked($"anchor:{anchorName}:missing-and-creation-disabled");
+                }
+                else
+                {
+                    report.SkippedByPolicy($"anchor:{anchorName}:optional-and-creation-disabled");
+                }
+
+                return null;
             }
 
             Transform anchorsRoot = FindDirectChild(composer.transform, "Anchors");
@@ -483,7 +466,136 @@ namespace Immersive.Framework.Editor.PlayerAuthoring
             return anchor;
         }
 
-        private static Transform FindDirectChild(Transform root, string childName)
+        private static void RemoveLegacyMaterialization(
+            PlayerComposer composer,
+            PlayerComposerMaterializationReport report,
+            bool useUndo)
+        {
+            foreach (MonoBehaviour component in composer.GetComponentsInChildren<MonoBehaviour>(true))
+            {
+                if (component == null || component == composer)
+                {
+                    continue;
+                }
+
+                string typeName = component.GetType().Name;
+                if (Array.IndexOf(LegacyMaterializationTypeNames, typeName) < 0)
+                {
+                    continue;
+                }
+
+                Destroy(component, useUndo);
+                report.Removed($"legacy:{typeName}");
+            }
+        }
+
+        private static void RemoveEmptyBindingsContainer(
+            PlayerComposer composer,
+            PlayerComposerMaterializationReport report,
+            bool useUndo)
+        {
+            Transform framework = FindDirectChild(composer.transform, "_Framework");
+            Transform bindings = framework != null ? FindDirectChild(framework, "_Bindings") : null;
+            if (bindings == null)
+            {
+                return;
+            }
+
+            if (bindings.childCount == 0 && bindings.GetComponents<Component>().Length == 1)
+            {
+                Destroy(bindings.gameObject, useUndo);
+                report.Removed("container:_Framework/_Bindings");
+            }
+        }
+
+        private static void RemoveTransformResetParticipants(
+            Transform technicalRoot,
+            PlayerComposerMaterializationReport report,
+            bool useUndo)
+        {
+            if (technicalRoot == null)
+            {
+                return;
+            }
+
+            Type type = ResolveMonoBehaviourType("UnityTransformResetParticipant");
+            if (type == null)
+            {
+                return;
+            }
+
+            foreach (Component participant in technicalRoot.GetComponents(type))
+            {
+                Destroy(participant, useUndo);
+                report.Removed("technical:UnityTransformResetParticipant");
+            }
+        }
+
+        private static T EnsureComponent<T>(
+            GameObject owner,
+            PlayerComposerMaterializationReport report,
+            bool useUndo,
+            Func<T, bool> configure)
+            where T : Component
+        {
+            T existing = owner.GetComponent<T>();
+            if (existing == null)
+            {
+                T created = useUndo ? Undo.AddComponent<T>(owner) : owner.AddComponent<T>();
+                configure?.Invoke(created);
+                report.Created($"root:{typeof(T).Name}");
+                return created;
+            }
+
+            bool changed = configure?.Invoke(existing) == true;
+            if (changed)
+            {
+                report.Repaired($"root:{typeof(T).Name}");
+            }
+            else
+            {
+                report.AlreadyValid($"root:{typeof(T).Name}");
+            }
+
+            return existing;
+        }
+
+        private static Type ResolveMonoBehaviourType(string simpleName)
+        {
+            foreach (Type type in TypeCache.GetTypesDerivedFrom<MonoBehaviour>())
+            {
+                if (type.Name == simpleName)
+                {
+                    return type;
+                }
+            }
+
+            return null;
+        }
+
+        private static Component AddComponent(GameObject owner, Type type, bool useUndo)
+        {
+            return useUndo ? Undo.AddComponent(owner, type) : owner.AddComponent(type);
+        }
+
+        private static void Destroy(UnityEngine.Object value, bool useUndo)
+        {
+            if (value == null)
+            {
+                return;
+            }
+
+            if (useUndo)
+            {
+                Undo.DestroyObjectImmediate(value);
+            }
+            else
+            {
+                UnityEngine.Object.DestroyImmediate(value);
+            }
+        }
+
+        private static Transform FindDirectChild(Transform root, string name)
         {
             if (root == null)
             {
@@ -493,7 +605,7 @@ namespace Immersive.Framework.Editor.PlayerAuthoring
             for (int i = 0; i < root.childCount; i++)
             {
                 Transform child = root.GetChild(i);
-                if (child.name == childName)
+                if (child.name == name)
                 {
                     return child;
                 }
@@ -502,155 +614,16 @@ namespace Immersive.Framework.Editor.PlayerAuthoring
             return null;
         }
 
-        private static Transform CreateChild(Transform parent, string childName, bool useUndo)
+        private static Transform CreateChild(Transform parent, string name, bool useUndo)
         {
-            var child = new GameObject(childName);
+            var child = new GameObject(name);
             if (useUndo)
             {
-                Undo.RegisterCreatedObjectUndo(child, $"Create {childName}");
+                Undo.RegisterCreatedObjectUndo(child, $"Create {name}");
             }
 
             child.transform.SetParent(parent, false);
             return child.transform;
-        }
-
-        private static Component EnsureComponent(GameObject owner, string fullName, string simpleName, bool required, PlayerComposerMaterializationReport report, bool useUndo, Func<Component, bool> configure)
-        {
-            Type type = ResolveComponentType(fullName, simpleName);
-            if (type == null)
-            {
-                if (required)
-                {
-                    report.Blocked($"missing-type:{simpleName}");
-                }
-                else
-                {
-                    report.SkippedByPolicy($"missing-optional-type:{simpleName}");
-                }
-
-                return null;
-            }
-
-            Component existing = owner.GetComponent(type);
-            if (existing != null)
-            {
-                bool changed = configure?.Invoke(existing) == true;
-                if (changed)
-                {
-                    report.Repaired(simpleName);
-                }
-                else
-                {
-                    report.AlreadyValid(simpleName);
-                }
-
-                return existing;
-            }
-
-            Component created = useUndo ? Undo.AddComponent(owner, type) : owner.AddComponent(type);
-            configure?.Invoke(created);
-            report.Created(simpleName);
-            return created;
-        }
-
-        private static void EnsureOptionalRootComponent(PlayerComposer composer, string simpleName, PlayerComposerMaterializationReport report, bool useUndo, Func<Component, bool> configure)
-        {
-            Type type = ResolveComponentType(null, simpleName);
-            if (type == null)
-            {
-                report.SkippedByPolicy($"missing-optional-root-type:{simpleName}");
-                return;
-            }
-
-            Component existing = composer.gameObject.GetComponent(type);
-            if (existing != null)
-            {
-                bool changed = configure?.Invoke(existing) == true;
-                if (changed)
-                {
-                    report.Repaired($"root:{simpleName}");
-                }
-                else
-                {
-                    report.AlreadyValid($"root:{simpleName}");
-                }
-
-                return;
-            }
-
-            Component created = useUndo ? Undo.AddComponent(composer.gameObject, type) : composer.gameObject.AddComponent(type);
-            configure?.Invoke(created);
-            report.Created($"root:{simpleName}");
-        }
-
-        private static void EnsureBindingComponent(Transform bindingsRoot, string fullName, string simpleName, bool required, PlayerComposerMaterializationReport report, bool useUndo, Func<Component, bool> configure)
-        {
-            if (bindingsRoot == null)
-            {
-                if (required)
-                {
-                    report.Blocked($"no-bindings-root:{simpleName}");
-                }
-                else
-                {
-                    report.SkippedByPolicy($"no-bindings-root:{simpleName}");
-                }
-
-                return;
-            }
-
-            Type type = ResolveComponentType(fullName, simpleName);
-            if (type == null)
-            {
-                if (required)
-                {
-                    report.Blocked($"missing-type:{simpleName}");
-                }
-                else
-                {
-                    report.SkippedByPolicy($"missing-optional-type:{simpleName}");
-                }
-
-                return;
-            }
-
-            Component existing = bindingsRoot.GetComponent(type);
-            if (existing != null)
-            {
-                bool changed = configure?.Invoke(existing) == true;
-                if (changed)
-                {
-                    report.Repaired($"binding:{simpleName}");
-                }
-                else
-                {
-                    report.AlreadyValid($"binding:{simpleName}");
-                }
-
-                return;
-            }
-
-            Component created = useUndo ? Undo.AddComponent(bindingsRoot.gameObject, type) : bindingsRoot.gameObject.AddComponent(type);
-            configure?.Invoke(created);
-            report.Created($"binding:{simpleName}");
-        }
-
-        private static Type ResolveComponentType(string fullName, string simpleName)
-        {
-            foreach (Type type in TypeCache.GetTypesDerivedFrom<MonoBehaviour>())
-            {
-                if (!string.IsNullOrEmpty(fullName) && type.FullName == fullName)
-                {
-                    return type;
-                }
-
-                if (!string.IsNullOrEmpty(simpleName) && type.Name == simpleName)
-                {
-                    return type;
-                }
-            }
-
-            return null;
         }
 
         private static bool SetSerialized(Component component, string propertyName, string value)
@@ -742,40 +715,57 @@ namespace Immersive.Framework.Editor.PlayerAuthoring
             return false;
         }
 
+        private static PlayerComposerApplyRebuildResult FailValidation(
+            string issue,
+            bool logDiagnostics,
+            PlayerComposer composer)
+        {
+            if (logDiagnostics)
+            {
+                Debug.LogWarning(
+                    $"[Immersive.Framework][PlayerComposer] Validation failed. issue='{issue}'",
+                    composer);
+            }
+
+            return PlayerComposerApplyRebuildResult.ValidationFailed(issue);
+        }
+
+        private static int BeginUndo(bool useUndo)
+        {
+            if (!useUndo)
+            {
+                return -1;
+            }
+
+            Undo.SetCurrentGroupName("Apply Player Composer");
+            return Undo.GetCurrentGroup();
+        }
+
+        private static void EndUndo(bool useUndo, int group)
+        {
+            if (useUndo && group >= 0)
+            {
+                Undo.CollapseUndoOperations(group);
+            }
+        }
+
         private sealed class PlayerComposerMaterializationReport
         {
-            private readonly List<string> _entries = new();
+            private readonly List<string> entries = new();
 
             public int CreatedCount { get; private set; }
             public int RepairedCount { get; private set; }
+            public int RemovedCount { get; private set; }
             public int AlreadyValidCount { get; private set; }
             public int SkippedByPolicyCount { get; private set; }
             public int BlockedCount { get; private set; }
             public string FirstBlockingIssue { get; private set; } = string.Empty;
 
-            public void Created(string entry)
-            {
-                CreatedCount++;
-                Add("created", entry);
-            }
-
-            public void Repaired(string entry)
-            {
-                RepairedCount++;
-                Add("repaired", entry);
-            }
-
-            public void AlreadyValid(string entry)
-            {
-                AlreadyValidCount++;
-                Add("already-valid", entry);
-            }
-
-            public void SkippedByPolicy(string entry)
-            {
-                SkippedByPolicyCount++;
-                Add("skipped-by-policy", entry);
-            }
+            public void Created(string entry) { CreatedCount++; Add("created", entry); }
+            public void Repaired(string entry) { RepairedCount++; Add("repaired", entry); }
+            public void Removed(string entry) { RemovedCount++; Add("removed", entry); }
+            public void AlreadyValid(string entry) { AlreadyValidCount++; Add("already-valid", entry); }
+            public void SkippedByPolicy(string entry) { SkippedByPolicyCount++; Add("skipped-by-policy", entry); }
 
             public void Blocked(string entry)
             {
@@ -790,18 +780,16 @@ namespace Immersive.Framework.Editor.PlayerAuthoring
 
             public string CreateSummary()
             {
-                string header = $"created={CreatedCount}; repaired={RepairedCount}; alreadyValid={AlreadyValidCount}; skippedByPolicy={SkippedByPolicyCount}; blocked={BlockedCount}";
-                if (_entries.Count == 0)
-                {
-                    return header;
-                }
+                string header =
+                    $"created={CreatedCount}; repaired={RepairedCount}; removed={RemovedCount}; " +
+                    $"alreadyValid={AlreadyValidCount}; skippedByPolicy={SkippedByPolicyCount}; blocked={BlockedCount}";
 
-                return header + "\n" + string.Join("\n", _entries);
+                return entries.Count == 0 ? header : header + "\n" + string.Join("\n", entries);
             }
 
             private void Add(string kind, string entry)
             {
-                _entries.Add($"{kind}:{entry ?? string.Empty}");
+                entries.Add($"{kind}:{entry ?? string.Empty}");
             }
         }
     }
@@ -841,20 +829,14 @@ namespace Immersive.Framework.Editor.PlayerAuthoring
         public int SkippedByPolicyCount { get; }
         public int BlockedCount { get; }
 
-        public static PlayerComposerApplyRebuildResult ValidationSucceeded(string summary)
-        {
-            return new PlayerComposerApplyRebuildResult(true, "ValidationSucceeded", string.Empty, summary, 0, 0, 0, 0, 0);
-        }
+        public static PlayerComposerApplyRebuildResult ValidationSucceeded(string summary) =>
+            new(true, "ValidationSucceeded", string.Empty, summary, 0, 0, 0, 0, 0);
 
-        public static PlayerComposerApplyRebuildResult ValidationFailed(string issue)
-        {
-            return new PlayerComposerApplyRebuildResult(false, "ValidationFailed", issue, string.Empty, 0, 0, 0, 0, 1);
-        }
+        public static PlayerComposerApplyRebuildResult ValidationFailed(string issue) =>
+            new(false, "ValidationFailed", issue, string.Empty, 0, 0, 0, 0, 1);
 
-        public static PlayerComposerApplyRebuildResult ApplyFailed(string issue)
-        {
-            return new PlayerComposerApplyRebuildResult(false, "ApplyFailed", issue, string.Empty, 0, 0, 0, 0, 1);
-        }
+        public static PlayerComposerApplyRebuildResult ApplyFailed(string issue) =>
+            new(false, "ApplyFailed", issue, string.Empty, 0, 0, 0, 0, 1);
 
         public static PlayerComposerApplyRebuildResult ApplyCompleted(
             bool succeeded,
@@ -865,9 +847,8 @@ namespace Immersive.Framework.Editor.PlayerAuthoring
             int repairedCount,
             int alreadyValidCount,
             int skippedByPolicyCount,
-            int blockedCount)
-        {
-            return new PlayerComposerApplyRebuildResult(
+            int blockedCount) =>
+            new(
                 succeeded,
                 status,
                 issue,
@@ -877,6 +858,5 @@ namespace Immersive.Framework.Editor.PlayerAuthoring
                 alreadyValidCount,
                 skippedByPolicyCount,
                 blockedCount);
-        }
     }
 }

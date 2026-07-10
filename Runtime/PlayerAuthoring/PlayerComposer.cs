@@ -6,97 +6,117 @@ using UnityEngine.InputSystem;
 namespace Immersive.Framework.PlayerAuthoring
 {
     /// <summary>
-    /// API status: Experimental. Designer-first authoring surface for a framework-ready player.
-    /// This component centralizes player intent for editor Apply/Rebuild tooling. It does not execute gameplay,
-    /// move actors, spawn actors, join players, save progression, switch action maps at runtime or act as a PlayerManager.
+    /// API status: Experimental. Designer-first authoring surface for one concrete player instance.
+    /// The Composer owns authoring intent and editor materialization only. It does not move, spawn,
+    /// join, save or act as a runtime manager.
     /// </summary>
     [DisallowMultipleComponent]
+    [RequireComponent(typeof(PlayerInput))]
     [AddComponentMenu("Immersive Framework/Player/Player Composer")]
-    [FrameworkApiStatus(FrameworkApiStatus.Experimental, "Product surface MVP for player authoring and technical materialization.")]
+    [FrameworkApiStatus(FrameworkApiStatus.Experimental, "Product surface for player authoring and minimal technical materialization.")]
     public sealed class PlayerComposer : MonoBehaviour
     {
         [Header("Designer")]
-        [Tooltip("Optional reusable player intent asset. Use Apply Recipe Defaults to copy reusable defaults into this Composer; local fields remain editable.")]
         [SerializeField] private PlayerRecipe recipe;
-        [Tooltip("Stable ActorId for the player. This is not a GameObject name.")]
+        [Tooltip("Stable semantic ActorId. This is not a GameObject name.")]
         [SerializeField] private string actorId = "player.actor";
-        [Tooltip("Stable PlayerSlotId for the player. This is not PlayerInput.playerIndex.")]
+        [Tooltip("Stable semantic PlayerSlotId. This is not PlayerInput.playerIndex.")]
         [SerializeField] private string playerSlotId = "player.1";
-        [Tooltip("Transform that cameras or view bindings should track.")]
-        [SerializeField] private Transform cameraTarget;
-        [Tooltip("Transform that cameras or view bindings should look at.")]
-        [SerializeField] private Transform lookAtTarget;
-        [Tooltip("Optional reset materialization. Disabled by default because reset participants are a policy choice, not mandatory Player setup.")]
-        [SerializeField] private bool resetEnabled;
         [SerializeField] private PlayerComposerValidationMode validationMode = PlayerComposerValidationMode.Standard;
 
-        [Header("Control")]
-        [Tooltip("Whether this Player authors and materializes control evidence. This does not execute runtime binding.")]
+        [Header("Input")]
         [SerializeField] private bool controlEnabled = true;
-        [Tooltip("Explicit Unity PlayerInput used as typed control evidence.")]
+        [Tooltip("Explicit Unity PlayerInput for this player.")]
         [SerializeField] private PlayerInput playerInput;
-        [Tooltip("Expected gameplay action map on the PlayerInput action asset.")]
-        [SerializeField] private string gameplayActionMap = "Player";
-        [Tooltip("Explicit game-owned Transform intended to receive control. PlayerComposer does not move it.")]
-        [SerializeField] private Transform controlTarget;
-        [Tooltip("Control startup intent. Bind On Enable is the only supported P2 MVP policy.")]
-        [SerializeField] private PlayerControlStartupPolicy controlStartupPolicy = PlayerControlStartupPolicy.BindOnEnable;
-        [Tooltip("Requiredness of complete control references. Enabled means Required; disabled means Optional.")]
+        [Tooltip("Required control configuration fails Apply/Rebuild when PlayerInput or its default action map is invalid.")]
         [SerializeField] private bool inputBindingRequired = true;
-        [Tooltip("Whether the materialized PlayerInput adapter participates in framework Gate blocking.")]
         [SerializeField] private bool gateParticipation = true;
 
+        [Header("Camera")]
+        [SerializeField] private bool cameraBindingRequired = true;
+        [Tooltip("Explicit target that a CameraComposer may follow.")]
+        [SerializeField] private Transform cameraTarget;
+        [Tooltip("Explicit target that a CameraComposer may look at.")]
+        [SerializeField] private Transform lookAtTarget;
+        [SerializeField] private PlayerComposerLookAtPolicy lookAtPolicy = PlayerComposerLookAtPolicy.ExplicitTarget;
+
+        [Header("Reset")]
+        [SerializeField] private bool resetEnabled;
+        [SerializeField] private PlayerComposerResetScope resetScope = PlayerComposerResetScope.Activity;
+        [SerializeField] private PlayerComposerResetParticipantPolicy resetParticipantPolicy = PlayerComposerResetParticipantPolicy.None;
+
         [Header("Advanced")]
-        [Tooltip("Technical materialization root. This is not the product authority.")]
+        [Tooltip("Technical materialization root. This root is organization only, not runtime authority.")]
         [SerializeField] private Transform frameworkBindingsRoot;
         [SerializeField] private bool createBindingsRootIfMissing = true;
         [SerializeField] private bool createAnchorsIfMissing = true;
-        [SerializeField] private bool cameraBindingRequired = true;
-        [Tooltip("Reset scope used only when reset materialization is enabled.")]
-        [SerializeField] private string resetScope = "Activity";
-        [Tooltip("Optional reset participant materialization. None does not create a participant; Transform creates UnityTransformResetParticipant when reset is enabled.")]
-        [SerializeField] private PlayerComposerResetParticipantPolicy resetParticipantPolicy = PlayerComposerResetParticipantPolicy.None;
-        [SerializeField] private bool materializeSlotOccupancy = true;
-        [SerializeField] private bool materializePassiveEntryViewControl;
         [SerializeField] private bool logApplyRebuildDiagnostics = true;
+
+        [Tooltip("Authoring default action map. Apply/Rebuild writes this value to PlayerInput.defaultActionMap. Runtime pipelines may switch the active map later.")]
+        [SerializeField] private string gameplayActionMap = "Player";
+
+        // Retained as hidden compatibility data for existing scenes and QA serialization.
+        // P3A no longer uses these fields as product authority or materialization policy.
+        [HideInInspector, SerializeField] private Transform controlTarget;
+        [HideInInspector, SerializeField] private PlayerControlStartupPolicy controlStartupPolicy = PlayerControlStartupPolicy.BindOnEnable;
+        [HideInInspector, SerializeField] private bool materializeSlotOccupancy;
+        [HideInInspector, SerializeField] private bool materializePassiveEntryViewControl;
 
         [Header("Debug")]
         [SerializeField] private string lastApplyRebuildStatus;
         [SerializeField] private string lastBlockingIssue;
+        [TextArea(3, 12)]
         [SerializeField] private string lastMaterializationSummary;
 
         public PlayerRecipe Recipe => recipe;
         public string ActorId => actorId.NormalizeText();
         public string PlayerSlotId => playerSlotId.NormalizeText();
+        public PlayerComposerValidationMode ValidationMode => validationMode;
+
         public bool ControlEnabled => controlEnabled;
         public PlayerInput PlayerInput => playerInput;
-        public string GameplayActionMap => gameplayActionMap.NormalizeText();
-        public Transform ControlTarget => controlTarget;
-        public PlayerControlStartupPolicy ControlStartupPolicy => controlStartupPolicy;
-        public PlayerControlRequiredness ControlRequiredness => inputBindingRequired
-            ? PlayerControlRequiredness.Required
-            : PlayerControlRequiredness.Optional;
         public bool InputBindingRequired => inputBindingRequired;
         public bool GateParticipation => gateParticipation;
         public bool IsControlRequired => inputBindingRequired;
-        public bool HasCompleteControlConfiguration => PlayerInput != null
-            && PlayerInput.actions != null
-            && !string.IsNullOrWhiteSpace(GameplayActionMap)
-            && PlayerInput.actions.FindActionMap(GameplayActionMap, false) != null
-            && ControlTarget != null;
-        public Transform CameraTarget => cameraTarget != null ? cameraTarget : transform;
-        public Transform LookAtTarget => lookAtTarget != null ? lookAtTarget : CameraTarget;
+        public PlayerControlRequiredness ControlRequiredness => inputBindingRequired
+            ? PlayerControlRequiredness.Required
+            : PlayerControlRequiredness.Optional;
+        public PlayerControlStartupPolicy ControlStartupPolicy => controlStartupPolicy;
+
+        /// <summary>
+        /// Authored default action map. Apply/Rebuild copies this value into PlayerInput.defaultActionMap.
+        /// Runtime pipelines remain free to switch the active map later.
+        /// </summary>
+        public string GameplayActionMap => gameplayActionMap.NormalizeText();
+
+        /// <summary>
+        /// Compatibility property. Gameplay motors remain game-owned and are not materialized by PlayerComposer.
+        /// </summary>
+        public Transform ControlTarget => controlTarget;
+
+        public bool HasCompleteControlConfiguration =>
+            !controlEnabled
+            || (!inputBindingRequired && playerInput == null)
+            || HasValidRequiredInput();
+
+        public bool CameraBindingRequired => cameraBindingRequired;
+        public Transform CameraTarget => cameraTarget;
+        public Transform LookAtTarget =>
+            lookAtPolicy == PlayerComposerLookAtPolicy.UseFollowTarget ? cameraTarget : lookAtTarget;
+        public PlayerComposerLookAtPolicy LookAtPolicy => lookAtPolicy;
+
         public bool ResetEnabled => resetEnabled;
-        public PlayerComposerValidationMode ValidationMode => validationMode;
+        public string ResetScope => resetScope.ToString();
+        public PlayerComposerResetScope ResetScopePolicy => resetScope;
+        public PlayerComposerResetParticipantPolicy ResetParticipantPolicy => resetParticipantPolicy;
+
         public Transform FrameworkBindingsRoot => frameworkBindingsRoot;
         public bool CreateBindingsRootIfMissing => createBindingsRootIfMissing;
         public bool CreateAnchorsIfMissing => createAnchorsIfMissing;
-        public bool CameraBindingRequired => cameraBindingRequired;
-        public string ResetScope => resetScope.NormalizeTextOrFallback("Activity");
-        public PlayerComposerResetParticipantPolicy ResetParticipantPolicy => resetParticipantPolicy;
-        public bool MaterializeSlotOccupancy => materializeSlotOccupancy;
-        public bool MaterializePassiveEntryViewControl => materializePassiveEntryViewControl;
+        public bool MaterializeSlotOccupancy => false;
+        public bool MaterializePassiveEntryViewControl => false;
         public bool LogApplyRebuildDiagnostics => logApplyRebuildDiagnostics;
+
         public string LastApplyRebuildStatus => lastApplyRebuildStatus.NormalizeText();
         public string LastBlockingIssue => lastBlockingIssue.NormalizeText();
         public string LastMaterializationSummary => lastMaterializationSummary.NormalizeText();
@@ -117,66 +137,52 @@ namespace Immersive.Framework.PlayerAuthoring
                 return false;
             }
 
-            if (controlEnabled
-                && (!System.Enum.IsDefined(typeof(PlayerControlStartupPolicy), controlStartupPolicy)
-                    || controlStartupPolicy != PlayerControlStartupPolicy.BindOnEnable))
+            if (playerInput == null)
             {
-                issue = "PlayerComposer supports only BindOnEnable as the control startup policy in P2.";
+                issue = "PlayerComposer requires an assigned PlayerInput component.";
                 return false;
             }
 
-            if (controlEnabled && IsControlRequired && PlayerInput == null)
-            {
-                issue = "PlayerComposer requires PlayerInput when control is enabled and required.";
-                return false;
-            }
-
-            if (controlEnabled && IsControlRequired && string.IsNullOrWhiteSpace(GameplayActionMap))
-            {
-                issue = "PlayerComposer requires a gameplay action map when control is enabled and required.";
-                return false;
-            }
-
-            if (ControlEnabled
-                && ControlRequiredness == PlayerControlRequiredness.Required
-                && PlayerInput != null
-                && PlayerInput.actions == null)
+            if (controlEnabled && inputBindingRequired && playerInput != null && playerInput.actions == null)
             {
                 issue = "PlayerComposer requires an InputActionAsset when control is enabled and required.";
                 return false;
             }
 
-            if (controlEnabled
-                && IsControlRequired
-                && PlayerInput != null
-                && PlayerInput.actions != null
-                && PlayerInput.actions.FindActionMap(GameplayActionMap, false) == null)
+            if (controlEnabled && inputBindingRequired && playerInput != null)
             {
-                issue = $"PlayerComposer could not find action map '{GameplayActionMap}' in the PlayerInput action asset.";
+                string authoredMap = GameplayActionMap;
+                if (string.IsNullOrEmpty(authoredMap))
+                {
+                    issue = "PlayerComposer requires an authored Default Action Map when control is enabled and required.";
+                    return false;
+                }
+
+                if (playerInput.actions.FindActionMap(authoredMap, false) == null)
+                {
+                    issue = $"PlayerComposer could not find authored Default Action Map '{authoredMap}' in the assigned InputActionAsset.";
+                    return false;
+                }
+            }
+
+            if (cameraBindingRequired && cameraTarget == null && !createAnchorsIfMissing)
+            {
+                issue = "PlayerComposer requires an explicit Camera Target when camera binding is required and automatic anchor creation is disabled.";
                 return false;
             }
 
-            if (controlEnabled && IsControlRequired && ControlTarget == null)
+            if (cameraBindingRequired
+                && lookAtPolicy == PlayerComposerLookAtPolicy.ExplicitTarget
+                && lookAtTarget == null
+                && !createAnchorsIfMissing)
             {
-                issue = "PlayerComposer requires a Control Target when control is enabled and required.";
+                issue = "PlayerComposer requires an explicit Look At Target when Look At Policy is Explicit Target and automatic anchor creation is disabled.";
                 return false;
             }
 
-            if (cameraBindingRequired && CameraTarget == null)
+            if (!System.Enum.IsDefined(typeof(PlayerComposerResetScope), resetScope))
             {
-                issue = "PlayerComposer requires a camera target when camera binding is required.";
-                return false;
-            }
-
-            if (cameraBindingRequired && LookAtTarget == null)
-            {
-                issue = "PlayerComposer requires a look-at target when camera binding is required.";
-                return false;
-            }
-
-            if (!createBindingsRootIfMissing && frameworkBindingsRoot == null)
-            {
-                issue = "PlayerComposer requires a framework bindings root when automatic creation is disabled.";
+                issue = "PlayerComposer Reset Scope is invalid.";
                 return false;
             }
 
@@ -185,25 +191,30 @@ namespace Immersive.Framework.PlayerAuthoring
 
         public PlayerComposerDebugSnapshot CreateDebugSnapshot()
         {
-            bool hasActionMap = PlayerInput != null && PlayerInput.actions != null && !string.IsNullOrWhiteSpace(GameplayActionMap) && PlayerInput.actions.FindActionMap(GameplayActionMap, false) != null;
+            string actionMap = GameplayActionMap;
+            bool actionMapFound = playerInput != null
+                && playerInput.actions != null
+                && !string.IsNullOrEmpty(actionMap)
+                && playerInput.actions.FindActionMap(actionMap, false) != null;
+
             return new PlayerComposerDebugSnapshot(
                 ActorId,
                 PlayerSlotId,
                 controlEnabled,
-                PlayerInput != null ? PlayerInput.name.NormalizeText() : string.Empty,
-                GameplayActionMap,
-                hasActionMap,
-                controlTarget != null ? controlTarget.name.NormalizeText() : string.Empty,
+                playerInput != null ? playerInput.name.NormalizeText() : string.Empty,
+                actionMap,
+                actionMapFound,
+                string.Empty,
                 controlStartupPolicy,
                 ControlRequiredness,
                 gateParticipation,
                 frameworkBindingsRoot != null ? frameworkBindingsRoot.name.NormalizeText() : string.Empty,
                 cameraTarget != null ? cameraTarget.name.NormalizeText() : string.Empty,
-                lookAtTarget != null ? lookAtTarget.name.NormalizeText() : string.Empty,
+                LookAtTarget != null ? LookAtTarget.name.NormalizeText() : string.Empty,
                 resetEnabled,
-                lastApplyRebuildStatus.NormalizeText(),
-                lastBlockingIssue.NormalizeText(),
-                lastMaterializationSummary.NormalizeText());
+                LastApplyRebuildStatus,
+                LastBlockingIssue,
+                LastMaterializationSummary);
         }
 
 #if UNITY_EDITOR
@@ -226,37 +237,32 @@ namespace Immersive.Framework.PlayerAuthoring
                 playerSlotId = recipe.PlayerSlotId;
             }
 
-            if (overwriteExisting || string.IsNullOrWhiteSpace(gameplayActionMap))
-            {
-                gameplayActionMap = recipe.GameplayActionMap;
-            }
-
+            gameplayActionMap = recipe.GameplayActionMap;
             controlEnabled = recipe.ControlEnabled;
-            controlStartupPolicy = recipe.ControlStartupPolicy;
             inputBindingRequired = recipe.InputBindingRequired;
             gateParticipation = recipe.GateParticipation;
-            resetEnabled = recipe.ResetEnabled;
-            validationMode = recipe.ValidationMode;
-            createBindingsRootIfMissing = recipe.CreateBindingsRootIfMissing;
-            createAnchorsIfMissing = recipe.CreateAnchorsIfMissing;
             cameraBindingRequired = recipe.CameraBindingRequired;
+            lookAtPolicy = recipe.LookAtPolicy;
+            resetEnabled = recipe.ResetEnabled;
             resetScope = recipe.ResetScope;
             resetParticipantPolicy = recipe.ResetParticipantPolicy;
-            materializeSlotOccupancy = recipe.MaterializeSlotOccupancy;
-            materializePassiveEntryViewControl = recipe.MaterializePassiveEntryViewControl;
-            logApplyRebuildDiagnostics = recipe.LogApplyRebuildDiagnostics;
+            validationMode = recipe.ValidationMode;
             return true;
         }
 
-        public void EditorSetGeneratedReferences(Transform bindingsRoot, Transform generatedCameraTarget, Transform generatedLookAtTarget)
+        public void EditorSetGeneratedReferences(
+            Transform technicalRoot,
+            Transform generatedCameraTarget,
+            Transform generatedLookAtTarget)
         {
-            frameworkBindingsRoot = bindingsRoot;
+            frameworkBindingsRoot = technicalRoot;
+
             if (cameraTarget == null)
             {
                 cameraTarget = generatedCameraTarget;
             }
 
-            if (lookAtTarget == null)
+            if (lookAtPolicy == PlayerComposerLookAtPolicy.ExplicitTarget && lookAtTarget == null)
             {
                 lookAtTarget = generatedLookAtTarget;
             }
@@ -272,20 +278,31 @@ namespace Immersive.Framework.PlayerAuthoring
         private void Reset()
         {
             playerInput = GetComponent<PlayerInput>();
-            cameraTarget = transform;
-            lookAtTarget = transform;
-            controlTarget = transform;
-            if (string.IsNullOrWhiteSpace(actorId))
-            {
-                actorId = "player.actor";
-            }
+            cameraTarget = null;
+            lookAtTarget = null;
+            controlTarget = null;
+        }
 
-            if (string.IsNullOrWhiteSpace(playerSlotId))
+        private void OnValidate()
+        {
+            if (playerInput == null)
             {
-                playerSlotId = "player.1";
+                playerInput = GetComponent<PlayerInput>();
             }
         }
 #endif
+
+        private bool HasValidRequiredInput()
+        {
+            if (playerInput == null || playerInput.actions == null)
+            {
+                return false;
+            }
+
+            string authoredMap = GameplayActionMap;
+            return !string.IsNullOrEmpty(authoredMap)
+                && playerInput.actions.FindActionMap(authoredMap, false) != null;
+        }
     }
 
     public enum PlayerComposerValidationMode
@@ -299,6 +316,18 @@ namespace Immersive.Framework.PlayerAuthoring
     {
         None = 0,
         Transform = 1
+    }
+
+    public enum PlayerComposerResetScope
+    {
+        Activity = 0,
+        Route = 1
+    }
+
+    public enum PlayerComposerLookAtPolicy
+    {
+        ExplicitTarget = 0,
+        UseFollowTarget = 1
     }
 
     public enum PlayerControlStartupPolicy
