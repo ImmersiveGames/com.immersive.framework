@@ -1,122 +1,72 @@
 # 01 — Roadmap
 
-Status: **canonical roadmap after F49M passive player binding foundation consolidation**.
-
-## Reading rule
-
-```text
-Current capability first
-Historical ADRs second
-Candidate tracks only after explicit selection
-```
-
-Do not treat historical phase numbers as an active queue. Some phases are closed, some are superseded, and some were documentation-only.
+Status: **canonical after R0**.
 
 ## Status vocabulary
 
 | Status | Meaning |
 |---|---|
-| Closed | Implemented/documented and validated by the appropriate evidence. |
-| Frozen | Validated baseline; new behavior needs a new cut. |
-| Superseded | Historical decision retained for traceability but no longer the current model. |
-| Documentation-only | Planning/governance work without runtime behavior. |
-| Candidate | Possible future lane; not selected. |
-| Active | Current selected lane. Keep one active lane unless explicitly stated. |
+| Closed | Implemented and supported by the appropriate package, QA or consumer evidence. |
+| Active | The only selected execution lane. |
+| Candidate | Valuable future work that is not authorized as the current lane. |
+| Historical | Retained for traceability; not current guidance. |
 
-## Active lane
+## Closed product blocks
 
-| Lane | Status | Scope |
-|---|---|---|
-| F49M — Player Passive Binding Foundation Consolidation | Closed / Documentation-only | F49 passive player contracts, topology validators, readiness and diagnostics are closed as a validated foundation. |
+- F49 passive player foundation.
+- PlayerRecipe MVP.
+- PlayerComposer MVP.
+- CameraRecipe MVP.
+- CameraComposer MVP.
+- QA Camera product proof.
+- FIRSTGAME CameraComposer usage proof.
+- Route/Activity explicit Cinemachine output apply-on-enter.
+- Legacy camera architecture removal.
 
-## Active lane rule
-
-F49 ran package-first and QA-first:
-
-```text
-1. Implement or adjust contracts/runtime/editor/docs in com.immersive.framework.
-2. Validate technical behavior in QAFramework.
-3. Validate practical usability in planet-devourer / FIRSTGAME only after QA is clean and the cut requires real usability proof.
-```
-
-FIRSTGAME was intentionally not used for F49 passive contracts because no real binding behavior exists yet.
-
-## Closed stable lanes
-
-| Lane | Status | Notes |
-|---|---|---|
-| Bootstrap / Route / Activity baseline | Closed/Frozen | Core app navigation baseline. |
-| UIGlobal / Transition / Loading / Pause | Closed/Frozen | Visual/runtime surfaces exist and are validated at baseline level. |
-| Gate / Unity PlayerInput gate | Closed/Frozen | Practical Pause/Transition input blocking exists. |
-| Save boundaries | Closed/Frozen | Snapshot/preferences/progression-adapter boundary exists; save engine remains future. |
-| Reset Reform preview.12 | Closed | Current reset/restart model. |
-| FIRSTGAME reset usage model | Closed | Real usage proof passed. |
-| Consumer role rule | Frozen | QA proves technical behavior; FIRSTGAME proves game-start usability; package owns canonical docs/contracts. |
-| Consumer project separation POST-RESET-B1-B6F | Closed | Package, QA Project and FIRSTGAME roles are documented and frozen; consumer cleanup remains bounded by Unity serialization rules. |
-| F49 passive player binding foundation | Closed | Actor readiness, PlayerEntry, topology, view, control, readiness and diagnostics are validated passively through QA. |
-
-## F49 closed sequence
+## Current active lane
 
 ```text
-F49A — ADR normalization and package boundary cleanup
-F49B — Actor Readiness passive contracts
-F49C — Actor Readiness Unity adapter + QA smoke
-F49D — PlayerEntry passive model
-F49E — PlayerEntry Unity adapter
-F49F — PlayerTopology passive validation
-F49G — PlayerView passive contract
-F49H — PlayerView topology validation
-F49I — PlayerControl passive contract
-F49J — PlayerControl topology validation
-F49K — Player binding readiness summary
-F49L — Player binding diagnostic reporter
-F49M — Documentation consolidation and next-phase handoff
+P2 — Player Control Product
 ```
 
-## F49 boundary
+No other lane is active.
 
-The closed F49 foundation remains passive:
+## Active lane sequence
 
-```text
-viewBinding = false
-controlBinding = false
-cameraActivation = false
-inputActivation = false
-movement = false
-actorSpawning = false
-```
-
-## Recommended next implementation block
-
-Do not continue adding passive taxonomy unless a concrete missing invariant is found.
-
-Recommended order:
-
-| Order | Candidate cut | Purpose |
+| Order | Cut | Goal |
 |---:|---|---|
-| 1 | Player Binding Authoring Validator | Editor/QA validation for complete authored chain before runtime binding. |
-| 2 | PlayerView Binding Adapter | First real view binding surface, still behind readiness diagnostics. |
-| 3 | PlayerControl Binding Adapter | First real control binding surface, still without broad gameplay movement assumptions. |
-| 4 | Optional Unity PlayerInput Bridge | Explicit Unity Input System bridge after control binding boundary is stable. |
-| 5 | FIRSTGAME usability proof | Real game integration only after QA technical behavior is clean. |
+| 1 | P2A — Player control authority and runtime binding audit | Establish authority, lifetime and accepted runtime boundary. |
+| 2 | P2B — Player control recipe and authoring surface | Define reusable intent and designer-facing authoring. |
+| 3 | P2C — PlayerControl binding adapter | Bind validated control evidence explicitly. |
+| 4 | P2D — Unity PlayerInput bridge | Integrate the Unity Input System without hidden lookup. |
+| 5 | P2E — Scoped Player control runtime context | Add runtime authority with explicit scope and dependencies. |
+| 6 | P2F — QA technical validation | Prove positive, negative and lifecycle cases. |
+| 7 | P2G — FIRSTGAME minimal control and movement proof | Prove minimal real-game consumption after QA. |
 
-## Candidate next lanes
+## Candidate future lanes
 
-Do not run these in parallel with a selected player binding implementation unless explicitly decided.
+- Player spawn/materialization.
+- Camera output lifetime/release.
+- Progression save runtime.
+- Transition/loading hardening.
 
-| Option | Candidate lane | Why it matters | Risk if skipped |
-|---|---|---|---|
-| A | Player Binding Authoring Validator | Turns the passive foundation into editor-diagnosable authoring feedback. | Runtime binding begins without clear authoring gates. |
-| B | PlayerView Binding Adapter | Connects validated PlayerView evidence to real camera/view selection. | View ownership remains theoretical. |
-| C | PlayerControl Binding Adapter | Connects validated PlayerControl evidence to real control ownership. | Control remains theoretical. |
-| D | Unity PlayerInput Bridge | Integrates optional Unity Input after ownership is explicit. | Input integration remains ad-hoc. |
-| E | FIRSTGAME Usage Model Hardening | Proves practical usability after technical QA. | Framework works technically but remains hard to use. |
-| F | Transition / Loading Surface Hardening | Improve progress/fade/readiness evidence and failure clarity. | Visual lifecycle becomes hard to debug. |
-| G | Runtime Spawned Object / Materialization Track | Clarify runtime prefab/materialization ownership beyond reset. | Runtime objects remain ad-hoc per game. |
-| H | Progression Save Adapter Track | Start real game-save handoff while keeping engine interchangeable. | Save boundary stays theoretical. |
+## Execution order
 
-## Consumer cleanup guardrail
+```text
+package audit and product decision
+-> package implementation
+-> QA technical validation
+-> FIRSTGAME minimal consumer proof
+```
 
-Future cleanup must preserve the split in [`03-Consumer-Project-Roles.md`](03-Consumer-Project-Roles.md).
+## Consumer project rule
 
-Do not rename or move Unity serialized scenes, prefabs, assets or attached MonoBehaviour scripts from consumer projects without a Unity Editor migration plan.
+The package owns contracts, product surfaces and canonical documentation. QAFramework proves technical behavior. FIRSTGAME proves real-game usability. Consumer projects do not define framework contracts.
+
+## Guardrails
+
+- `CameraComposer` already resolves the main gameplay camera.
+- `PlayerViewBehaviour` remains passive evidence.
+- Do not turn PlayerView into camera authority merely to follow the historical F51 sequence.
+- Do not resurrect F49M or PlayerView Binding Adapter as the active lane.
+- Required configuration fails explicitly; there is no silent fallback, service locator or global manager.

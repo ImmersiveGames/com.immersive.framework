@@ -516,7 +516,7 @@
       <a href="#uiglobal"><span class="icon">🖥️</span> UIGlobal</a>
       <a href="#menu"><span class="icon">▶️</span> Menu Route</a>
       <a href="#gameplay"><span class="icon">🎮</span> Gameplay Route</a>
-      <a href="#camera"><span class="icon">📷</span> Camera Director</a>
+      <a href="#camera"><span class="icon">📷</span> Camera Composer</a>
     </div>
 
     <div class="sidebar-section">
@@ -561,7 +561,7 @@
     <div class="hero" id="intro">
       <div class="eyebrow">Manual de Uso · v1.0.0-preview.12</div>
       <h1>Immersive Framework<br>Preview 12</h1>
-      <p>Guia prático para o fluxo mínimo jogável validado até o Preview 12: Menu, Gameplay, Activity A/B, Camera Director, Loading, Transition Gate, Pause visual, Pause por botão, Pause por tecla via Global/Pause, pausa real via TimeScale, PlayerInput Gate Adapter, Object Reset, Reset Group, Activity Restart com uma única transição visual e authoring opcional de Player Evidence.</p>
+      <p>Guia prático do fluxo validado: Menu, Gameplay, Activity A/B, PlayerComposer, CameraComposer, Loading, Transition Gate, Pause, PlayerInput Gate, Object Reset, Reset Group e Activity Restart.</p>
       <div class="badge-row">
         <span class="badge badge-green">✓ FIRSTGAME Usage Model PASS</span>
         <span class="badge badge-blue">v1.0.0-preview.12</span>
@@ -854,11 +854,12 @@
     </div>
 
     <h3 id="criar-player">2. Criar o Player</h3>
-    <p>O player do FIRSTGAME é um protótipo no projeto consumidor. Movimento fica no seu script; o framework cuida de reset, Gate de input e (opcionalmente) evidência de identidade.</p>
+    <p><code>PlayerComposer</code> é a superfície principal de authoring. Um <code>PlayerRecipe</code> opcional guarda defaults reutilizáveis; movimento e leitura de input continuam no jogo enquanto o runtime oficial de PlayerControl não existir.</p>
 
     <pre><code>FG_Gameplay
 └── GameplayRoot
     └── PlayerPrototype
+        ├── PlayerComposer
         ├── PlayerInput
         ├── FirstGamePlayerMover              script do consumidor
         ├── UnityPlayerInputGateAdapter
@@ -868,7 +869,7 @@
         ├── UnityTransformResetParticipant
         ├── FirstGamePlayerResettableState : IUnityResettable
         │
-        │   --- camada opcional de evidência (QA / futuro) ---
+        │   --- materialização técnica / Advanced / Debug ---
         ├── PlayerSlotDeclaration             player.1
         ├── PlayerActorDeclaration            exige PlayerInput
         ├── ActorReadinessBehaviour
@@ -878,12 +879,12 @@
     <div class="component-card">
       <h4>Passo a passo — player</h4>
       <ol class="steps">
-        <li><div class="step-body"><strong>Base Unity Input</strong>Adicione <code>PlayerInput</code> com action map <code>Player</code> (Move, etc.).</div></li>
-        <li><div class="step-body"><strong>Movimento</strong>Script do jogo lê <code>InputAction</code> — no FIRSTGAME, <code>FirstGamePlayerMover</code>.</div></li>
-        <li><div class="step-body"><strong>Gate</strong><code>UnityPlayerInputGateAdapter</code> com <code>Gameplay Action Map Name = Player</code>. Bloqueia movimento em Pause/Transition.</div></li>
-        <li><div class="step-body"><strong>Reset</strong><code>UnityResetSubjectAdapter</code> + transform participant + <code>IUnityResettable</code> para estado (vida, flags, etc.).</div></li>
-        <li><div class="step-body"><strong>Botões</strong><code>Button_ResetPlayer</code> → <code>ObjectResetTrigger</code> apontando para este adapter. Reset Room/Restart pegam o player pela seleção de escopo.</div></li>
-        <li><div class="step-body"><strong>Evidência opcional</strong>Só se precisar validar topologia: slot, actor, occupancy, entry. Detalhes em <a href="#player-evidence">Player Evidence</a>. Não substitui movimento nem reset.</div></li>
+        <li><div class="step-body"><strong>Recipe opcional</strong>Crie um <code>PlayerRecipe</code> quando quiser reutilizar Actor Id, Player Slot Id, action map e policies.</div></li>
+        <li><div class="step-body"><strong>Composer</strong>Adicione <code>PlayerComposer</code>, atribua Recipe e <code>PlayerInput</code> explícito e configure os targets.</div></li>
+        <li><div class="step-body"><strong>Validate</strong>Corrija blockers de identidade, input, action map e camera targets.</div></li>
+        <li><div class="step-body"><strong>Apply/Rebuild</strong>Materialize ou repare bindings, declarations e anchors. A segunda execução não deve duplicar objetos.</div></li>
+        <li><div class="step-body"><strong>Gameplay do consumidor</strong>O script do jogo lê <code>InputAction</code> e move o player; <code>UnityPlayerInputGateAdapter</code> bloqueia o action map em Pause/Transition.</div></li>
+        <li><div class="step-body"><strong>Advanced / Debug</strong>Inspecione a materialização técnica e os diagnostics. Ela não substitui o Composer como intenção principal.</div></li>
       </ol>
     </div>
 
@@ -923,7 +924,7 @@
         <li><div class="step-body"><strong>Readiness</strong><code>Actor Readiness</code> marca quando o NPC está pronto para view/control consumers futuros.</div></li>
         <li><div class="step-body"><strong>Gameplay</strong>IA, pathing e animação ficam em scripts do consumidor — o framework não fornece mover de NPC.</div></li>
         <li><div class="step-body"><strong>Reset</strong>Mesmo padrão do objeto: <code>UnityResetSubjectAdapter</code> com <code>Subject Id</code> estável (pode repetir o id do actor para facilitar diagnóstico), transform participant e <code>IUnityResettable</code> para estado de IA.</div></li>
-        <li><div class="step-body"><strong>Câmera</strong>Se a câmera segue o player, aponte <code>FrameworkCameraAnchorHost.Tracking Target</code> para <code>PlayerPrototype</code>, não para o NPC.</div></li>
+        <li><div class="step-body"><strong>Câmera</strong>Se a câmera segue o player, atribua o <code>PlayerComposer</code> explícito no <code>CameraComposer</code>.</div></li>
       </ol>
     </div>
 
@@ -1319,109 +1320,74 @@ PauseSurface/PausePanel
       </div>
     </div>
 
-    <h2 id="camera">Camera Director — câmera por Route e Activity</h2>
-    <p>O <code>FrameworkCameraDirector</code> escolhe qual <strong>camera rig</strong> fica ativo quando uma Route ou Activity entra/sai. Você não precisa trocar câmera manualmente em script de gameplay: configure bindings na cena e deixe o lifecycle chamar o director.</p>
+    <h2 id="camera">CameraComposer — câmera principal de gameplay</h2>
+    <p><code>CameraComposer</code> é a superfície principal de criação. Ele usa um <code>PlayerComposer</code> explícito ou transforms explícitos, valida a intenção e materializa o rig Cinemachine local.</p>
 
     <div class="callout info">
       <span class="callout-icon">ℹ️</span>
       <div class="callout-body">
         <div class="callout-title">UIGlobal não é a câmera de gameplay</div>
-        <p>A <code>FG_UIGlobal</code> pode ter <code>Main Camera</code> para UI, mas a câmera de jogo deve vir dos rigs da Route/Activity ou do fallback do director. Evite duas câmeras ativas com <code>AudioListener</code> ao mesmo tempo.</p>
+        <p>A <code>FG_UIGlobal</code> pode ter câmera para UI, mas a câmera principal do jogo vem do <code>CameraComposer</code>. Use referências explícitas e evite dois <code>AudioListener</code> ativos.</p>
       </div>
     </div>
 
-    <pre><code>Session / objeto persistente
-└── FrameworkCameraDirector
-      defaultCameraRig = MainCameraFallback
-      defaultAnchors = opcional
-      routePriority = 20
-      activityPriority = 100
-      setRigActiveState = true
-      rigApplier = FrameworkCinemachineRigApplier   opcional
+    <pre><code>GameplayCamera
+└── CameraComposer
+      Target Source Kind = PlayerComposer
+      Player Composer = referência explícita
+      Follow Requirement = Required
+      Look At Requirement = Optional
+      Priority = valor do jogo
 
-FG_Gameplay (Route content)
-├── FrameworkRouteCameraBinding
-│     routeCameraRig = RouteCameraRig
-│     routeAnchors = RouteAnchorHost
-│     director → ref ao director da sessão
-│     startupActivityCameraBinding → opcional
-└── RouteCameraRig (GameObject)
-
-FG_Gameplay (Activity content)
-├── FrameworkActivityCameraBinding
-│     assignedActivity = FG_Activity_A
-│     activityCameraRig = ActivityACameraRig
-│     policy = UseOwnOrRoute
-│     anchors = ActivityAAnchorHost
-│     director → ref ao director da sessão
-└── ActivityACameraRig (GameObject)</code></pre>
+Apply/Rebuild
+├── Unity Camera
+├── Cinemachine Camera
+└── Cinemachine Brain</code></pre>
 
     <div class="component-card">
-      <h4>FrameworkCameraDirector</h4>
-      <p>Fica em um objeto persistente (sessão ou bootstrap da Route). É o único lugar que decide qual rig está efetivo.</p>
-      <pre><code>Add Component → Immersive Framework → Camera → Camera Director
-
-Default Camera Rig = fallback quando Route/Activity não fornecem rig
-Route Priority = 20
-Activity Priority = 100
-Set Rig Active State = true
-Rig Applier = FrameworkCinemachineRigApplier   se usar Cinemachine 3</code></pre>
+      <h4>Fluxo designer-first</h4>
+      <ol class="steps">
+        <li><div class="step-body"><strong>Recipe opcional</strong>Use <code>CameraRecipe</code> para defaults reutilizáveis.</div></li>
+        <li><div class="step-body"><strong>Composer</strong>Adicione <code>CameraComposer</code> e atribua o PlayerComposer ou transforms.</div></li>
+        <li><div class="step-body"><strong>Validate</strong>Corrija referências e requiredness bloqueantes.</div></li>
+        <li><div class="step-body"><strong>Apply/Rebuild</strong>Materialize o rig. Uma segunda execução válida deve ser idempotente.</div></li>
+      </ol>
     </div>
 
     <div class="component-card">
-      <h4>FrameworkRouteCameraBinding</h4>
-      <p>Coloque na cena de Route (ou no root de conteúdo da Route). Ao entrar na Route, o binding chama <code>SetRouteCamera</code>.</p>
-      <pre><code>Route Camera Rig = RouteCameraRig
-Route Anchors = RouteAnchorHost
-Director = FrameworkCameraDirector da sessão
-Startup Activity Camera Binding = opcional   evita flash antes da Startup Activity</code></pre>
+      <h4>Route/Activity output — integração técnica</h4>
+      <p>Use <code>FrameworkRouteCameraBinding</code> ou <code>FrameworkActivityCameraBinding</code> somente quando o lifecycle precisar aplicar um output Cinemachine específico. Ambos exigem <code>FrameworkCinemachineCameraOutputSource</code> explícito.</p>
+      <pre><code>Route: apply explicit output on enter
+Activity UseOwn: apply explicit Activity output on enter
+Activity UseRoute: preserve Route output
+Required inválido: blocked
+Optional inválido: skipped</code></pre>
     </div>
 
     <div class="component-card">
-      <h4>FrameworkActivityCameraBinding</h4>
-      <p>Coloque no conteúdo de cada Activity. Ao entrar na Activity, o binding chama <code>SetActivityCamera</code>.</p>
-      <pre><code>Assigned Activity = FG_Activity_A
-Activity Camera Rig = ActivityACameraRig
-Policy = UseOwnOrRoute
-Anchors = ActivityAAnchorHost
-Director = mesmo FrameworkCameraDirector</code></pre>
-      <div class="table-wrap" style="margin-top:12px;">
-        <table>
-          <thead><tr><th>Policy</th><th>Quando usar</th></tr></thead>
-          <tbody>
-            <tr><td><code>UseOwnOrRoute</code></td><td>Padrão. Usa rig da Activity se existir; senão cai para Route/default.</td></tr>
-            <tr><td><code>UseRoute</code></td><td>Activity sem câmera própria — sempre mantém câmera da Route.</td></tr>
-            <tr><td><code>UseOwnOrRetainActivityUntilRouteExit</code></td><td>Útil quando você quer manter a última câmera de Activity até sair da Route.</td></tr>
-          </tbody>
-        </table>
-      </div>
+      <h4>Limite atual de lifecycle</h4>
+      <p>O output é aplicado na entrada. Release automático, redução de priority e restauração do output anterior na saída ainda não existem.</p>
     </div>
 
     <div class="component-card">
-      <h4>FrameworkCameraAnchorHost + Cinemachine opcional</h4>
-      <p>Define follow/look-at sem script customizado. O applier repassa para <code>CinemachineCamera</code> quando presente.</p>
-      <pre><code>FrameworkCameraAnchorHost
-  Tracking Target = PlayerPrototype
-  Look At Target = PlayerPrototype
-
-FrameworkCinemachineRigApplier   no mesmo objeto do director ou no rig
-  requer define IMMERSIVE_FRAMEWORK_CINEMACHINE e Cinemachine 3</code></pre>
+      <h4>Referências explícitas</h4>
+      <p>Não use lookup global, nome, fallback, <code>SetActive</code> ou <code>Camera.enabled</code> como autoridade. O <code>CameraComposer</code> e os output sources guardam as referências tipadas.</p>
     </div>
 
     <div class="callout warning">
       <span class="callout-icon">⚠️</span>
       <div class="callout-body">
-        <div class="callout-title">PlayerView não substitui o Camera Director</div>
-        <p><code>PlayerViewBehaviour</code> guarda evidência de câmera para diagnóstico/validação. Ele <strong>não</strong> ativa câmera nem conversa com o director. Para câmera jogável, use Route/Activity bindings.</p>
+        <div class="callout-title">PlayerView não é autoridade de câmera</div>
+        <p><code>PlayerViewBehaviour</code> continua como evidência passiva. Para a câmera principal, use <code>CameraComposer</code>; para output de lifecycle, use bindings explícitos.</p>
       </div>
     </div>
 
     <h3>Checklist rápido de câmera</h3>
     <ol class="steps">
-      <li><div class="step-body"><strong>Um director por sessão</strong>Todos os bindings apontam para a mesma referência.</div></li>
-      <li><div class="step-body"><strong>Rig como GameObject</strong>O binding referencia o root do rig, não só a <code>Camera</code> solta.</div></li>
-      <li><div class="step-body"><strong>Prioridade Activity &gt; Route</strong>Com ambos configurados, Activity ganha quando <code>policy</code> permite rig próprio.</div></li>
-      <li><div class="step-body"><strong>Log</strong>Com <code>Log Transitions</code> ativo, procure <code>[FRAMEWORK_CAMERA] Camera applied</code> ao trocar Activity.</div></li>
+      <li><div class="step-body"><strong>Referência explícita</strong>PlayerComposer ou transforms atribuídos.</div></li>
+      <li><div class="step-body"><strong>Validate</strong>Sem blockers.</div></li>
+      <li><div class="step-body"><strong>Apply/Rebuild</strong>Unity Camera, Cinemachine Camera e Brain materializados.</div></li>
+      <li><div class="step-body"><strong>Idempotência</strong>Segunda execução sem novos objetos.</div></li>
     </ol>
 
     <h2 id="build-profile">Build Profile / Build Settings</h2>
@@ -1928,7 +1894,7 @@ public sealed class FirstGameResetStatusLabel : MonoBehaviour
           <tr><td><code>PlayerSlotDeclaration</code></td><td>Declarar assento lógico do jogador (<code>player.1</code>).</td><td>Join, input routing, spawn.</td></tr>
           <tr><td><code>PlayerActorDeclaration</code></td><td>Declarar actor com evidência de <code>PlayerInput</code>.</td><td>Movimento ou troca de action map.</td></tr>
           <tr><td><code>PlayerEntryBehaviour</code></td><td>Conectar slot + actor + readiness em um snapshot.</td><td>Spawn, view bind, control bind.</td></tr>
-          <tr><td><code>PlayerViewBehaviour</code></td><td>Registrar evidência de câmera/alvo para validação.</td><td>Ativar câmera — use <code>FrameworkCameraDirector</code>.</td></tr>
+          <tr><td><code>PlayerViewBehaviour</code></td><td>Registrar evidência passiva de view.</td><td>Ativar câmera — use <code>CameraComposer</code>.</td></tr>
           <tr><td><code>PlayerControlBehaviour</code></td><td>Registrar evidência de alvo de controle.</td><td>Roteamento de <code>InputActions</code>.</td></tr>
           <tr><td><code>UnityPlayerInputGateAdapter</code></td><td>Bloquear input durante Pause/Transition Gate.</td><td>Substituir PlayerEntry ou PlayerActor.</td></tr>
         </tbody>
@@ -2136,8 +2102,8 @@ PlayerViewTopologyValidator.Validate(playerTopology, playerViewSnapshots)</code>
 
     <div class="component-card">
       <h4 style="color:var(--yellow); margin-bottom:8px;">⚠️ Câmera errada ao trocar Activity</h4>
-      <p style="font-size:13.5px; color:var(--text-soft);"><strong>Causa comum:</strong> falta <code>FrameworkActivityCameraBinding</code>, <code>Assigned Activity</code> incorreto, ou <code>Director</code> apontando para outro objeto.<br>
-      <strong>Solução:</strong> confirme que Route e Activity bindings usam o mesmo <code>FrameworkCameraDirector</code>, que o rig da Activity está atribuído e que a policy é <code>UseOwnOrRoute</code> (ou <code>UseRoute</code> se a Activity não tiver rig próprio).</p>
+      <p style="font-size:13.5px; color:var(--text-soft);"><strong>Causa comum:</strong> referência ausente no <code>CameraComposer</code>, requiredness inválida ou output source de lifecycle incompleto.<br>
+      <strong>Solução:</strong> valide o CameraComposer; em Route/Activity, confirme o output source explícito e a policy <code>UseOwn</code>/<code>UseRoute</code>. Lembre que release automático na saída ainda não existe.</p>
     </div>
 
 <h2 id="limites">O que não fazer neste Preview</h2>
@@ -2150,7 +2116,7 @@ PlayerViewTopologyValidator.Validate(playerTopology, playerViewSnapshots)</code>
           Não copie assets, cenas ou ProjectSettings do projeto QA antigo.<br><br>
           Não abra Save, Snapshot, Inventory ou gameplay complexo além do FIRSTGAME mínimo.<br><br>
           Não trate <code>PlayerEntryBehaviour</code> / <code>PlayerViewBehaviour</code> como spawn, câmera ativa ou controle automático — são evidência passiva.<br><br>
-          Não ligue câmera de gameplay via <code>PlayerViewBehaviour</code>; use <code>FrameworkRouteCameraBinding</code> e <code>FrameworkActivityCameraBinding</code>.<br><br>
+          Não ligue câmera de gameplay via <code>PlayerViewBehaviour</code>; use <code>CameraComposer</code>.<br><br>
           Não crie service locator, singleton ou manager genérico.<br><br>
           Não use <code>SceneManager</code> direto para trocar telas do jogo. Use <code>RouteRequestTrigger</code> e os assets do framework.<br><br>
           Não trate Pause como Activity ou Route.<br><br>
@@ -2182,8 +2148,8 @@ PlayerViewTopologyValidator.Validate(playerTopology, playerViewSnapshots)</code>
           <tr><td><code>ActivityClear</code></td><td>Operação que remove a Activity ativa sem trocar de Route.</td></tr>
           <tr><td><code>Model Readiness</code></td><td>Validação de authoring do framework. Para PASS, precisa de 0 blockers.</td></tr>
           <tr><td><code>AlreadyLoaded</code></td><td>Indica que a cena já estava preparada quando o lifecycle tentou compor a Route.</td></tr>
-          <tr><td><code>FrameworkCameraDirector</code></td><td>Componente que escolhe qual camera rig fica ativo por Route/Activity.</td></tr>
-          <tr><td><code>FrameworkCameraActivityPolicy</code></td><td>Define se a Activity usa rig próprio, mantém Route ou retém a última Activity.</td></tr>
+          <tr><td><code>CameraComposer</code></td><td>Superfície principal de authoring da câmera de gameplay.</td></tr>
+          <tr><td><code>FrameworkCameraActivityPolicy</code></td><td><code>UseOwn</code> aplica output próprio; <code>UseRoute</code> mantém o output da Route.</td></tr>
           <tr><td><code>PlayerSlotDeclaration</code></td><td>Assento lógico do jogador (<code>player.1</code>). Não é <code>PlayerInput.playerIndex</code>.</td></tr>
           <tr><td><code>PlayerEntryBehaviour</code></td><td>Evidência passiva que liga slot, actor e readiness. Não faz spawn nem bind de view/control.</td></tr>
           <tr><td><code>ActorDeclaration</code></td><td>Identidade de NPC ou actor genérico (<code>NonPlayer</code>). Não substitui reset nem movimento.</td></tr>
@@ -2194,7 +2160,7 @@ PlayerViewTopologyValidator.Validate(playerTopology, playerViewSnapshots)</code>
 
     <div style="margin-top:56px; padding-top:24px; border-top:1px solid var(--border-soft); color:var(--text-muted); font-size:13px;">
       <p><strong style="color:var(--text-soft);">Immersive Framework</strong> — Guia Preview 12 para Game Designers &nbsp;·&nbsp; <code>com.immersive.framework v1.0.0-preview.12</code></p>
-      <p style="margin-top:4px;">Este guia cobre o escopo validado no POST-RESET-C: FIRSTGAME Usage Model Hardening, incluindo Camera Director, Player resettable state, Runtime Box, Reset Room, Restart Activity, Pause, Loading e Transition. Player Evidence e arquitetura detalhada ficam em <code>Documentation~/Guides/*-Architecture-Flow.md</code>.</p>
+      <p style="margin-top:4px;">Este guia inclui PlayerComposer, CameraComposer, Player resettable state, Runtime Box, Reset Room, Restart Activity, Pause, Loading e Transition. PlayerControl runtime é a próxima lane.</p>
     </div>
 
   </main>
@@ -2215,6 +2181,6 @@ PlayerViewTopologyValidator.Validate(playerTopology, playerViewSnapshots)</code>
   sections.forEach(s => observer.observe(s));
 </script>
 
-<div class="callout info"><div class="callout-title">C8A Camera boundary</div><p><code>CameraComposer</code> is the primary Camera Product Surface with explicit PlayerComposer targets and mandatory Cinemachine. Route/Activity camera remains legacy/diagnostic compatibility until C8B.</p></div>
+<div class="callout info"><div class="callout-title">Current Camera boundary</div><p><code>CameraComposer</code> is the primary Camera Product Surface. Route/Activity consumes explicit Cinemachine outputs, applies on enter and does not yet release or restore output on exit.</p></div>
 </body>
 </html>

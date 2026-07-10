@@ -89,7 +89,7 @@ Runtime/PlayerBinding/PlayerViewCameraActivationTargetBehaviour.cs
 Runtime/PlayerBinding/PlayerViewCameraTargetBindingAdapter.cs
 Runtime/PlayerBinding/PlayerViewCameraActivationAdapter.cs
 Runtime/PlayerViews/PlayerViewBehaviour.cs
-Documentation~/Current/06-PlayerView-Camera-Binding-Chain.md
+Documentation~/History/070-Player-Binding-and-Composer-History.md
 ```
 
 Essa linha e tecnica e incremental:

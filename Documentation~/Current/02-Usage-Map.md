@@ -1,148 +1,45 @@
 # 02 — Usage Map
 
-Use this map when deciding which framework surface to use in game code or scene authoring.
+Use this map to choose the public product surface before its technical materialization.
 
-Consumer role reference: [`03-Consumer-Project-Roles.md`](03-Consumer-Project-Roles.md).
+## Designer-first creation
 
-## How to create scene objects
-
-| You are creating | Put it in | Add at minimum |
+| Task | Main flow | Advanced / Debug |
 |---|---|---|
-| Resettable prop / puzzle / crate | Activity content root (`ActivityLocalVisibilityAdapter` child) | `UnityResetSubjectAdapter` + `UnityTransformResetParticipant` (+ `IUnityResettable` for logic state) |
-| Runtime spawned object | Instantiate prefab; prefab owns adapter | `UnityResetSubjectAdapter` with `RuntimeInstanceId` + prefix |
-| Player | `GameplayRoot` (outside Activity visibility toggle) | `PlayerInput` + mover script + `UnityPlayerInputGateAdapter` + `UnityResetSubjectAdapter` |
-| NPC | Activity content root for that Activity | `ActorDeclaration` (`NonPlayer`) + `ActorReadinessBehaviour` + `UnityResetSubjectAdapter` + gameplay AI script |
-| Main player camera | Gameplay camera root | `CameraComposer` + explicit `PlayerComposer` |
-| Route/Activity camera output | Matching Route/Activity content object | matching binding + `FrameworkCinemachineCameraOutputSource` |
+| Create Player | Optional `PlayerRecipe` -> `PlayerComposer` -> Validate -> Apply/Rebuild | Inspect generated declarations, bindings, anchors and diagnostics. |
+| Create main gameplay camera | Optional `CameraRecipe` -> `CameraComposer` -> explicit `PlayerComposer` or transforms -> Validate -> Apply/Rebuild | Inspect Unity Camera, Cinemachine Camera, Brain and resolved targets. |
+| Declare passive evidence | Use generated or explicit `PlayerSlotDeclaration`, `PlayerActorDeclaration`, `PlayerEntryBehaviour`, `PlayerViewBehaviour`, `PlayerControlBehaviour` only when technical evidence is needed. | These contracts do not execute gameplay. |
+| Block PlayerInput by Gate | `UnityPlayerInputGateAdapter` with an explicit `PlayerInput` and validated action-map name. | Gate is not Player lifecycle or control authority. |
+| Route/Activity camera output | Matching binding + explicit `FrameworkCinemachineCameraOutputSource`. | Apply-on-enter only; no automatic release/restore on exit. |
 
-Player uses `PlayerActorDeclaration`; NPC uses `ActorDeclaration`. Neither uses the other's declaration type.
+## Player boundary
 
-## Common tasks
+`PlayerComposer` is the primary Player authoring surface. It is not a runtime manager and does not spawn, move, activate input or execute control binding.
 
-| Task | Use | Do not use |
-|---|---|---|
-| Boot the app through framework | `GameApplicationAsset` + Startup Route | Scene-local bootstrap scripts. |
-| Switch route | `RouteRequestTrigger` or runtime host route request surface | Direct scene loading from gameplay button. |
-| Start/re-enter activity | Activity lifecycle through route/startup activity or request surface | Manual scene reload as restart. |
-| Show fade around lifecycle | Route/Activity Transition settings + UIGlobal transition adapter | Custom fade script disconnected from lifecycle. |
-| Show loading state | UIGlobal loading surface adapter | Loading UI that does not observe framework operation. |
-| Toggle pause | `PauseInputActionTrigger` / pause request surface | Directly setting `Time.timeScale` from random UI. |
-| Block PlayerInput during pause/transition | `UnityPlayerInputGateAdapter` | Gameplay script polling Pause directly. |
-| Create the main single-player gameplay camera | `CameraComposer` + explicit `PlayerComposer`; run Validate and Apply/Rebuild | `Camera.main`, scene search, name lookup or custom global CameraManager. |
-| Use explicit transforms as camera targets | `CameraComposer` with `Target Source Kind = ExplicitTransform` | Hard-coded lookup inside gameplay scripts. |
-| Apply a camera output on Route entry | `FrameworkRouteCameraBinding` + `FrameworkCinemachineCameraOutputSource` | `FrameworkCameraDirector`, rig activation or silent fallback. |
-| Apply/skip an Activity camera override | `FrameworkActivityCameraBinding` + explicit output; `UseOwn` or `UseRoute` | Toggling camera GameObjects or `Camera.enabled`. |
-| Declare player slot/actor evidence | `PlayerSlotDeclaration` + `PlayerActorDeclaration` + `PlayerSlotOccupancy` + `PlayerEntryBehaviour` | `PlayerInput.playerIndex` as functional id or expecting auto join/spawn. |
-| Declare passive view/control evidence | `PlayerViewBehaviour` / `PlayerControlBehaviour` | Expecting automatic camera activation or input routing. |
-| Make scene object resettable | `UnityResetSubjectAdapter` + participants/components | `ObjectEntryDeclaration` reset path. |
-| Reset transform/active state | `UnityTransformResetParticipant`, `UnityGameObjectActiveResetParticipant` | Custom participant unless custom semantics are needed. |
-| Reset gameplay state | Gameplay component implements `IUnityResettable` | One extra participant component per gameplay variable. |
-| Reset one object | `ObjectResetTrigger` with `ResetSubjectReference` | Direct `ResetRegistry` access. |
-| Reset a room/activity scope | `ObjectResetGroupTrigger` + `ResetSelectionConfig` | Manual list iteration in game code. |
-| Restart current activity | `ActivityRestartTrigger` | Reset group trigger + separate activity request on the same button. |
-| Runtime prefab reset | Prefab has `UnityResetSubjectAdapter` with runtime id generation | Legacy runtime object participation path. |
+`PlayerInput` and one-off movement scripts remain game-owned until the official PlayerControl runtime exists in P2.
 
-Camera guide: [`../Guides/Camera-Product-Usage.md`](../Guides/Camera-Product-Usage.md).
+## Camera boundary
 
-## Consumer project mapping
+`CameraComposer` is the primary gameplay-camera creation surface. Route/Activity bindings are technical lifecycle integration for a specific explicit output, not camera creation.
 
-| Need | Project/root | Use |
-|---|---|---|
-| Validate framework technical behavior | QA Project / `Assets/ImmersiveFrameworkQA/` | Synthetic scenes, QA buttons, probes and negative cases. |
-| Prove a real starting game is usable | FIRSTGAME / `Assets/_Project/` | Minimal player, menu, gameplay, reset, pause, transition and runtime object examples. |
-| Record official framework decisions | Package / `Documentation~/` | Current docs, ADRs, guides, planning and history. |
+Activity policy:
 
-## Reset examples
+- `UseOwn`: apply the Activity output.
+- `UseRoute`: keep the Route output.
+- invalid required output: blocked.
+- invalid optional output: explicitly skipped.
 
-### Gameplay component reset
+Do not use `Camera.main`, object-name lookup, `SetActive`, `Camera.enabled` or a global camera manager as authority.
 
-```csharp
-using Immersive.Framework.Reset;
-using Immersive.Framework.Reset.Unity;
-using UnityEngine;
+## Other common tasks
 
-public sealed class PlayerHealthState : MonoBehaviour, IUnityResettable, IUnityResettableMetadata
-{
-    [SerializeField] private int maxHealth = 100;
-    private int _health;
+| Task | Use |
+|---|---|
+| Boot | `GameApplicationAsset` + Startup Route. |
+| Switch Route | Framework Route request surface. |
+| Pause | Pause request/input surface; do not mutate TimeScale from unrelated gameplay scripts. |
+| Reset one object | `ObjectResetTrigger` with `ResetSubjectReference`. |
+| Reset a scope | `ObjectResetGroupTrigger` + `ResetSelectionConfig`. |
+| Restart Activity | `ActivityRestartTrigger`. |
 
-    public string ResetParticipantId => "player.health";
-    public ResetParticipantRequiredness ResetRequiredness => ResetParticipantRequiredness.Required;
-    public int ResetOrder => 100;
-    public string ResetDisplayName => "Player Health";
-    public string ResetSource => nameof(PlayerHealthState);
-    public string ResetReason => "player.health.reset";
-
-    private void Awake()
-    {
-        _health = maxHealth;
-    }
-
-    public ResetParticipantResult Reset(ResetContext context)
-    {
-        _health = maxHealth;
-        return ResetParticipantResult.CreateSucceeded(
-            context.Participant,
-            nameof(PlayerHealthState),
-            context.Reason,
-            "Player health reset.");
-    }
-}
-```
-
-### Scene shape
-
-```text
-PlayerPrototype
-  UnityResetSubjectAdapter
-    Subject Id = firstgame.player
-    Scope = Activity
-    Include Unity Resettable Components = true
-  UnityTransformResetParticipant
-  PlayerHealthState : IUnityResettable
-```
-
-### Trigger shape
-
-```text
-Button_ResetRoom
-  ObjectResetGroupTrigger
-    Selection Mode = CurrentRouteAndActivitySubjects
-    Allow No Subjects = false
-    Allow No Participants = false
-    Stop On Failure = true
-```
-
-### Programmatic trigger call
-
-Prefer calling configured triggers. This keeps selection policy in authoring and keeps registry ownership inside the framework.
-
-```csharp
-using Immersive.Framework.ObjectReset;
-using UnityEngine;
-
-public sealed class ResetRoomButtonProxy : MonoBehaviour
-{
-    [SerializeField] private ObjectResetGroupTrigger resetGroupTrigger;
-
-    public void ResetRoom()
-    {
-        if (resetGroupTrigger == null)
-        {
-            Debug.LogError("Reset group trigger is missing.");
-            return;
-        }
-
-        resetGroupTrigger.RequestObjectResetGroup();
-    }
-}
-```
-
-## Boundaries
-
-- Game code should not access `ResetRegistry` directly.
-- Game code should not create framework lifecycle ownership manually.
-- A resettable gameplay component should implement `IUnityResettable` when it owns meaningful state.
-- Use `UnityResetParticipantBehaviour` when a reusable participant component is better than embedding reset into gameplay code.
-- Camera authoring must use explicit references; do not use `Camera.main`, name lookup or a global CameraManager as functional authority.
-- Route/Activity camera bindings apply on enter and currently do not own automatic priority release on exit.
+See [Consumer Project Roles](03-Consumer-Project-Roles.md) and [Camera Product Usage](../Guides/Camera-Product-Usage.md).

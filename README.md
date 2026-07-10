@@ -1,53 +1,30 @@
 # Immersive Framework
 
-`com.immersive.framework` is the official Unity package for Immersive Framework runtime, authoring, diagnostics and validation surfaces.
+`com.immersive.framework` is the official Unity package for framework runtime, authoring, diagnostics and validation.
 
-Current package version: `1.0.0-preview.14`
+Current version: `1.0.0-preview.14`.
 
-## Current State
+## Current product surfaces
 
-The package has the supported Preview 14 baseline for application boot, route/activity flow, scene lifecycle, transition/loading surfaces, pause, reset, activity restart, player/actor identity boundaries, route/activity camera, route/activity BGM and the current F49 planning surface. It consumes technical primitives from `com.immersive.foundation`, `com.immersive.logging` and other package dependencies instead of reimplementing them here.
+```text
+PlayerRecipe (optional) -> PlayerComposer -> Validate -> Apply/Rebuild
+PlayerComposer -> CameraComposer -> Validate -> Apply/Rebuild
+```
 
-## Project Roles
+`CameraComposer` materializes the main Unity/Cinemachine camera rig from explicit references. Route/Activity camera bindings are lifecycle-specific explicit-output integration and currently apply on enter without automatic release/restoration on exit.
 
-- `ImmersiveGames/com.immersive.framework`: official framework package and public documentation.
-- `rinnocenti/QAFramework`: technical smoke coverage for package behavior.
-- `ImmersiveGames/planet-devourer`: FIRSTGAME real consumer project for usability and practical game-start validation.
+`PlayerViewBehaviour` and the passive Player foundation remain technical evidence. A complete PlayerControl runtime, input activation, movement and spawning are not automatic.
 
-FIRSTGAME is not the primary technical QA harness, and QA assets should not be copied into consumer projects as canonical setup.
+## Next active lane
 
-## Current Surface
+`P2 — Player Control Product`.
 
-- Game Application boot and startup route.
-- Route and Activity lifecycle.
-- Scene lifecycle for route/activity flow.
-- RuntimeContent handles and ContentAnchor materialization surfaces.
-- Pause runtime, pause input and pause surface.
-- Transition and Loading surfaces.
-- Reset subjects, reset participants and reset execution.
-- Object reset, reset group and Activity Restart.
-- PlayerSlot / Actor identity boundary and Unity PlayerInput evidence boundary.
-- Route/Activity camera and BGM integration boundaries.
-- Runtime logging with `Info`, `Debug` and `Trace` levels.
+## Start reading
 
-## Start Reading
+- [Documentation index](Documentation~/README.md)
+- [HTML Usage Guide](Documentation~/Guides/Usage/index.html)
+- [Current State](Documentation~/Current/00-Current-State.md)
+- [Roadmap](Documentation~/Current/01-Roadmap.md)
+- [Camera Product Usage](Documentation~/Guides/Camera-Product-Usage.md)
 
-- User-facing guide: [`Documentation~/Guides/Usage/index.html`](Documentation~/Guides/Usage/index.html)
-- Guide notes and current preview semantics: [`Documentation~/Guides/Usage/README.md`](Documentation~/Guides/Usage/README.md)
-- Package documentation index: [`Documentation~/README.md`](Documentation~/README.md)
-- Current roadmap: [`Documentation~/Current/01-Roadmap.md`](Documentation~/Current/01-Roadmap.md)
-- F49 implementation plan: [`Documentation~/ADRs/F49-IMPLEMENTATION-PLAN.md`](Documentation~/ADRs/F49-IMPLEMENTATION-PLAN.md)
-
-## Logging Policy
-
-- `Info`: operational summaries.
-- `Debug`: technical diagnostics.
-- `Trace`: waiting, retry and polling noise.
-
-## Do Not
-
-- Do not copy QA Harness assets into a consumer project as the canonical setup.
-- Do not use FIRSTGAME as the main technical QA harness.
-- Do not copy old `ProjectSettings`, scenes, configs or runtime architecture from older projects.
-- Do not depend on paid assets as canonical package setup.
-- Do not edit installed package files inside a consumer project; update the package source instead.
+QAFramework owns synthetic technical validation. FIRSTGAME owns minimal real-game proof. Do not copy consumer assets or old project architecture into this package.
