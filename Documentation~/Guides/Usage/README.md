@@ -46,12 +46,19 @@ D3 - Loading / Transition Semantics Documentation
 - **NPC:** filho do Activity content root + `ActorDeclaration` (`NonPlayer`) + Reset adapter. Sem `PlayerSlot` / `PlayerInput`.
 - Detalhes passo a passo: seção **Como criar** em `Usage/index.html` (`#como-criar`).
 
-## Preview 12 camera notes
+## Current camera product notes
 
-- Put one `FrameworkCameraDirector` on a persistent session object; point all Route/Activity bindings to it.
-- Route camera enters via `FrameworkRouteCameraBinding` on Route content; Activity camera via `FrameworkActivityCameraBinding`.
-- `PlayerViewBehaviour` is passive evidence only — it does not activate cameras. Use Camera Director bindings for gameplay camera.
-- Optional Cinemachine path: assign `FrameworkCinemachineRigApplier` to `rigApplier` on the director.
+- `CameraComposer` is the primary designer-facing Camera Product Surface.
+- Configure a `CameraRecipe` / `CameraComposer` with an explicit `PlayerComposer` source and explicit `CameraTarget` / `LookAtTarget` evidence.
+- Cinemachine is mandatory for the official Camera Product Surface; Apply/Rebuild materializes the local Cinemachine rig idempotently.
+- Route/Activity bindings remain lifecycle compatibility/diagnostic integrations while the C8B rewrite is deferred.
+
+## Legacy Route/Activity camera notes (C8A compatibility)
+
+- Legacy integration only: put one `FrameworkCameraDirector` on a persistent session object when validating Route/Activity compatibility.
+- Legacy Route camera enters via `FrameworkRouteCameraBinding`; legacy Activity camera via `FrameworkActivityCameraBinding`.
+- `PlayerViewBehaviour` is passive evidence only — it does not activate cameras. Do not use this legacy path as the primary gameplay-camera authoring workflow.
+- `FrameworkCinemachineRigApplier` remains the typed Cinemachine adapter for this compatibility path; it does not replace `CameraComposer`.
 
 ## Preview 12 player evidence notes
 
