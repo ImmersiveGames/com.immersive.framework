@@ -33,15 +33,16 @@ No other lane is active.
 
 ## Active lane sequence
 
-| Order | Cut | Goal |
-|---:|---|---|
-| 1 | P2A — Player control authority and runtime binding audit | Establish authority, lifetime and accepted runtime boundary. |
-| 2 | P2B — Player control recipe and authoring surface | Define reusable intent and designer-facing authoring. |
-| 3 | P2C — PlayerControl binding adapter | Bind validated control evidence explicitly. |
-| 4 | P2D — Unity PlayerInput bridge | Integrate the Unity Input System without hidden lookup. |
-| 5 | P2E — Scoped Player control runtime context | Add runtime authority with explicit scope and dependencies. |
-| 6 | P2F — QA technical validation | Prove positive, negative and lifecycle cases. |
-| 7 | P2G — FIRSTGAME minimal control and movement proof | Prove minimal real-game consumption after QA. |
+| Order | Cut | Status | Goal |
+|---:|---|---|---|
+| 1 | P2A — Player control authority and runtime binding audit | Closed / documentation | Authority, lifetime and accepted runtime boundary are recorded in [11-Player-Control-Authority-Audit.md](11-Player-Control-Authority-Audit.md). |
+| 2 | P2A-QA0 — PlayerComposer Product Surface Regression Smoke | Closed / QA baseline | Captured the Composer baseline and the three pre-P2B materialization gaps. |
+| 3 | P2B — Player control authoring | Implemented / pending Unity validation | Added designer-first control intent and canonical, blocking materialization validation. No runtime authority was created. |
+| 4 | P2C — Binding contracts/runtime | Pending | Bind the exact authored PlayerSlot transactionally after P2B compile/import and QA confirmation. |
+| 5 | P2D — Unity PlayerInput bridge | Pending | Own typed PlayerInput/action-map lifecycle and Gate availability. |
+| 6 | P2E — Scoped runtime context | Pending | Add one explicit runtime authority per Player instance. |
+| 7 | P2F — QA runtime | Pending | Prove bind, rollback, Gate, Pause, Transition and release. |
+| 8 | P2G — FIRSTGAME movement proof | Pending | Prove framework control availability with game-owned movement. |
 
 ## Candidate future lanes
 

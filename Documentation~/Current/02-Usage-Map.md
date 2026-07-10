@@ -6,7 +6,7 @@ Use this map to choose the public product surface before its technical materiali
 
 | Task | Main flow | Advanced / Debug |
 |---|---|---|
-| Create Player | Optional `PlayerRecipe` -> `PlayerComposer` -> Validate -> Apply/Rebuild | Inspect generated declarations, bindings, anchors and diagnostics. |
+| Create Player | Optional `PlayerRecipe` -> `PlayerComposer` -> configure Control -> Validate -> Apply/Rebuild | Inspect generated declarations, canonical bindings, Gate adapter and diagnostics. |
 | Create main gameplay camera | Optional `CameraRecipe` -> `CameraComposer` -> explicit `PlayerComposer` or transforms -> Validate -> Apply/Rebuild | Inspect Unity Camera, Cinemachine Camera, Brain and resolved targets. |
 | Declare passive evidence | Use generated or explicit `PlayerSlotDeclaration`, `PlayerActorDeclaration`, `PlayerEntryBehaviour`, `PlayerViewBehaviour`, `PlayerControlBehaviour` only when technical evidence is needed. | These contracts do not execute gameplay. |
 | Block PlayerInput by Gate | `UnityPlayerInputGateAdapter` with an explicit `PlayerInput` and validated action-map name. | Gate is not Player lifecycle or control authority. |
@@ -14,9 +14,13 @@ Use this map to choose the public product surface before its technical materiali
 
 ## Player boundary
 
-`PlayerComposer` is the primary Player authoring surface. It is not a runtime manager and does not spawn, move, activate input or execute control binding.
+`PlayerComposer` is the primary Player authoring surface. Its Control section owns `Control Enabled`, explicit `PlayerInput`, gameplay action map, explicit control target, `BindOnEnable`, requiredness and Gate participation. Apply/Rebuild materializes authoring evidence only; it does not bind at runtime.
 
-`PlayerInput` and one-off movement scripts remain game-owned until the official PlayerControl runtime exists in P2.
+`PlayerRecipe` stores only reusable control intent. It never stores `PlayerInput`, scene transforms or PlayerSlot/Actor declarations. Applying Recipe defaults preserves concrete Composer references.
+
+Required control blocks validation when `PlayerInput`, its InputActionAsset, the configured action map or the control target is missing. Duplicate PlayerSlot/Actor owners or F52 targets outside `Player/_Framework/_Bindings` block Validate and Apply without automatic deletion.
+
+`PlayerInput` remains the typed Unity reference and movement scripts remain game-owned. Runtime bind/unbind and scoped authority remain deferred to P2C-P2E.
 
 ## Camera boundary
 

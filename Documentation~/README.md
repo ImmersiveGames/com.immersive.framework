@@ -10,11 +10,12 @@ Canonical documentation for `com.immersive.framework`. The Current surface is in
 | 2 | [HTML Usage Guide](Guides/Usage/index.html) | Designer-facing setup. |
 | 3 | [Usage Map](Current/02-Usage-Map.md) | Correct product surface by task. |
 | 4 | [Roadmap](Current/01-Roadmap.md) | One active lane: P2. |
-| 5 | [Camera Product Usage](Guides/Camera-Product-Usage.md) | CameraComposer and lifecycle-output boundary. |
-| 6 | [Consumer Project Roles](Current/03-Consumer-Project-Roles.md) | Package, QA and FIRSTGAME ownership. |
-| 7 | [Player Passive Foundation](Current/04-Player-Passive-Binding-Foundation.md) | Valid contracts/diagnostics below PlayerComposer. |
-| 8 | [History Index](History/000-INDEX.md) | Superseded cuts and consolidation. |
-| 9 | [ADR Index](ADRs/ADR-INDEX.md) | Decision archive. |
+| 5 | [Player Control Authority Audit](Current/11-Player-Control-Authority-Audit.md) | Accepted P2 authority, lifetime and binding decisions. |
+| 6 | [Camera Product Usage](Guides/Camera-Product-Usage.md) | CameraComposer and lifecycle-output boundary. |
+| 7 | [Consumer Project Roles](Current/03-Consumer-Project-Roles.md) | Package, QA and FIRSTGAME ownership. |
+| 8 | [Player Passive Foundation](Current/04-Player-Passive-Binding-Foundation.md) | Valid contracts/diagnostics below PlayerComposer. |
+| 9 | [History Index](History/000-INDEX.md) | Superseded cuts and consolidation. |
+| 10 | [ADR Index](ADRs/ADR-INDEX.md) | Decision archive. |
 
 ## Current Player model
 

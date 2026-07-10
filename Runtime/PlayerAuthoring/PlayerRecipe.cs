@@ -17,16 +17,25 @@ namespace Immersive.Framework.PlayerAuthoring
         [SerializeField] private string actorId = "player.actor";
         [Tooltip("Default stable PlayerSlotId copied into PlayerComposer. This is not PlayerInput.playerIndex.")]
         [SerializeField] private string playerSlotId = "player.1";
-        [Tooltip("Default gameplay action map expected on the target PlayerInput action asset.")]
-        [SerializeField] private string gameplayActionMap = "Player";
         [Tooltip("Optional reset materialization default. Disabled by default because reset participant setup is a policy choice.")]
         [SerializeField] private bool resetEnabled;
         [SerializeField] private PlayerComposerValidationMode validationMode = PlayerComposerValidationMode.Standard;
 
+        [Header("Control Defaults")]
+        [Tooltip("Whether PlayerComposer should author and materialize Player control evidence.")]
+        [SerializeField] private bool controlEnabled = true;
+        [Tooltip("Default gameplay action map expected on the target PlayerInput action asset.")]
+        [SerializeField] private string gameplayActionMap = "Player";
+        [Tooltip("Control startup intent. Bind On Enable is the only supported P2 MVP policy.")]
+        [SerializeField] private PlayerControlStartupPolicy controlStartupPolicy = PlayerControlStartupPolicy.BindOnEnable;
+        [Tooltip("Requiredness of complete control references. Enabled means Required; disabled means Optional.")]
+        [SerializeField] private bool inputBindingRequired = true;
+        [Tooltip("Whether Player control participates in framework Gate blocking.")]
+        [SerializeField] private bool gateParticipation = true;
+
         [Header("Authoring Defaults")]
         [SerializeField] private bool createBindingsRootIfMissing = true;
         [SerializeField] private bool createAnchorsIfMissing = true;
-        [SerializeField] private bool inputBindingRequired = true;
         [SerializeField] private bool cameraBindingRequired = true;
         [Tooltip("Reset scope copied only when reset materialization is enabled.")]
         [SerializeField] private string resetScope = "Activity";
@@ -40,7 +49,19 @@ namespace Immersive.Framework.PlayerAuthoring
 
         public string PlayerSlotId => playerSlotId.NormalizeText();
 
+        public bool ControlEnabled => controlEnabled;
+
         public string GameplayActionMap => gameplayActionMap.NormalizeText();
+
+        public PlayerControlStartupPolicy ControlStartupPolicy => controlStartupPolicy;
+
+        public PlayerControlRequiredness ControlRequiredness => inputBindingRequired
+            ? PlayerControlRequiredness.Required
+            : PlayerControlRequiredness.Optional;
+
+        public bool InputBindingRequired => inputBindingRequired;
+
+        public bool GateParticipation => gateParticipation;
 
         public bool ResetEnabled => resetEnabled;
 
@@ -49,8 +70,6 @@ namespace Immersive.Framework.PlayerAuthoring
         public bool CreateBindingsRootIfMissing => createBindingsRootIfMissing;
 
         public bool CreateAnchorsIfMissing => createAnchorsIfMissing;
-
-        public bool InputBindingRequired => inputBindingRequired;
 
         public bool CameraBindingRequired => cameraBindingRequired;
 

@@ -12,8 +12,13 @@ namespace Immersive.Framework.Editor.PlayerAuthoring
         private SerializedProperty _recipe;
         private SerializedProperty _actorId;
         private SerializedProperty _playerSlotId;
+        private SerializedProperty _controlEnabled;
         private SerializedProperty _playerInput;
         private SerializedProperty _gameplayActionMap;
+        private SerializedProperty _controlTarget;
+        private SerializedProperty _controlStartupPolicy;
+        private SerializedProperty _controlRequiredness;
+        private SerializedProperty _gateParticipation;
         private SerializedProperty _cameraTarget;
         private SerializedProperty _lookAtTarget;
         private SerializedProperty _resetEnabled;
@@ -21,7 +26,6 @@ namespace Immersive.Framework.Editor.PlayerAuthoring
         private SerializedProperty _frameworkBindingsRoot;
         private SerializedProperty _createBindingsRootIfMissing;
         private SerializedProperty _createAnchorsIfMissing;
-        private SerializedProperty _inputBindingRequired;
         private SerializedProperty _cameraBindingRequired;
         private SerializedProperty _resetScope;
         private SerializedProperty _resetParticipantPolicy;
@@ -37,8 +41,13 @@ namespace Immersive.Framework.Editor.PlayerAuthoring
             _recipe = serializedObject.FindProperty("recipe");
             _actorId = serializedObject.FindProperty("actorId");
             _playerSlotId = serializedObject.FindProperty("playerSlotId");
+            _controlEnabled = serializedObject.FindProperty("controlEnabled");
             _playerInput = serializedObject.FindProperty("playerInput");
             _gameplayActionMap = serializedObject.FindProperty("gameplayActionMap");
+            _controlTarget = serializedObject.FindProperty("controlTarget");
+            _controlStartupPolicy = serializedObject.FindProperty("controlStartupPolicy");
+            _controlRequiredness = serializedObject.FindProperty("inputBindingRequired");
+            _gateParticipation = serializedObject.FindProperty("gateParticipation");
             _cameraTarget = serializedObject.FindProperty("cameraTarget");
             _lookAtTarget = serializedObject.FindProperty("lookAtTarget");
             _resetEnabled = serializedObject.FindProperty("resetEnabled");
@@ -46,7 +55,6 @@ namespace Immersive.Framework.Editor.PlayerAuthoring
             _frameworkBindingsRoot = serializedObject.FindProperty("frameworkBindingsRoot");
             _createBindingsRootIfMissing = serializedObject.FindProperty("createBindingsRootIfMissing");
             _createAnchorsIfMissing = serializedObject.FindProperty("createAnchorsIfMissing");
-            _inputBindingRequired = serializedObject.FindProperty("inputBindingRequired");
             _cameraBindingRequired = serializedObject.FindProperty("cameraBindingRequired");
             _resetScope = serializedObject.FindProperty("resetScope");
             _resetParticipantPolicy = serializedObject.FindProperty("resetParticipantPolicy");
@@ -63,6 +71,7 @@ namespace Immersive.Framework.Editor.PlayerAuthoring
             EditorGUILayout.HelpBox("Designer-first player authoring surface. Apply/Rebuild materializes technical framework bindings; this component does not execute gameplay and is not a PlayerManager.", MessageType.Info);
 
             DrawDesignerSection();
+            DrawControlSection();
             DrawActions();
             DrawAdvancedSection();
             DrawDebugSection();
@@ -85,12 +94,32 @@ namespace Immersive.Framework.Editor.PlayerAuthoring
 
             EditorGUILayout.PropertyField(_actorId);
             EditorGUILayout.PropertyField(_playerSlotId);
-            EditorGUILayout.PropertyField(_playerInput);
-            EditorGUILayout.PropertyField(_gameplayActionMap);
             EditorGUILayout.PropertyField(_cameraTarget);
             EditorGUILayout.PropertyField(_lookAtTarget);
             EditorGUILayout.PropertyField(_resetEnabled);
             EditorGUILayout.PropertyField(_validationMode);
+        }
+
+        private void DrawControlSection()
+        {
+            EditorGUILayout.Space();
+            EditorGUILayout.LabelField("Control", EditorStyles.boldLabel);
+            EditorGUILayout.PropertyField(_controlEnabled, new GUIContent("Control Enabled"));
+            using (new EditorGUI.DisabledScope(!_controlEnabled.boolValue))
+            {
+                EditorGUILayout.PropertyField(_playerInput);
+                EditorGUILayout.PropertyField(_gameplayActionMap);
+                EditorGUILayout.PropertyField(_controlTarget);
+                EditorGUILayout.PropertyField(_controlStartupPolicy, new GUIContent("Startup Policy"));
+                EditorGUILayout.PropertyField(
+                    _controlRequiredness,
+                    new GUIContent("Requiredness", "Enabled = Required; disabled = Optional."));
+                EditorGUILayout.PropertyField(_gateParticipation, new GUIContent("Gate Participation"));
+            }
+
+            EditorGUILayout.HelpBox(
+                "PlayerComposer authors and materializes control evidence only. Runtime bind/unbind remains deferred to P2C-P2E, and movement remains game-owned.",
+                MessageType.None);
         }
 
         private void DrawActions()
@@ -127,7 +156,6 @@ namespace Immersive.Framework.Editor.PlayerAuthoring
             EditorGUILayout.PropertyField(_frameworkBindingsRoot);
             EditorGUILayout.PropertyField(_createBindingsRootIfMissing);
             EditorGUILayout.PropertyField(_createAnchorsIfMissing);
-            EditorGUILayout.PropertyField(_inputBindingRequired);
             EditorGUILayout.PropertyField(_cameraBindingRequired);
             EditorGUILayout.PropertyField(_resetScope);
             EditorGUILayout.PropertyField(_resetParticipantPolicy);
@@ -151,9 +179,14 @@ namespace Immersive.Framework.Editor.PlayerAuthoring
             {
                 EditorGUILayout.TextField("Resolved Actor Id", snapshot.ActorId);
                 EditorGUILayout.TextField("Resolved Player Slot Id", snapshot.PlayerSlotId);
+                EditorGUILayout.Toggle("Control Enabled", snapshot.ControlEnabled);
                 EditorGUILayout.TextField("Resolved PlayerInput", snapshot.PlayerInputName);
                 EditorGUILayout.TextField("Gameplay Action Map", snapshot.GameplayActionMap);
                 EditorGUILayout.Toggle("Action Map Found", snapshot.ActionMapFound);
+                EditorGUILayout.TextField("Control Target", snapshot.ControlTargetName);
+                EditorGUILayout.EnumPopup("Startup Policy", snapshot.ControlStartupPolicy);
+                EditorGUILayout.EnumPopup("Requiredness", snapshot.ControlRequiredness);
+                EditorGUILayout.Toggle("Gate Participation", snapshot.GateParticipation);
                 EditorGUILayout.TextField("Bindings Root", snapshot.FrameworkBindingsRootName);
                 EditorGUILayout.TextField("Camera Target", snapshot.CameraTargetName);
                 EditorGUILayout.TextField("Look At Target", snapshot.LookAtTargetName);
@@ -184,7 +217,7 @@ namespace Immersive.Framework.Editor.PlayerAuthoring
             }
 
             EditorUtility.SetDirty(composer);
-            Debug.Log($"[Immersive.Framework][PlayerComposer] Recipe defaults applied. player='{composer.name}' recipe='{composer.Recipe.name}' actorId='{composer.ActorId}' playerSlotId='{composer.PlayerSlotId}' actionMap='{composer.GameplayActionMap}' resetEnabled='{composer.ResetEnabled}' resetParticipantPolicy='{composer.ResetParticipantPolicy}'.", composer);
+            Debug.Log($"[Immersive.Framework][PlayerComposer] Recipe defaults applied. player='{composer.name}' recipe='{composer.Recipe.name}' actorId='{composer.ActorId}' playerSlotId='{composer.PlayerSlotId}' controlEnabled='{composer.ControlEnabled}' actionMap='{composer.GameplayActionMap}' startupPolicy='{composer.ControlStartupPolicy}' requiredness='{composer.ControlRequiredness}' gateParticipation='{composer.GateParticipation}' resetEnabled='{composer.ResetEnabled}' resetParticipantPolicy='{composer.ResetParticipantPolicy}'.", composer);
             serializedObject.Update();
         }
 
