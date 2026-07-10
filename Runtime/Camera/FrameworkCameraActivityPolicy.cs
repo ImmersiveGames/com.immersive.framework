@@ -3,13 +3,12 @@ using Immersive.Framework.ApiStatus;
 namespace Immersive.Framework.Camera
 {
     /// <summary>
-    /// API status: Experimental. Defines how Activity camera authoring interacts with Route camera fallback.
+    /// API status: Experimental. Defines whether an Activity owns an explicit output or leaves Route output unchanged.
     /// </summary>
     [FrameworkApiStatus(FrameworkApiStatus.Experimental, "F46B framework-owned camera ownership skeleton.")]
     public enum FrameworkCameraActivityPolicy
     {
-        UseOwnOrRoute = 0,
-        UseOwnOrRetainActivityUntilRouteExit = 1,
-        UseRoute = 2
+        UseOwn = 0,
+        UseRoute = 1
     }
 }

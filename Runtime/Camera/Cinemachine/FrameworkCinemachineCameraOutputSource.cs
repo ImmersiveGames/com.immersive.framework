@@ -11,7 +11,7 @@ namespace Immersive.Framework.Camera.Cinemachine
     /// </summary>
     [DisallowMultipleComponent]
     [AddComponentMenu("Immersive Framework/Camera/Cinemachine Camera Output Source")]
-    [FrameworkApiStatus(FrameworkApiStatus.Experimental, "C8B4A explicit Route/Activity Cinemachine output bridge.")]
+    [FrameworkApiStatus(FrameworkApiStatus.Experimental, "C8B4C canonical Route/Activity Cinemachine output.")]
     public sealed class FrameworkCinemachineCameraOutputSource : MonoBehaviour
     {
         [SerializeField] private CinemachineCamera cinemachineCamera;

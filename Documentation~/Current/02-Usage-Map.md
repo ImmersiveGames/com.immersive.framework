@@ -12,6 +12,8 @@ Consumer role reference: [`03-Consumer-Project-Roles.md`](03-Consumer-Project-Ro
 | Runtime spawned object | Instantiate prefab; prefab owns adapter | `UnityResetSubjectAdapter` with `RuntimeInstanceId` + prefix |
 | Player | `GameplayRoot` (outside Activity visibility toggle) | `PlayerInput` + mover script + `UnityPlayerInputGateAdapter` + `UnityResetSubjectAdapter` |
 | NPC | Activity content root for that Activity | `ActorDeclaration` (`NonPlayer`) + `ActorReadinessBehaviour` + `UnityResetSubjectAdapter` + gameplay AI script |
+| Main player camera | Gameplay camera root | `CameraComposer` + explicit `PlayerComposer` |
+| Route/Activity camera output | Matching Route/Activity content object | matching binding + `FrameworkCinemachineCameraOutputSource` |
 
 Player uses `PlayerActorDeclaration`; NPC uses `ActorDeclaration`. Neither uses the other's declaration type.
 
@@ -26,8 +28,10 @@ Player uses `PlayerActorDeclaration`; NPC uses `ActorDeclaration`. Neither uses 
 | Show loading state | UIGlobal loading surface adapter | Loading UI that does not observe framework operation. |
 | Toggle pause | `PauseInputActionTrigger` / pause request surface | Directly setting `Time.timeScale` from random UI. |
 | Block PlayerInput during pause/transition | `UnityPlayerInputGateAdapter` | Gameplay script polling Pause directly. |
-| Switch gameplay camera by Route/Activity | `FrameworkCameraDirector` + `FrameworkRouteCameraBinding` + `FrameworkActivityCameraBinding` | Manual `Camera.main` swap or `PlayerViewBehaviour` as camera driver. |
-| Follow/look-at targets for camera rig | `FrameworkCameraAnchorHost` + optional `FrameworkCinemachineRigApplier` | Hard-coded target references in gameplay mover. |
+| Create the main single-player gameplay camera | `CameraComposer` + explicit `PlayerComposer`; run Validate and Apply/Rebuild | `Camera.main`, scene search, name lookup or custom global CameraManager. |
+| Use explicit transforms as camera targets | `CameraComposer` with `Target Source Kind = ExplicitTransform` | Hard-coded lookup inside gameplay scripts. |
+| Apply a camera output on Route entry | `FrameworkRouteCameraBinding` + `FrameworkCinemachineCameraOutputSource` | `FrameworkCameraDirector`, rig activation or silent fallback. |
+| Apply/skip an Activity camera override | `FrameworkActivityCameraBinding` + explicit output; `UseOwn` or `UseRoute` | Toggling camera GameObjects or `Camera.enabled`. |
 | Declare player slot/actor evidence | `PlayerSlotDeclaration` + `PlayerActorDeclaration` + `PlayerSlotOccupancy` + `PlayerEntryBehaviour` | `PlayerInput.playerIndex` as functional id or expecting auto join/spawn. |
 | Declare passive view/control evidence | `PlayerViewBehaviour` / `PlayerControlBehaviour` | Expecting automatic camera activation or input routing. |
 | Make scene object resettable | `UnityResetSubjectAdapter` + participants/components | `ObjectEntryDeclaration` reset path. |
@@ -37,6 +41,8 @@ Player uses `PlayerActorDeclaration`; NPC uses `ActorDeclaration`. Neither uses 
 | Reset a room/activity scope | `ObjectResetGroupTrigger` + `ResetSelectionConfig` | Manual list iteration in game code. |
 | Restart current activity | `ActivityRestartTrigger` | Reset group trigger + separate activity request on the same button. |
 | Runtime prefab reset | Prefab has `UnityResetSubjectAdapter` with runtime id generation | Legacy runtime object participation path. |
+
+Camera guide: [`../Guides/Camera-Product-Usage.md`](../Guides/Camera-Product-Usage.md).
 
 ## Consumer project mapping
 
@@ -138,3 +144,5 @@ public sealed class ResetRoomButtonProxy : MonoBehaviour
 - Game code should not create framework lifecycle ownership manually.
 - A resettable gameplay component should implement `IUnityResettable` when it owns meaningful state.
 - Use `UnityResetParticipantBehaviour` when a reusable participant component is better than embedding reset into gameplay code.
+- Camera authoring must use explicit references; do not use `Camera.main`, name lookup or a global CameraManager as functional authority.
+- Route/Activity camera bindings apply on enter and currently do not own automatic priority release on exit.

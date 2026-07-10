@@ -1,6 +1,6 @@
 # 00 — Current State
 
-Status: **canonical current state after F49M Player Passive Binding Foundation consolidation**.
+Status: **canonical current state after C8B6 Camera Product Documentation consolidation**.
 
 ## Closed baseline
 
@@ -22,47 +22,45 @@ Status: **canonical current state after F49M Player Passive Binding Foundation c
 | Unity Reset | `UnityResetSubjectAdapter`, built-in participants and `IUnityResettable` gameplay component bridge are available. |
 | Runtime prefab reset | Runtime id generation uses authored prefix + monotonic runtime counter. |
 | Restart | `ActivityRestartTrigger` wraps reset + clear + re-enter inside one visual transition window. |
-| FIRSTGAME | Reset Room and Activity Restart usage model passed with runtime objects. |
+| FIRSTGAME | Reset Room, Activity Restart and CameraComposer usage proofs passed. |
 | Player identity | `PlayerSlot`, `ActorId`, Actor readiness and `PlayerEntry` passive evidence are available. |
 | Player topology | `PlayerTopologyValidator` validates slots, occupancies and entries. |
 | Player view | `PlayerView` and `PlayerViewTopologyValidator` validate passive view evidence. |
 | Player control | `PlayerControl` and `PlayerControlTopologyValidator` validate passive control evidence. |
 | Player binding readiness | `PlayerBindingReadinessSummarizer` aggregates topology readiness for future binding. |
 | Player binding diagnostics | `PlayerBindingDiagnosticReporter` produces human-readable passive diagnostics. |
+| Camera product | `CameraComposer` + optional `CameraRecipe` is the designer-first single-player camera authoring surface. |
+| Camera targets | `CameraComposer` resolves explicit `PlayerComposer` targets or explicit transforms; no scene/name lookup. |
+| Route/Activity camera | Bindings consume only explicit `FrameworkCinemachineCameraOutputSource` outputs. No legacy director/fallback exists. |
 | Consumer project split | QA, FIRSTGAME and package roles are frozen in [`03-Consumer-Project-Roles.md`](03-Consumer-Project-Roles.md). |
 
-## Closed F49 passive player sequence
+## Current camera model
 
-| Cut | Result |
-|---|---|
-| F49A | PASS |
-| F49B | PASS |
-| F49B-QA | PASS |
-| F49C | PASS |
-| F49C-QA | PASS |
-| F49D | PASS |
-| F49D-QA | PASS |
-| F49E | PASS |
-| F49E-QA | PASS |
-| F49F | PASS |
-| F49F-QA | PASS |
-| F49G | PASS |
-| F49G-QA | PASS |
-| F49H | PASS |
-| F49H-QA | PASS |
-| F49I | PASS |
-| F49I-QA | PASS |
-| F49J | PASS |
-| F49J-QA | PASS |
-| F49K | PASS |
-| F49K-QA | PASS |
-| F49L | PASS |
-| F49L-QA | PASS |
-| F49M | Documentation-only consolidation |
+```text
+Gameplay camera:
+PlayerComposer -> CameraComposer -> Validate -> Apply/Rebuild
+
+Lifecycle-specific output:
+Route/Activity binding -> explicit Cinemachine output source -> output applier
+```
+
+Current boundary:
+
+```text
+single-player CameraComposer MVP
+explicit references only
+idempotent editor materialization
+no Camera.main
+no global CameraManager
+no legacy FrameworkCameraDirector
+no automatic output release on lifecycle exit yet
+```
+
+See [`../Guides/Camera-Product-Usage.md`](../Guides/Camera-Product-Usage.md).
 
 ## Current player passive boundary
 
-The F49 player foundation does not execute binding:
+The passive player foundation does not execute binding by itself:
 
 ```text
 viewBinding = false
@@ -73,7 +71,7 @@ movement = false
 actorSpawning = false
 ```
 
-Future behavior that changes this boundary requires a new explicit implementation cut.
+`CameraComposer` is a separate explicit product surface. `PlayerViewBehaviour` remains passive evidence and does not become camera authority.
 
 ## Current reset usage model
 
@@ -97,7 +95,7 @@ Use both layers when relevant:
 2. FIRSTGAME smoke proves real usage model.
 ```
 
-For Reset Reform, both layers passed. For F49 passive player binding foundation, package + QA have passed and FIRSTGAME remains intentionally out of scope until a real binding implementation exists.
+For the camera product, package + QA prove the technical contracts, while FIRSTGAME proves `PlayerComposer -> CameraComposer` as the current real-game usage path.
 
 ## Consumer project ownership
 
