@@ -1,19 +1,24 @@
 # 01 — Roadmap
 
-Status: **canonical after R0**.
+Status: **canonical after P2 closure and G1 selection**
+
+For the exact operational next step, read [Execution Status](05-Execution-Status.md).
 
 ## Status vocabulary
 
 | Status | Meaning |
 |---|---|
 | Closed | Implemented and supported by the appropriate package, QA or consumer evidence. |
-| Active | The only selected execution lane. |
-| Candidate | Valuable future work that is not authorized as the current lane. |
-| Historical | Retained for traceability; not current guidance. |
+| Active | The only selected execution block. |
+| Ordered | Accepted future block with a fixed position after the active block. |
+| Candidate | Valuable future work not authorized in the ordered sequence. |
+| Rejected | Proposed shape was tested or reviewed and intentionally not retained. |
+| Historical | Traceability only; not current guidance. |
 
 ## Closed product blocks
 
-- F49 passive player foundation.
+- R0 documentation and roadmap baseline reconciliation.
+- F49 passive Player foundation.
 - PlayerRecipe MVP.
 - PlayerComposer MVP.
 - CameraRecipe MVP.
@@ -22,52 +27,74 @@ Status: **canonical after R0**.
 - FIRSTGAME CameraComposer usage proof.
 - Route/Activity explicit Cinemachine output apply-on-enter.
 - Legacy camera architecture removal.
+- P2 Player control authoring, QA availability proof and FIRSTGAME movement proof.
 
-## Current active lane
+## P2 closure record
+
+| Item | Status | Accepted result |
+|---|---|---|
+| P2A | Closed | Control boundary and ownership audited. |
+| P2B | Closed | Designer-first Control section and materialization. |
+| P2C original runtime binding adapter | Rejected/reverted | No retained new binding authority. |
+| P2D | Closed | QA PlayerInput runtime baseline, 13/13. |
+| P2E | Closed | QA Gate/Pause/Transition block and restoration, 14/14. |
+| P2F | Absorbed | Covered by P2D/P2E evidence. |
+| P2G | Closed | FIRSTGAME Move input and game-owned movement, 11/11. |
+
+The detailed original P2 intent remains in the consolidated plan, but the accepted final shape is governed by [Execution Status](05-Execution-Status.md).
+
+## Current active block
 
 ```text
-P2 — Player Control Product
+G1 — Minimal Playable Loop
 ```
 
-No other lane is active.
+No other block is active.
 
-## Active lane sequence
+### G1 sequence
 
 | Order | Cut | Status | Goal |
 |---:|---|---|---|
-| 1 | P2A — Player control authority and runtime binding audit | Closed / documentation | Authority, lifetime and accepted runtime boundary are recorded in [11-Player-Control-Authority-Audit.md](11-Player-Control-Authority-Audit.md). |
-| 2 | P2A-QA0 — PlayerComposer Product Surface Regression Smoke | Closed / QA baseline | Captured the Composer baseline and the three pre-P2B materialization gaps. |
-| 3 | P2B — Player control authoring | Implemented / pending Unity validation | Added designer-first control intent and canonical, blocking materialization validation. No runtime authority was created. |
-| 4 | P2C — Binding contracts/runtime | Pending | Bind the exact authored PlayerSlot transactionally after P2B compile/import and QA confirmation. |
-| 5 | P2D — Unity PlayerInput bridge | Pending | Own typed PlayerInput/action-map lifecycle and Gate availability. |
-| 6 | P2E — Scoped runtime context | Pending | Add one explicit runtime authority per Player instance. |
-| 7 | P2F — QA runtime | Pending | Prove bind, rollback, Gate, Pause, Transition and release. |
-| 8 | P2G — FIRSTGAME movement proof | Pending | Prove framework control availability with game-owned movement. |
+| 1 | G1A — FIRSTGAME Minimal Playable Loop Audit | Active | Map existing objective, interaction, Reset, Activity Restart, camera and control behavior before creating anything. |
+| 2 | G1B — Minimal missing loop composition | Pending | Add only the smallest singular FIRSTGAME piece shown missing by G1A. |
+| 3 | G1C — Integrated runtime proof | Pending | Prove the complete loop returns to a playable initial state. |
 
-## Candidate future lanes
+## Ordered future blocks
 
-- Player spawn/materialization.
-- Camera output lifetime/release.
-- Progression save runtime.
+| Order | Block | Goal | Activation condition |
+|---:|---|---|---|
+| 1 | P3 — Player Spawn / Runtime Materialization | Define ExistingSceneInstance and InstantiatePrefab through explicit scoped policies. | G1 closed. |
+| 2 | C9 — Camera Output Lifetime / Release | Release Activity output, restore Route output and release Route output without fallback. | P3 closed or explicitly deferred with rationale. |
+| 3 | S1 — Progression Save Runtime | Add progression save contracts and interchangeable backend. | C9 closed and FIRSTGAME has meaningful state to persist. |
+
+## Candidates
+
 - Transition/loading hardening.
+- Pause UX advanced work.
+- Additional camera modes.
+- Multiplayer Player.
+- Input rebinding.
+- Generic Actor/NPC spawning.
+- Generic interaction product.
+- Expanded templates and samples.
 
 ## Execution order
 
 ```text
-package audit and product decision
--> package implementation
+product/audit decision
+-> package implementation when an official contract is needed
 -> QA technical validation
--> FIRSTGAME minimal consumer proof
+-> FIRSTGAME real usability proof
 ```
 
-## Consumer project rule
-
-The package owns contracts, product surfaces and canonical documentation. QAFramework proves technical behavior. FIRSTGAME proves real-game usability. Consumer projects do not define framework contracts.
+For G1, the active work is consumer integration first because it composes already-supported official systems and must reveal any real product gap before new package APIs are introduced.
 
 ## Guardrails
 
-- `CameraComposer` already resolves the main gameplay camera.
+- Do not start P3, C9 or S1 while G1 is active.
+- Do not create a new Player runtime context merely to match the discarded P2 proposal.
+- Movement remains game-owned.
+- `CameraComposer` remains the main gameplay-camera surface.
 - `PlayerViewBehaviour` remains passive evidence.
-- Do not turn PlayerView into camera authority merely to follow the historical F51 sequence.
-- Do not resurrect F49M or PlayerView Binding Adapter as the active lane.
-- Required configuration fails explicitly; there is no silent fallback, service locator or global manager.
+- Required configuration fails explicitly.
+- No silent fallback, service locator, global manager, `Camera.main` authority or functional object-name lookup.
