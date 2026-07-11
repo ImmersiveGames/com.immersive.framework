@@ -10,7 +10,13 @@ ADRs are decision history, not the current setup guide. Read [Current State](../
 | [ADR-PROD-0002](Product/ADR-PROD-0002-diagnostics-are-not-product-ux.md) | Diagnostics are not product UX. |
 | [ADR-PROD-0003](Product/ADR-PROD-0003-domain-runtime-context-policy.md) | Scoped runtime context policy. |
 | [ADR-PROD-0004](Product/ADR-PROD-0004-first-reference-product-surface.md) | First reference product surface. |
-| [ADR-PROD-0005](Product/ADR-PROD-0005-camera-product-surface-cinemachine.md) | Cinemachine Camera product surface. |
+| [ADR-PROD-0006](Product/ADR-PROD-0006-camera-requests-output-contexts.md) | Camera requests, rig materialization and output-scoped runtime authority. |
+
+## Superseded product decisions
+
+| ADR | Superseded by | Historical contribution |
+|---|---|---|
+| [ADR-PROD-0005](Product/ADR-PROD-0005-camera-product-surface-cinemachine.md) | ADR-PROD-0006 | Established Cinemachine as mandatory and explicit target sources; its ownership and compatibility model is no longer current. |
 
 ## Historical groups
 
@@ -18,5 +24,6 @@ ADRs are decision history, not the current setup guide. Read [Current State](../
 - F34–F47: pause/input, reset/restart, runtime object and audio decisions.
 - F49–F53: Player passive foundation, binding adapters, QA/consumer proofs and identity audit.
 - F8R/F9R: runtime materialization and release policy.
+- C1–C8: historical Cinemachine product exploration and local rig materialization. Ownership/activation decisions are superseded by ADR-PROD-0006.
 
 All detailed ADR and note files remain in this directory for traceability. Their status and historical role are summarized in [ADR History](../History/020-ADR-History.md) and [Player Binding History](../History/070-Player-Binding-and-Composer-History.md).

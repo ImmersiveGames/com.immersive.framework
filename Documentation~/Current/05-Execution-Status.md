@@ -2,7 +2,7 @@
 
 Status: **canonical operational source**
 
-Last reconciled evidence: **P2G FIRSTGAME PASS — 11/11**
+Last reconciled decision: **ADR-PROD-0006 Camera Requests and Output Contexts accepted**
 
 This document answers only three questions:
 
@@ -12,158 +12,128 @@ What is active?
 What comes next?
 ```
 
-Detailed design remains in `Planning/Plano de Firstgame.md`. Architectural constraints remain in ADRs.
+Architectural constraints are defined by ADRs.
 
 ## Current position
 
 ```text
-R0 — Documentation and Roadmap Reconciliation
-  Closed at the previous baseline; this reconciliation updates it with P2 evidence.
-
 P2 — Player Control Product
   Closed at the accepted current shape.
 
-G1 — Minimal Playable Loop
-  Active.
+C9A — Camera Architecture ADR and Documentation Reset
+  Closed by this documentation delta.
+
+C9B — Destructive Superseded Camera Removal
+  Active next.
+
+C9C–C9H — Request/output implementation, QA and FIRSTGAME
+  Ordered after C9B.
 
 P3 — Player Spawn / Runtime Materialization
-  Next after G1.
-
-C9 — Camera Output Lifetime / Release
-  Ordered after P3.
+  Ordered after C9.
 
 S1 — Progression Save Runtime
-  Ordered after C9 and only when FIRSTGAME has meaningful state to persist.
+  Ordered after P3 and meaningful FIRSTGAME state.
 ```
 
-## P2 accepted outcome
-
-P2 did not finish with the exact original runtime-context proposal.
-
-The accepted implementation/evidence is:
+## Frozen camera architecture
 
 ```text
-PlayerRecipe / PlayerComposer
-  designer-first control authoring and materialization
+CameraTargetSource
+  explicit Follow/LookAt provider
 
-PlayerSlotDeclaration
-  stable player-slot identity
+CameraRigRecipe
+  reusable Cinemachine behavior intent
 
-PlayerInput
-  explicit Unity Input System reference
+CameraRigComposer
+  idempotent Cinemachine materialization
+  no winner-selection authority
 
-UnityPlayerInputGateAdapter
-  Gate/Pause/Transition-driven action-map availability
+CameraRequest
+  owner + lifetime + output + targets + policy
 
-game-owned movement component
-  reads gameplay actions and executes movement
+CameraOutputContext
+  one scoped authority per output/viewport
+  arbitrates requests
+  applies the winner through Cinemachine
 ```
 
-### Closed evidence
+Cinemachine executes camera presentation. The framework executes request policy.
 
-| Cut/evidence | Status | Result |
-|---|---|---|
-| P2A | Closed | Player control boundary audited. |
-| P2B | Closed | Control authoring integrated into PlayerRecipe/PlayerComposer. |
-| P2C original binding/runtime proposal | Rejected and reverted | It introduced authority/binding complexity not justified by the proven slice. |
-| P2D accepted QA baseline | Closed | QA proved real PlayerInput topology and runtime readiness, 13/13. |
-| P2E Gate runtime proof | Closed | QA proved Transition, Pause, block and restoration, 14/14. |
-| P2F | Absorbed | Technical coverage was provided by P2D/P2E rather than a duplicate smoke. |
-| P2G | Closed | FIRSTGAME proved real Move input and game-owned displacement, 11/11. |
+## Superseded camera shape
 
-### Frozen boundary
+The following must not be used as current guidance or extended:
 
 ```text
-Framework owns:
-  Player authoring intent
-  explicit PlayerInput reference
-  PlayerSlot identity evidence
-  Gate/Pause/Transition availability
-  diagnostics
-
-Consumer game owns:
-  action semantics
-  reading Move/Jump/Fire
-  movement implementation and tuning
-  gameplay rules
+FrameworkCameraDirector
+FrameworkRouteCameraBinding
+FrameworkActivityCameraBinding
+PlayerViewCameraTargetBindingAdapter
+PlayerViewCameraActivationAdapter
+Camera.enabled as camera-selection policy
+direct independent priority competition
+one local CameraComposer treated as complete runtime authority
 ```
 
-Do not add a Player runtime context, binding facade or generic movement controller unless a later real requirement proves that the existing boundary is insufficient.
+No compatibility wrappers, aliases, obsolete facades or retained QA smokes are authorized.
 
-## Active block — G1
+## Active cut — C9B
 
 ### Goal
 
-Prove the existing systems together as a minimal coherent game loop:
+Physically remove the superseded camera architecture from the package so it cannot return as a parallel path.
+
+### Required removal audit
 
 ```text
-Bootstrap
--> Startup Route
--> Startup Activity
--> Player available
--> control active
--> CameraComposer active
--> simple objective
--> Pause / Resume
--> Transition or controlled re-entry
--> Activity Restart
--> Reset
--> playable initial state restored
+runtime types
+editor tooling
+asmdef references made obsolete
+validators
+QA menus/scenes/smokes
+FIRSTGAME guidance
+current docs and HTML guidance
+recipes/templates that instantiate the old shape
 ```
 
-### First cut
+### Preserve only where compatible
 
 ```text
-G1A — FIRSTGAME Minimal Playable Loop Audit
+Cinemachine dependency
+neutral Cinemachine materialization helpers
+explicit PlayerComposer CameraTarget / LookAtTarget
+typed target-resolution primitives
+idempotent Apply/Rebuild patterns
+diagnostic result patterns
 ```
 
-G1A must inspect the real FIRSTGAME before creating new systems.
+A helper is preserved only if it has no dependency on the old Director/binding/activation model and no request-winner authority.
 
-Required questions:
-
-```text
-Which existing object can act as the simple objective?
-Which existing interaction/trigger changes an observable state?
-Which state already participates in Reset?
-How is Activity Restart requested?
-What proves the Player and objective returned to the initial state?
-Does CameraComposer remain correct after restart?
-Does Pause/Resume preserve the loop?
-```
-
-### G1 scope
+### Acceptance
 
 ```text
-one simple objective
-one interaction or trigger
-one resettable state
-one Activity Restart
-one controlled return/re-entry
-```
-
-### G1 out of scope
-
-```text
-combat system
-inventory
-save
-final UI
-multiplayer
-mission framework
-generic interaction product
+package compiles
+no old camera Director exists
+no Route/Activity old binding exists
+no PlayerView camera activation exists
+no raw Camera.enabled camera policy exists
+no current guide teaches the old path
+no compatibility surface remains
+removal manifest lists all deleted and changed files
 ```
 
 ## Ordered continuation
 
-After G1 is explicitly closed:
-
 ```text
-P3 — Player Spawn and runtime materialization
-C9 — Camera output lifetime, release and restoration
-S1 — Progression save runtime
+C9C — Camera request and output contracts
+C9D — Single-output CameraOutputContext runtime
+C9E — Cinemachine winning-request application
+C9F — Route, Activity and Player request publishers
+C9G — QA arbitration and restoration
+C9H — FIRSTGAME manual integration proof
+P3 — Player Spawn / Runtime Materialization
+S1 — Progression Save Runtime
 ```
-
-Do not start P3, C9 or S1 in parallel unless fixing a critical blocker directly required by G1.
 
 ## Repository roles
 

@@ -1,204 +1,87 @@
 # ADR-PROD-0005 — Camera Product Surface requires Cinemachine
 
-Status: Accepted
-Date: 2026-07-09
-Package: `com.immersive.framework`
+Status: Superseded by `ADR-PROD-0006`  
+Date: 2026-07-09  
+Superseded: 2026-07-10  
+Package: `com.immersive.framework`  
 Area: Camera Product Surface
 
-## Context
+## Historical decision
 
-The current camera implementation in the package is split across technical lanes:
+This ADR established the still-valid decision that Cinemachine is mandatory for the official Camera Product Surface and that the framework must not maintain a parallel pure-Unity-Camera product path.
+
+It also introduced the first Cinemachine-first product vocabulary:
 
 ```text
-Route / Activity camera skeleton
-PlayerView camera binding / activation chain
-PlayerComposer camera anchors
-experimental CameraComposer MVP-A foundation
+Camera Recipe
+Camera Composer
+explicit target sources
+Cinemachine rig materialization
+future scoped runtime authority
 ```
 
-This is not sufficient for the intended product direction.
+## Why this ADR was superseded
 
-The framework is not trying to merely enable or disable Unity cameras. The intended product is an authorable camera system for real games: follow cameras, look-at targets, route/activity camera changes, player-targeted cameras, transitions, and future local multiplayer or group cameras.
-
-A pure `UnityEngine.Camera.enabled` pipeline cannot be the official final product shape. It can remain as low-level diagnostic or legacy evidence, but it must not define the Camera Product Surface.
-
-## Decision
-
-Camera Product Surface will be restructured around Cinemachine as an official package requirement.
-
-The framework camera product model becomes:
+The ADR left runtime camera coordination unresolved and permitted legacy/compatibility paths to remain:
 
 ```text
-Camera Recipe / Profile / Template
-  reusable intent
-
-Camera Composer / Authoring Component
-  designer-first surface on a camera rig or scene prefab
-
-Cinemachine Rig Materialization
-  Cinemachine Brain / Cinemachine Camera / target bindings / priority / blending-ready data
-
-Camera Target Source Contracts
-  explicit source of tracking/look-at targets: PlayerComposer, Route, Activity, Group, or explicit Transform
-
-Scoped Camera Runtime Authority
-  future typed authority for active camera state when runtime coordination is required
-
-Diagnostics
-  Apply/Rebuild reports, validation, debug evidence, QA smokes
-```
-
-Cinemachine is mandatory for the official Camera Product Surface. The framework should not try to maintain a parallel pure-camera product path.
-
-## Consequences
-
-### Required changes
-
-- Add `com.unity.cinemachine` as a package dependency.
-- Add Cinemachine assembly references where required.
-- Replace the current `CameraComposer MVP-A` direction with a Cinemachine-first composer.
-- Define explicit camera ownership/scope contracts before broad implementation.
-- Define explicit target-source contracts before player integration.
-- Separate single-player camera behavior from local multiplayer camera behavior.
-- Treat legacy pure camera activation as technical evidence, not product UX.
-
-### Preserved components
-
-These may remain useful, but their role changes:
-
-```text
-FrameworkCameraAnchorHost
-  survives as target evidence or target provider if compatible.
-
 FrameworkCameraDirector
-  must be audited and likely refactored into Cinemachine-aware coordination or replaced.
-
-FrameworkRouteCameraBinding / FrameworkActivityCameraBinding
-  can remain lifecycle entry points, but should feed Cinemachine rig state rather than raw camera enable/disable.
-
-PlayerViewCameraTargetBindingAdapter
-  remains a technical adapter, not final product UX.
-
-PlayerViewCameraActivationAdapter
-  becomes legacy/diagnostic/compatibility path, not the preferred product path.
+Route/Activity camera bindings
+PlayerView camera activation adapters
+raw Unity Camera activation evidence
 ```
 
-### Rejected direction
-
-The following is no longer acceptable as final product direction:
+The later C3–C8 implementation proved local Cinemachine materialization, but it did not establish a complete model for:
 
 ```text
-CameraComposer -> enable/disable explicit Unity Camera
+Route -> Activity -> Player camera succession
+temporary overrides and release
+previous-request restoration
+multiple outputs and split-screen
+local versus remote online players
+spectator outputs
 ```
 
-That shape does not satisfy real camera authoring, target-driven gameplay cameras, transitions, blending, or future multiplayer camera needs.
-
-## Ownership model to define
-
-The next camera architecture must distinguish at least:
+`ADR-PROD-0006` replaces the incomplete ownership model with:
 
 ```text
-RouteCamera
-ActivityCamera
-SinglePlayerFollowCamera
-LocalPlayerCamera
-SharedPlayerGroupCamera
-SpectatorOrDebugCamera
+CameraTargetSource
+CameraRigRecipe
+CameraRigComposer
+CameraRequest
+CameraOutputContext
 ```
 
-The current `FrameworkCameraScope` and `FrameworkCameraRigRole` only represent DefaultFallback, Route, Activity, and RetainedActivity. That is insufficient for the product model.
+and requires destructive removal of the superseded Director/binding/activation architecture.
 
-## Single-player policy
-
-The first implementation target should be single-player follow/look-at camera because it matches the current FIRSTGAME validation path.
-
-Expected first real flow:
+## Decisions preserved by ADR-PROD-0006
 
 ```text
-PlayerComposer
-  materializes or exposes CameraTarget / LookAtTarget
-
-CameraComposer
-  references PlayerComposer explicitly
-  resolves tracking/look-at targets through typed source policy
-  materializes Cinemachine rig/bindings
-  applies priority/blend-ready configuration
+Cinemachine is mandatory.
+The framework does not reimplement Follow, LookAt, damping or blending.
+Target sources are explicit and typed.
+PlayerComposer may expose CameraTarget and LookAtTarget.
+Apply/Rebuild must be idempotent.
+No Camera.main fallback.
+No object-name or hierarchy-path functional identity.
+No global singleton or service locator.
 ```
 
-No lookup by name or hierarchy path should be used as functional identity.
+## Decisions no longer current
 
-## Multiplayer policy
-
-Local multiplayer must not be inferred from single-player behavior.
-
-Future multiplayer camera modes require separate contracts:
+Do not use this ADR as current guidance for:
 
 ```text
-per-local-player camera
-split-screen camera ownership
-shared group target camera
-spectator/debug camera
-player join/leave camera rebinding
+camera ownership
+runtime camera activation
+Route/Activity binding architecture
+priority-based cross-owner selection
+legacy compatibility
+single-player CameraComposer as final runtime shape
 ```
 
-These should be planned after the single-player Cinemachine path is stable.
-
-## Migration guidance
-
-If `CameraComposer MVP-A` was applied locally, treat it as experimental and superseded.
-
-Recommended handling:
+Read:
 
 ```text
-Do not validate Camera Product Surface against MVP-A.
-Do not create QA smokes for MVP-A.
-Do not prove FIRSTGAME on MVP-A.
-Use MVP-A only as temporary reference for editor reporting/idempotency patterns if useful.
-```
-
-## Acceptance criteria for the restructured camera lane
-
-Technical acceptance:
-
-```text
-Cinemachine dependency declared
-assemblies compile
-no runtime Editor dependency
-no Camera.main fallback
-no service locator / singleton manager
-explicit target-source failure diagnostics
-idempotent Apply/Rebuild
-clear logs and debug evidence
-```
-
-Product acceptance:
-
-```text
-designer can create a camera rig from product surface
-designer can link it to a PlayerComposer explicitly
-Apply/Rebuild materializes Cinemachine rig/bindings
-Inspector shows designer intent first
-Advanced/Debug shows technical evidence
-FIRSTGAME camera consumes real PlayerPrototype targets
-single-player path is clear and reusable
-multiplayer is not accidentally implied
-```
-
-## Next cut
-
-Recommended next cut:
-
-```text
-C1 — Camera Cinemachine Rebuild Plan
-```
-
-Then:
-
-```text
-C2 — Cinemachine package dependency and assembly boundary
-C3 — Camera ownership / target-source contracts
-C4 — Cinemachine rig materialization utility
-C5 — CameraComposer SinglePlayer MVP
-C6 — FIRSTGAME proof
-C7 — QA technical regressions
+ADR-PROD-0006-camera-requests-output-contexts.md
 ```

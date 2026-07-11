@@ -1,6 +1,6 @@
 # 01 — Roadmap
 
-Status: **canonical after P2 closure and G1 selection**
+Status: **canonical after camera architecture reset decision**
 
 For the exact operational next step, read [Execution Status](05-Execution-Status.md).
 
@@ -14,6 +14,7 @@ For the exact operational next step, read [Execution Status](05-Execution-Status
 | Candidate | Valuable future work not authorized in the ordered sequence. |
 | Rejected | Proposed shape was tested or reviewed and intentionally not retained. |
 | Historical | Traceability only; not current guidance. |
+| Superseded | Previously accepted implementation or decision replaced by a newer canonical architecture. |
 
 ## Closed product blocks
 
@@ -21,57 +22,58 @@ For the exact operational next step, read [Execution Status](05-Execution-Status
 - F49 passive Player foundation.
 - PlayerRecipe MVP.
 - PlayerComposer MVP.
-- CameraRecipe MVP.
-- CameraComposer MVP.
-- QA Camera product proof.
-- FIRSTGAME CameraComposer usage proof.
-- Route/Activity explicit Cinemachine output apply-on-enter.
-- Legacy camera architecture removal.
 - P2 Player control authoring, QA availability proof and FIRSTGAME movement proof.
+- Cinemachine package and local rig-materialization technical proof.
+- Explicit Player camera target evidence.
 
-## P2 closure record
+## Superseded camera blocks
 
-| Item | Status | Accepted result |
-|---|---|---|
-| P2A | Closed | Control boundary and ownership audited. |
-| P2B | Closed | Designer-first Control section and materialization. |
-| P2C original runtime binding adapter | Rejected/reverted | No retained new binding authority. |
-| P2D | Closed | QA PlayerInput runtime baseline, 13/13. |
-| P2E | Closed | QA Gate/Pause/Transition block and restoration, 14/14. |
-| P2F | Absorbed | Covered by P2D/P2E evidence. |
-| P2G | Closed | FIRSTGAME Move input and game-owned movement, 11/11. |
+The following are historical evidence, not current product architecture:
 
-The detailed original P2 intent remains in the consolidated plan, but the accepted final shape is governed by [Execution Status](05-Execution-Status.md).
+```text
+CameraRecipe / CameraComposer single-player MVP as final runtime shape
+Route/Activity explicit output apply-on-enter
+FrameworkCameraDirector coordination
+Route/Activity camera binding authority
+PlayerView camera activation chain
+direct cross-owner Cinemachine priority selection
+```
+
+Cinemachine materialization techniques may be reused where compatible with ADR-PROD-0006. Ownership and activation decisions from C3–C8 must not be retained.
 
 ## Current active block
 
 ```text
-G1 — Minimal Playable Loop
+C9 — Camera Requests and Output Contexts
 ```
 
 No other block is active.
 
-### G1 sequence
+### C9 sequence
 
 | Order | Cut | Status | Goal |
 |---:|---|---|---|
-| 1 | G1A — FIRSTGAME Minimal Playable Loop Audit | Active | Map existing objective, interaction, Reset, Activity Restart, camera and control behavior before creating anything. |
-| 2 | G1B — Minimal missing loop composition | Pending | Add only the smallest singular FIRSTGAME piece shown missing by G1A. |
-| 3 | G1C — Integrated runtime proof | Pending | Prove the complete loop returns to a playable initial state. |
+| 1 | C9A — Architecture ADR and documentation reset | Closed by documentation delta | Freeze requests/output contexts and supersede C3–C8 ownership decisions. |
+| 2 | C9B — Destructive legacy removal | Active next | Physically remove Director, Route/Activity bindings, PlayerView activation and incompatible QA/docs without compatibility wrappers. |
+| 3 | C9C — Request and output contracts | Pending | Add explicit owner, lifetime, output, target and policy contracts. |
+| 4 | C9D — Single-output runtime authority | Pending | Implement one scoped `CameraOutputContext` for one Unity Camera/CinemachineBrain output. |
+| 5 | C9E — Cinemachine request application | Pending | Apply the winning request through Cinemachine without reimplementing presentation. |
+| 6 | C9F — Route, Activity and Player publishers | Pending | Publish and release typed requests without competing authorities. |
+| 7 | C9G — QA arbitration/restoration | Pending | Prove Route -> Activity -> Player -> Activity override -> Player restoration and negative cases. |
+| 8 | C9H — FIRSTGAME manual proof | Pending | Build the real flow manually and prove usability. |
 
 ## Ordered future blocks
 
 | Order | Block | Goal | Activation condition |
 |---:|---|---|---|
-| 1 | P3 — Player Spawn / Runtime Materialization | Define ExistingSceneInstance and InstantiatePrefab through explicit scoped policies. | G1 closed. |
-| 2 | C9 — Camera Output Lifetime / Release | Release Activity output, restore Route output and release Route output without fallback. | P3 closed or explicitly deferred with rationale. |
-| 3 | S1 — Progression Save Runtime | Add progression save contracts and interchangeable backend. | C9 closed and FIRSTGAME has meaningful state to persist. |
+| 1 | P3 — Player Spawn / Runtime Materialization | Define ExistingSceneInstance and InstantiatePrefab through explicit scoped policies. | C9 closed. |
+| 2 | S1 — Progression Save Runtime | Add progression save contracts and interchangeable backend. | P3 closed and FIRSTGAME has meaningful state to persist. |
 
 ## Candidates
 
 - Transition/loading hardening.
 - Pause UX advanced work.
-- Additional camera modes.
+- Additional CameraRigRecipes.
 - Multiplayer Player.
 - Input rebinding.
 - Generic Actor/NPC spawning.
@@ -81,20 +83,20 @@ No other block is active.
 ## Execution order
 
 ```text
-product/audit decision
--> package implementation when an official contract is needed
+architecture decision
+-> destructive removal of conflicting shape
+-> package contracts/runtime/tooling
 -> QA technical validation
--> FIRSTGAME real usability proof
+-> FIRSTGAME manual usability proof
 ```
-
-For G1, the active work is consumer integration first because it composes already-supported official systems and must reveal any real product gap before new package APIs are introduced.
 
 ## Guardrails
 
-- Do not start P3, C9 or S1 while G1 is active.
-- Do not create a new Player runtime context merely to match the discarded P2 proposal.
-- Movement remains game-owned.
-- `CameraComposer` remains the main gameplay-camera surface.
-- `PlayerViewBehaviour` remains passive evidence.
+- Do not add new camera integration on the superseded C3–C8 ownership model.
+- Do not preserve old camera classes through `[Obsolete]`, wrappers, aliases or hidden compatibility.
+- Cinemachine remains mandatory and owns presentation mechanics.
+- `PlayerComposer` remains a target source, not camera runtime authority.
+- Request precedence belongs to `CameraOutputContext`.
+- One output has one explicit scoped camera authority.
 - Required configuration fails explicitly.
 - No silent fallback, service locator, global manager, `Camera.main` authority or functional object-name lookup.
