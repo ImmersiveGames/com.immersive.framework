@@ -128,11 +128,19 @@ tieBreakerId
 
 Missing required configuration blocks explicitly.
 
-## C9H status
+## Canonical lifecycle integration
 
-The pure C9H lifecycle adapters remain temporarily available because the existing C9H QA scripts reference them.
+C9I is the official Route and Activity camera lifecycle integration.
 
-They are no longer required by the scene-authored integration path and should be removed together with C9H QA after C9I passes.
+```text
+RouteContentBehaviour
+-> RouteCameraRequestBinding
+
+ActivityContentBehaviour
+-> ActivityCameraRequestBinding
+```
+
+The temporary C9H pure lifecycle adapters were removed after C9I passed canonical runtime QA. They are not part of the supported product surface and must not be restored as an additional required layer.
 
 ## Out of scope
 
@@ -162,4 +170,29 @@ no manual lifecycle adapter calls
 
 ```text
 Camera: bind Route and Activity requests to canonical lifecycle
+```
+
+
+## Validation closure
+
+C9I canonical QA passed with eight cases:
+
+```text
+canonical-route-activity-enter
+invalid-bindings-blocked
+invalid-session-binding-blocked
+canonical-activity-exit-restores-route
+canonical-activity-reenter-overrides-route
+pre-route-exit-route-only
+unity-output-unchanged
+canonical-route-exit-clears-output
+```
+
+The final Route exit evidence confirmed:
+
+```text
+bindingStatus = Released
+bindingPublished = false
+CameraOutputContext.HasWinner = false
+CameraOutputRigApplicator.HasAppliedRequest = false
 ```
