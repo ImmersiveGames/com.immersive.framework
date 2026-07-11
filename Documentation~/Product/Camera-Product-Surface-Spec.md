@@ -1,3 +1,5 @@
+> Superseded by ADR-PROD-0006. This document is historical and is not current implementation guidance.
+
 # Camera Product Surface Spec
 
 Status: Product specification, no implementation

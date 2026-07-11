@@ -1,3 +1,5 @@
+> Superseded by ADR-PROD-0006. This document is historical and is not current implementation guidance.
+
 # F51D — PlayerView Camera Binding Chain Consolidation
 
 Status: **Accepted / Documentation-only**

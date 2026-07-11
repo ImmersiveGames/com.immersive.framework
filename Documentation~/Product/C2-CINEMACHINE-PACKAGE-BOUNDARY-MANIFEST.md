@@ -1,3 +1,5 @@
+> Superseded by ADR-PROD-0006. This document is historical and is not current implementation guidance.
+
 # C2 — Cinemachine package dependency and assembly boundary
 
 Status: implementation delta

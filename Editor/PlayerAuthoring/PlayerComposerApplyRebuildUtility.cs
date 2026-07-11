@@ -22,8 +22,7 @@ namespace Immersive.Framework.Editor.PlayerAuthoring
             "PlayerSlotOccupancy",
             "PlayerEntryBehaviour",
             "PlayerViewBehaviour",
-            "PlayerControlBehaviour",
-            "FrameworkCameraAnchorHost"
+            "PlayerControlBehaviour"
         };
 
         public static PlayerComposerApplyRebuildResult Validate(PlayerComposer composer, bool logDiagnostics = true)

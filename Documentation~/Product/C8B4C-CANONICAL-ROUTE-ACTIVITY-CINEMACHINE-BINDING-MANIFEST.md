@@ -1,3 +1,5 @@
+> Superseded by ADR-PROD-0006. This document is historical and is not current implementation guidance.
+
 # C8B4C — Canonical Route/Activity Cinemachine Binding
 
 Status: implementation cut; Unity compile/import validation pending.  

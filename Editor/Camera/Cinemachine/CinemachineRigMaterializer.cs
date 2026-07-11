@@ -66,7 +66,6 @@ namespace Immersive.Framework.Editor.Camera.Cinemachine
             }
 
             ApplyTargets(cinemachineCamera, request, report);
-            ApplyPriority(cinemachineCamera, request.Priority, report);
 
             EditorUtility.SetDirty(unityCamera);
             EditorUtility.SetDirty(brain);
@@ -78,7 +77,6 @@ namespace Immersive.Framework.Editor.Camera.Cinemachine
             report.Evidence.CinemachineCamera = cinemachineCamera;
             report.Evidence.FollowTarget = cinemachineCamera.Follow;
             report.Evidence.LookAtTarget = cinemachineCamera.LookAt;
-            report.Evidence.Priority = cinemachineCamera.Priority;
 
             return report;
         }
@@ -191,23 +189,6 @@ namespace Immersive.Framework.Editor.Camera.Cinemachine
             else
             {
                 report.MarkAlreadyValid("cinemachine-camera:look-at-target");
-            }
-        }
-
-        private static void ApplyPriority(
-            CinemachineCamera cinemachineCamera,
-            int priority,
-            CinemachineRigMaterializationReport report)
-        {
-            int currentPriority = cinemachineCamera.Priority;
-            if (currentPriority != priority)
-            {
-                cinemachineCamera.Priority = priority;
-                report.MarkRepaired("cinemachine-camera:priority");
-            }
-            else
-            {
-                report.MarkAlreadyValid("cinemachine-camera:priority");
             }
         }
 

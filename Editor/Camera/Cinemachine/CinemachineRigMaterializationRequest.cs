@@ -19,8 +19,6 @@ namespace Immersive.Framework.Editor.Camera.Cinemachine
 
         public Transform LookAtTarget { get; set; }
 
-        public int Priority { get; set; } = 10;
-
         public bool RequireFollowTarget { get; set; } = true;
 
         public bool RequireLookAtTarget { get; set; }

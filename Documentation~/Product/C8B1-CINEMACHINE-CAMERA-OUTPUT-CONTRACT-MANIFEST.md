@@ -1,3 +1,5 @@
+> Superseded by ADR-PROD-0006. This document is historical and is not current implementation guidance.
+
 # C8B1 — Cinemachine Camera Output Contract Manifest
 
 Status: ready for Unity validation after Foundation normalization cut

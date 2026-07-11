@@ -34,9 +34,9 @@ namespace Immersive.Framework.PlayerAuthoring
 
         [Header("Camera")]
         [SerializeField] private bool cameraBindingRequired = true;
-        [Tooltip("Explicit target that a CameraComposer may follow.")]
+        [Tooltip("Explicit target that a CameraRigComposer may follow.")]
         [SerializeField] private Transform cameraTarget;
-        [Tooltip("Explicit target that a CameraComposer may look at.")]
+        [Tooltip("Explicit target that a CameraRigComposer may look at.")]
         [SerializeField] private Transform lookAtTarget;
         [SerializeField] private PlayerComposerLookAtPolicy lookAtPolicy = PlayerComposerLookAtPolicy.ExplicitTarget;
 

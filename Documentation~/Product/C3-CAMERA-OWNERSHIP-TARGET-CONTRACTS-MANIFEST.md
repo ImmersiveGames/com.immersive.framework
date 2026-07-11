@@ -1,3 +1,5 @@
+> Superseded by ADR-PROD-0006. This document is historical and is not current implementation guidance.
+
 # C3 — Camera Ownership / Target Source Contracts Manifest
 
 Status: runtime contracts delta

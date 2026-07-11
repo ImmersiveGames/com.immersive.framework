@@ -1,3 +1,5 @@
+> Superseded by ADR-PROD-0006. This document is historical and is not current implementation guidance.
+
 # C4 — Cinemachine Rig Materialization Utility Manifest
 
 Status: implementation / editor tooling

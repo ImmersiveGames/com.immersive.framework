@@ -1,3 +1,5 @@
+> Superseded by ADR-PROD-0006. This document is historical and is not current implementation guidance.
+
 # C1 — Camera Cinemachine Architecture Consolidation Manifest
 
 Status: documentation / architecture consolidation

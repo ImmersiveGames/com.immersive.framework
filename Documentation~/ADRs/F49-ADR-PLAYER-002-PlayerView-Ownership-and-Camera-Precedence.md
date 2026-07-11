@@ -1,3 +1,5 @@
+> Superseded by ADR-PROD-0006. This document is historical and is not current implementation guidance.
+
 # F49-ADR-PLAYER-002 — PlayerView Ownership and Camera Precedence
 
 Status: Proposed / Planning ADR  

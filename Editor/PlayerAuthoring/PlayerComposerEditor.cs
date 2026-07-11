@@ -69,7 +69,7 @@ namespace Immersive.Framework.Editor.PlayerAuthoring
 
             EditorGUILayout.LabelField("Player Composer", EditorStyles.boldLabel);
             EditorGUILayout.HelpBox(
-                "Author one concrete Player. Apply/Rebuild materializes only identity, slot, Gate and optional Reset integration. Movement remains game-owned; camera binding belongs to CameraComposer.",
+                "Author one concrete Player. Apply/Rebuild materializes only identity, slot, Gate and optional Reset integration. Movement remains game-owned; camera rig materialization belongs to CameraRigComposer.",
                 MessageType.Info);
 
             DrawDesigner();
@@ -135,7 +135,7 @@ namespace Immersive.Framework.Editor.PlayerAuthoring
             }
 
             EditorGUILayout.HelpBox(
-                "These are typed actor anchors. When required references are empty and automatic anchor creation is enabled, Apply/Rebuild creates Anchors/CameraTarget and Anchors/LookAtTarget as children of this logical Player object. CameraComposer must reference this PlayerComposer and materialize the Cinemachine Follow/LookAt binding.",
+                "These are typed actor anchors. When required references are empty and automatic anchor creation is enabled, Apply/Rebuild creates Anchors/CameraTarget and Anchors/LookAtTarget as children of this logical Player object. CameraRigComposer may reference this PlayerComposer and materialize the Cinemachine Follow/LookAt binding.",
                 MessageType.None);
         }
 

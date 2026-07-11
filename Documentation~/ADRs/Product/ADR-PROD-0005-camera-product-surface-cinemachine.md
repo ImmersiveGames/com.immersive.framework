@@ -1,3 +1,5 @@
+> Superseded by ADR-PROD-0006. This document is historical and is not current implementation guidance.
+
 # ADR-PROD-0005 — Camera Product Surface requires Cinemachine
 
 Status: Superseded by `ADR-PROD-0006`  

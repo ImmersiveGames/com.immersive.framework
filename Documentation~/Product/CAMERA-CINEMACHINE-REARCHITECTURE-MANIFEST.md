@@ -1,3 +1,5 @@
+> Superseded by ADR-PROD-0006. This document is historical and is not current implementation guidance.
+
 # CAMERA-CINEMACHINE-REARCHITECTURE-MANIFEST
 
 Status: documentation / architecture direction

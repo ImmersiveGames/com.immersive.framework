@@ -19,6 +19,5 @@ namespace Immersive.Framework.Editor.Camera.Cinemachine
 
         public Transform LookAtTarget { get; internal set; }
 
-        public int Priority { get; internal set; }
     }
 }

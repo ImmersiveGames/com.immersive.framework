@@ -1,3 +1,5 @@
+> Superseded by ADR-PROD-0006. This document is historical and is not current implementation guidance.
+
 # C8B4A — Route/Activity Cinemachine Output Bridge Manifest
 
 Status: implementation cut; Unity compile/import/smoke validation pending.
