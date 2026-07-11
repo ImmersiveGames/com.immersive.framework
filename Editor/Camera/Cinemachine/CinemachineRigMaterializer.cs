@@ -5,12 +5,13 @@ using UnityEngine;
 namespace Immersive.Framework.Editor.Camera.Cinemachine
 {
     /// <summary>
-    /// Editor-only utility that creates or repairs the Cinemachine technical rig for a Camera Product Surface.
+    /// Editor-only utility that creates or repairs Cinemachine technical materialization.
     /// It does not use Camera.main, does not search globally, and does not act as runtime authority.
     /// </summary>
     public static class CinemachineRigMaterializer
     {
-        public static CinemachineRigMaterializationReport ApplyOrRebuild(CinemachineRigMaterializationRequest request)
+        public static CinemachineRigMaterializationReport ApplyOrRebuild(
+            CinemachineRigMaterializationRequest request)
         {
             var report = new CinemachineRigMaterializationReport();
 
@@ -26,12 +27,14 @@ namespace Immersive.Framework.Editor.Camera.Cinemachine
                 return report;
             }
 
-            if (request.RequireFollowTarget && request.FollowTarget == null)
+            if (request.RequireFollowTarget &&
+                request.FollowTarget == null)
             {
                 report.MarkBlocked("follow-target:required-missing");
             }
 
-            if (request.RequireLookAtTarget && request.LookAtTarget == null)
+            if (request.RequireLookAtTarget &&
+                request.LookAtTarget == null)
             {
                 report.MarkBlocked("look-at-target:required-missing");
             }
@@ -41,19 +44,32 @@ namespace Immersive.Framework.Editor.Camera.Cinemachine
                 return report;
             }
 
-            UnityEngine.Camera unityCamera = ResolveUnityCamera(request, report);
-            CinemachineBrain brain = EnsureBrain(unityCamera, request, report);
-            CinemachineCamera cinemachineCamera = ResolveCinemachineCamera(request, report);
+            UnityEngine.Camera unityCamera = null;
+            CinemachineBrain brain = null;
 
-            if (unityCamera == null)
+            if (request.MaterializeUnityOutput)
             {
-                report.MarkBlocked("unity-camera:missing");
+                unityCamera = ResolveUnityCamera(request, report);
+                brain = EnsureBrain(unityCamera, request, report);
+
+                if (unityCamera == null)
+                {
+                    report.MarkBlocked("unity-camera:missing");
+                }
+
+                if (brain == null)
+                {
+                    report.MarkBlocked("cinemachine-brain:missing");
+                }
+            }
+            else
+            {
+                report.MarkSkipped("unity-output:not-requested");
+                report.MarkSkipped("cinemachine-brain:not-requested");
             }
 
-            if (brain == null)
-            {
-                report.MarkBlocked("cinemachine-brain:missing");
-            }
+            CinemachineCamera cinemachineCamera =
+                ResolveCinemachineCamera(request, report);
 
             if (cinemachineCamera == null)
             {
@@ -67,8 +83,16 @@ namespace Immersive.Framework.Editor.Camera.Cinemachine
 
             ApplyTargets(cinemachineCamera, request, report);
 
-            EditorUtility.SetDirty(unityCamera);
-            EditorUtility.SetDirty(brain);
+            if (unityCamera != null)
+            {
+                EditorUtility.SetDirty(unityCamera);
+            }
+
+            if (brain != null)
+            {
+                EditorUtility.SetDirty(brain);
+            }
+
             EditorUtility.SetDirty(cinemachineCamera);
             EditorUtility.SetDirty(request.RigRoot.gameObject);
 
@@ -91,24 +115,42 @@ namespace Immersive.Framework.Editor.Camera.Cinemachine
                 return request.UnityCamera;
             }
 
-            UnityEngine.Camera localCamera = request.RigRoot.GetComponentInChildren<UnityEngine.Camera>(true);
+            UnityEngine.Camera localCamera =
+                request.RigRoot.GetComponentInChildren<UnityEngine.Camera>(true);
+
             if (localCamera != null)
             {
-                report.MarkAlreadyValid("unity-camera:local-rig-child");
+                report.MarkAlreadyValid(
+                    "unity-camera:local-rig-child");
                 return localCamera;
             }
 
             if (!request.CreateUnityCameraIfMissing)
             {
-                report.MarkSkipped("unity-camera:create-disabled");
+                report.MarkSkipped(
+                    "unity-camera:create-disabled");
                 return null;
             }
 
-            string objectName = NormalizeObjectName(request.UnityCameraObjectName, "Unity Camera");
+            string objectName = NormalizeObjectName(
+                request.UnityCameraObjectName,
+                "Unity Camera");
+
             var cameraObject = new GameObject(objectName);
-            ParentCreatedObject(cameraObject.transform, request.RigRoot, request.UseUndo);
-            RegisterCreatedObject(cameraObject, request.UseUndo, "Create Unity Camera");
-            UnityEngine.Camera createdCamera = AddComponent<UnityEngine.Camera>(cameraObject, request.UseUndo);
+            ParentCreatedObject(
+                cameraObject.transform,
+                request.RigRoot,
+                request.UseUndo);
+            RegisterCreatedObject(
+                cameraObject,
+                request.UseUndo,
+                "Create Unity Camera");
+
+            UnityEngine.Camera createdCamera =
+                AddComponent<UnityEngine.Camera>(
+                    cameraObject,
+                    request.UseUndo);
+
             report.MarkCreated("unity-camera");
             return createdCamera;
         }
@@ -123,13 +165,18 @@ namespace Immersive.Framework.Editor.Camera.Cinemachine
                 return null;
             }
 
-            if (unityCamera.TryGetComponent(out CinemachineBrain existingBrain))
+            if (unityCamera.TryGetComponent(
+                    out CinemachineBrain existingBrain))
             {
                 report.MarkAlreadyValid("cinemachine-brain");
                 return existingBrain;
             }
 
-            CinemachineBrain createdBrain = AddComponent<CinemachineBrain>(unityCamera.gameObject, request.UseUndo);
+            CinemachineBrain createdBrain =
+                AddComponent<CinemachineBrain>(
+                    unityCamera.gameObject,
+                    request.UseUndo);
+
             report.MarkCreated("cinemachine-brain");
             return createdBrain;
         }
@@ -140,28 +187,47 @@ namespace Immersive.Framework.Editor.Camera.Cinemachine
         {
             if (request.CinemachineCamera != null)
             {
-                report.MarkAlreadyValid("cinemachine-camera:explicit");
+                report.MarkAlreadyValid(
+                    "cinemachine-camera:explicit");
                 return request.CinemachineCamera;
             }
 
-            CinemachineCamera localCamera = request.RigRoot.GetComponentInChildren<CinemachineCamera>(true);
+            CinemachineCamera localCamera =
+                request.RigRoot.GetComponentInChildren<CinemachineCamera>(true);
+
             if (localCamera != null)
             {
-                report.MarkAlreadyValid("cinemachine-camera:local-rig-child");
+                report.MarkAlreadyValid(
+                    "cinemachine-camera:local-rig-child");
                 return localCamera;
             }
 
             if (!request.CreateCinemachineCameraIfMissing)
             {
-                report.MarkSkipped("cinemachine-camera:create-disabled");
+                report.MarkSkipped(
+                    "cinemachine-camera:create-disabled");
                 return null;
             }
 
-            string objectName = NormalizeObjectName(request.CinemachineCameraObjectName, "Cinemachine Camera");
+            string objectName = NormalizeObjectName(
+                request.CinemachineCameraObjectName,
+                "Cinemachine Camera");
+
             var cameraObject = new GameObject(objectName);
-            ParentCreatedObject(cameraObject.transform, request.RigRoot, request.UseUndo);
-            RegisterCreatedObject(cameraObject, request.UseUndo, "Create Cinemachine Camera");
-            CinemachineCamera createdCamera = AddComponent<CinemachineCamera>(cameraObject, request.UseUndo);
+            ParentCreatedObject(
+                cameraObject.transform,
+                request.RigRoot,
+                request.UseUndo);
+            RegisterCreatedObject(
+                cameraObject,
+                request.UseUndo,
+                "Create Cinemachine Camera");
+
+            CinemachineCamera createdCamera =
+                AddComponent<CinemachineCamera>(
+                    cameraObject,
+                    request.UseUndo);
+
             report.MarkCreated("cinemachine-camera");
             return createdCamera;
         }
@@ -174,35 +240,49 @@ namespace Immersive.Framework.Editor.Camera.Cinemachine
             if (cinemachineCamera.Follow != request.FollowTarget)
             {
                 cinemachineCamera.Follow = request.FollowTarget;
-                report.MarkRepaired("cinemachine-camera:follow-target");
+                report.MarkRepaired(
+                    "cinemachine-camera:follow-target");
             }
             else
             {
-                report.MarkAlreadyValid("cinemachine-camera:follow-target");
+                report.MarkAlreadyValid(
+                    "cinemachine-camera:follow-target");
             }
 
             if (cinemachineCamera.LookAt != request.LookAtTarget)
             {
                 cinemachineCamera.LookAt = request.LookAtTarget;
-                report.MarkRepaired("cinemachine-camera:look-at-target");
+                report.MarkRepaired(
+                    "cinemachine-camera:look-at-target");
             }
             else
             {
-                report.MarkAlreadyValid("cinemachine-camera:look-at-target");
+                report.MarkAlreadyValid(
+                    "cinemachine-camera:look-at-target");
             }
         }
 
-        private static T AddComponent<T>(GameObject target, bool useUndo)
+        private static T AddComponent<T>(
+            GameObject target,
+            bool useUndo)
             where T : Component
         {
-            return useUndo ? Undo.AddComponent<T>(target) : target.AddComponent<T>();
+            return useUndo
+                ? Undo.AddComponent<T>(target)
+                : target.AddComponent<T>();
         }
 
-        private static void ParentCreatedObject(Transform child, Transform parent, bool useUndo)
+        private static void ParentCreatedObject(
+            Transform child,
+            Transform parent,
+            bool useUndo)
         {
             if (useUndo)
             {
-                Undo.SetTransformParent(child, parent, "Parent Cinemachine Rig Object");
+                Undo.SetTransformParent(
+                    child,
+                    parent,
+                    "Parent Cinemachine Rig Object");
             }
             else
             {
@@ -214,17 +294,26 @@ namespace Immersive.Framework.Editor.Camera.Cinemachine
             child.localScale = Vector3.one;
         }
 
-        private static void RegisterCreatedObject(GameObject gameObject, bool useUndo, string undoName)
+        private static void RegisterCreatedObject(
+            GameObject gameObject,
+            bool useUndo,
+            string undoName)
         {
             if (useUndo)
             {
-                Undo.RegisterCreatedObjectUndo(gameObject, undoName);
+                Undo.RegisterCreatedObjectUndo(
+                    gameObject,
+                    undoName);
             }
         }
 
-        private static string NormalizeObjectName(string value, string fallback)
+        private static string NormalizeObjectName(
+            string value,
+            string fallback)
         {
-            return string.IsNullOrWhiteSpace(value) ? fallback : value.Trim();
+            return string.IsNullOrWhiteSpace(value)
+                ? fallback
+                : value.Trim();
         }
     }
 }

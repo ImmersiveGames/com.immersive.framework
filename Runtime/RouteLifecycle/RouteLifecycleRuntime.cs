@@ -163,7 +163,6 @@ namespace Immersive.Framework.RouteLifecycle
                 + startupActivityProgressCount;
             int routeProgressStepIndex = 0;
 
-            var routeContentExitResult = _routeContentRuntime.ExitRouteContent(previousRoute, route, source, reason);
             var activitySceneRouteReleaseProgressReporter = FrameworkLoadingProgressReporterUtility.CreateWeightedRangeReporter(
                 progressReporter,
                 routeProgressStepIndex,
@@ -172,11 +171,41 @@ namespace Immersive.Framework.RouteLifecycle
                 "RouteTransition",
                 "Route transition loading progress.");
             routeProgressStepIndex += activitySceneRouteReleaseCount;
-            var activitySceneRouteReleaseResult = await _activityFlowRuntime.ReleaseActivityScenesForRouteChangeAsync(source, reason, activitySceneRouteReleaseProgressReporter);
+
+            ActivitySceneReleaseResult activitySceneRouteReleaseResult;
+            ActivityFlowStartResult activityRouteExitResult = default;
+            if (previousActivity != null)
+            {
+                activityRouteExitResult = await _activityFlowRuntime.ClearActivityAsync(
+                    previousRoute,
+                    source,
+                    reason,
+                    activitySceneRouteReleaseProgressReporter);
+
+                if (!activityRouteExitResult.Completed)
+                {
+                    return RouteLifecycleStartResult.Failed(activityRouteExitResult.Message);
+                }
+
+                activitySceneRouteReleaseResult = activityRouteExitResult.ActivitySceneReleaseResult;
+            }
+            else
+            {
+                activitySceneRouteReleaseResult = await _activityFlowRuntime.ReleaseActivityScenesForRouteChangeAsync(
+                    source,
+                    reason,
+                    activitySceneRouteReleaseProgressReporter);
+            }
+
             if (activitySceneRouteReleaseResult.HasBlockingIssues)
             {
                 return RouteLifecycleStartResult.Failed(activitySceneRouteReleaseResult.ToDiagnosticString());
             }
+
+            // Activity lifecycle must exit while the previous Route scene is still loaded.
+            // Scene-authored Activity receivers can then release scoped camera, audio and input
+            // state before their targets and rigs are destroyed by Route scene replacement.
+            var routeContentExitResult = _routeContentRuntime.ExitRouteContent(previousRoute, route, source, reason);
 
             var routeContentReleaseProgressReporter = FrameworkLoadingProgressReporterUtility.CreateWeightedRangeReporter(
                 progressReporter,
@@ -229,15 +258,23 @@ namespace Immersive.Framework.RouteLifecycle
                 routeProgressStepCount,
                 "RouteTransition",
                 "Route transition loading progress.");
-            var activityFlowResult = await _activityFlowRuntime.StartStartupActivityAsync(route, source, reason, startupActivityProgressReporter);
+            var startupActivityFlowResult = await _activityFlowRuntime.StartStartupActivityAsync(route, source, reason, startupActivityProgressReporter);
             await FrameworkLoadingProgressReporterUtility.ReportCompletedIfAnyAsync(
                 progressReporter,
                 "RouteTransition",
                 "Route transition loading progress completed.");
-            if (!activityFlowResult.Completed)
+            if (!startupActivityFlowResult.Completed)
             {
-                return RouteLifecycleStartResult.Failed(activityFlowResult.Message);
+                return RouteLifecycleStartResult.Failed(startupActivityFlowResult.Message);
             }
+
+            // When the destination Route has no Startup Activity, preserve the real
+            // Activity teardown result instead of replacing it with a second empty
+            // no-Activity result. This keeps exit lifecycle, scope cleanup and scene
+            // release evidence visible in the consolidated Route diagnostics.
+            var activityFlowResult = !route.HasStartupActivity && activityRouteExitResult.Completed
+                ? activityRouteExitResult
+                : startupActivityFlowResult;
 
             var currentRouteOwner = runtimeRouteEnterResult.Owner;
             var previousRouteOwner = previousRoute != null
@@ -277,7 +314,6 @@ namespace Immersive.Framework.RouteLifecycle
             PublishRouteTransition(previousRoute, route, source, reason);
             return result;
         }
-
 
         private static int CountRouteSceneCompositionProgressSteps(RouteSceneCompositionPlan plan)
         {

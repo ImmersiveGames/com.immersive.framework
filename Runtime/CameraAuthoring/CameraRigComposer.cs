@@ -8,12 +8,15 @@ using UnityEngine;
 namespace Immersive.Framework.CameraAuthoring
 {
     /// <summary>
-    /// Designer-facing authoring surface that resolves explicit targets and materializes a Cinemachine rig.
-    /// It does not select an active camera, own runtime output or arbitrate requests.
+    /// Designer-facing authoring surface that resolves explicit targets and materializes
+    /// one local Cinemachine Camera rig.
+    ///
+    /// It does not create or own a Unity Camera, CinemachineBrain or runtime output.
+    /// It does not select an active camera or arbitrate requests.
     /// </summary>
     [DisallowMultipleComponent]
     [AddComponentMenu("Immersive Framework/Camera/Camera Rig Composer")]
-    [FrameworkApiStatus(FrameworkApiStatus.Experimental, "Camera rig authoring and idempotent materialization surface.")]
+    [FrameworkApiStatus(FrameworkApiStatus.Experimental, "Camera rig authoring and idempotent Cinemachine Camera materialization surface.")]
     public sealed class CameraRigComposer : MonoBehaviour
     {
         [Header("Designer")]
@@ -27,11 +30,8 @@ namespace Immersive.Framework.CameraAuthoring
         [SerializeField] private CameraTargetRequirement lookAtRequirement = CameraTargetRequirement.Optional;
 
         [Header("Advanced / Technical Materialization")]
-        [SerializeField] private UnityEngine.Camera unityCamera;
         [SerializeField] private CinemachineCamera cinemachineCamera;
-        [SerializeField] private bool createUnityCameraIfMissing = true;
         [SerializeField] private bool createCinemachineCameraIfMissing = true;
-        [SerializeField] private string unityCameraObjectName = "Unity Camera";
         [SerializeField] private string cinemachineCameraObjectName = "Cinemachine Camera";
         [SerializeField] private bool logApplyRebuildDiagnostics = true;
 
@@ -51,12 +51,10 @@ namespace Immersive.Framework.CameraAuthoring
         public Transform ExplicitLookAtTarget => explicitLookAtTarget;
         public CameraTargetRequirement FollowRequirement => followRequirement;
         public CameraTargetRequirement LookAtRequirement => lookAtRequirement;
-        public UnityEngine.Camera UnityCamera => unityCamera;
         public CinemachineCamera CinemachineCamera => cinemachineCamera;
-        public bool CreateUnityCameraIfMissing => createUnityCameraIfMissing;
         public bool CreateCinemachineCameraIfMissing => createCinemachineCameraIfMissing;
-        public string UnityCameraObjectName => unityCameraObjectName.NormalizeTextOrFallback("Unity Camera");
-        public string CinemachineCameraObjectName => cinemachineCameraObjectName.NormalizeTextOrFallback("Cinemachine Camera");
+        public string CinemachineCameraObjectName =>
+            cinemachineCameraObjectName.NormalizeTextOrFallback("Cinemachine Camera");
         public bool LogApplyRebuildDiagnostics => logApplyRebuildDiagnostics;
         public string LastApplyRebuildStatus => lastApplyRebuildStatus.NormalizeText();
         public string LastBlockingIssue => lastBlockingIssue.NormalizeText();
@@ -68,22 +66,27 @@ namespace Immersive.Framework.CameraAuthoring
         public bool TryValidateForApply(out string issue)
         {
             issue = string.Empty;
+
             if (presentationIntent != CameraRigPresentationIntent.Follow)
             {
-                issue = $"CameraRigComposer supports only Follow presentation intent. Current intent: '{presentationIntent}'.";
+                issue =
+                    $"CameraRigComposer supports only Follow presentation intent. Current intent: '{presentationIntent}'.";
                 return false;
             }
 
             if (targetSourceKind != CameraTargetSourceKind.PlayerComposer &&
                 targetSourceKind != CameraTargetSourceKind.ExplicitTransform)
             {
-                issue = $"CameraRigComposer supports only PlayerComposer or ExplicitTransform target sources. Current source: '{targetSourceKind}'.";
+                issue =
+                    $"CameraRigComposer supports only PlayerComposer or ExplicitTransform target sources. Current source: '{targetSourceKind}'.";
                 return false;
             }
 
-            if (targetSourceKind == CameraTargetSourceKind.PlayerComposer && playerComposer == null)
+            if (targetSourceKind == CameraTargetSourceKind.PlayerComposer &&
+                playerComposer == null)
             {
-                issue = "CameraRigComposer requires an explicit PlayerComposer target source.";
+                issue =
+                    "CameraRigComposer requires an explicit PlayerComposer target source.";
                 return false;
             }
 
@@ -102,6 +105,7 @@ namespace Immersive.Framework.CameraAuthoring
         {
             CameraTargetSourceDescriptor source = CreateTargetSourceDescriptor();
             CameraResolvedTargets targets;
+
             switch (targetSourceKind)
             {
                 case CameraTargetSourceKind.PlayerComposer:
@@ -111,18 +115,28 @@ namespace Immersive.Framework.CameraAuthoring
                             source,
                             "PlayerComposer target source is missing.",
                             "Camera rig target resolution was blocked because PlayerComposer is not assigned.",
-                            CameraIssue.Blocking("camera.target-source.player-composer.missing", "PlayerComposer target source is missing."));
+                            CameraIssue.Blocking(
+                                "camera.target-source.player-composer.missing",
+                                "PlayerComposer target source is missing."));
                     }
 
                     targets = CameraResolvedTargets.FromFollowAndLookAt(
                         playerComposer.CameraTarget,
-                        requestedLookAtRequirement == CameraTargetRequirement.NotUsed ? null : playerComposer.LookAtTarget);
+                        requestedLookAtRequirement == CameraTargetRequirement.NotUsed
+                            ? null
+                            : playerComposer.LookAtTarget);
                     break;
+
                 case CameraTargetSourceKind.ExplicitTransform:
                     targets = new CameraResolvedTargets(
-                        requestedFollowRequirement == CameraTargetRequirement.NotUsed ? null : explicitFollowTarget,
-                        requestedLookAtRequirement == CameraTargetRequirement.NotUsed ? null : explicitLookAtTarget);
+                        requestedFollowRequirement == CameraTargetRequirement.NotUsed
+                            ? null
+                            : explicitFollowTarget,
+                        requestedLookAtRequirement == CameraTargetRequirement.NotUsed
+                            ? null
+                            : explicitLookAtTarget);
                     break;
+
                 default:
                     return CameraTargetResolveResult.Blocked(
                         source,
@@ -140,15 +154,22 @@ namespace Immersive.Framework.CameraAuthoring
         public CameraRigComposerDebugSnapshot CreateDebugSnapshot()
         {
             CameraTargetSourceDescriptor source = CreateTargetSourceDescriptor();
+
             return new CameraRigComposerDebugSnapshot(
                 presentationIntent,
                 targetSourceKind,
                 source.LogicalSourceId,
                 source.DiagnosticLabel,
-                unityCamera != null ? unityCamera.name.NormalizeText() : string.Empty,
-                cinemachineCamera != null ? cinemachineCamera.name.NormalizeText() : string.Empty,
-                lastResolvedFollowTarget != null ? lastResolvedFollowTarget.name.NormalizeText() : string.Empty,
-                lastResolvedLookAtTarget != null ? lastResolvedLookAtTarget.name.NormalizeText() : string.Empty,
+                string.Empty,
+                cinemachineCamera != null
+                    ? cinemachineCamera.name.NormalizeText()
+                    : string.Empty,
+                lastResolvedFollowTarget != null
+                    ? lastResolvedFollowTarget.name.NormalizeText()
+                    : string.Empty,
+                lastResolvedLookAtTarget != null
+                    ? lastResolvedLookAtTarget.name.NormalizeText()
+                    : string.Empty,
                 lastApplyRebuildStatus.NormalizeText(),
                 lastBlockingIssue.NormalizeText(),
                 lastTargetResolutionSummary.NormalizeText(),
@@ -158,46 +179,81 @@ namespace Immersive.Framework.CameraAuthoring
         private CameraTargetSourceDescriptor CreateTargetSourceDescriptor()
         {
             return targetSourceKind == CameraTargetSourceKind.PlayerComposer
-                ? new CameraTargetSourceDescriptor(CameraTargetSourceKind.PlayerComposer, playerComposer, playerComposer != null ? playerComposer.ActorId : string.Empty, playerComposer != null ? $"PlayerComposer:{playerComposer.ActorId}" : "PlayerComposer:missing")
-                : CameraTargetSourceDescriptor.ExplicitTransform(explicitFollowTarget, explicitFollowTarget != null ? "ExplicitTransform" : "ExplicitTransform:missing");
+                ? new CameraTargetSourceDescriptor(
+                    CameraTargetSourceKind.PlayerComposer,
+                    playerComposer,
+                    playerComposer != null ? playerComposer.ActorId : string.Empty,
+                    playerComposer != null
+                        ? $"PlayerComposer:{playerComposer.ActorId}"
+                        : "PlayerComposer:missing")
+                : CameraTargetSourceDescriptor.ExplicitTransform(
+                    explicitFollowTarget,
+                    explicitFollowTarget != null
+                        ? "ExplicitTransform"
+                        : "ExplicitTransform:missing");
         }
 
 #if UNITY_EDITOR
-        public bool EditorApplyRecipeDefaults(bool overwriteExisting, out string issue)
+        public bool EditorApplyRecipeDefaults(
+            bool overwriteExisting,
+            out string issue)
         {
             issue = string.Empty;
+
             if (recipe == null)
             {
-                issue = "CameraRigComposer requires a CameraRigRecipe before recipe defaults can be applied.";
+                issue =
+                    "CameraRigComposer requires a CameraRigRecipe before recipe defaults can be applied.";
                 return false;
             }
 
-            if (overwriteExisting || presentationIntent == CameraRigPresentationIntent.Undefined)
+            if (overwriteExisting ||
+                presentationIntent == CameraRigPresentationIntent.Undefined)
+            {
                 presentationIntent = recipe.PresentationIntent;
-            if (overwriteExisting || targetSourceKind == CameraTargetSourceKind.None)
+            }
+
+            if (overwriteExisting ||
+                targetSourceKind == CameraTargetSourceKind.None)
+            {
                 targetSourceKind = recipe.TargetSourceKind;
+            }
+
             followRequirement = recipe.FollowRequirement;
             lookAtRequirement = recipe.LookAtRequirement;
-            createUnityCameraIfMissing = recipe.CreateUnityCameraIfMissing;
-            createCinemachineCameraIfMissing = recipe.CreateCinemachineCameraIfMissing;
-            unityCameraObjectName = recipe.UnityCameraObjectName;
-            cinemachineCameraObjectName = recipe.CinemachineCameraObjectName;
-            logApplyRebuildDiagnostics = recipe.LogApplyRebuildDiagnostics;
+            createCinemachineCameraIfMissing =
+                recipe.CreateCinemachineCameraIfMissing;
+            cinemachineCameraObjectName =
+                recipe.CinemachineCameraObjectName;
+            logApplyRebuildDiagnostics =
+                recipe.LogApplyRebuildDiagnostics;
+
             return true;
         }
 
-        public void EditorSetGeneratedReferences(UnityEngine.Camera generatedUnityCamera, CinemachineCamera generatedCinemachineCamera)
+        public void EditorSetGeneratedReference(
+            CinemachineCamera generatedCinemachineCamera)
         {
-            if (unityCamera == null) unityCamera = generatedUnityCamera;
-            if (cinemachineCamera == null) cinemachineCamera = generatedCinemachineCamera;
+            if (cinemachineCamera == null)
+            {
+                cinemachineCamera = generatedCinemachineCamera;
+            }
         }
 
-        public void EditorSetApplyRebuildResult(string status, string blockingIssue, string targetResolutionSummary, string materializationSummary, Transform resolvedFollowTarget, Transform resolvedLookAtTarget)
+        public void EditorSetApplyRebuildResult(
+            string status,
+            string blockingIssue,
+            string targetResolutionSummary,
+            string materializationSummary,
+            Transform resolvedFollowTarget,
+            Transform resolvedLookAtTarget)
         {
             lastApplyRebuildStatus = status.NormalizeText();
             lastBlockingIssue = blockingIssue.NormalizeText();
-            lastTargetResolutionSummary = targetResolutionSummary.NormalizeText();
-            lastMaterializationSummary = materializationSummary.NormalizeText();
+            lastTargetResolutionSummary =
+                targetResolutionSummary.NormalizeText();
+            lastMaterializationSummary =
+                materializationSummary.NormalizeText();
             lastResolvedFollowTarget = resolvedFollowTarget;
             lastResolvedLookAtTarget = resolvedLookAtTarget;
         }
@@ -208,8 +264,8 @@ namespace Immersive.Framework.CameraAuthoring
             targetSourceKind = CameraTargetSourceKind.PlayerComposer;
             followRequirement = CameraTargetRequirement.Required;
             lookAtRequirement = CameraTargetRequirement.Optional;
-            unityCamera = GetComponentInChildren<UnityEngine.Camera>(true);
-            cinemachineCamera = GetComponentInChildren<CinemachineCamera>(true);
+            cinemachineCamera =
+                GetComponentInChildren<CinemachineCamera>(true);
         }
 #endif
     }

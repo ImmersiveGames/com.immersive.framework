@@ -4,12 +4,19 @@ using UnityEngine;
 namespace Immersive.Framework.Editor.Camera.Cinemachine
 {
     /// <summary>
-    /// Editor-only request for creating or repairing the technical Cinemachine rig used by a Camera Product Surface.
-    /// This type is intentionally not a runtime authority and does not perform lookup outside the supplied rig root.
+    /// Editor-only request for creating or repairing a Cinemachine technical rig.
+    /// It does not perform lookup outside the supplied rig root.
     /// </summary>
     public sealed class CinemachineRigMaterializationRequest
     {
         public Transform RigRoot { get; set; }
+
+        /// <summary>
+        /// When true, materialization also requires or creates one Unity Camera
+        /// and CinemachineBrain. CameraRigComposer always sets this to false.
+        /// Output-authoring tools may set it to true explicitly.
+        /// </summary>
+        public bool MaterializeUnityOutput { get; set; }
 
         public UnityEngine.Camera UnityCamera { get; set; }
 
@@ -23,7 +30,7 @@ namespace Immersive.Framework.Editor.Camera.Cinemachine
 
         public bool RequireLookAtTarget { get; set; }
 
-        public bool CreateUnityCameraIfMissing { get; set; } = true;
+        public bool CreateUnityCameraIfMissing { get; set; }
 
         public bool CreateCinemachineCameraIfMissing { get; set; } = true;
 
@@ -31,6 +38,7 @@ namespace Immersive.Framework.Editor.Camera.Cinemachine
 
         public string UnityCameraObjectName { get; set; } = "Unity Camera";
 
-        public string CinemachineCameraObjectName { get; set; } = "Cinemachine Camera";
+        public string CinemachineCameraObjectName { get; set; } =
+            "Cinemachine Camera";
     }
 }
