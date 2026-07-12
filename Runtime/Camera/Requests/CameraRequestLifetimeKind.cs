@@ -11,6 +11,7 @@ namespace Immersive.Framework.Camera
         Activity = 2,
         LocalPlayerEligibility = 3,
         ExplicitOperation = 4,
-        SpectatorSession = 5
+        SpectatorSession = 5,
+        Session = 6
     }
 }

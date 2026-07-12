@@ -400,6 +400,25 @@ Advanced/Debug shows output, requests, winner, targets and rig evidence.
 
 ## Consequences
 
+## Session output and explicit override correction
+
+The main single-player output is session-owned and authored in `UIGlobal`, not
+inside a Route scene. Route, Activity and local Player request sources receive
+that output through explicit Framework Core injection; no scene reference,
+singleton or service locator is used.
+
+Route and Activity lifecycle entry only makes an override available. It never
+publishes a request. Their explicit request/release API is the only authority
+for temporary overrides. The fixed precedence is:
+
+```text
+Local Player 50 < Activity 100 < Route 200 < Session 300
+```
+
+The Session camera is persistent but is not a gameplay winner. The transition
+orchestrator requests it only after the fade/loading cover has settled and
+releases it before the cover opens over the destination content.
+
 ### Positive
 
 ```text

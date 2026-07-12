@@ -1,4 +1,4 @@
-# C9I — Route and Activity Camera Request Bindings
+# C9I — Route and Activity Camera Overrides
 
 Status: implementation ready for Unity compile and QA validation  
 Type: real lifecycle integration and scene-authored product surface  
@@ -6,14 +6,14 @@ Package: `com.immersive.framework`
 
 ## Objective
 
-Connect the C9 camera request runtime to the canonical Route and Activity lifecycle callbacks already present in the framework.
+Connect explicit Route and Activity camera overrides to the canonical lifecycle callbacks already present in the framework.
 
 ## Product surface
 
 ```text
 CameraOutputSessionBinding
-RouteCameraRequestBinding
-ActivityCameraRequestBinding
+RouteCameraOverrideBinding
+ActivityCameraOverrideBinding
 ```
 
 ### CameraOutputSessionBinding
@@ -134,10 +134,10 @@ C9I is the official Route and Activity camera lifecycle integration.
 
 ```text
 RouteContentBehaviour
--> RouteCameraRequestBinding
+-> RouteCameraOverrideBinding (available only)
 
 ActivityContentBehaviour
--> ActivityCameraRequestBinding
+-> ActivityCameraOverrideBinding (available only)
 ```
 
 The temporary C9H pure lifecycle adapters were removed after C9I passed canonical runtime QA. They are not part of the supported product surface and must not be restored as an additional required layer.
@@ -152,6 +152,14 @@ global output registry
 automatic hierarchy discovery
 custom inspector and Apply/Rebuild tooling
 ```
+
+## Override authority
+
+Lifecycle entry validates and enables the override surface; it does not publish a
+request. `RequestOverride()` publishes once, `ReleaseOverride()` removes once,
+and owner exit cleans an active request with explicit diagnostics. The output is
+injected from the persistent UIGlobal session output, never resolved by name or
+global lookup.
 
 ## Expected QA
 

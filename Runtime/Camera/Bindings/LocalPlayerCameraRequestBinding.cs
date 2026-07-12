@@ -15,7 +15,7 @@ namespace Immersive.Framework.Camera
     /// </summary>
     [DisallowMultipleComponent]
     [AddComponentMenu("Immersive Framework/Camera/Local Player Camera Request Binding")]
-    public sealed class LocalPlayerCameraRequestBinding : MonoBehaviour
+    public sealed class LocalPlayerCameraRequestBinding : MonoBehaviour, ICameraOutputSessionConsumer
     {
         [Header("Player")]
         [SerializeField] private PlayerComposer playerComposer;
@@ -105,6 +105,16 @@ namespace Immersive.Framework.Camera
                 isLocallyEligible = false;
                 SetDiagnostic("Blocked", diagnostic, true);
                 return false;
+            }
+
+            if (outputSession == null)
+            {
+                isLocallyEligible = true;
+                SetDiagnostic(
+                    "AwaitingOutputSession",
+                    "Local Player camera eligibility is active and is waiting for the session-scoped camera output injection.",
+                    false);
+                return true;
             }
 
             if (!outputSession.TryGetSession(
@@ -268,13 +278,6 @@ namespace Immersive.Framework.Camera
                 return false;
             }
 
-            if (outputSession == null)
-            {
-                diagnostic =
-                    "Local Player Camera Request Binding requires an explicit CameraOutputSessionBinding.";
-                return false;
-            }
-
             if (rigComposer == null)
             {
                 diagnostic =
@@ -338,6 +341,31 @@ namespace Immersive.Framework.Camera
             string slot = playerComposer.PlayerSlotId.NormalizeText();
             string actor = playerComposer.ActorId.NormalizeText();
             return $"slot:{slot}|actor:{actor}";
+        }
+
+        void ICameraOutputSessionConsumer.AttachOutputSession(CameraOutputSessionBinding binding)
+        {
+            outputSession = binding;
+            if (binding == null)
+            {
+                SetDiagnostic("Blocked", "Local Player camera output injection is missing.", true);
+                return;
+            }
+
+            if (isLocallyEligible && !IsPublished)
+            {
+                TryPublish();
+                return;
+            }
+
+            SetDiagnostic("OutputAttached", $"Local Player camera output attached. output='{binding.OutputIdText}'.", false);
+        }
+
+        void ICameraOutputSessionConsumer.DetachOutputSession(string reason)
+        {
+            TryRelease();
+            outputSession = null;
+            SetDiagnostic("OutputDetached", $"Local Player camera output detached. reason='{reason}'.", false);
         }
 
         private void SetDiagnostic(

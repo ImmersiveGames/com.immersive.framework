@@ -13,6 +13,7 @@ namespace Immersive.Framework.Camera
         Cutscene = 4,
         ModalPresentation = 5,
         Spectator = 6,
-        Debug = 7
+        Debug = 7,
+        Session = 8
     }
 }

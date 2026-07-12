@@ -24,6 +24,7 @@ using Immersive.Framework.Pause;
 using Immersive.Framework.Transition;
 using Immersive.Framework.TransitionEffects;
 using Immersive.Framework.Common;
+using Immersive.Framework.Camera;
 using Immersive.Framework.Common.LifecycleOperations;
 
 namespace Immersive.Framework.ApplicationLifecycle
@@ -54,6 +55,7 @@ namespace Immersive.Framework.ApplicationLifecycle
         private ResetRegistry _resetRegistry;
         private LoadingSurfaceRuntime _loadingSurfaceRuntime;
         private GlobalUiSceneRuntime _globalUiSceneRuntime;
+        private CameraOutputSessionInjectionRuntime _cameraOutputSessionInjectionRuntime;
         private int _objectEntryRuntimeContextRevision;
         private int _objectEntryRuntimeContextInvalidationCount;
         private string _lastObjectEntryRuntimeContextInvalidationReason = string.Empty;
@@ -327,10 +329,25 @@ namespace Immersive.Framework.ApplicationLifecycle
                 return failed;
             }
 
+            if (!_globalUiSceneRuntime.TryResolveCameraPresentation(
+                    out CameraOutputSessionBinding cameraOutputSession,
+                    out SessionCameraOverrideBinding sessionCameraOverride,
+                    out string cameraDiagnostic))
+            {
+                var failed = FrameworkGameFlowStartResult.Failed(cameraDiagnostic);
+                _state = FrameworkRuntimeState.FromGameFlowResult(_gameApplication, failed);
+                return failed;
+            }
+
+            _cameraOutputSessionInjectionRuntime?.Dispose();
+            _cameraOutputSessionInjectionRuntime = new CameraOutputSessionInjectionRuntime(
+                cameraOutputSession,
+                sessionCameraOverride);
+
             _loadingSurfaceRuntime = CreateLoadingSurfaceRuntime(_globalUiSceneRuntime);
             _pauseSurfaceRuntime = CreatePauseSurfaceRuntime(_globalUiSceneRuntime);
             ApplyPauseSurfaceSnapshot("FrameworkRuntimeHost", "framework-start");
-            var transitionOrchestrator = CreateTransitionOrchestrator(_globalUiSceneRuntime);
+            var transitionOrchestrator = CreateTransitionOrchestrator(_globalUiSceneRuntime, sessionCameraOverride);
             _gameFlowRuntime = new GameFlowRuntime(_runtimeContentRuntime, _contentAnchorBindingRuntime, transitionOrchestrator);
 
             var result = await _gameFlowRuntime.StartAsync(_gameApplication);
@@ -1044,7 +1061,9 @@ namespace Immersive.Framework.ApplicationLifecycle
                 string.IsNullOrWhiteSpace(reason) ? "pause.surface.apply" : reason.Trim());
         }
 
-        private ITransitionOrchestrator CreateTransitionOrchestrator(GlobalUiSceneRuntime globalUiSceneRuntime)
+        private ITransitionOrchestrator CreateTransitionOrchestrator(
+            GlobalUiSceneRuntime globalUiSceneRuntime,
+            SessionCameraOverrideBinding sessionCameraOverride)
         {
             if (globalUiSceneRuntime == null)
             {
@@ -1072,7 +1091,9 @@ namespace Immersive.Framework.ApplicationLifecycle
                 LogFields.Of(
                     LogFields.Field("scene", sceneLabel),
                     LogFields.Field("adapterCount", sceneAdapters.Count)));
-            return new TransitionEffectOrchestrator(sceneAdapters, sceneLabel);
+            return new SessionCameraTransitionOrchestrator(
+                new TransitionEffectOrchestrator(sceneAdapters, sceneLabel),
+                sessionCameraOverride);
         }
 
 
@@ -2421,6 +2442,8 @@ namespace Immersive.Framework.ApplicationLifecycle
 
         private void OnDestroy()
         {
+            _cameraOutputSessionInjectionRuntime?.Dispose();
+            _cameraOutputSessionInjectionRuntime = null;
             _pauseTimeScaleRuntime?.RestoreIfCaptured("framework-runtime-host-destroy");
 
             if (_current == this)

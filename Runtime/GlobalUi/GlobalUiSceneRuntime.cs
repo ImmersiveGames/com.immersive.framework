@@ -7,6 +7,7 @@ using Immersive.Framework.Loading;
 using Immersive.Framework.Pause;
 using Immersive.Framework.TransitionEffects;
 using Immersive.Framework.Common;
+using Immersive.Framework.Camera;
 using Immersive.Logging.Records;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -25,6 +26,7 @@ namespace Immersive.Framework.GlobalUi
         private readonly ITransitionEffectAdapter[] _transitionAdapters;
         private readonly ILoadingSurfaceAdapter[] _loadingAdapters;
         private readonly IPauseSurfaceAdapter[] _pauseAdapters;
+        private readonly GameObject[] _persistedRoots;
 
         private GlobalUiSceneRuntime(
             GlobalUiScenePolicy policy,
@@ -44,6 +46,7 @@ namespace Immersive.Framework.GlobalUi
             SceneName = Normalize(sceneName);
             Label = label.NormalizeTextOrFallback("UIGlobal");
             PersistedRootCount = persistedRoots?.Count ?? 0;
+            _persistedRoots = FrameworkCollectionCopy.ToArrayOrEmpty(persistedRoots);
             _transitionAdapters = FrameworkCollectionCopy.ToArrayOrEmpty(transitionAdapters);
             _loadingAdapters = FrameworkCollectionCopy.ToArrayOrEmpty(loadingAdapters);
             _pauseAdapters = FrameworkCollectionCopy.ToArrayOrEmpty(pauseAdapters);
@@ -66,6 +69,23 @@ namespace Immersive.Framework.GlobalUi
         public IReadOnlyList<ITransitionEffectAdapter> TransitionAdapters => _transitionAdapters;
         public IReadOnlyList<ILoadingSurfaceAdapter> LoadingAdapters => _loadingAdapters;
         public IReadOnlyList<IPauseSurfaceAdapter> PauseAdapters => _pauseAdapters;
+
+        internal bool TryResolveCameraPresentation(
+            out CameraOutputSessionBinding outputSession,
+            out SessionCameraOverrideBinding sessionOverride,
+            out string diagnostic)
+        {
+            outputSession = FindSingle<CameraOutputSessionBinding>();
+            sessionOverride = FindSingle<SessionCameraOverrideBinding>();
+            if (outputSession == null || sessionOverride == null)
+            {
+                diagnostic = "UIGlobal requires exactly one CameraOutputSessionBinding and one SessionCameraOverrideBinding.";
+                return false;
+            }
+
+            diagnostic = string.Empty;
+            return true;
+        }
 
         internal static async Awaitable<GlobalUiSceneRuntime> LoadAndPersistAsync(
             GameApplicationAsset application,
@@ -281,6 +301,26 @@ namespace Immersive.Framework.GlobalUi
             }
 
             return adapters;
+        }
+
+        private T FindSingle<T>() where T : MonoBehaviour
+        {
+            T result = null;
+            int count = 0;
+            for (int rootIndex = 0; rootIndex < _persistedRoots.Length; rootIndex++)
+            {
+                T[] candidates = _persistedRoots[rootIndex].GetComponentsInChildren<T>(true);
+                for (int index = 0; index < candidates.Length; index++)
+                {
+                    if (candidates[index] != null)
+                    {
+                        result = candidates[index];
+                        count++;
+                    }
+                }
+            }
+
+            return count == 1 ? result : null;
         }
 
         private static string BuildBlockingMessageIfRequired(

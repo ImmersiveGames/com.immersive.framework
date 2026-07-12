@@ -28,15 +28,23 @@ Assign an explicit output id. Do not duplicate a binding for the same output.
 
 ## Publish presentation intent
 
-- Put `RouteCameraRequestBinding` on canonical Route content.
-- Put `ActivityCameraRequestBinding` on canonical Activity content.
+- Put `RouteCameraOverrideBinding` on canonical Route content.
+- Put `ActivityCameraOverrideBinding` on canonical Activity content.
 - Put `LocalPlayerCameraRequestBinding` on the local Player (or explicit
   Player-owned object), and call `SetLocalPlayerEligible` from real eligibility
   authority when `eligibleOnEnable` is not appropriate.
 
-Every binding needs explicit identity, output session, rig and tie-breaker.
-Route/Activity also need the assigned lifecycle asset and explicit target.
-Higher precedence wins; release restores the next request.
+Player eligibility publishes its normal gameplay request. Route and Activity only
+become available on lifecycle entry: call `RequestOverride()` to publish and
+`ReleaseOverride()` to restore the next valid request. They never publish merely
+because a Route or Activity entered.
+
+The main output belongs to `UIGlobal`. Route, Activity and Player consumers are
+explicitly injected with that session-scoped output by Framework Core; they do
+not serialize cross-scene references or perform global lookup. A
+`SessionCameraOverrideBinding` stays in `UIGlobal` and is requested after the
+transition curtain closes, then released before it opens. Higher precedence wins;
+release restores the next request.
 
 ## Boundary
 
