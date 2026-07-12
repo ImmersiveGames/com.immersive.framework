@@ -154,6 +154,10 @@ namespace Immersive.Framework.Camera
             CameraOutputApplyResult applyResult,
             string summary)
         {
+            CameraIssue[] issues = MergeIssues(
+                contextResult.Issues,
+                applyResult.Issues);
+
             return new CameraOutputSessionResult(
                 CameraOutputSessionOperationKind.Succeeded,
                 contextResult,
@@ -163,8 +167,37 @@ namespace Immersive.Framework.Camera
                 default,
                 false,
                 default,
-                Array.Empty<CameraIssue>(),
-                summary);
+                issues,
+                issues.Length == 0
+                    ? summary
+                    : $"{summary} {contextResult.DiagnosticSummary}".NormalizeText());
+        }
+
+        private static CameraIssue[] MergeIssues(
+            CameraIssue[] contextIssues,
+            CameraIssue[] applyIssues)
+        {
+            int contextCount = contextIssues?.Length ?? 0;
+            int applyCount = applyIssues?.Length ?? 0;
+
+            if (contextCount == 0 && applyCount == 0)
+            {
+                return Array.Empty<CameraIssue>();
+            }
+
+            var merged = new CameraIssue[contextCount + applyCount];
+
+            if (contextCount > 0)
+            {
+                Array.Copy(contextIssues, 0, merged, 0, contextCount);
+            }
+
+            if (applyCount > 0)
+            {
+                Array.Copy(applyIssues, 0, merged, contextCount, applyCount);
+            }
+
+            return merged;
         }
 
         private static CameraOutputSessionResult Rejected(

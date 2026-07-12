@@ -15,6 +15,8 @@ namespace Immersive.Framework.Editor.Camera.Cinemachine
 
         public CinemachineCamera CinemachineCamera { get; internal set; }
 
+        public CinemachineFollow CinemachineFollow { get; internal set; }
+
         public Transform FollowTarget { get; internal set; }
 
         public Transform LookAtTarget { get; internal set; }

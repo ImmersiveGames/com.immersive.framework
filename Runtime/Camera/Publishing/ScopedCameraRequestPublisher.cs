@@ -52,8 +52,10 @@ namespace Immersive.Framework.Camera
                 request,
                 true,
                 sessionResult,
-                Array.Empty<CameraIssue>(),
-                $"Camera request publisher published request '{request.RequestId}'.");
+                sessionResult.Issues,
+                sessionResult.Issues.Length == 0
+                    ? $"Camera request publisher published request '{request.RequestId}'."
+                    : $"Camera request publisher published request '{request.RequestId}'. {sessionResult.DiagnosticSummary}".NormalizeText());
         }
 
         public CameraRequestPublisherResult Release()
@@ -86,8 +88,10 @@ namespace Immersive.Framework.Camera
                 request,
                 true,
                 sessionResult,
-                Array.Empty<CameraIssue>(),
-                $"Camera request publisher released request '{request.RequestId}'.");
+                sessionResult.Issues,
+                sessionResult.Issues.Length == 0
+                    ? $"Camera request publisher released request '{request.RequestId}'."
+                    : $"Camera request publisher released request '{request.RequestId}'. {sessionResult.DiagnosticSummary}".NormalizeText());
         }
 
         private CameraRequestPublisherResult Rejected(

@@ -152,6 +152,7 @@ namespace Immersive.Framework.Editor.CameraAuthoring
                     CreateUnityCameraIfMissing = false,
                     CreateCinemachineCameraIfMissing =
                         composer.CreateCinemachineCameraIfMissing,
+                    CreateCinemachineFollowIfMissing = true,
                     UseUndo = useUndo,
                     CinemachineCameraObjectName =
                         composer.CinemachineCameraObjectName

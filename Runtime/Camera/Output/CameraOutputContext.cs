@@ -136,6 +136,7 @@ namespace Immersive.Framework.Camera
             CameraRequest previousWinner = winner;
 
             admittedRequests.Remove(requestId);
+            CameraIssue[] releaseIssues = PruneInvalidRequests();
             SelectWinner();
 
             CameraOutputContextChangeKind changeKind = ResolveChangeKind(
@@ -152,8 +153,10 @@ namespace Immersive.Framework.Camera
                 previousWinner,
                 hasWinner,
                 winner,
-                Array.Empty<CameraIssue>(),
-                $"Camera request released. request='{requestId}' output='{outputId}' change='{changeKind}'.");
+                releaseIssues,
+                releaseIssues.Length == 0
+                    ? $"Camera request released. request='{requestId}' output='{outputId}' change='{changeKind}'."
+                    : $"Camera request released and stale invalid requests were pruned. request='{requestId}' output='{outputId}' change='{changeKind}' pruned='{releaseIssues.Length}'.");
         }
 
         public bool Contains(CameraRequestId requestId)
@@ -239,6 +242,46 @@ namespace Immersive.Framework.Camera
                     hasWinner = true;
                 }
             }
+        }
+
+        private CameraIssue[] PruneInvalidRequests()
+        {
+            List<CameraRequestId> invalidRequestIds = null;
+
+            foreach (KeyValuePair<CameraRequestId, CameraRequest> entry in admittedRequests)
+            {
+                if (entry.Value.IsValid)
+                {
+                    continue;
+                }
+
+                invalidRequestIds ??= new List<CameraRequestId>();
+                invalidRequestIds.Add(entry.Key);
+            }
+
+            if (invalidRequestIds == null)
+            {
+                return Array.Empty<CameraIssue>();
+            }
+
+            invalidRequestIds.Sort(
+                (left, right) => string.Compare(
+                    left.Value,
+                    right.Value,
+                    StringComparison.Ordinal));
+
+            var issues = new CameraIssue[invalidRequestIds.Count];
+
+            for (int index = 0; index < invalidRequestIds.Count; index++)
+            {
+                CameraRequestId invalidRequestId = invalidRequestIds[index];
+                admittedRequests.Remove(invalidRequestId);
+                issues[index] = CameraIssue.Warning(
+                    "camera.output-context.stale-request-pruned",
+                    $"Camera output context pruned stale invalid request '{invalidRequestId}' while processing release on output '{outputId}'.");
+            }
+
+            return issues;
         }
 
         private static int Compare(CameraRequest left, CameraRequest right)

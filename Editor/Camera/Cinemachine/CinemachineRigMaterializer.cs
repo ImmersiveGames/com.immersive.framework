@@ -81,6 +81,24 @@ namespace Immersive.Framework.Editor.Camera.Cinemachine
                 return report;
             }
 
+            CinemachineFollow cinemachineFollow =
+                EnsureFollowPipeline(
+                    cinemachineCamera,
+                    request,
+                    report);
+
+            if (request.FollowTarget != null &&
+                cinemachineFollow == null)
+            {
+                report.MarkBlocked(
+                    "cinemachine-follow:missing");
+            }
+
+            if (report.BlockedCount > 0)
+            {
+                return report;
+            }
+
             ApplyTargets(cinemachineCamera, request, report);
 
             if (unityCamera != null)
@@ -93,16 +111,55 @@ namespace Immersive.Framework.Editor.Camera.Cinemachine
                 EditorUtility.SetDirty(brain);
             }
 
+            if (cinemachineFollow != null)
+            {
+                EditorUtility.SetDirty(cinemachineFollow);
+            }
+
             EditorUtility.SetDirty(cinemachineCamera);
             EditorUtility.SetDirty(request.RigRoot.gameObject);
 
             report.Evidence.UnityCamera = unityCamera;
             report.Evidence.Brain = brain;
             report.Evidence.CinemachineCamera = cinemachineCamera;
+            report.Evidence.CinemachineFollow = cinemachineFollow;
             report.Evidence.FollowTarget = cinemachineCamera.Follow;
             report.Evidence.LookAtTarget = cinemachineCamera.LookAt;
 
             return report;
+        }
+
+        private static CinemachineFollow EnsureFollowPipeline(
+            CinemachineCamera cinemachineCamera,
+            CinemachineRigMaterializationRequest request,
+            CinemachineRigMaterializationReport report)
+        {
+            if (request.FollowTarget == null)
+            {
+                report.MarkSkipped("cinemachine-follow:not-requested");
+                return null;
+            }
+
+            if (cinemachineCamera.TryGetComponent(
+                    out CinemachineFollow existingFollow))
+            {
+                report.MarkAlreadyValid("cinemachine-follow");
+                return existingFollow;
+            }
+
+            if (!request.CreateCinemachineFollowIfMissing)
+            {
+                report.MarkSkipped("cinemachine-follow:create-disabled");
+                return null;
+            }
+
+            CinemachineFollow createdFollow =
+                AddComponent<CinemachineFollow>(
+                    cinemachineCamera.gameObject,
+                    request.UseUndo);
+
+            report.MarkCreated("cinemachine-follow");
+            return createdFollow;
         }
 
         private static UnityEngine.Camera ResolveUnityCamera(

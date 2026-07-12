@@ -34,6 +34,12 @@ namespace Immersive.Framework.Editor.Camera.Cinemachine
 
         public bool CreateCinemachineCameraIfMissing { get; set; } = true;
 
+        /// <summary>
+        /// Materializes the Cinemachine position pipeline required for Follow
+        /// intent. A Follow target without a position control is incomplete.
+        /// </summary>
+        public bool CreateCinemachineFollowIfMissing { get; set; } = true;
+
         public bool UseUndo { get; set; } = true;
 
         public string UnityCameraObjectName { get; set; } = "Unity Camera";
