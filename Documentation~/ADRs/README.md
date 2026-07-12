@@ -8,6 +8,12 @@ Start with:
 ADR-INDEX.md
 ```
 
+For reconciled Camera delivery state and C9 identifiers, read:
+
+```text
+../Current/Camera-Delivery-Reconciliation.md
+```
+
 For the compact historical map, read:
 
 ```text

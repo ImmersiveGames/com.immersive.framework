@@ -1,12 +1,28 @@
-# Camera — Canonical Rig Authoring Flow
+# Camera — Canonical Authoring and Runtime Flow
 
-Status: **canonical after C9B**
+Status: **canonical after C9N**
 
 ```text
-PlayerComposer or explicit transforms
--> CameraRigComposer resolves Follow / LookAt
--> CinemachineRigMaterializer
--> Unity Camera + CinemachineBrain + CinemachineCamera
+CameraRigRecipe
+-> CameraRigComposer
+-> Validate / Apply / Rebuild
+-> virtual CinemachineCamera
+
+explicit Unity Camera + CinemachineBrain
+-> CameraOutputSessionBinding
+-> CameraOutputContext + CameraOutputRigApplicator + CameraOutputSession
+
+Route / Activity / Local Player request binding
+-> typed publisher
+-> CameraOutputSession
+-> selected virtual CinemachineCamera
 ```
 
-This is authoring and materialization only. No runtime camera authority exists in C9B. Future cuts introduce CameraRequest and CameraOutputContext; neither is present yet.
+`CameraRigComposer` owns virtual-rig materialization only. The separate
+`CameraOutputSessionBinding` owns one physical output. `CameraOutputContext`
+is the single winner-selection authority; the applicator only presents its
+winner through Cinemachine.
+
+Use explicit targets, output ids, scopes, request ids and tie-breakers. There
+is no `Camera.main` fallback, global manager or owner-controlled priority
+competition.

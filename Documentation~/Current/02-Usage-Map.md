@@ -1,14 +1,29 @@
 # 02 — Usage Map
 
-## Camera rig authoring
+## Camera rig and output authoring
 
 | Need | Current surface |
 |---|---|
-| Reusable rig presentation intent | CameraRigRecipe |
-| Materialize a local Cinemachine rig | CameraRigComposer -> Validate -> Apply/Rebuild |
-| Follow an explicit Player target | assign PlayerComposer as target source |
-| Use non-Player targets | explicit Follow and LookAt transforms |
+| Reusable presentation intent | `CameraRigRecipe` |
+| Materialize a virtual rig | `CameraRigComposer` → Validate → Apply/Rebuild |
+| Physical output | `CameraOutputSessionBinding` with explicit Unity Camera and `CinemachineBrain` |
+| Route presentation | `RouteCameraRequestBinding` |
+| Activity override | `ActivityCameraRequestBinding` |
+| Local Player presentation | `LocalPlayerCameraRequestBinding` plus explicit eligibility |
+| Inspect arbitration | binding diagnostics and `CameraOutputContext` snapshot |
 
-The Composer only resolves targets and materializes a rig. There is no current Route, Activity or Player runtime camera publisher, no CameraRequest, and no CameraOutputContext.
+`CameraRigComposer` materializes only a `CinemachineCamera` and explicit
+targets. It does not create an output and never chooses the active rig.
 
-Do not use camera enable/disable, priority competition, object-name lookup, Camera.main or a global manager as selection policy.
+```text
+Route / Activity / Local Player binding
+-> typed publisher
+-> CameraOutputSession
+-> CameraOutputContext
+-> CameraOutputRigApplicator
+-> materialized CinemachineCamera
+```
+
+Do not use Unity Camera enable/disable, Cinemachine priority competition,
+object-name lookup, `Camera.main` or a global manager as selection policy. See
+`00-Current-State.md` and `Camera-Delivery-Reconciliation.md`.
