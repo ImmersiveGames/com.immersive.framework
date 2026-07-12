@@ -1,90 +1,158 @@
 # 00 — Current State
 
-Status: **canonical Camera state after C9N; QA Player and FIRSTGAME validation remain open**
+Status: **canonical after C9 Camera closure and FIRSTGAME runtime/visual proof**  
+Last reconciled: **2026-07-12**  
 Decision: `ADR-PROD-0006-camera-requests-output-contexts.md`
 
-## Product and authoring surface
+For the active execution block, read `05-Execution-Status.md`.
+
+## Camera product and authoring surface
 
 ```text
 CameraRigRecipe
-  -> reusable Cinemachine presentation intent
+  reusable Cinemachine presentation intent
+
 CameraRigComposer
-  -> designer-facing rig instance; Validate / Apply / Rebuild
-  -> materializes one virtual CinemachineCamera only
+  designer-facing rig instance
+  Validate / Apply / Rebuild
+  materializes one virtual CinemachineCamera and its local pipeline
+
 CameraOutputSessionBinding
-  -> explicit Unity Camera + CinemachineBrain physical output
+  explicit physical Unity Camera + CinemachineBrain output
+  owns one scoped CameraOutputSession
 ```
 
-`CameraRigComposer` does not create a Unity Camera, `CinemachineBrain`,
-`AudioListener`, or `CameraOutputSessionBinding`. The Composer Inspector exposes
-designer intent first and technical materialization plus diagnostics under
-Advanced/Debug.
+`CameraRigComposer` does not create or own the physical output. It does not
+select the active rig and does not operate gameplay.
+
+`Follow Offset` is designer-authored through `CameraRigRecipe` and
+`CameraRigComposer`. Apply/Rebuild writes it idempotently to the local
+`CinemachineFollow`.
 
 ## Runtime authority
 
-For one explicit `CameraOutputId`, `CameraOutputSessionBinding` creates one
-scoped chain:
+For one explicit `CameraOutputId`, the physical output creates:
 
 ```text
-CameraOutputContext -> CameraOutputRigApplicator -> CameraOutputSession
+CameraOutputContext
+  -> CameraOutputRigApplicator
+  -> CameraOutputSession
 ```
 
 `CameraOutputContext` is the sole winner-selection authority. It admits typed
-`CameraRequest` values, rejects invalid/output-mismatched/ambiguous requests,
-selects the highest precedence request (ordinal tie-breaker for equal
-precedence), captures a snapshot, and restores the next winner on release.
-`CameraOutputSession` applies each accepted mutation transactionally; failed
-presentation is rolled back explicitly. `CameraOutputRigApplicator` only
-enables/disables the winning materialized `CinemachineCamera`; it does not
-select winners or toggle the physical Unity Camera.
+requests, rejects invalid or ambiguous requests, selects the highest-precedence
+request, captures diagnostics and restores the next valid request on release.
 
-## Request sources, precedence and lifetime
+`CameraOutputSession` coordinates arbitration and presentation transactionally.
+`CameraOutputRigApplicator` presents the selected materialized
+`CinemachineCamera`; it does not choose the winner and does not toggle the
+physical Unity Camera as policy.
 
-| Source | Boundary | Owner / lifetime |
-|---|---|---|
-| Route | `RouteCameraRequestBinding` on `RouteContentBehaviour` callbacks | `Route` / `Route` |
-| Activity | `ActivityCameraRequestBinding` on `ActivityContentBehaviour` callbacks | `Activity` / `Activity` |
-| Local Player | `LocalPlayerCameraRequestBinding.SetLocalPlayerEligible(bool)` | `LocalPlayer` / `LocalPlayerEligibility` |
+## Persistent output and request sources
 
-All requests require explicit output, request id, scope/owner, rig, target,
-precedence and deterministic tie-breaker. Route and Activity bind the assigned
-lifecycle asset by reference; names are diagnostic-only. A Local Player uses
-`PlayerComposer`'s explicit Player Slot, CameraTarget and LookAtTarget; it
-never discovers locality through a name, tag, `PlayerInput` index or lookup.
+The canonical single-player output is session-owned and authored in
+`UIGlobal`.
 
-Higher precedence wins; equal precedence requires distinct tie-breakers.
-Release is idempotent and restores the next admitted request. No owner controls
-`CinemachineCamera` priority as independent arbitration.
+Framework Core injects that output into Route, Activity and Local Player
+consumers. No consumer serializes a cross-scene output reference and no runtime
+lookup by name, `Camera.main`, singleton or service locator is used.
+
+| Source | Product/runtime boundary | Lifetime behavior | Default precedence |
+|---|---|---|---:|
+| Local Player | `LocalPlayerCameraRequestBinding` | publishes while explicitly eligible | 50 |
+| Activity | `ActivityCameraOverrideBinding` | lifecycle entry makes it available; explicit request/release | 100 |
+| Route | `RouteCameraOverrideBinding` | lifecycle entry makes it available; explicit request/release | 200 |
+| Session | `SessionCameraOverrideBinding` in `UIGlobal` | transition-scoped explicit request/release | 300 |
+
+Route and Activity lifecycle entry do **not** publish a camera request.
+`RequestOverride()` publishes the temporary override and `ReleaseOverride()`
+restores the next valid request.
+
+The Session override is persistent but is not the normal gameplay winner. The
+transition orchestrator requests it only while the transition surface covers
+the scene change and releases it before destination content is revealed.
 
 ## Diagnostics and failure policy
 
-`CameraOutputSessionBinding` and all three request bindings retain Inspector
-status and diagnostic text and emit `[FRAMEWORK_CAMERA]` diagnostics when
-enabled. Missing configuration, lifecycle mismatch, arbitration ambiguity and
-transaction rollback fail explicitly. There is no `Camera.main` fallback,
-global camera manager, service locator or automatic output discovery.
+The output binding and all request/override bindings retain Inspector status and
+diagnostic text and emit `[FRAMEWORK_CAMERA]` evidence when diagnostics are
+enabled.
 
-## Evidence state
+Required invalid configuration fails explicitly. Release is idempotent.
+Presentation failure is diagnostic and transactional. There is no silent
+fallback, global camera manager, owner-controlled Cinemachine priority
+competition or automatic physical output discovery.
 
-QAFramework contains C9C–C9G technical fixtures, the C9I canonical
-Route/Activity fixture, the C9L Route → Local Player → Activity fixture, and
-the post-C9N teardown fixture. C9I records eight closed lifecycle cases. The
-teardown evidence records Activity release before content disable, Route
-release, and QA Hub return with `blockingIssues='0'`. C9L passed its ten-case
-Player arbitration smoke, including the explicit invalid Player block,
-precedence/restoration chain and Hub return with `blockingIssues='0'`. A hygiene
-rerun remains pending only to confirm removal of unrelated C9O/C9M logs.
+## Closed evidence
 
-FIRSTGAME serializes one `camera.output.main` output, three virtual rigs, and
-Route, Activity and Local Player bindings in `FG_Gameplay.unity`. Its C9M
-validation report is still unfilled: this is verified configuration, not a
-recorded FIRSTGAME Play Mode closure after C9N.
+### Package
+
+- Typed request/output contracts are implemented.
+- Single-output arbitration and restoration are implemented.
+- Winner application is transactional.
+- Route, Activity, Local Player and Session sources are implemented.
+- Session-scoped output injection is implemented.
+- Follow framing is designer-authored and materialized idempotently.
+- Superseded camera Director, activation and automatic lifecycle-publication
+  paths remain removed.
+
+### QAFramework
+
+- C9I lifecycle evidence closed eight cases.
+- C9L Player arbitration evidence closed ten cases.
+- C9O proved Activity teardown before Route unload.
+- C9Q Follow Pipeline passed four cases:
+  `camera-materialized`, `follow-pipeline-materialized`, `target-assigned`,
+  `idempotent`.
+- C9R Camera Override Authority passed eleven cases, including explicit
+  request/release, precedence, restoration and lifecycle cleanup.
+
+### FIRSTGAME
+
+FIRSTGAME now proves the real consumer shape:
+
+```text
+one persistent camera.output.main in FG_UIGlobal
+one physical Unity Camera
+one CinemachineBrain
+one SessionCameraOverrideBinding
+Route / Activity / Local Player consumers injected at runtime
+Player 50 < Activity 100 < Route 200 < Session 300
+Session requested and released during Route transition
+explicit Activity, Route and Session override/release restoration
+```
+
+The final manual visual inspection was accepted: the Player camera follows the
+Player, the authored framings are distinguishable, and override/release changes
+the effective camera as expected.
 
 ## Current limitations
 
-- No multi-output registry, output creation wizard, split-screen setup or
-  online local/remote-player authority exists.
-- `eligibleOnEnable` is a single-player convenience policy; real eligibility
-  authority must call `SetLocalPlayerEligible`.
-- C9M FIRSTGAME manual validation must be recorded after C9N. See
-  `Camera-Delivery-Reconciliation.md`.
+- The supported product baseline is one explicit output.
+- Multi-output authoring, split-screen setup and online local/remote eligibility
+  remain future product work.
+- `eligibleOnEnable` is a single-player convenience; a real locality authority
+  must call `SetLocalPlayerEligible`.
+- Session camera presentation is transition-scoped; it is not a gameplay camera
+  manager.
+
+## Current execution boundary
+
+Camera C9 is closed.
+
+The selected continuation is G1, redefined as a **consumer Route loop proof**.
+The framework does not own objectives, win conditions, combat, mission state or
+other gameplay rules.
+
+A valid framework loop may be:
+
+```text
+Bootstrap
+-> Menu Route
+-> Gameplay Route
+-> Ending Route or Menu Route
+-> controlled return/re-entry
+```
+
+Gameplay objectives, interactions and resettable game state may be added by
+FIRSTGAME, but they are not mandatory framework acceptance criteria.
