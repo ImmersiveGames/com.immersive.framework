@@ -16,6 +16,7 @@ namespace Immersive.Framework.Editor.CameraAuthoring
         private SerializedProperty explicitLookAtTarget;
         private SerializedProperty followRequirement;
         private SerializedProperty lookAtRequirement;
+        private SerializedProperty followOffset;
         private SerializedProperty cinemachineCamera;
         private SerializedProperty createCinemachineCameraIfMissing;
         private SerializedProperty cinemachineCameraObjectName;
@@ -47,6 +48,8 @@ namespace Immersive.Framework.Editor.CameraAuthoring
                 serializedObject.FindProperty("followRequirement");
             lookAtRequirement =
                 serializedObject.FindProperty("lookAtRequirement");
+            followOffset =
+                serializedObject.FindProperty("followOffset");
             cinemachineCamera =
                 serializedObject.FindProperty("cinemachineCamera");
             createCinemachineCameraIfMissing =
@@ -102,6 +105,7 @@ namespace Immersive.Framework.Editor.CameraAuthoring
             EditorGUILayout.PropertyField(explicitLookAtTarget);
             EditorGUILayout.PropertyField(followRequirement);
             EditorGUILayout.PropertyField(lookAtRequirement);
+            EditorGUILayout.PropertyField(followOffset);
 
             using (new EditorGUILayout.HorizontalScope())
             {

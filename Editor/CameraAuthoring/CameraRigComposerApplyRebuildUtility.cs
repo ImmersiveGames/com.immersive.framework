@@ -153,6 +153,7 @@ namespace Immersive.Framework.Editor.CameraAuthoring
                     CreateCinemachineCameraIfMissing =
                         composer.CreateCinemachineCameraIfMissing,
                     CreateCinemachineFollowIfMissing = true,
+                    FollowOffset = composer.FollowOffset,
                     UseUndo = useUndo,
                     CinemachineCameraObjectName =
                         composer.CinemachineCameraObjectName

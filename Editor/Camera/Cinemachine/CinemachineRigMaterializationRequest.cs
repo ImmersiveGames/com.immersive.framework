@@ -40,6 +40,9 @@ namespace Immersive.Framework.Editor.Camera.Cinemachine
         /// </summary>
         public bool CreateCinemachineFollowIfMissing { get; set; } = true;
 
+        public Vector3 FollowOffset { get; set; } =
+            new Vector3(0f, 5f, -8f);
+
         public bool UseUndo { get; set; } = true;
 
         public string UnityCameraObjectName { get; set; } = "Unity Camera";

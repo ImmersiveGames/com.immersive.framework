@@ -28,6 +28,7 @@ namespace Immersive.Framework.CameraAuthoring
         [SerializeField] private Transform explicitLookAtTarget;
         [SerializeField] private CameraTargetRequirement followRequirement = CameraTargetRequirement.Required;
         [SerializeField] private CameraTargetRequirement lookAtRequirement = CameraTargetRequirement.Optional;
+        [SerializeField] private Vector3 followOffset = new Vector3(0f, 5f, -8f);
 
         [Header("Advanced / Technical Materialization")]
         [SerializeField] private CinemachineCamera cinemachineCamera;
@@ -51,6 +52,7 @@ namespace Immersive.Framework.CameraAuthoring
         public Transform ExplicitLookAtTarget => explicitLookAtTarget;
         public CameraTargetRequirement FollowRequirement => followRequirement;
         public CameraTargetRequirement LookAtRequirement => lookAtRequirement;
+        public Vector3 FollowOffset => followOffset;
         public CinemachineCamera CinemachineCamera => cinemachineCamera;
         public bool CreateCinemachineCameraIfMissing => createCinemachineCameraIfMissing;
         public string CinemachineCameraObjectName =>
@@ -221,6 +223,7 @@ namespace Immersive.Framework.CameraAuthoring
 
             followRequirement = recipe.FollowRequirement;
             lookAtRequirement = recipe.LookAtRequirement;
+            followOffset = recipe.FollowOffset;
             createCinemachineCameraIfMissing =
                 recipe.CreateCinemachineCameraIfMissing;
             cinemachineCameraObjectName =

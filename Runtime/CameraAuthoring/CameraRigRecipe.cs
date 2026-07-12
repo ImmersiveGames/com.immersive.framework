@@ -22,6 +22,8 @@ namespace Immersive.Framework.CameraAuthoring
             CameraTargetRequirement.Required;
         [SerializeField] private CameraTargetRequirement lookAtRequirement =
             CameraTargetRequirement.Optional;
+        [SerializeField] private Vector3 followOffset =
+            new Vector3(0f, 5f, -8f);
 
         [Header("Rig Materialization Defaults")]
         [SerializeField] private bool createCinemachineCameraIfMissing = true;
@@ -37,6 +39,7 @@ namespace Immersive.Framework.CameraAuthoring
             followRequirement;
         public CameraTargetRequirement LookAtRequirement =>
             lookAtRequirement;
+        public Vector3 FollowOffset => followOffset;
         public bool CreateCinemachineCameraIfMissing =>
             createCinemachineCameraIfMissing;
         public string CinemachineCameraObjectName =>

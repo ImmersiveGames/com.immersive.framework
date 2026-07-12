@@ -99,6 +99,11 @@ namespace Immersive.Framework.Editor.Camera.Cinemachine
                 return report;
             }
 
+            ApplyFollowSettings(
+                cinemachineFollow,
+                request,
+                report);
+
             ApplyTargets(cinemachineCamera, request, report);
 
             if (unityCamera != null)
@@ -160,6 +165,27 @@ namespace Immersive.Framework.Editor.Camera.Cinemachine
 
             report.MarkCreated("cinemachine-follow");
             return createdFollow;
+        }
+
+        private static void ApplyFollowSettings(
+            CinemachineFollow cinemachineFollow,
+            CinemachineRigMaterializationRequest request,
+            CinemachineRigMaterializationReport report)
+        {
+            if (cinemachineFollow == null)
+            {
+                return;
+            }
+
+            if (cinemachineFollow.FollowOffset != request.FollowOffset)
+            {
+                cinemachineFollow.FollowOffset = request.FollowOffset;
+                report.MarkRepaired("cinemachine-follow:follow-offset");
+            }
+            else
+            {
+                report.MarkAlreadyValid("cinemachine-follow:follow-offset");
+            }
         }
 
         private static UnityEngine.Camera ResolveUnityCamera(
