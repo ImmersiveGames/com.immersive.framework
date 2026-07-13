@@ -1,13 +1,13 @@
-using UnityEngine;
 using Immersive.Framework.ApiStatus;
+using Immersive.Framework.PlayerParticipation;
 using Immersive.Framework.Transition;
+using UnityEngine;
 
 namespace Immersive.Framework.Authoring
 {
     /// <summary>
-    /// API status: Experimental. Public authoring asset retained for the baseline before F1/F4 identity and activity-state hardening.
-    /// Public authoring asset for a gameplay activity.
-    /// This first cut only identifies the activity; content, actors, input, camera, save and pause are added later.
+    /// API status: Experimental. Public authoring asset for a gameplay Activity.
+    /// Activity participation intent is explicit through separate Projection and Requirements Profiles.
     /// </summary>
     [CreateAssetMenu(
         fileName = "Activity",
@@ -24,6 +24,14 @@ namespace Immersive.Framework.Authoring
         [TextArea(2, 4)]
         [Tooltip("Optional authoring note for the activity. This has no runtime behavior yet.")]
         private string description = string.Empty;
+
+        [SerializeField]
+        [Tooltip("Mandatory reusable Profile selecting which Session Player Slots this Activity projects. Null is invalid and never means a permissive default.")]
+        private ActivityParticipationProjectionProfile playerParticipationProjectionProfile;
+
+        [SerializeField]
+        [Tooltip("Mandatory reusable Profile defining the readiness level required from projected Player Slots. Activities with no Players use an explicit None Profile.")]
+        private PlayerParticipationRequirementsProfile playerParticipationRequirementsProfile;
 
         [SerializeField]
         [Tooltip("Optional Activity Content Profile. Declares Activity-owned scenes for composition and release by Activity operations.")]
@@ -51,6 +59,30 @@ namespace Immersive.Framework.Authoring
         }
 
         public string Description => description ?? string.Empty;
+
+        public ActivityParticipationProjectionProfile PlayerParticipationProjectionProfile =>
+            playerParticipationProjectionProfile;
+
+        public PlayerParticipationRequirementsProfile PlayerParticipationRequirementsProfile =>
+            playerParticipationRequirementsProfile;
+
+        public bool HasPlayerParticipationConfiguration =>
+            playerParticipationProjectionProfile != null &&
+            playerParticipationRequirementsProfile != null;
+
+        public bool TryGetPlayerParticipationProjectionDescriptor(
+            out ActivityParticipationProjectionDescriptor descriptor,
+            out string issue)
+        {
+            if (playerParticipationProjectionProfile == null)
+            {
+                descriptor = default;
+                issue = $"Activity '{ActivityName}' requires an explicit Activity Participation Projection Profile.";
+                return false;
+            }
+
+            return playerParticipationProjectionProfile.TryCreateDescriptor(out descriptor, out issue);
+        }
 
         public ActivityContentProfileAsset ActivityContentProfile => activityContentProfile;
 
