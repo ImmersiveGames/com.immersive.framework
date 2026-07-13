@@ -1,8 +1,10 @@
 using Immersive.Framework.Authoring;
 using Immersive.Framework.Bootstrap;
+using Immersive.Framework.Editor.Editor.PlayerParticipation;
 using Immersive.Framework.Editor.Editor.Validation;
 using UnityEditor;
 using UnityEngine;
+
 namespace Immersive.Framework.Editor.Editor.Settings
 {
     internal static class ImmersiveFrameworkSettingsProvider
@@ -31,7 +33,10 @@ namespace Immersive.Framework.Editor.Editor.Settings
                     "Logging Config",
                     "Namespace",
                     "Verbose",
-                    "Minimum Level"
+                    "Minimum Level",
+                    "Player Slot",
+                    "Player Participation",
+                    "Model Readiness"
                 }
             };
         }
@@ -111,14 +116,16 @@ namespace Immersive.Framework.Editor.Editor.Settings
         {
             EditorGUILayout.LabelField("Model Readiness", EditorStyles.boldLabel);
             EditorGUILayout.HelpBox(
-                "Runs the F58 Editor-only readiness check for the minimum 1.0 authoring model. The check reports issues only; it does not create assets, modify settings or apply fallback.",
+                "Runs the Editor-only readiness check for the minimum 1.0 authoring model, including ordered Local Player Slots and Player participation Profiles. The check reports issues only; it does not create assets, modify settings or apply fallback.",
                 MessageType.None);
 
             using (new EditorGUILayout.HorizontalScope())
             {
                 if (GUILayout.Button("Run Model Readiness Check"))
                 {
-                    _lastModelReadinessReport = FrameworkAuthoringModelReadinessValidator.ValidateProjectReadiness(settings, true);
+                    _lastModelReadinessReport =
+                        FrameworkAuthoringModelReadinessValidator.ValidateProjectReadiness(settings, true);
+                    AppendPlayerParticipationReadiness(settings, _lastModelReadinessReport);
                     FrameworkAuthoringValidationGui.LogReport("Model Readiness", _lastModelReadinessReport);
                 }
 
@@ -133,6 +140,28 @@ namespace Immersive.Framework.Editor.Editor.Settings
 
             FrameworkAuthoringValidationGui.DrawSummary(_lastModelReadinessReport);
             FrameworkAuthoringValidationGui.DrawIssues(_lastModelReadinessReport, false);
+        }
+
+        private static void AppendPlayerParticipationReadiness(
+            ImmersiveFrameworkSettingsAsset settings,
+            FrameworkAuthoringValidationReport report)
+        {
+            if (settings == null || report == null || settings.ActiveGameApplication == null)
+            {
+                return;
+            }
+
+            GameApplicationAsset gameApplication = settings.ActiveGameApplication;
+            report.AddRange(
+                PlayerParticipationAuthoringValidator.ValidateGameApplication(
+                    gameApplication,
+                    false));
+            report.AddRange(
+                PlayerParticipationAuthoringValidator.ValidateProjectProfiles(
+                    gameApplication.ValidationMode));
+            report.AddInfo(
+                $"P3C Player participation readiness aggregated. totalIssues='{report.TotalIssueCount}' blockingIssues='{report.ErrorCount}' warnings='{report.WarningCount}' optionalSkips='{report.OptionalSkipCount}'.",
+                gameApplication);
         }
 
         private static void DrawLoggingSettings(SerializedProperty loggingConfig)
@@ -196,7 +225,6 @@ namespace Immersive.Framework.Editor.Editor.Settings
             }
         }
 
-
         private static void DrawConfigurationFiles(ImmersiveFrameworkSettingsAsset settings, Object loggingConfig)
         {
             EditorGUILayout.LabelField("Configuration Files", EditorStyles.boldLabel);
@@ -228,7 +256,7 @@ namespace Immersive.Framework.Editor.Editor.Settings
         {
             EditorGUILayout.LabelField("Current Scope", EditorStyles.boldLabel);
             EditorGUILayout.HelpBox(
-                "This settings page currently assigns the active Game Application, controls Editor Play Mode startup, configures framework logging, and previews boot validation. Activity, Actor, Input, Camera, Save, and Pooling are intentionally not configured here yet.",
+                "This settings page assigns the active Game Application, controls Editor Play Mode startup, configures framework logging, previews boot validation, and runs Model Readiness for ordered Local Player Slots and Player participation Profiles. Mutable join, selection, materialization and occupancy remain outside Project Settings.",
                 MessageType.None);
         }
     }

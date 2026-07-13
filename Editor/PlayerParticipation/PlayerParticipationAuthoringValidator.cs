@@ -17,6 +17,18 @@ namespace Immersive.Framework.Editor.Editor.PlayerParticipation
         internal static FrameworkAuthoringValidationReport ValidateGameApplication(
             GameApplicationAsset gameApplication)
         {
+            return ValidateGameApplication(gameApplication, true);
+        }
+
+        /// <summary>
+        /// Validates ordered Game/Application participation configuration.
+        /// Model Readiness can skip repeated Profile detail messages because
+        /// project-wide Profile validation is appended separately.
+        /// </summary>
+        internal static FrameworkAuthoringValidationReport ValidateGameApplication(
+            GameApplicationAsset gameApplication,
+            bool includeConfiguredProfileValidation)
+        {
             FrameworkValidationMode validationMode = gameApplication != null
                 ? gameApplication.ValidationMode
                 : FrameworkValidationMode.Standard;
@@ -61,12 +73,20 @@ namespace Immersive.Framework.Editor.Editor.PlayerParticipation
 
                 configuredProfileIndices.Add(profile, index);
 
-                FrameworkAuthoringValidationReport profileReport =
-                    ValidatePlayerSlotProfile(profile, false, validationMode);
-                report.AddRange(profileReport);
-
-                if (!profile.TryGetPlayerSlotId(out PlayerSlotId playerSlotId, out _))
+                if (includeConfiguredProfileValidation)
                 {
+                    FrameworkAuthoringValidationReport profileReport =
+                        ValidatePlayerSlotProfile(profile, false, validationMode);
+                    report.AddRange(profileReport);
+                }
+
+                if (!profile.TryGetPlayerSlotId(out PlayerSlotId playerSlotId, out string identityIssue))
+                {
+                    if (!includeConfiguredProfileValidation)
+                    {
+                        report.AddError(identityIssue, profile);
+                    }
+
                     continue;
                 }
 
