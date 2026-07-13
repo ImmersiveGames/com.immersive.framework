@@ -5,6 +5,7 @@ using Immersive.Framework.Authoring;
 using Immersive.Framework.Diagnostics;
 using Immersive.Framework.GameFlow;
 using Immersive.Framework.RouteLifecycle;
+using Immersive.Framework.PlayerParticipation;
 using UnityEngine;
 using Immersive.Framework.ApiStatus;
 using Immersive.Logging.Records;
@@ -46,6 +47,26 @@ namespace Immersive.Framework.Bootstrap
                 }
 
                 var runtimeHost = FrameworkRuntimeHost.Create(result.GameApplication);
+                PlayerParticipationRuntimeHostModule.Attach(
+                    runtimeHost,
+                    result.GameApplication,
+                    "ImmersiveFrameworkBootstrap",
+                    "session-start",
+                    out PlayerParticipationOperationResult playerParticipationInitialization);
+
+                if (!playerParticipationInitialization.Succeeded)
+                {
+                    logger.Error(
+                        "Player participation Session runtime initialization failed.",
+                        BuildPlayerParticipationRuntimeFields(playerParticipationInitialization));
+                    UnityEngine.Object.Destroy(runtimeHost.gameObject);
+                    return;
+                }
+
+                logger.Info(
+                    "Player participation Session runtime initialized.",
+                    BuildPlayerParticipationRuntimeFields(playerParticipationInitialization));
+
                 var gameFlowResult = await runtimeHost.StartAsync();
                 if (!gameFlowResult.Started)
                 {
@@ -95,6 +116,9 @@ namespace Immersive.Framework.Bootstrap
             RouteLifecycleStartResult routeLifecycleResult = gameFlowResult.RouteLifecycleResult;
             ActivityFlowStartResult activityFlowResult = routeLifecycleResult.ActivityFlowResult;
             ActivityContentApplyResult activityContentResult = activityFlowResult.ActivityContentResult;
+            PlayerParticipationSnapshot playerParticipation = null;
+            bool hasPlayerParticipation = runtimeHost != null &&
+                runtimeHost.TryGetPlayerParticipationSnapshot(out playerParticipation);
 
             return LogFields.Of(
                 LogFields.Field("gameApplication", result.GameApplication != null ? result.GameApplication.ApplicationName : null),
@@ -124,6 +148,12 @@ namespace Immersive.Framework.Bootstrap
                 LogFields.Field("contentAnchorInvalid", routeLifecycleResult.ContentAnchorDiscoveryResult.InvalidAuthoringCount),
                 LogFields.Field("contentAnchorRouteMismatch", routeLifecycleResult.ContentAnchorDiscoveryResult.SkippedRouteMismatchCount),
                 LogFields.Field("contentAnchorBindings", runtimeHost != null ? runtimeHost.ContentAnchorBindingCount : 0),
+                LogFields.Field("playerParticipationInitialized", hasPlayerParticipation),
+                LogFields.Field("playerParticipationContext", hasPlayerParticipation ? playerParticipation.ContextId : string.Empty),
+                LogFields.Field("playerParticipationRevision", hasPlayerParticipation ? playerParticipation.Revision : 0),
+                LogFields.Field("playerParticipationSlots", hasPlayerParticipation ? playerParticipation.ConfiguredSlotCount : 0),
+                LogFields.Field("playerParticipationCapacity", hasPlayerParticipation ? playerParticipation.DynamicCapacity : 0),
+                LogFields.Field("playerParticipationJoiningOpen", hasPlayerParticipation && playerParticipation.JoiningOpen),
                 LogFields.Field("activityContentExecution", activityFlowResult.ActivityContentExecutionResult.DiagnosticStatus),
                 LogFields.Field("activityContentExecutionParticipantSource", activityFlowResult.ActivityContentExecutionResult.ParticipantSourceStatus),
                 LogFields.Field("activityContentExecutionParticipantSourceIssues", activityFlowResult.ActivityContentExecutionResult.ParticipantSourceIssueCount),
@@ -164,6 +194,20 @@ namespace Immersive.Framework.Bootstrap
                 LogFields.Field("activitySceneLedgerLoaded", activityFlowResult.ActivitySceneLedgerSnapshot.LoadedCount),
                 LogFields.Field("activitySceneLedgerReleased", activityFlowResult.ActivitySceneLedgerSnapshot.ReleasedCount),
                 LogFields.Field("activitySceneLedgerStale", activityFlowResult.ActivitySceneLedgerSnapshot.StaleCount));
+        }
+
+        private static LogField[] BuildPlayerParticipationRuntimeFields(
+            PlayerParticipationOperationResult initializationResult)
+        {
+            PlayerParticipationSnapshot snapshot = initializationResult?.Snapshot;
+            return LogFields.Of(
+                LogFields.Field("operation", initializationResult != null ? initializationResult.Operation : string.Empty),
+                LogFields.Field("status", initializationResult != null ? initializationResult.Status.ToString() : "Missing"),
+                LogFields.Field("configuredSlots", snapshot != null ? snapshot.ConfiguredSlotCount : 0),
+                LogFields.Field("dynamicCapacity", snapshot != null ? snapshot.DynamicCapacity : 0),
+                LogFields.Field("joiningOpen", snapshot != null && snapshot.JoiningOpen),
+                LogFields.Field("revision", snapshot != null ? snapshot.Revision : 0),
+                LogFields.Field("message", initializationResult != null ? initializationResult.Message : "Initialization result is missing."));
         }
 
         private static string FormatDiagnosticValue(string value)
