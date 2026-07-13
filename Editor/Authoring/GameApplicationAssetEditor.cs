@@ -98,6 +98,7 @@ namespace Immersive.Framework.Editor.Editor.Authoring
             var gameApplication = (GameApplicationAsset)target;
             var report = FrameworkAuthoringValidator.ValidateGameApplication(gameApplication, true);
             report.AddRange(PlayerParticipationAuthoringValidator.ValidateGameApplication(gameApplication));
+            report.AddRange(PlayerParticipationAuthoringValidator.ValidateProjectProfiles(gameApplication.ValidationMode));
 
             EditorGUILayout.LabelField("Authoring Validation", EditorStyles.boldLabel);
             FrameworkAuthoringValidationGui.DrawSummary(report);

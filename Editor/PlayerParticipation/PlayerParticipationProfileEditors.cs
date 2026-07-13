@@ -1,0 +1,151 @@
+using Immersive.Framework.Editor.Editor.Validation;
+using Immersive.Framework.PlayerParticipation;
+using UnityEditor;
+using UnityEngine;
+
+namespace Immersive.Framework.Editor.Editor.PlayerParticipation
+{
+    [CustomEditor(typeof(PlayerSlotProfile))]
+    internal sealed class PlayerSlotProfileEditor : UnityEditor.Editor
+    {
+        private SerializedProperty _playerSlotId;
+        private SerializedProperty _displayName;
+        private SerializedProperty _description;
+        private SerializedProperty _accentColor;
+        private SerializedProperty _icon;
+        private SerializedProperty _displayOrder;
+        private bool _showAdvanced;
+
+        private void OnEnable()
+        {
+            _playerSlotId = serializedObject.FindProperty("playerSlotId");
+            _displayName = serializedObject.FindProperty("displayName");
+            _description = serializedObject.FindProperty("description");
+            _accentColor = serializedObject.FindProperty("accentColor");
+            _icon = serializedObject.FindProperty("icon");
+            _displayOrder = serializedObject.FindProperty("displayOrder");
+        }
+
+        public override void OnInspectorGUI()
+        {
+            serializedObject.Update();
+
+            EditorGUILayout.LabelField("Player Slot Profile", EditorStyles.boldLabel);
+            EditorGUILayout.HelpBox(
+                "Defines one immutable local participation seat. Runtime join, selection, occupancy and device state never live in this asset.",
+                MessageType.Info);
+
+            EditorGUILayout.Space(6);
+            EditorGUILayout.LabelField("Identity", EditorStyles.boldLabel);
+            EditorGUILayout.PropertyField(_playerSlotId, new GUIContent("Player Slot Id"));
+            EditorGUILayout.PropertyField(_displayName, new GUIContent("Display Name"));
+            EditorGUILayout.PropertyField(_description, new GUIContent("Description"));
+
+            EditorGUILayout.Space(6);
+            EditorGUILayout.LabelField("Presentation", EditorStyles.boldLabel);
+            EditorGUILayout.PropertyField(_accentColor, new GUIContent("Accent Color"));
+            EditorGUILayout.PropertyField(_icon, new GUIContent("Icon"));
+            EditorGUILayout.PropertyField(_displayOrder, new GUIContent("Display Order"));
+            EditorGUILayout.HelpBox(
+                "Display Order is presentation metadata. Game Application array order controls default local Slot allocation.",
+                MessageType.None);
+
+            serializedObject.ApplyModifiedProperties();
+
+            EditorGUILayout.Space(6);
+            _showAdvanced = EditorGUILayout.Foldout(_showAdvanced, "Advanced / Debug", true);
+            if (_showAdvanced)
+            {
+                DrawAdvanced((PlayerSlotProfile)target);
+            }
+
+            EditorGUILayout.Space(6);
+            DrawValidation((PlayerSlotProfile)target);
+        }
+
+        private static void DrawAdvanced(PlayerSlotProfile profile)
+        {
+            using (new EditorGUI.DisabledScope(true))
+            {
+                EditorGUILayout.TextField("Asset Path", AssetDatabase.GetAssetPath(profile));
+                EditorGUILayout.TextField("Normalized Identity", profile.PlayerSlotIdText);
+
+                string typedIdentity = profile.TryGetPlayerSlotId(out var playerSlotId, out string issue)
+                    ? playerSlotId.ToString()
+                    : $"Invalid: {issue}";
+                EditorGUILayout.TextField("Typed PlayerSlotId", typedIdentity);
+            }
+        }
+
+        private static void DrawValidation(PlayerSlotProfile profile)
+        {
+            FrameworkAuthoringValidationReport report =
+                PlayerParticipationAuthoringValidator.ValidatePlayerSlotProfile(profile, true);
+            EditorGUILayout.LabelField("Authoring Validation", EditorStyles.boldLabel);
+            FrameworkAuthoringValidationGui.DrawSummary(report);
+            FrameworkAuthoringValidationGui.DrawIssues(report, false);
+        }
+    }
+
+    [CustomEditor(typeof(PlayerParticipationRequirementsProfile))]
+    internal sealed class PlayerParticipationRequirementsProfileEditor : UnityEditor.Editor
+    {
+        private SerializedProperty _displayName;
+        private SerializedProperty _description;
+        private SerializedProperty _requirementLevel;
+        private bool _showAdvanced;
+
+        private void OnEnable()
+        {
+            _displayName = serializedObject.FindProperty("displayName");
+            _description = serializedObject.FindProperty("description");
+            _requirementLevel = serializedObject.FindProperty("requirementLevel");
+        }
+
+        public override void OnInspectorGUI()
+        {
+            serializedObject.Update();
+
+            EditorGUILayout.LabelField("Player Participation Requirements Profile", EditorStyles.boldLabel);
+            EditorGUILayout.HelpBox(
+                "Reusable immutable Activity admission policy. It declares the required participation level; it does not contain runtime readiness state.",
+                MessageType.Info);
+
+            EditorGUILayout.Space(6);
+            EditorGUILayout.LabelField("Designer", EditorStyles.boldLabel);
+            EditorGUILayout.PropertyField(_displayName, new GUIContent("Display Name"));
+            EditorGUILayout.PropertyField(_description, new GUIContent("Description"));
+
+            EditorGUILayout.Space(6);
+            EditorGUILayout.LabelField("Admission", EditorStyles.boldLabel);
+            EditorGUILayout.PropertyField(_requirementLevel, new GUIContent("Requirement Level"));
+            EditorGUILayout.HelpBox(
+                "The requirement is progressive: each level includes every preceding level. Activities that require no Players use an explicit None Profile; null never means None.",
+                MessageType.None);
+
+            serializedObject.ApplyModifiedProperties();
+
+            EditorGUILayout.Space(6);
+            _showAdvanced = EditorGUILayout.Foldout(_showAdvanced, "Advanced / Debug", true);
+            if (_showAdvanced)
+            {
+                var profile = (PlayerParticipationRequirementsProfile)target;
+                using (new EditorGUI.DisabledScope(true))
+                {
+                    EditorGUILayout.TextField("Asset Path", AssetDatabase.GetAssetPath(profile));
+                    EditorGUILayout.TextField("Effective Level", profile.RequirementLevel.ToString());
+                    EditorGUILayout.Toggle("Explicit None", profile.IsExplicitNone);
+                    EditorGUILayout.Toggle("Defined Enum Value", profile.HasDefinedRequirementLevel);
+                }
+            }
+
+            EditorGUILayout.Space(6);
+            FrameworkAuthoringValidationReport report =
+                PlayerParticipationAuthoringValidator.ValidateRequirementsProfile(
+                    (PlayerParticipationRequirementsProfile)target);
+            EditorGUILayout.LabelField("Authoring Validation", EditorStyles.boldLabel);
+            FrameworkAuthoringValidationGui.DrawSummary(report);
+            FrameworkAuthoringValidationGui.DrawIssues(report, false);
+        }
+    }
+}
