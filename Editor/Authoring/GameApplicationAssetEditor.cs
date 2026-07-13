@@ -1,7 +1,9 @@
 using Immersive.Framework.Authoring;
+using Immersive.Framework.Editor.Editor.PlayerParticipation;
 using Immersive.Framework.Editor.Editor.Settings;
 using Immersive.Framework.Editor.Editor.Validation;
 using UnityEditor;
+using UnityEditorInternal;
 using UnityEngine;
 
 namespace Immersive.Framework.Editor.Editor.Authoring
@@ -11,19 +13,40 @@ namespace Immersive.Framework.Editor.Editor.Authoring
     {
         private SerializedProperty _applicationName;
         private SerializedProperty _startupRoute;
+        private SerializedProperty _localPlayerSlots;
         private SerializedProperty _globalUiScenePolicy;
         private SerializedProperty _globalUiScenePath;
         private SerializedProperty _globalUiSceneName;
         private SerializedProperty _validationMode;
+        private ReorderableList _localPlayerSlotsList;
 
         private void OnEnable()
         {
             _applicationName = serializedObject.FindProperty("applicationName");
             _startupRoute = serializedObject.FindProperty("startupRoute");
+            _localPlayerSlots = serializedObject.FindProperty("localPlayerSlots");
             _globalUiScenePolicy = serializedObject.FindProperty("globalUiScenePolicy");
             _globalUiScenePath = serializedObject.FindProperty("globalUiScenePath");
             _globalUiSceneName = serializedObject.FindProperty("globalUiSceneName");
             _validationMode = serializedObject.FindProperty("validationMode");
+
+            _localPlayerSlotsList = new ReorderableList(
+                serializedObject,
+                _localPlayerSlots,
+                true,
+                true,
+                true,
+                true);
+            _localPlayerSlotsList.drawHeaderCallback = rect =>
+                EditorGUI.LabelField(rect, "Local Player Slots — Allocation Order");
+            _localPlayerSlotsList.elementHeight = EditorGUIUtility.singleLineHeight + 4f;
+            _localPlayerSlotsList.drawElementCallback = (rect, index, active, focused) =>
+            {
+                SerializedProperty element = _localPlayerSlots.GetArrayElementAtIndex(index);
+                rect.y += 2f;
+                rect.height = EditorGUIUtility.singleLineHeight;
+                EditorGUI.PropertyField(rect, element, new GUIContent($"Slot {index + 1}"));
+            };
         }
 
         public override void OnInspectorGUI()
@@ -46,6 +69,9 @@ namespace Immersive.Framework.Editor.Editor.Authoring
             DrawStartup();
 
             EditorGUILayout.Space(6);
+            DrawLocalPlayerParticipation();
+
+            EditorGUILayout.Space(6);
             DrawGlobalUiScene();
 
             EditorGUILayout.Space(6);
@@ -58,7 +84,7 @@ namespace Immersive.Framework.Editor.Editor.Authoring
             EditorGUILayout.Space(6);
             EditorGUILayout.LabelField("Current Scope", EditorStyles.boldLabel);
             EditorGUILayout.HelpBox(
-                "This asset controls application identity, project assignment, Startup Route, canonical UIGlobal scene, and validation mode. The Route still owns Primary Scene loading. UIGlobal is app/session UI only; it does not own Route, Activity or SceneLifecycle.",
+                "This asset controls application identity, project assignment, Startup Route, ordered Local Player Slots, canonical UIGlobal scene, and validation mode. The Route still owns Primary Scene loading. Player Slot Profiles declare immutable participation seats; mutable join and occupancy state does not live in this asset.",
                 MessageType.Info);
 
             serializedObject.ApplyModifiedProperties();
@@ -69,11 +95,40 @@ namespace Immersive.Framework.Editor.Editor.Authoring
 
         private void DrawAuthoringValidation()
         {
-            var report = FrameworkAuthoringValidator.ValidateGameApplication((GameApplicationAsset)target, true);
+            var gameApplication = (GameApplicationAsset)target;
+            var report = FrameworkAuthoringValidator.ValidateGameApplication(gameApplication, true);
+            report.AddRange(PlayerParticipationAuthoringValidator.ValidateGameApplication(gameApplication));
 
             EditorGUILayout.LabelField("Authoring Validation", EditorStyles.boldLabel);
             FrameworkAuthoringValidationGui.DrawSummary(report);
             FrameworkAuthoringValidationGui.DrawIssues(report, false);
+        }
+
+        private void DrawLocalPlayerParticipation()
+        {
+            EditorGUILayout.LabelField("Local Player Participation", EditorStyles.boldLabel);
+            EditorGUILayout.HelpBox(
+                "Add Player Slot Profiles in the exact order that local join must allocate them. The first eligible Available Slot in this list wins. Profile Display Order affects presentation only and never overrides this list.",
+                MessageType.Info);
+
+            if (_localPlayerSlotsList != null)
+            {
+                _localPlayerSlotsList.DoLayoutList();
+            }
+
+            int configuredCount = _localPlayerSlots != null ? _localPlayerSlots.arraySize : 0;
+            if (configuredCount == 0)
+            {
+                EditorGUILayout.HelpBox(
+                    "No Local Player Slots are configured. The framework will not invent Player 1 or any fallback Slot.",
+                    MessageType.Error);
+            }
+            else
+            {
+                EditorGUILayout.HelpBox(
+                    $"Configured local participation capacity: {configuredCount}. Runtime capacity and joined Player count remain separate state.",
+                    MessageType.None);
+            }
         }
 
         private void DrawGlobalUiScene()

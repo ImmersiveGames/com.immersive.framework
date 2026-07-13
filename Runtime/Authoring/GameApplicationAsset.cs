@@ -1,4 +1,7 @@
+using System;
+using System.Collections.Generic;
 using Immersive.Framework.ApiStatus;
+using Immersive.Framework.PlayerParticipation;
 using UnityEngine;
 
 namespace Immersive.Framework.Authoring
@@ -36,6 +39,10 @@ namespace Immersive.Framework.Authoring
         private RouteAsset startupRoute;
 
         [SerializeField]
+        [Tooltip("Ordered local Player participation seats. Array order is the canonical default allocation order; Profile Display Order is presentation metadata only.")]
+        private PlayerSlotProfile[] localPlayerSlots = Array.Empty<PlayerSlotProfile>();
+
+        [SerializeField]
         [Tooltip("Controls whether this Game Application uses a canonical app/session scoped UIGlobal scene. Required loads it additively after the Startup Route Primary Scene is prepared, persists its UI roots under the FrameworkRuntimeHost, and discovers Transition/Loading adapters from it.")]
         private GlobalUiScenePolicy globalUiScenePolicy = GlobalUiScenePolicy.NoneConfigured;
 
@@ -65,6 +72,29 @@ namespace Immersive.Framework.Authoring
         }
 
         public RouteAsset StartupRoute => startupRoute;
+
+        /// <summary>
+        /// Ordered immutable Slot Profile references used by the default
+        /// First Available By Configured Order allocation policy.
+        /// </summary>
+        public IReadOnlyList<PlayerSlotProfile> LocalPlayerSlots =>
+            localPlayerSlots ?? Array.Empty<PlayerSlotProfile>();
+
+        public int LocalPlayerSlotCount => localPlayerSlots != null ? localPlayerSlots.Length : 0;
+
+        public bool TryGetLocalPlayerSlot(int configuredIndex, out PlayerSlotProfile playerSlotProfile)
+        {
+            if (localPlayerSlots == null ||
+                configuredIndex < 0 ||
+                configuredIndex >= localPlayerSlots.Length)
+            {
+                playerSlotProfile = null;
+                return false;
+            }
+
+            playerSlotProfile = localPlayerSlots[configuredIndex];
+            return playerSlotProfile != null;
+        }
 
         public GlobalUiScenePolicy GlobalUiScenePolicyValue => globalUiScenePolicy;
 
