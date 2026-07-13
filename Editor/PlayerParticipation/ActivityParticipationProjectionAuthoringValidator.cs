@@ -1,6 +1,7 @@
 using Immersive.Framework.Authoring;
 using Immersive.Framework.Editor.Editor.Validation;
 using Immersive.Framework.PlayerParticipation;
+using UnityEditor;
 
 namespace Immersive.Framework.Editor.Editor.PlayerParticipation
 {
@@ -12,7 +13,88 @@ namespace Immersive.Framework.Editor.Editor.PlayerParticipation
     {
         internal static FrameworkAuthoringValidationReport ValidateActivity(ActivityAsset activity)
         {
-            var report = new FrameworkAuthoringValidationReport(FrameworkValidationMode.Standard);
+            return ValidateActivity(
+                activity,
+                FrameworkValidationMode.Standard,
+                includeReferencedProfileValidation: true);
+        }
+
+        internal static FrameworkAuthoringValidationReport ValidateProjectionProfile(
+            ActivityParticipationProjectionProfile profile)
+        {
+            return ValidateProjectionProfile(profile, FrameworkValidationMode.Standard);
+        }
+
+        internal static FrameworkAuthoringValidationReport ValidateProjectAssets(
+            FrameworkValidationMode validationMode)
+        {
+            var report = new FrameworkAuthoringValidationReport(validationMode);
+
+            string[] projectionGuids =
+                AssetDatabase.FindAssets("t:ActivityParticipationProjectionProfile");
+            for (int index = 0; index < projectionGuids.Length; index++)
+            {
+                string assetPath = AssetDatabase.GUIDToAssetPath(projectionGuids[index]);
+                ActivityParticipationProjectionProfile profile =
+                    AssetDatabase.LoadAssetAtPath<ActivityParticipationProjectionProfile>(assetPath);
+                if (profile == null)
+                {
+                    report.AddError(
+                        $"Activity Participation Projection Profile at '{assetPath}' could not be loaded.",
+                        null);
+                    continue;
+                }
+
+                report.AddRange(ValidateProjectionProfile(profile, validationMode));
+            }
+
+            string[] activityGuids = AssetDatabase.FindAssets("t:ActivityAsset");
+            for (int index = 0; index < activityGuids.Length; index++)
+            {
+                string assetPath = AssetDatabase.GUIDToAssetPath(activityGuids[index]);
+                ActivityAsset activity = AssetDatabase.LoadAssetAtPath<ActivityAsset>(assetPath);
+                if (activity == null)
+                {
+                    report.AddError($"Activity asset at '{assetPath}' could not be loaded.", null);
+                    continue;
+                }
+
+                report.AddRange(
+                    ValidateActivity(
+                        activity,
+                        validationMode,
+                        includeReferencedProfileValidation: false));
+            }
+
+            if (activityGuids.Length == 0)
+            {
+                report.AddOptionalSkip(
+                    "No Activity assets exist in the project. Activity Player participation authoring validation is skipped.",
+                    null);
+            }
+            else if (projectionGuids.Length == 0)
+            {
+                report.AddError(
+                    "No Activity Participation Projection Profiles exist. Every Activity requires an explicit Projection Profile; create the official Activity Projection Set.",
+                    null);
+            }
+
+            if (report.IsValid)
+            {
+                report.AddInfo(
+                    $"Activity participation project validation passed. activities='{activityGuids.Length}' projectionProfiles='{projectionGuids.Length}'.",
+                    null);
+            }
+
+            return report;
+        }
+
+        private static FrameworkAuthoringValidationReport ValidateActivity(
+            ActivityAsset activity,
+            FrameworkValidationMode validationMode,
+            bool includeReferencedProfileValidation)
+        {
+            var report = new FrameworkAuthoringValidationReport(validationMode);
 
             if (activity == null)
             {
@@ -25,15 +107,21 @@ namespace Immersive.Framework.Editor.Editor.PlayerParticipation
             ActivityParticipationProjectionProfile projection =
                 activity.PlayerParticipationProjectionProfile;
 
+            bool requirementsValid = requirements != null && requirements.HasDefinedRequirementLevel;
+            ActivityParticipationProjectionDescriptor descriptor = default;
+            bool projectionValid = projection != null &&
+                projection.TryCreateDescriptor(out descriptor, out _);
+
             if (requirements == null)
             {
                 report.AddError(
                     $"Activity '{activity.ActivityName}' is missing its mandatory Player Participation Requirements Profile. Use an explicit None Profile when the Activity requires no Players.",
                     activity);
             }
-            else
+            else if (includeReferencedProfileValidation)
             {
-                report.AddRange(PlayerParticipationAuthoringValidator.ValidateRequirementsProfile(requirements));
+                report.AddRange(
+                    PlayerParticipationAuthoringValidator.ValidateRequirementsProfile(requirements));
             }
 
             if (projection == null)
@@ -42,13 +130,12 @@ namespace Immersive.Framework.Editor.Editor.PlayerParticipation
                     $"Activity '{activity.ActivityName}' is missing its mandatory Activity Participation Projection Profile. Null never means No Slots or All Joined Slots.",
                     activity);
             }
-            else
+            else if (includeReferencedProfileValidation)
             {
-                report.AddRange(ValidateProjectionProfile(projection));
+                report.AddRange(ValidateProjectionProfile(projection, validationMode));
             }
 
-            if (requirements != null && projection != null &&
-                projection.TryCreateDescriptor(out ActivityParticipationProjectionDescriptor descriptor, out _))
+            if (requirementsValid && projectionValid)
             {
                 if (descriptor.ProjectsNoSlots && !requirements.IsExplicitNone)
                 {
@@ -76,26 +163,21 @@ namespace Immersive.Framework.Editor.Editor.PlayerParticipation
                 }
             }
 
-            if (report.IsValid)
+            if (report.IsValid && requirementsValid && projectionValid)
             {
-                string projectionLabel = projection != null
-                    ? projection.ProjectionMode.ToString()
-                    : "Missing";
-                string requirementLabel = requirements != null
-                    ? requirements.RequirementLevel.ToString()
-                    : "Missing";
                 report.AddInfo(
-                    $"Activity Player participation authoring is valid. projection='{projectionLabel}' requirements='{requirementLabel}'.",
+                    $"Activity Player participation authoring is valid. projection='{descriptor.Mode}' requirements='{requirements.RequirementLevel}'.",
                     activity);
             }
 
             return report;
         }
 
-        internal static FrameworkAuthoringValidationReport ValidateProjectionProfile(
-            ActivityParticipationProjectionProfile profile)
+        private static FrameworkAuthoringValidationReport ValidateProjectionProfile(
+            ActivityParticipationProjectionProfile profile,
+            FrameworkValidationMode validationMode)
         {
-            var report = new FrameworkAuthoringValidationReport(FrameworkValidationMode.Standard);
+            var report = new FrameworkAuthoringValidationReport(validationMode);
 
             if (profile == null)
             {

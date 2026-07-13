@@ -1,6 +1,5 @@
 using Immersive.Framework.Authoring;
 using Immersive.Framework.Bootstrap;
-using Immersive.Framework.Editor.Editor.PlayerParticipation;
 using Immersive.Framework.Editor.Editor.Validation;
 using UnityEditor;
 using UnityEngine;
@@ -116,7 +115,7 @@ namespace Immersive.Framework.Editor.Editor.Settings
         {
             EditorGUILayout.LabelField("Model Readiness", EditorStyles.boldLabel);
             EditorGUILayout.HelpBox(
-                "Runs the Editor-only readiness check for the minimum 1.0 authoring model, including ordered Local Player Slots and Player participation Profiles. The check reports issues only; it does not create assets, modify settings or apply fallback.",
+                "Runs the Editor-only readiness check for the minimum 1.0 authoring model, including ordered Local Player Slots, reusable participation Profiles and explicit Activity Projection/Requirements authoring. The check reports issues only; it does not create assets, modify settings or apply fallback.",
                 MessageType.None);
 
             using (new EditorGUILayout.HorizontalScope())
@@ -124,8 +123,7 @@ namespace Immersive.Framework.Editor.Editor.Settings
                 if (GUILayout.Button("Run Model Readiness Check"))
                 {
                     _lastModelReadinessReport =
-                        FrameworkAuthoringModelReadinessValidator.ValidateProjectReadiness(settings, true);
-                    AppendPlayerParticipationReadiness(settings, _lastModelReadinessReport);
+                        FrameworkAuthoringModelReadinessAggregator.ValidateProjectReadiness(settings, true);
                     FrameworkAuthoringValidationGui.LogReport("Model Readiness", _lastModelReadinessReport);
                 }
 
@@ -140,28 +138,6 @@ namespace Immersive.Framework.Editor.Editor.Settings
 
             FrameworkAuthoringValidationGui.DrawSummary(_lastModelReadinessReport);
             FrameworkAuthoringValidationGui.DrawIssues(_lastModelReadinessReport, false);
-        }
-
-        private static void AppendPlayerParticipationReadiness(
-            ImmersiveFrameworkSettingsAsset settings,
-            FrameworkAuthoringValidationReport report)
-        {
-            if (settings == null || report == null || settings.ActiveGameApplication == null)
-            {
-                return;
-            }
-
-            GameApplicationAsset gameApplication = settings.ActiveGameApplication;
-            report.AddRange(
-                PlayerParticipationAuthoringValidator.ValidateGameApplication(
-                    gameApplication,
-                    false));
-            report.AddRange(
-                PlayerParticipationAuthoringValidator.ValidateProjectProfiles(
-                    gameApplication.ValidationMode));
-            report.AddInfo(
-                $"P3C Player participation readiness aggregated. totalIssues='{report.TotalIssueCount}' blockingIssues='{report.ErrorCount}' warnings='{report.WarningCount}' optionalSkips='{report.OptionalSkipCount}'.",
-                gameApplication);
         }
 
         private static void DrawLoggingSettings(SerializedProperty loggingConfig)
@@ -256,7 +232,7 @@ namespace Immersive.Framework.Editor.Editor.Settings
         {
             EditorGUILayout.LabelField("Current Scope", EditorStyles.boldLabel);
             EditorGUILayout.HelpBox(
-                "This settings page assigns the active Game Application, controls Editor Play Mode startup, configures framework logging, previews boot validation, and runs Model Readiness for ordered Local Player Slots and Player participation Profiles. Mutable join, selection, materialization and occupancy remain outside Project Settings.",
+                "This settings page assigns the active Game Application, controls Editor Play Mode startup, configures framework logging, previews boot validation, and runs the complete Model Readiness aggregation for ordered Slots and Activity participation authoring. Mutable join, selection, runtime projection, materialization and occupancy remain outside Project Settings.",
                 MessageType.None);
         }
     }
