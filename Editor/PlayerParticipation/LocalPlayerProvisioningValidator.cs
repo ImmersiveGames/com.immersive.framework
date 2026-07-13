@@ -1,4 +1,4 @@
-
+using Immersive.Framework.Actors;
 using Immersive.Framework.Authoring;
 using Immersive.Framework.Editor.Editor.Validation;
 using Immersive.Framework.PlayerParticipation;
@@ -8,7 +8,7 @@ using UnityEngine.InputSystem;
 namespace Immersive.Framework.Editor.Editor.PlayerParticipation
 {
     /// <summary>
-    /// Non-mutating P3G.2 validation for manual local Player provisioning authoring.
+    /// Non-mutating validation for manual local Player provisioning authoring.
     /// </summary>
     internal static class LocalPlayerProvisioningValidator
     {
@@ -44,17 +44,39 @@ namespace Immersive.Framework.Editor.Editor.PlayerParticipation
             }
 
             GameObject playerPrefab = manager.playerPrefab;
+            PlayerInput prefabPlayerInput = null;
+            PlayerActorDeclaration prefabActorDeclaration = null;
             if (playerPrefab == null)
             {
                 report.AddError(
                     $"PlayerInputManager '{manager.name}' has no Player Prefab. Manual provisioning cannot create a local Player host.",
                     manager);
             }
-            else if (playerPrefab.GetComponent<PlayerInput>() == null)
+            else
             {
-                report.AddError(
-                    $"Player Prefab '{playerPrefab.name}' has no PlayerInput component.",
-                    playerPrefab);
+                prefabPlayerInput = playerPrefab.GetComponent<PlayerInput>();
+                if (prefabPlayerInput == null)
+                {
+                    report.AddError(
+                        $"Player Prefab '{playerPrefab.name}' has no PlayerInput component.",
+                        playerPrefab);
+                }
+
+                prefabActorDeclaration = playerPrefab.GetComponent<PlayerActorDeclaration>();
+                if (prefabActorDeclaration == null)
+                {
+                    report.AddError(
+                        $"Player Prefab '{playerPrefab.name}' has no PlayerActorDeclaration. Provisioned hosts cannot be admitted as framework Player Actors.",
+                        playerPrefab);
+                }
+                else if (prefabPlayerInput != null &&
+                    (!prefabActorDeclaration.HasPlayerInputEvidence ||
+                     !ReferenceEquals(prefabActorDeclaration.PlayerInput, prefabPlayerInput)))
+                {
+                    report.AddError(
+                        $"PlayerActorDeclaration on prefab '{playerPrefab.name}' does not resolve the prefab PlayerInput.",
+                        prefabActorDeclaration);
+                }
             }
 
             if (gameApplication == null)

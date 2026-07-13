@@ -1,16 +1,15 @@
-
+using Immersive.Framework.Actors;
 using Immersive.Framework.ApiStatus;
-using UnityEngine;
 using UnityEngine.InputSystem;
 
 namespace Immersive.Framework.PlayerParticipation
 {
     /// <summary>
     /// Complete technical evidence for one local Player provisioning/admission operation.
-    /// The PlayerActorDeclaration evidence is carried as its concrete Unity Component so the
-    /// provisioning contract does not duplicate or redefine Actor declaration authority.
+    /// PlayerInput and PlayerActorDeclaration are Unity-bound evidence; Slot identity remains
+    /// the PlayerSlotRuntimeSnapshot and is never inferred from Unity playerIndex.
     /// </summary>
-    [FrameworkApiStatus(FrameworkApiStatus.Experimental, "P3G.2 local Player join result contract.")]
+    [FrameworkApiStatus(FrameworkApiStatus.Experimental, "P3G local Player join result contract.")]
     public sealed class LocalPlayerJoinResult
     {
         internal LocalPlayerJoinResult(
@@ -22,12 +21,16 @@ namespace Immersive.Framework.PlayerParticipation
             PlayerParticipationOperationResult rollbackResult,
             PlayerSlotRuntimeSnapshot slot,
             PlayerInput playerInput,
-            Component playerActorDeclaration,
+            PlayerActorDeclaration playerActorDeclaration,
             int unityPlayerIndex,
             LocalPlayerJoinCallbackConfirmation callbackConfirmation,
-            string message)
+            string message,
+            LocalPlayerJoinStatus originalStatus = LocalPlayerJoinStatus.None)
         {
             Status = status;
+            OriginalStatus = originalStatus == LocalPlayerJoinStatus.None
+                ? status
+                : originalStatus;
             OperationId = operationId;
             Request = request;
             ReservationResult = reservationResult;
@@ -43,6 +46,12 @@ namespace Immersive.Framework.PlayerParticipation
 
         public LocalPlayerJoinStatus Status { get; }
 
+        /// <summary>
+        /// Original admission/provisioning outcome. This differs from Status only when
+        /// rollback itself fails and Status becomes FailedRollback.
+        /// </summary>
+        public LocalPlayerJoinStatus OriginalStatus { get; }
+
         public LocalPlayerJoinOperationId OperationId { get; }
 
         public LocalPlayerJoinRequest Request { get; }
@@ -57,7 +66,7 @@ namespace Immersive.Framework.PlayerParticipation
 
         public PlayerInput PlayerInput { get; }
 
-        public Component PlayerActorDeclaration { get; }
+        public PlayerActorDeclaration PlayerActorDeclaration { get; }
 
         public int UnityPlayerIndex { get; }
 
@@ -77,14 +86,18 @@ namespace Immersive.Framework.PlayerParticipation
 
         public bool HasReservationEvidence => ReservationResult != null;
 
+        public bool HasCommitEvidence => CommitResult != null;
+
         public bool HasRollbackEvidence => RollbackResult != null;
 
         public string ToDiagnosticString()
         {
-            return $"operation='{OperationId.StableText}' status='{Status}' " +
+            return $"operation='{OperationId.StableText}' status='{Status}' originalStatus='{OriginalStatus}' " +
                 $"slot='{(Slot.PlayerSlotId.IsValid ? Slot.PlayerSlotId.StableText : string.Empty)}' " +
                 $"unityPlayerIndex='{UnityPlayerIndex}' callback='{CallbackConfirmation}' " +
-                $"playerInput='{(PlayerInput != null ? PlayerInput.name : string.Empty)}' message='{Message}'";
+                $"playerInput='{(PlayerInput != null ? PlayerInput.name : string.Empty)}' " +
+                $"playerActor='{(PlayerActorDeclaration != null ? PlayerActorDeclaration.ActorId.StableText : string.Empty)}' " +
+                $"message='{Message}'";
         }
     }
 }
