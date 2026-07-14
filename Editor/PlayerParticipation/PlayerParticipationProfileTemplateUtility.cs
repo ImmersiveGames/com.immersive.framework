@@ -48,9 +48,20 @@ namespace Immersive.Framework.Editor.Editor.PlayerParticipation
         }
 
         [MenuItem(
-            "Assets/Create/Immersive Framework/Player/Templates/Complete Local Player Profile Set",
+            "Assets/Create/Immersive Framework/Player/Templates/Actor Selection Policy Set",
             false,
             213)]
+        private static void CreateActorSelectionPolicyProfiles()
+        {
+            string folder = EnsureTemplateFolder();
+            List<Object> created = CreateActorSelectionPolicyProfileSet(folder);
+            CompleteCreation(created, "Player Actor Selection Policy templates");
+        }
+
+        [MenuItem(
+            "Assets/Create/Immersive Framework/Player/Templates/Complete Local Player Profile Set",
+            false,
+            214)]
         private static void CreateCompleteProfileSet()
         {
             string folder = EnsureTemplateFolder();
@@ -58,6 +69,7 @@ namespace Immersive.Framework.Editor.Editor.PlayerParticipation
             created.AddRange(CreatePlayerSlotProfileSet(folder));
             created.AddRange(CreateRequirementsProfileSet(folder));
             created.AddRange(CreateProjectionProfileSet(folder));
+            created.AddRange(CreateActorSelectionPolicyProfileSet(folder));
             CompleteCreation(created, "complete local Player Profile template set");
         }
 
@@ -136,6 +148,25 @@ namespace Immersive.Framework.Editor.Editor.PlayerParticipation
             };
         }
 
+        private static List<Object> CreateActorSelectionPolicyProfileSet(string folder)
+        {
+            return new List<Object>
+            {
+                CreateActorSelectionPolicyProfile(
+                    folder,
+                    "ActorSelection_AllowDuplicates",
+                    "Actor Selection — Allow Duplicates",
+                    "Joined Player Slots may select the same ActorProfileId.",
+                    PlayerActorSelectionDuplicatePolicy.AllowDuplicates),
+                CreateActorSelectionPolicyProfile(
+                    folder,
+                    "ActorSelection_UniqueAcrossJoinedSlots",
+                    "Actor Selection — Unique Across Joined Slots",
+                    "At most one Joined Player Slot may select a given ActorProfileId.",
+                    PlayerActorSelectionDuplicatePolicy.UniqueAcrossJoinedSlots)
+            };
+        }
+
         private static PlayerSlotProfile CreatePlayerSlotProfile(
             string folder,
             int playerNumber,
@@ -151,6 +182,7 @@ namespace Immersive.Framework.Editor.Editor.PlayerParticipation
                 $"Official local participation seat template for Player {playerNumber}.";
             serializedProfile.FindProperty("accentColor").colorValue = accentColor;
             serializedProfile.FindProperty("displayOrder").intValue = playerNumber - 1;
+            serializedProfile.FindProperty("defaultActorProfile").objectReferenceValue = null;
             serializedProfile.ApplyModifiedPropertiesWithoutUndo();
 
             string assetPath = AssetDatabase.GenerateUniqueAssetPath(
@@ -198,6 +230,27 @@ namespace Immersive.Framework.Editor.Editor.PlayerParticipation
             serializedProfile.FindProperty("zeroParticipantPolicy").intValue =
                 (int)zeroParticipantPolicy;
             serializedProfile.FindProperty("explicitSlotProfiles").arraySize = 0;
+            serializedProfile.ApplyModifiedPropertiesWithoutUndo();
+
+            string assetPath = AssetDatabase.GenerateUniqueAssetPath($"{folder}/{fileName}.asset");
+            AssetDatabase.CreateAsset(profile, assetPath);
+            return profile;
+        }
+
+        private static PlayerActorSelectionPolicyProfile CreateActorSelectionPolicyProfile(
+            string folder,
+            string fileName,
+            string displayName,
+            string description,
+            PlayerActorSelectionDuplicatePolicy duplicatePolicy)
+        {
+            var profile = ScriptableObject.CreateInstance<PlayerActorSelectionPolicyProfile>();
+            profile.name = displayName;
+
+            var serializedProfile = new SerializedObject(profile);
+            serializedProfile.FindProperty("displayName").stringValue = displayName;
+            serializedProfile.FindProperty("description").stringValue = description;
+            serializedProfile.FindProperty("duplicatePolicy").intValue = (int)duplicatePolicy;
             serializedProfile.ApplyModifiedPropertiesWithoutUndo();
 
             string assetPath = AssetDatabase.GenerateUniqueAssetPath($"{folder}/{fileName}.asset");

@@ -1,4 +1,5 @@
 using System;
+using Immersive.Framework.Actors;
 using Immersive.Framework.ApiStatus;
 using Immersive.Framework.Common;
 using Immersive.Framework.PlayerSlots;
@@ -16,7 +17,7 @@ namespace Immersive.Framework.PlayerParticipation
         order = 10)]
     [FrameworkApiStatus(
         FrameworkApiStatus.Experimental,
-        "P3C immutable Player Slot identity Profile.")]
+        "P3C/P3H immutable Player Slot identity and default Actor selection intent.")]
     public sealed class PlayerSlotProfile : ScriptableObject
     {
         [Header("Identity")]
@@ -31,6 +32,10 @@ namespace Immersive.Framework.PlayerParticipation
         [SerializeField] private Sprite icon;
         [Tooltip("Presentation metadata only. Game/Application array order controls default allocation.")]
         [SerializeField] private int displayOrder;
+
+        [Header("Actor Selection Default")]
+        [Tooltip("Optional immutable default intent. Session runtime must apply it through the canonical Actor selection operation after the Slot is Joined.")]
+        [SerializeField] private ActorProfile defaultActorProfile;
 
         /// <summary>
         /// Canonical normalized serialized identity text owned by this Profile.
@@ -51,6 +56,10 @@ namespace Immersive.Framework.PlayerParticipation
         public Sprite Icon => icon;
 
         public int DisplayOrder => displayOrder;
+
+        public ActorProfile DefaultActorProfile => defaultActorProfile;
+
+        public bool HasDefaultActorProfile => defaultActorProfile != null;
 
         public bool TryGetPlayerSlotId(out PlayerSlotId resolvedPlayerSlotId, out string issue)
         {

@@ -1,3 +1,4 @@
+using Immersive.Framework.Actors;
 using Immersive.Framework.Editor.Editor.Validation;
 using Immersive.Framework.PlayerParticipation;
 using UnityEditor;
@@ -14,6 +15,7 @@ namespace Immersive.Framework.Editor.Editor.PlayerParticipation
         private SerializedProperty _accentColor;
         private SerializedProperty _icon;
         private SerializedProperty _displayOrder;
+        private SerializedProperty _defaultActorProfile;
         private bool _showAdvanced;
 
         private void OnEnable()
@@ -24,6 +26,7 @@ namespace Immersive.Framework.Editor.Editor.PlayerParticipation
             _accentColor = serializedObject.FindProperty("accentColor");
             _icon = serializedObject.FindProperty("icon");
             _displayOrder = serializedObject.FindProperty("displayOrder");
+            _defaultActorProfile = serializedObject.FindProperty("defaultActorProfile");
         }
 
         public override void OnInspectorGUI()
@@ -50,6 +53,15 @@ namespace Immersive.Framework.Editor.Editor.PlayerParticipation
                 "Display Order is presentation metadata. Game Application array order controls default local Slot allocation.",
                 MessageType.None);
 
+            EditorGUILayout.Space(6);
+            EditorGUILayout.LabelField("Actor Selection Default", EditorStyles.boldLabel);
+            EditorGUILayout.PropertyField(
+                _defaultActorProfile,
+                new GUIContent("Default Actor Profile"));
+            EditorGUILayout.HelpBox(
+                "Optional static intent only. The Slot may remain Joined and unselected; Session runtime must apply this default through the same explicit selection transaction as any UI request.",
+                MessageType.None);
+
             serializedObject.ApplyModifiedProperties();
 
             EditorGUILayout.Space(6);
@@ -74,6 +86,14 @@ namespace Immersive.Framework.Editor.Editor.PlayerParticipation
                     ? playerSlotId.ToString()
                     : $"Invalid: {issue}";
                 EditorGUILayout.TextField("Typed PlayerSlotId", typedIdentity);
+                EditorGUILayout.Toggle("Has Default Actor", profile.HasDefaultActorProfile);
+
+                ActorProfile defaultActor = profile.DefaultActorProfile;
+                string defaultIdentity = defaultActor != null &&
+                    defaultActor.TryGetActorProfileId(out ActorProfileId actorProfileId, out _)
+                    ? actorProfileId.ToString()
+                    : string.Empty;
+                EditorGUILayout.TextField("Default ActorProfileId", defaultIdentity);
             }
         }
 

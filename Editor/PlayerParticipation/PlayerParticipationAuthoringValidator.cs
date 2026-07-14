@@ -8,7 +8,7 @@ using UnityEditor;
 namespace Immersive.Framework.Editor.Editor.PlayerParticipation
 {
     /// <summary>
-    /// P3C validation for immutable Player participation Profiles and their
+    /// Validation for immutable Player participation Profiles and their
     /// ordered Game/Application configuration. This validator never creates,
     /// repairs or mutates product assets.
     /// </summary>
@@ -207,6 +207,10 @@ namespace Immersive.Framework.Editor.Editor.PlayerParticipation
                 report.AddRange(ValidateRequirementsProfile(profile));
             }
 
+            report.AddRange(
+                PlayerActorSelectionAuthoringValidator.ValidateProjectActorSelectionProfiles(
+                    validationMode));
+
             if (slotProfileGuids.Length == 0)
             {
                 report.AddError(
@@ -257,6 +261,15 @@ namespace Immersive.Framework.Editor.Editor.PlayerParticipation
                     profile);
             }
 
+            if (profile.DefaultActorProfile != null)
+            {
+                report.AddRange(
+                    PlayerActorSelectionAuthoringValidator.ValidateActorProfile(
+                        profile.DefaultActorProfile,
+                        false,
+                        validationMode));
+            }
+
             if (includeProjectDuplicateScan)
             {
                 string[] profileGuids = AssetDatabase.FindAssets("t:PlayerSlotProfile");
@@ -282,7 +295,7 @@ namespace Immersive.Framework.Editor.Editor.PlayerParticipation
             if (report.IsValid)
             {
                 report.AddInfo(
-                    $"Player Slot Profile is valid. playerSlotId='{playerSlotId}' displayOrder='{profile.DisplayOrder}'.",
+                    $"Player Slot Profile is valid. playerSlotId='{playerSlotId}' displayOrder='{profile.DisplayOrder}' defaultActorProfile='{(profile.DefaultActorProfile != null ? profile.DefaultActorProfile.name : string.Empty)}'.",
                     profile);
             }
 
