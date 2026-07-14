@@ -15,7 +15,7 @@ namespace Immersive.Framework.PlayerParticipation
     /// </summary>
     [FrameworkApiStatus(
         FrameworkApiStatus.Internal,
-        "P3J.3 attached Unity Logical Player Actor materialization adapter.")]
+        "P3J.3/P3J.4 attached Unity Logical Player Actor materialization and release adapter.")]
     internal sealed class AttachedPlayerActorMaterializationAdapter
     {
         private const string ResourceType = "PlayerLogicalActorHost";
@@ -334,6 +334,15 @@ namespace Immersive.Framework.PlayerParticipation
         }
 
         internal bool TryRollbackMaterialization(
+            PlayerActorMaterializationHandle handle,
+            string source,
+            string reason,
+            out string issue)
+        {
+            return TryReleaseMaterialization(handle, source, reason, out issue);
+        }
+
+        internal bool TryReleaseMaterialization(
             PlayerActorMaterializationHandle handle,
             string source,
             string reason,
