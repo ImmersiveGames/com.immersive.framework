@@ -23,7 +23,7 @@ namespace Immersive.Framework.Editor.Editor.PlayerParticipation
 
             EditorGUILayout.LabelField("Local Player Provisioning", EditorStyles.boldLabel);
             EditorGUILayout.HelpBox(
-                "Declares the one Session-authorized Unity PlayerInputManager. Framework Core injects the Session runtime after boot; Players are created only by explicit request operations.",
+                "Declares the one Session-authorized PlayerInputManager. Its Player Prefab must be a stable Local Player Host, not a Logical Actor prefab.",
                 MessageType.Info);
 
             EditorGUILayout.Space(6);
@@ -32,7 +32,7 @@ namespace Immersive.Framework.Editor.Editor.PlayerParticipation
                 playerInputManager,
                 new GUIContent("Player Input Manager"));
             EditorGUILayout.HelpBox(
-                "The referenced manager must use Join Players Manually. The framework reserves a configured Slot before calling PlayerInputManager.JoinPlayer.",
+                "The framework reserves a configured Slot, provisions the technical host, stages its Slot declaration and commits admission. Actor selection and materialization remain separate operations.",
                 MessageType.None);
 
             serializedObject.ApplyModifiedProperties();
@@ -64,7 +64,7 @@ namespace Immersive.Framework.Editor.Editor.PlayerParticipation
             if (!EditorApplication.isPlaying)
             {
                 EditorGUILayout.HelpBox(
-                    "Runtime binding is created during Framework boot. Open/Close Join and Request Join are explicit script/UI operations; the authoring component does not execute them automatically.",
+                    "Runtime binding is created during Framework boot. The authoring component never joins automatically from Unity lifecycle callbacks.",
                     MessageType.None);
                 return;
             }
@@ -83,6 +83,13 @@ namespace Immersive.Framework.Editor.Editor.PlayerParticipation
                     authoring.LastJoinResult != null
                         ? authoring.LastJoinResult.Status
                         : LocalPlayerJoinStatus.None);
+                EditorGUILayout.ObjectField(
+                    "Last Local Player Host",
+                    authoring.LastJoinResult != null
+                        ? authoring.LastJoinResult.LocalPlayerHost
+                        : null,
+                    typeof(LocalPlayerHostAuthoring),
+                    true);
             }
 
             EditorGUILayout.HelpBox(
@@ -92,21 +99,29 @@ namespace Immersive.Framework.Editor.Editor.PlayerParticipation
 
         private static void DrawAdvanced(LocalPlayerProvisioningAuthoring authoring)
         {
+            LocalPlayerHostAuthoring prefabHost = authoring.PlayerPrefab != null
+                ? authoring.PlayerPrefab.GetComponent<LocalPlayerHostAuthoring>()
+                : null;
+
             using (new EditorGUI.DisabledScope(true))
             {
-                EditorGUILayout.Toggle(
-                    "Explicit Manager",
-                    authoring.HasPlayerInputManager);
-                EditorGUILayout.Toggle(
-                    "Manual Join",
-                    authoring.UsesManualJoin);
-                EditorGUILayout.Toggle(
-                    "C# Join Notifications",
-                    authoring.UsesCSharpJoinNotifications);
+                EditorGUILayout.Toggle("Explicit Manager", authoring.HasPlayerInputManager);
+                EditorGUILayout.Toggle("Manual Join", authoring.UsesManualJoin);
+                EditorGUILayout.Toggle("C# Join Notifications", authoring.UsesCSharpJoinNotifications);
                 EditorGUILayout.ObjectField(
                     "Player Prefab",
                     authoring.PlayerPrefab,
                     typeof(GameObject),
+                    false);
+                EditorGUILayout.ObjectField(
+                    "Local Player Host",
+                    prefabHost,
+                    typeof(LocalPlayerHostAuthoring),
+                    false);
+                EditorGUILayout.ObjectField(
+                    "Actor Mount",
+                    prefabHost != null ? prefabHost.ActorMount : null,
+                    typeof(Transform),
                     false);
                 EditorGUILayout.IntField(
                     "Technical Max Players",
@@ -114,8 +129,7 @@ namespace Immersive.Framework.Editor.Editor.PlayerParticipation
             }
         }
 
-        private static void DrawValidation(
-            LocalPlayerProvisioningAuthoring authoring)
+        private static void DrawValidation(LocalPlayerProvisioningAuthoring authoring)
         {
             GameApplicationAsset gameApplication = ResolveActiveGameApplication();
             FrameworkAuthoringValidationReport report =
@@ -123,17 +137,16 @@ namespace Immersive.Framework.Editor.Editor.PlayerParticipation
                     authoring,
                     gameApplication);
 
-            EditorGUILayout.LabelField(
-                "Authoring Validation",
-                EditorStyles.boldLabel);
+            EditorGUILayout.LabelField("Authoring Validation", EditorStyles.boldLabel);
             FrameworkAuthoringValidationGui.DrawSummary(report);
             FrameworkAuthoringValidationGui.DrawIssues(report, false);
         }
 
         private static GameApplicationAsset ResolveActiveGameApplication()
         {
-            ImmersiveFrameworkSettingsAsset settings = Resources.Load<ImmersiveFrameworkSettingsAsset>(
-                ImmersiveFrameworkSettingsAsset.ResourcesPath);
+            ImmersiveFrameworkSettingsAsset settings =
+                Resources.Load<ImmersiveFrameworkSettingsAsset>(
+                    ImmersiveFrameworkSettingsAsset.ResourcesPath);
             return settings != null ? settings.ActiveGameApplication : null;
         }
     }

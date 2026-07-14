@@ -1,9 +1,8 @@
-
 using Immersive.Framework.ApiStatus;
 
 namespace Immersive.Framework.PlayerParticipation
 {
-    [FrameworkApiStatus(FrameworkApiStatus.Experimental, "P3G.2 local Player join result status model.")]
+    [FrameworkApiStatus(FrameworkApiStatus.Experimental, "P3G/P3J local Player join result status model.")]
     public enum LocalPlayerJoinStatus
     {
         None = 0,
@@ -20,8 +19,9 @@ namespace Immersive.Framework.PlayerParticipation
         RejectedUnexpectedJoin = 19,
         RejectedCorrelationMismatch = 20,
         RejectedMissingPlayerInput = 21,
-        RejectedMissingPlayerActorDeclaration = 22,
+        RejectedMissingLocalPlayerHost = 22,
         RejectedForeignOrStaleReservation = 23,
+        RejectedInvalidLocalPlayerHost = 24,
         FailedAdmission = 30,
         FailedRollback = 31
     }

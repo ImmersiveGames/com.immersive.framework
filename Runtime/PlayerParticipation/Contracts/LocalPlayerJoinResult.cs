@@ -1,4 +1,3 @@
-using Immersive.Framework.Actors;
 using Immersive.Framework.ApiStatus;
 using UnityEngine.InputSystem;
 
@@ -6,10 +5,12 @@ namespace Immersive.Framework.PlayerParticipation
 {
     /// <summary>
     /// Complete technical evidence for one local Player provisioning/admission operation.
-    /// PlayerInput and PlayerActorDeclaration are Unity-bound evidence; Slot identity remains
-    /// the PlayerSlotRuntimeSnapshot and is never inferred from Unity playerIndex.
+    /// PlayerInput and LocalPlayerHostAuthoring are stable host evidence. Logical Actor identity,
+    /// ActorProfile selection and Actor materialization are intentionally absent.
     /// </summary>
-    [FrameworkApiStatus(FrameworkApiStatus.Experimental, "P3G local Player join result contract.")]
+    [FrameworkApiStatus(
+        FrameworkApiStatus.Experimental,
+        "P3G/P3J local Player join result with stable Local Player Host evidence.")]
     public sealed class LocalPlayerJoinResult
     {
         internal LocalPlayerJoinResult(
@@ -21,7 +22,7 @@ namespace Immersive.Framework.PlayerParticipation
             PlayerParticipationOperationResult rollbackResult,
             PlayerSlotRuntimeSnapshot slot,
             PlayerInput playerInput,
-            PlayerActorDeclaration playerActorDeclaration,
+            LocalPlayerHostAuthoring localPlayerHost,
             int unityPlayerIndex,
             LocalPlayerJoinCallbackConfirmation callbackConfirmation,
             string message,
@@ -38,40 +39,24 @@ namespace Immersive.Framework.PlayerParticipation
             RollbackResult = rollbackResult;
             Slot = slot;
             PlayerInput = playerInput;
-            PlayerActorDeclaration = playerActorDeclaration;
+            LocalPlayerHost = localPlayerHost;
             UnityPlayerIndex = unityPlayerIndex;
             CallbackConfirmation = callbackConfirmation;
             Message = message ?? string.Empty;
         }
 
         public LocalPlayerJoinStatus Status { get; }
-
-        /// <summary>
-        /// Original admission/provisioning outcome. This differs from Status only when
-        /// rollback itself fails and Status becomes FailedRollback.
-        /// </summary>
         public LocalPlayerJoinStatus OriginalStatus { get; }
-
         public LocalPlayerJoinOperationId OperationId { get; }
-
         public LocalPlayerJoinRequest Request { get; }
-
         public PlayerParticipationOperationResult ReservationResult { get; }
-
         public PlayerParticipationOperationResult CommitResult { get; }
-
         public PlayerParticipationOperationResult RollbackResult { get; }
-
         public PlayerSlotRuntimeSnapshot Slot { get; }
-
         public PlayerInput PlayerInput { get; }
-
-        public PlayerActorDeclaration PlayerActorDeclaration { get; }
-
+        public LocalPlayerHostAuthoring LocalPlayerHost { get; }
         public int UnityPlayerIndex { get; }
-
         public LocalPlayerJoinCallbackConfirmation CallbackConfirmation { get; }
-
         public string Message { get; }
 
         public bool Succeeded => Status == LocalPlayerJoinStatus.SucceededJoined;
@@ -81,15 +66,11 @@ namespace Immersive.Framework.PlayerParticipation
             LocalPlayerJoinStatus.FailedRollback;
 
         public bool Rejected => !Succeeded && !Failed && Status != LocalPlayerJoinStatus.None;
-
         public bool Completed => Status != LocalPlayerJoinStatus.None;
-
         public bool HasReservationEvidence => ReservationResult != null;
-
         public bool HasCommitEvidence => CommitResult != null;
-
         public bool HasRollbackEvidence => RollbackResult != null;
-
+        public bool HasLocalPlayerHostEvidence => LocalPlayerHost != null;
 
         internal static LocalPlayerJoinResult RuntimeUnavailable(
             LocalPlayerJoinRequest request,
@@ -118,7 +99,9 @@ namespace Immersive.Framework.PlayerParticipation
                 $"slot='{(Slot.PlayerSlotId.IsValid ? Slot.PlayerSlotId.StableText : string.Empty)}' " +
                 $"unityPlayerIndex='{UnityPlayerIndex}' callback='{CallbackConfirmation}' " +
                 $"playerInput='{(PlayerInput != null ? PlayerInput.name : string.Empty)}' " +
-                $"playerActor='{(PlayerActorDeclaration != null ? PlayerActorDeclaration.ActorId.StableText : string.Empty)}' " +
+                $"localPlayerHost='{(LocalPlayerHost != null ? LocalPlayerHost.name : string.Empty)}' " +
+                $"actorMount='{(LocalPlayerHost != null && LocalPlayerHost.ActorMount != null ? LocalPlayerHost.ActorMount.name : string.Empty)}' " +
+                $"logicalActorPrepared='{(LocalPlayerHost != null && LocalPlayerHost.HasLogicalActor)}' " +
                 $"message='{Message}'";
         }
     }

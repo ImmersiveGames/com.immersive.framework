@@ -1,5 +1,4 @@
 using System;
-using Immersive.Framework.Actors;
 using Immersive.Framework.ApiStatus;
 using Immersive.Framework.ApplicationLifecycle;
 using Immersive.Framework.Common;
@@ -10,13 +9,13 @@ namespace Immersive.Framework.PlayerParticipation
 {
     /// <summary>
     /// Session-scoped composition adapter that owns one LocalPlayerProvisioningBridge for the
-    /// established FrameworkRuntimeHost lifetime. Slot state remains in the plain C#
-    /// PlayerParticipationRuntimeContext and Unity host creation remains in PlayerInputManager.
+    /// established FrameworkRuntimeHost lifetime. Slot state remains in the plain C# context and
+    /// Unity technical-host creation remains in PlayerInputManager.
     /// </summary>
     [DisallowMultipleComponent]
     [FrameworkApiStatus(
         FrameworkApiStatus.Internal,
-        "P3G.4 host-scoped local Player provisioning composition adapter.")]
+        "P3G/P3J host-scoped local Player technical-host provisioning composition adapter.")]
     internal sealed class LocalPlayerProvisioningRuntimeHostModule : MonoBehaviour
     {
         private FrameworkRuntimeHost runtimeHost;
@@ -33,11 +32,8 @@ namespace Immersive.Framework.PlayerParticipation
             bridge != null;
 
         internal string Diagnostic => diagnostic;
-
         internal LocalPlayerProvisioningAuthoring Authoring => authoring;
-
         internal LocalPlayerJoinResult LastJoinResult => bridge?.LastResult;
-
         internal int RequestCount => requestCount;
 
         internal static bool TryAttach(
@@ -146,7 +142,7 @@ namespace Immersive.Framework.PlayerParticipation
             bridge = targetBridge;
             requestCount = 0;
             diagnostic =
-                $"Local Player provisioning runtime is ready. manager='{authoring.PlayerInputManager.name}'.";
+                $"Local Player provisioning runtime is ready. manager='{authoring.PlayerInputManager.name}' hostPrefab='{authoring.PlayerPrefab.name}'.";
 
             try
             {
@@ -167,7 +163,6 @@ namespace Immersive.Framework.PlayerParticipation
 
             return true;
         }
-
 
         private static bool TryValidateRuntimeConfiguration(
             LocalPlayerProvisioningAuthoring targetAuthoring,
@@ -210,20 +205,24 @@ namespace Immersive.Framework.PlayerParticipation
                 return false;
             }
 
-            PlayerActorDeclaration prefabActorDeclaration =
-                playerPrefab.GetComponent<PlayerActorDeclaration>();
-            if (prefabActorDeclaration == null)
+            LocalPlayerHostAuthoring prefabHost =
+                playerPrefab.GetComponent<LocalPlayerHostAuthoring>();
+            if (prefabHost == null)
             {
-                issue =
-                    $"Player Prefab '{playerPrefab.name}' has no PlayerActorDeclaration.";
+                issue = $"Player Prefab '{playerPrefab.name}' has no LocalPlayerHostAuthoring.";
                 return false;
             }
 
-            if (!prefabActorDeclaration.HasPlayerInputEvidence ||
-                !ReferenceEquals(prefabActorDeclaration.PlayerInput, prefabPlayerInput))
+            if (!ReferenceEquals(prefabHost.PlayerInput, prefabPlayerInput))
             {
                 issue =
-                    $"PlayerActorDeclaration on prefab '{playerPrefab.name}' does not resolve the prefab PlayerInput.";
+                    $"LocalPlayerHostAuthoring on prefab '{playerPrefab.name}' does not resolve the prefab PlayerInput.";
+                return false;
+            }
+
+            if (!prefabHost.TryValidateConfiguration(out string hostIssue))
+            {
+                issue = $"Player Prefab '{playerPrefab.name}' has an invalid Local Player Host. {hostIssue}";
                 return false;
             }
 
@@ -471,7 +470,7 @@ namespace Immersive.Framework.PlayerParticipation
     /// </summary>
     [FrameworkApiStatus(
         FrameworkApiStatus.Internal,
-        "P3G.4 typed FrameworkRuntimeHost access to its local Player provisioning module.")]
+        "P3G/P3J typed FrameworkRuntimeHost access to its local Player provisioning module.")]
     internal static class FrameworkRuntimeHostLocalPlayerProvisioningExtensions
     {
         internal static bool TryGetLocalPlayerProvisioningRuntime(

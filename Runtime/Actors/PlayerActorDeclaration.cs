@@ -7,29 +7,28 @@ using UnityEngine.InputSystem;
 namespace Immersive.Framework.Actors
 {
     /// <summary>
-    /// API status: Experimental. Specialized Player Actor declaration.
-    /// Actor identity and the generic Actor descriptor are inherited from ActorDeclaration.
-    /// P3J.1 preserves same-object PlayerInput evidence for P3G compatibility; Local Player Host
-    /// separation is introduced by P3J.2.
+    /// Specialized declaration for one contextual logical Player Actor.
+    /// Actor identity is inherited from ActorDeclaration. PlayerInput belongs to the stable
+    /// Local Player Host and may be injected later by an explicit composition adapter.
     /// </summary>
     [DisallowMultipleComponent]
-    [RequireComponent(typeof(PlayerInput))]
     [AddComponentMenu("Immersive Framework/Actors/Player Actor Declaration")]
     [FrameworkApiStatus(
         FrameworkApiStatus.Experimental,
-        "F31A/F45A/P3J.1 Player Actor declaration inheriting the canonical Actor identity base.")]
+        "P3J.2 contextual Player Actor declaration separated from the stable Local Player Host.")]
     public sealed class PlayerActorDeclaration : ActorDeclaration
     {
-        [Tooltip("Optional explicit PlayerInput evidence. If empty, the declaration checks PlayerInput on the same GameObject.")]
-        [SerializeField] private PlayerInput playerInput;
+        [SerializeField, HideInInspector]
+        [Tooltip("Optional runtime evidence injected from a bound Local Player Host. This is not authored on the Logical Actor Host prefab.")]
+        private PlayerInput playerInput;
 
         public override ActorKind ActorKind => ActorKind.Player;
 
         public override ActorRole ActorRole => ActorRole.Protagonist;
 
-        public PlayerInput PlayerInput => playerInput != null ? playerInput : GetComponent<PlayerInput>();
+        public PlayerInput PlayerInput => playerInput;
 
-        public bool HasPlayerInputEvidence => PlayerInput != null;
+        public bool HasPlayerInputEvidence => playerInput != null;
 
         public bool TryCreateDescriptor(
             string source,
@@ -94,10 +93,23 @@ namespace Immersive.Framework.Actors
             playerInput = inputReference;
         }
 
+        internal void BindPlayerInputEvidence(PlayerInput inputReference)
+        {
+            playerInput = inputReference;
+        }
+
+        internal void ClearPlayerInputEvidence(PlayerInput expectedReference)
+        {
+            if (ReferenceEquals(playerInput, expectedReference))
+            {
+                playerInput = null;
+            }
+        }
+
         protected override void Reset()
         {
             base.Reset();
-            playerInput = GetComponent<PlayerInput>();
+            playerInput = null;
         }
     }
 }

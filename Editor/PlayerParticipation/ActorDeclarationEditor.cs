@@ -6,28 +6,25 @@ namespace Immersive.Framework.Editor.Editor.PlayerParticipation
 {
     /// <summary>
     /// Designer-first inspector shared by ActorDeclaration and specialized declarations.
-    /// Fixed specialization classification is shown read-only and hidden serialized backing fields
-    /// are not exposed as editable product intent.
+    /// PlayerInput is runtime binding evidence for Player Actors and is not authored here.
     /// </summary>
     [CustomEditor(typeof(ActorDeclaration), true)]
     internal sealed class ActorDeclarationEditor : UnityEditor.Editor
     {
-        private SerializedProperty _actorId;
-        private SerializedProperty _actorKind;
-        private SerializedProperty _actorRole;
-        private SerializedProperty _displayName;
-        private SerializedProperty _reason;
-        private SerializedProperty _playerInput;
-        private bool _showAdvanced;
+        private SerializedProperty actorId;
+        private SerializedProperty actorKind;
+        private SerializedProperty actorRole;
+        private SerializedProperty displayName;
+        private SerializedProperty reason;
+        private bool showAdvanced;
 
         private void OnEnable()
         {
-            _actorId = serializedObject.FindProperty("actorId");
-            _actorKind = serializedObject.FindProperty("actorKind");
-            _actorRole = serializedObject.FindProperty("actorRole");
-            _displayName = serializedObject.FindProperty("displayName");
-            _reason = serializedObject.FindProperty("reason");
-            _playerInput = serializedObject.FindProperty("playerInput");
+            actorId = serializedObject.FindProperty("actorId");
+            actorKind = serializedObject.FindProperty("actorKind");
+            actorRole = serializedObject.FindProperty("actorRole");
+            displayName = serializedObject.FindProperty("displayName");
+            reason = serializedObject.FindProperty("reason");
         }
 
         public override void OnInspectorGUI()
@@ -41,13 +38,15 @@ namespace Immersive.Framework.Editor.Editor.PlayerParticipation
                 isPlayer ? "Player Actor Declaration" : "Actor Declaration",
                 EditorStyles.boldLabel);
             EditorGUILayout.HelpBox(
-                "Declares one Actor identity. Lifetime, materialization, input behavior, presentation and gameplay remain owned by their explicit runtime systems.",
+                isPlayer
+                    ? "Declares one contextual Logical Player Actor. PlayerInput belongs to the stable Local Player Host and is injected later by explicit composition."
+                    : "Declares one Actor identity. Lifetime, materialization, presentation and gameplay remain owned by explicit runtime systems.",
                 MessageType.Info);
 
             EditorGUILayout.Space(6);
             EditorGUILayout.LabelField("Identity", EditorStyles.boldLabel);
-            EditorGUILayout.PropertyField(_actorId, new GUIContent("Actor Id"));
-            EditorGUILayout.PropertyField(_displayName, new GUIContent("Display Name"));
+            EditorGUILayout.PropertyField(actorId, new GUIContent("Actor Id"));
+            EditorGUILayout.PropertyField(displayName, new GUIContent("Display Name"));
 
             EditorGUILayout.Space(6);
             EditorGUILayout.LabelField("Classification", EditorStyles.boldLabel);
@@ -59,34 +58,24 @@ namespace Immersive.Framework.Editor.Editor.PlayerParticipation
                     EditorGUILayout.EnumPopup("Actor Role", ActorRole.Protagonist);
                 }
                 EditorGUILayout.HelpBox(
-                    "Player Actor classification is fixed by the specialized declaration and cannot drift from its base Actor identity.",
+                    "Player Actor classification is fixed. Do not add PlayerInput to the Logical Actor Host prefab.",
                     MessageType.None);
             }
             else
             {
-                EditorGUILayout.PropertyField(_actorKind, new GUIContent("Actor Kind"));
-                EditorGUILayout.PropertyField(_actorRole, new GUIContent("Actor Role"));
-            }
-
-            if (isPlayer && _playerInput != null)
-            {
-                EditorGUILayout.Space(6);
-                EditorGUILayout.LabelField("Player Evidence", EditorStyles.boldLabel);
-                EditorGUILayout.PropertyField(_playerInput, new GUIContent("Player Input"));
-                EditorGUILayout.HelpBox(
-                    "Same-object PlayerInput evidence is retained for P3G compatibility. P3J.2 moves PlayerInput authority to LocalPlayerHostAuthoring.",
-                    MessageType.None);
+                EditorGUILayout.PropertyField(actorKind, new GUIContent("Actor Kind"));
+                EditorGUILayout.PropertyField(actorRole, new GUIContent("Actor Role"));
             }
 
             EditorGUILayout.Space(6);
             EditorGUILayout.LabelField("Diagnostics", EditorStyles.boldLabel);
-            EditorGUILayout.PropertyField(_reason, new GUIContent("Reason"));
+            EditorGUILayout.PropertyField(reason, new GUIContent("Reason"));
 
             serializedObject.ApplyModifiedProperties();
 
             EditorGUILayout.Space(6);
-            _showAdvanced = EditorGUILayout.Foldout(_showAdvanced, "Advanced / Debug", true);
-            if (_showAdvanced)
+            showAdvanced = EditorGUILayout.Foldout(showAdvanced, "Advanced / Debug", true);
+            if (showAdvanced)
             {
                 using (new EditorGUI.DisabledScope(true))
                 {
@@ -94,12 +83,16 @@ namespace Immersive.Framework.Editor.Editor.PlayerParticipation
                     EditorGUILayout.TextField("Actor Id", SafeActorId(declaration));
                     EditorGUILayout.EnumPopup("Effective Actor Kind", declaration.ActorKind);
                     EditorGUILayout.EnumPopup("Effective Actor Role", declaration.ActorRole);
-                    EditorGUILayout.Toggle(
-                        "Canonical Base Declaration",
-                        declaration is ActorDeclaration);
                     if (declaration is PlayerActorDeclaration player)
                     {
-                        EditorGUILayout.Toggle("PlayerInput Evidence", player.HasPlayerInputEvidence);
+                        EditorGUILayout.Toggle(
+                            "Local Host PlayerInput Bound",
+                            player.HasPlayerInputEvidence);
+                        EditorGUILayout.ObjectField(
+                            "Bound PlayerInput",
+                            player.PlayerInput,
+                            typeof(Object),
+                            true);
                     }
                 }
             }

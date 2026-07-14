@@ -1,4 +1,3 @@
-using Immersive.Framework.Actors;
 using Immersive.Framework.Authoring;
 using Immersive.Framework.Editor.Editor.Validation;
 using Immersive.Framework.PlayerParticipation;
@@ -8,7 +7,7 @@ using UnityEngine.InputSystem;
 namespace Immersive.Framework.Editor.Editor.PlayerParticipation
 {
     /// <summary>
-    /// Non-mutating validation for manual local Player provisioning authoring.
+    /// Non-mutating validation for manual local Player technical-host provisioning authoring.
     /// </summary>
     internal static class LocalPlayerProvisioningValidator
     {
@@ -51,17 +50,15 @@ namespace Immersive.Framework.Editor.Editor.PlayerParticipation
             }
 
             GameObject playerPrefab = manager.playerPrefab;
-            PlayerInput prefabPlayerInput = null;
-            PlayerActorDeclaration prefabActorDeclaration = null;
             if (playerPrefab == null)
             {
                 report.AddError(
-                    $"PlayerInputManager '{manager.name}' has no Player Prefab. Manual provisioning cannot create a local Player host.",
+                    $"PlayerInputManager '{manager.name}' has no Player Prefab. Manual provisioning cannot create a Local Player Host.",
                     manager);
             }
             else
             {
-                prefabPlayerInput = playerPrefab.GetComponent<PlayerInput>();
+                PlayerInput prefabPlayerInput = playerPrefab.GetComponent<PlayerInput>();
                 if (prefabPlayerInput == null)
                 {
                     report.AddError(
@@ -69,20 +66,24 @@ namespace Immersive.Framework.Editor.Editor.PlayerParticipation
                         playerPrefab);
                 }
 
-                prefabActorDeclaration = playerPrefab.GetComponent<PlayerActorDeclaration>();
-                if (prefabActorDeclaration == null)
+                LocalPlayerHostAuthoring prefabHost =
+                    playerPrefab.GetComponent<LocalPlayerHostAuthoring>();
+                if (prefabHost == null)
                 {
                     report.AddError(
-                        $"Player Prefab '{playerPrefab.name}' has no PlayerActorDeclaration. Provisioned hosts cannot be admitted as framework Player Actors.",
+                        $"Player Prefab '{playerPrefab.name}' has no LocalPlayerHostAuthoring. The provisioning prefab must declare a stable technical host rather than a Logical Actor.",
                         playerPrefab);
                 }
-                else if (prefabPlayerInput != null &&
-                    (!prefabActorDeclaration.HasPlayerInputEvidence ||
-                     !ReferenceEquals(prefabActorDeclaration.PlayerInput, prefabPlayerInput)))
+                else
                 {
-                    report.AddError(
-                        $"PlayerActorDeclaration on prefab '{playerPrefab.name}' does not resolve the prefab PlayerInput.",
-                        prefabActorDeclaration);
+                    report.AddRange(LocalPlayerHostAuthoringValidator.Validate(prefabHost));
+                    if (prefabPlayerInput != null &&
+                        !ReferenceEquals(prefabHost.PlayerInput, prefabPlayerInput))
+                    {
+                        report.AddError(
+                            $"LocalPlayerHostAuthoring on prefab '{playerPrefab.name}' does not resolve the prefab PlayerInput.",
+                            prefabHost);
+                    }
                 }
             }
 

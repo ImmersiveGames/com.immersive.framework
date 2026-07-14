@@ -5,11 +5,12 @@ using Immersive.Framework.Editor.Editor.Validation;
 using Immersive.Framework.PlayerParticipation;
 using UnityEditor;
 using UnityEngine;
+using UnityEngine.InputSystem;
 
 namespace Immersive.Framework.Editor.Editor.PlayerParticipation
 {
     /// <summary>
-    /// Non-mutating P3H authoring validation for Actor Profiles and Player selection policies.
+    /// Non-mutating authoring validation for Actor Profiles and Player selection policies.
     /// </summary>
     internal static class PlayerActorSelectionAuthoringValidator
     {
@@ -272,12 +273,14 @@ namespace Immersive.Framework.Editor.Editor.PlayerParticipation
                     return;
                 }
 
+                PlayerInput[] playerInputs =
+                    logicalHost.GetComponentsInChildren<PlayerInput>(true);
                 PlayerActorDeclaration declaration = playerDeclarations[0];
-                if (!declaration.HasPlayerInputEvidence)
+                if (playerInputs.Length != 0 || declaration.HasPlayerInputEvidence)
                 {
                     report.AddError(
-                        $"PlayerActorDeclaration on Logical Actor Host '{logicalHost.name}' has no PlayerInput evidence.",
-                        declaration);
+                        $"Player Logical Actor Host '{logicalHost.name}' must not contain PlayerInput evidence. PlayerInput belongs to LocalPlayerHostAuthoring and is bound later by explicit composition.",
+                        logicalHost);
                 }
 
                 if (profile.ActorRole != declaration.ActorRole)
@@ -289,7 +292,7 @@ namespace Immersive.Framework.Editor.Editor.PlayerParticipation
             }
             else
             {
-                if (actorDeclarations.Length != 1)
+                if (actorDeclarations.Length != 1 || playerDeclarations.Length != 0)
                 {
                     report.AddError(
                         $"Non-Player ActorProfile '{profile.name}' requires a Logical Actor Host with one ActorDeclaration.",
