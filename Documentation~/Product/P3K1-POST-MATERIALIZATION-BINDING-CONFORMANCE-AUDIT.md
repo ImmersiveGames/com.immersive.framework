@@ -28,6 +28,30 @@ Accordingly, P3K.3 introduces a narrow `PlayerGameplayInputBindingRuntimeContext
 
 ---
 
+## P3K.4 code-level scope correction
+
+P3K.4 is implemented as a pure prepared-Player camera eligibility authority.
+It validates the live P3K.2 occupancy token, the live P3K.3 gameplay input
+binding token, the generated Actor identity and explicit Actor-owned camera
+authoring.
+
+It derives the future request, lifetime and tie-break identities, but it does
+not publish a `CameraRequest`. Publication is deferred to P3K.5 so the camera
+request, `GameplayReady` aggregation and reverse rollback are owned by one
+transaction rather than by a temporary partial admission.
+
+The accepted P3K.4 surface is:
+
+```text
+PlayerGameplayCameraAuthoring
+PlayerGameplayCameraEligibilityRuntimeContext
+PlayerGameplayCameraEligibilityToken / summary / snapshot / result
+```
+
+`LocalPlayerCameraRequestBinding` remains outside the contextual P3 runtime.
+
+---
+
 ## 1. Executive decision
 
 P3K must add one explicit **post-preparation admission transaction** between the P3J Logical Actor preparation authority and the existing occupancy, Player control and camera subsystems.
@@ -559,23 +583,25 @@ Activity restart rebinds the new Actor
 Create:
 
 ```text
-PreparedPlayerCameraBindingAdapter
-PlayerGameplayCameraBindingSnapshot/result
+PlayerGameplayCameraAuthoring
+PlayerGameplayCameraEligibilityRuntimeContext
+PlayerGameplayCameraEligibilityToken / summary / snapshot / result
 ```
 
 Acceptance:
 
 ```text
 no dependency on PlayerComposer
-request identity is owner/preparation-derived
-camera publishes only after control admission eligibility
-optional camera may skip
-required invalid camera blocks GameplayReady
-shared-camera Activity may omit per-Player request
+eligibility requires current occupancy and current gameplay input binding
+request, lifetime and tie-break identities are owner/preparation-derived
+optional camera may explicitly skip
+required invalid camera remains rejected
+shared-camera Activity may omit a per-Player camera request
 release is idempotent and stale-token guarded
+no CameraRequest is published in this cut
 ```
 
-### P3K.5 — GameplayReady Aggregation and Reverse Release
+### P3K.5 — Camera Publication, GameplayReady Aggregation and Reverse Release
 
 Create:
 
