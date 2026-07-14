@@ -16,6 +16,7 @@ namespace Immersive.Framework.PlayerParticipation
         SucceededReplaced = 30,
         SucceededAlreadyPrepared = 40,
         SucceededAlreadyReleased = 50,
+        RejectedRuntimeUnavailable = 90,
         RejectedInvalidRequest = 100,
         RejectedSlotNotConfigured = 110,
         RejectedSlotNotJoined = 120,

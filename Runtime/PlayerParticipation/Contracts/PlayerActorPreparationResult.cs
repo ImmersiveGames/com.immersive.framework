@@ -93,6 +93,71 @@ namespace Immersive.Framework.PlayerParticipation
             PreviousSummary.State != CurrentSummary.State ||
             PreviousSummary.Token != CurrentSummary.Token;
 
+
+        internal static PlayerActorPreparationResult RuntimeUnavailable(
+            string operation,
+            PlayerSlotId playerSlotId,
+            string message)
+        {
+            string resolvedMessage = string.IsNullOrWhiteSpace(message)
+                ? "Player Actor preparation runtime is unavailable."
+                : message.Trim();
+            var snapshot = new PlayerActorPreparationSnapshot(
+                string.Empty,
+                0,
+                System.Array.Empty<PlayerActorPreparationSummary>(),
+                System.Array.Empty<PlayerActorMaterializationSnapshot>(),
+                PlayerActorPreparationStatus.RejectedRuntimeUnavailable,
+                resolvedMessage);
+            return new PlayerActorPreparationResult(
+                PlayerActorPreparationStatus.RejectedRuntimeUnavailable,
+                operation,
+                playerSlotId,
+                default,
+                default,
+                null,
+                false,
+                null,
+                false,
+                false,
+                false,
+                string.Empty,
+                false,
+                false,
+                string.Empty,
+                snapshot,
+                resolvedMessage);
+        }
+
+        internal static PlayerActorPreparationResult HostUnavailable(
+            string operation,
+            PlayerSlotId playerSlotId,
+            string message,
+            PlayerActorPreparationSnapshot snapshot)
+        {
+            string resolvedMessage = string.IsNullOrWhiteSpace(message)
+                ? "Joined Local Player Host is unavailable for Actor preparation."
+                : message.Trim();
+            return new PlayerActorPreparationResult(
+                PlayerActorPreparationStatus.RejectedHostUnavailable,
+                operation,
+                playerSlotId,
+                default,
+                default,
+                null,
+                false,
+                null,
+                false,
+                false,
+                false,
+                string.Empty,
+                false,
+                false,
+                string.Empty,
+                snapshot,
+                resolvedMessage);
+        }
+
         public string ToDiagnosticString()
         {
             return $"operation='{Operation}' status='{Status}' originalStatus='{OriginalStatus}' " +

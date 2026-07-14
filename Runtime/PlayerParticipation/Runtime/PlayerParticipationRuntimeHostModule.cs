@@ -15,7 +15,7 @@ namespace Immersive.Framework.PlayerParticipation
     [DisallowMultipleComponent]
     [FrameworkApiStatus(
         FrameworkApiStatus.Internal,
-        "P3F/P3H host-scoped composition adapter for Session Player participation and Actor selection runtime.")]
+        "P3F/P3H/P3J host-scoped composition adapter for Session Player participation, Actor selection and preparation runtime.")]
     internal sealed class PlayerParticipationRuntimeHostModule : MonoBehaviour
     {
         private PlayerParticipationRuntimeContext runtimeContext;
@@ -52,6 +52,31 @@ namespace Immersive.Framework.PlayerParticipation
             }
 
             result = module.Initialize(gameApplication, source, reason);
+            if (result.Succeeded &&
+                !PlayerActorPreparationRuntimeHostModule.TryAttach(
+                    runtimeHost,
+                    out _,
+                    out string preparationIssue))
+            {
+                PlayerParticipationSnapshot snapshot = module.runtimeContext != null
+                    ? module.runtimeContext.CreateSnapshot()
+                    : PlayerParticipationSnapshot.Empty(
+                        PlayerParticipationOperationStatus.FailedInvalidConfiguration,
+                        preparationIssue);
+                result = new PlayerParticipationOperationResult(
+                    PlayerParticipationOperationStatus.FailedInvalidConfiguration,
+                    "InitializePlayerActorPreparationRuntime",
+                    source,
+                    reason,
+                    preparationIssue,
+                    snapshot.Revision,
+                    snapshot.Revision,
+                    default,
+                    default,
+                    snapshot);
+                module.initializationResult = result;
+            }
+
             return module;
         }
 
@@ -143,34 +168,34 @@ namespace Immersive.Framework.PlayerParticipation
         internal PlayerActorSelectionResult TrySelectActorProfile(
             PlayerActorSelectionRequest request)
         {
-            return runtimeContext != null
-                ? runtimeContext.TrySelectActorProfile(request)
+            return TryGetPreparationRuntime(out PlayerActorPreparationRuntimeHostModule preparation)
+                ? preparation.TrySelectActorProfile(request)
                 : PlayerActorSelectionResult.RuntimeUnavailable(
                     "SelectActorProfile",
                     request,
-                    "Player participation runtime module is not initialized.");
+                    "Player Actor preparation runtime module is not initialized.");
         }
 
         internal PlayerActorSelectionResult TryReplaceActorSelection(
             PlayerActorSelectionRequest request)
         {
-            return runtimeContext != null
-                ? runtimeContext.TryReplaceActorSelection(request)
+            return TryGetPreparationRuntime(out PlayerActorPreparationRuntimeHostModule preparation)
+                ? preparation.TryReplaceActorSelection(request)
                 : PlayerActorSelectionResult.RuntimeUnavailable(
                     "ReplaceActorSelection",
                     request,
-                    "Player participation runtime module is not initialized.");
+                    "Player Actor preparation runtime module is not initialized.");
         }
 
         internal PlayerActorSelectionResult TryClearActorSelection(
             PlayerActorSelectionRequest request)
         {
-            return runtimeContext != null
-                ? runtimeContext.TryClearActorSelection(request)
+            return TryGetPreparationRuntime(out PlayerActorPreparationRuntimeHostModule preparation)
+                ? preparation.TryClearActorSelection(request)
                 : PlayerActorSelectionResult.RuntimeUnavailable(
                     "ClearActorSelection",
                     request,
-                    "Player participation runtime module is not initialized.");
+                    "Player Actor preparation runtime module is not initialized.");
         }
 
         internal PlayerActorSelectionResult TrySelectDefaultActor(
@@ -179,9 +204,9 @@ namespace Immersive.Framework.PlayerParticipation
             string source,
             string reason)
         {
-            if (runtimeContext != null)
+            if (TryGetPreparationRuntime(out PlayerActorPreparationRuntimeHostModule preparation))
             {
-                return runtimeContext.TrySelectDefaultActor(
+                return preparation.TrySelectDefaultActor(
                     playerSlotId,
                     expectedSelectionRevision,
                     source,
@@ -196,7 +221,14 @@ namespace Immersive.Framework.PlayerParticipation
                     source,
                     reason,
                     expectedSelectionRevision),
-                "Player participation runtime module is not initialized.");
+                "Player Actor preparation runtime module is not initialized.");
+        }
+
+        private bool TryGetPreparationRuntime(
+            out PlayerActorPreparationRuntimeHostModule preparation)
+        {
+            preparation = GetComponent<PlayerActorPreparationRuntimeHostModule>();
+            return preparation != null && preparation.IsReady;
         }
 
         private void OnDestroy()
@@ -212,7 +244,7 @@ namespace Immersive.Framework.PlayerParticipation
     /// </summary>
     [FrameworkApiStatus(
         FrameworkApiStatus.Internal,
-        "P3F/P3H typed access from FrameworkRuntimeHost to its scoped Player participation module.")]
+        "P3F/P3H/P3J typed access from FrameworkRuntimeHost to its scoped Player participation module.")]
     internal static class FrameworkRuntimeHostPlayerParticipationExtensions
     {
         internal static bool TryGetPlayerParticipationRuntime(

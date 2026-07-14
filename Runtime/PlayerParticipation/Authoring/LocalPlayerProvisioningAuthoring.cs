@@ -15,7 +15,7 @@ namespace Immersive.Framework.PlayerParticipation
     [AddComponentMenu("Immersive Framework/Player/Local Player Provisioning Authoring")]
     [FrameworkApiStatus(
         FrameworkApiStatus.Experimental,
-        "P3G local Player provisioning authoring and explicit runtime request surface.")]
+        "P3G/P3J local Player provisioning authoring and preparation-aware runtime request surface.")]
     public sealed class LocalPlayerProvisioningAuthoring : MonoBehaviour
     {
         [SerializeField]
@@ -120,12 +120,18 @@ namespace Immersive.Framework.PlayerParticipation
 
         /// <summary>
         /// Executes one explicitly authorized local Player join against the Session runtime.
+        /// A successful result is also registered with the host-scoped Actor preparation authority
+        /// before this public product endpoint returns.
         /// </summary>
         public LocalPlayerJoinResult RequestJoin(LocalPlayerJoinRequest request)
         {
-            return RuntimeReady
-                ? runtimeModule.TryJoin(request)
-                : LocalPlayerJoinResult.RuntimeUnavailable(request, RuntimeDiagnostic);
+            if (!RuntimeReady)
+            {
+                return LocalPlayerJoinResult.RuntimeUnavailable(request, RuntimeDiagnostic);
+            }
+
+            LocalPlayerJoinResult result = runtimeModule.TryJoin(request);
+            return runtimeModule.RegisterJoinWithActorPreparation(result);
         }
 
         public LocalPlayerJoinResult RequestJoin(string source, string reason)
