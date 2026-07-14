@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Immersive.Framework.Actors;
 using Immersive.Framework.ApiStatus;
 using Immersive.Framework.Common;
 using Immersive.Framework.PlayerSlots;
@@ -24,6 +25,10 @@ namespace Immersive.Framework.PlayerParticipation
                 Revision = 0;
                 Source = "PlayerParticipationRuntimeContext";
                 Reason = "initialization";
+                SelectedActorProfile = null;
+                SelectionRevision = 0;
+                SelectionSource = string.Empty;
+                SelectionReason = string.Empty;
             }
 
             internal int ConfiguredIndex { get; }
@@ -34,10 +39,15 @@ namespace Immersive.Framework.PlayerParticipation
             internal int Revision { get; set; }
             internal string Source { get; set; }
             internal string Reason { get; set; }
+            internal ActorProfile SelectedActorProfile { get; set; }
+            internal int SelectionRevision { get; set; }
+            internal string SelectionSource { get; set; }
+            internal string SelectionReason { get; set; }
         }
 
         private readonly string contextId;
         private readonly List<SlotRecord> slots;
+        private readonly PlayerActorSelectionPolicyProfile actorSelectionPolicyProfile;
         private int revision;
         private int reservationSequence;
         private int dynamicCapacity;
@@ -48,12 +58,14 @@ namespace Immersive.Framework.PlayerParticipation
         private PlayerParticipationRuntimeContext(
             List<SlotRecord> slots,
             int initialDynamicCapacity,
-            bool initialJoiningOpen)
+            bool initialJoiningOpen,
+            PlayerActorSelectionPolicyProfile actorSelectionPolicyProfile)
         {
             contextId = Guid.NewGuid().ToString("N");
             this.slots = slots ?? throw new ArgumentNullException(nameof(slots));
             dynamicCapacity = initialDynamicCapacity;
             joiningOpen = initialJoiningOpen;
+            this.actorSelectionPolicyProfile = actorSelectionPolicyProfile;
             revision = 1;
             lastOperationStatus = PlayerParticipationOperationStatus.Succeeded;
             lastOperationMessage = "Player participation runtime context initialized.";
@@ -88,13 +100,75 @@ namespace Immersive.Framework.PlayerParticipation
             context = new PlayerParticipationRuntimeContext(
                 records,
                 initialDynamicCapacity,
-                initialJoiningOpen);
+                initialJoiningOpen,
+                null);
             return context.CreateResult(
                 PlayerParticipationOperationStatus.Succeeded,
                 "Initialize",
                 resolvedSource,
                 resolvedReason,
                 "Player participation runtime context initialized.",
+                0,
+                default,
+                default);
+        }
+
+        internal static PlayerParticipationOperationResult TryCreateWithActorSelectionPolicy(
+            IReadOnlyList<PlayerSlotProfile> orderedProfiles,
+            int initialDynamicCapacity,
+            bool initialJoiningOpen,
+            PlayerActorSelectionPolicyProfile actorSelectionPolicyProfile,
+            string source,
+            string reason,
+            out PlayerParticipationRuntimeContext context)
+        {
+            string resolvedSource = source.NormalizeTextOrFallback("PlayerParticipationRuntimeContext");
+            string resolvedReason = reason.NormalizeTextOrFallback("initialization");
+
+            if (actorSelectionPolicyProfile == null)
+            {
+                context = null;
+                return CreateInitializationFailure(
+                    resolvedSource,
+                    resolvedReason,
+                    "Player Actor selection policy Profile is required for a selection-capable Session context.");
+            }
+
+            if (!actorSelectionPolicyProfile.HasDefinedDuplicatePolicy)
+            {
+                context = null;
+                return CreateInitializationFailure(
+                    resolvedSource,
+                    resolvedReason,
+                    $"Player Actor selection policy Profile '{actorSelectionPolicyProfile.name}' has an invalid duplicate policy '{actorSelectionPolicyProfile.DuplicatePolicy}'.");
+            }
+
+            if (!TryCreateSlotRecords(orderedProfiles, out List<SlotRecord> records, out string issue))
+            {
+                context = null;
+                return CreateInitializationFailure(resolvedSource, resolvedReason, issue);
+            }
+
+            if (initialDynamicCapacity < 0 || initialDynamicCapacity > records.Count)
+            {
+                context = null;
+                return CreateInitializationFailure(
+                    resolvedSource,
+                    resolvedReason,
+                    $"Initial dynamic capacity '{initialDynamicCapacity}' must be between 0 and configured Slot count '{records.Count}'.");
+            }
+
+            context = new PlayerParticipationRuntimeContext(
+                records,
+                initialDynamicCapacity,
+                initialJoiningOpen,
+                actorSelectionPolicyProfile);
+            return context.CreateResult(
+                PlayerParticipationOperationStatus.Succeeded,
+                "InitializeWithActorSelectionPolicy",
+                resolvedSource,
+                resolvedReason,
+                $"Player participation runtime context initialized with Actor selection policy '{actorSelectionPolicyProfile.DuplicatePolicy}'.",
                 0,
                 default,
                 default);
@@ -267,6 +341,62 @@ namespace Immersive.Framework.PlayerParticipation
                 "Reserved Slot marked Joined.");
         }
 
+        internal PlayerActorSelectionResult TrySelectActorProfile(
+            PlayerActorSelectionRequest request)
+        {
+            return ApplyActorSelection(
+                request,
+                PlayerActorSelectionOperation.Select,
+                "SelectActorProfile");
+        }
+
+        internal PlayerActorSelectionResult TryReplaceActorSelection(
+            PlayerActorSelectionRequest request)
+        {
+            return ApplyActorSelection(
+                request,
+                PlayerActorSelectionOperation.Replace,
+                "ReplaceActorSelection");
+        }
+
+        internal PlayerActorSelectionResult TryClearActorSelection(
+            PlayerActorSelectionRequest request)
+        {
+            return ApplyActorSelection(
+                request,
+                PlayerActorSelectionOperation.Clear,
+                "ClearActorSelection");
+        }
+
+        internal PlayerActorSelectionResult TrySelectDefaultActor(
+            PlayerSlotId playerSlotId,
+            int expectedSelectionRevision,
+            string source,
+            string reason)
+        {
+            SlotRecord record = FindSlot(playerSlotId);
+            ActorProfile defaultActorProfile = record != null && record.Profile != null
+                ? record.Profile.DefaultActorProfile
+                : null;
+            var request = new PlayerActorSelectionRequest(
+                playerSlotId,
+                defaultActorProfile,
+                source,
+                reason,
+                expectedSelectionRevision);
+            return ApplyActorSelection(
+                request,
+                PlayerActorSelectionOperation.Select,
+                "SelectDefaultActor");
+        }
+
+        internal bool TryGetActorSelection(
+            PlayerSlotId playerSlotId,
+            out PlayerSlotRuntimeSnapshot snapshot)
+        {
+            return TryGetSlotSnapshot(playerSlotId, out snapshot);
+        }
+
         internal bool TryGetSlotSnapshot(
             PlayerSlotId playerSlotId,
             out PlayerSlotRuntimeSnapshot snapshot)
@@ -302,9 +432,441 @@ namespace Immersive.Framework.PlayerParticipation
                 true,
                 dynamicCapacity,
                 joiningOpen,
+                actorSelectionPolicyProfile,
                 snapshots,
                 lastOperationStatus,
                 lastOperationMessage);
+        }
+
+        private enum PlayerActorSelectionOperation
+        {
+            Select = 10,
+            Replace = 20,
+            Clear = 30
+        }
+
+        private PlayerActorSelectionResult ApplyActorSelection(
+            PlayerActorSelectionRequest request,
+            PlayerActorSelectionOperation operation,
+            string operationName)
+        {
+            string source = request.Source.NormalizeText();
+            string reason = request.Reason.NormalizeText();
+
+            if (!request.PlayerSlotId.IsValid || string.IsNullOrEmpty(source) || string.IsNullOrEmpty(reason) ||
+                request.ExpectedSelectionRevision < PlayerActorSelectionRequest.NoExpectedRevision)
+            {
+                return CreateActorSelectionResult(
+                    PlayerActorSelectionStatus.RejectedInvalidRequest,
+                    operationName,
+                    request.PlayerSlotId,
+                    null,
+                    null,
+                    0,
+                    0,
+                    source,
+                    reason,
+                    default,
+                    "Actor selection request is invalid. Slot, source and reason are required and expected revision cannot be below -1.");
+            }
+
+            if (actorSelectionPolicyProfile == null)
+            {
+                return CreateActorSelectionResult(
+                    PlayerActorSelectionStatus.RejectedPolicyMissing,
+                    operationName,
+                    request.PlayerSlotId,
+                    null,
+                    null,
+                    0,
+                    0,
+                    source,
+                    reason,
+                    default,
+                    "Actor selection policy is not configured for this Session participation context.");
+            }
+
+            if (!actorSelectionPolicyProfile.HasDefinedDuplicatePolicy)
+            {
+                return CreateActorSelectionResult(
+                    PlayerActorSelectionStatus.RejectedPolicyInvalid,
+                    operationName,
+                    request.PlayerSlotId,
+                    null,
+                    null,
+                    0,
+                    0,
+                    source,
+                    reason,
+                    default,
+                    $"Actor selection policy '{actorSelectionPolicyProfile.name}' has an invalid duplicate policy '{actorSelectionPolicyProfile.DuplicatePolicy}'.");
+            }
+
+            SlotRecord record = FindSlot(request.PlayerSlotId);
+            if (record == null)
+            {
+                return CreateActorSelectionResult(
+                    PlayerActorSelectionStatus.RejectedSlotNotConfigured,
+                    operationName,
+                    request.PlayerSlotId,
+                    null,
+                    null,
+                    0,
+                    0,
+                    source,
+                    reason,
+                    default,
+                    $"Player Slot '{request.PlayerSlotId.StableText}' is not configured in this Session context.");
+            }
+
+            ActorProfile previous = record.SelectedActorProfile;
+            int previousSelectionRevision = record.SelectionRevision;
+
+            if (record.AllocationState != PlayerSlotAllocationState.Joined)
+            {
+                return CreateActorSelectionResult(
+                    PlayerActorSelectionStatus.RejectedSlotNotJoined,
+                    operationName,
+                    record.PlayerSlotId,
+                    previous,
+                    previous,
+                    previousSelectionRevision,
+                    previousSelectionRevision,
+                    source,
+                    reason,
+                    default,
+                    $"Player Slot '{record.PlayerSlotId.StableText}' must be Joined before Actor selection can change.");
+            }
+
+            if (request.HasExpectedSelectionRevision &&
+                request.ExpectedSelectionRevision != record.SelectionRevision)
+            {
+                return CreateActorSelectionResult(
+                    PlayerActorSelectionStatus.RejectedStaleSelectionRevision,
+                    operationName,
+                    record.PlayerSlotId,
+                    previous,
+                    previous,
+                    previousSelectionRevision,
+                    previousSelectionRevision,
+                    source,
+                    reason,
+                    default,
+                    $"Expected selection revision '{request.ExpectedSelectionRevision}' does not match current revision '{record.SelectionRevision}'.");
+            }
+
+            if (operation == PlayerActorSelectionOperation.Clear)
+            {
+                if (request.ActorProfile != null)
+                {
+                    return CreateActorSelectionResult(
+                        PlayerActorSelectionStatus.RejectedInvalidRequest,
+                        operationName,
+                        record.PlayerSlotId,
+                        previous,
+                        previous,
+                        previousSelectionRevision,
+                        previousSelectionRevision,
+                        source,
+                        reason,
+                        default,
+                        "Clear Actor selection request must not carry an ActorProfile.");
+                }
+
+                if (previous == null)
+                {
+                    return CreateActorSelectionResult(
+                        PlayerActorSelectionStatus.SucceededCleared,
+                        operationName,
+                        record.PlayerSlotId,
+                        null,
+                        null,
+                        previousSelectionRevision,
+                        previousSelectionRevision,
+                        source,
+                        reason,
+                        default,
+                        "Actor selection is already clear; no runtime state changed.");
+                }
+
+                CommitActorSelection(record, null, source, reason);
+                return CreateActorSelectionResult(
+                    PlayerActorSelectionStatus.SucceededCleared,
+                    operationName,
+                    record.PlayerSlotId,
+                    previous,
+                    null,
+                    previousSelectionRevision,
+                    record.SelectionRevision,
+                    source,
+                    reason,
+                    default,
+                    "Actor selection cleared without changing Slot allocation.");
+            }
+
+            if (request.ActorProfile == null)
+            {
+                return CreateActorSelectionResult(
+                    PlayerActorSelectionStatus.RejectedActorProfileMissing,
+                    operationName,
+                    record.PlayerSlotId,
+                    previous,
+                    previous,
+                    previousSelectionRevision,
+                    previousSelectionRevision,
+                    source,
+                    reason,
+                    default,
+                    operationName == "SelectDefaultActor"
+                        ? $"Player Slot '{record.PlayerSlotId.StableText}' has no Default Actor Profile."
+                        : "Actor selection request requires an ActorProfile.");
+            }
+
+            if (!TryValidateActorProfile(request.ActorProfile, out ActorProfileId requestedActorProfileId, out string profileIssue))
+            {
+                return CreateActorSelectionResult(
+                    PlayerActorSelectionStatus.RejectedActorProfileInvalid,
+                    operationName,
+                    record.PlayerSlotId,
+                    previous,
+                    previous,
+                    previousSelectionRevision,
+                    previousSelectionRevision,
+                    source,
+                    reason,
+                    default,
+                    profileIssue);
+            }
+
+            if (operation == PlayerActorSelectionOperation.Select && previous != null)
+            {
+                if (TryGetActorProfileId(previous, out ActorProfileId previousId) && previousId == requestedActorProfileId)
+                {
+                    return CreateActorSelectionResult(
+                        PlayerActorSelectionStatus.SucceededSelected,
+                        operationName,
+                        record.PlayerSlotId,
+                        previous,
+                        previous,
+                        previousSelectionRevision,
+                        previousSelectionRevision,
+                        source,
+                        reason,
+                        default,
+                        "Requested ActorProfile is already selected; no runtime state changed.");
+                }
+
+                return CreateActorSelectionResult(
+                    PlayerActorSelectionStatus.RejectedInvalidRequest,
+                    operationName,
+                    record.PlayerSlotId,
+                    previous,
+                    previous,
+                    previousSelectionRevision,
+                    previousSelectionRevision,
+                    source,
+                    reason,
+                    default,
+                    "Player Slot already has an Actor selection. Use ReplaceActorSelection for an explicit replacement.");
+            }
+
+            if (operation == PlayerActorSelectionOperation.Replace && previous == null)
+            {
+                return CreateActorSelectionResult(
+                    PlayerActorSelectionStatus.RejectedInvalidRequest,
+                    operationName,
+                    record.PlayerSlotId,
+                    null,
+                    null,
+                    previousSelectionRevision,
+                    previousSelectionRevision,
+                    source,
+                    reason,
+                    default,
+                    "Player Slot has no Actor selection to replace. Use SelectActorProfile first.");
+            }
+
+            if (previous != null && TryGetActorProfileId(previous, out ActorProfileId currentId) &&
+                currentId == requestedActorProfileId)
+            {
+                return CreateActorSelectionResult(
+                    operation == PlayerActorSelectionOperation.Replace
+                        ? PlayerActorSelectionStatus.SucceededReplaced
+                        : PlayerActorSelectionStatus.SucceededSelected,
+                    operationName,
+                    record.PlayerSlotId,
+                    previous,
+                    previous,
+                    previousSelectionRevision,
+                    previousSelectionRevision,
+                    source,
+                    reason,
+                    default,
+                    "Requested ActorProfile is already selected; no runtime state changed.");
+            }
+
+            if (actorSelectionPolicyProfile.RequiresUniqueActors &&
+                TryFindDuplicateActorSelection(record, requestedActorProfileId, out SlotRecord conflictingRecord))
+            {
+                return CreateActorSelectionResult(
+                    PlayerActorSelectionStatus.RejectedDuplicateActorSelection,
+                    operationName,
+                    record.PlayerSlotId,
+                    previous,
+                    previous,
+                    previousSelectionRevision,
+                    previousSelectionRevision,
+                    source,
+                    reason,
+                    conflictingRecord.PlayerSlotId,
+                    $"ActorProfile '{requestedActorProfileId.StableText}' is already selected by Joined Slot '{conflictingRecord.PlayerSlotId.StableText}'.");
+            }
+
+            CommitActorSelection(record, request.ActorProfile, source, reason);
+            return CreateActorSelectionResult(
+                previous == null
+                    ? PlayerActorSelectionStatus.SucceededSelected
+                    : PlayerActorSelectionStatus.SucceededReplaced,
+                operationName,
+                record.PlayerSlotId,
+                previous,
+                request.ActorProfile,
+                previousSelectionRevision,
+                record.SelectionRevision,
+                source,
+                reason,
+                default,
+                previous == null
+                    ? "ActorProfile selected for Joined Player Slot."
+                    : "ActorProfile selection replaced for Joined Player Slot.");
+        }
+
+        private void CommitActorSelection(
+            SlotRecord record,
+            ActorProfile actorProfile,
+            string source,
+            string reason)
+        {
+            record.SelectedActorProfile = actorProfile;
+            record.SelectionRevision++;
+            record.SelectionSource = source;
+            record.SelectionReason = reason;
+            record.Revision++;
+            revision++;
+        }
+
+        private PlayerActorSelectionResult CreateActorSelectionResult(
+            PlayerActorSelectionStatus status,
+            string operation,
+            PlayerSlotId playerSlotId,
+            ActorProfile previousActorProfile,
+            ActorProfile selectedActorProfile,
+            int previousSelectionRevision,
+            int currentSelectionRevision,
+            string source,
+            string reason,
+            PlayerSlotId conflictingPlayerSlotId,
+            string message)
+        {
+            SlotRecord record = playerSlotId.IsValid ? FindSlot(playerSlotId) : null;
+            PlayerSlotRuntimeSnapshot slotSnapshot = record != null
+                ? CreateSlotSnapshot(record)
+                : default;
+            return new PlayerActorSelectionResult(
+                status,
+                operation,
+                playerSlotId,
+                record != null ? record.Profile : null,
+                previousActorProfile,
+                selectedActorProfile,
+                previousSelectionRevision,
+                currentSelectionRevision,
+                actorSelectionPolicyProfile,
+                conflictingPlayerSlotId,
+                source,
+                reason,
+                message,
+                slotSnapshot,
+                CreateSnapshot());
+        }
+
+        private bool TryFindDuplicateActorSelection(
+            SlotRecord targetRecord,
+            ActorProfileId requestedActorProfileId,
+            out SlotRecord conflictingRecord)
+        {
+            for (int index = 0; index < slots.Count; index++)
+            {
+                SlotRecord candidate = slots[index];
+                if (ReferenceEquals(candidate, targetRecord) ||
+                    candidate.AllocationState != PlayerSlotAllocationState.Joined ||
+                    candidate.SelectedActorProfile == null)
+                {
+                    continue;
+                }
+
+                if (TryGetActorProfileId(candidate.SelectedActorProfile, out ActorProfileId candidateId) &&
+                    candidateId == requestedActorProfileId)
+                {
+                    conflictingRecord = candidate;
+                    return true;
+                }
+            }
+
+            conflictingRecord = null;
+            return false;
+        }
+
+        private static bool TryValidateActorProfile(
+            ActorProfile actorProfile,
+            out ActorProfileId actorProfileId,
+            out string issue)
+        {
+            actorProfileId = default;
+            if (actorProfile == null)
+            {
+                issue = "ActorProfile is missing.";
+                return false;
+            }
+
+            if (!actorProfile.TryGetActorProfileId(out actorProfileId, out issue))
+            {
+                return false;
+            }
+
+            if (!actorProfile.HasDefinedActorKind)
+            {
+                issue = $"ActorProfile '{actorProfile.name}' has an invalid Actor Kind '{actorProfile.ActorKind}'.";
+                return false;
+            }
+
+            if (!actorProfile.HasDefinedActorRole)
+            {
+                issue = $"ActorProfile '{actorProfile.name}' has an invalid Actor Role '{actorProfile.ActorRole}'.";
+                return false;
+            }
+
+            if (!actorProfile.HasLogicalActorHostPrefab)
+            {
+                issue = $"ActorProfile '{actorProfile.name}' requires a Logical Actor Host prefab.";
+                return false;
+            }
+
+            issue = string.Empty;
+            return true;
+        }
+
+        private static bool TryGetActorProfileId(
+            ActorProfile actorProfile,
+            out ActorProfileId actorProfileId)
+        {
+            if (actorProfile == null)
+            {
+                actorProfileId = default;
+                return false;
+            }
+
+            return actorProfile.TryGetActorProfileId(out actorProfileId, out _);
         }
 
         private PlayerParticipationOperationResult TrySetJoiningOpen(
@@ -490,7 +1052,11 @@ namespace Immersive.Framework.PlayerParticipation
                 record.ReservationToken,
                 record.Revision,
                 record.Source,
-                record.Reason);
+                record.Reason,
+                record.SelectedActorProfile,
+                record.SelectionRevision,
+                record.SelectionSource,
+                record.SelectionReason);
         }
 
         private static bool TryCreateSlotRecords(

@@ -7,7 +7,7 @@ namespace Immersive.Framework.PlayerParticipation
     /// <summary>
     /// Immutable ordered Session participation snapshot.
     /// </summary>
-    [FrameworkApiStatus(FrameworkApiStatus.Experimental, "P3F Session Player participation snapshot.")]
+    [FrameworkApiStatus(FrameworkApiStatus.Experimental, "P3F/P3H Session Player participation snapshot with Actor selection evidence.")]
     public sealed class PlayerParticipationSnapshot
     {
         private readonly PlayerSlotRuntimeSnapshot[] slots;
@@ -18,6 +18,7 @@ namespace Immersive.Framework.PlayerParticipation
             bool initialized,
             int dynamicCapacity,
             bool joiningOpen,
+            PlayerActorSelectionPolicyProfile actorSelectionPolicyProfile,
             PlayerSlotRuntimeSnapshot[] slots,
             PlayerParticipationOperationStatus lastOperationStatus,
             string lastOperationMessage)
@@ -27,6 +28,7 @@ namespace Immersive.Framework.PlayerParticipation
             IsInitialized = initialized;
             DynamicCapacity = dynamicCapacity;
             JoiningOpen = joiningOpen;
+            ActorSelectionPolicyProfile = actorSelectionPolicyProfile;
             this.slots = slots != null
                 ? (PlayerSlotRuntimeSnapshot[])slots.Clone()
                 : Array.Empty<PlayerSlotRuntimeSnapshot>();
@@ -35,7 +37,8 @@ namespace Immersive.Framework.PlayerParticipation
 
             for (int index = 0; index < this.slots.Length; index++)
             {
-                switch (this.slots[index].AllocationState)
+                PlayerSlotRuntimeSnapshot slot = this.slots[index];
+                switch (slot.AllocationState)
                 {
                     case PlayerSlotAllocationState.Unavailable:
                         UnavailableCount++;
@@ -48,10 +51,19 @@ namespace Immersive.Framework.PlayerParticipation
                         break;
                     case PlayerSlotAllocationState.Joined:
                         JoinedCount++;
+                        if (!slot.HasSelectedActor)
+                        {
+                            JoinedWithoutSelectedActorCount++;
+                        }
                         break;
                     case PlayerSlotAllocationState.Leaving:
                         LeavingCount++;
                         break;
+                }
+
+                if (slot.HasSelectedActor)
+                {
+                    SelectedActorCount++;
                 }
             }
         }
@@ -66,6 +78,17 @@ namespace Immersive.Framework.PlayerParticipation
 
         public bool JoiningOpen { get; }
 
+        public PlayerActorSelectionPolicyProfile ActorSelectionPolicyProfile { get; }
+
+        public bool HasActorSelectionPolicy =>
+            ActorSelectionPolicyProfile != null &&
+            ActorSelectionPolicyProfile.HasDefinedDuplicatePolicy;
+
+        public PlayerActorSelectionDuplicatePolicy ActorSelectionDuplicatePolicy =>
+            HasActorSelectionPolicy
+                ? ActorSelectionPolicyProfile.DuplicatePolicy
+                : PlayerActorSelectionDuplicatePolicy.Unspecified;
+
         public IReadOnlyList<PlayerSlotRuntimeSnapshot> Slots => slots;
 
         public int ConfiguredSlotCount => slots.Length;
@@ -79,6 +102,13 @@ namespace Immersive.Framework.PlayerParticipation
         public int JoinedCount { get; }
 
         public int LeavingCount { get; }
+
+        public int SelectedActorCount { get; }
+
+        public int JoinedWithoutSelectedActorCount { get; }
+
+        public bool AllJoinedSlotsHaveSelectedActors =>
+            JoinedCount > 0 && JoinedWithoutSelectedActorCount == 0;
 
         public int ConsumedCapacityCount => ReservedCount + JoinedCount + LeavingCount;
 
@@ -98,6 +128,7 @@ namespace Immersive.Framework.PlayerParticipation
                 false,
                 0,
                 false,
+                null,
                 Array.Empty<PlayerSlotRuntimeSnapshot>(),
                 status,
                 message);
