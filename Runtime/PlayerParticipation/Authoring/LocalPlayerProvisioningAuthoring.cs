@@ -152,6 +152,7 @@ namespace Immersive.Framework.PlayerParticipation
                     "Local Player provisioning authoring is already bound to another Session runtime module.");
             }
 
+            module.RegisterActivityPlayerActorLifecycleSource();
             runtimeModule = module;
             runtimeDiagnostic = module.Diagnostic;
         }

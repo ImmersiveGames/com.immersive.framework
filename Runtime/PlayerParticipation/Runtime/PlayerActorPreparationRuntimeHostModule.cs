@@ -17,7 +17,7 @@ namespace Immersive.Framework.PlayerParticipation
     [DisallowMultipleComponent]
     [FrameworkApiStatus(
         FrameworkApiStatus.Internal,
-        "P3J.5 FrameworkRuntimeHost integration for real local Player Actor preparation.")]
+        "P3J.5/P3J.6 FrameworkRuntimeHost integration for real local Player Actor preparation and Activity lifecycle.")]
     internal sealed class PlayerActorPreparationRuntimeHostModule : MonoBehaviour
     {
         private readonly Dictionary<PlayerSlotId, LocalPlayerHostAuthoring> joinedHosts =
@@ -26,6 +26,7 @@ namespace Immersive.Framework.PlayerParticipation
         private FrameworkRuntimeHost runtimeHost;
         private PlayerParticipationRuntimeContext participationContext;
         private PlayerActorPreparationRuntimeContext preparationContext;
+        private ActivityPlayerActorLifecycleParticipant activityLifecycleParticipant;
         private LocalPlayerJoinResult lastJoinResult;
         private string diagnostic = "Player Actor preparation runtime is not initialized.";
         private int joinRequestCount;
@@ -35,7 +36,8 @@ namespace Immersive.Framework.PlayerParticipation
         internal bool IsReady =>
             runtimeHost != null &&
             participationContext != null &&
-            preparationContext != null;
+            preparationContext != null &&
+            activityLifecycleParticipant != null;
 
         internal string Diagnostic => diagnostic;
         internal LocalPlayerJoinResult LastJoinResult => lastJoinResult;
@@ -133,6 +135,11 @@ namespace Immersive.Framework.PlayerParticipation
             runtimeHost = targetRuntimeHost;
             participationContext = targetParticipationContext;
             preparationContext = targetPreparationContext;
+            activityLifecycleParticipant = new ActivityPlayerActorLifecycleParticipant(
+                this,
+                targetParticipationContext);
+            targetRuntimeHost.SetActivityContentExecutionParticipantSource(
+                activityLifecycleParticipant);
             diagnostic =
                 $"Player Actor preparation runtime is ready. session='{participationSnapshot.ContextId}'.";
             return true;
@@ -246,6 +253,7 @@ namespace Immersive.Framework.PlayerParticipation
                 if (ReferenceEquals(existing, host))
                 {
                     RecordSuccessfulJoin(joinResult);
+                    RegisterActivityLifecycleSource();
                     return true;
                 }
 
@@ -256,6 +264,7 @@ namespace Immersive.Framework.PlayerParticipation
 
             joinedHosts.Add(slot.PlayerSlotId, host);
             RecordSuccessfulJoin(joinResult);
+            RegisterActivityLifecycleSource();
             diagnostic =
                 $"Joined Local Player Host registered. slot='{slot.PlayerSlotId.StableText}' host='{host.name}'.";
             return true;
@@ -483,6 +492,21 @@ namespace Immersive.Framework.PlayerParticipation
             return IsReady;
         }
 
+
+        internal bool TryGetActivityPlayerActorLifecycleSnapshot(
+            out ActivityPlayerActorLifecycleSnapshot snapshot)
+        {
+            if (activityLifecycleParticipant == null)
+            {
+                snapshot = ActivityPlayerActorLifecycleSnapshot.Empty(
+                    "Activity Player Actor lifecycle participant is unavailable.");
+                return false;
+            }
+
+            snapshot = activityLifecycleParticipant.Snapshot;
+            return true;
+        }
+
         internal bool TryReleaseAllPreparedActors(
             string source,
             string reason,
@@ -534,6 +558,19 @@ namespace Immersive.Framework.PlayerParticipation
                 ? $"Released '{releasedCount}' prepared Player Actors."
                 : $"Prepared Player Actor shutdown release failed for '{failedCount}' Slots. {issue}";
             return failedCount == 0;
+        }
+
+
+        internal void RegisterActivityLifecycleSource()
+        {
+            if (runtimeHost == null || activityLifecycleParticipant == null)
+            {
+                throw new InvalidOperationException(
+                    "Activity Player Actor lifecycle source cannot be registered before runtime initialization.");
+            }
+
+            runtimeHost.SetActivityContentExecutionParticipantSource(
+                activityLifecycleParticipant);
         }
 
         private void RecordSuccessfulJoin(LocalPlayerJoinResult joinResult)
@@ -589,6 +626,7 @@ namespace Immersive.Framework.PlayerParticipation
             }
 
             joinedHosts.Clear();
+            activityLifecycleParticipant = null;
             preparationContext = null;
             participationContext = null;
             runtimeHost = null;
@@ -602,9 +640,28 @@ namespace Immersive.Framework.PlayerParticipation
     /// </summary>
     [FrameworkApiStatus(
         FrameworkApiStatus.Internal,
-        "P3J.5 preparation registration bridge for successful local Player joins.")]
+        "P3J.5/P3J.6 preparation registration and Activity lifecycle bridge for local Player provisioning.")]
     internal static class LocalPlayerProvisioningPreparationExtensions
     {
+        internal static void RegisterActivityPlayerActorLifecycleSource(
+            this LocalPlayerProvisioningRuntimeHostModule provisioning)
+        {
+            if (provisioning == null)
+            {
+                throw new ArgumentNullException(nameof(provisioning));
+            }
+
+            PlayerActorPreparationRuntimeHostModule preparation =
+                provisioning.GetComponent<PlayerActorPreparationRuntimeHostModule>();
+            if (preparation == null || !preparation.IsReady)
+            {
+                throw new InvalidOperationException(
+                    "Local Player provisioning cannot register Activity Player Actor lifecycle because the same FrameworkRuntimeHost has no ready preparation module.");
+            }
+
+            preparation.RegisterActivityLifecycleSource();
+        }
+
         internal static LocalPlayerJoinResult RegisterJoinWithActorPreparation(
             this LocalPlayerProvisioningRuntimeHostModule provisioning,
             LocalPlayerJoinResult result)

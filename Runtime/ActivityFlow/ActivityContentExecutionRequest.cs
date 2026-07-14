@@ -77,6 +77,13 @@ namespace Immersive.Framework.ActivityFlow
 
         private RuntimeScopeContext Context { get; }
 
+        /// <summary>
+        /// Internal lifecycle authority context. Public consumers continue to receive only
+        /// passive owner/identity projections; package runtime participants may use the exact
+        /// scoped context supplied by ActivityFlow without reconstructing it or performing lookup.
+        /// </summary>
+        internal RuntimeScopeContext RuntimeScopeContext => Context;
+
         public RuntimeContentOwner Owner => Context.Owner;
 
         public RuntimeContentScope Scope => Context.Scope;
