@@ -1,12 +1,30 @@
 # P3K.1 — Post-Materialization Binding Conformance Audit
 
-**Status:** Completed / decision gate closed  
-**Phase:** P3K — Post-Materialization Bindings and Gameplay Readiness  
-**Date:** 2026-07-14  
-**Package:** `com.immersive.framework`  
-**QA:** `rinnocenti/QAFramework`  
-**Unity baseline:** Unity 6.5 / Input System 1.19.0  
+**Status:** Completed / decision gate closed
+**Phase:** P3K — Post-Materialization Bindings and Gameplay Readiness
+**Date:** 2026-07-14
+**Package:** `com.immersive.framework`
+**QA:** `rinnocenti/QAFramework`
+**Unity baseline:** Unity 6.5 / Input System 1.19.0
 **Decision gate:** `DG-P3-07`
+
+---
+
+## P3K.3 code-level correction
+
+The implementation inspection performed for P3K.3 supersedes the P2 control assumptions recorded in the original audit. The current accepted package does **not** contain `PlayerControlRuntimeContext`, and the older F52 binding/bridge/activation chain is not the operative product runtime.
+
+The current reusable P2 surface is:
+
+```text
+explicit stable-host PlayerInput
+PlayerActorDeclaration PlayerInput evidence
+UnityPlayerInputGateAdapter
+Pause / Transition Gate snapshots
+game-owned movement
+```
+
+Accordingly, P3K.3 introduces a narrow `PlayerGameplayInputBindingRuntimeContext` backed by the live P3K.2 occupancy authority. It does not recreate the removed F52 chain and does not execute `PlayerComposer` at runtime. All later sections in this document must be read with this correction.
 
 ---
 
@@ -46,7 +64,7 @@ turn PlayerSlotOccupancy into a mutable runtime authority
 run PlayerComposer at runtime
 require a scene-authored PlayerComposer for materialized Players
 let LocalPlayerCameraRequestBinding publish during OnEnable
-duplicate PlayerControlRuntimeContext
+recreate the removed F52 Player binding chain
 make camera universally mandatory
 infer targets through name, tag or hierarchy conventions
 treat LogicalActorsPrepared as GameplayReady
@@ -115,10 +133,8 @@ GameplayReady
 | `PlayerActorPreparationToken` | Guards preparation/release mutations and rejects stale operations. | Include in every P3K admission and release request. |
 | `PlayerSlotOccupancy` | Passive authored relation. It explicitly does not change occupancy, spawn, replace or register runtime state. | Do not mutate or use as P3K authority. Preserve only for passive/pre-authored diagnostics and older authoring surfaces. |
 | `PlayerSlotOccupancyDescriptor` | Passive description with `ChangesOccupancy == false`. | Not sufficient as effective runtime occupancy evidence. |
-| `PlayerControlBindingTargetBehaviour` | Stores typed Player control binding evidence; does not activate input or gameplay. | Reuse as the logical Actor-side control binding target when explicitly referenced. |
-| `UnityPlayerInputBridgeTargetBehaviour` | Stores bridge evidence but depends on serialized expected Slot text and explicit `PlayerInput`. | Reuse underlying bridge contract only after adding a typed runtime configuration path; serialized Slot text cannot be authoritative in P3K. |
-| `UnityPlayerInputActivationTargetBehaviour` | Switches one configured action map and restores the captured previous map. It does not own lifecycle. | Reuse behind the scoped control transaction. Runtime Slot and exact `PlayerInput` must be supplied explicitly. |
-| `PlayerControlRuntimeContext` | Per-Player, non-global bind/unbind authority with reverse rollback/release. | Reuse as the sole control transaction authority. Do not create a parallel P3 control context. |
+| legacy F52 PlayerBinding targets | Historical passive binding/bridge/activation evidence. They are not the accepted current Player product runtime. | Do not reintroduce them into the contextual P3 path. |
+| `PlayerGameplayInputBindingRuntimeContext` | P3K.3 Session authority binding live occupancy to the stable-host `PlayerInput`. | Use as the narrow typed gameplay-input transaction, with reverse release and Gate-derived availability. |
 | `PlayerComposer` | Designer authoring/apply surface for pre-authored Players. | Do not invoke at runtime. P3 logical prefabs need a smaller explicit endpoint surface. |
 | `LocalPlayerCameraRequestBinding` | Converts PlayerComposer data into a camera request and may publish on `OnEnable`. | Do not use in the P3 materialized path. It hard-depends on PlayerComposer and serialized eligibility/request identity. |
 | `CameraOutputSessionBinding` | Explicit session-scoped owner of `CameraOutputSession`; no global registration. | Reuse unchanged as camera output authority. |
@@ -177,19 +193,23 @@ P3K must not duplicate these records or retain an independent physical Actor ref
 
 The P3K module may retain a scoped admission record containing the current preparation token and typed binding handles. The Actor instance remains owned by the P3J materialization handle and contextual RuntimeContent owner.
 
-### 4.3 Control must reuse `PlayerControlRuntimeContext`
+### 4.3 P3K requires a narrow gameplay-input binding authority
 
-The P2 control model already separates:
+The code-level inspection confirmed that the accepted package does not contain `PlayerControlRuntimeContext`. The older F52 PlayerBinding chain must not be revived as a hidden dependency.
+
+P3K.3 therefore introduces:
 
 ```text
-binding state
-input availability
-game-owned movement
+PlayerGameplayInputBindingRuntimeContext
+  validates live P3K.2 occupancy
+  validates exact stable-host PlayerInput
+  validates generated PlayerActorDeclaration identity
+  activates/restores the configured gameplay action map
+  derives Allowed / BlockedByGate from UnityPlayerInputGateAdapter
+  guards release with a typed binding token
 ```
 
-P3K must compose that existing authority rather than creating a new Player input manager or direct action reader.
-
-For Activity-owned Logical Actors, the binding transaction is Activity-owned even though the Local Player Host persists:
+For Activity-owned Logical Actors, this binding is Activity-sensitive even though the Local Player Host persists:
 
 ```text
 stable host persists
@@ -198,35 +218,18 @@ Slot selection persists
 
 Activity Actor changes
 ActorId changes
-control target may change
-camera target may change
+occupancy token changes
+input binding token changes
 preparation token changes
 ```
 
-Therefore Activity Restart must release the old control context binding before releasing the old Actor, then bind the newly prepared Actor. The older pre-placed-Player assumption that control survives Activity Restart applies only when the same Actor instance and identity survive.
+Activity Restart must release the old gameplay-input binding before occupancy and Actor release, then bind the newly prepared Actor.
 
-### 4.4 Existing PlayerBinding targets need typed runtime configuration
+### 4.4 Existing Gate adapter is reused; legacy F52 targets are not
 
-The current bridge and activation targets contain serialized `expectedPlayerSlotId` text. P3K cannot treat this text as authority because the stable Slot is already known from Session participation and the host's runtime `PlayerSlotDeclaration`.
+`UnityPlayerInputGateAdapter` remains the accepted adapter for Pause/Transition availability. P3K.3 validates that it targets the exact stable-host `PlayerInput` and uses its configured gameplay action map.
 
-Accepted direction:
-
-```text
-P3K supplies:
-  exact PlayerSlotId
-  exact PlayerInput
-  exact PlayerActorDeclaration / ActorId
-  exact control target
-  exact preparation token
-
-targets validate:
-  same Slot
-  same PlayerInput
-  current preparation
-  required action map
-```
-
-Serialized Slot text may remain for pre-authored PlayerComposer flows and diagnostics, but the P3 runtime path must use typed configuration or context-supplied identity.
+The contextual runtime path supplies typed identity through preparation and occupancy tokens. Serialized Slot or Actor strings, legacy bridge targets and `PlayerComposer` runtime execution are not authorities.
 
 ### 4.5 P3 logical prefabs need a narrow explicit endpoint
 
@@ -325,21 +328,21 @@ Which existing input and camera bindings can be reconfigured after provisioning 
 
 ```text
 Reuse directly:
-  PlayerControlRuntimeContext
-  PlayerControl binding contracts and target
-  Unity PlayerInput bridge/activation contracts
+  stable LocalPlayerHostAuthoring PlayerInput ownership
+  PlayerActorDeclaration typed Actor / PlayerInput evidence
+  UnityPlayerInputGateAdapter
   CameraOutputSessionBinding
   CameraRequest / CameraOutputContext / publisher primitives
   P3J preparation token and materialization snapshot
+  P3K.2 live occupancy authority
 
-Reuse after a typed runtime configuration extension:
-  UnityPlayerInputBridgeTargetBehaviour
-  UnityPlayerInputActivationTargetBehaviour
-  UnityPlayerInputGateAdapter
+Add for the contextual runtime path:
+  PlayerGameplayInputBindingRuntimeContext
 
 Do not use in the P3 runtime path:
   PlayerComposer execution
   PlayerSlotOccupancy as mutable occupancy
+  legacy F52 PlayerBinding target chain
   LocalPlayerCameraRequestBinding
   serialized Slot/Actor strings as authority
 ```
@@ -359,8 +362,8 @@ Responsibilities:
 ```text
 validate a current P3J preparation
 coordinate effective occupancy
-coordinate PlayerControlRuntimeContext bind/release
-coordinate typed PlayerInput bridge and activation
+coordinate live occupancy-backed gameplay-input bind/release
+coordinate stable-host PlayerInput action-map activation and Gate availability
 coordinate optional camera request publication/release
 publish immutable admission/readiness snapshots
 retain rollback diagnostics
@@ -467,21 +470,18 @@ PlayerGameplayAdmissionSnapshot
 3. Validate exact Slot, Actor and PlayerInput coherence.
 4. Resolve explicit logical Actor gameplay endpoints.
 5. Confirm effective runtime Slot -> Actor occupancy.
-6. Bind PlayerControlRuntimeContext to the exact Actor/control target.
-7. Bridge the exact stable-host PlayerInput.
-8. Activate the configured gameplay action map.
-9. Apply current Gate availability without unbinding.
-10. Publish optional/required camera request.
-11. Publish GameplayReady snapshot.
+6. Bind the exact generated Actor identity to the stable-host PlayerInput.
+7. Activate the configured gameplay action map.
+8. Apply current Gate availability without replacing binding identity.
+9. Publish optional/required camera request.
+10. Publish GameplayReady snapshot.
 ```
 
 ### Rollback after a failed admit
 
 ```text
 camera release if published
-input activation clear
-PlayerInput bridge clear
-control binding clear
+gameplay-input binding release and previous-map restore
 occupancy release
 retain original failure plus rollback evidence
 ```
@@ -647,7 +647,7 @@ DG-P3-07 is closed.
 
 PlayerSlotOccupancy is not the runtime occupancy authority.
 
-PlayerControlRuntimeContext remains the sole control bind/unbind authority.
+PlayerGameplayInputBindingRuntimeContext is the narrow contextual gameplay-input bind/release authority.
 
 PlayerComposer remains authoring-only and is not required at runtime.
 
@@ -662,5 +662,5 @@ CameraOutputSession and lower-level camera request primitives are reused.
 GameplayReady is a derived transactional snapshot guarded by the current
 P3J preparation identity.
 
-P3K.2 is the next implementation cut.
+P3K.2 and P3K.3 implement occupancy and typed gameplay-input binding; P3K.4 is the next implementation cut.
 ```
