@@ -43,6 +43,13 @@ namespace Immersive.Framework.Editor.Editor.PlayerParticipation
                     manager);
             }
 
+            if (manager.notificationBehavior != PlayerNotifications.InvokeCSharpEvents)
+            {
+                report.AddError(
+                    $"PlayerInputManager '{manager.name}' must use Invoke C# Events notifications. Current notification behavior is '{manager.notificationBehavior}'. The provisioning bridge requires the typed joined callback for correlation and divergence detection.",
+                    manager);
+            }
+
             GameObject playerPrefab = manager.playerPrefab;
             PlayerInput prefabPlayerInput = null;
             PlayerActorDeclaration prefabActorDeclaration = null;
@@ -112,7 +119,7 @@ namespace Immersive.Framework.Editor.Editor.PlayerParticipation
             if (report.IsValid)
             {
                 report.AddInfo(
-                    $"Local Player Provisioning authoring is valid. manager='{manager.name}' joinBehavior='{manager.joinBehavior}' playerPrefab='{(playerPrefab != null ? playerPrefab.name : string.Empty)}' maxPlayerCount='{manager.maxPlayerCount}'.",
+                    $"Local Player Provisioning authoring is valid. manager='{manager.name}' joinBehavior='{manager.joinBehavior}' notificationBehavior='{manager.notificationBehavior}' playerPrefab='{(playerPrefab != null ? playerPrefab.name : string.Empty)}' maxPlayerCount='{manager.maxPlayerCount}'.",
                     authoring);
             }
 

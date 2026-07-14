@@ -1,4 +1,5 @@
 using Immersive.Framework.ApiStatus;
+using Immersive.Framework.Common;
 
 namespace Immersive.Framework.PlayerParticipation
 {
@@ -76,6 +77,34 @@ namespace Immersive.Framework.PlayerParticipation
                 $"previousRevision='{PreviousRevision}' currentRevision='{CurrentRevision}' " +
                 $"slot='{(Slot.PlayerSlotId.IsValid ? Slot.PlayerSlotId.StableText : string.Empty)}' " +
                 $"reservation='{ReservationToken.StableText}' message='{Message}'";
+        }
+
+        internal static PlayerParticipationOperationResult RuntimeUnavailable(
+            string operation,
+            string source,
+            string reason,
+            string message)
+        {
+            string resolvedOperation = operation.NormalizeTextOrFallback("PlayerParticipationOperation");
+            string resolvedSource = source.NormalizeTextOrFallback("Unknown");
+            string resolvedReason = reason.NormalizeTextOrFallback("runtime-unavailable");
+            string resolvedMessage = message.NormalizeTextOrFallback(
+                "Player participation runtime is unavailable.");
+            PlayerParticipationSnapshot snapshot = PlayerParticipationSnapshot.Empty(
+                PlayerParticipationOperationStatus.RejectedInvalidState,
+                resolvedMessage);
+
+            return new PlayerParticipationOperationResult(
+                PlayerParticipationOperationStatus.RejectedInvalidState,
+                resolvedOperation,
+                resolvedSource,
+                resolvedReason,
+                resolvedMessage,
+                0,
+                0,
+                default,
+                default,
+                snapshot);
         }
     }
 }

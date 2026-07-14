@@ -90,6 +90,28 @@ namespace Immersive.Framework.PlayerParticipation
 
         public bool HasRollbackEvidence => RollbackResult != null;
 
+
+        internal static LocalPlayerJoinResult RuntimeUnavailable(
+            LocalPlayerJoinRequest request,
+            string message)
+        {
+            return new LocalPlayerJoinResult(
+                LocalPlayerJoinStatus.RejectedRuntimeUnavailable,
+                default,
+                request,
+                null,
+                null,
+                null,
+                default,
+                null,
+                null,
+                -1,
+                LocalPlayerJoinCallbackConfirmation.None,
+                string.IsNullOrWhiteSpace(message)
+                    ? "Local Player provisioning runtime is unavailable."
+                    : message.Trim());
+        }
+
         public string ToDiagnosticString()
         {
             return $"operation='{OperationId.StableText}' status='{Status}' originalStatus='{OriginalStatus}' " +

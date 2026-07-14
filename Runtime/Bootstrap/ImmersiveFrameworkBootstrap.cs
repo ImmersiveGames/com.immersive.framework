@@ -74,6 +74,12 @@ namespace Immersive.Framework.Bootstrap
                     return;
                 }
 
+                if (!TryInitializeLocalPlayerProvisioning(runtimeHost, logger))
+                {
+                    UnityEngine.Object.Destroy(runtimeHost.gameObject);
+                    return;
+                }
+
                 logger.Info(
                     "Boot succeeded. Application Runtime started.",
                     BuildBootSummaryFields(result, gameFlowResult));
@@ -119,6 +125,10 @@ namespace Immersive.Framework.Bootstrap
             PlayerParticipationSnapshot playerParticipation = null;
             bool hasPlayerParticipation = runtimeHost != null &&
                 runtimeHost.TryGetPlayerParticipationSnapshot(out playerParticipation);
+            LocalPlayerProvisioningRuntimeHostModule localPlayerProvisioning = null;
+            bool hasLocalPlayerProvisioning = runtimeHost != null &&
+                runtimeHost.TryGetLocalPlayerProvisioningRuntime(
+                    out localPlayerProvisioning);
 
             return LogFields.Of(
                 LogFields.Field("gameApplication", result.GameApplication != null ? result.GameApplication.ApplicationName : null),
@@ -154,6 +164,11 @@ namespace Immersive.Framework.Bootstrap
                 LogFields.Field("playerParticipationSlots", hasPlayerParticipation ? playerParticipation.ConfiguredSlotCount : 0),
                 LogFields.Field("playerParticipationCapacity", hasPlayerParticipation ? playerParticipation.DynamicCapacity : 0),
                 LogFields.Field("playerParticipationJoiningOpen", hasPlayerParticipation && playerParticipation.JoiningOpen),
+                LogFields.Field("localPlayerProvisioningReady", hasLocalPlayerProvisioning),
+                LogFields.Field("localPlayerProvisioningAuthoring", hasLocalPlayerProvisioning ? localPlayerProvisioning.Authoring.name : string.Empty),
+                LogFields.Field("localPlayerProvisioningManager", hasLocalPlayerProvisioning && localPlayerProvisioning.Authoring.PlayerInputManager != null ? localPlayerProvisioning.Authoring.PlayerInputManager.name : string.Empty),
+                LogFields.Field("localPlayerProvisioningRequests", hasLocalPlayerProvisioning ? localPlayerProvisioning.RequestCount : 0),
+                LogFields.Field("localPlayerProvisioningDiagnostic", hasLocalPlayerProvisioning ? localPlayerProvisioning.Diagnostic : "NotConfigured"),
                 LogFields.Field("activityContentExecution", activityFlowResult.ActivityContentExecutionResult.DiagnosticStatus),
                 LogFields.Field("activityContentExecutionParticipantSource", activityFlowResult.ActivityContentExecutionResult.ParticipantSourceStatus),
                 LogFields.Field("activityContentExecutionParticipantSourceIssues", activityFlowResult.ActivityContentExecutionResult.ParticipantSourceIssueCount),
@@ -194,6 +209,68 @@ namespace Immersive.Framework.Bootstrap
                 LogFields.Field("activitySceneLedgerLoaded", activityFlowResult.ActivitySceneLedgerSnapshot.LoadedCount),
                 LogFields.Field("activitySceneLedgerReleased", activityFlowResult.ActivitySceneLedgerSnapshot.ReleasedCount),
                 LogFields.Field("activitySceneLedgerStale", activityFlowResult.ActivitySceneLedgerSnapshot.StaleCount));
+        }
+
+        private static bool TryInitializeLocalPlayerProvisioning(
+            FrameworkRuntimeHost runtimeHost,
+            FrameworkLogger logger)
+        {
+            if (!LocalPlayerProvisioningAuthoringDiscovery.TryResolveLoaded(
+                    out LocalPlayerProvisioningAuthoring authoring,
+                    out int candidateCount,
+                    out string discoveryDiagnostic))
+            {
+                logger.Error(
+                    "Local Player provisioning Session runtime initialization failed.",
+                    LogFields.Of(
+                        LogFields.Field("status", "RejectedAuthoringMultiplicity"),
+                        LogFields.Field("candidates", candidateCount),
+                        LogFields.Field("message", discoveryDiagnostic)));
+                return false;
+            }
+
+            if (authoring == null)
+            {
+                logger.Info(
+                    "Local Player provisioning is not configured.",
+                    LogFields.Of(
+                        LogFields.Field("status", "NotConfigured"),
+                        LogFields.Field("candidates", candidateCount),
+                        LogFields.Field("message", discoveryDiagnostic)));
+                return true;
+            }
+
+            if (!LocalPlayerProvisioningRuntimeHostModule.TryAttach(
+                    runtimeHost,
+                    authoring,
+                    out LocalPlayerProvisioningRuntimeHostModule module,
+                    out string issue))
+            {
+                logger.Error(
+                    "Local Player provisioning Session runtime initialization failed.",
+                    LogFields.Of(
+                        LogFields.Field("status", "RejectedInvalidConfiguration"),
+                        LogFields.Field("candidates", candidateCount),
+                        LogFields.Field("authoring", authoring.name),
+                        LogFields.Field("manager", authoring.PlayerInputManager != null ? authoring.PlayerInputManager.name : string.Empty),
+                        LogFields.Field("message", issue)));
+                return false;
+            }
+
+            PlayerParticipationSnapshot snapshot = null;
+            module.TryGetSnapshot(out snapshot);
+            logger.Info(
+                "Local Player provisioning Session runtime initialized.",
+                LogFields.Of(
+                    LogFields.Field("status", "Ready"),
+                    LogFields.Field("authoring", authoring.name),
+                    LogFields.Field("manager", authoring.PlayerInputManager.name),
+                    LogFields.Field("context", snapshot != null ? snapshot.ContextId : string.Empty),
+                    LogFields.Field("slots", snapshot != null ? snapshot.ConfiguredSlotCount : 0),
+                    LogFields.Field("capacity", snapshot != null ? snapshot.DynamicCapacity : 0),
+                    LogFields.Field("joiningOpen", snapshot != null && snapshot.JoiningOpen),
+                    LogFields.Field("message", module.Diagnostic)));
+            return true;
         }
 
         private static LogField[] BuildPlayerParticipationRuntimeFields(

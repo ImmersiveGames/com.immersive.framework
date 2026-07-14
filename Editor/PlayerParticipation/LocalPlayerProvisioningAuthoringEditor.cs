@@ -1,4 +1,3 @@
-
 using Immersive.Framework.Authoring;
 using Immersive.Framework.Editor.Editor.Validation;
 using Immersive.Framework.PlayerParticipation;
@@ -24,7 +23,7 @@ namespace Immersive.Framework.Editor.Editor.PlayerParticipation
 
             EditorGUILayout.LabelField("Local Player Provisioning", EditorStyles.boldLabel);
             EditorGUILayout.HelpBox(
-                "Declares the one Session-authorized Unity PlayerInputManager used by framework manual join operations. This component does not join Players by itself.",
+                "Declares the one Session-authorized Unity PlayerInputManager. Framework Core injects the Session runtime after boot; Players are created only by explicit request operations.",
                 MessageType.Info);
 
             EditorGUILayout.Space(6);
@@ -33,13 +32,16 @@ namespace Immersive.Framework.Editor.Editor.PlayerParticipation
                 playerInputManager,
                 new GUIContent("Player Input Manager"));
             EditorGUILayout.HelpBox(
-                "Configure the referenced manager for Join Players Manually. Join requests will later reserve a framework Slot before calling PlayerInputManager.JoinPlayer.",
+                "The referenced manager must use Join Players Manually. The framework reserves a configured Slot before calling PlayerInputManager.JoinPlayer.",
                 MessageType.None);
 
             serializedObject.ApplyModifiedProperties();
 
             LocalPlayerProvisioningAuthoring authoring =
                 (LocalPlayerProvisioningAuthoring)target;
+
+            EditorGUILayout.Space(6);
+            DrawRuntimeState(authoring);
 
             EditorGUILayout.Space(6);
             showAdvanced = EditorGUILayout.Foldout(
@@ -55,6 +57,39 @@ namespace Immersive.Framework.Editor.Editor.PlayerParticipation
             DrawValidation(authoring);
         }
 
+        private static void DrawRuntimeState(LocalPlayerProvisioningAuthoring authoring)
+        {
+            EditorGUILayout.LabelField("Runtime", EditorStyles.boldLabel);
+
+            if (!EditorApplication.isPlaying)
+            {
+                EditorGUILayout.HelpBox(
+                    "Runtime binding is created during Framework boot. Open/Close Join and Request Join are explicit script/UI operations; the authoring component does not execute them automatically.",
+                    MessageType.None);
+                return;
+            }
+
+            PlayerParticipationSnapshot snapshot = authoring.RuntimeSnapshot;
+            using (new EditorGUI.DisabledScope(true))
+            {
+                EditorGUILayout.Toggle("Runtime Ready", authoring.RuntimeReady);
+                EditorGUILayout.TextField("Context", snapshot.ContextId);
+                EditorGUILayout.IntField("Configured Slots", snapshot.ConfiguredSlotCount);
+                EditorGUILayout.IntField("Dynamic Capacity", snapshot.DynamicCapacity);
+                EditorGUILayout.Toggle("Joining Open", snapshot.JoiningOpen);
+                EditorGUILayout.IntField("Joined Slots", snapshot.JoinedCount);
+                EditorGUILayout.EnumPopup(
+                    "Last Join Status",
+                    authoring.LastJoinResult != null
+                        ? authoring.LastJoinResult.Status
+                        : LocalPlayerJoinStatus.None);
+            }
+
+            EditorGUILayout.HelpBox(
+                authoring.RuntimeDiagnostic,
+                authoring.RuntimeReady ? MessageType.Info : MessageType.Warning);
+        }
+
         private static void DrawAdvanced(LocalPlayerProvisioningAuthoring authoring)
         {
             using (new EditorGUI.DisabledScope(true))
@@ -65,6 +100,9 @@ namespace Immersive.Framework.Editor.Editor.PlayerParticipation
                 EditorGUILayout.Toggle(
                     "Manual Join",
                     authoring.UsesManualJoin);
+                EditorGUILayout.Toggle(
+                    "C# Join Notifications",
+                    authoring.UsesCSharpJoinNotifications);
                 EditorGUILayout.ObjectField(
                     "Player Prefab",
                     authoring.PlayerPrefab,
