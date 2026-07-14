@@ -20,11 +20,6 @@ namespace Immersive.Framework.Editor.Editor.PlayerParticipation
             return ValidateGameApplication(gameApplication, true);
         }
 
-        /// <summary>
-        /// Validates ordered Game/Application participation configuration.
-        /// Model Readiness can skip repeated Profile detail messages because
-        /// project-wide Profile validation is appended separately.
-        /// </summary>
         internal static FrameworkAuthoringValidationReport ValidateGameApplication(
             GameApplicationAsset gameApplication,
             bool includeConfiguredProfileValidation)
@@ -38,6 +33,22 @@ namespace Immersive.Framework.Editor.Editor.PlayerParticipation
             {
                 report.AddError("Game Application is missing for Player participation validation.", null);
                 return report;
+            }
+
+            PlayerActorSelectionPolicyProfile actorSelectionPolicy =
+                gameApplication.PlayerActorSelectionPolicyProfile;
+            if (actorSelectionPolicy == null)
+            {
+                report.AddError(
+                    "Player Actor Selection Policy is missing. Assign an explicit PlayerActorSelectionPolicyProfile; the framework does not silently assume Allow Duplicates.",
+                    gameApplication);
+            }
+            else
+            {
+                report.AddRange(
+                    PlayerActorSelectionAuthoringValidator.ValidateSelectionPolicyProfile(
+                        actorSelectionPolicy,
+                        validationMode));
             }
 
             IReadOnlyList<PlayerSlotProfile> configuredSlots = gameApplication.LocalPlayerSlots;
@@ -86,7 +97,6 @@ namespace Immersive.Framework.Editor.Editor.PlayerParticipation
                     {
                         report.AddError(identityIssue, profile);
                     }
-
                     continue;
                 }
 
@@ -105,7 +115,7 @@ namespace Immersive.Framework.Editor.Editor.PlayerParticipation
             if (report.IsValid)
             {
                 report.AddInfo(
-                    $"Local Player Slot configuration is valid. configuredSlots='{configuredSlots.Count}' allocationPolicy='FirstAvailableByConfiguredOrder'.",
+                    $"Local Player participation configuration is valid. configuredSlots='{configuredSlots.Count}' allocationPolicy='FirstAvailableByConfiguredOrder' actorSelectionPolicy='{actorSelectionPolicy.DuplicatePolicy}'.",
                     gameApplication);
             }
 

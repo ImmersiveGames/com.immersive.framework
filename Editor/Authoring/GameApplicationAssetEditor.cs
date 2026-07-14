@@ -14,6 +14,7 @@ namespace Immersive.Framework.Editor.Editor.Authoring
         private SerializedProperty _applicationName;
         private SerializedProperty _startupRoute;
         private SerializedProperty _localPlayerSlots;
+        private SerializedProperty _playerActorSelectionPolicyProfile;
         private SerializedProperty _globalUiScenePolicy;
         private SerializedProperty _globalUiScenePath;
         private SerializedProperty _globalUiSceneName;
@@ -25,6 +26,7 @@ namespace Immersive.Framework.Editor.Editor.Authoring
             _applicationName = serializedObject.FindProperty("applicationName");
             _startupRoute = serializedObject.FindProperty("startupRoute");
             _localPlayerSlots = serializedObject.FindProperty("localPlayerSlots");
+            _playerActorSelectionPolicyProfile = serializedObject.FindProperty("playerActorSelectionPolicyProfile");
             _globalUiScenePolicy = serializedObject.FindProperty("globalUiScenePolicy");
             _globalUiScenePath = serializedObject.FindProperty("globalUiScenePath");
             _globalUiSceneName = serializedObject.FindProperty("globalUiSceneName");
@@ -84,7 +86,7 @@ namespace Immersive.Framework.Editor.Editor.Authoring
             EditorGUILayout.Space(6);
             EditorGUILayout.LabelField("Current Scope", EditorStyles.boldLabel);
             EditorGUILayout.HelpBox(
-                "This asset controls application identity, project assignment, Startup Route, ordered Local Player Slots, canonical UIGlobal scene, and validation mode. The Route still owns Primary Scene loading. Player Slot Profiles declare immutable participation seats; mutable join and occupancy state does not live in this asset.",
+                "This asset controls application identity, project assignment, Startup Route, ordered Local Player Slots, the Session Actor selection policy, canonical UIGlobal scene, and validation mode. Mutable join and Actor selection state remains in the Session runtime context.",
                 MessageType.Info);
 
             serializedObject.ApplyModifiedProperties();
@@ -109,9 +111,30 @@ namespace Immersive.Framework.Editor.Editor.Authoring
         {
             EditorGUILayout.LabelField("Local Player Participation", EditorStyles.boldLabel);
             EditorGUILayout.HelpBox(
-                "Add Player Slot Profiles in the exact order that local join must allocate them. The first eligible Available Slot in this list wins. Profile Display Order affects presentation only and never overrides this list.",
+                "Configure the Session Actor selection policy and add Player Slot Profiles in the exact order local join must allocate them. Slot defaults are static intent and are applied only by an explicit runtime selection operation after join.",
                 MessageType.Info);
 
+            EditorGUILayout.PropertyField(
+                _playerActorSelectionPolicyProfile,
+                new GUIContent("Actor Selection Policy"));
+
+            if (_playerActorSelectionPolicyProfile.objectReferenceValue == null)
+            {
+                EditorGUILayout.HelpBox(
+                    "Actor Selection Policy is required. The framework does not silently assume Allow Duplicates.",
+                    MessageType.Error);
+            }
+            else
+            {
+                var policy = _playerActorSelectionPolicyProfile.objectReferenceValue as Immersive.Framework.PlayerParticipation.PlayerActorSelectionPolicyProfile;
+                EditorGUILayout.HelpBox(
+                    policy != null
+                        ? $"Active Session duplicate-selection rule: {policy.DuplicatePolicy}."
+                        : "The assigned Actor Selection Policy reference is invalid.",
+                    policy != null ? MessageType.None : MessageType.Error);
+            }
+
+            EditorGUILayout.Space(4);
             if (_localPlayerSlotsList != null)
             {
                 _localPlayerSlotsList.DoLayoutList();
@@ -127,7 +150,7 @@ namespace Immersive.Framework.Editor.Editor.Authoring
             else
             {
                 EditorGUILayout.HelpBox(
-                    $"Configured local participation capacity: {configuredCount}. Runtime capacity and joined Player count remain separate state.",
+                    $"Configured local participation capacity: {configuredCount}. Runtime capacity, joined count and selected Actors remain separate Session state.",
                     MessageType.None);
             }
         }

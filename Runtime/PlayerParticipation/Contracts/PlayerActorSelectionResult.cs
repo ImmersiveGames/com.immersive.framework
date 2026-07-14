@@ -72,6 +72,35 @@ namespace Immersive.Framework.PlayerParticipation
 
         public bool StateChanged => SelectionRevision != PreviousSelectionRevision;
 
+        internal static PlayerActorSelectionResult RuntimeUnavailable(
+            string operation,
+            PlayerActorSelectionRequest request,
+            string message)
+        {
+            return new PlayerActorSelectionResult(
+                PlayerActorSelectionStatus.RejectedRuntimeUnavailable,
+                operation,
+                request.PlayerSlotId,
+                null,
+                null,
+                null,
+                0,
+                0,
+                null,
+                default,
+                request.Source,
+                request.Reason,
+                string.IsNullOrWhiteSpace(message)
+                    ? "Player Actor selection runtime is unavailable."
+                    : message.Trim(),
+                default,
+                PlayerParticipationSnapshot.Empty(
+                    PlayerParticipationOperationStatus.None,
+                    string.IsNullOrWhiteSpace(message)
+                        ? "Player Actor selection runtime is unavailable."
+                        : message.Trim()));
+        }
+
         public string ToDiagnosticString()
         {
             return $"operation='{Operation}' status='{Status}' " +

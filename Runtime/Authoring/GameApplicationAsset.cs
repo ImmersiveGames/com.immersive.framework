@@ -6,7 +6,6 @@ using UnityEngine;
 
 namespace Immersive.Framework.Authoring
 {
-
     /// <summary>
     /// API status: Experimental. Policy for the canonical app/session scoped Unity UI scene.
     /// The Startup Route Primary Scene is prepared first; then Global UI is loaded additively,
@@ -18,6 +17,7 @@ namespace Immersive.Framework.Authoring
         NoneConfigured = 0,
         Required = 1
     }
+
     /// <summary>
     /// API status: Experimental. Public authoring root retained as the baseline entry point before F1 identity/status hardening.
     /// Public root asset for an Immersive game/application.
@@ -41,6 +41,10 @@ namespace Immersive.Framework.Authoring
         [SerializeField]
         [Tooltip("Ordered local Player participation seats. Array order is the canonical default allocation order; Profile Display Order is presentation metadata only.")]
         private PlayerSlotProfile[] localPlayerSlots = Array.Empty<PlayerSlotProfile>();
+
+        [SerializeField]
+        [Tooltip("Required Session policy for ActorProfile selection across joined local Player Slots. Runtime selection state remains outside this asset.")]
+        private PlayerActorSelectionPolicyProfile playerActorSelectionPolicyProfile;
 
         [SerializeField]
         [Tooltip("Controls whether this Game Application uses a canonical app/session scoped UIGlobal scene. Required loads it additively after the Startup Route Primary Scene is prepared, persists its UI roots under the FrameworkRuntimeHost, and discovers Transition/Loading adapters from it.")]
@@ -81,6 +85,17 @@ namespace Immersive.Framework.Authoring
             localPlayerSlots ?? Array.Empty<PlayerSlotProfile>();
 
         public int LocalPlayerSlotCount => localPlayerSlots != null ? localPlayerSlots.Length : 0;
+
+        /// <summary>
+        /// Required immutable Session policy composed into PlayerParticipationRuntimeContext.
+        /// This asset never stores current Slot selections.
+        /// </summary>
+        public PlayerActorSelectionPolicyProfile PlayerActorSelectionPolicyProfile =>
+            playerActorSelectionPolicyProfile;
+
+        public bool HasPlayerActorSelectionPolicy =>
+            playerActorSelectionPolicyProfile != null &&
+            playerActorSelectionPolicyProfile.HasDefinedDuplicatePolicy;
 
         public bool TryGetLocalPlayerSlot(int configuredIndex, out PlayerSlotProfile playerSlotProfile)
         {

@@ -15,7 +15,7 @@ namespace Immersive.Framework.PlayerParticipation
     [DisallowMultipleComponent]
     [FrameworkApiStatus(
         FrameworkApiStatus.Internal,
-        "P3F.2 host-scoped composition adapter for Session Player participation runtime.")]
+        "P3F/P3H host-scoped composition adapter for Session Player participation and Actor selection runtime.")]
     internal sealed class PlayerParticipationRuntimeHostModule : MonoBehaviour
     {
         private PlayerParticipationRuntimeContext runtimeContext;
@@ -26,6 +26,11 @@ namespace Immersive.Framework.PlayerParticipation
             initializationResult.Succeeded;
 
         internal PlayerParticipationOperationResult InitializationResult => initializationResult;
+
+        internal PlayerActorSelectionPolicyProfile ActorSelectionPolicyProfile =>
+            runtimeContext != null
+                ? runtimeContext.CreateSnapshot().ActorSelectionPolicyProfile
+                : null;
 
         internal static PlayerParticipationRuntimeHostModule Attach(
             FrameworkRuntimeHost runtimeHost,
@@ -63,20 +68,22 @@ namespace Immersive.Framework.PlayerParticipation
             if (gameApplication == null)
             {
                 runtimeContext = null;
-                initializationResult = PlayerParticipationRuntimeContext.TryCreate(
+                initializationResult = PlayerParticipationRuntimeContext.TryCreateWithActorSelectionPolicy(
                     null,
                     0,
                     false,
+                    null,
                     source,
                     reason,
                     out _);
                 return initializationResult;
             }
 
-            initializationResult = PlayerParticipationRuntimeContext.TryCreate(
+            initializationResult = PlayerParticipationRuntimeContext.TryCreateWithActorSelectionPolicy(
                 gameApplication.LocalPlayerSlots,
                 gameApplication.LocalPlayerSlotCount,
                 initialJoiningOpen: false,
+                gameApplication.PlayerActorSelectionPolicyProfile,
                 source,
                 reason,
                 out runtimeContext);
@@ -120,6 +127,78 @@ namespace Immersive.Framework.PlayerParticipation
             return runtimeContext.TryGetSlotSnapshot(playerSlotId, out snapshot);
         }
 
+        internal bool TryGetActorSelection(
+            PlayerSlotId playerSlotId,
+            out PlayerSlotRuntimeSnapshot snapshot)
+        {
+            if (runtimeContext == null)
+            {
+                snapshot = default;
+                return false;
+            }
+
+            return runtimeContext.TryGetActorSelection(playerSlotId, out snapshot);
+        }
+
+        internal PlayerActorSelectionResult TrySelectActorProfile(
+            PlayerActorSelectionRequest request)
+        {
+            return runtimeContext != null
+                ? runtimeContext.TrySelectActorProfile(request)
+                : PlayerActorSelectionResult.RuntimeUnavailable(
+                    "SelectActorProfile",
+                    request,
+                    "Player participation runtime module is not initialized.");
+        }
+
+        internal PlayerActorSelectionResult TryReplaceActorSelection(
+            PlayerActorSelectionRequest request)
+        {
+            return runtimeContext != null
+                ? runtimeContext.TryReplaceActorSelection(request)
+                : PlayerActorSelectionResult.RuntimeUnavailable(
+                    "ReplaceActorSelection",
+                    request,
+                    "Player participation runtime module is not initialized.");
+        }
+
+        internal PlayerActorSelectionResult TryClearActorSelection(
+            PlayerActorSelectionRequest request)
+        {
+            return runtimeContext != null
+                ? runtimeContext.TryClearActorSelection(request)
+                : PlayerActorSelectionResult.RuntimeUnavailable(
+                    "ClearActorSelection",
+                    request,
+                    "Player participation runtime module is not initialized.");
+        }
+
+        internal PlayerActorSelectionResult TrySelectDefaultActor(
+            PlayerSlotId playerSlotId,
+            int expectedSelectionRevision,
+            string source,
+            string reason)
+        {
+            if (runtimeContext != null)
+            {
+                return runtimeContext.TrySelectDefaultActor(
+                    playerSlotId,
+                    expectedSelectionRevision,
+                    source,
+                    reason);
+            }
+
+            return PlayerActorSelectionResult.RuntimeUnavailable(
+                "SelectDefaultActor",
+                new PlayerActorSelectionRequest(
+                    playerSlotId,
+                    null,
+                    source,
+                    reason,
+                    expectedSelectionRevision),
+                "Player participation runtime module is not initialized.");
+        }
+
         private void OnDestroy()
         {
             runtimeContext = null;
@@ -133,7 +212,7 @@ namespace Immersive.Framework.PlayerParticipation
     /// </summary>
     [FrameworkApiStatus(
         FrameworkApiStatus.Internal,
-        "P3F.2 typed access from FrameworkRuntimeHost to its scoped Player participation module.")]
+        "P3F/P3H typed access from FrameworkRuntimeHost to its scoped Player participation module.")]
     internal static class FrameworkRuntimeHostPlayerParticipationExtensions
     {
         internal static bool TryGetPlayerParticipationRuntime(
