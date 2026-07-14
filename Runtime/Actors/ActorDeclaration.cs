@@ -6,30 +6,37 @@ using UnityEngine;
 namespace Immersive.Framework.Actors
 {
     /// <summary>
-    /// API status: Experimental. Unity-facing declaration for a framework-recognized Actor.
-    /// This component declares identity only. It does not own actor lifetime, materialization, movement, input, reset, snapshot or save behavior.
+    /// API status: Experimental. Unity-facing base declaration for a framework-recognized Actor.
+    /// Specialized Actor declarations inherit this component so Actor identity has one authority.
+    /// This component does not own Actor lifetime, materialization, movement, input, reset, snapshot or save behavior.
     /// </summary>
     [DisallowMultipleComponent]
     [AddComponentMenu("Immersive Framework/Actors/Actor Declaration")]
-    [FrameworkApiStatus(FrameworkApiStatus.Experimental, "F45A generic actor identity declaration.")]
-    public sealed class ActorDeclaration : MonoBehaviour, IActor
+    [FrameworkApiStatus(
+        FrameworkApiStatus.Experimental,
+        "F45A/P3J.1 base Actor identity declaration shared by specialized Actor declarations.")]
+    public class ActorDeclaration : MonoBehaviour, IActor
     {
-        [Tooltip("Stable framework actor id. Do not use GameObject names, tags, scene paths or prefab paths as functional keys.")]
+        [Tooltip("Stable framework ActorId. Do not use GameObject names, tags, scene paths or prefab paths as functional keys.")]
         [SerializeField] private string actorId = "qa.actor.generic";
-        [Tooltip("Broad actor category. This is not a gameplay taxonomy.")]
-        [SerializeField] private ActorKind actorKind = ActorKind.NonPlayer;
-        [Tooltip("Broad gameplay role. This is not a project-specific enemy/class taxonomy.")]
-        [SerializeField] private ActorRole actorRole = ActorRole.Neutral;
+
+        [Tooltip("Broad Actor category. Specialized declarations may expose a fixed category instead.")]
+        [HideInInspector, SerializeField] private ActorKind actorKind = ActorKind.NonPlayer;
+
+        [Tooltip("Broad gameplay role. Specialized declarations may expose a fixed role instead.")]
+        [HideInInspector, SerializeField] private ActorRole actorRole = ActorRole.Neutral;
+
         [Tooltip("Human-readable diagnostic label only.")]
         [SerializeField] private string displayName = "QA Actor";
+
         [Tooltip("Diagnostic reason/source for this declaration.")]
         [SerializeField] private string reason = "actor.declaration";
 
         public ActorId ActorId => new ActorId(actorId.NormalizeText());
 
-        public ActorKind ActorKind => actorKind;
+        public virtual ActorKind ActorKind => actorKind;
 
-        public ActorRole ActorRole => actorRole;
+        public virtual ActorRole ActorRole => actorRole;
 
         public string ActorDisplayName => displayName.NormalizeTextOrFallback(name);
 
@@ -51,7 +58,7 @@ namespace Immersive.Framework.Actors
                     ActorSetIssueKind.InvalidActorId,
                     string.Empty,
                     normalizedSource,
-                    "Actor declaration has an empty actor id.");
+                    "Actor declaration has an empty ActorId.");
                 return false;
             }
 
@@ -59,8 +66,8 @@ namespace Immersive.Framework.Actors
             {
                 descriptor = new ActorDescriptor(
                     new ActorId(normalizedActorId),
-                    actorKind,
-                    actorRole,
+                    ActorKind,
+                    ActorRole,
                     ActorDisplayName,
                     gameObject.scene.IsValid() ? gameObject.scene.name : string.Empty,
                     gameObject.name,
@@ -93,7 +100,7 @@ namespace Immersive.Framework.Actors
             reason = declarationReason.NormalizeText();
         }
 
-        private void Reset()
+        protected virtual void Reset()
         {
             if (string.IsNullOrWhiteSpace(displayName))
             {
