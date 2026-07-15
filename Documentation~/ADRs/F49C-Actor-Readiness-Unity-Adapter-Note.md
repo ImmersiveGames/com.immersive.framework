@@ -51,3 +51,4 @@ Failed requires an explicit reason.
 ## Architectural gain
 
 F49C allows scene-authored actors, prefabs and QA fixtures to expose readiness evidence while keeping the real readiness model pure and testable.
+> Status: Superseded / Removed em 2026-07-15 por `P3-ADR-Canonical-Player-Lane.md`. Mantido apenas como histórico.

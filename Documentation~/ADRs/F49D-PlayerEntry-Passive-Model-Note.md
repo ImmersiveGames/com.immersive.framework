@@ -93,3 +93,4 @@ F49D turns PlayerEntry into explicit framework vocabulary before any runtime orc
 ```text
 F49D: add passive PlayerEntry model
 ```
+> Status: Superseded / Removed em 2026-07-15 por `P3-ADR-Canonical-Player-Lane.md`. Mantido apenas como histórico.

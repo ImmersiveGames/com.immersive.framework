@@ -5,7 +5,7 @@ using Immersive.Framework.ApplicationLifecycle;
 using Immersive.Framework.Common;
 using Immersive.Framework.Diagnostics;
 using Immersive.Framework.Pause;
-using Immersive.Framework.PlayerSlots;
+using Immersive.Framework.PlayerParticipation;
 using Immersive.Framework.UnityInput;
 using UnityEngine;
 using UnityEngine.InputSystem;
@@ -32,15 +32,12 @@ namespace Immersive.Framework.InputMode
         [Header("Unity PlayerInput")]
         [SerializeField] private PlayerInput playerInput;
 
-        [Header("Player Slot Identity Bridge")]
-        [SerializeField] private PlayerSlotDeclaration sourceSlot;
-
         [Header("Framework References")]
         [SerializeField] private UnityInputTargetDeclaration[] unityInputTargets;
         [SerializeField] private PlayerActorDeclaration[] playerActors;
-        [SerializeField] private SessionPlayerInputManagerDeclaration[] sessionPlayerInputManagers;
+        [SerializeField] private LocalPlayerProvisioningAuthoring localPlayerProvisioningAuthoring;
         [SerializeField] private bool autoDiscoverMissingReferences = true;
-        [SerializeField] private bool requireSessionPlayerInputManagerEvidence = true;
+        [SerializeField] private bool requireLocalPlayerProvisioning = true;
 
         [Header("Action Maps")]
         [SerializeField] private string gameplayActionMapName = "Player";
@@ -52,15 +49,9 @@ namespace Immersive.Framework.InputMode
 
         public PlayerInput PlayerInput => playerInput;
 
-        public PlayerSlotDeclaration SourceSlot => sourceSlot;
-
-        public bool HasSourceSlot => sourceSlot != null;
-
-        public string SourceSlotIdText => ResolveSourceSlotIdText();
-
         public bool AutoDiscoverMissingReferences => autoDiscoverMissingReferences;
 
-        public bool RequireSessionPlayerInputManagerEvidence => requireSessionPlayerInputManagerEvidence;
+        public bool RequireLocalPlayerProvisioning => requireLocalPlayerProvisioning;
 
         public string GameplayActionMapName => gameplayActionMapName.NormalizeTextOrFallback("Player");
 
@@ -124,22 +115,20 @@ namespace Immersive.Framework.InputMode
             PlayerInput input,
             UnityInputTargetDeclaration[] targets,
             PlayerActorDeclaration[] actors,
-            SessionPlayerInputManagerDeclaration[] sessionManagers,
+            LocalPlayerProvisioningAuthoring provisioningAuthoring,
             string playerMap,
             string uiMap,
             bool autoDiscover,
-            bool requireSessionManager,
-            PlayerSlotDeclaration diagnosticsSourceSlot = null)
+            bool requireProvisioning)
         {
             playerInput = input;
-            sourceSlot = diagnosticsSourceSlot;
             unityInputTargets = targets;
             playerActors = actors;
-            sessionPlayerInputManagers = sessionManagers;
+            localPlayerProvisioningAuthoring = provisioningAuthoring;
             gameplayActionMapName = playerMap.NormalizeTextOrFallback("Player");
             uiActionMapName = uiMap.NormalizeTextOrFallback("UI");
             autoDiscoverMissingReferences = autoDiscover;
-            requireSessionPlayerInputManagerEvidence = requireSessionManager;
+            requireLocalPlayerProvisioning = requireProvisioning;
         }
 
         private PauseInputModeUnityPlayerInputRuntimeBridgeResult SubmitInternal(
@@ -162,10 +151,10 @@ namespace Immersive.Framework.InputMode
                 references.PlayerInput,
                 references.TargetSet,
                 references.PlayerActorSet,
-                references.SessionPlayerInputManagerEvidence,
+                references.LocalPlayerProvisioningValidation,
                 references.ActionMapEvidence,
                 references.ActionMapBindings,
-                requireSessionPlayerInputManagerEvidence,
+                requireLocalPlayerProvisioning,
                 normalizedSource,
                 normalizedReason);
 
@@ -179,7 +168,7 @@ namespace Immersive.Framework.InputMode
             PlayerInput resolvedPlayerInput = ResolvePlayerInput();
             UnityInputTargetSet targetSet = ResolveTargetSet(source, requestReason);
             PlayerActorSet playerActorSet = ResolvePlayerActorSet(source, requestReason);
-            UnityInputPlayerInputManagerEvidence sessionEvidence = ResolveSessionPlayerInputManagerEvidence(source, requestReason);
+            LocalPlayerProvisioningValidationResult provisioningValidation = ResolveLocalPlayerProvisioningValidation(source, requestReason);
             UnityInputActionMapEvidence actionMapEvidence = UnityInputActionMapEvidence.FromInputActionAsset(
                 resolvedPlayerInput == null ? null : resolvedPlayerInput.actions,
                 source,
@@ -189,7 +178,7 @@ namespace Immersive.Framework.InputMode
                 resolvedPlayerInput,
                 targetSet,
                 playerActorSet,
-                sessionEvidence,
+                provisioningValidation,
                 actionMapEvidence,
                 CreateActionMapBindings(source, requestReason));
         }
@@ -218,21 +207,52 @@ namespace Immersive.Framework.InputMode
                 : PlayerActorValidator.ValidateDeclarations(Array.Empty<PlayerActorDeclaration>(), source, requestReason);
         }
 
-        private UnityInputPlayerInputManagerEvidence ResolveSessionPlayerInputManagerEvidence(string source, string requestReason)
+        private LocalPlayerProvisioningValidationResult ResolveLocalPlayerProvisioningValidation(string source, string requestReason)
         {
-            if (!requireSessionPlayerInputManagerEvidence)
+            if (localPlayerProvisioningAuthoring != null)
             {
-                return UnityInputPlayerInputManagerEvidence.FromRequiredSessionManagerCount(1, source, requestReason);
+                return LocalPlayerProvisioningConfigurationRules.Validate(
+                    new[] { localPlayerProvisioningAuthoring },
+                    requireLocalPlayerProvisioning,
+                    source,
+                    requestReason);
             }
 
-            if (sessionPlayerInputManagers != null && sessionPlayerInputManagers.Length > 0)
+            if (autoDiscoverMissingReferences)
             {
-                return UnityInputTargetValidator.ValidateRequiredSessionPlayerInputManagerDeclarations(sessionPlayerInputManagers, source, requestReason);
+                bool resolved = LocalPlayerProvisioningAuthoringDiscovery.TryResolveLoaded(
+                    out LocalPlayerProvisioningAuthoring discovered,
+                    out int candidateCount,
+                    out string discoveryDiagnostic);
+                if (!resolved)
+                {
+                    return new LocalPlayerProvisioningValidationResult(
+                        null,
+                        candidateCount,
+                        requireLocalPlayerProvisioning,
+                        new[]
+                        {
+                            new LocalPlayerProvisioningIssue(
+                                LocalPlayerProvisioningIssueKind.DuplicateSurface,
+                                true,
+                                source,
+                                discoveryDiagnostic)
+                        },
+                        source,
+                        requestReason);
+                }
+                return LocalPlayerProvisioningConfigurationRules.Validate(
+                    discovered == null ? Array.Empty<LocalPlayerProvisioningAuthoring>() : new[] { discovered },
+                    requireLocalPlayerProvisioning,
+                    source,
+                    requestReason);
             }
 
-            return autoDiscoverMissingReferences
-                ? UnityInputTargetValidator.ValidateRequiredSessionPlayerInputManagerEvidence(source, requestReason)
-                : UnityInputTargetValidator.ValidateRequiredSessionPlayerInputManagerDeclarations(Array.Empty<SessionPlayerInputManagerDeclaration>(), source, requestReason);
+            return LocalPlayerProvisioningConfigurationRules.Validate(
+                Array.Empty<LocalPlayerProvisioningAuthoring>(),
+                requireLocalPlayerProvisioning,
+                source,
+                requestReason);
         }
 
         private PlayerInput ResolvePlayerInput()
@@ -301,40 +321,7 @@ namespace Immersive.Framework.InputMode
                 Logging.Records.LogFields.Field("pauseRuntimeWiring", _lastResult.PauseRuntimeWiring),
                 Logging.Records.LogFields.Field("playerJoin", _lastResult.CallsPlayerJoin),
                 Logging.Records.LogFields.Field("actorSpawning", _lastResult.SpawnsActor),
-                Logging.Records.LogFields.Field("playerSlotSource", sourceSlot != null ? "PlayerSlotDeclaration" : "None"),
-                Logging.Records.LogFields.Field("playerSlotId", ResolveSourceSlotIdText().NormalizeTextOrFallback("<none>")),
-                Logging.Records.LogFields.Field("sourceSlot", ResolveSourceSlotDiagnosticText()),
                 Logging.Records.LogFields.Field("diagnostics", _lastResult.ToDiagnosticString()));
-        }
-
-        private string ResolveSourceSlotIdText()
-        {
-            if (sourceSlot == null)
-            {
-                return string.Empty;
-            }
-
-            try
-            {
-                return sourceSlot.PlayerSlotId.StableText;
-            }
-            catch (Exception exception) when (exception is ArgumentException or ArgumentOutOfRangeException)
-            {
-                return $"<invalid:{exception.Message}>";
-            }
-        }
-
-        private string ResolveSourceSlotDiagnosticText()
-        {
-            if (sourceSlot == null)
-            {
-                return "<none>";
-            }
-
-            string slotIdText = ResolveSourceSlotIdText().NormalizeTextOrFallback("<none>");
-            string displayNameText = sourceSlot.DisplayName.NormalizeTextOrFallback(sourceSlot.name);
-            string objectName = sourceSlot.gameObject != null ? sourceSlot.gameObject.name : "<none>";
-            return $"name='{objectName}' displayName='{displayNameText}' playerSlotId='{slotIdText}'";
         }
 
         private void EnsureLogger()
@@ -351,14 +338,14 @@ namespace Immersive.Framework.InputMode
                 PlayerInput playerInput,
                 UnityInputTargetSet targetSet,
                 PlayerActorSet playerActorSet,
-                UnityInputPlayerInputManagerEvidence sessionPlayerInputManagerEvidence,
+                LocalPlayerProvisioningValidationResult localPlayerProvisioningValidation,
                 UnityInputActionMapEvidence actionMapEvidence,
                 InputModeUnityActionMapBinding[] actionMapBindings)
             {
                 PlayerInput = playerInput;
                 TargetSet = targetSet;
                 PlayerActorSet = playerActorSet;
-                SessionPlayerInputManagerEvidence = sessionPlayerInputManagerEvidence;
+                LocalPlayerProvisioningValidation = localPlayerProvisioningValidation;
                 ActionMapEvidence = actionMapEvidence;
                 ActionMapBindings = actionMapBindings ?? Array.Empty<InputModeUnityActionMapBinding>();
             }
@@ -369,7 +356,7 @@ namespace Immersive.Framework.InputMode
 
             internal PlayerActorSet PlayerActorSet { get; }
 
-            internal UnityInputPlayerInputManagerEvidence SessionPlayerInputManagerEvidence { get; }
+            internal LocalPlayerProvisioningValidationResult LocalPlayerProvisioningValidation { get; }
 
             internal UnityInputActionMapEvidence ActionMapEvidence { get; }
 

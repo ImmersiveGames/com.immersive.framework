@@ -26,6 +26,23 @@ namespace Immersive.Framework.Editor.Editor.PlayerParticipation
                 return report;
             }
 
+            LocalPlayerProvisioningValidationResult provisioningValidation =
+                LocalPlayerProvisioningConfigurationRules.Validate(
+                    new[] { authoring },
+                    true,
+                    nameof(LocalPlayerProvisioningValidator),
+                    "editor-authoring-validation");
+            for (int index = 0; index < provisioningValidation.Issues.Count; index++)
+            {
+                LocalPlayerProvisioningIssue issue = provisioningValidation.Issues[index];
+                if (issue.Blocking)
+                    report.AddError(issue.Message, authoring);
+                else
+                    report.AddWarning(issue.Message, authoring);
+            }
+            if (provisioningValidation.Failed)
+                return report;
+
             PlayerInputManager manager = authoring.PlayerInputManager;
             if (manager == null)
             {

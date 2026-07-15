@@ -48,3 +48,4 @@ It does not search globally, use a singleton, use a service locator or infer own
 ## QA
 
 The QA smoke validates success, missing control binding target, missing control binding, missing bridge target, missing `PlayerInput`, slot mismatch, clear no-op, clear after bridge and passive boundary.
+> Status: Superseded / Removed em 2026-07-15 por `P3-ADR-Canonical-Player-Lane.md`. Mantido apenas como histórico.

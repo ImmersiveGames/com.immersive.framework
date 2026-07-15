@@ -77,3 +77,4 @@ actorSpawning='False'
 
 Technical validation is owned by QAFramework through `F51B_PLAYER_VIEW_CAMERA_TARGET_BINDING_QA`.
 FIRSTGAME remains out of scope until QA is clean.
+> Status: Superseded / Removed em 2026-07-15 por `P3-ADR-Canonical-Player-Lane.md`. Mantido apenas como histórico.

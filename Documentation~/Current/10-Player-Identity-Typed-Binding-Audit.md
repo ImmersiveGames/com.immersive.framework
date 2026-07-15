@@ -1,5 +1,9 @@
-# 10 — Player Identity and Typed Binding Decisions
+# 10 — Player Identity Typed Binding Audit
 
-Status: **current decisions**
+Status: Closed / Superseded
+Last updated: 2026-07-15
+Decision: `../ADRs/P3-ADR-Canonical-Player-Lane.md`
 
-Player identity is explicit and independent from camera authority. PlayerComposer may provide CameraTarget and LookAtTarget; PlayerViewBehaviour remains passive evidence. Camera selection is intentionally absent until the C9 request/output contracts exist.
+The audit closed with `PlayerSlotId` owned by the Session join transaction and
+exposed by `LocalPlayerHostAuthoring.JoinedPlayerSlotId`. Prefabs, Actors and
+`PlayerComposer` do not pre-fix Slot identity.

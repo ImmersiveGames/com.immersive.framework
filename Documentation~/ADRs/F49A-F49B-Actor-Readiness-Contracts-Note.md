@@ -86,3 +86,4 @@ Actor exists != Actor is ready for view != Actor is ready for control
 ```
 
 This is the required foundation before PlayerEntry, PlayerView and ControlBinding.
+> Status: Superseded / Removed em 2026-07-15 por `P3-ADR-Canonical-Player-Lane.md`. Mantido apenas como histórico.

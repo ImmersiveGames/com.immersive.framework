@@ -9,7 +9,7 @@ namespace Immersive.Framework.PlayerParticipation
     /// <summary>
     /// Session-scoped authority for the effective relation between one configured Player Slot
     /// and one current prepared Logical Player Actor. It does not materialize Actors, bind
-    /// input, publish camera requests or mutate passive PlayerSlotOccupancy components.
+    /// input, publish camera requests or mutate passive scene components.
     /// </summary>
     [FrameworkApiStatus(
         FrameworkApiStatus.Internal,

@@ -79,38 +79,10 @@ namespace Immersive.Framework.PlayerParticipation
             string reason,
             out PlayerParticipationRuntimeContext context)
         {
-            string resolvedSource = source.NormalizeTextOrFallback("PlayerParticipationRuntimeContext");
-            string resolvedReason = reason.NormalizeTextOrFallback("initialization");
-
-            if (!TryCreateSlotRecords(orderedProfiles, out List<SlotRecord> records, out string issue))
-            {
-                context = null;
-                return CreateInitializationFailure(resolvedSource, resolvedReason, issue);
-            }
-
-            if (initialDynamicCapacity < 0 || initialDynamicCapacity > records.Count)
-            {
-                context = null;
-                return CreateInitializationFailure(
-                    resolvedSource,
-                    resolvedReason,
-                    $"Initial dynamic capacity '{initialDynamicCapacity}' must be between 0 and configured Slot count '{records.Count}'.");
-            }
-
-            context = new PlayerParticipationRuntimeContext(
-                records,
-                initialDynamicCapacity,
-                initialJoiningOpen,
-                null);
-            return context.CreateResult(
-                PlayerParticipationOperationStatus.Succeeded,
-                "Initialize",
-                resolvedSource,
-                resolvedReason,
-                "Player participation runtime context initialized.",
-                0,
-                default,
-                default);
+            return TryCreateCore(
+                orderedProfiles, initialDynamicCapacity, initialJoiningOpen, null,
+                "Initialize", "Player participation runtime context initialized.",
+                source, reason, out context);
         }
 
         internal static PlayerParticipationOperationResult TryCreateWithActorSelectionPolicy(
@@ -143,6 +115,26 @@ namespace Immersive.Framework.PlayerParticipation
                     $"Player Actor selection policy Profile '{actorSelectionPolicyProfile.name}' has an invalid duplicate policy '{actorSelectionPolicyProfile.DuplicatePolicy}'.");
             }
 
+            return TryCreateCore(
+                orderedProfiles, initialDynamicCapacity, initialJoiningOpen,
+                actorSelectionPolicyProfile, "InitializeWithActorSelectionPolicy",
+                $"Player participation runtime context initialized with Actor selection policy '{actorSelectionPolicyProfile.DuplicatePolicy}'.",
+                resolvedSource, resolvedReason, out context);
+        }
+
+        private static PlayerParticipationOperationResult TryCreateCore(
+            IReadOnlyList<PlayerSlotProfile> orderedProfiles,
+            int initialDynamicCapacity,
+            bool initialJoiningOpen,
+            PlayerActorSelectionPolicyProfile actorSelectionPolicyProfile,
+            string operation,
+            string successMessage,
+            string source,
+            string reason,
+            out PlayerParticipationRuntimeContext context)
+        {
+            string resolvedSource = source.NormalizeTextOrFallback("PlayerParticipationRuntimeContext");
+            string resolvedReason = reason.NormalizeTextOrFallback("initialization");
             if (!TryCreateSlotRecords(orderedProfiles, out List<SlotRecord> records, out string issue))
             {
                 context = null;
@@ -152,26 +144,15 @@ namespace Immersive.Framework.PlayerParticipation
             if (initialDynamicCapacity < 0 || initialDynamicCapacity > records.Count)
             {
                 context = null;
-                return CreateInitializationFailure(
-                    resolvedSource,
-                    resolvedReason,
+                return CreateInitializationFailure(resolvedSource, resolvedReason,
                     $"Initial dynamic capacity '{initialDynamicCapacity}' must be between 0 and configured Slot count '{records.Count}'.");
             }
 
             context = new PlayerParticipationRuntimeContext(
-                records,
-                initialDynamicCapacity,
-                initialJoiningOpen,
-                actorSelectionPolicyProfile);
+                records, initialDynamicCapacity, initialJoiningOpen, actorSelectionPolicyProfile);
             return context.CreateResult(
-                PlayerParticipationOperationStatus.Succeeded,
-                "InitializeWithActorSelectionPolicy",
-                resolvedSource,
-                resolvedReason,
-                $"Player participation runtime context initialized with Actor selection policy '{actorSelectionPolicyProfile.DuplicatePolicy}'.",
-                0,
-                default,
-                default);
+                PlayerParticipationOperationStatus.Succeeded, operation,
+                resolvedSource, resolvedReason, successMessage, 0, default, default);
         }
 
         internal PlayerParticipationOperationResult TrySetDynamicCapacity(

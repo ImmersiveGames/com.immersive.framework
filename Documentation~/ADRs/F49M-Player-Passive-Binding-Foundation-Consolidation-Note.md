@@ -76,3 +76,4 @@ The next implementation block is selected only after this consolidation is revie
 ```text
 F49M: consolidate passive Player binding foundation
 ```
+> Status: Superseded / Removed em 2026-07-15 por `P3-ADR-Canonical-Player-Lane.md`. Mantido apenas como histórico.

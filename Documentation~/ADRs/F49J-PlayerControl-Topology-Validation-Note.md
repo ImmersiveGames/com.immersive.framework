@@ -29,3 +29,4 @@ This cut validates that player control declarations are coherent with the passiv
 ## Architectural gain
 
 `PlayerControl` can now be validated against the same passive topology used by `PlayerEntry`, `PlayerTopology`, `PlayerView`, and `PlayerViewTopology` before real control binding is introduced.
+> Status: Superseded / Removed em 2026-07-15 por `P3-ADR-Canonical-Player-Lane.md`. Mantido apenas como histórico.

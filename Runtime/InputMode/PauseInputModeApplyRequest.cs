@@ -4,6 +4,7 @@ using Immersive.Framework.ApiStatus;
 using Immersive.Framework.ApplicationLifecycle;
 using Immersive.Framework.Common;
 using Immersive.Framework.Pause;
+using Immersive.Framework.PlayerParticipation;
 using Immersive.Framework.UnityInput;
 using UnityEngine.InputSystem;
 
@@ -23,10 +24,10 @@ namespace Immersive.Framework.InputMode
             PlayerInput playerInput,
             UnityInputTargetSet targetSet,
             PlayerActorSet playerActorSet,
-            UnityInputPlayerInputManagerEvidence sessionPlayerInputManagerEvidence,
+            LocalPlayerProvisioningValidationResult localPlayerProvisioningValidation,
             UnityInputActionMapEvidence actionMapEvidence,
             InputModeUnityActionMapBinding[] actionMapBindings,
-            bool requireSessionPlayerInputManagerEvidence,
+            bool requireLocalPlayerProvisioning,
             string source,
             string reason)
         {
@@ -36,10 +37,10 @@ namespace Immersive.Framework.InputMode
             PlayerInput = playerInput;
             TargetSet = targetSet;
             PlayerActorSet = playerActorSet;
-            SessionPlayerInputManagerEvidence = sessionPlayerInputManagerEvidence;
+            LocalPlayerProvisioningValidation = localPlayerProvisioningValidation;
             ActionMapEvidence = actionMapEvidence;
             ActionMapBindings = CopyBindings(actionMapBindings);
-            RequireSessionPlayerInputManagerEvidence = requireSessionPlayerInputManagerEvidence;
+            RequireLocalPlayerProvisioning = requireLocalPlayerProvisioning;
             Source = source.NormalizeTextOrFallback(nameof(PauseInputModeApplyRequest));
             Reason = reason.NormalizeText();
         }
@@ -56,13 +57,13 @@ namespace Immersive.Framework.InputMode
 
         internal PlayerActorSet PlayerActorSet { get; }
 
-        internal UnityInputPlayerInputManagerEvidence SessionPlayerInputManagerEvidence { get; }
+        internal LocalPlayerProvisioningValidationResult LocalPlayerProvisioningValidation { get; }
 
         internal UnityInputActionMapEvidence ActionMapEvidence { get; }
 
         internal InputModeUnityActionMapBinding[] ActionMapBindings { get; }
 
-        internal bool RequireSessionPlayerInputManagerEvidence { get; }
+        internal bool RequireLocalPlayerProvisioning { get; }
 
         internal string Source { get; }
 

@@ -2,7 +2,6 @@ using System.Collections.Generic;
 using Immersive.Framework.ApiStatus;
 using Immersive.Framework.Common;
 using UnityEngine;
-using UnityEngine.InputSystem;
 
 namespace Immersive.Framework.UnityInput
 {
@@ -17,62 +16,6 @@ namespace Immersive.Framework.UnityInput
         {
             UnityInputTargetDeclaration[] declarations = Object.FindObjectsByType<UnityInputTargetDeclaration>(FindObjectsInactive.Include);
             return ValidateDeclarations(declarations, source, reason);
-        }
-
-        public static UnityInputPlayerInputManagerEvidence ValidateLoadedPlayerInputManagerEvidence(string source, string reason)
-        {
-            PlayerInputManager[] managers = Object.FindObjectsByType<PlayerInputManager>(FindObjectsInactive.Include);
-            return ValidatePlayerInputManagerEvidence(managers, source, reason);
-        }
-
-        public static UnityInputPlayerInputManagerEvidence ValidatePlayerInputManagerEvidence(
-            IEnumerable<PlayerInputManager> managers,
-            string source,
-            string reason)
-        {
-            return UnityInputPlayerInputManagerEvidence.FromManagers(managers, source, reason);
-        }
-
-        public static UnityInputPlayerInputManagerEvidence ValidatePlayerInputManagerEvidenceCount(
-            int managerCount,
-            string source,
-            string reason)
-        {
-            return UnityInputPlayerInputManagerEvidence.FromManagerCount(managerCount, source, reason);
-        }
-
-        public static UnityInputPlayerInputManagerEvidence ValidateRequiredSessionPlayerInputManagerEvidence(string source, string reason)
-        {
-            SessionPlayerInputManagerDeclaration[] declarations = Object.FindObjectsByType<SessionPlayerInputManagerDeclaration>(FindObjectsInactive.Include);
-            return ValidateRequiredSessionPlayerInputManagerDeclarations(declarations, source, reason);
-        }
-
-        public static UnityInputPlayerInputManagerEvidence ValidateRequiredSessionPlayerInputManagerDeclarations(
-            IEnumerable<SessionPlayerInputManagerDeclaration> declarations,
-            string source,
-            string reason)
-        {
-            int count = 0;
-            if (declarations != null)
-            {
-                foreach (SessionPlayerInputManagerDeclaration declaration in declarations)
-                {
-                    if (declaration != null && declaration.HasPlayerInputManagerEvidence)
-                    {
-                        count++;
-                    }
-                }
-            }
-
-            return UnityInputPlayerInputManagerEvidence.FromRequiredSessionManagerCount(count, source, reason);
-        }
-
-        public static UnityInputPlayerInputManagerEvidence ValidateRequiredSessionPlayerInputManagerEvidenceCount(
-            int managerCount,
-            string source,
-            string reason)
-        {
-            return UnityInputPlayerInputManagerEvidence.FromRequiredSessionManagerCount(managerCount, source, reason);
         }
 
         public static UnityInputTargetSet ValidateDeclarations(

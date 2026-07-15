@@ -15,7 +15,7 @@ namespace Immersive.Framework.InputMode
         InvalidUnityInputTargetEvidence = 40,
         MissingRequiredPlayerActor = 50,
         InvalidPlayerActorEvidence = 60,
-        MissingRequiredSessionPlayerInputManager = 70,
-        InvalidSessionPlayerInputManagerEvidence = 80
+        MissingRequiredLocalPlayerProvisioning = 70,
+        InvalidLocalPlayerProvisioning = 80
     }
 }

@@ -44,7 +44,7 @@ namespace Immersive.Framework.InputMode
                     actionMapPreview is { ActionMapRequired: true },
                     actionMapPreview is { ActionMapAvailable: true },
                     applicationPreview is { PlayerActorRequired: true },
-                    applicationPreview is { SessionPlayerInputManagerRequired: true },
+                    applicationPreview is { LocalPlayerProvisioningRequired: true },
                     issues,
                     normalizedSource,
                     reason);
@@ -68,7 +68,7 @@ namespace Immersive.Framework.InputMode
                     actionMapPreview is { ActionMapRequired: true },
                     actionMapPreview is { ActionMapAvailable: true },
                     applicationPreview.PlayerActorRequired,
-                    applicationPreview.SessionPlayerInputManagerRequired,
+                    applicationPreview.LocalPlayerProvisioningRequired,
                     issues,
                     normalizedSource,
                     reason);
@@ -92,7 +92,7 @@ namespace Immersive.Framework.InputMode
                     actionMapPreview.ActionMapRequired,
                     actionMapPreview.ActionMapAvailable,
                     applicationPreview.PlayerActorRequired,
-                    applicationPreview.SessionPlayerInputManagerRequired,
+                    applicationPreview.LocalPlayerProvisioningRequired,
                     issues,
                     normalizedSource,
                     reason);
@@ -117,7 +117,7 @@ namespace Immersive.Framework.InputMode
                     actionMapPreview.ActionMapRequired,
                     actionMapPreview.ActionMapAvailable,
                     applicationPreview.PlayerActorRequired,
-                    applicationPreview.SessionPlayerInputManagerRequired,
+                    applicationPreview.LocalPlayerProvisioningRequired,
                     issues,
                     normalizedSource,
                     reason);
@@ -132,7 +132,7 @@ namespace Immersive.Framework.InputMode
                 actionMapPreview.ActionMapRequired,
                 actionMapPreview.ActionMapAvailable,
                 applicationPreview.PlayerActorRequired,
-                applicationPreview.SessionPlayerInputManagerRequired,
+                applicationPreview.LocalPlayerProvisioningRequired,
                 issues,
                 normalizedSource,
                 reason);
@@ -183,7 +183,7 @@ namespace Immersive.Framework.InputMode
             bool actionMapRequired,
             bool actionMapAvailable,
             bool playerActorRequired,
-            bool sessionPlayerInputManagerRequired,
+            bool localPlayerProvisioningRequired,
             List<InputModeUnityApplicationPlanIssue> issues,
             string source,
             string reason)
@@ -197,7 +197,7 @@ namespace Immersive.Framework.InputMode
                 actionMapRequired,
                 actionMapAvailable,
                 playerActorRequired,
-                sessionPlayerInputManagerRequired,
+                localPlayerProvisioningRequired,
                 issues == null ? null : issues.ToArray(),
                 source,
                 reason);

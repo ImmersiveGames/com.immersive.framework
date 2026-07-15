@@ -476,13 +476,6 @@ namespace Immersive.Framework.PlayerParticipation
                 return false;
             }
 
-            if (host.PlayerSlotDeclaration == null)
-            {
-                status = PlayerActorMaterializationStatus.RejectedHostNotJoined;
-                issue = "Joined Local Player Host has no runtime PlayerSlotDeclaration evidence.";
-                return false;
-            }
-
             status = PlayerActorMaterializationStatus.SucceededStaged;
             issue = string.Empty;
             return true;

@@ -1146,3 +1146,4 @@ Framework Participants remain system-specific contributions such as Reset/Snapsh
 ```
 
 This preserves the F31 Actor identity work, avoids turning Player into the root of framework lifecycle, respects Unity composition, and creates room for local multiplayer, runtime character swap, possession, NPCs, bosses, reset, snapshot, camera and input without collapsing all of them into one component.
+> Status: Superseded / Removed em 2026-07-15 por `P3-ADR-Canonical-Player-Lane.md`. Mantido apenas como histórico.

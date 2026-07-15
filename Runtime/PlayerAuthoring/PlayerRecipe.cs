@@ -14,7 +14,6 @@ namespace Immersive.Framework.PlayerAuthoring
     {
         [Header("Identity Defaults")]
         [SerializeField] private string actorId = "player.actor";
-        [SerializeField] private string playerSlotId = "player.1";
 
         [Header("Input Defaults")]
         [SerializeField] private bool controlEnabled = true;
@@ -44,7 +43,6 @@ namespace Immersive.Framework.PlayerAuthoring
         [HideInInspector, SerializeField] private bool logApplyRebuildDiagnostics = true;
 
         public string ActorId => actorId.NormalizeText();
-        public string PlayerSlotId => playerSlotId.NormalizeText();
         public bool ControlEnabled => controlEnabled;
         public bool InputBindingRequired => inputBindingRequired;
         public bool GateParticipation => gateParticipation;

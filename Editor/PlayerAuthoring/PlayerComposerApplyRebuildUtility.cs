@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using Immersive.Framework.Actors;
 using Immersive.Framework.PlayerAuthoring;
-using Immersive.Framework.PlayerSlots;
 using UnityEditor;
 using UnityEngine;
 
@@ -14,17 +13,6 @@ namespace Immersive.Framework.Editor.PlayerAuthoring
     /// </summary>
     public static class PlayerComposerApplyRebuildUtility
     {
-        private static readonly string[] LegacyMaterializationTypeNames =
-        {
-            "PlayerControlBindingTargetBehaviour",
-            "UnityPlayerInputBridgeTargetBehaviour",
-            "UnityPlayerInputActivationTargetBehaviour",
-            "PlayerSlotOccupancy",
-            "PlayerEntryBehaviour",
-            "PlayerViewBehaviour",
-            "PlayerControlBehaviour"
-        };
-
         public static PlayerComposerApplyRebuildResult Validate(PlayerComposer composer, bool logDiagnostics = true)
         {
             if (composer == null)
@@ -47,7 +35,7 @@ namespace Immersive.Framework.Editor.PlayerAuthoring
             {
                 Debug.Log(
                     $"[Immersive.Framework][PlayerComposer] Validation succeeded. player='{composer.name}' " +
-                    $"actorId='{composer.ActorId}' playerSlotId='{composer.PlayerSlotId}' " +
+                    $"actorId='{composer.ActorId}' " +
                     $"authoredDefaultActionMap='{composer.GameplayActionMap}'.",
                     composer);
             }
@@ -171,23 +159,8 @@ namespace Immersive.Framework.Editor.PlayerAuthoring
                     return changed;
                 });
 
-            PlayerSlotDeclaration slotDeclaration = EnsureComponent<PlayerSlotDeclaration>(
-                composer.gameObject,
-                report,
-                useUndo,
-                component =>
-                {
-                    bool changed = false;
-                    changed |= SetSerialized(component, "slotId", composer.PlayerSlotId);
-                    changed |= SetSerialized(component, "displayName", composer.name);
-                    changed |= SetSerialized(component, "playerInput", composer.PlayerInput);
-                    changed |= SetSerialized(component, "reason", "player-composer.apply");
-                    return changed;
-                });
-
-            ConfigureGate(composer, slotDeclaration, report, useUndo);
+            ConfigureGate(composer, report, useUndo);
             ConfigureReset(composer, actorDeclaration, technicalRoot, report, useUndo);
-            RemoveLegacyMaterialization(composer, report, useUndo);
             RemoveEmptyBindingsContainer(composer, report, useUndo);
 
             string summary = report.CreateSummary();
@@ -204,7 +177,7 @@ namespace Immersive.Framework.Editor.PlayerAuthoring
             {
                 Debug.Log(
                     $"[Immersive.Framework][PlayerComposer] Apply/Rebuild completed. player='{composer.name}' " +
-                    $"actorId='{composer.ActorId}' playerSlotId='{composer.PlayerSlotId}' " +
+                    $"actorId='{composer.ActorId}' " +
                     $"authoredDefaultActionMap='{composer.GameplayActionMap}' created='{report.CreatedCount}' " +
                     $"repaired='{report.RepairedCount}' removedLegacy='{report.RemovedCount}' " +
                     $"alreadyValid='{report.AlreadyValidCount}' skippedByPolicy='{report.SkippedByPolicyCount}' " +
@@ -226,7 +199,6 @@ namespace Immersive.Framework.Editor.PlayerAuthoring
 
         private static void ConfigureGate(
             PlayerComposer composer,
-            PlayerSlotDeclaration slotDeclaration,
             PlayerComposerMaterializationReport report,
             bool useUndo)
         {
@@ -271,7 +243,6 @@ namespace Immersive.Framework.Editor.PlayerAuthoring
             Component gate = existing ?? AddComponent(composer.gameObject, gateType, useUndo);
             bool changed = false;
             changed |= SetSerialized(gate, "playerInput", composer.PlayerInput);
-            changed |= SetSerialized(gate, "sourceSlot", slotDeclaration);
 
             // Unity's PlayerInput remains the authority. The adapter receives its effective default map.
             changed |= SetSerialized(gate, "gameplayActionMapName", composer.GameplayActionMap);
@@ -463,29 +434,6 @@ namespace Immersive.Framework.Editor.PlayerAuthoring
             }
 
             return anchor;
-        }
-
-        private static void RemoveLegacyMaterialization(
-            PlayerComposer composer,
-            PlayerComposerMaterializationReport report,
-            bool useUndo)
-        {
-            foreach (MonoBehaviour component in composer.GetComponentsInChildren<MonoBehaviour>(true))
-            {
-                if (component == null || component == composer)
-                {
-                    continue;
-                }
-
-                string typeName = component.GetType().Name;
-                if (Array.IndexOf(LegacyMaterializationTypeNames, typeName) < 0)
-                {
-                    continue;
-                }
-
-                Destroy(component, useUndo);
-                report.Removed($"legacy:{typeName}");
-            }
         }
 
         private static void RemoveEmptyBindingsContainer(

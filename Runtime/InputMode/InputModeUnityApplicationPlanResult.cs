@@ -22,7 +22,7 @@ namespace Immersive.Framework.InputMode
             bool actionMapRequired,
             bool actionMapAvailable,
             bool playerActorRequired,
-            bool sessionPlayerInputManagerRequired,
+            bool localPlayerProvisioningRequired,
             InputModeUnityApplicationPlanIssue[] issues,
             string source,
             string reason)
@@ -45,7 +45,7 @@ namespace Immersive.Framework.InputMode
             ActionMapRequired = actionMapRequired;
             ActionMapAvailable = actionMapAvailable;
             PlayerActorRequired = playerActorRequired;
-            SessionPlayerInputManagerRequired = sessionPlayerInputManagerRequired;
+            LocalPlayerProvisioningRequired = localPlayerProvisioningRequired;
             Issues = issues ?? Array.Empty<InputModeUnityApplicationPlanIssue>();
             Source = source.NormalizeTextOrFallback(nameof(InputModeUnityApplicationPlanResult));
             Reason = reason.NormalizeText();
@@ -67,7 +67,7 @@ namespace Immersive.Framework.InputMode
 
         public bool PlayerActorRequired { get; }
 
-        public bool SessionPlayerInputManagerRequired { get; }
+        public bool LocalPlayerProvisioningRequired { get; }
 
         public InputModeUnityApplicationPlanIssue[] Issues { get; }
 
@@ -123,7 +123,7 @@ namespace Immersive.Framework.InputMode
             builder.Append(" actionMapName='").Append(ActionMapName).Append("'");
             builder.Append(" actionMapAvailable='").Append(ActionMapAvailable).Append("'");
             builder.Append(" playerActorRequired='").Append(PlayerActorRequired).Append("'");
-            builder.Append(" sessionPlayerInputManagerRequired='").Append(SessionPlayerInputManagerRequired).Append("'");
+            builder.Append(" localPlayerProvisioningRequired='").Append(LocalPlayerProvisioningRequired).Append("'");
             builder.Append(" wouldSelectActionMap='").Append(WouldSelectActionMap).Append("'");
             builder.Append(" wouldLockInput='").Append(WouldLockInput).Append("'");
             builder.Append(" issues='").Append(IssueCount).Append("'");

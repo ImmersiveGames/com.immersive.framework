@@ -1,10 +1,8 @@
-using System;
 using Immersive.Framework.ApiStatus;
 using Immersive.Framework.ApplicationLifecycle;
 using Immersive.Framework.Common;
 using Immersive.Framework.Diagnostics;
 using Immersive.Framework.Gate;
-using Immersive.Framework.PlayerSlots;
 using Immersive.Logging.Records;
 using UnityEngine;
 using UnityEngine.InputSystem;
@@ -28,10 +26,6 @@ namespace Immersive.Framework.UnityInput
 
         [Tooltip("Action map disabled when Block Mode is Disable Action Map. Recommended for FIRSTGAME: Player.")]
         [SerializeField] private string gameplayActionMapName = "Player";
-
-        [Header("Player Slot Identity Bridge")]
-        [Tooltip("Optional player slot identity evidence for diagnostics. This does not resolve or replace PlayerInput.")]
-        [SerializeField] private PlayerSlotDeclaration sourceSlot;
 
         [Header("Gate Conditions")]
         [Tooltip("Block when the framework Gate snapshot blocks Input/InputAcceptance.")]
@@ -65,12 +59,6 @@ namespace Immersive.Framework.UnityInput
 
         public PlayerInput PlayerInput => ResolvePlayerInput();
 
-        public PlayerSlotDeclaration SourceSlot => sourceSlot;
-
-        public bool HasSourceSlot => sourceSlot != null;
-
-        public string SourceSlotIdText => ResolveSourceSlotIdText();
-
         public string GameplayActionMapName => gameplayActionMapName.NormalizeTextOrFallback("Player");
 
         public bool BlockOnInputAcceptance => blockOnInputAcceptance;
@@ -93,7 +81,6 @@ namespace Immersive.Framework.UnityInput
         private void Reset()
         {
             playerInput = GetComponent<PlayerInput>();
-            sourceSlot = GetComponent<PlayerSlotDeclaration>();
             if (string.IsNullOrWhiteSpace(gameplayActionMapName))
             {
                 gameplayActionMapName = "Player";
@@ -356,44 +343,11 @@ namespace Immersive.Framework.UnityInput
                 LogFields.Field("blocksInputAcceptance", blocksInput),
                 LogFields.Field("blocksGameplayAction", blocksGameplay),
                 LogFields.Field("playerInput", resolvedPlayerInput != null ? resolvedPlayerInput.name : "<none>"),
-                LogFields.Field("playerSlotSource", sourceSlot != null ? "PlayerSlotDeclaration" : "None"),
-                LogFields.Field("playerSlotId", ResolveSourceSlotIdText().NormalizeTextOrFallback("<none>")),
-                LogFields.Field("sourceSlot", ResolveSourceSlotDiagnosticText()),
                 LogFields.Field("actionMap", GameplayActionMapName),
                 LogFields.Field("actionMapEnabled", actionMap != null && actionMap.enabled),
                 LogFields.Field("restorePreviousState", restorePreviousState),
                 LogFields.Field("source", DefaultSource),
                 LogFields.Field("reason", reason.NormalizeTextOrFallback("gate-adapter")));
-        }
-
-        private string ResolveSourceSlotIdText()
-        {
-            if (sourceSlot == null)
-            {
-                return string.Empty;
-            }
-
-            try
-            {
-                return sourceSlot.PlayerSlotId.Value.Value;
-            }
-            catch (Exception exception) when (exception is ArgumentException or ArgumentOutOfRangeException)
-            {
-                return $"<invalid:{exception.Message}>";
-            }
-        }
-
-        private string ResolveSourceSlotDiagnosticText()
-        {
-            if (sourceSlot == null)
-            {
-                return "<none>";
-            }
-
-            string slotIdText = ResolveSourceSlotIdText().NormalizeTextOrFallback("<none>");
-            string displayNameText = sourceSlot.DisplayName.NormalizeTextOrFallback(sourceSlot.name);
-            string objectName = sourceSlot.gameObject != null ? sourceSlot.gameObject.name : "<none>";
-            return $"name='{objectName}' displayName='{displayNameText}' playerSlotId='{slotIdText}'";
         }
 
         private void EnsureLogger()

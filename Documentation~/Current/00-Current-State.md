@@ -1,10 +1,25 @@
 # 00 — Current State
 
-Status: **canonical after C9 Camera closure and FIRSTGAME runtime/visual proof**  
-Last reconciled: **2026-07-12**  
-Decision: `ADR-PROD-0006-camera-requests-output-contexts.md`
+Status: **canonical after pre-FIRSTGAME P3 hygiene implementation**
+Last reconciled: **2026-07-15**
+Decisions: `ADR-PROD-0006-camera-requests-output-contexts.md`, `../ADRs/P3-ADR-Canonical-Player-Lane.md`
 
 For the active execution block, read `05-Execution-Status.md`.
+
+## Canonical Player lane
+
+```text
+PlayerSlotProfile -> participation -> join -> LocalPlayerHostAuthoring
+  -> Actor selection/materialization -> preparation -> gameplay occupancy
+  -> input -> camera -> admission -> Activity
+```
+
+`PlayerSlotId` is assigned by the Session join transaction. Player prefabs and
+`PlayerComposer` do not pre-author Slot identity. Pause/InputMode consumes one
+explicit `LocalPlayerProvisioningAuthoring`; optional discovery is by loaded
+component type and rejects duplicates. F45 passive Slot declarations and the
+F49/F51/F52 passive binding graph are removed. FIRSTGAME remains a consumer
+awaiting migration after the clean P3 regression gate.
 
 ## Camera product and authoring surface
 

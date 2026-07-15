@@ -239,3 +239,4 @@ Promote ADR statuses and document usage/gaps.
 ```text
 F49A-F49B: add actor readiness contracts and active F49 plan
 ```
+> Status: Superseded / Removed em 2026-07-15 por `P3-ADR-Canonical-Player-Lane.md`. Mantido apenas como histórico.

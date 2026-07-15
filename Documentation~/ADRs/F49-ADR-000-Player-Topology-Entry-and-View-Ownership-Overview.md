@@ -326,3 +326,4 @@ Implementation requires careful avoidance of duplicate managers/registries too e
 ## 14. Status
 
 This ADR is a planning overview for F49. It does not implement runtime behavior.
+> Status: Superseded / Removed em 2026-07-15 por `P3-ADR-Canonical-Player-Lane.md`. Mantido apenas como histórico.

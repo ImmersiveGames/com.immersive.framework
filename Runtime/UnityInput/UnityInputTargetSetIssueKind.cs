@@ -15,8 +15,6 @@ namespace Immersive.Framework.UnityInput
         MissingRequiredRole = 40,
         DuplicateRequiredRole = 50,
         DuplicateTargetId = 60,
-        MissingRequiredPlayerInputEvidence = 70,
-        DuplicatePlayerInputManager = 80,
-        MissingRequiredPlayerInputManager = 90
+        MissingRequiredPlayerInputEvidence = 70
     }
 }

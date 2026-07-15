@@ -1,30 +1,35 @@
 # Immersive Framework
 
-`com.immersive.framework` is the official Unity package for framework runtime, authoring, diagnostics and validation.
+`com.immersive.framework` is the official Unity package for framework runtime,
+authoring, diagnostics and validation.
 
-Current version: `1.0.0-preview.14`.
+Current version: `1.0.0-preview.15`.
 
 ## Current product surfaces
 
 ```text
 PlayerRecipe (optional) -> PlayerComposer -> Validate -> Apply/Rebuild
-PlayerComposer -> CameraComposer -> Validate -> Apply/Rebuild
+PlayerSlotProfile -> LocalPlayerProvisioningAuthoring -> canonical P3 runtime lane
+CameraRigRecipe -> CameraRigComposer -> Validate -> Apply/Rebuild
 ```
 
-`CameraComposer` materializes the main Unity/Cinemachine camera rig from explicit references. Route/Activity camera bindings are lifecycle-specific explicit-output integration and currently apply on enter without automatic release/restoration on exit.
+P3 is the only Player runtime lane. Session join assigns `PlayerSlotId` to the
+stable `LocalPlayerHostAuthoring`; Player prefabs and `PlayerComposer` do not
+pre-author Slot identity. The former passive F49/F51/F52 graph is removed.
 
-`PlayerViewBehaviour` and the passive Player foundation remain technical evidence. A complete PlayerControl runtime, input activation, movement and spawning are not automatic.
+Camera authoring and physical output ownership remain separate. Route, Activity,
+Local Player and Session publish typed requests into the explicit output context.
 
 ## Next active lane
 
-`P2 — Player Control Product`.
+Manual clean P3 regression, followed by FIRSTGAME consumer migration.
 
 ## Start reading
 
 - [Documentation index](Documentation~/README.md)
-- [HTML Usage Guide](Documentation~/Guides/Usage/index.html)
 - [Current State](Documentation~/Current/00-Current-State.md)
-- [Roadmap](Documentation~/Current/01-Roadmap.md)
+- [Player Architecture Flow](Documentation~/Guides/Player-Architecture-Flow.md)
 - [Camera Product Usage](Documentation~/Guides/Camera-Product-Usage.md)
 
-QAFramework owns synthetic technical validation. FIRSTGAME owns minimal real-game proof. Do not copy consumer assets or old project architecture into this package.
+QAFramework owns synthetic technical validation. FIRSTGAME owns minimal real-game
+proof. Consumer assets and old project architecture do not belong in this package.

@@ -15,6 +15,6 @@ namespace Immersive.Framework.InputMode
         FailedUnsupportedMode = 30,
         FailedTargetEvidence = 40,
         FailedPlayerActorEvidence = 50,
-        FailedSessionPlayerInputManagerEvidence = 60
+        FailedLocalPlayerProvisioning = 60
     }
 }

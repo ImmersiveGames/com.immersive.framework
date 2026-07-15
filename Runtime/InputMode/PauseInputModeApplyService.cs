@@ -122,9 +122,9 @@ namespace Immersive.Framework.InputMode
                     "Pause/InputMode apply requires PlayerInput.actions before applying InputMode.");
             }
 
-            if (request.RequireSessionPlayerInputManagerEvidence
-                && request.SessionPlayerInputManagerEvidence != null
-                && request.SessionPlayerInputManagerEvidence.Failed)
+            if (request.RequireLocalPlayerProvisioning
+                && request.LocalPlayerProvisioningValidation != null
+                && request.LocalPlayerProvisioningValidation.Failed)
             {
                 return CreateResult(
                     PauseInputModeUnityPlayerInputRuntimeBridgeStatus.FailedConfiguration,
@@ -138,7 +138,7 @@ namespace Immersive.Framework.InputMode
                     previousActionMap,
                     source,
                     reason,
-                    request.SessionPlayerInputManagerEvidence.ToDiagnosticString());
+                    request.LocalPlayerProvisioningValidation.ToDiagnosticString());
             }
 
             PauseRequest pauseRequest = CreatePauseRequest(request.RequestKind, request.RequestId, source, reason);
@@ -199,7 +199,7 @@ namespace Immersive.Framework.InputMode
                 currentInputModeState,
                 request.TargetSet,
                 request.PlayerActorSet,
-                request.SessionPlayerInputManagerEvidence,
+                request.LocalPlayerProvisioningValidation,
                 request.ActionMapEvidence,
                 request.ActionMapBindings,
                 request.PlayerInput,
@@ -278,7 +278,7 @@ namespace Immersive.Framework.InputMode
                 requestPreview,
                 request.TargetSet,
                 request.PlayerActorSet,
-                request.SessionPlayerInputManagerEvidence,
+                request.LocalPlayerProvisioningValidation,
                 source,
                 reason);
             if (!applicationPreview.Succeeded)
@@ -292,7 +292,7 @@ namespace Immersive.Framework.InputMode
                     false,
                     false,
                     applicationPreview.PlayerActorRequired,
-                    applicationPreview.SessionPlayerInputManagerRequired,
+                    applicationPreview.LocalPlayerProvisioningRequired,
                     new[]
                     {
                         InputModeUnityApplicationPlanIssue.BlockingIssue(
@@ -323,7 +323,7 @@ namespace Immersive.Framework.InputMode
                     actionMapPreview.ActionMapRequired,
                     actionMapPreview.ActionMapAvailable,
                     applicationPreview.PlayerActorRequired,
-                    applicationPreview.SessionPlayerInputManagerRequired,
+                    applicationPreview.LocalPlayerProvisioningRequired,
                     new[]
                     {
                         InputModeUnityApplicationPlanIssue.BlockingIssue(

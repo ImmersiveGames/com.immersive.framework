@@ -320,3 +320,4 @@ Concrete movement/control adapter
 Concrete HUD binding contract
 Save/snapshot state schema
 ```
+> Status: Superseded / Removed em 2026-07-15 por `P3-ADR-Canonical-Player-Lane.md`. Mantido apenas como histórico.

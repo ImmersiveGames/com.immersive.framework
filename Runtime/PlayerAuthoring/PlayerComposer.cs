@@ -20,8 +20,6 @@ namespace Immersive.Framework.PlayerAuthoring
         [SerializeField] private PlayerRecipe recipe;
         [Tooltip("Stable semantic ActorId. This is not a GameObject name.")]
         [SerializeField] private string actorId = "player.actor";
-        [Tooltip("Stable semantic PlayerSlotId. This is not PlayerInput.playerIndex.")]
-        [SerializeField] private string playerSlotId = "player.1";
         [SerializeField] private PlayerComposerValidationMode validationMode = PlayerComposerValidationMode.Standard;
 
         [Header("Input")]
@@ -70,7 +68,6 @@ namespace Immersive.Framework.PlayerAuthoring
 
         public PlayerRecipe Recipe => recipe;
         public string ActorId => actorId.NormalizeText();
-        public string PlayerSlotId => playerSlotId.NormalizeText();
         public PlayerComposerValidationMode ValidationMode => validationMode;
 
         public bool ControlEnabled => controlEnabled;
@@ -128,12 +125,6 @@ namespace Immersive.Framework.PlayerAuthoring
             if (string.IsNullOrWhiteSpace(ActorId))
             {
                 issue = "PlayerComposer requires a non-empty ActorId.";
-                return false;
-            }
-
-            if (string.IsNullOrWhiteSpace(PlayerSlotId))
-            {
-                issue = "PlayerComposer requires a non-empty PlayerSlotId.";
                 return false;
             }
 
@@ -199,7 +190,6 @@ namespace Immersive.Framework.PlayerAuthoring
 
             return new PlayerComposerDebugSnapshot(
                 ActorId,
-                PlayerSlotId,
                 controlEnabled,
                 playerInput != null ? playerInput.name.NormalizeText() : string.Empty,
                 actionMap,
@@ -230,11 +220,6 @@ namespace Immersive.Framework.PlayerAuthoring
             if (overwriteExisting || string.IsNullOrWhiteSpace(actorId))
             {
                 actorId = recipe.ActorId;
-            }
-
-            if (overwriteExisting || string.IsNullOrWhiteSpace(playerSlotId))
-            {
-                playerSlotId = recipe.PlayerSlotId;
             }
 
             gameplayActionMap = recipe.GameplayActionMap;
@@ -345,7 +330,6 @@ namespace Immersive.Framework.PlayerAuthoring
     {
         public PlayerComposerDebugSnapshot(
             string actorId,
-            string playerSlotId,
             bool controlEnabled,
             string playerInputName,
             string gameplayActionMap,
@@ -363,7 +347,6 @@ namespace Immersive.Framework.PlayerAuthoring
             string lastMaterializationSummary)
         {
             ActorId = actorId;
-            PlayerSlotId = playerSlotId;
             ControlEnabled = controlEnabled;
             PlayerInputName = playerInputName;
             GameplayActionMap = gameplayActionMap;
@@ -382,7 +365,6 @@ namespace Immersive.Framework.PlayerAuthoring
         }
 
         public string ActorId { get; }
-        public string PlayerSlotId { get; }
         public bool ControlEnabled { get; }
         public string PlayerInputName { get; }
         public string GameplayActionMap { get; }

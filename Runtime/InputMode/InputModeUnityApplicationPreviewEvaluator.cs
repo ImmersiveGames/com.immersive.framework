@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using Immersive.Framework.Actors;
 using Immersive.Framework.ApiStatus;
 using Immersive.Framework.Common;
+using Immersive.Framework.PlayerParticipation;
 using Immersive.Framework.UnityInput;
 
 namespace Immersive.Framework.InputMode
@@ -18,7 +19,7 @@ namespace Immersive.Framework.InputMode
             InputModeRequestResult inputModeResult,
             UnityInputTargetSet targetSet,
             PlayerActorSet playerActorSet,
-            UnityInputPlayerInputManagerEvidence sessionPlayerInputManagerEvidence,
+            LocalPlayerProvisioningValidationResult localPlayerProvisioningValidation,
             string source,
             string reason)
         {
@@ -54,13 +55,13 @@ namespace Immersive.Framework.InputMode
             UnityInputTargetRole targetRole;
             bool targetRequired;
             bool playerActorRequired;
-            bool sessionPlayerInputManagerRequired;
+            bool localPlayerProvisioningRequired;
             if (!TryResolvePolicy(
                 requestedMode,
                 out targetRole,
                 out targetRequired,
                 out playerActorRequired,
-                out sessionPlayerInputManagerRequired))
+                out localPlayerProvisioningRequired))
             {
                 issues.Add(InputModeUnityApplicationPreviewIssue.BlockingIssue(
                     InputModeUnityApplicationPreviewIssueKind.UnsupportedInputMode,
@@ -106,11 +107,11 @@ namespace Immersive.Framework.InputMode
                     "Gameplay InputMode preview requires a framework-recognized PlayerActor with Unity PlayerInput evidence."));
             }
 
-            bool sessionPlayerInputManagerAvailable = !sessionPlayerInputManagerRequired || HasRequiredSessionPlayerInputManager(sessionPlayerInputManagerEvidence);
-            if (!sessionPlayerInputManagerAvailable)
+            bool localPlayerProvisioningAvailable = !localPlayerProvisioningRequired || HasRequiredLocalPlayerProvisioning(localPlayerProvisioningValidation);
+            if (!localPlayerProvisioningAvailable)
             {
                 issues.Add(InputModeUnityApplicationPreviewIssue.BlockingIssue(
-                    InputModeUnityApplicationPreviewIssueKind.MissingRequiredSessionPlayerInputManager,
+                    InputModeUnityApplicationPreviewIssueKind.MissingRequiredLocalPlayerProvisioning,
                     requestedMode,
                     targetRole,
                     normalizedSource,
@@ -129,8 +130,8 @@ namespace Immersive.Framework.InputMode
                 targetAvailable,
                 playerActorRequired,
                 playerActorAvailable,
-                sessionPlayerInputManagerRequired,
-                sessionPlayerInputManagerAvailable,
+                localPlayerProvisioningRequired,
+                localPlayerProvisioningAvailable,
                 issues,
                 normalizedSource,
                 reason);
@@ -141,7 +142,7 @@ namespace Immersive.Framework.InputMode
             out UnityInputTargetRole targetRole,
             out bool targetRequired,
             out bool playerActorRequired,
-            out bool sessionPlayerInputManagerRequired)
+            out bool localPlayerProvisioningRequired)
         {
             switch (mode)
             {
@@ -149,26 +150,26 @@ namespace Immersive.Framework.InputMode
                     targetRole = UnityInputTargetRole.GameplayCommands;
                     targetRequired = true;
                     playerActorRequired = true;
-                    sessionPlayerInputManagerRequired = true;
+                    localPlayerProvisioningRequired = true;
                     return true;
                 case InputModeKind.PauseOverlay:
                 case InputModeKind.FrontendMenu:
                     targetRole = UnityInputTargetRole.GlobalUiPause;
                     targetRequired = true;
                     playerActorRequired = false;
-                    sessionPlayerInputManagerRequired = false;
+                    localPlayerProvisioningRequired = false;
                     return true;
                 case InputModeKind.InputLocked:
                     targetRole = UnityInputTargetRole.Unknown;
                     targetRequired = false;
                     playerActorRequired = false;
-                    sessionPlayerInputManagerRequired = false;
+                    localPlayerProvisioningRequired = false;
                     return true;
                 default:
                     targetRole = UnityInputTargetRole.Unknown;
                     targetRequired = false;
                     playerActorRequired = false;
-                    sessionPlayerInputManagerRequired = false;
+                    localPlayerProvisioningRequired = false;
                     return false;
             }
         }
@@ -188,9 +189,9 @@ namespace Immersive.Framework.InputMode
             return playerActorSet is { Succeeded: true, Count: > 0, PlayerInputEvidenceCount: > 0 };
         }
 
-        private static bool HasRequiredSessionPlayerInputManager(UnityInputPlayerInputManagerEvidence evidence)
+        private static bool HasRequiredLocalPlayerProvisioning(LocalPlayerProvisioningValidationResult evidence)
         {
-            return evidence is { Succeeded: true, SessionScoped: true, Required: true, ManagerCount: 1 };
+            return evidence is { Succeeded: true, Required: true, Available: true, SurfaceCount: 1 };
         }
 
         private static InputModeUnityApplicationPreviewStatus ResolveFailureStatus(InputModeUnityApplicationPreviewIssueKind issueKind)
@@ -203,9 +204,9 @@ namespace Immersive.Framework.InputMode
                 case InputModeUnityApplicationPreviewIssueKind.MissingRequiredPlayerActor:
                 case InputModeUnityApplicationPreviewIssueKind.InvalidPlayerActorEvidence:
                     return InputModeUnityApplicationPreviewStatus.FailedPlayerActorEvidence;
-                case InputModeUnityApplicationPreviewIssueKind.MissingRequiredSessionPlayerInputManager:
-                case InputModeUnityApplicationPreviewIssueKind.InvalidSessionPlayerInputManagerEvidence:
-                    return InputModeUnityApplicationPreviewStatus.FailedSessionPlayerInputManagerEvidence;
+                case InputModeUnityApplicationPreviewIssueKind.MissingRequiredLocalPlayerProvisioning:
+                case InputModeUnityApplicationPreviewIssueKind.InvalidLocalPlayerProvisioning:
+                    return InputModeUnityApplicationPreviewStatus.FailedLocalPlayerProvisioning;
                 case InputModeUnityApplicationPreviewIssueKind.UnsupportedInputMode:
                     return InputModeUnityApplicationPreviewStatus.FailedUnsupportedMode;
                 default:
@@ -221,8 +222,8 @@ namespace Immersive.Framework.InputMode
             bool targetAvailable,
             bool playerActorRequired,
             bool playerActorAvailable,
-            bool sessionPlayerInputManagerRequired,
-            bool sessionPlayerInputManagerAvailable,
+            bool localPlayerProvisioningRequired,
+            bool localPlayerProvisioningAvailable,
             List<InputModeUnityApplicationPreviewIssue> issues,
             string source,
             string reason)
@@ -235,8 +236,8 @@ namespace Immersive.Framework.InputMode
                 targetAvailable,
                 playerActorRequired,
                 playerActorAvailable,
-                sessionPlayerInputManagerRequired,
-                sessionPlayerInputManagerAvailable,
+                localPlayerProvisioningRequired,
+                localPlayerProvisioningAvailable,
                 issues == null ? Array.Empty<InputModeUnityApplicationPreviewIssue>() : issues.ToArray(),
                 source,
                 reason);

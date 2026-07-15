@@ -71,3 +71,4 @@ The framework can now validate whether authored PlayerSlot, occupancy and Player
 ```text
 F49F: add passive PlayerTopology validation
 ```
+> Status: Superseded / Removed em 2026-07-15 por `P3-ADR-Canonical-Player-Lane.md`. Mantido apenas como histórico.

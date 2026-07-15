@@ -423,15 +423,6 @@ namespace Immersive.Framework.Diagnostics
                     RunPauseLogicalToggleResidentSurfaceSmoke();
                 }
 
-                if (GUILayout.Button("Run Pause Runtime PlayerInput Bridge Smoke"))
-                {
-                    RunPauseInputModeUnityPlayerInputRuntimeBridgeSmoke();
-                }
-
-                if (GUILayout.Button("Run Pause InputAction Bridge Trigger Smoke"))
-                {
-                    RunPauseInputActionRuntimeBridgeTriggerSmoke();
-                }
             }
         }
 
@@ -860,83 +851,16 @@ namespace Immersive.Framework.Diagnostics
         }
 
 
-        private async void RunUnityInputOfficialComponentEvidenceSmoke()
-        {
-            await RunSmokeAsync(UnityInputOfficialComponentEvidenceQaSmokeRunner.SmokeName, runtimeHost =>
-                UnityInputOfficialComponentEvidenceQaSmokeRunner.RunDiagnosticsSmokeAsync(_logger, QaSource));
-        }
-
         private async void RunPauseInputModeRequestBoundarySmoke()
         {
             await RunSmokeAsync(PauseInputModeRequestBoundaryQaSmokeRunner.SmokeName, runtimeHost =>
                 PauseInputModeRequestBoundaryQaSmokeRunner.RunDiagnosticsSmokeAsync(_logger, QaSource));
         }
 
-        private async void RunSessionPlayerInputManagerBoundarySmoke()
-        {
-            await RunSmokeAsync(SessionPlayerInputManagerBoundaryQaSmokeRunner.SmokeName, runtimeHost =>
-                SessionPlayerInputManagerBoundaryQaSmokeRunner.RunDiagnosticsSmokeAsync(_logger, QaSource));
-        }
-
         private async void RunPlayerActorIdentitySmoke()
         {
             await RunSmokeAsync(PlayerActorIdentityQaSmokeRunner.SmokeName, runtimeHost =>
                 PlayerActorIdentityQaSmokeRunner.RunDiagnosticsSmokeAsync(_logger, QaSource));
-        }
-
-        private async void RunInputModeUnityApplicationPreviewSmoke()
-        {
-            await RunSmokeAsync(InputModeUnityApplicationPreviewQaSmokeRunner.SmokeName, runtimeHost =>
-                InputModeUnityApplicationPreviewQaSmokeRunner.RunDiagnosticsSmokeAsync(_logger, QaSource));
-        }
-
-        private async void RunInputModeUnityActionMapPreviewSmoke()
-        {
-            await RunSmokeAsync(InputModeUnityActionMapPreviewQaSmokeRunner.SmokeName, runtimeHost =>
-                InputModeUnityActionMapPreviewQaSmokeRunner.RunDiagnosticsSmokeAsync(_logger, QaSource));
-        }
-
-        private async void RunInputModeUnityApplicationPlanSmoke()
-        {
-            await RunSmokeAsync(InputModeUnityApplicationPlanQaSmokeRunner.SmokeName, runtimeHost =>
-                InputModeUnityApplicationPlanQaSmokeRunner.RunDiagnosticsSmokeAsync(_logger, QaSource));
-        }
-
-        private async void RunInputModeUnityPlayerInputAdapterSmoke()
-        {
-            await RunSmokeAsync(InputModeUnityPlayerInputAdapterQaSmokeRunner.SmokeName, runtimeHost =>
-                InputModeUnityPlayerInputAdapterQaSmokeRunner.RunDiagnosticsSmokeAsync(_logger, QaSource));
-        }
-
-        private async void RunInputModeUnityPlayerInputApplicationSmoke()
-        {
-            await RunSmokeAsync(InputModeUnityPlayerInputApplicationQaSmokeRunner.SmokeName, runtimeHost =>
-                InputModeUnityPlayerInputApplicationQaSmokeRunner.RunDiagnosticsSmokeAsync(_logger, QaSource));
-        }
-
-        private async void RunInputModeUnityPlayerInputRequestApplicationSmoke()
-        {
-            await RunSmokeAsync(InputModeUnityPlayerInputRequestApplicationQaSmokeRunner.SmokeName, runtimeHost =>
-                InputModeUnityPlayerInputRequestApplicationQaSmokeRunner.RunDiagnosticsSmokeAsync(_logger, QaSource));
-        }
-
-
-        private async void RunPauseInputModeUnityPlayerInputApplicationSmoke()
-        {
-            await RunSmokeAsync(PauseInputModeUnityPlayerInputApplicationQaSmokeRunner.SmokeName, runtimeHost =>
-                PauseInputModeUnityPlayerInputApplicationQaSmokeRunner.RunDiagnosticsSmokeAsync(_logger, QaSource));
-        }
-
-        private async void RunPauseInputModeUnityPlayerInputRuntimeBridgeSmoke()
-        {
-            await RunSmokeAsync(PauseInputModeUnityPlayerInputRuntimeBridgeQaSmokeRunner.SmokeName, runtimeHost =>
-                PauseInputModeUnityPlayerInputRuntimeBridgeQaSmokeRunner.RunRuntimeBridgeSmokeAsync(runtimeHost, _logger, QaSource));
-        }
-
-        private async void RunPauseInputActionRuntimeBridgeTriggerSmoke()
-        {
-            await RunSmokeAsync(PauseInputActionRuntimeBridgeTriggerQaSmokeRunner.SmokeName, runtimeHost =>
-                PauseInputActionRuntimeBridgeTriggerQaSmokeRunner.RunTriggerSmokeAsync(runtimeHost, _logger, QaSource));
         }
 
         private async void RunSnapshotParticipantDiagnosticsSmoke()

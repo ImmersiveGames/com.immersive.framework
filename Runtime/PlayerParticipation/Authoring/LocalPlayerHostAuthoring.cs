@@ -38,7 +38,6 @@ namespace Immersive.Framework.PlayerParticipation
         private Transform actorMount;
 
         [NonSerialized] private AdmissionState admissionState;
-        [NonSerialized] private PlayerSlotDeclaration stagedSlotDeclaration;
         [NonSerialized] private PlayerSlotId joinedPlayerSlotId;
         [NonSerialized] private int joinedConfiguredIndex = -1;
         [NonSerialized] private string admissionSource = string.Empty;
@@ -56,18 +55,13 @@ namespace Immersive.Framework.PlayerParticipation
 
         public bool IsJoined => admissionState == AdmissionState.Joined;
 
-        public bool HasJoinedSlot =>
-            IsJoined && joinedPlayerSlotId.IsValid && stagedSlotDeclaration != null;
+        public bool HasJoinedSlot => IsJoined && joinedPlayerSlotId.IsValid;
 
         public PlayerSlotId JoinedPlayerSlotId => HasJoinedSlot
             ? joinedPlayerSlotId
             : default;
 
         public int JoinedConfiguredIndex => IsJoined ? joinedConfiguredIndex : -1;
-
-        public PlayerSlotDeclaration PlayerSlotDeclaration => IsJoined
-            ? stagedSlotDeclaration
-            : null;
 
         public string AdmissionSource => admissionSource.NormalizeText();
 
@@ -83,10 +77,7 @@ namespace Immersive.Framework.PlayerParticipation
         /// </summary>
         public bool TryValidateConfiguration(out string issue)
         {
-            return TryValidateConfiguration(
-                requireEmptyActorMount: true,
-                allowRuntimeSlotDeclaration: IsAdmissionStaged || IsJoined,
-                out issue);
+            return TryValidateConfiguration(requireEmptyActorMount: true, out issue);
         }
 
         internal bool TryStageAdmission(
@@ -103,10 +94,7 @@ namespace Immersive.Framework.PlayerParticipation
                 return false;
             }
 
-            if (!TryValidateConfiguration(
-                    requireEmptyActorMount: true,
-                    allowRuntimeSlotDeclaration: false,
-                    out issue))
+            if (!TryValidateConfiguration(requireEmptyActorMount: true, out issue))
             {
                 return false;
             }
@@ -119,45 +107,8 @@ namespace Immersive.Framework.PlayerParticipation
                 return false;
             }
 
-            PlayerSlotDeclaration declaration = null;
             string normalizedSource = source.NormalizeTextOrFallback(nameof(LocalPlayerHostAuthoring));
             string normalizedReason = reason.NormalizeTextOrFallback("local-player-host-admission");
-            try
-            {
-                declaration = gameObject.AddComponent<PlayerSlotDeclaration>();
-                if (declaration == null)
-                {
-                    issue = "Local Player Host could not stage its PlayerSlotDeclaration.";
-                    return false;
-                }
-
-                declaration.ConfigureForDiagnostics(
-                    reservedSlot.PlayerSlotId.Value.Value,
-                    reservedSlot.Profile != null
-                        ? reservedSlot.Profile.DisplayName
-                        : reservedSlot.PlayerSlotId.Value.Value,
-                    playerInput,
-                    normalizedReason);
-            }
-            catch (Exception exception)
-            {
-                if (declaration != null)
-                {
-                    if (Application.isPlaying)
-                    {
-                        Destroy(declaration);
-                    }
-                    else
-                    {
-                        DestroyImmediate(declaration);
-                    }
-                }
-
-                issue = $"Local Player Host could not stage PlayerSlotDeclaration. {exception.Message}";
-                return false;
-            }
-
-            stagedSlotDeclaration = declaration;
             joinedPlayerSlotId = reservedSlot.PlayerSlotId;
             joinedConfiguredIndex = reservedSlot.ConfiguredIndex;
             admissionSource = normalizedSource;
@@ -171,7 +122,7 @@ namespace Immersive.Framework.PlayerParticipation
             string source,
             string reason)
         {
-            if (admissionState != AdmissionState.Staged || stagedSlotDeclaration == null)
+            if (admissionState != AdmissionState.Staged || !joinedPlayerSlotId.IsValid)
             {
                 throw new InvalidOperationException(
                     "Local Player Host has no staged admission to commit.");
@@ -202,19 +153,6 @@ namespace Immersive.Framework.PlayerParticipation
                 return;
             }
 
-            if (stagedSlotDeclaration != null)
-            {
-                if (Application.isPlaying)
-                {
-                    Destroy(stagedSlotDeclaration);
-                }
-                else
-                {
-                    DestroyImmediate(stagedSlotDeclaration);
-                }
-            }
-
-            stagedSlotDeclaration = null;
             joinedPlayerSlotId = default;
             joinedConfiguredIndex = -1;
             admissionSource = source.NormalizeTextOrFallback(nameof(LocalPlayerHostAuthoring));
@@ -224,7 +162,6 @@ namespace Immersive.Framework.PlayerParticipation
 
         private bool TryValidateConfiguration(
             bool requireEmptyActorMount,
-            bool allowRuntimeSlotDeclaration,
             out string issue)
         {
             issue = string.Empty;
@@ -270,16 +207,6 @@ namespace Immersive.Framework.PlayerParticipation
                 GetComponentInChildren<ActorDeclaration>(true) != null)
             {
                 issue = "Local Player provisioning host must not contain an ActorDeclaration. Logical Actors are materialized contextually after join.";
-                return false;
-            }
-
-            PlayerSlotDeclaration[] slotDeclarations =
-                GetComponentsInChildren<PlayerSlotDeclaration>(true);
-            int allowedCount = allowRuntimeSlotDeclaration && stagedSlotDeclaration != null ? 1 : 0;
-            if (slotDeclarations.Length != allowedCount ||
-                (allowedCount == 1 && !ReferenceEquals(slotDeclarations[0], stagedSlotDeclaration)))
-            {
-                issue = "Local Player provisioning host must not contain a pre-authored PlayerSlotDeclaration. Slot identity is bound by the Session join transaction.";
                 return false;
             }
 

@@ -355,3 +355,4 @@ Generated Input Actions integration in FIRSTGAME
 Per-player UI setup
 Split-screen QA scenario
 ```
+> Status: Superseded / Removed em 2026-07-15 por `P3-ADR-Canonical-Player-Lane.md`. Mantido apenas como histórico.

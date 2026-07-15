@@ -23,3 +23,4 @@ Create a passive aggregation layer that summarizes whether the current Player to
 ## Architectural gain
 
 The framework now has a single passive readiness view over the Player binding chain before any real binding runtime is introduced.
+> Status: Superseded / Removed em 2026-07-15 por `P3-ADR-Canonical-Player-Lane.md`. Mantido apenas como histórico.

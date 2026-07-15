@@ -1,6 +1,7 @@
 using Immersive.Framework.CameraAuthoring;
 using Immersive.Framework.Common;
 using Immersive.Framework.PlayerAuthoring;
+using Immersive.Framework.PlayerParticipation;
 using UnityEngine;
 
 namespace Immersive.Framework.Camera
@@ -19,6 +20,7 @@ namespace Immersive.Framework.Camera
     {
         [Header("Player")]
         [SerializeField] private PlayerComposer playerComposer;
+        [SerializeField] private LocalPlayerHostAuthoring localPlayerHost;
 
         [Header("Request Identity")]
         [Tooltip("Explicit stable lifetime scope for this local-player eligibility instance.")]
@@ -236,10 +238,10 @@ namespace Immersive.Framework.Camera
                 return false;
             }
 
-            if (string.IsNullOrWhiteSpace(playerComposer.PlayerSlotId))
+            if (localPlayerHost == null || !localPlayerHost.HasJoinedSlot)
             {
                 diagnostic =
-                    "Local Player Camera Request Binding requires PlayerComposer PlayerSlotId.";
+                    "Local Player Camera Request Binding requires an explicitly joined LocalPlayerHostAuthoring.";
                 return false;
             }
 
@@ -294,8 +296,7 @@ namespace Immersive.Framework.Camera
             out CameraRequest request,
             out string diagnostic)
         {
-            string ownerId =
-                playerComposer.PlayerSlotId.NormalizeText();
+            string ownerId = localPlayerHost.JoinedPlayerSlotId.StableText;
 
             CameraRequestCreateResult result =
                 CameraRequestCreateResult.Create(
@@ -338,7 +339,9 @@ namespace Immersive.Framework.Camera
                 return "<missing>";
             }
 
-            string slot = playerComposer.PlayerSlotId.NormalizeText();
+            string slot = localPlayerHost != null && localPlayerHost.HasJoinedSlot
+                ? localPlayerHost.JoinedPlayerSlotId.StableText
+                : "<unjoined>";
             string actor = playerComposer.ActorId.NormalizeText();
             return $"slot:{slot}|actor:{actor}";
         }

@@ -99,3 +99,4 @@ F53 — FIRSTGAME PlayerView / PlayerControl usability proof
 ```
 
 The FIRSTGAME lane must prove usability of the existing contracts only. New framework contracts must still be created and validated in package + QA before they are used in FIRSTGAME.
+> Status: Superseded / Removed em 2026-07-15 por `P3-ADR-Canonical-Player-Lane.md`. Mantido apenas como histórico.

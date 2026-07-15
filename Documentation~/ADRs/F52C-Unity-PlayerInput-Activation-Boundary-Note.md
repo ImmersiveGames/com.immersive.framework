@@ -39,3 +39,4 @@ F52C does not route `InputAction` callbacks, read action values, enable movement
 ## Clear semantics
 
 Clear restores the previous action map when the activation snapshot captured one, then clears only F52C activation evidence. F52B bridge evidence may remain available until the bridge is cleared explicitly.
+> Status: Superseded / Removed em 2026-07-15 por `P3-ADR-Canonical-Player-Lane.md`. Mantido apenas como histórico.

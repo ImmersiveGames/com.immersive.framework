@@ -21,8 +21,8 @@ namespace Immersive.Framework.InputMode
             bool targetAvailable,
             bool playerActorRequired,
             bool playerActorAvailable,
-            bool sessionPlayerInputManagerRequired,
-            bool sessionPlayerInputManagerAvailable,
+            bool localPlayerProvisioningRequired,
+            bool localPlayerProvisioningAvailable,
             InputModeUnityApplicationPreviewIssue[] issues,
             string source,
             string reason)
@@ -39,8 +39,8 @@ namespace Immersive.Framework.InputMode
             TargetAvailable = targetAvailable;
             PlayerActorRequired = playerActorRequired;
             PlayerActorAvailable = playerActorAvailable;
-            SessionPlayerInputManagerRequired = sessionPlayerInputManagerRequired;
-            SessionPlayerInputManagerAvailable = sessionPlayerInputManagerAvailable;
+            LocalPlayerProvisioningRequired = localPlayerProvisioningRequired;
+            LocalPlayerProvisioningAvailable = localPlayerProvisioningAvailable;
             Issues = issues ?? Array.Empty<InputModeUnityApplicationPreviewIssue>();
             Source = source.NormalizeTextOrFallback(nameof(InputModeUnityApplicationPreviewResult));
             Reason = reason.NormalizeText();
@@ -60,9 +60,9 @@ namespace Immersive.Framework.InputMode
 
         public bool PlayerActorAvailable { get; }
 
-        public bool SessionPlayerInputManagerRequired { get; }
+        public bool LocalPlayerProvisioningRequired { get; }
 
-        public bool SessionPlayerInputManagerAvailable { get; }
+        public bool LocalPlayerProvisioningAvailable { get; }
 
         public InputModeUnityApplicationPreviewIssue[] Issues { get; }
 
@@ -113,8 +113,8 @@ namespace Immersive.Framework.InputMode
             builder.Append(" targetAvailable='").Append(TargetAvailable).Append("'");
             builder.Append(" playerActorRequired='").Append(PlayerActorRequired).Append("'");
             builder.Append(" playerActorAvailable='").Append(PlayerActorAvailable).Append("'");
-            builder.Append(" sessionPlayerInputManagerRequired='").Append(SessionPlayerInputManagerRequired).Append("'");
-            builder.Append(" sessionPlayerInputManagerAvailable='").Append(SessionPlayerInputManagerAvailable).Append("'");
+            builder.Append(" localPlayerProvisioningRequired='").Append(LocalPlayerProvisioningRequired).Append("'");
+            builder.Append(" localPlayerProvisioningAvailable='").Append(LocalPlayerProvisioningAvailable).Append("'");
             builder.Append(" issues='").Append(IssueCount).Append("'");
             builder.Append(" blockingIssues='").Append(BlockingIssueCount).Append("'");
             builder.Append(" actionMapSwitching='").Append(SwitchesActionMaps).Append("'");

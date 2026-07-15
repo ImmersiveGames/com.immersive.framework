@@ -9,7 +9,6 @@ namespace Immersive.Framework.Editor.PlayerAuthoring
     {
         private SerializedProperty recipe;
         private SerializedProperty actorId;
-        private SerializedProperty playerSlotId;
         private SerializedProperty validationMode;
 
         private SerializedProperty controlEnabled;
@@ -39,7 +38,6 @@ namespace Immersive.Framework.Editor.PlayerAuthoring
         {
             recipe = serializedObject.FindProperty("recipe");
             actorId = serializedObject.FindProperty("actorId");
-            playerSlotId = serializedObject.FindProperty("playerSlotId");
             validationMode = serializedObject.FindProperty("validationMode");
 
             controlEnabled = serializedObject.FindProperty("controlEnabled");
@@ -98,7 +96,6 @@ namespace Immersive.Framework.Editor.PlayerAuthoring
             }
 
             EditorGUILayout.PropertyField(actorId);
-            EditorGUILayout.PropertyField(playerSlotId);
             EditorGUILayout.PropertyField(validationMode);
         }
 
@@ -209,7 +206,6 @@ namespace Immersive.Framework.Editor.PlayerAuthoring
             using (new EditorGUI.DisabledScope(true))
             {
                 EditorGUILayout.TextField("Actor Id", snapshot.ActorId);
-                EditorGUILayout.TextField("Player Slot Id", snapshot.PlayerSlotId);
                 EditorGUILayout.Toggle("Control Enabled", snapshot.ControlEnabled);
                 EditorGUILayout.TextField("PlayerInput", snapshot.PlayerInputName);
                 EditorGUILayout.TextField("Authored Default Action Map", snapshot.GameplayActionMap);
@@ -243,7 +239,7 @@ namespace Immersive.Framework.Editor.PlayerAuthoring
             EditorUtility.SetDirty(composer);
             Debug.Log(
                 $"[Immersive.Framework][PlayerComposer] Recipe defaults applied. player='{composer.name}' " +
-                $"recipe='{composer.Recipe.name}' actorId='{composer.ActorId}' playerSlotId='{composer.PlayerSlotId}'.",
+                $"recipe='{composer.Recipe.name}' actorId='{composer.ActorId}'.",
                 composer);
             serializedObject.Update();
         }

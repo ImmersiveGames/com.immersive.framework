@@ -38,3 +38,4 @@ Camera and target evidence are optional diagnostics at this cut. They are not ac
 ## Validation
 
 QA must validate both valid and invalid passive states before any runtime coordinator is introduced.
+> Status: Superseded / Removed em 2026-07-15 por `P3-ADR-Canonical-Player-Lane.md`. Mantido apenas como histórico.

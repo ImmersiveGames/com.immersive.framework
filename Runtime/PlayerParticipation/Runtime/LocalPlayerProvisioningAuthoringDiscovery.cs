@@ -24,8 +24,7 @@ namespace Immersive.Framework.PlayerParticipation
 
             LocalPlayerProvisioningAuthoring[] discovered =
                 Object.FindObjectsByType<LocalPlayerProvisioningAuthoring>(
-                    FindObjectsInactive.Include,
-                    FindObjectsSortMode.InstanceID);
+                    FindObjectsInactive.Include);
             var loadedCandidates = new List<LocalPlayerProvisioningAuthoring>();
 
             for (int index = 0; index < discovered.Length; index++)

@@ -61,3 +61,4 @@ actorSpawning='False'
 ## Architectural gain
 
 F51A creates the first safe handoff point between passive PlayerView readiness and future camera/view presentation adapters without introducing a global manager or hidden lifecycle.
+> Status: Superseded / Removed em 2026-07-15 por `P3-ADR-Canonical-Player-Lane.md`. Mantido apenas como histórico.

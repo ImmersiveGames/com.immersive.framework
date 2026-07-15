@@ -52,11 +52,6 @@ namespace Immersive.Framework.Editor.Editor.PlayerParticipation
                         "Joined Slot",
                         host.HasJoinedSlot ? host.JoinedPlayerSlotId.StableText : string.Empty);
                     EditorGUILayout.IntField("Configured Index", host.JoinedConfiguredIndex);
-                    EditorGUILayout.ObjectField(
-                        "Slot Declaration",
-                        host.PlayerSlotDeclaration,
-                        typeof(Object),
-                        true);
                     EditorGUILayout.Toggle("Logical Actor Prepared", host.HasLogicalActor);
                 }
             }

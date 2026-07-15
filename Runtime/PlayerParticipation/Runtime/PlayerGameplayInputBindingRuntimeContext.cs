@@ -281,17 +281,6 @@ namespace Immersive.Framework.PlayerParticipation
                     "Gameplay input binding requires an explicit Gate adapter targeting the same stable-host PlayerInput.");
             }
 
-            if (gateAdapter.HasSourceSlot &&
-                !ReferenceEquals(gateAdapter.SourceSlot, host.PlayerSlotDeclaration))
-            {
-                return Reject(
-                    PlayerGameplayInputBindingStatus.RejectedGateAdapterMismatch,
-                    Operation,
-                    requestedSlot,
-                    previous,
-                    "Gate adapter Player Slot evidence does not match the stable Local Player Host.");
-            }
-
             string actionMapName = gateAdapter.GameplayActionMapName.NormalizeText();
             if (string.IsNullOrEmpty(actionMapName))
             {
@@ -755,8 +744,7 @@ namespace Immersive.Framework.PlayerParticipation
                 return false;
             }
 
-            if (host.JoinedPlayerSlotId != playerSlotId ||
-                host.PlayerSlotDeclaration == null)
+            if (host.JoinedPlayerSlotId != playerSlotId)
             {
                 issue = "Stable Local Player Host joined Slot evidence does not match the requested occupancy.";
                 return false;

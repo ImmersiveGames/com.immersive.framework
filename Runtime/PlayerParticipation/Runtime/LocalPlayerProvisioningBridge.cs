@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using Immersive.Framework.ApiStatus;
+using Immersive.Framework.Common;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
@@ -105,71 +106,41 @@ namespace Immersive.Framework.PlayerParticipation
         {
             if (disposed)
             {
-                return Complete(CreateResult(
+                return Complete(CreateRejected(
                     LocalPlayerJoinStatus.RejectedRuntimeUnavailable,
                     default,
                     request,
-                    null,
-                    null,
-                    null,
-                    default,
-                    null,
-                    null,
-                    -1,
-                    LocalPlayerJoinCallbackConfirmation.None,
                     "Local Player join rejected because the provisioning bridge is disposed."));
             }
 
             if (!request.TryValidate(out string requestIssue))
             {
-                return Complete(CreateResult(
+                return Complete(CreateRejected(
                     LocalPlayerJoinStatus.RejectedInvalidRequest,
                     default,
                     request,
-                    null,
-                    null,
-                    null,
-                    default,
-                    null,
-                    null,
-                    -1,
-                    LocalPlayerJoinCallbackConfirmation.None,
                     requestIssue));
             }
 
             if (pendingJoin != null)
             {
-                return Complete(CreateResult(
+                return Complete(CreateRejected(
                     LocalPlayerJoinStatus.RejectedOperationInFlight,
                     pendingJoin.OperationId,
                     request,
-                    null,
-                    null,
+                    "Local Player join rejected because another provisioning operation is in flight.",
                     null,
                     pendingJoin.ReservationResult != null
                         ? pendingJoin.ReservationResult.Slot
-                        : default,
-                    null,
-                    null,
-                    -1,
-                    LocalPlayerJoinCallbackConfirmation.None,
-                    "Local Player join rejected because another provisioning operation is in flight."));
+                        : default));
             }
 
             if (!TryValidateBackend(out LocalPlayerJoinStatus backendStatus, out string backendIssue))
             {
-                return Complete(CreateResult(
+                return Complete(CreateRejected(
                     backendStatus,
                     default,
                     request,
-                    null,
-                    null,
-                    null,
-                    default,
-                    null,
-                    null,
-                    -1,
-                    LocalPlayerJoinCallbackConfirmation.None,
                     backendIssue));
             }
 
@@ -177,18 +148,10 @@ namespace Immersive.Framework.PlayerParticipation
             int technicalMax = backend.TechnicalMaxPlayerCount;
             if (technicalMax > 0 && initialSnapshot.DynamicCapacity > technicalMax)
             {
-                return Complete(CreateResult(
+                return Complete(CreateRejected(
                     LocalPlayerJoinStatus.RejectedManagerConfiguration,
                     default,
                     request,
-                    null,
-                    null,
-                    null,
-                    default,
-                    null,
-                    null,
-                    -1,
-                    LocalPlayerJoinCallbackConfirmation.None,
                     $"Session dynamic capacity '{initialSnapshot.DynamicCapacity}' exceeds PlayerInputManager technical max player count '{technicalMax}'."));
             }
 
@@ -199,18 +162,10 @@ namespace Immersive.Framework.PlayerParticipation
                     out LocalPlayerJoinOperationId operationId,
                     out string operationIssue))
             {
-                return Complete(CreateResult(
+                return Complete(CreateRejected(
                     LocalPlayerJoinStatus.RejectedRuntimeUnavailable,
                     default,
                     request,
-                    null,
-                    null,
-                    null,
-                    default,
-                    null,
-                    null,
-                    -1,
-                    LocalPlayerJoinCallbackConfirmation.None,
                     operationIssue));
             }
 
@@ -220,21 +175,16 @@ namespace Immersive.Framework.PlayerParticipation
                     request.Reason);
             if (reservationResult == null || !reservationResult.Succeeded)
             {
-                return Complete(CreateResult(
+                return Complete(CreateRejected(
                     MapReservationStatus(reservationResult),
                     operationId,
                     request,
-                    reservationResult,
-                    null,
-                    null,
-                    reservationResult != null ? reservationResult.Slot : default,
-                    null,
-                    null,
-                    -1,
-                    LocalPlayerJoinCallbackConfirmation.None,
                     reservationResult != null
                         ? reservationResult.Message
-                        : "Local Player join reservation returned no result."));
+                        : "Local Player join reservation returned no result.",
+                    reservationResult,
+                    reservationResult != null ? reservationResult.Slot : default,
+                    default));
             }
 
             pendingJoin = new PendingLocalPlayerJoin(
@@ -257,7 +207,7 @@ namespace Immersive.Framework.PlayerParticipation
                     $"PlayerInputManager provisioning threw '{exception.GetType().Name}': {exception.Message}");
             }
 
-            if (ReferenceEquals(provisionedPlayerInput, null))
+            if (UnityObjectReference.IsClrNull(provisionedPlayerInput))
             {
                 return FailAndRollback(
                     LocalPlayerJoinStatus.RejectedProvisioningReturnedNull,
@@ -269,7 +219,7 @@ namespace Immersive.Framework.PlayerParticipation
 
             pendingJoin.RecordDirectResult(provisionedPlayerInput);
 
-            if (provisionedPlayerInput == null)
+            if (UnityObjectReference.IsUnityFakeNull(provisionedPlayerInput))
             {
                 return FailAndRollback(
                     LocalPlayerJoinStatus.RejectedMissingPlayerInput,
@@ -377,17 +327,14 @@ namespace Immersive.Framework.PlayerParticipation
                 awaitingCallbackConfirmations[provisionedPlayerInput] = operationId;
             }
 
-            LocalPlayerJoinResult succeeded = CreateResult(
-                LocalPlayerJoinStatus.SucceededJoined,
+            LocalPlayerJoinResult succeeded = CreateSucceeded(
                 operationId,
                 request,
                 reservationResult,
                 commitResult,
-                null,
                 commitResult.Slot,
                 provisionedPlayerInput,
                 localPlayerHost,
-                provisionedPlayerInput.playerIndex,
                 callbackConfirmation,
                 "Local Player technical host transferred to the persistent FrameworkRuntimeHost and admitted to the reserved Session Slot. Logical Actor remains unprepared.");
             pendingJoin = null;
@@ -490,8 +437,7 @@ namespace Immersive.Framework.PlayerParticipation
                 return false;
             }
 
-            issue =
-                "local-player-host-session-lifetime-transfer";
+            issue = string.Empty;
             return true;
         }
 
@@ -601,7 +547,7 @@ namespace Immersive.Framework.PlayerParticipation
                 ? rollbackResult.Slot
                 : pending.ReservationResult.Slot;
 
-            LocalPlayerJoinResult result = CreateResult(
+            LocalPlayerJoinResult result = CreateRollbackResult(
                 finalStatus,
                 pending.OperationId,
                 pending.Request,
@@ -611,7 +557,6 @@ namespace Immersive.Framework.PlayerParticipation
                 slot,
                 directPlayerInput,
                 host,
-                directPlayerInput != null ? directPlayerInput.playerIndex : -1,
                 pending.CallbackConfirmation,
                 finalStatus == LocalPlayerJoinStatus.FailedRollback
                     ? message + " Reservation rollback also failed."
@@ -648,6 +593,12 @@ namespace Immersive.Framework.PlayerParticipation
                 awaitingCallbackConfirmations.Remove(playerInput);
                 callbackConfirmations[operationId] =
                     LocalPlayerJoinCallbackConfirmation.ConfirmedSamePlayerInput;
+                if (LastResult != null && LastResult.OperationId == operationId)
+                {
+                    LastResult = WithCallbackConfirmation(
+                        LastResult,
+                        LocalPlayerJoinCallbackConfirmation.ConfirmedSamePlayerInput);
+                }
                 return;
             }
 
@@ -659,18 +610,9 @@ namespace Immersive.Framework.PlayerParticipation
             LocalPlayerHostAuthoring host = playerInput != null
                 ? playerInput.GetComponent<LocalPlayerHostAuthoring>()
                 : null;
-            LastUnexpectedJoinResult = CreateResult(
-                LocalPlayerJoinStatus.RejectedUnexpectedJoin,
-                default,
-                default,
-                null,
-                null,
-                null,
-                default,
+            LastUnexpectedJoinResult = CreateUnexpectedJoin(
                 playerInput,
                 host,
-                playerInput != null ? playerInput.playerIndex : -1,
-                LocalPlayerJoinCallbackConfirmation.RejectedUnexpectedCallback,
                 "PlayerInputManager reported a joined Player without an authorized Pending Local Player Join.");
 
             RejectDistinctPlayers(
@@ -723,6 +665,16 @@ namespace Immersive.Framework.PlayerParticipation
 
             return reservationResult.Status switch
             {
+                PlayerParticipationOperationStatus.None =>
+                    LocalPlayerJoinStatus.FailedAdmission,
+                PlayerParticipationOperationStatus.Succeeded =>
+                    LocalPlayerJoinStatus.FailedAdmission,
+                PlayerParticipationOperationStatus.IgnoredNoChange =>
+                    LocalPlayerJoinStatus.FailedAdmission,
+                PlayerParticipationOperationStatus.RejectedInvalidRequest =>
+                    LocalPlayerJoinStatus.RejectedInvalidRequest,
+                PlayerParticipationOperationStatus.RejectedInvalidState =>
+                    LocalPlayerJoinStatus.RejectedRuntimeUnavailable,
                 PlayerParticipationOperationStatus.RejectedJoiningClosed =>
                     LocalPlayerJoinStatus.RejectedJoiningClosed,
                 PlayerParticipationOperationStatus.RejectedCapacityReached =>
@@ -733,11 +685,101 @@ namespace Immersive.Framework.PlayerParticipation
                     LocalPlayerJoinStatus.RejectedForeignOrStaleReservation,
                 PlayerParticipationOperationStatus.FailedInvalidConfiguration =>
                     LocalPlayerJoinStatus.RejectedRuntimeUnavailable,
-                _ => LocalPlayerJoinStatus.FailedAdmission
+                _ => throw new ArgumentOutOfRangeException(
+                    nameof(reservationResult),
+                    reservationResult.Status,
+                    "Unknown Player participation reservation status.")
             };
         }
 
-        private static LocalPlayerJoinResult CreateResult(
+        private static LocalPlayerJoinResult WithCallbackConfirmation(
+            LocalPlayerJoinResult result,
+            LocalPlayerJoinCallbackConfirmation confirmation)
+        {
+            return new LocalPlayerJoinResult(
+                result.Status,
+                result.OperationId,
+                result.Request,
+                result.ReservationResult,
+                result.CommitResult,
+                result.RollbackResult,
+                result.Slot,
+                result.PlayerInput,
+                result.LocalPlayerHost,
+                result.UnityPlayerIndex,
+                confirmation,
+                result.Message,
+                result.OriginalStatus);
+        }
+
+        private static LocalPlayerJoinResult CreateRejected(
+            LocalPlayerJoinStatus status,
+            LocalPlayerJoinOperationId operationId,
+            LocalPlayerJoinRequest request,
+            string message,
+            PlayerParticipationOperationResult reservationResult = null,
+            PlayerSlotRuntimeSnapshot slot = default,
+            LocalPlayerJoinCallbackConfirmation callbackConfirmation =
+                LocalPlayerJoinCallbackConfirmation.None)
+        {
+            return CreateResultCore(
+                status, operationId, request, reservationResult, null, null,
+                slot, null, null, -1, callbackConfirmation, message);
+        }
+
+        private static LocalPlayerJoinResult CreateSucceeded(
+            LocalPlayerJoinOperationId operationId,
+            LocalPlayerJoinRequest request,
+            PlayerParticipationOperationResult reservationResult,
+            PlayerParticipationOperationResult commitResult,
+            PlayerSlotRuntimeSnapshot slot,
+            PlayerInput playerInput,
+            LocalPlayerHostAuthoring host,
+            LocalPlayerJoinCallbackConfirmation callbackConfirmation,
+            string message)
+        {
+            return CreateResultCore(
+                LocalPlayerJoinStatus.SucceededJoined, operationId, request,
+                reservationResult, commitResult, null, slot, playerInput, host,
+                playerInput != null ? playerInput.playerIndex : -1,
+                callbackConfirmation, message);
+        }
+
+        private static LocalPlayerJoinResult CreateRollbackResult(
+            LocalPlayerJoinStatus status,
+            LocalPlayerJoinOperationId operationId,
+            LocalPlayerJoinRequest request,
+            PlayerParticipationOperationResult reservationResult,
+            PlayerParticipationOperationResult commitResult,
+            PlayerParticipationOperationResult rollbackResult,
+            PlayerSlotRuntimeSnapshot slot,
+            PlayerInput playerInput,
+            LocalPlayerHostAuthoring host,
+            LocalPlayerJoinCallbackConfirmation callbackConfirmation,
+            string message,
+            LocalPlayerJoinStatus originalStatus)
+        {
+            return CreateResultCore(
+                status, operationId, request, reservationResult, commitResult,
+                rollbackResult, slot, playerInput, host,
+                playerInput != null ? playerInput.playerIndex : -1,
+                callbackConfirmation, message, originalStatus);
+        }
+
+        private static LocalPlayerJoinResult CreateUnexpectedJoin(
+            PlayerInput playerInput,
+            LocalPlayerHostAuthoring host,
+            string message)
+        {
+            return CreateResultCore(
+                LocalPlayerJoinStatus.RejectedUnexpectedJoin, default, default,
+                null, null, null, default, playerInput, host,
+                playerInput != null ? playerInput.playerIndex : -1,
+                LocalPlayerJoinCallbackConfirmation.RejectedUnexpectedCallback,
+                message);
+        }
+
+        private static LocalPlayerJoinResult CreateResultCore(
             LocalPlayerJoinStatus status,
             LocalPlayerJoinOperationId operationId,
             LocalPlayerJoinRequest request,

@@ -1,6 +1,7 @@
 using Immersive.Framework.Actors;
 using Immersive.Framework.ApiStatus;
 using Immersive.Framework.Common;
+using Immersive.Framework.PlayerParticipation;
 using Immersive.Framework.UnityInput;
 using UnityEngine.InputSystem;
 
@@ -19,7 +20,7 @@ namespace Immersive.Framework.InputMode
             InputModeRequest request,
             UnityInputTargetSet targetSet,
             PlayerActorSet playerActorSet,
-            UnityInputPlayerInputManagerEvidence sessionPlayerInputManagerEvidence,
+            LocalPlayerProvisioningValidationResult localPlayerProvisioningValidation,
             UnityInputActionMapEvidence actionMapEvidence,
             InputModeUnityActionMapBinding[] actionMapBindings,
             PlayerInput playerInput,
@@ -64,7 +65,7 @@ namespace Immersive.Framework.InputMode
                 requestResult,
                 targetSet,
                 playerActorSet,
-                sessionPlayerInputManagerEvidence,
+                localPlayerProvisioningValidation,
                 normalizedSource,
                 normalizedReason);
 
