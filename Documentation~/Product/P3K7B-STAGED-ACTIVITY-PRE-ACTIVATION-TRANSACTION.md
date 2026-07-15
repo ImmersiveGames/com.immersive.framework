@@ -1,6 +1,6 @@
 # P3K.7B — Staged Activity Pre-Activation Transaction
 
-Status: **implementation delta ready for Unity compile and QA**  
+Status: **closed by QA; ordering constraint refined by P3K.7C**  
 Type: **runtime transaction + real P3J/P3K resolver + rollback**
 
 ## Objective
@@ -113,12 +113,23 @@ new designer-facing authoring
 FIRSTGAME integration
 ```
 
+## P3K.7C ordering correction
+
+The lifecycle integration audit found one earlier missing boundary: P3J and the
+P3K gameplay authorities currently retain one current Actor/chain per Slot. A
+normal Activity-to-Activity transition therefore cannot run the target P3K.7B
+resolver while the previous Activity Player remains current.
+
+P3K.7C adds concurrent inactive target Actor staging first. It does not weaken
+P3K.7B; it supplies the physical coexistence required before the full resolver
+can be promoted into lifecycle integration.
+
 ## Next
 
 ```text
-P3K.7C — Activity Lifecycle Commit Integration
+P3K.7D — Player Gameplay Chain Promotion and Handoff
 ```
 
-It must create the concrete scope adapter, run P3K.7B before transition side
-effects, commit the target Activity only after `ReadyToCommit`, and preserve the
-current Activity until that commit succeeds.
+Promotion must define the reversible cutover from current Actor/chain to the
+staged target candidate before P3K.7B becomes the canonical GameFlow/ActivityFlow
+entry transaction.
