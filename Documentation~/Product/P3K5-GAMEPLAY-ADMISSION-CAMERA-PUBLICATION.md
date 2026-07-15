@@ -1,6 +1,6 @@
 # P3K.5 — Gameplay Admission and Camera Publication
 
-Status: **implementation delta ready for Unity compile and QA**  
+Status: **closed by QA; consumed by P3K.6**  
 Type: **runtime integration, camera publication, readiness aggregation and rollback**
 
 ## Objective
@@ -171,3 +171,10 @@ CurrentChainEvidence (internal class)
 ```
 
 No authority or release ordering changed.
+
+## P3K.6 consumption closure
+
+P3K.6 now consumes the immutable P3K.5 snapshot for the
+`PlayerParticipationRequirementLevel.GameplayReady` Activity gate. It reads the
+current admission state and exact preparation identity; it does not create,
+refresh or release gameplay admissions.
