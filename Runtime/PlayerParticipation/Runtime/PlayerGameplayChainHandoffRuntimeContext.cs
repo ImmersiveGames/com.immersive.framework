@@ -18,7 +18,8 @@ namespace Immersive.Framework.PlayerParticipation
     [FrameworkApiStatus(
         FrameworkApiStatus.Internal,
         "P3K.7D reversible P3J/P3K current-to-candidate gameplay handoff authority.")]
-    internal sealed class PlayerGameplayChainHandoffRuntimeContext
+    internal sealed class PlayerGameplayChainHandoffRuntimeContext :
+        IPlayerGameplayChainPromotionRuntime
     {
         private sealed class ChainEvidence
         {
@@ -161,11 +162,35 @@ namespace Immersive.Framework.PlayerParticipation
             string source,
             string reason)
         {
-            const string Operation = "PromoteGameplayChain";
+            PlayerGameplayChainHandoffResult begin = TryBeginPromotion(
+                expectedCandidate,
+                expectedCurrentAdmission,
+                source,
+                reason);
+            if (begin == null || !begin.ReadyToCommit ||
+                begin.CurrentSnapshot == null ||
+                !begin.CurrentSnapshot.Token.IsValid)
+            {
+                return begin;
+            }
+
+            return TryCommitPromotion(
+                begin.CurrentSnapshot.Token,
+                source,
+                reason);
+        }
+
+        internal PlayerGameplayChainHandoffResult TryBeginPromotion(
+            PlayerActorCandidateStageToken expectedCandidate,
+            PlayerGameplayAdmissionToken expectedCurrentAdmission,
+            string source,
+            string reason)
+        {
+            const string Operation = "BeginGameplayChainPromotion";
             string resolvedSource = source.NormalizeTextOrFallback(
                 nameof(PlayerGameplayChainHandoffRuntimeContext));
             string resolvedReason = reason.NormalizeTextOrFallback(
-                "promote-target-activity-player-gameplay-chain");
+                "begin-target-activity-player-gameplay-chain-promotion");
             PlayerGameplayChainHandoffSnapshot empty =
                 PlayerGameplayChainHandoffSnapshot.Empty(
                     resolvedSource,
@@ -207,13 +232,25 @@ namespace Immersive.Framework.PlayerParticipation
                     "Candidate gameplay handoff is already committed.");
             }
 
-            if (active.ContainsKey(slotId))
+            if (active.TryGetValue(slotId, out HandoffRecord existing))
             {
+                if (existing.Token.CandidateToken == expectedCandidate &&
+                    existing.Snapshot != null &&
+                    existing.Snapshot.IsReadyToCommit)
+                {
+                    return Result(
+                        PlayerGameplayChainHandoffStatus.SucceededAlreadyReadyToCommit,
+                        Operation,
+                        existing.Snapshot,
+                        existing.Snapshot,
+                        "Candidate gameplay handoff is already ready to commit.");
+                }
+
                 return Result(
                     PlayerGameplayChainHandoffStatus.RejectedHandoffAlreadyActive,
                     Operation,
                     empty,
-                    active[slotId].Snapshot,
+                    existing.Snapshot,
                     "Player Slot already has an active rollback or commit-cleanup handoff.");
             }
 
@@ -350,7 +387,11 @@ namespace Immersive.Framework.PlayerParticipation
                     out PlayerActorPreparationHandoff preparationHandoff,
                     out string handoffIssue))
             {
-                bool restored = TryRestorePrevious(record, resolvedSource, resolvedReason, out string restoreIssue);
+                bool restored = TryRestorePrevious(
+                    record,
+                    resolvedSource,
+                    resolvedReason,
+                    out string restoreIssue);
                 if (restored)
                 {
                     active.Remove(slotId);
@@ -422,24 +463,131 @@ namespace Immersive.Framework.PlayerParticipation
                 false,
                 resolvedSource,
                 resolvedReason,
-                "Candidate P3K.2-P3K.5 gameplay chain is current and ready.");
+                "Candidate P3K.2-P3K.5 gameplay chain is current and ready to commit.");
+            revision++;
+            return Result(
+                PlayerGameplayChainHandoffStatus.SucceededReadyToCommit,
+                Operation,
+                empty,
+                record.Snapshot,
+                record.Snapshot.Message);
+        }
+
+        internal bool TryValidateCommitPromotion(
+            PlayerGameplayChainHandoffToken expectedHandoff,
+            out string issue)
+        {
+            issue = string.Empty;
+            if (!expectedHandoff.IsValid ||
+                !string.Equals(
+                    expectedHandoff.SessionContextId,
+                    sessionContextId,
+                    StringComparison.Ordinal))
+            {
+                issue = "Gameplay handoff commit requires an exact current handoff token.";
+                return false;
+            }
+
+            if (committedHandoffs.TryGetValue(
+                    expectedHandoff.PlayerSlotId,
+                    out PlayerGameplayChainHandoffSnapshot committed) &&
+                committed.Token == expectedHandoff)
+            {
+                return true;
+            }
+
+            if (!TryResolveActive(expectedHandoff, out HandoffRecord record, out issue))
+            {
+                return false;
+            }
+
+            if (record.Snapshot == null || !record.Snapshot.IsReadyToCommit ||
+                record.PreparationHandoff == null ||
+                record.PreparationHandoff.CandidateOwnershipCompleted ||
+                record.Candidate == null || !record.Candidate.IsValid ||
+                record.Candidate.IsCompleted ||
+                record.Candidate.Snapshot == null ||
+                !record.Candidate.Snapshot.IsPromoting ||
+                !record.Candidate.CreateMaterializationSnapshot().IsActive)
+            {
+                issue = "Gameplay handoff is not at the exact reversible ReadyToCommit boundary.";
+                return false;
+            }
+
+            return true;
+        }
+
+        internal PlayerGameplayChainHandoffResult TryCommitPromotion(
+            PlayerGameplayChainHandoffToken expectedHandoff,
+            string source,
+            string reason)
+        {
+            const string Operation = "CommitGameplayChainPromotion";
+            string resolvedSource = source.NormalizeTextOrFallback(
+                nameof(PlayerGameplayChainHandoffRuntimeContext));
+            string resolvedReason = reason.NormalizeTextOrFallback(
+                "commit-target-activity-player-gameplay-chain-promotion");
+
+            if (expectedHandoff.IsValid &&
+                committedHandoffs.TryGetValue(
+                    expectedHandoff.PlayerSlotId,
+                    out PlayerGameplayChainHandoffSnapshot committed) &&
+                committed.Token == expectedHandoff)
+            {
+                return Result(
+                    PlayerGameplayChainHandoffStatus.SucceededAlreadyCommitted,
+                    Operation,
+                    committed,
+                    committed,
+                    "Candidate gameplay handoff is already committed.");
+            }
+
+            if (!TryResolveActive(expectedHandoff, out HandoffRecord record, out string issue))
+            {
+                PlayerGameplayChainHandoffSnapshot empty =
+                    PlayerGameplayChainHandoffSnapshot.Empty(
+                        resolvedSource,
+                        resolvedReason,
+                        issue);
+                return Result(
+                    PlayerGameplayChainHandoffStatus.RejectedForeignOrStaleHandoff,
+                    Operation,
+                    empty,
+                    empty,
+                    issue);
+            }
+
+            PlayerGameplayChainHandoffSnapshot previous = record.Snapshot;
+            if (!TryValidateCommitPromotion(expectedHandoff, out issue))
+            {
+                return Result(
+                    PlayerGameplayChainHandoffStatus.RejectedNotReadyToCommit,
+                    Operation,
+                    previous,
+                    previous,
+                    issue);
+            }
 
             if (!preparationModule.TryCommitCandidateHandoff(
-                    preparationHandoff,
+                    record.PreparationHandoff,
                     resolvedSource,
                     resolvedReason,
                     out string commitIssue))
             {
+                bool ownershipCompleted =
+                    record.PreparationHandoff.CandidateOwnershipCompleted;
                 record.Snapshot = Snapshot(
                     record,
-                    PlayerGameplayChainHandoffState.CommitCleanupFailed,
-                    preparationHandoff.CurrentPreparation.Token,
+                    ownershipCompleted
+                        ? PlayerGameplayChainHandoffState.CommitCleanupFailed
+                        : PlayerGameplayChainHandoffState.CommitFailed,
+                    record.PreparationHandoff.CurrentPreparation.Token,
                     record.CandidateChain.Admission.Token,
                     true,
                     true,
                     true,
-                    preparationHandoff.CandidateOwnershipCompleted,
-                    preparationHandoff.PreviousActorReleased,
+                    ownershipCompleted,
+                    record.PreparationHandoff.PreviousActorReleased,
                     false,
                     false,
                     resolvedSource,
@@ -447,30 +595,78 @@ namespace Immersive.Framework.PlayerParticipation
                     commitIssue);
                 revision++;
                 return Result(
-                    PlayerGameplayChainHandoffStatus.FailedPreviousActorRelease,
+                    ownershipCompleted
+                        ? PlayerGameplayChainHandoffStatus.FailedPreviousActorRelease
+                        : PlayerGameplayChainHandoffStatus.FailedCommit,
                     Operation,
-                    empty,
+                    previous,
                     record.Snapshot,
                     commitIssue);
             }
 
             record.Snapshot = CreateCommittedSnapshot(
-                token,
+                record.Token,
                 resolvedSource,
                 resolvedReason,
                 "Candidate promotion committed; previous Actor released and candidate chain is authoritative.",
-                preparationHandoff.CurrentPreparation.Token,
+                record.PreparationHandoff.CurrentPreparation.Token,
                 record.CandidateChain.Admission.Token);
-            committedHandoffs[slotId] = record.Snapshot;
-            active.Remove(slotId);
+            committedHandoffs[expectedHandoff.PlayerSlotId] = record.Snapshot;
+            active.Remove(expectedHandoff.PlayerSlotId);
             revision++;
             return Result(
                 PlayerGameplayChainHandoffStatus.SucceededCommitted,
                 Operation,
-                empty,
+                previous,
                 record.Snapshot,
                 record.Snapshot.Message);
         }
+
+        internal PlayerGameplayChainHandoffResult TryRollbackPromotion(
+            PlayerGameplayChainHandoffToken expectedHandoff,
+            string source,
+            string reason)
+        {
+            return TryRetryRollback(expectedHandoff, source, reason);
+        }
+
+        PlayerGameplayChainHandoffResult
+            IPlayerGameplayChainPromotionRuntime.TryBeginPromotion(
+                PlayerActorCandidateStageToken expectedCandidate,
+                PlayerGameplayAdmissionToken expectedCurrentAdmission,
+                string source,
+                string reason) =>
+            TryBeginPromotion(
+                expectedCandidate,
+                expectedCurrentAdmission,
+                source,
+                reason);
+
+        bool IPlayerGameplayChainPromotionRuntime.TryValidateCommitPromotion(
+            PlayerGameplayChainHandoffToken expectedHandoff,
+            out string issue) =>
+            TryValidateCommitPromotion(expectedHandoff, out issue);
+
+        PlayerGameplayChainHandoffResult
+            IPlayerGameplayChainPromotionRuntime.TryCommitPromotion(
+                PlayerGameplayChainHandoffToken expectedHandoff,
+                string source,
+                string reason) =>
+            TryCommitPromotion(expectedHandoff, source, reason);
+
+        PlayerGameplayChainHandoffResult
+            IPlayerGameplayChainPromotionRuntime.TryRollbackPromotion(
+                PlayerGameplayChainHandoffToken expectedHandoff,
+                string source,
+                string reason) =>
+            TryRollbackPromotion(expectedHandoff, source, reason);
+
+        PlayerGameplayChainHandoffResult
+            IPlayerGameplayChainPromotionRuntime.TryRetryCommitCleanup(
+                PlayerGameplayChainHandoffToken expectedHandoff,
+                string source,
+                string reason) =>
+            TryRetryCommitCleanup(expectedHandoff, source, reason);
 
         internal PlayerGameplayChainHandoffResult TryRetryRollback(
             PlayerGameplayChainHandoffToken expectedHandoff,

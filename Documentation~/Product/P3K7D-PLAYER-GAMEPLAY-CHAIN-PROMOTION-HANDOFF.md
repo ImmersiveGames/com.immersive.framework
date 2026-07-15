@@ -1,6 +1,6 @@
 # P3K.7D — Player Gameplay Chain Promotion and Handoff
 
-Status: **implementation delta ready for Unity compile and QA**  
+Status: **closed — Unity compile and QA PASS (52 cases)**  
 Type: **runtime transaction + reversible authority cutover + technical integration**
 
 ## Objective
@@ -214,13 +214,30 @@ second candidate
 -> candidate admission authoritative
 ```
 
-## Next cut
+## P3K.7E two-phase extension
+
+P3K.7E preserves `TryPromote` as the single-Slot compatibility operation and adds
+an explicit reversible boundary:
 
 ```text
-P3K.7E — Activity Lifecycle Admission Integration
+TryBeginPromotion
+  -> CandidateChainReady / ReadyToCommit
+  -> rollback remains available
+
+TryCommitPromotion
+  -> candidate ownership completion
+  -> previous Actor cleanup
 ```
 
-P3K.7E may connect P3K.7B-P3K.7D to the real Activity request lifecycle. It must
-stage and validate before transition side effects, invoke the synchronous handoff
-at the commit boundary, retain the committed gameplay lease for Activity exit,
-and keep failures explicit.
+This split is required because an Activity may project multiple local Player
+Slots. Committing each Slot inside `TryPromote` would make a later Slot failure
+leave a partially promoted Activity.
+
+## Follow-up
+
+```text
+P3K.7E — Multi-Slot Reversible Activity Handoff Group
+P3K.7F — Activity Lifecycle Admission Integration
+```
+
+Only P3K.7F may connect the validated group transaction to GameFlow/ActivityFlow.

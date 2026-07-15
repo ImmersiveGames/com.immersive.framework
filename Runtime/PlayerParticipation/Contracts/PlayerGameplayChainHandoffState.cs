@@ -4,7 +4,7 @@ namespace Immersive.Framework.PlayerParticipation
 {
     [FrameworkApiStatus(
         FrameworkApiStatus.Experimental,
-        "P3K.7D reversible Player gameplay chain handoff state.")]
+        "P3K.7D/P3K.7E reversible Player gameplay chain handoff state.")]
     public enum PlayerGameplayChainHandoffState
     {
         None = 0,
@@ -14,6 +14,7 @@ namespace Immersive.Framework.PlayerParticipation
         Committed = 40,
         RolledBack = 50,
         RollbackFailed = 60,
+        CommitFailed = 65,
         CommitCleanupFailed = 70
     }
 }

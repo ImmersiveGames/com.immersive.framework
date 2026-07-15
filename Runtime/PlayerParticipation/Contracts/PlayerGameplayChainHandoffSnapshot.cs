@@ -54,8 +54,13 @@ namespace Immersive.Framework.PlayerParticipation
         public string Source { get; }
         public string Reason { get; }
         public string Message { get; }
+        public bool IsReadyToCommit =>
+            State == PlayerGameplayChainHandoffState.CandidateChainReady &&
+            CandidateChainReady &&
+            !CandidateOwnershipCompleted;
         public bool IsCommitted => State == PlayerGameplayChainHandoffState.Committed;
         public bool IsRollbackFailed => State == PlayerGameplayChainHandoffState.RollbackFailed;
+        public bool IsCommitFailed => State == PlayerGameplayChainHandoffState.CommitFailed;
         public bool IsCommitCleanupFailed => State == PlayerGameplayChainHandoffState.CommitCleanupFailed;
 
         public string ToDiagnosticString() =>

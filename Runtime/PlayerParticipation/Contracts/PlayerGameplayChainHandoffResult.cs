@@ -5,7 +5,7 @@ namespace Immersive.Framework.PlayerParticipation
 {
     [FrameworkApiStatus(
         FrameworkApiStatus.Experimental,
-        "P3K.7D complete reversible Player gameplay handoff operation result.")]
+        "P3K.7D/P3K.7E complete reversible Player gameplay handoff operation result.")]
     public sealed class PlayerGameplayChainHandoffResult
     {
         internal PlayerGameplayChainHandoffResult(
@@ -27,15 +27,20 @@ namespace Immersive.Framework.PlayerParticipation
         public PlayerGameplayChainHandoffSnapshot PreviousSnapshot { get; }
         public PlayerGameplayChainHandoffSnapshot CurrentSnapshot { get; }
         public string Message { get; }
-        public bool Succeeded => Status is
+        public bool ReadyToCommit => Status is
+            PlayerGameplayChainHandoffStatus.SucceededReadyToCommit or
+            PlayerGameplayChainHandoffStatus.SucceededAlreadyReadyToCommit;
+        public bool Committed => Status is
             PlayerGameplayChainHandoffStatus.SucceededCommitted or
-            PlayerGameplayChainHandoffStatus.SucceededAlreadyCommitted or
-            PlayerGameplayChainHandoffStatus.SucceededRolledBack;
+            PlayerGameplayChainHandoffStatus.SucceededAlreadyCommitted;
+        public bool Succeeded => ReadyToCommit || Committed ||
+            Status == PlayerGameplayChainHandoffStatus.SucceededRolledBack;
         public bool Failed => Status is
             PlayerGameplayChainHandoffStatus.FailedCurrentChainRelease or
             PlayerGameplayChainHandoffStatus.FailedPreparationHandoff or
             PlayerGameplayChainHandoffStatus.FailedCandidateChain or
             PlayerGameplayChainHandoffStatus.FailedRollback or
+            PlayerGameplayChainHandoffStatus.FailedCommit or
             PlayerGameplayChainHandoffStatus.FailedPreviousActorRelease;
         public bool Rejected =>
             Status != PlayerGameplayChainHandoffStatus.None && !Succeeded && !Failed;
