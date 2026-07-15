@@ -146,3 +146,20 @@ result contains no Unity object references
 The next integration cut may inject this evaluator into the Activity transition
 pipeline and map the result to transition continuation, pending handling or
 explicit cancellation. It must not duplicate this evaluation inside GameFlow.
+
+## P3K.7A consumption closure
+
+P3K.7A now maps each immutable P3K.6 result to an explicit pre-activation
+flow disposition:
+
+```text
+Satisfied         -> Proceed
+PendingResolution -> AwaitResolution
+Blocked           -> RejectBlocked
+Failed            -> RejectFailed
+```
+
+This mapping does not yet mutate `ActivityFlowRuntime`. The ordering audit found
+that direct integration would be unsafe until Activity entry has an explicit
+pre-activation transaction phase: P3J.6 currently resolves Actor preparation
+inside Activity Content Execution, after scene/scope side effects have begun.
