@@ -152,3 +152,14 @@ P3K.7A — add pre-activation Player admission boundary
 QAFramework:
 P3K.7A — validate Player admission flow decisions
 ```
+
+
+## P3K.7B implementation closure
+
+P3K.7B now provides the staged transaction required by this boundary. It creates
+a target scope through an explicit lifecycle adapter, coordinates the real
+P3J/P3K chain, reuses this flow gate for the final decision, and either hands off
+an exact commit handle or rolls back every stage-created dependency.
+
+GameFlow integration remains deferred until P3K.7C so the current Activity is not
+mutated before the staged transaction reaches `ReadyToCommit`.
