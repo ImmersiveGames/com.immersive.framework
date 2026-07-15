@@ -1,6 +1,6 @@
 # P3K.4 — Prepared Player Camera Eligibility
 
-Status: **implementation delta ready for Unity compile and QA**  
+Status: **closed by QA; consumed by P3K.5**  
 Type: **runtime contracts, explicit Actor authoring and transactional eligibility cut**
 
 ## Scope correction
@@ -162,3 +162,9 @@ no GameplayReady is aggregated in P3K.4
 P3K.5 consumes the current occupancy, input and camera eligibility tokens,
 publishes the optional/required camera request when applicable, aggregates
 `GameplayReady`, and owns full reverse release and rollback.
+
+## P3K.5 integration closure
+
+P3K.5 now consumes the exact eligibility token and the internal physical evidence
+boundary. Camera publication does not move back into P3K.4, and P3K.4 remains the
+sole authority for `Eligible` versus `SkippedOptional`.
