@@ -407,6 +407,24 @@ namespace Immersive.Framework.GameFlow
                     transitionGateMode,
                     resolvedSource,
                     resolvedReason);
+                playerAdmissionAuthorization =
+                    AuthorizeActivityPlayerTransition(
+                        playerAdmissionPreparation,
+                        resolvedSource,
+                        resolvedReason);
+                if (playerAdmissionAuthorization == null ||
+                    !playerAdmissionAuthorization.ReadyForTransition)
+                {
+                    return FrameworkActivityRequestResult.FailedInvalidConfig(
+                        playerAdmissionAuthorization != null
+                            ? playerAdmissionAuthorization.ToDiagnosticString()
+                            : "Activity Player transition authorization returned no result.",
+                        targetActivity,
+                        resolvedSource,
+                        resolvedReason,
+                        activityTransitionMode);
+                }
+
                 var transitionBefore = await ExecuteActivityTransitionAsync(
                     TransitionRequest.Before(
                         operationId,

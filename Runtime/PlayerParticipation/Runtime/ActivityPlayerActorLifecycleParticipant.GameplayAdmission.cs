@@ -186,6 +186,33 @@ namespace Immersive.Framework.PlayerParticipation
                 return false;
             }
 
+            if (activeRecord == null)
+            {
+                lastSnapshot =
+                    new ActivityPlayerActorLifecycleSnapshot(
+                        ActivityPlayerActorLifecycleStatus
+                            .SucceededExitedNoActors,
+                        request.Activity.ActivityName,
+                        request.Owner,
+                        ResolveRequirementLevel(request.Activity),
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        Array.Empty<
+                            ActivityPlayerActorSlotLifecycleSnapshot>(),
+                        "Previous Activity Player lifecycle exit was acknowledged by the committed P3K.7E handoff without a retained P3J.6 Activity record.");
+                result =
+                    ActivityContentExecutionResult.SucceededNoOp(
+                        request,
+                        nameof(
+                            ActivityPlayerActorLifecycleParticipant),
+                        "activity-player-actor-exit-superseded-without-retained-record",
+                        lastSnapshot.ToDiagnosticString());
+                return true;
+            }
+
             var evidence =
                 new ActivityPlayerActorSlotLifecycleSnapshot[
                     activeRecord.PreparedSlots.Count];

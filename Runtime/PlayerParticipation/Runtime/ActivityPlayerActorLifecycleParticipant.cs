@@ -430,6 +430,15 @@ namespace Immersive.Framework.PlayerParticipation
         private ActivityContentExecutionResult ExecuteExit(
             ActivityContentExecutionRequest request)
         {
+            if (activeRecord == null &&
+                TryExecuteCommittedGameplayHandoffExit(
+                    request,
+                    out ActivityContentExecutionResult
+                        handoffExitWithoutRetainedRecord))
+            {
+                return handoffExitWithoutRetainedRecord;
+            }
+
             if (activeRecord == null)
             {
                 lastSnapshot = new ActivityPlayerActorLifecycleSnapshot(

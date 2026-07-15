@@ -965,11 +965,14 @@ namespace Immersive.Framework.PlayerParticipation
             }
 
             active.TargetEnterAdopted = true;
-            active.LastStatus =
-                ActivityPlayerLifecycleAdmissionStatus
-                    .SucceededLifecycleCompleted;
-            active.Message =
-                "Committed GameplayReady Player evidence adopted by target Activity lifecycle.";
+            active.LastStatus = active.CommitCleanupPending
+                ? ActivityPlayerLifecycleAdmissionStatus
+                    .SucceededCommitCleanupPending
+                : ActivityPlayerLifecycleAdmissionStatus
+                    .SucceededCommitted;
+            active.Message = active.PreviousExitAcknowledged
+                ? "Committed GameplayReady Player evidence adopted by target Activity lifecycle; transaction completion is being finalized."
+                : "Committed GameplayReady Player evidence adopted by target Activity lifecycle; previous Activity exit acknowledgement remains pending.";
             lastSnapshot = Snapshot(active);
             TryCompleteLifecycle(active);
             adoptedSlots = adopted;
