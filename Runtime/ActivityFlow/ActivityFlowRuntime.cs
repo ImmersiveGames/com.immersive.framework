@@ -17,7 +17,7 @@ namespace Immersive.Framework.ActivityFlow
     /// It owns the active Activity runtime state for the current application runtime and emits canonical lifecycle events.
     /// </summary>
     [FrameworkApiStatus(FrameworkApiStatus.Internal, "Runtime implementation detail; not game-facing API.")]
-    internal sealed class ActivityFlowRuntime
+    internal sealed partial class ActivityFlowRuntime
     {
         private readonly ActivityContentRuntime _activityContentRuntime = new ActivityContentRuntime();
         private readonly ContentAnchorDiscoveryRuntime _contentAnchorDiscoveryRuntime = new ContentAnchorDiscoveryRuntime();
@@ -343,7 +343,8 @@ namespace Immersive.Framework.ActivityFlow
             string source,
             string reason,
             ActivityOperationResult activityOperationResult = default(ActivityOperationResult),
-            IFrameworkLoadingProgressReporter progressReporter = null)
+            IFrameworkLoadingProgressReporter progressReporter = null,
+            Func<ActivityActivationGateResult> beforeActivation = null)
         {
             string resolvedSource = NormalizeSource(source);
             string resolvedReason = NormalizeReason(reason);
@@ -364,7 +365,6 @@ namespace Immersive.Framework.ActivityFlow
             }
 
             var runtimeEnterResult = CreateActivityScopeRoot(nextActivity, resolvedSource, resolvedReason);
-            _currentActivityState = ActivityRuntimeState.ActiveWith(nextActivity, previousActivity, resolvedSource, resolvedReason);
             var activityScopeTailRequest = new FrameworkScopeTailOperationRequest(
                 runtimeEnterResult.Owner,
                 previousActivity != null ? CreateActivityOwner(previousActivity) : default(RuntimeContentOwner),
@@ -394,13 +394,50 @@ namespace Immersive.Framework.ActivityFlow
             var sceneCompositionResult = await ExecuteActivitySceneCompositionAsync(nextActivity, resolvedSource, resolvedReason, sceneCompositionProgressReporter);
             if (sceneCompositionResult.HasBlockingIssues)
             {
-                RemovePreviousActivityScopeRoot(nextActivity, previousActivity, resolvedSource, resolvedReason);
+                string targetSceneRollbackIssue =
+                    await RollbackPreparedTargetScenesAsync(
+                        nextActivity,
+                        resolvedSource,
+                        "activity-scene-composition-failure");
+                if (beforeActivation == null)
+                {
+                    RemovePreviousActivityScopeRoot(nextActivity, previousActivity, resolvedSource, resolvedReason);
+                }
                 _currentActivityState = previousActivity != null
                     ? ActivityRuntimeState.ActiveWith(previousActivity, nextActivity, resolvedSource, resolvedReason)
                     : ActivityRuntimeState.None(nextActivity, resolvedSource, resolvedReason);
-                return ActivityFlowStartResult.Failed(sceneCompositionResult.ToDiagnosticString(), activityOperationResult);
+                return ActivityFlowStartResult.Failed(
+                    sceneCompositionResult.ToDiagnosticString() + targetSceneRollbackIssue,
+                    activityOperationResult);
             }
 
+            ActivityActivationGateResult activationGate = beforeActivation != null
+                ? beforeActivation()
+                : ActivityActivationGateResult.Allowed(
+                    resolvedSource,
+                    resolvedReason,
+                    "Activity activation gate approved target publication.");
+            if (!activationGate.CanActivate)
+            {
+                string targetSceneRollbackIssue =
+                    await RollbackPreparedTargetScenesAsync(
+                        nextActivity,
+                        resolvedSource,
+                        "activity-activation-gate-blocked");
+                _currentActivityState = previousActivity != null
+                    ? ActivityRuntimeState.ActiveWith(previousActivity, nextActivity, resolvedSource, resolvedReason)
+                    : ActivityRuntimeState.None(nextActivity, resolvedSource, resolvedReason);
+                return ActivityFlowStartResult.Failed(
+                    "Activity activation gate blocked target Activity publication. " +
+                    activationGate.ToDiagnosticString() + targetSceneRollbackIssue,
+                    activityOperationResult);
+            }
+
+            _currentActivityState = ActivityRuntimeState.ActiveWith(
+                nextActivity,
+                previousActivity,
+                resolvedSource,
+                resolvedReason);
             var contentResult = ApplyActivityContentThroughLifecycleEvents(previousActivity, nextActivity, resolvedSource, resolvedReason);
             var activityContentAnchorDiscoveryResult = _contentAnchorDiscoveryRuntime.DiscoverActivityAnchors(
                 nextActivity,

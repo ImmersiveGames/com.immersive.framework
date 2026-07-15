@@ -20,6 +20,7 @@ namespace Immersive.Framework.PlayerParticipation
             PlayerGameplayAdmissionSnapshot admission,
             PlayerActorCandidateRuntimeHostSnapshot candidates,
             ActivityPlayerHandoffGroupSnapshot handoffGroup,
+            ActivityPlayerLifecycleAdmissionSnapshot lifecycleAdmission,
             int activePerSlotHandoffCount,
             PlayerGameplayRuntimeOperationStatus lastOperationStatus,
             string diagnostic)
@@ -32,6 +33,7 @@ namespace Immersive.Framework.PlayerParticipation
             Admission = admission;
             Candidates = candidates;
             HandoffGroup = handoffGroup;
+            LifecycleAdmission = lifecycleAdmission;
             ActivePerSlotHandoffCount = activePerSlotHandoffCount;
             LastOperationStatus = lastOperationStatus;
             Diagnostic = diagnostic ?? string.Empty;
@@ -45,6 +47,7 @@ namespace Immersive.Framework.PlayerParticipation
         public PlayerGameplayAdmissionSnapshot Admission { get; }
         public PlayerActorCandidateRuntimeHostSnapshot Candidates { get; }
         public ActivityPlayerHandoffGroupSnapshot HandoffGroup { get; }
+        public ActivityPlayerLifecycleAdmissionSnapshot LifecycleAdmission { get; }
         public int ActivePerSlotHandoffCount { get; }
         public PlayerGameplayRuntimeOperationStatus LastOperationStatus { get; }
         public string Diagnostic { get; }
@@ -72,6 +75,11 @@ namespace Immersive.Framework.PlayerParticipation
                 null,
                 PlayerActorCandidateRuntimeHostSnapshot.Unavailable(diagnostic),
                 null,
+                ActivityPlayerLifecycleAdmissionSnapshot.Empty(
+                    ActivityPlayerLifecycleAdmissionStatus.RejectedRuntimeUnavailable,
+                    nameof(PlayerGameplayRuntimeHostSnapshot),
+                    "runtime-unavailable",
+                    diagnostic),
                 0,
                 PlayerGameplayRuntimeOperationStatus.RejectedRuntimeUnavailable,
                 diagnostic);
@@ -86,6 +94,7 @@ namespace Immersive.Framework.PlayerParticipation
                 $"gameplayReady='{GameplayReadyCount}' candidates='{CandidateCount}' " +
                 $"activePerSlotHandoffs='{ActivePerSlotHandoffCount}' " +
                 $"group='{(HandoffGroup != null ? HandoffGroup.State.ToString() : string.Empty)}' " +
+                $"lifecycleAdmission='{(LifecycleAdmission != null ? LifecycleAdmission.State.ToString() : string.Empty)}' " +
                 $"lastStatus='{LastOperationStatus}' diagnostic='{Diagnostic}'";
         }
     }

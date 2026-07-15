@@ -350,6 +350,7 @@ namespace Immersive.Framework.ApplicationLifecycle
             ApplyPauseSurfaceSnapshot("FrameworkRuntimeHost", "framework-start");
             var transitionOrchestrator = CreateTransitionOrchestrator(_globalUiSceneRuntime, sessionCameraOverride);
             _gameFlowRuntime = new GameFlowRuntime(_runtimeContentRuntime, _contentAnchorBindingRuntime, transitionOrchestrator);
+            ApplyPlayerActivityLifecycleAdmissionRuntime();
 
             var result = await _gameFlowRuntime.StartAsync(_gameApplication);
             _state = FrameworkRuntimeState.FromGameFlowResult(_gameApplication, result);

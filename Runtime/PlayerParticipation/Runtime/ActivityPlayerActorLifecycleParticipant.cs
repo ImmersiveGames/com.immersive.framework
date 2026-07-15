@@ -16,7 +16,7 @@ namespace Immersive.Framework.PlayerParticipation
     [FrameworkApiStatus(
         FrameworkApiStatus.Internal,
         "P3J.6 Activity-scoped Player Actor lifecycle participant and explicit participant source.")]
-    internal sealed class ActivityPlayerActorLifecycleParticipant :
+    internal sealed partial class ActivityPlayerActorLifecycleParticipant :
         IActivityContentExecutionParticipant,
         IActivityContentExecutionParticipantSource
     {
@@ -224,16 +224,11 @@ namespace Immersive.Framework.PlayerParticipation
 
             if (requirementLevel == PlayerParticipationRequirementLevel.GameplayReady)
             {
-                string issue =
-                    "GameplayReady cannot be satisfied by P3J.6 because gameplay input, occupancy, presentation and camera readiness remain separate future authorities.";
-                lastSnapshot = FailureSnapshot(
-                    ActivityPlayerActorLifecycleStatus.FailedRequirement,
+                return ExecuteGameplayReadyAdoptionEnter(
+                    request,
                     activity,
                     owner,
-                    requirementLevel,
-                    projectedSlots,
-                    issue);
-                return Blocking(request, "activity-player-actor-gameplay-ready-unsupported", issue);
+                    projectedSlots);
             }
 
             if (projectedSlots.Count == 0)
@@ -476,12 +471,39 @@ namespace Immersive.Framework.PlayerParticipation
                 return Blocking(request, "activity-player-actor-exit-stale-owner", issue);
             }
 
+            if (TryExecuteCommittedGameplayHandoffExit(
+                    request,
+                    out ActivityContentExecutionResult handoffExitResult))
+            {
+                return handoffExitResult;
+            }
+
             var evidence = new List<ActivityPlayerActorSlotLifecycleSnapshot>();
             var failures = new List<string>();
             int releasedCount = 0;
             for (int index = 0; index < activeRecord.PreparedSlots.Count; index++)
             {
                 PreparedSlotRecord prepared = activeRecord.PreparedSlots[index];
+                if (!TryReleaseGameplayBeforePreparedActor(
+                        prepared,
+                        nameof(ActivityPlayerActorLifecycleParticipant),
+                        "activity-exit-release-gameplay-before-actor",
+                        out string gameplayReleaseIssue))
+                {
+                    failures.Add(gameplayReleaseIssue);
+                    evidence.Add(new ActivityPlayerActorSlotLifecycleSnapshot(
+                        prepared.PlayerSlotId,
+                        true,
+                        default,
+                        false,
+                        prepared.Token,
+                        prepared.CreatedByEnter,
+                        false,
+                        PlayerActorPreparationStatus.FailedRelease,
+                        gameplayReleaseIssue));
+                    continue;
+                }
+
                 PlayerActorPreparationResult release =
                     preparationModule.TryReleasePreparedActor(
                         prepared.PlayerSlotId,

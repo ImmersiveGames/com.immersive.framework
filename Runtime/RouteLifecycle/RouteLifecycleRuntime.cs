@@ -20,7 +20,7 @@ namespace Immersive.Framework.RouteLifecycle
     /// It owns the active Route identity and delegates scene loading to Scene Lifecycle.
     /// </summary>
     [FrameworkApiStatus(FrameworkApiStatus.Internal, "Runtime implementation detail; not game-facing API.")]
-    internal sealed class RouteLifecycleRuntime
+    internal sealed partial class RouteLifecycleRuntime
     {
         private readonly SceneLifecycleRuntime _sceneLifecycleRuntime = new SceneLifecycleRuntime();
         private readonly ActivityFlowRuntime _activityFlowRuntime;

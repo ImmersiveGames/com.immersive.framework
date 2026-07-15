@@ -12,6 +12,7 @@ using Immersive.Framework.Transition;
 using Immersive.Framework.TransitionEffects;
 using Immersive.Framework.Loading;
 using Immersive.Framework.Common;
+using Immersive.Framework.PlayerParticipation;
 using UnityEngine;
 
 namespace Immersive.Framework.GameFlow
@@ -21,7 +22,7 @@ namespace Immersive.Framework.GameFlow
     /// It accepts route and activity requests and delegates route startup to Route Lifecycle.
     /// </summary>
     [FrameworkApiStatus(FrameworkApiStatus.Internal, "Runtime implementation detail; not game-facing API.")]
-    internal sealed class GameFlowRuntime
+    internal sealed partial class GameFlowRuntime
     {
         private readonly RouteLifecycleRuntime _routeLifecycleRuntime;
         private readonly ITransitionOrchestrator _transitionOrchestrator;
@@ -362,6 +363,38 @@ namespace Immersive.Framework.GameFlow
                     activityTransitionMode);
             }
 
+            if (RequiresGameplayReady(targetActivity) &&
+                operationPreview.HasSceneSideEffects &&
+                !operationPreview.RequiresVisualOcclusion)
+            {
+                return FrameworkActivityRequestResult.FailedInvalidConfig(
+                    "GameplayReady Activity switches with scene side effects require explicit visual occlusion before asynchronous target preparation.",
+                    targetActivity,
+                    resolvedSource,
+                    resolvedReason,
+                    activityTransitionMode);
+            }
+
+            ActivityPlayerLifecycleAdmissionResult playerAdmissionPreparation =
+                PrepareActivityPlayerLifecycleAdmission(
+                    previousActivity,
+                    targetActivity,
+                    resolvedSource,
+                    resolvedReason);
+            if (playerAdmissionPreparation == null ||
+                !playerAdmissionPreparation.ReadyForTransition)
+            {
+                return FrameworkActivityRequestResult.FailedInvalidConfig(
+                    playerAdmissionPreparation != null
+                        ? playerAdmissionPreparation.ToDiagnosticString()
+                        : "Activity Player lifecycle admission preparation returned no result.",
+                    targetActivity,
+                    resolvedSource,
+                    resolvedReason,
+                    activityTransitionMode);
+            }
+
+            ActivityPlayerLifecycleAdmissionResult playerAdmissionAuthorization = null;
             _activityRequestInFlight = true;
             TransitionGateDiagnostics transitionGateDiagnostics = default;
             try
@@ -391,7 +424,16 @@ namespace Immersive.Framework.GameFlow
                     await beforeActivityLifecycle();
                 }
 
-                var activityFlowResult = await _routeLifecycleRuntime.StartActivityAsync(targetActivity, resolvedSource, resolvedReason, progressReporter);
+                var activityFlowResult = await _routeLifecycleRuntime
+                    .StartActivityWithActivationGateAsync(
+                        targetActivity,
+                        resolvedSource,
+                        resolvedReason,
+                        progressReporter,
+                        () => CommitActivityPlayerLifecycleAdmission(
+                            playerAdmissionAuthorization,
+                            resolvedSource,
+                            resolvedReason));
 
                 if (afterActivityLifecycle != null)
                 {
@@ -426,6 +468,19 @@ namespace Immersive.Framework.GameFlow
                         GameFlowRequestOperationKind.Activity,
                         transitionGateDiagnostics);
                 }
+                if (RequiresGameplayReady(targetActivity) &&
+                    !activityFlowResult.IsActivityReady)
+                {
+                    return FrameworkActivityRequestResult.FailedInvalidConfig(
+                        "GameplayReady target Activity did not complete lifecycle adoption. " +
+                        activityFlowResult.Message,
+                        targetActivity,
+                        resolvedSource,
+                        resolvedReason,
+                        activityTransitionMode,
+                        GameFlowRequestOperationKind.Activity,
+                        transitionGateDiagnostics);
+                }
 
                 return FrameworkActivityRequestResult.SucceededWith(
                     targetActivity,
@@ -438,6 +493,10 @@ namespace Immersive.Framework.GameFlow
             }
             finally
             {
+                RollbackPendingActivityPlayerLifecycleAdmission(
+                    playerAdmissionAuthorization ?? playerAdmissionPreparation,
+                    resolvedSource,
+                    "activity-request-finalization");
                 ReleaseTransitionGateIfStillActive();
                 _activityRequestInFlight = false;
             }

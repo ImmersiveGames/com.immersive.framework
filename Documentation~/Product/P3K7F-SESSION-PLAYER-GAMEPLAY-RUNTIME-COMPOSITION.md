@@ -1,6 +1,6 @@
 # P3K.7F — Session Player Gameplay Runtime Composition
 
-Status: **implementation delta ready for Unity compile and QA**  
+Status: **closed — Unity compile and QA PASS 48/48**  
 Type: **runtime composition + product authority wiring + technical QA**
 
 ## Objective
@@ -176,13 +176,15 @@ status='Passed'
 cases='48'
 ```
 
-## Next cut
+## Follow-up integration
 
 ```text
 P3K.7G — Same-Route Activity Lifecycle Admission Integration
 ```
 
-P3K.7G must consume this host module, stage target candidates before transition
-presentation, prepare target scenes while the current Activity remains active,
-commit the P3K.7E group at the irreversible boundary and transfer the committed
-tokens to P3J.6 explicitly.
+P3K.7G consumes this host module and integrates the official Player transaction
+with a real same-Route Activity request. See:
+
+```text
+P3K7G-SAME-ROUTE-ACTIVITY-LIFECYCLE-ADMISSION.md
+```

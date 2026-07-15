@@ -16,7 +16,7 @@ namespace Immersive.Framework.PlayerParticipation
     [FrameworkApiStatus(
         FrameworkApiStatus.Internal,
         "P3K.7F official Session Player gameplay authority composition.")]
-    internal sealed class PlayerGameplayRuntimeHostModule : MonoBehaviour
+    internal sealed partial class PlayerGameplayRuntimeHostModule : MonoBehaviour
     {
         private FrameworkRuntimeHost runtimeHost;
         private PlayerParticipationRuntimeContext participationContext;
@@ -43,7 +43,8 @@ namespace Immersive.Framework.PlayerParticipation
             cameraContext != null &&
             admissionContext != null &&
             handoffContext != null &&
-            groupContext != null;
+            groupContext != null &&
+            activityLifecycleAdmissionContext != null;
 
         internal string Diagnostic => diagnostic;
 
@@ -230,6 +231,26 @@ namespace Immersive.Framework.PlayerParticipation
             admissionContext = targetAdmission;
             handoffContext = targetHandoff;
             groupContext = targetGroup;
+            if (!TryInitializeActivityLifecycleAdmission(out issue))
+            {
+                diagnostic =
+                    "P3K.7G Activity lifecycle admission composition failed. " +
+                    issue;
+                ReleaseActivityLifecycleAdmission();
+                groupContext = null;
+                handoffContext = null;
+                admissionContext = null;
+                cameraContext = null;
+                inputContext = null;
+                occupancyContext = null;
+                candidateModule = null;
+                preparationModule = null;
+                participationContext = null;
+                runtimeHost = null;
+                issue = diagnostic;
+                return false;
+            }
+
             lastOperationStatus =
                 PlayerGameplayRuntimeOperationStatus.None;
             diagnostic =
@@ -556,6 +577,7 @@ namespace Immersive.Framework.PlayerParticipation
                 admissionContext.CreateSnapshot(),
                 candidates,
                 groupContext.CreateSnapshot(),
+                activityLifecycleAdmissionContext.CreateSnapshot(),
                 handoffContext.ActiveHandoffCount,
                 lastOperationStatus,
                 diagnostic);
@@ -639,6 +661,7 @@ namespace Immersive.Framework.PlayerParticipation
                 }
             }
 
+            ReleaseActivityLifecycleAdmission();
             groupContext = null;
             handoffContext = null;
             admissionContext = null;
