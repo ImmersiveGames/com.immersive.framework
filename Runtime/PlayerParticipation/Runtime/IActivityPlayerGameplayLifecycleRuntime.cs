@@ -6,9 +6,10 @@ namespace Immersive.Framework.PlayerParticipation
 {
     internal interface IActivityPlayerGameplayLifecycleRuntime
     {
-        bool TryHandleCommittedPreviousExit(
+        bool TryHandleSupersededPreviousExit(
             ActivityContentExecutionRequest request,
             out bool handled,
+            out ActivityPlayerPreviousExitDisposition disposition,
             out string issue);
 
         bool TryAdoptCommittedTarget(

@@ -29,6 +29,7 @@ namespace Immersive.Framework.PlayerParticipation
 
         private readonly PlayerParticipationRuntimeContext participationContext;
         private readonly ILocalPlayerProvisioningBackend backend;
+        private readonly Transform technicalHostParent;
         private readonly Dictionary<LocalPlayerJoinOperationId, LocalPlayerJoinCallbackConfirmation>
             callbackConfirmations = new();
         private readonly Dictionary<PlayerInput, LocalPlayerJoinOperationId>
@@ -42,11 +43,15 @@ namespace Immersive.Framework.PlayerParticipation
 
         internal LocalPlayerProvisioningBridge(
             PlayerParticipationRuntimeContext participationContext,
-            ILocalPlayerProvisioningBackend backend)
+            ILocalPlayerProvisioningBackend backend,
+            Transform technicalHostParent)
         {
             this.participationContext = participationContext ??
                 throw new ArgumentNullException(nameof(participationContext));
             this.backend = backend ?? throw new ArgumentNullException(nameof(backend));
+            this.technicalHostParent = technicalHostParent != null
+                ? technicalHostParent
+                : throw new ArgumentNullException(nameof(technicalHostParent));
             backend.PlayerJoined += HandlePlayerJoined;
         }
 
@@ -58,6 +63,7 @@ namespace Immersive.Framework.PlayerParticipation
         internal static bool TryCreate(
             PlayerParticipationRuntimeContext participationContext,
             LocalPlayerProvisioningAuthoring authoring,
+            Transform technicalHostParent,
             out LocalPlayerProvisioningBridge bridge,
             out string issue)
         {
@@ -75,6 +81,12 @@ namespace Immersive.Framework.PlayerParticipation
                 return false;
             }
 
+            if (technicalHostParent == null)
+            {
+                issue = "Local Player provisioning requires an explicit persistent technical-host parent.";
+                return false;
+            }
+
             if (authoring.PlayerInputManager == null)
             {
                 issue = "Local Player provisioning authoring has no explicit PlayerInputManager.";
@@ -83,7 +95,8 @@ namespace Immersive.Framework.PlayerParticipation
 
             bridge = new LocalPlayerProvisioningBridge(
                 participationContext,
-                new UnityLocalPlayerProvisioningBackend(authoring.PlayerInputManager));
+                new UnityLocalPlayerProvisioningBackend(authoring.PlayerInputManager),
+                technicalHostParent);
             issue = string.Empty;
             return true;
         }
@@ -299,6 +312,19 @@ namespace Immersive.Framework.PlayerParticipation
                     "LocalPlayerHostAuthoring does not resolve the PlayerInput returned by JoinPlayer.");
             }
 
+            if (!TryAttachHostToSessionLifetime(
+                    localPlayerHost,
+                    out string sessionLifetimeIssue))
+            {
+                return FailAndRollback(
+                    LocalPlayerJoinStatus.RejectedInvalidLocalPlayerHost,
+                    pendingJoin,
+                    provisionedPlayerInput,
+                    pendingJoin.CallbackPlayerInput,
+                    "Local Player technical host could not enter the Session lifetime. " +
+                    sessionLifetimeIssue);
+            }
+
             if (!localPlayerHost.TryStageAdmission(
                     reservationResult.Slot,
                     request.Source,
@@ -363,7 +389,7 @@ namespace Immersive.Framework.PlayerParticipation
                 localPlayerHost,
                 provisionedPlayerInput.playerIndex,
                 callbackConfirmation,
-                "Local Player technical host provisioned and admitted to the reserved Session Slot. Logical Actor remains unprepared.");
+                "Local Player technical host transferred to the persistent FrameworkRuntimeHost and admitted to the reserved Session Slot. Logical Actor remains unprepared.");
             pendingJoin = null;
             return Complete(succeeded);
         }
@@ -413,6 +439,60 @@ namespace Immersive.Framework.PlayerParticipation
             awaitingCallbackConfirmations.Clear();
             callbackConfirmations.Clear();
             admittedPlayers.Clear();
+        }
+
+        private bool TryAttachHostToSessionLifetime(
+            LocalPlayerHostAuthoring host,
+            out string issue)
+        {
+            issue = string.Empty;
+            if (host == null)
+            {
+                issue = "Local Player Host is missing.";
+                return false;
+            }
+
+            if (technicalHostParent == null)
+            {
+                issue = "Persistent FrameworkRuntimeHost parent is unavailable.";
+                return false;
+            }
+
+            Transform hostTransform = host.transform;
+            if (hostTransform == null)
+            {
+                issue = "Local Player Host transform is unavailable.";
+                return false;
+            }
+
+            try
+            {
+                if (!hostTransform.IsChildOf(technicalHostParent))
+                {
+                    hostTransform.SetParent(
+                        technicalHostParent,
+                        false);
+                }
+            }
+            catch (Exception exception)
+            {
+                issue =
+                    $"Local Player Host Session parent transfer threw '{exception.GetType().Name}'. {exception.Message}";
+                return false;
+            }
+
+            if (!hostTransform.IsChildOf(technicalHostParent) ||
+                host.gameObject.scene !=
+                    technicalHostParent.gameObject.scene)
+            {
+                issue =
+                    "Local Player Host did not enter the persistent FrameworkRuntimeHost hierarchy and scene.";
+                return false;
+            }
+
+            issue =
+                "local-player-host-session-lifetime-transfer";
+            return true;
         }
 
         private bool TryValidateBackend(

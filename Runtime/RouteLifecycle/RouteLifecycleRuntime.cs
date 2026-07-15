@@ -118,7 +118,8 @@ namespace Immersive.Framework.RouteLifecycle
             RouteAsset route,
             string source,
             string reason,
-            IFrameworkLoadingProgressReporter progressReporter)
+            IFrameworkLoadingProgressReporter progressReporter,
+            Func<ActivityActivationGateResult> beforeStartupActivityActivation = null)
         {
             if (route == null)
             {
@@ -258,7 +259,21 @@ namespace Immersive.Framework.RouteLifecycle
                 routeProgressStepCount,
                 "RouteTransition",
                 "Route transition loading progress.");
-            var startupActivityFlowResult = await _activityFlowRuntime.StartStartupActivityAsync(route, source, reason, startupActivityProgressReporter);
+            var startupActivityFlowResult =
+                beforeStartupActivityActivation != null
+                    ? await _activityFlowRuntime
+                        .StartStartupActivityWithActivationGateAsync(
+                            route,
+                            source,
+                            reason,
+                            startupActivityProgressReporter,
+                            beforeStartupActivityActivation)
+                    : await _activityFlowRuntime
+                        .StartStartupActivityAsync(
+                            route,
+                            source,
+                            reason,
+                            startupActivityProgressReporter);
             await FrameworkLoadingProgressReporterUtility.ReportCompletedIfAnyAsync(
                 progressReporter,
                 "RouteTransition",
@@ -266,6 +281,33 @@ namespace Immersive.Framework.RouteLifecycle
             if (!startupActivityFlowResult.Completed)
             {
                 return RouteLifecycleStartResult.Failed(startupActivityFlowResult.Message);
+            }
+            if (beforeStartupActivityActivation != null)
+            {
+                if (!startupActivityFlowResult.IsActivityReady)
+                {
+                    return RouteLifecycleStartResult.Failed(
+                        "GameplayReady Route Startup Activity did not complete lifecycle adoption. " +
+                        startupActivityFlowResult.Message);
+                }
+
+                if (previousActivity != null)
+                {
+                    RouteStartupActivityScopeFinalizationResult
+                        previousActivityScopeFinalization =
+                            _activityFlowRuntime
+                                .FinalizeRouteStartupPreviousActivityScope(
+                                    previousActivity,
+                                    route.StartupActivity,
+                                    source,
+                                    reason);
+                    if (!previousActivityScopeFinalization.Succeeded)
+                    {
+                        return RouteLifecycleStartResult.Failed(
+                            "Previous Activity scope finalization failed after Route Startup Player handoff. " +
+                            previousActivityScopeFinalization.ToDiagnosticString());
+                    }
+                }
             }
 
             // When the destination Route has no Startup Activity, preserve the real

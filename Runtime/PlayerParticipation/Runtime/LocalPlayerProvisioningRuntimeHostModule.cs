@@ -129,6 +129,7 @@ namespace Immersive.Framework.PlayerParticipation
             if (!LocalPlayerProvisioningBridge.TryCreate(
                     targetParticipationContext,
                     targetAuthoring,
+                    targetRuntimeHost.transform,
                     out LocalPlayerProvisioningBridge targetBridge,
                     out issue))
             {

@@ -5,7 +5,7 @@ namespace Immersive.Framework.PlayerParticipation
 {
     [FrameworkApiStatus(
         FrameworkApiStatus.Experimental,
-        "P3K.7G same-Route Activity Player lifecycle admission operation result.")]
+        "P3K.7H Activity Player lifecycle admission operation result.")]
     public sealed class ActivityPlayerLifecycleAdmissionResult
     {
         internal ActivityPlayerLifecycleAdmissionResult(

@@ -190,12 +190,34 @@ namespace Immersive.Framework.GameFlow
                 return FrameworkRouteRequestResult.IgnoredAlreadyActive(targetRoute, resolvedSource, resolvedReason);
             }
 
+            var previousRoute = _routeLifecycleRuntime.CurrentRoute;
+            var previousActivity = _routeLifecycleRuntime.CurrentActivity;
+            ActivityPlayerLifecycleAdmissionResult
+                routeStartupPlayerAdmissionPreparation =
+                    PrepareRouteStartupPlayerLifecycleAdmission(
+                        previousRoute,
+                        targetRoute,
+                        previousActivity,
+                        resolvedSource,
+                        resolvedReason);
+            if (routeStartupPlayerAdmissionPreparation == null ||
+                !routeStartupPlayerAdmissionPreparation.ReadyForTransition)
+            {
+                return FrameworkRouteRequestResult.FailedInvalidConfig(
+                    routeStartupPlayerAdmissionPreparation != null
+                        ? routeStartupPlayerAdmissionPreparation.ToDiagnosticString()
+                        : "Route Startup Activity Player lifecycle admission returned no preparation result.",
+                    targetRoute,
+                    resolvedSource,
+                    resolvedReason);
+            }
+
+            ActivityPlayerLifecycleAdmissionResult
+                routeStartupPlayerAdmissionAuthorization = null;
             _routeRequestInFlight = true;
             TransitionGateDiagnostics transitionGateDiagnostics = default;
             try
             {
-                var previousRoute = _routeLifecycleRuntime.CurrentRoute;
-                var previousActivity = _routeLifecycleRuntime.CurrentActivity;
                 var operationId = CreateTransitionOperationId(TransitionScope.Route);
                 var transitionGateMode = ResolveRouteTransitionGateMode(targetRoute);
                 var transitionGateSnapshot = ApplyTransitionGate(
@@ -204,6 +226,23 @@ namespace Immersive.Framework.GameFlow
                     transitionGateMode,
                     resolvedSource,
                     resolvedReason);
+                routeStartupPlayerAdmissionAuthorization =
+                    AuthorizeActivityPlayerTransition(
+                        routeStartupPlayerAdmissionPreparation,
+                        resolvedSource,
+                        resolvedReason);
+                if (routeStartupPlayerAdmissionAuthorization == null ||
+                    !routeStartupPlayerAdmissionAuthorization.ReadyForTransition)
+                {
+                    return FrameworkRouteRequestResult.FailedInvalidConfig(
+                        routeStartupPlayerAdmissionAuthorization != null
+                            ? routeStartupPlayerAdmissionAuthorization.ToDiagnosticString()
+                            : "Route Startup Activity Player transition authorization returned no result.",
+                        targetRoute,
+                        resolvedSource,
+                        resolvedReason);
+                }
+
                 var transitionBefore = await ExecuteTransitionAsync(
                     TransitionRequest.Before(
                         operationId,
@@ -220,7 +259,23 @@ namespace Immersive.Framework.GameFlow
                     await beforeRouteLifecycle();
                 }
 
-                var routeLifecycleResult = await StartRouteCoreAsync(targetRoute, resolvedSource, resolvedReason, progressReporter);
+                var routeLifecycleResult =
+                    routeStartupPlayerAdmissionAuthorization != null &&
+                    !routeStartupPlayerAdmissionAuthorization.NotRequired
+                        ? await StartRouteCoreAsync(
+                            targetRoute,
+                            resolvedSource,
+                            resolvedReason,
+                            progressReporter,
+                            () => CommitActivityPlayerLifecycleAdmission(
+                                routeStartupPlayerAdmissionAuthorization,
+                                resolvedSource,
+                                resolvedReason))
+                        : await StartRouteCoreAsync(
+                            targetRoute,
+                            resolvedSource,
+                            resolvedReason,
+                            progressReporter);
 
                 if (afterRouteLifecycle != null)
                 {
@@ -253,6 +308,19 @@ namespace Immersive.Framework.GameFlow
                         transitionGateDiagnostics);
                 }
 
+                if (!IsRouteStartupPlayerLifecycleCompleted(
+                        routeStartupPlayerAdmissionPreparation,
+                        out string routeStartupLifecycleIssue))
+                {
+                    return FrameworkRouteRequestResult.FailedInvalidConfig(
+                        "Route Startup Activity Player lifecycle admission did not complete. " +
+                        routeStartupLifecycleIssue,
+                        targetRoute,
+                        resolvedSource,
+                        resolvedReason,
+                        transitionGateDiagnostics);
+                }
+
                 return FrameworkRouteRequestResult.SucceededWith(
                     targetRoute,
                     resolvedSource,
@@ -263,6 +331,11 @@ namespace Immersive.Framework.GameFlow
             }
             finally
             {
+                RollbackPendingActivityPlayerLifecycleAdmission(
+                    routeStartupPlayerAdmissionAuthorization ??
+                        routeStartupPlayerAdmissionPreparation,
+                    resolvedSource,
+                    "route-request-finalization");
                 ReleaseTransitionGateIfStillActive();
                 _routeRequestInFlight = false;
             }
@@ -1186,9 +1259,15 @@ namespace Immersive.Framework.GameFlow
             RouteAsset route,
             string source,
             string reason,
-            IFrameworkLoadingProgressReporter progressReporter)
+            IFrameworkLoadingProgressReporter progressReporter,
+            Func<ActivityActivationGateResult> beforeStartupActivityActivation = null)
         {
-            return _routeLifecycleRuntime.StartRouteAsync(route, source, reason, progressReporter);
+            return _routeLifecycleRuntime.StartRouteAsync(
+                route,
+                source,
+                reason,
+                progressReporter,
+                beforeStartupActivityActivation);
         }
 
         private async Awaitable<TransitionResult> ExecuteActivityTransitionAsync(

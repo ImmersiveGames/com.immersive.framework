@@ -9,7 +9,7 @@ namespace Immersive.Framework.PlayerParticipation
 {
     [FrameworkApiStatus(
         FrameworkApiStatus.Experimental,
-        "P3K.7G immutable same-Route Activity Player lifecycle admission evidence.")]
+        "P3K.7H immutable Activity Player lifecycle admission evidence for same-Route and Route Startup flows.")]
     public sealed class ActivityPlayerLifecycleAdmissionSnapshot
     {
         private readonly ActivityPlayerLifecycleAdmissionSlotSnapshot[] slots;
@@ -18,6 +18,9 @@ namespace Immersive.Framework.PlayerParticipation
             ActivityPlayerLifecycleAdmissionToken token,
             ActivityPlayerLifecycleAdmissionState state,
             ActivityPlayerLifecycleAdmissionStatus lastStatus,
+            ActivityPlayerLifecycleAdmissionFlowKind flowKind,
+            string previousRouteName,
+            string targetRouteName,
             string previousActivityName,
             string targetActivityName,
             RuntimeContentOwner previousOwner,
@@ -27,6 +30,7 @@ namespace Immersive.Framework.PlayerParticipation
             ActivityPlayerLifecycleAdmissionSlotSnapshot[] slots,
             bool transitionAuthorized,
             bool previousExitAcknowledged,
+            ActivityPlayerPreviousExitDisposition previousExitDisposition,
             bool targetEnterAdopted,
             bool commitCleanupPending,
             string source,
@@ -36,6 +40,9 @@ namespace Immersive.Framework.PlayerParticipation
             Token = token;
             State = state;
             LastStatus = lastStatus;
+            FlowKind = flowKind;
+            PreviousRouteName = previousRouteName.NormalizeText();
+            TargetRouteName = targetRouteName.NormalizeText();
             PreviousActivityName = previousActivityName.NormalizeText();
             TargetActivityName = targetActivityName.NormalizeText();
             PreviousOwner = previousOwner;
@@ -47,6 +54,7 @@ namespace Immersive.Framework.PlayerParticipation
                 : Array.Empty<ActivityPlayerLifecycleAdmissionSlotSnapshot>();
             TransitionAuthorized = transitionAuthorized;
             PreviousExitAcknowledged = previousExitAcknowledged;
+            PreviousExitDisposition = previousExitDisposition;
             TargetEnterAdopted = targetEnterAdopted;
             CommitCleanupPending = commitCleanupPending;
             Source = source.NormalizeText();
@@ -57,6 +65,9 @@ namespace Immersive.Framework.PlayerParticipation
         public ActivityPlayerLifecycleAdmissionToken Token { get; }
         public ActivityPlayerLifecycleAdmissionState State { get; }
         public ActivityPlayerLifecycleAdmissionStatus LastStatus { get; }
+        public ActivityPlayerLifecycleAdmissionFlowKind FlowKind { get; }
+        public string PreviousRouteName { get; }
+        public string TargetRouteName { get; }
         public string PreviousActivityName { get; }
         public string TargetActivityName { get; }
         public RuntimeContentOwner PreviousOwner { get; }
@@ -66,6 +77,7 @@ namespace Immersive.Framework.PlayerParticipation
         public IReadOnlyList<ActivityPlayerLifecycleAdmissionSlotSnapshot> Slots => slots;
         public bool TransitionAuthorized { get; }
         public bool PreviousExitAcknowledged { get; }
+        public ActivityPlayerPreviousExitDisposition PreviousExitDisposition { get; }
         public bool TargetEnterAdopted { get; }
         public bool CommitCleanupPending { get; }
         public string Source { get; }
@@ -73,6 +85,8 @@ namespace Immersive.Framework.PlayerParticipation
         public string Message { get; }
 
         public int SlotCount => slots.Length;
+        public bool IsRouteStartupFlow =>
+            FlowKind == ActivityPlayerLifecycleAdmissionFlowKind.RouteStartupActivitySwitch;
         public bool IsNotRequired => State == ActivityPlayerLifecycleAdmissionState.NotRequired;
         public bool IsReadyToCommit => State == ActivityPlayerLifecycleAdmissionState.ReadyToCommit;
         public bool IsTransitionAuthorized =>
@@ -89,11 +103,13 @@ namespace Immersive.Framework.PlayerParticipation
         public bool Failed => State == ActivityPlayerLifecycleAdmissionState.Failed;
 
         public string ToDiagnosticString() =>
-            $"transaction='{Token.StableText}' state='{State}' status='{LastStatus}' " +
+            $"transaction='{Token.StableText}' state='{State}' status='{LastStatus}' flow='{FlowKind}' " +
+            $"previousRoute='{PreviousRouteName}' targetRoute='{TargetRouteName}' " +
             $"previousActivity='{PreviousActivityName}' targetActivity='{TargetActivityName}' " +
             $"previousOwner='{PreviousOwner.StableText}' targetOwner='{TargetOwner.StableText}' " +
             $"requirement='{RequirementLevel}' slots='{SlotCount}' " +
             $"transitionAuthorized='{TransitionAuthorized}' previousExit='{PreviousExitAcknowledged}' " +
+            $"previousExitDisposition='{PreviousExitDisposition}' " +
             $"targetAdopted='{TargetEnterAdopted}' cleanupPending='{CommitCleanupPending}' " +
             $"source='{Source}' reason='{Reason}' message='{Message}'";
 
@@ -105,6 +121,9 @@ namespace Immersive.Framework.PlayerParticipation
                 default,
                 ActivityPlayerLifecycleAdmissionState.NotRequired,
                 ActivityPlayerLifecycleAdmissionStatus.SucceededNotRequired,
+                ActivityPlayerLifecycleAdmissionFlowKind.None,
+                string.Empty,
+                string.Empty,
                 string.Empty,
                 string.Empty,
                 default,
@@ -114,6 +133,7 @@ namespace Immersive.Framework.PlayerParticipation
                 Array.Empty<ActivityPlayerLifecycleAdmissionSlotSnapshot>(),
                 false,
                 false,
+                ActivityPlayerPreviousExitDisposition.None,
                 false,
                 false,
                 source,
@@ -129,6 +149,9 @@ namespace Immersive.Framework.PlayerParticipation
                 default,
                 ActivityPlayerLifecycleAdmissionState.None,
                 status,
+                ActivityPlayerLifecycleAdmissionFlowKind.None,
+                string.Empty,
+                string.Empty,
                 string.Empty,
                 string.Empty,
                 default,
@@ -138,6 +161,7 @@ namespace Immersive.Framework.PlayerParticipation
                 Array.Empty<ActivityPlayerLifecycleAdmissionSlotSnapshot>(),
                 false,
                 false,
+                ActivityPlayerPreviousExitDisposition.None,
                 false,
                 false,
                 source,

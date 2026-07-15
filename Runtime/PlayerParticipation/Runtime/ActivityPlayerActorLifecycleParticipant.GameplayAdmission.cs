@@ -28,7 +28,7 @@ namespace Immersive.Framework.PlayerParticipation
             if (gameplayLifecycleRuntime == null)
             {
                 string issue =
-                    "GameplayReady Activity enter requires the official P3K.7G lifecycle adoption runtime.";
+                    "GameplayReady Activity enter requires the official P3K.7H lifecycle adoption runtime.";
                 lastSnapshot = FailureSnapshot(
                     ActivityPlayerActorLifecycleStatus.FailedRequirement,
                     activity,
@@ -169,9 +169,11 @@ namespace Immersive.Framework.PlayerParticipation
             }
 
             if (!gameplayLifecycleRuntime
-                    .TryHandleCommittedPreviousExit(
+                    .TryHandleSupersededPreviousExit(
                         request,
                         out bool handled,
+                        out ActivityPlayerPreviousExitDisposition
+                            disposition,
                         out string issue))
             {
                 result = Blocking(
@@ -202,13 +204,21 @@ namespace Immersive.Framework.PlayerParticipation
                         0,
                         Array.Empty<
                             ActivityPlayerActorSlotLifecycleSnapshot>(),
-                        "Previous Activity Player lifecycle exit was acknowledged by the committed P3K.7E handoff without a retained P3J.6 Activity record.");
+                        disposition ==
+                            ActivityPlayerPreviousExitDisposition
+                                .SupersededAwaitingCommit
+                            ? "Previous Activity Player lifecycle exit transferred to the reversible Route Startup handoff without a retained P3J.6 Activity record."
+                            : "Previous Activity Player lifecycle exit was acknowledged by the committed P3K.7E handoff without a retained P3J.6 Activity record.");
                 result =
                     ActivityContentExecutionResult.SucceededNoOp(
                         request,
                         nameof(
                             ActivityPlayerActorLifecycleParticipant),
-                        "activity-player-actor-exit-superseded-without-retained-record",
+                        disposition ==
+                            ActivityPlayerPreviousExitDisposition
+                                .SupersededAwaitingCommit
+                            ? "activity-player-actor-exit-transferred-to-route-handoff"
+                            : "activity-player-actor-exit-superseded-without-retained-record",
                         lastSnapshot.ToDiagnosticString());
                 return true;
             }
@@ -230,10 +240,21 @@ namespace Immersive.Framework.PlayerParticipation
                         false,
                         prepared.Token,
                         prepared.CreatedByEnter,
-                        true,
-                        PlayerActorPreparationStatus
-                            .SucceededAlreadyReleased,
-                        "Previous Actor and gameplay chain were released by the committed P3K.7E handoff.");
+                        disposition ==
+                            ActivityPlayerPreviousExitDisposition
+                                .SupersededByCommittedHandoff,
+                        disposition ==
+                            ActivityPlayerPreviousExitDisposition
+                                .SupersededAwaitingCommit
+                            ? PlayerActorPreparationStatus
+                                .SucceededAlreadyPrepared
+                            : PlayerActorPreparationStatus
+                                .SucceededAlreadyReleased,
+                        disposition ==
+                            ActivityPlayerPreviousExitDisposition
+                                .SupersededAwaitingCommit
+                            ? "Previous Actor remains retained by the reversible Route Startup handoff until commit."
+                            : "Previous Actor and gameplay chain were released by the committed P3K.7E handoff.");
             }
 
             PlayerParticipationRequirementLevel requirementLevel =
@@ -256,14 +277,26 @@ namespace Immersive.Framework.PlayerParticipation
                     projectedSlotCount,
                     selectedCount,
                     preparedCount,
-                    preparedCount,
+                    disposition ==
+                        ActivityPlayerPreviousExitDisposition
+                            .SupersededByCommittedHandoff
+                        ? preparedCount
+                        : 0,
                     0,
                     evidence,
-                    "Previous Activity Player Actor lifecycle exit was superseded by the committed P3K.7E handoff.");
+                    disposition ==
+                        ActivityPlayerPreviousExitDisposition
+                            .SupersededAwaitingCommit
+                        ? "Previous Activity Player Actor lifecycle exit transferred to the reversible Route Startup handoff."
+                        : "Previous Activity Player Actor lifecycle exit was superseded by the committed P3K.7E handoff.");
             result = ActivityContentExecutionResult.Success(
                 request,
                 nameof(ActivityPlayerActorLifecycleParticipant),
-                "activity-player-actor-exit-superseded-by-handoff",
+                disposition ==
+                    ActivityPlayerPreviousExitDisposition
+                        .SupersededAwaitingCommit
+                    ? "activity-player-actor-exit-transferred-to-route-handoff"
+                    : "activity-player-actor-exit-superseded-by-handoff",
                 lastSnapshot.ToDiagnosticString());
             return true;
         }

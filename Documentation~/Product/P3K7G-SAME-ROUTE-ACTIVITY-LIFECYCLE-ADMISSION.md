@@ -1,6 +1,6 @@
 # P3K.7G — Same-Route Activity Lifecycle Admission Integration
 
-Status: **implementation delta ready for Unity compile and QA**  
+Status: **closed — Unity compile and QA PASS (40 cases)**  
 Type: **runtime integration + lifecycle transaction + technical QA**
 
 ## Objective

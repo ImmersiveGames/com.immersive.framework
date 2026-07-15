@@ -9,7 +9,7 @@ using Immersive.Framework.RuntimeContent;
 namespace Immersive.Framework.PlayerParticipation
 {
     /// <summary>
-    /// Session-scoped authority for one same-Route GameplayReady Activity switch.
+    /// Session-scoped authority for GameplayReady Activity-owner handoff across same-Route and Route Startup flows.
     /// It stages the target owner and reaches P3K.7E ReadyToCommit before transition
     /// presentation, commits only after target scene preparation, and supplies exact
     /// adoption evidence to the P3J.6 lifecycle participant.
@@ -35,6 +35,9 @@ namespace Immersive.Framework.PlayerParticipation
 
         private sealed class TransactionRecord
         {
+            internal ActivityPlayerLifecycleAdmissionFlowKind FlowKind;
+            internal RouteAsset PreviousRoute;
+            internal RouteAsset TargetRoute;
             internal ActivityAsset PreviousActivity;
             internal ActivityAsset TargetActivity;
             internal RuntimeContentOwner PreviousOwner;
@@ -49,6 +52,7 @@ namespace Immersive.Framework.PlayerParticipation
             internal List<SlotRecord> Slots;
             internal bool TransitionAuthorized;
             internal bool PreviousExitAcknowledged;
+            internal ActivityPlayerPreviousExitDisposition PreviousExitDisposition;
             internal bool TargetEnterAdopted;
             internal bool CommitCleanupPending;
             internal string Source;
@@ -89,7 +93,7 @@ namespace Immersive.Framework.PlayerParticipation
                 ActivityPlayerLifecycleAdmissionStatus.None,
                 nameof(ActivityPlayerLifecycleAdmissionRuntimeContext),
                 "runtime-initialization",
-                "No same-Route Activity Player lifecycle admission transaction has executed.");
+                "No Activity Player lifecycle admission transaction has executed.");
         }
 
         internal static bool TryCreate(
@@ -172,7 +176,7 @@ namespace Immersive.Framework.PlayerParticipation
                         Operation,
                         resolvedSource,
                         resolvedReason,
-                        $"Activity '{targetActivity.ActivityName}' does not require GameplayReady; P3K.7G handoff is not required.");
+                        $"Activity '{targetActivity.ActivityName}' does not require GameplayReady; Activity Player handoff is not required.");
                 lastSnapshot = notRequired.CurrentSnapshot;
                 return notRequired;
             }
@@ -185,7 +189,7 @@ namespace Immersive.Framework.PlayerParticipation
                     Operation,
                     resolvedSource,
                     resolvedReason,
-                    "P3K.7G requires a different currently active Activity in the same Route.");
+                    "Same-Route Activity Player admission requires a different currently active Activity.");
             }
 
             RuntimeContentOwner previousOwner =
@@ -253,7 +257,7 @@ namespace Immersive.Framework.PlayerParticipation
                     Operation,
                     resolvedSource,
                     resolvedReason,
-                    "Resolved target requirement changed while preparing P3K.7G admission.");
+                    "Resolved target requirement changed while preparing Activity Player admission.");
             }
 
             if (projectedSlots.Count == 0)
@@ -284,6 +288,8 @@ namespace Immersive.Framework.PlayerParticipation
 
             var record = new TransactionRecord
             {
+                FlowKind = ActivityPlayerLifecycleAdmissionFlowKind
+                    .SameRouteActivitySwitch,
                 PreviousActivity = previousActivity,
                 TargetActivity = targetActivity,
                 PreviousOwner = previousOwner,
@@ -385,6 +391,10 @@ namespace Immersive.Framework.PlayerParticipation
                 participation.ContextId,
                 previousOwner,
                 targetOwner,
+                ActivityPlayerLifecycleAdmissionFlowKind
+                    .SameRouteActivitySwitch,
+                string.Empty,
+                string.Empty,
                 transactionSequence);
             active = record;
 
@@ -489,6 +499,145 @@ namespace Immersive.Framework.PlayerParticipation
                     "No previous transaction."),
                 lastSnapshot,
                 record.Message);
+        }
+
+
+        public ActivityPlayerLifecycleAdmissionResult
+            TryPrepareRouteStartupSwitch(
+                RouteAsset previousRoute,
+                RouteAsset targetRoute,
+                ActivityAsset previousActivity,
+                ActivityAsset targetActivity,
+                string source,
+                string reason)
+        {
+            const string Operation =
+                "PrepareRouteStartupActivityPlayerAdmission";
+            string resolvedSource = source.NormalizeTextOrFallback(
+                nameof(ActivityPlayerLifecycleAdmissionRuntimeContext));
+            string resolvedReason = reason.NormalizeTextOrFallback(
+                "prepare-route-startup-activity-player-admission");
+
+            if (previousRoute == null ||
+                targetRoute == null ||
+                ReferenceEquals(previousRoute, targetRoute))
+            {
+                return Reject(
+                    ActivityPlayerLifecycleAdmissionStatus
+                        .RejectedUnsupportedFlow,
+                    Operation,
+                    resolvedSource,
+                    resolvedReason,
+                    "P3K.7H requires distinct previous and target Routes.");
+            }
+
+            if (!targetRoute.HasStartupActivity ||
+                targetActivity == null ||
+                !ReferenceEquals(
+                    targetRoute.StartupActivity,
+                    targetActivity))
+            {
+                return Reject(
+                    ActivityPlayerLifecycleAdmissionStatus
+                        .RejectedInvalidRequest,
+                    Operation,
+                    resolvedSource,
+                    resolvedReason,
+                    "Target Route must retain the exact target Startup Activity.");
+            }
+
+            RuntimeContentOwner previousRouteOwner =
+                RuntimeContentOwner.Route(
+                    previousRoute.RouteName,
+                    previousRoute.RouteName);
+            RuntimeContentOwner targetRouteOwner =
+                RuntimeContentOwner.Route(
+                    targetRoute.RouteName,
+                    targetRoute.RouteName);
+            if (previousRouteOwner == targetRouteOwner)
+            {
+                return Reject(
+                    ActivityPlayerLifecycleAdmissionStatus
+                        .RejectedInvalidRequest,
+                    Operation,
+                    resolvedSource,
+                    resolvedReason,
+                    "Previous and target Routes resolve to the same RuntimeContent owner.");
+            }
+
+            ActivityPlayerLifecycleAdmissionResult preparation =
+                TryPrepareSameRouteSwitch(
+                    previousActivity,
+                    targetActivity,
+                    resolvedSource,
+                    resolvedReason);
+            if (preparation == null ||
+                preparation.NotRequired ||
+                !preparation.ReadyForTransition ||
+                active == null)
+            {
+                return preparation;
+            }
+
+            if (!ReferenceEquals(
+                    active.PreviousActivity,
+                    previousActivity) ||
+                !ReferenceEquals(
+                    active.TargetActivity,
+                    targetActivity))
+            {
+                return RejectCurrent(
+                    ActivityPlayerLifecycleAdmissionStatus
+                        .RejectedInvalidState,
+                    Operation,
+                    resolvedSource,
+                    resolvedReason,
+                    "Prepared Activity-owner transaction does not match the Route Startup request.");
+            }
+
+            if (active.FlowKind ==
+                    ActivityPlayerLifecycleAdmissionFlowKind
+                        .RouteStartupActivitySwitch &&
+                ((active.PreviousRoute != null &&
+                  !ReferenceEquals(
+                      active.PreviousRoute,
+                      previousRoute)) ||
+                 (active.TargetRoute != null &&
+                  !ReferenceEquals(
+                      active.TargetRoute,
+                      targetRoute))))
+            {
+                return RejectCurrent(
+                    ActivityPlayerLifecycleAdmissionStatus
+                        .RejectedForeignOrStaleTransaction,
+                    Operation,
+                    resolvedSource,
+                    resolvedReason,
+                    "Prepared Route Startup transaction belongs to different Route assets.");
+            }
+
+            active.FlowKind =
+                ActivityPlayerLifecycleAdmissionFlowKind
+                    .RouteStartupActivitySwitch;
+            active.PreviousRoute = previousRoute;
+            active.TargetRoute = targetRoute;
+            active.Token = new ActivityPlayerLifecycleAdmissionToken(
+                active.Token.SessionContextId,
+                active.PreviousOwner,
+                active.TargetOwner,
+                active.FlowKind,
+                previousRoute.RouteName,
+                targetRoute.RouteName,
+                active.Token.Sequence);
+            active.Message =
+                "Target Route Startup Activity Player handoff group is ReadyToCommit before Route transition presentation.";
+            lastSnapshot = Snapshot(active);
+            return Result(
+                preparation.Status,
+                Operation,
+                preparation.PreviousSnapshot,
+                lastSnapshot,
+                active.Message);
         }
 
         public ActivityPlayerLifecycleAdmissionResult TryAuthorizeTransition(
@@ -825,39 +974,65 @@ namespace Immersive.Framework.PlayerParticipation
             return completed ?? lastSnapshot;
         }
 
-        public bool TryHandleCommittedPreviousExit(
+        public bool TryHandleSupersededPreviousExit(
             ActivityContentExecutionRequest request,
             out bool handled,
+            out ActivityPlayerPreviousExitDisposition disposition,
             out string issue)
         {
             handled = false;
+            disposition = ActivityPlayerPreviousExitDisposition.None;
             issue = string.Empty;
-            if (active == null ||
-                active.State is not (
-                    ActivityPlayerLifecycleAdmissionState
-                        .CommittedAwaitingLifecycle or
-                    ActivityPlayerLifecycleAdmissionState
-                        .CommitCleanupPending))
+            if (active == null)
             {
                 return true;
             }
 
+            bool routeStartupAwaitingCommit =
+                active.FlowKind ==
+                    ActivityPlayerLifecycleAdmissionFlowKind
+                        .RouteStartupActivitySwitch &&
+                active.State ==
+                    ActivityPlayerLifecycleAdmissionState
+                        .TransitionAuthorized;
+            bool committed = active.State is
+                ActivityPlayerLifecycleAdmissionState
+                    .CommittedAwaitingLifecycle or
+                ActivityPlayerLifecycleAdmissionState
+                    .CommitCleanupPending;
+            if (!routeStartupAwaitingCommit && !committed)
+            {
+                return true;
+            }
+
+            bool nextActivityMatches = active.FlowKind ==
+                    ActivityPlayerLifecycleAdmissionFlowKind
+                        .RouteStartupActivitySwitch
+                ? request.NextActivity == null
+                : ReferenceEquals(
+                    request.NextActivity,
+                    active.TargetActivity);
             if (request.Phase !=
                     ActivityContentExecutionPhase.Exit ||
                 !ReferenceEquals(
                     request.Activity,
                     active.PreviousActivity) ||
-                !ReferenceEquals(
-                    request.NextActivity,
-                    active.TargetActivity) ||
+                !nextActivityMatches ||
                 request.Owner != active.PreviousOwner)
             {
                 return true;
             }
 
             active.PreviousExitAcknowledged = true;
-            active.Message =
-                "Previous Activity lifecycle exit acknowledged after P3K.7E commit; previous Player Actors were already released by the handoff.";
+            disposition = routeStartupAwaitingCommit
+                ? ActivityPlayerPreviousExitDisposition
+                    .SupersededAwaitingCommit
+                : ActivityPlayerPreviousExitDisposition
+                    .SupersededByCommittedHandoff;
+            active.PreviousExitDisposition = disposition;
+            active.Message = routeStartupAwaitingCommit
+                ? "Previous Activity lifecycle exit transferred Player ownership to the reversible Route Startup handoff; physical previous Actors remain retained until commit."
+                : "Previous Activity lifecycle exit acknowledged after P3K.7E commit; previous Player Actors were already released by the handoff.";
             handled = true;
             lastSnapshot = Snapshot(active);
             TryCompleteLifecycle(active);
@@ -887,14 +1062,19 @@ namespace Immersive.Framework.PlayerParticipation
                 return false;
             }
 
+            bool previousActivityMatches = active.FlowKind ==
+                    ActivityPlayerLifecycleAdmissionFlowKind
+                        .RouteStartupActivitySwitch
+                ? request.PreviousActivity == null
+                : ReferenceEquals(
+                    request.PreviousActivity,
+                    active.PreviousActivity);
             if (request.Phase !=
                     ActivityContentExecutionPhase.Enter ||
                 !ReferenceEquals(
                     request.Activity,
                     active.TargetActivity) ||
-                !ReferenceEquals(
-                    request.PreviousActivity,
-                    active.PreviousActivity) ||
+                !previousActivityMatches ||
                 request.Owner != active.TargetOwner)
             {
                 issue =
@@ -1272,7 +1452,11 @@ namespace Immersive.Framework.PlayerParticipation
                     .SucceededLifecycleCompleted;
             record.Message = record.CommitCleanupPending
                 ? "Target Activity lifecycle adopted all Players; previous Actor cleanup remains pending."
-                : "Same-Route GameplayReady Activity Player lifecycle admission completed.";
+                : record.FlowKind ==
+                    ActivityPlayerLifecycleAdmissionFlowKind
+                        .RouteStartupActivitySwitch
+                    ? "Route Startup GameplayReady Activity Player lifecycle admission completed."
+                    : "Same-Route GameplayReady Activity Player lifecycle admission completed.";
             ActivityPlayerLifecycleAdmissionSnapshot snapshot =
                 Snapshot(record);
             lastSnapshot = snapshot;
@@ -1403,6 +1587,13 @@ namespace Immersive.Framework.PlayerParticipation
                 record.Token,
                 record.State,
                 record.LastStatus,
+                record.FlowKind,
+                record.PreviousRoute != null
+                    ? record.PreviousRoute.RouteName
+                    : string.Empty,
+                record.TargetRoute != null
+                    ? record.TargetRoute.RouteName
+                    : string.Empty,
                 record.PreviousActivity != null
                     ? record.PreviousActivity.ActivityName
                     : string.Empty,
@@ -1416,6 +1607,7 @@ namespace Immersive.Framework.PlayerParticipation
                 slots,
                 record.TransitionAuthorized,
                 record.PreviousExitAcknowledged,
+                record.PreviousExitDisposition,
                 record.TargetEnterAdopted,
                 record.CommitCleanupPending,
                 record.Source,
