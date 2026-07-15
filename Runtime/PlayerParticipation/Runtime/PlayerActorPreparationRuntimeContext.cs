@@ -16,7 +16,7 @@ namespace Immersive.Framework.PlayerParticipation
     [FrameworkApiStatus(
         FrameworkApiStatus.Internal,
         "P3J.4 Session Logical Player Actor preparation authority.")]
-    internal sealed class PlayerActorPreparationRuntimeContext
+    internal sealed partial class PlayerActorPreparationRuntimeContext
     {
         private sealed class PreparationRecord
         {

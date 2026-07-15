@@ -29,12 +29,17 @@ namespace Immersive.Framework.PlayerParticipation
             LastOperationMessage = lastOperationMessage ?? string.Empty;
 
             int stagedInactiveCount = 0;
+            int promotingCount = 0;
             int rollbackFailedCount = 0;
             for (int index = 0; index < this.candidates.Length; index++)
             {
                 if (this.candidates[index]?.IsStagedInactive == true)
                 {
                     stagedInactiveCount++;
+                }
+                else if (this.candidates[index]?.IsPromoting == true)
+                {
+                    promotingCount++;
                 }
                 else if (this.candidates[index]?.IsRollbackFailed == true)
                 {
@@ -43,6 +48,7 @@ namespace Immersive.Framework.PlayerParticipation
             }
 
             StagedInactiveCount = stagedInactiveCount;
+            PromotingCount = promotingCount;
             RollbackFailedCount = rollbackFailedCount;
         }
 
@@ -52,6 +58,7 @@ namespace Immersive.Framework.PlayerParticipation
         public IReadOnlyList<PlayerActorCandidateStageSnapshot> Candidates => candidates;
         public int CandidateCount => candidates.Length;
         public int StagedInactiveCount { get; }
+        public int PromotingCount { get; }
         public int RollbackFailedCount { get; }
         public PlayerActorCandidateStageStatus LastOperationStatus { get; }
         public string LastOperationMessage { get; }

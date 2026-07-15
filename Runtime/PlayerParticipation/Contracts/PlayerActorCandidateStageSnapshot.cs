@@ -52,8 +52,14 @@ namespace Immersive.Framework.PlayerParticipation
             Token.IsValid &&
             Materialization.IsStaged;
 
+        public bool IsPromoting =>
+            State == PlayerActorCandidateStageState.Promoting;
+
         public bool IsRollbackFailed =>
             State == PlayerActorCandidateStageState.RollbackFailed;
+
+        public bool IsPromoted =>
+            State == PlayerActorCandidateStageState.Promoted;
 
         public bool IsRolledBack =>
             State == PlayerActorCandidateStageState.RolledBack;

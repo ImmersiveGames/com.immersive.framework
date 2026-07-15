@@ -1,6 +1,6 @@
 # P3K.7C — Concurrent Target Activity Player Actor Staging
 
-Status: **implementation delta ready for Unity compile and QA**  
+Status: **closed — Unity compile and QA PASS (43 cases)**  
 Type: **runtime authority + physical coexistence boundary + architecture correction**
 
 ## Objective
@@ -140,25 +140,17 @@ ActorProfile Logical Actor Host prefab
 PlayerGameplayBindingAuthoring on the Actor prefab
 ```
 
-## Next cut
+## Follow-up
 
 ```text
 P3K.7D — Player Gameplay Chain Promotion and Handoff
 ```
 
-The next cut must establish a typed promotion transaction:
+P3K.7D consumes the inactive candidate through an exact synchronous cutover. It
+releases the current P3K chain, swaps current P3J preparation, builds the
+candidate chain and restores the previous Actor/chain on any pre-commit failure.
 
-```text
-current gameplay chain retained
--> candidate receives staged gameplay endpoints without becoming winner
--> exact cutover point
--> release current chain/Actor
--> activate/promote candidate
--> rollback to current when cutover fails before irreversibility
-```
-
-Only after promotion/handoff passes QA may the complete transaction be wired
-into ActivityFlow/GameFlow.
+ActivityFlow/GameFlow integration remains deferred until P3K.7D passes QA.
 
 ## QA
 

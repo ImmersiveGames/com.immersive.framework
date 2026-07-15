@@ -17,7 +17,7 @@ namespace Immersive.Framework.PlayerParticipation
     [FrameworkApiStatus(
         FrameworkApiStatus.Internal,
         "P3K.7C host composition for concurrent target Activity Player Actor candidates.")]
-    internal sealed class PlayerActorCandidateRuntimeHostModule : MonoBehaviour
+    internal sealed partial class PlayerActorCandidateRuntimeHostModule : MonoBehaviour
     {
         private FrameworkRuntimeHost runtimeHost;
         private PlayerActorCandidateStageRuntimeContext candidateContext;

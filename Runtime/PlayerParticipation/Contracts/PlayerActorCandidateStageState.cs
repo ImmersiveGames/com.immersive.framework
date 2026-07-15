@@ -9,7 +9,9 @@ namespace Immersive.Framework.PlayerParticipation
     {
         None = 0,
         StagedInactive = 10,
-        RollbackFailed = 20,
-        RolledBack = 30
+        Promoting = 20,
+        RollbackFailed = 30,
+        RolledBack = 40,
+        Promoted = 50
     }
 }

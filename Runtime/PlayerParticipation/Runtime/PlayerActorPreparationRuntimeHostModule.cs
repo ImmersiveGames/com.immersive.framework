@@ -18,7 +18,7 @@ namespace Immersive.Framework.PlayerParticipation
     [FrameworkApiStatus(
         FrameworkApiStatus.Internal,
         "P3J.5/P3J.6 FrameworkRuntimeHost integration for real local Player Actor preparation and Activity lifecycle.")]
-    internal sealed class PlayerActorPreparationRuntimeHostModule : MonoBehaviour
+    internal sealed partial class PlayerActorPreparationRuntimeHostModule : MonoBehaviour
     {
         private readonly Dictionary<PlayerSlotId, LocalPlayerHostAuthoring> joinedHosts =
             new Dictionary<PlayerSlotId, LocalPlayerHostAuthoring>();

@@ -22,6 +22,7 @@ namespace Immersive.Framework.PlayerParticipation
         RejectedTargetOwnerMatchesCurrent = 160,
         RejectedAnotherCandidateActive = 170,
         RejectedForeignOrStaleCandidate = 180,
+        RejectedPromotionInProgress = 190,
 
         FailedMaterialization = 200,
         FailedRollback = 210

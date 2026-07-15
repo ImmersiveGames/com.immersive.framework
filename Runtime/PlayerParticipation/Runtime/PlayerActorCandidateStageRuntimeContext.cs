@@ -18,7 +18,7 @@ namespace Immersive.Framework.PlayerParticipation
     [FrameworkApiStatus(
         FrameworkApiStatus.Internal,
         "P3K.7C concurrent target Activity Logical Player Actor candidate staging authority.")]
-    internal sealed class PlayerActorCandidateStageRuntimeContext
+    internal sealed partial class PlayerActorCandidateStageRuntimeContext
     {
         private sealed class CandidateRecord
         {
@@ -388,6 +388,15 @@ namespace Immersive.Framework.PlayerParticipation
                     Operation,
                     record.Snapshot,
                     "Candidate token is foreign or stale for the current staged candidate.");
+            }
+
+            if (record.Snapshot.IsPromoting)
+            {
+                return Reject(
+                    PlayerActorCandidateStageStatus.RejectedPromotionInProgress,
+                    Operation,
+                    record.Snapshot,
+                    "Candidate rollback is blocked while an exact gameplay handoff promotion owns the candidate.");
             }
 
             PlayerActorCandidateStageSnapshot previous = record.Snapshot;
