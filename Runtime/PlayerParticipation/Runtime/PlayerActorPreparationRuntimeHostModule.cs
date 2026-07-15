@@ -140,6 +140,22 @@ namespace Immersive.Framework.PlayerParticipation
                 targetParticipationContext);
             targetRuntimeHost.SetActivityContentExecutionParticipantSource(
                 activityLifecycleParticipant);
+            if (!PlayerGameplayRuntimeHostModule.TryAttach(
+                    targetRuntimeHost,
+                    out _,
+                    out string gameplayIssue))
+            {
+                targetRuntimeHost.SetActivityContentExecutionParticipantSource(null);
+                activityLifecycleParticipant = null;
+                preparationContext = null;
+                participationContext = null;
+                runtimeHost = null;
+                diagnostic =
+                    "Player Actor preparation could not compose the official Player gameplay runtime. " +
+                    gameplayIssue;
+                issue = diagnostic;
+                return false;
+            }
             diagnostic =
                 $"Player Actor preparation runtime is ready. session='{participationSnapshot.ContextId}'.";
             return true;

@@ -80,6 +80,21 @@ namespace Immersive.Framework.PlayerParticipation
             return true;
         }
 
+
+        internal ActivityPlayerHandoffGroupSnapshot CreateSnapshot()
+        {
+            if (active != null)
+            {
+                return Snapshot(active);
+            }
+
+            return committed ??
+                ActivityPlayerHandoffGroupSnapshot.Empty(
+                    nameof(ActivityPlayerHandoffGroupRuntimeContext),
+                    "snapshot",
+                    "No active or committed Activity Player handoff group exists.");
+        }
+
         internal ActivityPlayerHandoffGroupResult TryBegin(
             ActivityAsset activity,
             RuntimeContentOwner targetOwner,

@@ -34,7 +34,7 @@ namespace Immersive.Framework.ApplicationLifecycle
     /// It owns the Game Flow instance for this boot, but does not expose a global service locator.
     /// </summary>
     [FrameworkApiStatus(FrameworkApiStatus.Internal, "Runtime implementation detail; not game-facing API.")]
-    internal sealed class FrameworkRuntimeHost : MonoBehaviour
+    internal sealed partial class FrameworkRuntimeHost : MonoBehaviour
     {
         private const string RuntimeHostName = "Immersive Framework Runtime";
         private const string PauseTransitionInProgressIssueCode = "pause.transition-in-progress";
@@ -343,6 +343,7 @@ namespace Immersive.Framework.ApplicationLifecycle
             _cameraOutputSessionInjectionRuntime = new CameraOutputSessionInjectionRuntime(
                 cameraOutputSession,
                 sessionCameraOverride);
+            SetPlayerGameplayCameraOutputSession(cameraOutputSession);
 
             _loadingSurfaceRuntime = CreateLoadingSurfaceRuntime(_globalUiSceneRuntime);
             _pauseSurfaceRuntime = CreatePauseSurfaceRuntime(_globalUiSceneRuntime);

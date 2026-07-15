@@ -1045,6 +1045,112 @@ namespace Immersive.Framework.PlayerParticipation
             return true;
         }
 
+
+        internal bool TryEnsureCurrentGameplayChain(
+            PlayerActorPreparationSummary preparation,
+            string source,
+            string reason,
+            out PlayerGameplayAdmissionSummary admission,
+            out bool rollbackAttempted,
+            out bool rollbackSucceeded,
+            out string rollbackMessage,
+            out string issue)
+        {
+            admission = default;
+            rollbackAttempted = false;
+            rollbackSucceeded = false;
+            rollbackMessage = string.Empty;
+            issue = string.Empty;
+
+            if (!preparation.IsValid ||
+                !preparation.IsPrepared ||
+                !preparation.PlayerSlotId.IsValid ||
+                !string.Equals(
+                    preparation.SessionContextId,
+                    sessionContextId,
+                    StringComparison.Ordinal))
+            {
+                issue =
+                    "Current gameplay chain creation requires exact prepared P3J evidence from this Session.";
+                return false;
+            }
+
+            if (active.ContainsKey(preparation.PlayerSlotId))
+            {
+                issue =
+                    "Current gameplay chain cannot be ensured while the Player Slot has an active handoff.";
+                return false;
+            }
+
+            var chain = new ChainEvidence();
+            if (TryBuildChain(preparation, chain, source, reason, out issue))
+            {
+                admission = chain.Admission;
+                rollbackSucceeded = true;
+                return true;
+            }
+
+            string buildIssue = issue;
+            rollbackAttempted =
+                chain.AdmissionCreated ||
+                chain.CameraCreated ||
+                chain.InputCreated ||
+                chain.OccupancyCreated;
+            if (!rollbackAttempted)
+            {
+                rollbackSucceeded = true;
+                rollbackMessage = string.Empty;
+                issue = buildIssue;
+                return false;
+            }
+
+            rollbackSucceeded = TryReleaseChain(
+                chain,
+                source,
+                "ensure-current-gameplay-chain-rollback",
+                out rollbackMessage);
+            issue = Join(buildIssue, rollbackMessage);
+            return false;
+        }
+
+        internal PlayerGameplayAdmissionResult TryReleaseCurrentGameplayChain(
+            PlayerSlotId playerSlotId,
+            PlayerGameplayAdmissionToken expectedAdmission,
+            string source,
+            string reason)
+        {
+            return admissionContext.TryRelease(
+                playerSlotId,
+                expectedAdmission,
+                source,
+                reason);
+        }
+
+        internal bool TryGetCurrentAdmission(
+            PlayerSlotId playerSlotId,
+            out PlayerGameplayAdmissionSummary admission)
+        {
+            admission = default;
+            PlayerGameplayAdmissionSnapshot snapshot =
+                admissionContext.CreateSnapshot();
+            return snapshot != null &&
+                snapshot.IsInitialized &&
+                snapshot.TryGetSummary(playerSlotId, out admission);
+        }
+
+        internal PlayerGameplayOccupancySnapshot CreateOccupancySnapshot() =>
+            occupancyContext.CreateSnapshot();
+
+        internal PlayerGameplayInputBindingSnapshot CreateInputBindingSnapshot() =>
+            inputContext.CreateSnapshot();
+
+        internal PlayerGameplayCameraEligibilitySnapshot
+            CreateCameraEligibilitySnapshot() =>
+                cameraContext.CreateSnapshot();
+
+        internal PlayerGameplayAdmissionSnapshot CreateAdmissionSnapshot() =>
+            admissionContext.CreateSnapshot();
+
         private bool TryBuildChain(
             PlayerActorPreparationSummary preparation,
             ChainEvidence chain,

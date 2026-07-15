@@ -1,6 +1,6 @@
 # P3K.7E — Multi-Slot Reversible Activity Handoff Group
 
-Status: **implementation delta ready for Unity compile and QA**  
+Status: **closed — Unity compile and QA PASS (45 cases)**  
 Type: **runtime transaction + local multiplayer atomicity + admission integration foundation**
 
 ## Objective
@@ -170,7 +170,7 @@ no GameFlow/ActivityFlow coupling
 ## Next cut
 
 ```text
-P3K.7F — Activity Lifecycle Admission Integration
+P3K.7F — Session Player Gameplay Runtime Composition
 ```
 
 P3K.7F must integrate the validated group before transition presentation and
