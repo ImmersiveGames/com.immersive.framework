@@ -202,7 +202,7 @@ namespace Immersive.Framework.Editor.PlayerAuthoring
                 return;
             }
 
-            PlayerComposerDebugSnapshot snapshot = ((PreAuthoredPlayerComposer)target).CreateDebugSnapshot();
+            PreAuthoredPlayerComposerDebugSnapshot snapshot = ((PreAuthoredPlayerComposer)target).CreateDebugSnapshot();
             using (new EditorGUI.DisabledScope(true))
             {
                 EditorGUILayout.TextField("Actor Id", snapshot.ActorId);

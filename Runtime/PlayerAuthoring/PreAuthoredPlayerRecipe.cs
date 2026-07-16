@@ -32,7 +32,7 @@ namespace Immersive.Framework.PlayerAuthoring
         [SerializeField] private PlayerComposerResetParticipantPolicy resetParticipantPolicy = PlayerComposerResetParticipantPolicy.None;
 
         [Header("Validation")]
-        [SerializeField] private PlayerComposerValidationMode validationMode = PlayerComposerValidationMode.Standard;
+        [SerializeField] private PreAuthoredPlayerComposerValidationMode validationMode = PreAuthoredPlayerComposerValidationMode.Standard;
 
         // Compatibility API for existing QA and serialized data.
         [HideInInspector, SerializeField] private PlayerControlStartupPolicy controlStartupPolicy = PlayerControlStartupPolicy.BindOnEnable;
@@ -51,7 +51,7 @@ namespace Immersive.Framework.PlayerAuthoring
         public bool ResetEnabled => resetEnabled;
         public PlayerComposerResetScope ResetScope => resetScope;
         public PlayerComposerResetParticipantPolicy ResetParticipantPolicy => resetParticipantPolicy;
-        public PlayerComposerValidationMode ValidationMode => validationMode;
+        public PreAuthoredPlayerComposerValidationMode ValidationMode => validationMode;
 
         public string GameplayActionMap => gameplayActionMap.NormalizeText();
         public PlayerControlStartupPolicy ControlStartupPolicy => controlStartupPolicy;

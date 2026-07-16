@@ -20,7 +20,7 @@ namespace Immersive.Framework.PlayerAuthoring
         [SerializeField] private PreAuthoredPlayerRecipe recipe;
         [Tooltip("Stable semantic ActorId. This is not a GameObject name.")]
         [SerializeField] private string actorId = "player.actor";
-        [SerializeField] private PlayerComposerValidationMode validationMode = PlayerComposerValidationMode.Standard;
+        [SerializeField] private PreAuthoredPlayerComposerValidationMode validationMode = PreAuthoredPlayerComposerValidationMode.Standard;
 
         [Header("Input")]
         [SerializeField] private bool controlEnabled = true;
@@ -68,7 +68,7 @@ namespace Immersive.Framework.PlayerAuthoring
 
         public PreAuthoredPlayerRecipe Recipe => recipe;
         public string ActorId => actorId.NormalizeText();
-        public PlayerComposerValidationMode ValidationMode => validationMode;
+        public PreAuthoredPlayerComposerValidationMode ValidationMode => validationMode;
 
         public bool ControlEnabled => controlEnabled;
         public PlayerInput PlayerInput => playerInput;
@@ -180,7 +180,7 @@ namespace Immersive.Framework.PlayerAuthoring
             return true;
         }
 
-        public PlayerComposerDebugSnapshot CreateDebugSnapshot()
+        public PreAuthoredPlayerComposerDebugSnapshot CreateDebugSnapshot()
         {
             string actionMap = GameplayActionMap;
             bool actionMapFound = playerInput != null
@@ -188,7 +188,7 @@ namespace Immersive.Framework.PlayerAuthoring
                 && !string.IsNullOrEmpty(actionMap)
                 && playerInput.actions.FindActionMap(actionMap, false) != null;
 
-            return new PlayerComposerDebugSnapshot(
+            return new PreAuthoredPlayerComposerDebugSnapshot(
                 ActorId,
                 controlEnabled,
                 playerInput != null ? playerInput.name.NormalizeText() : string.Empty,
@@ -290,7 +290,7 @@ namespace Immersive.Framework.PlayerAuthoring
         }
     }
 
-    public enum PlayerComposerValidationMode
+    public enum PreAuthoredPlayerComposerValidationMode
     {
         Standard = 0,
         Strict = 1,
@@ -326,9 +326,9 @@ namespace Immersive.Framework.PlayerAuthoring
         Optional = 1
     }
 
-    public readonly struct PlayerComposerDebugSnapshot
+    public readonly struct PreAuthoredPlayerComposerDebugSnapshot
     {
-        public PlayerComposerDebugSnapshot(
+        public PreAuthoredPlayerComposerDebugSnapshot(
             string actorId,
             bool controlEnabled,
             string playerInputName,

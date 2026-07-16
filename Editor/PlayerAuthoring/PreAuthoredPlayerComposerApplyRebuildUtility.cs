@@ -13,7 +13,7 @@ namespace Immersive.Framework.Editor.PlayerAuthoring
     /// </summary>
     public static class PreAuthoredPlayerComposerApplyRebuildUtility
     {
-        public static PlayerComposerApplyRebuildResult Validate(PreAuthoredPlayerComposer composer, bool logDiagnostics = true)
+        public static PreAuthoredPlayerComposerApplyRebuildResult Validate(PreAuthoredPlayerComposer composer, bool logDiagnostics = true)
         {
             if (composer == null)
             {
@@ -40,10 +40,10 @@ namespace Immersive.Framework.Editor.PlayerAuthoring
                     composer);
             }
 
-            return PlayerComposerApplyRebuildResult.ValidationSucceeded(summary);
+            return PreAuthoredPlayerComposerApplyRebuildResult.ValidationSucceeded(summary);
         }
 
-        public static PlayerComposerApplyRebuildResult ApplyOrRebuild(
+        public static PreAuthoredPlayerComposerApplyRebuildResult ApplyOrRebuild(
             PreAuthoredPlayerComposer composer,
             bool logDiagnostics = true,
             bool useUndo = true)
@@ -56,7 +56,7 @@ namespace Immersive.Framework.Editor.PlayerAuthoring
                     Debug.LogWarning($"[Immersive.Framework][PreAuthoredPlayerComposer] Apply/Rebuild failed. issue='{nullComposerIssue}'");
                 }
 
-                return PlayerComposerApplyRebuildResult.ApplyFailed(nullComposerIssue);
+                return PreAuthoredPlayerComposerApplyRebuildResult.ApplyFailed(nullComposerIssue);
             }
 
             int undoGroup = BeginUndo(useUndo);
@@ -74,10 +74,10 @@ namespace Immersive.Framework.Editor.PlayerAuthoring
                         composer);
                 }
 
-                return PlayerComposerApplyRebuildResult.ApplyFailed(validationIssue);
+                return PreAuthoredPlayerComposerApplyRebuildResult.ApplyFailed(validationIssue);
             }
 
-            var report = new PlayerComposerMaterializationReport();
+            var report = new PreAuthoredPlayerComposerMaterializationReport();
 
             if (composer.ControlEnabled && composer.PlayerInput != null)
             {
@@ -185,7 +185,7 @@ namespace Immersive.Framework.Editor.PlayerAuthoring
                     composer);
             }
 
-            return PlayerComposerApplyRebuildResult.ApplyCompleted(
+            return PreAuthoredPlayerComposerApplyRebuildResult.ApplyCompleted(
                 succeeded,
                 status,
                 issue,
@@ -199,7 +199,7 @@ namespace Immersive.Framework.Editor.PlayerAuthoring
 
         private static void ConfigureGate(
             PreAuthoredPlayerComposer composer,
-            PlayerComposerMaterializationReport report,
+            PreAuthoredPlayerComposerMaterializationReport report,
             bool useUndo)
         {
             Type gateType = ResolveMonoBehaviourType("UnityPlayerInputGateAdapter");
@@ -267,7 +267,7 @@ namespace Immersive.Framework.Editor.PlayerAuthoring
             PreAuthoredPlayerComposer composer,
             PlayerActorDeclaration actorDeclaration,
             Transform technicalRoot,
-            PlayerComposerMaterializationReport report,
+            PreAuthoredPlayerComposerMaterializationReport report,
             bool useUndo)
         {
             Type subjectType = ResolveMonoBehaviourType("UnityResetSubjectAdapter");
@@ -355,7 +355,7 @@ namespace Immersive.Framework.Editor.PlayerAuthoring
 
         private static Transform EnsureTechnicalRoot(
             PreAuthoredPlayerComposer composer,
-            PlayerComposerMaterializationReport report,
+            PreAuthoredPlayerComposerMaterializationReport report,
             bool useUndo)
         {
             Transform assigned = composer.FrameworkBindingsRoot;
@@ -388,7 +388,7 @@ namespace Immersive.Framework.Editor.PlayerAuthoring
             string anchorName,
             Transform assigned,
             bool required,
-            PlayerComposerMaterializationReport report,
+            PreAuthoredPlayerComposerMaterializationReport report,
             bool useUndo)
         {
             if (assigned != null)
@@ -438,7 +438,7 @@ namespace Immersive.Framework.Editor.PlayerAuthoring
 
         private static void RemoveEmptyBindingsContainer(
             PreAuthoredPlayerComposer composer,
-            PlayerComposerMaterializationReport report,
+            PreAuthoredPlayerComposerMaterializationReport report,
             bool useUndo)
         {
             Transform framework = FindDirectChild(composer.transform, "_Framework");
@@ -457,7 +457,7 @@ namespace Immersive.Framework.Editor.PlayerAuthoring
 
         private static void RemoveTransformResetParticipants(
             Transform technicalRoot,
-            PlayerComposerMaterializationReport report,
+            PreAuthoredPlayerComposerMaterializationReport report,
             bool useUndo)
         {
             if (technicalRoot == null)
@@ -480,7 +480,7 @@ namespace Immersive.Framework.Editor.PlayerAuthoring
 
         private static T EnsureComponent<T>(
             GameObject owner,
-            PlayerComposerMaterializationReport report,
+            PreAuthoredPlayerComposerMaterializationReport report,
             bool useUndo,
             Func<T, bool> configure)
             where T : Component
@@ -662,7 +662,7 @@ namespace Immersive.Framework.Editor.PlayerAuthoring
             return false;
         }
 
-        private static PlayerComposerApplyRebuildResult FailValidation(
+        private static PreAuthoredPlayerComposerApplyRebuildResult FailValidation(
             string issue,
             bool logDiagnostics,
             PreAuthoredPlayerComposer composer)
@@ -674,7 +674,7 @@ namespace Immersive.Framework.Editor.PlayerAuthoring
                     composer);
             }
 
-            return PlayerComposerApplyRebuildResult.ValidationFailed(issue);
+            return PreAuthoredPlayerComposerApplyRebuildResult.ValidationFailed(issue);
         }
 
         private static int BeginUndo(bool useUndo)
@@ -696,7 +696,7 @@ namespace Immersive.Framework.Editor.PlayerAuthoring
             }
         }
 
-        private sealed class PlayerComposerMaterializationReport
+        private sealed class PreAuthoredPlayerComposerMaterializationReport
         {
             private readonly List<string> _entries = new();
 
@@ -741,9 +741,9 @@ namespace Immersive.Framework.Editor.PlayerAuthoring
         }
     }
 
-    public readonly struct PlayerComposerApplyRebuildResult
+    public readonly struct PreAuthoredPlayerComposerApplyRebuildResult
     {
-        private PlayerComposerApplyRebuildResult(
+        private PreAuthoredPlayerComposerApplyRebuildResult(
             bool succeeded,
             string status,
             string issue,
@@ -776,16 +776,16 @@ namespace Immersive.Framework.Editor.PlayerAuthoring
         public int SkippedByPolicyCount { get; }
         public int BlockedCount { get; }
 
-        public static PlayerComposerApplyRebuildResult ValidationSucceeded(string summary) =>
+        public static PreAuthoredPlayerComposerApplyRebuildResult ValidationSucceeded(string summary) =>
             new(true, "ValidationSucceeded", string.Empty, summary, 0, 0, 0, 0, 0);
 
-        public static PlayerComposerApplyRebuildResult ValidationFailed(string issue) =>
+        public static PreAuthoredPlayerComposerApplyRebuildResult ValidationFailed(string issue) =>
             new(false, "ValidationFailed", issue, string.Empty, 0, 0, 0, 0, 1);
 
-        public static PlayerComposerApplyRebuildResult ApplyFailed(string issue) =>
+        public static PreAuthoredPlayerComposerApplyRebuildResult ApplyFailed(string issue) =>
             new(false, "ApplyFailed", issue, string.Empty, 0, 0, 0, 0, 1);
 
-        public static PlayerComposerApplyRebuildResult ApplyCompleted(
+        public static PreAuthoredPlayerComposerApplyRebuildResult ApplyCompleted(
             bool succeeded,
             string status,
             string issue,
