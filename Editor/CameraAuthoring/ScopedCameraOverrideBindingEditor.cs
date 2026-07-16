@@ -7,8 +7,8 @@ namespace Immersive.Framework.Editor.CameraAuthoring
     [CustomEditor(typeof(ScopedCameraOverrideBinding), true)]
     public sealed class ScopedCameraOverrideBindingEditor : UnityEditor.Editor
     {
-        private bool showAdvanced;
-        private bool showDebug = true;
+        private bool _showAdvanced;
+        private bool _showDebug = true;
 
         public override void OnInspectorGUI()
         {
@@ -29,15 +29,15 @@ namespace Immersive.Framework.Editor.CameraAuthoring
             EditorGUILayout.PropertyField(serializedObject.FindProperty("precedence"));
             EditorGUILayout.PropertyField(serializedObject.FindProperty("tieBreakerId"));
 
-            showAdvanced = EditorGUILayout.Foldout(showAdvanced, "Advanced", true);
-            if (showAdvanced)
+            _showAdvanced = EditorGUILayout.Foldout(_showAdvanced, "Advanced", true);
+            if (_showAdvanced)
             {
                 EditorGUILayout.PropertyField(serializedObject.FindProperty("outputSession"));
                 EditorGUILayout.PropertyField(serializedObject.FindProperty("logDiagnostics"));
             }
 
-            showDebug = EditorGUILayout.Foldout(showDebug, "Debug", true);
-            if (showDebug)
+            _showDebug = EditorGUILayout.Foldout(_showDebug, "Debug", true);
+            if (_showDebug)
             {
                 EditorGUILayout.PropertyField(serializedObject.FindProperty("overrideActive"));
                 EditorGUILayout.PropertyField(serializedObject.FindProperty("ownerActive"));

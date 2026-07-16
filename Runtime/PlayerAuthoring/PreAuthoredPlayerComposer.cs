@@ -12,12 +12,12 @@ namespace Immersive.Framework.PlayerAuthoring
     /// </summary>
     [DisallowMultipleComponent]
     [RequireComponent(typeof(PlayerInput))]
-    [AddComponentMenu("Immersive Framework/Player/Player Composer")]
+    [AddComponentMenu("Immersive Framework/Player/PreAuthored Player Composer")]
     [FrameworkApiStatus(FrameworkApiStatus.Experimental, "Product surface for player authoring and minimal technical materialization.")]
-    public sealed class PlayerComposer : MonoBehaviour
+    public sealed class PreAuthoredPlayerComposer : MonoBehaviour
     {
         [Header("Designer")]
-        [SerializeField] private PlayerRecipe recipe;
+        [SerializeField] private PreAuthoredPlayerRecipe recipe;
         [Tooltip("Stable semantic ActorId. This is not a GameObject name.")]
         [SerializeField] private string actorId = "player.actor";
         [SerializeField] private PlayerComposerValidationMode validationMode = PlayerComposerValidationMode.Standard;
@@ -66,7 +66,7 @@ namespace Immersive.Framework.PlayerAuthoring
         [TextArea(3, 12)]
         [SerializeField] private string lastMaterializationSummary;
 
-        public PlayerRecipe Recipe => recipe;
+        public PreAuthoredPlayerRecipe Recipe => recipe;
         public string ActorId => actorId.NormalizeText();
         public PlayerComposerValidationMode ValidationMode => validationMode;
 
@@ -87,7 +87,7 @@ namespace Immersive.Framework.PlayerAuthoring
         public string GameplayActionMap => gameplayActionMap.NormalizeText();
 
         /// <summary>
-        /// Compatibility property. Gameplay motors remain game-owned and are not materialized by PlayerComposer.
+        /// Compatibility property. Gameplay motors remain game-owned and are not materialized by PreAuthoredPlayerComposer.
         /// </summary>
         public Transform ControlTarget => controlTarget;
 
@@ -124,19 +124,19 @@ namespace Immersive.Framework.PlayerAuthoring
 
             if (string.IsNullOrWhiteSpace(ActorId))
             {
-                issue = "PlayerComposer requires a non-empty ActorId.";
+                issue = "PreAuthoredPlayerComposer requires a non-empty ActorId.";
                 return false;
             }
 
             if (playerInput == null)
             {
-                issue = "PlayerComposer requires an assigned PlayerInput component.";
+                issue = "PreAuthoredPlayerComposer requires an assigned PlayerInput component.";
                 return false;
             }
 
             if (controlEnabled && inputBindingRequired && playerInput != null && playerInput.actions == null)
             {
-                issue = "PlayerComposer requires an InputActionAsset when control is enabled and required.";
+                issue = "PreAuthoredPlayerComposer requires an InputActionAsset when control is enabled and required.";
                 return false;
             }
 
@@ -145,20 +145,20 @@ namespace Immersive.Framework.PlayerAuthoring
                 string authoredMap = GameplayActionMap;
                 if (string.IsNullOrEmpty(authoredMap))
                 {
-                    issue = "PlayerComposer requires an authored Default Action Map when control is enabled and required.";
+                    issue = "PreAuthoredPlayerComposer requires an authored Default Action Map when control is enabled and required.";
                     return false;
                 }
 
                 if (playerInput.actions.FindActionMap(authoredMap, false) == null)
                 {
-                    issue = $"PlayerComposer could not find authored Default Action Map '{authoredMap}' in the assigned InputActionAsset.";
+                    issue = $"PreAuthoredPlayerComposer could not find authored Default Action Map '{authoredMap}' in the assigned InputActionAsset.";
                     return false;
                 }
             }
 
             if (cameraBindingRequired && cameraTarget == null && !createAnchorsIfMissing)
             {
-                issue = "PlayerComposer requires an explicit Camera Target when camera binding is required and automatic anchor creation is disabled.";
+                issue = "PreAuthoredPlayerComposer requires an explicit Camera Target when camera binding is required and automatic anchor creation is disabled.";
                 return false;
             }
 
@@ -167,13 +167,13 @@ namespace Immersive.Framework.PlayerAuthoring
                 && lookAtTarget == null
                 && !createAnchorsIfMissing)
             {
-                issue = "PlayerComposer requires an explicit Look At Target when Look At Policy is Explicit Target and automatic anchor creation is disabled.";
+                issue = "PreAuthoredPlayerComposer requires an explicit Look At Target when Look At Policy is Explicit Target and automatic anchor creation is disabled.";
                 return false;
             }
 
             if (!System.Enum.IsDefined(typeof(PlayerComposerResetScope), resetScope))
             {
-                issue = "PlayerComposer Reset Scope is invalid.";
+                issue = "PreAuthoredPlayerComposer Reset Scope is invalid.";
                 return false;
             }
 
@@ -213,7 +213,7 @@ namespace Immersive.Framework.PlayerAuthoring
             issue = string.Empty;
             if (recipe == null)
             {
-                issue = "PlayerComposer requires a PlayerRecipe before recipe defaults can be applied.";
+                issue = "PreAuthoredPlayerComposer requires a PreAuthoredPlayerRecipe before recipe defaults can be applied.";
                 return false;
             }
 

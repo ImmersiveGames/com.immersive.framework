@@ -14,7 +14,7 @@ namespace Immersive.Framework.PlayerParticipation
     /// stable Local Player Host PlayerInput. It validates the generated Actor identity,
     /// activates one configured gameplay action map and derives availability from the
     /// existing UnityPlayerInputGateAdapter. It does not read actions, move gameplay
-    /// objects, publish camera requests or execute PlayerComposer.
+    /// objects, publish camera requests or execute PreAuthoredPlayerComposer.
     /// </summary>
     [FrameworkApiStatus(
         FrameworkApiStatus.Internal,

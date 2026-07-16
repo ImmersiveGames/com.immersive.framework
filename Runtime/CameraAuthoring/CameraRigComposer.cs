@@ -23,7 +23,7 @@ namespace Immersive.Framework.CameraAuthoring
         [SerializeField] private CameraRigRecipe recipe;
         [SerializeField] private CameraRigPresentationIntent presentationIntent = CameraRigPresentationIntent.Follow;
         [SerializeField] private CameraTargetSourceKind targetSourceKind = CameraTargetSourceKind.PlayerComposer;
-        [SerializeField] private PlayerComposer playerComposer;
+        [SerializeField] private PreAuthoredPlayerComposer preAuthoredPlayerComposer;
         [SerializeField] private Transform explicitFollowTarget;
         [SerializeField] private Transform explicitLookAtTarget;
         [SerializeField] private CameraTargetRequirement followRequirement = CameraTargetRequirement.Required;
@@ -47,7 +47,7 @@ namespace Immersive.Framework.CameraAuthoring
         public CameraRigRecipe Recipe => recipe;
         public CameraRigPresentationIntent PresentationIntent => presentationIntent;
         public CameraTargetSourceKind TargetSourceKind => targetSourceKind;
-        public PlayerComposer PlayerComposer => playerComposer;
+        public PreAuthoredPlayerComposer PreAuthoredPlayerComposer => preAuthoredPlayerComposer;
         public Transform ExplicitFollowTarget => explicitFollowTarget;
         public Transform ExplicitLookAtTarget => explicitLookAtTarget;
         public CameraTargetRequirement FollowRequirement => followRequirement;
@@ -80,15 +80,15 @@ namespace Immersive.Framework.CameraAuthoring
                 targetSourceKind != CameraTargetSourceKind.ExplicitTransform)
             {
                 issue =
-                    $"CameraRigComposer supports only PlayerComposer or ExplicitTransform target sources. Current source: '{targetSourceKind}'.";
+                    $"CameraRigComposer supports only PreAuthoredPlayerComposer or ExplicitTransform target sources. Current source: '{targetSourceKind}'.";
                 return false;
             }
 
             if (targetSourceKind == CameraTargetSourceKind.PlayerComposer &&
-                playerComposer == null)
+                preAuthoredPlayerComposer == null)
             {
                 issue =
-                    "CameraRigComposer requires an explicit PlayerComposer target source.";
+                    "CameraRigComposer requires an explicit PreAuthoredPlayerComposer target source.";
                 return false;
             }
 
@@ -111,22 +111,22 @@ namespace Immersive.Framework.CameraAuthoring
             switch (targetSourceKind)
             {
                 case CameraTargetSourceKind.PlayerComposer:
-                    if (playerComposer == null)
+                    if (preAuthoredPlayerComposer == null)
                     {
                         return CameraTargetResolveResult.Blocked(
                             source,
-                            "PlayerComposer target source is missing.",
-                            "Camera rig target resolution was blocked because PlayerComposer is not assigned.",
+                            "PreAuthoredPlayerComposer target source is missing.",
+                            "Camera rig target resolution was blocked because PreAuthoredPlayerComposer is not assigned.",
                             CameraIssue.Blocking(
                                 "camera.target-source.player-composer.missing",
-                                "PlayerComposer target source is missing."));
+                                "PreAuthoredPlayerComposer target source is missing."));
                     }
 
                     targets = CameraResolvedTargets.FromFollowAndLookAt(
-                        playerComposer.CameraTarget,
+                        preAuthoredPlayerComposer.CameraTarget,
                         requestedLookAtRequirement == CameraTargetRequirement.NotUsed
                             ? null
-                            : playerComposer.LookAtTarget);
+                            : preAuthoredPlayerComposer.LookAtTarget);
                     break;
 
                 case CameraTargetSourceKind.ExplicitTransform:
@@ -183,11 +183,11 @@ namespace Immersive.Framework.CameraAuthoring
             return targetSourceKind == CameraTargetSourceKind.PlayerComposer
                 ? new CameraTargetSourceDescriptor(
                     CameraTargetSourceKind.PlayerComposer,
-                    playerComposer,
-                    playerComposer != null ? playerComposer.ActorId : string.Empty,
-                    playerComposer != null
-                        ? $"PlayerComposer:{playerComposer.ActorId}"
-                        : "PlayerComposer:missing")
+                    preAuthoredPlayerComposer,
+                    preAuthoredPlayerComposer != null ? preAuthoredPlayerComposer.ActorId : string.Empty,
+                    preAuthoredPlayerComposer != null
+                        ? $"PreAuthoredPlayerComposer:{preAuthoredPlayerComposer.ActorId}"
+                        : "PreAuthoredPlayerComposer:missing")
                 : CameraTargetSourceDescriptor.ExplicitTransform(
                     explicitFollowTarget,
                     explicitFollowTarget != null

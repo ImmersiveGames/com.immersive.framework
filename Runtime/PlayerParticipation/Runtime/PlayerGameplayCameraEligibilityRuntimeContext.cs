@@ -1031,13 +1031,13 @@ namespace Immersive.Framework.PlayerParticipation
 
             if (rig.TargetSourceKind !=
                     CameraTargetSourceKind.ExplicitTransform ||
-                rig.PlayerComposer != null)
+                rig.PreAuthoredPlayerComposer != null)
             {
                 rejectedStatus =
                     PlayerGameplayCameraEligibilityStatus
                         .RejectedRigUsesPlayerComposer;
                 issue =
-                    "Prepared Player camera rig must use ExplicitTransform and must not reference PlayerComposer.";
+                    "Prepared Player camera rig must use ExplicitTransform and must not reference PreAuthoredPlayerComposer.";
                 return false;
             }
 

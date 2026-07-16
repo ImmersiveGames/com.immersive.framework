@@ -8,16 +8,16 @@ using UnityEngine;
 namespace Immersive.Framework.Editor.PlayerAuthoring
 {
     /// <summary>
-    /// Canonical editor-only Apply/Rebuild entry point for PlayerComposer.
+    /// Canonical editor-only Apply/Rebuild entry point for PreAuthoredPlayerComposer.
     /// P3A materializes only concrete runtime owners/adapters and removes obsolete passive binding components.
     /// </summary>
-    public static class PlayerComposerApplyRebuildUtility
+    public static class PreAuthoredPlayerComposerApplyRebuildUtility
     {
-        public static PlayerComposerApplyRebuildResult Validate(PlayerComposer composer, bool logDiagnostics = true)
+        public static PlayerComposerApplyRebuildResult Validate(PreAuthoredPlayerComposer composer, bool logDiagnostics = true)
         {
             if (composer == null)
             {
-                return FailValidation("PlayerComposer validation requires a target composer.", logDiagnostics, null);
+                return FailValidation("PreAuthoredPlayerComposer validation requires a target composer.", logDiagnostics, null);
             }
 
             if (!composer.TryValidateForApply(out string issue))
@@ -34,7 +34,7 @@ namespace Immersive.Framework.Editor.PlayerAuthoring
             if (logDiagnostics)
             {
                 Debug.Log(
-                    $"[Immersive.Framework][PlayerComposer] Validation succeeded. player='{composer.name}' " +
+                    $"[Immersive.Framework][PreAuthoredPlayerComposer] Validation succeeded. player='{composer.name}' " +
                     $"actorId='{composer.ActorId}' " +
                     $"authoredDefaultActionMap='{composer.GameplayActionMap}'.",
                     composer);
@@ -44,16 +44,16 @@ namespace Immersive.Framework.Editor.PlayerAuthoring
         }
 
         public static PlayerComposerApplyRebuildResult ApplyOrRebuild(
-            PlayerComposer composer,
+            PreAuthoredPlayerComposer composer,
             bool logDiagnostics = true,
             bool useUndo = true)
         {
             if (composer == null)
             {
-                const string nullComposerIssue = "PlayerComposer Apply/Rebuild requires a target composer.";
+                const string nullComposerIssue = "PreAuthoredPlayerComposer Apply/Rebuild requires a target composer.";
                 if (logDiagnostics)
                 {
-                    Debug.LogWarning($"[Immersive.Framework][PlayerComposer] Apply/Rebuild failed. issue='{nullComposerIssue}'");
+                    Debug.LogWarning($"[Immersive.Framework][PreAuthoredPlayerComposer] Apply/Rebuild failed. issue='{nullComposerIssue}'");
                 }
 
                 return PlayerComposerApplyRebuildResult.ApplyFailed(nullComposerIssue);
@@ -70,7 +70,7 @@ namespace Immersive.Framework.Editor.PlayerAuthoring
                 if (logDiagnostics)
                 {
                     Debug.LogWarning(
-                        $"[Immersive.Framework][PlayerComposer] Apply/Rebuild failed. player='{composer.name}' issue='{validationIssue}'",
+                        $"[Immersive.Framework][PreAuthoredPlayerComposer] Apply/Rebuild failed. player='{composer.name}' issue='{validationIssue}'",
                         composer);
                 }
 
@@ -176,7 +176,7 @@ namespace Immersive.Framework.Editor.PlayerAuthoring
             if (logDiagnostics && composer.LogApplyRebuildDiagnostics)
             {
                 Debug.Log(
-                    $"[Immersive.Framework][PlayerComposer] Apply/Rebuild completed. player='{composer.name}' " +
+                    $"[Immersive.Framework][PreAuthoredPlayerComposer] Apply/Rebuild completed. player='{composer.name}' " +
                     $"actorId='{composer.ActorId}' " +
                     $"authoredDefaultActionMap='{composer.GameplayActionMap}' created='{report.CreatedCount}' " +
                     $"repaired='{report.RepairedCount}' removedLegacy='{report.RemovedCount}' " +
@@ -198,7 +198,7 @@ namespace Immersive.Framework.Editor.PlayerAuthoring
         }
 
         private static void ConfigureGate(
-            PlayerComposer composer,
+            PreAuthoredPlayerComposer composer,
             PlayerComposerMaterializationReport report,
             bool useUndo)
         {
@@ -264,7 +264,7 @@ namespace Immersive.Framework.Editor.PlayerAuthoring
         }
 
         private static void ConfigureReset(
-            PlayerComposer composer,
+            PreAuthoredPlayerComposer composer,
             PlayerActorDeclaration actorDeclaration,
             Transform technicalRoot,
             PlayerComposerMaterializationReport report,
@@ -354,7 +354,7 @@ namespace Immersive.Framework.Editor.PlayerAuthoring
         }
 
         private static Transform EnsureTechnicalRoot(
-            PlayerComposer composer,
+            PreAuthoredPlayerComposer composer,
             PlayerComposerMaterializationReport report,
             bool useUndo)
         {
@@ -384,7 +384,7 @@ namespace Immersive.Framework.Editor.PlayerAuthoring
         }
 
         private static Transform EnsureAnchor(
-            PlayerComposer composer,
+            PreAuthoredPlayerComposer composer,
             string anchorName,
             Transform assigned,
             bool required,
@@ -437,7 +437,7 @@ namespace Immersive.Framework.Editor.PlayerAuthoring
         }
 
         private static void RemoveEmptyBindingsContainer(
-            PlayerComposer composer,
+            PreAuthoredPlayerComposer composer,
             PlayerComposerMaterializationReport report,
             bool useUndo)
         {
@@ -665,12 +665,12 @@ namespace Immersive.Framework.Editor.PlayerAuthoring
         private static PlayerComposerApplyRebuildResult FailValidation(
             string issue,
             bool logDiagnostics,
-            PlayerComposer composer)
+            PreAuthoredPlayerComposer composer)
         {
             if (logDiagnostics)
             {
                 Debug.LogWarning(
-                    $"[Immersive.Framework][PlayerComposer] Validation failed. issue='{issue}'",
+                    $"[Immersive.Framework][PreAuthoredPlayerComposer] Validation failed. issue='{issue}'",
                     composer);
             }
 
@@ -698,7 +698,7 @@ namespace Immersive.Framework.Editor.PlayerAuthoring
 
         private sealed class PlayerComposerMaterializationReport
         {
-            private readonly List<string> entries = new();
+            private readonly List<string> _entries = new();
 
             public int CreatedCount { get; private set; }
             public int RepairedCount { get; private set; }
@@ -731,12 +731,12 @@ namespace Immersive.Framework.Editor.PlayerAuthoring
                     $"created={CreatedCount}; repaired={RepairedCount}; removed={RemovedCount}; " +
                     $"alreadyValid={AlreadyValidCount}; skippedByPolicy={SkippedByPolicyCount}; blocked={BlockedCount}";
 
-                return entries.Count == 0 ? header : header + "\n" + string.Join("\n", entries);
+                return _entries.Count == 0 ? header : header + "\n" + string.Join("\n", _entries);
             }
 
             private void Add(string kind, string entry)
             {
-                entries.Add($"{kind}:{entry ?? string.Empty}");
+                _entries.Add($"{kind}:{entry ?? string.Empty}");
             }
         }
     }

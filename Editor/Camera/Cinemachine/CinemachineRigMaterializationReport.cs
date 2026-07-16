@@ -9,61 +9,61 @@ namespace Immersive.Framework.Editor.Camera.Cinemachine
     /// </summary>
     public sealed class CinemachineRigMaterializationReport
     {
-        private readonly List<string> created = new List<string>();
-        private readonly List<string> repaired = new List<string>();
-        private readonly List<string> alreadyValid = new List<string>();
-        private readonly List<string> skipped = new List<string>();
-        private readonly List<string> blocked = new List<string>();
+        private readonly List<string> _created = new List<string>();
+        private readonly List<string> _repaired = new List<string>();
+        private readonly List<string> _alreadyValid = new List<string>();
+        private readonly List<string> _skipped = new List<string>();
+        private readonly List<string> _blocked = new List<string>();
 
         public CinemachineRigMaterializationEvidence Evidence { get; } = new CinemachineRigMaterializationEvidence();
 
-        public int CreatedCount => created.Count;
+        public int CreatedCount => _created.Count;
 
-        public int RepairedCount => repaired.Count;
+        public int RepairedCount => _repaired.Count;
 
-        public int AlreadyValidCount => alreadyValid.Count;
+        public int AlreadyValidCount => _alreadyValid.Count;
 
-        public int SkippedCount => skipped.Count;
+        public int SkippedCount => _skipped.Count;
 
-        public int BlockedCount => blocked.Count;
+        public int BlockedCount => _blocked.Count;
 
         public bool Succeeded => BlockedCount == 0;
 
-        public string FirstBlockingIssue => blocked.Count > 0 ? blocked[0] : string.Empty;
+        public string FirstBlockingIssue => _blocked.Count > 0 ? _blocked[0] : string.Empty;
 
-        public IReadOnlyList<string> Created => created;
+        public IReadOnlyList<string> Created => _created;
 
-        public IReadOnlyList<string> Repaired => repaired;
+        public IReadOnlyList<string> Repaired => _repaired;
 
-        public IReadOnlyList<string> AlreadyValid => alreadyValid;
+        public IReadOnlyList<string> AlreadyValid => _alreadyValid;
 
-        public IReadOnlyList<string> Skipped => skipped;
+        public IReadOnlyList<string> Skipped => _skipped;
 
-        public IReadOnlyList<string> Blocked => blocked;
+        public IReadOnlyList<string> Blocked => _blocked;
 
         public void MarkCreated(string message)
         {
-            Add(created, message);
+            Add(_created, message);
         }
 
         public void MarkRepaired(string message)
         {
-            Add(repaired, message);
+            Add(_repaired, message);
         }
 
         public void MarkAlreadyValid(string message)
         {
-            Add(alreadyValid, message);
+            Add(_alreadyValid, message);
         }
 
         public void MarkSkipped(string message)
         {
-            Add(skipped, message);
+            Add(_skipped, message);
         }
 
         public void MarkBlocked(string message)
         {
-            Add(blocked, message);
+            Add(_blocked, message);
         }
 
         public string CreateSummary()
@@ -75,7 +75,7 @@ namespace Immersive.Framework.Editor.Camera.Cinemachine
             builder.Append("skipped='").Append(SkippedCount).Append("' ");
             builder.Append("blocked='").Append(BlockedCount).Append("'");
 
-            if (blocked.Count > 0)
+            if (_blocked.Count > 0)
             {
                 builder.Append(" firstBlockingIssue='").Append(FirstBlockingIssue).Append("'");
             }

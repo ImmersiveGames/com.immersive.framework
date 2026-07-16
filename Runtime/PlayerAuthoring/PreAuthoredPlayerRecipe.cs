@@ -5,19 +5,19 @@ using UnityEngine;
 namespace Immersive.Framework.PlayerAuthoring
 {
     /// <summary>
-    /// API status: Experimental. Reusable player intent copied into PlayerComposer.
+    /// API status: Experimental. Reusable player intent copied into PreAuthoredPlayerComposer.
     /// Technical editor materialization settings do not belong to this asset.
     /// </summary>
-    [CreateAssetMenu(fileName = "PlayerRecipe", menuName = "Immersive Framework/Player/Player Recipe")]
-    [FrameworkApiStatus(FrameworkApiStatus.Experimental, "Reusable defaults for PlayerComposer intent.")]
-    public sealed class PlayerRecipe : ScriptableObject
+    [CreateAssetMenu(fileName = "PreAuthoredPlayerRecipe", menuName = "Immersive Framework/Player/Pre Authored Player Recipe")]
+    [FrameworkApiStatus(FrameworkApiStatus.Experimental, "Reusable defaults for PreAuthoredPlayerComposer intent.")]
+    public sealed class PreAuthoredPlayerRecipe : ScriptableObject
     {
         [Header("Identity Defaults")]
         [SerializeField] private string actorId = "player.actor";
 
         [Header("Input Defaults")]
         [SerializeField] private bool controlEnabled = true;
-        [Tooltip("Default action map copied into PlayerComposer. Apply/Rebuild writes it to PlayerInput.defaultActionMap.")]
+        [Tooltip("Default action map copied into PreAuthoredPlayerComposer. Apply/Rebuild writes it to PlayerInput.defaultActionMap.")]
         [SerializeField] private string gameplayActionMap = "Player";
         [SerializeField] private bool inputBindingRequired = true;
         [SerializeField] private bool gateParticipation = true;

@@ -9,12 +9,12 @@ namespace Immersive.Framework.Editor.Editor.PlayerParticipation
     [CustomEditor(typeof(LocalPlayerProvisioningAuthoring))]
     internal sealed class LocalPlayerProvisioningAuthoringEditor : UnityEditor.Editor
     {
-        private SerializedProperty playerInputManager;
-        private bool showAdvanced;
+        private SerializedProperty _playerInputManager;
+        private bool _showAdvanced;
 
         private void OnEnable()
         {
-            playerInputManager = serializedObject.FindProperty("playerInputManager");
+            _playerInputManager = serializedObject.FindProperty("playerInputManager");
         }
 
         public override void OnInspectorGUI()
@@ -29,7 +29,7 @@ namespace Immersive.Framework.Editor.Editor.PlayerParticipation
             EditorGUILayout.Space(6);
             EditorGUILayout.LabelField("Provisioning", EditorStyles.boldLabel);
             EditorGUILayout.PropertyField(
-                playerInputManager,
+                _playerInputManager,
                 new GUIContent("Player Input Manager"));
             EditorGUILayout.HelpBox(
                 "The framework reserves a configured Slot, provisions the technical host, stages its Slot declaration and commits admission. Actor selection and materialization remain separate operations.",
@@ -44,11 +44,11 @@ namespace Immersive.Framework.Editor.Editor.PlayerParticipation
             DrawRuntimeState(authoring);
 
             EditorGUILayout.Space(6);
-            showAdvanced = EditorGUILayout.Foldout(
-                showAdvanced,
+            _showAdvanced = EditorGUILayout.Foldout(
+                _showAdvanced,
                 "Advanced / Debug",
                 true);
-            if (showAdvanced)
+            if (_showAdvanced)
             {
                 DrawAdvanced(authoring);
             }

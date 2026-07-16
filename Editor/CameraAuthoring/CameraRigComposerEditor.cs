@@ -8,75 +8,75 @@ namespace Immersive.Framework.Editor.CameraAuthoring
     public sealed class CameraRigComposerEditor :
         UnityEditor.Editor
     {
-        private SerializedProperty recipe;
-        private SerializedProperty presentationIntent;
-        private SerializedProperty targetSourceKind;
-        private SerializedProperty playerComposer;
-        private SerializedProperty explicitFollowTarget;
-        private SerializedProperty explicitLookAtTarget;
-        private SerializedProperty followRequirement;
-        private SerializedProperty lookAtRequirement;
-        private SerializedProperty followOffset;
-        private SerializedProperty cinemachineCamera;
-        private SerializedProperty createCinemachineCameraIfMissing;
-        private SerializedProperty cinemachineCameraObjectName;
-        private SerializedProperty logApplyRebuildDiagnostics;
-        private SerializedProperty lastApplyRebuildStatus;
-        private SerializedProperty lastBlockingIssue;
-        private SerializedProperty lastTargetResolutionSummary;
-        private SerializedProperty lastMaterializationSummary;
-        private SerializedProperty lastResolvedFollowTarget;
-        private SerializedProperty lastResolvedLookAtTarget;
+        private SerializedProperty _recipe;
+        private SerializedProperty _presentationIntent;
+        private SerializedProperty _targetSourceKind;
+        private SerializedProperty _playerComposer;
+        private SerializedProperty _explicitFollowTarget;
+        private SerializedProperty _explicitLookAtTarget;
+        private SerializedProperty _followRequirement;
+        private SerializedProperty _lookAtRequirement;
+        private SerializedProperty _followOffset;
+        private SerializedProperty _cinemachineCamera;
+        private SerializedProperty _createCinemachineCameraIfMissing;
+        private SerializedProperty _cinemachineCameraObjectName;
+        private SerializedProperty _logApplyRebuildDiagnostics;
+        private SerializedProperty _lastApplyRebuildStatus;
+        private SerializedProperty _lastBlockingIssue;
+        private SerializedProperty _lastTargetResolutionSummary;
+        private SerializedProperty _lastMaterializationSummary;
+        private SerializedProperty _lastResolvedFollowTarget;
+        private SerializedProperty _lastResolvedLookAtTarget;
 
-        private bool showAdvanced;
-        private bool showDebug = true;
+        private bool _showAdvanced;
+        private bool _showDebug = true;
 
         private void OnEnable()
         {
-            recipe = serializedObject.FindProperty("recipe");
-            presentationIntent =
+            _recipe = serializedObject.FindProperty("recipe");
+            _presentationIntent =
                 serializedObject.FindProperty("presentationIntent");
-            targetSourceKind =
+            _targetSourceKind =
                 serializedObject.FindProperty("targetSourceKind");
-            playerComposer =
-                serializedObject.FindProperty("playerComposer");
-            explicitFollowTarget =
+            _playerComposer =
+                serializedObject.FindProperty("preAuthoredPlayerComposer");
+            _explicitFollowTarget =
                 serializedObject.FindProperty("explicitFollowTarget");
-            explicitLookAtTarget =
+            _explicitLookAtTarget =
                 serializedObject.FindProperty("explicitLookAtTarget");
-            followRequirement =
+            _followRequirement =
                 serializedObject.FindProperty("followRequirement");
-            lookAtRequirement =
+            _lookAtRequirement =
                 serializedObject.FindProperty("lookAtRequirement");
-            followOffset =
+            _followOffset =
                 serializedObject.FindProperty("followOffset");
-            cinemachineCamera =
+            _cinemachineCamera =
                 serializedObject.FindProperty("cinemachineCamera");
-            createCinemachineCameraIfMissing =
+            _createCinemachineCameraIfMissing =
                 serializedObject.FindProperty(
                     "createCinemachineCameraIfMissing");
-            cinemachineCameraObjectName =
+            _cinemachineCameraObjectName =
                 serializedObject.FindProperty(
                     "cinemachineCameraObjectName");
-            logApplyRebuildDiagnostics =
+            _logApplyRebuildDiagnostics =
                 serializedObject.FindProperty(
                     "logApplyRebuildDiagnostics");
-            lastApplyRebuildStatus =
+            _lastApplyRebuildStatus =
                 serializedObject.FindProperty(
                     "lastApplyRebuildStatus");
-            lastBlockingIssue =
+            _lastBlockingIssue =
                 serializedObject.FindProperty(
                     "lastBlockingIssue");
-            lastTargetResolutionSummary =
+            _lastTargetResolutionSummary =
                 serializedObject.FindProperty(
                     "lastTargetResolutionSummary");
-            lastMaterializationSummary =
+            _lastMaterializationSummary =
                 serializedObject.FindProperty(
                     "lastMaterializationSummary");
-            lastResolvedFollowTarget =
+            _lastResolvedFollowTarget =
                 serializedObject.FindProperty(
                     "lastResolvedFollowTarget");
-            lastResolvedLookAtTarget =
+            _lastResolvedLookAtTarget =
                 serializedObject.FindProperty(
                     "lastResolvedLookAtTarget");
         }
@@ -97,15 +97,15 @@ namespace Immersive.Framework.Editor.CameraAuthoring
                 "Designer",
                 EditorStyles.boldLabel);
 
-            EditorGUILayout.PropertyField(recipe);
-            EditorGUILayout.PropertyField(presentationIntent);
-            EditorGUILayout.PropertyField(targetSourceKind);
-            EditorGUILayout.PropertyField(playerComposer);
-            EditorGUILayout.PropertyField(explicitFollowTarget);
-            EditorGUILayout.PropertyField(explicitLookAtTarget);
-            EditorGUILayout.PropertyField(followRequirement);
-            EditorGUILayout.PropertyField(lookAtRequirement);
-            EditorGUILayout.PropertyField(followOffset);
+            EditorGUILayout.PropertyField(_recipe);
+            EditorGUILayout.PropertyField(_presentationIntent);
+            EditorGUILayout.PropertyField(_targetSourceKind);
+            EditorGUILayout.PropertyField(_playerComposer);
+            EditorGUILayout.PropertyField(_explicitFollowTarget);
+            EditorGUILayout.PropertyField(_explicitLookAtTarget);
+            EditorGUILayout.PropertyField(_followRequirement);
+            EditorGUILayout.PropertyField(_lookAtRequirement);
+            EditorGUILayout.PropertyField(_followOffset);
 
             using (new EditorGUILayout.HorizontalScope())
             {
@@ -164,44 +164,44 @@ namespace Immersive.Framework.Editor.CameraAuthoring
                 }
             }
 
-            showAdvanced = EditorGUILayout.Foldout(
-                showAdvanced,
+            _showAdvanced = EditorGUILayout.Foldout(
+                _showAdvanced,
                 "Advanced / Technical Materialization",
                 true);
 
-            if (showAdvanced)
+            if (_showAdvanced)
             {
                 EditorGUI.indentLevel++;
-                EditorGUILayout.PropertyField(cinemachineCamera);
+                EditorGUILayout.PropertyField(_cinemachineCamera);
                 EditorGUILayout.PropertyField(
-                    createCinemachineCameraIfMissing);
+                    _createCinemachineCameraIfMissing);
                 EditorGUILayout.PropertyField(
-                    cinemachineCameraObjectName);
+                    _cinemachineCameraObjectName);
                 EditorGUILayout.PropertyField(
-                    logApplyRebuildDiagnostics);
+                    _logApplyRebuildDiagnostics);
                 EditorGUI.indentLevel--;
             }
 
-            showDebug = EditorGUILayout.Foldout(
-                showDebug,
+            _showDebug = EditorGUILayout.Foldout(
+                _showDebug,
                 "Debug",
                 true);
 
-            if (showDebug)
+            if (_showDebug)
             {
                 EditorGUI.BeginDisabledGroup(true);
                 EditorGUILayout.PropertyField(
-                    lastApplyRebuildStatus);
+                    _lastApplyRebuildStatus);
                 EditorGUILayout.PropertyField(
-                    lastBlockingIssue);
+                    _lastBlockingIssue);
                 EditorGUILayout.PropertyField(
-                    lastTargetResolutionSummary);
+                    _lastTargetResolutionSummary);
                 EditorGUILayout.PropertyField(
-                    lastMaterializationSummary);
+                    _lastMaterializationSummary);
                 EditorGUILayout.PropertyField(
-                    lastResolvedFollowTarget);
+                    _lastResolvedFollowTarget);
                 EditorGUILayout.PropertyField(
-                    lastResolvedLookAtTarget);
+                    _lastResolvedLookAtTarget);
                 EditorGUI.EndDisabledGroup();
             }
 

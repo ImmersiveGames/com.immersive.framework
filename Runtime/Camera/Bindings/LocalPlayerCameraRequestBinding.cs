@@ -9,7 +9,7 @@ namespace Immersive.Framework.Camera
     /// <summary>
     /// Explicit Player-to-camera request binding.
     ///
-    /// PlayerComposer supplies stable Player identity and typed camera targets.
+    /// PreAuthoredPlayerComposer supplies stable Player identity and typed camera targets.
     /// This component translates local-player eligibility into one scoped camera
     /// request. It does not discover a Player, decide local ownership, select a
     /// winner or mutate Cinemachine directly.
@@ -19,7 +19,7 @@ namespace Immersive.Framework.Camera
     public sealed class LocalPlayerCameraRequestBinding : MonoBehaviour, ICameraOutputSessionConsumer
     {
         [Header("Player")]
-        [SerializeField] private PlayerComposer playerComposer;
+        [SerializeField] private PreAuthoredPlayerComposer preAuthoredPlayerComposer;
         [SerializeField] private LocalPlayerHostAuthoring localPlayerHost;
 
         [Header("Request Identity")]
@@ -50,7 +50,7 @@ namespace Immersive.Framework.Camera
 
         private LocalPlayerCameraRequestPublisher publisher;
 
-        public PlayerComposer PlayerComposer => playerComposer;
+        public PreAuthoredPlayerComposer PreAuthoredPlayerComposer => preAuthoredPlayerComposer;
         public string EligibilityScopeId => eligibilityScopeId.NormalizeText();
         public string RequestIdText => requestId.NormalizeText();
         public bool IsLocallyEligible => isLocallyEligible;
@@ -217,24 +217,24 @@ namespace Immersive.Framework.Camera
 
         private bool TryValidateConfiguration(out string diagnostic)
         {
-            if (playerComposer == null)
+            if (preAuthoredPlayerComposer == null)
             {
                 diagnostic =
-                    "Local Player Camera Request Binding requires an explicit PlayerComposer.";
+                    "Local Player Camera Request Binding requires an explicit PreAuthoredPlayerComposer.";
                 return false;
             }
 
-            if (!playerComposer.CameraBindingRequired)
+            if (!preAuthoredPlayerComposer.CameraBindingRequired)
             {
                 diagnostic =
-                    "Local Player Camera Request Binding requires PlayerComposer Camera Binding Required to be enabled.";
+                    "Local Player Camera Request Binding requires PreAuthoredPlayerComposer Camera Binding Required to be enabled.";
                 return false;
             }
 
-            if (string.IsNullOrWhiteSpace(playerComposer.ActorId))
+            if (string.IsNullOrWhiteSpace(preAuthoredPlayerComposer.ActorId))
             {
                 diagnostic =
-                    "Local Player Camera Request Binding requires PlayerComposer ActorId.";
+                    "Local Player Camera Request Binding requires PreAuthoredPlayerComposer ActorId.";
                 return false;
             }
 
@@ -245,17 +245,17 @@ namespace Immersive.Framework.Camera
                 return false;
             }
 
-            if (playerComposer.CameraTarget == null)
+            if (preAuthoredPlayerComposer.CameraTarget == null)
             {
                 diagnostic =
-                    "Local Player Camera Request Binding requires PlayerComposer CameraTarget.";
+                    "Local Player Camera Request Binding requires PreAuthoredPlayerComposer CameraTarget.";
                 return false;
             }
 
-            if (playerComposer.LookAtTarget == null)
+            if (preAuthoredPlayerComposer.LookAtTarget == null)
             {
                 diagnostic =
-                    "Local Player Camera Request Binding requires PlayerComposer LookAtTarget.";
+                    "Local Player Camera Request Binding requires PreAuthoredPlayerComposer LookAtTarget.";
                 return false;
             }
 
@@ -310,14 +310,14 @@ namespace Immersive.Framework.Camera
                         EligibilityScopeId),
                     CameraRigReference.FromComposer(rigComposer),
                     CameraTargetSourceDescriptor.ExplicitTransform(
-                        playerComposer.CameraTarget,
+                        preAuthoredPlayerComposer.CameraTarget,
                         $"Local Player Camera Target {ownerId}"),
                     new CameraRequestPolicy(
                         precedence,
                         tieBreakerId.NormalizeText()),
                     CameraRequestReleaseCondition.ExplicitRelease,
                     nameof(LocalPlayerCameraRequestBinding),
-                    $"Local Player camera request for slot '{ownerId}' actor='{playerComposer.ActorId}'.");
+                    $"Local Player camera request for slot '{ownerId}' actor='{preAuthoredPlayerComposer.ActorId}'.");
 
             if (!result.IsSucceeded)
             {
@@ -334,7 +334,7 @@ namespace Immersive.Framework.Camera
 
         private string GetPlayerDiagnosticName()
         {
-            if (playerComposer == null)
+            if (preAuthoredPlayerComposer == null)
             {
                 return "<missing>";
             }
@@ -342,7 +342,7 @@ namespace Immersive.Framework.Camera
             string slot = localPlayerHost != null && localPlayerHost.HasJoinedSlot
                 ? localPlayerHost.JoinedPlayerSlotId.StableText
                 : "<unjoined>";
-            string actor = playerComposer.ActorId.NormalizeText();
+            string actor = preAuthoredPlayerComposer.ActorId.NormalizeText();
             return $"slot:{slot}|actor:{actor}";
         }
 

@@ -4,61 +4,61 @@ using UnityEngine;
 
 namespace Immersive.Framework.Editor.PlayerAuthoring
 {
-    [CustomEditor(typeof(PlayerComposer))]
-    public sealed class PlayerComposerEditor : UnityEditor.Editor
+    [CustomEditor(typeof(PreAuthoredPlayerComposer))]
+    public sealed class PreAuthoredPlayerComposerEditor : UnityEditor.Editor
     {
-        private SerializedProperty recipe;
-        private SerializedProperty actorId;
-        private SerializedProperty validationMode;
+        private SerializedProperty _recipe;
+        private SerializedProperty _actorId;
+        private SerializedProperty _validationMode;
 
-        private SerializedProperty controlEnabled;
-        private SerializedProperty playerInput;
-        private SerializedProperty gameplayActionMap;
-        private SerializedProperty inputBindingRequired;
-        private SerializedProperty gateParticipation;
+        private SerializedProperty _controlEnabled;
+        private SerializedProperty _playerInput;
+        private SerializedProperty _gameplayActionMap;
+        private SerializedProperty _inputBindingRequired;
+        private SerializedProperty _gateParticipation;
 
-        private SerializedProperty cameraBindingRequired;
-        private SerializedProperty cameraTarget;
-        private SerializedProperty lookAtTarget;
-        private SerializedProperty lookAtPolicy;
+        private SerializedProperty _cameraBindingRequired;
+        private SerializedProperty _cameraTarget;
+        private SerializedProperty _lookAtTarget;
+        private SerializedProperty _lookAtPolicy;
 
-        private SerializedProperty resetEnabled;
-        private SerializedProperty resetScope;
-        private SerializedProperty resetParticipantPolicy;
+        private SerializedProperty _resetEnabled;
+        private SerializedProperty _resetScope;
+        private SerializedProperty _resetParticipantPolicy;
 
-        private SerializedProperty frameworkBindingsRoot;
-        private SerializedProperty createBindingsRootIfMissing;
-        private SerializedProperty createAnchorsIfMissing;
-        private SerializedProperty logApplyRebuildDiagnostics;
+        private SerializedProperty _frameworkBindingsRoot;
+        private SerializedProperty _createBindingsRootIfMissing;
+        private SerializedProperty _createAnchorsIfMissing;
+        private SerializedProperty _logApplyRebuildDiagnostics;
 
-        private bool showAdvanced;
-        private bool showDebug;
+        private bool _showAdvanced;
+        private bool _showDebug;
 
         private void OnEnable()
         {
-            recipe = serializedObject.FindProperty("recipe");
-            actorId = serializedObject.FindProperty("actorId");
-            validationMode = serializedObject.FindProperty("validationMode");
+            _recipe = serializedObject.FindProperty("recipe");
+            _actorId = serializedObject.FindProperty("actorId");
+            _validationMode = serializedObject.FindProperty("validationMode");
 
-            controlEnabled = serializedObject.FindProperty("controlEnabled");
-            playerInput = serializedObject.FindProperty("playerInput");
-            gameplayActionMap = serializedObject.FindProperty("gameplayActionMap");
-            inputBindingRequired = serializedObject.FindProperty("inputBindingRequired");
-            gateParticipation = serializedObject.FindProperty("gateParticipation");
+            _controlEnabled = serializedObject.FindProperty("controlEnabled");
+            _playerInput = serializedObject.FindProperty("playerInput");
+            _gameplayActionMap = serializedObject.FindProperty("gameplayActionMap");
+            _inputBindingRequired = serializedObject.FindProperty("inputBindingRequired");
+            _gateParticipation = serializedObject.FindProperty("gateParticipation");
 
-            cameraBindingRequired = serializedObject.FindProperty("cameraBindingRequired");
-            cameraTarget = serializedObject.FindProperty("cameraTarget");
-            lookAtTarget = serializedObject.FindProperty("lookAtTarget");
-            lookAtPolicy = serializedObject.FindProperty("lookAtPolicy");
+            _cameraBindingRequired = serializedObject.FindProperty("cameraBindingRequired");
+            _cameraTarget = serializedObject.FindProperty("cameraTarget");
+            _lookAtTarget = serializedObject.FindProperty("lookAtTarget");
+            _lookAtPolicy = serializedObject.FindProperty("lookAtPolicy");
 
-            resetEnabled = serializedObject.FindProperty("resetEnabled");
-            resetScope = serializedObject.FindProperty("resetScope");
-            resetParticipantPolicy = serializedObject.FindProperty("resetParticipantPolicy");
+            _resetEnabled = serializedObject.FindProperty("resetEnabled");
+            _resetScope = serializedObject.FindProperty("resetScope");
+            _resetParticipantPolicy = serializedObject.FindProperty("resetParticipantPolicy");
 
-            frameworkBindingsRoot = serializedObject.FindProperty("frameworkBindingsRoot");
-            createBindingsRootIfMissing = serializedObject.FindProperty("createBindingsRootIfMissing");
-            createAnchorsIfMissing = serializedObject.FindProperty("createAnchorsIfMissing");
-            logApplyRebuildDiagnostics = serializedObject.FindProperty("logApplyRebuildDiagnostics");
+            _frameworkBindingsRoot = serializedObject.FindProperty("frameworkBindingsRoot");
+            _createBindingsRootIfMissing = serializedObject.FindProperty("createBindingsRootIfMissing");
+            _createAnchorsIfMissing = serializedObject.FindProperty("createAnchorsIfMissing");
+            _logApplyRebuildDiagnostics = serializedObject.FindProperty("logApplyRebuildDiagnostics");
         }
 
         public override void OnInspectorGUI()
@@ -85,9 +85,9 @@ namespace Immersive.Framework.Editor.PlayerAuthoring
         {
             EditorGUILayout.Space();
             EditorGUILayout.LabelField("Designer", EditorStyles.boldLabel);
-            EditorGUILayout.PropertyField(recipe);
+            EditorGUILayout.PropertyField(_recipe);
 
-            using (new EditorGUI.DisabledScope(recipe.objectReferenceValue == null))
+            using (new EditorGUI.DisabledScope(_recipe.objectReferenceValue == null))
             {
                 if (GUILayout.Button("Apply Recipe Defaults"))
                 {
@@ -95,22 +95,22 @@ namespace Immersive.Framework.Editor.PlayerAuthoring
                 }
             }
 
-            EditorGUILayout.PropertyField(actorId);
-            EditorGUILayout.PropertyField(validationMode);
+            EditorGUILayout.PropertyField(_actorId);
+            EditorGUILayout.PropertyField(_validationMode);
         }
 
         private void DrawInput()
         {
             EditorGUILayout.Space();
             EditorGUILayout.LabelField("Input", EditorStyles.boldLabel);
-            EditorGUILayout.PropertyField(controlEnabled);
+            EditorGUILayout.PropertyField(_controlEnabled);
 
-            using (new EditorGUI.DisabledScope(!controlEnabled.boolValue))
+            using (new EditorGUI.DisabledScope(!_controlEnabled.boolValue))
             {
-                EditorGUILayout.PropertyField(playerInput);
+                EditorGUILayout.PropertyField(_playerInput);
                 DrawActionMapPopup();
-                EditorGUILayout.PropertyField(inputBindingRequired, new GUIContent("Required"));
-                EditorGUILayout.PropertyField(gateParticipation);
+                EditorGUILayout.PropertyField(_inputBindingRequired, new GUIContent("Required"));
+                EditorGUILayout.PropertyField(_gateParticipation);
             }
 
             PlayerInputStatus status = ResolvePlayerInputStatus();
@@ -121,18 +121,18 @@ namespace Immersive.Framework.Editor.PlayerAuthoring
         {
             EditorGUILayout.Space();
             EditorGUILayout.LabelField("Camera Anchors", EditorStyles.boldLabel);
-            EditorGUILayout.PropertyField(cameraBindingRequired);
-            EditorGUILayout.PropertyField(cameraTarget);
-            EditorGUILayout.PropertyField(lookAtPolicy);
+            EditorGUILayout.PropertyField(_cameraBindingRequired);
+            EditorGUILayout.PropertyField(_cameraTarget);
+            EditorGUILayout.PropertyField(_lookAtPolicy);
 
-            bool explicitLookAt = lookAtPolicy.enumValueIndex == (int)PlayerComposerLookAtPolicy.ExplicitTarget;
+            bool explicitLookAt = _lookAtPolicy.enumValueIndex == (int)PlayerComposerLookAtPolicy.ExplicitTarget;
             using (new EditorGUI.DisabledScope(!explicitLookAt))
             {
-                EditorGUILayout.PropertyField(lookAtTarget);
+                EditorGUILayout.PropertyField(_lookAtTarget);
             }
 
             EditorGUILayout.HelpBox(
-                "These are typed actor anchors. When required references are empty and automatic anchor creation is enabled, Apply/Rebuild creates Anchors/CameraTarget and Anchors/LookAtTarget as children of this logical Player object. CameraRigComposer may reference this PlayerComposer and materialize the Cinemachine Follow/LookAt binding.",
+                "These are typed actor anchors. When required references are empty and automatic anchor creation is enabled, Apply/Rebuild creates Anchors/CameraTarget and Anchors/LookAtTarget as children of this logical Player object. CameraRigComposer may reference this PreAuthoredPlayerComposer and materialize the Cinemachine Follow/LookAt binding.",
                 MessageType.None);
         }
 
@@ -140,12 +140,12 @@ namespace Immersive.Framework.Editor.PlayerAuthoring
         {
             EditorGUILayout.Space();
             EditorGUILayout.LabelField("Reset", EditorStyles.boldLabel);
-            EditorGUILayout.PropertyField(resetEnabled);
+            EditorGUILayout.PropertyField(_resetEnabled);
 
-            using (new EditorGUI.DisabledScope(!resetEnabled.boolValue))
+            using (new EditorGUI.DisabledScope(!_resetEnabled.boolValue))
             {
-                EditorGUILayout.PropertyField(resetScope);
-                EditorGUILayout.PropertyField(resetParticipantPolicy);
+                EditorGUILayout.PropertyField(_resetScope);
+                EditorGUILayout.PropertyField(_resetParticipantPolicy);
             }
         }
 
@@ -157,21 +157,21 @@ namespace Immersive.Framework.Editor.PlayerAuthoring
                 if (GUILayout.Button("Apply / Rebuild"))
                 {
                     serializedObject.ApplyModifiedProperties();
-                    PlayerComposerApplyRebuildUtility.ApplyOrRebuild((PlayerComposer)target, true, true);
+                    PreAuthoredPlayerComposerApplyRebuildUtility.ApplyOrRebuild((PreAuthoredPlayerComposer)target, true, true);
                     serializedObject.Update();
                 }
 
                 if (GUILayout.Button("Validate"))
                 {
                     serializedObject.ApplyModifiedProperties();
-                    PlayerComposerApplyRebuildUtility.Validate((PlayerComposer)target, true);
+                    PreAuthoredPlayerComposerApplyRebuildUtility.Validate((PreAuthoredPlayerComposer)target, true);
                     serializedObject.Update();
                 }
             }
 
             if (GUILayout.Button("Select Technical Root"))
             {
-                PlayerComposer composer = (PlayerComposer)target;
+                PreAuthoredPlayerComposer composer = (PreAuthoredPlayerComposer)target;
                 Selection.activeObject = composer.FrameworkBindingsRoot != null
                     ? composer.FrameworkBindingsRoot.gameObject
                     : composer.gameObject;
@@ -181,28 +181,28 @@ namespace Immersive.Framework.Editor.PlayerAuthoring
         private void DrawAdvanced()
         {
             EditorGUILayout.Space();
-            showAdvanced = EditorGUILayout.Foldout(showAdvanced, "Advanced", true);
-            if (!showAdvanced)
+            _showAdvanced = EditorGUILayout.Foldout(_showAdvanced, "Advanced", true);
+            if (!_showAdvanced)
             {
                 return;
             }
 
-            EditorGUILayout.PropertyField(frameworkBindingsRoot);
-            EditorGUILayout.PropertyField(createBindingsRootIfMissing);
-            EditorGUILayout.PropertyField(createAnchorsIfMissing);
-            EditorGUILayout.PropertyField(logApplyRebuildDiagnostics);
+            EditorGUILayout.PropertyField(_frameworkBindingsRoot);
+            EditorGUILayout.PropertyField(_createBindingsRootIfMissing);
+            EditorGUILayout.PropertyField(_createAnchorsIfMissing);
+            EditorGUILayout.PropertyField(_logApplyRebuildDiagnostics);
         }
 
         private void DrawDebug()
         {
             EditorGUILayout.Space();
-            showDebug = EditorGUILayout.Foldout(showDebug, "Debug", true);
-            if (!showDebug)
+            _showDebug = EditorGUILayout.Foldout(_showDebug, "Debug", true);
+            if (!_showDebug)
             {
                 return;
             }
 
-            PlayerComposerDebugSnapshot snapshot = ((PlayerComposer)target).CreateDebugSnapshot();
+            PlayerComposerDebugSnapshot snapshot = ((PreAuthoredPlayerComposer)target).CreateDebugSnapshot();
             using (new EditorGUI.DisabledScope(true))
             {
                 EditorGUILayout.TextField("Actor Id", snapshot.ActorId);
@@ -224,13 +224,13 @@ namespace Immersive.Framework.Editor.PlayerAuthoring
         private void ApplyRecipeDefaults()
         {
             serializedObject.ApplyModifiedProperties();
-            var composer = (PlayerComposer)target;
+            var composer = (PreAuthoredPlayerComposer)target;
             Undo.RecordObject(composer, "Apply Player Recipe Defaults");
 
             if (!composer.EditorApplyRecipeDefaults(true, out string issue))
             {
                 Debug.LogWarning(
-                    $"[Immersive.Framework][PlayerComposer] Apply Recipe Defaults failed. player='{composer.name}' issue='{issue}'",
+                    $"[Immersive.Framework][PreAuthoredPlayerComposer] Apply Recipe Defaults failed. player='{composer.name}' issue='{issue}'",
                     composer);
                 serializedObject.Update();
                 return;
@@ -238,7 +238,7 @@ namespace Immersive.Framework.Editor.PlayerAuthoring
 
             EditorUtility.SetDirty(composer);
             Debug.Log(
-                $"[Immersive.Framework][PlayerComposer] Recipe defaults applied. player='{composer.name}' " +
+                $"[Immersive.Framework][PreAuthoredPlayerComposer] Recipe defaults applied. player='{composer.name}' " +
                 $"recipe='{composer.Recipe.name}' actorId='{composer.ActorId}'.",
                 composer);
             serializedObject.Update();
@@ -246,11 +246,11 @@ namespace Immersive.Framework.Editor.PlayerAuthoring
 
         private void DrawActionMapPopup()
         {
-            var input = playerInput.objectReferenceValue as UnityEngine.InputSystem.PlayerInput;
+            var input = _playerInput.objectReferenceValue as UnityEngine.InputSystem.PlayerInput;
             if (input == null || input.actions == null || input.actions.actionMaps.Count == 0)
             {
                 EditorGUILayout.PropertyField(
-                    gameplayActionMap,
+                    _gameplayActionMap,
                     new GUIContent("Default Action Map", "Authoring fallback used by Apply/Rebuild."));
                 return;
             }
@@ -260,7 +260,7 @@ namespace Immersive.Framework.Editor.PlayerAuthoring
             for (int i = 0; i < names.Length; i++)
             {
                 names[i] = input.actions.actionMaps[i].name;
-                if (names[i] == gameplayActionMap.stringValue)
+                if (names[i] == _gameplayActionMap.stringValue)
                 {
                     selectedIndex = i;
                 }
@@ -278,24 +278,24 @@ namespace Immersive.Framework.Editor.PlayerAuthoring
                 selectedIndex,
                 names);
 
-            gameplayActionMap.stringValue = names[nextIndex];
+            _gameplayActionMap.stringValue = names[nextIndex];
         }
 
         private PlayerInputStatus ResolvePlayerInputStatus()
         {
-            if (!controlEnabled.boolValue)
+            if (!_controlEnabled.boolValue)
             {
                 return new PlayerInputStatus("Control integration is disabled. No Gate adapter will be materialized.", MessageType.None);
             }
 
-            var input = playerInput.objectReferenceValue as UnityEngine.InputSystem.PlayerInput;
+            var input = _playerInput.objectReferenceValue as UnityEngine.InputSystem.PlayerInput;
             if (input == null)
             {
                 return new PlayerInputStatus(
-                    inputBindingRequired.boolValue
+                    _inputBindingRequired.boolValue
                         ? "Required PlayerInput is missing."
                         : "Optional PlayerInput is not assigned.",
-                    inputBindingRequired.boolValue ? MessageType.Error : MessageType.Warning);
+                    _inputBindingRequired.boolValue ? MessageType.Error : MessageType.Warning);
             }
 
             if (input.actions == null)
@@ -303,7 +303,7 @@ namespace Immersive.Framework.Editor.PlayerAuthoring
                 return new PlayerInputStatus("PlayerInput has no InputActionAsset.", MessageType.Error);
             }
 
-            string authoredMap = gameplayActionMap.stringValue;
+            string authoredMap = _gameplayActionMap.stringValue;
             if (string.IsNullOrWhiteSpace(authoredMap))
             {
                 return new PlayerInputStatus("Authored Default Action Map is empty.", MessageType.Error);

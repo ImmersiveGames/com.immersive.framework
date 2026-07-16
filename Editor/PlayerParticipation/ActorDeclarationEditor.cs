@@ -11,20 +11,20 @@ namespace Immersive.Framework.Editor.Editor.PlayerParticipation
     [CustomEditor(typeof(ActorDeclaration), true)]
     internal sealed class ActorDeclarationEditor : UnityEditor.Editor
     {
-        private SerializedProperty actorId;
-        private SerializedProperty actorKind;
-        private SerializedProperty actorRole;
-        private SerializedProperty displayName;
-        private SerializedProperty reason;
-        private bool showAdvanced;
+        private SerializedProperty _actorId;
+        private SerializedProperty _actorKind;
+        private SerializedProperty _actorRole;
+        private SerializedProperty _displayName;
+        private SerializedProperty _reason;
+        private bool _showAdvanced;
 
         private void OnEnable()
         {
-            actorId = serializedObject.FindProperty("actorId");
-            actorKind = serializedObject.FindProperty("actorKind");
-            actorRole = serializedObject.FindProperty("actorRole");
-            displayName = serializedObject.FindProperty("displayName");
-            reason = serializedObject.FindProperty("reason");
+            _actorId = serializedObject.FindProperty("actorId");
+            _actorKind = serializedObject.FindProperty("actorKind");
+            _actorRole = serializedObject.FindProperty("actorRole");
+            _displayName = serializedObject.FindProperty("displayName");
+            _reason = serializedObject.FindProperty("reason");
         }
 
         public override void OnInspectorGUI()
@@ -45,8 +45,8 @@ namespace Immersive.Framework.Editor.Editor.PlayerParticipation
 
             EditorGUILayout.Space(6);
             EditorGUILayout.LabelField("Identity", EditorStyles.boldLabel);
-            EditorGUILayout.PropertyField(actorId, new GUIContent("Actor Id"));
-            EditorGUILayout.PropertyField(displayName, new GUIContent("Display Name"));
+            EditorGUILayout.PropertyField(_actorId, new GUIContent("Actor Id"));
+            EditorGUILayout.PropertyField(_displayName, new GUIContent("Display Name"));
 
             EditorGUILayout.Space(6);
             EditorGUILayout.LabelField("Classification", EditorStyles.boldLabel);
@@ -63,19 +63,19 @@ namespace Immersive.Framework.Editor.Editor.PlayerParticipation
             }
             else
             {
-                EditorGUILayout.PropertyField(actorKind, new GUIContent("Actor Kind"));
-                EditorGUILayout.PropertyField(actorRole, new GUIContent("Actor Role"));
+                EditorGUILayout.PropertyField(_actorKind, new GUIContent("Actor Kind"));
+                EditorGUILayout.PropertyField(_actorRole, new GUIContent("Actor Role"));
             }
 
             EditorGUILayout.Space(6);
             EditorGUILayout.LabelField("Diagnostics", EditorStyles.boldLabel);
-            EditorGUILayout.PropertyField(reason, new GUIContent("Reason"));
+            EditorGUILayout.PropertyField(_reason, new GUIContent("Reason"));
 
             serializedObject.ApplyModifiedProperties();
 
             EditorGUILayout.Space(6);
-            showAdvanced = EditorGUILayout.Foldout(showAdvanced, "Advanced / Debug", true);
-            if (showAdvanced)
+            _showAdvanced = EditorGUILayout.Foldout(_showAdvanced, "Advanced / Debug", true);
+            if (_showAdvanced)
             {
                 using (new EditorGUI.DisabledScope(true))
                 {

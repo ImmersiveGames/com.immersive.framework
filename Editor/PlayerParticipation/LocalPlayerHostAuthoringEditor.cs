@@ -8,14 +8,14 @@ namespace Immersive.Framework.Editor.Editor.PlayerParticipation
     [CustomEditor(typeof(LocalPlayerHostAuthoring))]
     internal sealed class LocalPlayerHostAuthoringEditor : UnityEditor.Editor
     {
-        private SerializedProperty playerInput;
-        private SerializedProperty actorMount;
-        private bool showAdvanced;
+        private SerializedProperty _playerInput;
+        private SerializedProperty _actorMount;
+        private bool _showAdvanced;
 
         private void OnEnable()
         {
-            playerInput = serializedObject.FindProperty("playerInput");
-            actorMount = serializedObject.FindProperty("actorMount");
+            _playerInput = serializedObject.FindProperty("playerInput");
+            _actorMount = serializedObject.FindProperty("actorMount");
         }
 
         public override void OnInspectorGUI()
@@ -29,8 +29,8 @@ namespace Immersive.Framework.Editor.Editor.PlayerParticipation
 
             EditorGUILayout.Space(6);
             EditorGUILayout.LabelField("Technical Host", EditorStyles.boldLabel);
-            EditorGUILayout.PropertyField(playerInput, new GUIContent("Player Input"));
-            EditorGUILayout.PropertyField(actorMount, new GUIContent("Actor Mount"));
+            EditorGUILayout.PropertyField(_playerInput, new GUIContent("Player Input"));
+            EditorGUILayout.PropertyField(_actorMount, new GUIContent("Actor Mount"));
             EditorGUILayout.HelpBox(
                 "Actor Mount must be an explicit child. Keep it empty in the provisioning prefab; the selected Logical Actor Host is materialized later.",
                 MessageType.None);
@@ -39,8 +39,8 @@ namespace Immersive.Framework.Editor.Editor.PlayerParticipation
 
             LocalPlayerHostAuthoring host = (LocalPlayerHostAuthoring)target;
             EditorGUILayout.Space(6);
-            showAdvanced = EditorGUILayout.Foldout(showAdvanced, "Advanced / Debug", true);
-            if (showAdvanced)
+            _showAdvanced = EditorGUILayout.Foldout(_showAdvanced, "Advanced / Debug", true);
+            if (_showAdvanced)
             {
                 using (new EditorGUI.DisabledScope(true))
                 {
