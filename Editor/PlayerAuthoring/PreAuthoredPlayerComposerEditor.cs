@@ -65,9 +65,11 @@ namespace Immersive.Framework.Editor.PlayerAuthoring
         {
             serializedObject.Update();
 
-            EditorGUILayout.LabelField("Player Composer", EditorStyles.boldLabel);
+            EditorGUILayout.LabelField(
+                "Pre-Authored Player Composer",
+                EditorStyles.boldLabel);
             EditorGUILayout.HelpBox(
-                "Author one concrete Player. Apply/Rebuild materializes only identity, slot, Gate and optional Reset integration. Movement remains game-owned; camera rig materialization belongs to CameraRigComposer.",
+                "Alternative authoring model for one concrete Player that already exists in a Scene or prefab with its own PlayerInput. This is not the canonical local join/ActorProfile materialization workflow. Apply/Rebuild materializes identity, Gate, camera anchors and optional Reset integration. Movement remains game-owned; camera rig materialization belongs to CameraRigComposer.",
                 MessageType.Info);
 
             DrawDesigner();

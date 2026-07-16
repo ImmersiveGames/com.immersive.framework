@@ -10,31 +10,34 @@ namespace Immersive.Framework.Editor.PlayerAuthoring
     {
         public override void OnInspectorGUI()
         {
-            EditorGUILayout.LabelField("Player Actor Declaration", EditorStyles.boldLabel);
-            EditorGUILayout.HelpBox(
-                "Technical materialization owned by PreAuthoredPlayerComposer. Edit Actor identity and PlayerInput on the PreAuthoredPlayerComposer, then run Apply/Rebuild.",
-                MessageType.Info);
+            var declaration = (PlayerActorDeclaration)target;
+            PreAuthoredPlayerComposer composer =
+                declaration.GetComponent<PreAuthoredPlayerComposer>();
+
+            EditorGUILayout.LabelField(
+                "Player Actor Declaration",
+                EditorStyles.boldLabel);
+
+            if (composer != null)
+            {
+                EditorGUILayout.HelpBox(
+                    "This declaration is technical materialization owned by the alternative Pre-Authored Player Composer model. Edit Actor identity and PlayerInput on the Pre-Authored Player Composer, then run Apply/Rebuild.",
+                    MessageType.Info);
+            }
+            else
+            {
+                EditorGUILayout.HelpBox(
+                    "This declaration is valid on a join-based Logical Actor Host prefab. The canonical local join/materialization workflow injects runtime Actor identity and PlayerInput evidence when the selected ActorProfile is prepared. A Pre-Authored Player Composer is not required in this context.",
+                    MessageType.Info);
+            }
 
             using (new EditorGUI.DisabledScope(true))
             {
                 DrawDefaultInspector();
             }
 
-            DrawComposerButton((PlayerActorDeclaration)target);
-        }
-
-        private static void DrawComposerButton(Component declaration)
-        {
-            PreAuthoredPlayerComposer composer = declaration.GetComponent<PreAuthoredPlayerComposer>();
-            if (composer == null)
-            {
-                EditorGUILayout.HelpBox(
-                    "No PreAuthoredPlayerComposer exists on this GameObject. This declaration is outside canonical Composer authority.",
-                    MessageType.Warning);
-                return;
-            }
-
-            if (GUILayout.Button("Select Player Composer"))
+            if (composer != null &&
+                GUILayout.Button("Select Pre-Authored Player Composer"))
             {
                 Selection.activeObject = composer;
             }
