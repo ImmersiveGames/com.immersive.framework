@@ -92,11 +92,7 @@ namespace Immersive.Framework.ContentAnchor
                 && Scope == other.Scope
                 && Kind == other.Kind
                 && AnchorId.Equals(other.AnchorId)
-                && Requiredness == other.Requiredness
-                && string.Equals(DisplayName, other.DisplayName, StringComparison.Ordinal)
-                && string.Equals(Description, other.Description, StringComparison.Ordinal)
-                && string.Equals(ResourceName, other.ResourceName, StringComparison.Ordinal)
-                && string.Equals(ResourcePath, other.ResourcePath, StringComparison.Ordinal);
+                && Requiredness == other.Requiredness;
         }
 
         public override bool Equals(object obj)
@@ -113,10 +109,6 @@ namespace Immersive.Framework.ContentAnchor
                 hashCode = hashCode * 397 ^ (int)Kind;
                 hashCode = hashCode * 397 ^ AnchorId.GetHashCode();
                 hashCode = hashCode * 397 ^ (int)Requiredness;
-                hashCode = hashCode * 397 ^ StringComparer.Ordinal.GetHashCode(DisplayName ?? string.Empty);
-                hashCode = hashCode * 397 ^ StringComparer.Ordinal.GetHashCode(Description ?? string.Empty);
-                hashCode = hashCode * 397 ^ StringComparer.Ordinal.GetHashCode(ResourceName ?? string.Empty);
-                hashCode = hashCode * 397 ^ StringComparer.Ordinal.GetHashCode(ResourcePath ?? string.Empty);
                 return hashCode;
             }
         }

@@ -102,12 +102,7 @@ namespace Immersive.Framework.Actors
         {
             return ActorId.Equals(other.ActorId)
                 && ActorRole == other.ActorRole
-                && HasPlayerInputEvidence == other.HasPlayerInputEvidence
-                && string.Equals(DisplayName, other.DisplayName, StringComparison.Ordinal)
-                && string.Equals(SceneName, other.SceneName, StringComparison.Ordinal)
-                && string.Equals(ObjectName, other.ObjectName, StringComparison.Ordinal)
-                && string.Equals(Source, other.Source, StringComparison.Ordinal)
-                && string.Equals(Reason, other.Reason, StringComparison.Ordinal);
+                && HasPlayerInputEvidence == other.HasPlayerInputEvidence;
         }
 
         public override bool Equals(object obj)
@@ -122,11 +117,6 @@ namespace Immersive.Framework.Actors
                 int hash = ActorId.GetHashCode();
                 hash = (hash * 397) ^ (int)ActorRole;
                 hash = (hash * 397) ^ HasPlayerInputEvidence.GetHashCode();
-                hash = (hash * 397) ^ StringComparer.Ordinal.GetHashCode(DisplayName ?? string.Empty);
-                hash = (hash * 397) ^ StringComparer.Ordinal.GetHashCode(SceneName ?? string.Empty);
-                hash = (hash * 397) ^ StringComparer.Ordinal.GetHashCode(ObjectName ?? string.Empty);
-                hash = (hash * 397) ^ StringComparer.Ordinal.GetHashCode(Source ?? string.Empty);
-                hash = (hash * 397) ^ StringComparer.Ordinal.GetHashCode(Reason ?? string.Empty);
                 return hash;
             }
         }

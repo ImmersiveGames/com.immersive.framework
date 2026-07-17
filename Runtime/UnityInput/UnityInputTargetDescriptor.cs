@@ -87,12 +87,7 @@ namespace Immersive.Framework.UnityInput
             return TargetId.Equals(other.TargetId)
                 && Role == other.Role
                 && HasPlayerInputReference == other.HasPlayerInputReference
-                && RequiresPlayerInputEvidence == other.RequiresPlayerInputEvidence
-                && string.Equals(DisplayName, other.DisplayName, StringComparison.Ordinal)
-                && string.Equals(SceneName, other.SceneName, StringComparison.Ordinal)
-                && string.Equals(ObjectName, other.ObjectName, StringComparison.Ordinal)
-                && string.Equals(Source, other.Source, StringComparison.Ordinal)
-                && string.Equals(Reason, other.Reason, StringComparison.Ordinal);
+                && RequiresPlayerInputEvidence == other.RequiresPlayerInputEvidence;
         }
 
         public override bool Equals(object obj)
@@ -108,11 +103,6 @@ namespace Immersive.Framework.UnityInput
                 hash = (hash * 397) ^ (int)Role;
                 hash = (hash * 397) ^ HasPlayerInputReference.GetHashCode();
                 hash = (hash * 397) ^ RequiresPlayerInputEvidence.GetHashCode();
-                hash = (hash * 397) ^ StringComparer.Ordinal.GetHashCode(DisplayName ?? string.Empty);
-                hash = (hash * 397) ^ StringComparer.Ordinal.GetHashCode(SceneName ?? string.Empty);
-                hash = (hash * 397) ^ StringComparer.Ordinal.GetHashCode(ObjectName ?? string.Empty);
-                hash = (hash * 397) ^ StringComparer.Ordinal.GetHashCode(Source ?? string.Empty);
-                hash = (hash * 397) ^ StringComparer.Ordinal.GetHashCode(Reason ?? string.Empty);
                 return hash;
             }
         }
