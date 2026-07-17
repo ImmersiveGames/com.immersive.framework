@@ -1,26 +1,30 @@
+using System;
+using Immersive.Framework.Actors;
 using Immersive.Framework.CameraAuthoring;
 using Immersive.Framework.Common;
-using Immersive.Framework.PlayerAuthoring;
 using Immersive.Framework.PlayerParticipation;
 using UnityEngine;
 
 namespace Immersive.Framework.Camera
 {
     /// <summary>
-    /// Explicit Player-to-camera request binding.
+    /// Explicit prepared-Player-to-camera request binding.
     ///
-    /// PreAuthoredPlayerComposer supplies stable Player identity and typed camera targets.
-    /// This component translates local-player eligibility into one scoped camera
-    /// request. It does not discover a Player, decide local ownership, select a
-    /// winner or mutate Cinemachine directly.
+    /// Player identity comes from the admitted Local Player Host and prepared
+    /// PlayerActorDeclaration. Camera targets come from CameraRigComposer's explicit transforms or typed
+    /// ICameraTargetSource. This component does not provision a Player, discover
+    /// locality, select a winner or mutate Cinemachine directly.
     /// </summary>
     [DisallowMultipleComponent]
-    [AddComponentMenu("Immersive Framework/Camera/Local Player Camera Request Binding")]
-    public sealed class LocalPlayerCameraRequestBinding : MonoBehaviour, ICameraOutputSessionConsumer
+    [AddComponentMenu(
+        "Immersive Framework/Camera/Local Player Camera Request Binding")]
+    public sealed class LocalPlayerCameraRequestBinding :
+        MonoBehaviour,
+        ICameraOutputSessionConsumer
     {
         [Header("Player")]
-        [SerializeField] private PreAuthoredPlayerComposer preAuthoredPlayerComposer;
         [SerializeField] private LocalPlayerHostAuthoring localPlayerHost;
+        [SerializeField] private PlayerActorDeclaration playerActor;
 
         [Header("Request Identity")]
         [Tooltip("Explicit stable lifetime scope for this local-player eligibility instance.")]
@@ -50,7 +54,8 @@ namespace Immersive.Framework.Camera
 
         private LocalPlayerCameraRequestPublisher publisher;
 
-        public PreAuthoredPlayerComposer PreAuthoredPlayerComposer => preAuthoredPlayerComposer;
+        public LocalPlayerHostAuthoring LocalPlayerHost => localPlayerHost;
+        public PlayerActorDeclaration PlayerActor => playerActor;
         public string EligibilityScopeId => eligibilityScopeId.NormalizeText();
         public string RequestIdText => requestId.NormalizeText();
         public bool IsLocallyEligible => isLocallyEligible;
@@ -68,26 +73,15 @@ namespace Immersive.Framework.Camera
 
         private void OnDisable()
         {
-            if (!releaseOnDisable)
+            if (releaseOnDisable)
             {
-                return;
+                SetLocalPlayerEligible(false);
             }
-
-            SetLocalPlayerEligible(false);
         }
 
-        /// <summary>
-        /// Explicit runtime boundary for local-player camera eligibility.
-        /// Repeated calls are idempotent.
-        /// </summary>
         public bool SetLocalPlayerEligible(bool eligible)
         {
-            if (eligible)
-            {
-                return TryPublish();
-            }
-
-            return TryRelease();
+            return eligible ? TryPublish() : TryRelease();
         }
 
         public bool TryPublish()
@@ -140,7 +134,6 @@ namespace Immersive.Framework.Camera
 
             CameraRequestPublisherCreateResult creation =
                 LocalPlayerCameraRequestPublisher.Create(session, request);
-
             if (!creation.Succeeded)
             {
                 isLocallyEligible = false;
@@ -148,9 +141,7 @@ namespace Immersive.Framework.Camera
                 return false;
             }
 
-            publisher =
-                creation.Publisher as LocalPlayerCameraRequestPublisher;
-
+            publisher = creation.Publisher as LocalPlayerCameraRequestPublisher;
             if (publisher == null)
             {
                 isLocallyEligible = false;
@@ -161,9 +152,7 @@ namespace Immersive.Framework.Camera
                 return false;
             }
 
-            CameraRequestPublisherResult publishResult =
-                publisher.Publish();
-
+            CameraRequestPublisherResult publishResult = publisher.Publish();
             if (!publishResult.Succeeded)
             {
                 publisher = null;
@@ -173,13 +162,10 @@ namespace Immersive.Framework.Camera
             }
 
             isLocallyEligible = true;
-
             SetDiagnostic(
                 "Published",
-                $"Local Player camera request published. player='{GetPlayerDiagnosticName()}' " +
-                $"scope='{EligibilityScopeId}' request='{request.RequestId}'.",
+                $"Local Player camera request published. player='{GetPlayerDiagnosticName()}' scope='{EligibilityScopeId}' request='{request.RequestId}'.",
                 false);
-
             return true;
         }
 
@@ -195,9 +181,7 @@ namespace Immersive.Framework.Camera
                 return true;
             }
 
-            CameraRequestPublisherResult releaseResult =
-                publisher.Release();
-
+            CameraRequestPublisherResult releaseResult = publisher.Release();
             if (!releaseResult.Succeeded)
             {
                 SetDiagnostic("Blocked", releaseResult.DiagnosticSummary, true);
@@ -206,38 +190,15 @@ namespace Immersive.Framework.Camera
 
             publisher = null;
             isLocallyEligible = false;
-
             SetDiagnostic(
                 "Released",
                 $"Local Player camera request released. player='{GetPlayerDiagnosticName()}' scope='{EligibilityScopeId}'.",
                 false);
-
             return true;
         }
 
         private bool TryValidateConfiguration(out string diagnostic)
         {
-            if (preAuthoredPlayerComposer == null)
-            {
-                diagnostic =
-                    "Local Player Camera Request Binding requires an explicit PreAuthoredPlayerComposer.";
-                return false;
-            }
-
-            if (!preAuthoredPlayerComposer.CameraBindingRequired)
-            {
-                diagnostic =
-                    "Local Player Camera Request Binding requires PreAuthoredPlayerComposer Camera Binding Required to be enabled.";
-                return false;
-            }
-
-            if (string.IsNullOrWhiteSpace(preAuthoredPlayerComposer.ActorId))
-            {
-                diagnostic =
-                    "Local Player Camera Request Binding requires PreAuthoredPlayerComposer ActorId.";
-                return false;
-            }
-
             if (localPlayerHost == null || !localPlayerHost.HasJoinedSlot)
             {
                 diagnostic =
@@ -245,17 +206,61 @@ namespace Immersive.Framework.Camera
                 return false;
             }
 
-            if (preAuthoredPlayerComposer.CameraTarget == null)
+            if (playerActor == null)
             {
                 diagnostic =
-                    "Local Player Camera Request Binding requires PreAuthoredPlayerComposer CameraTarget.";
+                    "Local Player Camera Request Binding requires an explicit prepared PlayerActorDeclaration.";
                 return false;
             }
 
-            if (preAuthoredPlayerComposer.LookAtTarget == null)
+            if (!TryGetActorId(out _, out diagnostic))
+            {
+                return false;
+            }
+
+            if (rigComposer == null)
             {
                 diagnostic =
-                    "Local Player Camera Request Binding requires PreAuthoredPlayerComposer LookAtTarget.";
+                    "Local Player Camera Request Binding requires a CameraRigComposer.";
+                return false;
+            }
+
+            if (rigComposer.TargetSourceBehaviour != null &&
+                !IsOwnedByPlayerActor(
+                    playerActor.transform,
+                    rigComposer.TargetSourceBehaviour.transform))
+            {
+                diagnostic =
+                    "Local Player Camera Request Binding requires an Actor-owned camera target source.";
+                return false;
+            }
+
+            CameraTargetResolveResult targets = rigComposer.ResolveCameraTargets(
+                rigComposer.FollowRequirement,
+                rigComposer.LookAtRequirement);
+            if (!targets.IsSucceeded)
+            {
+                diagnostic =
+                    $"Local Player camera target resolution failed. {targets.BlockingIssue}";
+                return false;
+            }
+
+            if (!IsOwnedByPlayerActor(
+                    playerActor.transform,
+                    targets.Targets.FollowTarget))
+            {
+                diagnostic =
+                    "Local Player Camera Request Binding requires an Actor-owned Follow target.";
+                return false;
+            }
+
+            if (targets.Targets.LookAtTarget != null &&
+                !IsOwnedByPlayerActor(
+                    playerActor.transform,
+                    targets.Targets.LookAtTarget))
+            {
+                diagnostic =
+                    "Local Player Camera Request Binding requires an Actor-owned Look At target.";
                 return false;
             }
 
@@ -280,13 +285,6 @@ namespace Immersive.Framework.Camera
                 return false;
             }
 
-            if (rigComposer == null)
-            {
-                diagnostic =
-                    "Local Player Camera Request Binding requires a CameraRigComposer.";
-                return false;
-            }
-
             diagnostic = string.Empty;
             return true;
         }
@@ -296,8 +294,24 @@ namespace Immersive.Framework.Camera
             out CameraRequest request,
             out string diagnostic)
         {
-            string ownerId = localPlayerHost.JoinedPlayerSlotId.StableText;
+            request = default;
 
+            if (!TryGetActorId(out string actorId, out diagnostic))
+            {
+                return false;
+            }
+
+            CameraTargetResolveResult targets = rigComposer.ResolveCameraTargets(
+                rigComposer.FollowRequirement,
+                rigComposer.LookAtRequirement);
+            if (!targets.IsSucceeded)
+            {
+                diagnostic =
+                    $"Local Player camera target resolution failed. {targets.BlockingIssue}";
+                return false;
+            }
+
+            string ownerId = localPlayerHost.JoinedPlayerSlotId.StableText;
             CameraRequestCreateResult result =
                 CameraRequestCreateResult.Create(
                     new CameraRequestId(RequestIdText),
@@ -309,19 +323,16 @@ namespace Immersive.Framework.Camera
                         CameraRequestLifetimeKind.LocalPlayerEligibility,
                         EligibilityScopeId),
                     CameraRigReference.FromComposer(rigComposer),
-                    CameraTargetSourceDescriptor.ExplicitTransform(
-                        preAuthoredPlayerComposer.CameraTarget,
-                        $"Local Player Camera Target {ownerId}"),
+                    targets.Source,
                     new CameraRequestPolicy(
                         precedence,
                         tieBreakerId.NormalizeText()),
                     CameraRequestReleaseCondition.ExplicitRelease,
                     nameof(LocalPlayerCameraRequestBinding),
-                    $"Local Player camera request for slot '{ownerId}' actor='{preAuthoredPlayerComposer.ActorId}'.");
+                    $"Local Player camera request for slot '{ownerId}' actor='{actorId}'.");
 
             if (!result.IsSucceeded)
             {
-                request = default;
                 diagnostic =
                     $"Local Player camera request creation failed. {result.BlockingIssue}";
                 return false;
@@ -332,26 +343,71 @@ namespace Immersive.Framework.Camera
             return true;
         }
 
-        private string GetPlayerDiagnosticName()
+        private bool TryGetActorId(
+            out string actorId,
+            out string diagnostic)
         {
-            if (preAuthoredPlayerComposer == null)
+            actorId = string.Empty;
+            diagnostic = string.Empty;
+
+            if (playerActor == null)
             {
-                return "<missing>";
+                diagnostic =
+                    "Local Player Camera Request Binding has no PlayerActorDeclaration.";
+                return false;
             }
 
+            try
+            {
+                actorId = playerActor.ActorId.StableText;
+            }
+            catch (Exception exception)
+            {
+                diagnostic =
+                    $"Local Player Camera Request Binding has an invalid Player Actor identity. {exception.Message}";
+                return false;
+            }
+
+            if (string.IsNullOrWhiteSpace(actorId))
+            {
+                diagnostic =
+                    "Local Player Camera Request Binding requires a valid Player Actor identity.";
+                return false;
+            }
+
+            return true;
+        }
+
+        private string GetPlayerDiagnosticName()
+        {
             string slot = localPlayerHost != null && localPlayerHost.HasJoinedSlot
                 ? localPlayerHost.JoinedPlayerSlotId.StableText
                 : "<unjoined>";
-            string actor = preAuthoredPlayerComposer.ActorId.NormalizeText();
+            string actor = TryGetActorId(out string actorId, out _)
+                ? actorId
+                : "<missing>";
             return $"slot:{slot}|actor:{actor}";
         }
 
-        void ICameraOutputSessionConsumer.AttachOutputSession(CameraOutputSessionBinding binding)
+        private static bool IsOwnedByPlayerActor(
+            Transform actorRoot,
+            Transform target)
+        {
+            return actorRoot != null &&
+                target != null &&
+                (ReferenceEquals(actorRoot, target) || target.IsChildOf(actorRoot));
+        }
+
+        void ICameraOutputSessionConsumer.AttachOutputSession(
+            CameraOutputSessionBinding binding)
         {
             outputSession = binding;
             if (binding == null)
             {
-                SetDiagnostic("Blocked", "Local Player camera output injection is missing.", true);
+                SetDiagnostic(
+                    "Blocked",
+                    "Local Player camera output injection is missing.",
+                    true);
                 return;
             }
 
@@ -361,14 +417,20 @@ namespace Immersive.Framework.Camera
                 return;
             }
 
-            SetDiagnostic("OutputAttached", $"Local Player camera output attached. output='{binding.OutputIdText}'.", false);
+            SetDiagnostic(
+                "OutputAttached",
+                $"Local Player camera output attached. output='{binding.OutputIdText}'.",
+                false);
         }
 
         void ICameraOutputSessionConsumer.DetachOutputSession(string reason)
         {
             TryRelease();
             outputSession = null;
-            SetDiagnostic("OutputDetached", $"Local Player camera output detached. reason='{reason}'.", false);
+            SetDiagnostic(
+                "OutputDetached",
+                $"Local Player camera output detached. reason='{reason}'.",
+                false);
         }
 
         private void SetDiagnostic(
@@ -386,7 +448,6 @@ namespace Immersive.Framework.Camera
 
             string message =
                 $"[FRAMEWORK_CAMERA] Local Player Camera Request Binding status='{lastStatus}' diagnostic='{lastDiagnostic}'.";
-
             if (error)
             {
                 Debug.LogError(message, this);

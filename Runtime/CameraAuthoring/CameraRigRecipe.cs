@@ -17,7 +17,7 @@ namespace Immersive.Framework.CameraAuthoring
         [SerializeField] private CameraRigPresentationIntent presentationIntent =
             CameraRigPresentationIntent.Follow;
         [SerializeField] private CameraTargetSourceKind targetSourceKind =
-            CameraTargetSourceKind.PlayerComposer;
+            CameraTargetSourceKind.ExplicitTransform;
         [SerializeField] private CameraTargetRequirement followRequirement =
             CameraTargetRequirement.Required;
         [SerializeField] private CameraTargetRequirement lookAtRequirement =

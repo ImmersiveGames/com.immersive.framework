@@ -1,3 +1,4 @@
+using Immersive.Framework.Camera;
 using Immersive.Framework.CameraAuthoring;
 using UnityEditor;
 using UnityEngine;
@@ -5,13 +6,12 @@ using UnityEngine;
 namespace Immersive.Framework.Editor.CameraAuthoring
 {
     [CustomEditor(typeof(CameraRigComposer))]
-    public sealed class CameraRigComposerEditor :
-        UnityEditor.Editor
+    public sealed class CameraRigComposerEditor : UnityEditor.Editor
     {
         private SerializedProperty _recipe;
         private SerializedProperty _presentationIntent;
         private SerializedProperty _targetSourceKind;
-        private SerializedProperty _playerComposer;
+        private SerializedProperty _targetSource;
         private SerializedProperty _explicitFollowTarget;
         private SerializedProperty _explicitLookAtTarget;
         private SerializedProperty _followRequirement;
@@ -38,8 +38,7 @@ namespace Immersive.Framework.Editor.CameraAuthoring
                 serializedObject.FindProperty("presentationIntent");
             _targetSourceKind =
                 serializedObject.FindProperty("targetSourceKind");
-            _playerComposer =
-                serializedObject.FindProperty("preAuthoredPlayerComposer");
+            _targetSource = serializedObject.FindProperty("targetSource");
             _explicitFollowTarget =
                 serializedObject.FindProperty("explicitFollowTarget");
             _explicitLookAtTarget =
@@ -48,8 +47,7 @@ namespace Immersive.Framework.Editor.CameraAuthoring
                 serializedObject.FindProperty("followRequirement");
             _lookAtRequirement =
                 serializedObject.FindProperty("lookAtRequirement");
-            _followOffset =
-                serializedObject.FindProperty("followOffset");
+            _followOffset = serializedObject.FindProperty("followOffset");
             _cinemachineCamera =
                 serializedObject.FindProperty("cinemachineCamera");
             _createCinemachineCameraIfMissing =
@@ -62,47 +60,46 @@ namespace Immersive.Framework.Editor.CameraAuthoring
                 serializedObject.FindProperty(
                     "logApplyRebuildDiagnostics");
             _lastApplyRebuildStatus =
-                serializedObject.FindProperty(
-                    "lastApplyRebuildStatus");
+                serializedObject.FindProperty("lastApplyRebuildStatus");
             _lastBlockingIssue =
-                serializedObject.FindProperty(
-                    "lastBlockingIssue");
+                serializedObject.FindProperty("lastBlockingIssue");
             _lastTargetResolutionSummary =
-                serializedObject.FindProperty(
-                    "lastTargetResolutionSummary");
+                serializedObject.FindProperty("lastTargetResolutionSummary");
             _lastMaterializationSummary =
-                serializedObject.FindProperty(
-                    "lastMaterializationSummary");
+                serializedObject.FindProperty("lastMaterializationSummary");
             _lastResolvedFollowTarget =
-                serializedObject.FindProperty(
-                    "lastResolvedFollowTarget");
+                serializedObject.FindProperty("lastResolvedFollowTarget");
             _lastResolvedLookAtTarget =
-                serializedObject.FindProperty(
-                    "lastResolvedLookAtTarget");
+                serializedObject.FindProperty("lastResolvedLookAtTarget");
         }
 
         public override void OnInspectorGUI()
         {
             serializedObject.Update();
 
-            EditorGUILayout.LabelField(
-                "Camera Rig",
-                EditorStyles.boldLabel);
-
+            EditorGUILayout.LabelField("Camera Rig", EditorStyles.boldLabel);
             EditorGUILayout.HelpBox(
-                "CameraRigComposer materializes one local Cinemachine Camera rig. It never creates a Unity Camera, CinemachineBrain, AudioListener or runtime output.",
+                "CameraRigComposer materializes one local Cinemachine Camera rig. Assign a typed Target Source component or author explicit Follow and Look At transforms. It never creates a Unity Camera, CinemachineBrain, AudioListener or runtime output.",
                 MessageType.Info);
 
-            EditorGUILayout.LabelField(
-                "Designer",
-                EditorStyles.boldLabel);
-
+            EditorGUILayout.LabelField("Designer", EditorStyles.boldLabel);
             EditorGUILayout.PropertyField(_recipe);
             EditorGUILayout.PropertyField(_presentationIntent);
-            EditorGUILayout.PropertyField(_targetSourceKind);
-            EditorGUILayout.PropertyField(_playerComposer);
-            EditorGUILayout.PropertyField(_explicitFollowTarget);
-            EditorGUILayout.PropertyField(_explicitLookAtTarget);
+            EditorGUILayout.PropertyField(
+                _targetSource,
+                new GUIContent("Target Source"));
+            DrawTargetSourceStatus();
+
+            if (_targetSource.objectReferenceValue == null)
+            {
+                EditorGUILayout.PropertyField(
+                    _explicitFollowTarget,
+                    new GUIContent("Follow Target"));
+                EditorGUILayout.PropertyField(
+                    _explicitLookAtTarget,
+                    new GUIContent("Look At Target"));
+            }
+
             EditorGUILayout.PropertyField(_followRequirement);
             EditorGUILayout.PropertyField(_lookAtRequirement);
             EditorGUILayout.PropertyField(_followOffset);
@@ -111,34 +108,12 @@ namespace Immersive.Framework.Editor.CameraAuthoring
             {
                 if (GUILayout.Button("Apply Recipe Defaults"))
                 {
-                    foreach (Object item in targets)
-                    {
-                        var composer =
-                            (CameraRigComposer)item;
-                        Undo.RecordObject(
-                            composer,
-                            "Apply Camera Rig Recipe Defaults");
-                        composer.EditorApplyRecipeDefaults(
-                            false,
-                            out _);
-                        EditorUtility.SetDirty(composer);
-                    }
+                    ApplyRecipeDefaults(false);
                 }
 
                 if (GUILayout.Button("Overwrite From Recipe"))
                 {
-                    foreach (Object item in targets)
-                    {
-                        var composer =
-                            (CameraRigComposer)item;
-                        Undo.RecordObject(
-                            composer,
-                            "Overwrite Camera Rig Composer From Recipe");
-                        composer.EditorApplyRecipeDefaults(
-                            true,
-                            out _);
-                        EditorUtility.SetDirty(composer);
-                    }
+                    ApplyRecipeDefaults(true);
                 }
             }
 
@@ -157,9 +132,8 @@ namespace Immersive.Framework.Editor.CameraAuthoring
                 {
                     foreach (Object item in targets)
                     {
-                        CameraRigComposerApplyRebuildUtility
-                            .ApplyOrRebuild(
-                                (CameraRigComposer)item);
+                        CameraRigComposerApplyRebuildUtility.ApplyOrRebuild(
+                            (CameraRigComposer)item);
                     }
                 }
             }
@@ -168,10 +142,12 @@ namespace Immersive.Framework.Editor.CameraAuthoring
                 _showAdvanced,
                 "Advanced / Technical Materialization",
                 true);
-
             if (_showAdvanced)
             {
                 EditorGUI.indentLevel++;
+                EditorGUILayout.PropertyField(
+                    _targetSourceKind,
+                    new GUIContent("Serialized Target Source Kind"));
                 EditorGUILayout.PropertyField(_cinemachineCamera);
                 EditorGUILayout.PropertyField(
                     _createCinemachineCameraIfMissing);
@@ -186,26 +162,69 @@ namespace Immersive.Framework.Editor.CameraAuthoring
                 _showDebug,
                 "Debug",
                 true);
-
             if (_showDebug)
             {
                 EditorGUI.BeginDisabledGroup(true);
-                EditorGUILayout.PropertyField(
-                    _lastApplyRebuildStatus);
-                EditorGUILayout.PropertyField(
-                    _lastBlockingIssue);
-                EditorGUILayout.PropertyField(
-                    _lastTargetResolutionSummary);
-                EditorGUILayout.PropertyField(
-                    _lastMaterializationSummary);
-                EditorGUILayout.PropertyField(
-                    _lastResolvedFollowTarget);
-                EditorGUILayout.PropertyField(
-                    _lastResolvedLookAtTarget);
+                CameraRigComposer composer =
+                    targets.Length == 1
+                        ? (CameraRigComposer)target
+                        : null;
+                EditorGUILayout.EnumPopup(
+                    "Effective Target Source Kind",
+                    composer != null
+                        ? composer.CreateDebugSnapshot().TargetSourceKind
+                        : CameraTargetSourceKind.None);
+                EditorGUILayout.PropertyField(_lastApplyRebuildStatus);
+                EditorGUILayout.PropertyField(_lastBlockingIssue);
+                EditorGUILayout.PropertyField(_lastTargetResolutionSummary);
+                EditorGUILayout.PropertyField(_lastMaterializationSummary);
+                EditorGUILayout.PropertyField(_lastResolvedFollowTarget);
+                EditorGUILayout.PropertyField(_lastResolvedLookAtTarget);
                 EditorGUI.EndDisabledGroup();
             }
 
             serializedObject.ApplyModifiedProperties();
+        }
+
+        private void DrawTargetSourceStatus()
+        {
+            Object assigned = _targetSource.objectReferenceValue;
+            if (assigned == null)
+            {
+                EditorGUILayout.HelpBox(
+                    "No target-source component is assigned. The rig will use the explicit Follow and Look At fields below.",
+                    MessageType.None);
+                return;
+            }
+
+            if (assigned is not ICameraTargetSource)
+            {
+                EditorGUILayout.HelpBox(
+                    $"Assigned component '{assigned.GetType().FullName}' does not implement ICameraTargetSource.",
+                    MessageType.Error);
+                return;
+            }
+
+            EditorGUILayout.HelpBox(
+                "Target source is typed and explicit. Required missing targets will block Validate / Apply.",
+                MessageType.None);
+        }
+
+        private void ApplyRecipeDefaults(bool overwriteExisting)
+        {
+            foreach (Object item in targets)
+            {
+                var composer = (CameraRigComposer)item;
+                Undo.RecordObject(
+                    composer,
+                    overwriteExisting
+                        ? "Overwrite Camera Rig Composer From Recipe"
+                        : "Apply Camera Rig Recipe Defaults");
+                composer.EditorApplyRecipeDefaults(
+                    overwriteExisting,
+                    out _);
+                EditorUtility.SetDirty(composer);
+            }
         }
     }
 }

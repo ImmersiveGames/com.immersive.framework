@@ -1,39 +1,49 @@
+using System;
 using Immersive.Framework.ApiStatus;
 using Immersive.Framework.Camera;
 using Immersive.Framework.Common;
-using Immersive.Framework.PlayerAuthoring;
 using Unity.Cinemachine;
 using UnityEngine;
 
 namespace Immersive.Framework.CameraAuthoring
 {
     /// <summary>
-    /// Designer-facing authoring surface that resolves explicit targets and materializes
-    /// one local Cinemachine Camera rig.
+    /// Designer-facing authoring surface that resolves explicit camera targets and
+    /// materializes one local Cinemachine Camera rig.
     ///
+    /// A rig may use direct Transform references or one typed ICameraTargetSource.
     /// It does not create or own a Unity Camera, CinemachineBrain or runtime output.
     /// It does not select an active camera or arbitrate requests.
     /// </summary>
     [DisallowMultipleComponent]
     [AddComponentMenu("Immersive Framework/Camera/Camera Rig Composer")]
-    [FrameworkApiStatus(FrameworkApiStatus.Experimental, "Camera rig authoring and idempotent Cinemachine Camera materialization surface.")]
+    [FrameworkApiStatus(
+        FrameworkApiStatus.Experimental,
+        "Camera rig authoring and idempotent Cinemachine Camera materialization surface.")]
     public sealed class CameraRigComposer : MonoBehaviour
     {
         [Header("Designer")]
         [SerializeField] private CameraRigRecipe recipe;
-        [SerializeField] private CameraRigPresentationIntent presentationIntent = CameraRigPresentationIntent.Follow;
-        [SerializeField] private CameraTargetSourceKind targetSourceKind = CameraTargetSourceKind.PlayerComposer;
-        [SerializeField] private PreAuthoredPlayerComposer preAuthoredPlayerComposer;
+        [SerializeField] private CameraRigPresentationIntent presentationIntent =
+            CameraRigPresentationIntent.Follow;
+        [SerializeField] private CameraTargetSourceKind targetSourceKind =
+            CameraTargetSourceKind.ExplicitTransform;
+        [Tooltip("Optional explicit component implementing ICameraTargetSource. When assigned, it provides Follow and Look At evidence.")]
+        [SerializeField] private MonoBehaviour targetSource;
         [SerializeField] private Transform explicitFollowTarget;
         [SerializeField] private Transform explicitLookAtTarget;
-        [SerializeField] private CameraTargetRequirement followRequirement = CameraTargetRequirement.Required;
-        [SerializeField] private CameraTargetRequirement lookAtRequirement = CameraTargetRequirement.Optional;
-        [SerializeField] private Vector3 followOffset = new Vector3(0f, 5f, -8f);
+        [SerializeField] private CameraTargetRequirement followRequirement =
+            CameraTargetRequirement.Required;
+        [SerializeField] private CameraTargetRequirement lookAtRequirement =
+            CameraTargetRequirement.Optional;
+        [SerializeField] private Vector3 followOffset =
+            new Vector3(0f, 5f, -8f);
 
         [Header("Advanced / Technical Materialization")]
         [SerializeField] private CinemachineCamera cinemachineCamera;
         [SerializeField] private bool createCinemachineCameraIfMissing = true;
-        [SerializeField] private string cinemachineCameraObjectName = "Cinemachine Camera";
+        [SerializeField] private string cinemachineCameraObjectName =
+            "Cinemachine Camera";
         [SerializeField] private bool logApplyRebuildDiagnostics = true;
 
         [Header("Debug")]
@@ -45,25 +55,44 @@ namespace Immersive.Framework.CameraAuthoring
         [SerializeField] private Transform lastResolvedLookAtTarget;
 
         public CameraRigRecipe Recipe => recipe;
-        public CameraRigPresentationIntent PresentationIntent => presentationIntent;
+        public CameraRigPresentationIntent PresentationIntent =>
+            presentationIntent;
         public CameraTargetSourceKind TargetSourceKind => targetSourceKind;
-        public PreAuthoredPlayerComposer PreAuthoredPlayerComposer => preAuthoredPlayerComposer;
+        public MonoBehaviour TargetSourceBehaviour => targetSource;
+        public ICameraTargetSource TargetSource =>
+            targetSource as ICameraTargetSource;
         public Transform ExplicitFollowTarget => explicitFollowTarget;
         public Transform ExplicitLookAtTarget => explicitLookAtTarget;
+
+        // Temporary P3M2 bridge for the existing camera-eligibility validator.
+        // There is no serialized field and no compile-time dependency on the
+        // historical PreAuthored Player type. P3M3 removes this bridge together
+        // with the obsolete product surface.
+        public UnityEngine.Object PreAuthoredPlayerComposer => null;
+
         public CameraTargetRequirement FollowRequirement => followRequirement;
         public CameraTargetRequirement LookAtRequirement => lookAtRequirement;
         public Vector3 FollowOffset => followOffset;
         public CinemachineCamera CinemachineCamera => cinemachineCamera;
-        public bool CreateCinemachineCameraIfMissing => createCinemachineCameraIfMissing;
+        public bool CreateCinemachineCameraIfMissing =>
+            createCinemachineCameraIfMissing;
         public string CinemachineCameraObjectName =>
-            cinemachineCameraObjectName.NormalizeTextOrFallback("Cinemachine Camera");
-        public bool LogApplyRebuildDiagnostics => logApplyRebuildDiagnostics;
-        public string LastApplyRebuildStatus => lastApplyRebuildStatus.NormalizeText();
-        public string LastBlockingIssue => lastBlockingIssue.NormalizeText();
-        public string LastTargetResolutionSummary => lastTargetResolutionSummary.NormalizeText();
-        public string LastMaterializationSummary => lastMaterializationSummary.NormalizeText();
-        public Transform LastResolvedFollowTarget => lastResolvedFollowTarget;
-        public Transform LastResolvedLookAtTarget => lastResolvedLookAtTarget;
+            cinemachineCameraObjectName.NormalizeTextOrFallback(
+                "Cinemachine Camera");
+        public bool LogApplyRebuildDiagnostics =>
+            logApplyRebuildDiagnostics;
+        public string LastApplyRebuildStatus =>
+            lastApplyRebuildStatus.NormalizeText();
+        public string LastBlockingIssue =>
+            lastBlockingIssue.NormalizeText();
+        public string LastTargetResolutionSummary =>
+            lastTargetResolutionSummary.NormalizeText();
+        public string LastMaterializationSummary =>
+            lastMaterializationSummary.NormalizeText();
+        public Transform LastResolvedFollowTarget =>
+            lastResolvedFollowTarget;
+        public Transform LastResolvedLookAtTarget =>
+            lastResolvedLookAtTarget;
 
         public bool TryValidateForApply(out string issue)
         {
@@ -76,19 +105,18 @@ namespace Immersive.Framework.CameraAuthoring
                 return false;
             }
 
-            if (targetSourceKind != CameraTargetSourceKind.PlayerComposer &&
-                targetSourceKind != CameraTargetSourceKind.ExplicitTransform)
+            if (targetSource != null && TargetSource == null)
             {
                 issue =
-                    $"CameraRigComposer supports only PreAuthoredPlayerComposer or ExplicitTransform target sources. Current source: '{targetSourceKind}'.";
+                    $"Assigned Camera Target Source '{targetSource.GetType().FullName}' does not implement ICameraTargetSource.";
                 return false;
             }
 
-            if (targetSourceKind == CameraTargetSourceKind.PlayerComposer &&
-                preAuthoredPlayerComposer == null)
+            if (targetSource == null &&
+                targetSourceKind != CameraTargetSourceKind.ExplicitTransform)
             {
                 issue =
-                    "CameraRigComposer requires an explicit PreAuthoredPlayerComposer target source.";
+                    $"CameraRigComposer requires a typed target-source component for source kind '{targetSourceKind}'.";
                 return false;
             }
 
@@ -105,46 +133,68 @@ namespace Immersive.Framework.CameraAuthoring
             CameraTargetRequirement requestedFollowRequirement,
             CameraTargetRequirement requestedLookAtRequirement)
         {
-            CameraTargetSourceDescriptor source = CreateTargetSourceDescriptor();
-            CameraResolvedTargets targets;
-
-            switch (targetSourceKind)
+            if (targetSource != null)
             {
-                case CameraTargetSourceKind.PlayerComposer:
-                    if (preAuthoredPlayerComposer == null)
-                    {
-                        return CameraTargetResolveResult.Blocked(
-                            source,
-                            "PreAuthoredPlayerComposer target source is missing.",
-                            "Camera rig target resolution was blocked because PreAuthoredPlayerComposer is not assigned.",
-                            CameraIssue.Blocking(
-                                "camera.target-source.player-composer.missing",
-                                "PreAuthoredPlayerComposer target source is missing."));
-                    }
-
-                    targets = CameraResolvedTargets.FromFollowAndLookAt(
-                        preAuthoredPlayerComposer.CameraTarget,
-                        requestedLookAtRequirement == CameraTargetRequirement.NotUsed
-                            ? null
-                            : preAuthoredPlayerComposer.LookAtTarget);
-                    break;
-
-                case CameraTargetSourceKind.ExplicitTransform:
-                    targets = new CameraResolvedTargets(
-                        requestedFollowRequirement == CameraTargetRequirement.NotUsed
-                            ? null
-                            : explicitFollowTarget,
-                        requestedLookAtRequirement == CameraTargetRequirement.NotUsed
-                            ? null
-                            : explicitLookAtTarget);
-                    break;
-
-                default:
+                ICameraTargetSource provider = TargetSource;
+                if (provider == null)
+                {
                     return CameraTargetResolveResult.Blocked(
-                        source,
-                        $"Unsupported CameraRigComposer target source: '{targetSourceKind}'.",
-                        "Camera rig target resolution was blocked by an unsupported source kind.");
+                        new CameraTargetSourceDescriptor(
+                            CameraTargetSourceKind.None,
+                            targetSource,
+                            string.Empty,
+                            $"InvalidTargetSource:{targetSource.GetType().FullName}"),
+                        "Assigned component does not implement ICameraTargetSource.",
+                        "Camera rig target resolution was blocked by invalid target-source authoring.");
+                }
+
+                try
+                {
+                    return provider.ResolveCameraTargets(
+                        requestedFollowRequirement,
+                        requestedLookAtRequirement);
+                }
+                catch (Exception exception)
+                {
+                    return CameraTargetResolveResult.Blocked(
+                        new CameraTargetSourceDescriptor(
+                            provider.TargetSourceKind,
+                            targetSource,
+                            string.Empty,
+                            provider.GetType().FullName),
+                        $"Camera target source threw during resolution. {exception.Message}",
+                        "Camera rig target resolution failed explicitly.",
+                        CameraIssue.Blocking(
+                            "camera.target-source.resolve-failed",
+                            exception.Message));
+                }
             }
+
+            if (targetSourceKind != CameraTargetSourceKind.ExplicitTransform)
+            {
+                return CameraTargetResolveResult.Blocked(
+                    new CameraTargetSourceDescriptor(
+                        targetSourceKind,
+                        null,
+                        string.Empty,
+                        $"UnsupportedTargetSource:{targetSourceKind}"),
+                    $"CameraRigComposer requires a typed provider for target source kind '{targetSourceKind}'.",
+                    "Camera rig target resolution was blocked by unsupported source authoring.");
+            }
+
+            CameraTargetSourceDescriptor source =
+                CameraTargetSourceDescriptor.ExplicitTransform(
+                    explicitFollowTarget,
+                    explicitFollowTarget != null
+                        ? "ExplicitTransform"
+                        : "ExplicitTransform:missing");
+            var targets = new CameraResolvedTargets(
+                requestedFollowRequirement == CameraTargetRequirement.NotUsed
+                    ? null
+                    : explicitFollowTarget,
+                requestedLookAtRequirement == CameraTargetRequirement.NotUsed
+                    ? null
+                    : explicitLookAtTarget);
 
             return CameraTargetResolveResult.ValidateRequirements(
                 source,
@@ -155,11 +205,16 @@ namespace Immersive.Framework.CameraAuthoring
 
         public CameraRigComposerDebugSnapshot CreateDebugSnapshot()
         {
-            CameraTargetSourceDescriptor source = CreateTargetSourceDescriptor();
+            CameraTargetResolveResult resolution = ResolveCameraTargets(
+                followRequirement,
+                lookAtRequirement);
+            CameraTargetSourceDescriptor source = resolution.Source;
 
             return new CameraRigComposerDebugSnapshot(
                 presentationIntent,
-                targetSourceKind,
+                targetSource != null
+                    ? resolution.Source.Kind
+                    : targetSourceKind,
                 source.LogicalSourceId,
                 source.DiagnosticLabel,
                 string.Empty,
@@ -176,23 +231,6 @@ namespace Immersive.Framework.CameraAuthoring
                 lastBlockingIssue.NormalizeText(),
                 lastTargetResolutionSummary.NormalizeText(),
                 lastMaterializationSummary.NormalizeText());
-        }
-
-        private CameraTargetSourceDescriptor CreateTargetSourceDescriptor()
-        {
-            return targetSourceKind == CameraTargetSourceKind.PlayerComposer
-                ? new CameraTargetSourceDescriptor(
-                    CameraTargetSourceKind.PlayerComposer,
-                    preAuthoredPlayerComposer,
-                    preAuthoredPlayerComposer != null ? preAuthoredPlayerComposer.ActorId : string.Empty,
-                    preAuthoredPlayerComposer != null
-                        ? $"PreAuthoredPlayerComposer:{preAuthoredPlayerComposer.ActorId}"
-                        : "PreAuthoredPlayerComposer:missing")
-                : CameraTargetSourceDescriptor.ExplicitTransform(
-                    explicitFollowTarget,
-                    explicitFollowTarget != null
-                        ? "ExplicitTransform"
-                        : "ExplicitTransform:missing");
         }
 
 #if UNITY_EDITOR
@@ -264,7 +302,7 @@ namespace Immersive.Framework.CameraAuthoring
         private void Reset()
         {
             presentationIntent = CameraRigPresentationIntent.Follow;
-            targetSourceKind = CameraTargetSourceKind.PlayerComposer;
+            targetSourceKind = CameraTargetSourceKind.ExplicitTransform;
             followRequirement = CameraTargetRequirement.Required;
             lookAtRequirement = CameraTargetRequirement.Optional;
             cinemachineCamera =
