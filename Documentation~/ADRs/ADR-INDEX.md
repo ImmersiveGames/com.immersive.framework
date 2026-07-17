@@ -17,6 +17,7 @@ ADRs are decision history, not the current setup guide. Read [Current State](../
 | [ADR-PROD-0011](Product/ADR-PROD-0011-ordered-local-player-slot-allocation-and-visual-identity.md) | Ordered local Player Slot allocation and visual identity. |
 | [ADR-PROD-0012](Product/ADR-PROD-0012-activity-player-participation-requirements-profiles.md) | Activity Player Participation Requirements Profiles. |
 | [ADR-PROD-0013](Product/ADR-PROD-0013-scene-local-player-admission.md) | Admission of an explicitly authored scene-existing local Player Host. |
+| [ADR-PROD-0014](Product/ADR-PROD-0014-activity-transition-authority-readiness-and-finalization.md) | Activity transition authority, readiness, commit and previous-Activity finalization contract. |
 | [P3 Canonical Player Lane](P3-ADR-Canonical-Player-Lane.md) | Canonical P3 participation lane and destructive-removal policy. |
 
 ## Superseded product decisions

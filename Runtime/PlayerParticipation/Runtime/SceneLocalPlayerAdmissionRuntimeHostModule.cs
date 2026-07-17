@@ -18,7 +18,7 @@ namespace Immersive.Framework.PlayerParticipation
     [DisallowMultipleComponent]
     [FrameworkApiStatus(
         FrameworkApiStatus.Internal,
-        "P3M4B1/P3M4B2A host-scoped Scene Local Player admission and Activity lifecycle composition adapter.")]
+        "P3M4B1/P3M4B2A/P3M5A host-scoped Scene Local Player admission, Activity lifecycle composition and deterministic loaded-scene reconciliation.")]
     internal sealed class SceneLocalPlayerAdmissionRuntimeHostModule : MonoBehaviour
     {
         private sealed class ResolvedAutomaticAuthoring
@@ -123,9 +123,17 @@ namespace Immersive.Framework.PlayerParticipation
 
         internal bool IsReadyFor(SceneLocalPlayerAdmissionAuthoring authoring)
         {
-            return IsReady &&
-                authoring != null &&
-                ContainsAuthoring(authoring);
+            if (!IsReady || authoring == null)
+            {
+                return false;
+            }
+
+            if (!ContainsAuthoring(authoring))
+            {
+                BindScene(authoring.gameObject.scene);
+            }
+
+            return ContainsAuthoring(authoring);
         }
 
         internal SceneLocalPlayerAdmissionRuntimeResult TryAdmit(
@@ -271,6 +279,8 @@ namespace Immersive.Framework.PlayerParticipation
                 return false;
             }
 
+            ReconcileLoadedSceneAuthoring();
+
             PlayerParticipationSnapshot snapshot = participationContext.CreateSnapshot();
             if (snapshot == null || !snapshot.IsInitialized)
             {
@@ -383,9 +393,30 @@ namespace Immersive.Framework.PlayerParticipation
 
         private void BindLoadedScenes()
         {
+            PruneDestroyedAuthoring();
             for (int index = 0; index < SceneManager.sceneCount; index++)
             {
                 BindScene(SceneManager.GetSceneAt(index));
+            }
+        }
+
+        private void ReconcileLoadedSceneAuthoring()
+        {
+            BindLoadedScenes();
+            PruneDestroyedAuthoring();
+            diagnostic =
+                $"Scene Local Player admission runtime reconciled loaded scenes. " +
+                $"surfaces='{BoundAuthoringCount}' activeAdmissions='{ActiveAdmissionCount}'.";
+        }
+
+        private void PruneDestroyedAuthoring()
+        {
+            for (int index = boundAuthoring.Count - 1; index >= 0; index--)
+            {
+                if (boundAuthoring[index] == null)
+                {
+                    boundAuthoring.RemoveAt(index);
+                }
             }
         }
 
@@ -516,9 +547,11 @@ namespace Immersive.Framework.PlayerParticipation
 
         private void HandleSceneLoaded(Scene scene, LoadSceneMode mode)
         {
+            PruneDestroyedAuthoring();
             BindScene(scene);
             diagnostic =
-                $"Scene Local Player admission runtime attached loaded scene '{scene.name}'. surfaces='{BoundAuthoringCount}'.";
+                $"Scene Local Player admission runtime attached loaded scene '{scene.name}'. " +
+                $"surfaces='{BoundAuthoringCount}' activeAdmissions='{ActiveAdmissionCount}'.";
         }
 
         private void OnDestroy()
