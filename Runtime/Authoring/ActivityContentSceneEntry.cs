@@ -14,7 +14,7 @@ namespace Immersive.Framework.Authoring
     public sealed class ActivityContentSceneEntry
     {
         [SerializeField]
-        [Tooltip("Stable content id within the Activity Content Profile. F25 execution will require this value to be explicit; GameObject names and scene paths are diagnostics only.")]
+        [Tooltip("Stable content id within the Activity Content Profile. Required for execution identity. GameObject names, scene names and scene paths are diagnostics only.")]
         private string contentId = string.Empty;
 
         [SerializeField]
@@ -47,13 +47,21 @@ namespace Immersive.Framework.Authoring
 
         public bool HasExplicitContentId => !string.IsNullOrWhiteSpace(ExplicitContentId);
 
-        public string ContentId
+        /// <summary>
+        /// Functional content id. Empty when not authored; never falls back to scene name/path.
+        /// </summary>
+        public string ContentId => ExplicitContentId;
+
+        /// <summary>
+        /// Diagnostics-only label when explicit content id is missing. Not used as runtime identity.
+        /// </summary>
+        public string DiagnosticContentId
         {
             get
             {
-                if (!string.IsNullOrWhiteSpace(contentId))
+                if (HasExplicitContentId)
                 {
-                    return contentId.Trim();
+                    return ExplicitContentId;
                 }
 
                 if (!string.IsNullOrWhiteSpace(SceneName))

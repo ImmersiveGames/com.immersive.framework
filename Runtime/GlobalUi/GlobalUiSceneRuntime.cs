@@ -158,15 +158,12 @@ namespace Immersive.Framework.GlobalUi
                 await Awaitable.NextFrameAsync();
             }
 
+            // Resolve only by the path used for LoadSceneAsync. Name fallback can attach to a
+            // different loaded scene that happens to share GlobalUiSceneName.
             var scene = SceneManager.GetSceneByPath(scenePath);
-            if (!scene.IsValid())
-            {
-                scene = SceneManager.GetSceneByName(application.GlobalUiSceneName);
-            }
-
             if (!scene.IsValid() || !scene.isLoaded)
             {
-                string message = $"UIGlobal scene '{scenePath}' finished loading but could not be resolved as a loaded scene.";
+                string message = $"UIGlobal scene '{scenePath}' finished loading but could not be resolved as a loaded scene by path.";
                 logger.Error(message);
                 return Failed(application, message);
             }

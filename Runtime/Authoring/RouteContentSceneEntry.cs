@@ -14,7 +14,7 @@ namespace Immersive.Framework.Authoring
     public sealed class RouteContentSceneEntry
     {
         [SerializeField]
-        [Tooltip("Stable content id within the Route Content Profile. F6 execution requires this value to be explicit; the legacy fallback is diagnostics/planning-only.")]
+        [Tooltip("Stable content id within the Route Content Profile. Required for execution identity. Scene names and paths are never used as functional content ids.")]
         private string contentId = string.Empty;
 
         [SerializeField]
@@ -39,13 +39,21 @@ namespace Immersive.Framework.Authoring
 
         public bool HasExplicitContentId => !string.IsNullOrWhiteSpace(ExplicitContentId);
 
-        public string ContentId
+        /// <summary>
+        /// Functional content id. Empty when not authored; never falls back to scene name/path.
+        /// </summary>
+        public string ContentId => ExplicitContentId;
+
+        /// <summary>
+        /// Diagnostics-only label when explicit content id is missing. Not used as runtime identity.
+        /// </summary>
+        public string DiagnosticContentId
         {
             get
             {
-                if (!string.IsNullOrWhiteSpace(contentId))
+                if (HasExplicitContentId)
                 {
-                    return contentId.Trim();
+                    return ExplicitContentId;
                 }
 
                 if (!string.IsNullOrWhiteSpace(SceneName))

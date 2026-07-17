@@ -36,7 +36,8 @@ namespace Immersive.Framework.InputMode
         [SerializeField] private UnityInputTargetDeclaration[] unityInputTargets;
         [SerializeField] private PlayerActorDeclaration[] playerActors;
         [SerializeField] private LocalPlayerProvisioningAuthoring localPlayerProvisioningAuthoring;
-        [SerializeField] private bool autoDiscoverMissingReferences = true;
+        [Tooltip("When enabled, missing authored arrays may be filled from loaded-scene declarations (validators fail closed on duplicates). PlayerInput is never resolved by scene-wide Find; use the explicit field, PlayerActors array, or a co-located PlayerInput when this flag is on.")]
+        [SerializeField] private bool autoDiscoverMissingReferences = false;
         [SerializeField] private bool requireLocalPlayerProvisioning = true;
 
         [Header("Action Maps")]
@@ -278,16 +279,9 @@ namespace Immersive.Framework.InputMode
                 return null;
             }
 
-            PlayerActorDeclaration[] declarations = FindObjectsByType<PlayerActorDeclaration>(FindObjectsInactive.Include);
-            for (int i = 0; i < declarations.Length; i++)
-            {
-                if (declarations[i] != null && declarations[i].PlayerInput != null)
-                {
-                    return declarations[i].PlayerInput;
-                }
-            }
-
-            return null;
+            // Co-located evidence only. Scene-wide FindObjectsByType is intentionally not used:
+            // it is non-deterministic with multiple PlayerActors / additive scenes.
+            return GetComponent<PlayerInput>();
         }
 
         private InputModeUnityActionMapBinding[] CreateActionMapBindings(string source, string requestReason)

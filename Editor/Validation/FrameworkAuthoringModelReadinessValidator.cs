@@ -167,6 +167,13 @@ namespace Immersive.Framework.Editor.Editor.Validation
                     continue;
                 }
 
+                if (!entry.HasExplicitContentId)
+                {
+                    report.AddError(
+                        $"Model Readiness: {entryLabel} has no explicit Content Id. Scene names/paths are diagnostics only and must not be used as content identity.",
+                        profile);
+                }
+
                 ValidateSceneEntry(report, profile, entry.ScenePath, entry.HasScene, entry.Requiredness, entryLabel);
             }
         }
@@ -198,6 +205,13 @@ namespace Immersive.Framework.Editor.Editor.Validation
                 {
                     report.AddError($"Model Readiness: {entryLabel} is null.", profile);
                     continue;
+                }
+
+                if (!entry.HasExplicitContentId)
+                {
+                    report.AddError(
+                        $"Model Readiness: {entryLabel} has no explicit Content Id. Scene names/paths are diagnostics only and must not be used as content identity.",
+                        profile);
                 }
 
                 ValidateSceneEntry(report, profile, entry.ScenePath, entry.HasScene, entry.Requiredness, entryLabel);

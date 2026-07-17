@@ -200,8 +200,14 @@ namespace Immersive.Framework.Editor.CameraAuthoring
             if (assigned is not ICameraTargetSource)
             {
                 EditorGUILayout.HelpBox(
-                    $"Assigned component '{assigned.GetType().FullName}' does not implement ICameraTargetSource.",
+                    $"Assigned component '{assigned.GetType().FullName}' does not implement ICameraTargetSource. Validate / Apply / Rebuild are blocked until this field is cleared or a typed provider is assigned.",
                     MessageType.Error);
+
+                if (GUILayout.Button("Clear Invalid Target Source"))
+                {
+                    _targetSource.objectReferenceValue = null;
+                }
+
                 return;
             }
 

@@ -5,7 +5,9 @@
 **Versão auditada:** `1.0.0-preview.15` (branch `master`)  
 **Data:** 2026-07-17  
 **Escopo:** Runtime + Editor (≈ 989 arquivos `.cs`)  
-**Foco principal:** referências não tipadas, localização por nome de objetos e padrões correlatos que enfraquecem o contrato de lifecycle
+**Foco principal:** referências não tipadas, localização por nome de objetos e padrões correlatos que enfraquecem o contrato de lifecycle  
+
+**Atualização Leva 1 (2026-07-17):** mitigados no código **C1**, **C3**, **C4** e **A2** (ver commits locais / diff). Defaults e fallbacks legados em assets serializados antigos podem ainda carregar valores pré-existentes.
 
 ---
 

@@ -28,7 +28,8 @@ namespace Immersive.Framework.InputMode
 
         [Header("Bridge")]
         [SerializeField] private PauseInputModeUnityPlayerInputRuntimeBridge bridge;
-        [SerializeField] private bool autoDiscoverBridge = true;
+        [Tooltip("When enabled and Bridge is unassigned, resolve only a co-located or parent PauseInputModeUnityPlayerInputRuntimeBridge. Scene-wide Find is never used.")]
+        [SerializeField] private bool autoDiscoverBridge = false;
 
         [Header("Unity InputAction Evidence")]
         [SerializeField] private PlayerInput playerInput;
@@ -229,6 +230,7 @@ namespace Immersive.Framework.InputMode
                 return false;
             }
 
+            // Hierarchy-local evidence only. Never pick the first scene-wide FindObjectsByType hit.
             resolvedBridge = GetComponent<PauseInputModeUnityPlayerInputRuntimeBridge>();
             if (resolvedBridge != null)
             {
@@ -236,13 +238,6 @@ namespace Immersive.Framework.InputMode
             }
 
             resolvedBridge = GetComponentInParent<PauseInputModeUnityPlayerInputRuntimeBridge>();
-            if (resolvedBridge != null)
-            {
-                return true;
-            }
-
-            PauseInputModeUnityPlayerInputRuntimeBridge[] bridges = FindObjectsByType<PauseInputModeUnityPlayerInputRuntimeBridge>(FindObjectsInactive.Include);
-            resolvedBridge = bridges != null && bridges.Length > 0 ? bridges[0] : null;
             return resolvedBridge != null;
         }
 
@@ -304,12 +299,15 @@ namespace Immersive.Framework.InputMode
                 return bridge.PlayerInput;
             }
 
-            if (autoDiscoverBridge && TryResolveBridge(out PauseInputModeUnityPlayerInputRuntimeBridge resolvedBridge) && resolvedBridge.PlayerInput != null)
+            if (autoDiscoverBridge
+                && TryResolveBridge(out PauseInputModeUnityPlayerInputRuntimeBridge resolvedBridge)
+                && resolvedBridge.PlayerInput != null)
             {
                 return resolvedBridge.PlayerInput;
             }
 
-            return GetComponent<PlayerInput>();
+            // Same GameObject only when auto-discover is opted in; otherwise require explicit wiring.
+            return autoDiscoverBridge ? GetComponent<PlayerInput>() : null;
         }
 
         private PauseInputActionRuntimeBridgeTriggerResult CreateResult(

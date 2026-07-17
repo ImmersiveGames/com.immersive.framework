@@ -28,7 +28,7 @@ namespace Immersive.Framework.CameraAuthoring
             CameraRigPresentationIntent.Follow;
         [SerializeField] private CameraTargetSourceKind targetSourceKind =
             CameraTargetSourceKind.ExplicitTransform;
-        [Tooltip("Optional explicit component implementing ICameraTargetSource. When assigned, it provides Follow and Look At evidence.")]
+        [Tooltip("Optional explicit component implementing ICameraTargetSource. Only components that implement the interface are valid; any other MonoBehaviour is rejected by Validate / Apply and the custom Inspector.")]
         [SerializeField] private MonoBehaviour targetSource;
         [SerializeField] private Transform explicitFollowTarget;
         [SerializeField] private Transform explicitLookAtTarget;

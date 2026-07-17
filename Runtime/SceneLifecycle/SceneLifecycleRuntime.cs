@@ -411,9 +411,19 @@ namespace Immersive.Framework.SceneLifecycle
                 {
                     return sceneByPath;
                 }
+
+                // Path was the requested identity and failed. Do not resolve a different
+                // scene that merely shares the same name.
+                return default;
             }
 
-            return SceneManager.GetSceneByName(sceneName);
+            if (string.IsNullOrWhiteSpace(sceneName))
+            {
+                return default;
+            }
+
+            var sceneByName = SceneManager.GetSceneByName(sceneName);
+            return sceneByName.IsValid() && sceneByName.isLoaded ? sceneByName : default;
         }
 
         private static string GetSceneNameForDiagnostics(Scene scene, string fallbackSceneName)
@@ -463,12 +473,14 @@ namespace Immersive.Framework.SceneLifecycle
                 return false;
             }
 
-            if (!string.IsNullOrWhiteSpace(scenePath) && string.Equals(scene.path, scenePath, StringComparison.OrdinalIgnoreCase))
+            // Path wins as functional identity when present; name is legacy-only when path is empty.
+            if (!string.IsNullOrWhiteSpace(scenePath))
             {
-                return true;
+                return string.Equals(scene.path, scenePath, StringComparison.OrdinalIgnoreCase);
             }
 
-            return !string.IsNullOrWhiteSpace(sceneName) && string.Equals(scene.name, sceneName, StringComparison.OrdinalIgnoreCase);
+            return !string.IsNullOrWhiteSpace(sceneName)
+                && string.Equals(scene.name, sceneName, StringComparison.OrdinalIgnoreCase);
         }
     }
 }

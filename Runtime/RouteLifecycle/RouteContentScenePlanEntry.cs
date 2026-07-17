@@ -62,7 +62,7 @@ namespace Immersive.Framework.RouteLifecycle
             }
 
             return new RouteContentScenePlanEntry(
-                entry.ContentId,
+                entry.HasExplicitContentId ? entry.ExplicitContentId : string.Empty,
                 entry.SceneName,
                 entry.ScenePath,
                 entry.Requiredness,

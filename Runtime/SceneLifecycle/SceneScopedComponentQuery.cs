@@ -173,10 +173,11 @@ namespace Immersive.Framework.SceneLifecycle
                 return false;
             }
 
-            if (!string.IsNullOrWhiteSpace(scenePath)
-                && string.Equals(scene.path, scenePath, StringComparison.OrdinalIgnoreCase))
+            // Path is the functional scene identity when authored. Do not fall back to name
+            // when a path is present but does not match (homonym scenes / stale paths).
+            if (!string.IsNullOrWhiteSpace(scenePath))
             {
-                return true;
+                return string.Equals(scene.path, scenePath, StringComparison.OrdinalIgnoreCase);
             }
 
             return !string.IsNullOrWhiteSpace(sceneName)

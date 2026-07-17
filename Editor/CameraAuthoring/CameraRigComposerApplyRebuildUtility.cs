@@ -1,6 +1,8 @@
 using Immersive.Framework.Camera;
 using Immersive.Framework.CameraAuthoring;
+using Immersive.Framework.Diagnostics;
 using Immersive.Framework.Editor.Camera.Cinemachine;
+using Immersive.Logging.Records;
 using UnityEditor;
 using UnityEngine;
 
@@ -30,6 +32,11 @@ namespace Immersive.Framework.Editor.CameraAuthoring
                     null);
                 EditorUtility.SetDirty(composer);
 
+                if (logDiagnostics)
+                {
+                    LogValidationFailed(composer, issue, string.Empty);
+                }
+
                 return CameraRigComposerApplyRebuildResult.Failed(
                     "ValidationFailed",
                     issue);
@@ -51,6 +58,14 @@ namespace Immersive.Framework.Editor.CameraAuthoring
                     null);
                 EditorUtility.SetDirty(composer);
 
+                if (logDiagnostics)
+                {
+                    LogValidationFailed(
+                        composer,
+                        targets.BlockingIssue,
+                        targets.DiagnosticSummary);
+                }
+
                 return CameraRigComposerApplyRebuildResult.Failed(
                     "ValidationFailed",
                     targets.BlockingIssue,
@@ -68,9 +83,13 @@ namespace Immersive.Framework.Editor.CameraAuthoring
 
             if (logDiagnostics)
             {
-                Debug.Log(
-                    $"[Immersive.Framework][CameraRigComposer] Validation succeeded. rig='{composer.name}' intent='{composer.PresentationIntent}' source='{composer.TargetSourceKind}'.",
-                    composer);
+                CreateLogger().Info(
+                    "CameraRigComposer validation succeeded.",
+                    LogFields.Of(
+                        LogFields.Field("rig", composer.name),
+                        LogFields.Field("intent", composer.PresentationIntent),
+                        LogFields.Field("source", composer.TargetSourceKind),
+                        LogFields.Field("targetSummary", targets.DiagnosticSummary)));
             }
 
             return CameraRigComposerApplyRebuildResult
@@ -106,7 +125,8 @@ namespace Immersive.Framework.Editor.CameraAuthoring
                     issue,
                     string.Empty,
                     useUndo,
-                    undoGroup);
+                    undoGroup,
+                    logDiagnostics);
             }
 
             CameraTargetResolveResult targets =
@@ -122,7 +142,8 @@ namespace Immersive.Framework.Editor.CameraAuthoring
                     targets.BlockingIssue,
                     targets.DiagnosticSummary,
                     useUndo,
-                    undoGroup);
+                    undoGroup,
+                    logDiagnostics);
             }
 
             var request =
@@ -192,9 +213,31 @@ namespace Immersive.Framework.Editor.CameraAuthoring
             if (logDiagnostics &&
                 composer.LogApplyRebuildDiagnostics)
             {
-                Debug.Log(
-                    $"[Immersive.Framework][CameraRigComposer] Apply/Rebuild completed. rig='{composer.name}' created='{report.CreatedCount}' repaired='{report.RepairedCount}' alreadyValid='{report.AlreadyValidCount}' skipped='{report.SkippedCount}' blocked='{report.BlockedCount}'.",
-                    composer);
+                LogField[] fields = LogFields.Of(
+                    LogFields.Field("rig", composer.name),
+                    LogFields.Field("status", status),
+                    LogFields.Field("created", report.CreatedCount),
+                    LogFields.Field("repaired", report.RepairedCount),
+                    LogFields.Field("alreadyValid", report.AlreadyValidCount),
+                    LogFields.Field("skipped", report.SkippedCount),
+                    LogFields.Field("blocked", report.BlockedCount),
+                    LogFields.Field("targetSummary", targets.DiagnosticSummary),
+                    LogFields.Field("materializationSummary", materializationSummary),
+                    LogFields.Field("blockingIssue", blockingIssue));
+
+                FrameworkLogger logger = CreateLogger();
+                if (report.Succeeded)
+                {
+                    logger.Info(
+                        "CameraRigComposer Apply/Rebuild completed.",
+                        fields);
+                }
+                else
+                {
+                    logger.Warning(
+                        "CameraRigComposer Apply/Rebuild completed with blocking issues.",
+                        fields);
+                }
             }
 
             return CameraRigComposerApplyRebuildResult.Applied(
@@ -216,7 +259,8 @@ namespace Immersive.Framework.Editor.CameraAuthoring
             string issue,
             string targetSummary,
             bool useUndo,
-            int undoGroup)
+            int undoGroup,
+            bool logDiagnostics)
         {
             composer.EditorSetApplyRebuildResult(
                 status,
@@ -232,10 +276,41 @@ namespace Immersive.Framework.Editor.CameraAuthoring
                 Undo.CollapseUndoOperations(undoGroup);
             }
 
+            if (logDiagnostics)
+            {
+                CreateLogger().Error(
+                    "CameraRigComposer Apply/Rebuild failed.",
+                    LogFields.Of(
+                        LogFields.Field("rig", composer != null ? composer.name : "<none>"),
+                        LogFields.Field("status", status),
+                        LogFields.Field("issue", issue),
+                        LogFields.Field("targetSummary", targetSummary)));
+            }
+
             return CameraRigComposerApplyRebuildResult.Failed(
                 status,
                 issue,
                 targetSummary);
+        }
+
+        private static void LogValidationFailed(
+            CameraRigComposer composer,
+            string issue,
+            string targetSummary)
+        {
+            CreateLogger().Error(
+                "CameraRigComposer validation failed.",
+                LogFields.Of(
+                    LogFields.Field("rig", composer != null ? composer.name : "<none>"),
+                    LogFields.Field("intent", composer != null ? composer.PresentationIntent.ToString() : string.Empty),
+                    LogFields.Field("source", composer != null ? composer.TargetSourceKind.ToString() : string.Empty),
+                    LogFields.Field("issue", issue),
+                    LogFields.Field("targetSummary", targetSummary)));
+        }
+
+        private static FrameworkLogger CreateLogger()
+        {
+            return FrameworkLogger.Create(typeof(CameraRigComposerApplyRebuildUtility));
         }
     }
 }
