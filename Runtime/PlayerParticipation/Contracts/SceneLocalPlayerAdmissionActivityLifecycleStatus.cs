@@ -4,7 +4,7 @@ namespace Immersive.Framework.PlayerParticipation
 {
     [FrameworkApiStatus(
         FrameworkApiStatus.Experimental,
-        "P3M4B2A Scene Local Player Activity lifecycle status vocabulary.")]
+        "P3M4B2A/P3M4B2B Scene Local Player Activity lifecycle status vocabulary.")]
     public enum SceneLocalPlayerAdmissionActivityLifecycleStatus
     {
         None = 0,
@@ -25,6 +25,7 @@ namespace Immersive.Framework.PlayerParticipation
         FailedRequirement = 310,
         FailedAdmission = 320,
         FailedSelection = 330,
+        FailedActorAdoption = 335,
         FailedExit = 340,
         FailedRollback = 350
     }

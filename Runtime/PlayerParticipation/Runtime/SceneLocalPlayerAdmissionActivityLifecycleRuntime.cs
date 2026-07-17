@@ -14,7 +14,7 @@ namespace Immersive.Framework.PlayerParticipation
     /// </summary>
     [FrameworkApiStatus(
         FrameworkApiStatus.Internal,
-        "P3M4B2A Activity lifecycle coordination for Scene Local Player admission and Actor selection.")]
+        "P3M4B2A/P3M4B2B Activity lifecycle coordination for Scene Local Player admission, selection and external Actor adoption.")]
     internal sealed class SceneLocalPlayerAdmissionActivityLifecycleRuntime
     {
         private sealed class Entry
@@ -25,7 +25,9 @@ namespace Immersive.Framework.PlayerParticipation
                 ActorProfile actorProfile,
                 SceneLocalPlayerAdmissionToken admissionToken,
                 int selectionRevision,
-                bool selectionApplied)
+                bool selectionApplied,
+                ScenePlayerActorAdoptionToken adoptionToken,
+                bool adoptionApplied)
             {
                 Authoring = authoring;
                 PlayerSlotId = playerSlotId;
@@ -33,6 +35,8 @@ namespace Immersive.Framework.PlayerParticipation
                 AdmissionToken = admissionToken;
                 SelectionRevision = selectionRevision;
                 SelectionApplied = selectionApplied;
+                AdoptionToken = adoptionToken;
+                AdoptionApplied = adoptionApplied;
                 AdmissionActive = true;
             }
 
@@ -42,6 +46,8 @@ namespace Immersive.Framework.PlayerParticipation
             internal SceneLocalPlayerAdmissionToken AdmissionToken { get; set; }
             internal int SelectionRevision { get; set; }
             internal bool SelectionApplied { get; set; }
+            internal ScenePlayerActorAdoptionToken AdoptionToken { get; set; }
+            internal bool AdoptionApplied { get; set; }
             internal bool AdmissionActive { get; set; }
         }
 
@@ -63,14 +69,17 @@ namespace Immersive.Framework.PlayerParticipation
         }
 
         private readonly SceneLocalPlayerAdmissionRuntimeHostModule module;
+        private readonly PlayerActorPreparationRuntimeHostModule preparationModule;
         private ActiveRecord activeRecord;
         private string diagnostic =
             "Scene Local Player Activity lifecycle has not executed.";
 
         internal SceneLocalPlayerAdmissionActivityLifecycleRuntime(
-            SceneLocalPlayerAdmissionRuntimeHostModule module)
+            SceneLocalPlayerAdmissionRuntimeHostModule module,
+            PlayerActorPreparationRuntimeHostModule preparationModule = null)
         {
             this.module = module ?? throw new ArgumentNullException(nameof(module));
+            this.preparationModule = preparationModule;
         }
 
         internal string Diagnostic => diagnostic;
@@ -159,8 +168,11 @@ namespace Immersive.Framework.PlayerParticipation
                     $"Activity '{activity.ActivityName}' requires a valid Player Participation Requirements Profile.");
             }
 
-            if ((int)requirements.RequirementLevel >=
-                (int)PlayerParticipationRequirementLevel.LogicalActorsPrepared)
+            bool requiresActorAdoption =
+                (int)requirements.RequirementLevel >=
+                (int)PlayerParticipationRequirementLevel.LogicalActorsPrepared;
+            if (requiresActorAdoption &&
+                (preparationModule == null || !preparationModule.IsReady))
             {
                 return Failure(
                     SceneLocalPlayerAdmissionActivityLifecycleStatus.RejectedActorAdoptionRequired,
@@ -168,7 +180,7 @@ namespace Immersive.Framework.PlayerParticipation
                     owner,
                     resolvedSource,
                     resolvedReason,
-                    $"Activity '{activity.ActivityName}' requires '{requirements.RequirementLevel}'. P3M4B2A supports automatic admission through SelectedActors; external Actor adoption is the next gate.");
+                    $"Activity '{activity.ActivityName}' requires '{requirements.RequirementLevel}', but the host-scoped Player Actor preparation authority is unavailable.");
             }
 
             var entries = new List<Entry>(authoring.Count);
@@ -260,13 +272,62 @@ namespace Immersive.Framework.PlayerParticipation
                         issue);
                 }
 
+                ScenePlayerActorAdoptionToken adoptionToken = default;
+                bool adoptionApplied = false;
+                if (requiresActorAdoption)
+                {
+                    var scopeContext = new RuntimeScopeContext(
+                        owner,
+                        resolvedSource,
+                        $"{resolvedReason}:adopt:{index}");
+                    ScenePlayerActorAdoptionResult adoption =
+                        preparationModule.TryAdoptSceneLocalPlayerActor(
+                            scopeContext,
+                            surface,
+                            resolvedSource,
+                            $"{resolvedReason}:adopt:{index}");
+                    surface.SetActorAdoptionResult(adoption);
+                    if (adoption == null || !adoption.Succeeded || !adoption.Token.IsValid)
+                    {
+                        string rollbackIssue = RollbackCurrentSelectionAndAdmission(
+                            surface,
+                            playerSlotId,
+                            selection.SelectionRevision,
+                            selection.StateChanged,
+                            admission.Token,
+                            resolvedSource,
+                            resolvedReason);
+                        string issue = adoption != null
+                            ? adoption.ToDiagnosticString()
+                            : $"Scene Actor adoption returned no result for Slot '{playerSlotId.StableText}'.";
+                        if (!string.IsNullOrEmpty(rollbackIssue))
+                        {
+                            issue = $"{issue} Current-entry rollback failed. {rollbackIssue}";
+                        }
+
+                        return FailEnterAndRollback(
+                            activity,
+                            owner,
+                            entries,
+                            resolvedSource,
+                            resolvedReason,
+                            SceneLocalPlayerAdmissionActivityLifecycleStatus.FailedActorAdoption,
+                            issue);
+                    }
+
+                    adoptionToken = adoption.Token;
+                    adoptionApplied = true;
+                }
+
                 entries.Add(new Entry(
                     surface,
                     playerSlotId,
                     surface.ActorProfile,
                     admission.Token,
                     selection.SelectionRevision,
-                    selection.StateChanged));
+                    selection.StateChanged,
+                    adoptionToken,
+                    adoptionApplied));
             }
 
             activeRecord = new ActiveRecord(activity, owner, entries);
@@ -277,7 +338,9 @@ namespace Immersive.Framework.PlayerParticipation
                 resolvedSource,
                 resolvedReason,
                 entries.Count,
-                $"Admitted and selected '{entries.Count}' Scene Local Players before canonical Activity Player lifecycle execution.");
+                requiresActorAdoption
+                    ? $"Admitted, selected and adopted required Scene Local Players before canonical Activity Player lifecycle execution. count='{entries.Count}'."
+                    : $"Admitted and selected Scene Local Players before canonical Activity Player lifecycle execution. count='{entries.Count}'.");
         }
 
         internal SceneLocalPlayerAdmissionActivityLifecycleResult TryExit(
@@ -326,6 +389,7 @@ namespace Immersive.Framework.PlayerParticipation
 
             if (!TryReleaseEntries(
                     activeRecord.Entries,
+                    activeRecord.Owner,
                     compensateReleasedEntries: true,
                     resolvedSource,
                     resolvedReason,
@@ -387,6 +451,7 @@ namespace Immersive.Framework.PlayerParticipation
 
             if (!TryReleaseEntries(
                     activeRecord.Entries,
+                    activeRecord.Owner,
                     compensateReleasedEntries: false,
                     resolvedSource,
                     resolvedReason,
@@ -437,6 +502,7 @@ namespace Immersive.Framework.PlayerParticipation
             activeRecord = new ActiveRecord(activity, owner, entries);
             if (TryReleaseEntries(
                     entries,
+                    owner,
                     compensateReleasedEntries: false,
                     source,
                     $"{reason}:rollback",
@@ -466,6 +532,7 @@ namespace Immersive.Framework.PlayerParticipation
 
         private bool TryReleaseEntries(
             List<Entry> entries,
+            RuntimeContentOwner owner,
             bool compensateReleasedEntries,
             string source,
             string reason,
@@ -482,6 +549,30 @@ namespace Immersive.Framework.PlayerParticipation
                     continue;
                 }
 
+                bool adoptionReleased = false;
+                if (entry.AdoptionApplied)
+                {
+                    ScenePlayerActorAdoptionResult adoptionRelease =
+                        preparationModule != null
+                            ? preparationModule.TryReleaseSceneLocalPlayerActor(
+                                entry.Authoring,
+                                entry.AdoptionToken,
+                                source,
+                                $"{reason}:release-adoption:{index}")
+                            : null;
+                    entry.Authoring.SetActorAdoptionResult(adoptionRelease);
+                    if (adoptionRelease == null || !adoptionRelease.Succeeded)
+                    {
+                        failures.Add(adoptionRelease != null
+                            ? adoptionRelease.ToDiagnosticString()
+                            : $"Scene Actor adoption release returned no result for Slot '{entry.PlayerSlotId.StableText}'.");
+                        break;
+                    }
+
+                    entry.AdoptionApplied = false;
+                    adoptionReleased = true;
+                }
+
                 bool selectionCleared = false;
                 if (entry.SelectionApplied)
                 {
@@ -495,9 +586,16 @@ namespace Immersive.Framework.PlayerParticipation
                         module.TryClearActorSelection(clearRequest);
                     if (clear == null || !clear.Succeeded)
                     {
-                        failures.Add(clear != null
+                        string clearIssue = clear != null
                             ? clear.ToDiagnosticString()
-                            : $"Actor selection clear returned no result for Slot '{entry.PlayerSlotId.StableText}'.");
+                            : $"Actor selection clear returned no result for Slot '{entry.PlayerSlotId.StableText}'.";
+                        if (adoptionReleased &&
+                            !TryRestoreAdoption(entry, owner, source, reason, out string adoptionRestoreIssue))
+                        {
+                            clearIssue = $"{clearIssue} Adoption compensation failed. {adoptionRestoreIssue}";
+                        }
+
+                        failures.Add(clearIssue);
                         break;
                     }
 
@@ -530,6 +628,11 @@ namespace Immersive.Framework.PlayerParticipation
                     {
                         releaseIssue = $"{releaseIssue} Selection compensation failed. {selectionRestoreIssue}";
                     }
+                    else if (adoptionReleased &&
+                             !TryRestoreAdoption(entry, owner, source, reason, out string adoptionRestoreIssue))
+                    {
+                        releaseIssue = $"{releaseIssue} Adoption compensation failed. {adoptionRestoreIssue}";
+                    }
 
                     failures.Add(releaseIssue);
                     break;
@@ -547,7 +650,7 @@ namespace Immersive.Framework.PlayerParticipation
 
             if (compensateReleasedEntries && released.Count > 0)
             {
-                if (!TryRestoreReleasedEntries(released, source, reason, out string compensationIssue))
+                if (!TryRestoreReleasedEntries(released, owner, source, reason, out string compensationIssue))
                 {
                     failures.Add($"Released-entry compensation failed. {compensationIssue}");
                 }
@@ -559,6 +662,7 @@ namespace Immersive.Framework.PlayerParticipation
 
         private bool TryRestoreReleasedEntries(
             List<Entry> released,
+            RuntimeContentOwner owner,
             string source,
             string reason,
             out string issue)
@@ -584,6 +688,13 @@ namespace Immersive.Framework.PlayerParticipation
                 if (!TryRestoreSelection(entry, source, reason, out string selectionIssue))
                 {
                     failures.Add(selectionIssue);
+                    continue;
+                }
+
+                if (entry.AdoptionToken.IsValid &&
+                    !TryRestoreAdoption(entry, owner, source, reason, out string adoptionIssue))
+                {
+                    failures.Add(adoptionIssue);
                 }
             }
 
@@ -636,6 +747,89 @@ namespace Immersive.Framework.PlayerParticipation
 
             entry.SelectionRevision = selection.SelectionRevision;
             entry.SelectionApplied = true;
+            return true;
+        }
+
+        private string RollbackCurrentSelectionAndAdmission(
+            SceneLocalPlayerAdmissionAuthoring surface,
+            PlayerSlotId playerSlotId,
+            int selectionRevision,
+            bool selectionApplied,
+            SceneLocalPlayerAdmissionToken admissionToken,
+            string source,
+            string reason)
+        {
+            var failures = new List<string>();
+            if (selectionApplied)
+            {
+                PlayerActorSelectionResult clear = module.TryClearActorSelection(
+                    new PlayerActorSelectionRequest(
+                        playerSlotId,
+                        null,
+                        source,
+                        $"{reason}:current-entry-selection-rollback",
+                        selectionRevision));
+                if (clear == null || !clear.Succeeded)
+                {
+                    failures.Add(clear != null
+                        ? clear.ToDiagnosticString()
+                        : $"Current-entry Actor selection rollback returned no result for Slot '{playerSlotId.StableText}'.");
+                }
+            }
+
+            if (!TryReleaseAdmissionOnly(
+                    surface,
+                    admissionToken,
+                    source,
+                    reason,
+                    out string admissionIssue))
+            {
+                failures.Add(admissionIssue);
+            }
+
+            return string.Join(" | ", failures);
+        }
+
+        private bool TryRestoreAdoption(
+            Entry entry,
+            RuntimeContentOwner owner,
+            string source,
+            string reason,
+            out string issue)
+        {
+            issue = string.Empty;
+            if (!entry.AdoptionToken.IsValid)
+            {
+                return true;
+            }
+
+            if (preparationModule == null || !preparationModule.IsReady)
+            {
+                issue = "Scene Actor adoption compensation requires the ready Player Actor preparation authority.";
+                return false;
+            }
+
+            var scopeContext = new RuntimeScopeContext(
+                owner,
+                source,
+                $"{reason}:compensate-adoption");
+            ScenePlayerActorAdoptionResult adoption =
+                preparationModule.TryAdoptSceneLocalPlayerActor(
+                    scopeContext,
+                    entry.Authoring,
+                    source,
+                    $"{reason}:compensate-adoption");
+            entry.Authoring.SetActorAdoptionResult(adoption);
+            if (adoption == null || !adoption.Succeeded || !adoption.Token.IsValid)
+            {
+                issue = adoption != null
+                    ? adoption.ToDiagnosticString()
+                    : $"Scene Actor adoption compensation returned no result for Slot '{entry.PlayerSlotId.StableText}'.";
+                return false;
+            }
+
+            entry.AdoptionToken = adoption.Token;
+            entry.AdoptionApplied = true;
             return true;
         }
 

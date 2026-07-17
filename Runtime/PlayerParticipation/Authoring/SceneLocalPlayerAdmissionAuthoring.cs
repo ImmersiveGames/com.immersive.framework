@@ -16,7 +16,7 @@ namespace Immersive.Framework.PlayerParticipation
     [AddComponentMenu("Immersive Framework/Player/Scene Local Player Admission")]
     [FrameworkApiStatus(
         FrameworkApiStatus.Experimental,
-        "P3M4 designer-first Scene Local Player Admission product surface.")]
+        "P3M4 designer-first Scene Local Player Admission product surface with ExternalSceneOwned Actor adoption.")]
     public sealed class SceneLocalPlayerAdmissionAuthoring : MonoBehaviour
     {
         [Header("Player")]
@@ -61,11 +61,16 @@ namespace Immersive.Framework.PlayerParticipation
         private string runtimeDiagnostic =
             "Scene Local Player Admission runtime is not bound.";
 
+        [NonSerialized]
+        private ScenePlayerActorAdoptionResult lastActorAdoptionResult;
+
         public PlayerSlotProfile PlayerSlotProfile => playerSlotProfile;
         public LocalPlayerHostAuthoring LocalPlayerHost => localPlayerHost;
         public ActorProfile ActorProfile => actorProfile;
         public PlayerActorDeclaration SceneLogicalPlayerActor => sceneLogicalPlayerActor;
         public SceneLocalPlayerAdmissionTiming AdmissionTiming => admissionTiming;
+        public PlayerActorPhysicalOwnership ActorPhysicalOwnership =>
+            PlayerActorPhysicalOwnership.ExternalSceneOwned;
         public SceneLocalPlayerAdmissionAuthoringStatus LastAuthoringStatus => lastAuthoringStatus;
         public string LastAuthoringDiagnostic => lastAuthoringDiagnostic ?? string.Empty;
         public bool RuntimeReady => runtimeModule != null && runtimeModule.IsReadyFor(this);
@@ -73,6 +78,7 @@ namespace Immersive.Framework.PlayerParticipation
             ? runtimeModule.Diagnostic
             : runtimeDiagnostic ?? string.Empty;
         public SceneLocalPlayerAdmissionRuntimeResult LastRuntimeResult => lastRuntimeResult;
+        public ScenePlayerActorAdoptionResult LastActorAdoptionResult => lastActorAdoptionResult;
         public bool HasActiveAdmission =>
             RuntimeReady && runtimeModule.TryGetActiveToken(this, out _);
 
@@ -247,6 +253,12 @@ namespace Immersive.Framework.PlayerParticipation
             runtimeDiagnostic = string.IsNullOrWhiteSpace(diagnostic)
                 ? "Scene Local Player Admission runtime is not bound."
                 : diagnostic.Trim();
+        }
+
+        internal void SetActorAdoptionResult(
+            ScenePlayerActorAdoptionResult result)
+        {
+            lastActorAdoptionResult = result;
         }
 
         internal void SetRuntimeResult(

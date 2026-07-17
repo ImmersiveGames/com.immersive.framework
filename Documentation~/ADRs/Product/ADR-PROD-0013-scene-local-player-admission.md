@@ -108,7 +108,7 @@ The initial designer-facing authoring component is named:
 Scene Local Player Admission
 ```
 
-Avoid `PreAuthored`, `Adopt` and `ExistingExternallyOwned` in the default Inspector. Those terms describe implementation mechanics and may appear only in Advanced/Debug evidence.
+Avoid `PreAuthored`, `Adopt` and `ExternalSceneOwned` in the default Inspector. Those terms describe implementation mechanics and may appear only in Advanced/Debug evidence.
 
 Minimum authoring:
 
@@ -167,8 +167,8 @@ The first supported shape is deliberately narrow:
 ```text
 scope: Activity
 one scene-existing local Player Host per configured Slot
-Host ownership: ExistingExternallyOwned
-Logical Actor ownership: ExistingExternallyOwned
+Host ownership: ExternalSceneOwned
+Logical Actor ownership: ExternalSceneOwned
 Slot selection: explicit PlayerSlotProfile
 Actor selection: explicit ActorProfile
 ```
@@ -208,7 +208,7 @@ The required release order is:
 
 The Host and Slot remain admitted while dependent gameplay or Actor preparation still exists.
 
-For `ExistingExternallyOwned` objects, release removes framework-owned contextual evidence only. It does not destroy the Host or Logical Actor.
+For `ExternalSceneOwned` objects, release removes framework-owned contextual evidence only. It does not destroy the Host or Logical Actor.
 
 ### Release failure compensation
 
@@ -403,4 +403,48 @@ External Actor adoption remains P3M4B2B because existing materialization handles
 framework-owned physical instances. The package must add explicit external physical
 ownership before the canonical release path may unregister preparation without destroying
 the scene-owned Actor.
+
+## Implementation status — P3M4B2B
+
+P3M4B2B accepts external Scene Logical Player Actor adoption as an official preparation
+shape.
+
+Frozen decisions:
+
+```text
+Physical ownership is explicit: ExternalSceneOwned.
+The framework never instantiates, disables or destroys the adopted Host or Actor.
+The preparation authority registers the existing Actor as the canonical prepared Actor.
+A framework-owned technical release proxy carries only disposable materialization lifetime.
+Canonical Player Actor release destroys the proxy and unregisters RuntimeContent evidence.
+Scene adoption finalization restores the Actor declaration's authored identity and removes contextual PlayerInput evidence.
+Foreign or stale adoption tokens are rejected.
+LogicalActorsPrepared uses the same canonical preparation snapshot and token contracts.
+GameplayReady is no longer rejected by the Scene admission layer; it proceeds to the canonical gameplay pipeline and may still fail explicitly on missing gameplay authoring.
+```
+
+The proxy is not a second Actor, gameplay authority or hidden manager. It is a scoped
+technical release handle used so the existing preparation release contract can remain
+canonical while physical ownership stays outside the framework.
+
+Required release order:
+
+```text
+canonical gameplay release
+canonical preparation release of technical proxy/runtime evidence
+Scene adoption bookkeeping finalization
+restore authored Actor declaration identity
+clear Activity-owned Actor selection
+release Host admission and Slot
+```
+
+A successful release must preserve:
+
+```text
+LocalPlayerHostAuthoring GameObject
+PlayerInput authority
+Scene PlayerActorDeclaration GameObject
+external active states
+serialized SceneLogicalPlayerActorEvidence
+```
 

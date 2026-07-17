@@ -11,7 +11,7 @@ namespace Immersive.Framework.PlayerParticipation
     /// </summary>
     [FrameworkApiStatus(
         FrameworkApiStatus.Internal,
-        "P3M4B2A phase-aware composition of Scene Local Player admission with canonical Player lifecycle.")]
+        "P3M4B2A/P3M4B2B phase-aware composition of Scene Local Player admission and external Actor adoption with canonical Player lifecycle.")]
     internal sealed class SceneLocalPlayerAdmissionCompositeLifecycleParticipant :
         IActivityContentExecutionParticipant,
         IActivityContentExecutionParticipantSource
@@ -22,11 +22,20 @@ namespace Immersive.Framework.PlayerParticipation
         internal SceneLocalPlayerAdmissionCompositeLifecycleParticipant(
             ActivityPlayerActorLifecycleParticipant canonicalParticipant,
             SceneLocalPlayerAdmissionRuntimeHostModule sceneModule)
+            : this(canonicalParticipant, sceneModule, null)
+        {
+        }
+
+        internal SceneLocalPlayerAdmissionCompositeLifecycleParticipant(
+            ActivityPlayerActorLifecycleParticipant canonicalParticipant,
+            SceneLocalPlayerAdmissionRuntimeHostModule sceneModule,
+            PlayerActorPreparationRuntimeHostModule preparationModule)
         {
             this.canonicalParticipant = canonicalParticipant ??
                 throw new ArgumentNullException(nameof(canonicalParticipant));
             sceneLifecycle = new SceneLocalPlayerAdmissionActivityLifecycleRuntime(
-                sceneModule ?? throw new ArgumentNullException(nameof(sceneModule)));
+                sceneModule ?? throw new ArgumentNullException(nameof(sceneModule)),
+                preparationModule);
         }
 
         internal string Diagnostic => sceneLifecycle.Diagnostic;
