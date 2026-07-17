@@ -455,10 +455,10 @@ namespace Immersive.Framework.Editor.Editor.Validation
                 return report;
             }
 
-            if (string.IsNullOrWhiteSpace(activity.ActivityName))
+            if (!activity.HasValidActivityId)
             {
-                report.AddWarning(
-                    "Activity has no display name. The asset name will be used in diagnostics.",
+                report.AddError(
+                    "Activity ID is required and must remain stable across cosmetic renames.",
                     activity);
             }
 

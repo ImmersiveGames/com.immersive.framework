@@ -60,7 +60,7 @@ namespace Immersive.Framework.ContentAnchor
 
         public bool HasExplicitKind => kind != ContentAnchorKind.Unknown;
 
-        public bool HasValidAuthoring => HasActivity && HasExplicitAnchorId && HasExplicitKind;
+        public bool HasValidAuthoring => HasActivity && activity.HasValidActivityId && HasExplicitAnchorId && HasExplicitKind;
 
         public bool IsRequired => requiredness == ContentAnchorRequiredness.Required;
 
@@ -165,7 +165,12 @@ namespace Immersive.Framework.ContentAnchor
                 return string.Empty;
             }
 
-            return activity.ActivityName;
+            if (!activity.HasValidActivityId)
+            {
+                throw new System.ArgumentException("Activity Content Anchor ownership requires a valid ActivityId.", nameof(activity));
+            }
+
+            return activity.ActivityId.StableText;
         }
 
         private static string GetActivityName(ActivityAsset activity)

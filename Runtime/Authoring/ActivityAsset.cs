@@ -1,4 +1,5 @@
 using Immersive.Framework.ApiStatus;
+using Immersive.Framework.Common;
 using Immersive.Framework.PlayerParticipation;
 using Immersive.Framework.Transition;
 using UnityEngine;
@@ -17,7 +18,11 @@ namespace Immersive.Framework.Authoring
     public sealed class ActivityAsset : ScriptableObject
     {
         [SerializeField]
-        [Tooltip("Human-readable activity name shown in framework diagnostics. If empty, the asset name is used.")]
+        [Tooltip("Stable functional identity. It must not be changed because the Activity asset, file or display name was renamed.")]
+        private string activityId = string.Empty;
+
+        [SerializeField]
+        [Tooltip("Human-readable name shown in the Inspector and diagnostics. It is not runtime identity.")]
         private string activityName = "Activity";
 
         [SerializeField]
@@ -45,18 +50,22 @@ namespace Immersive.Framework.Authoring
         [Tooltip("Controls which requests/capabilities are blocked while this Activity transition is running. For Fade/FadeWithLoading, InputInteractionAndGameplay is recommended.")]
         private TransitionGateMode transitionGateMode = TransitionGateMode.LifecycleRequestsOnly;
 
-        public string ActivityName
+        public ActivityId ActivityId
         {
             get
             {
-                if (!string.IsNullOrWhiteSpace(activityName))
+                if (!HasValidActivityId)
                 {
-                    return activityName.Trim();
+                    throw new System.InvalidOperationException("Activity ID is missing or invalid.");
                 }
 
-                return !string.IsNullOrWhiteSpace(name) ? name : "Activity";
+                return new ActivityId(activityId);
             }
         }
+
+        public bool HasValidActivityId => !string.IsNullOrWhiteSpace(activityId);
+
+        public string ActivityName => activityName.NormalizeText();
 
         public string Description => description ?? string.Empty;
 

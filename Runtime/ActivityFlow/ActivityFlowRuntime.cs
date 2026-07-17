@@ -854,7 +854,12 @@ namespace Immersive.Framework.ActivityFlow
                 throw new ArgumentNullException(nameof(activity));
             }
 
-            return RuntimeContentOwner.Activity(activity.ActivityName, activity.ActivityName);
+            if (!activity.HasValidActivityId)
+            {
+                throw new ArgumentException("Activity runtime owner requires a valid ActivityId.", nameof(activity));
+            }
+
+            return RuntimeContentOwner.Activity(activity.ActivityId.StableText, activity.ActivityName);
         }
 
         private static string NormalizeSource(string source)

@@ -103,12 +103,12 @@ namespace Immersive.Framework.ActivityFlow
                 throw new ArgumentNullException(nameof(activity));
             }
 
-            if (string.IsNullOrWhiteSpace(activity.ActivityName))
+            if (!activity.HasValidActivityId)
             {
-                throw new ArgumentException("Activity identity requires a non-empty Activity name.", nameof(activity));
+                throw new ArgumentException("Activity identity requires a valid ActivityId.", nameof(activity));
             }
 
-            return FrameworkIdentityKey.From(FrameworkIdentityDomain.Activity, activity.ActivityName);
+            return FrameworkIdentityKey.From(activity.ActivityId);
         }
     }
 }

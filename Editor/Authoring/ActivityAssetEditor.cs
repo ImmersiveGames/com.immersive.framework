@@ -12,6 +12,7 @@ namespace Immersive.Framework.Editor.Editor.Authoring
     internal sealed class ActivityAssetEditor : UnityEditor.Editor
     {
         private SerializedProperty _activityName;
+        private SerializedProperty _activityId;
         private SerializedProperty _description;
         private SerializedProperty _playerParticipationProjectionProfile;
         private SerializedProperty _playerParticipationRequirementsProfile;
@@ -23,6 +24,7 @@ namespace Immersive.Framework.Editor.Editor.Authoring
         private void OnEnable()
         {
             _activityName = serializedObject.FindProperty("activityName");
+            _activityId = serializedObject.FindProperty("activityId");
             _description = serializedObject.FindProperty("description");
             _playerParticipationProjectionProfile =
                 serializedObject.FindProperty("playerParticipationProjectionProfile");
@@ -44,7 +46,12 @@ namespace Immersive.Framework.Editor.Editor.Authoring
 
             EditorGUILayout.Space(6);
             EditorGUILayout.LabelField("Identity", EditorStyles.boldLabel);
-            EditorGUILayout.PropertyField(_activityName, new GUIContent("Activity Name"));
+            EditorGUILayout.PropertyField(_activityId, new GUIContent("Activity ID", "Stable functional identity. Do not change it because of a cosmetic rename."));
+            EditorGUILayout.PropertyField(_activityName, new GUIContent("Activity Name", "Designer-facing name used for presentation and diagnostics only."));
+            if (_activityId == null || string.IsNullOrWhiteSpace(_activityId.stringValue))
+            {
+                EditorGUILayout.HelpBox("Activity ID is required. Use the explicit Activity ID Migration tool for existing assets; it never runs automatically.", MessageType.Error);
+            }
             EditorGUILayout.PropertyField(_description, new GUIContent("Description"));
 
             EditorGUILayout.Space(6);
@@ -249,6 +256,9 @@ namespace Immersive.Framework.Editor.Editor.Authoring
             ActivityAsset activity = (ActivityAsset)target;
             FrameworkAuthoringValidationReport report =
                 FrameworkAuthoringValidator.ValidateActivity(activity);
+            report.AddRange(
+                ActivityIdAuthoringValidator.ValidateProjectAssets(
+                    FrameworkValidationMode.Standard));
             report.AddRange(
                 ActivityParticipationProjectionAuthoringValidator.ValidateActivity(activity));
 

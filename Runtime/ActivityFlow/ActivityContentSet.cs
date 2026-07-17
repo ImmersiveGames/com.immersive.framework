@@ -121,7 +121,17 @@ namespace Immersive.Framework.ActivityFlow
 
         internal static string CreateActivityOwnerId(ActivityAsset activity)
         {
-            return activity != null ? activity.ActivityName : string.Empty;
+            if (activity == null)
+            {
+                return string.Empty;
+            }
+
+            if (!activity.HasValidActivityId)
+            {
+                throw new ArgumentException("Activity content ownership requires a valid ActivityId.", nameof(activity));
+            }
+
+            return activity.ActivityId.StableText;
         }
     }
 }

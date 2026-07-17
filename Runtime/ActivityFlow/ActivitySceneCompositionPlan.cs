@@ -143,7 +143,12 @@ namespace Immersive.Framework.ActivityFlow
                 return string.Empty;
             }
 
-            return activity.ActivityName;
+            if (!activity.HasValidActivityId)
+            {
+                throw new ArgumentException("Activity scene ownership requires a valid ActivityId.", nameof(activity));
+            }
+
+            return activity.ActivityId.StableText;
         }
 
         private int CountRequiredness(FrameworkContentRequiredness requiredness)
