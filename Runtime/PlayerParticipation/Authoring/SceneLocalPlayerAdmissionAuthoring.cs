@@ -51,6 +51,16 @@ namespace Immersive.Framework.PlayerParticipation
         private string lastAuthoringDiagnostic =
             "Scene Local Player Admission has not been validated.";
 
+        [NonSerialized]
+        private SceneLocalPlayerAdmissionRuntimeHostModule runtimeModule;
+
+        [NonSerialized]
+        private SceneLocalPlayerAdmissionRuntimeResult lastRuntimeResult;
+
+        [NonSerialized]
+        private string runtimeDiagnostic =
+            "Scene Local Player Admission runtime is not bound.";
+
         public PlayerSlotProfile PlayerSlotProfile => playerSlotProfile;
         public LocalPlayerHostAuthoring LocalPlayerHost => localPlayerHost;
         public ActorProfile ActorProfile => actorProfile;
@@ -58,6 +68,13 @@ namespace Immersive.Framework.PlayerParticipation
         public SceneLocalPlayerAdmissionTiming AdmissionTiming => admissionTiming;
         public SceneLocalPlayerAdmissionAuthoringStatus LastAuthoringStatus => lastAuthoringStatus;
         public string LastAuthoringDiagnostic => lastAuthoringDiagnostic ?? string.Empty;
+        public bool RuntimeReady => runtimeModule != null && runtimeModule.IsReadyFor(this);
+        public string RuntimeDiagnostic => RuntimeReady
+            ? runtimeModule.Diagnostic
+            : runtimeDiagnostic ?? string.Empty;
+        public SceneLocalPlayerAdmissionRuntimeResult LastRuntimeResult => lastRuntimeResult;
+        public bool HasActiveAdmission =>
+            RuntimeReady && runtimeModule.TryGetActiveToken(this, out _);
 
         public bool HasCompleteReferences =>
             playerSlotProfile != null &&
@@ -139,6 +156,109 @@ namespace Immersive.Framework.PlayerParticipation
 
             issue = string.Empty;
             return true;
+        }
+
+        /// <summary>
+        /// Explicit manual admission request. P3M4B1 does not execute this from Awake, Start or
+        /// OnEnable; Activity-owned automatic timing is added only after the transaction passes QA.
+        /// </summary>
+        public SceneLocalPlayerAdmissionRuntimeResult RequestAdmission(
+            string source,
+            string reason)
+        {
+            if (!RuntimeReady)
+            {
+                lastRuntimeResult = SceneLocalPlayerAdmissionRuntimeResult.RuntimeUnavailable(
+                    "AdmitSceneLocalPlayer",
+                    this,
+                    source,
+                    reason,
+                    RuntimeDiagnostic);
+                return lastRuntimeResult;
+            }
+
+            return runtimeModule.TryAdmit(this, source, reason);
+        }
+
+        public SceneLocalPlayerAdmissionRuntimeResult RequestRelease(
+            string source,
+            string reason)
+        {
+            if (!RuntimeReady)
+            {
+                lastRuntimeResult = SceneLocalPlayerAdmissionRuntimeResult.RuntimeUnavailable(
+                    "ReleaseSceneLocalPlayer",
+                    this,
+                    source,
+                    reason,
+                    RuntimeDiagnostic);
+                return lastRuntimeResult;
+            }
+
+            return runtimeModule.TryRelease(this, source, reason);
+        }
+
+        public SceneLocalPlayerAdmissionRuntimeResult RequestRelease(
+            SceneLocalPlayerAdmissionToken expectedToken,
+            string source,
+            string reason)
+        {
+            if (!RuntimeReady)
+            {
+                lastRuntimeResult = SceneLocalPlayerAdmissionRuntimeResult.RuntimeUnavailable(
+                    "ReleaseSceneLocalPlayer",
+                    this,
+                    source,
+                    reason,
+                    RuntimeDiagnostic);
+                return lastRuntimeResult;
+            }
+
+            return runtimeModule.TryRelease(this, expectedToken, source, reason);
+        }
+
+        internal void BindRuntime(SceneLocalPlayerAdmissionRuntimeHostModule module)
+        {
+            if (module == null)
+            {
+                throw new ArgumentNullException(nameof(module));
+            }
+
+            if (runtimeModule != null && !ReferenceEquals(runtimeModule, module))
+            {
+                throw new InvalidOperationException(
+                    "Scene Local Player Admission is already bound to another Session runtime module.");
+            }
+
+            runtimeModule = module;
+            runtimeDiagnostic = module.Diagnostic;
+        }
+
+        internal void UnbindRuntime(
+            SceneLocalPlayerAdmissionRuntimeHostModule module,
+            string diagnostic)
+        {
+            if (runtimeModule != null && ReferenceEquals(runtimeModule, module))
+            {
+                runtimeModule = null;
+            }
+
+            runtimeDiagnostic = string.IsNullOrWhiteSpace(diagnostic)
+                ? "Scene Local Player Admission runtime is not bound."
+                : diagnostic.Trim();
+        }
+
+        internal void SetRuntimeResult(
+            SceneLocalPlayerAdmissionRuntimeResult result,
+            string diagnostic)
+        {
+            lastRuntimeResult = result;
+            runtimeDiagnostic = diagnostic ?? string.Empty;
+        }
+
+        private void OnDestroy()
+        {
+            runtimeModule?.HandleAuthoringDestroyed(this);
         }
 
 #if UNITY_EDITOR

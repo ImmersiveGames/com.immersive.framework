@@ -363,3 +363,25 @@ QA authoring smoke
 ```
 
 This checkpoint deliberately does not start runtime admission. Runtime reservation, Activity enter/exit integration and canonical readiness handoff remain the next P3M4B checkpoint and must consume this exact authoring contract.
+
+## P3M4B1 implementation checkpoint
+
+P3M4B1 promotes the Host/Slot transaction only.
+
+Frozen checkpoint decisions:
+
+```text
+Scene admission is explicitly authorized and may execute while public JoiningOpen is false.
+Configured Slot order still applies.
+The requested Slot must equal the current first Available configured Slot.
+No fallback Slot is selected.
+Release uses Joined -> Leaving -> Available.
+Host and Actor physical ownership remain external.
+Actor preparation and gameplay remain outside this checkpoint.
+Scene admission composes directly from FrameworkRuntimeHost + Session participation.
+The provisioned PlayerInputManager path is not a dependency.
+```
+
+The temporary manual API is a technical product gate, not the final Activity UX.
+`OnActivityEnter` is still serialized intent and must not execute automatically until the
+P3M4B2 Activity participant and reverse-order release have passed QA.

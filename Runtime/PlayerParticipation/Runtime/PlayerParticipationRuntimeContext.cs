@@ -12,7 +12,7 @@ namespace Immersive.Framework.PlayerParticipation
     /// This plain C# context is composed by Framework Core and is not a singleton or service locator.
     /// </summary>
     [FrameworkApiStatus(FrameworkApiStatus.Internal, "P3F Session Player participation runtime authority.")]
-    internal sealed class PlayerParticipationRuntimeContext
+    internal sealed partial class PlayerParticipationRuntimeContext
     {
         private sealed class SlotRecord
         {

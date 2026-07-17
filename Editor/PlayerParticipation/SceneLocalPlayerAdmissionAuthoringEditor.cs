@@ -72,7 +72,50 @@ namespace Immersive.Framework.Editor.PlayerParticipation
                 }
             }
 
+            DrawRuntimeControls();
             DrawDebug();
+        }
+
+        private void DrawRuntimeControls()
+        {
+            EditorGUILayout.Space();
+            EditorGUILayout.LabelField("Runtime Transaction", EditorStyles.boldLabel);
+            EditorGUILayout.HelpBox(
+                "P3M4B1 exposes explicit manual admission/release only. On Activity Enter timing remains authoring intent until the lifecycle integration gate is validated.",
+                MessageType.None);
+
+            SceneLocalPlayerAdmissionAuthoring authoring =
+                (SceneLocalPlayerAdmissionAuthoring)target;
+            using (new EditorGUI.DisabledScope(!Application.isPlaying || !authoring.RuntimeReady))
+            using (new EditorGUILayout.HorizontalScope())
+            {
+                if (GUILayout.Button("Admit Now"))
+                {
+                    authoring.RequestAdmission(
+                        nameof(SceneLocalPlayerAdmissionAuthoringEditor),
+                        "inspector-manual-admission");
+                    Repaint();
+                }
+
+                if (GUILayout.Button("Release Now"))
+                {
+                    authoring.RequestRelease(
+                        nameof(SceneLocalPlayerAdmissionAuthoringEditor),
+                        "inspector-manual-release");
+                    Repaint();
+                }
+            }
+
+            if (!Application.isPlaying)
+            {
+                EditorGUILayout.HelpBox(
+                    "Runtime admission controls are available only in Play Mode.",
+                    MessageType.Info);
+            }
+            else if (!authoring.RuntimeReady)
+            {
+                EditorGUILayout.HelpBox(authoring.RuntimeDiagnostic, MessageType.Warning);
+            }
         }
 
         private void DrawDebug()
@@ -104,6 +147,20 @@ namespace Immersive.Framework.Editor.PlayerParticipation
                     "Typed Actor Evidence",
                     authoring.SceneLogicalPlayerActor != null &&
                     authoring.SceneLogicalPlayerActor.GetComponent<SceneLogicalPlayerActorEvidence>() != null);
+                EditorGUILayout.Toggle("Runtime Ready", authoring.RuntimeReady);
+                EditorGUILayout.Toggle("Active Admission", authoring.HasActiveAdmission);
+                EditorGUILayout.TextArea(
+                    authoring.RuntimeDiagnostic,
+                    GUILayout.MinHeight(54));
+                if (authoring.LastRuntimeResult != null)
+                {
+                    EditorGUILayout.EnumPopup(
+                        "Runtime Status",
+                        authoring.LastRuntimeResult.Status);
+                    EditorGUILayout.TextField(
+                        "Admission Token",
+                        authoring.LastRuntimeResult.Token.StableText);
+                }
             }
         }
 

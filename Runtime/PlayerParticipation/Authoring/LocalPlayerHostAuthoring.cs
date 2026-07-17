@@ -187,10 +187,8 @@ namespace Immersive.Framework.PlayerParticipation
                 reason.NormalizeTextOrFallback("local-player-host-admission-rollback"));
         }
 
-        internal bool TryReleaseCommittedAdmission(
+        internal bool TryValidateCommittedAdmissionRelease(
             PlayerSlotId expectedPlayerSlotId,
-            string source,
-            string reason,
             out string issue)
         {
             issue = string.Empty;
@@ -215,6 +213,25 @@ namespace Immersive.Framework.PlayerParticipation
                 return false;
             }
 
+            return true;
+        }
+
+        internal bool TryReleaseCommittedAdmission(
+            PlayerSlotId expectedPlayerSlotId,
+            string source,
+            string reason,
+            out string issue)
+        {
+            if (!TryValidateCommittedAdmissionRelease(expectedPlayerSlotId, out issue))
+            {
+                return false;
+            }
+
+            if (admissionState == AdmissionState.None)
+            {
+                return true;
+            }
+
             admissionState = AdmissionState.ReleaseStaged;
             try
             {
@@ -231,6 +248,57 @@ namespace Immersive.Framework.PlayerParticipation
                 issue = $"Local Player Host admission release failed. {exception.Message}";
                 return false;
             }
+        }
+
+        internal bool TryRestoreCommittedAdmission(
+            PlayerSlotRuntimeSnapshot joinedSlot,
+            string source,
+            string reason,
+            bool allowExistingLogicalActor,
+            PlayerActorDeclaration expectedSceneActor,
+            out string issue)
+        {
+            issue = string.Empty;
+
+            if (!joinedSlot.IsValid || !joinedSlot.IsJoined)
+            {
+                issue = "Local Player Host admission restore requires a valid Joined Player Slot snapshot.";
+                return false;
+            }
+
+            if (!TryValidateConfiguration(
+                    requireEmptyActorMount: !allowExistingLogicalActor,
+                    expectedSceneActor: expectedSceneActor,
+                    out issue))
+            {
+                return false;
+            }
+
+            if (admissionState == AdmissionState.Joined)
+            {
+                if (joinedPlayerSlotId == joinedSlot.PlayerSlotId &&
+                    joinedConfiguredIndex == joinedSlot.ConfiguredIndex)
+                {
+                    return true;
+                }
+
+                issue = "Local Player Host admission restore conflicts with another Joined Player Slot.";
+                return false;
+            }
+
+            if (admissionState != AdmissionState.None &&
+                admissionState != AdmissionState.ReleaseFailed)
+            {
+                issue = $"Local Player Host cannot restore admission from state '{admissionState}'.";
+                return false;
+            }
+
+            joinedPlayerSlotId = joinedSlot.PlayerSlotId;
+            joinedConfiguredIndex = joinedSlot.ConfiguredIndex;
+            admissionSource = source.NormalizeTextOrFallback(nameof(LocalPlayerHostAuthoring));
+            admissionReason = reason.NormalizeTextOrFallback("local-player-host-admission-restore");
+            admissionState = AdmissionState.Joined;
+            return true;
         }
 
         private bool TryValidateConfiguration(

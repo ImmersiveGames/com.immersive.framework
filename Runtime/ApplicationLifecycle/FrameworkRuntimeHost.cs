@@ -351,6 +351,7 @@ namespace Immersive.Framework.ApplicationLifecycle
             var transitionOrchestrator = CreateTransitionOrchestrator(_globalUiSceneRuntime, sessionCameraOverride);
             _gameFlowRuntime = new GameFlowRuntime(_runtimeContentRuntime, _contentAnchorBindingRuntime, transitionOrchestrator);
             ApplyPlayerActivityLifecycleAdmissionRuntime();
+            ApplySceneLocalPlayerAdmissionRuntime();
 
             var result = await _gameFlowRuntime.StartAsync(_gameApplication);
             _state = FrameworkRuntimeState.FromGameFlowResult(_gameApplication, result);
