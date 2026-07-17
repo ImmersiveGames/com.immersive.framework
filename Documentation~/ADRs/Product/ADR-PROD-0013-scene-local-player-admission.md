@@ -1,9 +1,9 @@
 # ADR-PROD-0013 — Scene Local Player Admission
 
-Status: Accepted
-Date: 2026-07-16
-Package: `com.immersive.framework`
-Area: Player Product Surface / Player Participation / Existing Scene Host Admission
+Status: Accepted  
+Date: 2026-07-16  
+Package: `com.immersive.framework`  
+Area: Player Product Surface / Player Participation / Existing Scene Host Admission  
 Extends: `P3-ADR-Canonical-Player-Lane`, `ADR-PROD-0007`, `ADR-PROD-0008`, `ADR-PROD-0010`, `ADR-PROD-0011`, `ADR-PROD-0012`
 
 ## Context
@@ -293,19 +293,6 @@ P3M6 — Prove real usability in FIRSTGAME.
 P3M7 — Add the official sample and concise usage documentation.
 ```
 
-## P3M3 implementation note
-
-The destructive removal cut deletes the alternative PreAuthored Player product lane before Scene Local Player Admission is promoted. After P3M3:
-
-```text
-Camera target authoring uses explicit Transform references or ICameraTargetSource.
-Player gameplay camera eligibility validates resolved target evidence.
-No Composer, Recipe, Inspector, Apply/Rebuild utility or dedicated P3B smoke remains.
-No compatibility alias, null bridge or fallback discovery is retained.
-```
-
-This does not implement Scene Local Player Admission early. P3M4 remains the first cut allowed to introduce that official product surface.
-
 ## Technical acceptance criteria
 
 ```text
@@ -343,7 +330,7 @@ Single-player scene authoring no longer requires a fake join.
 Manual join and scene-existing Player use one participation model.
 PlayerInputManager remains the sole runtime provisioner for local Players it creates.
 Physical ownership and contextual admission are separated.
-The PreAuthored experimental surface is removed without losing the accepted Scene Local Player Admission use case.
+The PreAuthored experimental surface can be removed without losing the product use case.
 ```
 
 ### Cost
@@ -360,3 +347,19 @@ The initial ownership matrix is intentionally narrow.
 ```text
 Docs: define Scene Local Player Admission
 ```
+
+## Implementation checkpoint — P3M4A
+
+The product surface and serialized evidence boundary are implemented first:
+
+```text
+SceneLocalPlayerAdmissionAuthoring
+SceneLogicalPlayerActorEvidence
+LocalPlayerHostAuthoring scene-admission validation/release contract
+Designer-first Inspector
+Apply / Rebuild and Validate
+Create menu
+QA authoring smoke
+```
+
+This checkpoint deliberately does not start runtime admission. Runtime reservation, Activity enter/exit integration and canonical readiness handoff remain the next P3M4B checkpoint and must consume this exact authoring contract.

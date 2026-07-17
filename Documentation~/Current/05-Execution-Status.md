@@ -70,3 +70,13 @@ P3B is intentionally absent after this cut and must not be recreated as a compat
 ## Failure policy
 
 Fix defects inside P3M3. Do not restore the deleted component, Recipe, Inspector, Apply/Rebuild utility, P3B menu, null bridge, alias or fallback discovery.
+
+## P3M4A
+
+Status: Implementation delivered; Unity validation pending.
+
+Expected smoke:
+
+```text
+[P3M4A_SCENE_LOCAL_PLAYER_ADMISSION_AUTHORING_SMOKE] status='Passed' cases='7'
+```

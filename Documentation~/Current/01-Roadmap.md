@@ -97,3 +97,11 @@ P3M4 may start only after P3M3 closes. It must promote Scene Local Player Admiss
 ```text
 Remove: delete PreAuthored Player surface
 ```
+
+## P3M4 split
+
+```text
+P3M4A — product surface, Apply/Validate, typed evidence and Host contract
+P3M4B — exact Slot transaction, externally-owned Actor preparation and Activity lifecycle
+P3M5  — expanded QA matrix and forced release-failure compensation
+```

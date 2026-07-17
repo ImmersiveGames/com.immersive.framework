@@ -116,3 +116,7 @@ canonical P3 aggregate PASS
 no P3B menu remains
 no Missing Script remains
 ```
+
+## P3M4A — Scene Local Player Admission authoring
+
+The designer-facing Scene Local Player Admission surface, typed Actor source evidence and dual-shape Local Player Host validation are implemented. Unity import/compile and the P3M4A authoring smoke are pending. Runtime Activity admission remains P3M4B.
