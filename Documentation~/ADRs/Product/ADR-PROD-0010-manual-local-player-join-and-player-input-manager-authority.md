@@ -5,6 +5,7 @@ Date: 2026-07-12
 Package: `com.immersive.framework`  
 Area: Local Player Provisioning / Unity Input System / Session Admission  
 Related: `ADR-PROD-0006`, `ADR-PROD-0007`, `ADR-PROD-0008`, `ADR-PROD-0009`, `ADR-PROD-0011`, `ADR-PROD-0012`
+Scope clarification: This ADR governs local Player Hosts created at runtime through manual join. Scene-existing local Player admission is defined by `ADR-PROD-0013`.
 
 ## Context
 
@@ -54,7 +55,7 @@ The local Player flow therefore needs to use `PlayerInputManager` fully, but und
 
 ## Decision
 
-`PlayerInputManager` is the official technical provisioner for local Player instances.
+`PlayerInputManager` is the official technical provisioner for local Player instances created at runtime through the manual-join path.
 
 It operates in manual join mode.
 
@@ -402,6 +403,8 @@ Automatic join by arbitrary unpaired input remains disabled.
 
 ## Unexpected or external join
 
+A scene-authored Host referenced by `Scene Local Player Admission` is not a join event and is not an unexpected Player. It is admitted only through the explicit typed operation defined by `ADR-PROD-0013`.
+
 A `PlayerInput` joined without a matching authorized pending operation is invalid.
 
 Examples:
@@ -445,7 +448,8 @@ The exact leave, disconnect, reconnect and device-replacement state machines are
 
 ## Single-player use
 
-Single player uses the same manual provisioning flow.
+A runtime-created single player uses the same manual provisioning flow. A product that intentionally places its single local Player in an Activity scene may instead use `Scene Local Player Admission`; that alternative does not call `JoinPlayer` and does not create another spawning architecture.
+
 
 ```text
 explicit startup/menu command
@@ -504,7 +508,7 @@ Do not mutate read-only PlayerInputManager limits through reflection or Editor A
 
 Do not silently remove admitted Players when Session capacity decreases.
 
-Do not force future online/network admission through the local PlayerInputManager path.
+Do not force a scene-existing Host or future online/network admission through the local PlayerInputManager path.
 ```
 
 ## Out of scope

@@ -5,6 +5,7 @@ Date: 2026-07-12
 Package: `com.immersive.framework`  
 Area: Player Product Surface / Participation / Runtime Materialization  
 Related: `F45-ADR-ACTOR-001`, `F49-PLAYER-001`, `F49-PLAYER-003`, `ADR-PROD-0004`, `ADR-PROD-0006`, `ADR-PROD-0008`, `ADR-PROD-0009`, `ADR-PROD-0010`, `ADR-PROD-0011`, `ADR-PROD-0012`
+Extended by: `ADR-PROD-0013`
 
 ## Context
 
@@ -301,13 +302,18 @@ generic Actor
   Route/Activity authority
   -> RuntimeContent materialization
 
-local Player Actor
+provisioned local Player Actor
   Route/Activity/Session policy authorizes an explicit join
   -> PlayerInputManager performs Unity local-player provisioning
   -> framework admits and binds the created Player to its contextual lifetime
+
+scene local Player Actor
+  Activity authoring references an existing scene-owned Host and Logical Actor
+  -> Scene Local Player Admission reserves the explicit Slot
+  -> framework admits the existing Host without creating or destroying it
 ```
 
-For local Players, `PlayerInputManager` is the technical provisioner defined by `ADR-PROD-0010`. It does not select `PlayerSlotProfile`, `ActorProfile`, contextual lifetime or occupancy.
+For runtime-created local Players, `PlayerInputManager` is the technical provisioner defined by `ADR-PROD-0010`. For a scene-existing local Player, `ADR-PROD-0013` defines an admission-only path with no provisioning call. Neither path transfers `PlayerSlotProfile`, `ActorProfile`, contextual lifetime or occupancy authority to the physical source.
 
 The Session retains logical participation and selected `ActorProfile` state, not mandatory physical Actor references.
 
@@ -358,7 +364,7 @@ The exact technical representation may use existing declarations/descriptors or 
 5. Optionally update persistent ActorProfile selection.
 6. Route or Activity projects participating Slots.
 7. Required logical Actor hosts are resolved and materialized through the official path:
-   RuntimeContent for generic Actors or PlayerInputManager for authorized local joins.
+   RuntimeContent for generic Actors, PlayerInputManager for authorized runtime-created local joins, or Scene Local Player Admission for an explicitly authored existing Host.
 8. Effective occupancies are confirmed.
 9. Input, camera and other runtime bindings attach to admitted instances.
 10. Context exit releases bindings, occupancy and physical instances in order.
@@ -463,7 +469,7 @@ Do not let Route or Activity redefine PlayerSlot identity.
 
 Do not let PlayerInputManager select Slot/Profile or become contextual lifetime authority.
 
-Do not create a second local Player spawner beside PlayerInputManager.
+Do not create a second local Player spawner beside PlayerInputManager. Scene Local Player Admission is admission-only and is not a spawner.
 
 Do not let PlayerSlotOccupancy perform physical materialization.
 
@@ -520,8 +526,8 @@ A menu can accept several Slot inputs without gameplay Actor occupancy.
 
 Physical Actor lifetime is explicitly Route-owned or Activity-owned.
 
-A local Player may be physically provisioned by PlayerInputManager while remaining
-owned and admitted by the explicit framework context.
+A runtime-created local Player may be physically provisioned by PlayerInputManager while remaining
+owned and admitted by the explicit framework context. A scene-existing local Player may be admitted through `ADR-PROD-0013` while its physical Host remains externally owned.
 
 Effective occupancy is confirmed only for an admitted active Actor.
 

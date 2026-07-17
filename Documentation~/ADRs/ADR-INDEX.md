@@ -1,6 +1,6 @@
 # Immersive Framework ADR Index
 
-ADRs are decision history, not the current setup guide. Read [Current State](../Current/00-Current-State.md) and [Roadmap](../Current/01-Roadmap.md) first.
+ADRs are decision history, not the current setup guide. Read [Current State](../Current/00-Current-State.md), [Roadmap](../Current/01-Roadmap.md) and [Execution Status](../Current/05-Execution-Status.md) first.
 
 ## Current product decisions
 
@@ -9,13 +9,21 @@ ADRs are decision history, not the current setup guide. Read [Current State](../
 | [ADR-PROD-0001](Product/ADR-PROD-0001-product-surface-model.md) | Product surface model. |
 | [ADR-PROD-0002](Product/ADR-PROD-0002-diagnostics-are-not-product-ux.md) | Diagnostics are not product UX. |
 | [ADR-PROD-0003](Product/ADR-PROD-0003-domain-runtime-context-policy.md) | Scoped runtime context policy. |
-| [ADR-PROD-0004](Product/ADR-PROD-0004-first-reference-product-surface.md) | First reference product surface. |
-| [ADR-PROD-0006](Product/ADR-PROD-0006-camera-requests-output-contexts.md) | Camera requests, rig materialization and output-scoped runtime authority. |
+| [ADR-PROD-0006](Product/ADR-PROD-0006-camera-requests-output-contexts.md) | Camera requests, typed target sources, rig materialization and output-scoped runtime authority. |
+| [ADR-PROD-0007](Product/ADR-PROD-0007-player-participation-composition-and-contextual-materialization.md) | Player participation composition and contextual Actor materialization. |
+| [ADR-PROD-0008](Product/ADR-PROD-0008-actor-profile-logical-host-and-presentation-materialization.md) | Actor Profile, Logical Actor Host and Presentation separation. |
+| [ADR-PROD-0009](Product/ADR-PROD-0009-immutable-product-profiles-and-runtime-state.md) | Immutable product Profiles and runtime-state separation. |
+| [ADR-PROD-0010](Product/ADR-PROD-0010-manual-local-player-join-and-player-input-manager-authority.md) | Manual local Player join and PlayerInputManager provisioning authority. |
+| [ADR-PROD-0011](Product/ADR-PROD-0011-ordered-local-player-slot-allocation-and-visual-identity.md) | Ordered local Player Slot allocation and visual identity. |
+| [ADR-PROD-0012](Product/ADR-PROD-0012-activity-player-participation-requirements-profiles.md) | Activity Player Participation Requirements Profiles. |
+| [ADR-PROD-0013](Product/ADR-PROD-0013-scene-local-player-admission.md) | Admission of an explicitly authored scene-existing local Player Host. |
+| [P3 Canonical Player Lane](P3-ADR-Canonical-Player-Lane.md) | Canonical P3 participation lane and destructive-removal policy. |
 
 ## Superseded product decisions
 
 | ADR | Superseded by | Historical contribution |
 |---|---|---|
+| [ADR-PROD-0004](Product/ADR-PROD-0004-first-reference-product-surface.md) | P3 Canonical Player Lane and ADR-PROD-0013 | Established Player as the first product-surface proof, but its Player Recipe/Composer shape is not current Player implementation guidance. |
 | [ADR-PROD-0005](Product/ADR-PROD-0005-camera-product-surface-cinemachine.md) | ADR-PROD-0006 | Established Cinemachine as mandatory and explicit target sources; its ownership and compatibility model is no longer current. |
 
 ## Historical groups

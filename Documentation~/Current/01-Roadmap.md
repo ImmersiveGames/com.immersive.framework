@@ -1,136 +1,113 @@
 # 01 — Roadmap
 
-Status: **canonical after C9 closure; G1 Route-loop scope selected**  
-Last reconciled: **2026-07-12**  
-Decision: `ADR-PROD-0006-camera-requests-output-contexts.md`  
-Evidence matrix: `Camera-Delivery-Reconciliation.md`
+Status: **P3 Scene Local Player sequence selected**  
+Last reconciled: **2026-07-16**  
+Decisions: `../ADRs/P3-ADR-Canonical-Player-Lane.md`, `../ADRs/Product/ADR-PROD-0013-scene-local-player-admission.md`
 
-For the exact operational next step, read `05-Execution-Status.md`.
+For the exact operational state, read `05-Execution-Status.md`.
 
 ## Status vocabulary
 
 | Status | Meaning |
 |---|---|
-| Closed | Implemented and supported by the required package, QA or consumer evidence. |
-| Active | The single selected execution block. |
-| Ordered | Accepted future block with a fixed position after the active block. |
+| Closed | Decision or implementation cut completed with its required evidence. |
+| Active | The single selected execution cut. |
+| Ordered | Accepted future cut with a fixed position after the active cut. |
+| Blocked | Cannot start until an explicit preceding gate closes. |
 | Candidate | Valuable future work not selected for execution. |
-| Superseded | Trial or historical shape removed from the supported product. |
+| Superseded | Historical shape removed from the supported product. |
 
-## C9 canonical sequence
+## Closed baseline
 
-| ID | Objective | Type | Status | Closure/evidence |
-|---|---|---|---|---|
-| C9A | Freeze request/output-scoped Camera architecture. | architecture | closed | ADR-PROD-0006 accepted. |
-| C9B | Remove Director, activation and legacy ownership paths. | removal | closed | package, QA and FIRSTGAME legacy paths removed. |
-| C9C | Add typed request/output contracts. | runtime/contracts | closed | package contracts and QA fixture. |
-| C9D | Add one-output arbitration and restoration. | runtime | closed | `CameraOutputContext`. |
-| C9E | Apply the winner to an explicit Cinemachine rig. | runtime/Unity adapter | closed | `CameraOutputRigApplicator`. |
-| C9F | Make arbitration and presentation transactional. | runtime | closed | `CameraOutputSession`. |
-| C9G | Add typed Route and Activity publishers. | runtime | closed | typed publishers and QA fixture. |
-| C9H | Trial lifecycle adapters. | integration | superseded | removed after canonical lifecycle integration. |
-| C9I | Bind Route and Activity to canonical lifecycle. | authoring/runtime/QA | closed | lifecycle QA, eight cases. |
-| C9K | Add Local Player eligibility publication. | authoring/runtime | closed | binding, publisher and QA consumption. |
-| C9L | Prove Player arbitration and restoration. | QA | closed | ten-case QA PASS. |
-| C9M | Wire and prove the FIRSTGAME consumer integration. | integration | closed | persistent output, injected consumers, manual runtime and visual proof. |
-| C9N | Separate virtual rig materialization from physical output creation. | authoring/editor | closed | current Composer/materializer shape. |
-| C9O | Prove Activity teardown before Route unload. | QA | closed | teardown evidence and Hub return without blockers. |
-| C9Q | Author and materialize Follow framing. | UX/product/editor | closed | Follow Pipeline four-case PASS and FIRSTGAME distinct framing proof. |
-| C9R | Add persistent Session output, explicit override authority and transition integration. | runtime/product/QA/integration | closed | QA eleven-case PASS; FIRSTGAME transition and manual override/release PASS. |
-
-`C9J` has no canonical implementation artifact. No package commit identified as
-`C9P` defines an additional canonical cut; missing letters must not be filled by
-inference.
-
-## Camera closure
-
-The accepted single-player precedence is:
+Camera C9 remains closed at the accepted single-output product level:
 
 ```text
 Local Player 50 < Activity 100 < Route 200 < Session 300
 ```
 
-The output lives in `UIGlobal`. Route and Activity become available through
-their lifecycle but publish only through explicit override requests. Session is
-requested around transitions and released before destination content is
-revealed.
+The output is session-owned in `UIGlobal`; request publication and release are explicit and output-scoped.
 
-Camera C9 is therefore closed at the current single-output product level.
+The canonical P3 join/ActorProfile lane exists in Framework and QA source. Its H5 Unity regression gate remains manual and is not inferred from Git state.
 
-## Active block
+## Selected P3M sequence
 
-```text
-G1 — Consumer Route Loop
-```
+| Order | Cut | Type | Objective | Status |
+|---:|---|---|---|---|
+| 0 | P3M0 | baseline/documentation | Freeze the read-only package and QA source baseline without claiming Unity PASS. | closed by this patch |
+| 1 | P3M1 | architecture/documentation | Define Scene Local Player Admission and reconcile Player/Camera decisions. | closed by this patch |
+| 2 | P3M2 | technical | Decouple Camera, shared Editors and QA from `PreAuthoredPlayerComposer`. | active |
+| 3 | P3M3 | destructive removal | Remove PreAuthored runtime, Editor, menus, serialized consumers and dedicated smoke. | ordered |
+| 4 | P3M4 | technical + UX/product | Promote Scene Local Player Admission atomically into `com.immersive.framework`. | ordered |
+| 5 | P3M5 | QA | Prove admission, rollback, release, retry, multi-binding compensation and manual-join regression. | ordered |
+| 6 | P3M6 | integration real | Prove the official surface in FIRSTGAME. | blocked by P3M5 |
+| 7 | P3M7 | documentation/product | Add the official sample and concise usage guide. | blocked by P3M6 |
 
-### Corrected goal
+## Active cut — P3M2
 
-Prove that the existing framework systems support a complete application flow
-through real Routes:
+### Objective
 
-```text
-Bootstrap
--> Menu Route
--> Gameplay Route
--> Ending Route or Menu Route
--> controlled return/re-entry
-```
-
-This is a framework lifecycle/integration proof, not a generic gameplay system.
-
-### First cut
+Remove every direct dependency from Camera, shared Editor surfaces and Camera/Player QA fixtures to:
 
 ```text
-G1A — FIRSTGAME Route Loop Audit and Scope Lock
+PreAuthoredPlayerComposer
+PreAuthoredPlayerRecipe
 ```
 
-G1A must inventory the real FIRSTGAME Routes and incorporate the additional
-requirements selected for that block before implementation.
+The PreAuthored files remain present during P3M2. Removal occurs only in P3M3 after all external consumers are migrated.
 
-It must answer:
+### Product surface affected
 
 ```text
-Which Route is the entry/menu?
-Which Route is gameplay?
-Does an ending Route exist, or does gameplay return directly to menu?
-Which Route requests already exist?
-Which transition/loading/pause/input/camera surfaces participate?
-What state must be released or restored across the loop?
-What additional FIRSTGAME-specific proof is intentionally included?
+CameraRigComposer target source
+LocalPlayerCameraRequestBinding target evidence
+Camera Inspector
+Player declaration Inspector
+QA camera fixtures and installers
 ```
 
-### Not mandatory for framework closure
+### Required shape
 
 ```text
-generic objective system
-generic interaction system
-combat
-mission state
-win-condition authority
-resettable gameplay object
-framework-owned movement or gameplay controller
+prepared Player/Actor target provider
+or explicit Transform target source
+-> CameraRigComposer
+-> typed CameraRequest
+-> CameraOutputContext
 ```
 
-FIRSTGAME may include singular gameplay content, but that content does not
-become a package contract merely because it participates in the demonstration.
+### Technical acceptance
 
-## Ordered continuation
+```text
+zero Camera runtime dependency on PreAuthoredPlayerComposer
+zero Camera Editor dependency on PreAuthoredPlayerComposer
+zero Camera QA dependency on PreAuthoredPlayerComposer
+required target failures remain explicit
+no Camera.main, name, tag or hierarchy fallback
+manual join lane remains unchanged
+package and QA compile in Unity
+```
 
-| Order | Block | Goal | Activation condition |
-|---:|---|---|---|
-| 1 | P3 — Player Spawn / Runtime Materialization | Define explicit existing-instance and instantiate-prefab policies with scoped lifetime. | G1 closed or explicitly deferred. |
-| 2 | S1 — Progression Save Runtime | Add progression save contracts and interchangeable backend. | FIRSTGAME has meaningful state worth persisting. |
+### Product acceptance
 
-Camera multi-output, split-screen, additional camera modes, transition/loading
-hardening, input rebinding, generic interaction and multiplayer remain
-candidates, not active lanes.
+```text
+Camera Inspector speaks in target-source terms
+Camera can consume Player, Actor or explicit Transform evidence
+Designer does not need a Player Composer to configure a rig
+Advanced/Debug still exposes resolved Follow and LookAt targets
+```
 
-## Execution guardrails
+## Guardrails
 
-- Only one block is active.
-- Do not create gameplay authority in the framework to satisfy G1.
-- Movement and game rules remain consumer-owned.
-- Package contracts are added only when a real integration gap proves they are
-  necessary.
-- Required invalid configuration fails explicitly.
-- No silent fallback, global manager, service locator or functional name lookup.
+- Git repositories remain read-only; every change is delivered as a `.zip` preserving relative paths.
+- The package contains official reusable solutions.
+- QA proves technical contracts before FIRSTGAME integration.
+- FIRSTGAME proves usability and must not become the permanent home of official contracts.
+- No compatibility shim, fallback discovery, global manager or service locator.
+- Failures of required state remain explicit and diagnostic.
+- Only one cut is active.
+
+## Suggested commit for this documentation cut
+
+```text
+Docs: define Scene Local Player Admission sequence
+```

@@ -1,7 +1,10 @@
+> Superseded as current Player implementation guidance by `P3-ADR-Canonical-Player-Lane` and `ADR-PROD-0013`. This document remains historical evidence for the product-surface pattern.
+
 # ADR-PROD-0004 — First Reference Product Surface
 
-Status: Accepted  
-Date: 2026-07-09
+Status: Superseded for current Player guidance  
+Date: 2026-07-09  
+Superseded: 2026-07-16
 
 ## Context
 

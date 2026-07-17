@@ -1,173 +1,105 @@
 # 00 — Current State
 
-Status: **canonical after pre-FIRSTGAME P3 hygiene implementation**
-Last reconciled: **2026-07-15**
-Decisions: `ADR-PROD-0006-camera-requests-output-contexts.md`, `../ADRs/P3-ADR-Canonical-Player-Lane.md`
+Status: **canonical P3 source baseline frozen; Scene Local Player architecture accepted**  
+Last reconciled: **2026-07-16**  
+Decisions: `../ADRs/P3-ADR-Canonical-Player-Lane.md`, `../ADRs/Product/ADR-PROD-0006-camera-requests-output-contexts.md`, `../ADRs/Product/ADR-PROD-0013-scene-local-player-admission.md`
 
 For the active execution block, read `05-Execution-Status.md`.
+
+## Read-only source baseline
+
+```text
+com.immersive.framework
+  commit: 385c957a8fefb53f0daf395c662ffa7d5fedc996
+  package: 1.0.0-preview.15
+
+QAFramework
+  commit: 993f8e698edb8c826054c9f8faa8bd344fbc8013
+```
+
+This freezes source identity only. Unity import, compile and runtime smoke PASS are not inferred from Git inspection.
 
 ## Canonical Player lane
 
 ```text
-PlayerSlotProfile -> participation -> join -> LocalPlayerHostAuthoring
-  -> Actor selection/materialization -> preparation -> gameplay occupancy
-  -> input -> camera -> admission -> Activity
+PlayerSlotProfile
+-> participation and Slot reservation
+-> one explicit physical source
+-> LocalPlayerHostAuthoring admission
+-> Actor selection/preparation
+-> gameplay occupancy
+-> input and camera eligibility
+-> Activity admission
 ```
 
-`PlayerSlotId` is assigned by the Session join transaction. Player prefabs and
-`PlayerComposer` do not pre-author Slot identity. Pause/InputMode consumes one
-explicit `LocalPlayerProvisioningAuthoring`; optional discovery is by loaded
-component type and rejects duplicates. F45 passive Slot declarations and the
-F49/F51/F52 passive binding graph are removed. FIRSTGAME remains a consumer
-awaiting migration after the clean P3 regression gate.
+The supported physical sources are:
 
-## Camera product and authoring surface
+```text
+Manual local join
+  PlayerInputManager provisions one runtime-created local Player Host.
+
+Scene Local Player Admission
+  an Activity admits one explicitly referenced existing scene Host without provisioning.
+```
+
+Both paths use the same Slot, participation, preparation, readiness and release domain. Neither path pre-authors `PlayerSlotId` or runtime `ActorId` on the physical Host.
+
+## PreAuthored status
+
+`PreAuthoredPlayerComposer` is an experimental alternative surface and is not canonical P3 authority.
+
+It remains temporarily because Camera, shared Editors and QA still contain direct dependencies. The required transition is:
+
+```text
+P3M2 decouple consumers
+-> P3M3 remove PreAuthored destructively
+-> P3M4 promote Scene Local Player Admission
+```
+
+No compatibility alias or silent bridge is allowed.
+
+## Camera product and runtime authority
 
 ```text
 CameraRigRecipe
   reusable Cinemachine presentation intent
 
 CameraRigComposer
-  designer-facing rig instance
-  Validate / Apply / Rebuild
-  materializes one virtual CinemachineCamera and its local pipeline
+  designer-facing rig instance and idempotent materialization
+
+Camera target source
+  typed provider independent of PreAuthoredPlayerComposer
 
 CameraOutputSessionBinding
   explicit physical Unity Camera + CinemachineBrain output
-  owns one scoped CameraOutputSession
-```
 
-`CameraRigComposer` does not create or own the physical output. It does not
-select the active rig and does not operate gameplay.
-
-`Follow Offset` is designer-authored through `CameraRigRecipe` and
-`CameraRigComposer`. Apply/Rebuild writes it idempotently to the local
-`CinemachineFollow`.
-
-## Runtime authority
-
-For one explicit `CameraOutputId`, the physical output creates:
-
-```text
 CameraOutputContext
-  -> CameraOutputRigApplicator
-  -> CameraOutputSession
+  sole winner-selection authority for one output
 ```
 
-`CameraOutputContext` is the sole winner-selection authority. It admits typed
-requests, rejects invalid or ambiguous requests, selects the highest-precedence
-request, captures diagnostics and restores the next valid request on release.
+Camera does not create Player identity, decide Player admission or enable gameplay. Local Player camera publication occurs only after the Player is eligible through the P3 readiness path.
 
-`CameraOutputSession` coordinates arbitration and presentation transactionally.
-`CameraOutputRigApplicator` presents the selected materialized
-`CinemachineCamera`; it does not choose the winner and does not toggle the
-physical Unity Camera as policy.
-
-## Persistent output and request sources
-
-The canonical single-player output is session-owned and authored in
-`UIGlobal`.
-
-Framework Core injects that output into Route, Activity and Local Player
-consumers. No consumer serializes a cross-scene output reference and no runtime
-lookup by name, `Camera.main`, singleton or service locator is used.
-
-| Source | Product/runtime boundary | Lifetime behavior | Default precedence |
-|---|---|---|---:|
-| Local Player | `LocalPlayerCameraRequestBinding` | publishes while explicitly eligible | 50 |
-| Activity | `ActivityCameraOverrideBinding` | lifecycle entry makes it available; explicit request/release | 100 |
-| Route | `RouteCameraOverrideBinding` | lifecycle entry makes it available; explicit request/release | 200 |
-| Session | `SessionCameraOverrideBinding` in `UIGlobal` | transition-scoped explicit request/release | 300 |
-
-Route and Activity lifecycle entry do **not** publish a camera request.
-`RequestOverride()` publishes the temporary override and `ReleaseOverride()`
-restores the next valid request.
-
-The Session override is persistent but is not the normal gameplay winner. The
-transition orchestrator requests it only while the transition surface covers
-the scene change and releases it before destination content is revealed.
-
-## Diagnostics and failure policy
-
-The output binding and all request/override bindings retain Inspector status and
-diagnostic text and emit `[FRAMEWORK_CAMERA]` evidence when diagnostics are
-enabled.
-
-Required invalid configuration fails explicitly. Release is idempotent.
-Presentation failure is diagnostic and transactional. There is no silent
-fallback, global camera manager, owner-controlled Cinemachine priority
-competition or automatic physical output discovery.
-
-## Closed evidence
-
-### Package
-
-- Typed request/output contracts are implemented.
-- Single-output arbitration and restoration are implemented.
-- Winner application is transactional.
-- Route, Activity, Local Player and Session sources are implemented.
-- Session-scoped output injection is implemented.
-- Follow framing is designer-authored and materialized idempotently.
-- Superseded camera Director, activation and automatic lifecycle-publication
-  paths remain removed.
-
-### QAFramework
-
-- C9I lifecycle evidence closed eight cases.
-- C9L Player arbitration evidence closed ten cases.
-- C9O proved Activity teardown before Route unload.
-- C9Q Follow Pipeline passed four cases:
-  `camera-materialized`, `follow-pipeline-materialized`, `target-assigned`,
-  `idempotent`.
-- C9R Camera Override Authority passed eleven cases, including explicit
-  request/release, precedence, restoration and lifecycle cleanup.
-
-### FIRSTGAME
-
-FIRSTGAME now proves the real consumer shape:
+## Runtime authority rules
 
 ```text
-one persistent camera.output.main in FG_UIGlobal
-one physical Unity Camera
-one CinemachineBrain
-one SessionCameraOverrideBinding
-Route / Activity / Local Player consumers injected at runtime
-Player 50 < Activity 100 < Route 200 < Session 300
-Session requested and released during Route transition
-explicit Activity, Route and Session override/release restoration
+Player participation authority is scoped and typed.
+PlayerInputManager owns only runtime provisioning mechanics.
+Scene admission owns no physical creation or destruction.
+Activity owns contextual admission requirements.
+CameraOutputContext owns camera winner selection.
+Profiles remain immutable runtime inputs.
 ```
 
-The final manual visual inspection was accepted: the Player camera follows the
-Player, the authored framings are distinguishable, and override/release changes
-the effective camera as expected.
-
-## Current limitations
-
-- The supported product baseline is one explicit output.
-- Multi-output authoring, split-screen setup and online local/remote eligibility
-  remain future product work.
-- `eligibleOnEnable` is a single-player convenience; a real locality authority
-  must call `SetLocalPlayerEligible`.
-- Session camera presentation is transition-scoped; it is not a gameplay camera
-  manager.
+No singleton, service locator, functional name lookup, hierarchy fallback or silent required-state fallback is allowed.
 
 ## Current execution boundary
 
-Camera C9 is closed.
+Architecture/documentation cuts `P3M0` and `P3M1` are complete when this patch is applied.
 
-The selected continuation is G1, redefined as a **consumer Route loop proof**.
-The framework does not own objectives, win conditions, combat, mission state or
-other gameplay rules.
-
-A valid framework loop may be:
+The next technical cut is:
 
 ```text
-Bootstrap
--> Menu Route
--> Gameplay Route
--> Ending Route or Menu Route
--> controlled return/re-entry
+P3M2 — Decouple Camera, shared Editors and QA from PreAuthoredPlayerComposer
 ```
 
-Gameplay objectives, interactions and resettable game state may be added by
-FIRSTGAME, but they are not mandatory framework acceptance criteria.
+H5 remains a manual Unity gate and must not be marked Passed without import, compile and the required P3 aggregate smoke evidence.

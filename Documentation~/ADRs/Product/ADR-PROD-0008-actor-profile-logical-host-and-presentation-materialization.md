@@ -5,6 +5,7 @@ Date: 2026-07-12
 Package: `com.immersive.framework`  
 Area: Actor Product Surface / Runtime Materialization / Presentation  
 Related: `ADR-PROD-0007`, `ADR-PROD-0009`, `ADR-PROD-0010`, `F45-ADR-ACTOR-001`, `F08-ADR-RUNTIME-001`, `ADR-PROD-0004`, `ADR-PROD-0006`
+Extended by: `ADR-PROD-0013`
 
 ## Context
 
@@ -105,7 +106,7 @@ It is a concrete runtime `GameObject`.
 
 For generic Actors, the Profile-to-host relationship is materialized through the official RuntimeContent boundary.
 
-For local Players, `PlayerInputManager` provisions the configured local Player host after an explicit framework-authorized manual join, and the framework then applies/adopts the selected `ActorProfile`. The exact final relationship between the Profile's canonical logical content and the manager's configured `playerPrefab` is intentionally deferred to a subsequent decision.
+For runtime-created local Players, `PlayerInputManager` provisions the configured local Player host after an explicit framework-authorized manual join, and the framework then applies the selected `ActorProfile`. For a scene-existing local Player, `ADR-PROD-0013` admits an explicitly referenced externally owned Host and Logical Actor without calling `JoinPlayer` or creating a second host.
 
 ### Actor Presentation / Skin
 
@@ -429,9 +430,9 @@ assigns runtime identity and contextual participation
 admits the Actor into the context
 ```
 
-### Local Player path
+### Local Player paths
 
-The local Player path is specialized by `ADR-PROD-0010`:
+The runtime-created local Player path is specialized by `ADR-PROD-0010`:
 
 ```text
 framework or authorized product adapter requests manual join
@@ -443,7 +444,17 @@ framework or authorized product adapter requests manual join
 -> admits the Player into the contextual lifetime
 ```
 
-This specialized technical provisioner does not transfer Slot, Profile, occupancy or contextual lifetime authority to `PlayerInputManager`.
+The scene-existing local Player path is specialized by `ADR-PROD-0013`:
+
+```text
+Activity authoring references an existing Host and Logical Actor
+-> framework reserves the explicit PlayerSlotProfile
+-> framework stages and commits admission
+-> framework registers the existing Actor for preparation
+-> release removes contextual evidence without destroying external objects
+```
+
+Neither physical path transfers Slot, Profile, occupancy or contextual lifetime authority to `PlayerInputManager` or to the scene object itself.
 
 The exact shape used to apply ActorProfile-specific logical composition after local Player provisioning remains a separate decision.
 
@@ -710,8 +721,8 @@ ActorProfile identifies the canonical logical Actor product content.
 
 Generic Actors are materialized through RuntimeContent.
 
-Local Players are provisioned through PlayerInputManager after an explicit authorized
-manual join and are then admitted/configured by the framework.
+Runtime-created local Players are provisioned through PlayerInputManager after an explicit authorized
+manual join and are then admitted/configured by the framework. Scene-existing local Players are admitted through `ADR-PROD-0013` without physical provisioning.
 
 The created host receives runtime Actor identity after materialization.
 
@@ -780,7 +791,7 @@ Player specialization does not require two declaration components or a parallel 
 
 RuntimeContent remains the official generic Actor host materialization boundary.
 
-PlayerInputManager is the explicit specialized physical provisioner for local Player hosts.
+PlayerInputManager is the explicit specialized physical provisioner for runtime-created local Player hosts. Scene Local Player Admission is an admission-only path for externally owned scene hosts.
 ```
 
 ### Cost
