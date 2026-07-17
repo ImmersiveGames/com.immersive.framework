@@ -153,6 +153,7 @@ namespace Immersive.Framework.PlayerParticipation
             }
 
             module.RegisterActivityPlayerActorLifecycleSource();
+            module.RegisterSceneLocalPlayerAdmissionLifecycleSourceIfAvailable();
             runtimeModule = module;
             runtimeDiagnostic = module.Diagnostic;
         }

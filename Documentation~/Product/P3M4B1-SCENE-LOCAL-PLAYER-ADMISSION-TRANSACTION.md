@@ -1,6 +1,6 @@
 # P3M4B1 — Scene Local Player Admission Transaction
 
-Status: Pending Unity validation  
+Status: Validated in Unity — PASS 10/10  
 Type: Technical product foundation  
 Depends on: P3M4A PASS
 

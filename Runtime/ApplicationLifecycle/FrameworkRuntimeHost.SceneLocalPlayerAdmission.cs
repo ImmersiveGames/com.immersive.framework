@@ -7,7 +7,8 @@ namespace Immersive.Framework.ApplicationLifecycle
     {
         /// <summary>
         /// Composes Scene Local Player admission directly from the Session Player participation
-        /// authority. This path is independent from PlayerInputManager provisioning.
+        /// authority, then wraps the canonical Player Activity lifecycle with phase-aware Scene
+        /// admission ordering. This path remains independent from PlayerInputManager provisioning.
         /// </summary>
         private void ApplySceneLocalPlayerAdmissionRuntime()
         {
@@ -21,11 +22,22 @@ namespace Immersive.Framework.ApplicationLifecycle
             if (!SceneLocalPlayerAdmissionRuntimeHostModule.TryAttach(
                     this,
                     participationContext,
-                    out _,
+                    out SceneLocalPlayerAdmissionRuntimeHostModule sceneModule,
                     out string issue))
             {
                 throw new InvalidOperationException(
                     "Scene Local Player admission runtime composition failed. " + issue);
+            }
+
+            PlayerActorPreparationRuntimeHostModule preparation =
+                GetComponent<PlayerActorPreparationRuntimeHostModule>();
+            if (preparation == null ||
+                !preparation.TryComposeSceneLocalPlayerAdmissionLifecycle(
+                    sceneModule,
+                    out issue))
+            {
+                throw new InvalidOperationException(
+                    "Scene Local Player Activity lifecycle composition failed. " + issue);
             }
         }
     }

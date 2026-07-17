@@ -159,8 +159,9 @@ namespace Immersive.Framework.PlayerParticipation
         }
 
         /// <summary>
-        /// Explicit manual admission request. P3M4B1 does not execute this from Awake, Start or
-        /// OnEnable; Activity-owned automatic timing is added only after the transaction passes QA.
+        /// Explicit manual admission request. Automatic On Activity Enter execution is owned by
+        /// the scoped Activity lifecycle participant; this component never self-admits from Awake,
+        /// Start or OnEnable.
         /// </summary>
         public SceneLocalPlayerAdmissionRuntimeResult RequestAdmission(
             string source,

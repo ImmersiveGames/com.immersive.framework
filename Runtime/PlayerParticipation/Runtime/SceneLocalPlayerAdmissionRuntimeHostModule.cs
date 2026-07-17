@@ -1,7 +1,10 @@
 using System;
 using System.Collections.Generic;
+using Immersive.Framework.Actors;
 using Immersive.Framework.ApiStatus;
 using Immersive.Framework.ApplicationLifecycle;
+using Immersive.Framework.Authoring;
+using Immersive.Framework.PlayerSlots;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
@@ -15,9 +18,26 @@ namespace Immersive.Framework.PlayerParticipation
     [DisallowMultipleComponent]
     [FrameworkApiStatus(
         FrameworkApiStatus.Internal,
-        "P3M4B1 host-scoped Scene Local Player admission transaction composition adapter.")]
+        "P3M4B1/P3M4B2A host-scoped Scene Local Player admission and Activity lifecycle composition adapter.")]
     internal sealed class SceneLocalPlayerAdmissionRuntimeHostModule : MonoBehaviour
     {
+        private sealed class ResolvedAutomaticAuthoring
+        {
+            internal ResolvedAutomaticAuthoring(
+                SceneLocalPlayerAdmissionAuthoring authoring,
+                PlayerSlotId playerSlotId,
+                int configuredIndex)
+            {
+                Authoring = authoring;
+                PlayerSlotId = playerSlotId;
+                ConfiguredIndex = configuredIndex;
+            }
+
+            internal SceneLocalPlayerAdmissionAuthoring Authoring { get; }
+            internal PlayerSlotId PlayerSlotId { get; }
+            internal int ConfiguredIndex { get; }
+        }
+
         private readonly List<SceneLocalPlayerAdmissionAuthoring> boundAuthoring = new();
         private FrameworkRuntimeHost runtimeHost;
         private PlayerParticipationRuntimeContext participationContext;
@@ -33,6 +53,7 @@ namespace Immersive.Framework.PlayerParticipation
         internal string Diagnostic => diagnostic;
         internal int BoundAuthoringCount => boundAuthoring.Count;
         internal int ActiveAdmissionCount => runtime?.ActiveAdmissionCount ?? 0;
+        internal PlayerParticipationRuntimeContext ParticipationContext => participationContext;
 
         internal static bool TryAttach(
             FrameworkRuntimeHost runtimeHost,
@@ -197,6 +218,148 @@ namespace Immersive.Framework.PlayerParticipation
             return runtime != null && runtime.TryGetActiveToken(authoring, out token);
         }
 
+
+        internal bool TryGetSlotSnapshot(
+            PlayerSlotId playerSlotId,
+            out PlayerSlotRuntimeSnapshot snapshot)
+        {
+            snapshot = default;
+            return participationContext != null &&
+                participationContext.TryGetSlotSnapshot(playerSlotId, out snapshot);
+        }
+
+        internal PlayerActorSelectionResult TrySelectActorProfile(
+            PlayerActorSelectionRequest request)
+        {
+            return participationContext != null
+                ? participationContext.TrySelectActorProfile(request)
+                : PlayerActorSelectionResult.RuntimeUnavailable(
+                    "SelectActorProfile",
+                    request,
+                    diagnostic);
+        }
+
+        internal PlayerActorSelectionResult TryClearActorSelection(
+            PlayerActorSelectionRequest request)
+        {
+            return participationContext != null
+                ? participationContext.TryClearActorSelection(request)
+                : PlayerActorSelectionResult.RuntimeUnavailable(
+                    "ClearActorSelection",
+                    request,
+                    diagnostic);
+        }
+
+        internal bool TryResolveAutomaticActivityAuthoring(
+            ActivityAsset activity,
+            out IReadOnlyList<SceneLocalPlayerAdmissionAuthoring> authoring,
+            out string issue)
+        {
+            var resolved = new List<ResolvedAutomaticAuthoring>();
+            authoring = Array.Empty<SceneLocalPlayerAdmissionAuthoring>();
+            issue = string.Empty;
+
+            if (!IsReady)
+            {
+                issue = diagnostic;
+                return false;
+            }
+
+            if (activity == null)
+            {
+                issue = "Scene Local Player automatic admission requires an Activity.";
+                return false;
+            }
+
+            PlayerParticipationSnapshot snapshot = participationContext.CreateSnapshot();
+            if (snapshot == null || !snapshot.IsInitialized)
+            {
+                issue = "Scene Local Player automatic admission requires an initialized Session participation snapshot.";
+                return false;
+            }
+
+            var slotIds = new HashSet<PlayerSlotId>();
+            var hosts = new List<LocalPlayerHostAuthoring>();
+            var actors = new List<PlayerActorDeclaration>();
+
+            for (int index = 0; index < boundAuthoring.Count; index++)
+            {
+                SceneLocalPlayerAdmissionAuthoring candidate = boundAuthoring[index];
+                if (candidate == null ||
+                    candidate.AdmissionTiming != SceneLocalPlayerAdmissionTiming.OnActivityEnter ||
+                    !IsDeclaredByActivity(candidate, activity))
+                {
+                    continue;
+                }
+
+                if (!candidate.TryValidateRuntimeEvidence(out string candidateIssue))
+                {
+                    issue = $"Scene Local Player Admission '{candidate.name}' is invalid. {candidateIssue}";
+                    return false;
+                }
+
+                if (!candidate.TryGetPlayerSlotId(
+                        out PlayerSlotId playerSlotId,
+                        out candidateIssue))
+                {
+                    issue = candidateIssue;
+                    return false;
+                }
+
+                int configuredIndex = -1;
+                for (int slotIndex = 0; slotIndex < snapshot.Slots.Count; slotIndex++)
+                {
+                    if (snapshot.Slots[slotIndex].PlayerSlotId == playerSlotId)
+                    {
+                        configuredIndex = snapshot.Slots[slotIndex].ConfiguredIndex;
+                        break;
+                    }
+                }
+
+                if (configuredIndex < 0)
+                {
+                    issue = $"Scene Local Player Admission '{candidate.name}' references Slot '{playerSlotId.StableText}', which is not configured in the Session.";
+                    return false;
+                }
+
+                if (!slotIds.Add(playerSlotId))
+                {
+                    issue = $"Activity '{activity.ActivityName}' declares more than one automatic Scene Local Player Admission for Slot '{playerSlotId.StableText}'.";
+                    return false;
+                }
+
+                if (ContainsReference(hosts, candidate.LocalPlayerHost))
+                {
+                    issue = $"Activity '{activity.ActivityName}' reuses Local Player Host '{candidate.LocalPlayerHost.name}' across automatic Scene Local Player Admission surfaces.";
+                    return false;
+                }
+
+                if (ContainsReference(actors, candidate.SceneLogicalPlayerActor))
+                {
+                    issue = $"Activity '{activity.ActivityName}' reuses Scene Logical Player Actor '{candidate.SceneLogicalPlayerActor.name}' across automatic admission surfaces.";
+                    return false;
+                }
+
+                hosts.Add(candidate.LocalPlayerHost);
+                actors.Add(candidate.SceneLogicalPlayerActor);
+                resolved.Add(new ResolvedAutomaticAuthoring(
+                    candidate,
+                    playerSlotId,
+                    configuredIndex));
+            }
+
+            resolved.Sort((left, right) =>
+                left.ConfiguredIndex.CompareTo(right.ConfiguredIndex));
+            var ordered = new SceneLocalPlayerAdmissionAuthoring[resolved.Count];
+            for (int index = 0; index < resolved.Count; index++)
+            {
+                ordered[index] = resolved[index].Authoring;
+            }
+
+            authoring = ordered;
+            return true;
+        }
+
         internal void HandleAuthoringDestroyed(SceneLocalPlayerAdmissionAuthoring authoring)
         {
             if (shuttingDown || ReferenceEquals(authoring, null))
@@ -285,6 +448,70 @@ namespace Immersive.Framework.PlayerParticipation
                     return;
                 }
             }
+        }
+
+
+        private static bool IsDeclaredByActivity(
+            SceneLocalPlayerAdmissionAuthoring authoring,
+            ActivityAsset activity)
+        {
+            if (authoring == null || activity == null ||
+                activity.ActivityContentProfile == null ||
+                !authoring.gameObject.scene.IsValid())
+            {
+                return false;
+            }
+
+            string scenePath = NormalizeScenePath(authoring.gameObject.scene.path);
+            string sceneName = authoring.gameObject.scene.name ?? string.Empty;
+            IReadOnlyList<ActivityContentSceneEntry> entries =
+                activity.ActivityContentProfile.Scenes;
+            for (int index = 0; index < entries.Count; index++)
+            {
+                ActivityContentSceneEntry entry = entries[index];
+                if (entry == null || !entry.HasScene)
+                {
+                    continue;
+                }
+
+                string entryPath = NormalizeScenePath(entry.ScenePath);
+                if (!string.IsNullOrEmpty(scenePath) &&
+                    !string.IsNullOrEmpty(entryPath) &&
+                    string.Equals(scenePath, entryPath, StringComparison.OrdinalIgnoreCase))
+                {
+                    return true;
+                }
+
+                if (!string.IsNullOrEmpty(sceneName) &&
+                    !string.IsNullOrEmpty(entry.SceneName) &&
+                    string.Equals(sceneName, entry.SceneName, StringComparison.Ordinal))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        private static string NormalizeScenePath(string value)
+        {
+            return string.IsNullOrWhiteSpace(value)
+                ? string.Empty
+                : value.Trim().Replace('\\', '/');
+        }
+
+        private static bool ContainsReference<T>(IReadOnlyList<T> values, T candidate)
+            where T : class
+        {
+            for (int index = 0; index < values.Count; index++)
+            {
+                if (ReferenceEquals(values[index], candidate))
+                {
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         private void HandleSceneLoaded(Scene scene, LoadSceneMode mode)

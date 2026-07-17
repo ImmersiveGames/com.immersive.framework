@@ -385,3 +385,22 @@ The provisioned PlayerInputManager path is not a dependency.
 The temporary manual API is a technical product gate, not the final Activity UX.
 `OnActivityEnter` is still serialized intent and must not execute automatically until the
 P3M4B2 Activity participant and reverse-order release have passed QA.
+
+## Implementation status — P3M4B2A
+
+Validated foundations:
+
+```text
+P3M4A  authoring surface and serialized evidence
+P3M4B1 exact Slot/Host admission transaction and release
+```
+
+P3M4B2A adds automatic Activity enter/exit integration through a composite canonical
+Player participant. It supports requirements through `SelectedActors` and rejects
+`LogicalActorsPrepared` or `GameplayReady` explicitly.
+
+External Actor adoption remains P3M4B2B because existing materialization handles assume
+framework-owned physical instances. The package must add explicit external physical
+ownership before the canonical release path may unregister preparation without destroying
+the scene-owned Actor.
+
