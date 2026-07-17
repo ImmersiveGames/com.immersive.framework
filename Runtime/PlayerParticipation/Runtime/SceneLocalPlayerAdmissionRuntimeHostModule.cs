@@ -404,9 +404,19 @@ namespace Immersive.Framework.PlayerParticipation
         {
             BindLoadedScenes();
             PruneDestroyedAuthoring();
+            if (!TryRestoreCompositeLifecycleSource(out string sourceIssue))
+            {
+                diagnostic =
+                    "Scene Local Player admission runtime reconciled loaded scenes, " +
+                    "but could not restore the composite Activity lifecycle source. " +
+                    sourceIssue;
+                return;
+            }
+
             diagnostic =
                 $"Scene Local Player admission runtime reconciled loaded scenes. " +
-                $"surfaces='{BoundAuthoringCount}' activeAdmissions='{ActiveAdmissionCount}'.";
+                $"surfaces='{BoundAuthoringCount}' activeAdmissions='{ActiveAdmissionCount}' " +
+                "lifecycleSource='SceneLocalPlayerComposite'.";
         }
 
         private void PruneDestroyedAuthoring()
@@ -449,11 +459,13 @@ namespace Immersive.Framework.PlayerParticipation
             if (ContainsAuthoring(authoring))
             {
                 authoring.BindRuntime(this);
+                TryRestoreCompositeLifecycleSource(out _);
                 return;
             }
 
             boundAuthoring.Add(authoring);
             authoring.BindRuntime(this);
+            TryRestoreCompositeLifecycleSource(out _);
         }
 
         private bool ContainsAuthoring(SceneLocalPlayerAdmissionAuthoring authoring)
@@ -549,9 +561,42 @@ namespace Immersive.Framework.PlayerParticipation
         {
             PruneDestroyedAuthoring();
             BindScene(scene);
+            if (!TryRestoreCompositeLifecycleSource(out string sourceIssue))
+            {
+                diagnostic =
+                    $"Scene Local Player admission runtime attached loaded scene '{scene.name}', " +
+                    "but could not restore the composite Activity lifecycle source. " +
+                    sourceIssue;
+                return;
+            }
+
             diagnostic =
                 $"Scene Local Player admission runtime attached loaded scene '{scene.name}'. " +
-                $"surfaces='{BoundAuthoringCount}' activeAdmissions='{ActiveAdmissionCount}'.";
+                $"surfaces='{BoundAuthoringCount}' activeAdmissions='{ActiveAdmissionCount}' " +
+                "lifecycleSource='SceneLocalPlayerComposite'.";
+        }
+
+        private bool TryRestoreCompositeLifecycleSource(out string issue)
+        {
+            issue = string.Empty;
+            if (runtimeHost == null)
+            {
+                issue = "FrameworkRuntimeHost is unavailable.";
+                return false;
+            }
+
+            PlayerActorPreparationRuntimeHostModule preparation =
+                runtimeHost.GetComponent<PlayerActorPreparationRuntimeHostModule>();
+            if (preparation == null || !preparation.IsReady)
+            {
+                issue =
+                    "Player Actor preparation authority is unavailable for Scene Local Player lifecycle composition.";
+                return false;
+            }
+
+            return preparation.TryComposeSceneLocalPlayerAdmissionLifecycle(
+                this,
+                out issue);
         }
 
         private void OnDestroy()

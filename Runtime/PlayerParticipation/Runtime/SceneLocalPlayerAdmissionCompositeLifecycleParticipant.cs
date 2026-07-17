@@ -17,6 +17,8 @@ namespace Immersive.Framework.PlayerParticipation
         IActivityContentExecutionParticipantSource
     {
         private readonly ActivityPlayerActorLifecycleParticipant canonicalParticipant;
+        private readonly SceneLocalPlayerAdmissionRuntimeHostModule sceneModule;
+        private readonly PlayerActorPreparationRuntimeHostModule preparationModule;
         private readonly SceneLocalPlayerAdmissionActivityLifecycleRuntime sceneLifecycle;
 
         internal SceneLocalPlayerAdmissionCompositeLifecycleParticipant(
@@ -33,8 +35,11 @@ namespace Immersive.Framework.PlayerParticipation
         {
             this.canonicalParticipant = canonicalParticipant ??
                 throw new ArgumentNullException(nameof(canonicalParticipant));
+            this.sceneModule = sceneModule ??
+                throw new ArgumentNullException(nameof(sceneModule));
+            this.preparationModule = preparationModule;
             sceneLifecycle = new SceneLocalPlayerAdmissionActivityLifecycleRuntime(
-                sceneModule ?? throw new ArgumentNullException(nameof(sceneModule)),
+                this.sceneModule,
                 preparationModule);
         }
 
@@ -81,17 +86,32 @@ namespace Immersive.Framework.PlayerParticipation
                     nameof(request));
             }
 
-            return request.Phase switch
+            try
             {
-                ActivityContentExecutionPhase.Enter => ExecuteEnter(request),
-                ActivityContentExecutionPhase.Exit => ExecuteExit(request),
-                _ => ActivityContentExecutionResult.BlockingFailure(
-                    request,
-                    1,
-                    nameof(SceneLocalPlayerAdmissionCompositeLifecycleParticipant),
-                    "scene-local-player-composite-unsupported-phase",
-                    $"Unsupported Scene Local Player composite phase '{request.Phase}'.")
-            };
+                return request.Phase switch
+                {
+                    ActivityContentExecutionPhase.Enter => ExecuteEnter(request),
+                    ActivityContentExecutionPhase.Exit => ExecuteExit(request),
+                    _ => ActivityContentExecutionResult.BlockingFailure(
+                        request,
+                        1,
+                        nameof(SceneLocalPlayerAdmissionCompositeLifecycleParticipant),
+                        "scene-local-player-composite-unsupported-phase",
+                        $"Unsupported Scene Local Player composite phase '{request.Phase}'.")
+                };
+            }
+            finally
+            {
+                // Canonical preparation/provisioning paths may re-register their narrower
+                // participant source while this composite executes. Restore the complete
+                // source before the next Activity transition is resolved.
+                if (preparationModule != null)
+                {
+                    preparationModule.TryComposeSceneLocalPlayerAdmissionLifecycle(
+                        sceneModule,
+                        out _);
+                }
+            }
         }
 
         private ActivityContentExecutionResult ExecuteEnter(

@@ -1547,10 +1547,24 @@ namespace Immersive.Framework.PlayerParticipation
                 message);
 
         private static RuntimeContentOwner CreateActivityOwner(
-            ActivityAsset activity) =>
-            RuntimeContentOwner.Activity(
-                activity.ActivityName,
+            ActivityAsset activity)
+        {
+            if (activity == null)
+            {
+                throw new ArgumentNullException(nameof(activity));
+            }
+
+            if (!activity.HasValidActivityId)
+            {
+                throw new ArgumentException(
+                    "Activity Player lifecycle owner requires a valid ActivityId.",
+                    nameof(activity));
+            }
+
+            return RuntimeContentOwner.Activity(
+                activity.ActivityId.StableText,
                 activity.ActivityName);
+        }
 
         private static ActivityPlayerLifecycleAdmissionSnapshot Snapshot(
             TransactionRecord record)

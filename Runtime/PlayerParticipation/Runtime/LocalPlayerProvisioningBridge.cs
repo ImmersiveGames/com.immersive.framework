@@ -573,6 +573,14 @@ namespace Immersive.Framework.PlayerParticipation
                 return;
             }
 
+            // PlayerInputManager also reports enabled PlayerInput components that already
+            // belong to explicitly authored Scene Local Player surfaces. Those callbacks are
+            // not manual provisioning requests and remain owned by the scene admission lifecycle.
+            if (IsExplicitSceneLocalPlayerInput(playerInput))
+            {
+                return;
+            }
+
             if (pendingJoin != null)
             {
                 if (!pendingJoin.TryRecordCallback(playerInput))
@@ -619,6 +627,55 @@ namespace Immersive.Framework.PlayerParticipation
                 playerInput,
                 null,
                 "unexpected-player-join");
+        }
+
+        private static bool IsExplicitSceneLocalPlayerInput(
+            PlayerInput playerInput)
+        {
+            if (ReferenceEquals(playerInput, null) || playerInput == null)
+            {
+                return false;
+            }
+
+            LocalPlayerHostAuthoring host =
+                playerInput.GetComponent<LocalPlayerHostAuthoring>();
+            if (host == null ||
+                !ReferenceEquals(host.PlayerInput, playerInput))
+            {
+                return false;
+            }
+
+            UnityEngine.SceneManagement.Scene scene =
+                playerInput.gameObject.scene;
+            if (!scene.IsValid() || !scene.isLoaded)
+            {
+                return false;
+            }
+
+            GameObject[] roots = scene.GetRootGameObjects();
+            for (int rootIndex = 0; rootIndex < roots.Length; rootIndex++)
+            {
+                SceneLocalPlayerAdmissionAuthoring[] declarations =
+                    roots[rootIndex]
+                        .GetComponentsInChildren<
+                            SceneLocalPlayerAdmissionAuthoring>(true);
+                for (int declarationIndex = 0;
+                     declarationIndex < declarations.Length;
+                     declarationIndex++)
+                {
+                    SceneLocalPlayerAdmissionAuthoring declaration =
+                        declarations[declarationIndex];
+                    if (declaration != null &&
+                        ReferenceEquals(
+                            declaration.LocalPlayerHost,
+                            host))
+                    {
+                        return true;
+                    }
+                }
+            }
+
+            return false;
         }
 
         private void RejectDistinctPlayers(

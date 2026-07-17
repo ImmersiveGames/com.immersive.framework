@@ -9,6 +9,8 @@ namespace Immersive.Framework.PlayerParticipation
     {
         private SceneLocalPlayerAdmissionCompositeLifecycleParticipant
             sceneLocalPlayerCompositeLifecycleParticipant;
+        private SceneLocalPlayerAdmissionRuntimeHostModule
+            composedSceneLocalPlayerAdmissionModule;
         private readonly HashSet<PlayerSlotId> sceneOwnedHostRegistrations =
             new HashSet<PlayerSlotId>();
 
@@ -31,13 +33,25 @@ namespace Immersive.Framework.PlayerParticipation
 
             if (sceneLocalPlayerCompositeLifecycleParticipant == null)
             {
+                composedSceneLocalPlayerAdmissionModule = sceneModule;
                 sceneLocalPlayerCompositeLifecycleParticipant =
                     new SceneLocalPlayerAdmissionCompositeLifecycleParticipant(
                         activityLifecycleParticipant,
                         sceneModule,
                         this);
             }
+            else if (!ReferenceEquals(
+                         composedSceneLocalPlayerAdmissionModule,
+                         sceneModule))
+            {
+                issue =
+                    "Scene Local Player admission lifecycle is already composed with another host-scoped Scene admission module.";
+                return false;
+            }
 
+            // The base preparation module may re-register its canonical participant after
+            // provisioning or host registration. Scene Local Player composition is the more
+            // complete source and must remain authoritative for every later Activity transition.
             runtimeHost.SetActivityContentExecutionParticipantSource(
                 sceneLocalPlayerCompositeLifecycleParticipant);
             return true;
