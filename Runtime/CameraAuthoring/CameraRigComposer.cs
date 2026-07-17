@@ -64,11 +64,6 @@ namespace Immersive.Framework.CameraAuthoring
         public Transform ExplicitFollowTarget => explicitFollowTarget;
         public Transform ExplicitLookAtTarget => explicitLookAtTarget;
 
-        // Temporary P3M2 bridge for the existing camera-eligibility validator.
-        // There is no serialized field and no compile-time dependency on the
-        // historical PreAuthored Player type. P3M3 removes this bridge together
-        // with the obsolete product surface.
-        public UnityEngine.Object PreAuthoredPlayerComposer => null;
 
         public CameraTargetRequirement FollowRequirement => followRequirement;
         public CameraTargetRequirement LookAtRequirement => lookAtRequirement;

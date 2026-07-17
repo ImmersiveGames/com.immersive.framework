@@ -1,3 +1,4 @@
+
 using Immersive.Framework.ApiStatus;
 
 namespace Immersive.Framework.PlayerParticipation
@@ -30,7 +31,7 @@ namespace Immersive.Framework.PlayerParticipation
         RejectedRequirednessInvalid = 210,
         RejectedRigMissing = 220,
         RejectedRigHierarchyMismatch = 230,
-        RejectedRigUsesPlayerComposer = 240,
+        RejectedRigTargetSourceMismatch = 240,
         RejectedFollowTargetMissing = 250,
         RejectedFollowTargetHierarchyMismatch = 260,
         RejectedLookAtTargetHierarchyMismatch = 270,

@@ -1,23 +1,30 @@
 # 00 — Current State
 
-Status: **canonical P3 source baseline frozen; Scene Local Player architecture accepted**  
-Last reconciled: **2026-07-16**  
+Status: **P3M3 source prepared; Unity validation pending**
+Last reconciled: **2026-07-17**
 Decisions: `../ADRs/P3-ADR-Canonical-Player-Lane.md`, `../ADRs/Product/ADR-PROD-0006-camera-requests-output-contexts.md`, `../ADRs/Product/ADR-PROD-0013-scene-local-player-admission.md`
 
-For the active execution block, read `05-Execution-Status.md`.
+For the active execution gate, read `05-Execution-Status.md`.
 
-## Read-only source baseline
+## Validated predecessor
+
+P3M2 is closed from supplied Unity evidence:
 
 ```text
-com.immersive.framework
-  commit: 385c957a8fefb53f0daf395c662ffa7d5fedc996
-  package: 1.0.0-preview.15
+C9M Follow Pipeline
+  PASS — cases=6
 
-QAFramework
-  commit: 993f8e698edb8c826054c9f8faa8bd344fbc8013
+C9R Camera Override Authority
+  PASS — cases=11
+
+P3 Canonical Pre-FIRSTGAME
+  PASS — phases=2, cases=31
+
+P3B alternative surface regression
+  PASS — cases=5 before destructive removal
 ```
 
-This freezes source identity only. Unity import, compile and runtime smoke PASS are not inferred from Git inspection.
+The P3B result was sequencing evidence only. It did not make the alternative surface canonical.
 
 ## Canonical Player lane
 
@@ -32,52 +39,54 @@ PlayerSlotProfile
 -> Activity admission
 ```
 
-The supported physical sources are:
+Supported physical sources remain:
 
 ```text
 Manual local join
-  PlayerInputManager provisions one runtime-created local Player Host.
+  PlayerInputManager provisions a runtime-created Local Player Host.
 
 Scene Local Player Admission
-  an Activity admits one explicitly referenced existing scene Host without provisioning.
+  an Activity admits an explicitly referenced existing scene Host without provisioning.
 ```
 
-Both paths use the same Slot, participation, preparation, readiness and release domain. Neither path pre-authors `PlayerSlotId` or runtime `ActorId` on the physical Host.
+Scene Local Player Admission remains an ordered future product cut. P3M3 does not promote staging code or create a second runtime authority.
 
-## PreAuthored status
-
-`PreAuthoredPlayerComposer` is an experimental alternative surface and is not canonical P3 authority.
-
-It remains temporarily because Camera, shared Editors and QA still contain direct dependencies. The required transition is:
+## Camera target boundary
 
 ```text
-P3M2 decouple consumers
--> P3M3 remove PreAuthored destructively
--> P3M4 promote Scene Local Player Admission
+explicit Follow / Look At transforms
+or an Actor-owned ICameraTargetSource
+-> CameraRigComposer.ResolveCameraTargets
+-> Player camera eligibility verifies resolved evidence
+-> CameraRequest
+-> CameraOutputContext
 ```
 
-No compatibility alias or silent bridge is allowed.
+Camera eligibility no longer checks, names or depends on the removed Player authoring surface. Required target failures remain explicit.
 
-## Camera product and runtime authority
+## P3M3 removal boundary
+
+The following alternative product lane is removed:
 
 ```text
-CameraRigRecipe
-  reusable Cinemachine presentation intent
+Pre-authored Player Composer component
+Pre-authored Player Recipe asset
+Composer Inspector
+Composer Apply / Rebuild utility
+P3B alternative smoke
+```
 
+No alias, wrapper, compatibility facade or null bridge remains in runtime or Editor code.
+
+The existing canonical surfaces remain:
+
+```text
+LocalPlayerProvisioningAuthoring
+LocalPlayerHostAuthoring
+PlayerActorDeclaration
+PlayerGameplayCameraAuthoring
 CameraRigComposer
-  designer-facing rig instance and idempotent materialization
-
-Camera target source
-  typed provider independent of PreAuthoredPlayerComposer
-
-CameraOutputSessionBinding
-  explicit physical Unity Camera + CinemachineBrain output
-
-CameraOutputContext
-  sole winner-selection authority for one output
 ```
-
-Camera does not create Player identity, decide Player admission or enable gameplay. Local Player camera publication occurs only after the Player is eligible through the P3 readiness path.
 
 ## Runtime authority rules
 
@@ -87,19 +96,23 @@ PlayerInputManager owns only runtime provisioning mechanics.
 Scene admission owns no physical creation or destruction.
 Activity owns contextual admission requirements.
 CameraOutputContext owns camera winner selection.
-Profiles remain immutable runtime inputs.
+Camera target providers supply evidence only.
+Profiles and Recipes remain immutable runtime inputs.
 ```
 
 No singleton, service locator, functional name lookup, hierarchy fallback or silent required-state fallback is allowed.
 
-## Current execution boundary
+## Active validation gate
 
-Architecture/documentation cuts `P3M0` and `P3M1` are complete when this patch is applied.
-
-The next technical cut is:
+P3M3 closes only after Unity proves:
 
 ```text
-P3M2 — Decouple Camera, shared Editors and QA from PreAuthoredPlayerComposer
+Framework import and compile
+QAFramework import and compile
+C9R setup repairs any old Missing Script evidence
+C9M PASS
+C9R PASS
+canonical P3 aggregate PASS
+no P3B menu remains
+no Missing Script remains
 ```
-
-H5 remains a manual Unity gate and must not be marked Passed without import, compile and the required P3 aggregate smoke evidence.

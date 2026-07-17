@@ -12,7 +12,7 @@ using UnityEngine;
 namespace Immersive.Framework.PlayerParticipation
 {
     /// <summary>
-    /// Internal physical evidence retained only for the later camera request publication cut.
+    /// Internal physical evidence retained only for camera request publication.
     /// Public snapshots intentionally retain no Unity object references.
     /// </summary>
     internal readonly struct PreparedPlayerCameraEligibilityEvidence
@@ -1029,15 +1029,43 @@ namespace Immersive.Framework.PlayerParticipation
                 return false;
             }
 
-            if (rig.TargetSourceKind !=
-                    CameraTargetSourceKind.ExplicitTransform ||
-                rig.PreAuthoredPlayerComposer != null)
+            if (rig.TargetSourceBehaviour != null &&
+                (rig.TargetSource == null ||
+                 !IsOwnedByActor(
+                     actorDeclaration.transform,
+                     rig.TargetSourceBehaviour.transform)))
             {
                 rejectedStatus =
                     PlayerGameplayCameraEligibilityStatus
-                        .RejectedRigUsesPlayerComposer;
+                        .RejectedRigTargetSourceMismatch;
                 issue =
-                    "Prepared Player camera rig must use ExplicitTransform and must not reference PreAuthoredPlayerComposer.";
+                    "Prepared Player camera rig requires a valid Actor-owned typed target source.";
+                return false;
+            }
+
+            if (rig.TargetSourceBehaviour == null &&
+                rig.TargetSourceKind !=
+                    CameraTargetSourceKind.ExplicitTransform)
+            {
+                rejectedStatus =
+                    PlayerGameplayCameraEligibilityStatus
+                        .RejectedRigTargetSourceMismatch;
+                issue =
+                    $"Prepared Player camera rig has no provider for target source kind '{rig.TargetSourceKind}'.";
+                return false;
+            }
+
+            CameraTargetResolveResult targetResolution =
+                rig.ResolveCameraTargets(
+                    rig.FollowRequirement,
+                    rig.LookAtRequirement);
+            if (!targetResolution.IsSucceeded)
+            {
+                rejectedStatus =
+                    PlayerGameplayCameraEligibilityStatus
+                        .RejectedRigConfiguration;
+                issue =
+                    $"Prepared Player camera target resolution failed. {targetResolution.BlockingIssue}";
                 return false;
             }
 
@@ -1074,22 +1102,22 @@ namespace Immersive.Framework.PlayerParticipation
                     PlayerGameplayCameraEligibilityStatus
                         .RejectedLookAtTargetHierarchyMismatch;
                 issue =
-                    "Prepared Player camera LookAt target does not belong to the Actor hierarchy.";
+                    "Prepared Player camera Look At target does not belong to the Actor hierarchy.";
                 return false;
             }
 
             if (!ReferenceEquals(
-                    rig.ExplicitFollowTarget,
+                    targetResolution.Targets.FollowTarget,
                     followTarget) ||
                 !ReferenceEquals(
-                    rig.ExplicitLookAtTarget,
+                    targetResolution.Targets.LookAtTarget,
                     lookAtTarget))
             {
                 rejectedStatus =
                     PlayerGameplayCameraEligibilityStatus
                         .RejectedRigTargetMismatch;
                 issue =
-                    "CameraRigComposer explicit targets do not match PlayerGameplayCameraAuthoring.";
+                    "CameraRigComposer resolved targets do not match PlayerGameplayCameraAuthoring.";
                 return false;
             }
 
@@ -1106,7 +1134,7 @@ namespace Immersive.Framework.PlayerParticipation
                     PlayerGameplayCameraEligibilityStatus
                         .RejectedRigConfiguration;
                 issue =
-                    "CameraRigComposer target requirements are incompatible with the explicit Actor targets.";
+                    "CameraRigComposer target requirements are incompatible with the Actor camera targets.";
                 return false;
             }
 

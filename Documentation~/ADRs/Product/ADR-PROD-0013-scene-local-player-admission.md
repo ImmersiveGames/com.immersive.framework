@@ -1,9 +1,9 @@
 # ADR-PROD-0013 — Scene Local Player Admission
 
-Status: Accepted  
-Date: 2026-07-16  
-Package: `com.immersive.framework`  
-Area: Player Product Surface / Player Participation / Existing Scene Host Admission  
+Status: Accepted
+Date: 2026-07-16
+Package: `com.immersive.framework`
+Area: Player Product Surface / Player Participation / Existing Scene Host Admission
 Extends: `P3-ADR-Canonical-Player-Lane`, `ADR-PROD-0007`, `ADR-PROD-0008`, `ADR-PROD-0010`, `ADR-PROD-0011`, `ADR-PROD-0012`
 
 ## Context
@@ -293,6 +293,19 @@ P3M6 — Prove real usability in FIRSTGAME.
 P3M7 — Add the official sample and concise usage documentation.
 ```
 
+## P3M3 implementation note
+
+The destructive removal cut deletes the alternative PreAuthored Player product lane before Scene Local Player Admission is promoted. After P3M3:
+
+```text
+Camera target authoring uses explicit Transform references or ICameraTargetSource.
+Player gameplay camera eligibility validates resolved target evidence.
+No Composer, Recipe, Inspector, Apply/Rebuild utility or dedicated P3B smoke remains.
+No compatibility alias, null bridge or fallback discovery is retained.
+```
+
+This does not implement Scene Local Player Admission early. P3M4 remains the first cut allowed to introduce that official product surface.
+
 ## Technical acceptance criteria
 
 ```text
@@ -330,7 +343,7 @@ Single-player scene authoring no longer requires a fake join.
 Manual join and scene-existing Player use one participation model.
 PlayerInputManager remains the sole runtime provisioner for local Players it creates.
 Physical ownership and contextual admission are separated.
-The PreAuthored experimental surface can be removed without losing the product use case.
+The PreAuthored experimental surface is removed without losing the accepted Scene Local Player Admission use case.
 ```
 
 ### Cost
