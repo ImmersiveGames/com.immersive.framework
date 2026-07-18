@@ -1,5 +1,4 @@
 using Immersive.Framework.ApiStatus;
-using Immersive.Framework.ApplicationLifecycle;
 using Immersive.Framework.Common.FlowTriggers;
 using Immersive.Framework.Diagnostics;
 using Immersive.Framework.GameFlow;
@@ -24,6 +23,10 @@ namespace Immersive.Framework.Pause
         private PauseRequestStatus _lastStatus = PauseRequestStatus.Unknown;
         private PauseState _lastPreviousState = PauseState.Unknown;
         private PauseState _lastCurrentState = PauseState.Unknown;
+        private int _requestSequence;
+        private IPauseRuntimePort _pauseRuntime;
+        private string _pauseRuntimeBindingDiagnostic =
+            "Pause runtime port is not bound.";
 
         [Header("Request")]
         [SerializeField] private string reason = "qa.pause.toggle";
@@ -46,17 +49,62 @@ namespace Immersive.Framework.Pause
 
         public bool LastRequestFailed => _triggerState.LastFailed;
 
+        public bool HasPauseRuntimeBinding => _pauseRuntime != null;
+
+        public string PauseRuntimeBindingStatus =>
+            HasPauseRuntimeBinding ? "Bound" : "Missing";
+
+        public string PauseRuntimeBindingDiagnostic =>
+            _pauseRuntimeBindingDiagnostic.NormalizeText();
+
         public bool IsPaused => TryGetPauseSnapshot(out var snapshot) && snapshot.IsPaused;
 
         public bool TryGetPauseSnapshot(out PauseSnapshot snapshot)
         {
-            if (!FrameworkRuntimeHost.TryGetCurrent(out var runtimeHost))
+            IPauseRuntimePort pauseRuntime = _pauseRuntime;
+            if (pauseRuntime == null)
             {
+                _pauseRuntimeBindingDiagnostic =
+                    "Pause runtime port is not bound.";
                 snapshot = default;
                 return false;
             }
 
-            return runtimeHost.TryGetPauseSnapshot(out snapshot);
+            return pauseRuntime.TryGetPauseSnapshot(out snapshot);
+        }
+
+        internal bool TryBindPauseRuntime(
+            IPauseRuntimePort pauseRuntime,
+            out string issue)
+        {
+            if (pauseRuntime == null)
+            {
+                issue = "Pause runtime port binding requires a non-null port.";
+                _pauseRuntimeBindingDiagnostic = issue;
+                return false;
+            }
+
+            if (_pauseRuntime == null)
+            {
+                _pauseRuntime = pauseRuntime;
+                issue = string.Empty;
+                _pauseRuntimeBindingDiagnostic =
+                    $"Bound '{pauseRuntime.GetType().FullName}'.";
+                return true;
+            }
+
+            if (object.ReferenceEquals(_pauseRuntime, pauseRuntime))
+            {
+                issue = string.Empty;
+                _pauseRuntimeBindingDiagnostic =
+                    $"Bound '{pauseRuntime.GetType().FullName}' (idempotent).";
+                return true;
+            }
+
+            issue =
+                "Pause runtime port binding rejected a different port for the current lifetime.";
+            _pauseRuntimeBindingDiagnostic = issue;
+            return false;
         }
 
         private void Awake()
@@ -87,9 +135,12 @@ namespace Immersive.Framework.Pause
             EnsureLogger();
             string resolvedReason = ResolveReason(fallbackReason);
 
-            if (!FrameworkRuntimeHost.TryGetCurrent(out var runtimeHost))
+            IPauseRuntimePort pauseRuntime = _pauseRuntime;
+            if (pauseRuntime == null)
             {
-                string message = "Pause Request failed. Application Runtime is unavailable.";
+                const string message =
+                    "Pause Request failed. Pause runtime port is not bound.";
+                _pauseRuntimeBindingDiagnostic = "Pause runtime port is not bound.";
                 _logger.Error(message);
                 SetLast(FlowRequestOutcome.Failed, PauseRequestStatus.Failed, PauseState.Unknown, PauseState.Unknown, resolvedReason, message, 1, 1);
                 return;
@@ -98,7 +149,8 @@ namespace Immersive.Framework.Pause
             PauseResult result;
             try
             {
-                result = runtimeHost.RequestPause(kind, DefaultSource, resolvedReason);
+                result = pauseRuntime.RequestPause(
+                    CreatePauseRequest(kind, resolvedReason));
             }
             catch (System.Exception exception)
             {
@@ -130,6 +182,20 @@ namespace Immersive.Framework.Pause
         private string ResolveReason(string fallbackReason)
         {
             return reason.NormalizeTextOrFallback(fallbackReason);
+        }
+
+        private PauseRequest CreatePauseRequest(
+            PauseRequestKind kind,
+            string resolvedReason)
+        {
+            _requestSequence++;
+            string requestId =
+                $"pause.request.trigger.{_requestSequence}.{kind.ToString().ToLowerInvariant()}";
+            return new PauseRequest(
+                PauseRequestId.From(requestId),
+                kind,
+                DefaultSource,
+                resolvedReason);
         }
 
         private void SetLast(

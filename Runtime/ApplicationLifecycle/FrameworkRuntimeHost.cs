@@ -35,7 +35,7 @@ namespace Immersive.Framework.ApplicationLifecycle
     /// It owns the Game Flow instance for this boot, but does not expose a global service locator.
     /// </summary>
     [FrameworkApiStatus(FrameworkApiStatus.Internal, "Runtime implementation detail; not game-facing API.")]
-    internal sealed partial class FrameworkRuntimeHost : MonoBehaviour
+    internal sealed partial class FrameworkRuntimeHost : MonoBehaviour, IPauseRuntimePort
     {
         private const string RuntimeHostName = "Immersive Framework Runtime";
         private const string PauseTransitionInProgressIssueCode = "pause.transition-in-progress";
@@ -106,6 +106,9 @@ namespace Immersive.Framework.ApplicationLifecycle
             snapshot = _pauseRuntime.Snapshot;
             return true;
         }
+
+        bool IPauseRuntimePort.TryGetPauseSnapshot(out PauseSnapshot snapshot) =>
+            TryGetPauseSnapshot(out snapshot);
 
         internal RuntimeContentRuntime RuntimeContentRuntime => _runtimeContentRuntime;
 
@@ -368,6 +371,27 @@ namespace Immersive.Framework.ApplicationLifecycle
 
             _loadingSurfaceRuntime = CreateLoadingSurfaceRuntime(_globalUiSceneRuntime);
             _pauseSurfaceRuntime = CreatePauseSurfaceRuntime(_globalUiSceneRuntime);
+            IPauseRuntimePort pauseRuntimePort = this;
+            GlobalUiPauseRuntimeBindingResult pauseBinding =
+                _globalUiSceneRuntime.TryBindPauseInputModeRuntime(
+                    pauseRuntimePort);
+            if (!pauseBinding.Succeeded)
+            {
+                var failed = FrameworkGameFlowStartResult.Failed(
+                    pauseBinding.Message);
+                _state = FrameworkRuntimeState.FromGameFlowResult(_gameApplication, failed);
+                return failed;
+            }
+            GlobalUiPauseRequestTriggerBindingResult pauseRequestTriggerBinding =
+                _globalUiSceneRuntime.TryBindPauseRequestTriggers(
+                    pauseRuntimePort);
+            if (!pauseRequestTriggerBinding.Succeeded)
+            {
+                var failed = FrameworkGameFlowStartResult.Failed(
+                    pauseRequestTriggerBinding.Message);
+                _state = FrameworkRuntimeState.FromGameFlowResult(_gameApplication, failed);
+                return failed;
+            }
             ApplyPauseSurfaceSnapshot("FrameworkRuntimeHost", "framework-start");
             var transitionOrchestrator = CreateTransitionOrchestrator(_globalUiSceneRuntime, sessionCameraOverride);
             _gameFlowRuntime = new GameFlowRuntime(_runtimeContentRuntime, _contentAnchorBindingRuntime, transitionOrchestrator);
@@ -766,6 +790,9 @@ namespace Immersive.Framework.ApplicationLifecycle
             LogPauseRequestResult(result, pauseSurfaceResult, timeScaleResult);
             return result;
         }
+
+        PauseResult IPauseRuntimePort.RequestPause(PauseRequest request) =>
+            RequestPause(request);
 
         private bool TryCreateTransitionBlockedPauseResult(PauseRequest request, out PauseResult result)
         {

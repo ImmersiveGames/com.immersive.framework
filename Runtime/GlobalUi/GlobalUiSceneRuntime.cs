@@ -9,6 +9,7 @@ using Immersive.Framework.TransitionEffects;
 using Immersive.Framework.Common;
 using Immersive.Framework.Camera;
 using Immersive.Framework.PlayerParticipation;
+using Immersive.Framework.InputMode;
 using Immersive.Logging.Records;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -70,6 +71,152 @@ namespace Immersive.Framework.GlobalUi
         public IReadOnlyList<ITransitionEffectAdapter> TransitionAdapters => _transitionAdapters;
         public IReadOnlyList<ILoadingSurfaceAdapter> LoadingAdapters => _loadingAdapters;
         public IReadOnlyList<IPauseSurfaceAdapter> PauseAdapters => _pauseAdapters;
+        internal GlobalUiPauseRuntimeBindingResult TryBindPauseInputModeRuntime(
+            IPauseRuntimePort pauseRuntime)
+        {
+            return TryBindPauseInputModeRuntime(_persistedRoots, pauseRuntime);
+        }
+
+        internal static GlobalUiPauseRuntimeBindingResult TryBindPauseInputModeRuntime(
+            IReadOnlyList<GameObject> persistentRoots,
+            IPauseRuntimePort pauseRuntime)
+        {
+            if (pauseRuntime == null)
+            {
+                return GlobalUiPauseRuntimeBindingResult.Rejected(
+                    "RejectedMissingPauseRuntime",
+                    "UIGlobal Pause InputMode runtime binding requires a Pause runtime port.",
+                    0);
+            }
+
+            List<PauseInputModeRuntimeBridgeRegistration> registrations =
+                CollectAdapters<PauseInputModeRuntimeBridgeRegistration>(persistentRoots);
+            if (registrations.Count == 0)
+            {
+                return GlobalUiPauseRuntimeBindingResult.OptionalAbsent();
+            }
+
+            if (registrations.Count != 1)
+            {
+                return GlobalUiPauseRuntimeBindingResult.Rejected(
+                    "RejectedDuplicateRegistration",
+                    $"UIGlobal Pause InputMode runtime binding requires exactly one registration when configured, but found '{registrations.Count}'.",
+                    registrations.Count);
+            }
+
+            PauseInputModeRuntimeBridgeRegistration registration = null;
+            foreach (PauseInputModeRuntimeBridgeRegistration candidate in registrations)
+            {
+                registration = candidate;
+                break;
+            }
+            PauseInputModeUnityPlayerInputRuntimeBridge bridge =
+                registration.PauseInputModeRuntimeBridge;
+            if (bridge == null)
+            {
+                return GlobalUiPauseRuntimeBindingResult.Rejected(
+                    "RejectedMissingBridge",
+                    $"UIGlobal Pause InputMode runtime bridge registration '{registration.name}' has no bridge reference.",
+                    registrations.Count);
+            }
+
+            if (!IsInPersistedRoots(bridge, persistentRoots))
+            {
+                return GlobalUiPauseRuntimeBindingResult.Rejected(
+                    "RejectedForeignBridge",
+                    $"UIGlobal Pause InputMode runtime bridge '{bridge.name}' is outside the provided persistent roots.",
+                    registrations.Count);
+            }
+
+            if (!bridge.TryBindPauseRuntime(pauseRuntime, out string issue))
+            {
+                return GlobalUiPauseRuntimeBindingResult.Rejected(
+                    "RejectedBridgeBinding",
+                    $"UIGlobal Pause InputMode runtime bridge '{bridge.name}' rejected the Pause runtime port. {issue}",
+                    registrations.Count);
+            }
+
+            return GlobalUiPauseRuntimeBindingResult.Bound(bridge);
+        }
+
+        internal GlobalUiPauseRequestTriggerBindingResult
+            TryBindPauseRequestTriggers(IPauseRuntimePort pauseRuntime)
+        {
+            return TryBindPauseRequestTriggers(_persistedRoots, pauseRuntime);
+        }
+
+        internal static GlobalUiPauseRequestTriggerBindingResult
+            TryBindPauseRequestTriggers(
+                IReadOnlyList<GameObject> persistentRoots,
+                IPauseRuntimePort pauseRuntime)
+        {
+            int rootCount = CountRoots(persistentRoots);
+            if (pauseRuntime == null)
+            {
+                return GlobalUiPauseRequestTriggerBindingResult.Rejected(
+                    "RejectedMissingPauseRuntime",
+                    $"UIGlobal Pause request trigger binding requires a Pause runtime port. roots='{rootCount}' triggers='0' bound='0' idempotent='0' rejected='0'.",
+                    rootCount,
+                    0,
+                    0,
+                    0,
+                    0);
+            }
+
+            List<PauseRequestTrigger> triggers =
+                CollectPauseRequestTriggers(persistentRoots);
+            if (triggers.Count == 0)
+            {
+                return GlobalUiPauseRequestTriggerBindingResult.OptionalAbsent(
+                    rootCount);
+            }
+
+            int boundCount = 0;
+            int idempotentCount = 0;
+            int rejectedCount = 0;
+            var issues = new List<string>();
+            for (int index = 0; index < triggers.Count; index++)
+            {
+                PauseRequestTrigger trigger = triggers[index];
+                bool wasBound = trigger.HasPauseRuntimeBinding;
+                if (trigger.TryBindPauseRuntime(pauseRuntime, out string issue))
+                {
+                    if (wasBound)
+                    {
+                        idempotentCount++;
+                    }
+                    else
+                    {
+                        boundCount++;
+                    }
+
+                    continue;
+                }
+
+                rejectedCount++;
+                string sceneName = trigger.gameObject.scene.name.NormalizeTextOrFallback("<unknown>");
+                issues.Add(
+                    $"trigger='{trigger.name}' scene='{sceneName}' issue='{issue.NormalizeTextOrFallback("unknown")}'.");
+            }
+
+            if (rejectedCount > 0)
+            {
+                return GlobalUiPauseRequestTriggerBindingResult.Rejected(
+                    "RejectedTriggerBinding",
+                    $"UIGlobal Pause request trigger binding failed. roots='{rootCount}' triggers='{triggers.Count}' bound='{boundCount}' idempotent='{idempotentCount}' rejected='{rejectedCount}'. {string.Join(" ", issues)}",
+                    rootCount,
+                    triggers.Count,
+                    boundCount,
+                    idempotentCount,
+                    rejectedCount);
+            }
+
+            return GlobalUiPauseRequestTriggerBindingResult.Completed(
+                rootCount,
+                triggers.Count,
+                boundCount,
+                idempotentCount);
+        }
 
         internal bool TryResolveCameraPresentation(
             out CameraOutputSessionBinding outputSession,
@@ -338,6 +485,81 @@ namespace Immersive.Framework.GlobalUi
             }
 
             return adapters;
+        }
+
+        private static List<PauseRequestTrigger> CollectPauseRequestTriggers(
+            IReadOnlyList<GameObject> roots)
+        {
+            var triggers = new List<PauseRequestTrigger>();
+            var seen = new HashSet<PauseRequestTrigger>();
+            if (roots == null)
+            {
+                return triggers;
+            }
+
+            for (int rootIndex = 0; rootIndex < roots.Count; rootIndex++)
+            {
+                GameObject root = roots[rootIndex];
+                if (root == null)
+                {
+                    continue;
+                }
+
+                PauseRequestTrigger[] candidates =
+                    root.GetComponentsInChildren<PauseRequestTrigger>(true);
+                for (int candidateIndex = 0;
+                    candidateIndex < candidates.Length;
+                    candidateIndex++)
+                {
+                    PauseRequestTrigger candidate = candidates[candidateIndex];
+                    if (candidate != null && seen.Add(candidate))
+                    {
+                        triggers.Add(candidate);
+                    }
+                }
+            }
+
+            return triggers;
+        }
+
+        private static int CountRoots(IReadOnlyList<GameObject> roots)
+        {
+            if (roots == null)
+            {
+                return 0;
+            }
+
+            int count = 0;
+            for (int index = 0; index < roots.Count; index++)
+            {
+                if (roots[index] != null)
+                {
+                    count++;
+                }
+            }
+
+            return count;
+        }
+
+        private static bool IsInPersistedRoots(
+            MonoBehaviour behaviour,
+            IReadOnlyList<GameObject> roots)
+        {
+            if (behaviour == null || roots == null)
+            {
+                return false;
+            }
+
+            for (int index = 0; index < roots.Count; index++)
+            {
+                GameObject root = roots[index];
+                if (root != null && behaviour.transform.IsChildOf(root.transform))
+                {
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         private T FindSingle<T>() where T : MonoBehaviour

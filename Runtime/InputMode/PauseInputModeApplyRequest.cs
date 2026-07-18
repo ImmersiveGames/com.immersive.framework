@@ -1,7 +1,6 @@
 using System;
 using Immersive.Framework.Actors;
 using Immersive.Framework.ApiStatus;
-using Immersive.Framework.ApplicationLifecycle;
 using Immersive.Framework.Common;
 using Immersive.Framework.Pause;
 using Immersive.Framework.PlayerParticipation;
@@ -20,7 +19,7 @@ namespace Immersive.Framework.InputMode
     internal sealed class PauseInputModeApplyRequest
     {
         internal PauseInputModeApplyRequest(
-            FrameworkRuntimeHost runtimeHost,
+            IPauseRuntimePort runtimeHost,
             PauseRequestKind requestKind,
             string requestId,
             PlayerInput playerInput,
@@ -52,7 +51,7 @@ namespace Immersive.Framework.InputMode
         }
 
         internal PauseInputModeApplyRequest(
-            FrameworkRuntimeHost runtimeHost,
+            IPauseRuntimePort runtimeHost,
             PauseRequestKind requestKind,
             string requestId,
             PlayerInput playerInput,
@@ -85,7 +84,7 @@ namespace Immersive.Framework.InputMode
             CurrentInputModeState = currentInputModeState;
         }
 
-        internal FrameworkRuntimeHost RuntimeHost { get; }
+        internal IPauseRuntimePort RuntimeHost { get; }
         internal PauseRequestKind RequestKind { get; }
         internal string RequestId { get; }
         internal PlayerInput PlayerInput { get; }

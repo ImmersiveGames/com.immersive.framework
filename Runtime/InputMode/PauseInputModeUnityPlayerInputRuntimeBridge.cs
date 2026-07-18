@@ -1,7 +1,6 @@
 using System;
 using Immersive.Framework.Actors;
 using Immersive.Framework.ApiStatus;
-using Immersive.Framework.ApplicationLifecycle;
 using Immersive.Framework.Common;
 using Immersive.Framework.Diagnostics;
 using Immersive.Framework.Pause;
@@ -34,6 +33,8 @@ namespace Immersive.Framework.InputMode
         private InputModeRuntimeContext _inputModeRuntimeContext;
         private InputModeRuntimeOperationResult _lastInputModeRuntimeOperation;
         private string _lastRollbackDiagnostic = string.Empty;
+        private IPauseRuntimePort _pauseRuntime;
+        private string _pauseRuntimeBindingDiagnostic = "Pause runtime port is not bound.";
 
         [Header("Unity PlayerInput")]
         [SerializeField] private PlayerInput playerInput;
@@ -77,6 +78,44 @@ namespace Immersive.Framework.InputMode
             _lastInputModeRuntimeOperation;
         public string LastRollbackDiagnostic =>
             _lastRollbackDiagnostic.NormalizeText();
+        public bool HasPauseRuntimeBinding => _pauseRuntime != null;
+        public string PauseRuntimeBindingStatus =>
+            HasPauseRuntimeBinding ? "Bound" : "Missing";
+        public string PauseRuntimeBindingDiagnostic =>
+            _pauseRuntimeBindingDiagnostic.NormalizeText();
+
+        internal bool TryBindPauseRuntime(
+            IPauseRuntimePort pauseRuntime,
+            out string issue)
+        {
+            if (pauseRuntime == null)
+            {
+                issue = "Pause runtime port binding requires a non-null port.";
+                _pauseRuntimeBindingDiagnostic = issue;
+                return false;
+            }
+
+            if (_pauseRuntime == null)
+            {
+                _pauseRuntime = pauseRuntime;
+                issue = string.Empty;
+                _pauseRuntimeBindingDiagnostic =
+                    $"Bound '{pauseRuntime.GetType().FullName}'.";
+                return true;
+            }
+
+            if (ReferenceEquals(_pauseRuntime, pauseRuntime))
+            {
+                issue = string.Empty;
+                _pauseRuntimeBindingDiagnostic =
+                    $"Bound '{pauseRuntime.GetType().FullName}' (idempotent).";
+                return true;
+            }
+
+            issue = "Pause runtime port binding rejected a different port for the current lifetime.";
+            _pauseRuntimeBindingDiagnostic = issue;
+            return false;
+        }
 
         private void Awake()
         {
@@ -168,7 +207,7 @@ namespace Immersive.Framework.InputMode
                 ResolveReason("pause.inputmode.playerinput.runtime.bridge"));
             _lastRollbackDiagnostic = string.Empty;
 
-            FrameworkRuntimeHost.TryGetCurrent(out var runtimeHost);
+            IPauseRuntimePort pauseRuntime = _pauseRuntime;
             ResolvedReferences references = ResolveReferences(
                 normalizedSource,
                 normalizedReason);
@@ -177,7 +216,7 @@ namespace Immersive.Framework.InputMode
                 $"pause.inputmode.playerinput.runtime.bridge.{_requestSequence}";
 
             var request = new PauseInputModeApplyRequest(
-                runtimeHost,
+                pauseRuntime,
                 kind,
                 requestId,
                 references.PlayerInput,
@@ -192,12 +231,23 @@ namespace Immersive.Framework.InputMode
                 normalizedReason);
 
             var service = new PauseInputModeApplyService();
-            if (runtimeHost == null || references.PlayerInput == null)
+            if (pauseRuntime == null)
+            {
+                return CreateAuthorityFailure(
+                    kind,
+                    PauseState.Unknown,
+                    PauseState.Unknown,
+                    normalizedSource,
+                    normalizedReason,
+                    "Pause runtime port is not bound.");
+            }
+
+            if (references.PlayerInput == null)
             {
                 return service.Apply(request).ToRuntimeBridgeResult();
             }
 
-            if (!runtimeHost.TryGetPauseSnapshot(out PauseSnapshot pauseSnapshot) ||
+            if (!pauseRuntime.TryGetPauseSnapshot(out PauseSnapshot pauseSnapshot) ||
                 pauseSnapshot.State == PauseState.Unknown)
             {
                 return service.Apply(request).ToRuntimeBridgeResult();
@@ -259,7 +309,7 @@ namespace Immersive.Framework.InputMode
             }
 
             request = new PauseInputModeApplyRequest(
-                runtimeHost,
+                pauseRuntime,
                 kind,
                 requestId,
                 references.PlayerInput,
@@ -314,7 +364,7 @@ namespace Immersive.Framework.InputMode
                         "pause-inputmode-application-failed");
                 _lastInputModeRuntimeOperation = rollbackResult;
                 bool pauseRollbackSucceeded = TryRollbackPauseIfNeeded(
-                    runtimeHost,
+                    pauseRuntime,
                     applyResult,
                     normalizedSource,
                     normalizedReason,
@@ -339,7 +389,7 @@ namespace Immersive.Framework.InputMode
                         "pause-inputmode-result-mismatch");
                 _lastInputModeRuntimeOperation = mismatchRollback;
                 bool pauseRollbackSucceeded = TryRollbackPauseIfNeeded(
-                    runtimeHost,
+                    pauseRuntime,
                     applyResult,
                     normalizedSource,
                     normalizedReason,
@@ -377,7 +427,7 @@ namespace Immersive.Framework.InputMode
                         "inputmode-commit-failed");
                 _lastInputModeRuntimeOperation = rollbackResult;
                 bool pauseRollbackSucceeded = TryRollbackPauseIfNeeded(
-                    runtimeHost,
+                    pauseRuntime,
                     applyResult,
                     normalizedSource,
                     normalizedReason,
@@ -567,7 +617,7 @@ namespace Immersive.Framework.InputMode
         }
 
         private bool TryRollbackPauseIfNeeded(
-            FrameworkRuntimeHost runtimeHost,
+            IPauseRuntimePort runtimeHost,
             PauseInputModeApplyResult applyResult,
             string source,
             string requestReason,
@@ -575,7 +625,7 @@ namespace Immersive.Framework.InputMode
         {
             if (runtimeHost == null)
             {
-                diagnostic = "Skipped: runtime host unavailable.";
+                diagnostic = "Skipped: Pause runtime port is not bound.";
                 return false;
             }
 
@@ -594,11 +644,19 @@ namespace Immersive.Framework.InputMode
                     : PauseRequestKind.Resume;
             try
             {
+                string rollbackReason = requestReason.NormalizeTextOrFallback(
+                    "pause-inputmode-rollback") + "; rollback";
+                PauseRequest rollbackRequest = rollbackKind == PauseRequestKind.Pause
+                    ? PauseRequest.Pause(
+                        "pause.inputmode.rollback",
+                        source,
+                        rollbackReason)
+                    : PauseRequest.Resume(
+                        "pause.inputmode.rollback",
+                        source,
+                        rollbackReason);
                 PauseResult rollbackResult = runtimeHost.RequestPause(
-                    rollbackKind,
-                    source,
-                    requestReason.NormalizeTextOrFallback(
-                        "pause-inputmode-rollback") + "; rollback");
+                    rollbackRequest);
                 bool succeeded =
                     rollbackResult.Completed &&
                     rollbackResult.CurrentState ==

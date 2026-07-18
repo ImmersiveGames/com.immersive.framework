@@ -81,7 +81,7 @@ namespace Immersive.Framework.InputMode
                     previousActionMap,
                     source,
                     reason,
-                    "FrameworkRuntimeHost is unavailable.");
+                    "Pause runtime port is not bound.");
             }
 
             if (!request.RuntimeHost.TryGetPauseSnapshot(
