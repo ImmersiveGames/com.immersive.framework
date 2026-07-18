@@ -10,6 +10,7 @@ using Immersive.Framework.Common;
 using Immersive.Framework.Camera;
 using Immersive.Framework.PlayerParticipation;
 using Immersive.Framework.InputMode;
+using Immersive.Framework.GameFlow;
 using Immersive.Logging.Records;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -143,6 +144,12 @@ namespace Immersive.Framework.GlobalUi
             TryBindPauseRequestTriggers(IPauseRuntimePort pauseRuntime)
         {
             return TryBindPauseRequestTriggers(_persistedRoots, pauseRuntime);
+        }
+
+        internal RouteRequestTriggerBindingResult TryBindRouteRequestTriggers(
+            IRouteRuntimePort routeRuntime)
+        {
+            return RouteRequestTriggerBinding.TryBind(_persistedRoots, routeRuntime);
         }
 
         internal static GlobalUiPauseRequestTriggerBindingResult

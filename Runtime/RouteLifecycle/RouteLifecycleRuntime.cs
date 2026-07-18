@@ -12,6 +12,9 @@ using Immersive.Framework.Common;
 using Immersive.Framework.RuntimeContent;
 using Immersive.Framework.CycleReset;
 using Immersive.Framework.Loading;
+using Immersive.Framework.GameFlow;
+using UnityEngine;
+using UnityEngine.SceneManagement;
 
 namespace Immersive.Framework.RouteLifecycle
 {
@@ -30,6 +33,7 @@ namespace Immersive.Framework.RouteLifecycle
         private readonly ContentAnchorDiscoveryRuntime _contentAnchorDiscoveryRuntime = new ContentAnchorDiscoveryRuntime();
         private readonly RuntimeContentRuntime _runtimeContentRuntime;
         private readonly RuntimeContentAnchorBinding _contentAnchorBindingRuntime;
+        private readonly IRouteRuntimePort _routeRuntime;
         private readonly CycleResetRuntime _cycleResetRuntime = new CycleResetRuntime();
         private readonly EventBus<RouteEnteredEvent> _routeEnteredEvents = new EventBus<RouteEnteredEvent>();
         private readonly EventBus<RouteExitedEvent> _routeExitedEvents = new EventBus<RouteExitedEvent>();
@@ -38,10 +42,12 @@ namespace Immersive.Framework.RouteLifecycle
 
         internal RouteLifecycleRuntime(
             RuntimeContentRuntime runtimeContentRuntime,
-            RuntimeContentAnchorBinding contentAnchorBindingRuntime)
+            RuntimeContentAnchorBinding contentAnchorBindingRuntime,
+            IRouteRuntimePort routeRuntime)
         {
             _runtimeContentRuntime = runtimeContentRuntime ?? throw new ArgumentNullException(nameof(runtimeContentRuntime));
             _contentAnchorBindingRuntime = contentAnchorBindingRuntime ?? throw new ArgumentNullException(nameof(contentAnchorBindingRuntime));
+            _routeRuntime = routeRuntime ?? throw new ArgumentNullException(nameof(routeRuntime));
             _activityFlowRuntime = new ActivityFlowRuntime(_runtimeContentRuntime, _contentAnchorBindingRuntime, _sceneLifecycleRuntime);
             _routeSceneCompositionRuntime = new RouteSceneCompositionRuntime(_sceneLifecycleRuntime);
             _contentReleaseRuntime = new ContentReleaseRuntime(_sceneLifecycleRuntime);
@@ -236,6 +242,16 @@ namespace Immersive.Framework.RouteLifecycle
                 return RouteLifecycleStartResult.Failed(routeSceneCompositionResult.ToDiagnosticString());
             }
 
+            RouteRequestTriggerBindingResult routeTriggerBinding =
+                RouteRequestTriggerBinding.TryBind(
+                    ResolveLoadedRouteSceneRoots(routeSceneCompositionResult),
+                    _routeRuntime);
+            if (!routeTriggerBinding.Succeeded)
+            {
+                return RouteLifecycleStartResult.Failed(
+                    routeTriggerBinding.Message);
+            }
+
             var runtimeRouteEnterResult = CreateRouteScopeRoot(route, source, reason);
             var sceneLifecycleResult = routeSceneCompositionResult.PrimarySceneLoadResult;
             var routeContentSet = RouteContentSet.FromSceneCompositionResult(
@@ -355,6 +371,47 @@ namespace Immersive.Framework.RouteLifecycle
             _currentRouteState = result.RouteState;
             PublishRouteTransition(previousRoute, route, source, reason);
             return result;
+        }
+
+        private static IReadOnlyList<GameObject> ResolveLoadedRouteSceneRoots(
+            RouteSceneCompositionResult compositionResult)
+        {
+            var roots = new List<GameObject>();
+            var seenSceneHandles = new HashSet<ulong>();
+            for (int index = 0; index < compositionResult.Entries.Count; index++)
+            {
+                RouteSceneCompositionResultEntry entry =
+                    compositionResult.Entries[index];
+                if (!entry.Loaded)
+                {
+                    continue;
+                }
+
+                Scene scene = !string.IsNullOrWhiteSpace(entry.ScenePath)
+                    ? SceneManager.GetSceneByPath(entry.ScenePath)
+                    : SceneManager.GetSceneByName(entry.SceneName);
+                if (!scene.IsValid() || !scene.isLoaded ||
+                    !seenSceneHandles.Add(scene.handle.GetRawData()))
+                {
+                    continue;
+                }
+
+                GameObject[] sceneRoots = scene.GetRootGameObjects();
+                if (sceneRoots == null)
+                {
+                    continue;
+                }
+
+                for (int rootIndex = 0; rootIndex < sceneRoots.Length; rootIndex++)
+                {
+                    if (sceneRoots[rootIndex] != null)
+                    {
+                        roots.Add(sceneRoots[rootIndex]);
+                    }
+                }
+            }
+
+            return roots;
         }
 
         private static int CountRouteSceneCompositionProgressSteps(RouteSceneCompositionPlan plan)

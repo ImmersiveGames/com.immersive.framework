@@ -1,6 +1,5 @@
 using System;
 using Immersive.Foundation.Events;
-using Immersive.Framework.ApplicationLifecycle;
 using Immersive.Framework.Authoring;
 using Immersive.Framework.Common.FlowTriggers;
 using Immersive.Framework.Diagnostics;
@@ -25,6 +24,9 @@ namespace Immersive.Framework.GameFlow
         private readonly FrameworkFlowTriggerState _triggerState = new FrameworkFlowTriggerState();
         private FrameworkLogger _logger;
         private bool _requestInFlight;
+        private IRouteRuntimePort _routeRuntime;
+        private string _routeRuntimeBindingDiagnostic =
+            "Route runtime port is not bound.";
 
         [Header("Route")]
         [SerializeField] private RouteAsset targetRoute;
@@ -54,6 +56,14 @@ namespace Immersive.Framework.GameFlow
 
         public bool LastRequestFailed => _triggerState.LastFailed;
 
+        public bool HasRouteRuntimeBinding => _routeRuntime != null;
+
+        public string RouteRuntimeBindingStatus =>
+            HasRouteRuntimeBinding ? "Bound" : "Missing";
+
+        public string RouteRuntimeBindingDiagnostic =>
+            _routeRuntimeBindingDiagnostic;
+
         public IEventBinding SubscribeRequestEvents(Action<RouteRequestTriggerEvent> handler)
         {
             return _requestEvents.Subscribe(handler);
@@ -62,6 +72,40 @@ namespace Immersive.Framework.GameFlow
         private void Awake()
         {
             _logger = FrameworkLogger.Create<RouteRequestTrigger>();
+        }
+
+        internal bool TryBindRouteRuntime(
+            IRouteRuntimePort routeRuntime,
+            out string issue)
+        {
+            if (routeRuntime == null)
+            {
+                issue = "Route runtime port binding requires a non-null port.";
+                _routeRuntimeBindingDiagnostic = issue;
+                return false;
+            }
+
+            if (_routeRuntime == null)
+            {
+                _routeRuntime = routeRuntime;
+                issue = string.Empty;
+                _routeRuntimeBindingDiagnostic =
+                    $"Bound '{routeRuntime.GetType().FullName}'.";
+                return true;
+            }
+
+            if (object.ReferenceEquals(_routeRuntime, routeRuntime))
+            {
+                issue = string.Empty;
+                _routeRuntimeBindingDiagnostic =
+                    $"Bound '{routeRuntime.GetType().FullName}' (idempotent).";
+                return true;
+            }
+
+            issue =
+                "Route runtime port binding rejected a different port for the current lifetime.";
+            _routeRuntimeBindingDiagnostic = issue;
+            return false;
         }
 
         public async void RequestRoute()
@@ -86,16 +130,14 @@ namespace Immersive.Framework.GameFlow
                 return;
             }
 
-            resolvedReason = ResolveReason();
-            if (!FrameworkRuntimeHost.TryGetCurrent(out var runtimeHost))
+            IRouteRuntimePort routeRuntime = _routeRuntime;
+            if (routeRuntime == null)
             {
-                var unavailable = FrameworkRouteRequestResult.FailedRuntimeUnavailable(
-                    "Route Request failed. Application Runtime is unavailable.",
-                    targetRoute,
-                    DefaultSource,
-                    resolvedReason);
-                _logger.Error(unavailable.Message);
-                PublishCompleted(FlowRequestOutcome.Failed, resolvedReason, unavailable.Message);
+                const string message =
+                    "Route Request failed. Route runtime port is not bound.";
+                _routeRuntimeBindingDiagnostic = "Route runtime port is not bound.";
+                _logger.Error(message);
+                PublishCompleted(FlowRequestOutcome.Failed, resolvedReason, message);
                 return;
             }
 
@@ -105,7 +147,10 @@ namespace Immersive.Framework.GameFlow
             FrameworkRouteRequestResult result;
             try
             {
-                result = await runtimeHost.RequestRouteAsync(targetRoute, DefaultSource, resolvedReason);
+                result = await routeRuntime.RequestRouteAsync(
+                    targetRoute,
+                    DefaultSource,
+                    resolvedReason);
             }
             catch (Exception exception)
             {

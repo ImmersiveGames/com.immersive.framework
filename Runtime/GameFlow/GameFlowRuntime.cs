@@ -43,23 +43,27 @@ namespace Immersive.Framework.GameFlow
 
         internal GameFlowRuntime(
             RuntimeContentRuntime runtimeContentRuntime,
-            RuntimeContentAnchorBinding contentAnchorBindingRuntime)
+            RuntimeContentAnchorBinding contentAnchorBindingRuntime,
+            IRouteRuntimePort routeRuntime)
             : this(
                 runtimeContentRuntime,
                 contentAnchorBindingRuntime,
-                NoOpTransitionOrchestrator.Instance)
+                NoOpTransitionOrchestrator.Instance,
+                routeRuntime)
         {
         }
 
         internal GameFlowRuntime(
             RuntimeContentRuntime runtimeContentRuntime,
             RuntimeContentAnchorBinding contentAnchorBindingRuntime,
-            ITransitionOrchestrator transitionOrchestrator)
+            ITransitionOrchestrator transitionOrchestrator,
+            IRouteRuntimePort routeRuntime)
         {
             _transitionOrchestrator = transitionOrchestrator ?? throw new ArgumentNullException(nameof(transitionOrchestrator));
             _routeLifecycleRuntime = new RouteLifecycleRuntime(
                 runtimeContentRuntime ?? throw new ArgumentNullException(nameof(runtimeContentRuntime)),
-                contentAnchorBindingRuntime ?? throw new ArgumentNullException(nameof(contentAnchorBindingRuntime)));
+                contentAnchorBindingRuntime ?? throw new ArgumentNullException(nameof(contentAnchorBindingRuntime)),
+                routeRuntime ?? throw new ArgumentNullException(nameof(routeRuntime)));
         }
 
         internal void SetActivityContentExecutionParticipantSource(IActivityContentExecutionParticipantSource participantSource)
