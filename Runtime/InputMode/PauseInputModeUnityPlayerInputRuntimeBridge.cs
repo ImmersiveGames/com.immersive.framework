@@ -219,36 +219,6 @@ namespace Immersive.Framework.InputMode
                     requestReason);
             }
 
-            if (autoDiscoverMissingReferences)
-            {
-                bool resolved = LocalPlayerProvisioningAuthoringDiscovery.TryResolveLoaded(
-                    out LocalPlayerProvisioningAuthoring discovered,
-                    out int candidateCount,
-                    out string discoveryDiagnostic);
-                if (!resolved)
-                {
-                    return new LocalPlayerProvisioningValidationResult(
-                        null,
-                        candidateCount,
-                        requireLocalPlayerProvisioning,
-                        new[]
-                        {
-                            new LocalPlayerProvisioningIssue(
-                                LocalPlayerProvisioningIssueKind.DuplicateSurface,
-                                true,
-                                source,
-                                discoveryDiagnostic)
-                        },
-                        source,
-                        requestReason);
-                }
-                return LocalPlayerProvisioningConfigurationRules.Validate(
-                    discovered == null ? Array.Empty<LocalPlayerProvisioningAuthoring>() : new[] { discovered },
-                    requireLocalPlayerProvisioning,
-                    source,
-                    requestReason);
-            }
-
             return LocalPlayerProvisioningConfigurationRules.Validate(
                 Array.Empty<LocalPlayerProvisioningAuthoring>(),
                 requireLocalPlayerProvisioning,

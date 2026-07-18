@@ -178,7 +178,7 @@ namespace Immersive.Framework.Editor.Editor.Authoring
             }
 
             EditorGUILayout.HelpBox(
-                "Optional canonical app/session UI scene. When Required, FrameworkRuntimeHost prepares the Startup Route Primary Scene first, then loads UIGlobal additively, persists its UI roots, discovers Transition/Loading adapters from it, and lets Route SceneLifecycle continue normally.",
+                "Canonical app/session composition root. When Required, FrameworkRuntimeHost prepares the Startup Route Primary Scene first, then loads UIGlobal additively and persists its roots. Add exactly one Local Player Provisioning Host Registration here when manual local provisioning is used; it must reference the explicit Local Player Provisioning Authoring. Transition/Loading adapters are resolved here too.",
                 MessageType.Info);
         }
 

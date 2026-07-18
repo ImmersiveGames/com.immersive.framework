@@ -82,6 +82,7 @@ The existing canonical surfaces remain:
 
 ```text
 LocalPlayerProvisioningAuthoring
+LocalPlayerProvisioningHostRegistration
 LocalPlayerHostAuthoring
 PlayerActorDeclaration
 PlayerGameplayCameraAuthoring
@@ -92,6 +93,7 @@ CameraRigComposer
 
 ```text
 Player participation authority is scoped and typed.
+GameApplication resolves provisioning through the explicit UIGlobal Host Registration; global authoring discovery is not a supported bootstrap path.
 PlayerInputManager owns only runtime provisioning mechanics.
 Scene admission owns no physical creation or destruction.
 Activity owns contextual admission requirements.

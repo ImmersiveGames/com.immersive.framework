@@ -9,7 +9,7 @@ Current version: `1.0.0-preview.15`.
 
 ```text
 PlayerRecipe (optional) -> PlayerComposer -> Validate -> Apply/Rebuild
-PlayerSlotProfile -> LocalPlayerProvisioningAuthoring -> canonical P3 runtime lane
+GameApplication -> UIGlobal Host Registration -> LocalPlayerProvisioningAuthoring -> canonical P3 runtime lane
 CameraRigRecipe -> CameraRigComposer -> Validate -> Apply/Rebuild
 ```
 

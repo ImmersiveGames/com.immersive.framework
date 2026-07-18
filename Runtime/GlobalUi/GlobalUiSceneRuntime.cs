@@ -8,6 +8,7 @@ using Immersive.Framework.Pause;
 using Immersive.Framework.TransitionEffects;
 using Immersive.Framework.Common;
 using Immersive.Framework.Camera;
+using Immersive.Framework.PlayerParticipation;
 using Immersive.Logging.Records;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -84,6 +85,45 @@ namespace Immersive.Framework.GlobalUi
             }
 
             diagnostic = string.Empty;
+            return true;
+        }
+
+        internal bool TryResolveLocalPlayerProvisioning(
+            out LocalPlayerProvisioningAuthoring authoring,
+            out bool isConfigured,
+            out string diagnostic)
+        {
+            authoring = null;
+            isConfigured = false;
+
+            List<LocalPlayerProvisioningHostRegistration> registrations =
+                FindAll<LocalPlayerProvisioningHostRegistration>();
+            if (registrations.Count == 0)
+            {
+                diagnostic =
+                    "UIGlobal has no Local Player Provisioning Host Registration. Local Player provisioning is explicitly unavailable.";
+                return true;
+            }
+
+            isConfigured = true;
+            if (registrations.Count != 1)
+            {
+                diagnostic =
+                    $"UIGlobal requires exactly one Local Player Provisioning Host Registration when provisioning is configured, but found '{registrations.Count}'.";
+                return false;
+            }
+
+            if (!registrations[0].TryResolveAuthoring(
+                    out authoring,
+                    out string issue))
+            {
+                diagnostic =
+                    $"UIGlobal Local Player Provisioning Host Registration is invalid. {issue}";
+                return false;
+            }
+
+            diagnostic =
+                $"Resolved Local Player provisioning authoring '{authoring.name}' through the explicit UIGlobal Host Registration.";
             return true;
         }
 
@@ -302,22 +342,27 @@ namespace Immersive.Framework.GlobalUi
 
         private T FindSingle<T>() where T : MonoBehaviour
         {
-            T result = null;
-            int count = 0;
+            List<T> candidates = FindAll<T>();
+            return candidates.Count == 1 ? candidates[0] : null;
+        }
+
+        private List<T> FindAll<T>() where T : MonoBehaviour
+        {
+            var resolved = new List<T>();
             for (int rootIndex = 0; rootIndex < _persistedRoots.Length; rootIndex++)
             {
-                T[] candidates = _persistedRoots[rootIndex].GetComponentsInChildren<T>(true);
+                T[] candidates = _persistedRoots[rootIndex]
+                    .GetComponentsInChildren<T>(true);
                 for (int index = 0; index < candidates.Length; index++)
                 {
                     if (candidates[index] != null)
                     {
-                        result = candidates[index];
-                        count++;
+                        resolved.Add(candidates[index]);
                     }
                 }
             }
 
-            return count == 1 ? result : null;
+            return resolved;
         }
 
         private static string BuildBlockingMessageIfRequired(

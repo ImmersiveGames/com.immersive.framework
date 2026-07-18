@@ -29,7 +29,8 @@ namespace Immersive.Framework.ActivityFlow
             ActivitySceneCompositionResult activitySceneCompositionResult = default(ActivitySceneCompositionResult),
             ActivitySceneReleaseResult activitySceneReleaseResult = default(ActivitySceneReleaseResult),
             ActivityOperationResult activityOperationResult = default(ActivityOperationResult),
-            ActivitySceneLedgerSnapshot activitySceneLedgerSnapshot = default(ActivitySceneLedgerSnapshot))
+            ActivitySceneLedgerSnapshot activitySceneLedgerSnapshot = default(ActivitySceneLedgerSnapshot),
+            ActivityTransitionSnapshot activityTransitionSnapshot = default(ActivityTransitionSnapshot))
         {
             Started = started;
             Skipped = skipped;
@@ -48,6 +49,7 @@ namespace Immersive.Framework.ActivityFlow
             ActivitySceneReleaseResult = activitySceneReleaseResult;
             ActivityOperationResult = activityOperationResult;
             ActivitySceneLedgerSnapshot = activitySceneLedgerSnapshot;
+            ActivityTransitionSnapshot = activityTransitionSnapshot;
         }
 
         public bool Started { get; }
@@ -70,6 +72,7 @@ namespace Immersive.Framework.ActivityFlow
         public ActivitySceneReleaseResult ActivitySceneReleaseResult { get; }
         public ActivityOperationResult ActivityOperationResult { get; }
         public ActivitySceneLedgerSnapshot ActivitySceneLedgerSnapshot { get; }
+        internal ActivityTransitionSnapshot ActivityTransitionSnapshot { get; }
         public ContentAnchorSet ActivityContentAnchorSet => ActivityContentAnchorDiscoveryResult.AnchorSet;
         public bool HasActivityContentAnchors => ActivityContentAnchorDiscoveryResult.HasAnchors;
         public bool HasRuntimeActivityScope => RuntimeActivityScopeResult.Executed;
@@ -84,6 +87,30 @@ namespace Immersive.Framework.ActivityFlow
         public bool Completed => Started || Skipped || KeptActive || Cleared;
         public bool HasActivityState => ActivityState.IsActive || ActivityState.IsNone || ActivityState.IsTransitioning;
         public string ActivityIdentity => ActivityState.DiagnosticIdentity;
+
+        internal ActivityFlowStartResult WithActivityTransition(
+            ActivityTransitionSnapshot activityTransitionSnapshot)
+        {
+            return new ActivityFlowStartResult(
+                Started,
+                Skipped,
+                KeptActive,
+                Cleared,
+                Message,
+                ActivityState,
+                PreviousActivity,
+                ActivityContentResult,
+                ActivityReadinessState,
+                RuntimeActivityScopeResult,
+                ActivityContentAnchorBindingCleanupResult,
+                ActivityContentAnchorDiscoveryResult,
+                ActivityContentExecutionResult,
+                ActivitySceneCompositionResult,
+                ActivitySceneReleaseResult,
+                ActivityOperationResult,
+                ActivitySceneLedgerSnapshot,
+                activityTransitionSnapshot);
+        }
 
         public static ActivityFlowStartResult Failed(
             string message,

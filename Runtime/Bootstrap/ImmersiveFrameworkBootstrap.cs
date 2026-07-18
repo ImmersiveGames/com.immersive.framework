@@ -215,28 +215,26 @@ namespace Immersive.Framework.Bootstrap
             FrameworkRuntimeHost runtimeHost,
             FrameworkLogger logger)
         {
-            if (!LocalPlayerProvisioningAuthoringDiscovery.TryResolveLoaded(
+            if (!runtimeHost.TryResolveLocalPlayerProvisioningAuthoring(
                     out LocalPlayerProvisioningAuthoring authoring,
-                    out int candidateCount,
-                    out string discoveryDiagnostic))
+                    out bool isConfigured,
+                    out string registrationDiagnostic))
             {
                 logger.Error(
                     "Local Player provisioning Session runtime initialization failed.",
                     LogFields.Of(
-                        LogFields.Field("status", "RejectedAuthoringMultiplicity"),
-                        LogFields.Field("candidates", candidateCount),
-                        LogFields.Field("message", discoveryDiagnostic)));
+                        LogFields.Field("status", "RejectedHostRegistration"),
+                        LogFields.Field("message", registrationDiagnostic)));
                 return false;
             }
 
-            if (authoring == null)
+            if (!isConfigured)
             {
                 logger.Info(
                     "Local Player provisioning is not configured.",
                     LogFields.Of(
                         LogFields.Field("status", "NotConfigured"),
-                        LogFields.Field("candidates", candidateCount),
-                        LogFields.Field("message", discoveryDiagnostic)));
+                        LogFields.Field("message", registrationDiagnostic)));
                 return true;
             }
 
@@ -250,7 +248,6 @@ namespace Immersive.Framework.Bootstrap
                     "Local Player provisioning Session runtime initialization failed.",
                     LogFields.Of(
                         LogFields.Field("status", "RejectedInvalidConfiguration"),
-                        LogFields.Field("candidates", candidateCount),
                         LogFields.Field("authoring", authoring.name),
                         LogFields.Field("manager", authoring.PlayerInputManager != null ? authoring.PlayerInputManager.name : string.Empty),
                         LogFields.Field("message", issue)));

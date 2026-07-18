@@ -4,6 +4,7 @@ using Immersive.Framework.Authoring;
 using Immersive.Framework.ContentAnchor;
 using Immersive.Framework.Loading;
 using Immersive.Framework.RuntimeContent;
+using Immersive.Framework.Common;
 
 namespace Immersive.Framework.ActivityFlow
 {

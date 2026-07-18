@@ -15,7 +15,7 @@ namespace Immersive.Framework.ActivityFlow
     /// It does not load scenes, spawn actors, or own Activity identity.
     /// </summary>
     [FrameworkApiStatus(FrameworkApiStatus.Internal, "Runtime implementation detail; not game-facing API.")]
-    internal sealed class ActivityContentRuntime
+    internal sealed partial class ActivityContentRuntime
     {
         private const int MaxObservedBindingsInMessage = 8;
 

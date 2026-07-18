@@ -6,7 +6,7 @@ Last updated: 2026-07-15
 ## Authoring
 
 - `PlayerSlotProfile` defines ordered Session capacity and optional default Actor profile.
-- `LocalPlayerProvisioningAuthoring` owns the explicit Unity `PlayerInputManager` endpoint.
+- `GameApplication` owns the `UIGlobal` composition root. Its single `LocalPlayerProvisioningHostRegistration` references the `LocalPlayerProvisioningAuthoring`, which owns the explicit Unity `PlayerInputManager` endpoint.
 - its Player prefab contains `LocalPlayerHostAuthoring`, one `PlayerInput` and an empty Actor Mount.
 - `PlayerComposer` authors Actor/input/camera presentation only; it never assigns a Slot.
 
@@ -17,7 +17,12 @@ notifications. No singleton, name, tag or hierarchy path is a functional key.
 ## Runtime flow
 
 ```text
-PlayerSlotProfile
+GameApplication
+  -> UIGlobal
+  -> LocalPlayerProvisioningHostRegistration
+  -> LocalPlayerProvisioningAuthoring
+  -> FrameworkRuntimeHost typed attachment
+  -> PlayerSlotProfile
   -> PlayerParticipationRuntimeContext
   -> LocalPlayerProvisioningBridge reservation
   -> PlayerInputManager manual join
@@ -33,12 +38,18 @@ the typed `PlayerSlotId`; rollback releases the reservation and clears the host
 association. A synchronous result may retain callback confirmation as `Pending`;
 the late callback updates bridge diagnostics without changing join identity.
 
+`FindObjectsByType` is not a provisioning bootstrap path. The temporary
+`LocalPlayerProvisioningAuthoringDiscovery` is migration/diagnostic-only and
+must be explicitly enabled and fail closed unless it finds exactly one surface;
+normal Pause/InputMode use also requires its
+explicit provisioning authoring reference.
+
 ## Pause and InputMode
 
 `PauseInputModeUnityPlayerInputRuntimeBridge` receives an explicit
-`LocalPlayerProvisioningAuthoring`. Optional loaded-scene discovery accepts zero
-or one surface and rejects duplicates. Action maps are applied to the explicit
-`PlayerInput` evidence.
+`LocalPlayerProvisioningAuthoring`; it does not discover this dependency from
+loaded scenes. Missing required provisioning is rejected. Action maps are
+applied to the explicit `PlayerInput` evidence.
 
 ## Removed architecture
 

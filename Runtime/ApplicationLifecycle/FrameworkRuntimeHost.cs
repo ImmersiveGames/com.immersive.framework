@@ -26,6 +26,7 @@ using Immersive.Framework.TransitionEffects;
 using Immersive.Framework.Common;
 using Immersive.Framework.Camera;
 using Immersive.Framework.Common.LifecycleOperations;
+using Immersive.Framework.PlayerParticipation;
 
 namespace Immersive.Framework.ApplicationLifecycle
 {
@@ -67,6 +68,26 @@ namespace Immersive.Framework.ApplicationLifecycle
         public SessionRuntimeState SessionState => _state.SessionState;
 
         internal PauseState PauseState => _pauseRuntime?.State ?? PauseState.Unknown;
+
+        internal bool TryResolveLocalPlayerProvisioningAuthoring(
+            out LocalPlayerProvisioningAuthoring authoring,
+            out bool isConfigured,
+            out string diagnostic)
+        {
+            authoring = null;
+            isConfigured = false;
+            if (_globalUiSceneRuntime == null)
+            {
+                diagnostic =
+                    "FrameworkRuntimeHost has no initialized UIGlobal composition root for Local Player provisioning resolution.";
+                return false;
+            }
+
+            return _globalUiSceneRuntime.TryResolveLocalPlayerProvisioning(
+                out authoring,
+                out isConfigured,
+                out diagnostic);
+        }
 
         internal GateSnapshot PauseGateSnapshot => _pauseRuntime?.GateSnapshot ?? GateSnapshot.Empty();
 
