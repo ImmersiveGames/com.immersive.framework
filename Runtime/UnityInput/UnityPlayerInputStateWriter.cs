@@ -8,13 +8,13 @@ using UnityEngine.InputSystem;
 namespace Immersive.Framework.UnityInput
 {
     /// <summary>
-    /// The only package-owned physical writer for Unity PlayerInput posture.
+    /// The only package-owned physical writer for Unity PlayerInput action-map posture.
     /// Callers retain domain policy and lifecycle ownership; this adapter owns only the
-    /// concrete PlayerInput/InputActionMap side effect and exact rollback evidence.
+    /// concrete InputActionMap side effect and exact rollback evidence.
     /// </summary>
     [FrameworkApiStatus(
         FrameworkApiStatus.Internal,
-        "IC1 single physical writer for Unity PlayerInput action-map and activation state.")]
+        "IC1 single physical writer for Unity PlayerInput action-map posture.")]
     internal static class UnityPlayerInputStateWriter
     {
         internal static bool TrySelectActionMap(
@@ -36,14 +36,6 @@ namespace Immersive.Framework.UnityInput
                 return false;
             }
 
-            if (!playerInput.inputIsActive)
-            {
-                issue =
-                    "Action-map selection requires an active PlayerInput. " +
-                    "Activate input through the same write authority before selecting a map.";
-                return false;
-            }
-
             InputActionMap previousActionMap = playerInput.currentActionMap;
             string previousActionMapName = previousActionMap != null
                 ? previousActionMap.name.NormalizeText()
@@ -57,11 +49,8 @@ namespace Immersive.Framework.UnityInput
                 if (changedCurrentActionMap)
                 {
                     // Use the public PlayerInput state property rather than
-                    // SwitchCurrentActionMap. Unity 6.5 guards the method with an
-                    // internal lifecycle flag that is not represented by
-                    // inputIsActive; the property is the canonical physical state
-                    // transition and still disables the previous map before
-                    // enabling the requested map.
+                    // SwitchCurrentActionMap. This prepares the explicit map posture
+                    // without calling PlayerInput activation/deactivation lifecycle APIs.
                     playerInput.currentActionMap = targetActionMap;
                 }
                 else if (!targetActionMap.enabled)
@@ -381,56 +370,6 @@ namespace Immersive.Framework.UnityInput
             }
         }
 
-        internal static bool TrySetPlayerInputActive(
-            PlayerInput playerInput,
-            bool active,
-            out bool previousActive,
-            out bool changed,
-            out string issue)
-        {
-            previousActive = IsInputActive(playerInput);
-            changed = false;
-            issue = string.Empty;
-
-            if (playerInput == null)
-            {
-                issue = "PlayerInput activation write requires PlayerInput evidence.";
-                return false;
-            }
-
-            changed = previousActive != active;
-            if (!changed)
-            {
-                return true;
-            }
-
-            try
-            {
-                if (active)
-                {
-                    playerInput.ActivateInput();
-                }
-                else
-                {
-                    playerInput.DeactivateInput();
-                }
-
-                if (playerInput.inputIsActive != active)
-                {
-                    issue =
-                        $"PlayerInput did not reach active='{active}'.";
-                    return false;
-                }
-
-                return true;
-            }
-            catch (Exception exception)
-            {
-                issue = exception.Message;
-                return false;
-            }
-        }
-
         internal static string CurrentActionMapName(PlayerInput playerInput)
         {
             return playerInput != null && playerInput.currentActionMap != null
@@ -656,10 +595,6 @@ namespace Immersive.Framework.UnityInput
             return true;
         }
 
-        private static bool IsInputActive(PlayerInput playerInput)
-        {
-            return playerInput != null && playerInput.inputIsActive;
-        }
     }
 
     internal readonly struct UnityPlayerInputActionMapSetWriteReceipt

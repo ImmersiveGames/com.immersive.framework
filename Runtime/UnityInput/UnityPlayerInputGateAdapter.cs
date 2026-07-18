@@ -35,9 +35,6 @@ namespace Immersive.Framework.UnityInput
         [SerializeField] private bool blockOnGameplayAction = true;
 
         [Header("Blocking")]
-        [SerializeField]
-        private UnityPlayerInputGateBlockMode blockMode =
-            UnityPlayerInputGateBlockMode.DisableActionMap;
 
         [Tooltip("When enabled, the adapter asks the canonical writer to restore only state changed by this Gate block.")]
         [SerializeField] private bool restorePreviousState = true;
@@ -51,7 +48,6 @@ namespace Immersive.Framework.UnityInput
         private FrameworkLogger _logger;
         private bool _isBlockedByAdapter;
         private bool _actionMapWasEnabledBeforeBlock;
-        private bool _playerInputWasActiveBeforeBlock;
         private string _lastStatus = "NotApplied";
         private string _lastReason = string.Empty;
         private bool _loggedMissingRuntime;
@@ -62,10 +58,6 @@ namespace Immersive.Framework.UnityInput
             gameplayActionMapName.NormalizeTextOrFallback("Player");
         public bool BlockOnInputAcceptance => blockOnInputAcceptance;
         public bool BlockOnGameplayAction => blockOnGameplayAction;
-        public UnityPlayerInputGateBlockMode BlockMode =>
-            IsSupportedBlockMode(blockMode)
-                ? blockMode
-                : UnityPlayerInputGateBlockMode.DisableActionMap;
         public bool IsBlockedByAdapter => _isBlockedByAdapter;
         public string LastStatus => _lastStatus.NormalizeText();
         public string LastReason => _lastReason.NormalizeText();
@@ -126,8 +118,7 @@ namespace Immersive.Framework.UnityInput
                 return false;
             }
 
-            if (_isBlockedByAdapter &&
-                BlockMode == UnityPlayerInputGateBlockMode.DisableActionMap)
+            if (_isBlockedByAdapter)
             {
                 bool selectedGameplayMap = string.Equals(
                     actionMapName.NormalizeText(),
@@ -176,8 +167,7 @@ namespace Immersive.Framework.UnityInput
                 return false;
             }
 
-            if (_isBlockedByAdapter &&
-                BlockMode == UnityPlayerInputGateBlockMode.DisableActionMap)
+            if (_isBlockedByAdapter)
             {
                 bool restoredGameplayMap = string.Equals(
                     UnityPlayerInputStateWriter.CurrentActionMapName(
@@ -264,32 +254,6 @@ namespace Immersive.Framework.UnityInput
             return true;
         }
 
-        internal bool TrySetPlayerInputActive(
-            bool active,
-            string source,
-            string reason,
-            out bool previousActive,
-            out bool changed,
-            out string issue)
-        {
-            PlayerInput resolvedPlayerInput = ResolvePlayerInput();
-            bool succeeded = UnityPlayerInputStateWriter.TrySetPlayerInputActive(
-                resolvedPlayerInput,
-                active,
-                out previousActive,
-                out changed,
-                out issue);
-            if (succeeded)
-            {
-                _lastStatus = active
-                    ? "PlayerInputActivatedByAuthority"
-                    : "PlayerInputDeactivatedByAuthority";
-                _lastReason = reason.NormalizeTextOrFallback("player-input-active-state");
-            }
-
-            return succeeded;
-        }
-
         private void ApplyFromCurrentRuntimeGate(string reason)
         {
             EnsureLogger();
@@ -350,40 +314,11 @@ namespace Immersive.Framework.UnityInput
                 return;
             }
 
-            switch (BlockMode)
-            {
-                case UnityPlayerInputGateBlockMode.DisableActionMap:
-                    ApplyActionMapBlock(
-                        resolvedPlayerInput,
-                        reason,
-                        blocksInput,
-                        blocksGameplay);
-                    break;
-
-                case UnityPlayerInputGateBlockMode.DeactivatePlayerInput:
-                    ApplyPlayerInputBlock(
-                        resolvedPlayerInput,
-                        reason,
-                        blocksInput,
-                        blocksGameplay);
-                    break;
-
-                default:
-                    _lastStatus = "SkippedUnsupportedBlockMode";
-                    _lastReason = reason.NormalizeText();
-                    if (logStateChanges)
-                    {
-                        _logger.Warning(
-                            "Unity PlayerInput Gate Adapter skipped because Block Mode is unsupported.",
-                            BuildLogFields(
-                                _lastStatus,
-                                reason,
-                                true,
-                                blocksInput,
-                                blocksGameplay));
-                    }
-                    break;
-            }
+            ApplyActionMapBlock(
+                resolvedPlayerInput,
+                reason,
+                blocksInput,
+                blocksGameplay);
         }
 
         private void ApplyActionMapBlock(
@@ -414,55 +349,11 @@ namespace Immersive.Framework.UnityInput
             }
 
             _actionMapWasEnabledBeforeBlock = previousEnabled;
-            _playerInputWasActiveBeforeBlock =
-                resolvedPlayerInput.currentActionMap != null &&
-                resolvedPlayerInput.currentActionMap.enabled;
             _isBlockedByAdapter = true;
             _lastStatus = "BlockedActionMap";
             _lastReason = reason.NormalizeText();
             LogStateChange(
                 "Unity PlayerInput Gate Adapter requested gameplay action-map blocking.",
-                _lastStatus,
-                reason,
-                true,
-                blocksInput,
-                blocksGameplay);
-        }
-
-        private void ApplyPlayerInputBlock(
-            PlayerInput resolvedPlayerInput,
-            string reason,
-            bool blocksInput,
-            bool blocksGameplay)
-        {
-            if (_isBlockedByAdapter)
-            {
-                _lastStatus = "AlreadyBlocked";
-                _lastReason = reason.NormalizeText();
-                return;
-            }
-
-            if (!UnityPlayerInputStateWriter.TrySetPlayerInputActive(
-                    resolvedPlayerInput,
-                    false,
-                    out bool previousActive,
-                    out _,
-                    out string issue))
-            {
-                _lastStatus = "FailedPlayerInputBlock";
-                _lastReason = reason.NormalizeText();
-                LogWriteFailure(issue, reason, blocksInput, blocksGameplay);
-                return;
-            }
-
-            _playerInputWasActiveBeforeBlock = previousActive;
-            _actionMapWasEnabledBeforeBlock =
-                ResolveGameplayActionMap(resolvedPlayerInput)?.enabled ?? false;
-            _isBlockedByAdapter = true;
-            _lastStatus = "BlockedPlayerInput";
-            _lastReason = reason.NormalizeText();
-            LogStateChange(
-                "Unity PlayerInput Gate Adapter requested PlayerInput deactivation.",
                 _lastStatus,
                 reason,
                 true,
@@ -490,25 +381,11 @@ namespace Immersive.Framework.UnityInput
 
             bool restored = true;
             string issue = string.Empty;
-            if (BlockMode == UnityPlayerInputGateBlockMode.DisableActionMap &&
-                restorePreviousState &&
-                _actionMapWasEnabledBeforeBlock)
+            if (restorePreviousState && _actionMapWasEnabledBeforeBlock)
             {
                 restored = UnityPlayerInputStateWriter.TrySetActionMapEnabled(
                     resolvedPlayerInput,
                     GameplayActionMapName,
-                    true,
-                    out _,
-                    out _,
-                    out issue);
-            }
-            else if (BlockMode ==
-                     UnityPlayerInputGateBlockMode.DeactivatePlayerInput &&
-                     restorePreviousState &&
-                     _playerInputWasActiveBeforeBlock)
-            {
-                restored = UnityPlayerInputStateWriter.TrySetPlayerInputActive(
-                    resolvedPlayerInput,
                     true,
                     out _,
                     out _,
@@ -525,7 +402,6 @@ namespace Immersive.Framework.UnityInput
 
             _isBlockedByAdapter = false;
             _actionMapWasEnabledBeforeBlock = false;
-            _playerInputWasActiveBeforeBlock = false;
             _lastStatus = "Released";
             _lastReason = reason.NormalizeText();
             LogStateChange(
@@ -659,7 +535,7 @@ namespace Immersive.Framework.UnityInput
                     "status",
                     status.NormalizeTextOrFallback("Unknown")),
                 LogFields.Field("blockedByAdapter", blocked),
-                LogFields.Field("blockMode", BlockMode.ToString()),
+                LogFields.Field("blockMode", "DisableGameplayActionMap"),
                 LogFields.Field(
                     "blockOnInputAcceptance",
                     blockOnInputAcceptance),
@@ -690,11 +566,5 @@ namespace Immersive.Framework.UnityInput
         private void EnsureLogger() =>
             _logger ??= FrameworkLogger.Create<UnityPlayerInputGateAdapter>();
 
-        private static bool IsSupportedBlockMode(
-            UnityPlayerInputGateBlockMode mode)
-        {
-            return mode is UnityPlayerInputGateBlockMode.DisableActionMap
-                or UnityPlayerInputGateBlockMode.DeactivatePlayerInput;
-        }
     }
 }

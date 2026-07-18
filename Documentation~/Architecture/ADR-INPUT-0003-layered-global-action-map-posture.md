@@ -73,12 +73,15 @@ returns exact rollback evidence
 restores the previous primary map and enabled set on rollback
 ```
 
-The InputMode application path does not call `PlayerInput.ActivateInput()`.
-Activation, device pairing and local-player provisioning remain owned by the
-existing Player lifecycle. InputMode changes only action-map posture.
+The InputMode application path does not call `PlayerInput.ActivateInput()` and action-map
+preparation does not require `PlayerInput.inputIsActive`. Activation, device pairing, event
+delivery and local-player provisioning remain owned by the existing Player lifecycle.
+InputMode changes only action-map posture.
 
 `UnityPlayerInputGateAdapter` remains the explicit write port and applies Gate
-blocking as an overlay after the baseline map set is changed or restored.
+blocking as a gameplay-map overlay after the baseline map set is changed or restored.
+It never calls `PlayerInput.DeactivateInput()` or `ActivateInput()`. PlayerInput lifecycle,
+device pairing and provisioning remain outside InputMode and Gate policy.
 
 ## Pause product flow
 
@@ -123,6 +126,7 @@ application-wide UI input routing
 online input authority
 removing historical single-map result fields
 renaming the temporary Gate write-port component
+removing the now-unused historical UnityPlayerInputGateBlockMode enum file
 ```
 
 ## Acceptance
@@ -135,8 +139,9 @@ Player is disabled during Pause
 UI is disabled during Gameplay
 PauseToggle exists in Global and Global remains enabled
 InputMode application does not call ActivateInput
+action-map writes do not require PlayerInput.inputIsActive
 exact map-set rollback restores the prior posture
 missing Global or UI fails before Pause mutation
-IC1 layered writer smoke passes
+IC1 layered writer smoke passes without PlayerInput activation/deactivation warnings
 IC2 authority and runtime regression smokes pass
 ```

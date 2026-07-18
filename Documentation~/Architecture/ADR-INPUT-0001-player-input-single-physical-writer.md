@@ -41,8 +41,8 @@ PlayerInput / InputActionMap
 ```
 
 `UnityPlayerInputGateAdapter` remains the explicit component already referenced by the
-canonical gameplay binding. It accepts action-map and activation requests in addition
-to evaluating Gate blockers.
+canonical gameplay binding. It accepts exact action-map posture requests and evaluates
+Gate blockers. It does not own `PlayerInput` activation or provisioning lifecycle.
 
 `UnityPlayerInputStateWriter` is internal and stateless. It performs only validated Unity
 side effects and returns exact rollback evidence. It is never discovered globally and owns
@@ -51,7 +51,8 @@ no Session, Slot, Actor, Activity, Route, Pause or InputMode policy.
 ## Rules
 
 1. Requesters must not call `SwitchCurrentActionMap`, assign `currentActionMap`, or call
-   `PlayerInput.ActivateInput/DeactivateInput` directly.
+   `PlayerInput.ActivateInput/DeactivateInput` directly. The canonical map writer also does
+   not own activation/deactivation; those operations belong to the Player lifecycle.
 2. Requesters use the exact co-located `UnityPlayerInputGateAdapter` associated with the
    target `PlayerInput`.
 3. Missing write authority is an explicit failure; there is no fallback writer.
@@ -62,6 +63,10 @@ no Session, Slot, Actor, Activity, Route, Pause or InputMode policy.
 6. Independent `InputAction` subscription ownership remains with the canonical trigger.
 7. Baseline InputMode posture is applied as an exact enabled-map set through the writer.
 8. `Global` remains enabled while `Player` and `UI` are selected by policy.
+9. Gate blocking disables only the gameplay map overlay. It never deactivates the whole
+   `PlayerInput`, because that would bypass the layered posture and lose exact restoration.
+10. Action-map preparation does not require `PlayerInput.inputIsActive`. Lifecycle readiness,
+    device pairing and event delivery remain separate Player lifecycle facts.
 
 ## Consequences
 
@@ -113,6 +118,7 @@ InputMode and gameplay binding request through UnityPlayerInputGateAdapter
 Gate blocking delegates physical effects to the writer
 missing co-located write authority fails explicitly
 selection returns rollback evidence
+action-map writes do not require or mutate PlayerInput lifecycle activation
 release restores the captured previous map
 Gate release does not resurrect a superseded gameplay map
 P3K.3 typed control/input binding regression remains green

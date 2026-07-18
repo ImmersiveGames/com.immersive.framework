@@ -359,46 +359,24 @@ namespace Immersive.Framework.InputMode
                     reason);
             }
 
-            if (!writeAuthority.TrySetPlayerInputActive(
-                    false,
-                    source,
-                    reason,
-                    out _,
-                    out _,
-                    out string issue))
-            {
-                issues.Add(
-                    InputModeUnityPlayerInputAdapterIssue.BlockingIssue(
-                        InputModeUnityPlayerInputAdapterIssueKind.UnityInputException,
-                        plan.RequestedMode,
-                        plan.ActionMapName,
-                        source,
-                        issue));
-                return CreateResult(
-                    InputModeUnityPlayerInputAdapterStatus.FailedUnityInputException,
+            issues.Add(
+                InputModeUnityPlayerInputAdapterIssue.BlockingIssue(
+                    InputModeUnityPlayerInputAdapterIssueKind.UnsupportedOperation,
                     plan.RequestedMode,
-                    plan.Operation,
                     plan.ActionMapName,
-                    UnityInputActionMapName.From(
-                        CurrentActionMapName(playerInput)),
-                    false,
-                    false,
-                    false,
-                    issues,
                     source,
-                    reason);
-            }
-
+                    "InputMode LockInput requires at least one explicit persistent action map. " +
+                    "PlayerInput activation/deactivation belongs to the Player lifecycle and is not an InputMode fallback."));
             return CreateResult(
-                InputModeUnityPlayerInputAdapterStatus.Succeeded,
+                InputModeUnityPlayerInputAdapterStatus.FailedUnsupportedOperation,
                 plan.RequestedMode,
                 plan.Operation,
                 plan.ActionMapName,
                 UnityInputActionMapName.From(
                     CurrentActionMapName(playerInput)),
-                true,
                 false,
-                true,
+                false,
+                false,
                 issues,
                 source,
                 reason);
