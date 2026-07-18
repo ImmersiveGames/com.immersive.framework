@@ -173,3 +173,9 @@ phase, readiness predicate or retained previous owner blocked completion.
 ```text
 ARCH-A2 — implement Activity transition transaction runtime
 ```
+
+## Delivery format
+
+This delivery contains complete replacement/addition files. No patcher, generated diff,
+or repository mutation script is included. Copy the `com.immersive.framework` directory
+over the package repository root, review the listed files, then compile in Unity 6.5.

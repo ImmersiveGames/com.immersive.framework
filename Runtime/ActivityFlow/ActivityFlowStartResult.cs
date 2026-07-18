@@ -73,6 +73,10 @@ namespace Immersive.Framework.ActivityFlow
         public ActivityOperationResult ActivityOperationResult { get; }
         public ActivitySceneLedgerSnapshot ActivitySceneLedgerSnapshot { get; }
         internal ActivityTransitionSnapshot ActivityTransitionSnapshot { get; }
+        public bool ActivityAuthorityCommitReached => ActivityTransitionSnapshot.CommitReached;
+        public bool ActivityTransitionFailedBeforeCommit => ActivityTransitionSnapshot.FailedBeforeCommit;
+        public bool ActivityTransitionCommittedNotReady => ActivityTransitionSnapshot.CommittedNotReady;
+        public bool ActivityTransitionCommittedFinalizationFailed => ActivityTransitionSnapshot.CommittedFinalizationFailed;
         public ContentAnchorSet ActivityContentAnchorSet => ActivityContentAnchorDiscoveryResult.AnchorSet;
         public bool HasActivityContentAnchors => ActivityContentAnchorDiscoveryResult.HasAnchors;
         public bool HasRuntimeActivityScope => RuntimeActivityScopeResult.Executed;
@@ -91,16 +95,47 @@ namespace Immersive.Framework.ActivityFlow
         internal ActivityFlowStartResult WithActivityTransition(
             ActivityTransitionSnapshot activityTransitionSnapshot)
         {
+            if (!activityTransitionSnapshot.IsValid)
+            {
+                return this;
+            }
+
+            ActivityReadinessState readinessState =
+                activityTransitionSnapshot.CommitReached
+                    ? activityTransitionSnapshot.ReadinessState
+                    : ActivityReadinessState;
+            ActivityRuntimeState activityState = ActivityState;
+            ActivityAsset previousActivity = PreviousActivity;
+            if (activityTransitionSnapshot.FailedBeforeCommit)
+            {
+                previousActivity = activityTransitionSnapshot.PreviousActivity;
+                activityState = previousActivity != null
+                    ? ActivityRuntimeState.ActiveWith(
+                        previousActivity,
+                        activityTransitionSnapshot.TargetActivity,
+                        activityTransitionSnapshot.Source,
+                        activityTransitionSnapshot.Reason)
+                    : ActivityRuntimeState.None(
+                        activityTransitionSnapshot.TargetActivity,
+                        activityTransitionSnapshot.Source,
+                        activityTransitionSnapshot.Reason);
+            }
+
+            string transitionMessage =
+                $"activityTransition=({activityTransitionSnapshot.ToDiagnosticString()}).";
+            string message = string.IsNullOrWhiteSpace(Message)
+                ? transitionMessage
+                : $"{Message} {transitionMessage}";
             return new ActivityFlowStartResult(
                 Started,
                 Skipped,
                 KeptActive,
                 Cleared,
-                Message,
-                ActivityState,
-                PreviousActivity,
+                message,
+                activityState,
+                previousActivity,
                 ActivityContentResult,
-                ActivityReadinessState,
+                readinessState,
                 RuntimeActivityScopeResult,
                 ActivityContentAnchorBindingCleanupResult,
                 ActivityContentAnchorDiscoveryResult,

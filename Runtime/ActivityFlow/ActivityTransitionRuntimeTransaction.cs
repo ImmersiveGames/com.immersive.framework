@@ -280,16 +280,22 @@ namespace Immersive.Framework.ActivityFlow
         {
             RequireCommittedNonTerminal();
             readinessState = finalReadinessState;
+            bool targetReady = TargetActivity == null || finalReadinessState.IsReady;
             previousFinalizationStatus = PreviousActivity == null
                 ? PreviousActivityFinalizationStatus.NotRequired
                 : PreviousActivityFinalizationStatus.Failed;
             previousScenesReleased = PreviousActivity == null;
-            terminalStatus =
-                ActivityTransitionTerminalStatus.CommittedFinalizationFailed;
-            phase = ActivityTransitionPhase.CommittedFinalizationFailed;
+            terminalStatus = targetReady
+                ? ActivityTransitionTerminalStatus.CommittedFinalizationFailed
+                : ActivityTransitionTerminalStatus.CommittedNotReady;
+            phase = targetReady
+                ? ActivityTransitionPhase.CommittedFinalizationFailed
+                : ActivityTransitionPhase.CommittedNotReady;
             message = NormalizeDiagnostic(
                 diagnostic,
-                "Committed Activity transition failed during exit, enter or finalization.");
+                targetReady
+                    ? "Committed Activity transition failed during previous finalization."
+                    : "Committed Activity transition did not complete target readiness.");
             return Snapshot;
         }
 

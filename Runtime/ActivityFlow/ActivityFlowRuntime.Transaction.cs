@@ -1115,12 +1115,17 @@ namespace Immersive.Framework.ActivityFlow
                 contentResult.LifecycleResult.ExitFailedReceiverCount == 0;
             ActivityContentExecutionAggregateResult participantExit =
                 executionResult.ExitResult;
+            bool participantSourceSucceeded =
+                executionResult.Status !=
+                    ActivityContentExecutionLifecycleStatus.RejectedParticipantSource;
             bool participantExitSucceeded =
                 participantExit.Status ==
                     ActivityContentExecutionAggregateStatus.Unknown ||
                 (!participantExit.Failed &&
                  !participantExit.BlocksReadiness);
-            return sceneContentExitSucceeded && participantExitSucceeded;
+            return sceneContentExitSucceeded &&
+                participantSourceSucceeded &&
+                participantExitSucceeded;
         }
 
         private static ActivityReadinessState BuildTransitionReadiness(
@@ -1161,10 +1166,18 @@ namespace Immersive.Framework.ActivityFlow
 
             ActivityContentExecutionAggregateResult participantEnter =
                 executionResult.EnterResult;
+            bool participantSourceBlocksReadiness =
+                executionResult.Status ==
+                    ActivityContentExecutionLifecycleStatus.RejectedParticipantSource;
+            bool participantEnterRejected =
+                participantEnter.Status ==
+                    ActivityContentExecutionAggregateStatus.RejectedInvalidResults;
             bool participantEnterBlocksReadiness =
-                participantEnter.Status !=
+                participantSourceBlocksReadiness ||
+                participantEnterRejected ||
+                (participantEnter.Status !=
                     ActivityContentExecutionAggregateStatus.Unknown &&
-                participantEnter.BlocksReadiness;
+                 participantEnter.BlocksReadiness);
             int participantEnterBlockingIssues =
                 participantEnterBlocksReadiness
                     ? participantEnter.BlockingIssueCount > 0

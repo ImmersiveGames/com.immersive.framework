@@ -30,8 +30,6 @@ namespace Immersive.Framework.ActivityFlow
         private readonly RuntimeContentAnchorBinding _contentAnchorBindingRuntime;
         private readonly EventBus<ActivityEnteredEvent> _activityEnteredEvents = new EventBus<ActivityEnteredEvent>();
         private readonly EventBus<ActivityExitedEvent> _activityExitedEvents = new EventBus<ActivityExitedEvent>();
-        private readonly IEventBinding _activityContentEnteredBinding;
-        private readonly IEventBinding _activityContentExitedBinding;
         private RouteAsset _currentRoute;
         private string _currentRouteInstanceId = string.Empty;
         private int _routeInstanceSequence;
@@ -57,8 +55,6 @@ namespace Immersive.Framework.ActivityFlow
             _activityOperationPlanner = new ActivityOperationPlanner(_activitySceneCompositionRuntime);
             _activityContentExecutionParticipantSource = activityContentExecutionParticipantSource ?? EmptyActivityContentExecutionParticipantSource.Instance;
             _currentActivityState = ActivityRuntimeState.Empty();
-            _activityContentEnteredBinding = _activityEnteredEvents.Subscribe(_activityContentRuntime.HandleActivityEntered);
-            _activityContentExitedBinding = _activityExitedEvents.Subscribe(_activityContentRuntime.HandleActivityExited);
         }
 
         internal ActivityAsset CurrentActivity => _currentActivityState.Activity;
@@ -145,51 +141,18 @@ namespace Immersive.Framework.ActivityFlow
             var previousActivity = _currentActivityState.Activity;
             if (!route.HasStartupActivity)
             {
-                var operationResult = ActivityOperationResult.NotRequested(resolvedSource, resolvedReason);
-                _currentActivityState = ActivityRuntimeState.None(previousActivity, resolvedSource, resolvedReason);
-                var contentResult = ApplyActivityContentThroughLifecycleEvents(previousActivity, null, resolvedSource, resolvedReason);
-                var executionResult = ExecuteActivityContentLifecycle(previousActivity, null, resolvedSource, resolvedReason);
-                if (previousActivity == null)
-                {
-                    var bindingCleanupResult = CleanupPreviousActivityContentAnchorBindings(previousActivity, null, resolvedSource, resolvedReason);
-                    var runtimeScopeResult = RuntimeScopeLifecycleResult.None(RuntimeContentScope.Activity, resolvedSource, resolvedReason);
-                    return Task.FromResult(ActivityFlowStartResult.SkippedNoStartupActivity(
-                        _currentActivityState,
-                        previousActivity,
-                        contentResult,
-                        runtimeScopeResult,
-                        bindingCleanupResult,
-                        ActivityContentAnchorDiscoveryResult.Empty(null, resolvedSource, resolvedReason, "No startup Activity is active; Activity Content Anchor discovery was skipped."),
-                        executionResult,
-                        activityOperationResult: operationResult,
-                        activitySceneLedgerSnapshot: CreateActivitySceneLedgerSnapshot()));
-                }
-
-                var activityScopeTailRequest = new FrameworkScopeTailOperationRequest(
-                    default(RuntimeContentOwner),
-                    CreateActivityOwner(previousActivity),
-                    null,
-                    default(RuntimeScopeContext),
-                    _runtimeContentRuntime.RootCount,
+                ActivityOperationResult operationResult =
+                    ActivityOperationResult.NotRequested(
+                        resolvedSource,
+                        resolvedReason);
+                return ExecuteActivityClearTransitionAsync(
+                    previousActivity,
                     resolvedSource,
                     resolvedReason,
-                    () => _runtimeContentRuntime.RootCount);
-                var activityScopeTailResult = FrameworkScopeTailOperationExecutor.Execute(
-                    activityScopeTailRequest,
-                    cleanupRequest => CleanupPreviousActivityContentAnchorBindings(previousActivity, null, cleanupRequest.Source, cleanupRequest.Reason),
-                    removeRequest => RemovePreviousActivityScopeRoot(previousActivity, null, removeRequest.Source, removeRequest.Reason));
-                return Task.FromResult(ActivityFlowStartResult.SkippedNoStartupActivity(
-                    _currentActivityState,
-                    previousActivity,
-                    contentResult,
-                    activityScopeTailResult.ScopeResult,
-                    activityScopeTailResult.BindingCleanupResult,
-                    ActivityContentAnchorDiscoveryResult.Empty(null, resolvedSource, resolvedReason, "No startup Activity is active; Activity Content Anchor discovery was skipped."),
-                    executionResult,
-                    activityOperationResult: operationResult,
-                    activitySceneLedgerSnapshot: CreateActivitySceneLedgerSnapshot()));
+                    progressReporter,
+                    operationResult,
+                    skippedNoStartupActivity: true);
             }
-
             var startupActivity = route.StartupActivity;
             var operationPreview = PreviewActivityOperation(
                 ActivityOperationKind.RouteStartup,
@@ -288,55 +251,23 @@ namespace Immersive.Framework.ActivityFlow
                 SetRouteContext(route);
             }
 
-            var previousActivity = _currentActivityState.Activity;
+            ActivityAsset previousActivity = _currentActivityState.Activity;
             if (previousActivity == null)
             {
-                return ActivityFlowStartResult.Failed("Activity Flow cannot clear Activity because no Activity is active.");
+                return ActivityFlowStartResult.Failed(
+                    "Activity Flow cannot clear Activity because no Activity is active.");
             }
 
-            _currentActivityState = ActivityRuntimeState.None(previousActivity, resolvedSource, resolvedReason);
-            var contentResult = ApplyActivityContentThroughLifecycleEvents(previousActivity, null, resolvedSource, resolvedReason);
-            var executionResult = ExecuteActivityContentLifecycle(previousActivity, null, resolvedSource, resolvedReason);
-            var sceneCompositionResult = CreateActivitySceneCompositionResult(null, resolvedSource, resolvedReason);
-            int releaseCount = PreviewActivitySceneReleaseForActivityChangeCount(previousActivity);
-            var activityScopeTailRequest = new FrameworkScopeTailOperationRequest(
-                default(RuntimeContentOwner),
-                CreateActivityOwner(previousActivity),
-                null,
-                default(RuntimeScopeContext),
-                _runtimeContentRuntime.RootCount,
+            return await ExecuteActivityClearTransitionAsync(
+                previousActivity,
                 resolvedSource,
                 resolvedReason,
-                () => _runtimeContentRuntime.RootCount);
-            var activityScopeTailResult = FrameworkScopeTailOperationExecutor.Execute(
-                activityScopeTailRequest,
-                cleanupRequest => CleanupPreviousActivityContentAnchorBindings(previousActivity, null, cleanupRequest.Source, cleanupRequest.Reason),
-                removeRequest => RemovePreviousActivityScopeRoot(previousActivity, null, removeRequest.Source, removeRequest.Reason));
-            var sceneReleaseProgressReporter = FrameworkLoadingProgressReporterUtility.CreateWeightedRangeReporter(
                 progressReporter,
-                0,
-                releaseCount,
-                releaseCount,
-                "ActivityTransition",
-                "Activity transition loading progress.");
-            var sceneReleaseResult = await ReleasePreviousActivityScenesAsync(previousActivity, resolvedSource, resolvedReason, sceneReleaseProgressReporter);
-            await FrameworkLoadingProgressReporterUtility.ReportCompletedIfAnyAsync(
-                progressReporter,
-                "ActivityTransition",
-                "Activity transition loading progress completed.");
-            return ActivityFlowStartResult.ClearedByRequest(
-                _currentActivityState,
-                previousActivity,
-                contentResult,
-                activityScopeTailResult.ScopeResult,
-                activityScopeTailResult.BindingCleanupResult,
-                ActivityContentAnchorDiscoveryResult.Empty(null, resolvedSource, resolvedReason, "Activity was cleared; Activity Content Anchor discovery was skipped."),
-                executionResult,
-                sceneCompositionResult,
-                sceneReleaseResult,
-                activitySceneLedgerSnapshot: CreateActivitySceneLedgerSnapshot());
+                ActivityOperationResult.NotRequested(
+                    resolvedSource,
+                    resolvedReason),
+                skippedNoStartupActivity: false);
         }
-
         private async Task<ActivityFlowStartResult> StartActivityCoreAsync(
             ActivityAsset nextActivity,
             ActivityAsset previousActivity,
@@ -346,137 +277,15 @@ namespace Immersive.Framework.ActivityFlow
             IFrameworkLoadingProgressReporter progressReporter = null,
             Func<ActivityActivationGateResult> beforeActivation = null)
         {
-            string resolvedSource = NormalizeSource(source);
-            string resolvedReason = NormalizeReason(reason);
-
-            if (nextActivity == null)
-            {
-                return ActivityFlowStartResult.Failed("Activity is missing.");
-            }
-
-            if (ReferenceEquals(previousActivity, nextActivity))
-            {
-                if (!_currentActivityState.IsActive)
-                {
-                    _currentActivityState = ActivityRuntimeState.ActiveWith(nextActivity, previousActivity, resolvedSource, resolvedReason);
-                }
-
-                return ActivityFlowStartResult.KeptCurrentActivity(_currentActivityState);
-            }
-
-            var runtimeEnterResult = CreateActivityScopeRoot(nextActivity, resolvedSource, resolvedReason);
-            var activityScopeTailRequest = new FrameworkScopeTailOperationRequest(
-                runtimeEnterResult.Owner,
-                previousActivity != null ? CreateActivityOwner(previousActivity) : default(RuntimeContentOwner),
-                runtimeEnterResult.EnterRootResult,
-                runtimeEnterResult.Context,
-                _runtimeContentRuntime.RootCount,
-                resolvedSource,
-                resolvedReason,
-                () => _runtimeContentRuntime.RootCount);
-            var resolvedProgressReporter = progressReporter ?? NoOpFrameworkLoadingProgressReporter.Instance;
-            var operationForProgress = ResolveActivityOperationForProgress(
+            return await ExecuteActivityTransitionCoreAsync(
+                nextActivity,
+                previousActivity,
+                source,
+                reason,
                 activityOperationResult,
-                previousActivity,
-                nextActivity,
-                resolvedSource,
-                resolvedReason);
-            int loadProgressCount = CountActivityOperationSceneSideEffects(operationForProgress, ActivityOperationSceneAction.Load);
-            int releaseProgressCount = CountActivityOperationSceneSideEffects(operationForProgress, ActivityOperationSceneAction.Release);
-            int totalProgressCount = loadProgressCount + releaseProgressCount;
-            var sceneCompositionProgressReporter = FrameworkLoadingProgressReporterUtility.CreateWeightedRangeReporter(
-                resolvedProgressReporter,
-                0,
-                loadProgressCount,
-                totalProgressCount,
-                "ActivityTransition",
-                "Activity transition loading progress.");
-            var sceneCompositionResult = await ExecuteActivitySceneCompositionAsync(nextActivity, resolvedSource, resolvedReason, sceneCompositionProgressReporter);
-            if (sceneCompositionResult.HasBlockingIssues)
-            {
-                string targetSceneRollbackIssue =
-                    await RollbackPreparedTargetScenesAsync(
-                        nextActivity,
-                        resolvedSource,
-                        "activity-scene-composition-failure");
-                if (beforeActivation == null)
-                {
-                    RemovePreviousActivityScopeRoot(nextActivity, previousActivity, resolvedSource, resolvedReason);
-                }
-                _currentActivityState = previousActivity != null
-                    ? ActivityRuntimeState.ActiveWith(previousActivity, nextActivity, resolvedSource, resolvedReason)
-                    : ActivityRuntimeState.None(nextActivity, resolvedSource, resolvedReason);
-                return ActivityFlowStartResult.Failed(
-                    sceneCompositionResult.ToDiagnosticString() + targetSceneRollbackIssue,
-                    activityOperationResult);
-            }
-
-            ActivityActivationGateResult activationGate = beforeActivation != null
-                ? beforeActivation()
-                : ActivityActivationGateResult.Allowed(
-                    resolvedSource,
-                    resolvedReason,
-                    "Activity activation gate approved target publication.");
-            if (!activationGate.CanActivate)
-            {
-                string targetSceneRollbackIssue =
-                    await RollbackPreparedTargetScenesAsync(
-                        nextActivity,
-                        resolvedSource,
-                        "activity-activation-gate-blocked");
-                _currentActivityState = previousActivity != null
-                    ? ActivityRuntimeState.ActiveWith(previousActivity, nextActivity, resolvedSource, resolvedReason)
-                    : ActivityRuntimeState.None(nextActivity, resolvedSource, resolvedReason);
-                return ActivityFlowStartResult.Failed(
-                    "Activity activation gate blocked target Activity publication. " +
-                    activationGate.ToDiagnosticString() + targetSceneRollbackIssue,
-                    activityOperationResult);
-            }
-
-            _currentActivityState = ActivityRuntimeState.ActiveWith(
-                nextActivity,
-                previousActivity,
-                resolvedSource,
-                resolvedReason);
-            var contentResult = ApplyActivityContentThroughLifecycleEvents(previousActivity, nextActivity, resolvedSource, resolvedReason);
-            var activityContentAnchorDiscoveryResult = _contentAnchorDiscoveryRuntime.DiscoverActivityAnchors(
-                nextActivity,
-                _currentRoute,
-                _activitySceneCompositionRuntime.CreateActivityContentDiscoveryScope(nextActivity),
-                resolvedSource,
-                resolvedReason);
-            var executionResult = ExecuteActivityContentLifecycle(previousActivity, nextActivity, resolvedSource, resolvedReason);
-            var activityScopeTailResult = FrameworkScopeTailOperationExecutor.Execute(
-                activityScopeTailRequest,
-                cleanupRequest => CleanupPreviousActivityContentAnchorBindings(previousActivity, nextActivity, cleanupRequest.Source, cleanupRequest.Reason),
-                removeRequest => RemovePreviousActivityScopeRoot(previousActivity, nextActivity, removeRequest.Source, removeRequest.Reason));
-            var sceneReleaseProgressReporter = FrameworkLoadingProgressReporterUtility.CreateWeightedRangeReporter(
-                resolvedProgressReporter,
-                loadProgressCount,
-                releaseProgressCount,
-                totalProgressCount,
-                "ActivityTransition",
-                "Activity transition loading progress.");
-            var sceneReleaseResult = await ReleasePreviousActivityScenesAsync(previousActivity, resolvedSource, resolvedReason, sceneReleaseProgressReporter);
-            await FrameworkLoadingProgressReporterUtility.ReportCompletedIfAnyAsync(
-                resolvedProgressReporter,
-                "ActivityTransition",
-                "Activity transition loading progress completed.");
-
-            return ActivityFlowStartResult.StartedWith(
-                _currentActivityState,
-                previousActivity,
-                contentResult,
-                activityScopeTailResult.ScopeResult,
-                activityScopeTailResult.BindingCleanupResult,
-                activityContentAnchorDiscoveryResult,
-                executionResult,
-                sceneCompositionResult,
-                sceneReleaseResult,
-                activityOperationResult,
-                CreateActivitySceneLedgerSnapshot());
+                progressReporter,
+                beforeActivation);
         }
-
 
         private ActivityOperationResult ResolveActivityOperationForProgress(
             ActivityOperationResult activityOperationResult,
@@ -740,27 +549,42 @@ namespace Immersive.Framework.ActivityFlow
             return _runtimeContentRuntime.TryCreateScopeContext(CreateActivityOwner(activity), source, reason, out context);
         }
 
-        private ActivityContentApplyResult ApplyActivityContentThroughLifecycleEvents(ActivityAsset previousActivity, ActivityAsset nextActivity, string source, string reason)
+        private ActivityContentApplyResult ApplyActivityContentThroughLifecycleEvents(
+            ActivityAsset previousActivity,
+            ActivityAsset nextActivity,
+            string source,
+            string reason)
         {
             string resolvedSource = NormalizeSource(source);
             string resolvedReason = NormalizeReason(reason);
-
-            var discoveryScope = _activitySceneCompositionRuntime.CreateActivityContentDiscoveryScope(previousActivity, nextActivity);
+            var discoveryScope =
+                _activitySceneCompositionRuntime.CreateActivityContentDiscoveryScope(
+                    previousActivity,
+                    nextActivity);
             _activityContentRuntime.SetRouteScope(_currentRoute);
             _activityContentRuntime.SetDiscoveryScope(discoveryScope);
             _activityContentRuntime.ClearLastApplyResult();
-            PublishActivityTransition(previousActivity, nextActivity, resolvedSource, resolvedReason);
 
-            if (_activityContentRuntime.HasLastApplyResult)
-            {
-                return _activityContentRuntime.LastApplyResult;
-            }
+            ActivityContentRuntime.ActivityContentTransitionContext transition =
+                _activityContentRuntime.PrepareActivityContentTransition(
+                    previousActivity,
+                    nextActivity,
+                    resolvedSource,
+                    resolvedReason);
+            _activityContentRuntime.ExitPreviousActivityContent(transition);
+            _activityContentRuntime.EnterTargetActivityContent(transition);
+            ActivityContentApplyResult result =
+                _activityContentRuntime.CompleteActivityContentTransition(
+                    transition);
 
-            // No lifecycle event is emitted when both previous and next Activity are absent.
-            // The content owner still needs to enforce the scene-authored no-active-Activity state.
-            return _activityContentRuntime.ApplyActiveActivity(nextActivity);
+            // Events are completed facts. They no longer drive content mutation.
+            PublishActivityTransition(
+                previousActivity,
+                nextActivity,
+                resolvedSource,
+                resolvedReason);
+            return result;
         }
-
         private void PublishActivityTransition(ActivityAsset previousActivity, ActivityAsset nextActivity, string source, string reason)
         {
             if (previousActivity != null && !ReferenceEquals(previousActivity, nextActivity))
