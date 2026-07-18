@@ -41,7 +41,9 @@ The adapter does not:
 - use `Time.timeScale`;
 - make Pause use `Player/Pause + UI/Pause` again.
 
-Pause input remains `Global/Pause` through `PauseInputActionTrigger`.
+Current Pause input uses the canonical Pause/InputMode bridge described by
+`ADR-INPUT-0001`, `ADR-INPUT-0002` and `ADR-INPUT-0003`; this historical ADR
+does not define a Pause authoring flow.
 
 ## First Game setup
 

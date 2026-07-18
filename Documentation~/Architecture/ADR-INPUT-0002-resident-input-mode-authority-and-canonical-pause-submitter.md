@@ -10,10 +10,11 @@ ADR-INPUT-0001 established one physical writer for `PlayerInput` and
 `InputActionMap` mutations. That removed independent physical writers, but it did
 not establish one logical owner for the current input posture.
 
-Before this decision, the package still exposed two active Pause input paths:
+Before this decision, the package still exposed a direct Pause path alongside
+the canonical bridge:
 
 ```text
-PauseInputActionTrigger
+former direct Pause input
   -> FrameworkRuntimeHost.RequestPause
   -> optional action-map request
 
@@ -97,19 +98,17 @@ context explicitly. A live context never silently changes target.
 `PauseInputActionRuntimeBridgeTrigger` is the only active package-owned
 InputAction submitter for the Pause/InputMode product flow.
 
-`PauseInputActionTrigger` becomes a hidden inert tombstone:
+H1 physically removed the direct Pause input implementation:
 
 ```text
-no InputAction subscription
-no FrameworkRuntimeHost Pause request
-no action-map request
-no physical writer access
+no serialized compatibility component
+no Add Component menu
+no direct Pause submitter
+no action-map request path
 ```
 
-Its serialized fields and public diagnostic properties remain temporarily so
-existing scenes do not become Missing Script during this cut. It is marked
-`Removed` and is not available in Add Component. A later hygiene cut may delete
-the tombstone after QA and consumers contain no serialized instances.
+QA verifies the removed script GUIDs are absent from its serialized fixtures.
+Consumers must remove serialized instances before importing this package cut.
 
 ## Transaction rules
 
@@ -161,7 +160,7 @@ The domains share one physical write port but preserve separate lifecycle tokens
 - the existing bridge carries composition and resident-state responsibilities;
 - failure after Pause changed requires a compensating Pause request because the
   current Pause runtime does not expose a transaction token;
-- the removed trigger tombstone remains until serialized consumers are clean.
+- serialized consumers must be cleaned before importing H1.
 
 ## Out of scope
 
@@ -172,7 +171,7 @@ changing PlayerInputManager authority
 new command-reading API
 frontend menu authoring
 multi-Player global InputMode manager
-removing the legacy trigger tombstone immediately
+changing the canonical Pause/InputMode bridge contract
 ```
 
 ## Acceptance
@@ -187,7 +186,7 @@ Pause bridge rejects state drift without fallback
 Pause bridge commits only after successful apply
 Pause bridge records explicit rollback evidence on failure
 PauseInputActionRuntimeBridgeTrigger delegates to the bridge
-PauseInputActionTrigger is hidden and inert
+no direct Pause input component remains in the package
 IC1 physical writer smoke remains green
 IC2 runtime authority smoke passes
 Global remains enabled across Gameplay and PauseOverlay

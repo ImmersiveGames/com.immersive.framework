@@ -119,8 +119,7 @@ namespace Immersive.Framework.InputMode
                     previousActionMap,
                     source,
                     reason,
-                    "Pause/InputMode apply requires an explicit PlayerInput " +
-                    "or PlayerActor PlayerInput evidence.");
+                    "Pause/InputMode apply requires an explicit PlayerInput reference.");
             }
 
             if (request.PlayerInput.actions == null)

@@ -12,7 +12,7 @@ The package had multiple independent physical writers for the same `PlayerInput`
 InputModeUnityPlayerInputAdapter
 PlayerGameplayInputBindingRuntimeContext
 UnityPlayerInputGateAdapter
-PauseInputActionTrigger optional map switching
+former direct Pause map-switching path (physically removed in H1)
 ```
 
 Those paths used different Unity APIs (`SwitchCurrentActionMap`, direct

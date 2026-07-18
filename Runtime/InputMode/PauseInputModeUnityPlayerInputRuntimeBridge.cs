@@ -43,12 +43,6 @@ namespace Immersive.Framework.InputMode
         [SerializeField] private PlayerActorDeclaration[] playerActors;
         [SerializeField]
         private LocalPlayerProvisioningAuthoring localPlayerProvisioningAuthoring;
-        [Tooltip(
-            "When enabled, missing authored arrays may be filled from loaded-scene declarations " +
-            "(validators fail closed on duplicates). PlayerInput is never resolved by scene-wide " +
-            "Find; use the explicit field, PlayerActors array, or a co-located PlayerInput when " +
-            "this flag is on.")]
-        [SerializeField] private bool autoDiscoverMissingReferences;
         [SerializeField] private bool requireLocalPlayerProvisioning = true;
 
         [Header("Action Maps")]
@@ -62,8 +56,6 @@ namespace Immersive.Framework.InputMode
         [SerializeField] private bool logResults = true;
 
         public PlayerInput PlayerInput => playerInput;
-        public bool AutoDiscoverMissingReferences =>
-            autoDiscoverMissingReferences;
         public bool RequireLocalPlayerProvisioning =>
             requireLocalPlayerProvisioning;
         public string GlobalActionMapName =>
@@ -148,7 +140,6 @@ namespace Immersive.Framework.InputMode
             LocalPlayerProvisioningAuthoring provisioningAuthoring,
             string playerMap,
             string uiMap,
-            bool autoDiscover,
             bool requireProvisioning)
         {
             playerInput = input;
@@ -159,7 +150,6 @@ namespace Immersive.Framework.InputMode
             gameplayActionMapName =
                 playerMap.NormalizeTextOrFallback("Player");
             uiActionMapName = uiMap.NormalizeTextOrFallback("UI");
-            autoDiscoverMissingReferences = autoDiscover;
             requireLocalPlayerProvisioning = requireProvisioning;
 
             _inputModeRuntimeContext = null;
@@ -215,6 +205,27 @@ namespace Immersive.Framework.InputMode
 
             InputModeKind expectedCurrentMode =
                 MapPauseStateToInputMode(pauseSnapshot.State);
+            PauseState targetPauseState =
+                PauseRequest.ResolveTargetState(kind, pauseSnapshot.State);
+            InputModeKind targetInputMode =
+                MapPauseStateToInputMode(targetPauseState);
+            if (!TryPreflightExplicitReferences(
+                    references,
+                    expectedCurrentMode,
+                    targetInputMode,
+                    normalizedSource,
+                    normalizedReason,
+                    out string referenceIssue))
+            {
+                return CreateAuthorityFailure(
+                    kind,
+                    pauseSnapshot.State,
+                    targetPauseState,
+                    normalizedSource,
+                    normalizedReason,
+                    referenceIssue);
+            }
+
             if (!TryEnsureInputModeRuntime(
                     references.PlayerInput,
                     expectedCurrentMode,
@@ -263,10 +274,6 @@ namespace Immersive.Framework.InputMode
                 normalizedReason,
                 runtimeSnapshot.CurrentState);
 
-            PauseState targetPauseState =
-                PauseRequest.ResolveTargetState(kind, pauseSnapshot.State);
-            InputModeKind targetInputMode =
-                MapPauseStateToInputMode(targetPauseState);
             var inputModeRequest = new InputModeRequest(
                 targetInputMode,
                 normalizedSource,
@@ -441,6 +448,124 @@ namespace Immersive.Framework.InputMode
             return true;
         }
 
+        private bool TryPreflightExplicitReferences(
+            ResolvedReferences references,
+            InputModeKind currentMode,
+            InputModeKind targetMode,
+            string source,
+            string requestReason,
+            out string issue)
+        {
+            issue = string.Empty;
+            if (references.PlayerInput == null)
+            {
+                issue =
+                    "Pause/InputMode bridge requires an explicit PlayerInput reference.";
+                return false;
+            }
+
+            if (references.PlayerInput.actions == null)
+            {
+                issue =
+                    "Pause/InputMode bridge requires PlayerInput.actions before " +
+                    "changing Pause or InputMode.";
+                return false;
+            }
+
+            if (requireLocalPlayerProvisioning &&
+                (references.LocalPlayerProvisioningValidation == null ||
+                 references.LocalPlayerProvisioningValidation.Failed))
+            {
+                issue =
+                    "Pause/InputMode bridge requires explicit valid local player " +
+                    "provisioning evidence. " +
+                    (references.LocalPlayerProvisioningValidation == null
+                        ? "No provisioning validation result was produced."
+                        : references.LocalPlayerProvisioningValidation
+                            .ToDiagnosticString());
+                return false;
+            }
+
+            foreach (UnityInputActionMapName persistentMap in
+                     CreatePersistentActionMapNames())
+            {
+                if (persistentMap.IsValid &&
+                    references.ActionMapEvidence != null &&
+                    references.ActionMapEvidence.Contains(persistentMap))
+                {
+                    continue;
+                }
+
+                issue =
+                    "Pause/InputMode bridge requires the explicit persistent " +
+                    $"Unity action map '{persistentMap}'. No fallback was applied.";
+                return false;
+            }
+
+            var currentState = new InputModeState(
+                InputModeDefinitions.FromKind(currentMode, source, requestReason),
+                0,
+                source,
+                requestReason);
+            var inputModeRequest = new InputModeRequest(
+                targetMode,
+                source,
+                requestReason);
+            InputModeRequestResult requestPreview =
+                InputModeRequestEvaluator.Preview(
+                    currentState,
+                    inputModeRequest,
+                    source);
+            if (requestPreview.Ignored)
+            {
+                return true;
+            }
+
+            if (!requestPreview.Succeeded)
+            {
+                issue =
+                    "Pause/InputMode bridge could not preflight the explicit " +
+                    "InputMode request. " +
+                    requestPreview.ToDiagnosticString();
+                return false;
+            }
+
+            InputModeUnityApplicationPreviewResult applicationPreview =
+                InputModeUnityApplicationPreviewEvaluator.Preview(
+                    requestPreview,
+                    references.TargetSet,
+                    references.PlayerActorSet,
+                    references.LocalPlayerProvisioningValidation,
+                    source,
+                    requestReason);
+            if (!applicationPreview.Succeeded)
+            {
+                issue =
+                    "Pause/InputMode bridge requires explicit valid Unity Input " +
+                    "target and PlayerActor references. " +
+                    applicationPreview.ToDiagnosticString();
+                return false;
+            }
+
+            InputModeUnityActionMapPreviewResult actionMapPreview =
+                InputModeUnityActionMapPreviewEvaluator.Preview(
+                    applicationPreview,
+                    references.ActionMapEvidence,
+                    references.ActionMapBindings,
+                    source,
+                    requestReason);
+            if (!actionMapPreview.Succeeded)
+            {
+                issue =
+                    "Pause/InputMode bridge requires explicit action-map " +
+                    "bindings and action-map evidence. " +
+                    actionMapPreview.ToDiagnosticString();
+                return false;
+            }
+
+            return true;
+        }
+
         private bool TryRollbackPauseIfNeeded(
             FrameworkRuntimeHost runtimeHost,
             PauseInputModeApplyResult applyResult,
@@ -580,44 +705,20 @@ namespace Immersive.Framework.InputMode
             string source,
             string requestReason)
         {
-            if (unityInputTargets != null && unityInputTargets.Length > 0)
-            {
-                return UnityInputTargetValidator.ValidateDeclarations(
-                    unityInputTargets,
-                    source,
-                    requestReason);
-            }
-
-            return autoDiscoverMissingReferences
-                ? UnityInputTargetValidator.ValidateLoadedSceneDeclarations(
-                    source,
-                    requestReason)
-                : UnityInputTargetValidator.ValidateDeclarations(
-                    Array.Empty<UnityInputTargetDeclaration>(),
-                    source,
-                    requestReason);
+            return UnityInputTargetValidator.ValidateDeclarations(
+                unityInputTargets,
+                source,
+                requestReason);
         }
 
         private PlayerActorSet ResolvePlayerActorSet(
             string source,
             string requestReason)
         {
-            if (playerActors != null && playerActors.Length > 0)
-            {
-                return PlayerActorValidator.ValidateDeclarations(
-                    playerActors,
-                    source,
-                    requestReason);
-            }
-
-            return autoDiscoverMissingReferences
-                ? PlayerActorValidator.ValidateLoadedSceneDeclarations(
-                    source,
-                    requestReason)
-                : PlayerActorValidator.ValidateDeclarations(
-                    Array.Empty<PlayerActorDeclaration>(),
-                    source,
-                    requestReason);
+            return PlayerActorValidator.ValidateDeclarations(
+                playerActors,
+                source,
+                requestReason);
         }
 
         private LocalPlayerProvisioningValidationResult
@@ -641,34 +742,7 @@ namespace Immersive.Framework.InputMode
                 requestReason);
         }
 
-        private PlayerInput ResolvePlayerInput()
-        {
-            if (playerInput != null)
-            {
-                return playerInput;
-            }
-
-            if (playerActors != null)
-            {
-                for (int index = 0; index < playerActors.Length; index++)
-                {
-                    if (playerActors[index] != null &&
-                        playerActors[index].PlayerInput != null)
-                    {
-                        return playerActors[index].PlayerInput;
-                    }
-                }
-            }
-
-            if (!autoDiscoverMissingReferences)
-            {
-                return null;
-            }
-
-            // Co-located evidence only. Scene-wide FindObjectsByType is
-            // intentionally not used with multiple Players/additive scenes.
-            return GetComponent<PlayerInput>();
-        }
+        private PlayerInput ResolvePlayerInput() => playerInput;
 
         private InputModeUnityActionMapBinding[] CreateActionMapBindings(
             string source,
