@@ -59,8 +59,9 @@ no Session, Slot, Actor, Activity, Route, Pause or InputMode policy.
    reverse release.
 5. Gate blocking is an overlay. When another explicit posture selects a non-gameplay map
    during a block, Gate release must not resurrect the older gameplay map.
-6. Independent `InputAction` subscription enable/disable for the global Pause action is not
-   PlayerInput posture and remains owned by the canonical trigger.
+6. Independent `InputAction` subscription ownership remains with the canonical trigger.
+7. Baseline InputMode posture is applied as an exact enabled-map set through the writer.
+8. `Global` remains enabled while `Player` and `UI` are selected by policy.
 
 ## Consequences
 
@@ -88,6 +89,8 @@ resident InputMode state owner and request arbitration
 one canonical Pause InputAction submitter
 explicit logical commit / rollback around Pause/InputMode apply
 ```
+
+ADR-INPUT-0003 defines the layered `Global + Player/UI` posture and exact map-set rollback.
 
 Still deferred:
 

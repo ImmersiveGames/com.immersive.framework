@@ -20,7 +20,8 @@ namespace Immersive.Framework.InputMode
             InputModeUnityApplicationPlanResult plan,
             PlayerInput playerInput,
             string source,
-            string reason)
+            string reason,
+            UnityInputActionMapName[] persistentActionMapNames = null)
         {
             string normalizedSource = source.NormalizeTextOrFallback(
                 nameof(InputModeUnityPlayerInputAdapter));
@@ -93,6 +94,7 @@ namespace Immersive.Framework.InputMode
                         playerInput,
                         normalizedSource,
                         reason,
+                        persistentActionMapNames,
                         issues),
                 InputModeUnityApplicationPlanOperation.LockInput =>
                     ApplyInputLock(
@@ -100,6 +102,7 @@ namespace Immersive.Framework.InputMode
                         playerInput,
                         normalizedSource,
                         reason,
+                        persistentActionMapNames,
                         issues),
                 _ => Unsupported(
                     plan,
@@ -116,6 +119,7 @@ namespace Immersive.Framework.InputMode
                 PlayerInput playerInput,
                 string source,
                 string reason,
+                UnityInputActionMapName[] persistentActionMapNames,
                 List<InputModeUnityPlayerInputAdapterIssue> issues)
         {
             if (!plan.ActionMapName.IsValid)
@@ -220,8 +224,12 @@ namespace Immersive.Framework.InputMode
                     reason);
             }
 
-            if (!writeAuthority.TrySelectActionMap(
+            string[] desiredActionMapNames = BuildDesiredActionMapNames(
+                plan.ActionMapName,
+                persistentActionMapNames);
+            if (!writeAuthority.TryApplyActionMapSet(
                     plan.ActionMapName.ToString(),
+                    desiredActionMapNames,
                     source,
                     reason,
                     out _,
@@ -270,6 +278,7 @@ namespace Immersive.Framework.InputMode
             PlayerInput playerInput,
             string source,
             string reason,
+            UnityInputActionMapName[] persistentActionMapNames,
             List<InputModeUnityPlayerInputAdapterIssue> issues)
         {
             UnityPlayerInputGateAdapter writeAuthority =
@@ -293,6 +302,57 @@ namespace Immersive.Framework.InputMode
                         CurrentActionMapName(playerInput)),
                     false,
                     false,
+                    false,
+                    issues,
+                    source,
+                    reason);
+            }
+
+            string[] persistentNames = BuildDesiredActionMapNames(
+                UnityInputActionMapName.From(string.Empty),
+                persistentActionMapNames);
+            if (persistentNames.Length > 0)
+            {
+                string primary = persistentNames[0];
+                if (!writeAuthority.TryApplyActionMapSet(
+                        primary,
+                        persistentNames,
+                        source,
+                        reason,
+                        out _,
+                        out string setIssue))
+                {
+                    issues.Add(
+                        InputModeUnityPlayerInputAdapterIssue.BlockingIssue(
+                            InputModeUnityPlayerInputAdapterIssueKind.UnityInputException,
+                            plan.RequestedMode,
+                            UnityInputActionMapName.From(primary),
+                            source,
+                            setIssue));
+                    return CreateResult(
+                        InputModeUnityPlayerInputAdapterStatus.FailedUnityInputException,
+                        plan.RequestedMode,
+                        plan.Operation,
+                        UnityInputActionMapName.From(primary),
+                        UnityInputActionMapName.From(
+                            CurrentActionMapName(playerInput)),
+                        false,
+                        false,
+                        false,
+                        issues,
+                        source,
+                        reason);
+                }
+
+                return CreateResult(
+                    InputModeUnityPlayerInputAdapterStatus.Succeeded,
+                    plan.RequestedMode,
+                    plan.Operation,
+                    UnityInputActionMapName.From(primary),
+                    UnityInputActionMapName.From(
+                        CurrentActionMapName(playerInput)),
+                    true,
+                    true,
                     false,
                     issues,
                     source,
@@ -371,6 +431,49 @@ namespace Immersive.Framework.InputMode
                 issues,
                 source,
                 reason);
+        }
+
+        private static string[] BuildDesiredActionMapNames(
+            UnityInputActionMapName primaryActionMapName,
+            UnityInputActionMapName[] persistentActionMapNames)
+        {
+            var names = new List<string>();
+            AddUnique(names, primaryActionMapName);
+            if (persistentActionMapNames != null)
+            {
+                for (int index = 0;
+                     index < persistentActionMapNames.Length;
+                     index++)
+                {
+                    AddUnique(names, persistentActionMapNames[index]);
+                }
+            }
+
+            return names.ToArray();
+        }
+
+        private static void AddUnique(
+            List<string> names,
+            UnityInputActionMapName actionMapName)
+        {
+            if (!actionMapName.IsValid)
+            {
+                return;
+            }
+
+            string name = actionMapName.ToString().NormalizeText();
+            for (int index = 0; index < names.Count; index++)
+            {
+                if (string.Equals(
+                        names[index],
+                        name,
+                        StringComparison.Ordinal))
+                {
+                    return;
+                }
+            }
+
+            names.Add(name);
         }
 
         private static InputModeUnityPlayerInputAdapterResult CreateResult(

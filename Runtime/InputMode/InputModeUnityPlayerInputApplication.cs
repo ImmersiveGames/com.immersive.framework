@@ -8,26 +8,32 @@ using UnityEngine.InputSystem;
 namespace Immersive.Framework.InputMode
 {
     /// <summary>
-    /// API status: Experimental. Explicit PlayerInput application wrapper for F32E.
-    /// It activates PlayerInput before selecting gameplay/UI action maps and delegates lock behavior to the F32D adapter.
-    /// It is not an input manager and never owns PlayerInputManager, join flow, actor spawn or movement.
+    /// Applies one validated InputMode plan as an exact action-map posture.
+    /// PlayerInput activation is not changed implicitly; the canonical writer reconciles
+    /// the requested primary map plus persistent maps such as Global.
     /// </summary>
-    [FrameworkApiStatus(FrameworkApiStatus.Experimental, "F32E explicit Unity PlayerInput application wrapper.")]
+    [FrameworkApiStatus(
+        FrameworkApiStatus.Experimental,
+        "IC4 exact layered Unity PlayerInput action-map posture application.")]
     public static class InputModeUnityPlayerInputApplication
     {
         public static InputModeUnityPlayerInputApplicationResult Apply(
             InputModeUnityApplicationPlanResult plan,
             PlayerInput playerInput,
             string source,
-            string reason)
+            string reason,
+            UnityInputActionMapName[] persistentActionMapNames = null)
         {
-            string normalizedSource = source.NormalizeTextOrFallback(nameof(InputModeUnityPlayerInputApplication));
+            string normalizedSource = source.NormalizeTextOrFallback(
+                nameof(InputModeUnityPlayerInputApplication));
             string normalizedReason = reason.NormalizeText();
             var issues = new List<InputModeUnityPlayerInputApplicationIssue>();
 
             if (plan == null || !plan.Succeeded)
             {
-                InputModeKind requestedMode = plan == null ? InputModeKind.Unknown : plan.RequestedMode;
+                InputModeKind requestedMode = plan == null
+                    ? InputModeKind.Unknown
+                    : plan.RequestedMode;
                 InputModeUnityApplicationPlanOperation operation = plan == null
                     ? InputModeUnityApplicationPlanOperation.NoOperation
                     : plan.Operation;
@@ -35,12 +41,13 @@ namespace Immersive.Framework.InputMode
                     ? UnityInputActionMapName.From(string.Empty)
                     : plan.ActionMapName;
 
-                issues.Add(InputModeUnityPlayerInputApplicationIssue.BlockingIssue(
-                    InputModeUnityPlayerInputApplicationIssueKind.InvalidPlan,
-                    requestedMode,
-                    actionMapName,
-                    normalizedSource,
-                    "PlayerInput application requires a successful InputMode Unity application plan."));
+                issues.Add(
+                    InputModeUnityPlayerInputApplicationIssue.BlockingIssue(
+                        InputModeUnityPlayerInputApplicationIssueKind.InvalidPlan,
+                        requestedMode,
+                        actionMapName,
+                        normalizedSource,
+                        "PlayerInput application requires a successful InputMode Unity application plan."));
 
                 return CreateResult(
                     InputModeUnityPlayerInputApplicationStatus.FailedInvalidPlan,
@@ -60,12 +67,13 @@ namespace Immersive.Framework.InputMode
 
             if (playerInput == null)
             {
-                issues.Add(InputModeUnityPlayerInputApplicationIssue.BlockingIssue(
-                    InputModeUnityPlayerInputApplicationIssueKind.MissingPlayerInput,
-                    plan.RequestedMode,
-                    plan.ActionMapName,
-                    normalizedSource,
-                    "PlayerInput application requires an explicit Unity PlayerInput instance."));
+                issues.Add(
+                    InputModeUnityPlayerInputApplicationIssue.BlockingIssue(
+                        InputModeUnityPlayerInputApplicationIssueKind.MissingPlayerInput,
+                        plan.RequestedMode,
+                        plan.ActionMapName,
+                        normalizedSource,
+                        "PlayerInput application requires an explicit Unity PlayerInput instance."));
 
                 return CreateResult(
                     InputModeUnityPlayerInputApplicationStatus.FailedMissingPlayerInput,
@@ -83,152 +91,45 @@ namespace Immersive.Framework.InputMode
                     normalizedReason);
             }
 
-            if (plan.Operation == InputModeUnityApplicationPlanOperation.SelectActionMap)
-            {
-                return ApplyActivateAndSelectActionMap(plan, playerInput, normalizedSource, normalizedReason, issues);
-            }
-
-            if (plan.Operation == InputModeUnityApplicationPlanOperation.LockInput)
-            {
-                InputModeUnityPlayerInputAdapterResult adapterResult = InputModeUnityPlayerInputAdapter.Apply(
-                    plan,
-                    playerInput,
-                    normalizedSource,
-                    normalizedReason);
-
-                if (!adapterResult.Succeeded)
-                {
-                    issues.Add(InputModeUnityPlayerInputApplicationIssue.BlockingIssue(
-                        InputModeUnityPlayerInputApplicationIssueKind.PlayerInputAdapterFailed,
-                        plan.RequestedMode,
-                        plan.ActionMapName,
-                        normalizedSource,
-                        "PlayerInput lock application was rejected by the explicit PlayerInput adapter."));
-
-                    return CreateResult(
-                        InputModeUnityPlayerInputApplicationStatus.FailedPlayerInputAdapter,
-                        plan.RequestedMode,
-                        plan.Operation,
-                        plan.ActionMapName,
-                        adapterResult.AppliedActionMapName,
-                        false,
-                        false,
-                        false,
-                        false,
-                        issues,
-                        adapterResult,
-                        normalizedSource,
-                        normalizedReason);
-                }
-
-                return CreateResult(
-                    InputModeUnityPlayerInputApplicationStatus.Succeeded,
-                    plan.RequestedMode,
-                    plan.Operation,
-                    plan.ActionMapName,
-                    adapterResult.AppliedActionMapName,
-                    adapterResult.Applied,
-                    false,
-                    adapterResult.SelectedActionMap,
-                    adapterResult.DeactivatedPlayerInput,
-                    issues,
-                    adapterResult,
-                    normalizedSource,
-                    normalizedReason);
-            }
-
-            issues.Add(InputModeUnityPlayerInputApplicationIssue.BlockingIssue(
-                InputModeUnityPlayerInputApplicationIssueKind.UnsupportedOperation,
-                plan.RequestedMode,
-                plan.ActionMapName,
-                normalizedSource,
-                "PlayerInput application does not support the requested plan operation."));
-
-            return CreateResult(
-                InputModeUnityPlayerInputApplicationStatus.FailedUnsupportedOperation,
-                plan.RequestedMode,
-                plan.Operation,
-                plan.ActionMapName,
-                UnityInputActionMapName.From(CurrentActionMapName(playerInput)),
-                false,
-                false,
-                false,
-                false,
-                issues,
-                null,
-                normalizedSource,
-                normalizedReason);
-        }
-
-        private static InputModeUnityPlayerInputApplicationResult ApplyActivateAndSelectActionMap(
-            InputModeUnityApplicationPlanResult plan,
-            PlayerInput playerInput,
-            string source,
-            string reason,
-            List<InputModeUnityPlayerInputApplicationIssue> issues)
-        {
-            if (!plan.ActionMapName.IsValid)
-            {
-                issues.Add(InputModeUnityPlayerInputApplicationIssue.BlockingIssue(
-                    InputModeUnityPlayerInputApplicationIssueKind.MissingActionMap,
-                    plan.RequestedMode,
-                    plan.ActionMapName,
-                    source,
-                    "PlayerInput application requires an explicit action map name before activation."));
-
-                return CreateResult(
-                    InputModeUnityPlayerInputApplicationStatus.FailedMissingActionMap,
-                    plan.RequestedMode,
-                    plan.Operation,
-                    plan.ActionMapName,
-                    UnityInputActionMapName.From(CurrentActionMapName(playerInput)),
-                    false,
-                    false,
-                    false,
-                    false,
-                    issues,
-                    null,
-                    source,
-                    reason);
-            }
-
             if (playerInput.actions == null)
             {
-                issues.Add(InputModeUnityPlayerInputApplicationIssue.BlockingIssue(
-                    InputModeUnityPlayerInputApplicationIssueKind.MissingActionAsset,
-                    plan.RequestedMode,
-                    plan.ActionMapName,
-                    source,
-                    "PlayerInput application requires PlayerInput.actions before activation."));
+                issues.Add(
+                    InputModeUnityPlayerInputApplicationIssue.BlockingIssue(
+                        InputModeUnityPlayerInputApplicationIssueKind.MissingActionAsset,
+                        plan.RequestedMode,
+                        plan.ActionMapName,
+                        normalizedSource,
+                        "PlayerInput application requires PlayerInput.actions."));
 
                 return CreateResult(
                     InputModeUnityPlayerInputApplicationStatus.FailedMissingActionAsset,
                     plan.RequestedMode,
                     plan.Operation,
                     plan.ActionMapName,
-                    UnityInputActionMapName.From(CurrentActionMapName(playerInput)),
+                    UnityInputActionMapName.From(string.Empty),
                     false,
                     false,
                     false,
                     false,
                     issues,
                     null,
-                    source,
-                    reason);
+                    normalizedSource,
+                    normalizedReason);
             }
 
-            InputActionMap map = playerInput.actions.FindActionMap(plan.ActionMapName.ToString(), false);
-            if (map == null)
+            if (plan.Operation != InputModeUnityApplicationPlanOperation.SelectActionMap &&
+                plan.Operation != InputModeUnityApplicationPlanOperation.LockInput)
             {
-                issues.Add(InputModeUnityPlayerInputApplicationIssue.BlockingIssue(
-                    InputModeUnityPlayerInputApplicationIssueKind.MissingActionMap,
-                    plan.RequestedMode,
-                    plan.ActionMapName,
-                    source,
-                    "PlayerInput application action asset does not contain the requested action map."));
+                issues.Add(
+                    InputModeUnityPlayerInputApplicationIssue.BlockingIssue(
+                        InputModeUnityPlayerInputApplicationIssueKind.UnsupportedOperation,
+                        plan.RequestedMode,
+                        plan.ActionMapName,
+                        normalizedSource,
+                        "PlayerInput application does not support the requested plan operation."));
 
                 return CreateResult(
-                    InputModeUnityPlayerInputApplicationStatus.FailedMissingActionMap,
+                    InputModeUnityPlayerInputApplicationStatus.FailedUnsupportedOperation,
                     plan.RequestedMode,
                     plan.Operation,
                     plan.ActionMapName,
@@ -239,53 +140,27 @@ namespace Immersive.Framework.InputMode
                     false,
                     issues,
                     null,
-                    source,
-                    reason);
+                    normalizedSource,
+                    normalizedReason);
             }
 
-            try
-            {
-                playerInput.ActivateInput();
-            }
-            catch (Exception exception)
-            {
-                issues.Add(InputModeUnityPlayerInputApplicationIssue.BlockingIssue(
-                    InputModeUnityPlayerInputApplicationIssueKind.PlayerInputActivationException,
-                    plan.RequestedMode,
-                    plan.ActionMapName,
-                    source,
-                    exception.Message));
-
-                return CreateResult(
-                    InputModeUnityPlayerInputApplicationStatus.FailedPlayerInputActivation,
-                    plan.RequestedMode,
-                    plan.Operation,
-                    plan.ActionMapName,
-                    UnityInputActionMapName.From(CurrentActionMapName(playerInput)),
-                    false,
-                    false,
-                    false,
-                    false,
-                    issues,
-                    null,
-                    source,
-                    reason);
-            }
-
-            InputModeUnityPlayerInputAdapterResult adapterResult = InputModeUnityPlayerInputAdapter.Apply(
-                plan,
-                playerInput,
-                source,
-                reason);
+            InputModeUnityPlayerInputAdapterResult adapterResult =
+                InputModeUnityPlayerInputAdapter.Apply(
+                    plan,
+                    playerInput,
+                    normalizedSource,
+                    normalizedReason,
+                    persistentActionMapNames);
 
             if (!adapterResult.Succeeded)
             {
-                issues.Add(InputModeUnityPlayerInputApplicationIssue.BlockingIssue(
-                    InputModeUnityPlayerInputApplicationIssueKind.PlayerInputAdapterFailed,
-                    plan.RequestedMode,
-                    plan.ActionMapName,
-                    source,
-                    "PlayerInput action-map selection was rejected by the explicit PlayerInput adapter."));
+                issues.Add(
+                    InputModeUnityPlayerInputApplicationIssue.BlockingIssue(
+                        InputModeUnityPlayerInputApplicationIssueKind.PlayerInputAdapterFailed,
+                        plan.RequestedMode,
+                        plan.ActionMapName,
+                        normalizedSource,
+                        "PlayerInput layered action-map posture was rejected by the explicit adapter."));
 
                 return CreateResult(
                     InputModeUnityPlayerInputApplicationStatus.FailedPlayerInputAdapter,
@@ -294,13 +169,13 @@ namespace Immersive.Framework.InputMode
                     plan.ActionMapName,
                     adapterResult.AppliedActionMapName,
                     false,
-                    true,
+                    false,
                     false,
                     false,
                     issues,
                     adapterResult,
-                    source,
-                    reason);
+                    normalizedSource,
+                    normalizedReason);
             }
 
             return CreateResult(
@@ -310,13 +185,13 @@ namespace Immersive.Framework.InputMode
                 plan.ActionMapName,
                 adapterResult.AppliedActionMapName,
                 adapterResult.Applied,
-                true,
+                false,
                 adapterResult.SelectedActionMap,
                 adapterResult.DeactivatedPlayerInput,
                 issues,
                 adapterResult,
-                source,
-                reason);
+                normalizedSource,
+                normalizedReason);
         }
 
         private static InputModeUnityPlayerInputApplicationResult CreateResult(
@@ -344,17 +219,17 @@ namespace Immersive.Framework.InputMode
                 activatedPlayerInput,
                 selectedActionMap,
                 deactivatedPlayerInput,
-                issues == null ? Array.Empty<InputModeUnityPlayerInputApplicationIssue>() : issues.ToArray(),
+                issues == null
+                    ? Array.Empty<InputModeUnityPlayerInputApplicationIssue>()
+                    : issues.ToArray(),
                 adapterResult,
                 source,
                 reason);
         }
 
-        private static string CurrentActionMapName(PlayerInput playerInput)
-        {
-            return playerInput != null && playerInput.currentActionMap != null
-                ? playerInput.currentActionMap.name
+        private static string CurrentActionMapName(PlayerInput playerInput) =>
+            playerInput != null && playerInput.currentActionMap != null
+                ? playerInput.currentActionMap.name.NormalizeText()
                 : string.Empty;
-        }
     }
 }

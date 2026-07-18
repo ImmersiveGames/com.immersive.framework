@@ -16,7 +16,7 @@ namespace Immersive.Framework.InputMode
     /// </summary>
     [FrameworkApiStatus(
         FrameworkApiStatus.Experimental,
-        "IC2 explicit Pause/InputMode apply request carrying resident state evidence.")]
+        "IC2/IC4 Pause/InputMode apply request with resident state and persistent map evidence.")]
     internal sealed class PauseInputModeApplyRequest
     {
         internal PauseInputModeApplyRequest(
@@ -26,10 +26,10 @@ namespace Immersive.Framework.InputMode
             PlayerInput playerInput,
             UnityInputTargetSet targetSet,
             PlayerActorSet playerActorSet,
-            LocalPlayerProvisioningValidationResult
-                localPlayerProvisioningValidation,
+            LocalPlayerProvisioningValidationResult localPlayerProvisioningValidation,
             UnityInputActionMapEvidence actionMapEvidence,
             InputModeUnityActionMapBinding[] actionMapBindings,
+            UnityInputActionMapName[] persistentActionMapNames,
             bool requireLocalPlayerProvisioning,
             string source,
             string reason)
@@ -43,10 +43,11 @@ namespace Immersive.Framework.InputMode
                 localPlayerProvisioningValidation,
                 actionMapEvidence,
                 actionMapBindings,
+                persistentActionMapNames,
                 requireLocalPlayerProvisioning,
                 source,
                 reason,
-                default(InputModeState))
+                default)
         {
         }
 
@@ -57,10 +58,10 @@ namespace Immersive.Framework.InputMode
             PlayerInput playerInput,
             UnityInputTargetSet targetSet,
             PlayerActorSet playerActorSet,
-            LocalPlayerProvisioningValidationResult
-                localPlayerProvisioningValidation,
+            LocalPlayerProvisioningValidationResult localPlayerProvisioningValidation,
             UnityInputActionMapEvidence actionMapEvidence,
             InputModeUnityActionMapBinding[] actionMapBindings,
+            UnityInputActionMapName[] persistentActionMapNames,
             bool requireLocalPlayerProvisioning,
             string source,
             string reason,
@@ -73,10 +74,10 @@ namespace Immersive.Framework.InputMode
             PlayerInput = playerInput;
             TargetSet = targetSet;
             PlayerActorSet = playerActorSet;
-            LocalPlayerProvisioningValidation =
-                localPlayerProvisioningValidation;
+            LocalPlayerProvisioningValidation = localPlayerProvisioningValidation;
             ActionMapEvidence = actionMapEvidence;
             ActionMapBindings = CopyBindings(actionMapBindings);
+            PersistentActionMapNames = CopyMapNames(persistentActionMapNames);
             RequireLocalPlayerProvisioning = requireLocalPlayerProvisioning;
             Source = source.NormalizeTextOrFallback(
                 nameof(PauseInputModeApplyRequest));
@@ -90,10 +91,10 @@ namespace Immersive.Framework.InputMode
         internal PlayerInput PlayerInput { get; }
         internal UnityInputTargetSet TargetSet { get; }
         internal PlayerActorSet PlayerActorSet { get; }
-        internal LocalPlayerProvisioningValidationResult
-            LocalPlayerProvisioningValidation { get; }
+        internal LocalPlayerProvisioningValidationResult LocalPlayerProvisioningValidation { get; }
         internal UnityInputActionMapEvidence ActionMapEvidence { get; }
         internal InputModeUnityActionMapBinding[] ActionMapBindings { get; }
+        internal UnityInputActionMapName[] PersistentActionMapNames { get; }
         internal bool RequireLocalPlayerProvisioning { get; }
         internal string Source { get; }
         internal string Reason { get; }
@@ -109,6 +110,19 @@ namespace Immersive.Framework.InputMode
 
             var copy = new InputModeUnityActionMapBinding[bindings.Length];
             Array.Copy(bindings, copy, bindings.Length);
+            return copy;
+        }
+
+        private static UnityInputActionMapName[] CopyMapNames(
+            UnityInputActionMapName[] mapNames)
+        {
+            if (mapNames == null || mapNames.Length == 0)
+            {
+                return Array.Empty<UnityInputActionMapName>();
+            }
+
+            var copy = new UnityInputActionMapName[mapNames.Length];
+            Array.Copy(mapNames, copy, mapNames.Length);
             return copy;
         }
     }

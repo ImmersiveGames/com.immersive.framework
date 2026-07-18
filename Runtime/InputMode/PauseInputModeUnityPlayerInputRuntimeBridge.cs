@@ -52,6 +52,7 @@ namespace Immersive.Framework.InputMode
         [SerializeField] private bool requireLocalPlayerProvisioning = true;
 
         [Header("Action Maps")]
+        [SerializeField] private string globalActionMapName = "Global";
         [SerializeField] private string gameplayActionMapName = "Player";
         [SerializeField] private string uiActionMapName = "UI";
 
@@ -65,6 +66,8 @@ namespace Immersive.Framework.InputMode
             autoDiscoverMissingReferences;
         public bool RequireLocalPlayerProvisioning =>
             requireLocalPlayerProvisioning;
+        public string GlobalActionMapName =>
+            globalActionMapName.NormalizeTextOrFallback("Global");
         public string GameplayActionMapName =>
             gameplayActionMapName.NormalizeTextOrFallback("Player");
         public string UiActionMapName =>
@@ -152,6 +155,7 @@ namespace Immersive.Framework.InputMode
             unityInputTargets = targets;
             playerActors = actors;
             localPlayerProvisioningAuthoring = provisioningAuthoring;
+            globalActionMapName = "Global";
             gameplayActionMapName =
                 playerMap.NormalizeTextOrFallback("Player");
             uiActionMapName = uiMap.NormalizeTextOrFallback("UI");
@@ -192,6 +196,7 @@ namespace Immersive.Framework.InputMode
                 references.LocalPlayerProvisioningValidation,
                 references.ActionMapEvidence,
                 references.ActionMapBindings,
+                CreatePersistentActionMapNames(),
                 requireLocalPlayerProvisioning,
                 normalizedSource,
                 normalizedReason);
@@ -252,6 +257,7 @@ namespace Immersive.Framework.InputMode
                 references.LocalPlayerProvisioningValidation,
                 references.ActionMapEvidence,
                 references.ActionMapBindings,
+                CreatePersistentActionMapNames(),
                 requireLocalPlayerProvisioning,
                 normalizedSource,
                 normalizedReason,
@@ -684,8 +690,16 @@ namespace Immersive.Framework.InputMode
                     true),
                 new InputModeUnityActionMapBinding(
                     InputModeKind.InputLocked,
-                    UnityInputActionMapName.From(string.Empty),
-                    false)
+                    UnityInputActionMapName.From(GlobalActionMapName),
+                    true)
+            };
+        }
+
+        private UnityInputActionMapName[] CreatePersistentActionMapNames()
+        {
+            return new[]
+            {
+                UnityInputActionMapName.From(GlobalActionMapName)
             };
         }
 
@@ -731,6 +745,12 @@ namespace Immersive.Framework.InputMode
                     "appliedActionMap",
                     _lastResult.AppliedActionMapName.ToString()),
                 Logging.Records.LogFields.Field(
+                    "persistentActionMap",
+                    GlobalActionMapName),
+                Logging.Records.LogFields.Field(
+                    "enabledActionMaps",
+                    EnabledActionMapSummary()),
+                Logging.Records.LogFields.Field(
                     "actionMapSwitching",
                     _lastResult.SwitchesActionMaps),
                 Logging.Records.LogFields.Field(
@@ -751,6 +771,26 @@ namespace Immersive.Framework.InputMode
                 Logging.Records.LogFields.Field(
                     "diagnostics",
                     _lastResult.ToDiagnosticString()));
+        }
+
+        private string EnabledActionMapSummary()
+        {
+            if (playerInput == null || playerInput.actions == null)
+            {
+                return string.Empty;
+            }
+
+            var enabled = new System.Collections.Generic.List<string>();
+            foreach (InputActionMap map in playerInput.actions.actionMaps)
+            {
+                if (map.enabled)
+                {
+                    enabled.Add(map.name.NormalizeText());
+                }
+            }
+
+            enabled.Sort(StringComparer.Ordinal);
+            return string.Join(",", enabled);
         }
 
         private void EnsureLogger()

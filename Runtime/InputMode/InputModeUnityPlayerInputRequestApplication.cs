@@ -8,11 +8,12 @@ using UnityEngine.InputSystem;
 namespace Immersive.Framework.InputMode
 {
     /// <summary>
-    /// API status: Experimental. Explicit end-to-end InputMode request application pipeline for one Unity PlayerInput instance.
-    /// It composes the already validated request/evidence/action-map/plan/application stages.
-    /// It is not a state owner, not a framework input manager and never calls PlayerInputManager join/spawn APIs.
+    /// Explicit end-to-end InputMode request application pipeline for one Unity PlayerInput.
+    /// The optional persistent map list is applied together with the mode-specific primary map.
     /// </summary>
-    [FrameworkApiStatus(FrameworkApiStatus.Experimental, "F32F InputMode request to explicit Unity PlayerInput application pipeline.")]
+    [FrameworkApiStatus(
+        FrameworkApiStatus.Experimental,
+        "IC4 InputMode request to exact layered Unity PlayerInput posture.")]
     public static class InputModeUnityPlayerInputRequestApplication
     {
         public static InputModeUnityPlayerInputRequestApplicationResult Apply(
@@ -25,12 +26,17 @@ namespace Immersive.Framework.InputMode
             InputModeUnityActionMapBinding[] actionMapBindings,
             PlayerInput playerInput,
             string source,
-            string reason)
+            string reason,
+            UnityInputActionMapName[] persistentActionMapNames = null)
         {
-            string normalizedSource = source.NormalizeTextOrFallback(nameof(InputModeUnityPlayerInputRequestApplication));
+            string normalizedSource = source.NormalizeTextOrFallback(
+                nameof(InputModeUnityPlayerInputRequestApplication));
             string normalizedReason = reason.NormalizeText();
 
-            InputModeRequestResult requestResult = InputModeRequestEvaluator.Preview(currentState, request, normalizedSource);
+            InputModeRequestResult requestResult = InputModeRequestEvaluator.Preview(
+                currentState,
+                request,
+                normalizedSource);
             InputModeKind requestedMode = request.TargetMode;
 
             if (requestResult.Ignored)
@@ -61,14 +67,14 @@ namespace Immersive.Framework.InputMode
                     normalizedReason);
             }
 
-            InputModeUnityApplicationPreviewResult applicationPreview = InputModeUnityApplicationPreviewEvaluator.Preview(
-                requestResult,
-                targetSet,
-                playerActorSet,
-                localPlayerProvisioningValidation,
-                normalizedSource,
-                normalizedReason);
-
+            InputModeUnityApplicationPreviewResult applicationPreview =
+                InputModeUnityApplicationPreviewEvaluator.Preview(
+                    requestResult,
+                    targetSet,
+                    playerActorSet,
+                    localPlayerProvisioningValidation,
+                    normalizedSource,
+                    normalizedReason);
             if (!applicationPreview.Succeeded)
             {
                 return CreateResult(
@@ -83,13 +89,13 @@ namespace Immersive.Framework.InputMode
                     normalizedReason);
             }
 
-            InputModeUnityActionMapPreviewResult actionMapPreview = InputModeUnityActionMapPreviewEvaluator.Preview(
-                applicationPreview,
-                actionMapEvidence,
-                actionMapBindings,
-                normalizedSource,
-                normalizedReason);
-
+            InputModeUnityActionMapPreviewResult actionMapPreview =
+                InputModeUnityActionMapPreviewEvaluator.Preview(
+                    applicationPreview,
+                    actionMapEvidence,
+                    actionMapBindings,
+                    normalizedSource,
+                    normalizedReason);
             if (!actionMapPreview.Succeeded)
             {
                 return CreateResult(
@@ -104,12 +110,12 @@ namespace Immersive.Framework.InputMode
                     normalizedReason);
             }
 
-            InputModeUnityApplicationPlanResult plan = InputModeUnityApplicationPlanEvaluator.BuildPlan(
-                applicationPreview,
-                actionMapPreview,
-                normalizedSource,
-                normalizedReason);
-
+            InputModeUnityApplicationPlanResult plan =
+                InputModeUnityApplicationPlanEvaluator.BuildPlan(
+                    applicationPreview,
+                    actionMapPreview,
+                    normalizedSource,
+                    normalizedReason);
             if (!plan.Succeeded)
             {
                 return CreateResult(
@@ -124,11 +130,13 @@ namespace Immersive.Framework.InputMode
                     normalizedReason);
             }
 
-            InputModeUnityPlayerInputApplicationResult application = InputModeUnityPlayerInputApplication.Apply(
-                plan,
-                playerInput,
-                normalizedSource,
-                normalizedReason);
+            InputModeUnityPlayerInputApplicationResult application =
+                InputModeUnityPlayerInputApplication.Apply(
+                    plan,
+                    playerInput,
+                    normalizedSource,
+                    normalizedReason,
+                    persistentActionMapNames);
 
             return CreateResult(
                 application.Succeeded

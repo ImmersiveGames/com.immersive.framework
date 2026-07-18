@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using Immersive.Framework.ApiStatus;
 using Immersive.Framework.ApplicationLifecycle;
 using Immersive.Framework.Common;
@@ -199,6 +200,67 @@ namespace Immersive.Framework.UnityInput
 
             _lastStatus = "ActionMapRestoredByAuthority";
             _lastReason = reason.NormalizeTextOrFallback("action-map-restore");
+            return true;
+        }
+
+        internal bool TryApplyActionMapSet(
+            string primaryActionMapName,
+            IReadOnlyList<string> enabledActionMapNames,
+            string source,
+            string reason,
+            out UnityPlayerInputActionMapSetWriteReceipt receipt,
+            out string issue)
+        {
+            receipt = default;
+            PlayerInput resolvedPlayerInput = ResolvePlayerInput();
+            if (resolvedPlayerInput == null)
+            {
+                issue =
+                    "PlayerInput write authority requires an explicit PlayerInput target.";
+                return false;
+            }
+
+            if (!UnityPlayerInputStateWriter.TryApplyActionMapSet(
+                    resolvedPlayerInput,
+                    primaryActionMapName,
+                    enabledActionMapNames,
+                    out receipt,
+                    out issue))
+            {
+                return false;
+            }
+
+            _actionMapWasEnabledBeforeBlock = ContainsActionMap(
+                enabledActionMapNames,
+                GameplayActionMapName);
+            ApplyFromCurrentRuntimeGate("action-map-set-applied");
+            _lastStatus = "ActionMapSetAppliedByAuthority";
+            _lastReason = reason.NormalizeTextOrFallback(
+                "action-map-set-application");
+            return true;
+        }
+
+        internal bool TryRestoreActionMapSet(
+            UnityPlayerInputActionMapSetWriteReceipt receipt,
+            string source,
+            string reason,
+            out string issue)
+        {
+            PlayerInput resolvedPlayerInput = ResolvePlayerInput();
+            if (!UnityPlayerInputStateWriter.TryRestoreActionMapSet(
+                    resolvedPlayerInput,
+                    receipt,
+                    out issue))
+            {
+                return false;
+            }
+
+            _actionMapWasEnabledBeforeBlock =
+                ResolveGameplayActionMap(resolvedPlayerInput)?.enabled ?? false;
+            ApplyFromCurrentRuntimeGate("action-map-set-restored");
+            _lastStatus = "ActionMapSetRestoredByAuthority";
+            _lastReason = reason.NormalizeTextOrFallback(
+                "action-map-set-restore");
             return true;
         }
 
@@ -473,6 +535,30 @@ namespace Immersive.Framework.UnityInput
                 false,
                 false,
                 false);
+        }
+
+        private static bool ContainsActionMap(
+            IReadOnlyList<string> actionMapNames,
+            string expectedActionMapName)
+        {
+            if (actionMapNames == null)
+            {
+                return false;
+            }
+
+            string expected = expectedActionMapName.NormalizeText();
+            for (int index = 0; index < actionMapNames.Count; index++)
+            {
+                if (string.Equals(
+                        actionMapNames[index].NormalizeText(),
+                        expected,
+                        System.StringComparison.Ordinal))
+                {
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         private PlayerInput ResolvePlayerInput() =>

@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using Immersive.Framework.ApiStatus;
 using Immersive.Framework.Common;
 using UnityEngine;
@@ -187,6 +188,143 @@ namespace Immersive.Framework.UnityInput
             }
         }
 
+        internal static bool TryApplyActionMapSet(
+            PlayerInput playerInput,
+            string primaryActionMapName,
+            IReadOnlyList<string> enabledActionMapNames,
+            out UnityPlayerInputActionMapSetWriteReceipt receipt,
+            out string issue)
+        {
+            receipt = default;
+            issue = string.Empty;
+
+            if (playerInput == null)
+            {
+                issue = "Action-map set application requires PlayerInput evidence.";
+                return false;
+            }
+
+            if (playerInput.actions == null)
+            {
+                issue = "Action-map set application requires PlayerInput.actions.";
+                return false;
+            }
+
+            string normalizedPrimary = primaryActionMapName.NormalizeText();
+            if (!TryBuildDesiredActionMapSet(
+                    playerInput,
+                    normalizedPrimary,
+                    enabledActionMapNames,
+                    out HashSet<string> desiredNames,
+                    out issue))
+            {
+                return false;
+            }
+
+            string previousPrimary = CurrentActionMapName(playerInput);
+            string[] previousEnabled = GetEnabledActionMapNames(playerInput);
+            string[] desiredEnabled = CopyNames(desiredNames);
+            var rollbackReceipt = new UnityPlayerInputActionMapSetWriteReceipt(
+                playerInput.GetEntityId(),
+                previousPrimary,
+                previousEnabled,
+                normalizedPrimary,
+                desiredEnabled);
+
+            if (!TryApplyRawActionMapState(
+                    playerInput,
+                    normalizedPrimary,
+                    desiredNames,
+                    out issue))
+            {
+                TryApplyRawActionMapState(
+                    playerInput,
+                    previousPrimary,
+                    new HashSet<string>(previousEnabled, StringComparer.Ordinal),
+                    out string rollbackIssue);
+                if (!string.IsNullOrEmpty(rollbackIssue))
+                {
+                    issue = $"{issue} Rollback='{rollbackIssue}'.";
+                }
+
+                return false;
+            }
+
+            receipt = rollbackReceipt;
+            return true;
+        }
+
+        internal static bool TryRestoreActionMapSet(
+            PlayerInput playerInput,
+            UnityPlayerInputActionMapSetWriteReceipt receipt,
+            out string issue)
+        {
+            issue = string.Empty;
+            if (playerInput == null)
+            {
+                issue = "Action-map set restore requires PlayerInput evidence.";
+                return false;
+            }
+
+            if (!receipt.IsValid ||
+                !receipt.PlayerInputEntityId.Equals(playerInput.GetEntityId()))
+            {
+                issue =
+                    "Action-map set restore rejected missing, foreign or stale write evidence.";
+                return false;
+            }
+
+            if (playerInput.actions == null)
+            {
+                issue = "Action-map set restore requires PlayerInput.actions.";
+                return false;
+            }
+
+            return TryApplyRawActionMapState(
+                playerInput,
+                receipt.PreviousPrimaryActionMapName,
+                new HashSet<string>(
+                    receipt.PreviousEnabledActionMapNames,
+                    StringComparer.Ordinal),
+                out issue);
+        }
+
+        internal static bool HasExactEnabledActionMapSet(
+            PlayerInput playerInput,
+            IReadOnlyList<string> expectedEnabledActionMapNames)
+        {
+            if (playerInput == null || playerInput.actions == null)
+            {
+                return false;
+            }
+
+            var expected = new HashSet<string>(StringComparer.Ordinal);
+            if (expectedEnabledActionMapNames != null)
+            {
+                for (int index = 0;
+                     index < expectedEnabledActionMapNames.Count;
+                     index++)
+                {
+                    string name = expectedEnabledActionMapNames[index]
+                        .NormalizeText();
+                    if (!string.IsNullOrEmpty(name))
+                    {
+                        expected.Add(name);
+                    }
+                }
+            }
+
+            foreach (InputActionMap map in playerInput.actions.actionMaps)
+            {
+                if (map.enabled != expected.Contains(map.name.NormalizeText()))
+                {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
         internal static bool TrySetActionMapEnabled(
             PlayerInput playerInput,
             string actionMapName,
@@ -300,6 +438,182 @@ namespace Immersive.Framework.UnityInput
                 : string.Empty;
         }
 
+        private static bool TryBuildDesiredActionMapSet(
+            PlayerInput playerInput,
+            string primaryActionMapName,
+            IReadOnlyList<string> enabledActionMapNames,
+            out HashSet<string> desiredNames,
+            out string issue)
+        {
+            desiredNames = new HashSet<string>(StringComparer.Ordinal);
+            issue = string.Empty;
+
+            if (enabledActionMapNames != null)
+            {
+                for (int index = 0;
+                     index < enabledActionMapNames.Count;
+                     index++)
+                {
+                    string name = enabledActionMapNames[index].NormalizeText();
+                    if (string.IsNullOrEmpty(name))
+                    {
+                        issue =
+                            "Action-map set contains an empty action map name.";
+                        return false;
+                    }
+
+                    if (playerInput.actions.FindActionMap(
+                            name,
+                            throwIfNotFound: false) == null)
+                    {
+                        issue =
+                            $"PlayerInput action asset does not contain action map '{name}'.";
+                        return false;
+                    }
+
+                    desiredNames.Add(name);
+                }
+            }
+
+            if (!string.IsNullOrEmpty(primaryActionMapName))
+            {
+                if (playerInput.actions.FindActionMap(
+                        primaryActionMapName,
+                        throwIfNotFound: false) == null)
+                {
+                    issue =
+                        $"PlayerInput action asset does not contain primary action map '{primaryActionMapName}'.";
+                    return false;
+                }
+
+                desiredNames.Add(primaryActionMapName);
+            }
+
+            return true;
+        }
+
+        private static bool TryApplyRawActionMapState(
+            PlayerInput playerInput,
+            string primaryActionMapName,
+            HashSet<string> desiredNames,
+            out string issue)
+        {
+            issue = string.Empty;
+            foreach (string desiredName in desiredNames)
+            {
+                if (playerInput.actions.FindActionMap(
+                        desiredName,
+                        throwIfNotFound: false) == null)
+                {
+                    issue =
+                        $"Desired action map '{desiredName}' is unavailable.";
+                    return false;
+                }
+            }
+
+            try
+            {
+                InputActionMap primaryMap = string.IsNullOrEmpty(
+                    primaryActionMapName)
+                    ? null
+                    : playerInput.actions.FindActionMap(
+                        primaryActionMapName,
+                        throwIfNotFound: false);
+
+                if (!string.IsNullOrEmpty(primaryActionMapName) &&
+                    primaryMap == null)
+                {
+                    issue =
+                        $"Primary action map '{primaryActionMapName}' is unavailable.";
+                    return false;
+                }
+
+                if (!ReferenceEquals(playerInput.currentActionMap, primaryMap))
+                {
+                    playerInput.currentActionMap = primaryMap;
+                }
+
+                foreach (InputActionMap map in playerInput.actions.actionMaps)
+                {
+                    bool shouldBeEnabled = desiredNames.Contains(
+                        map.name.NormalizeText());
+                    if (map.enabled == shouldBeEnabled)
+                    {
+                        continue;
+                    }
+
+                    if (shouldBeEnabled)
+                    {
+                        map.Enable();
+                    }
+                    else
+                    {
+                        map.Disable();
+                    }
+                }
+
+                if (!ReferenceEquals(playerInput.currentActionMap, primaryMap))
+                {
+                    issue =
+                        $"Primary action map '{primaryActionMapName}' did not become current.";
+                    return false;
+                }
+
+                foreach (InputActionMap map in playerInput.actions.actionMaps)
+                {
+                    bool expectedEnabled = desiredNames.Contains(
+                        map.name.NormalizeText());
+                    if (map.enabled != expectedEnabled)
+                    {
+                        issue =
+                            $"Action map '{map.name}' did not reach enabled='{expectedEnabled}'.";
+                        return false;
+                    }
+                }
+
+                return true;
+            }
+            catch (Exception exception)
+            {
+                issue = exception.Message;
+                return false;
+            }
+        }
+
+        private static string[] GetEnabledActionMapNames(
+            PlayerInput playerInput)
+        {
+            var names = new List<string>();
+            if (playerInput?.actions == null)
+            {
+                return names.ToArray();
+            }
+
+            foreach (InputActionMap map in playerInput.actions.actionMaps)
+            {
+                if (map.enabled)
+                {
+                    names.Add(map.name.NormalizeText());
+                }
+            }
+
+            names.Sort(StringComparer.Ordinal);
+            return names.ToArray();
+        }
+
+        private static string[] CopyNames(HashSet<string> names)
+        {
+            if (names == null || names.Count == 0)
+            {
+                return Array.Empty<string>();
+            }
+
+            var copy = new string[names.Count];
+            names.CopyTo(copy);
+            Array.Sort(copy, StringComparer.Ordinal);
+            return copy;
+        }
+
         private static bool TryResolveActionMap(
             PlayerInput playerInput,
             string actionMapName,
@@ -345,6 +659,70 @@ namespace Immersive.Framework.UnityInput
         private static bool IsInputActive(PlayerInput playerInput)
         {
             return playerInput != null && playerInput.inputIsActive;
+        }
+    }
+
+    internal readonly struct UnityPlayerInputActionMapSetWriteReceipt
+    {
+        internal UnityPlayerInputActionMapSetWriteReceipt(
+            EntityId playerInputEntityId,
+            string previousPrimaryActionMapName,
+            string[] previousEnabledActionMapNames,
+            string appliedPrimaryActionMapName,
+            string[] appliedEnabledActionMapNames)
+        {
+            PlayerInputEntityId = playerInputEntityId;
+            PreviousPrimaryActionMapName =
+                previousPrimaryActionMapName.NormalizeText();
+            PreviousEnabledActionMapNames =
+                previousEnabledActionMapNames ?? Array.Empty<string>();
+            AppliedPrimaryActionMapName =
+                appliedPrimaryActionMapName.NormalizeText();
+            AppliedEnabledActionMapNames =
+                appliedEnabledActionMapNames ?? Array.Empty<string>();
+        }
+
+        internal EntityId PlayerInputEntityId { get; }
+        internal string PreviousPrimaryActionMapName { get; }
+        internal string[] PreviousEnabledActionMapNames { get; }
+        internal string AppliedPrimaryActionMapName { get; }
+        internal string[] AppliedEnabledActionMapNames { get; }
+        internal bool StateChanged =>
+            !string.Equals(
+                PreviousPrimaryActionMapName,
+                AppliedPrimaryActionMapName,
+                StringComparison.Ordinal) ||
+            !SetsEqual(
+                PreviousEnabledActionMapNames,
+                AppliedEnabledActionMapNames);
+        internal bool IsValid =>
+            PreviousEnabledActionMapNames != null &&
+            AppliedEnabledActionMapNames != null;
+
+        private static bool SetsEqual(string[] left, string[] right)
+        {
+            if (ReferenceEquals(left, right))
+            {
+                return true;
+            }
+
+            if (left == null || right == null || left.Length != right.Length)
+            {
+                return false;
+            }
+
+            for (int index = 0; index < left.Length; index++)
+            {
+                if (!string.Equals(
+                        left[index],
+                        right[index],
+                        StringComparison.Ordinal))
+                {
+                    return false;
+                }
+            }
+
+            return true;
         }
     }
 

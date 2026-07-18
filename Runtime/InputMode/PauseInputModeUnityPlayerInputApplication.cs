@@ -10,10 +10,12 @@ using UnityEngine.InputSystem;
 namespace Immersive.Framework.InputMode
 {
     /// <summary>
-    /// API status: Experimental. Explicit bridge from a completed logical Pause result to Unity PlayerInput application via InputMode.
-    /// It does not own PauseRuntime, FrameworkRuntimeHost, PlayerInputManager, join/spawn, movement or custom input manager behavior.
+    /// Bridges a completed logical Pause result to the resident InputMode application path.
+    /// Persistent maps such as Global remain enabled across Gameplay and PauseOverlay.
     /// </summary>
-    [FrameworkApiStatus(FrameworkApiStatus.Experimental, "F32G completed Pause result to explicit Unity PlayerInput application bridge.")]
+    [FrameworkApiStatus(
+        FrameworkApiStatus.Experimental,
+        "IC4 completed Pause result to layered Unity PlayerInput posture.")]
     public static class PauseInputModeUnityPlayerInputApplication
     {
         public static PauseInputModeUnityPlayerInputApplicationResult Apply(
@@ -26,14 +28,18 @@ namespace Immersive.Framework.InputMode
             InputModeUnityActionMapBinding[] actionMapBindings,
             PlayerInput playerInput,
             string source,
-            string reason)
+            string reason,
+            UnityInputActionMapName[] persistentActionMapNames = null)
         {
-            string normalizedSource = source.NormalizeTextOrFallback(nameof(PauseInputModeUnityPlayerInputApplication));
+            string normalizedSource = source.NormalizeTextOrFallback(
+                nameof(PauseInputModeUnityPlayerInputApplication));
             string normalizedReason = reason.NormalizeText();
 
             if (!pauseResult.IsValid)
             {
-                throw new ArgumentException("Pause InputMode Unity PlayerInput application requires a valid Pause result.", nameof(pauseResult));
+                throw new ArgumentException(
+                    "Pause InputMode Unity PlayerInput application requires a valid Pause result.",
+                    nameof(pauseResult));
             }
 
             if (!pauseResult.Completed)
@@ -47,28 +53,33 @@ namespace Immersive.Framework.InputMode
                     normalizedReason);
             }
 
-            InputModeRequest inputModeRequest = PauseInputModeRequestMapper.CreateRequest(
-                pauseResult,
-                normalizedSource,
-                normalizedReason.NormalizeTextOrFallback("pause-inputmode-unity-playerinput-application"));
+            InputModeRequest inputModeRequest =
+                PauseInputModeRequestMapper.CreateRequest(
+                    pauseResult,
+                    normalizedSource,
+                    normalizedReason.NormalizeTextOrFallback(
+                        "pause-inputmode-unity-playerinput-application"));
 
-            InputModeUnityPlayerInputRequestApplicationResult inputModeApplication = InputModeUnityPlayerInputRequestApplication.Apply(
-                currentInputModeState,
-                inputModeRequest,
-                targetSet,
-                playerActorSet,
-                localPlayerProvisioningValidation,
-                actionMapEvidence,
-                actionMapBindings,
-                playerInput,
-                normalizedSource,
-                normalizedReason);
+            InputModeUnityPlayerInputRequestApplicationResult inputModeApplication =
+                InputModeUnityPlayerInputRequestApplication.Apply(
+                    currentInputModeState,
+                    inputModeRequest,
+                    targetSet,
+                    playerActorSet,
+                    localPlayerProvisioningValidation,
+                    actionMapEvidence,
+                    actionMapBindings,
+                    playerInput,
+                    normalizedSource,
+                    normalizedReason,
+                    persistentActionMapNames);
 
-            PauseInputModeUnityPlayerInputApplicationStatus status = inputModeApplication.Succeeded
-                ? PauseInputModeUnityPlayerInputApplicationStatus.Succeeded
-                : inputModeApplication.Ignored
-                    ? PauseInputModeUnityPlayerInputApplicationStatus.IgnoredInputModeRequest
-                    : PauseInputModeUnityPlayerInputApplicationStatus.FailedInputModePlayerInputApplication;
+            PauseInputModeUnityPlayerInputApplicationStatus status =
+                inputModeApplication.Succeeded
+                    ? PauseInputModeUnityPlayerInputApplicationStatus.Succeeded
+                    : inputModeApplication.Ignored
+                        ? PauseInputModeUnityPlayerInputApplicationStatus.IgnoredInputModeRequest
+                        : PauseInputModeUnityPlayerInputApplicationStatus.FailedInputModePlayerInputApplication;
 
             return CreateResult(
                 status,

@@ -77,7 +77,7 @@ PauseInputModeUnityPlayerInputRuntimeBridge
   Pause/InputMode apply orchestration
   commit or explicit rollback
         ↓
-InputMode application pipeline
+InputMode exact layered map-set application
         ↓
 UnityPlayerInputGateAdapter write port
         ↓
@@ -190,5 +190,13 @@ PauseInputActionRuntimeBridgeTrigger delegates to the bridge
 PauseInputActionTrigger is hidden and inert
 IC1 physical writer smoke remains green
 IC2 runtime authority smoke passes
+Global remains enabled across Gameplay and PauseOverlay
+Gameplay applies exactly Global + Player
+PauseOverlay applies exactly Global + UI
 existing Pause/InputMode runtime regression remains green
 ```
+
+## Layered action-map follow-up
+
+ADR-INPUT-0003 replaces the inherited exclusive-map policy with exact layered map sets.
+The resident authority and transaction rules in this ADR remain unchanged.

@@ -206,6 +206,29 @@ namespace Immersive.Framework.InputMode
                     $"pause='{pauseSnapshot.State}'.");
             }
 
+            if (!TryValidatePersistentActionMaps(
+                    request,
+                    source,
+                    reason,
+                    out InputModeUnityApplicationPlanResult persistentMapFailure))
+            {
+                return CreateResult(
+                    PauseInputModeUnityPlayerInputRuntimeBridgeStatus
+                        .FailedPreflight,
+                    PauseInputModeApplyStage.PreflightRejected,
+                    request.RequestKind,
+                    pauseSnapshot.State,
+                    PauseState.Unknown,
+                    default,
+                    persistentMapFailure,
+                    null,
+                    previousActionMap,
+                    source,
+                    reason,
+                    "Persistent action-map preflight failed before " +
+                    "submitting the Pause request.");
+            }
+
             PauseRequest pauseRequest = CreatePauseRequest(
                 request.RequestKind,
                 request.RequestId,
@@ -291,7 +314,8 @@ namespace Immersive.Framework.InputMode
                     request.ActionMapBindings,
                     request.PlayerInput,
                     source,
-                    reason);
+                    reason,
+                    request.PersistentActionMapNames);
 
             PauseInputModeUnityPlayerInputRuntimeBridgeStatus status =
                 applicationResult.Succeeded
@@ -448,6 +472,65 @@ namespace Immersive.Framework.InputMode
                 actionMapPreview,
                 source,
                 reason);
+        }
+
+        private static bool TryValidatePersistentActionMaps(
+            PauseInputModeApplyRequest request,
+            string source,
+            string reason,
+            out InputModeUnityApplicationPlanResult failure)
+        {
+            failure = null;
+            UnityInputActionMapName[] persistent =
+                request.PersistentActionMapNames;
+            if (persistent == null || persistent.Length == 0)
+            {
+                return true;
+            }
+
+            for (int index = 0; index < persistent.Length; index++)
+            {
+                UnityInputActionMapName mapName = persistent[index];
+                bool available = mapName.IsValid &&
+                    request.ActionMapEvidence != null &&
+                    request.ActionMapEvidence.Contains(mapName);
+                if (available)
+                {
+                    continue;
+                }
+
+                InputModeKind requestedMode =
+                    request.CurrentInputModeState.IsValid
+                        ? request.CurrentInputModeState.CurrentKind
+                        : InputModeKind.Unknown;
+                failure = new InputModeUnityApplicationPlanResult(
+                    InputModeUnityApplicationPlanStatus
+                        .FailedActionMapPreview,
+                    requestedMode,
+                    InputModeUnityApplicationPlanOperation.NoOperation,
+                    UnityInputTargetRole.Unknown,
+                    mapName,
+                    true,
+                    false,
+                    false,
+                    false,
+                    new[]
+                    {
+                        InputModeUnityApplicationPlanIssue.BlockingIssue(
+                            InputModeUnityApplicationPlanIssueKind
+                                .ActionMapPreviewNotSucceeded,
+                            requestedMode,
+                            mapName,
+                            source,
+                            "Required persistent Unity action map is missing. " +
+                            "No fallback or implicit duplication was applied.")
+                    },
+                    source,
+                    reason);
+                return false;
+            }
+
+            return true;
         }
 
         private static PauseRequest CreatePauseRequest(
