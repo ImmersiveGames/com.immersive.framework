@@ -11,10 +11,12 @@ using UnityEngine.InputSystem;
 namespace Immersive.Framework.InputMode
 {
     /// <summary>
-    /// API status: Experimental. Explicit request for applying Pause/InputMode state to one Unity PlayerInput.
-    /// It carries authoring/runtime evidence only; it does not locate services or mutate Unity input by itself.
+    /// Explicit request for applying one resident InputMode transaction through
+    /// the Pause/InputMode boundary to one Unity PlayerInput.
     /// </summary>
-    [FrameworkApiStatus(FrameworkApiStatus.Experimental, "F38 explicit Pause/InputMode apply request.")]
+    [FrameworkApiStatus(
+        FrameworkApiStatus.Experimental,
+        "IC2 explicit Pause/InputMode apply request carrying resident state evidence.")]
     internal sealed class PauseInputModeApplyRequest
     {
         internal PauseInputModeApplyRequest(
@@ -24,52 +26,81 @@ namespace Immersive.Framework.InputMode
             PlayerInput playerInput,
             UnityInputTargetSet targetSet,
             PlayerActorSet playerActorSet,
-            LocalPlayerProvisioningValidationResult localPlayerProvisioningValidation,
+            LocalPlayerProvisioningValidationResult
+                localPlayerProvisioningValidation,
             UnityInputActionMapEvidence actionMapEvidence,
             InputModeUnityActionMapBinding[] actionMapBindings,
             bool requireLocalPlayerProvisioning,
             string source,
             string reason)
+            : this(
+                runtimeHost,
+                requestKind,
+                requestId,
+                playerInput,
+                targetSet,
+                playerActorSet,
+                localPlayerProvisioningValidation,
+                actionMapEvidence,
+                actionMapBindings,
+                requireLocalPlayerProvisioning,
+                source,
+                reason,
+                default(InputModeState))
+        {
+        }
+
+        internal PauseInputModeApplyRequest(
+            FrameworkRuntimeHost runtimeHost,
+            PauseRequestKind requestKind,
+            string requestId,
+            PlayerInput playerInput,
+            UnityInputTargetSet targetSet,
+            PlayerActorSet playerActorSet,
+            LocalPlayerProvisioningValidationResult
+                localPlayerProvisioningValidation,
+            UnityInputActionMapEvidence actionMapEvidence,
+            InputModeUnityActionMapBinding[] actionMapBindings,
+            bool requireLocalPlayerProvisioning,
+            string source,
+            string reason,
+            InputModeState currentInputModeState)
         {
             RuntimeHost = runtimeHost;
             RequestKind = requestKind;
-            RequestId = requestId.NormalizeTextOrFallback(nameof(PauseInputModeApplyRequest));
+            RequestId = requestId.NormalizeTextOrFallback(
+                nameof(PauseInputModeApplyRequest));
             PlayerInput = playerInput;
             TargetSet = targetSet;
             PlayerActorSet = playerActorSet;
-            LocalPlayerProvisioningValidation = localPlayerProvisioningValidation;
+            LocalPlayerProvisioningValidation =
+                localPlayerProvisioningValidation;
             ActionMapEvidence = actionMapEvidence;
             ActionMapBindings = CopyBindings(actionMapBindings);
             RequireLocalPlayerProvisioning = requireLocalPlayerProvisioning;
-            Source = source.NormalizeTextOrFallback(nameof(PauseInputModeApplyRequest));
+            Source = source.NormalizeTextOrFallback(
+                nameof(PauseInputModeApplyRequest));
             Reason = reason.NormalizeText();
+            CurrentInputModeState = currentInputModeState;
         }
 
         internal FrameworkRuntimeHost RuntimeHost { get; }
-
         internal PauseRequestKind RequestKind { get; }
-
         internal string RequestId { get; }
-
         internal PlayerInput PlayerInput { get; }
-
         internal UnityInputTargetSet TargetSet { get; }
-
         internal PlayerActorSet PlayerActorSet { get; }
-
-        internal LocalPlayerProvisioningValidationResult LocalPlayerProvisioningValidation { get; }
-
+        internal LocalPlayerProvisioningValidationResult
+            LocalPlayerProvisioningValidation { get; }
         internal UnityInputActionMapEvidence ActionMapEvidence { get; }
-
         internal InputModeUnityActionMapBinding[] ActionMapBindings { get; }
-
         internal bool RequireLocalPlayerProvisioning { get; }
-
         internal string Source { get; }
-
         internal string Reason { get; }
+        internal InputModeState CurrentInputModeState { get; }
 
-        private static InputModeUnityActionMapBinding[] CopyBindings(InputModeUnityActionMapBinding[] bindings)
+        private static InputModeUnityActionMapBinding[] CopyBindings(
+            InputModeUnityActionMapBinding[] bindings)
         {
             if (bindings == null || bindings.Length == 0)
             {

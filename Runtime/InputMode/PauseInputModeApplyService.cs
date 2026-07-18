@@ -8,18 +8,23 @@ using UnityEngine.InputSystem;
 namespace Immersive.Framework.InputMode
 {
     /// <summary>
-    /// API status: Experimental. Non-MonoBehaviour service that orchestrates Pause/InputMode apply.
-    /// It does not read Inspector fields, locate global services, own Pause state or own PlayerInputManager.
+    /// Non-MonoBehaviour service that applies one already-authorized resident
+    /// InputMode transaction through the Pause and Unity PlayerInput pipeline.
+    /// It owns no state and never reconstructs InputMode posture implicitly.
     /// </summary>
-    [FrameworkApiStatus(FrameworkApiStatus.Experimental, "F38 Pause/InputMode apply runtime boundary service.")]
+    [FrameworkApiStatus(
+        FrameworkApiStatus.Experimental,
+        "IC2 Pause/InputMode apply service consuming resident state evidence.")]
     internal sealed class PauseInputModeApplyService
     {
-        internal PauseInputModeApplyResult Apply(PauseInputModeApplyRequest request)
+        internal PauseInputModeApplyResult Apply(
+            PauseInputModeApplyRequest request)
         {
             if (request == null)
             {
                 return CreateResult(
-                    PauseInputModeUnityPlayerInputRuntimeBridgeStatus.FailedConfiguration,
+                    PauseInputModeUnityPlayerInputRuntimeBridgeStatus
+                        .FailedConfiguration,
                     PauseInputModeApplyStage.InvalidRequest,
                     PauseRequestKind.Unknown,
                     PauseState.Unknown,
@@ -33,14 +38,21 @@ namespace Immersive.Framework.InputMode
                     "Pause/InputMode apply request is missing.");
             }
 
-            string source = request.Source.NormalizeTextOrFallback(nameof(PauseInputModeApplyService));
+            string source = request.Source.NormalizeTextOrFallback(
+                nameof(PauseInputModeApplyService));
             string reason = request.Reason.NormalizeText();
-            UnityInputActionMapName previousActionMap = UnityInputActionMapName.From(CurrentActionMapName(request.PlayerInput));
+            UnityInputActionMapName previousActionMap =
+                UnityInputActionMapName.From(
+                    CurrentActionMapName(request.PlayerInput));
 
-            if (!Enum.IsDefined(typeof(PauseRequestKind), request.RequestKind) || request.RequestKind == PauseRequestKind.Unknown)
+            if (!Enum.IsDefined(
+                    typeof(PauseRequestKind),
+                    request.RequestKind) ||
+                request.RequestKind == PauseRequestKind.Unknown)
             {
                 return CreateResult(
-                    PauseInputModeUnityPlayerInputRuntimeBridgeStatus.FailedConfiguration,
+                    PauseInputModeUnityPlayerInputRuntimeBridgeStatus
+                        .FailedConfiguration,
                     PauseInputModeApplyStage.InvalidRequest,
                     request.RequestKind,
                     PauseState.Unknown,
@@ -57,7 +69,8 @@ namespace Immersive.Framework.InputMode
             if (request.RuntimeHost == null)
             {
                 return CreateResult(
-                    PauseInputModeUnityPlayerInputRuntimeBridgeStatus.FailedRuntimeUnavailable,
+                    PauseInputModeUnityPlayerInputRuntimeBridgeStatus
+                        .FailedRuntimeUnavailable,
                     PauseInputModeApplyStage.MissingRuntimeHost,
                     request.RequestKind,
                     PauseState.Unknown,
@@ -71,10 +84,13 @@ namespace Immersive.Framework.InputMode
                     "FrameworkRuntimeHost is unavailable.");
             }
 
-            if (!request.RuntimeHost.TryGetPauseSnapshot(out PauseSnapshot pauseSnapshot) || pauseSnapshot.State == PauseState.Unknown)
+            if (!request.RuntimeHost.TryGetPauseSnapshot(
+                    out PauseSnapshot pauseSnapshot) ||
+                pauseSnapshot.State == PauseState.Unknown)
             {
                 return CreateResult(
-                    PauseInputModeUnityPlayerInputRuntimeBridgeStatus.FailedRuntimeUnavailable,
+                    PauseInputModeUnityPlayerInputRuntimeBridgeStatus
+                        .FailedRuntimeUnavailable,
                     PauseInputModeApplyStage.MissingPauseRuntime,
                     request.RequestKind,
                     PauseState.Unknown,
@@ -91,7 +107,8 @@ namespace Immersive.Framework.InputMode
             if (request.PlayerInput == null)
             {
                 return CreateResult(
-                    PauseInputModeUnityPlayerInputRuntimeBridgeStatus.FailedConfiguration,
+                    PauseInputModeUnityPlayerInputRuntimeBridgeStatus
+                        .FailedConfiguration,
                     PauseInputModeApplyStage.MissingPlayerInput,
                     request.RequestKind,
                     pauseSnapshot.State,
@@ -102,13 +119,15 @@ namespace Immersive.Framework.InputMode
                     previousActionMap,
                     source,
                     reason,
-                    "Pause/InputMode apply requires an explicit PlayerInput or PlayerActor PlayerInput evidence.");
+                    "Pause/InputMode apply requires an explicit PlayerInput " +
+                    "or PlayerActor PlayerInput evidence.");
             }
 
             if (request.PlayerInput.actions == null)
             {
                 return CreateResult(
-                    PauseInputModeUnityPlayerInputRuntimeBridgeStatus.FailedConfiguration,
+                    PauseInputModeUnityPlayerInputRuntimeBridgeStatus
+                        .FailedConfiguration,
                     PauseInputModeApplyStage.MissingActionMap,
                     request.RequestKind,
                     pauseSnapshot.State,
@@ -119,15 +138,17 @@ namespace Immersive.Framework.InputMode
                     previousActionMap,
                     source,
                     reason,
-                    "Pause/InputMode apply requires PlayerInput.actions before applying InputMode.");
+                    "Pause/InputMode apply requires PlayerInput.actions before " +
+                    "applying InputMode.");
             }
 
-            if (request.RequireLocalPlayerProvisioning
-                && request.LocalPlayerProvisioningValidation != null
-                && request.LocalPlayerProvisioningValidation.Failed)
+            if (request.RequireLocalPlayerProvisioning &&
+                request.LocalPlayerProvisioningValidation != null &&
+                request.LocalPlayerProvisioningValidation.Failed)
             {
                 return CreateResult(
-                    PauseInputModeUnityPlayerInputRuntimeBridgeStatus.FailedConfiguration,
+                    PauseInputModeUnityPlayerInputRuntimeBridgeStatus
+                        .FailedConfiguration,
                     PauseInputModeApplyStage.PreflightRejected,
                     request.RequestKind,
                     pauseSnapshot.State,
@@ -138,27 +159,90 @@ namespace Immersive.Framework.InputMode
                     previousActionMap,
                     source,
                     reason,
-                    request.LocalPlayerProvisioningValidation.ToDiagnosticString());
+                    request.LocalPlayerProvisioningValidation
+                        .ToDiagnosticString());
             }
 
-            PauseRequest pauseRequest = CreatePauseRequest(request.RequestKind, request.RequestId, source, reason);
-            PauseState targetPauseState = PauseRequest.ResolveTargetState(request.RequestKind, pauseSnapshot.State);
-            PauseResult anticipatedPauseResult = targetPauseState == pauseSnapshot.State
-                ? PauseResult.IgnoredNoChangeResult(pauseRequest, pauseSnapshot.State, "Pause/InputMode apply preflight detected no Pause state change.")
-                : PauseResult.AppliedResult(pauseRequest, pauseSnapshot.State, targetPauseState, "Pause/InputMode apply preflight detected a Pause state change.");
+            if (!request.CurrentInputModeState.IsValid)
+            {
+                return CreateResult(
+                    PauseInputModeUnityPlayerInputRuntimeBridgeStatus
+                        .FailedPreflight,
+                    PauseInputModeApplyStage.PreflightRejected,
+                    request.RequestKind,
+                    pauseSnapshot.State,
+                    PauseState.Unknown,
+                    default,
+                    null,
+                    null,
+                    previousActionMap,
+                    source,
+                    reason,
+                    "Pause/InputMode apply requires the exact current state " +
+                    "from the resident InputMode authority.");
+            }
 
-            InputModeState currentInputModeState = CreateInputModeStateForPauseState(pauseSnapshot.State, source, reason);
-            InputModeUnityApplicationPlanResult preflightPlan = BuildPreflightPlan(
-                anticipatedPauseResult,
-                currentInputModeState,
-                request,
+            InputModeKind expectedCurrentMode =
+                MapPauseStateToInputMode(pauseSnapshot.State);
+            if (request.CurrentInputModeState.CurrentKind !=
+                expectedCurrentMode)
+            {
+                return CreateResult(
+                    PauseInputModeUnityPlayerInputRuntimeBridgeStatus
+                        .FailedPreflight,
+                    PauseInputModeApplyStage.PreflightRejected,
+                    request.RequestKind,
+                    pauseSnapshot.State,
+                    PauseState.Unknown,
+                    default,
+                    null,
+                    null,
+                    previousActionMap,
+                    source,
+                    reason,
+                    "Pause/InputMode apply rejected state drift. " +
+                    $"inputMode='{request.CurrentInputModeState.CurrentKind}' " +
+                    $"revision='{request.CurrentInputModeState.Revision}' " +
+                    $"pause='{pauseSnapshot.State}'.");
+            }
+
+            PauseRequest pauseRequest = CreatePauseRequest(
+                request.RequestKind,
+                request.RequestId,
                 source,
                 reason);
+            PauseState targetPauseState = PauseRequest.ResolveTargetState(
+                request.RequestKind,
+                pauseSnapshot.State);
+            PauseResult anticipatedPauseResult =
+                targetPauseState == pauseSnapshot.State
+                    ? PauseResult.IgnoredNoChangeResult(
+                        pauseRequest,
+                        pauseSnapshot.State,
+                        "Pause/InputMode apply preflight detected no Pause " +
+                        "state change.")
+                    : PauseResult.AppliedResult(
+                        pauseRequest,
+                        pauseSnapshot.State,
+                        targetPauseState,
+                        "Pause/InputMode apply preflight detected a Pause " +
+                        "state change.");
+
+            InputModeState currentInputModeState =
+                request.CurrentInputModeState;
+            InputModeUnityApplicationPlanResult preflightPlan =
+                BuildPreflightPlan(
+                    anticipatedPauseResult,
+                    currentInputModeState,
+                    request,
+                    source,
+                    reason);
 
             if (preflightPlan != null && preflightPlan.Failed)
             {
                 return CreateResult(
-                    PauseInputModeUnityPlayerInputRuntimeBridgeStatus.FailedPreflight,
+                    PauseInputModeUnityPlayerInputRuntimeBridgeStatus
+                        .FailedPreflight,
                     PauseInputModeApplyStage.PreflightRejected,
                     request.RequestKind,
                     pauseSnapshot.State,
@@ -169,7 +253,8 @@ namespace Immersive.Framework.InputMode
                     previousActionMap,
                     source,
                     reason,
-                    "Pause/InputMode apply preflight failed before submitting the Pause request.");
+                    "Pause/InputMode apply preflight failed before " +
+                    "submitting the Pause request.");
             }
 
             PauseResult pauseResult;
@@ -180,7 +265,8 @@ namespace Immersive.Framework.InputMode
             catch (Exception exception)
             {
                 return CreateResult(
-                    PauseInputModeUnityPlayerInputRuntimeBridgeStatus.FailedPauseRequest,
+                    PauseInputModeUnityPlayerInputRuntimeBridgeStatus
+                        .FailedPauseRequest,
                     PauseInputModeApplyStage.PauseRequestFailed,
                     request.RequestKind,
                     pauseSnapshot.State,
@@ -194,23 +280,27 @@ namespace Immersive.Framework.InputMode
                     exception.Message);
             }
 
-            PauseInputModeUnityPlayerInputApplicationResult applicationResult = PauseInputModeUnityPlayerInputApplication.Apply(
-                pauseResult,
-                currentInputModeState,
-                request.TargetSet,
-                request.PlayerActorSet,
-                request.LocalPlayerProvisioningValidation,
-                request.ActionMapEvidence,
-                request.ActionMapBindings,
-                request.PlayerInput,
-                source,
-                reason);
+            PauseInputModeUnityPlayerInputApplicationResult applicationResult =
+                PauseInputModeUnityPlayerInputApplication.Apply(
+                    pauseResult,
+                    currentInputModeState,
+                    request.TargetSet,
+                    request.PlayerActorSet,
+                    request.LocalPlayerProvisioningValidation,
+                    request.ActionMapEvidence,
+                    request.ActionMapBindings,
+                    request.PlayerInput,
+                    source,
+                    reason);
 
-            PauseInputModeUnityPlayerInputRuntimeBridgeStatus status = applicationResult.Succeeded
-                ? PauseInputModeUnityPlayerInputRuntimeBridgeStatus.Succeeded
-                : applicationResult.Ignored
-                    ? PauseInputModeUnityPlayerInputRuntimeBridgeStatus.IgnoredInputModeRequest
-                    : PauseInputModeUnityPlayerInputRuntimeBridgeStatus.FailedInputModePlayerInputApplication;
+            PauseInputModeUnityPlayerInputRuntimeBridgeStatus status =
+                applicationResult.Succeeded
+                    ? PauseInputModeUnityPlayerInputRuntimeBridgeStatus.Succeeded
+                    : applicationResult.Ignored
+                        ? PauseInputModeUnityPlayerInputRuntimeBridgeStatus
+                            .IgnoredInputModeRequest
+                        : PauseInputModeUnityPlayerInputRuntimeBridgeStatus
+                            .FailedInputModePlayerInputApplication;
 
             PauseInputModeApplyStage failedStage = applicationResult.Failed
                 ? PauseInputModeApplyStage.AdapterApplyFailed
@@ -228,7 +318,8 @@ namespace Immersive.Framework.InputMode
                 previousActionMap,
                 source,
                 reason,
-                $"InputMode PlayerInput application {applicationResult.Status}.");
+                $"InputMode PlayerInput application " +
+                $"{applicationResult.Status}.");
         }
 
         private static InputModeUnityApplicationPlanResult BuildPreflightPlan(
@@ -238,12 +329,18 @@ namespace Immersive.Framework.InputMode
             string source,
             string reason)
         {
-            InputModeRequest inputModeRequest = PauseInputModeRequestMapper.CreateRequest(
-                anticipatedPauseResult,
-                source,
-                reason.NormalizeTextOrFallback("pause-inputmode-apply-preflight"));
+            InputModeRequest inputModeRequest =
+                PauseInputModeRequestMapper.CreateRequest(
+                    anticipatedPauseResult,
+                    source,
+                    reason.NormalizeTextOrFallback(
+                        "pause-inputmode-apply-preflight"));
 
-            InputModeRequestResult requestPreview = InputModeRequestEvaluator.Preview(currentInputModeState, inputModeRequest, source);
+            InputModeRequestResult requestPreview =
+                InputModeRequestEvaluator.Preview(
+                    currentInputModeState,
+                    inputModeRequest,
+                    source);
             if (requestPreview.Ignored)
             {
                 return null;
@@ -264,7 +361,8 @@ namespace Immersive.Framework.InputMode
                     new[]
                     {
                         InputModeUnityApplicationPlanIssue.BlockingIssue(
-                            InputModeUnityApplicationPlanIssueKind.PreviewModeMismatch,
+                            InputModeUnityApplicationPlanIssueKind
+                                .PreviewModeMismatch,
                             inputModeRequest.TargetMode,
                             UnityInputActionMapName.From(string.Empty),
                             source,
@@ -274,17 +372,19 @@ namespace Immersive.Framework.InputMode
                     reason);
             }
 
-            InputModeUnityApplicationPreviewResult applicationPreview = InputModeUnityApplicationPreviewEvaluator.Preview(
-                requestPreview,
-                request.TargetSet,
-                request.PlayerActorSet,
-                request.LocalPlayerProvisioningValidation,
-                source,
-                reason);
+            InputModeUnityApplicationPreviewResult applicationPreview =
+                InputModeUnityApplicationPreviewEvaluator.Preview(
+                    requestPreview,
+                    request.TargetSet,
+                    request.PlayerActorSet,
+                    request.LocalPlayerProvisioningValidation,
+                    source,
+                    reason);
             if (!applicationPreview.Succeeded)
             {
                 return new InputModeUnityApplicationPlanResult(
-                    InputModeUnityApplicationPlanStatus.FailedApplicationPreview,
+                    InputModeUnityApplicationPlanStatus
+                        .FailedApplicationPreview,
                     inputModeRequest.TargetMode,
                     InputModeUnityApplicationPlanOperation.NoOperation,
                     applicationPreview.TargetRole,
@@ -296,26 +396,30 @@ namespace Immersive.Framework.InputMode
                     new[]
                     {
                         InputModeUnityApplicationPlanIssue.BlockingIssue(
-                            InputModeUnityApplicationPlanIssueKind.ApplicationPreviewNotSucceeded,
+                            InputModeUnityApplicationPlanIssueKind
+                                .ApplicationPreviewNotSucceeded,
                             inputModeRequest.TargetMode,
                             UnityInputActionMapName.From(string.Empty),
                             source,
-                            "InputMode Unity application preflight did not succeed.")
+                            "InputMode Unity application preflight did not " +
+                            "succeed.")
                     },
                     source,
                     reason);
             }
 
-            InputModeUnityActionMapPreviewResult actionMapPreview = InputModeUnityActionMapPreviewEvaluator.Preview(
-                applicationPreview,
-                request.ActionMapEvidence,
-                request.ActionMapBindings,
-                source,
-                reason);
+            InputModeUnityActionMapPreviewResult actionMapPreview =
+                InputModeUnityActionMapPreviewEvaluator.Preview(
+                    applicationPreview,
+                    request.ActionMapEvidence,
+                    request.ActionMapBindings,
+                    source,
+                    reason);
             if (!actionMapPreview.Succeeded)
             {
                 return new InputModeUnityApplicationPlanResult(
-                    InputModeUnityApplicationPlanStatus.FailedActionMapPreview,
+                    InputModeUnityApplicationPlanStatus
+                        .FailedActionMapPreview,
                     inputModeRequest.TargetMode,
                     InputModeUnityApplicationPlanOperation.NoOperation,
                     applicationPreview.TargetRole,
@@ -327,45 +431,58 @@ namespace Immersive.Framework.InputMode
                     new[]
                     {
                         InputModeUnityApplicationPlanIssue.BlockingIssue(
-                            InputModeUnityApplicationPlanIssueKind.ActionMapPreviewNotSucceeded,
+                            InputModeUnityApplicationPlanIssueKind
+                                .ActionMapPreviewNotSucceeded,
                             inputModeRequest.TargetMode,
                             actionMapPreview.ActionMapName,
                             source,
-                            "InputMode Unity action map preflight did not succeed.")
+                            "InputMode Unity action map preflight did not " +
+                            "succeed.")
                     },
                     source,
                     reason);
             }
 
-            return InputModeUnityApplicationPlanEvaluator.BuildPlan(applicationPreview, actionMapPreview, source, reason);
-        }
-
-        private static PauseRequest CreatePauseRequest(PauseRequestKind kind, string requestId, string source, string reason)
-        {
-            switch (kind)
-            {
-                case PauseRequestKind.Pause:
-                    return PauseRequest.Pause(requestId, source, reason);
-                case PauseRequestKind.Resume:
-                    return PauseRequest.Resume(requestId, source, reason);
-                case PauseRequestKind.Toggle:
-                    return PauseRequest.Toggle(requestId, source, reason);
-                default:
-                    throw new ArgumentOutOfRangeException(nameof(kind), kind, "Pause/InputMode apply request kind must be explicit.");
-            }
-        }
-
-        private static InputModeState CreateInputModeStateForPauseState(PauseState pauseState, string source, string reason)
-        {
-            InputModeKind mode = MapPauseStateToInputMode(pauseState);
-            return new InputModeState(
-                InputModeDefinitions.FromKind(mode, source, reason),
-                mode == InputModeKind.Gameplay ? 0 : 1,
+            return InputModeUnityApplicationPlanEvaluator.BuildPlan(
+                applicationPreview,
+                actionMapPreview,
                 source,
                 reason);
         }
 
-        private static InputModeKind MapPauseStateToInputMode(PauseState state)
+        private static PauseRequest CreatePauseRequest(
+            PauseRequestKind kind,
+            string requestId,
+            string source,
+            string reason)
+        {
+            switch (kind)
+            {
+                case PauseRequestKind.Pause:
+                    return PauseRequest.Pause(
+                        requestId,
+                        source,
+                        reason);
+                case PauseRequestKind.Resume:
+                    return PauseRequest.Resume(
+                        requestId,
+                        source,
+                        reason);
+                case PauseRequestKind.Toggle:
+                    return PauseRequest.Toggle(
+                        requestId,
+                        source,
+                        reason);
+                default:
+                    throw new ArgumentOutOfRangeException(
+                        nameof(kind),
+                        kind,
+                        "Pause/InputMode apply request kind must be explicit.");
+            }
+        }
+
+        private static InputModeKind MapPauseStateToInputMode(
+            PauseState state)
         {
             switch (state)
             {
@@ -374,7 +491,10 @@ namespace Immersive.Framework.InputMode
                 case PauseState.Paused:
                     return InputModeKind.PauseOverlay;
                 default:
-                    throw new ArgumentOutOfRangeException(nameof(state), state, "Pause/InputMode apply requires an explicit Pause state.");
+                    throw new ArgumentOutOfRangeException(
+                        nameof(state),
+                        state,
+                        "Pause/InputMode apply requires an explicit Pause state.");
             }
         }
 
@@ -409,7 +529,8 @@ namespace Immersive.Framework.InputMode
 
         private static string CurrentActionMapName(PlayerInput playerInput)
         {
-            return playerInput != null && playerInput.currentActionMap != null
+            return playerInput != null &&
+                   playerInput.currentActionMap != null
                 ? playerInput.currentActionMap.name
                 : string.Empty;
         }
