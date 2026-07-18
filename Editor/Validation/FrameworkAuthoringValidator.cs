@@ -4,6 +4,7 @@ using Immersive.Framework.ActivityFlow;
 using Immersive.Framework.Authoring;
 using Immersive.Framework.ContentAnchor;
 using Immersive.Framework.ContentFlow;
+using Immersive.Framework.Camera;
 using Immersive.Framework.CycleReset;
 using Immersive.Framework.Loading;
 using Immersive.Framework.Editor.Editor.Authoring;
@@ -61,6 +62,7 @@ namespace Immersive.Framework.Editor.Editor.Validation
                 ValidateOpenSceneActivityContentAnchors(report, validationMode);
                 ValidateOpenSceneUnityContentAnchorMaterializationBridges(report, validationMode);
                 ValidateOpenSceneCycleResetTriggers(report, validationMode);
+                FrameworkLocalPlayerCameraPublicationValidator.ValidateOpenScenes(report);
                 FrameworkResetRestartAuthoringValidator.ValidateOpenScenes(report);
             }
 

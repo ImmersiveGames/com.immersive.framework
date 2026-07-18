@@ -28,6 +28,7 @@ namespace Immersive.Framework.PlayerParticipation
             internal PlayerGameplayCameraRequiredness CameraRequiredness;
             internal LocalPlayerCameraRequestPublisher Publisher;
             internal CameraRequest Request;
+            internal string CameraPublisherSource;
             internal bool CameraRequestReleased;
             internal bool CameraEligibilityReleased;
             internal bool InputBindingReleased;
@@ -702,6 +703,8 @@ namespace Immersive.Framework.PlayerParticipation
 
             record.Publisher = publisher;
             record.Request = requestCreation.Request;
+            record.CameraPublisherSource =
+                nameof(PlayerGameplayAdmissionRuntimeContext);
             CameraRequestPublisherResult publishResult = publisher.Publish();
             if (!publishResult.Succeeded || !publisher.IsPublished)
             {
@@ -1146,6 +1149,7 @@ namespace Immersive.Framework.PlayerParticipation
                     previous.CameraRequestPublished,
                     previous.CameraRequestId,
                     previous.CameraOutputId,
+                    previous.CameraPublisherSource,
                     previous.CameraRequestReleased,
                     previous.CameraEligibilityReleased,
                     previous.InputBindingReleased,
@@ -1211,6 +1215,7 @@ namespace Immersive.Framework.PlayerParticipation
                 cameraPublished,
                 requestId,
                 outputId,
+                record.CameraPublisherSource,
                 record.CameraRequestReleased,
                 record.CameraEligibilityReleased,
                 record.InputBindingReleased,
@@ -1246,6 +1251,7 @@ namespace Immersive.Framework.PlayerParticipation
                 record.CameraRequestPublished,
                 previous.CameraRequestId,
                 previous.CameraOutputId,
+                record.CameraPublisherSource,
                 record.CameraRequestReleased,
                 record.CameraEligibilityReleased,
                 record.InputBindingReleased,

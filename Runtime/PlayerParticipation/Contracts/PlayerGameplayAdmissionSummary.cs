@@ -32,6 +32,7 @@ namespace Immersive.Framework.PlayerParticipation
             bool cameraRequestPublished,
             string cameraRequestId,
             string cameraOutputId,
+            string cameraPublisherSource,
             bool cameraRequestReleased,
             bool cameraEligibilityReleased,
             bool inputBindingReleased,
@@ -58,6 +59,7 @@ namespace Immersive.Framework.PlayerParticipation
             CameraRequestPublished = cameraRequestPublished;
             CameraRequestId = cameraRequestId.NormalizeText();
             CameraOutputId = cameraOutputId.NormalizeText();
+            CameraPublisherSource = cameraPublisherSource.NormalizeText();
             CameraRequestReleased = cameraRequestReleased;
             CameraEligibilityReleased = cameraEligibilityReleased;
             InputBindingReleased = inputBindingReleased;
@@ -85,6 +87,7 @@ namespace Immersive.Framework.PlayerParticipation
         public bool CameraRequestPublished { get; }
         public string CameraRequestId { get; }
         public string CameraOutputId { get; }
+        public string CameraPublisherSource { get; }
         public bool CameraRequestReleased { get; }
         public bool CameraEligibilityReleased { get; }
         public bool InputBindingReleased { get; }
@@ -133,6 +136,7 @@ namespace Immersive.Framework.PlayerParticipation
                   !CameraRequestPublished &&
                   string.IsNullOrEmpty(CameraRequestId) &&
                   string.IsNullOrEmpty(CameraOutputId) &&
+                  string.IsNullOrEmpty(CameraPublisherSource) &&
                   !CameraRequestReleased &&
                   !CameraEligibilityReleased &&
                   !InputBindingReleased &&
@@ -180,7 +184,8 @@ namespace Immersive.Framework.PlayerParticipation
                     !CameraRequestPublished &&
                     CameraRequestReleased &&
                     string.IsNullOrEmpty(CameraRequestId) &&
-                    string.IsNullOrEmpty(CameraOutputId);
+                    string.IsNullOrEmpty(CameraOutputId) &&
+                    string.IsNullOrEmpty(CameraPublisherSource);
             }
 
             if (CameraEligibilityState !=
@@ -202,12 +207,15 @@ namespace Immersive.Framework.PlayerParticipation
             {
                 return CameraRequestPublished &&
                     !CameraRequestReleased &&
-                    hasRequestIdentity;
+                    hasRequestIdentity &&
+                    !string.IsNullOrEmpty(CameraPublisherSource);
             }
 
             return IsReleaseFailed &&
                 CameraRequestPublished == !CameraRequestReleased &&
-                (hasRequestIdentity || hasNoRequestIdentity);
+                (hasRequestIdentity || hasNoRequestIdentity) &&
+                (!hasRequestIdentity ||
+                 !string.IsNullOrEmpty(CameraPublisherSource));
         }
 
         private bool HasCoherentReleaseProgress()
@@ -250,7 +258,7 @@ namespace Immersive.Framework.PlayerParticipation
                 $"runtimeContent='{(RuntimeContentIdentity.IsValid ? RuntimeContentIdentity.StableText : string.Empty)}' " +
                 $"admissionToken='{Token.StableText}' " +
                 $"cameraState='{CameraEligibilityState}' cameraRequiredness='{CameraRequiredness}' " +
-                $"cameraPublished='{CameraRequestPublished}' request='{CameraRequestId}' output='{CameraOutputId}' " +
+                $"cameraPublished='{CameraRequestPublished}' request='{CameraRequestId}' output='{CameraOutputId}' publisherSource='{CameraPublisherSource}' " +
                 $"releaseProgress='camera:{CameraRequestReleased},eligibility:{CameraEligibilityReleased},input:{InputBindingReleased},occupancy:{OccupancyReleased}' " +
                 $"admissionRevision='{AdmissionRevision}' source='{Source}' reason='{Reason}' message='{Message}'";
         }
@@ -279,6 +287,7 @@ namespace Immersive.Framework.PlayerParticipation
                 PlayerGameplayCameraEligibilityState.None,
                 PlayerGameplayCameraRequiredness.None,
                 false,
+                string.Empty,
                 string.Empty,
                 string.Empty,
                 false,

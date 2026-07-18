@@ -40,7 +40,8 @@ another canonical cut.
 | `CameraOutputContext` | request admission, arbitration, snapshot and restoration |
 | `CameraOutputSession` | transactional context/application coordination |
 | `CameraOutputRigApplicator` | presents or clears the selected virtual rig |
-| `LocalPlayerCameraRequestBinding` | normal eligible Player request |
+| `PlayerGameplayAdmissionRuntimeContext` | canonical Local Player request publisher, one request per admitted Slot/output |
+| `LocalPlayerCameraRequestBinding` | authoring/evidence by default; Scene Auto-Publisher only through explicit opt-in when admission publication is absent |
 | `ActivityCameraOverrideBinding` | explicit Activity override availability/request/release |
 | `RouteCameraOverrideBinding` | explicit Route override availability/request/release |
 | `SessionCameraOverrideBinding` | transition-scoped Session override |
@@ -56,7 +57,8 @@ precedence:
   Player 50 < Activity 100 < Route 200 < Session 300
 
 lifecycle:
-  Player eligibility publishes
+  Player Gameplay Admission publishes exactly one LocalPlayer request per Slot/output
+  Scene Auto-Publisher is opt-in and must not coexist with admission publication for the same Player
   Activity entry makes override available
   Route entry makes override available
   explicit RequestOverride publishes

@@ -41,8 +41,8 @@ namespace Immersive.Framework.Camera
         [SerializeField] private string tieBreakerId;
 
         [Header("Eligibility")]
-        [Tooltip("Publishes during OnEnable. Disable this when another runtime system explicitly owns local-player eligibility.")]
-        [SerializeField] private bool eligibleOnEnable = true;
+        [Tooltip("Optional scene-owned publisher. Leave disabled when Player Gameplay Admission owns Local Player camera publication.")]
+        [SerializeField] private bool eligibleOnEnable;
         [Tooltip("Releases the request during OnDisable.")]
         [SerializeField] private bool releaseOnDisable = true;
 
@@ -58,6 +58,10 @@ namespace Immersive.Framework.Camera
         public PlayerActorDeclaration PlayerActor => playerActor;
         public string EligibilityScopeId => eligibilityScopeId.NormalizeText();
         public string RequestIdText => requestId.NormalizeText();
+        public bool IsSceneAutoPublisherOptIn => eligibleOnEnable;
+        public string PublisherSource => eligibleOnEnable
+            ? "SceneAutoPublisherOptIn"
+            : "AuthoringEvidence";
         public bool IsLocallyEligible => isLocallyEligible;
         public bool IsPublished => publisher != null && publisher.IsPublished;
         public string LastStatus => lastStatus.NormalizeText();
@@ -86,6 +90,17 @@ namespace Immersive.Framework.Camera
 
         public bool TryPublish()
         {
+            if (!eligibleOnEnable)
+            {
+                isLocallyEligible = false;
+                SetDiagnostic(
+                    "Blocked",
+                    "Local Player Camera Request Binding is authoring evidence by default. " +
+                    "PlayerGameplayAdmissionRuntimeContext is the canonical publisher; enable the explicit Scene Auto-Publisher opt-in only when admission publication is not present for this Player.",
+                    true);
+                return false;
+            }
+
             if (publisher != null && publisher.IsPublished)
             {
                 isLocallyEligible = true;
@@ -447,7 +462,10 @@ namespace Immersive.Framework.Camera
             }
 
             string message =
-                $"[FRAMEWORK_CAMERA] Local Player Camera Request Binding status='{lastStatus}' diagnostic='{lastDiagnostic}'.";
+                $"[FRAMEWORK_CAMERA] Local Player Camera Request Binding status='{lastStatus}' " +
+                $"publisherSource='{PublisherSource}' owner='LocalPlayer' " +
+                $"slot='{GetSlotDiagnosticId()}' request='{RequestIdText}' " +
+                $"output='{GetOutputDiagnosticId()}' diagnostic='{lastDiagnostic}'.";
             if (error)
             {
                 Debug.LogError(message, this);
@@ -456,6 +474,20 @@ namespace Immersive.Framework.Camera
             {
                 Debug.Log(message, this);
             }
+        }
+
+        private string GetSlotDiagnosticId()
+        {
+            return localPlayerHost != null && localPlayerHost.HasJoinedSlot
+                ? localPlayerHost.JoinedPlayerSlotId.StableText
+                : "<unjoined>";
+        }
+
+        private string GetOutputDiagnosticId()
+        {
+            return outputSession != null
+                ? outputSession.OutputIdText
+                : "<unbound>";
         }
     }
 }

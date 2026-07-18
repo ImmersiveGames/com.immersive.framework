@@ -40,12 +40,15 @@ Do not duplicate a binding for the same output.
 
 ## 3. Author the normal Player camera
 
-Place `LocalPlayerCameraRequestBinding` on the local Player or an explicit
-Player-owned object.
+Configure `PlayerGameplayCameraAuthoring` on the admitted Player Actor. The
+Session-scoped `PlayerGameplayAdmissionRuntimeContext` is the canonical
+publisher: it emits exactly one `LocalPlayer` request for the admitted Slot and
+output when camera eligibility is `Eligible`.
 
-The Player request publishes when eligibility is active. Use
-`SetLocalPlayerEligible(bool)` when locality or control eligibility is owned by
-another runtime authority.
+`LocalPlayerCameraRequestBinding` is authoring/evidence by default. Its Scene
+Auto-Publisher is an explicit opt-in for a scene that has no gameplay-admission
+publisher for that Player. Never enable both paths for the same Player; the
+authoring validator blocks that configuration.
 
 Default Player precedence:
 
@@ -113,6 +116,8 @@ output
 registered requests
 winner
 owner
+Player Slot
+publisher source
 scope
 precedence
 targets
