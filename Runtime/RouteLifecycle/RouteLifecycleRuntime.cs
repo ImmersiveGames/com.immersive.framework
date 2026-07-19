@@ -34,6 +34,7 @@ namespace Immersive.Framework.RouteLifecycle
         private readonly RuntimeContentRuntime _runtimeContentRuntime;
         private readonly RuntimeContentAnchorBinding _contentAnchorBindingRuntime;
         private readonly IRouteRuntimePort _routeRuntime;
+        private readonly IActivityRuntimePort _activityRuntime;
         private readonly CycleResetRuntime _cycleResetRuntime = new CycleResetRuntime();
         private readonly EventBus<RouteEnteredEvent> _routeEnteredEvents = new EventBus<RouteEnteredEvent>();
         private readonly EventBus<RouteExitedEvent> _routeExitedEvents = new EventBus<RouteExitedEvent>();
@@ -43,12 +44,18 @@ namespace Immersive.Framework.RouteLifecycle
         internal RouteLifecycleRuntime(
             RuntimeContentRuntime runtimeContentRuntime,
             RuntimeContentAnchorBinding contentAnchorBindingRuntime,
-            IRouteRuntimePort routeRuntime)
+            IRouteRuntimePort routeRuntime,
+            IActivityRuntimePort activityRuntime)
         {
             _runtimeContentRuntime = runtimeContentRuntime ?? throw new ArgumentNullException(nameof(runtimeContentRuntime));
             _contentAnchorBindingRuntime = contentAnchorBindingRuntime ?? throw new ArgumentNullException(nameof(contentAnchorBindingRuntime));
             _routeRuntime = routeRuntime ?? throw new ArgumentNullException(nameof(routeRuntime));
-            _activityFlowRuntime = new ActivityFlowRuntime(_runtimeContentRuntime, _contentAnchorBindingRuntime, _sceneLifecycleRuntime);
+            _activityRuntime = activityRuntime ?? throw new ArgumentNullException(nameof(activityRuntime));
+            _activityFlowRuntime = new ActivityFlowRuntime(
+                _runtimeContentRuntime,
+                _contentAnchorBindingRuntime,
+                _sceneLifecycleRuntime,
+                _activityRuntime);
             _routeSceneCompositionRuntime = new RouteSceneCompositionRuntime(_sceneLifecycleRuntime);
             _contentReleaseRuntime = new ContentReleaseRuntime(_sceneLifecycleRuntime);
         }
@@ -244,12 +251,22 @@ namespace Immersive.Framework.RouteLifecycle
 
             RouteRequestTriggerBindingResult routeTriggerBinding =
                 RouteRequestTriggerBinding.TryBind(
-                    ResolveLoadedRouteSceneRoots(routeSceneCompositionResult),
+                    ResolveMaterializedRouteSceneRoots(routeSceneCompositionResult),
                     _routeRuntime);
             if (!routeTriggerBinding.Succeeded)
             {
                 return RouteLifecycleStartResult.Failed(
                     routeTriggerBinding.Message);
+            }
+
+            ActivityRequestTriggerBindingResult activityTriggerBinding =
+                ActivityRequestTriggerBinding.TryBind(
+                    ResolveMaterializedRouteSceneRoots(routeSceneCompositionResult),
+                    _activityRuntime);
+            if (!activityTriggerBinding.Succeeded)
+            {
+                return RouteLifecycleStartResult.Failed(
+                    activityTriggerBinding.Message);
             }
 
             var runtimeRouteEnterResult = CreateRouteScopeRoot(route, source, reason);
@@ -373,7 +390,7 @@ namespace Immersive.Framework.RouteLifecycle
             return result;
         }
 
-        private static IReadOnlyList<GameObject> ResolveLoadedRouteSceneRoots(
+        private static IReadOnlyList<GameObject> ResolveMaterializedRouteSceneRoots(
             RouteSceneCompositionResult compositionResult)
         {
             var roots = new List<GameObject>();
@@ -382,7 +399,7 @@ namespace Immersive.Framework.RouteLifecycle
             {
                 RouteSceneCompositionResultEntry entry =
                     compositionResult.Entries[index];
-                if (!entry.Loaded)
+                if (!entry.Loaded && !entry.AlreadyLoaded)
                 {
                     continue;
                 }

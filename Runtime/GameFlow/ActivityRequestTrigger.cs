@@ -1,6 +1,5 @@
 using System;
 using Immersive.Foundation.Events;
-using Immersive.Framework.ApplicationLifecycle;
 using Immersive.Framework.Authoring;
 using Immersive.Framework.Common.FlowTriggers;
 using Immersive.Framework.Diagnostics;
@@ -28,6 +27,9 @@ namespace Immersive.Framework.GameFlow
         private FrameworkLogger _logger;
         private bool _requestInFlight;
         private bool _lastRequestClearedActivity;
+        private IActivityRuntimePort _activityRuntime;
+        private string _activityRuntimeBindingDiagnostic =
+            "Activity runtime port is not bound.";
 
         [Header("Activity")]
         [SerializeField] private ActivityAsset targetActivity;
@@ -59,6 +61,14 @@ namespace Immersive.Framework.GameFlow
 
         public bool LastRequestFailed => _triggerState.LastFailed;
 
+        public bool HasActivityRuntimeBinding => _activityRuntime != null;
+
+        public string ActivityRuntimeBindingStatus =>
+            HasActivityRuntimeBinding ? "Bound" : "Missing";
+
+        public string ActivityRuntimeBindingDiagnostic =>
+            _activityRuntimeBindingDiagnostic;
+
         public IEventBinding SubscribeRequestEvents(Action<ActivityRequestTriggerEvent> handler)
         {
             return _requestEvents.Subscribe(handler);
@@ -67,6 +77,40 @@ namespace Immersive.Framework.GameFlow
         private void Awake()
         {
             _logger = FrameworkLogger.Create<ActivityRequestTrigger>();
+        }
+
+        internal bool TryBindActivityRuntime(
+            IActivityRuntimePort activityRuntime,
+            out string issue)
+        {
+            if (activityRuntime == null)
+            {
+                issue = "Activity runtime port binding requires a non-null port.";
+                _activityRuntimeBindingDiagnostic = issue;
+                return false;
+            }
+
+            if (_activityRuntime == null)
+            {
+                _activityRuntime = activityRuntime;
+                issue = string.Empty;
+                _activityRuntimeBindingDiagnostic =
+                    $"Bound '{activityRuntime.GetType().FullName}'.";
+                return true;
+            }
+
+            if (ReferenceEquals(_activityRuntime, activityRuntime))
+            {
+                issue = string.Empty;
+                _activityRuntimeBindingDiagnostic =
+                    $"Bound '{activityRuntime.GetType().FullName}' (idempotent).";
+                return true;
+            }
+
+            issue =
+                "Activity runtime port binding rejected a different port for the current lifetime.";
+            _activityRuntimeBindingDiagnostic = issue;
+            return false;
         }
 
         public async void RequestActivity()
@@ -91,9 +135,15 @@ namespace Immersive.Framework.GameFlow
                 return;
             }
 
-            resolvedReason = ResolveRequestReason();
-            if (!TryGetRuntimeHost(targetActivity, resolvedReason, false, out var runtimeHost))
+            IActivityRuntimePort activityRuntime = _activityRuntime;
+            if (activityRuntime == null)
             {
+                const string message =
+                    "Activity Request failed. Activity runtime port is not bound.";
+                _activityRuntimeBindingDiagnostic =
+                    "Activity runtime port is not bound.";
+                _logger.Error(message);
+                PublishCompleted(false, FlowRequestOutcome.Failed, resolvedReason, message);
                 return;
             }
 
@@ -103,7 +153,22 @@ namespace Immersive.Framework.GameFlow
             FrameworkActivityRequestResult result;
             try
             {
-                result = await runtimeHost.RequestActivityAsync(targetActivity, DefaultSource, resolvedReason);
+                result = await activityRuntime.RequestActivityAsync(
+                    targetActivity,
+                    DefaultSource,
+                    resolvedReason);
+            }
+            catch (Exception exception)
+            {
+                string message =
+                    $"Activity Request failed with an exception. source='{DefaultSource}' reason='{resolvedReason}' exception='{exception.GetType().Name}'.";
+                _logger.Error(message, exception);
+                PublishCompleted(
+                    false,
+                    FlowRequestOutcome.Failed,
+                    resolvedReason,
+                    message);
+                return;
             }
             finally
             {
@@ -127,8 +192,15 @@ namespace Immersive.Framework.GameFlow
                 return;
             }
 
-            if (!TryGetRuntimeHost(null, resolvedReason, true, out var runtimeHost))
+            IActivityRuntimePort activityRuntime = _activityRuntime;
+            if (activityRuntime == null)
             {
+                const string message =
+                    "Activity Request failed. Activity runtime port is not bound.";
+                _activityRuntimeBindingDiagnostic =
+                    "Activity runtime port is not bound.";
+                _logger.Error(message);
+                PublishCompleted(true, FlowRequestOutcome.Failed, resolvedReason, message);
                 return;
             }
 
@@ -138,7 +210,21 @@ namespace Immersive.Framework.GameFlow
             FrameworkActivityRequestResult result;
             try
             {
-                result = await runtimeHost.ClearActivityAsync(DefaultSource, resolvedReason);
+                result = await activityRuntime.ClearActivityAsync(
+                    DefaultSource,
+                    resolvedReason);
+            }
+            catch (Exception exception)
+            {
+                string message =
+                    $"Activity Request failed with an exception. source='{DefaultSource}' reason='{resolvedReason}' exception='{exception.GetType().Name}'.";
+                _logger.Error(message, exception);
+                PublishCompleted(
+                    true,
+                    FlowRequestOutcome.Failed,
+                    resolvedReason,
+                    message);
+                return;
             }
             finally
             {
@@ -154,23 +240,6 @@ namespace Immersive.Framework.GameFlow
             {
                 _logger = FrameworkLogger.Create<ActivityRequestTrigger>();
             }
-        }
-
-        private bool TryGetRuntimeHost(ActivityAsset activity, string resolvedReason, bool clearsActivity, out FrameworkRuntimeHost runtimeHost)
-        {
-            if (FrameworkRuntimeHost.TryGetCurrent(out runtimeHost))
-            {
-                return true;
-            }
-
-            var unavailable = FrameworkActivityRequestResult.FailedRuntimeUnavailable(
-                "Activity Request failed. Application Runtime is unavailable.",
-                activity,
-                DefaultSource,
-                resolvedReason);
-            _logger.Error(unavailable.Message);
-            PublishCompleted(clearsActivity, FlowRequestOutcome.Failed, resolvedReason, unavailable.Message);
-            return false;
         }
 
         private string ResolveRequestReason()

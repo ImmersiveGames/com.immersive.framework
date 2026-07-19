@@ -35,7 +35,7 @@ namespace Immersive.Framework.ApplicationLifecycle
     /// It owns the Game Flow instance for this boot, but does not expose a global service locator.
     /// </summary>
     [FrameworkApiStatus(FrameworkApiStatus.Internal, "Runtime implementation detail; not game-facing API.")]
-    internal sealed partial class FrameworkRuntimeHost : MonoBehaviour, IPauseRuntimePort, IRouteRuntimePort
+    internal sealed partial class FrameworkRuntimeHost : MonoBehaviour, IPauseRuntimePort, IRouteRuntimePort, IActivityRuntimePort
     {
         private const string RuntimeHostName = "Immersive Framework Runtime";
         private const string PauseTransitionInProgressIssueCode = "pause.transition-in-progress";
@@ -403,13 +403,25 @@ namespace Immersive.Framework.ApplicationLifecycle
                 _state = FrameworkRuntimeState.FromGameFlowResult(_gameApplication, failed);
                 return failed;
             }
+            IActivityRuntimePort activityRuntimePort = this;
+            ActivityRequestTriggerBindingResult globalActivityTriggerBinding =
+                _globalUiSceneRuntime.TryBindActivityRequestTriggers(
+                    activityRuntimePort);
+            if (!globalActivityTriggerBinding.Succeeded)
+            {
+                var failed = FrameworkGameFlowStartResult.Failed(
+                    globalActivityTriggerBinding.Message);
+                _state = FrameworkRuntimeState.FromGameFlowResult(_gameApplication, failed);
+                return failed;
+            }
             ApplyPauseSurfaceSnapshot("FrameworkRuntimeHost", "framework-start");
             var transitionOrchestrator = CreateTransitionOrchestrator(_globalUiSceneRuntime, sessionCameraOverride);
             _gameFlowRuntime = new GameFlowRuntime(
                 _runtimeContentRuntime,
                 _contentAnchorBindingRuntime,
                 transitionOrchestrator,
-                routeRuntimePort);
+                routeRuntimePort,
+                activityRuntimePort);
             ApplyPlayerActivityLifecycleAdmissionRuntime();
             ApplySceneLocalPlayerAdmissionRuntime();
 
@@ -729,6 +741,17 @@ namespace Immersive.Framework.ApplicationLifecycle
             LogActivityRequestResult(result, loadingDiagnostics);
             return result;
         }
+
+        Task<FrameworkActivityRequestResult>
+            IActivityRuntimePort.RequestActivityAsync(
+                ActivityAsset targetActivity,
+                string source,
+                string reason) => RequestActivityAsync(targetActivity, source, reason);
+
+        Task<FrameworkActivityRequestResult>
+            IActivityRuntimePort.ClearActivityAsync(
+                string source,
+                string reason) => ClearActivityAsync(source, reason);
 
 
         internal Awaitable<FrameworkActivityRestartFlowResult> RestartActivityAsync(

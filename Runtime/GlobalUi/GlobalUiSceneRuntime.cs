@@ -152,6 +152,14 @@ namespace Immersive.Framework.GlobalUi
             return RouteRequestTriggerBinding.TryBind(_persistedRoots, routeRuntime);
         }
 
+        internal ActivityRequestTriggerBindingResult TryBindActivityRequestTriggers(
+            IActivityRuntimePort activityRuntime)
+        {
+            return ActivityRequestTriggerBinding.TryBind(
+                _persistedRoots,
+                activityRuntime);
+        }
+
         internal static GlobalUiPauseRequestTriggerBindingResult
             TryBindPauseRequestTriggers(
                 IReadOnlyList<GameObject> persistentRoots,

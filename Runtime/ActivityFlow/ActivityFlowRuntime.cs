@@ -9,6 +9,9 @@ using Immersive.Framework.RuntimeContent;
 using Immersive.Framework.SceneLifecycle;
 using Immersive.Framework.Loading;
 using Immersive.Framework.Common;
+using Immersive.Framework.GameFlow;
+using UnityEngine;
+using UnityEngine.SceneManagement;
 
 namespace Immersive.Framework.ActivityFlow
 {
@@ -28,6 +31,7 @@ namespace Immersive.Framework.ActivityFlow
         private IActivityContentExecutionParticipantSource _activityContentExecutionParticipantSource;
         private readonly RuntimeContentRuntime _runtimeContentRuntime;
         private readonly RuntimeContentAnchorBinding _contentAnchorBindingRuntime;
+        private readonly IActivityRuntimePort _activityRuntime;
         private readonly EventBus<ActivityEnteredEvent> _activityEnteredEvents = new EventBus<ActivityEnteredEvent>();
         private readonly EventBus<ActivityExitedEvent> _activityExitedEvents = new EventBus<ActivityExitedEvent>();
         private RouteAsset _currentRoute;
@@ -38,8 +42,14 @@ namespace Immersive.Framework.ActivityFlow
         internal ActivityFlowRuntime(
             RuntimeContentRuntime runtimeContentRuntime,
             RuntimeContentAnchorBinding contentAnchorBindingRuntime,
-            SceneLifecycleRuntime sceneLifecycleRuntime)
-            : this(runtimeContentRuntime, contentAnchorBindingRuntime, sceneLifecycleRuntime, EmptyActivityContentExecutionParticipantSource.Instance)
+            SceneLifecycleRuntime sceneLifecycleRuntime,
+            IActivityRuntimePort activityRuntime)
+            : this(
+                runtimeContentRuntime,
+                contentAnchorBindingRuntime,
+                sceneLifecycleRuntime,
+                activityRuntime,
+                EmptyActivityContentExecutionParticipantSource.Instance)
         {
         }
 
@@ -47,10 +57,12 @@ namespace Immersive.Framework.ActivityFlow
             RuntimeContentRuntime runtimeContentRuntime,
             RuntimeContentAnchorBinding contentAnchorBindingRuntime,
             SceneLifecycleRuntime sceneLifecycleRuntime,
+            IActivityRuntimePort activityRuntime,
             IActivityContentExecutionParticipantSource activityContentExecutionParticipantSource)
         {
             _runtimeContentRuntime = runtimeContentRuntime ?? throw new ArgumentNullException(nameof(runtimeContentRuntime));
             _contentAnchorBindingRuntime = contentAnchorBindingRuntime ?? throw new ArgumentNullException(nameof(contentAnchorBindingRuntime));
+            _activityRuntime = activityRuntime ?? throw new ArgumentNullException(nameof(activityRuntime));
             _activitySceneCompositionRuntime = new ActivitySceneCompositionRuntime(sceneLifecycleRuntime ?? throw new ArgumentNullException(nameof(sceneLifecycleRuntime)));
             _activityOperationPlanner = new ActivityOperationPlanner(_activitySceneCompositionRuntime);
             _activityContentExecutionParticipantSource = activityContentExecutionParticipantSource ?? EmptyActivityContentExecutionParticipantSource.Instance;
@@ -364,6 +376,55 @@ namespace Immersive.Framework.ActivityFlow
         {
             var plan = ActivitySceneCompositionPlan.FromActivity(activity, source, reason);
             return ActivitySceneCompositionResult.FromPlan(plan, source, reason);
+        }
+
+        private ActivityRequestTriggerBindingResult TryBindActivityRequestTriggers(
+            ActivitySceneCompositionResult compositionResult)
+        {
+            return ActivityRequestTriggerBinding.TryBind(
+                ResolveMaterializedActivitySceneRoots(compositionResult),
+                _activityRuntime);
+        }
+
+        private static IReadOnlyList<GameObject> ResolveMaterializedActivitySceneRoots(
+            ActivitySceneCompositionResult compositionResult)
+        {
+            var roots = new List<GameObject>();
+            var seenSceneHandles = new HashSet<ulong>();
+            for (int index = 0; index < compositionResult.Entries.Count; index++)
+            {
+                ActivitySceneCompositionResultEntry entry =
+                    compositionResult.Entries[index];
+                if (!entry.Loaded && !entry.AlreadyLoaded)
+                {
+                    continue;
+                }
+
+                Scene scene = !string.IsNullOrWhiteSpace(entry.ScenePath)
+                    ? SceneManager.GetSceneByPath(entry.ScenePath)
+                    : SceneManager.GetSceneByName(entry.SceneName);
+                if (!scene.IsValid() || !scene.isLoaded ||
+                    !seenSceneHandles.Add(scene.handle.GetRawData()))
+                {
+                    continue;
+                }
+
+                GameObject[] sceneRoots = scene.GetRootGameObjects();
+                if (sceneRoots == null)
+                {
+                    continue;
+                }
+
+                for (int rootIndex = 0; rootIndex < sceneRoots.Length; rootIndex++)
+                {
+                    if (sceneRoots[rootIndex] != null)
+                    {
+                        roots.Add(sceneRoots[rootIndex]);
+                    }
+                }
+            }
+
+            return roots;
         }
 
         private ActivityContentExecutionLifecycleResult ExecuteActivityContentLifecycle(

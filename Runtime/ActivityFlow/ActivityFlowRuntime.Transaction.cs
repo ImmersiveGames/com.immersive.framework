@@ -5,6 +5,7 @@ using Immersive.Framework.ContentAnchor;
 using Immersive.Framework.Loading;
 using Immersive.Framework.RuntimeContent;
 using Immersive.Framework.Common;
+using Immersive.Framework.GameFlow;
 
 namespace Immersive.Framework.ActivityFlow
 {
@@ -177,6 +178,20 @@ namespace Immersive.Framework.ActivityFlow
                         resolvedSource,
                         resolvedReason,
                         sceneCompositionResult.ToDiagnosticString(),
+                        activityOperationResult);
+                }
+
+                ActivityRequestTriggerBindingResult activityTriggerBinding =
+                    TryBindActivityRequestTriggers(sceneCompositionResult);
+                if (!activityTriggerBinding.Succeeded)
+                {
+                    return await FailBeforeCommitAsync(
+                        transaction,
+                        nextActivity,
+                        previousActivity,
+                        resolvedSource,
+                        resolvedReason,
+                        activityTriggerBinding.Message,
                         activityOperationResult);
                 }
 
