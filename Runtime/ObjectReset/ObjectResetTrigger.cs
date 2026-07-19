@@ -1,7 +1,6 @@
 using System;
 using Immersive.Foundation.Events;
 using Immersive.Framework.ApiStatus;
-using Immersive.Framework.ApplicationLifecycle;
 using Immersive.Framework.Common;
 using Immersive.Framework.Diagnostics;
 using Immersive.Framework.GameFlow;
@@ -18,7 +17,7 @@ namespace Immersive.Framework.ObjectReset
     /// </summary>
     [DisallowMultipleComponent]
     [AddComponentMenu("Immersive Framework/Object Reset/Object Reset Trigger")]
-    [FrameworkApiStatus(FrameworkApiStatus.Experimental, "preview.12G Object Reset trigger over ResetSubject + ResetExecutor.")]
+    [FrameworkApiStatus(FrameworkApiStatus.Experimental, "H2.2.7 explicit runtime binding for Object Reset.")]
     public sealed class ObjectResetTrigger : MonoBehaviour
     {
         private const string DefaultSource = nameof(ObjectResetTrigger);
@@ -26,6 +25,8 @@ namespace Immersive.Framework.ObjectReset
 
         private readonly EventBus<ObjectResetTriggerEvent> _requestEvents = new EventBus<ObjectResetTriggerEvent>();
         private FrameworkLogger _logger;
+        private IResetExecutionRuntimePort _resetExecutionRuntime;
+        private string _resetExecutionRuntimeBindingDiagnostic = "Reset execution runtime port is not bound.";
         private bool _requestInFlight;
         private FlowRequestEventPhase _lastEventPhase = FlowRequestEventPhase.Completed;
         private FlowRequestOutcome _lastOutcome = FlowRequestOutcome.None;
@@ -102,6 +103,12 @@ namespace Immersive.Framework.ObjectReset
 
         public bool StopOnFailure => stopOnFailure;
 
+        public bool HasResetExecutionRuntimeBinding => _resetExecutionRuntime != null;
+
+        public string ResetExecutionRuntimeBindingStatus => HasResetExecutionRuntimeBinding ? "Bound" : "Missing";
+
+        public string ResetExecutionRuntimeBindingDiagnostic => _resetExecutionRuntimeBindingDiagnostic;
+
         public IEventBinding SubscribeRequestEvents(Action<ObjectResetTriggerEvent> handler)
         {
             return _requestEvents.Subscribe(handler);
@@ -110,6 +117,37 @@ namespace Immersive.Framework.ObjectReset
         private void Awake()
         {
             _logger = FrameworkLogger.Create<ObjectResetTrigger>();
+        }
+
+        internal bool TryBindResetExecutionRuntime(
+            IResetExecutionRuntimePort resetExecutionRuntime,
+            out string issue)
+        {
+            if (resetExecutionRuntime == null)
+            {
+                issue = "Reset execution runtime port binding requires a non-null port.";
+                _resetExecutionRuntimeBindingDiagnostic = issue;
+                return false;
+            }
+
+            if (_resetExecutionRuntime == null)
+            {
+                _resetExecutionRuntime = resetExecutionRuntime;
+                issue = string.Empty;
+                _resetExecutionRuntimeBindingDiagnostic = $"Bound '{resetExecutionRuntime.GetType().FullName}'.";
+                return true;
+            }
+
+            if (ReferenceEquals(_resetExecutionRuntime, resetExecutionRuntime))
+            {
+                issue = string.Empty;
+                _resetExecutionRuntimeBindingDiagnostic = $"Bound '{resetExecutionRuntime.GetType().FullName}' (idempotent).";
+                return true;
+            }
+
+            issue = "Reset execution runtime port binding rejected a different port for the current lifetime.";
+            _resetExecutionRuntimeBindingDiagnostic = issue;
+            return false;
         }
 
         [ContextMenu("Request Object Reset")]
@@ -131,9 +169,11 @@ namespace Immersive.Framework.ObjectReset
                 return;
             }
 
-            if (!FrameworkRuntimeHost.TryGetCurrent(out var runtimeHost))
+            IResetExecutionRuntimePort resetExecutionRuntime = _resetExecutionRuntime;
+            if (resetExecutionRuntime == null)
             {
-                string message = "Object Reset failed. Application Runtime is unavailable.";
+                string message = "Object Reset failed. Reset execution runtime port is not bound.";
+                _resetExecutionRuntimeBindingDiagnostic = "Reset execution runtime port is not bound.";
                 var result = ResetExecutionResult.RejectedInvalidRequest(
                     ResetIssue.Error(ResetIssueKind.InvalidRequest, message),
                     DefaultSource,
@@ -169,8 +209,7 @@ namespace Immersive.Framework.ObjectReset
             ResetExecutionResult executionResult;
             try
             {
-                var executor = new ResetExecutor(runtimeHost.ResetRegistry);
-                executionResult = await executor.ExecuteAsync(request);
+                executionResult = await resetExecutionRuntime.ExecuteResetAsync(request);
             }
             finally
             {
