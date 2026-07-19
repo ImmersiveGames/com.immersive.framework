@@ -11,6 +11,7 @@ using Immersive.Framework.Camera;
 using Immersive.Framework.PlayerParticipation;
 using Immersive.Framework.InputMode;
 using Immersive.Framework.GameFlow;
+using Immersive.Framework.CycleReset;
 using Immersive.Logging.Records;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -158,6 +159,14 @@ namespace Immersive.Framework.GlobalUi
             return ActivityRequestTriggerBinding.TryBind(
                 _persistedRoots,
                 activityRuntime);
+        }
+
+        internal RouteCycleResetTriggerBindingResult TryBindRouteCycleResetTriggers(
+            IRouteCycleResetRuntimePort routeCycleResetRuntime)
+        {
+            return RouteCycleResetTriggerBinding.TryBind(
+                _persistedRoots,
+                routeCycleResetRuntime);
         }
 
         internal static GlobalUiPauseRequestTriggerBindingResult

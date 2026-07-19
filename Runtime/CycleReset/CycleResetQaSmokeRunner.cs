@@ -137,11 +137,13 @@ namespace Immersive.Framework.CycleReset
                 return false;
             }
 
+            IRouteCycleResetRuntimePort routeCycleResetRuntime = runtimeHost;
+
             bool completed = true;
 
             if (runRouteCycleReset)
             {
-                completed &= await RunRouteTriggerStep(logger, source);
+                completed &= await RunRouteTriggerStep(logger, source, routeCycleResetRuntime);
             }
 
             if (runActivityCycleReset)
@@ -204,11 +206,13 @@ namespace Immersive.Framework.CycleReset
                 return false;
             }
 
+            IRouteCycleResetRuntimePort routeCycleResetRuntime = runtimeHost;
+
             bool completed = true;
 
             if (runRouteCycleReset)
             {
-                completed &= await RunRouteBridgeStep(logger, source);
+                completed &= await RunRouteBridgeStep(logger, source, routeCycleResetRuntime);
             }
 
             if (runActivityCycleReset)
@@ -325,13 +329,18 @@ namespace Immersive.Framework.CycleReset
 
 
 
-        private static async Task<bool> RunRouteTriggerStep(FrameworkLogger logger, string source)
+        private static async Task<bool> RunRouteTriggerStep(FrameworkLogger logger, string source, IRouteCycleResetRuntimePort routeCycleResetRuntime)
         {
             GameObject gameObject = null;
             try
             {
                 gameObject = new GameObject("QA_CycleReset_RouteTrigger_Smoke");
                 var trigger = gameObject.AddComponent<RouteCycleResetTrigger>();
+                if (!trigger.TryBindRouteCycleResetRuntime(routeCycleResetRuntime, out string bindingIssue))
+                {
+                    logger.Warning($"QA Cycle Reset Trigger Smoke step failed. step='route-trigger' reason='Route Cycle Reset runtime binding was rejected' issue='{bindingIssue}'.");
+                    return false;
+                }
                 trigger.RequestRouteCycleReset();
 
                 if (!await WaitForTriggerCompletion(trigger))
@@ -470,13 +479,18 @@ namespace Immersive.Framework.CycleReset
         }
 
 
-        private static async Task<bool> RunRouteBridgeStep(FrameworkLogger logger, string source)
+        private static async Task<bool> RunRouteBridgeStep(FrameworkLogger logger, string source, IRouteCycleResetRuntimePort routeCycleResetRuntime)
         {
             GameObject gameObject = null;
             try
             {
                 gameObject = new GameObject("QA_CycleReset_RouteBridge_Smoke");
                 var trigger = gameObject.AddComponent<RouteCycleResetTrigger>();
+                if (!trigger.TryBindRouteCycleResetRuntime(routeCycleResetRuntime, out string bindingIssue))
+                {
+                    logger.Warning($"QA Cycle Reset Bridge Smoke step failed. step='route-bridge' reason='Route Cycle Reset runtime binding was rejected' issue='{bindingIssue}'.");
+                    return false;
+                }
                 var bridge = gameObject.AddComponent<RouteCycleResetTriggerUnityEventBridge>();
                 var counters = new BridgeEventCounters();
                 AttachBridgeCounters(bridge, counters);

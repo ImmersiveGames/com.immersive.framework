@@ -10,6 +10,7 @@ using Immersive.Framework.SceneLifecycle;
 using Immersive.Framework.Loading;
 using Immersive.Framework.Common;
 using Immersive.Framework.GameFlow;
+using Immersive.Framework.CycleReset;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
@@ -32,6 +33,7 @@ namespace Immersive.Framework.ActivityFlow
         private readonly RuntimeContentRuntime _runtimeContentRuntime;
         private readonly RuntimeContentAnchorBinding _contentAnchorBindingRuntime;
         private readonly IActivityRuntimePort _activityRuntime;
+        private readonly IRouteCycleResetRuntimePort _routeCycleResetRuntime;
         private readonly EventBus<ActivityEnteredEvent> _activityEnteredEvents = new EventBus<ActivityEnteredEvent>();
         private readonly EventBus<ActivityExitedEvent> _activityExitedEvents = new EventBus<ActivityExitedEvent>();
         private RouteAsset _currentRoute;
@@ -43,12 +45,14 @@ namespace Immersive.Framework.ActivityFlow
             RuntimeContentRuntime runtimeContentRuntime,
             RuntimeContentAnchorBinding contentAnchorBindingRuntime,
             SceneLifecycleRuntime sceneLifecycleRuntime,
-            IActivityRuntimePort activityRuntime)
+            IActivityRuntimePort activityRuntime,
+            IRouteCycleResetRuntimePort routeCycleResetRuntime)
             : this(
                 runtimeContentRuntime,
                 contentAnchorBindingRuntime,
                 sceneLifecycleRuntime,
                 activityRuntime,
+                routeCycleResetRuntime,
                 EmptyActivityContentExecutionParticipantSource.Instance)
         {
         }
@@ -58,11 +62,13 @@ namespace Immersive.Framework.ActivityFlow
             RuntimeContentAnchorBinding contentAnchorBindingRuntime,
             SceneLifecycleRuntime sceneLifecycleRuntime,
             IActivityRuntimePort activityRuntime,
+            IRouteCycleResetRuntimePort routeCycleResetRuntime,
             IActivityContentExecutionParticipantSource activityContentExecutionParticipantSource)
         {
             _runtimeContentRuntime = runtimeContentRuntime ?? throw new ArgumentNullException(nameof(runtimeContentRuntime));
             _contentAnchorBindingRuntime = contentAnchorBindingRuntime ?? throw new ArgumentNullException(nameof(contentAnchorBindingRuntime));
             _activityRuntime = activityRuntime ?? throw new ArgumentNullException(nameof(activityRuntime));
+            _routeCycleResetRuntime = routeCycleResetRuntime ?? throw new ArgumentNullException(nameof(routeCycleResetRuntime));
             _activitySceneCompositionRuntime = new ActivitySceneCompositionRuntime(sceneLifecycleRuntime ?? throw new ArgumentNullException(nameof(sceneLifecycleRuntime)));
             _activityOperationPlanner = new ActivityOperationPlanner(_activitySceneCompositionRuntime);
             _activityContentExecutionParticipantSource = activityContentExecutionParticipantSource ?? EmptyActivityContentExecutionParticipantSource.Instance;
@@ -384,6 +390,14 @@ namespace Immersive.Framework.ActivityFlow
             return ActivityRequestTriggerBinding.TryBind(
                 ResolveMaterializedActivitySceneRoots(compositionResult),
                 _activityRuntime);
+        }
+
+        private RouteCycleResetTriggerBindingResult TryBindRouteCycleResetTriggers(
+            ActivitySceneCompositionResult compositionResult)
+        {
+            return RouteCycleResetTriggerBinding.TryBind(
+                ResolveMaterializedActivitySceneRoots(compositionResult),
+                _routeCycleResetRuntime);
         }
 
         private static IReadOnlyList<GameObject> ResolveMaterializedActivitySceneRoots(

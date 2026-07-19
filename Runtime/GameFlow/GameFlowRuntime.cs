@@ -45,13 +45,15 @@ namespace Immersive.Framework.GameFlow
             RuntimeContentRuntime runtimeContentRuntime,
             RuntimeContentAnchorBinding contentAnchorBindingRuntime,
             IRouteRuntimePort routeRuntime,
-            IActivityRuntimePort activityRuntime)
+            IActivityRuntimePort activityRuntime,
+            IRouteCycleResetRuntimePort routeCycleResetRuntime)
             : this(
                 runtimeContentRuntime,
                 contentAnchorBindingRuntime,
                 NoOpTransitionOrchestrator.Instance,
                 routeRuntime,
-                activityRuntime)
+                activityRuntime,
+                routeCycleResetRuntime)
         {
         }
 
@@ -60,14 +62,16 @@ namespace Immersive.Framework.GameFlow
             RuntimeContentAnchorBinding contentAnchorBindingRuntime,
             ITransitionOrchestrator transitionOrchestrator,
             IRouteRuntimePort routeRuntime,
-            IActivityRuntimePort activityRuntime)
+            IActivityRuntimePort activityRuntime,
+            IRouteCycleResetRuntimePort routeCycleResetRuntime)
         {
             _transitionOrchestrator = transitionOrchestrator ?? throw new ArgumentNullException(nameof(transitionOrchestrator));
             _routeLifecycleRuntime = new RouteLifecycleRuntime(
                 runtimeContentRuntime ?? throw new ArgumentNullException(nameof(runtimeContentRuntime)),
                 contentAnchorBindingRuntime ?? throw new ArgumentNullException(nameof(contentAnchorBindingRuntime)),
                 routeRuntime ?? throw new ArgumentNullException(nameof(routeRuntime)),
-                activityRuntime ?? throw new ArgumentNullException(nameof(activityRuntime)));
+                activityRuntime ?? throw new ArgumentNullException(nameof(activityRuntime)),
+                routeCycleResetRuntime ?? throw new ArgumentNullException(nameof(routeCycleResetRuntime)));
         }
 
         internal void SetActivityContentExecutionParticipantSource(IActivityContentExecutionParticipantSource participantSource)

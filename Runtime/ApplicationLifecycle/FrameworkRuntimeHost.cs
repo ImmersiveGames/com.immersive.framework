@@ -35,7 +35,7 @@ namespace Immersive.Framework.ApplicationLifecycle
     /// It owns the Game Flow instance for this boot, but does not expose a global service locator.
     /// </summary>
     [FrameworkApiStatus(FrameworkApiStatus.Internal, "Runtime implementation detail; not game-facing API.")]
-    internal sealed partial class FrameworkRuntimeHost : MonoBehaviour, IPauseRuntimePort, IRouteRuntimePort, IActivityRuntimePort
+    internal sealed partial class FrameworkRuntimeHost : MonoBehaviour, IPauseRuntimePort, IRouteRuntimePort, IActivityRuntimePort, IRouteCycleResetRuntimePort
     {
         private const string RuntimeHostName = "Immersive Framework Runtime";
         private const string PauseTransitionInProgressIssueCode = "pause.transition-in-progress";
@@ -421,7 +421,19 @@ namespace Immersive.Framework.ApplicationLifecycle
                 _contentAnchorBindingRuntime,
                 transitionOrchestrator,
                 routeRuntimePort,
-                activityRuntimePort);
+                activityRuntimePort,
+                this);
+            IRouteCycleResetRuntimePort routeCycleResetRuntimePort = this;
+            RouteCycleResetTriggerBindingResult globalRouteCycleResetTriggerBinding =
+                _globalUiSceneRuntime.TryBindRouteCycleResetTriggers(
+                    routeCycleResetRuntimePort);
+            if (!globalRouteCycleResetTriggerBinding.Succeeded)
+            {
+                var failed = FrameworkGameFlowStartResult.Failed(
+                    globalRouteCycleResetTriggerBinding.Message);
+                _state = FrameworkRuntimeState.FromGameFlowResult(_gameApplication, failed);
+                return failed;
+            }
             ApplyPlayerActivityLifecycleAdmissionRuntime();
             ApplySceneLocalPlayerAdmissionRuntime();
 
@@ -803,6 +815,10 @@ namespace Immersive.Framework.ApplicationLifecycle
             LogCycleResetResult(result);
             return result;
         }
+
+        Task<CycleResetResult> IRouteCycleResetRuntimePort.RequestRouteCycleResetAsync(
+            string source,
+            string reason) => RequestRouteCycleResetAsync(source, reason);
 
         internal async Task<CycleResetResult> RequestActivityCycleResetAsync(string source, string reason)
         {
