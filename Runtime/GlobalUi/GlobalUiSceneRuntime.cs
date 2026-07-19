@@ -12,6 +12,7 @@ using Immersive.Framework.PlayerParticipation;
 using Immersive.Framework.InputMode;
 using Immersive.Framework.GameFlow;
 using Immersive.Framework.CycleReset;
+using Immersive.Framework.ActivityRestart;
 using Immersive.Logging.Records;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -175,6 +176,14 @@ namespace Immersive.Framework.GlobalUi
             return ActivityCycleResetTriggerBinding.TryBind(
                 _persistedRoots,
                 activityCycleResetRuntime);
+        }
+
+        internal ActivityRestartTriggerBindingResult TryBindActivityRestartTriggers(
+            IActivityRestartRuntimePort activityRestartRuntime)
+        {
+            return ActivityRestartTriggerBinding.TryBind(
+                _persistedRoots,
+                activityRestartRuntime);
         }
 
         internal static GlobalUiPauseRequestTriggerBindingResult

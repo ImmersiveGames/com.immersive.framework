@@ -77,6 +77,11 @@ namespace Immersive.Framework.ActivityRestart
 
                 triggerObject = new GameObject("QA 12E Activity Restart Trigger");
                 var trigger = triggerObject.AddComponent<ActivityRestartTrigger>();
+                IActivityRestartRuntimePort activityRestartRuntime = runtimeHost;
+                if (!trigger.TryBindActivityRestartRuntime(activityRestartRuntime, out string bindingIssue))
+                {
+                    return LogStep(logger, step, false, "binding-failed", runtimeHost, bindingIssue);
+                }
                 trigger.ConfigureForQa(
                     qaTargetActivity: null,
                     qaUseCurrentActivityWhenTargetMissing: true,

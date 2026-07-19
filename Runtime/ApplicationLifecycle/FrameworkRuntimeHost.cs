@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using Immersive.Framework.ActivityFlow;
+using Immersive.Framework.ActivityRestart;
 using Immersive.Framework.ContentAnchor;
 using Immersive.Framework.Authoring;
 using Immersive.Framework.Diagnostics;
@@ -35,7 +36,7 @@ namespace Immersive.Framework.ApplicationLifecycle
     /// It owns the Game Flow instance for this boot, but does not expose a global service locator.
     /// </summary>
     [FrameworkApiStatus(FrameworkApiStatus.Internal, "Runtime implementation detail; not game-facing API.")]
-    internal sealed partial class FrameworkRuntimeHost : MonoBehaviour, IPauseRuntimePort, IRouteRuntimePort, IActivityRuntimePort, IRouteCycleResetRuntimePort, IActivityCycleResetRuntimePort
+    internal sealed partial class FrameworkRuntimeHost : MonoBehaviour, IPauseRuntimePort, IRouteRuntimePort, IActivityRuntimePort, IRouteCycleResetRuntimePort, IActivityCycleResetRuntimePort, IActivityRestartRuntimePort
     {
         private const string RuntimeHostName = "Immersive Framework Runtime";
         private const string PauseTransitionInProgressIssueCode = "pause.transition-in-progress";
@@ -423,6 +424,7 @@ namespace Immersive.Framework.ApplicationLifecycle
                 routeRuntimePort,
                 activityRuntimePort,
                 this,
+                this,
                 this);
             IRouteCycleResetRuntimePort routeCycleResetRuntimePort = this;
             RouteCycleResetTriggerBindingResult globalRouteCycleResetTriggerBinding =
@@ -443,6 +445,17 @@ namespace Immersive.Framework.ApplicationLifecycle
             {
                 var failed = FrameworkGameFlowStartResult.Failed(
                     globalActivityCycleResetTriggerBinding.Message);
+                _state = FrameworkRuntimeState.FromGameFlowResult(_gameApplication, failed);
+                return failed;
+            }
+            IActivityRestartRuntimePort activityRestartRuntimePort = this;
+            ActivityRestartTriggerBindingResult globalActivityRestartTriggerBinding =
+                _globalUiSceneRuntime.TryBindActivityRestartTriggers(
+                    activityRestartRuntimePort);
+            if (!globalActivityRestartTriggerBinding.Succeeded)
+            {
+                var failed = FrameworkGameFlowStartResult.Failed(
+                    globalActivityRestartTriggerBinding.Message);
                 _state = FrameworkRuntimeState.FromGameFlowResult(_gameApplication, failed);
                 return failed;
             }
@@ -826,6 +839,206 @@ namespace Immersive.Framework.ApplicationLifecycle
             var result = await _gameFlowRuntime.RequestRouteCycleResetAsync(source, reason);
             LogCycleResetResult(result);
             return result;
+        }
+
+        async Task<ActivityRestartRuntimeResult> IActivityRestartRuntimePort.RequestActivityRestartAsync(
+            ActivityAsset targetActivity,
+            bool useCurrentActivityWhenTargetMissing,
+            bool requireTargetActivityIsCurrent,
+            ResetSelectionConfig resetSelection,
+            string source,
+            string reason)
+        {
+            string resolvedSource = source.NormalizeTextOrFallback(nameof(ActivityRestartTrigger));
+            string resolvedReason = reason.NormalizeTextOrFallback("Activity Restart");
+            if (_gameFlowRuntime == null)
+            {
+                return ActivityRestartRuntimeResult.From(ActivityRestartResult.Rejected(
+                    ActivityRestartResultStatus.RejectedRuntimeUnavailable,
+                    targetActivity,
+                    ResolveActivityRestartName(targetActivity),
+                    resolvedSource,
+                    resolvedReason,
+                    "Activity Restart failed. Application runtime is unavailable."));
+            }
+
+            ActivityAsset currentActivity = State.CurrentActivity;
+            ActivityAsset resolvedActivity = targetActivity != null
+                ? targetActivity
+                : useCurrentActivityWhenTargetMissing ? currentActivity : null;
+            string resolvedActivityName = ResolveActivityRestartName(resolvedActivity);
+            if (resolvedActivity == null)
+            {
+                return ActivityRestartRuntimeResult.From(ActivityRestartResult.Rejected(
+                    ActivityRestartResultStatus.RejectedNoActiveActivity,
+                    null,
+                    string.Empty,
+                    resolvedSource,
+                    resolvedReason,
+                    "Activity Restart failed. No target Activity is configured and no active Activity is available."));
+            }
+
+            if (requireTargetActivityIsCurrent && !ReferenceEquals(currentActivity, resolvedActivity))
+            {
+                return ActivityRestartRuntimeResult.From(ActivityRestartResult.Rejected(
+                    ActivityRestartResultStatus.RejectedTargetMismatch,
+                    resolvedActivity,
+                    resolvedActivityName,
+                    resolvedSource,
+                    resolvedReason,
+                    $"Activity Restart failed. Target Activity must be the current active Activity. current='{ResolveActivityRestartName(currentActivity)}' target='{resolvedActivityName}'."));
+            }
+
+            if (resetSelection == null)
+            {
+                ResetExecutionResult invalidSelection = ResetExecutionResult.RejectedInvalidRequest(
+                    ResetIssue.Error(ResetIssueKind.InvalidRequest, "Activity Restart reset selection is required."),
+                    resolvedSource,
+                    BuildActivityRestartStageReason(resolvedReason, "reset"));
+                return ActivityRestartRuntimeResult.From(new ActivityRestartResult(
+                    ActivityRestartResultStatus.ResetExecutionFailed,
+                    resolvedActivity,
+                    resolvedActivityName,
+                    resolvedSource,
+                    resolvedReason,
+                    invalidSelection,
+                    string.Empty,
+                    string.Empty,
+                    string.Empty,
+                    string.Empty,
+                    "Activity Restart failed. Reset selection is unavailable."));
+            }
+
+            ResetSelectionResolution selectionResolution = resetSelection.Resolve(
+                this,
+                resolvedSource,
+                BuildActivityRestartStageReason(resolvedReason, "reset"));
+            if (selectionResolution.Failed)
+            {
+                ResetIssue issue = selectionResolution.Issues.Count > 0
+                    ? selectionResolution.Issues[0]
+                    : ResetIssue.Error(ResetIssueKind.InvalidRequest, "Activity Restart reset selection failed.");
+                ResetExecutionResult selectionFailure = ResetExecutionResult.RejectedInvalidRequest(
+                    issue,
+                    resolvedSource,
+                    BuildActivityRestartStageReason(resolvedReason, "reset"));
+                return ActivityRestartRuntimeResult.From(new ActivityRestartResult(
+                    ActivityRestartResultStatus.ResetExecutionFailed,
+                    resolvedActivity,
+                    resolvedActivityName,
+                    resolvedSource,
+                    resolvedReason,
+                    selectionFailure,
+                    string.Empty,
+                    string.Empty,
+                    string.Empty,
+                    string.Empty,
+                    "Activity Restart failed. Reset selection failed."), selectionResolution);
+            }
+
+            ResetExecutionRequest resetRequest = resetSelection.CreateExecutionRequest(selectionResolution);
+            ResetExecutionResult resetExecutionResult = default;
+            FrameworkActivityRestartFlowResult restartFlowResult = await RestartActivityAsync(
+                resolvedActivity,
+                resolvedSource,
+                BuildActivityRestartStageReason(resolvedReason, "flow"),
+                async () =>
+                {
+                    try
+                    {
+                        var executor = new ResetExecutor(ResetRegistry);
+                        resetExecutionResult = await executor.ExecuteAsync(resetRequest);
+                        return !resetExecutionResult.Failed;
+                    }
+                    catch (Exception exception)
+                    {
+                        resetExecutionResult = ResetExecutionResult.RejectedInvalidRequest(
+                            ResetIssue.Error(ResetIssueKind.Exception, $"Activity Restart reset execution threw an exception. {exception.Message}"),
+                            resolvedSource,
+                            BuildActivityRestartStageReason(resolvedReason, "reset"));
+                        return false;
+                    }
+                });
+
+            if (resetExecutionResult.Failed)
+            {
+                return ActivityRestartRuntimeResult.From(new ActivityRestartResult(
+                    ActivityRestartResultStatus.ResetExecutionFailed,
+                    resolvedActivity,
+                    resolvedActivityName,
+                    resolvedSource,
+                    resolvedReason,
+                    resetExecutionResult,
+                    string.Empty,
+                    restartFlowResult.ClearResult.Message,
+                    string.Empty,
+                    restartFlowResult.ReenterResult.Message,
+                    "Activity Restart failed. Reset execution failed."), selectionResolution);
+            }
+
+            FrameworkActivityRequestResult clearResult = restartFlowResult.ClearResult;
+            FrameworkActivityRequestResult reenterResult = restartFlowResult.ReenterResult;
+            if (!clearResult.Succeeded)
+            {
+                return ActivityRestartRuntimeResult.From(new ActivityRestartResult(
+                    ActivityRestartResultStatus.ActivityClearFailed,
+                    resolvedActivity,
+                    resolvedActivityName,
+                    resolvedSource,
+                    resolvedReason,
+                    resetExecutionResult,
+                    clearResult.Kind.ToString(),
+                    clearResult.Message,
+                    reenterResult.Kind.ToString(),
+                    reenterResult.Message,
+                    "Activity Restart failed. Activity Clear failed."), selectionResolution);
+            }
+
+            if (!reenterResult.Succeeded)
+            {
+                return ActivityRestartRuntimeResult.From(new ActivityRestartResult(
+                    ActivityRestartResultStatus.ActivityReenterFailed,
+                    resolvedActivity,
+                    resolvedActivityName,
+                    resolvedSource,
+                    resolvedReason,
+                    resetExecutionResult,
+                    clearResult.Kind.ToString(),
+                    clearResult.Message,
+                    reenterResult.Kind.ToString(),
+                    reenterResult.Message,
+                    "Activity Restart failed. Activity re-enter failed."), selectionResolution);
+            }
+
+            ActivityRestartResultStatus status = resetExecutionResult.NonBlockingIssueCount > 0
+                ? ActivityRestartResultStatus.CompletedWithWarnings
+                : ActivityRestartResultStatus.Succeeded;
+            return ActivityRestartRuntimeResult.From(new ActivityRestartResult(
+                status,
+                resolvedActivity,
+                resolvedActivityName,
+                resolvedSource,
+                resolvedReason,
+                resetExecutionResult,
+                clearResult.Kind.ToString(),
+                clearResult.Message,
+                reenterResult.Kind.ToString(),
+                reenterResult.Message,
+                status == ActivityRestartResultStatus.CompletedWithWarnings
+                    ? "Activity Restart completed with reset warnings."
+                    : "Activity Restart completed successfully."), selectionResolution);
+        }
+
+        private static string ResolveActivityRestartName(ActivityAsset activity)
+        {
+            return activity != null
+                ? activity.ActivityName.NormalizeTextOrFallback(activity.name)
+                : string.Empty;
+        }
+
+        private static string BuildActivityRestartStageReason(string reason, string stage)
+        {
+            return $"{reason.NormalizeTextOrFallback("Activity Restart")}:{stage}";
         }
 
         Task<CycleResetResult> IRouteCycleResetRuntimePort.RequestRouteCycleResetAsync(

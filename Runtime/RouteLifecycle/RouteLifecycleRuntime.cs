@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using Immersive.Foundation.Events;
 using Immersive.Framework.ActivityFlow;
+using Immersive.Framework.ActivityRestart;
 using Immersive.Framework.Authoring;
 using Immersive.Framework.SceneLifecycle;
 using Immersive.Framework.ContentFlow;
@@ -37,6 +38,7 @@ namespace Immersive.Framework.RouteLifecycle
         private readonly IActivityRuntimePort _activityRuntime;
         private readonly IRouteCycleResetRuntimePort _routeCycleResetRuntime;
         private readonly IActivityCycleResetRuntimePort _activityCycleResetRuntime;
+        private readonly IActivityRestartRuntimePort _activityRestartRuntime;
         private readonly CycleResetRuntime _cycleResetRuntime = new CycleResetRuntime();
         private readonly EventBus<RouteEnteredEvent> _routeEnteredEvents = new EventBus<RouteEnteredEvent>();
         private readonly EventBus<RouteExitedEvent> _routeExitedEvents = new EventBus<RouteExitedEvent>();
@@ -49,7 +51,8 @@ namespace Immersive.Framework.RouteLifecycle
             IRouteRuntimePort routeRuntime,
             IActivityRuntimePort activityRuntime,
             IRouteCycleResetRuntimePort routeCycleResetRuntime,
-            IActivityCycleResetRuntimePort activityCycleResetRuntime)
+            IActivityCycleResetRuntimePort activityCycleResetRuntime,
+            IActivityRestartRuntimePort activityRestartRuntime)
         {
             _runtimeContentRuntime = runtimeContentRuntime ?? throw new ArgumentNullException(nameof(runtimeContentRuntime));
             _contentAnchorBindingRuntime = contentAnchorBindingRuntime ?? throw new ArgumentNullException(nameof(contentAnchorBindingRuntime));
@@ -57,13 +60,15 @@ namespace Immersive.Framework.RouteLifecycle
             _activityRuntime = activityRuntime ?? throw new ArgumentNullException(nameof(activityRuntime));
             _routeCycleResetRuntime = routeCycleResetRuntime ?? throw new ArgumentNullException(nameof(routeCycleResetRuntime));
             _activityCycleResetRuntime = activityCycleResetRuntime ?? throw new ArgumentNullException(nameof(activityCycleResetRuntime));
+            _activityRestartRuntime = activityRestartRuntime ?? throw new ArgumentNullException(nameof(activityRestartRuntime));
             _activityFlowRuntime = new ActivityFlowRuntime(
                 _runtimeContentRuntime,
                 _contentAnchorBindingRuntime,
                 _sceneLifecycleRuntime,
                 _activityRuntime,
                 _routeCycleResetRuntime,
-                _activityCycleResetRuntime);
+                _activityCycleResetRuntime,
+                _activityRestartRuntime);
             _routeSceneCompositionRuntime = new RouteSceneCompositionRuntime(_sceneLifecycleRuntime);
             _contentReleaseRuntime = new ContentReleaseRuntime(_sceneLifecycleRuntime);
         }
@@ -295,6 +300,16 @@ namespace Immersive.Framework.RouteLifecycle
             {
                 return RouteLifecycleStartResult.Failed(
                     activityCycleResetTriggerBinding.Message);
+            }
+
+            ActivityRestartTriggerBindingResult activityRestartTriggerBinding =
+                ActivityRestartTriggerBinding.TryBind(
+                    ResolveMaterializedRouteSceneRoots(routeSceneCompositionResult),
+                    _activityRestartRuntime);
+            if (!activityRestartTriggerBinding.Succeeded)
+            {
+                return RouteLifecycleStartResult.Failed(
+                    activityRestartTriggerBinding.Message);
             }
 
             var runtimeRouteEnterResult = CreateRouteScopeRoot(route, source, reason);

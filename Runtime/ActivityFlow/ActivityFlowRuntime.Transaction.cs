@@ -7,6 +7,7 @@ using Immersive.Framework.RuntimeContent;
 using Immersive.Framework.Common;
 using Immersive.Framework.GameFlow;
 using Immersive.Framework.CycleReset;
+using Immersive.Framework.ActivityRestart;
 
 namespace Immersive.Framework.ActivityFlow
 {
@@ -221,6 +222,20 @@ namespace Immersive.Framework.ActivityFlow
                         resolvedSource,
                         resolvedReason,
                         activityCycleResetTriggerBinding.Message,
+                        activityOperationResult);
+                }
+
+                ActivityRestartTriggerBindingResult activityRestartTriggerBinding =
+                    TryBindActivityRestartTriggers(sceneCompositionResult);
+                if (!activityRestartTriggerBinding.Succeeded)
+                {
+                    return await FailBeforeCommitAsync(
+                        transaction,
+                        nextActivity,
+                        previousActivity,
+                        resolvedSource,
+                        resolvedReason,
+                        activityRestartTriggerBinding.Message,
                         activityOperationResult);
                 }
 
