@@ -169,6 +169,14 @@ namespace Immersive.Framework.GlobalUi
                 routeCycleResetRuntime);
         }
 
+        internal ActivityCycleResetTriggerBindingResult TryBindActivityCycleResetTriggers(
+            IActivityCycleResetRuntimePort activityCycleResetRuntime)
+        {
+            return ActivityCycleResetTriggerBinding.TryBind(
+                _persistedRoots,
+                activityCycleResetRuntime);
+        }
+
         internal static GlobalUiPauseRequestTriggerBindingResult
             TryBindPauseRequestTriggers(
                 IReadOnlyList<GameObject> persistentRoots,

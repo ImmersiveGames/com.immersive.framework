@@ -35,7 +35,7 @@ namespace Immersive.Framework.ApplicationLifecycle
     /// It owns the Game Flow instance for this boot, but does not expose a global service locator.
     /// </summary>
     [FrameworkApiStatus(FrameworkApiStatus.Internal, "Runtime implementation detail; not game-facing API.")]
-    internal sealed partial class FrameworkRuntimeHost : MonoBehaviour, IPauseRuntimePort, IRouteRuntimePort, IActivityRuntimePort, IRouteCycleResetRuntimePort
+    internal sealed partial class FrameworkRuntimeHost : MonoBehaviour, IPauseRuntimePort, IRouteRuntimePort, IActivityRuntimePort, IRouteCycleResetRuntimePort, IActivityCycleResetRuntimePort
     {
         private const string RuntimeHostName = "Immersive Framework Runtime";
         private const string PauseTransitionInProgressIssueCode = "pause.transition-in-progress";
@@ -422,6 +422,7 @@ namespace Immersive.Framework.ApplicationLifecycle
                 transitionOrchestrator,
                 routeRuntimePort,
                 activityRuntimePort,
+                this,
                 this);
             IRouteCycleResetRuntimePort routeCycleResetRuntimePort = this;
             RouteCycleResetTriggerBindingResult globalRouteCycleResetTriggerBinding =
@@ -431,6 +432,17 @@ namespace Immersive.Framework.ApplicationLifecycle
             {
                 var failed = FrameworkGameFlowStartResult.Failed(
                     globalRouteCycleResetTriggerBinding.Message);
+                _state = FrameworkRuntimeState.FromGameFlowResult(_gameApplication, failed);
+                return failed;
+            }
+            IActivityCycleResetRuntimePort activityCycleResetRuntimePort = this;
+            ActivityCycleResetTriggerBindingResult globalActivityCycleResetTriggerBinding =
+                _globalUiSceneRuntime.TryBindActivityCycleResetTriggers(
+                    activityCycleResetRuntimePort);
+            if (!globalActivityCycleResetTriggerBinding.Succeeded)
+            {
+                var failed = FrameworkGameFlowStartResult.Failed(
+                    globalActivityCycleResetTriggerBinding.Message);
                 _state = FrameworkRuntimeState.FromGameFlowResult(_gameApplication, failed);
                 return failed;
             }
@@ -826,6 +838,10 @@ namespace Immersive.Framework.ApplicationLifecycle
             LogCycleResetResult(result);
             return result;
         }
+
+        Task<CycleResetResult> IActivityCycleResetRuntimePort.RequestActivityCycleResetAsync(
+            string source,
+            string reason) => RequestActivityCycleResetAsync(source, reason);
 
         internal PauseResult RequestPause(PauseRequestKind kind, string source, string reason)
         {

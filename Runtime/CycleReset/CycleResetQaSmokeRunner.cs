@@ -138,6 +138,7 @@ namespace Immersive.Framework.CycleReset
             }
 
             IRouteCycleResetRuntimePort routeCycleResetRuntime = runtimeHost;
+            IActivityCycleResetRuntimePort activityCycleResetRuntime = runtimeHost;
 
             bool completed = true;
 
@@ -155,7 +156,7 @@ namespace Immersive.Framework.CycleReset
                 }
                 else
                 {
-                    completed &= await RunActivityTriggerStep(logger, source);
+                    completed &= await RunActivityTriggerStep(logger, source, activityCycleResetRuntime);
                 }
             }
 
@@ -207,6 +208,7 @@ namespace Immersive.Framework.CycleReset
             }
 
             IRouteCycleResetRuntimePort routeCycleResetRuntime = runtimeHost;
+            IActivityCycleResetRuntimePort activityCycleResetRuntime = runtimeHost;
 
             bool completed = true;
 
@@ -224,7 +226,7 @@ namespace Immersive.Framework.CycleReset
                 }
                 else
                 {
-                    completed &= await RunActivityBridgeStep(logger, source);
+                    completed &= await RunActivityBridgeStep(logger, source, activityCycleResetRuntime);
                 }
             }
 
@@ -360,13 +362,18 @@ namespace Immersive.Framework.CycleReset
             }
         }
 
-        private static async Task<bool> RunActivityTriggerStep(FrameworkLogger logger, string source)
+        private static async Task<bool> RunActivityTriggerStep(FrameworkLogger logger, string source, IActivityCycleResetRuntimePort activityCycleResetRuntime)
         {
             GameObject gameObject = null;
             try
             {
                 gameObject = new GameObject("QA_CycleReset_ActivityTrigger_Smoke");
                 var trigger = gameObject.AddComponent<ActivityCycleResetTrigger>();
+                if (!trigger.TryBindActivityCycleResetRuntime(activityCycleResetRuntime, out string bindingIssue))
+                {
+                    logger.Warning($"QA Cycle Reset Trigger Smoke step failed. step='activity-trigger' reason='Activity Cycle Reset runtime binding was rejected' issue='{bindingIssue}'.");
+                    return false;
+                }
                 trigger.RequestActivityCycleReset();
 
                 if (!await WaitForTriggerCompletion(trigger))
@@ -514,13 +521,18 @@ namespace Immersive.Framework.CycleReset
             }
         }
 
-        private static async Task<bool> RunActivityBridgeStep(FrameworkLogger logger, string source)
+        private static async Task<bool> RunActivityBridgeStep(FrameworkLogger logger, string source, IActivityCycleResetRuntimePort activityCycleResetRuntime)
         {
             GameObject gameObject = null;
             try
             {
                 gameObject = new GameObject("QA_CycleReset_ActivityBridge_Smoke");
                 var trigger = gameObject.AddComponent<ActivityCycleResetTrigger>();
+                if (!trigger.TryBindActivityCycleResetRuntime(activityCycleResetRuntime, out string bindingIssue))
+                {
+                    logger.Warning($"QA Cycle Reset Bridge Smoke step failed. step='activity-bridge' reason='Activity Cycle Reset runtime binding was rejected' issue='{bindingIssue}'.");
+                    return false;
+                }
                 var bridge = gameObject.AddComponent<ActivityCycleResetTriggerUnityEventBridge>();
                 var counters = new BridgeEventCounters();
                 AttachBridgeCounters(bridge, counters);

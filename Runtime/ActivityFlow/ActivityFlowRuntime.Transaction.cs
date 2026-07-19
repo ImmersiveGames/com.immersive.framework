@@ -210,6 +210,20 @@ namespace Immersive.Framework.ActivityFlow
                         activityOperationResult);
                 }
 
+                ActivityCycleResetTriggerBindingResult activityCycleResetTriggerBinding =
+                    TryBindActivityCycleResetTriggers(sceneCompositionResult);
+                if (!activityCycleResetTriggerBinding.Succeeded)
+                {
+                    return await FailBeforeCommitAsync(
+                        transaction,
+                        nextActivity,
+                        previousActivity,
+                        resolvedSource,
+                        resolvedReason,
+                        activityCycleResetTriggerBinding.Message,
+                        activityOperationResult);
+                }
+
                 ActivityActivationGateResult activationGate =
                     beforeActivation != null
                         ? beforeActivation()

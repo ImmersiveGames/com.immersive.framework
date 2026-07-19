@@ -46,14 +46,16 @@ namespace Immersive.Framework.GameFlow
             RuntimeContentAnchorBinding contentAnchorBindingRuntime,
             IRouteRuntimePort routeRuntime,
             IActivityRuntimePort activityRuntime,
-            IRouteCycleResetRuntimePort routeCycleResetRuntime)
+            IRouteCycleResetRuntimePort routeCycleResetRuntime,
+            IActivityCycleResetRuntimePort activityCycleResetRuntime)
             : this(
                 runtimeContentRuntime,
                 contentAnchorBindingRuntime,
                 NoOpTransitionOrchestrator.Instance,
                 routeRuntime,
                 activityRuntime,
-                routeCycleResetRuntime)
+                routeCycleResetRuntime,
+                activityCycleResetRuntime)
         {
         }
 
@@ -63,7 +65,8 @@ namespace Immersive.Framework.GameFlow
             ITransitionOrchestrator transitionOrchestrator,
             IRouteRuntimePort routeRuntime,
             IActivityRuntimePort activityRuntime,
-            IRouteCycleResetRuntimePort routeCycleResetRuntime)
+            IRouteCycleResetRuntimePort routeCycleResetRuntime,
+            IActivityCycleResetRuntimePort activityCycleResetRuntime)
         {
             _transitionOrchestrator = transitionOrchestrator ?? throw new ArgumentNullException(nameof(transitionOrchestrator));
             _routeLifecycleRuntime = new RouteLifecycleRuntime(
@@ -71,7 +74,8 @@ namespace Immersive.Framework.GameFlow
                 contentAnchorBindingRuntime ?? throw new ArgumentNullException(nameof(contentAnchorBindingRuntime)),
                 routeRuntime ?? throw new ArgumentNullException(nameof(routeRuntime)),
                 activityRuntime ?? throw new ArgumentNullException(nameof(activityRuntime)),
-                routeCycleResetRuntime ?? throw new ArgumentNullException(nameof(routeCycleResetRuntime)));
+                routeCycleResetRuntime ?? throw new ArgumentNullException(nameof(routeCycleResetRuntime)),
+                activityCycleResetRuntime ?? throw new ArgumentNullException(nameof(activityCycleResetRuntime)));
         }
 
         internal void SetActivityContentExecutionParticipantSource(IActivityContentExecutionParticipantSource participantSource)
