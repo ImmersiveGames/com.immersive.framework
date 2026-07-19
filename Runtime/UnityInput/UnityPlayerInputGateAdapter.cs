@@ -1,6 +1,5 @@
 using System.Collections.Generic;
 using Immersive.Framework.ApiStatus;
-using Immersive.Framework.ApplicationLifecycle;
 using Immersive.Framework.Common;
 using Immersive.Framework.Diagnostics;
 using Immersive.Framework.Gate;
@@ -18,7 +17,7 @@ namespace Immersive.Framework.UnityInput
     [AddComponentMenu("Immersive Framework/Unity Input/Unity PlayerInput Gate Adapter")]
     [FrameworkApiStatus(
         FrameworkApiStatus.Experimental,
-        "IC1 Gate intent adapter using the canonical Unity PlayerInput physical writer.")]
+        "H2.2.9 explicit Input Gate runtime binding using the canonical Unity PlayerInput physical writer.")]
     public sealed class UnityPlayerInputGateAdapter : MonoBehaviour
     {
         private const string DefaultSource = nameof(UnityPlayerInputGateAdapter);
@@ -46,6 +45,8 @@ namespace Immersive.Framework.UnityInput
         [SerializeField] private bool logMissingTargetOnce = true;
 
         private FrameworkLogger _logger;
+        private IInputGateRuntimePort _inputGateRuntime;
+        private string _inputGateRuntimeBindingDiagnostic = "Input Gate runtime port is not bound.";
         private bool _isBlockedByAdapter;
         private bool _actionMapWasEnabledBeforeBlock;
         private string _lastStatus = "NotApplied";
@@ -61,6 +62,11 @@ namespace Immersive.Framework.UnityInput
         public bool IsBlockedByAdapter => _isBlockedByAdapter;
         public string LastStatus => _lastStatus.NormalizeText();
         public string LastReason => _lastReason.NormalizeText();
+        public bool HasInputGateRuntimeBinding => _inputGateRuntime != null;
+        public string InputGateRuntimeBindingStatus =>
+            HasInputGateRuntimeBinding ? "Bound" : "Missing";
+        public string InputGateRuntimeBindingDiagnostic =>
+            _inputGateRuntimeBindingDiagnostic;
 
         private void Awake() => EnsureLogger();
 
@@ -71,6 +77,41 @@ namespace Immersive.Framework.UnityInput
             {
                 gameplayActionMapName = "Player";
             }
+        }
+
+        internal bool TryBindInputGateRuntime(
+            IInputGateRuntimePort inputGateRuntime,
+            out string issue)
+        {
+            if (inputGateRuntime == null)
+            {
+                issue = "Input Gate runtime port binding requires a non-null port.";
+                _inputGateRuntimeBindingDiagnostic = issue;
+                return false;
+            }
+
+            if (_inputGateRuntime == null)
+            {
+                _inputGateRuntime = inputGateRuntime;
+                _loggedMissingRuntime = false;
+                issue = string.Empty;
+                _inputGateRuntimeBindingDiagnostic =
+                    $"Bound '{inputGateRuntime.GetType().FullName}'.";
+                return true;
+            }
+
+            if (ReferenceEquals(_inputGateRuntime, inputGateRuntime))
+            {
+                issue = string.Empty;
+                _inputGateRuntimeBindingDiagnostic =
+                    $"Bound '{inputGateRuntime.GetType().FullName}' (idempotent).";
+                return true;
+            }
+
+            issue =
+                "Input Gate runtime port binding rejected a different port for the current lifetime.";
+            _inputGateRuntimeBindingDiagnostic = issue;
+            return false;
         }
 
         private void OnEnable()
@@ -258,26 +299,37 @@ namespace Immersive.Framework.UnityInput
         {
             EnsureLogger();
 
-            if (!FrameworkRuntimeHost.TryGetCurrent(out var runtimeHost))
+            IInputGateRuntimePort inputGateRuntime = _inputGateRuntime;
+            if (inputGateRuntime == null)
             {
+                const string diagnostic =
+                    "Input Gate runtime port is not bound. The adapter will retry on Update.";
+                _inputGateRuntimeBindingDiagnostic = diagnostic;
+
+                RestoreIfNeeded("input-gate-runtime-unbound");
+                if (!_isBlockedByAdapter)
+                {
+                    _lastStatus = "SkippedMissingInputGateRuntime";
+                    _lastReason = reason.NormalizeText();
+                }
+
                 if (logMissingRuntimeOnce && !_loggedMissingRuntime)
                 {
                     _loggedMissingRuntime = true;
                     _logger.Trace(
-                        "Unity PlayerInput Gate Adapter skipped because FrameworkRuntimeHost is not available. The adapter will retry on Update.",
+                        "Unity PlayerInput Gate Adapter skipped because the Input Gate runtime port is not bound. The adapter will retry on Update.",
                         BuildLogFields(
-                            "SkippedNoRuntime",
+                            "SkippedMissingInputGateRuntime",
                             reason,
-                            false,
+                            _isBlockedByAdapter,
                             false,
                             false));
                 }
 
-                RestoreIfNeeded("runtime-unavailable");
                 return;
             }
 
-            var gateSnapshot = runtimeHost.CurrentGateSnapshot;
+            GateSnapshot gateSnapshot = inputGateRuntime.CurrentGateSnapshot;
             bool blocksInput = blockOnInputAcceptance &&
                 gateSnapshot.IsBlocked(
                     GateScope.Input,
@@ -565,6 +617,5 @@ namespace Immersive.Framework.UnityInput
 
         private void EnsureLogger() =>
             _logger ??= FrameworkLogger.Create<UnityPlayerInputGateAdapter>();
-
     }
 }
