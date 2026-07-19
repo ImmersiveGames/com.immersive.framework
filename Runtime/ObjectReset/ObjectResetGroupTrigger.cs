@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Linq;
 using Immersive.Foundation.Events;
 using Immersive.Framework.ApiStatus;
-using Immersive.Framework.ApplicationLifecycle;
 using Immersive.Framework.Common;
 using Immersive.Framework.Diagnostics;
 using Immersive.Framework.GameFlow;
@@ -19,7 +18,7 @@ namespace Immersive.Framework.ObjectReset
     /// </summary>
     [DisallowMultipleComponent]
     [AddComponentMenu("Immersive Framework/Object Reset/Object Reset Group Trigger")]
-    [FrameworkApiStatus(FrameworkApiStatus.Experimental, "preview.12G Object Reset Group trigger over ResetSelectionConfig + ResetExecutor.")]
+    [FrameworkApiStatus(FrameworkApiStatus.Experimental, "H2.2.8 explicit runtime binding for Object Reset Group.")]
     public sealed class ObjectResetGroupTrigger : MonoBehaviour
     {
         private const string DefaultSource = nameof(ObjectResetGroupTrigger);
@@ -28,6 +27,8 @@ namespace Immersive.Framework.ObjectReset
 
         private readonly EventBus<ObjectResetGroupTriggerEvent> _requestEvents = new EventBus<ObjectResetGroupTriggerEvent>();
         private FrameworkLogger _logger;
+        private IResetSelectionExecutionRuntimePort _resetSelectionExecutionRuntime;
+        private string _resetSelectionExecutionRuntimeBindingDiagnostic = "Reset selection execution runtime port is not bound.";
         private bool _requestInFlight;
         private FlowRequestEventPhase _lastEventPhase = FlowRequestEventPhase.Completed;
         private FlowRequestOutcome _lastOutcome = FlowRequestOutcome.None;
@@ -110,6 +111,12 @@ namespace Immersive.Framework.ObjectReset
 
         public bool ResolvedStopOnFailure => selection == null || selection.StopOnFailure;
 
+        public bool HasResetSelectionExecutionRuntimeBinding => _resetSelectionExecutionRuntime != null;
+
+        public string ResetSelectionExecutionRuntimeBindingStatus => HasResetSelectionExecutionRuntimeBinding ? "Bound" : "Missing";
+
+        public string ResetSelectionExecutionRuntimeBindingDiagnostic => _resetSelectionExecutionRuntimeBindingDiagnostic;
+
         public IEventBinding SubscribeRequestEvents(Action<ObjectResetGroupTriggerEvent> handler)
         {
             return _requestEvents.Subscribe(handler);
@@ -118,6 +125,37 @@ namespace Immersive.Framework.ObjectReset
         private void Awake()
         {
             _logger = FrameworkLogger.Create<ObjectResetGroupTrigger>();
+        }
+
+        internal bool TryBindResetSelectionExecutionRuntime(
+            IResetSelectionExecutionRuntimePort resetSelectionExecutionRuntime,
+            out string issue)
+        {
+            if (resetSelectionExecutionRuntime == null)
+            {
+                issue = "Reset selection execution runtime port binding requires a non-null port.";
+                _resetSelectionExecutionRuntimeBindingDiagnostic = issue;
+                return false;
+            }
+
+            if (_resetSelectionExecutionRuntime == null)
+            {
+                _resetSelectionExecutionRuntime = resetSelectionExecutionRuntime;
+                issue = string.Empty;
+                _resetSelectionExecutionRuntimeBindingDiagnostic = $"Bound '{resetSelectionExecutionRuntime.GetType().FullName}'.";
+                return true;
+            }
+
+            if (ReferenceEquals(_resetSelectionExecutionRuntime, resetSelectionExecutionRuntime))
+            {
+                issue = string.Empty;
+                _resetSelectionExecutionRuntimeBindingDiagnostic = $"Bound '{resetSelectionExecutionRuntime.GetType().FullName}' (idempotent).";
+                return true;
+            }
+
+            issue = "Reset selection execution runtime port binding rejected a different port for the current lifetime.";
+            _resetSelectionExecutionRuntimeBindingDiagnostic = issue;
+            return false;
         }
 
         [ContextMenu("Request Object Reset Group")]
@@ -145,9 +183,11 @@ namespace Immersive.Framework.ObjectReset
                 return result;
             }
 
-            if (!FrameworkRuntimeHost.TryGetCurrent(out var runtimeHost))
+            IResetSelectionExecutionRuntimePort resetSelectionExecutionRuntime = _resetSelectionExecutionRuntime;
+            if (resetSelectionExecutionRuntime == null)
             {
-                string message = "Object Reset Group failed. Application Runtime is unavailable.";
+                string message = "Object Reset Group failed. Reset selection execution runtime port is not bound.";
+                _resetSelectionExecutionRuntimeBindingDiagnostic = "Reset selection execution runtime port is not bound.";
                 var result = ResetExecutionResult.RejectedInvalidRequest(
                     ResetIssue.Error(ResetIssueKind.InvalidRequest, message),
                     DefaultSource,
@@ -157,36 +197,24 @@ namespace Immersive.Framework.ObjectReset
                 return result;
             }
 
-            ResetSelectionResolution selectionResolution = resolvedSelection.Resolve(runtimeHost, DefaultSource, resolvedReason);
-            if (selectionResolution.Failed)
-            {
-                ResetExecutionResult rejected = ResetExecutionResult.RejectedInvalidRequest(
-                    selectionResolution.Issues.Count > 0
-                        ? selectionResolution.Issues[0]
-                        : ResetIssue.Error(ResetIssueKind.InvalidRequest, "Reset group selection failed."),
-                    DefaultSource,
-                    resolvedReason);
-                LogGroupResult(rejected, selectionResolution);
-                PublishCompleted(FlowRequestOutcome.Failed, resolvedReason, rejected.Message, rejected, true, selectionResolution);
-                return rejected;
-            }
-
-            ResetExecutionRequest request = resolvedSelection.CreateExecutionRequest(selectionResolution);
-
             _requestInFlight = true;
             PublishSubmitted(resolvedReason);
 
-            ResetExecutionResult executionResult;
+            ResetSelectionExecutionRuntimeResult runtimeResult;
             try
             {
-                var executor = new ResetExecutor(runtimeHost.ResetRegistry);
-                executionResult = await executor.ExecuteAsync(request);
+                runtimeResult = await resetSelectionExecutionRuntime.ExecuteResetSelectionAsync(
+                    resolvedSelection,
+                    DefaultSource,
+                    resolvedReason);
             }
             finally
             {
                 _requestInFlight = false;
             }
 
+            ResetSelectionResolution selectionResolution = runtimeResult.SelectionResolution;
+            ResetExecutionResult executionResult = runtimeResult.ExecutionResult;
             LogGroupResult(executionResult, selectionResolution);
             PublishCompleted(MapOutcome(executionResult), resolvedReason, executionResult.Message, executionResult, true, selectionResolution);
             return executionResult;
