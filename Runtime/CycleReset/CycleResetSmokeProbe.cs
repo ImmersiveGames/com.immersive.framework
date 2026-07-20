@@ -1,32 +1,35 @@
 #if UNITY_EDITOR || DEVELOPMENT_BUILD
-using System.Threading.Tasks;
 using Immersive.Framework.ApiStatus;
-using Immersive.Framework.ApplicationLifecycle;
 using Immersive.Framework.Diagnostics;
 using UnityEngine;
 
 namespace Immersive.Framework.CycleReset
 {
     /// <summary>
-    /// Development-only smoke probe for the F11 Cycle Reset foundation.
-    /// It validates the canonical runtime-host request path with synthetic participants only.
-    /// It does not reset Unity objects, reload scenes, release content, restore snapshots, return pooled objects or touch gameplay state.
+    /// Compatibility shell for the retired package-local Cycle Reset smoke probe.
+    /// Canonical Cycle Reset QA runs from QAFramework.
     /// </summary>
     [DisallowMultipleComponent]
     [AddComponentMenu("Immersive Framework/QA/Cycle Reset Smoke Probe")]
-    [FrameworkApiStatus(FrameworkApiStatus.DevelopmentTooling, "F11D/F11E QA probe for Cycle Reset runtime-host request path; no physical reset.")]
+    [FrameworkApiStatus(
+        FrameworkApiStatus.DevelopmentTooling,
+        "H2.2.13 retired package-local Cycle Reset smoke probe. Canonical technical QA lives in QAFramework.")]
     public sealed class CycleResetSmokeProbe : MonoBehaviour
     {
-        private const string QaSource = nameof(CycleResetSmokeProbe);
+        private const string MigrationDiagnostic =
+            "Package-local Cycle Reset smoke execution is retired. Run the canonical Cycle Reset smokes from QAFramework. No runtime request was executed.";
 
-        private FrameworkLogger _logger;
-
-        [Header("Smoke Steps")]
+        [Header("Legacy Smoke Intent")]
         [SerializeField] private bool runRouteCycleReset = true;
         [SerializeField] private bool runActivityCycleReset = true;
 
-        [Header("Diagnostics")]
+        [Header("Legacy Diagnostics")]
         [SerializeField] private bool logParticipantDetails = true;
+
+        private FrameworkLogger logger;
+
+        public string Diagnostic =>
+            MigrationDiagnostic;
 
         private void Awake()
         {
@@ -34,38 +37,22 @@ namespace Immersive.Framework.CycleReset
         }
 
         [ContextMenu("Run Cycle Reset Smoke")]
-        public async void RunCycleResetSmoke()
+        public void RunCycleResetSmoke()
         {
             EnsureLogger();
-            await RunCycleResetSmokeAsync();
-        }
-
-        private async Task<bool> RunCycleResetSmokeAsync()
-        {
-            if (!FrameworkRuntimeHost.TryGetCurrent(out var runtimeHost))
-            {
-                _logger.Warning($"QA Smoke aborted. name='{CycleResetQaSmokeRunner.SmokeName}'. reason='Framework Runtime Host is missing'.");
-                return false;
-            }
-
-            return await CycleResetQaSmokeRunner.RunRuntimeHostSmokeAsync(
-                runtimeHost,
-                _logger,
-                QaSource,
-                runRouteCycleReset,
-                runActivityCycleReset,
-                logParticipantDetails,
-                emitSmokeEnvelope: true);
+            logger.Warning(
+                $"QA Smoke unavailable. probe='{nameof(CycleResetSmokeProbe)}' " +
+                $"routeRequested='{runRouteCycleReset}' " +
+                $"activityRequested='{runActivityCycleReset}' " +
+                $"participantDetailsRequested='{logParticipantDetails}' " +
+                $"reason='{MigrationDiagnostic}'.");
         }
 
         private void EnsureLogger()
         {
-            if (_logger != null)
-            {
-                return;
-            }
-
-            _logger = FrameworkLogger.Create<CycleResetSmokeProbe>();
+            logger ??=
+                FrameworkLogger.Create<
+                    CycleResetSmokeProbe>();
         }
     }
 }
