@@ -1,6 +1,5 @@
 using System;
 using Immersive.Framework.ApiStatus;
-using Immersive.Framework.ApplicationLifecycle;
 using Immersive.Framework.Common;
 using Immersive.Framework.Diagnostics;
 using Immersive.Framework.RuntimeContent;
@@ -11,11 +10,11 @@ namespace Immersive.Framework.ContentAnchor
 {
     /// <summary>
     /// API status: Experimental. Scene-authored, opt-in bridge for explicit prefab materialization under a ContentAnchor Transform.
-    /// It composes the F8R-E/F9R-B/F9R-C/F9R-D proof adapters without adding automatic Route/Activity lifecycle wiring.
+    /// It composes the RuntimeContent and ContentAnchor proof adapters without adding automatic Route/Activity lifecycle wiring.
     /// </summary>
     [DisallowMultipleComponent]
     [AddComponentMenu("Immersive Framework/Content Anchor/Unity Content Anchor Materialization Bridge")]
-    [FrameworkApiStatus(FrameworkApiStatus.Experimental, "F9R-E authored opt-in ContentAnchor materialization bridge proof; explicit calls only, no automatic lifecycle wiring.")]
+    [FrameworkApiStatus(FrameworkApiStatus.Experimental, "H2.2.11 authored ContentAnchor materialization bridge with explicit runtime binding.")]
     public sealed class UnityContentAnchorMaterializationBridge : MonoBehaviour
     {
         private const string DefaultSource = nameof(UnityContentAnchorMaterializationBridge);
@@ -26,11 +25,15 @@ namespace Immersive.Framework.ContentAnchor
         private const string DefaultAnchorId = "content-anchor.materialization.bridge.anchor";
         private const string DefaultRuntimeContentId = "content-anchor.materialization.bridge.content";
         private const string DefaultResourceKey = "content-anchor.materialization.bridge.prefab";
+        private const string MissingRuntimeBindingDiagnostic =
+            "Content Anchor materialization runtime port is not bound.";
 
         private FrameworkLogger _logger;
         private UnityRuntimeMaterializedObjectRegistry _registry;
         private UnityContentAnchorMaterializationBridgeResult _lastMaterializationResult;
         private UnityContentAnchorMaterializationBridgeResult _lastReleaseResult;
+        private IContentAnchorMaterializationRuntimePort _materializationRuntime;
+        private string _materializationRuntimeBindingDiagnostic = MissingRuntimeBindingDiagnostic;
 
         [Header("Unity Physical Inputs")]
         [SerializeField] private GameObject prefab;
@@ -73,17 +76,21 @@ namespace Immersive.Framework.ContentAnchor
             set => anchorTransform = value;
         }
 
-        public UnityContentAnchorMaterializationBridgeResult LastMaterializationResult => _lastMaterializationResult;
+        public UnityContentAnchorMaterializationBridgeResult LastMaterializationResult =>
+            _lastMaterializationResult;
 
-        public UnityContentAnchorMaterializationBridgeResult LastReleaseResult => _lastReleaseResult;
+        public UnityContentAnchorMaterializationBridgeResult LastReleaseResult =>
+            _lastReleaseResult;
 
         public bool HasLastMaterializationResult => _lastMaterializationResult != null;
 
         public bool HasLastReleaseResult => _lastReleaseResult != null;
 
-        public bool LastMaterializationSucceeded => _lastMaterializationResult != null && _lastMaterializationResult.Succeeded;
+        public bool LastMaterializationSucceeded =>
+            _lastMaterializationResult != null && _lastMaterializationResult.Succeeded;
 
-        public bool LastReleaseSucceeded => _lastReleaseResult != null && _lastReleaseResult.Succeeded;
+        public bool LastReleaseSucceeded =>
+            _lastReleaseResult != null && _lastReleaseResult.Succeeded;
 
         public int RegistryCount => Registry.Count;
 
@@ -121,7 +128,17 @@ namespace Immersive.Framework.ContentAnchor
 
         public string AuthoringMaterializationKey => BridgeSetPreflightKey;
 
-        internal UnityRuntimeMaterializedObjectRegistry Registry => _registry ??= new UnityRuntimeMaterializedObjectRegistry();
+        public bool HasContentAnchorMaterializationRuntimeBinding =>
+            _materializationRuntime != null;
+
+        public string ContentAnchorMaterializationRuntimeBindingStatus =>
+            HasContentAnchorMaterializationRuntimeBinding ? "Bound" : "Missing";
+
+        public string ContentAnchorMaterializationRuntimeBindingDiagnostic =>
+            _materializationRuntimeBindingDiagnostic;
+
+        internal UnityRuntimeMaterializedObjectRegistry Registry =>
+            _registry ??= new UnityRuntimeMaterializedObjectRegistry();
 
         private void Awake()
         {
@@ -131,27 +148,73 @@ namespace Immersive.Framework.ContentAnchor
         [ContextMenu("Immersive Framework/Content Anchor/Materialize Prefab At Anchor")]
         public void MaterializePrefabAtAnchor()
         {
-            _lastMaterializationResult = SubmitMaterialization(DefaultSource, ResolveReason("content-anchor.materialization.bridge.materialize"));
-            LogResult("Content Anchor Materialization Bridge materialize completed.", _lastMaterializationResult);
+            _lastMaterializationResult = SubmitMaterialization(
+                DefaultSource,
+                ResolveReason("content-anchor.materialization.bridge.materialize"));
+            LogResult(
+                "Content Anchor Materialization Bridge materialize completed.",
+                _lastMaterializationResult);
         }
 
         [ContextMenu("Immersive Framework/Content Anchor/Release Bridge Scope")]
         public void ReleaseBridgeScope()
         {
-            _lastReleaseResult = SubmitScopeRelease(DefaultSource, ResolveReason("content-anchor.materialization.bridge.release"));
-            LogResult("Content Anchor Materialization Bridge release completed.", _lastReleaseResult);
+            _lastReleaseResult = SubmitScopeRelease(
+                DefaultSource,
+                ResolveReason("content-anchor.materialization.bridge.release"));
+            LogResult(
+                "Content Anchor Materialization Bridge release completed.",
+                _lastReleaseResult);
         }
 
-        internal UnityContentAnchorMaterializationBridgeResult SubmitMaterializationForDiagnostics(string source, string requestReason)
+        internal UnityContentAnchorMaterializationBridgeResult SubmitMaterializationForDiagnostics(
+            string source,
+            string requestReason)
         {
             _lastMaterializationResult = SubmitMaterialization(source, requestReason);
             return _lastMaterializationResult;
         }
 
-        internal UnityContentAnchorMaterializationBridgeResult SubmitScopeReleaseForDiagnostics(string source, string requestReason)
+        internal UnityContentAnchorMaterializationBridgeResult SubmitScopeReleaseForDiagnostics(
+            string source,
+            string requestReason)
         {
             _lastReleaseResult = SubmitScopeRelease(source, requestReason);
             return _lastReleaseResult;
+        }
+
+        internal bool TryBindContentAnchorMaterializationRuntime(
+            IContentAnchorMaterializationRuntimePort materializationRuntime,
+            out string issue)
+        {
+            if (materializationRuntime == null)
+            {
+                issue = MissingRuntimeBindingDiagnostic;
+                _materializationRuntimeBindingDiagnostic = issue;
+                return false;
+            }
+
+            if (_materializationRuntime == null)
+            {
+                _materializationRuntime = materializationRuntime;
+                issue = string.Empty;
+                _materializationRuntimeBindingDiagnostic =
+                    "Content Anchor materialization runtime port is bound.";
+                return true;
+            }
+
+            if (ReferenceEquals(_materializationRuntime, materializationRuntime))
+            {
+                issue = string.Empty;
+                _materializationRuntimeBindingDiagnostic =
+                    "Content Anchor materialization runtime port binding is already applied.";
+                return true;
+            }
+
+            issue =
+                "Content Anchor materialization bridge is already bound to a different runtime port for the current component lifetime.";
+            _materializationRuntimeBindingDiagnostic = issue;
+            return false;
         }
 
         internal void ConfigureForDiagnostics(
@@ -200,57 +263,72 @@ namespace Immersive.Framework.ContentAnchor
             }
         }
 
-        internal bool TryPreflightMaterializationForBridgeSet(string source, string requestReason, out string message)
+        internal bool TryPreflightMaterializationForBridgeSet(
+            string source,
+            string requestReason,
+            out string message)
         {
             message = string.Empty;
             string resolvedSource = source.NormalizeTextOrFallback(DefaultSource);
-            string resolvedReason = requestReason.NormalizeTextOrFallback(ResolveReason("content-anchor.materialization.bridge-set.preflight"));
+            string resolvedReason = requestReason.NormalizeTextOrFallback(
+                ResolveReason("content-anchor.materialization.bridge-set.preflight"));
 
-            if (!FrameworkRuntimeHost.TryGetCurrent(out var runtimeHost))
+            if (_materializationRuntime == null)
             {
-                message = "Content Anchor materialization bridge preflight requires FrameworkRuntimeHost.";
+                message = MissingRuntimeBindingDiagnostic;
                 return false;
             }
 
-            if (runtimeHost.RuntimeContentRuntime == null)
+            if (_materializationRuntime.ContentRuntime == null)
             {
-                message = "Content Anchor materialization bridge preflight requires RuntimeContentRuntime.";
+                message =
+                    "Content Anchor materialization bridge preflight requires RuntimeContentRuntime.";
                 return false;
             }
 
             if (prefab == null)
             {
-                message = "Content Anchor materialization bridge preflight requires an explicit prefab/template GameObject.";
+                message =
+                    "Content Anchor materialization bridge preflight requires an explicit prefab/template GameObject.";
                 return false;
             }
 
             if (anchorTransform == null)
             {
-                message = "Content Anchor materialization bridge preflight requires an explicit anchor Transform before materialization side effects.";
+                message =
+                    "Content Anchor materialization bridge preflight requires an explicit anchor Transform before materialization side effects.";
                 return false;
             }
 
-            if (!Enum.IsDefined(typeof(RuntimeContentScope), runtimeScope) || runtimeScope == RuntimeContentScope.Unknown)
+            if (!Enum.IsDefined(typeof(RuntimeContentScope), runtimeScope)
+                || runtimeScope == RuntimeContentScope.Unknown)
             {
-                message = "Content Anchor materialization bridge preflight requires an explicit RuntimeContent scope.";
+                message =
+                    "Content Anchor materialization bridge preflight requires an explicit RuntimeContent scope.";
                 return false;
             }
 
-            if (!Enum.IsDefined(typeof(ContentAnchorScope), anchorScope) || anchorScope == ContentAnchorScope.Unknown)
+            if (!Enum.IsDefined(typeof(ContentAnchorScope), anchorScope)
+                || anchorScope == ContentAnchorScope.Unknown)
             {
-                message = "Content Anchor materialization bridge preflight requires an explicit ContentAnchor scope.";
+                message =
+                    "Content Anchor materialization bridge preflight requires an explicit ContentAnchor scope.";
                 return false;
             }
 
-            if (!Enum.IsDefined(typeof(ContentAnchorKind), anchorKind) || anchorKind == ContentAnchorKind.Unknown)
+            if (!Enum.IsDefined(typeof(ContentAnchorKind), anchorKind)
+                || anchorKind == ContentAnchorKind.Unknown)
             {
-                message = "Content Anchor materialization bridge preflight requires an explicit ContentAnchor kind.";
+                message =
+                    "Content Anchor materialization bridge preflight requires an explicit ContentAnchor kind.";
                 return false;
             }
 
-            if (!Enum.IsDefined(typeof(RuntimeReleasePolicy), releasePolicy) || releasePolicy == RuntimeReleasePolicy.Unknown)
+            if (!Enum.IsDefined(typeof(RuntimeReleasePolicy), releasePolicy)
+                || releasePolicy == RuntimeReleasePolicy.Unknown)
             {
-                message = "Content Anchor materialization bridge preflight requires an explicit RuntimeContent release policy.";
+                message =
+                    "Content Anchor materialization bridge preflight requires an explicit RuntimeContent release policy.";
                 return false;
             }
 
@@ -264,33 +342,29 @@ namespace Immersive.Framework.ContentAnchor
                 return false;
             }
 
-            var declaration = ContentAnchorDeclaration.Create(
-                ContentAnchorDeclaration.CreateOwnerKey(anchorScope, anchorOwnerId.NormalizeTextOrFallback(DefaultAnchorOwnerId)),
-                anchorScope,
-                anchorKind,
-                anchorId.NormalizeTextOrFallback(DefaultAnchorId),
-                anchorRequiredness,
-                anchorDisplayName,
-                anchorDescription,
-                string.Empty,
-                string.Empty);
-            var anchorSet = ContentAnchorSet.FromDeclarations(new[] { declaration });
+            ContentAnchorDeclaration declaration = CreateAnchorDeclaration();
+            ContentAnchorSet anchorSet = ContentAnchorSet.FromDeclarations(new[] { declaration });
             if (!anchorSet.HasAnchors || anchorSet.HasIssues)
             {
                 message = anchorSet.ToDiagnosticString();
                 return false;
             }
 
-            message = $"Content Anchor materialization bridge preflight succeeded. source='{resolvedSource.ToDiagnosticText()}' reason='{resolvedReason.ToDiagnosticText()}'.";
+            message =
+                $"Content Anchor materialization bridge preflight succeeded. source='{resolvedSource.ToDiagnosticText()}' reason='{resolvedReason.ToDiagnosticText()}'.";
             return true;
         }
 
-        private UnityContentAnchorMaterializationBridgeResult SubmitMaterialization(string source, string requestReason)
+        private UnityContentAnchorMaterializationBridgeResult SubmitMaterialization(
+            string source,
+            string requestReason)
         {
             string resolvedSource = source.NormalizeTextOrFallback(DefaultSource);
-            string resolvedReason = requestReason.NormalizeTextOrFallback(ResolveReason("content-anchor.materialization.bridge.materialize"));
+            string resolvedReason = requestReason.NormalizeTextOrFallback(
+                ResolveReason("content-anchor.materialization.bridge.materialize"));
+            IContentAnchorMaterializationRuntimePort runtimePort = _materializationRuntime;
 
-            if (!FrameworkRuntimeHost.TryGetCurrent(out var runtimeHost))
+            if (runtimePort == null)
             {
                 return Failure(
                     UnityContentAnchorMaterializationBridgeStatus.FailedRuntimeUnavailable,
@@ -305,10 +379,10 @@ namespace Immersive.Framework.ContentAnchor
                     false,
                     resolvedSource,
                     resolvedReason,
-                    "Content Anchor materialization bridge requires FrameworkRuntimeHost.");
+                    MissingRuntimeBindingDiagnostic);
             }
 
-            if (runtimeHost.RuntimeContentRuntime == null)
+            if (runtimePort.ContentRuntime == null)
             {
                 return Failure(
                     UnityContentAnchorMaterializationBridgeStatus.FailedRuntimeContentRuntimeUnavailable,
@@ -327,14 +401,14 @@ namespace Immersive.Framework.ContentAnchor
             }
 
             if (!TryBuildInputs(
-                    runtimeHost,
+                    runtimePort,
                     resolvedSource,
                     resolvedReason,
-                    out var context,
-                    out var anchorSet,
-                    out var bindingRequest,
+                    out RuntimeScopeContext context,
+                    out ContentAnchorSet anchorSet,
+                    out ContentAnchorBindingRequest bindingRequest,
                     out string buildMessage,
-                    out var failureStatus))
+                    out UnityContentAnchorMaterializationBridgeStatus failureStatus))
             {
                 return Failure(
                     failureStatus,
@@ -344,7 +418,7 @@ namespace Immersive.Framework.ContentAnchor
                     0,
                     0,
                     0,
-                    CountHandles(runtimeHost, context),
+                    CountHandles(runtimePort, context),
                     false,
                     false,
                     resolvedSource,
@@ -365,8 +439,8 @@ namespace Immersive.Framework.ContentAnchor
                 releaseAdapter,
                 resolvedSource);
 
-            var materializationResult = service.MaterializeBindPlace(
-                runtimeHost,
+            ContentAnchorMaterializationResult materializationResult = service.MaterializeBindPlace(
+                runtimePort,
                 anchorSet,
                 bindingRequest,
                 anchorTransform,
@@ -380,7 +454,7 @@ namespace Immersive.Framework.ContentAnchor
                     materializationResult,
                     Registry.Count,
                     Registry.ActiveCount,
-                    CountHandles(runtimeHost, context),
+                    CountHandles(runtimePort, context),
                     resolvedSource,
                     resolvedReason,
                     materializationResult.Message);
@@ -391,18 +465,22 @@ namespace Immersive.Framework.ContentAnchor
                 materializationResult,
                 Registry.Count,
                 Registry.ActiveCount,
-                CountHandles(runtimeHost, context),
+                CountHandles(runtimePort, context),
                 resolvedSource,
                 resolvedReason,
                 "Content Anchor materialization bridge materialized, logically bound and physically placed content.");
         }
 
-        private UnityContentAnchorMaterializationBridgeResult SubmitScopeRelease(string source, string requestReason)
+        private UnityContentAnchorMaterializationBridgeResult SubmitScopeRelease(
+            string source,
+            string requestReason)
         {
             string resolvedSource = source.NormalizeTextOrFallback(DefaultSource);
-            string resolvedReason = requestReason.NormalizeTextOrFallback(ResolveReason("content-anchor.materialization.bridge.release"));
+            string resolvedReason = requestReason.NormalizeTextOrFallback(
+                ResolveReason("content-anchor.materialization.bridge.release"));
+            IContentAnchorMaterializationRuntimePort runtimePort = _materializationRuntime;
 
-            if (!FrameworkRuntimeHost.TryGetCurrent(out var runtimeHost))
+            if (runtimePort == null)
             {
                 return Failure(
                     UnityContentAnchorMaterializationBridgeStatus.FailedRuntimeUnavailable,
@@ -417,10 +495,11 @@ namespace Immersive.Framework.ContentAnchor
                     false,
                     resolvedSource,
                     resolvedReason,
-                    "Content Anchor materialization bridge release requires FrameworkRuntimeHost.");
+                    MissingRuntimeBindingDiagnostic);
             }
 
-            if (runtimeHost.RuntimeContentRuntime == null)
+            RuntimeContentRuntime runtimeContentRuntime = runtimePort.ContentRuntime;
+            if (runtimeContentRuntime == null)
             {
                 return Failure(
                     UnityContentAnchorMaterializationBridgeStatus.FailedRuntimeContentRuntimeUnavailable,
@@ -439,12 +518,12 @@ namespace Immersive.Framework.ContentAnchor
             }
 
             if (!TryResolveRuntimeContext(
-                    runtimeHost.RuntimeContentRuntime,
+                    runtimeContentRuntime,
                     resolvedSource,
                     resolvedReason,
-                    out var context,
+                    out RuntimeScopeContext context,
                     out string contextMessage,
-                    out var status))
+                    out UnityContentAnchorMaterializationBridgeStatus status))
             {
                 return Failure(
                     status,
@@ -466,13 +545,14 @@ namespace Immersive.Framework.ContentAnchor
             var scopeRelease = new UnityContentAnchorMaterializationScopeReleasePipeline(
                 releaseAdapter,
                 resolvedSource);
-            var releaseResult = scopeRelease.ReleaseScope(
-                runtimeHost,
-                context,
-                releasePolicy,
-                resolvedReason);
+            UnityContentAnchorMaterializationScopeReleasePipelineResult releaseResult =
+                scopeRelease.ReleaseScope(
+                    runtimePort,
+                    context,
+                    releasePolicy,
+                    resolvedReason);
 
-            var bridgeStatus = releaseResult.Succeeded
+            UnityContentAnchorMaterializationBridgeStatus bridgeStatus = releaseResult.Succeeded
                 ? releaseResult.PhysicalReleaseRequests > 0 || releaseResult.BindingRemovedCount > 0
                     ? UnityContentAnchorMaterializationBridgeStatus.SucceededReleased
                     : UnityContentAnchorMaterializationBridgeStatus.SucceededReleaseNoContent
@@ -490,7 +570,7 @@ namespace Immersive.Framework.ContentAnchor
                     releaseResult.PhysicalReleaseRequests,
                     releaseResult.LogicalReleaseResults,
                     releaseResult.BindingRemovedCount,
-                    CountHandles(runtimeHost, context),
+                    CountHandles(runtimePort, context),
                     false,
                     false,
                     resolvedSource,
@@ -506,14 +586,14 @@ namespace Immersive.Framework.ContentAnchor
                 releaseResult.PhysicalReleaseRequests,
                 releaseResult.LogicalReleaseResults,
                 releaseResult.BindingRemovedCount,
-                CountHandles(runtimeHost, context),
+                CountHandles(runtimePort, context),
                 resolvedSource,
                 resolvedReason,
                 releaseResult.Message);
         }
 
         private bool TryBuildInputs(
-            FrameworkRuntimeHost runtimeHost,
+            IContentAnchorMaterializationRuntimePort runtimePort,
             string source,
             string requestReason,
             out RuntimeScopeContext context,
@@ -530,43 +610,47 @@ namespace Immersive.Framework.ContentAnchor
 
             if (prefab == null)
             {
-                message = "Content Anchor materialization bridge requires an explicit prefab/template GameObject.";
+                message =
+                    "Content Anchor materialization bridge requires an explicit prefab/template GameObject.";
                 return false;
             }
 
             if (anchorTransform == null)
             {
-                message = "Content Anchor materialization bridge requires an explicit anchor Transform before materialization side effects.";
+                message =
+                    "Content Anchor materialization bridge requires an explicit anchor Transform before materialization side effects.";
                 return false;
             }
 
-            if (!Enum.IsDefined(typeof(ContentAnchorScope), anchorScope) || anchorScope == ContentAnchorScope.Unknown)
+            if (!Enum.IsDefined(typeof(ContentAnchorScope), anchorScope)
+                || anchorScope == ContentAnchorScope.Unknown)
             {
-                message = "Content Anchor materialization bridge requires an explicit ContentAnchor scope.";
+                message =
+                    "Content Anchor materialization bridge requires an explicit ContentAnchor scope.";
                 return false;
             }
 
-            if (!Enum.IsDefined(typeof(ContentAnchorKind), anchorKind) || anchorKind == ContentAnchorKind.Unknown)
+            if (!Enum.IsDefined(typeof(ContentAnchorKind), anchorKind)
+                || anchorKind == ContentAnchorKind.Unknown)
             {
-                message = "Content Anchor materialization bridge requires an explicit ContentAnchor kind.";
+                message =
+                    "Content Anchor materialization bridge requires an explicit ContentAnchor kind.";
                 return false;
             }
 
-            if (!TryResolveRuntimeContext(runtimeHost.RuntimeContentRuntime, source, requestReason, out context, out message, out status))
+            RuntimeContentRuntime runtimeContentRuntime = runtimePort.ContentRuntime;
+            if (!TryResolveRuntimeContext(
+                    runtimeContentRuntime,
+                    source,
+                    requestReason,
+                    out context,
+                    out message,
+                    out status))
             {
                 return false;
             }
 
-            var declaration = ContentAnchorDeclaration.Create(
-                ContentAnchorDeclaration.CreateOwnerKey(anchorScope, anchorOwnerId.NormalizeTextOrFallback(DefaultAnchorOwnerId)),
-                anchorScope,
-                anchorKind,
-                anchorId.NormalizeTextOrFallback(DefaultAnchorId),
-                anchorRequiredness,
-                anchorDisplayName,
-                anchorDescription,
-                string.Empty,
-                string.Empty);
+            ContentAnchorDeclaration declaration = CreateAnchorDeclaration();
             anchorSet = ContentAnchorSet.FromDeclarations(new[] { declaration });
             if (!anchorSet.HasAnchors || anchorSet.HasIssues)
             {
@@ -575,7 +659,7 @@ namespace Immersive.Framework.ContentAnchor
                 return false;
             }
 
-            var resource = RuntimeMaterializationResource.From(
+            RuntimeMaterializationResource resource = RuntimeMaterializationResource.From(
                 UnityPrefabRuntimeMaterializationAdapter.ResourceType,
                 resourceKey.NormalizeTextOrFallback(DefaultResourceKey),
                 prefab != null ? prefab.name : string.Empty,
@@ -590,6 +674,22 @@ namespace Immersive.Framework.ContentAnchor
             return true;
         }
 
+        private ContentAnchorDeclaration CreateAnchorDeclaration()
+        {
+            return ContentAnchorDeclaration.Create(
+                ContentAnchorDeclaration.CreateOwnerKey(
+                    anchorScope,
+                    anchorOwnerId.NormalizeTextOrFallback(DefaultAnchorOwnerId)),
+                anchorScope,
+                anchorKind,
+                anchorId.NormalizeTextOrFallback(DefaultAnchorId),
+                anchorRequiredness,
+                anchorDisplayName,
+                anchorDescription,
+                string.Empty,
+                string.Empty);
+        }
+
         private bool TryResolveRuntimeContext(
             RuntimeContentRuntime runtimeContentRuntime,
             string source,
@@ -602,6 +702,15 @@ namespace Immersive.Framework.ContentAnchor
             message = string.Empty;
             status = UnityContentAnchorMaterializationBridgeStatus.FailedConfiguration;
 
+            if (runtimeContentRuntime == null)
+            {
+                message =
+                    "Content Anchor materialization bridge requires RuntimeContentRuntime.";
+                status =
+                    UnityContentAnchorMaterializationBridgeStatus.FailedRuntimeContentRuntimeUnavailable;
+                return false;
+            }
+
             RuntimeContentOwner owner;
             try
             {
@@ -613,26 +722,38 @@ namespace Immersive.Framework.ContentAnchor
                 return false;
             }
 
-            if (!runtimeContentRuntime.TryCreateScopeContext(owner, source, requestReason, out context))
+            if (!runtimeContentRuntime.TryCreateScopeContext(
+                    owner,
+                    source,
+                    requestReason,
+                    out context))
             {
                 if (!createScopeRootIfMissing)
                 {
-                    message = "Content Anchor materialization bridge requires an existing RuntimeContent scope root or explicit permission to create one.";
+                    message =
+                        "Content Anchor materialization bridge requires an existing RuntimeContent scope root or explicit permission to create one.";
                     status = UnityContentAnchorMaterializationBridgeStatus.FailedScopeContext;
                     return false;
                 }
 
-                var createRootResult = runtimeContentRuntime.CreateScopeRoot(owner, source, requestReason);
-                if (!createRootResult.Applied && createRootResult.Status != RuntimeRootRegistryOperationStatus.RootAlreadyExists)
+                RuntimeRootRegistryOperationResult createRootResult =
+                    runtimeContentRuntime.CreateScopeRoot(owner, source, requestReason);
+                if (!createRootResult.Applied
+                    && createRootResult.Status != RuntimeRootRegistryOperationStatus.RootAlreadyExists)
                 {
                     message = createRootResult.Message;
                     status = UnityContentAnchorMaterializationBridgeStatus.FailedScopeRoot;
                     return false;
                 }
 
-                if (!runtimeContentRuntime.TryCreateScopeContext(owner, source, requestReason, out context))
+                if (!runtimeContentRuntime.TryCreateScopeContext(
+                        owner,
+                        source,
+                        requestReason,
+                        out context))
                 {
-                    message = "Content Anchor materialization bridge failed to create a RuntimeContent scope context after root creation.";
+                    message =
+                        "Content Anchor materialization bridge failed to create a RuntimeContent scope context after root creation.";
                     status = UnityContentAnchorMaterializationBridgeStatus.FailedScopeContext;
                     return false;
                 }
@@ -656,21 +777,27 @@ namespace Immersive.Framework.ContentAnchor
                 case RuntimeContentScope.Transient:
                     return RuntimeContentOwner.Transient(ownerId, ownerName);
                 default:
-                    throw new ArgumentOutOfRangeException(nameof(runtimeScope), runtimeScope, "Content Anchor materialization bridge requires an explicit RuntimeContent scope.");
+                    throw new ArgumentOutOfRangeException(
+                        nameof(runtimeScope),
+                        runtimeScope,
+                        "Content Anchor materialization bridge requires an explicit RuntimeContent scope.");
             }
         }
 
-        private int CountHandles(FrameworkRuntimeHost runtimeHost, RuntimeScopeContext context)
+        private static int CountHandles(
+            IContentAnchorMaterializationRuntimePort runtimePort,
+            RuntimeScopeContext context)
         {
-            if (runtimeHost == null || runtimeHost.RuntimeContentRuntime == null || !context.IsValid)
+            RuntimeContentRuntime runtimeContentRuntime = runtimePort?.ContentRuntime;
+            if (runtimeContentRuntime == null || !context.IsValid)
             {
                 return 0;
             }
 
-            return runtimeHost.RuntimeContentRuntime.SnapshotHandles(context).Length;
+            return runtimeContentRuntime.SnapshotHandles(context).Length;
         }
 
-        private UnityContentAnchorMaterializationBridgeResult FromMaterialization(
+        private static UnityContentAnchorMaterializationBridgeResult FromMaterialization(
             UnityContentAnchorMaterializationBridgeStatus status,
             ContentAnchorMaterializationResult materializationResult,
             int registryEntries,
@@ -680,7 +807,8 @@ namespace Immersive.Framework.ContentAnchor
             string requestReason,
             string message)
         {
-            var pipelineStatus = UnityContentAnchorMaterializationPipeline.MapStatus(materializationResult.FailedStage);
+            var pipelineStatus = UnityContentAnchorMaterializationPipeline.MapStatus(
+                materializationResult.FailedStage);
             return UnityContentAnchorMaterializationBridgeResult.FromMaterialization(
                 status,
                 pipelineStatus.ToString(),
@@ -729,10 +857,13 @@ namespace Immersive.Framework.ContentAnchor
 
         private string ResolveReason(string fallback)
         {
-            return reason.NormalizeTextOrFallback(fallback.NormalizeTextOrFallback(DefaultReason));
+            return reason.NormalizeTextOrFallback(
+                fallback.NormalizeTextOrFallback(DefaultReason));
         }
 
-        private void LogResult(string message, UnityContentAnchorMaterializationBridgeResult result)
+        private void LogResult(
+            string message,
+            UnityContentAnchorMaterializationBridgeResult result)
         {
             if (!logResults || result == null)
             {
@@ -751,6 +882,7 @@ namespace Immersive.Framework.ContentAnchor
                     LogFields.Field("logicalReleaseResults", result.LogicalReleaseResults),
                     LogFields.Field("bindingRemoved", result.BindingRemovedCount),
                     LogFields.Field("contentHandles", result.ContentHandleCount),
+                    LogFields.Field("runtimeBindingStatus", ContentAnchorMaterializationRuntimeBindingStatus),
                     LogFields.Field("diagnostics", result.ToDiagnosticString())));
         }
 

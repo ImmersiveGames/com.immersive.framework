@@ -1,6 +1,5 @@
 using System;
 using Immersive.Framework.ApiStatus;
-using Immersive.Framework.ApplicationLifecycle;
 using Immersive.Framework.Common;
 using Immersive.Framework.RuntimeContent;
 
@@ -10,7 +9,7 @@ namespace Immersive.Framework.ContentAnchor
     /// API status: Experimental. Explicit Unity pipeline for releasing adapter-materialized ContentAnchor content by runtime owner context.
     /// This is not automatic Route/Activity lifecycle wiring and does not select consumers; it composes physical release, logical release and logical binding cleanup.
     /// </summary>
-    [FrameworkApiStatus(FrameworkApiStatus.Experimental, "F9R-D explicit ContentAnchor materialization scope release proof; no automatic lifecycle or consumer wiring.")]
+    [FrameworkApiStatus(FrameworkApiStatus.Experimental, "H2.2.11 explicit ContentAnchor scope release through a scoped runtime port.")]
     internal sealed class UnityContentAnchorMaterializationScopeReleasePipeline
     {
         private readonly UnityObjectRuntimeReleaseAdapter _releaseAdapter;
@@ -27,7 +26,7 @@ namespace Immersive.Framework.ContentAnchor
         internal UnityRuntimeMaterializedObjectRegistry Registry => _releaseAdapter.Registry;
 
         internal UnityContentAnchorMaterializationScopeReleasePipelineResult ReleaseScope(
-            FrameworkRuntimeHost runtimeHost,
+            IContentAnchorMaterializationRuntimePort runtimePort,
             RuntimeScopeContext context,
             RuntimeReleasePolicy releasePolicy,
             string reason)
@@ -36,11 +35,11 @@ namespace Immersive.Framework.ContentAnchor
             int registryCountBefore = Registry.Count;
             int registryActiveBefore = Registry.ActiveCount;
             int matchedPhysicalEntries = CountMatchingEntries(context);
-            var bindingCleanupResult = default(ContentAnchorBindingLifecycleResult);
-            var lastPhysicalReleaseResult = default(RuntimeReleaseResult);
-            var lastLogicalReleaseResult = default(RuntimeReleaseResult);
+            ContentAnchorBindingLifecycleResult bindingCleanupResult = default;
+            RuntimeReleaseResult lastPhysicalReleaseResult = default;
+            RuntimeReleaseResult lastLogicalReleaseResult = default;
 
-            if (runtimeHost == null)
+            if (runtimePort == null)
             {
                 return Failure(
                     UnityContentAnchorMaterializationScopeReleasePipelineStatus.FailedMissingRuntimeHost,
@@ -55,10 +54,10 @@ namespace Immersive.Framework.ContentAnchor
                     lastPhysicalReleaseResult,
                     lastLogicalReleaseResult,
                     normalizedReason,
-                    "ContentAnchor materialization scope release requires an explicit FrameworkRuntimeHost.");
+                    "ContentAnchor materialization scope release requires an explicit materialization runtime port.");
             }
 
-            var runtimeContentRuntime = runtimeHost.RuntimeContentRuntime;
+            RuntimeContentRuntime runtimeContentRuntime = runtimePort.ContentRuntime;
             if (runtimeContentRuntime == null)
             {
                 return Failure(
@@ -98,19 +97,24 @@ namespace Immersive.Framework.ContentAnchor
             if (!Enum.IsDefined(typeof(RuntimeReleasePolicy), releasePolicy)
                 || releasePolicy == RuntimeReleasePolicy.Unknown)
             {
-                throw new ArgumentOutOfRangeException(nameof(releasePolicy), releasePolicy, "Runtime release policy must be explicit.");
+                throw new ArgumentOutOfRangeException(
+                    nameof(releasePolicy),
+                    releasePolicy,
+                    "Runtime release policy must be explicit.");
             }
 
             int physicalReleaseRequests = 0;
             int logicalReleaseResults = 0;
             foreach (var evidence in Registry.Snapshot())
             {
-                if (evidence == null || evidence.Owner != context.Owner || evidence.PhysicalReleaseRequested)
+                if (evidence == null
+                    || evidence.Owner != context.Owner
+                    || evidence.PhysicalReleaseRequested)
                 {
                     continue;
                 }
 
-                var releaseExecution = ContentAnchorReleaseExecution.Execute(
+                ContentAnchorReleaseExecutionResult releaseExecution = ContentAnchorReleaseExecution.Execute(
                     runtimeContentRuntime,
                     _releaseAdapter,
                     context,
@@ -139,7 +143,6 @@ namespace Immersive.Framework.ContentAnchor
                 }
 
                 physicalReleaseRequests++;
-
                 lastLogicalReleaseResult = releaseExecution.LogicalReleaseResult;
                 if (!lastLogicalReleaseResult.Succeeded)
                 {
@@ -162,7 +165,7 @@ namespace Immersive.Framework.ContentAnchor
                 logicalReleaseResults++;
             }
 
-            bindingCleanupResult = runtimeHost.UnbindContentAnchorRuntimeOwner(
+            bindingCleanupResult = runtimePort.UnbindContentAnchorRuntimeOwner(
                 context.Owner,
                 _source,
                 normalizedReason);

@@ -1,6 +1,5 @@
 using System;
 using Immersive.Framework.ApiStatus;
-using Immersive.Framework.ApplicationLifecycle;
 using Immersive.Framework.Common;
 using Immersive.Framework.RuntimeContent;
 using UnityEngine;
@@ -10,7 +9,7 @@ namespace Immersive.Framework.ContentAnchor
     /// <summary>
     /// API status: Experimental. Reusable non-MonoBehaviour entry point for RuntimeContent materialization, ContentAnchor binding and physical placement.
     /// </summary>
-    [FrameworkApiStatus(FrameworkApiStatus.Experimental, "MAT-4 reusable ContentAnchor materialization service; no lifecycle, pooling, Addressables, actor or consumer ownership.")]
+    [FrameworkApiStatus(FrameworkApiStatus.Experimental, "H2.2.11 ContentAnchor materialization service uses an explicit scoped runtime port.")]
     internal sealed class ContentAnchorMaterializationService
     {
         private readonly UnityPrefabRuntimeMaterializationAdapter _materializationAdapter;
@@ -29,14 +28,16 @@ namespace Immersive.Framework.ContentAnchor
             _releaseAdapter = releaseAdapter ?? throw new ArgumentNullException(nameof(releaseAdapter));
             if (!ReferenceEquals(_materializationAdapter.Registry, _releaseAdapter.Registry))
             {
-                throw new ArgumentException("Content Anchor materialization service requires materialization and release adapters to share the same explicit Unity materialized object registry.", nameof(releaseAdapter));
+                throw new ArgumentException(
+                    "Content Anchor materialization service requires materialization and release adapters to share the same explicit Unity materialized object registry.",
+                    nameof(releaseAdapter));
             }
 
             _source = source.NormalizeTextOrFallback(nameof(ContentAnchorMaterializationService));
         }
 
         internal ContentAnchorMaterializationResult MaterializeBindPlace(
-            FrameworkRuntimeHost runtimeHost,
+            IContentAnchorMaterializationRuntimePort runtimePort,
             ContentAnchorSet anchorSet,
             ContentAnchorBindingRequest bindingRequest,
             Transform anchorTransform,
@@ -46,32 +47,32 @@ namespace Immersive.Framework.ContentAnchor
             ValidateBindingRequest(bindingRequest);
             string resolvedReason = reason.NormalizeText();
 
-            if (runtimeHost == null)
+            if (runtimePort == null)
             {
                 return Failure(
                     bindingRequest,
-                    default(RuntimeMaterializationRequest),
+                    default,
                     ContentAnchorMaterializationStage.RuntimeHost,
-                    default(RuntimeMaterializationResult),
-                    default(RuntimeMaterializationResult),
-                    default(ContentAnchorBindingResult),
-                    default(UnityContentAnchorPlacementResult),
+                    default,
+                    default,
+                    default,
+                    default,
                     NoRollback(resolvedReason),
                     resolvedReason,
-                    "Content Anchor materialization pipeline requires an explicit FrameworkRuntimeHost.");
+                    "Content Anchor materialization pipeline requires an explicit materialization runtime port.");
             }
 
-            var runtimeContentRuntime = runtimeHost.RuntimeContentRuntime;
+            RuntimeContentRuntime runtimeContentRuntime = runtimePort.ContentRuntime;
             if (runtimeContentRuntime == null)
             {
                 return Failure(
                     bindingRequest,
-                    default(RuntimeMaterializationRequest),
+                    default,
                     ContentAnchorMaterializationStage.RuntimeContentRuntime,
-                    default(RuntimeMaterializationResult),
-                    default(RuntimeMaterializationResult),
-                    default(ContentAnchorBindingResult),
-                    default(UnityContentAnchorPlacementResult),
+                    default,
+                    default,
+                    default,
+                    default,
                     NoRollback(resolvedReason),
                     resolvedReason,
                     "Content Anchor materialization pipeline requires RuntimeContentRuntime.");
@@ -81,12 +82,12 @@ namespace Immersive.Framework.ContentAnchor
             {
                 return Failure(
                     bindingRequest,
-                    default(RuntimeMaterializationRequest),
+                    default,
                     ContentAnchorMaterializationStage.AnchorTransform,
-                    default(RuntimeMaterializationResult),
-                    default(RuntimeMaterializationResult),
-                    default(ContentAnchorBindingResult),
-                    default(UnityContentAnchorPlacementResult),
+                    default,
+                    default,
+                    default,
+                    default,
                     NoRollback(resolvedReason),
                     resolvedReason,
                     "Content Anchor materialization pipeline requires an explicit anchor Transform before materialization side effects.");
@@ -103,19 +104,19 @@ namespace Immersive.Framework.ContentAnchor
             {
                 return Failure(
                     bindingRequest,
-                    default(RuntimeMaterializationRequest),
+                    default,
                     ContentAnchorMaterializationStage.MaterializationRequest,
-                    default(RuntimeMaterializationResult),
-                    default(RuntimeMaterializationResult),
-                    default(ContentAnchorBindingResult),
-                    default(UnityContentAnchorPlacementResult),
+                    default,
+                    default,
+                    default,
+                    default,
                     NoRollback(resolvedReason),
                     resolvedReason,
                     guardResult.Message);
             }
 
             return MaterializeBindPlace(
-                runtimeHost,
+                runtimePort,
                 anchorSet,
                 bindingRequest,
                 materializationRequest,
@@ -125,7 +126,7 @@ namespace Immersive.Framework.ContentAnchor
         }
 
         internal ContentAnchorMaterializationResult MaterializeBindPlace(
-            FrameworkRuntimeHost runtimeHost,
+            IContentAnchorMaterializationRuntimePort runtimePort,
             ContentAnchorSet anchorSet,
             ContentAnchorBindingRequest bindingRequest,
             RuntimeMaterializationRequest materializationRequest,
@@ -137,32 +138,32 @@ namespace Immersive.Framework.ContentAnchor
             ValidateMaterializationRequest(bindingRequest, materializationRequest);
             string resolvedReason = reason.NormalizeText();
 
-            if (runtimeHost == null)
+            if (runtimePort == null)
             {
                 return Failure(
                     bindingRequest,
                     materializationRequest,
                     ContentAnchorMaterializationStage.RuntimeHost,
-                    default(RuntimeMaterializationResult),
-                    default(RuntimeMaterializationResult),
-                    default(ContentAnchorBindingResult),
-                    default(UnityContentAnchorPlacementResult),
+                    default,
+                    default,
+                    default,
+                    default,
                     NoRollback(resolvedReason),
                     resolvedReason,
-                    "Content Anchor materialization pipeline requires an explicit FrameworkRuntimeHost.");
+                    "Content Anchor materialization pipeline requires an explicit materialization runtime port.");
             }
 
-            var runtimeContentRuntime = runtimeHost.RuntimeContentRuntime;
+            RuntimeContentRuntime runtimeContentRuntime = runtimePort.ContentRuntime;
             if (runtimeContentRuntime == null)
             {
                 return Failure(
                     bindingRequest,
                     materializationRequest,
                     ContentAnchorMaterializationStage.RuntimeContentRuntime,
-                    default(RuntimeMaterializationResult),
-                    default(RuntimeMaterializationResult),
-                    default(ContentAnchorBindingResult),
-                    default(UnityContentAnchorPlacementResult),
+                    default,
+                    default,
+                    default,
+                    default,
                     NoRollback(resolvedReason),
                     resolvedReason,
                     "Content Anchor materialization pipeline requires RuntimeContentRuntime.");
@@ -174,16 +175,16 @@ namespace Immersive.Framework.ContentAnchor
                     bindingRequest,
                     materializationRequest,
                     ContentAnchorMaterializationStage.AnchorTransform,
-                    default(RuntimeMaterializationResult),
-                    default(RuntimeMaterializationResult),
-                    default(ContentAnchorBindingResult),
-                    default(UnityContentAnchorPlacementResult),
+                    default,
+                    default,
+                    default,
+                    default,
                     NoRollback(resolvedReason),
                     resolvedReason,
                     "Content Anchor materialization pipeline requires an explicit anchor Transform before materialization side effects.");
             }
 
-            var materializationResult = _materializationAdapter.Materialize(materializationRequest);
+            RuntimeMaterializationResult materializationResult = _materializationAdapter.Materialize(materializationRequest);
             if (!materializationResult.Succeeded)
             {
                 return Failure(
@@ -191,26 +192,26 @@ namespace Immersive.Framework.ContentAnchor
                     materializationRequest,
                     ContentAnchorMaterializationStage.PhysicalMaterialization,
                     materializationResult,
-                    default(RuntimeMaterializationResult),
-                    default(ContentAnchorBindingResult),
-                    default(UnityContentAnchorPlacementResult),
+                    default,
+                    default,
+                    default,
                     NoRollback(resolvedReason),
                     resolvedReason,
                     materializationResult.Message);
             }
 
-            var appliedMaterializationResult = runtimeContentRuntime.ApplyMaterializationResult(
+            RuntimeMaterializationResult appliedMaterializationResult = runtimeContentRuntime.ApplyMaterializationResult(
                 materializationResult,
                 _source,
                 resolvedReason);
             if (!appliedMaterializationResult.Succeeded)
             {
-                var rollback = RollbackPhysicalAndLogical(
+                ContentAnchorMaterializationRollbackResult rollback = RollbackPhysicalAndLogical(
                     runtimeContentRuntime,
                     materializationRequest,
                     false,
-                    runtimeHost,
-                    default(ContentAnchorBindingResult),
+                    runtimePort,
+                    default,
                     resolvedReason);
                 return Failure(
                     bindingRequest,
@@ -218,8 +219,8 @@ namespace Immersive.Framework.ContentAnchor
                     ContentAnchorMaterializationStage.RuntimeContentApply,
                     materializationResult,
                     appliedMaterializationResult,
-                    default(ContentAnchorBindingResult),
-                    default(UnityContentAnchorPlacementResult),
+                    default,
+                    default,
                     rollback,
                     resolvedReason,
                     appliedMaterializationResult.Message);
@@ -229,11 +230,11 @@ namespace Immersive.Framework.ContentAnchor
                 || evidence == null
                 || !evidence.HasLiveInstance)
             {
-                var releaseExecution = ExecuteRollbackRelease(
+                ContentAnchorReleaseExecutionResult releaseExecution = ExecuteRollbackRelease(
                     runtimeContentRuntime,
                     materializationRequest,
                     resolvedReason);
-                var rollback = ContentAnchorMaterializationRollbackResultFrom(
+                ContentAnchorMaterializationRollbackResult rollback = ContentAnchorMaterializationRollbackResultFrom(
                     false,
                     releaseExecution,
                     resolvedReason,
@@ -244,25 +245,25 @@ namespace Immersive.Framework.ContentAnchor
                     ContentAnchorMaterializationStage.MaterializedEvidence,
                     materializationResult,
                     appliedMaterializationResult,
-                    default(ContentAnchorBindingResult),
-                    default(UnityContentAnchorPlacementResult),
+                    default,
+                    default,
                     rollback,
                     resolvedReason,
                     "Content Anchor materialization pipeline failed because physical materialization evidence was not available after successful materialization.");
             }
 
-            var bindingResult = runtimeHost.BindContentAnchor(
+            ContentAnchorBindingResult bindingResult = runtimePort.BindContentAnchor(
                 anchorSet,
                 bindingRequest,
                 _source,
                 resolvedReason);
             if (!bindingResult.Succeeded)
             {
-                var rollback = RollbackPhysicalAndLogical(
+                ContentAnchorMaterializationRollbackResult rollback = RollbackPhysicalAndLogical(
                     runtimeContentRuntime,
                     materializationRequest,
                     false,
-                    runtimeHost,
+                    runtimePort,
                     bindingResult,
                     resolvedReason);
                 return Failure(
@@ -272,13 +273,13 @@ namespace Immersive.Framework.ContentAnchor
                     materializationResult,
                     appliedMaterializationResult,
                     bindingResult,
-                    default(UnityContentAnchorPlacementResult),
+                    default,
                     rollback,
                     resolvedReason,
                     bindingResult.Message);
             }
 
-            var placementResult = _placementAdapter.Place(
+            UnityContentAnchorPlacementResult placementResult = _placementAdapter.Place(
                 bindingResult,
                 evidence,
                 anchorTransform,
@@ -286,11 +287,11 @@ namespace Immersive.Framework.ContentAnchor
                 resolvedReason);
             if (!placementResult.Succeeded)
             {
-                var rollback = RollbackPhysicalAndLogical(
+                ContentAnchorMaterializationRollbackResult rollback = RollbackPhysicalAndLogical(
                     runtimeContentRuntime,
                     materializationRequest,
                     true,
-                    runtimeHost,
+                    runtimePort,
                     bindingResult,
                     resolvedReason);
                 return Failure(
@@ -322,17 +323,15 @@ namespace Immersive.Framework.ContentAnchor
             RuntimeContentRuntime runtimeContentRuntime,
             RuntimeMaterializationRequest materializationRequest,
             bool shouldUnbind,
-            FrameworkRuntimeHost runtimeHost,
+            IContentAnchorMaterializationRuntimePort runtimePort,
             ContentAnchorBindingResult bindingResult,
             string reason)
         {
-            bool bindingUnbound = false;
-            if (shouldUnbind && bindingResult.HasHandle)
-            {
-                bindingUnbound = runtimeHost.UnbindContentAnchor(bindingResult.Handle);
-            }
+            bool bindingUnbound = shouldUnbind
+                && bindingResult.HasHandle
+                && runtimePort.UnbindContentAnchor(bindingResult.Handle);
 
-            var releaseExecution = ExecuteRollbackRelease(
+            ContentAnchorReleaseExecutionResult releaseExecution = ExecuteRollbackRelease(
                 runtimeContentRuntime,
                 materializationRequest,
                 reason);
@@ -348,7 +347,7 @@ namespace Immersive.Framework.ContentAnchor
             RuntimeMaterializationRequest materializationRequest,
             string reason)
         {
-            var releaseExecution = ContentAnchorReleaseExecution.Execute(
+            ContentAnchorReleaseExecutionResult releaseExecution = ContentAnchorReleaseExecution.Execute(
                 runtimeContentRuntime,
                 _releaseAdapter,
                 materializationRequest,
@@ -361,7 +360,7 @@ namespace Immersive.Framework.ContentAnchor
                 return releaseExecution;
             }
 
-            var logicalReleaseResult = runtimeContentRuntime.ReleaseHandleLogically(
+            RuntimeReleaseResult logicalReleaseResult = runtimeContentRuntime.ReleaseHandleLogically(
                 materializationRequest.Context,
                 materializationRequest.Identity,
                 RuntimeReleasePolicy.MarkReleasedAndUnregister,
@@ -426,7 +425,9 @@ namespace Immersive.Framework.ContentAnchor
         {
             if (!bindingRequest.IsValid)
             {
-                throw new ArgumentException("Content Anchor materialization service requires a valid binding request.", nameof(bindingRequest));
+                throw new ArgumentException(
+                    "Content Anchor materialization service requires a valid binding request.",
+                    nameof(bindingRequest));
             }
         }
 
@@ -436,14 +437,18 @@ namespace Immersive.Framework.ContentAnchor
         {
             if (!materializationRequest.IsValid)
             {
-                throw new ArgumentException("Content Anchor materialization service requires a valid materialization request.", nameof(materializationRequest));
+                throw new ArgumentException(
+                    "Content Anchor materialization service requires a valid materialization request.",
+                    nameof(materializationRequest));
             }
 
             if (!materializationRequest.Context.Equals(bindingRequest.RuntimeContext)
                 || !materializationRequest.ContentId.Equals(bindingRequest.RuntimeContentId)
                 || !materializationRequest.Resource.Equals(bindingRequest.Resource))
             {
-                throw new ArgumentException("Content Anchor materialization service requires the supplied materialization request to match the binding request context, content id and resource.", nameof(materializationRequest));
+                throw new ArgumentException(
+                    "Content Anchor materialization service requires the supplied materialization request to match the binding request context, content id and resource.",
+                    nameof(materializationRequest));
             }
         }
     }
