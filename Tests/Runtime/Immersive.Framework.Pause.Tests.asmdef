@@ -1,0 +1,19 @@
+{
+  "name": "Immersive.Framework.Pause.Tests",
+  "rootNamespace": "Immersive.Framework.Pause.Tests",
+  "references": [
+    "Immersive.Framework.Runtime"
+  ],
+  "includePlatforms": [],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": false,
+  "defineConstraints": [],
+  "versionDefines": [],
+  "noEngineReferences": false,
+  "optionalUnityReferences": [
+    "TestAssemblies"
+  ]
+}
