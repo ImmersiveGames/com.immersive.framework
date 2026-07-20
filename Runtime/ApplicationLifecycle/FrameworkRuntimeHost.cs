@@ -42,7 +42,6 @@ namespace Immersive.Framework.ApplicationLifecycle
         private const string PauseTransitionInProgressIssueCode = "pause.transition-in-progress";
         private const string PauseTransitionInProgressStatus = "RejectedTransitionInProgress";
 
-        private static FrameworkRuntimeHost _current;
 
         private GameApplicationAsset _gameApplication;
         private GameFlowRuntime _gameFlowRuntime;
@@ -305,34 +304,17 @@ namespace Immersive.Framework.ApplicationLifecycle
         }
 
 
-        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
-        private static void ResetStaticState()
-        {
-            _current = null;
-        }
 
         internal static FrameworkRuntimeHost Create(GameApplicationAsset gameApplication)
         {
-            if (_current != null)
-            {
-                Destroy(_current.gameObject);
-                _current = null;
-            }
-
             var runtimeObject = new GameObject(RuntimeHostName);
             DontDestroyOnLoad(runtimeObject);
 
             var host = runtimeObject.AddComponent<FrameworkRuntimeHost>();
             host.Initialize(gameApplication);
-            _current = host;
             return host;
         }
 
-        internal static bool TryGetCurrent(out FrameworkRuntimeHost runtimeHost)
-        {
-            runtimeHost = _current;
-            return runtimeHost != null;
-        }
 
         internal async Task<FrameworkGameFlowStartResult> StartAsync()
         {
@@ -2785,10 +2767,7 @@ namespace Immersive.Framework.ApplicationLifecycle
             _cameraOutputSessionInjectionRuntime = null;
             _pauseTimeScaleRuntime?.RestoreIfCaptured("framework-runtime-host-destroy");
 
-            if (_current == this)
-            {
-                _current = null;
-            }
+
         }
     }
 }

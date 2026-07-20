@@ -1,124 +1,71 @@
-# 00 — Current State
+# 00 - Current State
 
-Status: **P3M3 source prepared; Unity validation pending**
-Last reconciled: **2026-07-17**
-Decisions: `../ADRs/P3-ADR-Canonical-Player-Lane.md`, `../ADRs/Product/ADR-PROD-0006-camera-requests-output-contexts.md`, `../ADRs/Product/ADR-PROD-0013-scene-local-player-admission.md`
+Status: **H2.4 closed and Unity-validated**
+Last reconciled: **2026-07-20**
+Version: **1.0.0-preview.16**
 
-For the active execution gate, read `05-Execution-Status.md`.
+For the operational validation gate, read `05-Execution-Status.md`.
 
-## Validated predecessor
-
-P3M2 is closed from supplied Unity evidence:
+## H2 runtime authority boundary
 
 ```text
-C9M Follow Pipeline
-  PASS — cases=6
-
-C9R Camera Override Authority
-  PASS — cases=11
-
-P3 Canonical Pre-FIRSTGAME
-  PASS — phases=2, cases=31
-
-P3B alternative surface regression
-  PASS — cases=5 before destructive removal
+GameApplication bootstrap
+-> FrameworkRuntimeHost.Create
+-> host-owned scoped runtimes
+-> explicit narrow runtime ports
+-> authoring and Unity adapter bindings
 ```
 
-The P3B result was sequencing evidence only. It did not make the alternative surface canonical.
+`FrameworkRuntimeHost` remains the application/session composition root. It
+owns composition and scoped runtime lifetime, but it is not a global registry,
+service locator or feature manager.
 
-## Canonical Player lane
+The factory is stateless: the package has no `FrameworkRuntimeHost._current`
+field and no `FrameworkRuntimeHost.TryGetCurrent` API. Production code must
+receive its required runtime port from an explicit binding or composition path.
+
+## Explicit binding coverage
+
+H2 uses narrow ports for the following Unity-facing boundaries:
 
 ```text
-PlayerSlotProfile
--> participation and Slot reservation
--> one explicit physical source
--> LocalPlayerHostAuthoring admission
--> Actor selection/preparation
--> gameplay occupancy
--> input and camera eligibility
--> Activity admission
+Pause input mode
+Route and Activity requests
+Route and Activity cycle reset
+Activity restart
+Reset execution, selection and registration
+Input gate
+Content Anchor materialization
+Player Actor selection
+Runtime diagnostics
 ```
 
-Supported physical sources remain:
+Each binding reports an explicit failure when its required port is unavailable;
+there is no fallback discovery through a static host.
+
+## QA boundary
+
+QAFramework may resolve a host only in its friend-assembly harness:
 
 ```text
-Manual local join
-  PlayerInputManager provisions a runtime-created Local Player Host.
-
-Scene Local Player Admission
-  an Activity admits an explicitly referenced existing scene Host without provisioning.
+loaded FrameworkRuntimeHost components
+-> loaded valid Unity scenes
+-> reference deduplication
+-> exactly one candidate required
 ```
 
-Scene Local Player Admission remains an ordered future product cut. P3M3 does not promote staging code or create a second runtime authority.
+This is test-harness infrastructure only. It is not public package API, a
+product service locator or a runtime fallback.
 
-## Camera target boundary
+## Validation state
+
+H2.4 source is delivered in the package and QA repositories. The approved
+Unity evidence covers import, compile and the focused Play Mode smoke:
 
 ```text
-explicit Follow / Look At transforms
-or an Actor-owned ICameraTargetSource
--> CameraRigComposer.ResolveCameraTargets
--> Player camera eligibility verifies resolved evidence
--> CameraRequest
--> CameraOutputContext
+[H24_STATIC_HOST_AUTHORITY_REMOVAL_SMOKE]
+status='Passed'
+cases='10'
 ```
 
-Camera eligibility no longer checks, names or depends on the removed Player authoring surface. Required target failures remain explicit.
-
-## P3M3 removal boundary
-
-The following alternative product lane is removed:
-
-```text
-Pre-authored Player Composer component
-Pre-authored Player Recipe asset
-Composer Inspector
-Composer Apply / Rebuild utility
-P3B alternative smoke
-```
-
-No alias, wrapper, compatibility facade or null bridge remains in runtime or Editor code.
-
-The existing canonical surfaces remain:
-
-```text
-LocalPlayerProvisioningAuthoring
-LocalPlayerProvisioningHostRegistration
-LocalPlayerHostAuthoring
-PlayerActorDeclaration
-PlayerGameplayCameraAuthoring
-CameraRigComposer
-```
-
-## Runtime authority rules
-
-```text
-Player participation authority is scoped and typed.
-GameApplication resolves provisioning through the explicit UIGlobal Host Registration; global authoring discovery is not a supported bootstrap path.
-PlayerInputManager owns only runtime provisioning mechanics.
-Scene admission owns no physical creation or destruction.
-Activity owns contextual admission requirements.
-CameraOutputContext owns camera winner selection.
-Camera target providers supply evidence only.
-Profiles and Recipes remain immutable runtime inputs.
-```
-
-No singleton, service locator, functional name lookup, hierarchy fallback or silent required-state fallback is allowed.
-
-## Active validation gate
-
-P3M3 closes only after Unity proves:
-
-```text
-Framework import and compile
-QAFramework import and compile
-C9R setup repairs any old Missing Script evidence
-C9M PASS
-C9R PASS
-canonical P3 aggregate PASS
-no P3B menu remains
-no Missing Script remains
-```
-
-## P3M4A — Scene Local Player Admission authoring
-
-The designer-facing Scene Local Player Admission surface, typed Actor source evidence and dual-shape Local Player Host validation are implemented. Unity import/compile and the P3M4A authoring smoke are pending. Runtime Activity admission remains P3M4B.
+No post-H2 implementation lane is selected yet.

@@ -4,17 +4,35 @@
 
 ```text
 Current/05-Execution-Status.md
-  what is closed, active and next
+  canonical operational state and H2.4 validation handoff
 
 Current/00-Current-State.md
-  supported product/runtime state
+  supported runtime-authority boundary
 
 Current/01-Roadmap.md
-  canonical block and cut ordering
+  H2 closure and validation gate
 
 Current/02-Usage-Map.md
   designer-first product surfaces
 ```
+
+## H2.4 closure
+
+H2 is closed and Unity-validated in `1.0.0-preview.16`.
+
+```text
+GameApplication bootstrap
+-> stateless FrameworkRuntimeHost factory
+-> explicit feature runtime ports
+-> authoring / Unity adapter bindings
+```
+
+The package has no static current-host field or lookup API. QA-only host
+resolution is confined to the QA friend-assembly harness and requires exactly
+one loaded candidate; it is not a package service locator or runtime fallback.
+
+The H2.4 Play Mode smoke evidence is approved (`Passed`, 10 cases). Read
+`Current/05-Execution-Status.md` for the recorded delivery state.
 
 ## Camera status
 
@@ -52,12 +70,7 @@ Read:
 - `Current/Camera-Delivery-Reconciliation.md`
 - `ADRs/Product/ADR-PROD-0006-camera-requests-output-contexts.md`
 
-## Active block
+## Next selection
 
-```text
-G1 — Consumer Route Loop
-```
-
-G1 proves application flow between real Routes. It does not require the
-framework to own gameplay objectives, interactions, combat, missions or win
-conditions.
+No post-H2 implementation cut is active. The next product lane may now be
+selected without reopening H2.4.
