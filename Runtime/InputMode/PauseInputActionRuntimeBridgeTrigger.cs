@@ -10,13 +10,11 @@ using UnityEngine.InputSystem;
 namespace Immersive.Framework.InputMode
 {
     /// <summary>
-    /// API status: Experimental. Opt-in Unity InputAction trigger that forwards a concrete Pause action to the explicit Pause runtime PlayerInput bridge.
-    /// This component subscribes to an action performed callback only; it does not own PlayerInputManager, call JoinPlayer, spawn players,
-    /// read gameplay commands, switch action maps directly or create a custom input manager.
+    /// API status: Experimental technical regression trigger for the retired Pause/InputMode bridge.
+    /// It is not automatically composed and is not guidance for the Pause P1 product surface.
     /// </summary>
     [DisallowMultipleComponent]
-    [AddComponentMenu("Immersive Framework/Input Mode/Pause InputAction Runtime Bridge Trigger")]
-    [FrameworkApiStatus(FrameworkApiStatus.Experimental, "F33B opt-in Unity InputAction trigger for Pause runtime PlayerInput bridge.")]
+    [FrameworkApiStatus(FrameworkApiStatus.Experimental, "Technical experimental regression trigger for the retired Pause/InputMode bridge.")]
     public sealed class PauseInputActionRuntimeBridgeTrigger : MonoBehaviour
     {
         private const string DefaultSource = nameof(PauseInputActionRuntimeBridgeTrigger);
@@ -85,7 +83,6 @@ namespace Immersive.Framework.InputMode
             UnsubscribeConfiguredAction();
         }
 
-        [ContextMenu("Immersive Framework/Pause/InputAction Bridge Trigger/Trigger")]
         public void Trigger()
         {
             _lastResult = SubmitInternal(DefaultSource, ResolveReason("pause.input.action.runtime.bridge.trigger.context-menu"));

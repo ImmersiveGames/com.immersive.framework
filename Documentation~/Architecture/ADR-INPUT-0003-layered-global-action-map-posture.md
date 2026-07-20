@@ -1,8 +1,11 @@
 # ADR-INPUT-0003 — Layered Global Action Map Posture
 
-**Status:** Accepted for implementation validation  
+**Status:** Superseded for product composition by `PausePlayerInputBinding` P1
 **Type:** Technical architecture / Unity Input posture  
 **Scope:** Global Pause continuity and exact InputMode action-map sets
+
+> P1 supersession: this bridge topology remains technical regression evidence
+> only. The scene-local P1 product owns consumer Pause binding and lifecycle.
 
 ## Context
 

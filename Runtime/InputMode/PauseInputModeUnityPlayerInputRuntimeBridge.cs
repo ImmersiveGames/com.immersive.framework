@@ -12,16 +12,13 @@ using UnityEngine.InputSystem;
 namespace Immersive.Framework.InputMode
 {
     /// <summary>
-    /// Scene-authored product boundary for one PlayerInput-scoped Pause/InputMode authority.
-    /// It owns the resident logical InputMode state, serializes posture requests, delegates
-    /// physical Unity input effects to the canonical writer pipeline and commits state only
-    /// after the complete Pause/InputMode operation succeeds.
+    /// Technical experimental regression surface for the retired Pause/InputMode bridge.
+    /// It is not a P1 product surface, startup integration, or consumer-authoring path.
     /// </summary>
     [DisallowMultipleComponent]
-    [AddComponentMenu("Immersive Framework/Input Mode/Pause PlayerInput Runtime Bridge")]
     [FrameworkApiStatus(
         FrameworkApiStatus.Experimental,
-        "IC2 resident InputMode authority and IC3 canonical Pause submitter boundary.")]
+        "Technical experimental regression bridge; not automatically composed by Pause P1.")]
     public sealed class PauseInputModeUnityPlayerInputRuntimeBridge : MonoBehaviour
     {
         private const string DefaultSource =
@@ -123,7 +120,6 @@ namespace Immersive.Framework.InputMode
                 FrameworkLogger.Create<PauseInputModeUnityPlayerInputRuntimeBridge>();
         }
 
-        [ContextMenu("Immersive Framework/Pause/InputMode PlayerInput Bridge/Pause")]
         public void RequestPause()
         {
             Submit(
@@ -131,7 +127,6 @@ namespace Immersive.Framework.InputMode
                 "pause.inputmode.playerinput.runtime.bridge.pause");
         }
 
-        [ContextMenu("Immersive Framework/Pause/InputMode PlayerInput Bridge/Resume")]
         public void RequestResume()
         {
             Submit(
@@ -139,7 +134,6 @@ namespace Immersive.Framework.InputMode
                 "pause.inputmode.playerinput.runtime.bridge.resume");
         }
 
-        [ContextMenu("Immersive Framework/Pause/InputMode PlayerInput Bridge/Toggle")]
         public void TogglePause()
         {
             Submit(

@@ -24,9 +24,9 @@ namespace Immersive.Framework.Pause
         private PauseState _lastPreviousState = PauseState.Unknown;
         private PauseState _lastCurrentState = PauseState.Unknown;
         private int _requestSequence;
-        private IPauseRuntimePort _pauseRuntime;
+        private IPauseProductRequestPort _pauseProductRequest;
         private string _pauseRuntimeBindingDiagnostic =
-            "Pause runtime port is not bound.";
+            "Pause product request port is not bound.";
 
         [Header("Request")]
         [SerializeField] private string reason = "qa.pause.toggle";
@@ -49,60 +49,73 @@ namespace Immersive.Framework.Pause
 
         public bool LastRequestFailed => _triggerState.LastFailed;
 
-        public bool HasPauseRuntimeBinding => _pauseRuntime != null;
+        public bool HasPauseProductRequestBinding => _pauseProductRequest != null;
+
+        public string ProductRequestBindingStatus =>
+            HasPauseProductRequestBinding ? "Bound" : "Missing";
+
+        public string ProductRequestBindingDiagnostic =>
+            _pauseRuntimeBindingDiagnostic.NormalizeText();
+
+        // Compatibility aliases now describe the product request binding.
+        public bool HasPauseRuntimeBinding => HasPauseProductRequestBinding;
+
+        public string LastRequestStatus => _lastStatus.ToString();
+        public string LastRequestReason => LastReason;
+        public string LastRequestDiagnostic => LastMessage;
 
         public string PauseRuntimeBindingStatus =>
-            HasPauseRuntimeBinding ? "Bound" : "Missing";
+            ProductRequestBindingStatus;
 
         public string PauseRuntimeBindingDiagnostic =>
-            _pauseRuntimeBindingDiagnostic.NormalizeText();
+            ProductRequestBindingDiagnostic;
 
         public bool IsPaused => TryGetPauseSnapshot(out var snapshot) && snapshot.IsPaused;
 
         public bool TryGetPauseSnapshot(out PauseSnapshot snapshot)
         {
-            IPauseRuntimePort pauseRuntime = _pauseRuntime;
-            if (pauseRuntime == null)
+            IPauseProductRequestPort pauseProductRequest = _pauseProductRequest;
+            if (pauseProductRequest == null)
             {
                 _pauseRuntimeBindingDiagnostic =
-                    "Pause runtime port is not bound.";
+                    "Pause product request port is not bound.";
                 snapshot = default;
                 return false;
             }
 
-            return pauseRuntime.TryGetPauseSnapshot(out snapshot);
+            return pauseProductRequest.TryGetPauseSnapshot(out snapshot);
         }
 
-        internal bool TryBindPauseRuntime(
-            IPauseRuntimePort pauseRuntime,
+        internal bool TryBindPauseProductRequest(
+            IPauseProductRequestPort pauseProductRequest,
             out string issue)
         {
-            if (pauseRuntime == null)
+            if (pauseProductRequest == null)
             {
-                issue = "Pause runtime port binding requires a non-null port.";
+                issue = "Pause product request binding requires a non-null port.";
                 _pauseRuntimeBindingDiagnostic = issue;
                 return false;
             }
 
-            if (_pauseRuntime == null)
+            if (_pauseProductRequest == null)
             {
-                _pauseRuntime = pauseRuntime;
+                _pauseProductRequest = pauseProductRequest;
                 issue = string.Empty;
                 _pauseRuntimeBindingDiagnostic =
-                    $"Bound '{pauseRuntime.GetType().FullName}'.";
+                    $"Bound '{pauseProductRequest.GetType().FullName}'.";
                 return true;
             }
 
-            if (object.ReferenceEquals(_pauseRuntime, pauseRuntime))
+            if (object.ReferenceEquals(_pauseProductRequest, pauseProductRequest))
             {
                 issue = string.Empty;
                 _pauseRuntimeBindingDiagnostic =
-                    $"Bound '{pauseRuntime.GetType().FullName}' (idempotent).";
+                    $"Bound '{pauseProductRequest.GetType().FullName}' (idempotent).";
                 return true;
             }
 
             issue =
-                "Pause runtime port binding rejected a different port for the current lifetime.";
+                "Pause product request binding rejected a different port for the current lifetime.";
             _pauseRuntimeBindingDiagnostic = issue;
             return false;
         }
@@ -135,22 +148,21 @@ namespace Immersive.Framework.Pause
             EnsureLogger();
             string resolvedReason = ResolveReason(fallbackReason);
 
-            IPauseRuntimePort pauseRuntime = _pauseRuntime;
-            if (pauseRuntime == null)
+            IPauseProductRequestPort pauseProductRequest = _pauseProductRequest;
+            if (pauseProductRequest == null)
             {
                 const string message =
-                    "Pause Request failed. Pause runtime port is not bound.";
-                _pauseRuntimeBindingDiagnostic = "Pause runtime port is not bound.";
+                    "Pause Request BindingUnavailable. Pause product request port is not bound.";
+                _pauseRuntimeBindingDiagnostic = "Pause product request port is not bound.";
                 _logger.Error(message);
                 SetLast(FlowRequestOutcome.Failed, PauseRequestStatus.Failed, PauseState.Unknown, PauseState.Unknown, resolvedReason, message, 1, 1);
                 return;
             }
 
-            PauseResult result;
+            PauseProductRequestResult productResult;
             try
             {
-                result = pauseRuntime.RequestPause(
-                    CreatePauseRequest(kind, resolvedReason));
+                productResult = pauseProductRequest.RequestPause(CreatePauseRequest(kind, resolvedReason));
             }
             catch (System.Exception exception)
             {
@@ -160,15 +172,15 @@ namespace Immersive.Framework.Pause
                 return;
             }
 
-            SetLast(
-                MapOutcome(result),
-                result.Status,
-                result.PreviousState,
-                result.CurrentState,
+            PauseResult result = productResult.PauseResult;
+            SetLast(productResult.Succeeded ? FlowRequestOutcome.Succeeded : productResult.Ignored ? FlowRequestOutcome.Ignored : FlowRequestOutcome.Failed,
+                result.IsValid ? result.Status : PauseRequestStatus.Failed,
+                result.IsValid ? result.PreviousState : PauseState.Unknown,
+                result.IsValid ? result.CurrentState : PauseState.Unknown,
                 resolvedReason,
-                result.Message,
-                result.IssueCount,
-                result.BlockingIssueCount);
+                productResult.Diagnostic,
+                productResult.Succeeded || productResult.Ignored ? 0 : 1,
+                productResult.Succeeded || productResult.Ignored ? 0 : 1);
         }
 
         private void EnsureLogger()

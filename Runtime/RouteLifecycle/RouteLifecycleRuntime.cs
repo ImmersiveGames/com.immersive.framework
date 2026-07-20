@@ -26,7 +26,7 @@ namespace Immersive.Framework.RouteLifecycle
     [FrameworkApiStatus(FrameworkApiStatus.Internal, "Runtime implementation detail; not game-facing API.")]
     internal sealed partial class RouteLifecycleRuntime
     {
-        private readonly SceneLifecycleRuntime _sceneLifecycleRuntime = new SceneLifecycleRuntime();
+        private readonly SceneLifecycleRuntime _sceneLifecycleRuntime;
         private readonly ActivityFlowRuntime _activityFlowRuntime;
         private readonly RouteContentRuntime _routeContentRuntime = new RouteContentRuntime();
         private readonly RouteSceneCompositionRuntime _routeSceneCompositionRuntime;
@@ -52,8 +52,10 @@ namespace Immersive.Framework.RouteLifecycle
             IActivityRuntimePort activityRuntime,
             IRouteCycleResetRuntimePort routeCycleResetRuntime,
             IActivityCycleResetRuntimePort activityCycleResetRuntime,
-            IActivityRestartRuntimePort activityRestartRuntime)
+            IActivityRestartRuntimePort activityRestartRuntime,
+            SceneLifecycleRuntime sceneLifecycleRuntime = null)
         {
+            _sceneLifecycleRuntime = sceneLifecycleRuntime ?? new SceneLifecycleRuntime();
             _runtimeContentRuntime = runtimeContentRuntime ?? throw new ArgumentNullException(nameof(runtimeContentRuntime));
             _contentAnchorBindingRuntime = contentAnchorBindingRuntime ?? throw new ArgumentNullException(nameof(contentAnchorBindingRuntime));
             _routeRuntime = routeRuntime ?? throw new ArgumentNullException(nameof(routeRuntime));

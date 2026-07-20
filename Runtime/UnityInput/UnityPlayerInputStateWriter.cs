@@ -243,6 +243,51 @@ namespace Immersive.Framework.UnityInput
             return true;
         }
 
+        internal static bool TryCapturePosture(
+            PlayerInput playerInput,
+            out PausePlayerInputPostureReceipt receipt,
+            out string issue)
+        {
+            receipt = default;
+            issue = string.Empty;
+            if (playerInput == null || playerInput.actions == null)
+            {
+                issue = "PlayerInput posture capture requires PlayerInput.actions.";
+                return false;
+            }
+            receipt = new PausePlayerInputPostureReceipt(
+                playerInput.GetEntityId(),
+                CurrentActionMapName(playerInput),
+                GetEnabledActionMapNames(playerInput),
+                playerInput.defaultActionMap.NormalizeText(),
+                playerInput.inputIsActive);
+            return true;
+        }
+
+        internal static bool TryRestorePosture(
+            PlayerInput playerInput,
+            PausePlayerInputPostureReceipt receipt,
+            out string issue)
+        {
+            issue = string.Empty;
+            if (playerInput == null || !receipt.IsValid || !receipt.PlayerInputEntityId.Equals(playerInput.GetEntityId()))
+            {
+                issue = "PlayerInput posture restore rejected missing, foreign or stale evidence.";
+                return false;
+            }
+            if (!TryApplyRawActionMapState(playerInput, receipt.CurrentActionMapName, new HashSet<string>(receipt.EnabledActionMapNames, StringComparer.Ordinal), out issue))
+            {
+                return false;
+            }
+            playerInput.defaultActionMap = receipt.DefaultActionMapName;
+            if (playerInput.inputIsActive != receipt.InputWasActive)
+            {
+                if (receipt.InputWasActive) playerInput.ActivateInput(); else playerInput.DeactivateInput();
+                if (!TryApplyRawActionMapState(playerInput, receipt.CurrentActionMapName, new HashSet<string>(receipt.EnabledActionMapNames, StringComparer.Ordinal), out issue)) return false;
+            }
+            return true;
+        }
+
         internal static bool TryRestoreActionMapSet(
             PlayerInput playerInput,
             UnityPlayerInputActionMapSetWriteReceipt receipt,
@@ -659,6 +704,24 @@ namespace Immersive.Framework.UnityInput
 
             return true;
         }
+    }
+
+    internal readonly struct PausePlayerInputPostureReceipt
+    {
+        internal PausePlayerInputPostureReceipt(EntityId playerInputEntityId, string currentActionMapName, string[] enabledActionMapNames, string defaultActionMapName, bool inputWasActive)
+        {
+            PlayerInputEntityId = playerInputEntityId;
+            CurrentActionMapName = currentActionMapName.NormalizeText();
+            EnabledActionMapNames = enabledActionMapNames ?? Array.Empty<string>();
+            DefaultActionMapName = defaultActionMapName.NormalizeText();
+            InputWasActive = inputWasActive;
+        }
+        internal EntityId PlayerInputEntityId { get; }
+        internal string CurrentActionMapName { get; }
+        internal string[] EnabledActionMapNames { get; }
+        internal string DefaultActionMapName { get; }
+        internal bool InputWasActive { get; }
+        internal bool IsValid => EnabledActionMapNames != null;
     }
 
     internal readonly struct UnityPlayerInputActionMapWriteReceipt

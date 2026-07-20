@@ -14,6 +14,7 @@ using Immersive.Framework.TransitionEffects;
 using Immersive.Framework.Loading;
 using Immersive.Framework.Common;
 using Immersive.Framework.PlayerParticipation;
+using Immersive.Framework.SceneLifecycle;
 using UnityEngine;
 
 namespace Immersive.Framework.GameFlow
@@ -49,7 +50,8 @@ namespace Immersive.Framework.GameFlow
             IActivityRuntimePort activityRuntime,
             IRouteCycleResetRuntimePort routeCycleResetRuntime,
             IActivityCycleResetRuntimePort activityCycleResetRuntime,
-            IActivityRestartRuntimePort activityRestartRuntime)
+            IActivityRestartRuntimePort activityRestartRuntime,
+            SceneLifecycleRuntime sceneLifecycleRuntime = null)
             : this(
                 runtimeContentRuntime,
                 contentAnchorBindingRuntime,
@@ -58,7 +60,8 @@ namespace Immersive.Framework.GameFlow
                 activityRuntime,
                 routeCycleResetRuntime,
                 activityCycleResetRuntime,
-                activityRestartRuntime)
+                activityRestartRuntime,
+                sceneLifecycleRuntime)
         {
         }
 
@@ -70,7 +73,8 @@ namespace Immersive.Framework.GameFlow
             IActivityRuntimePort activityRuntime,
             IRouteCycleResetRuntimePort routeCycleResetRuntime,
             IActivityCycleResetRuntimePort activityCycleResetRuntime,
-            IActivityRestartRuntimePort activityRestartRuntime)
+            IActivityRestartRuntimePort activityRestartRuntime,
+            SceneLifecycleRuntime sceneLifecycleRuntime = null)
         {
             _transitionOrchestrator = transitionOrchestrator ?? throw new ArgumentNullException(nameof(transitionOrchestrator));
             _routeLifecycleRuntime = new RouteLifecycleRuntime(
@@ -80,7 +84,8 @@ namespace Immersive.Framework.GameFlow
                 activityRuntime ?? throw new ArgumentNullException(nameof(activityRuntime)),
                 routeCycleResetRuntime ?? throw new ArgumentNullException(nameof(routeCycleResetRuntime)),
                 activityCycleResetRuntime ?? throw new ArgumentNullException(nameof(activityCycleResetRuntime)),
-                activityRestartRuntime ?? throw new ArgumentNullException(nameof(activityRestartRuntime)));
+                activityRestartRuntime ?? throw new ArgumentNullException(nameof(activityRestartRuntime)),
+                sceneLifecycleRuntime);
         }
 
         internal void SetActivityContentExecutionParticipantSource(IActivityContentExecutionParticipantSource participantSource)

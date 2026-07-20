@@ -36,7 +36,7 @@ namespace Immersive.Framework.ApplicationLifecycle
     /// It owns the Game Flow instance for this boot, but does not expose a global service locator.
     /// </summary>
     [FrameworkApiStatus(FrameworkApiStatus.Internal, "Runtime implementation detail; not game-facing API.")]
-    internal sealed partial class FrameworkRuntimeHost : MonoBehaviour, IPauseRuntimePort, IRouteRuntimePort, IActivityRuntimePort, IRouteCycleResetRuntimePort, IActivityCycleResetRuntimePort, IActivityRestartRuntimePort
+    internal sealed partial class FrameworkRuntimeHost : MonoBehaviour, IPauseRuntimePort, IPauseProductApplicationPort, IRouteRuntimePort, IActivityRuntimePort, IRouteCycleResetRuntimePort, IActivityCycleResetRuntimePort, IActivityRestartRuntimePort
     {
         private const string RuntimeHostName = "Immersive Framework Runtime";
         private const string PauseTransitionInProgressIssueCode = "pause.transition-in-progress";
@@ -48,6 +48,8 @@ namespace Immersive.Framework.ApplicationLifecycle
         private PauseRuntime _pauseRuntime;
         private PauseTimeScaleRuntime _pauseTimeScaleRuntime;
         private PauseSurfaceRuntime _pauseSurfaceRuntime;
+        private SceneLifecycleRuntime _sceneLifecycleRuntime;
+        private PauseProductBindingRuntimeContext _pauseProductBindingRuntime;
         private int _pauseRequestSequence;
         private RuntimeContentRuntime _runtimeContentRuntime;
         private RuntimeContentAnchorBinding _contentAnchorBindingRuntime;
@@ -354,20 +356,9 @@ namespace Immersive.Framework.ApplicationLifecycle
 
             _loadingSurfaceRuntime = CreateLoadingSurfaceRuntime(_globalUiSceneRuntime);
             _pauseSurfaceRuntime = CreatePauseSurfaceRuntime(_globalUiSceneRuntime);
-            IPauseRuntimePort pauseRuntimePort = this;
-            GlobalUiPauseRuntimeBindingResult pauseBinding =
-                _globalUiSceneRuntime.TryBindPauseInputModeRuntime(
-                    pauseRuntimePort);
-            if (!pauseBinding.Succeeded)
-            {
-                var failed = FrameworkGameFlowStartResult.Failed(
-                    pauseBinding.Message);
-                _state = FrameworkRuntimeState.FromGameFlowResult(_gameApplication, failed);
-                return failed;
-            }
             GlobalUiPauseRequestTriggerBindingResult pauseRequestTriggerBinding =
                 _globalUiSceneRuntime.TryBindPauseRequestTriggers(
-                    pauseRuntimePort);
+                    _pauseProductBindingRuntime);
             if (!pauseRequestTriggerBinding.Succeeded)
             {
                 var failed = FrameworkGameFlowStartResult.Failed(
@@ -407,7 +398,8 @@ namespace Immersive.Framework.ApplicationLifecycle
                 activityRuntimePort,
                 this,
                 this,
-                this);
+                this,
+                _sceneLifecycleRuntime);
             IRouteCycleResetRuntimePort routeCycleResetRuntimePort = this;
             RouteCycleResetTriggerBindingResult globalRouteCycleResetTriggerBinding =
                 _globalUiSceneRuntime.TryBindRouteCycleResetTriggers(
@@ -456,8 +448,7 @@ namespace Immersive.Framework.ApplicationLifecycle
 
         private async Task<SceneLifecycleLoadResult> PrepareStartupPrimarySceneBeforeGlobalUiAsync()
         {
-            var sceneLifecycleRuntime = new SceneLifecycleRuntime();
-            var result = await sceneLifecycleRuntime.LoadPrimarySceneAsync(_gameApplication.StartupRoute);
+            var result = await _sceneLifecycleRuntime.LoadPrimarySceneAsync(_gameApplication.StartupRoute);
             if (!result.Loaded)
             {
                 _logger.Error(
@@ -1184,6 +1175,9 @@ namespace Immersive.Framework.ApplicationLifecycle
             _pauseRuntime = new PauseRuntime();
             _pauseTimeScaleRuntime = new PauseTimeScaleRuntime();
             _logger = FrameworkLogger.Create<FrameworkRuntimeHost>();
+            _pauseProductBindingRuntime = new PauseProductBindingRuntimeContext(this);
+            _sceneLifecycleRuntime = new SceneLifecycleRuntime(
+                new PauseProductBindingSceneLifecycleParticipant(_pauseProductBindingRuntime));
             _runtimeSessionScopeResult = CreateSessionScopeRoot(application, "FrameworkRuntimeHost", "session-start");
             _state = FrameworkRuntimeState.Empty(application);
         }

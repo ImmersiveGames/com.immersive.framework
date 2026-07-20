@@ -295,6 +295,12 @@ namespace Immersive.Framework.UnityInput
             return true;
         }
 
+        internal bool TryCapturePosture(out PausePlayerInputPostureReceipt receipt, out string issue) =>
+            UnityPlayerInputStateWriter.TryCapturePosture(ResolvePlayerInput(), out receipt, out issue);
+
+        internal bool TryRestorePosture(PausePlayerInputPostureReceipt receipt, out string issue) =>
+            UnityPlayerInputStateWriter.TryRestorePosture(ResolvePlayerInput(), receipt, out issue);
+
         private void ApplyFromCurrentRuntimeGate(string reason)
         {
             EnsureLogger();

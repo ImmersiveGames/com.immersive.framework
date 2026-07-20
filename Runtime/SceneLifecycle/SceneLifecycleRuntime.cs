@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 using Immersive.Framework.Authoring;
 using Immersive.Framework.Loading;
@@ -19,6 +20,12 @@ namespace Immersive.Framework.SceneLifecycle
         private const string AlreadyLoadedMode = "AlreadyLoaded";
         private const string SingleLoadMode = "Single";
         private const string AdditiveLoadMode = "Additive";
+        private readonly ISceneLifecycleParticipant[] _participants;
+
+        internal SceneLifecycleRuntime(params ISceneLifecycleParticipant[] participants)
+        {
+            _participants = participants ?? Array.Empty<ISceneLifecycleParticipant>();
+        }
 
         internal async Task<SceneLifecycleLoadResult> LoadPrimarySceneAsync(RouteAsset route)
         {
@@ -49,6 +56,10 @@ namespace Immersive.Framework.SceneLifecycle
             var activeScene = SceneManager.GetActiveScene();
             if (IsSceneMatch(activeScene, scenePath, sceneName) && activeScene.isLoaded)
             {
+                if (!NotifySceneAvailable(activeScene, out string lifecycleIssue))
+                {
+                    return SceneLifecycleLoadResult.Failed(lifecycleIssue);
+                }
                 return SceneLifecycleLoadResult.LoadedPrimaryScene(sceneName, scenePath, true, AlreadyLoadedMode);
             }
 
@@ -58,6 +69,10 @@ namespace Immersive.Framework.SceneLifecycle
 
             if (!alreadyLoaded)
             {
+                if (!ReleaseLoadedScenesForSingleLoad(activeScene, out string releaseIssue))
+                {
+                    return SceneLifecycleLoadResult.Failed(releaseIssue);
+                }
                 var loadResult = await TryLoadSceneSingleAsync(scenePath, sceneName, progressReporter);
                 if (!loadResult.Loaded)
                 {
@@ -87,6 +102,11 @@ namespace Immersive.Framework.SceneLifecycle
                 }
             }
 
+            if (!NotifySceneAvailable(loadedScene, out string loadedAvailableIssue))
+            {
+                return SceneLifecycleLoadResult.Failed(loadedAvailableIssue);
+            }
+
             return SceneLifecycleLoadResult.LoadedPrimaryScene(sceneName, scenePath, alreadyLoaded, loadMode);
         }
 
@@ -111,6 +131,10 @@ namespace Immersive.Framework.SceneLifecycle
             var loadedScene = FindLoadedScene(scenePath, sceneName);
             if (loadedScene.IsValid() && loadedScene.isLoaded)
             {
+                if (!NotifySceneAvailable(loadedScene, out string availableIssue))
+                {
+                    return SceneLifecycleLoadResult.Failed(availableIssue);
+                }
                 return SceneLifecycleLoadResult.LoadedAdditiveScene(
                     GetSceneNameForDiagnostics(loadedScene, sceneName),
                     GetScenePathForDiagnostics(loadedScene, scenePath),
@@ -129,6 +153,11 @@ namespace Immersive.Framework.SceneLifecycle
             {
                 return SceneLifecycleLoadResult.Failed(
                     $"Scene Lifecycle could not resolve loaded Additive Scene '{ResolveSceneLabel(scenePath, sceneName)}' after load.");
+            }
+
+            if (!NotifySceneAvailable(loadedScene, out string loadedAdditiveAvailableIssue))
+            {
+                return SceneLifecycleLoadResult.Failed(loadedAdditiveAvailableIssue);
             }
 
             return SceneLifecycleLoadResult.LoadedAdditiveScene(
@@ -169,6 +198,11 @@ namespace Immersive.Framework.SceneLifecycle
             {
                 return SceneLifecycleUnloadResult.Failed(
                     $"Scene Lifecycle cannot unload active Scene '{ResolveSceneLabel(scenePath, sceneName)}'. Active Primary Scene is controlled by Single load.");
+            }
+
+            if (!NotifySceneReleasing(loadedScene, "scene-unload", out string releaseIssue))
+            {
+                return SceneLifecycleUnloadResult.Failed(releaseIssue);
             }
 
             try
@@ -481,6 +515,54 @@ namespace Immersive.Framework.SceneLifecycle
 
             return !string.IsNullOrWhiteSpace(sceneName)
                 && string.Equals(scene.name, sceneName, StringComparison.OrdinalIgnoreCase);
+        }
+
+        private bool ReleaseLoadedScenesForSingleLoad(Scene activeScene, out string issue)
+        {
+            issue = string.Empty;
+            if (!activeScene.IsValid() || !activeScene.isLoaded)
+            {
+                return true;
+            }
+            return NotifySceneReleasing(activeScene, "single-scene-replacement", out issue);
+        }
+
+        private bool NotifySceneAvailable(Scene scene, out string issue)
+        {
+            issue = string.Empty;
+            if (_participants.Length == 0 || !scene.IsValid() || !scene.isLoaded)
+            {
+                return true;
+            }
+            IReadOnlyList<GameObject> roots = scene.GetRootGameObjects();
+            for (int i = 0; i < _participants.Length; i++)
+            {
+                if (_participants[i] != null && !_participants[i].OnSceneAvailable(scene, roots, out issue))
+                {
+                    issue = $"Scene Lifecycle composition rejected scene '{scene.name}'. {issue}";
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        private bool NotifySceneReleasing(Scene scene, string reason, out string issue)
+        {
+            issue = string.Empty;
+            if (_participants.Length == 0 || !scene.IsValid() || !scene.isLoaded)
+            {
+                return true;
+            }
+            IReadOnlyList<GameObject> roots = scene.GetRootGameObjects();
+            for (int i = 0; i < _participants.Length; i++)
+            {
+                if (_participants[i] != null && !_participants[i].OnSceneReleasing(scene, roots, reason, out issue))
+                {
+                    issue = $"Scene Lifecycle release rejected scene '{scene.name}'. {issue}";
+                    return false;
+                }
+            }
+            return true;
         }
     }
 }

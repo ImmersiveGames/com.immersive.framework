@@ -9,7 +9,6 @@ using Immersive.Framework.TransitionEffects;
 using Immersive.Framework.Common;
 using Immersive.Framework.Camera;
 using Immersive.Framework.PlayerParticipation;
-using Immersive.Framework.InputMode;
 using Immersive.Framework.GameFlow;
 using Immersive.Framework.CycleReset;
 using Immersive.Framework.ActivityRestart;
@@ -74,78 +73,10 @@ namespace Immersive.Framework.GlobalUi
         public IReadOnlyList<ITransitionEffectAdapter> TransitionAdapters => _transitionAdapters;
         public IReadOnlyList<ILoadingSurfaceAdapter> LoadingAdapters => _loadingAdapters;
         public IReadOnlyList<IPauseSurfaceAdapter> PauseAdapters => _pauseAdapters;
-        internal GlobalUiPauseRuntimeBindingResult TryBindPauseInputModeRuntime(
-            IPauseRuntimePort pauseRuntime)
-        {
-            return TryBindPauseInputModeRuntime(_persistedRoots, pauseRuntime);
-        }
-
-        internal static GlobalUiPauseRuntimeBindingResult TryBindPauseInputModeRuntime(
-            IReadOnlyList<GameObject> persistentRoots,
-            IPauseRuntimePort pauseRuntime)
-        {
-            if (pauseRuntime == null)
-            {
-                return GlobalUiPauseRuntimeBindingResult.Rejected(
-                    "RejectedMissingPauseRuntime",
-                    "UIGlobal Pause InputMode runtime binding requires a Pause runtime port.",
-                    0);
-            }
-
-            List<PauseInputModeRuntimeBridgeRegistration> registrations =
-                CollectAdapters<PauseInputModeRuntimeBridgeRegistration>(persistentRoots);
-            if (registrations.Count == 0)
-            {
-                return GlobalUiPauseRuntimeBindingResult.OptionalAbsent();
-            }
-
-            if (registrations.Count != 1)
-            {
-                return GlobalUiPauseRuntimeBindingResult.Rejected(
-                    "RejectedDuplicateRegistration",
-                    $"UIGlobal Pause InputMode runtime binding requires exactly one registration when configured, but found '{registrations.Count}'.",
-                    registrations.Count);
-            }
-
-            PauseInputModeRuntimeBridgeRegistration registration = null;
-            foreach (PauseInputModeRuntimeBridgeRegistration candidate in registrations)
-            {
-                registration = candidate;
-                break;
-            }
-            PauseInputModeUnityPlayerInputRuntimeBridge bridge =
-                registration.PauseInputModeRuntimeBridge;
-            if (bridge == null)
-            {
-                return GlobalUiPauseRuntimeBindingResult.Rejected(
-                    "RejectedMissingBridge",
-                    $"UIGlobal Pause InputMode runtime bridge registration '{registration.name}' has no bridge reference.",
-                    registrations.Count);
-            }
-
-            if (!IsInPersistedRoots(bridge, persistentRoots))
-            {
-                return GlobalUiPauseRuntimeBindingResult.Rejected(
-                    "RejectedForeignBridge",
-                    $"UIGlobal Pause InputMode runtime bridge '{bridge.name}' is outside the provided persistent roots.",
-                    registrations.Count);
-            }
-
-            if (!bridge.TryBindPauseRuntime(pauseRuntime, out string issue))
-            {
-                return GlobalUiPauseRuntimeBindingResult.Rejected(
-                    "RejectedBridgeBinding",
-                    $"UIGlobal Pause InputMode runtime bridge '{bridge.name}' rejected the Pause runtime port. {issue}",
-                    registrations.Count);
-            }
-
-            return GlobalUiPauseRuntimeBindingResult.Bound(bridge);
-        }
-
         internal GlobalUiPauseRequestTriggerBindingResult
-            TryBindPauseRequestTriggers(IPauseRuntimePort pauseRuntime)
+            TryBindPauseRequestTriggers(IPauseProductRequestPort pauseProductRequest)
         {
-            return TryBindPauseRequestTriggers(_persistedRoots, pauseRuntime);
+            return TryBindPauseRequestTriggers(_persistedRoots, pauseProductRequest);
         }
 
         internal RouteRequestTriggerBindingResult TryBindRouteRequestTriggers(
@@ -189,14 +120,14 @@ namespace Immersive.Framework.GlobalUi
         internal static GlobalUiPauseRequestTriggerBindingResult
             TryBindPauseRequestTriggers(
                 IReadOnlyList<GameObject> persistentRoots,
-                IPauseRuntimePort pauseRuntime)
+                IPauseProductRequestPort pauseProductRequest)
         {
             int rootCount = CountRoots(persistentRoots);
-            if (pauseRuntime == null)
+            if (pauseProductRequest == null)
             {
                 return GlobalUiPauseRequestTriggerBindingResult.Rejected(
-                    "RejectedMissingPauseRuntime",
-                    $"UIGlobal Pause request trigger binding requires a Pause runtime port. roots='{rootCount}' triggers='0' bound='0' idempotent='0' rejected='0'.",
+                    "RejectedMissingPauseProductRequest",
+                    $"UIGlobal Pause request trigger binding requires a Pause product request port. roots='{rootCount}' triggers='0' bound='0' idempotent='0' rejected='0'.",
                     rootCount,
                     0,
                     0,
@@ -219,8 +150,8 @@ namespace Immersive.Framework.GlobalUi
             for (int index = 0; index < triggers.Count; index++)
             {
                 PauseRequestTrigger trigger = triggers[index];
-                bool wasBound = trigger.HasPauseRuntimeBinding;
-                if (trigger.TryBindPauseRuntime(pauseRuntime, out string issue))
+                bool wasBound = trigger.HasPauseProductRequestBinding;
+                if (trigger.TryBindPauseProductRequest(pauseProductRequest, out string issue))
                 {
                     if (wasBound)
                     {
@@ -580,27 +511,6 @@ namespace Immersive.Framework.GlobalUi
             }
 
             return count;
-        }
-
-        private static bool IsInPersistedRoots(
-            MonoBehaviour behaviour,
-            IReadOnlyList<GameObject> roots)
-        {
-            if (behaviour == null || roots == null)
-            {
-                return false;
-            }
-
-            for (int index = 0; index < roots.Count; index++)
-            {
-                GameObject root = roots[index];
-                if (root != null && behaviour.transform.IsChildOf(root.transform))
-                {
-                    return true;
-                }
-            }
-
-            return false;
         }
 
         private T FindSingle<T>() where T : MonoBehaviour
