@@ -28,6 +28,36 @@ The first policy is deliberately single-local-player. A future runtime must
 fail explicitly when the Activity exposes more than one eligible Local Player;
 it must not select one implicitly.
 
+## Runtime binding in P2.1B
+
+`PauseActivityBindingRuntimeContext` is the package-owned runtime handoff for
+this intent. It is an internal, non-MonoBehaviour authority that receives all
+runtime evidence explicitly:
+
+```text
+PauseActivityBindingScope
++ PauseActivityBindingIntentResolution
++ IReadOnlyList<LocalPlayerHostAuthoring>
++ IPauseProductBindingPort
+```
+
+`PauseActivityBindingScope` is the Pause-specific projection of one concrete
+Activity entry. The future lifecycle supplies its canonical `RuntimeContentOwner`
+and Activity transition sequence; the Pause runtime does not generate a counter
+or own admission. This keeps the scope valid through the active Activity until
+its ordered exit, rather than retaining the temporary admission-stage receipt.
+Its owner and entry sequence distinguish an entry from a stale re-entry.
+The runtime accepts exactly one explicitly supplied, Joined Local Player Host
+with a valid Player Slot and `PlayerInput`. It requires exactly one
+`PausePlayerInputBinding` co-located on that host GameObject and verifies that
+both components reference the same `PlayerInput`.
+
+There is no host discovery or implicit player selection. Empty intent is a
+valid no-op; multiple hosts, duplicate evidence, foreign scopes and stale
+entry sequences are rejected explicitly. Registration and release retain their
+evidence transactionally: a failed registration leaves the binding reusable,
+and a failed release retains the token and port for retry.
+
 ## What it does not execute
 
 This cut does not resolve a Player or host, register a
@@ -42,12 +72,13 @@ roots and decides when to log the resulting diagnostic.
 ## Intent versus runtime binding
 
 `PauseActivityBindingIntent` is authored intent. The session-owned
-`PauseProductBindingRuntimeContext` remains the runtime authority. The future
-Activity-scoped registration will consume typed admitted-host evidence and this
-intent; it will not infer a host from scene hierarchy or use a singleton.
+`PauseProductBindingRuntimeContext` remains the Pause runtime authority through
+`IPauseProductBindingPort`. The activity-scoped runtime only registers/releases
+the exact binding; it does not create a second Pause runtime or use a singleton.
 
 ## Next cuts
 
-P2.1B will define the typed handoff from Activity Player admission to the Pause
-binding materializer. P2.1C will register/release the exact binding token in
-the ordered Activity lifecycle. Neither behavior exists in P2.1A.
+P2.1C must still connect this reusable runtime to the ordered Activity
+lifecycle. `FrameworkRuntimeHost` does not call it yet, Activity lifecycle is
+not connected, and QA does not use the feature. No vertical Pause P1 flow is
+complete in this cut.

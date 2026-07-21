@@ -43,29 +43,46 @@ namespace Immersive.Framework.Pause
                 return false;
             }
 
-            if (_port != null && !ReferenceEquals(_port, port))
+            if (_token.IsValid)
             {
+                if (ReferenceEquals(_port, port))
+                {
+                    diagnostic = "Pause PlayerInput Binding is already registered (idempotent).";
+                    _bindingDiagnostic = diagnostic;
+                    return true;
+                }
+
                 diagnostic = "Pause PlayerInput Binding rejected a different binding port for its current scene lifetime.";
                 _bindingDiagnostic = diagnostic;
                 return false;
             }
 
-            _port = port;
-            if (_token.IsValid)
+            if (_port != null)
             {
-                diagnostic = "Pause PlayerInput Binding is already registered (idempotent).";
+                diagnostic = "Pause PlayerInput Binding has inconsistent retained port evidence without a binding token.";
                 _bindingDiagnostic = diagnostic;
-                return true;
+                _bindingStatus = "Failed";
+                return false;
             }
 
             _bindingStatus = "Binding";
-            if (!port.TryRegister(this, out _token, out diagnostic))
+            if (!port.TryRegister(this, out PauseProductBindingToken token, out diagnostic))
             {
                 _bindingStatus = "Failed";
                 _bindingDiagnostic = diagnostic;
                 return false;
             }
 
+            if (!token.IsValid)
+            {
+                diagnostic = "Pause PlayerInput Binding registration returned an invalid binding token.";
+                _bindingStatus = "Failed";
+                _bindingDiagnostic = diagnostic;
+                return false;
+            }
+
+            _port = port;
+            _token = token;
             _bindingStatus = "Bound";
             _bindingDiagnostic = diagnostic;
             return true;
@@ -124,23 +141,40 @@ namespace Immersive.Framework.Pause
 
         internal bool ReleaseForSceneLifecycle(string reason, out string diagnostic)
         {
-            if (!_token.IsValid || _port == null)
+            return TryReleaseBinding(reason, out diagnostic);
+        }
+
+        internal bool TryReleaseBinding(string reason, out string diagnostic)
+        {
+            if (!_token.IsValid && _port == null)
             {
                 diagnostic = "Pause PlayerInput Binding is already released.";
                 return true;
             }
 
-            PauseProductBindingToken token = _token;
-            _token = default;
-            _bindingStatus = "Unbinding";
-            bool released = _port.ReleaseBinding(token, reason, out diagnostic);
-            _bindingStatus = released ? "Unbound" : "Failed";
-            _bindingDiagnostic = diagnostic;
-            if (released)
+            if (!_token.IsValid || _port == null)
             {
-                _port = null;
+                diagnostic = "Pause PlayerInput Binding has inconsistent retained port/token evidence and cannot release safely.";
+                _bindingStatus = "Failed";
+                _bindingDiagnostic = diagnostic;
+                return false;
             }
-            return released;
+
+            _bindingStatus = "Unbinding";
+            bool released = _port.ReleaseBinding(_token, reason, out diagnostic);
+            if (!released)
+            {
+                _bindingStatus = "Failed";
+                diagnostic = $"Pause PlayerInput Binding release failed; binding retained for retry. {diagnostic.NormalizeTextOrFallback("No release diagnostic was supplied.")}";
+                _bindingDiagnostic = diagnostic;
+                return false;
+            }
+
+            _token = default;
+            _port = null;
+            _bindingStatus = "Unbound";
+            _bindingDiagnostic = diagnostic;
+            return true;
         }
 
         private void OnDisable() => ReleaseLocal("component-disabled");
