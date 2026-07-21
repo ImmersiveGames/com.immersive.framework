@@ -50,6 +50,8 @@ namespace Immersive.Framework.ApplicationLifecycle
         private PauseSurfaceRuntime _pauseSurfaceRuntime;
         private SceneLifecycleRuntime _sceneLifecycleRuntime;
         private PauseProductBindingRuntimeContext _pauseProductBindingRuntime;
+        private PauseActivityBindingRuntimeContext _pauseActivityBindingRuntime;
+        private PauseActivityBindingRuntimeHostModule _pauseActivityBindingModule;
         private int _pauseRequestSequence;
         private RuntimeContentRuntime _runtimeContentRuntime;
         private RuntimeContentAnchorBinding _contentAnchorBindingRuntime;
@@ -400,6 +402,7 @@ namespace Immersive.Framework.ApplicationLifecycle
                 this,
                 this,
                 _sceneLifecycleRuntime);
+            ApplyPauseActivityBindingLifecycle();
             IRouteCycleResetRuntimePort routeCycleResetRuntimePort = this;
             RouteCycleResetTriggerBindingResult globalRouteCycleResetTriggerBinding =
                 _globalUiSceneRuntime.TryBindRouteCycleResetTriggers(
@@ -1176,10 +1179,26 @@ namespace Immersive.Framework.ApplicationLifecycle
             _pauseTimeScaleRuntime = new PauseTimeScaleRuntime();
             _logger = FrameworkLogger.Create<FrameworkRuntimeHost>();
             _pauseProductBindingRuntime = new PauseProductBindingRuntimeContext(this);
+            _pauseActivityBindingRuntime = new PauseActivityBindingRuntimeContext();
+            _pauseActivityBindingModule = new PauseActivityBindingRuntimeHostModule(
+                _pauseActivityBindingRuntime,
+                _pauseProductBindingRuntime);
             _sceneLifecycleRuntime = new SceneLifecycleRuntime(
                 new PauseProductBindingSceneLifecycleParticipant(_pauseProductBindingRuntime));
             _runtimeSessionScopeResult = CreateSessionScopeRoot(application, "FrameworkRuntimeHost", "session-start");
             _state = FrameworkRuntimeState.Empty(application);
+        }
+
+        internal void SetPauseActivityBindingPlayerEvidence(
+            IPauseActivityBindingPlayerEvidence evidence)
+        {
+            _pauseActivityBindingModule?.SetPlayerEvidence(evidence);
+        }
+
+        private void ApplyPauseActivityBindingLifecycle()
+        {
+            _gameFlowRuntime?.SetPauseActivityBindingLifecycle(
+                _pauseActivityBindingModule);
         }
 
         private void InvalidateObjectEntryRuntimeContextSnapshot(string reason)

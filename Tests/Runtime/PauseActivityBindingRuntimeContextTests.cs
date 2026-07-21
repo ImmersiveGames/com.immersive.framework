@@ -51,6 +51,109 @@ namespace Immersive.Framework.Pause.Tests
         }
 
         [Test]
+        public void LifecycleModule_AbsentIntent_DoesNotRequirePlayerEvidence()
+        {
+            GameObject root = CreateObject("Activity Root");
+            PauseActivityBindingScope scope = CreateScope("activity.lifecycle.absent", 7);
+            var module = new PauseActivityBindingRuntimeHostModule(
+                new PauseActivityBindingRuntimeContext(),
+                new FakePauseProductBindingPort());
+
+            Assert.That(module.TryPrepareIntent(
+                scope.Owner,
+                scope.ActivityEntrySequence,
+                new[] { root },
+                "test",
+                "intent-absent",
+                out string preparationDiagnostic), Is.True);
+            bool accepted = module.TryActivate(
+                null,
+                scope.Owner,
+                scope.ActivityEntrySequence,
+                "test",
+                "intent-absent",
+                out string diagnostic);
+
+            Assert.That(accepted, Is.True);
+            Assert.That(preparationDiagnostic, Does.Contain("intent-absent"));
+            Assert.That(diagnostic, Does.Contain("intent-absent"));
+            Assert.That(module.Snapshot.HasActiveBinding, Is.False);
+        }
+
+        [Test]
+        public void LifecycleModule_RequiredIntentWithoutOfficialEvidence_BlocksBeforeRunning()
+        {
+            GameObject root = CreateObject("Activity Root");
+            root.AddComponent<PauseActivityBindingAuthoring>();
+            PauseActivityBindingScope scope = CreateScope("activity.lifecycle.required", 8);
+            var module = new PauseActivityBindingRuntimeHostModule(
+                new PauseActivityBindingRuntimeContext(),
+                new FakePauseProductBindingPort());
+
+            Assert.That(module.TryPrepareIntent(
+                scope.Owner,
+                scope.ActivityEntrySequence,
+                new[] { root },
+                "test",
+                "waiting-for-player-admission",
+                out _), Is.True);
+            bool accepted = module.TryActivate(
+                null,
+                scope.Owner,
+                scope.ActivityEntrySequence,
+                "test",
+                "waiting-for-player-admission",
+                out string diagnostic);
+
+            Assert.That(accepted, Is.False);
+            Assert.That(diagnostic, Does.Contain("waiting-for-player-admission"));
+            Assert.That(module.Snapshot.HasActiveBinding, Is.False);
+        }
+
+        [Test]
+        public void LifecycleModule_ReleaseKeepsForeignScopeBlockedAndRetriesExactScope()
+        {
+            LocalPlayerHostAuthoring host = CreateJoinedHost("Lifecycle Release", out _);
+            PauseActivityBindingScope scope = CreateScope("activity.lifecycle.release", 9);
+            var context = new PauseActivityBindingRuntimeContext();
+            var port = new FakePauseProductBindingPort { ReleaseSucceeds = false };
+            Assert.That(
+                context.TryActivate(
+                    scope,
+                    RequiredIntent(),
+                    new[] { host },
+                    port,
+                    "test",
+                    "activate",
+                    out _),
+                Is.True);
+            var module = new PauseActivityBindingRuntimeHostModule(context, port);
+
+            Assert.That(
+                module.TryReleaseForOwner(
+                    CreateScope("activity.lifecycle.foreign", 9).Owner,
+                    "test",
+                    "foreign",
+                    out string foreignDiagnostic),
+                Is.False);
+            Assert.That(foreignDiagnostic, Does.Contain("binding-release-failed"));
+            Assert.That(context.Snapshot.HasActiveBinding, Is.True);
+
+            Assert.That(
+                module.TryReleaseForOwner(scope.Owner, "test", "fail", out string failedDiagnostic),
+                Is.False);
+            Assert.That(failedDiagnostic, Does.Contain("binding-release-failed"));
+            Assert.That(context.Snapshot.HasActiveBinding, Is.True);
+
+            port.ReleaseSucceeds = true;
+            Assert.That(
+                module.TryReleaseForOwner(scope.Owner, "test", "retry", out string releasedDiagnostic),
+                Is.True);
+            Assert.That(releasedDiagnostic, Does.Contain("binding-released"));
+            Assert.That(context.Snapshot.HasActiveBinding, Is.False);
+        }
+
+        [Test]
         public void InvalidIntent_FailsBeforeHostResolution()
         {
             var context = new PauseActivityBindingRuntimeContext();

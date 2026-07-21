@@ -5,6 +5,7 @@ using Immersive.Framework.Actors;
 using Immersive.Framework.ApiStatus;
 using Immersive.Framework.Authoring;
 using Immersive.Framework.PlayerSlots;
+using Immersive.Framework.Pause;
 using Immersive.Framework.RuntimeContent;
 
 namespace Immersive.Framework.PlayerParticipation
@@ -18,7 +19,8 @@ namespace Immersive.Framework.PlayerParticipation
         "P3J.6 Activity-scoped Player Actor lifecycle participant and explicit participant source.")]
     internal sealed partial class ActivityPlayerActorLifecycleParticipant :
         IActivityContentExecutionParticipant,
-        IActivityContentExecutionParticipantSource
+        IActivityContentExecutionParticipantSource,
+        IPauseActivityBindingPlayerEvidence
     {
         private const string ParticipantContentId =
             "framework.player-actor.activity-lifecycle";
@@ -32,7 +34,8 @@ namespace Immersive.Framework.PlayerParticipation
                 PlayerParticipationRequirementLevel requirementLevel,
                 int projectedSlotCount,
                 int selectedCount,
-                List<PreparedSlotRecord> preparedSlots)
+                List<PreparedSlotRecord> preparedSlots,
+                IReadOnlyList<LocalPlayerHostAuthoring> admittedHosts)
             {
                 Activity = activity;
                 Owner = owner;
@@ -40,6 +43,7 @@ namespace Immersive.Framework.PlayerParticipation
                 ProjectedSlotCount = projectedSlotCount;
                 SelectedCount = selectedCount;
                 PreparedSlots = preparedSlots ?? new List<PreparedSlotRecord>();
+                AdmittedHosts = admittedHosts ?? Array.Empty<LocalPlayerHostAuthoring>();
             }
 
             internal ActivityAsset Activity { get; }
@@ -48,6 +52,7 @@ namespace Immersive.Framework.PlayerParticipation
             internal int ProjectedSlotCount { get; }
             internal int SelectedCount { get; }
             internal List<PreparedSlotRecord> PreparedSlots { get; }
+            internal IReadOnlyList<LocalPlayerHostAuthoring> AdmittedHosts { get; }
         }
 
         private readonly struct PreparedSlotRecord
@@ -97,6 +102,26 @@ namespace Immersive.Framework.PlayerParticipation
         }
 
         internal ActivityPlayerActorLifecycleSnapshot Snapshot => lastSnapshot;
+
+        public bool TryResolveAdmittedHosts(
+            ActivityAsset activity,
+            RuntimeContentOwner owner,
+            out IReadOnlyList<LocalPlayerHostAuthoring> hosts,
+            out string diagnostic)
+        {
+            hosts = Array.Empty<LocalPlayerHostAuthoring>();
+            diagnostic = string.Empty;
+            if (activeRecord == null ||
+                !ReferenceEquals(activeRecord.Activity, activity) ||
+                activeRecord.Owner != owner)
+            {
+                diagnostic = "Official Activity Player lifecycle has no admitted Host evidence for this Activity owner.";
+                return false;
+            }
+
+            hosts = activeRecord.AdmittedHosts;
+            return true;
+        }
 
         public ActivityContentExecutionParticipantSourceResult
             ResolveActivityContentExecutionParticipants(
@@ -239,7 +264,8 @@ namespace Immersive.Framework.PlayerParticipation
                     requirementLevel,
                     0,
                     0,
-                    new List<PreparedSlotRecord>());
+                    new List<PreparedSlotRecord>(),
+                    Array.Empty<LocalPlayerHostAuthoring>());
                 lastSnapshot = new ActivityPlayerActorLifecycleSnapshot(
                     ActivityPlayerActorLifecycleStatus.SucceededEnteredNoParticipants,
                     activity.ActivityName,
@@ -262,6 +288,7 @@ namespace Immersive.Framework.PlayerParticipation
             var prepared = new List<PreparedSlotRecord>();
             var appliedSelections = new List<AppliedSelectionRecord>();
             var slotEvidence = new List<ActivityPlayerActorSlotLifecycleSnapshot>();
+            var admittedHosts = new List<LocalPlayerHostAuthoring>();
             int selectedCount = 0;
             int preparedCount = 0;
 
@@ -283,6 +310,29 @@ namespace Immersive.Framework.PlayerParticipation
                         slotEvidence,
                         ActivityPlayerActorLifecycleStatus.FailedRequirement,
                         $"Projected Player Slot '{slot.PlayerSlotId.StableText}' is not Joined.");
+                }
+
+                if (slot.IsJoined)
+                {
+                    if (!preparationModule.TryGetRegisteredHost(
+                            slot.PlayerSlotId,
+                            out LocalPlayerHostAuthoring host,
+                            out string hostIssue))
+                    {
+                        return FailEnterAndRollback(
+                            request,
+                            activity,
+                            owner,
+                            requirementLevel,
+                            projectedSlots.Count,
+                            prepared,
+                            appliedSelections,
+                            slotEvidence,
+                            ActivityPlayerActorLifecycleStatus.FailedRequirement,
+                            hostIssue);
+                    }
+
+                    admittedHosts.Add(host);
                 }
 
                 bool selectionApplied = false;
@@ -407,7 +457,8 @@ namespace Immersive.Framework.PlayerParticipation
                 requirementLevel,
                 projectedSlots.Count,
                 selectedCount,
-                prepared);
+                prepared,
+                admittedHosts);
             lastSnapshot = new ActivityPlayerActorLifecycleSnapshot(
                 ActivityPlayerActorLifecycleStatus.SucceededEntered,
                 activity.ActivityName,

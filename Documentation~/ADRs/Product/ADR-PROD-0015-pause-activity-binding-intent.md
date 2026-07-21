@@ -38,30 +38,34 @@ implicit selection is allowed.
   official Pause binding port.
 - Transactional binding registration/release, including retry after release
   failure and foreign/stale scope rejection.
+- P2.1C lifecycle integration through a single session-scoped host module.
+- Activation only after the official Player participant materializes/adopts the
+  target host; release before Player exit and Activity scene release.
 
 ## Rejected scope
 
 - Player/host discovery or implicit player selection.
 - Host, `PlayerInput`, slot, prefab, QA asset, scene-path or singleton references.
-- Integration in `FrameworkRuntimeHost`, Activity/Route/Scene lifecycle or
-  Player provisioning/runtime modules.
 - Multiplayer policy beyond explicit first-cut rejection.
 
 ## Consequences
 
-P2.1B consumes typed Activity Player admission evidence rather than inspecting
-scene hierarchy. P2.1C must invoke its activation/release operations in the
-ordered Activity lifecycle, restoring Pause state before unload.
+P2.1C consumes typed Activity Player lifecycle evidence rather than inspecting
+scene hierarchy. `ActivityFlowRuntime` resolves authoring only from explicit
+materialized Activity roots, uses its canonical transition sequence, activates
+after Player admission/materialization, and releases before Player teardown or
+Activity scene unload. A release failure remains blocking and retains P2.1B
+evidence for retry.
 
 ## Current implementation coverage
 
 P2.1A provides authoring, immutable contracts and explicit-root validation.
 P2.1B provides the reusable internal registration context, its immutable
 operation/snapshot contracts, transactional component behavior and package
-contract tests. `FrameworkRuntimeHost` does not call it, Activity lifecycle is
-not connected, and QA does not use the feature.
+contract tests. P2.1C composes that context once in `FrameworkRuntimeHost` and
+connects it to the ordered Activity lifecycle. QA does not use the feature and
+no FIRSTGAME validation was performed.
 
 ## Pending decisions
 
-- Activity participant ordering relative to Player admission and scene release.
 - Product policy and contracts for more than one eligible Local Player.

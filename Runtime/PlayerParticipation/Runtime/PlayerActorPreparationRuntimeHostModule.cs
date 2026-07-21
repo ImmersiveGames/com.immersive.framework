@@ -140,12 +140,15 @@ namespace Immersive.Framework.PlayerParticipation
                 targetParticipationContext);
             targetRuntimeHost.SetActivityContentExecutionParticipantSource(
                 activityLifecycleParticipant);
+            targetRuntimeHost.SetPauseActivityBindingPlayerEvidence(
+                activityLifecycleParticipant);
             if (!PlayerGameplayRuntimeHostModule.TryAttach(
                     targetRuntimeHost,
                     out _,
                     out string gameplayIssue))
             {
                 targetRuntimeHost.SetActivityContentExecutionParticipantSource(null);
+                targetRuntimeHost.SetPauseActivityBindingPlayerEvidence(null);
                 activityLifecycleParticipant = null;
                 preparationContext = null;
                 participationContext = null;

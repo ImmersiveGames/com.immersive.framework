@@ -28,7 +28,7 @@ The first policy is deliberately single-local-player. A future runtime must
 fail explicitly when the Activity exposes more than one eligible Local Player;
 it must not select one implicitly.
 
-## Runtime binding in P2.1B
+## Runtime binding and lifecycle integration
 
 `PauseActivityBindingRuntimeContext` is the package-owned runtime handoff for
 this intent. It is an internal, non-MonoBehaviour authority that receives all
@@ -42,7 +42,7 @@ PauseActivityBindingScope
 ```
 
 `PauseActivityBindingScope` is the Pause-specific projection of one concrete
-Activity entry. The future lifecycle supplies its canonical `RuntimeContentOwner`
+Activity entry. `ActivityFlowRuntime` supplies its canonical `RuntimeContentOwner`
 and Activity transition sequence; the Pause runtime does not generate a counter
 or own admission. This keeps the scope valid through the active Activity until
 its ordered exit, rather than retaining the temporary admission-stage receipt.
@@ -57,6 +57,30 @@ valid no-op; multiple hosts, duplicate evidence, foreign scopes and stale
 entry sequences are rejected explicitly. Registration and release retain their
 evidence transactionally: a failed registration leaves the binding reusable,
 and a failed release retains the token and port for retry.
+
+`FrameworkRuntimeHost` owns one session-scoped
+`PauseActivityBindingRuntimeContext` and its narrow
+`PauseActivityBindingRuntimeHostModule`. The module receives the existing
+`PauseProductBindingRuntimeContext` only through `IPauseProductBindingPort`;
+it does not create another Pause authority.
+
+The official order is:
+
+```text
+Activity scene composition
+-> explicit-root intent resolution
+-> official Player admission/materialization
+-> typed admitted Local Player Host evidence
+-> Pause binding activation
+-> Activity readiness
+```
+
+The Activity transaction supplies its canonical transition sequence. On exit
+or committed-transition compensation, Pause binding release occurs before the
+Player participant can release its host/actor and before Activity scenes are
+unloaded. A failed release is blocking: the participant exit, scope
+finalization and scene release do not continue, and retained P2.1B evidence
+allows a later release retry. Absence remains a valid no-op.
 
 ## What it does not execute
 
@@ -76,9 +100,9 @@ roots and decides when to log the resulting diagnostic.
 `IPauseProductBindingPort`. The activity-scoped runtime only registers/releases
 the exact binding; it does not create a second Pause runtime or use a singleton.
 
-## Next cuts
+## Limits
 
-P2.1C must still connect this reusable runtime to the ordered Activity
-lifecycle. `FrameworkRuntimeHost` does not call it yet, Activity lifecycle is
-not connected, and QA does not use the feature. No vertical Pause P1 flow is
-complete in this cut.
+QA authoring/vertical flow was not created and FIRSTGAME was not validated.
+Multiplayer Pause is unsupported. `PauseProductBindingSceneLifecycleParticipant`
+remains available for physically scene-local bindings; this Activity path does
+not use it to discover a session-scoped player host.

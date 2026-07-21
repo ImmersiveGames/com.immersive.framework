@@ -14,6 +14,7 @@ using Immersive.Framework.TransitionEffects;
 using Immersive.Framework.Loading;
 using Immersive.Framework.Common;
 using Immersive.Framework.PlayerParticipation;
+using Immersive.Framework.Pause;
 using Immersive.Framework.SceneLifecycle;
 using UnityEngine;
 
@@ -91,6 +92,12 @@ namespace Immersive.Framework.GameFlow
         internal void SetActivityContentExecutionParticipantSource(IActivityContentExecutionParticipantSource participantSource)
         {
             _routeLifecycleRuntime.SetActivityContentExecutionParticipantSource(participantSource);
+        }
+
+        internal void SetPauseActivityBindingLifecycle(
+            PauseActivityBindingRuntimeHostModule lifecycle)
+        {
+            _routeLifecycleRuntime.SetPauseActivityBindingLifecycle(lifecycle);
         }
 
         internal void SetCycleResetParticipantSource(ICycleResetParticipantSource participantSource)
@@ -328,6 +335,18 @@ namespace Immersive.Framework.GameFlow
                 {
                     return FrameworkRouteRequestResult.FailedInvalidConfig(
                         routeLifecycleResult.Message,
+                        targetRoute,
+                        resolvedSource,
+                        resolvedReason,
+                        transitionGateDiagnostics);
+                }
+
+                if (routeLifecycleResult.ActivityFlowResult.Activity != null &&
+                    !routeLifecycleResult.ActivityFlowResult.IsActivityReady)
+                {
+                    return FrameworkRouteRequestResult.FailedInvalidConfig(
+                        "Route Startup Activity did not reach readiness. " +
+                        routeLifecycleResult.ActivityFlowResult.Message,
                         targetRoute,
                         resolvedSource,
                         resolvedReason,
@@ -585,11 +604,10 @@ namespace Immersive.Framework.GameFlow
                         GameFlowRequestOperationKind.Activity,
                         transitionGateDiagnostics);
                 }
-                if (RequiresGameplayReady(targetActivity) &&
-                    !activityFlowResult.IsActivityReady)
+                if (!activityFlowResult.IsActivityReady)
                 {
                     return FrameworkActivityRequestResult.FailedInvalidConfig(
-                        "GameplayReady target Activity did not complete lifecycle adoption. " +
+                        "Target Activity did not reach readiness. " +
                         activityFlowResult.Message,
                         targetActivity,
                         resolvedSource,

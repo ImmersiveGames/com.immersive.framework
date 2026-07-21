@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 using Immersive.Framework.Authoring;
 using Immersive.Framework.ContentAnchor;
@@ -183,6 +184,13 @@ namespace Immersive.Framework.ActivityFlow
                         activityOperationResult);
                 }
 
+                PreparePauseActivityBindingIntent(
+                    transaction,
+                    runtimeEnterResult.Owner,
+                    sceneCompositionResult,
+                    resolvedSource,
+                    resolvedReason);
+
                 ActivityRequestTriggerBindingResult activityTriggerBinding =
                     TryBindActivityRequestTriggers(sceneCompositionResult);
                 if (!activityTriggerBinding.Succeeded)
@@ -291,6 +299,11 @@ namespace Immersive.Framework.ActivityFlow
                 transaction.MarkPreviousContentExited(
                     "All previous scene-content Exit callbacks completed before participant Exit.");
 
+                ReleasePauseActivityBindingBeforePreviousPlayerExit(
+                    previousActivity,
+                    resolvedSource,
+                    resolvedReason);
+
                 ExecuteActivityParticipantExit(participantTransition);
                 transaction.MarkPreviousParticipantsExited(
                     "All previous Activity participants completed Exit before target Enter.");
@@ -312,6 +325,12 @@ namespace Immersive.Framework.ActivityFlow
                         resolvedReason);
 
                 ExecuteActivityParticipantEnter(participantTransition);
+                ActivatePauseActivityBindingAfterPlayerAdmission(
+                    transaction,
+                    nextActivity,
+                    runtimeEnterResult.Owner,
+                    resolvedSource,
+                    resolvedReason);
                 transaction.MarkTargetParticipantsEntered(
                     "Target Activity participants entered before scene content.");
 
@@ -519,6 +538,10 @@ namespace Immersive.Framework.ActivityFlow
                     contentTransition);
                 transaction.MarkPreviousContentExited(
                     "Previous scene content exited before participant release.");
+                ReleasePauseActivityBindingBeforePreviousPlayerExit(
+                    previousActivity,
+                    resolvedSource,
+                    resolvedReason);
                 ExecuteActivityParticipantExit(participantTransition);
                 transaction.MarkPreviousParticipantsExited(
                     "Previous Activity participants completed release.");
@@ -755,6 +778,29 @@ namespace Immersive.Framework.ActivityFlow
             ActivityOperationResult activityOperationResult)
         {
             string compensationDiagnostic = string.Empty;
+            if (_pauseActivityBindingLifecycle != null && targetActivity != null)
+            {
+                try
+                {
+                    if (!_pauseActivityBindingLifecycle.TryRollbackTarget(
+                            CreateActivityOwner(targetActivity),
+                            source,
+                            "activity-transition-failed-before-commit",
+                            out string pauseRollbackDiagnostic))
+                    {
+                        compensationDiagnostic +=
+                            " Pause Activity Binding compensation failed. " +
+                            pauseRollbackDiagnostic;
+                    }
+                }
+                catch (Exception rollbackException)
+                {
+                    compensationDiagnostic +=
+                        $" Pause Activity Binding compensation threw '{rollbackException.GetType().Name}': " +
+                        rollbackException.Message;
+                }
+            }
+
             try
             {
                 compensationDiagnostic +=
@@ -843,6 +889,18 @@ namespace Immersive.Framework.ActivityFlow
                     activityOperationResult);
             }
 
+            if (runtimeEnterResult.HasOwner &&
+                _pauseActivityBindingLifecycle != null &&
+                !_pauseActivityBindingLifecycle.TryRollbackTarget(
+                    runtimeEnterResult.Owner,
+                    source,
+                    "activity-transition-exception-rollback",
+                    out string pauseRollbackDiagnostic))
+            {
+                diagnostic += " Pause Activity Binding compensation failed. " +
+                    pauseRollbackDiagnostic;
+            }
+
             ActivityContentApplyResult contentResult =
                 contentTransition != null &&
                 contentTransition.ExitExecuted &&
@@ -885,6 +943,84 @@ namespace Immersive.Framework.ActivityFlow
                     activityOperationResult,
                     CreateActivitySceneLedgerSnapshot())
                 .WithActivityTransition(snapshot);
+        }
+
+        private void PreparePauseActivityBindingIntent(
+            ActivityTransitionRuntimeTransaction transaction,
+            RuntimeContentOwner owner,
+            ActivitySceneCompositionResult compositionResult,
+            string source,
+            string reason)
+        {
+            if (_pauseActivityBindingLifecycle == null)
+            {
+                return;
+            }
+
+            IReadOnlyList<UnityEngine.GameObject> roots =
+                ResolveMaterializedActivitySceneRoots(compositionResult);
+            if (!_pauseActivityBindingLifecycle.TryPrepareIntent(
+                    owner,
+                    transaction.Sequence,
+                    roots,
+                    source,
+                    reason,
+                    out string diagnostic))
+            {
+                throw new InvalidOperationException(
+                    "Pause Activity Binding intent blocked Activity admission. " +
+                    diagnostic);
+            }
+        }
+
+        private void ActivatePauseActivityBindingAfterPlayerAdmission(
+            ActivityTransitionRuntimeTransaction transaction,
+            ActivityAsset activity,
+            RuntimeContentOwner owner,
+            string source,
+            string reason)
+        {
+            if (_pauseActivityBindingLifecycle == null)
+            {
+                return;
+            }
+
+            if (!_pauseActivityBindingLifecycle.TryActivate(
+                    activity,
+                    owner,
+                    transaction.Sequence,
+                    source,
+                    reason,
+                    out string diagnostic))
+            {
+                throw new InvalidOperationException(
+                    "Pause Activity Binding activation blocked Activity readiness. " +
+                    diagnostic);
+            }
+        }
+
+        private void ReleasePauseActivityBindingBeforePreviousPlayerExit(
+            ActivityAsset previousActivity,
+            string source,
+            string reason)
+        {
+            if (previousActivity == null ||
+                _pauseActivityBindingLifecycle == null)
+            {
+                return;
+            }
+
+            RuntimeContentOwner owner = CreateActivityOwner(previousActivity);
+            if (!_pauseActivityBindingLifecycle.TryReleaseForOwner(
+                    owner,
+                    source,
+                    "activity-exit-before-player-teardown",
+                    out string diagnostic))
+            {
+                throw new InvalidOperationException(
+                    "Pause Activity Binding release blocked Player and scene teardown. " +
+                    diagnostic);
+            }
         }
 
         private void ConfigureActivityContentTransitionScope(

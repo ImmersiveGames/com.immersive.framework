@@ -82,6 +82,8 @@ namespace Immersive.Framework.PlayerParticipation
 
             var prepared =
                 new List<PreparedSlotRecord>(adopted.Count);
+            var admittedHosts =
+                new List<LocalPlayerHostAuthoring>(adopted.Count);
             var evidence =
                 new ActivityPlayerActorSlotLifecycleSnapshot[
                     adopted.Count];
@@ -116,6 +118,27 @@ namespace Immersive.Framework.PlayerParticipation
                         slot.PlayerSlotId,
                         slot.PreparationToken,
                         false));
+                if (!preparationModule.TryGetRegisteredHost(
+                        slot.PlayerSlotId,
+                        out LocalPlayerHostAuthoring host,
+                        out string hostIssue))
+                {
+                    string issue =
+                        $"Committed GameplayReady admission has no exact Local Player Host evidence for Slot '{slot.PlayerSlotId.StableText}'. {hostIssue}";
+                    lastSnapshot = FailureSnapshot(
+                        ActivityPlayerActorLifecycleStatus.FailedRequirement,
+                        activity,
+                        owner,
+                        PlayerParticipationRequirementLevel.GameplayReady,
+                        projectedSlots,
+                        issue);
+                    return Blocking(
+                        request,
+                        "activity-player-actor-gameplay-ready-host-evidence-missing",
+                        issue);
+                }
+
+                admittedHosts.Add(host);
                 evidence[index] =
                     new ActivityPlayerActorSlotLifecycleSnapshot(
                         slot.PlayerSlotId,
@@ -136,7 +159,8 @@ namespace Immersive.Framework.PlayerParticipation
                 PlayerParticipationRequirementLevel.GameplayReady,
                 projectedSlots.Count,
                 projectedSlots.Count,
-                prepared);
+                prepared,
+                admittedHosts);
             lastSnapshot =
                 new ActivityPlayerActorLifecycleSnapshot(
                     ActivityPlayerActorLifecycleStatus

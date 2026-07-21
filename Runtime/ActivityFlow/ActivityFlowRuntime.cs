@@ -4,6 +4,7 @@ using System.Threading.Tasks;
 using Immersive.Foundation.Events;
 using Immersive.Framework.Authoring;
 using Immersive.Framework.ActivityRestart;
+using Immersive.Framework.Pause;
 using Immersive.Framework.ApiStatus;
 using Immersive.Framework.ContentAnchor;
 using Immersive.Framework.RuntimeContent;
@@ -31,6 +32,7 @@ namespace Immersive.Framework.ActivityFlow
         private readonly ActivityOperationPlanner _activityOperationPlanner;
         private readonly ActivityOperationExecutor _activityOperationExecutor = new ActivityOperationExecutor();
         private IActivityContentExecutionParticipantSource _activityContentExecutionParticipantSource;
+        private PauseActivityBindingRuntimeHostModule _pauseActivityBindingLifecycle;
         private readonly RuntimeContentRuntime _runtimeContentRuntime;
         private readonly RuntimeContentAnchorBinding _contentAnchorBindingRuntime;
         private readonly IActivityRuntimePort _activityRuntime;
@@ -116,6 +118,12 @@ namespace Immersive.Framework.ActivityFlow
         internal void SetActivityContentExecutionParticipantSource(IActivityContentExecutionParticipantSource participantSource)
         {
             _activityContentExecutionParticipantSource = participantSource ?? EmptyActivityContentExecutionParticipantSource.Instance;
+        }
+
+        internal void SetPauseActivityBindingLifecycle(
+            PauseActivityBindingRuntimeHostModule lifecycle)
+        {
+            _pauseActivityBindingLifecycle = lifecycle;
         }
 
         internal IEventBinding SubscribeActivityEntered(Action<ActivityEnteredEvent> handler)

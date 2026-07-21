@@ -14,6 +14,7 @@ using Immersive.Framework.RuntimeContent;
 using Immersive.Framework.CycleReset;
 using Immersive.Framework.Loading;
 using Immersive.Framework.GameFlow;
+using Immersive.Framework.Pause;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
@@ -110,6 +111,12 @@ namespace Immersive.Framework.RouteLifecycle
         internal void SetActivityContentExecutionParticipantSource(IActivityContentExecutionParticipantSource participantSource)
         {
             _activityFlowRuntime.SetActivityContentExecutionParticipantSource(participantSource);
+        }
+
+        internal void SetPauseActivityBindingLifecycle(
+            PauseActivityBindingRuntimeHostModule lifecycle)
+        {
+            _activityFlowRuntime.SetPauseActivityBindingLifecycle(lifecycle);
         }
 
         internal void SetCycleResetParticipantSource(ICycleResetParticipantSource participantSource)
