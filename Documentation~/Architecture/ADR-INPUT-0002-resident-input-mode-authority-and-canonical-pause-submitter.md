@@ -1,12 +1,13 @@
 # ADR-INPUT-0002 — Resident InputMode Authority and Canonical Pause Submitter
 
-**Status:** Superseded for product composition by `PausePlayerInputBinding` P1
+**Status:** Superseded and removed from the active product/runtime surface
 **Type:** Technical architecture / runtime ownership  
 **Scope:** Logical InputMode state and Pause product submission
 
-> P1 supersession: the bridge described below remains only for isolated technical
-> regression. It is not a startup integration, a `PauseRequestTrigger` dependency,
-> or consumer-authoring guidance.
+> Historical record only. `PausePlayerInputBinding` and
+> `PauseProductBindingRuntimeContext` replaced the bridge topology described
+> below. The bridge, trigger, apply service and dedicated regression smoke have
+> been physically removed; none of this document is current setup guidance.
 
 ## Context
 

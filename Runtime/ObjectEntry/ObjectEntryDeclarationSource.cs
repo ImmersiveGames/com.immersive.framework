@@ -16,23 +16,6 @@ namespace Immersive.Framework.ObjectEntry
     [FrameworkApiStatus(FrameworkApiStatus.Experimental, "Passive Object Entry declaration source introduced by F13D; F13J adds owner-aware collection scoped to active Route scenes.")]
     public sealed class ObjectEntryDeclarationSource
     {
-        public ObjectEntryDeclarationSource(bool includeInactiveDeclarations = true)
-        {
-            IncludeInactiveDeclarations = includeInactiveDeclarations;
-        }
-
-        public bool IncludeInactiveDeclarations { get; }
-
-        /// <summary>
-        /// Development diagnostics only. Runtime Host authority uses CollectScoped and explicit lifecycle owners.
-        /// </summary>
-        internal ObjectEntryDeclarationSourceResult CollectLoadedSceneDeclarations()
-        {
-            ObjectEntryDeclaration[] declarations = UnityEngine.Object.FindObjectsByType<ObjectEntryDeclaration>(
-                IncludeInactiveDeclarations ? FindObjectsInactive.Include : FindObjectsInactive.Exclude);
-            return Collect(declarations, "loaded-scenes");
-        }
-
         internal ObjectEntryDeclarationSourceResult CollectScoped(ObjectEntryScopedCollectionContext context)
         {
             if (!context.TryValidate(out string contextIssue))

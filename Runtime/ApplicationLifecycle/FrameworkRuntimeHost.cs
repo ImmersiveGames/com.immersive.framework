@@ -299,7 +299,7 @@ namespace Immersive.Framework.ApplicationLifecycle
 
         internal ObjectEntryRuntimeContextSnapshot RefreshObjectEntryRuntimeContextSnapshot(string source)
         {
-            var declarationSource = new ObjectEntryDeclarationSource(includeInactiveDeclarations: true);
+            var declarationSource = new ObjectEntryDeclarationSource();
             var context = CreateCurrentObjectEntryScopedCollectionContext();
             var sceneResult = declarationSource.CollectScoped(context);
             _objectEntryRuntimeContextSnapshot = sceneResult.ToRuntimeContextSnapshot(source);

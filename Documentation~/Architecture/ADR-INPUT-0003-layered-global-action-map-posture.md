@@ -1,11 +1,12 @@
 # ADR-INPUT-0003 — Layered Global Action Map Posture
 
-**Status:** Superseded for product composition by `PausePlayerInputBinding` P1
+**Status:** Superseded and removed from the active product/runtime surface
 **Type:** Technical architecture / Unity Input posture  
 **Scope:** Global Pause continuity and exact InputMode action-map sets
 
-> P1 supersession: this bridge topology remains technical regression evidence
-> only. The scene-local P1 product owns consumer Pause binding and lifecycle.
+> Historical record only. The technical bridge topology described below was
+> removed. The scene-local `PausePlayerInputBinding` product owns consumer Pause
+> binding and lifecycle; old bridge policies are not supported regression APIs.
 >
 > P2.3A product revision: the current physical Pause product uses `Global` only
 > during `PauseOverlay`. `Global + UI` is reserved for a future interactive Pause UI

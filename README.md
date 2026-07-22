@@ -26,6 +26,7 @@ See the current execution status below.
 PlayerRecipe (optional) -> PlayerComposer -> Validate -> Apply/Rebuild
 GameApplication -> UIGlobal Host Registration -> LocalPlayerProvisioningAuthoring -> canonical P3 runtime lane
 CameraRigRecipe -> CameraRigComposer -> Validate -> Apply/Rebuild
+PausePlayerInputBinding -> PauseProductBindingRuntimeContext -> InputMode transaction -> UnityPlayerInputStateWriter
 ```
 
 P3 is the only Player runtime lane. Session join assigns `PlayerSlotId` to the
@@ -34,6 +35,10 @@ pre-author Slot identity. The former passive F49/F51/F52 graph is removed.
 
 Camera authoring and physical output ownership remain separate. Route, Activity,
 Local Player and Session publish typed requests into the explicit output context.
+
+Pause has one product path. While running it enables `Global + Player`; while
+paused it enables `Global`. The retired Pause/InputMode bridge APIs are not part
+of the package surface.
 
 ## Current delivery state
 

@@ -2,6 +2,19 @@
 
 For the current execution block, read `05-Execution-Status.md`.
 
+## Pause and PlayerInput
+
+| Need | Current surface |
+|---|---|
+| Scene-local Pause authoring | `PausePlayerInputBinding` |
+| Runtime binding authority | session-owned `PauseProductBindingRuntimeContext` |
+| Logical posture transaction | scoped `InputModeRuntimeContext` |
+| Physical action-map mutation | `UnityPlayerInputGateAdapter` -> `UnityPlayerInputStateWriter` |
+| UI or authored request | `PauseRequestTrigger` through the product request port |
+
+Running applies exactly `Global + Player`; paused applies exactly `Global`.
+There is no parallel Pause/InputMode bridge or compatibility trigger.
+
 ## Camera rig and output authoring
 
 | Need | Current surface |

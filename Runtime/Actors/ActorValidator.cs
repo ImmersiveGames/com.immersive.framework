@@ -13,13 +13,6 @@ namespace Immersive.Framework.Actors
     [FrameworkApiStatus(FrameworkApiStatus.Experimental, "F45A generic actor declaration validator.")]
     public static class ActorValidator
     {
-        public static ActorSet ValidateLoadedSceneDeclarations(string source, string reason)
-        {
-            ActorDeclaration[] actorDeclarations = UnityEngine.Object.FindObjectsByType<ActorDeclaration>(FindObjectsInactive.Include);
-            PlayerActorDeclaration[] playerActorDeclarations = UnityEngine.Object.FindObjectsByType<PlayerActorDeclaration>(FindObjectsInactive.Include);
-            return ValidateDeclarations(actorDeclarations, playerActorDeclarations, source, reason);
-        }
-
         public static ActorSet ValidateDeclarations(
             IEnumerable<ActorDeclaration> actorDeclarations,
             IEnumerable<PlayerActorDeclaration> playerActorDeclarations,

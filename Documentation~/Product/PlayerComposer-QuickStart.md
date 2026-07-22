@@ -1,6 +1,10 @@
+> Superseded by the canonical P3 Player lane. This document is historical and
+> is not current authoring or implementation guidance. Use
+> `../Guides/Player-Architecture-Flow.md`.
+
 # PlayerComposer QuickStart
 
-Status: Product surface guide
+Status: Superseded historical product guide
 Date: 2026-07-09
 Package: `com.immersive.framework`
 

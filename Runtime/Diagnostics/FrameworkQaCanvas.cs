@@ -22,11 +22,6 @@ namespace Immersive.Framework.Diagnostics
         [Header("Display")]
         [SerializeField] private bool showCanvas = true;
 
-        [SerializeField]
-        [Tooltip(
-            "Legacy field retained for serialized compatibility. H2.2.13 keeps this diagnostic panel scene-scoped and ignores persistence.")]
-        private bool persistAcrossSceneLoads;
-
         [SerializeField] private bool allowInPlayerBuild;
 
         [SerializeField]
@@ -55,9 +50,6 @@ namespace Immersive.Framework.Diagnostics
 
         public string FrameworkRuntimeDiagnosticsBindingDiagnostic =>
             runtimeDiagnosticsBindingDiagnostic;
-
-        public bool LegacyPersistenceRequested =>
-            persistAcrossSceneLoads;
 
         private void Awake()
         {
@@ -210,11 +202,6 @@ namespace Immersive.Framework.Diagnostics
             GUILayout.Label(
                 "This package component is read-only and executes no Route, Activity, Reset or gameplay request.");
 
-            if (persistAcrossSceneLoads)
-            {
-                GUILayout.Label(
-                    "Legacy persistence was configured but is intentionally ignored. The panel is scene-scoped.");
-            }
         }
 
         private bool CanRenderInCurrentBuild()

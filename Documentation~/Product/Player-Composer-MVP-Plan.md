@@ -1,6 +1,9 @@
+> Superseded by the canonical P3 Player lane. This plan is historical and is not
+> current implementation guidance. Use `../Guides/Player-Architecture-Flow.md`.
+
 # Player Composer MVP Plan
 
-Status: Technical MVP plan, no implementation
+Status: Superseded technical MVP plan
 Last updated: 2026-07-09
 Package: `com.immersive.framework`
 
@@ -482,4 +485,3 @@ Decisoes pendentes:
 ```text
 Docs: plan player composer MVP
 ```
-

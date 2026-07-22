@@ -1,3 +1,6 @@
+> Historical manifest for a superseded Player topology. It is not current
+> implementation guidance.
+
 # Player Composer MVP Manifest
 
 Status: Documentation cut
@@ -93,4 +96,3 @@ Este corte e PASS se:
 ```text
 Docs: plan player composer MVP
 ```
-

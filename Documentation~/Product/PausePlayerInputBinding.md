@@ -24,4 +24,8 @@ On scene release, the lifecycle releases the exact token before unload. The runt
 
 ## Not part of this surface
 
-Actor, Slot, Provisioning, PlayerInputManager, Camera, multiplayer pause policy, and FIRSTGAME integration are not required by this P1 surface. `PauseInputModeUnityPlayerInputRuntimeBridge` and `PauseInputActionRuntimeBridgeTrigger` remain technical experimental regression APIs: they have no designer-facing menu, no UIGlobal startup composition, no relationship with `PauseRequestTrigger`, and are not consumer guidance.
+Actor, Slot, Provisioning, PlayerInputManager, Camera, multiplayer pause policy,
+and FIRSTGAME integration are not required by this P1 surface. The superseded
+`PauseInputModeUnityPlayerInputRuntimeBridge` and
+`PauseInputActionRuntimeBridgeTrigger` APIs were removed; there is no technical
+compatibility or regression path parallel to the product binding.

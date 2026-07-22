@@ -186,15 +186,6 @@ namespace Immersive.Framework.Reset.Unity
 
         /// <summary>
         /// Attempts registration through the explicitly bound Reset registration runtime port.
-        /// The legacy method name is retained while the authoring API is migrated independently.
-        /// </summary>
-        public bool RegisterWithCurrentHost()
-        {
-            return RegisterWithCurrentHost("manual");
-        }
-
-        /// <summary>
-        /// Attempts registration through the explicitly bound Reset registration runtime port.
         /// </summary>
         public bool RegisterWithCurrentHost(string reason)
         {

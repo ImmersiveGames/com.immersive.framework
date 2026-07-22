@@ -70,6 +70,23 @@ Read:
 - `Current/Camera-Delivery-Reconciliation.md`
 - `ADRs/Product/ADR-PROD-0006-camera-requests-output-contexts.md`
 
+## Pause status
+
+Canonical Pause composition is:
+
+```text
+PausePlayerInputBinding
+-> PauseProductBindingRuntimeContext
+-> InputMode transaction
+-> UnityPlayerInputGateAdapter
+-> UnityPlayerInputStateWriter
+```
+
+Running enables `Global + Player`; paused enables `Global`. The earlier
+`PauseInputModeUnityPlayerInputRuntimeBridge` and
+`PauseInputActionRuntimeBridgeTrigger` topology is removed. Superseded Input ADRs
+remain historical records only.
+
 ## Next selection
 
 No post-H2 implementation cut is active. The next product lane may now be

@@ -1,3 +1,6 @@
+> Historical manifest for a superseded Player topology. It is not current
+> implementation guidance.
+
 # Player Composer MVP Implementation Manifest
 
 Status: Implementation delta

@@ -1,7 +1,6 @@
 using System.Collections.Generic;
 using Immersive.Framework.ApiStatus;
 using Immersive.Framework.Common;
-using UnityEngine;
 
 namespace Immersive.Framework.Actors
 {
@@ -12,12 +11,6 @@ namespace Immersive.Framework.Actors
     [FrameworkApiStatus(FrameworkApiStatus.Experimental, "F31A PlayerActor declaration validator.")]
     public static class PlayerActorValidator
     {
-        public static PlayerActorSet ValidateLoadedSceneDeclarations(string source, string reason)
-        {
-            PlayerActorDeclaration[] declarations = Object.FindObjectsByType<PlayerActorDeclaration>(FindObjectsInactive.Include);
-            return ValidateDeclarations(declarations, source, reason);
-        }
-
         public static PlayerActorSet ValidateDeclarations(
             IEnumerable<PlayerActorDeclaration> declarations,
             string source,

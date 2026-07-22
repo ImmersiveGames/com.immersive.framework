@@ -57,19 +57,6 @@ namespace Immersive.Framework.Pause
         public string ProductRequestBindingDiagnostic =>
             _pauseRuntimeBindingDiagnostic.NormalizeText();
 
-        // Compatibility aliases now describe the product request binding.
-        public bool HasPauseRuntimeBinding => HasPauseProductRequestBinding;
-
-        public string LastRequestStatus => _lastStatus.ToString();
-        public string LastRequestReason => LastReason;
-        public string LastRequestDiagnostic => LastMessage;
-
-        public string PauseRuntimeBindingStatus =>
-            ProductRequestBindingStatus;
-
-        public string PauseRuntimeBindingDiagnostic =>
-            ProductRequestBindingDiagnostic;
-
         public bool IsPaused => TryGetPauseSnapshot(out var snapshot) && snapshot.IsPaused;
 
         public bool TryGetPauseSnapshot(out PauseSnapshot snapshot)
@@ -247,21 +234,6 @@ namespace Immersive.Framework.Pause
                         blockingIssueCount);
                     break;
             }
-        }
-
-        private static FlowRequestOutcome MapOutcome(PauseResult result)
-        {
-            if (result.Applied)
-            {
-                return FlowRequestOutcome.Succeeded;
-            }
-
-            if (result.IgnoredNoChange)
-            {
-                return FlowRequestOutcome.Ignored;
-            }
-
-            return FlowRequestOutcome.Failed;
         }
 
         private static FlowRequestOutcome ToFlowRequestOutcome(string outcome)
