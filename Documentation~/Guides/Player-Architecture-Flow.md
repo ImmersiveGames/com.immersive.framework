@@ -53,8 +53,10 @@ PausePlayerInputBinding
 ```
 
 The binding receives an explicit `PlayerInput` and resolves the Pause action by
-GUID from that input's action asset. Running applies exactly `Global + Player`;
-paused applies exactly `Global`. The product runtime owns the scoped logical
+GUID from that input's action asset. Running applies exactly `Global + configured
+gameplay action map`; the default gameplay action-map name is `Player`. Paused
+applies exactly `Global`. A QA fixture may use `Gameplay` as its configured map
+without violating the product contract. The product runtime owns the scoped logical
 transaction and the writer remains the only physical action-map mutation point.
 No provisioning discovery or parallel Pause bridge participates in this flow.
 

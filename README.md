@@ -36,14 +36,20 @@ pre-author Slot identity. The former passive F49/F51/F52 graph is removed.
 Camera authoring and physical output ownership remain separate. Route, Activity,
 Local Player and Session publish typed requests into the explicit output context.
 
-Pause has one product path. While running it enables `Global + Player`; while
-paused it enables `Global`. The retired Pause/InputMode bridge APIs are not part
-of the package surface.
+Pause has one product path. While running it enables `Global + configured
+gameplay action map`; the default gameplay action-map name is `Player`. While
+paused it enables `Global`. A QA fixture may configure `Gameplay` without
+violating the contract. The retired Pause/InputMode bridge APIs are not part of
+the package surface.
 
 ## Current delivery state
 
-H2 is closed and Unity-validated at `1.0.0-preview.16`. No subsequent
-implementation lane is selected yet.
+H2 is closed and Unity-validated at `1.0.0-preview.16`.
+`FRAMEWORK-HYGIENE-1` is committed at `fe90949e...` with 18 modified and 130
+removed files, including the superseded Pause/InputMode bridges and
+UnityInputTarget model. Its release validation remains pending because package
+compile, post-migration QA compile and focused regression PASS evidence has not
+been supplied. The package remains at `1.0.0-preview.16`.
 
 ## Start reading
 

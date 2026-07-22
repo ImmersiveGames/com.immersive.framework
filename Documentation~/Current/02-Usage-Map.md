@@ -12,8 +12,10 @@ For the current execution block, read `05-Execution-Status.md`.
 | Physical action-map mutation | `UnityPlayerInputGateAdapter` -> `UnityPlayerInputStateWriter` |
 | UI or authored request | `PauseRequestTrigger` through the product request port |
 
-Running applies exactly `Global + Player`; paused applies exactly `Global`.
-There is no parallel Pause/InputMode bridge or compatibility trigger.
+Running applies exactly `Global + configured gameplay action map`; the default
+gameplay action-map name is `Player`. Paused applies exactly `Global`. A consumer
+or QA fixture may configure the gameplay map as `Gameplay` without changing the
+contract. There is no parallel Pause/InputMode bridge or compatibility trigger.
 
 ## Camera rig and output authoring
 

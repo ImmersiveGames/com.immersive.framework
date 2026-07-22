@@ -82,10 +82,24 @@ PausePlayerInputBinding
 -> UnityPlayerInputStateWriter
 ```
 
-Running enables `Global + Player`; paused enables `Global`. The earlier
+Running enables `Global + configured gameplay action map`, whose default name is
+`Player`; paused enables `Global`. QA may configure that gameplay map as
+`Gameplay`. The earlier
 `PauseInputModeUnityPlayerInputRuntimeBridge` and
 `PauseInputActionRuntimeBridgeTrigger` topology is removed. Superseded Input ADRs
 remain historical records only.
+
+## FRAMEWORK-HYGIENE-1 reconciliation
+
+Commit `fe90949e401a5d01c9f12a75dbc989ce0d8ac02e` modified 18 files and
+removed 130 files. It removed the superseded Pause/InputMode bridge family and
+the superseded UnityInputTarget family without adding wrappers, aliases or a
+parallel runtime authority.
+
+The source cut is closed, but its release gate is pending: package compile,
+post-migration QA compile and focused regression PASS results have not been
+supplied. Until all three are confirmed, the documented and manifest version
+remains `1.0.0-preview.16`.
 
 ## Next selection
 

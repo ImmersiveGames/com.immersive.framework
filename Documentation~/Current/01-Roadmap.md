@@ -1,7 +1,7 @@
 # 01 - Roadmap
 
-Status: **H2 closed and Unity-validated**
-Last reconciled: **2026-07-20**
+Status: **H2 closed; FRAMEWORK-HYGIENE-1 source closed, Unity validation pending**
+Last reconciled: **2026-07-22**
 Version: **1.0.0-preview.16**
 
 For the exact operational state and handoff, read `05-Execution-Status.md`.
@@ -46,6 +46,18 @@ cases='10'
 
 ## Next selection
 
-No post-H2 cut is ordered or active. The next cut may be selected now. Do not
+`FRAMEWORK-HYGIENE-1` is present in commit
+`fe90949e401a5d01c9f12a75dbc989ce0d8ac02e`: 18 files were modified and
+130 files were removed. Superseded Pause/InputMode bridges and the superseded
+UnityInputTarget model were removed. The canonical Pause product binding,
+`InputModeRuntimeContext`, `UnityPlayerInputGateAdapter` and
+`UnityPlayerInputStateWriter` remain.
+
+Release reconciliation is still gated. No package compile result, post-migration
+QA compile result or focused regression result has been supplied for this cut.
+The package therefore remains at `1.0.0-preview.16`; `1.0.0-preview.17` is not
+authorized yet.
+
+No post-H2 product cut is ordered or active. The next cut may be selected now. Do not
 reintroduce a static host registry, lookup API, global manager, service locator
-or silent fallback.
+or silent fallback. Do not restore superseded bridges, wrappers or aliases.
