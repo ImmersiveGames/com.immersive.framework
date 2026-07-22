@@ -6,6 +6,10 @@
 
 > P1 supersession: this bridge topology remains technical regression evidence
 > only. The scene-local P1 product owns consumer Pause binding and lifecycle.
+>
+> P2.3A product revision: the current physical Pause product uses `Global` only
+> during `PauseOverlay`. `Global + UI` is reserved for a future interactive Pause UI
+> with its own authorable contract.
 
 ## Context
 
@@ -41,7 +45,7 @@ UI
   navigation and UI commands
 ```
 
-The initial policies are:
+The initial technical bridge policies are:
 
 ```text
 Gameplay     -> Global + Player
@@ -49,6 +53,11 @@ PauseOverlay -> Global + UI
 FrontendMenu -> Global + UI
 InputLocked  -> Global
 ```
+
+These policies remain regression evidence for the superseded bridge. The current
+scene-local Pause product materializes `PauseOverlay -> Global`; product-level
+`Global + UI` is deferred until UI actions, bindings, an input module and real
+consumers have an explicit authorable contract.
 
 `Global` means persistent within one explicit `PlayerInput` action-asset instance.
 It does not mean an application singleton, static input registry or shared global
@@ -106,7 +115,7 @@ silently duplicated into Player or UI.
 ### Positive
 
 - one `PauseToggle` remains available in Gameplay and Pause;
-- gameplay and UI maps are mutually exclusive by explicit policy;
+- gameplay and UI maps are mutually exclusive by explicit bridge policy;
 - no transient default-map activation occurs during Pause application;
 - exact map-set rollback is deterministic;
 - local multiplayer keeps one Global map per private PlayerInput action copy;
@@ -114,7 +123,7 @@ silently duplicated into Player or UI.
 
 ### Trade-offs
 
-- action assets must provide an explicit Global map;
+- bridge action assets must provide explicit Global, Player and UI maps;
 - consumers must move PauseToggle to Global;
 - old diagnostics that assumed `ActivatedPlayerInput == true` need to follow the
   new non-activation posture semantics;
@@ -137,14 +146,15 @@ removing the now-unused historical UnityPlayerInputGateBlockMode enum file
 ```text
 Global is required before Pause mutation
 Gameplay enables exactly Global + Player
-PauseOverlay enables exactly Global + UI
+the superseded bridge enables exactly Global + UI during PauseOverlay
+the current scene-local Pause product enables exactly Global during PauseOverlay
 Player is disabled during Pause
-UI is disabled during Gameplay
+UI is disabled during Gameplay for the superseded bridge
 PauseToggle exists in Global and Global remains enabled
 InputMode application does not call ActivateInput
 action-map writes do not require PlayerInput.inputIsActive
 exact map-set rollback restores the prior posture
-missing Global or UI fails before Pause mutation
+missing Global or UI fails before bridge Pause mutation
 IC1 layered writer smoke passes without PlayerInput activation/deactivation warnings
 IC2 authority and runtime regression smokes pass
 ```

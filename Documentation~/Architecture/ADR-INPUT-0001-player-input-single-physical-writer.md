@@ -95,7 +95,10 @@ one canonical Pause InputAction submitter
 explicit logical commit / rollback around Pause/InputMode apply
 ```
 
-ADR-INPUT-0003 defines the layered `Global + Player/UI` posture and exact map-set rollback.
+ADR-INPUT-0003 defines the technical bridge's layered `Global + Player/UI` posture
+and exact map-set rollback. The current scene-local Pause product uses `Global + Player`
+while running and `Global` while paused; product-level `Global + UI` remains a future
+interactive Pause UI posture.
 
 Still deferred:
 

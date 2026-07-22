@@ -18,7 +18,6 @@ namespace Immersive.Framework.Pause
         [Header("Action Maps")]
         [SerializeField] private string globalActionMapName = "Global";
         [SerializeField] private string gameplayActionMapName = "Player";
-        [SerializeField] private string uiActionMapName = "UI";
 
         private IPauseProductBindingPort _port;
         private PauseProductBindingToken _token;
@@ -29,7 +28,6 @@ namespace Immersive.Framework.Pause
         public InputActionReference PauseAction => pauseAction;
         public string GlobalActionMapName => globalActionMapName.NormalizeTextOrFallback("Global");
         public string GameplayActionMapName => gameplayActionMapName.NormalizeTextOrFallback("Player");
-        public string UiActionMapName => uiActionMapName.NormalizeTextOrFallback("UI");
         public string BindingStatus => _bindingStatus.NormalizeText();
         public string BindingDiagnostic => _bindingDiagnostic.NormalizeText();
         public bool HasActiveBinding => _token.IsValid;
@@ -114,16 +112,29 @@ namespace Immersive.Framework.Pause
                 diagnostic = $"Pause PlayerInput Binding requires Global action map '{GlobalActionMapName}'.";
                 return false;
             }
-            if (input.actions.FindActionMap(GameplayActionMapName, false) == null || input.actions.FindActionMap(UiActionMapName, false) == null)
+            if (input.actions.FindActionMap(GameplayActionMapName, false) == null)
             {
-                diagnostic = "Pause PlayerInput Binding requires explicit Gameplay and UI action maps.";
+                diagnostic = $"Pause PlayerInput Binding requires Gameplay action map '{GameplayActionMapName}'.";
                 return false;
             }
 
-            runtimeAction = input.actions.FindAction(pauseAction.action.id.ToString(), false);
-            if (runtimeAction == null || ReferenceEquals(runtimeAction, pauseAction.action) || runtimeAction.actionMap == null || runtimeAction.actionMap.id != globalMap.id)
+            runtimeAction = input.actions.FindAction(
+                pauseAction.action.id.ToString(),
+                false);
+
+            if (runtimeAction == null)
             {
-                diagnostic = "Pause action must resolve by GUID inside PlayerInput.actions and belong to the configured Global map; name fallback is not used.";
+                diagnostic =
+                    "Pause action GUID was not found inside PlayerInput.actions; name fallback is not used.";
+                return false;
+            }
+
+            if (runtimeAction.actionMap == null ||
+                runtimeAction.actionMap.id != globalMap.id)
+            {
+                diagnostic =
+                    "Pause action resolved by GUID but does not belong to the configured Global action map.";
+                runtimeAction = null;
                 return false;
             }
 

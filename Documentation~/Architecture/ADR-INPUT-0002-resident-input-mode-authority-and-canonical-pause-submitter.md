@@ -195,7 +195,8 @@ IC1 physical writer smoke remains green
 IC2 runtime authority smoke passes
 Global remains enabled across Gameplay and PauseOverlay
 Gameplay applies exactly Global + Player
-PauseOverlay applies exactly Global + UI
+the superseded technical bridge applies exactly Global + UI during PauseOverlay
+the current scene-local Pause product applies exactly Global during PauseOverlay
 existing Pause/InputMode runtime regression remains green
 ```
 

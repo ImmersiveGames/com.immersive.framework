@@ -91,18 +91,23 @@ InputLocked
 
 ## Pause Direction
 
-The accepted direction remains:
+The current physical Pause product direction is:
 
 ```text
 Running:
   InputMode = Gameplay
+  enabled maps = Global + Player
 
 Paused:
   InputMode = PauseOverlay
-  UI input remains available
-  PauseToggle / Cancel remains available
+  enabled maps = Global
+  PauseToggle remains available
   gameplay command maps do not drive gameplay
 ```
+
+An interactive Pause UI remains a future product cut. It may introduce
+`Global + UI` only with explicit authoring, UI actions, bindings, an input module
+and real consumers; `PauseOverlay` by itself does not imply a UI action map.
 
 Pause may request a mode change after InputMode exists. Pause does not own `PlayerInput`, action-map strings or player lifecycle.
 

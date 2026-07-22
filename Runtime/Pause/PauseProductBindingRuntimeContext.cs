@@ -1,14 +1,19 @@
 using System;
 using Immersive.Framework.Common;
+using Immersive.Framework.Diagnostics;
 using Immersive.Framework.InputMode;
 using Immersive.Framework.UnityInput;
+using Immersive.Logging.Records;
 using UnityEngine.InputSystem;
 
 namespace Immersive.Framework.Pause
 {
     internal sealed class PauseProductBindingRuntimeContext : IPauseProductBindingPort, IPauseProductRequestPort
     {
+        private const string PhysicalInputLog = "[PAUSE_PRODUCT_INPUT]";
+
         private readonly IPauseProductApplicationPort _application;
+        private readonly FrameworkLogger _logger;
         private long _generation;
         private PauseProductBindingState _state;
         private PauseProductBindingToken _token;
@@ -25,6 +30,7 @@ namespace Immersive.Framework.Pause
         internal PauseProductBindingRuntimeContext(IPauseProductApplicationPort application)
         {
             _application = application ?? throw new ArgumentNullException(nameof(application));
+            _logger = FrameworkLogger.Create<PauseProductBindingRuntimeContext>();
             _state = PauseProductBindingState.Unbound;
         }
 
@@ -163,8 +169,20 @@ namespace Immersive.Framework.Pause
                     _inputMode.Rollback(transaction, nameof(PauseProductBindingRuntimeContext), "application-pause-failed");
                     return Record(PauseProductRequestStatus.Failed, pauseResult, begin, pauseDiagnostic);
                 }
-                string primary = targetMode == InputModeKind.PauseOverlay ? _binding.UiActionMapName : _binding.GameplayActionMapName;
-                string[] maps = targetMode == InputModeKind.PauseOverlay ? new[] { _binding.GlobalActionMapName, _binding.UiActionMapName } : new[] { _binding.GlobalActionMapName, _binding.GameplayActionMapName };
+                bool paused = targetPause == PauseState.Paused;
+                string primary = paused
+                    ? _binding.GlobalActionMapName
+                    : _binding.GameplayActionMapName;
+                string[] maps = paused
+                    ? new[]
+                    {
+                        _binding.GlobalActionMapName
+                    }
+                    : new[]
+                    {
+                        _binding.GlobalActionMapName,
+                        _binding.GameplayActionMapName
+                    };
                 if (!_adapter.TryApplyActionMapSet(primary, maps, nameof(PauseProductBindingRuntimeContext), request.Reason, out UnityPlayerInputActionMapSetWriteReceipt physicalReceipt, out string physicalDiagnostic))
                 {
                     _inputMode.Rollback(transaction, nameof(PauseProductBindingRuntimeContext), "physical-apply-failed");
@@ -187,7 +205,32 @@ namespace Immersive.Framework.Pause
 
         private void OnPauseActionPerformed(InputAction.CallbackContext context)
         {
-            RequestPause(PauseRequest.Toggle("pause.product.input", nameof(PauseProductBindingRuntimeContext), "global-pause-action"));
+            PauseProductRequestResult result = RequestPause(
+                PauseRequest.Toggle(
+                    "pause.product.input",
+                    nameof(PauseProductBindingRuntimeContext),
+                    "global-pause-action"));
+            PauseResult pauseResult = result.PauseResult;
+            LogField[] fields = LogFields.Of(
+                LogFields.Field("succeeded", result.Succeeded),
+                LogFields.Field("ignored", result.Ignored),
+                LogFields.Field("pauseResultValid", pauseResult.IsValid),
+                LogFields.Field(
+                    "previousState",
+                    pauseResult.PreviousState.ToString()),
+                LogFields.Field(
+                    "currentState",
+                    pauseResult.CurrentState.ToString()),
+                LogFields.Field("applied", pauseResult.Applied),
+                LogFields.Field("diagnostic", result.Diagnostic));
+
+            if (result.Succeeded || result.Ignored)
+            {
+                _logger.Info(PhysicalInputLog, fields);
+                return;
+            }
+
+            _logger.Error(PhysicalInputLog, fields);
         }
 
         private PauseProductRequestResult Record(PauseProductRequestStatus status, PauseResult pause, InputModeRuntimeOperationResult inputMode, string diagnostic)
