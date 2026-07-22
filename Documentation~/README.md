@@ -96,10 +96,12 @@ removed 130 files. It removed the superseded Pause/InputMode bridge family and
 the superseded UnityInputTarget family without adding wrappers, aliases or a
 parallel runtime authority.
 
-The source cut is closed, but its release gate is pending: package compile,
-post-migration QA compile and focused regression PASS results have not been
-supplied. Until all three are confirmed, the documented and manifest version
-remains `1.0.0-preview.16`.
+The source cut and release gate are closed. User-provided and approved Unity
+evidence confirms package compile, QA compile, framework boot, focused
+regressions and Pause lifecycle/reentry, including clean teardown with
+`Time.timeScale == 1`. The QA migration is commit
+`2a388add59da9e8829c3200a5fa6761c32b5f574`; no compatibility API was restored.
+The documented and manifest version is `1.0.0-preview.17`.
 
 ## Next selection
 

@@ -2,7 +2,7 @@
 
 Status: **Canonical operational source**
 Last updated: **2026-07-22**
-Package version: **1.0.0-preview.16**
+Package version: **1.0.0-preview.17**
 
 ## H2.4 delivery baseline
 
@@ -16,7 +16,7 @@ Package version: **1.0.0-preview.16**
 | Repository | Commit / worktree | Meaning |
 |---|---|---|
 | `ImmersiveGames/com.immersive.framework` | `fe90949e401a5d01c9f12a75dbc989ce0d8ac02e` | Hygiene source cut: 18 files modified and 130 removed; superseded Pause/InputMode bridges and UnityInputTarget model removed. |
-| `rinnocenti/QAFramework` | local worktree, uncommitted | Removed IC2 bridge fixtures; retained pure InputMode and behavioral Input Gate regressions; removed retired CycleReset probe cases; migrated Pause P1 to the official surface. |
+| `rinnocenti/QAFramework` | `2a388add59da9e8829c3200a5fa6761c32b5f574` | QA migration: removed IC2 bridge fixtures; retained pure InputMode and behavioral Input Gate regressions; removed retired CycleReset probe cases; migrated Pause P1 to the official surface. |
 
 ## Current state
 
@@ -25,7 +25,7 @@ Package version: **1.0.0-preview.16**
 | H2 explicit runtime-port migration | Closed | Source changes delivered across H2.2.1-H2.2.13. |
 | H2.4 static host authority removal | Closed | Unity evidence approved: import, compile and focused Play Mode smoke passed. |
 | FRAMEWORK-HYGIENE-1 source cleanup | Closed | Package source is committed; superseded APIs must not be restored. |
-| FRAMEWORK-HYGIENE-1 release gate | Pending | Package compile not supplied; post-migration QA compile not supplied; focused regression results not supplied. |
+| FRAMEWORK-HYGIENE-1 release gate | Passed | User-provided and approved Unity evidence confirms package compile, QA compile, framework boot, focused regressions and Pause lifecycle/reentry. |
 | Post-H2 product lane | Not selected | May be selected without reopening H2.4. |
 
 ## FRAMEWORK-HYGIENE-1 validation record
@@ -34,13 +34,22 @@ Only user-provided Unity evidence may close this gate.
 
 | Gate | Recorded result |
 |---|---|
-| Package compile | `PENDING` — no result supplied for commit `fe90949e...`. |
-| QA compile | `PENDING REVALIDATION` — the supplied result reported compile errors against removed APIs before the local QA migration. |
-| Focused regressions | `PENDING` — no result supplied. |
+| Package compile | `Passed` |
+| QA compile | `Passed` |
+| Framework boot | `Passed` |
+| Runtime Host Authority Regression | `Passed` — 10 cases |
+| Player Input Mode Authority Regression | `Passed` — 13 cases |
+| Input Gate Regression | `Passed` — 9 cases |
+| Descriptor Equality Regression | `Passed` — 3 cases |
+| Pause nominal | `Passed` |
+| Route exit while paused | `Passed` |
+| Clean reentry | `Passed` |
+| Pause and Resume after reentry | `Passed` |
+| Teardown integrity | No stale or duplicate callback; `Time.timeScale` restored to `1`. |
 
-Because all three gates do not have confirmed `PASS`, the package remains at
-`1.0.0-preview.16`. Advance to `1.0.0-preview.17` only after explicit evidence
-confirms package compile, QA compile and the focused regressions.
+This Unity evidence was supplied and approved by the user; Codex did not execute
+Unity. `FRAMEWORK-HYGIENE-1` is closed at `1.0.0-preview.17`. No compatibility
+API was restored.
 
 ## H2.4 source evidence
 

@@ -1,8 +1,8 @@
 # 01 - Roadmap
 
-Status: **H2 closed; FRAMEWORK-HYGIENE-1 source closed, Unity validation pending**
+Status: **H2 and FRAMEWORK-HYGIENE-1 closed and Unity-validated**
 Last reconciled: **2026-07-22**
-Version: **1.0.0-preview.16**
+Version: **1.0.0-preview.17**
 
 For the exact operational state and handoff, read `05-Execution-Status.md`.
 
@@ -53,10 +53,11 @@ UnityInputTarget model were removed. The canonical Pause product binding,
 `InputModeRuntimeContext`, `UnityPlayerInputGateAdapter` and
 `UnityPlayerInputStateWriter` remain.
 
-Release reconciliation is still gated. No package compile result, post-migration
-QA compile result or focused regression result has been supplied for this cut.
-The package therefore remains at `1.0.0-preview.16`; `1.0.0-preview.17` is not
-authorized yet.
+The user-provided and approved Unity evidence confirms package compile, QA
+compile, framework boot, focused regressions, Pause lifecycle teardown and clean
+reentry. The QA migration is recorded at
+`2a388add59da9e8829c3200a5fa6761c32b5f574`. No compatibility API was restored.
+The release is closed at `1.0.0-preview.17`.
 
 No post-H2 product cut is ordered or active. The next cut may be selected now. Do not
 reintroduce a static host registry, lookup API, global manager, service locator

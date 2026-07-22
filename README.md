@@ -3,7 +3,7 @@
 `com.immersive.framework` is the official Unity package for framework runtime,
 authoring, diagnostics and validation.
 
-Current version: `1.0.0-preview.16`.
+Current version: `1.0.0-preview.17`.
 
 ## H2 closure
 
@@ -44,12 +44,13 @@ the package surface.
 
 ## Current delivery state
 
-H2 is closed and Unity-validated at `1.0.0-preview.16`.
+H2 is closed and Unity-validated.
 `FRAMEWORK-HYGIENE-1` is committed at `fe90949e...` with 18 modified and 130
 removed files, including the superseded Pause/InputMode bridges and
-UnityInputTarget model. Its release validation remains pending because package
-compile, post-migration QA compile and focused regression PASS evidence has not
-been supplied. The package remains at `1.0.0-preview.16`.
+UnityInputTarget model. User-provided and approved Unity evidence confirms
+package compile, QA compile, framework boot, focused regressions and Pause
+lifecycle/reentry. QA migration commit: `2a388add59da9e8829c3200a5fa6761c32b5f574`.
+No compatibility API was restored. The package release is `1.0.0-preview.17`.
 
 ## Start reading
 
