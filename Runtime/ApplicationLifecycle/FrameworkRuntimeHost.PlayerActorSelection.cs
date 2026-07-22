@@ -6,6 +6,64 @@ namespace Immersive.Framework.ApplicationLifecycle
 {
     internal sealed partial class FrameworkRuntimeHost : IPlayerActorSelectionRuntimePort
     {
+        private LocalPlayerActorSelectionRequestAuthoringBindingResult
+            BindLocalPlayerActorSelectionRequests()
+        {
+            if (_globalUiSceneRuntime == null)
+            {
+                return LocalPlayerActorSelectionRequestAuthoringBindingResult.Rejected(
+                    "RejectedMissingGlobalUiRuntime",
+                    "Local Player Actor Selection Request binding requires the initialized UIGlobal runtime.",
+                    0,
+                    0,
+                    0,
+                    0,
+                    0);
+            }
+
+            IPlayerActorSelectionRuntimePort selectionRuntime = this;
+            LocalPlayerActorSelectionRequestAuthoringBindingResult result =
+                _globalUiSceneRuntime.TryBindLocalPlayerActorSelectionRequests(
+                    selectionRuntime);
+            if (result.Succeeded)
+            {
+                _logger?.Info(result.Message);
+            }
+            else
+            {
+                _logger?.Error(result.Message);
+            }
+
+            return result;
+        }
+
+        private LocalPlayerActorSelectionRequestAuthoringReleaseResult
+            ReleaseLocalPlayerActorSelectionRequests(string reason)
+        {
+            if (_globalUiSceneRuntime == null)
+            {
+                return LocalPlayerActorSelectionRequestAuthoringReleaseResult
+                    .OptionalAbsent(0);
+            }
+
+            IPlayerActorSelectionRuntimePort selectionRuntime = this;
+            LocalPlayerActorSelectionRequestAuthoringReleaseResult result =
+                _globalUiSceneRuntime.TryReleaseLocalPlayerActorSelectionRequests(
+                    selectionRuntime);
+            string diagnostic =
+                $"{result.Message} reason='{(string.IsNullOrWhiteSpace(reason) ? "unspecified" : reason.Trim())}'.";
+            if (result.Succeeded)
+            {
+                _logger?.Info(diagnostic);
+            }
+            else
+            {
+                _logger?.Error(diagnostic);
+            }
+
+            return result;
+        }
+
         bool IPlayerActorSelectionRuntimePort.TryValidatePlayerActorSelectionRuntime(
             out string issue)
         {

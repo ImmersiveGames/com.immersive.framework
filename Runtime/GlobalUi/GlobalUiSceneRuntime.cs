@@ -117,6 +117,24 @@ namespace Immersive.Framework.GlobalUi
                 activityRestartRuntime);
         }
 
+        internal LocalPlayerActorSelectionRequestAuthoringBindingResult
+            TryBindLocalPlayerActorSelectionRequests(
+                IPlayerActorSelectionRuntimePort selectionRuntime)
+        {
+            return LocalPlayerActorSelectionRequestAuthoringBinding.TryBind(
+                _persistedRoots,
+                selectionRuntime);
+        }
+
+        internal LocalPlayerActorSelectionRequestAuthoringReleaseResult
+            TryReleaseLocalPlayerActorSelectionRequests(
+                IPlayerActorSelectionRuntimePort selectionRuntime)
+        {
+            return LocalPlayerActorSelectionRequestAuthoringBinding.TryRelease(
+                _persistedRoots,
+                selectionRuntime);
+        }
+
         internal static GlobalUiPauseRequestTriggerBindingResult
             TryBindPauseRequestTriggers(
                 IReadOnlyList<GameObject> persistentRoots,

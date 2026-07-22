@@ -132,23 +132,26 @@ namespace Immersive.Framework.PlayerParticipation
             return true;
         }
 
-        internal bool TryBindPlayerActorSelectionRuntime(
+        internal bool TryValidatePlayerActorSelectionRuntimeBinding(
             IPlayerActorSelectionRuntimePort selectionRuntime,
+            out bool alreadyBound,
             out string issue)
         {
+            alreadyBound = false;
+            if (!TryValidateConfiguration(out issue))
+            {
+                return false;
+            }
+
             if (selectionRuntime == null)
             {
                 issue = MissingRuntimeBindingDiagnostic;
-                playerActorSelectionRuntimeBindingDiagnostic = issue;
                 return false;
             }
 
             if (playerActorSelectionRuntime == null)
             {
-                playerActorSelectionRuntime = selectionRuntime;
                 issue = string.Empty;
-                playerActorSelectionRuntimeBindingDiagnostic =
-                    "Player Actor selection runtime port is bound.";
                 return true;
             }
 
@@ -156,16 +159,80 @@ namespace Immersive.Framework.PlayerParticipation
                     playerActorSelectionRuntime,
                     selectionRuntime))
             {
+                alreadyBound = true;
                 issue = string.Empty;
-                playerActorSelectionRuntimeBindingDiagnostic =
-                    "Player Actor selection runtime port binding is already applied.";
                 return true;
             }
 
             issue =
                 "Local Player Actor selection request authoring is already bound to a different runtime port for the current component lifetime.";
-            playerActorSelectionRuntimeBindingDiagnostic = issue;
             return false;
+        }
+
+        internal void ApplyPlayerActorSelectionRuntimeBinding(
+            IPlayerActorSelectionRuntimePort selectionRuntime)
+        {
+            if (!TryValidatePlayerActorSelectionRuntimeBinding(
+                    selectionRuntime,
+                    out bool alreadyBound,
+                    out string issue))
+            {
+                playerActorSelectionRuntimeBindingDiagnostic = issue;
+                throw new System.InvalidOperationException(issue);
+            }
+
+            playerActorSelectionRuntime = selectionRuntime;
+            playerActorSelectionRuntimeBindingDiagnostic = alreadyBound
+                ? "Player Actor selection runtime port binding is already applied."
+                : "Player Actor selection runtime port is bound.";
+        }
+
+        internal bool TryValidatePlayerActorSelectionRuntimeRelease(
+            IPlayerActorSelectionRuntimePort selectionRuntime,
+            out bool alreadyReleased,
+            out string issue)
+        {
+            alreadyReleased = playerActorSelectionRuntime == null;
+            if (selectionRuntime == null)
+            {
+                issue =
+                    "Player Actor selection runtime release requires the expected runtime port.";
+                return false;
+            }
+
+            if (alreadyReleased || ReferenceEquals(
+                    playerActorSelectionRuntime,
+                    selectionRuntime))
+            {
+                issue = string.Empty;
+                return true;
+            }
+
+            issue =
+                "Local Player Actor selection request authoring is bound to a different runtime port and cannot be released by this Session.";
+            return false;
+        }
+
+        internal void ReleasePlayerActorSelectionRuntime(
+            IPlayerActorSelectionRuntimePort selectionRuntime)
+        {
+            if (!TryValidatePlayerActorSelectionRuntimeRelease(
+                    selectionRuntime,
+                    out bool alreadyReleased,
+                    out string issue))
+            {
+                playerActorSelectionRuntimeBindingDiagnostic = issue;
+                throw new System.InvalidOperationException(issue);
+            }
+
+            if (!alreadyReleased)
+            {
+                playerActorSelectionRuntime = null;
+            }
+
+            playerActorSelectionRuntimeBindingDiagnostic = alreadyReleased
+                ? "Player Actor selection runtime port binding was already released."
+                : "Player Actor selection runtime port binding was released.";
         }
 
         private bool TryResolveSelectionRuntime(
@@ -217,6 +284,13 @@ namespace Immersive.Framework.PlayerParticipation
                 ? result.ToDiagnosticString()
                 : "Local Player Actor selection returned no result.";
             return result;
+        }
+
+        private void OnDestroy()
+        {
+            playerActorSelectionRuntime = null;
+            playerActorSelectionRuntimeBindingDiagnostic =
+                "Player Actor selection request authoring was destroyed.";
         }
 
 #if UNITY_EDITOR

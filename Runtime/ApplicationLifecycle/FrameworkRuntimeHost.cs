@@ -324,6 +324,21 @@ namespace Immersive.Framework.ApplicationLifecycle
         {
             InvalidateObjectEntryRuntimeContextSnapshot("framework-start");
 
+            if (_globalUiSceneRuntime != null)
+            {
+                LocalPlayerActorSelectionRequestAuthoringReleaseResult previousRelease =
+                    ReleaseLocalPlayerActorSelectionRequests("framework-restart");
+                if (!previousRelease.Succeeded)
+                {
+                    var failed = FrameworkGameFlowStartResult.Failed(
+                        previousRelease.Message);
+                    _state = FrameworkRuntimeState.FromGameFlowResult(
+                        _gameApplication,
+                        failed);
+                    return failed;
+                }
+            }
+
             var startupPrimaryScenePreparation = await PrepareStartupPrimarySceneBeforeGlobalUiAsync();
             if (!startupPrimaryScenePreparation.Loaded)
             {
@@ -439,7 +454,37 @@ namespace Immersive.Framework.ApplicationLifecycle
             ApplyPlayerActivityLifecycleAdmissionRuntime();
             ApplySceneLocalPlayerAdmissionRuntime();
 
-            var result = await _gameFlowRuntime.StartAsync(_gameApplication);
+            LocalPlayerActorSelectionRequestAuthoringBindingResult
+                playerActorSelectionBinding =
+                    BindLocalPlayerActorSelectionRequests();
+            if (!playerActorSelectionBinding.Succeeded)
+            {
+                var failed = FrameworkGameFlowStartResult.Failed(
+                    playerActorSelectionBinding.Message);
+                _state = FrameworkRuntimeState.FromGameFlowResult(
+                    _gameApplication,
+                    failed);
+                return failed;
+            }
+
+            FrameworkGameFlowStartResult result;
+            try
+            {
+                result = await _gameFlowRuntime.StartAsync(_gameApplication);
+            }
+            catch
+            {
+                ReleaseLocalPlayerActorSelectionRequests(
+                    "game-flow-start-exception");
+                throw;
+            }
+
+            if (!result.Started)
+            {
+                ReleaseLocalPlayerActorSelectionRequests(
+                    "game-flow-start-failed");
+            }
+
             _state = FrameworkRuntimeState.FromGameFlowResult(_gameApplication, result);
             if (result.Started)
             {
@@ -2796,6 +2841,8 @@ namespace Immersive.Framework.ApplicationLifecycle
 
         private void OnDestroy()
         {
+            ReleaseLocalPlayerActorSelectionRequests(
+                "framework-runtime-host-destroy");
             _cameraOutputSessionInjectionRuntime?.Dispose();
             _cameraOutputSessionInjectionRuntime = null;
             _pauseTimeScaleRuntime?.RestoreIfCaptured("framework-runtime-host-destroy");

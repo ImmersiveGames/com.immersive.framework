@@ -1,14 +1,14 @@
 namespace Immersive.Framework.PlayerParticipation
 {
-    internal readonly struct LocalPlayerActorSelectionRequestAuthoringBindingResult
+    internal readonly struct LocalPlayerActorSelectionRequestAuthoringReleaseResult
     {
-        private LocalPlayerActorSelectionRequestAuthoringBindingResult(
+        private LocalPlayerActorSelectionRequestAuthoringReleaseResult(
             bool succeeded,
             string status,
             string message,
             int rootCount,
             int authoringCount,
-            int boundCount,
+            int releasedCount,
             int idempotentCount,
             int rejectedCount)
         {
@@ -17,7 +17,7 @@ namespace Immersive.Framework.PlayerParticipation
             Message = message ?? string.Empty;
             RootCount = rootCount;
             AuthoringCount = authoringCount;
-            BoundCount = boundCount;
+            ReleasedCount = releasedCount;
             IdempotentCount = idempotentCount;
             RejectedCount = rejectedCount;
         }
@@ -32,19 +32,19 @@ namespace Immersive.Framework.PlayerParticipation
 
         internal int AuthoringCount { get; }
 
-        internal int BoundCount { get; }
+        internal int ReleasedCount { get; }
 
         internal int IdempotentCount { get; }
 
         internal int RejectedCount { get; }
 
-        internal static LocalPlayerActorSelectionRequestAuthoringBindingResult OptionalAbsent(
+        internal static LocalPlayerActorSelectionRequestAuthoringReleaseResult OptionalAbsent(
             int roots)
         {
-            return new LocalPlayerActorSelectionRequestAuthoringBindingResult(
+            return new LocalPlayerActorSelectionRequestAuthoringReleaseResult(
                 true,
                 "OptionalAbsent",
-                $"Local Player Actor Selection Request binding found no authored request surfaces in '{roots}' explicit roots.",
+                $"Local Player Actor Selection Request release found no authored request surfaces in '{roots}' explicit roots.",
                 roots,
                 0,
                 0,
@@ -52,39 +52,39 @@ namespace Immersive.Framework.PlayerParticipation
                 0);
         }
 
-        internal static LocalPlayerActorSelectionRequestAuthoringBindingResult Completed(
+        internal static LocalPlayerActorSelectionRequestAuthoringReleaseResult Completed(
             int roots,
             int authorings,
-            int bound,
+            int released,
             int idempotent)
         {
-            return new LocalPlayerActorSelectionRequestAuthoringBindingResult(
+            return new LocalPlayerActorSelectionRequestAuthoringReleaseResult(
                 true,
-                bound > 0 ? "Bound" : "Idempotent",
-                $"Local Player Actor Selection Request binding completed. roots='{roots}' authorings='{authorings}' bound='{bound}' idempotent='{idempotent}' rejected='0'.",
+                released > 0 ? "Released" : "Idempotent",
+                $"Local Player Actor Selection Request release completed. roots='{roots}' authorings='{authorings}' released='{released}' idempotent='{idempotent}' rejected='0'.",
                 roots,
                 authorings,
-                bound,
+                released,
                 idempotent,
                 0);
         }
 
-        internal static LocalPlayerActorSelectionRequestAuthoringBindingResult Rejected(
+        internal static LocalPlayerActorSelectionRequestAuthoringReleaseResult Rejected(
             string status,
             string message,
             int roots,
             int authorings,
-            int bound,
+            int released,
             int idempotent,
             int rejected)
         {
-            return new LocalPlayerActorSelectionRequestAuthoringBindingResult(
+            return new LocalPlayerActorSelectionRequestAuthoringReleaseResult(
                 false,
                 status,
                 message,
                 roots,
                 authorings,
-                bound,
+                released,
                 idempotent,
                 rejected);
         }
