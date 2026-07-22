@@ -126,11 +126,11 @@ namespace Immersive.Framework.ActivityFlow
                     continue;
                 }
 
-                bool shouldBeActive = activeActivity != null && ReferenceEquals(binding.Activity, activeActivity);
+                bool shouldBeActive = activeActivity != null && binding.Activity != null && binding.Activity.HasSameIdentity(activeActivity);
                 bool exitsPreviousActivity = previousActivity != null
-                    && !ReferenceEquals(previousActivity, activeActivity)
-                    && ReferenceEquals(binding.Activity, previousActivity);
-                bool entersActiveActivity = shouldBeActive && !ReferenceEquals(previousActivity, activeActivity);
+                    && (activeActivity == null || !previousActivity.HasSameIdentity(activeActivity))
+                    && binding.Activity != null && binding.Activity.HasSameIdentity(previousActivity);
+                bool entersActiveActivity = shouldBeActive && (previousActivity == null || !previousActivity.HasSameIdentity(activeActivity));
 
                 if (exitsPreviousActivity)
                 {

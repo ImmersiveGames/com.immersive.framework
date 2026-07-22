@@ -68,7 +68,7 @@ namespace Immersive.Framework.ContentAnchor
 
         internal bool MatchesActivity(ActivityAsset candidateActivity)
         {
-            return candidateActivity != null && activity != null && ReferenceEquals(activity, candidateActivity);
+            return activity != null && activity.HasSameIdentity(candidateActivity);
         }
 
         /// <summary>

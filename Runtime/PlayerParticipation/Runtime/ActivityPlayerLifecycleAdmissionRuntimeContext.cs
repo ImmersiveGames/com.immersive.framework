@@ -182,7 +182,7 @@ namespace Immersive.Framework.PlayerParticipation
             }
 
             if (previousActivity == null ||
-                ReferenceEquals(previousActivity, targetActivity))
+                previousActivity.HasSameIdentity(targetActivity))
             {
                 return Reject(
                     ActivityPlayerLifecycleAdmissionStatus.RejectedUnsupportedFlow,
@@ -212,8 +212,8 @@ namespace Immersive.Framework.PlayerParticipation
                          ActivityPlayerLifecycleAdmissionState.ReadyToCommit ||
                      active.State ==
                          ActivityPlayerLifecycleAdmissionState.TransitionAuthorized) &&
-                    ReferenceEquals(active.PreviousActivity, previousActivity) &&
-                    ReferenceEquals(active.TargetActivity, targetActivity))
+                    active.PreviousActivity != null && active.PreviousActivity.HasSameIdentity(previousActivity) &&
+                    active.TargetActivity != null && active.TargetActivity.HasSameIdentity(targetActivity))
                 {
                     ActivityPlayerLifecycleAdmissionSnapshot snapshot =
                         Snapshot(active);
@@ -393,8 +393,8 @@ namespace Immersive.Framework.PlayerParticipation
                 targetOwner,
                 ActivityPlayerLifecycleAdmissionFlowKind
                     .SameRouteActivitySwitch,
-                string.Empty,
-                string.Empty,
+                default,
+                default,
                 transactionSequence);
             active = record;
 
@@ -520,7 +520,7 @@ namespace Immersive.Framework.PlayerParticipation
 
             if (previousRoute == null ||
                 targetRoute == null ||
-                ReferenceEquals(previousRoute, targetRoute))
+                previousRoute.HasSameIdentity(targetRoute))
             {
                 return Reject(
                     ActivityPlayerLifecycleAdmissionStatus
@@ -529,6 +529,16 @@ namespace Immersive.Framework.PlayerParticipation
                     resolvedSource,
                     resolvedReason,
                     "P3K.7H requires distinct previous and target Routes.");
+            }
+
+            if (!previousRoute.HasValidRouteId || !targetRoute.HasValidRouteId)
+            {
+                return Reject(
+                    ActivityPlayerLifecycleAdmissionStatus.RejectedInvalidRequest,
+                    Operation,
+                    resolvedSource,
+                    resolvedReason,
+                    "Route Startup Activity Player admission requires valid previous and target RouteIds.");
             }
 
             if (!targetRoute.HasStartupActivity ||
@@ -548,11 +558,11 @@ namespace Immersive.Framework.PlayerParticipation
 
             RuntimeContentOwner previousRouteOwner =
                 RuntimeContentOwner.Route(
-                    previousRoute.RouteName,
+                    previousRoute.RouteId.StableText,
                     previousRoute.RouteName);
             RuntimeContentOwner targetRouteOwner =
                 RuntimeContentOwner.Route(
-                    targetRoute.RouteName,
+                    targetRoute.RouteId.StableText,
                     targetRoute.RouteName);
             if (previousRouteOwner == targetRouteOwner)
             {
@@ -626,8 +636,8 @@ namespace Immersive.Framework.PlayerParticipation
                 active.PreviousOwner,
                 active.TargetOwner,
                 active.FlowKind,
-                previousRoute.RouteName,
-                targetRoute.RouteName,
+                previousRoute.RouteId,
+                targetRoute.RouteId,
                 active.Token.Sequence);
             active.Message =
                 "Target Route Startup Activity Player handoff group is ReadyToCommit before Route transition presentation.";

@@ -76,11 +76,19 @@ namespace Immersive.Framework.Editor.Editor.Settings
 
             var path = AssetDatabase.GenerateUniqueAssetPath(StartupRouteDefaultPath);
             var route = ScriptableObject.CreateInstance<RouteAsset>();
+            AssignNewRouteId(route);
             AssetDatabase.CreateAsset(route, path);
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
 
             return route;
+        }
+
+        private static void AssignNewRouteId(RouteAsset route)
+        {
+            var serialized = new SerializedObject(route);
+            serialized.FindProperty("routeId").stringValue = Guid.NewGuid().ToString("N");
+            serialized.ApplyModifiedPropertiesWithoutUndo();
         }
 
         internal static ActivityAsset CreateStartupActivityAsset()

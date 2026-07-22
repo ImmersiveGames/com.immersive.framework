@@ -90,7 +90,7 @@ namespace Immersive.Framework.Audio
             }
 
             bool deferRefreshForActivityTransition = context.NextActivity != null
-                && !ReferenceEquals(context.NextActivity, context.Activity);
+                && (context.Activity == null || !context.NextActivity.HasSameIdentity(context.Activity));
 
             director.ClearActivityBgm(activityBgm, deferRefreshForActivityTransition);
         }
@@ -106,7 +106,7 @@ namespace Immersive.Framework.Audio
 
             return expectedActivity == null
                 || resolvedActivity == null
-                || ReferenceEquals(resolvedActivity, expectedActivity);
+                || resolvedActivity.HasSameIdentity(expectedActivity);
         }
 
         private ActivityAsset ResolveAssignedActivity()

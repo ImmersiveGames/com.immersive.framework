@@ -80,9 +80,17 @@ namespace Immersive.Framework.ObjectEntry
 
             if (scope == ObjectEntryScope.Route
                 && routeOwner != null
-                && string.IsNullOrWhiteSpace(routeOwner.PrimaryScenePath))
+                && !routeOwner.HasValidRouteId)
             {
-                issue = "Route Owner requires a declared Primary Scene before it can provide a typed owner identity.";
+                issue = "Route Owner requires a valid RouteId before it can provide a typed owner identity.";
+                return false;
+            }
+
+            if (scope == ObjectEntryScope.Activity
+                && activityOwner != null
+                && !activityOwner.HasValidActivityId)
+            {
+                issue = "Activity Owner requires a valid ActivityId before it can provide a typed owner identity.";
                 return false;
             }
 
@@ -167,12 +175,12 @@ namespace Immersive.Framework.ObjectEntry
 
         internal bool MatchesRouteOwner(RouteAsset route)
         {
-            return route != null && routeOwner != null && ReferenceEquals(routeOwner, route);
+            return routeOwner != null && routeOwner.HasSameIdentity(route);
         }
 
         internal bool MatchesActivityOwner(ActivityAsset activity)
         {
-            return activity != null && activityOwner != null && ReferenceEquals(activityOwner, activity);
+            return activityOwner != null && activityOwner.HasSameIdentity(activity);
         }
 
 #if UNITY_EDITOR || DEVELOPMENT_BUILD
@@ -197,11 +205,11 @@ namespace Immersive.Framework.ObjectEntry
         {
             switch (scope)
             {
-                case ObjectEntryScope.Route when routeOwner != null && !string.IsNullOrWhiteSpace(routeOwner.PrimaryScenePath):
-                    ownerIdentity = FrameworkIdentityKey.From(FrameworkIdentityDomain.Route, routeOwner.PrimaryScenePath);
+                case ObjectEntryScope.Route when routeOwner != null && routeOwner.HasValidRouteId:
+                    ownerIdentity = FrameworkIdentityKey.From(FrameworkIdentityDomain.Route, routeOwner.RouteId.StableText);
                     return true;
-                case ObjectEntryScope.Activity when activityOwner != null && !string.IsNullOrWhiteSpace(activityOwner.ActivityName):
-                    ownerIdentity = FrameworkIdentityKey.From(FrameworkIdentityDomain.Activity, activityOwner.ActivityName);
+                case ObjectEntryScope.Activity when activityOwner != null && activityOwner.HasValidActivityId:
+                    ownerIdentity = FrameworkIdentityKey.From(FrameworkIdentityDomain.Activity, activityOwner.ActivityId.StableText);
                     return true;
                 default:
                     ownerIdentity = default;

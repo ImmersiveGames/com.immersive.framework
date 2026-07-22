@@ -45,9 +45,9 @@ namespace Immersive.Framework.ActivityFlow
             ? Route.RouteName
             : string.Empty;
 
-        internal string ActivityId => Activity != null && !string.IsNullOrWhiteSpace(Activity.ActivityName)
-            ? Activity.ActivityName
-            : string.Empty;
+        internal ActivityId ActivityId => Activity != null && Activity.HasValidActivityId
+            ? Activity.ActivityId
+            : default;
 
         internal string ContentId => PlanEntry.ContentId;
 
@@ -76,7 +76,7 @@ namespace Immersive.Framework.ActivityFlow
         {
             string routeInstanceId = RouteInstanceId.ToDiagnosticText("<missing>");
             string route = RouteName.ToDiagnosticText();
-            string activity = ActivityId.ToDiagnosticText();
+            string activity = ActivityId.IsValid ? ActivityId.StableText : "<missing>";
             string identity = ContentIdentity.ToDiagnosticText("<missing>");
             string contentId = ContentId.ToDiagnosticText("<missing>");
             string scene = !string.IsNullOrWhiteSpace(SceneName) ? SceneName : ScenePath;

@@ -9,13 +9,13 @@ namespace Immersive.Framework.Authoring
     /// Public authoring asset that identifies an entry in the game flow.
     /// This asset declares the route primary scene, optional route content profile, and optional startup activity.
     /// </summary>
-    [CreateAssetMenu(
-        fileName = "Route",
-        menuName = "Immersive Framework/Route",
-        order = 10)]
     [FrameworkApiStatus(FrameworkApiStatus.Experimental, "Baseline surface kept for development use until the owning roadmap phase stabilizes it.")]
     public sealed class RouteAsset : ScriptableObject
     {
+        [SerializeField]
+        [Tooltip("Stable functional identity. It must not change when the Route name or Primary Scene changes.")]
+        private string routeId = string.Empty;
+
         [SerializeField]
         [Tooltip("Human-readable route name shown in framework diagnostics. If empty, the asset name is used.")]
         private string routeName = "Startup Route";
@@ -44,6 +44,27 @@ namespace Immersive.Framework.Authoring
         [TextArea(2, 4)]
         [Tooltip("Optional authoring note for the route. This has no runtime behavior yet.")]
         private string description = string.Empty;
+
+        public RouteId RouteId
+        {
+            get
+            {
+                if (!HasValidRouteId)
+                {
+                    throw new System.InvalidOperationException("Route ID is missing or invalid.");
+                }
+
+                return new RouteId(routeId);
+            }
+        }
+
+        public bool HasValidRouteId => global::Immersive.Framework.Authoring.RouteId.IsValidText(routeId);
+
+        public bool HasSameIdentity(RouteAsset other) =>
+            other != null &&
+            HasValidRouteId &&
+            other.HasValidRouteId &&
+            RouteId == other.RouteId;
 
         public string RouteName
         {

@@ -408,6 +408,13 @@ namespace Immersive.Framework.Editor.Editor.Validation
                     route);
             }
 
+            if (!route.HasValidRouteId)
+            {
+                report.AddError(
+                    "Route ID is missing or invalid. Route identity must be authored explicitly and cannot fall back to name or scene path.",
+                    route);
+            }
+
             if (string.IsNullOrWhiteSpace(route.PrimaryScenePath))
             {
                 report.AddError(

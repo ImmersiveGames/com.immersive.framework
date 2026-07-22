@@ -90,7 +90,7 @@ namespace Immersive.Framework.RouteLifecycle
 
         internal bool IsRouteActive(RouteAsset route)
         {
-            return route != null && ReferenceEquals(CurrentRoute, route);
+            return route != null && CurrentRoute != null && CurrentRoute.HasSameIdentity(route);
         }
 
         internal IEventBinding SubscribeRouteEntered(Action<RouteEnteredEvent> handler)
@@ -159,6 +159,11 @@ namespace Immersive.Framework.RouteLifecycle
             if (route == null)
             {
                 return RouteLifecycleStartResult.Failed("Route is missing.");
+            }
+
+            if (!route.HasValidRouteId)
+            {
+                return RouteLifecycleStartResult.Failed("Route ID is missing or invalid.");
             }
 
             if (!route.HasPrimaryScene)
@@ -534,12 +539,12 @@ namespace Immersive.Framework.RouteLifecycle
             string source,
             string reason)
         {
-            if (previousRoute != null && !ReferenceEquals(previousRoute, nextRoute))
+            if (previousRoute != null && !previousRoute.HasSameIdentity(nextRoute))
             {
                 _routeExitedEvents.Publish(new RouteExitedEvent(previousRoute, nextRoute, source, reason));
             }
 
-            if (nextRoute != null && !ReferenceEquals(previousRoute, nextRoute))
+            if (nextRoute != null && (previousRoute == null || !previousRoute.HasSameIdentity(nextRoute)))
             {
                 _routeEnteredEvents.Publish(new RouteEnteredEvent(nextRoute, previousRoute, source, reason));
             }
@@ -728,7 +733,7 @@ namespace Immersive.Framework.RouteLifecycle
 
         private RuntimeRootRegistryOperationResult RemovePreviousRouteScopeRoot(RouteAsset previousRoute, RouteAsset nextRoute, string source, string reason)
         {
-            if (previousRoute == null || ReferenceEquals(previousRoute, nextRoute))
+            if (previousRoute == null || previousRoute.HasSameIdentity(nextRoute))
             {
                 throw new InvalidOperationException("Route scope root removal is only valid for a distinct previous Route.");
             }
@@ -772,7 +777,12 @@ namespace Immersive.Framework.RouteLifecycle
                 throw new ArgumentNullException(nameof(route));
             }
 
-            return RuntimeContentOwner.Route(route.PrimaryScenePath, route.RouteName);
+            if (!route.HasValidRouteId)
+            {
+                throw new ArgumentException("Route runtime owner requires a valid RouteId.", nameof(route));
+            }
+
+            return RuntimeContentOwner.Route(route.RouteId.StableText, route.RouteName);
         }
     }
 }

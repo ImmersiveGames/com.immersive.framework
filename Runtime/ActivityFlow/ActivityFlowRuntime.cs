@@ -112,7 +112,7 @@ namespace Immersive.Framework.ActivityFlow
 
         internal bool IsActivityActive(ActivityAsset activity)
         {
-            return activity != null && ReferenceEquals(_currentActivityState.Activity, activity);
+            return activity != null && _currentActivityState.Activity != null && _currentActivityState.Activity.HasSameIdentity(activity);
         }
 
         internal void SetActivityContentExecutionParticipantSource(IActivityContentExecutionParticipantSource participantSource)
@@ -626,7 +626,7 @@ namespace Immersive.Framework.ActivityFlow
                 return;
             }
 
-            if (!ReferenceEquals(_currentRoute, route))
+            if (_currentRoute == null || !_currentRoute.HasSameIdentity(route))
             {
                 _routeInstanceSequence++;
                 _currentRoute = route;
@@ -638,10 +638,12 @@ namespace Immersive.Framework.ActivityFlow
 
         private static string CreateRouteInstanceId(RouteAsset route, int sequence)
         {
-            string routeName = route != null && !string.IsNullOrWhiteSpace(route.RouteName)
-                ? route.RouteName.Trim()
-                : "Route";
-            return $"route:{sequence}:{routeName}";
+            if (route == null || !route.HasValidRouteId)
+            {
+                throw new ArgumentException("Route instance identity requires a valid RouteId.", nameof(route));
+            }
+
+            return $"route:{route.RouteId.StableText}:{sequence}";
         }
 
         private bool TryCreateActivityScopeContext(

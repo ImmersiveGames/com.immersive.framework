@@ -85,7 +85,7 @@ namespace Immersive.Framework.ActivityFlow
             {
                 var entry = _entries[i];
                 if (entry is { IsLoaded: true, Ownership: ActivitySceneLedgerOwnership.Activity }
-                    && ReferenceEquals(entry.Activity, activity)
+                    && entry.Activity != null && entry.Activity.HasSameIdentity(activity)
                     && string.Equals(entry.RouteInstanceId, normalizedRouteInstanceId, StringComparison.Ordinal))
                 {
                     entries.Add(entry);
@@ -162,7 +162,7 @@ namespace Immersive.Framework.ActivityFlow
             string contentIdentity)
         {
             return string.Equals(existing.RouteInstanceId, Normalize(routeInstanceId), StringComparison.Ordinal)
-                && ReferenceEquals(existing.Activity, activity)
+                && existing.Activity != null && existing.Activity.HasSameIdentity(activity)
                 && string.Equals(existing.ContentIdentity, Normalize(contentIdentity), StringComparison.Ordinal);
         }
 

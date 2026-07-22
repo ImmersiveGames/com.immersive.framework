@@ -1,5 +1,6 @@
 using Immersive.Framework.Authoring;
 using Immersive.Framework.Editor.Editor.Settings;
+using Immersive.Framework.Editor.Editor.Validation;
 using UnityEditor;
 using UnityEngine;
 namespace Immersive.Framework.Editor.Editor.Authoring
@@ -8,16 +9,19 @@ namespace Immersive.Framework.Editor.Editor.Authoring
     internal sealed class RouteAssetEditor : UnityEditor.Editor
     {
         private SerializedProperty _routeName;
+        private SerializedProperty _routeId;
         private SerializedProperty _primaryScenePath;
         private SerializedProperty _primarySceneName;
         private SerializedProperty _routeContentProfile;
         private SerializedProperty _startupActivity;
         private SerializedProperty _transitionGateMode;
         private SerializedProperty _description;
+        private bool _showIdentityDebug;
 
         private void OnEnable()
         {
             _routeName = serializedObject.FindProperty("routeName");
+            _routeId = serializedObject.FindProperty("routeId");
             _primaryScenePath = serializedObject.FindProperty("primaryScenePath");
             _primarySceneName = serializedObject.FindProperty("primarySceneName");
             _routeContentProfile = serializedObject.FindProperty("routeContentProfile");
@@ -37,8 +41,18 @@ namespace Immersive.Framework.Editor.Editor.Authoring
 
             EditorGUILayout.Space(6);
             EditorGUILayout.LabelField("Identity", EditorStyles.boldLabel);
-            EditorGUILayout.PropertyField(_routeName, new GUIContent("Route Name"));
+            EditorGUILayout.PropertyField(_routeName, new GUIContent("Route Name", "Designer-facing name used for presentation and diagnostics only."));
             EditorGUILayout.PropertyField(_description, new GUIContent("Description"));
+            _showIdentityDebug = EditorGUILayout.Foldout(_showIdentityDebug, "Advanced / Debug", true);
+            if (_showIdentityDebug)
+            {
+                EditorGUILayout.PropertyField(_routeId, new GUIContent("Route ID", "Stable functional identity. It is independent from Route Name and Primary Scene."));
+            }
+
+            if (_routeId == null || !RouteId.IsValidText(_routeId.stringValue))
+            {
+                EditorGUILayout.HelpBox("Route ID is missing or malformed. Create Routes through the official authoring flow; validation never repairs identity silently.", MessageType.Error);
+            }
 
             EditorGUILayout.Space(6);
             DrawPrimaryScene();
@@ -59,6 +73,34 @@ namespace Immersive.Framework.Editor.Editor.Authoring
                 MessageType.None);
 
             serializedObject.ApplyModifiedProperties();
+
+            EditorGUILayout.Space(6);
+            DrawAuthoringValidation();
+        }
+
+        [MenuItem("Assets/Create/Immersive Framework/Route", false, 10)]
+        private static void CreateRouteAsset()
+        {
+            RouteAsset route = ImmersiveFrameworkEditorSettingsUtility.CreateStartupRouteAsset();
+            if (route != null)
+            {
+                Selection.activeObject = route;
+                EditorGUIUtility.PingObject(route);
+            }
+        }
+
+        private void DrawAuthoringValidation()
+        {
+            RouteAsset route = (RouteAsset)target;
+            FrameworkAuthoringValidationReport report =
+                FrameworkAuthoringValidator.ValidateRoute(route, true);
+            report.AddRange(
+                FrameworkIdentityAuthoringValidator.ValidateProjectAssets(
+                    FrameworkValidationMode.Standard));
+
+            EditorGUILayout.LabelField("Authoring Validation", EditorStyles.boldLabel);
+            FrameworkAuthoringValidationGui.DrawSummary(report);
+            FrameworkAuthoringValidationGui.DrawIssues(report, false);
         }
 
         private void DrawPrimaryScene()

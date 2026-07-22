@@ -48,9 +48,9 @@ namespace Immersive.Framework.Editor.Editor.Authoring
             EditorGUILayout.LabelField("Identity", EditorStyles.boldLabel);
             EditorGUILayout.PropertyField(_activityId, new GUIContent("Activity ID", "Stable functional identity. Do not change it because of a cosmetic rename."));
             EditorGUILayout.PropertyField(_activityName, new GUIContent("Activity Name", "Designer-facing name used for presentation and diagnostics only."));
-            if (_activityId == null || string.IsNullOrWhiteSpace(_activityId.stringValue))
+            if (_activityId == null || !ActivityId.IsValidText(_activityId.stringValue))
             {
-                EditorGUILayout.HelpBox("Activity ID is required. Use the explicit Activity ID Migration tool for existing assets; it never runs automatically.", MessageType.Error);
+                EditorGUILayout.HelpBox("Activity ID is missing or malformed. Use the explicit Activity ID Migration tool for existing assets; it never runs automatically.", MessageType.Error);
             }
             EditorGUILayout.PropertyField(_description, new GUIContent("Description"));
 
@@ -257,7 +257,7 @@ namespace Immersive.Framework.Editor.Editor.Authoring
             FrameworkAuthoringValidationReport report =
                 FrameworkAuthoringValidator.ValidateActivity(activity);
             report.AddRange(
-                ActivityIdAuthoringValidator.ValidateProjectAssets(
+                FrameworkIdentityAuthoringValidator.ValidateProjectAssets(
                     FrameworkValidationMode.Standard));
             report.AddRange(
                 ActivityParticipationProjectionAuthoringValidator.ValidateActivity(activity));

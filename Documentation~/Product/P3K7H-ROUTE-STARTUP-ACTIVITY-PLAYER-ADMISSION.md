@@ -191,8 +191,8 @@ new designer-facing Route Composer
 
 ```text
 FlowKind
-PreviousRouteName
-TargetRouteName
+PreviousRouteId and TargetRouteId on the functional admission token
+PreviousRouteName and TargetRouteName as diagnostic labels only
 previous and target Activity owners
 transition authorization
 previous exit acknowledgement

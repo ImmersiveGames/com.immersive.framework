@@ -1,5 +1,6 @@
 using Immersive.Framework.Authoring;
 using Immersive.Framework.Editor.Editor.PlayerParticipation;
+using Immersive.Framework.Editor.Editor.Authoring;
 
 namespace Immersive.Framework.Editor.Editor.Validation
 {
@@ -17,6 +18,12 @@ namespace Immersive.Framework.Editor.Editor.Validation
                 FrameworkAuthoringModelReadinessValidator.ValidateProjectReadiness(
                     settings,
                     includeOpenSceneBindings);
+            FrameworkValidationMode identityValidationMode = settings != null && settings.ActiveGameApplication != null
+                ? settings.ActiveGameApplication.ValidationMode
+                : FrameworkValidationMode.Standard;
+            report.AddRange(
+                FrameworkIdentityAuthoringValidator.ValidateProjectAssets(
+                    identityValidationMode));
 
             if (settings == null || settings.ActiveGameApplication == null)
             {

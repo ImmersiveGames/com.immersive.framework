@@ -156,12 +156,12 @@ namespace Immersive.Framework.RouteLifecycle
                 return string.Empty;
             }
 
-            if (!string.IsNullOrWhiteSpace(route.PrimaryScenePath))
+            if (!route.HasValidRouteId)
             {
-                return route.PrimaryScenePath.Trim();
+                throw new ArgumentException("Route scene ownership requires a valid RouteId.", nameof(route));
             }
 
-            return route.RouteName;
+            return route.RouteId.StableText;
         }
 
         private int CountRequiredness(FrameworkContentRequiredness requiredness)

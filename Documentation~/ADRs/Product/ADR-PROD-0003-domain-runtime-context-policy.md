@@ -31,6 +31,22 @@ Save Runtime Context
 
 A generic Session may exist only as a lifetime/coordinator envelope for typed domain contexts. It must not become a universal registry, service locator, or manager.
 
+### Domain identity
+
+`RouteId` and `ActivityId` are the only functional identities for their respective domains. They are stable authored values and participate in ownership, equality, hashing, lookup and binding.
+
+`RouteName` and `ActivityName` are presentation and observability data. Scene paths locate and compose content. Names and scene paths never act as identity or as fallback identity.
+
+Changing a Route name or Primary Scene must not change Route identity. Changing an Activity name must not change Activity identity. Missing, malformed or duplicate authored IDs are explicit validation errors and are never repaired at runtime.
+
+### Domain identity
+
+`RouteId` and `ActivityId` are the only functional identities for their respective domains. They are stable authored values and participate in ownership, equality, hashing, lookup and binding.
+
+`RouteName` and `ActivityName` are presentation and observability data. Scene paths locate and compose content. Names and scene paths never act as identity or as fallback identity.
+
+Changing a Route name or Primary Scene must not change Route identity. Changing an Activity name must not change Activity identity. Missing, malformed or duplicate authored IDs are explicit validation errors and are never repaired at runtime.
+
 ## Rules
 
 Runtime Contexts / Sessions / Services are acceptable only when they have:
@@ -53,6 +69,8 @@ generic service locator access
 Find/first object fallback as primary resolution
 silent fallback for required state
 name/path-based identity as functional binding
+name or scene-path fallback for Route/Activity identity
+name or scene-path fallback for Route/Activity identity
 ```
 
 ## Consequences

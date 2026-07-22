@@ -68,7 +68,7 @@ namespace Immersive.Framework.ContentAnchor
 
         internal bool MatchesRoute(RouteAsset candidateRoute)
         {
-            return candidateRoute != null && route != null && ReferenceEquals(route, candidateRoute);
+            return route != null && route.HasSameIdentity(candidateRoute);
         }
 
         public bool IsSceneAuthored => gameObject.scene.IsValid() && gameObject.scene.isLoaded;
@@ -145,7 +145,12 @@ namespace Immersive.Framework.ContentAnchor
                 return string.Empty;
             }
 
-            return route.PrimaryScenePath.NormalizeTextOrFallback(route.RouteName);
+            if (!route.HasValidRouteId)
+            {
+                throw new System.ArgumentException("Route Content Anchor ownership requires a valid RouteId.", nameof(route));
+            }
+
+            return route.RouteId.StableText;
         }
 
         private static string GetRouteName(RouteAsset route)

@@ -160,7 +160,7 @@ namespace Immersive.Framework.LocalContribution
                     continue;
                 }
 
-                if (activityFilter != null && !ReferenceEquals(adapter.Activity, activityFilter))
+                if (activityFilter != null && (adapter.Activity == null || !adapter.Activity.HasSameIdentity(activityFilter)))
                 {
                     continue;
                 }
@@ -275,17 +275,27 @@ namespace Immersive.Framework.LocalContribution
                 return string.Empty;
             }
 
-            if (!string.IsNullOrWhiteSpace(route.PrimaryScenePath))
+            if (!route.HasValidRouteId)
             {
-                return route.PrimaryScenePath.Trim();
+                throw new ArgumentException("Local Route contribution ownership requires a valid RouteId.", nameof(route));
             }
 
-            return route.RouteName;
+            return route.RouteId.StableText;
         }
 
         private static string CreateActivityOwnerId(ActivityAsset activity)
         {
-            return activity != null ? activity.ActivityName : string.Empty;
+            if (activity == null)
+            {
+                return string.Empty;
+            }
+
+            if (!activity.HasValidActivityId)
+            {
+                throw new ArgumentException("Local Activity contribution ownership requires a valid ActivityId.", nameof(activity));
+            }
+
+            return activity.ActivityId.StableText;
         }
 
         private static void SortHandles(List<LocalContributionHandle> handles)

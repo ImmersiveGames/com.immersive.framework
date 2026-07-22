@@ -63,7 +63,13 @@ namespace Immersive.Framework.Authoring
             }
         }
 
-        public bool HasValidActivityId => !string.IsNullOrWhiteSpace(activityId);
+        public bool HasValidActivityId => global::Immersive.Framework.Authoring.ActivityId.IsValidText(activityId);
+
+        public bool HasSameIdentity(ActivityAsset other) =>
+            other != null &&
+            HasValidActivityId &&
+            other.HasValidActivityId &&
+            ActivityId == other.ActivityId;
 
         public string ActivityName => activityName.NormalizeText();
 

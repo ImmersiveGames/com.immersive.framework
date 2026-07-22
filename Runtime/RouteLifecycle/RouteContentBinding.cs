@@ -67,20 +67,7 @@ namespace Immersive.Framework.RouteLifecycle
                 return false;
             }
 
-            if (route != null)
-            {
-                return ReferenceEquals(route, candidateRoute);
-            }
-
-            var scene = gameObject.scene;
-            if (!string.IsNullOrWhiteSpace(candidateRoute.PrimaryScenePath)
-                && string.Equals(scene.path, candidateRoute.PrimaryScenePath, System.StringComparison.OrdinalIgnoreCase))
-            {
-                return true;
-            }
-
-            return !string.IsNullOrWhiteSpace(candidateRoute.PrimarySceneName)
-                && string.Equals(scene.name, candidateRoute.PrimarySceneName, System.StringComparison.OrdinalIgnoreCase);
+            return route != null && route.HasSameIdentity(candidateRoute);
         }
     }
 }

@@ -23,7 +23,7 @@ namespace Immersive.Framework.RouteLifecycle
             string resolvedSource = NormalizeSource(source);
             string resolvedReason = NormalizeReason(reason);
 
-            if (route == null || ReferenceEquals(route, nextRoute))
+            if (route == null || route.HasSameIdentity(nextRoute))
             {
                 return RouteContentLifecycleDispatchResult.Skipped(
                     RouteContentLifecyclePhase.Exited,
@@ -78,7 +78,7 @@ namespace Immersive.Framework.RouteLifecycle
             string resolvedSource = NormalizeSource(source);
             string resolvedReason = NormalizeReason(reason);
 
-            if (route == null || ReferenceEquals(route, previousRoute))
+            if (route == null || route.HasSameIdentity(previousRoute))
             {
                 return RouteContentLifecycleDispatchResult.Skipped(
                     RouteContentLifecyclePhase.Entered,

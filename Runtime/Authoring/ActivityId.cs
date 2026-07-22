@@ -1,6 +1,5 @@
 using System;
 using Immersive.Framework.ApiStatus;
-using Immersive.Framework.Common;
 using Immersive.Framework.Identity;
 
 namespace Immersive.Framework.Authoring
@@ -12,12 +11,17 @@ namespace Immersive.Framework.Authoring
 
         public ActivityId(string value)
         {
-            _value = FrameworkIdentityValue.From(value.NormalizeText());
+            if (!IsValidText(value))
+            {
+                throw new ArgumentException("Activity id must use lowercase alphanumeric segments separated by dots or hyphens.", nameof(value));
+            }
+
+            _value = FrameworkIdentityValue.From(value);
         }
 
         public ActivityId(FrameworkIdentityValue value)
         {
-            if (!value.IsValid)
+            if (!value.IsValid || !IsValidText(value.Value))
             {
                 throw new ArgumentException("Activity id must be valid.", nameof(value));
             }
@@ -29,7 +33,7 @@ namespace Immersive.Framework.Authoring
 
         public FrameworkIdentityValue Value => _value;
 
-        public bool IsValid => _value.IsValid;
+        public bool IsValid => _value.IsValid && IsValidText(_value.Value);
 
         public string StableText => IsValid ? _value.Value : string.Empty;
 
@@ -42,6 +46,8 @@ namespace Immersive.Framework.Authoring
         public override string ToString() => StableText;
 
         public static ActivityId From(string value) => new ActivityId(value);
+
+        public static bool IsValidText(string value) => AuthoringIdentityText.IsValid(value);
 
         public static bool operator ==(ActivityId left, ActivityId right) => left.Equals(right);
 

@@ -139,12 +139,12 @@ namespace Immersive.Framework.RouteLifecycle
                 throw new System.ArgumentNullException(nameof(route));
             }
 
-            if (string.IsNullOrWhiteSpace(route.PrimaryScenePath))
+            if (!route.HasValidRouteId)
             {
-                throw new System.ArgumentException("Route identity requires a declared Primary Scene path.", nameof(route));
+                throw new System.ArgumentException("Route identity requires a valid RouteId.", nameof(route));
             }
 
-            return FrameworkIdentityKey.From(FrameworkIdentityDomain.Route, route.PrimaryScenePath);
+            return FrameworkIdentityKey.From(FrameworkIdentityDomain.Route, route.RouteId.StableText);
         }
     }
 }

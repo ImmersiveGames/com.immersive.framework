@@ -508,7 +508,7 @@ namespace Immersive.Framework.ApplicationLifecycle
             }
 
             InvalidateObjectEntryRuntimeContextSnapshot($"route-request:{NormalizeLifecycleSource(source)}");
-            if (targetRoute != null && ReferenceEquals(_state.CurrentRoute, targetRoute))
+            if (targetRoute != null && _state.CurrentRoute != null && _state.CurrentRoute.HasSameIdentity(targetRoute))
             {
                 var result = await _gameFlowRuntime.RequestRouteAsync(targetRoute, source, reason);
                 if (result.Succeeded)
@@ -1811,7 +1811,9 @@ namespace Immersive.Framework.ApplicationLifecycle
                 LogFields.Field("kind", result.Kind),
                 LogFields.Field("source", result.Source),
                 LogFields.Field("reason", result.Reason),
+                LogFields.Field("previousRouteId", GetRouteId(routeLifecycle.PreviousRoute)),
                 LogFields.Field("previousRoute", GetRouteName(routeLifecycle.PreviousRoute)),
+                LogFields.Field("targetRouteId", GetRouteId(result.TargetRoute)),
                 LogFields.Field("targetRoute", GetRouteName(result.TargetRoute)),
                 LogFields.Field("scene", routeLifecycle.SceneLifecycleResult.SceneName),
                 LogFields.Field("transition", result.TransitionDiagnostics.TransitionText),
@@ -2070,7 +2072,9 @@ namespace Immersive.Framework.ApplicationLifecycle
                 LogFields.Field("kind", result.Kind),
                 LogFields.Field("source", result.Source),
                 LogFields.Field("reason", result.Reason),
+                LogFields.Field("previousActivityId", GetActivityId(activityFlow.PreviousActivity)),
                 LogFields.Field("previousActivity", GetActivityName(activityFlow.PreviousActivity)),
+                LogFields.Field("targetActivityId", GetActivityId(result.TargetActivity)),
                 LogFields.Field("targetActivity", GetActivityName(result.TargetActivity)),
                 LogFields.Field("currentActivity", FormatDiagnosticValue(activityFlow.ActivityState.ActivityName)),
                 LogFields.Field("activityState", activityFlow.ActivityState.DiagnosticStatus),
@@ -2192,7 +2196,9 @@ namespace Immersive.Framework.ApplicationLifecycle
                 LogFields.Field("transitionGateBlockingIssues", result.TransitionGateDiagnostics.BlockingIssuesText),
                 LogFields.Field("activityTransitionMode", result.ActivityTransitionMode.ToString()),
                 LogFields.Field("activityLoadingMode", result.ActivityLoadingMode),
+                LogFields.Field("targetActivityId", GetActivityId(result.TargetActivity)),
                 LogFields.Field("targetActivity", GetActivityName(result.TargetActivity)),
+                LogFields.Field("previousActivityId", GetActivityId(activityFlow.PreviousActivity)),
                 LogFields.Field("previousActivity", GetActivityName(activityFlow.PreviousActivity)),
                 LogFields.Field("activity", FormatDiagnosticValue(activityFlow.ActivityState.ActivityName)),
                 LogFields.Field("activityState", activityFlow.ActivityState.DiagnosticStatus),
@@ -2764,9 +2770,23 @@ namespace Immersive.Framework.ApplicationLifecycle
             return route != null ? FormatDiagnosticValue(route.RouteName) : "<none>";
         }
 
+        private static string GetRouteId(RouteAsset route)
+        {
+            return route != null && route.HasValidRouteId
+                ? route.RouteId.StableText
+                : "<none>";
+        }
+
         private static string GetActivityName(ActivityAsset activity)
         {
             return activity != null ? FormatDiagnosticValue(activity.ActivityName) : "<none>";
+        }
+
+        private static string GetActivityId(ActivityAsset activity)
+        {
+            return activity != null && activity.HasValidActivityId
+                ? activity.ActivityId.StableText
+                : "<none>";
         }
 
         private static string FormatDiagnosticValue(string value)

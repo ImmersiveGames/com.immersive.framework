@@ -37,7 +37,7 @@ namespace Immersive.Framework.Camera
         private bool TryValidateContext(RouteContentLifecycleContext context, out string diagnostic)
         {
             if (!TryValidateOwner(out diagnostic)) return false;
-            if (context.Route == null || !ReferenceEquals(context.Route, assignedRoute)) { diagnostic = "Route camera override lifecycle owner does not match the assigned RouteAsset."; return false; }
+            if (context.Route == null || !context.Route.HasSameIdentity(assignedRoute)) { diagnostic = "Route camera override lifecycle owner does not match the assigned RouteId."; return false; }
             return true;
         }
     }

@@ -52,9 +52,9 @@ namespace Immersive.Framework.ActivityFlow
 
         public bool Equals(ActivityContentExecutionParticipantSourceRequest other)
         {
-            return ReferenceEquals(Route, other.Route)
-                && ReferenceEquals(PreviousActivity, other.PreviousActivity)
-                && ReferenceEquals(NextActivity, other.NextActivity)
+            return SameRoute(Route, other.Route)
+                && SameActivity(PreviousActivity, other.PreviousActivity)
+                && SameActivity(NextActivity, other.NextActivity)
                 && string.Equals(Source, other.Source, StringComparison.Ordinal)
                 && string.Equals(Reason, other.Reason, StringComparison.Ordinal);
         }
@@ -68,14 +68,20 @@ namespace Immersive.Framework.ActivityFlow
         {
             unchecked
             {
-                int hashCode = Route != null ? Route.GetHashCode() : 0;
-                hashCode = hashCode * 397 ^ (PreviousActivity != null ? PreviousActivity.GetHashCode() : 0);
-                hashCode = hashCode * 397 ^ (NextActivity != null ? NextActivity.GetHashCode() : 0);
+                int hashCode = Route != null && Route.HasValidRouteId ? Route.RouteId.GetHashCode() : 0;
+                hashCode = hashCode * 397 ^ (PreviousActivity != null && PreviousActivity.HasValidActivityId ? PreviousActivity.ActivityId.GetHashCode() : 0);
+                hashCode = hashCode * 397 ^ (NextActivity != null && NextActivity.HasValidActivityId ? NextActivity.ActivityId.GetHashCode() : 0);
                 hashCode = hashCode * 397 ^ StringComparer.Ordinal.GetHashCode(Source ?? string.Empty);
                 hashCode = hashCode * 397 ^ StringComparer.Ordinal.GetHashCode(Reason ?? string.Empty);
                 return hashCode;
             }
         }
+
+        private static bool SameRoute(RouteAsset left, RouteAsset right) =>
+            left == null ? right == null : left.HasSameIdentity(right);
+
+        private static bool SameActivity(ActivityAsset left, ActivityAsset right) =>
+            left == null ? right == null : left.HasSameIdentity(right);
 
         public override string ToString()
         {

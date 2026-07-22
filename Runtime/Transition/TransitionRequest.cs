@@ -99,10 +99,10 @@ namespace Immersive.Framework.Transition
                 && Phase == other.Phase
                 && string.Equals(Source, other.Source, StringComparison.Ordinal)
                 && string.Equals(Reason, other.Reason, StringComparison.Ordinal)
-                && ReferenceEquals(FromRoute, other.FromRoute)
-                && ReferenceEquals(ToRoute, other.ToRoute)
-                && ReferenceEquals(FromActivity, other.FromActivity)
-                && ReferenceEquals(ToActivity, other.ToActivity);
+                && SameRoute(FromRoute, other.FromRoute)
+                && SameRoute(ToRoute, other.ToRoute)
+                && SameActivity(FromActivity, other.FromActivity)
+                && SameActivity(ToActivity, other.ToActivity);
         }
 
         public override bool Equals(object obj)
@@ -119,13 +119,25 @@ namespace Immersive.Framework.Transition
                 hashCode = hashCode * 397 ^ (int)Phase;
                 hashCode = hashCode * 397 ^ StringComparer.Ordinal.GetHashCode(Source ?? string.Empty);
                 hashCode = hashCode * 397 ^ StringComparer.Ordinal.GetHashCode(Reason ?? string.Empty);
-                hashCode = hashCode * 397 ^ (FromRoute != null ? FromRoute.GetHashCode() : 0);
-                hashCode = hashCode * 397 ^ (ToRoute != null ? ToRoute.GetHashCode() : 0);
-                hashCode = hashCode * 397 ^ (FromActivity != null ? FromActivity.GetHashCode() : 0);
-                hashCode = hashCode * 397 ^ (ToActivity != null ? ToActivity.GetHashCode() : 0);
+                hashCode = hashCode * 397 ^ RouteHash(FromRoute);
+                hashCode = hashCode * 397 ^ RouteHash(ToRoute);
+                hashCode = hashCode * 397 ^ ActivityHash(FromActivity);
+                hashCode = hashCode * 397 ^ ActivityHash(ToActivity);
                 return hashCode;
             }
         }
+
+        private static bool SameRoute(RouteAsset left, RouteAsset right) =>
+            left == null ? right == null : left.HasSameIdentity(right);
+
+        private static bool SameActivity(ActivityAsset left, ActivityAsset right) =>
+            left == null ? right == null : left.HasSameIdentity(right);
+
+        private static int RouteHash(RouteAsset route) =>
+            route != null && route.HasValidRouteId ? route.RouteId.GetHashCode() : 0;
+
+        private static int ActivityHash(ActivityAsset activity) =>
+            activity != null && activity.HasValidActivityId ? activity.ActivityId.GetHashCode() : 0;
 
         public static TransitionRequest Before(
             TransitionOperationId operationId,

@@ -25,7 +25,7 @@ namespace Immersive.Framework.ActivityFlow
 
         internal bool MatchesActivity(ActivityAsset activity)
         {
-            return ReferenceEquals(Activity, activity);
+            return Activity != null && Activity.HasSameIdentity(activity);
         }
     }
 }

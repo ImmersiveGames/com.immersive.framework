@@ -1,6 +1,7 @@
 using System;
 using Immersive.Framework.ApiStatus;
 using Immersive.Framework.Common;
+using Immersive.Framework.Authoring;
 using Immersive.Framework.RuntimeContent;
 
 namespace Immersive.Framework.PlayerParticipation
@@ -16,16 +17,16 @@ namespace Immersive.Framework.PlayerParticipation
             RuntimeContentOwner previousOwner,
             RuntimeContentOwner targetOwner,
             ActivityPlayerLifecycleAdmissionFlowKind flowKind,
-            string previousRouteName,
-            string targetRouteName,
+            RouteId previousRouteId,
+            RouteId targetRouteId,
             int sequence)
         {
             SessionContextId = sessionContextId.NormalizeText();
             PreviousOwner = previousOwner;
             TargetOwner = targetOwner;
             FlowKind = flowKind;
-            PreviousRouteName = previousRouteName.NormalizeText();
-            TargetRouteName = targetRouteName.NormalizeText();
+            PreviousRouteId = previousRouteId;
+            TargetRouteId = targetRouteId;
             Sequence = sequence;
         }
 
@@ -33,8 +34,8 @@ namespace Immersive.Framework.PlayerParticipation
         public RuntimeContentOwner PreviousOwner { get; }
         public RuntimeContentOwner TargetOwner { get; }
         public ActivityPlayerLifecycleAdmissionFlowKind FlowKind { get; }
-        public string PreviousRouteName { get; }
-        public string TargetRouteName { get; }
+        public RouteId PreviousRouteId { get; }
+        public RouteId TargetRouteId { get; }
         public int Sequence { get; }
 
         public bool IsValid =>
@@ -60,7 +61,7 @@ namespace Immersive.Framework.PlayerParticipation
                 string routeText = FlowKind ==
                         ActivityPlayerLifecycleAdmissionFlowKind
                             .RouteStartupActivitySwitch
-                    ? $":{PreviousRouteName}->{TargetRouteName}"
+                    ? $":{PreviousRouteId.StableText}->{TargetRouteId.StableText}"
                     : string.Empty;
                 return
                     $"{SessionContextId}:{FlowKind}{routeText}:" +
@@ -74,20 +75,17 @@ namespace Immersive.Framework.PlayerParticipation
                 ActivityPlayerLifecycleAdmissionFlowKind
                     .SameRouteActivitySwitch)
             {
-                return string.IsNullOrEmpty(PreviousRouteName) &&
-                    string.IsNullOrEmpty(TargetRouteName);
+                return !PreviousRouteId.IsValid &&
+                    !TargetRouteId.IsValid;
             }
 
             if (FlowKind ==
                 ActivityPlayerLifecycleAdmissionFlowKind
                     .RouteStartupActivitySwitch)
             {
-                return !string.IsNullOrEmpty(PreviousRouteName) &&
-                    !string.IsNullOrEmpty(TargetRouteName) &&
-                    !string.Equals(
-                        PreviousRouteName,
-                        TargetRouteName,
-                        StringComparison.Ordinal);
+                return PreviousRouteId.IsValid &&
+                    TargetRouteId.IsValid &&
+                    PreviousRouteId != TargetRouteId;
             }
 
             return false;
@@ -101,14 +99,8 @@ namespace Immersive.Framework.PlayerParticipation
             PreviousOwner == other.PreviousOwner &&
             TargetOwner == other.TargetOwner &&
             FlowKind == other.FlowKind &&
-            string.Equals(
-                PreviousRouteName,
-                other.PreviousRouteName,
-                StringComparison.Ordinal) &&
-            string.Equals(
-                TargetRouteName,
-                other.TargetRouteName,
-                StringComparison.Ordinal) &&
+            PreviousRouteId == other.PreviousRouteId &&
+            TargetRouteId == other.TargetRouteId &&
             Sequence == other.Sequence;
 
         public override bool Equals(object obj) =>
@@ -124,12 +116,8 @@ namespace Immersive.Framework.PlayerParticipation
                 hashCode = hashCode * 397 ^ PreviousOwner.GetHashCode();
                 hashCode = hashCode * 397 ^ TargetOwner.GetHashCode();
                 hashCode = hashCode * 397 ^ (int)FlowKind;
-                hashCode = hashCode * 397 ^
-                    StringComparer.Ordinal.GetHashCode(
-                        PreviousRouteName ?? string.Empty);
-                hashCode = hashCode * 397 ^
-                    StringComparer.Ordinal.GetHashCode(
-                        TargetRouteName ?? string.Empty);
+                hashCode = hashCode * 397 ^ PreviousRouteId.GetHashCode();
+                hashCode = hashCode * 397 ^ TargetRouteId.GetHashCode();
                 hashCode = hashCode * 397 ^ Sequence;
                 return hashCode;
             }

@@ -99,8 +99,8 @@ namespace Immersive.Framework.CycleReset
         public bool Equals(CycleResetRequest other)
         {
             return Scope == other.Scope
-                && ReferenceEquals(ActiveRoute, other.ActiveRoute)
-                && ReferenceEquals(ActiveActivity, other.ActiveActivity)
+                && SameRoute(ActiveRoute, other.ActiveRoute)
+                && SameActivity(ActiveActivity, other.ActiveActivity)
                 && Policy.Equals(other.Policy)
                 && string.Equals(Source, other.Source, StringComparison.Ordinal)
                 && string.Equals(Reason, other.Reason, StringComparison.Ordinal);
@@ -116,14 +116,20 @@ namespace Immersive.Framework.CycleReset
             unchecked
             {
                 int hashCode = (int)Scope;
-                hashCode = hashCode * 397 ^ (ActiveRoute != null ? ActiveRoute.GetHashCode() : 0);
-                hashCode = hashCode * 397 ^ (ActiveActivity != null ? ActiveActivity.GetHashCode() : 0);
+                hashCode = hashCode * 397 ^ (ActiveRoute != null && ActiveRoute.HasValidRouteId ? ActiveRoute.RouteId.GetHashCode() : 0);
+                hashCode = hashCode * 397 ^ (ActiveActivity != null && ActiveActivity.HasValidActivityId ? ActiveActivity.ActivityId.GetHashCode() : 0);
                 hashCode = hashCode * 397 ^ Policy.GetHashCode();
                 hashCode = hashCode * 397 ^ StringComparer.Ordinal.GetHashCode(Source ?? string.Empty);
                 hashCode = hashCode * 397 ^ StringComparer.Ordinal.GetHashCode(Reason ?? string.Empty);
                 return hashCode;
             }
         }
+
+        private static bool SameRoute(RouteAsset left, RouteAsset right) =>
+            left == null ? right == null : left.HasSameIdentity(right);
+
+        private static bool SameActivity(ActivityAsset left, ActivityAsset right) =>
+            left == null ? right == null : left.HasSameIdentity(right);
 
         public override string ToString()
         {
