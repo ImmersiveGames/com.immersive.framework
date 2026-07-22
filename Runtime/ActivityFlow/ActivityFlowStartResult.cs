@@ -12,6 +12,8 @@ namespace Immersive.Framework.ActivityFlow
     [FrameworkApiStatus(FrameworkApiStatus.Experimental, "Baseline surface kept for development use until the owning roadmap phase stabilizes it.")]
     internal readonly struct ActivityFlowStartResult
     {
+        private readonly ResultData _data;
+
         public ActivityFlowStartResult(
             bool started,
             bool skipped,
@@ -32,47 +34,86 @@ namespace Immersive.Framework.ActivityFlow
             ActivitySceneLedgerSnapshot activitySceneLedgerSnapshot = default(ActivitySceneLedgerSnapshot),
             ActivityTransitionSnapshot activityTransitionSnapshot = default(ActivityTransitionSnapshot))
         {
-            Started = started;
-            Skipped = skipped;
-            KeptActive = keptActive;
-            Cleared = cleared;
-            Message = message ?? string.Empty;
-            ActivityState = activityState;
-            PreviousActivity = previousActivity;
-            ActivityContentResult = activityContentResult;
-            ActivityReadinessState = activityReadinessState;
-            RuntimeActivityScopeResult = runtimeActivityScopeResult;
-            ActivityContentAnchorBindingCleanupResult = activityContentAnchorBindingCleanupResult;
-            ActivityContentAnchorDiscoveryResult = activityContentAnchorDiscoveryResult;
-            ActivityContentExecutionResult = activityContentExecutionResult;
-            ActivitySceneCompositionResult = activitySceneCompositionResult;
-            ActivitySceneReleaseResult = activitySceneReleaseResult;
-            ActivityOperationResult = activityOperationResult;
-            ActivitySceneLedgerSnapshot = activitySceneLedgerSnapshot;
-            ActivityTransitionSnapshot = activityTransitionSnapshot;
+            _data = new ResultData(
+                started,
+                skipped,
+                keptActive,
+                cleared,
+                message,
+                activityState,
+                previousActivity,
+                activityContentResult,
+                activityReadinessState,
+                runtimeActivityScopeResult,
+                activityContentAnchorBindingCleanupResult,
+                activityContentAnchorDiscoveryResult,
+                activityContentExecutionResult,
+                activitySceneCompositionResult,
+                activitySceneReleaseResult,
+                activityOperationResult,
+                activitySceneLedgerSnapshot,
+                activityTransitionSnapshot);
         }
 
-        public bool Started { get; }
-        public bool Skipped { get; }
-        public bool KeptActive { get; }
-        public bool Cleared { get; }
-        public string Message { get; }
-        public ActivityRuntimeState ActivityState { get; }
+        public bool Started => _data != null && _data.Started;
+        public bool Skipped => _data != null && _data.Skipped;
+        public bool KeptActive => _data != null && _data.KeptActive;
+        public bool Cleared => _data != null && _data.Cleared;
+        public string Message => _data != null ? _data.Message : null;
+        public ActivityRuntimeState ActivityState =>
+            _data != null ? _data.ActivityState : default(ActivityRuntimeState);
         public ActivityAsset Activity => ActivityState.Activity;
-        public ActivityAsset PreviousActivity { get; }
-        public ActivityContentApplyResult ActivityContentResult { get; }
+        public ActivityAsset PreviousActivity =>
+            _data != null ? _data.PreviousActivity : null;
+        public ActivityContentApplyResult ActivityContentResult =>
+            _data != null
+                ? _data.ActivityContentResult
+                : default(ActivityContentApplyResult);
         public ActivityContentSet ActivityContentSet => ActivityContentResult.ActivityContentSet;
         public ActivityContentLifecycleResult ActivityContentLifecycleResult => ActivityContentResult.LifecycleResult;
-        public ActivityReadinessState ActivityReadinessState { get; }
-        public RuntimeScopeLifecycleResult RuntimeActivityScopeResult { get; }
-        public ContentAnchorBindingLifecycleResult ActivityContentAnchorBindingCleanupResult { get; }
-        public ActivityContentAnchorDiscoveryResult ActivityContentAnchorDiscoveryResult { get; }
-        public ActivityContentExecutionLifecycleResult ActivityContentExecutionResult { get; }
-        public ActivitySceneCompositionResult ActivitySceneCompositionResult { get; }
-        public ActivitySceneReleaseResult ActivitySceneReleaseResult { get; }
-        public ActivityOperationResult ActivityOperationResult { get; }
-        public ActivitySceneLedgerSnapshot ActivitySceneLedgerSnapshot { get; }
-        internal ActivityTransitionSnapshot ActivityTransitionSnapshot { get; }
+        public ActivityReadinessState ActivityReadinessState =>
+            _data != null
+                ? _data.ActivityReadinessState
+                : default(ActivityReadinessState);
+        public RuntimeScopeLifecycleResult RuntimeActivityScopeResult =>
+            _data != null
+                ? _data.RuntimeActivityScopeResult
+                : default(RuntimeScopeLifecycleResult);
+        public ContentAnchorBindingLifecycleResult
+            ActivityContentAnchorBindingCleanupResult =>
+                _data != null
+                    ? _data.ActivityContentAnchorBindingCleanupResult
+                    : default(ContentAnchorBindingLifecycleResult);
+        public ActivityContentAnchorDiscoveryResult
+            ActivityContentAnchorDiscoveryResult =>
+                _data != null
+                    ? _data.ActivityContentAnchorDiscoveryResult
+                    : default(ActivityContentAnchorDiscoveryResult);
+        public ActivityContentExecutionLifecycleResult
+            ActivityContentExecutionResult =>
+                _data != null
+                    ? _data.ActivityContentExecutionResult
+                    : default(ActivityContentExecutionLifecycleResult);
+        public ActivitySceneCompositionResult ActivitySceneCompositionResult =>
+            _data != null
+                ? _data.ActivitySceneCompositionResult
+                : default(ActivitySceneCompositionResult);
+        public ActivitySceneReleaseResult ActivitySceneReleaseResult =>
+            _data != null
+                ? _data.ActivitySceneReleaseResult
+                : default(ActivitySceneReleaseResult);
+        public ActivityOperationResult ActivityOperationResult =>
+            _data != null
+                ? _data.ActivityOperationResult
+                : default(ActivityOperationResult);
+        public ActivitySceneLedgerSnapshot ActivitySceneLedgerSnapshot =>
+            _data != null
+                ? _data.ActivitySceneLedgerSnapshot
+                : default(ActivitySceneLedgerSnapshot);
+        internal ActivityTransitionSnapshot ActivityTransitionSnapshot =>
+            _data != null
+                ? _data.ActivityTransitionSnapshot
+                : default(ActivityTransitionSnapshot);
         public bool ActivityAuthorityCommitReached => ActivityTransitionSnapshot.CommitReached;
         public bool ActivityTransitionFailedBeforeCommit => ActivityTransitionSnapshot.FailedBeforeCommit;
         public bool ActivityTransitionCommittedNotReady => ActivityTransitionSnapshot.CommittedNotReady;
@@ -91,6 +132,74 @@ namespace Immersive.Framework.ActivityFlow
         public bool Completed => Started || Skipped || KeptActive || Cleared;
         public bool HasActivityState => ActivityState.IsActive || ActivityState.IsNone || ActivityState.IsTransitioning;
         public string ActivityIdentity => ActivityState.DiagnosticIdentity;
+
+        private sealed class ResultData
+        {
+            internal ResultData(
+                bool started,
+                bool skipped,
+                bool keptActive,
+                bool cleared,
+                string message,
+                ActivityRuntimeState activityState,
+                ActivityAsset previousActivity,
+                ActivityContentApplyResult activityContentResult,
+                ActivityReadinessState activityReadinessState,
+                RuntimeScopeLifecycleResult runtimeActivityScopeResult,
+                ContentAnchorBindingLifecycleResult activityContentAnchorBindingCleanupResult,
+                ActivityContentAnchorDiscoveryResult activityContentAnchorDiscoveryResult,
+                ActivityContentExecutionLifecycleResult activityContentExecutionResult,
+                ActivitySceneCompositionResult activitySceneCompositionResult,
+                ActivitySceneReleaseResult activitySceneReleaseResult,
+                ActivityOperationResult activityOperationResult,
+                ActivitySceneLedgerSnapshot activitySceneLedgerSnapshot,
+                ActivityTransitionSnapshot activityTransitionSnapshot)
+            {
+                Started = started;
+                Skipped = skipped;
+                KeptActive = keptActive;
+                Cleared = cleared;
+                Message = message ?? string.Empty;
+                ActivityState = activityState;
+                PreviousActivity = previousActivity;
+                ActivityContentResult = activityContentResult;
+                ActivityReadinessState = activityReadinessState;
+                RuntimeActivityScopeResult = runtimeActivityScopeResult;
+                ActivityContentAnchorBindingCleanupResult =
+                    activityContentAnchorBindingCleanupResult;
+                ActivityContentAnchorDiscoveryResult =
+                    activityContentAnchorDiscoveryResult;
+                ActivityContentExecutionResult = activityContentExecutionResult;
+                ActivitySceneCompositionResult = activitySceneCompositionResult;
+                ActivitySceneReleaseResult = activitySceneReleaseResult;
+                ActivityOperationResult = activityOperationResult;
+                ActivitySceneLedgerSnapshot = activitySceneLedgerSnapshot;
+                ActivityTransitionSnapshot = activityTransitionSnapshot;
+            }
+
+            internal bool Started { get; }
+            internal bool Skipped { get; }
+            internal bool KeptActive { get; }
+            internal bool Cleared { get; }
+            internal string Message { get; }
+            internal ActivityRuntimeState ActivityState { get; }
+            internal ActivityAsset PreviousActivity { get; }
+            internal ActivityContentApplyResult ActivityContentResult { get; }
+            internal ActivityReadinessState ActivityReadinessState { get; }
+            internal RuntimeScopeLifecycleResult RuntimeActivityScopeResult { get; }
+            internal ContentAnchorBindingLifecycleResult
+                ActivityContentAnchorBindingCleanupResult { get; }
+            internal ActivityContentAnchorDiscoveryResult
+                ActivityContentAnchorDiscoveryResult { get; }
+            internal ActivityContentExecutionLifecycleResult
+                ActivityContentExecutionResult { get; }
+            internal ActivitySceneCompositionResult
+                ActivitySceneCompositionResult { get; }
+            internal ActivitySceneReleaseResult ActivitySceneReleaseResult { get; }
+            internal ActivityOperationResult ActivityOperationResult { get; }
+            internal ActivitySceneLedgerSnapshot ActivitySceneLedgerSnapshot { get; }
+            internal ActivityTransitionSnapshot ActivityTransitionSnapshot { get; }
+        }
 
         internal ActivityFlowStartResult WithActivityTransition(
             ActivityTransitionSnapshot activityTransitionSnapshot)

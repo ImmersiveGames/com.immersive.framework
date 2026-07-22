@@ -6,7 +6,7 @@ namespace Immersive.Framework.PlayerParticipation
 {
     [FrameworkApiStatus(
         FrameworkApiStatus.Experimental,
-        "P3K.7H immutable per-Slot Activity lifecycle admission evidence.")]
+        "Immutable per-Slot Activity lifecycle admission evidence.")]
     public readonly struct ActivityPlayerLifecycleAdmissionSlotSnapshot
     {
         internal ActivityPlayerLifecycleAdmissionSlotSnapshot(

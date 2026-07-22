@@ -14,7 +14,7 @@ namespace Immersive.Framework.PlayerParticipation
         "Immersive Framework/Player/Local Player Actor Selection Requests")]
     [FrameworkApiStatus(
         FrameworkApiStatus.Experimental,
-        "H2.2.12 public default Actor selection request surface with explicit runtime binding.")]
+        "Public default Actor selection request surface with explicit runtime binding.")]
     public sealed class LocalPlayerActorSelectionRequestAuthoring : MonoBehaviour
     {
         private const string MissingRuntimeBindingDiagnostic =

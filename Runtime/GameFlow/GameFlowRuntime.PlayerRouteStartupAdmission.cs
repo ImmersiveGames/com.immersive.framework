@@ -34,7 +34,7 @@ namespace Immersive.Framework.GameFlow
                         "PrepareRouteStartupActivityPlayerAdmission",
                         source,
                         reason,
-                        "GameplayReady Route Startup Activity requires the official P3K.7H Player lifecycle admission runtime.");
+                        "GameplayReady Route Startup Activity requires the official Player Gameplay Admission lifecycle runtime.");
             }
 
             return activityPlayerLifecycleAdmissionRuntime

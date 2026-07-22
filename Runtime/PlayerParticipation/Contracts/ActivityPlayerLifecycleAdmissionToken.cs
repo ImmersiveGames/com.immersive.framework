@@ -8,7 +8,7 @@ namespace Immersive.Framework.PlayerParticipation
 {
     [FrameworkApiStatus(
         FrameworkApiStatus.Experimental,
-        "P3K.7H exact Activity Player lifecycle admission token, including flow and Route identity when applicable.")]
+        "Exact Activity Player lifecycle admission token, including flow and Route identity when applicable.")]
     public readonly struct ActivityPlayerLifecycleAdmissionToken :
         IEquatable<ActivityPlayerLifecycleAdmissionToken>
     {

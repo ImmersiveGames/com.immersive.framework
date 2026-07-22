@@ -9,7 +9,7 @@ namespace Immersive.Framework.PlayerParticipation
 {
     [FrameworkApiStatus(
         FrameworkApiStatus.Experimental,
-        "P3K.7H immutable Activity Player lifecycle admission evidence for same-Route and Route Startup flows.")]
+        "Immutable Activity Player lifecycle admission evidence for same-Route and Route Startup flows.")]
     public sealed class ActivityPlayerLifecycleAdmissionSnapshot
     {
         private readonly ActivityPlayerLifecycleAdmissionSlotSnapshot[] slots;

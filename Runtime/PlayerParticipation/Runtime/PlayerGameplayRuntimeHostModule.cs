@@ -234,7 +234,7 @@ namespace Immersive.Framework.PlayerParticipation
             if (!TryInitializeActivityLifecycleAdmission(out issue))
             {
                 diagnostic =
-                    "P3K.7H Activity lifecycle admission composition failed. " +
+                    "Player Gameplay Admission lifecycle composition failed. " +
                     issue;
                 ReleaseActivityLifecycleAdmission();
                 groupContext = null;

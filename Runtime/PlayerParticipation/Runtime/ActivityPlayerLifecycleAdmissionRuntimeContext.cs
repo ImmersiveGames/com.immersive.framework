@@ -528,7 +528,7 @@ namespace Immersive.Framework.PlayerParticipation
                     Operation,
                     resolvedSource,
                     resolvedReason,
-                    "P3K.7H requires distinct previous and target Routes.");
+                    "Player Gameplay Admission requires distinct previous and target Routes.");
             }
 
             if (!previousRoute.HasValidRouteId || !targetRoute.HasValidRouteId)

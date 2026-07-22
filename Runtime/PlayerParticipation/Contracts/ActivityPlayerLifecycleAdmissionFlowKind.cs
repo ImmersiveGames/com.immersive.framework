@@ -7,7 +7,7 @@ namespace Immersive.Framework.PlayerParticipation
     /// </summary>
     [FrameworkApiStatus(
         FrameworkApiStatus.Experimental,
-        "P3K.7H Activity Player lifecycle admission flow identity.")]
+        "Activity Player lifecycle admission flow identity.")]
     public enum ActivityPlayerLifecycleAdmissionFlowKind
     {
         None = 0,

@@ -28,7 +28,7 @@ namespace Immersive.Framework.PlayerParticipation
             if (gameplayLifecycleRuntime == null)
             {
                 string issue =
-                    "GameplayReady Activity enter requires the official P3K.7H lifecycle adoption runtime.";
+                    "GameplayReady Activity enter requires the official Player Gameplay Admission lifecycle adoption runtime.";
                 lastSnapshot = FailureSnapshot(
                     ActivityPlayerActorLifecycleStatus.FailedRequirement,
                     activity,

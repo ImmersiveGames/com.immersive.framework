@@ -4,7 +4,7 @@ namespace Immersive.Framework.PlayerParticipation
 {
     [FrameworkApiStatus(
         FrameworkApiStatus.Experimental,
-        "P3K.7H Activity Player lifecycle admission operation status.")]
+        "Activity Player lifecycle admission operation status.")]
     public enum ActivityPlayerLifecycleAdmissionStatus
     {
         None = 0,

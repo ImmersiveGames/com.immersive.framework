@@ -7,7 +7,7 @@ namespace Immersive.Framework.PlayerParticipation
     /// </summary>
     [FrameworkApiStatus(
         FrameworkApiStatus.Experimental,
-        "P3K.7H explicit previous Activity exit disposition during Player handoff.")]
+        "Explicit previous Activity exit disposition during Player handoff.")]
     public enum ActivityPlayerPreviousExitDisposition
     {
         None = 0,
