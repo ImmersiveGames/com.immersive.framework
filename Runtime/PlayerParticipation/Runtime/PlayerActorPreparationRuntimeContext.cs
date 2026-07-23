@@ -1184,7 +1184,7 @@ namespace Immersive.Framework.PlayerParticipation
                 slot.SelectedActorProfile,
                 slot.SelectionRevision,
                 slot.SelectionRevision,
-                snapshot.ActorSelectionPolicyProfile,
+                snapshot.ActorSelectionDuplicatePolicy,
                 default,
                 source.NormalizeText(),
                 reason.NormalizeText(),

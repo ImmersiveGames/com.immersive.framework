@@ -27,10 +27,10 @@ namespace Immersive.Framework.PlayerParticipation
 
         internal PlayerParticipationOperationResult InitializationResult => initializationResult;
 
-        internal PlayerActorSelectionPolicyProfile ActorSelectionPolicyProfile =>
+        internal PlayerActorSelectionDuplicatePolicy ActorSelectionDuplicatePolicy =>
             runtimeContext != null
-                ? runtimeContext.CreateSnapshot().ActorSelectionPolicyProfile
-                : null;
+                ? runtimeContext.CreateSnapshot().ActorSelectionDuplicatePolicy
+                : PlayerActorSelectionDuplicatePolicy.Unspecified;
 
         internal static PlayerParticipationRuntimeHostModule Attach(
             FrameworkRuntimeHost runtimeHost,
@@ -94,7 +94,7 @@ namespace Immersive.Framework.PlayerParticipation
             {
                 runtimeContext = null;
                 initializationResult = PlayerParticipationRuntimeContext.TryCreateWithActorSelectionPolicy(
-                    null,
+                    PlayerActorSelectionDuplicatePolicy.Unspecified,
                     0,
                     false,
                     null,
@@ -108,7 +108,7 @@ namespace Immersive.Framework.PlayerParticipation
                 gameApplication.LocalPlayerSlots,
                 gameApplication.LocalPlayerSlotCount,
                 initialJoiningOpen: false,
-                gameApplication.PlayerActorSelectionPolicyProfile,
+                gameApplication.PlayerActorSelectionDuplicatePolicy,
                 source,
                 reason,
                 out runtimeContext);

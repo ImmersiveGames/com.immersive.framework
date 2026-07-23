@@ -1,5 +1,8 @@
 # P3H.4 — GameApplication Policy Composition and Runtime Host Integration
 
+> Current contract correction (`PROD-ASSET-1C`, 2026-07-22): the policy is a direct enum on
+> `GameApplicationAsset`; the former external selection-policy Profile was removed.
+
 Status: implementation cut; Unity compile and QA pending.  
 Type: product authoring, runtime composition and real-host technical QA.
 
@@ -12,22 +15,24 @@ Make the Player Actor selection policy an explicit required GameApplication deci
 ```text
 GameApplicationAsset
   Local Player Participation
-    Actor Selection Policy (required)
+    Actor Duplicate Selection
     Ordered Player Slot Profiles
 ```
 
-`null` is invalid. The framework does not silently select `AllowDuplicates`.
+New assets explicitly default to `AllowDuplicates`. `Unspecified` or an undefined serialized
+value is invalid and is not converted to `AllowDuplicates` by runtime fallback.
 
 ## Runtime composition
 
 ```text
-GameApplicationAsset.PlayerActorSelectionPolicyProfile
+GameApplicationAsset.PlayerActorSelectionDuplicatePolicy
   -> PlayerParticipationRuntimeHostModule.Initialize
   -> PlayerParticipationRuntimeContext.TryCreateWithActorSelectionPolicy
-  -> PlayerParticipationSnapshot.ActorSelectionPolicyProfile
+  -> PlayerParticipationSnapshot.ActorSelectionDuplicatePolicy
 ```
 
-The policy Profile remains immutable. Current Actor selections remain Session state.
+The GameApplication value is read during Session composition and remains immutable for that
+Session. Current Actor selections remain Session state.
 
 ## Explicit operations
 
@@ -57,7 +62,7 @@ This preserves the frozen separation between join and Actor selection.
 ## Failure policy
 
 ```text
-missing/invalid GameApplication policy
+unspecified/invalid GameApplication policy
   authoring validation error
   Session runtime initialization failure
   boot blocked explicitly

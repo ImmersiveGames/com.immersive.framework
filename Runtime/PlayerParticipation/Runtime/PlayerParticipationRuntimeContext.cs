@@ -47,7 +47,7 @@ namespace Immersive.Framework.PlayerParticipation
 
         private readonly string contextId;
         private readonly List<SlotRecord> slots;
-        private readonly PlayerActorSelectionPolicyProfile actorSelectionPolicyProfile;
+        private readonly PlayerActorSelectionDuplicatePolicy actorSelectionDuplicatePolicy;
         private int revision;
         private int reservationSequence;
         private int dynamicCapacity;
@@ -59,13 +59,13 @@ namespace Immersive.Framework.PlayerParticipation
             List<SlotRecord> slots,
             int initialDynamicCapacity,
             bool initialJoiningOpen,
-            PlayerActorSelectionPolicyProfile actorSelectionPolicyProfile)
+            PlayerActorSelectionDuplicatePolicy actorSelectionDuplicatePolicy)
         {
             contextId = Guid.NewGuid().ToString("N");
             this.slots = slots ?? throw new ArgumentNullException(nameof(slots));
             dynamicCapacity = initialDynamicCapacity;
             joiningOpen = initialJoiningOpen;
-            this.actorSelectionPolicyProfile = actorSelectionPolicyProfile;
+            this.actorSelectionDuplicatePolicy = actorSelectionDuplicatePolicy;
             revision = 1;
             lastOperationStatus = PlayerParticipationOperationStatus.Succeeded;
             lastOperationMessage = "Player participation runtime context initialized.";
@@ -80,7 +80,8 @@ namespace Immersive.Framework.PlayerParticipation
             out PlayerParticipationRuntimeContext context)
         {
             return TryCreateCore(
-                orderedProfiles, initialDynamicCapacity, initialJoiningOpen, null,
+                orderedProfiles, initialDynamicCapacity, initialJoiningOpen,
+                PlayerActorSelectionDuplicatePolicy.Unspecified,
                 "Initialize", "Player participation runtime context initialized.",
                 source, reason, out context);
         }
@@ -89,7 +90,7 @@ namespace Immersive.Framework.PlayerParticipation
             IReadOnlyList<PlayerSlotProfile> orderedProfiles,
             int initialDynamicCapacity,
             bool initialJoiningOpen,
-            PlayerActorSelectionPolicyProfile actorSelectionPolicyProfile,
+            PlayerActorSelectionDuplicatePolicy actorSelectionDuplicatePolicy,
             string source,
             string reason,
             out PlayerParticipationRuntimeContext context)
@@ -97,28 +98,28 @@ namespace Immersive.Framework.PlayerParticipation
             string resolvedSource = source.NormalizeTextOrFallback("PlayerParticipationRuntimeContext");
             string resolvedReason = reason.NormalizeTextOrFallback("initialization");
 
-            if (actorSelectionPolicyProfile == null)
+            if (actorSelectionDuplicatePolicy == PlayerActorSelectionDuplicatePolicy.Unspecified)
             {
                 context = null;
                 return CreateInitializationFailure(
                     resolvedSource,
                     resolvedReason,
-                    "Player Actor selection policy Profile is required for a selection-capable Session context.");
+                    "Player Actor selection duplicate policy is required for a selection-capable Session context.");
             }
 
-            if (!actorSelectionPolicyProfile.HasDefinedDuplicatePolicy)
+            if (!actorSelectionDuplicatePolicy.IsDefinedPolicy())
             {
                 context = null;
                 return CreateInitializationFailure(
                     resolvedSource,
                     resolvedReason,
-                    $"Player Actor selection policy Profile '{actorSelectionPolicyProfile.name}' has an invalid duplicate policy '{actorSelectionPolicyProfile.DuplicatePolicy}'.");
+                    $"Player Actor selection duplicate policy '{actorSelectionDuplicatePolicy}' is invalid for a selection-capable Session context.");
             }
 
             return TryCreateCore(
                 orderedProfiles, initialDynamicCapacity, initialJoiningOpen,
-                actorSelectionPolicyProfile, "InitializeWithActorSelectionPolicy",
-                $"Player participation runtime context initialized with Actor selection policy '{actorSelectionPolicyProfile.DuplicatePolicy}'.",
+                actorSelectionDuplicatePolicy, "InitializeWithActorSelectionPolicy",
+                $"Player participation runtime context initialized with Actor selection policy '{actorSelectionDuplicatePolicy}'.",
                 resolvedSource, resolvedReason, out context);
         }
 
@@ -126,7 +127,7 @@ namespace Immersive.Framework.PlayerParticipation
             IReadOnlyList<PlayerSlotProfile> orderedProfiles,
             int initialDynamicCapacity,
             bool initialJoiningOpen,
-            PlayerActorSelectionPolicyProfile actorSelectionPolicyProfile,
+            PlayerActorSelectionDuplicatePolicy actorSelectionDuplicatePolicy,
             string operation,
             string successMessage,
             string source,
@@ -149,7 +150,7 @@ namespace Immersive.Framework.PlayerParticipation
             }
 
             context = new PlayerParticipationRuntimeContext(
-                records, initialDynamicCapacity, initialJoiningOpen, actorSelectionPolicyProfile);
+                records, initialDynamicCapacity, initialJoiningOpen, actorSelectionDuplicatePolicy);
             return context.CreateResult(
                 PlayerParticipationOperationStatus.Succeeded, operation,
                 resolvedSource, resolvedReason, successMessage, 0, default, default);
@@ -413,7 +414,7 @@ namespace Immersive.Framework.PlayerParticipation
                 true,
                 dynamicCapacity,
                 joiningOpen,
-                actorSelectionPolicyProfile,
+                actorSelectionDuplicatePolicy,
                 snapshots,
                 lastOperationStatus,
                 lastOperationMessage);
@@ -451,7 +452,7 @@ namespace Immersive.Framework.PlayerParticipation
                     "Actor selection request is invalid. Slot, source and reason are required and expected revision cannot be below -1.");
             }
 
-            if (actorSelectionPolicyProfile == null)
+            if (actorSelectionDuplicatePolicy == PlayerActorSelectionDuplicatePolicy.Unspecified)
             {
                 return CreateActorSelectionResult(
                     PlayerActorSelectionStatus.RejectedPolicyMissing,
@@ -467,7 +468,7 @@ namespace Immersive.Framework.PlayerParticipation
                     "Actor selection policy is not configured for this Session participation context.");
             }
 
-            if (!actorSelectionPolicyProfile.HasDefinedDuplicatePolicy)
+            if (!actorSelectionDuplicatePolicy.IsDefinedPolicy())
             {
                 return CreateActorSelectionResult(
                     PlayerActorSelectionStatus.RejectedPolicyInvalid,
@@ -480,7 +481,7 @@ namespace Immersive.Framework.PlayerParticipation
                     source,
                     reason,
                     default,
-                    $"Actor selection policy '{actorSelectionPolicyProfile.name}' has an invalid duplicate policy '{actorSelectionPolicyProfile.DuplicatePolicy}'.");
+                    $"Actor selection duplicate policy '{actorSelectionDuplicatePolicy}' is invalid for this Session participation context.");
             }
 
             SlotRecord record = FindSlot(request.PlayerSlotId);
@@ -686,7 +687,7 @@ namespace Immersive.Framework.PlayerParticipation
                     "Requested ActorProfile is already selected; no runtime state changed.");
             }
 
-            if (actorSelectionPolicyProfile.RequiresUniqueActors &&
+            if (actorSelectionDuplicatePolicy.RequiresUniqueActors() &&
                 TryFindDuplicateActorSelection(record, requestedActorProfileId, out SlotRecord conflictingRecord))
             {
                 return CreateActorSelectionResult(
@@ -762,7 +763,7 @@ namespace Immersive.Framework.PlayerParticipation
                 selectedActorProfile,
                 previousSelectionRevision,
                 currentSelectionRevision,
-                actorSelectionPolicyProfile,
+                actorSelectionDuplicatePolicy,
                 conflictingPlayerSlotId,
                 source,
                 reason,

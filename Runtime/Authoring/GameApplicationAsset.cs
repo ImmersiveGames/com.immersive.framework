@@ -43,8 +43,9 @@ namespace Immersive.Framework.Authoring
         private PlayerSlotProfile[] localPlayerSlots = Array.Empty<PlayerSlotProfile>();
 
         [SerializeField]
-        [Tooltip("Required Session policy for ActorProfile selection across joined local Player Slots. Runtime selection state remains outside this asset.")]
-        private PlayerActorSelectionPolicyProfile playerActorSelectionPolicyProfile;
+        [Tooltip("Session duplicate-selection rule for ActorProfile selection across joined local Player Slots. Runtime selection state remains outside this asset.")]
+        private PlayerActorSelectionDuplicatePolicy playerActorSelectionDuplicatePolicy =
+            PlayerActorSelectionDuplicatePolicy.AllowDuplicates;
 
         [SerializeField]
         [Tooltip("Controls whether this Game Application uses a canonical app/session scoped UIGlobal scene. Required loads it additively after the Startup Route Primary Scene is prepared, persists its UI roots under the FrameworkRuntimeHost, and discovers Transition/Loading adapters from it.")]
@@ -87,15 +88,14 @@ namespace Immersive.Framework.Authoring
         public int LocalPlayerSlotCount => localPlayerSlots != null ? localPlayerSlots.Length : 0;
 
         /// <summary>
-        /// Required immutable Session policy composed into PlayerParticipationRuntimeContext.
-        /// This asset never stores current Slot selections.
+        /// Session duplicate-selection policy composed into PlayerParticipationRuntimeContext.
+        /// This asset is the single authoring authority and never stores current Slot selections.
         /// </summary>
-        public PlayerActorSelectionPolicyProfile PlayerActorSelectionPolicyProfile =>
-            playerActorSelectionPolicyProfile;
+        public PlayerActorSelectionDuplicatePolicy PlayerActorSelectionDuplicatePolicy =>
+            playerActorSelectionDuplicatePolicy;
 
-        public bool HasPlayerActorSelectionPolicy =>
-            playerActorSelectionPolicyProfile != null &&
-            playerActorSelectionPolicyProfile.HasDefinedDuplicatePolicy;
+        public bool HasDefinedPlayerActorSelectionDuplicatePolicy =>
+            playerActorSelectionDuplicatePolicy.IsDefinedPolicy();
 
         public bool TryGetLocalPlayerSlot(int configuredIndex, out PlayerSlotProfile playerSlotProfile)
         {

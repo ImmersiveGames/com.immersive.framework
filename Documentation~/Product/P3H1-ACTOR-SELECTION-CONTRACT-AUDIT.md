@@ -1,5 +1,10 @@
 # P3H.1 — Actor Selection Contract Audit
 
+> Current contract correction (`PROD-ASSET-1C`, 2026-07-22): the original audit proposed a
+> `PlayerActorSelectionPolicyProfile`. Implementation evidence showed that its single enum is
+> an application-owned decision without reusable identity or composition. The accepted current
+> shape stores `PlayerActorSelectionDuplicatePolicy` directly on `GameApplicationAsset`.
+
 Status: decision gate complete  
 Type: architecture and product contract documentation  
 Date: 2026-07-13
@@ -121,7 +126,7 @@ copied ActorProfileId string
 
 ### Policy
 
-Introduce explicit immutable `PlayerActorSelectionPolicyProfile`.
+Configure an explicit `PlayerActorSelectionDuplicatePolicy` on `GameApplicationAsset`.
 
 Initial policies:
 
@@ -130,7 +135,7 @@ AllowDuplicates
 UniqueAcrossJoinedSlots
 ```
 
-Null is not an implicit policy.
+`Unspecified` is invalid and is not an implicit policy.
 
 ### Defaults
 
@@ -150,7 +155,7 @@ Future product surface:
 
 ```text
 Create > Immersive Framework > Actor > Actor Profile
-Create > Immersive Framework > Player > Actor Selection Policy Profile
+GameApplication > Local Player Participation > Actor Duplicate Selection
 
 Player Slot Profile
   Default Actor Profile optional
@@ -168,7 +173,7 @@ P3H.1 itself adds documentation only.
 
 ```text
 configure ordered PlayerSlotProfiles
-configure explicit Actor selection policy
+configure the explicit Actor selection policy on GameApplication
 create ActorProfiles
 optionally assign Slot defaults
 
@@ -239,7 +244,7 @@ P3H.2 should implement only:
 ```text
 ActorProfileId
 ActorProfile immutable asset
-PlayerActorSelectionPolicyProfile
+GameApplicationAsset.PlayerActorSelectionDuplicatePolicy
 optional PlayerSlotProfile.DefaultActorProfile
 Editor inspectors/validators/templates
 QA authoring smoke

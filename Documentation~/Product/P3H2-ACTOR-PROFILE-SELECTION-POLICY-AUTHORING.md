@@ -1,5 +1,11 @@
 # P3H.2 — Actor Profile and Selection Policy Authoring Foundation
 
+> Current contract correction (`PROD-ASSET-1C`, 2026-07-22):
+> `PlayerActorSelectionPolicyProfile` was removed because the policy contains only one
+> application-owned enum and has no reusable identity or rule set. Actor selection policy is
+> now configured directly on `GameApplicationAsset`. The remainder of this document records
+> the historical P3H.2 cut.
+
 ## Type
 
 Product authoring foundation and technical QA.
@@ -12,8 +18,10 @@ Introduce the immutable product assets required by the accepted Session Actor-se
 
 ```text
 Assets/Create/Immersive Framework/Actors/Actor Profile
-Assets/Create/Immersive Framework/Player/Actor Selection Policy Profile
-Assets/Create/Immersive Framework/Player/Templates/Actor Selection Policy Set
+
+GameApplication
+  Local Player Participation
+    Actor Duplicate Selection
 ```
 
 The existing `Player Slot Profile` inspector now exposes an optional direct `Default Actor Profile` reference.
@@ -30,8 +38,8 @@ ActorProfile
   Actor Role
   Logical Actor Host Prefab
 
-PlayerActorSelectionPolicyProfile
-  Duplicate Policy
+GameApplicationAsset
+  PlayerActorSelectionDuplicatePolicy
     AllowDuplicates
     UniqueAcrossJoinedSlots
 
@@ -53,7 +61,7 @@ Logical Actor Host contains exactly one Actor declaration
 Player Profiles use PlayerActorDeclaration with PlayerInput evidence
 non-Player Profiles use ActorDeclaration
 Profile classification matches declaration evidence
-selection Duplicate Policy is explicit
+GameApplication duplicate-selection policy is explicit
 Player Slot default Actor references a valid ActorProfile
 ```
 
@@ -61,14 +69,16 @@ Project validation reports missing Actor Profiles or selection policies as optio
 
 ## Templates
 
-The policy template command creates two valid editable assets:
+The GameApplication Inspector provides the two valid choices directly:
 
 ```text
 Actor Selection — Allow Duplicates
 Actor Selection — Unique Across Joined Slots
 ```
 
-The framework deliberately does not generate a placeholder `ActorProfile`, because a valid Profile requires a real project-owned Logical Actor Host prefab. Official tooling must not create knowingly invalid product assets.
+No Actor Selection Policy assets are generated. The framework also deliberately does not
+generate a placeholder `ActorProfile`, because a valid Profile requires a real project-owned
+Logical Actor Host prefab. Official tooling must not create knowingly invalid product assets.
 
 ## Out of scope
 
@@ -94,7 +104,7 @@ FIRSTGAME integration
 
 ```text
 Framework:
-P3H.2 — add Actor Profile and selection policy authoring
+PROD-ASSET-1C — configure Actor selection policy directly on GameApplication
 
 QAFramework:
 P3H.2 — add Actor selection authoring QA

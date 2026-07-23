@@ -1,5 +1,9 @@
 # P3H.3 — Session Actor Selection Runtime Foundation
 
+> Current contract correction (`PROD-ASSET-1C`, 2026-07-22): the selection-capable initializer
+> now receives `PlayerActorSelectionDuplicatePolicy` directly. Runtime snapshots and operation
+> results carry the enum value and no longer reference a selection-policy ScriptableObject.
+
 Status: implementation cut; Unity compile and QA smoke pending.  
 Type: runtime product API and synthetic technical QA.
 
@@ -34,7 +38,7 @@ P3H.3 adds:
 
 ```text
 TryCreateWithActorSelectionPolicy(...)
-  explicit non-null valid PlayerActorSelectionPolicyProfile
+  explicit valid PlayerActorSelectionDuplicatePolicy
   selection-capable Session context
 ```
 
@@ -86,7 +90,7 @@ Session context Revision
 
 Idempotent operations do not increment revisions.
 
-`PlayerParticipationSnapshot` now exposes the policy plus selected/joined-unselected counts for later P3H.4 readiness evaluation.
+`PlayerParticipationSnapshot` exposes the duplicate-policy enum plus selected/joined-unselected counts for later P3H.4 readiness evaluation.
 
 ## Failure policy
 

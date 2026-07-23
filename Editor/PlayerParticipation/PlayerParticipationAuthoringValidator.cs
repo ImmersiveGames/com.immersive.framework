@@ -35,20 +35,13 @@ namespace Immersive.Framework.Editor.Editor.PlayerParticipation
                 return report;
             }
 
-            PlayerActorSelectionPolicyProfile actorSelectionPolicy =
-                gameApplication.PlayerActorSelectionPolicyProfile;
-            if (actorSelectionPolicy == null)
+            PlayerActorSelectionDuplicatePolicy actorSelectionPolicy =
+                gameApplication.PlayerActorSelectionDuplicatePolicy;
+            if (!gameApplication.HasDefinedPlayerActorSelectionDuplicatePolicy)
             {
                 report.AddError(
-                    "Player Actor Selection Policy is missing. Assign an explicit PlayerActorSelectionPolicyProfile; the framework does not silently assume Allow Duplicates.",
+                    $"Player Actor duplicate-selection policy '{actorSelectionPolicy}' is invalid. Choose an explicit value in the Game Application.",
                     gameApplication);
-            }
-            else
-            {
-                report.AddRange(
-                    PlayerActorSelectionAuthoringValidator.ValidateSelectionPolicyProfile(
-                        actorSelectionPolicy,
-                        validationMode));
             }
 
             IReadOnlyList<PlayerSlotProfile> configuredSlots = gameApplication.LocalPlayerSlots;
@@ -115,7 +108,7 @@ namespace Immersive.Framework.Editor.Editor.PlayerParticipation
             if (report.IsValid)
             {
                 report.AddInfo(
-                    $"Local Player participation configuration is valid. configuredSlots='{configuredSlots.Count}' allocationPolicy='FirstAvailableByConfiguredOrder' actorSelectionPolicy='{actorSelectionPolicy.DuplicatePolicy}'.",
+                    $"Local Player participation configuration is valid. configuredSlots='{configuredSlots.Count}' allocationPolicy='FirstAvailableByConfiguredOrder' actorSelectionPolicy='{actorSelectionPolicy}'.",
                     gameApplication);
             }
 

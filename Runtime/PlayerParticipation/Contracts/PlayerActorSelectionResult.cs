@@ -20,7 +20,7 @@ namespace Immersive.Framework.PlayerParticipation
             ActorProfile selectedActorProfile,
             int previousSelectionRevision,
             int selectionRevision,
-            PlayerActorSelectionPolicyProfile policyProfile,
+            PlayerActorSelectionDuplicatePolicy duplicatePolicy,
             PlayerSlotId conflictingPlayerSlotId,
             string source,
             string reason,
@@ -36,7 +36,7 @@ namespace Immersive.Framework.PlayerParticipation
             SelectedActorProfile = selectedActorProfile;
             PreviousSelectionRevision = previousSelectionRevision;
             SelectionRevision = selectionRevision;
-            PolicyProfile = policyProfile;
+            DuplicatePolicy = duplicatePolicy;
             ConflictingPlayerSlotId = conflictingPlayerSlotId;
             Source = source ?? string.Empty;
             Reason = reason ?? string.Empty;
@@ -55,7 +55,7 @@ namespace Immersive.Framework.PlayerParticipation
         public ActorProfileId SelectedActorProfileId => ResolveId(SelectedActorProfile);
         public int PreviousSelectionRevision { get; }
         public int SelectionRevision { get; }
-        public PlayerActorSelectionPolicyProfile PolicyProfile { get; }
+        public PlayerActorSelectionDuplicatePolicy DuplicatePolicy { get; }
         public PlayerSlotId ConflictingPlayerSlotId { get; }
         public string Source { get; }
         public string Reason { get; }
@@ -86,7 +86,7 @@ namespace Immersive.Framework.PlayerParticipation
                 null,
                 0,
                 0,
-                null,
+                PlayerActorSelectionDuplicatePolicy.Unspecified,
                 default,
                 request.Source,
                 request.Reason,
@@ -107,7 +107,7 @@ namespace Immersive.Framework.PlayerParticipation
                 $"slot='{(PlayerSlotId.IsValid ? PlayerSlotId.StableText : string.Empty)}' " +
                 $"previousActor='{IdentityText(PreviousActorProfileId)}' selectedActor='{IdentityText(SelectedActorProfileId)}' " +
                 $"previousSelectionRevision='{PreviousSelectionRevision}' selectionRevision='{SelectionRevision}' " +
-                $"policy='{(PolicyProfile != null ? PolicyProfile.DuplicatePolicy.ToString() : string.Empty)}' " +
+                $"policy='{(DuplicatePolicy.IsDefinedPolicy() ? DuplicatePolicy.ToString() : string.Empty)}' " +
                 $"conflictingSlot='{(ConflictingPlayerSlotId.IsValid ? ConflictingPlayerSlotId.StableText : string.Empty)}' " +
                 $"source='{Source}' reason='{Reason}' message='{Message}'";
         }

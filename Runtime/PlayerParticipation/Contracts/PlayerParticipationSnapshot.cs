@@ -18,7 +18,7 @@ namespace Immersive.Framework.PlayerParticipation
             bool initialized,
             int dynamicCapacity,
             bool joiningOpen,
-            PlayerActorSelectionPolicyProfile actorSelectionPolicyProfile,
+            PlayerActorSelectionDuplicatePolicy actorSelectionDuplicatePolicy,
             PlayerSlotRuntimeSnapshot[] slots,
             PlayerParticipationOperationStatus lastOperationStatus,
             string lastOperationMessage)
@@ -28,7 +28,7 @@ namespace Immersive.Framework.PlayerParticipation
             IsInitialized = initialized;
             DynamicCapacity = dynamicCapacity;
             JoiningOpen = joiningOpen;
-            ActorSelectionPolicyProfile = actorSelectionPolicyProfile;
+            ActorSelectionDuplicatePolicy = actorSelectionDuplicatePolicy;
             this.slots = slots != null
                 ? (PlayerSlotRuntimeSnapshot[])slots.Clone()
                 : Array.Empty<PlayerSlotRuntimeSnapshot>();
@@ -78,16 +78,10 @@ namespace Immersive.Framework.PlayerParticipation
 
         public bool JoiningOpen { get; }
 
-        public PlayerActorSelectionPolicyProfile ActorSelectionPolicyProfile { get; }
-
         public bool HasActorSelectionPolicy =>
-            ActorSelectionPolicyProfile != null &&
-            ActorSelectionPolicyProfile.HasDefinedDuplicatePolicy;
+            ActorSelectionDuplicatePolicy.IsDefinedPolicy();
 
-        public PlayerActorSelectionDuplicatePolicy ActorSelectionDuplicatePolicy =>
-            HasActorSelectionPolicy
-                ? ActorSelectionPolicyProfile.DuplicatePolicy
-                : PlayerActorSelectionDuplicatePolicy.Unspecified;
+        public PlayerActorSelectionDuplicatePolicy ActorSelectionDuplicatePolicy { get; }
 
         public IReadOnlyList<PlayerSlotRuntimeSnapshot> Slots => slots;
 
@@ -128,7 +122,7 @@ namespace Immersive.Framework.PlayerParticipation
                 false,
                 0,
                 false,
-                null,
+                PlayerActorSelectionDuplicatePolicy.Unspecified,
                 Array.Empty<PlayerSlotRuntimeSnapshot>(),
                 status,
                 message);

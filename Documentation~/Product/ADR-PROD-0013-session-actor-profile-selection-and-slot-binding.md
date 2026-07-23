@@ -2,6 +2,7 @@
 
 Status: Accepted  
 Date: 2026-07-13  
+Revised: 2026-07-22 (`PROD-ASSET-1C`)
 Package: `com.immersive.framework`  
 Area: Player Participation / Actor Selection / Session State  
 Related: `ADR-PROD-0007`, `ADR-PROD-0008`, `ADR-PROD-0009`, `ADR-PROD-0010`, `ADR-PROD-0011`, `ADR-PROD-0012`
@@ -225,7 +226,7 @@ PlayerActorSelectionResult
   SelectedActorProfile
   PreviousSelectionRevision
   SelectionRevision
-  PolicyProfile
+  DuplicatePolicy
   Source
   Reason
   Message
@@ -254,11 +255,11 @@ A `LocalPlayerJoinResult` created before later selection is not rewritten.
 
 Duplicate rules are explicit Session product policy, not Slot allocation behavior.
 
-Introduce an immutable policy Profile:
+The `GameApplicationAsset` directly owns the duplicate-selection rule:
 
 ```text
-PlayerActorSelectionPolicyProfile
-  DuplicatePolicy
+GameApplicationAsset
+  PlayerActorSelectionDuplicatePolicy
 ```
 
 Initial duplicate policies:
@@ -271,9 +272,17 @@ UniqueAcrossJoinedSlots
   at most one Joined Slot may select a given ActorProfileId
 ```
 
-The policy is supplied explicitly when the Session participation runtime is composed.
+This policy is one application-level enum decision, not a reusable product definition.
+Creating a separate ScriptableObject for it adds navigation and an artificial asset identity
+without providing a reusable rule set. This is consistent with `ADR-PROD-0009`: Policy Profiles
+are appropriate for reusable rule sets shared by several product surfaces, not every enum-valued
+configuration.
 
-`null` is not an implicit `AllowDuplicates` fallback.
+The enum value is supplied explicitly when the Session participation runtime is composed.
+
+New `GameApplicationAsset` instances serialize `AllowDuplicates` as their explicit default.
+`Unspecified` or an undefined serialized value is invalid and never becomes an implicit
+`AllowDuplicates` fallback at runtime.
 
 The uniqueness check and state mutation are atomic within the Session context:
 
@@ -412,7 +421,6 @@ RejectedActorProfileInvalid
 RejectedStaleSelectionRevision
 RejectedDuplicateActorSelection
 RejectedLogicalActorAlreadyPrepared
-RejectedPolicyMissing
 RejectedPolicyInvalid
 ```
 
@@ -454,7 +462,7 @@ Do not assign ActorId during selection.
 
 Do not silently select the first ActorProfile found in the project.
 
-Do not treat null policy as AllowDuplicates.
+Do not treat Unspecified or an undefined policy as AllowDuplicates.
 
 Do not compare uniqueness by display name, icon, color or prefab name.
 
@@ -491,7 +499,7 @@ Join succeeds independently from Actor selection.
 
 Selection targets PlayerSlotId and never Unity playerIndex.
 
-Selection policy is explicit and immutable.
+Selection policy is an explicit GameApplication value and immutable during the Session.
 
 Unique selection is checked and committed atomically.
 
@@ -541,7 +549,7 @@ Selection persists across contextual transitions without preserving logical host
 
 Activity readiness can use the already-defined SelectedActors level.
 
-Duplicate rules become reusable policy rather than ad hoc UI behavior.
+Duplicate rules become an explicit application decision rather than ad hoc UI behavior.
 ```
 
 ### Cost
@@ -553,7 +561,7 @@ PlayerSlotProfile gains an optional ActorProfile dependency.
 
 Session Slot snapshots and context operations require extension.
 
-Selection policy authoring and validation are required.
+GameApplication policy authoring and validation are required.
 
 Logical materialization must later consume and freeze selection explicitly.
 ```
@@ -562,7 +570,7 @@ Logical materialization must later consume and freeze selection explicitly.
 
 ```text
 P3H.2
-  ActorProfile + ActorProfileId + selection policy Profile foundation
+  ActorProfile + ActorProfileId + initial selection policy foundation
   PlayerSlotProfile optional default reference
   Editor validation and QA authoring smoke
 
@@ -575,6 +583,11 @@ P3H.4
   Runtime Host composition and public authoring/request surface
   SelectedActors readiness integration
   Play Mode QA
+
+PROD-ASSET-1C
+  remove the non-reusable PlayerActorSelectionPolicyProfile
+  make GameApplicationAsset the direct enum authority
+  carry only the enum through runtime snapshots and results
 
 Later P3I
   logical Actor materialization from selected ActorProfile

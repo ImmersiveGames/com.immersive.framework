@@ -1,3 +1,5 @@
+using System;
+
 namespace Immersive.Framework.PlayerParticipation
 {
     /// <summary>
@@ -8,5 +10,19 @@ namespace Immersive.Framework.PlayerParticipation
         Unspecified = 0,
         AllowDuplicates = 10,
         UniqueAcrossJoinedSlots = 20
+    }
+
+    internal static class PlayerActorSelectionDuplicatePolicyExtensions
+    {
+        internal static bool IsDefinedPolicy(this PlayerActorSelectionDuplicatePolicy policy)
+        {
+            return Enum.IsDefined(typeof(PlayerActorSelectionDuplicatePolicy), policy) &&
+                policy != PlayerActorSelectionDuplicatePolicy.Unspecified;
+        }
+
+        internal static bool RequiresUniqueActors(this PlayerActorSelectionDuplicatePolicy policy)
+        {
+            return policy == PlayerActorSelectionDuplicatePolicy.UniqueAcrossJoinedSlots;
+        }
     }
 }

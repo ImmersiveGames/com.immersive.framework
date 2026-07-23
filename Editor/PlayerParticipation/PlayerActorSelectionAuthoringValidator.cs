@@ -10,7 +10,7 @@ using UnityEngine.InputSystem;
 namespace Immersive.Framework.Editor.Editor.PlayerParticipation
 {
     /// <summary>
-    /// Non-mutating authoring validation for Actor Profiles and Player selection policies.
+    /// Non-mutating authoring validation for Actor Profiles.
     /// </summary>
     internal static class PlayerActorSelectionAuthoringValidator
     {
@@ -98,48 +98,6 @@ namespace Immersive.Framework.Editor.Editor.PlayerParticipation
             return report;
         }
 
-        internal static FrameworkAuthoringValidationReport ValidateSelectionPolicyProfile(
-            PlayerActorSelectionPolicyProfile profile)
-        {
-            return ValidateSelectionPolicyProfile(profile, FrameworkValidationMode.Standard);
-        }
-
-        internal static FrameworkAuthoringValidationReport ValidateSelectionPolicyProfile(
-            PlayerActorSelectionPolicyProfile profile,
-            FrameworkValidationMode validationMode)
-        {
-            var report = new FrameworkAuthoringValidationReport(validationMode);
-
-            if (profile == null)
-            {
-                report.AddError("Player Actor Selection Policy Profile is missing.", null);
-                return report;
-            }
-
-            if (string.IsNullOrWhiteSpace(profile.DisplayName))
-            {
-                report.AddWarning(
-                    "Player Actor Selection Policy Profile has no Display Name. Give the reusable policy a designer-facing name.",
-                    profile);
-            }
-
-            if (!profile.HasDefinedDuplicatePolicy)
-            {
-                report.AddError(
-                    $"Player Actor Selection Policy Profile '{profile.name}' requires an explicit Duplicate Policy.",
-                    profile);
-            }
-
-            if (report.IsValid)
-            {
-                report.AddInfo(
-                    $"Player Actor Selection Policy Profile is valid. duplicatePolicy='{profile.DuplicatePolicy}'.",
-                    profile);
-            }
-
-            return report;
-        }
-
         internal static FrameworkAuthoringValidationReport ValidateProjectActorSelectionProfiles(
             FrameworkValidationMode validationMode)
         {
@@ -176,15 +134,6 @@ namespace Immersive.Framework.Editor.Editor.PlayerParticipation
                 validActorProfiles++;
             }
 
-            string[] policyGuids = AssetDatabase.FindAssets("t:PlayerActorSelectionPolicyProfile");
-            for (int index = 0; index < policyGuids.Length; index++)
-            {
-                string assetPath = AssetDatabase.GUIDToAssetPath(policyGuids[index]);
-                PlayerActorSelectionPolicyProfile profile =
-                    AssetDatabase.LoadAssetAtPath<PlayerActorSelectionPolicyProfile>(assetPath);
-                report.AddRange(ValidateSelectionPolicyProfile(profile, validationMode));
-            }
-
             if (actorProfileGuids.Length == 0)
             {
                 report.AddOptionalSkip(
@@ -192,17 +141,10 @@ namespace Immersive.Framework.Editor.Editor.PlayerParticipation
                     null);
             }
 
-            if (policyGuids.Length == 0)
-            {
-                report.AddOptionalSkip(
-                    "No Player Actor Selection Policy Profiles exist yet. Create the official policy set before composing Session Actor selection runtime.",
-                    null);
-            }
-
             if (report.IsValid)
             {
                 report.AddInfo(
-                    $"Actor selection authoring validation passed. actorProfiles='{validActorProfiles}' policyProfiles='{policyGuids.Length}'.",
+                    $"Actor selection authoring validation passed. actorProfiles='{validActorProfiles}'. Duplicate-selection policy is configured directly by each Game Application.",
                     null);
             }
 

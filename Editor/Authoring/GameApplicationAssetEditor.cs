@@ -1,7 +1,9 @@
+using System;
 using Immersive.Framework.Authoring;
 using Immersive.Framework.Editor.Editor.PlayerParticipation;
 using Immersive.Framework.Editor.Editor.Settings;
 using Immersive.Framework.Editor.Editor.Validation;
+using Immersive.Framework.PlayerParticipation;
 using UnityEditor;
 using UnityEditorInternal;
 using UnityEngine;
@@ -14,7 +16,7 @@ namespace Immersive.Framework.Editor.Editor.Authoring
         private SerializedProperty _applicationName;
         private SerializedProperty _startupRoute;
         private SerializedProperty _localPlayerSlots;
-        private SerializedProperty _playerActorSelectionPolicyProfile;
+        private SerializedProperty _playerActorSelectionDuplicatePolicy;
         private SerializedProperty _globalUiScenePolicy;
         private SerializedProperty _globalUiScenePath;
         private SerializedProperty _globalUiSceneName;
@@ -26,7 +28,7 @@ namespace Immersive.Framework.Editor.Editor.Authoring
             _applicationName = serializedObject.FindProperty("applicationName");
             _startupRoute = serializedObject.FindProperty("startupRoute");
             _localPlayerSlots = serializedObject.FindProperty("localPlayerSlots");
-            _playerActorSelectionPolicyProfile = serializedObject.FindProperty("playerActorSelectionPolicyProfile");
+            _playerActorSelectionDuplicatePolicy = serializedObject.FindProperty("playerActorSelectionDuplicatePolicy");
             _globalUiScenePolicy = serializedObject.FindProperty("globalUiScenePolicy");
             _globalUiScenePath = serializedObject.FindProperty("globalUiScenePath");
             _globalUiSceneName = serializedObject.FindProperty("globalUiSceneName");
@@ -111,27 +113,27 @@ namespace Immersive.Framework.Editor.Editor.Authoring
         {
             EditorGUILayout.LabelField("Local Player Participation", EditorStyles.boldLabel);
             EditorGUILayout.HelpBox(
-                "Configure the Session Actor selection policy and add Player Slot Profiles in the exact order local join must allocate them. Slot defaults are static intent and are applied only by an explicit runtime selection operation after join.",
+                "Choose the Session duplicate-selection rule and add Player Slot Profiles in the exact order local join must allocate them. Slot defaults are static intent and are applied only by an explicit runtime selection operation after join.",
                 MessageType.Info);
 
             EditorGUILayout.PropertyField(
-                _playerActorSelectionPolicyProfile,
-                new GUIContent("Actor Selection Policy"));
+                _playerActorSelectionDuplicatePolicy,
+                new GUIContent("Actor Duplicate Selection"));
 
-            if (_playerActorSelectionPolicyProfile.objectReferenceValue == null)
+            var duplicatePolicy =
+                (PlayerActorSelectionDuplicatePolicy)_playerActorSelectionDuplicatePolicy.intValue;
+            if (!Enum.IsDefined(typeof(PlayerActorSelectionDuplicatePolicy), duplicatePolicy) ||
+                duplicatePolicy == PlayerActorSelectionDuplicatePolicy.Unspecified)
             {
                 EditorGUILayout.HelpBox(
-                    "Actor Selection Policy is required. The framework does not silently assume Allow Duplicates.",
+                    "Actor Duplicate Selection must be explicit. Choose Allow Duplicates or Unique Across Joined Slots.",
                     MessageType.Error);
             }
             else
             {
-                var policy = _playerActorSelectionPolicyProfile.objectReferenceValue as Immersive.Framework.PlayerParticipation.PlayerActorSelectionPolicyProfile;
                 EditorGUILayout.HelpBox(
-                    policy != null
-                        ? $"Active Session duplicate-selection rule: {policy.DuplicatePolicy}."
-                        : "The assigned Actor Selection Policy reference is invalid.",
-                    policy != null ? MessageType.None : MessageType.Error);
+                    $"Active Session duplicate-selection rule: {duplicatePolicy}.",
+                    MessageType.None);
             }
 
             EditorGUILayout.Space(4);
