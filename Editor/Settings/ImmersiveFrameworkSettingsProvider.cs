@@ -9,6 +9,10 @@ namespace Immersive.Framework.Editor.Editor.Settings
     internal static class ImmersiveFrameworkSettingsProvider
     {
         private static FrameworkAuthoringValidationReport _lastModelReadinessReport;
+        private static bool _showAdvancedDiagnostics;
+        private static bool _hasBootValidation;
+        private static bool _lastBootValidationSucceeded;
+        private static string _lastBootValidationMessage = string.Empty;
 
         [SettingsProvider]
         public static SettingsProvider CreateProvider()
@@ -46,77 +50,181 @@ namespace Immersive.Framework.Editor.Editor.Settings
             if (settings == null)
             {
                 EditorGUILayout.HelpBox(
-                    "Unable to create Immersive Framework settings asset.",
+                    "Unable to resolve a unique Immersive Framework settings asset.",
                     MessageType.Error);
                 return;
             }
 
             EditorGUILayout.LabelField("Immersive Framework", EditorStyles.boldLabel);
-            EditorGUILayout.HelpBox(
-                "Project-level entry point for the framework. Assign one Game Application here; gameplay lifecycle concepts are added only when a real framework cut needs them.",
-                MessageType.Info);
 
             var serializedSettings = new SerializedObject(settings);
+            serializedSettings.Update();
             var activeGameApplication = serializedSettings.FindProperty("activeGameApplication");
             var editorPlayModeStartup = serializedSettings.FindProperty("editorPlayModeStartup");
             var loggingConfig = serializedSettings.FindProperty("loggingConfig");
 
             EditorGUILayout.Space(6);
-            EditorGUILayout.LabelField("Editor Play Mode", EditorStyles.boldLabel);
-            EditorGUILayout.HelpBox(
-                "Controls how the framework behaves when entering Play Mode in the Unity Editor. Player builds always use Framework Startup.",
-                MessageType.None);
-            EditorGUILayout.PropertyField(editorPlayModeStartup, new GUIContent("Startup"));
+            DrawEditorPlayMode(editorPlayModeStartup);
 
-            EditorGUILayout.Space(6);
+            EditorGUILayout.Space(8);
+            DrawApplication(activeGameApplication);
+
+            EditorGUILayout.Space(8);
+            DrawLoggingSettings(loggingConfig);
+
+            EditorGUILayout.Space(8);
+            DrawBootValidation(settings);
+
+            EditorGUILayout.Space(8);
+            DrawAdvancedDiagnostics(settings, loggingConfig.objectReferenceValue);
+
+            if (serializedSettings.ApplyModifiedProperties())
+            {
+                _hasBootValidation = false;
+                _lastModelReadinessReport = null;
+            }
+        }
+
+        private static void DrawEditorPlayMode(SerializedProperty editorPlayModeStartup)
+        {
+            EditorGUILayout.LabelField("Editor Play Mode", EditorStyles.boldLabel);
+            EditorGUILayout.PropertyField(editorPlayModeStartup, new GUIContent("Startup"));
+        }
+
+        private static void DrawApplication(SerializedProperty activeGameApplication)
+        {
             EditorGUILayout.LabelField("Application", EditorStyles.boldLabel);
             EditorGUILayout.PropertyField(activeGameApplication, new GUIContent("Active Game Application"));
 
+            var gameApplication = activeGameApplication.objectReferenceValue as GameApplicationAsset;
+            DrawStatusRow(
+                "Project Status",
+                gameApplication != null
+                    ? $"● Active — {gameApplication.ApplicationName}"
+                    : "○ Not configured");
+
             using (new EditorGUILayout.HorizontalScope())
             {
-                if (GUILayout.Button("Create and Assign Game Application"))
+                if (gameApplication == null)
                 {
-                    var created = ImmersiveFrameworkEditorSettingsUtility.CreateGameApplicationAsset();
-                    if (created != null)
+                    if (GUILayout.Button("Create Game Application"))
                     {
-                        activeGameApplication.objectReferenceValue = created;
-                        Selection.activeObject = created;
+                        var created = ImmersiveFrameworkEditorSettingsUtility.CreateGameApplicationAsset();
+                        if (created != null)
+                        {
+                            activeGameApplication.objectReferenceValue = created;
+                            Selection.activeObject = created;
+                        }
                     }
-                }
 
-                using (new EditorGUI.DisabledScope(activeGameApplication.objectReferenceValue == null))
+                    GUILayout.FlexibleSpace();
+                    EditorGUILayout.LabelField("Assign an existing asset above", EditorStyles.miniLabel);
+                }
+                else
                 {
-                    if (GUILayout.Button("Select Game Application"))
+                    if (GUILayout.Button("Open Application"))
                     {
-                        Selection.activeObject = activeGameApplication.objectReferenceValue;
+                        Selection.activeObject = gameApplication;
+                        EditorGUIUtility.PingObject(gameApplication);
+                    }
+
+                    if (GUILayout.Button("Replace"))
+                    {
+                        activeGameApplication.objectReferenceValue = null;
+                        GUI.FocusControl(null);
                     }
                 }
             }
+        }
 
-            EditorGUILayout.Space(6);
-            DrawLoggingSettings(loggingConfig);
+        private static void DrawLoggingSettings(SerializedProperty loggingConfig)
+        {
+            EditorGUILayout.LabelField("Logging", EditorStyles.boldLabel);
+            EditorGUILayout.PropertyField(loggingConfig, new GUIContent("Logging Config"));
 
-            serializedSettings.ApplyModifiedProperties();
+            var config = loggingConfig.objectReferenceValue;
+            using (new EditorGUILayout.HorizontalScope())
+            {
+                if (config == null)
+                {
+                    if (GUILayout.Button("Create Logging Config"))
+                    {
+                        var created = ImmersiveFrameworkEditorSettingsUtility.CreateLoggingConfigAsset();
+                        if (created != null)
+                        {
+                            loggingConfig.objectReferenceValue = created;
+                            Selection.activeObject = created;
+                        }
+                    }
+                }
+                else
+                {
+                    if (GUILayout.Button("Open Logging Config"))
+                    {
+                        Selection.activeObject = config;
+                        EditorGUIUtility.PingObject(config);
+                    }
 
-            EditorGUILayout.Space(8);
-            DrawBootStatus(settings);
+                    if (GUILayout.Button("Replace"))
+                    {
+                        loggingConfig.objectReferenceValue = null;
+                        GUI.FocusControl(null);
+                    }
+                }
+            }
+        }
 
-            EditorGUILayout.Space(8);
+        private static void DrawBootValidation(ImmersiveFrameworkSettingsAsset settings)
+        {
+            EditorGUILayout.LabelField("Configuration", EditorStyles.boldLabel);
+            DrawStatusRow(
+                "Status",
+                !_hasBootValidation
+                    ? "○ Not validated"
+                    : _lastBootValidationSucceeded
+                        ? $"● Valid — {_lastBootValidationMessage}"
+                        : $"● Configuration error — {_lastBootValidationMessage}");
+
+            if (GUILayout.Button("Validate Configuration"))
+            {
+                var bootStatus = FrameworkBootValidator.Validate(settings);
+                _hasBootValidation = true;
+                _lastBootValidationSucceeded = bootStatus.Succeeded;
+                _lastBootValidationMessage = bootStatus.Message;
+            }
+        }
+
+        private static void DrawAdvancedDiagnostics(
+            ImmersiveFrameworkSettingsAsset settings,
+            Object loggingConfig)
+        {
+            _showAdvancedDiagnostics = EditorGUILayout.Foldout(
+                _showAdvancedDiagnostics,
+                "Advanced / Diagnostics",
+                true);
+            if (!_showAdvancedDiagnostics)
+            {
+                return;
+            }
+
+            EditorGUI.indentLevel++;
+
             DrawModelReadiness(settings);
 
-            EditorGUILayout.Space(8);
-            DrawConfigurationFiles(settings, loggingConfig.objectReferenceValue);
+            EditorGUILayout.Space(6);
+            DrawConfigurationFiles(settings, loggingConfig);
 
-            EditorGUILayout.Space(8);
-            DrawCurrentScope();
+            EditorGUILayout.Space(6);
+            EditorGUILayout.HelpBox(
+                "Project Settings owns the active Game Application, Editor Play Mode startup and logging configuration. Mutable player participation, Actor selection and scene runtime state remain outside this asset.",
+                MessageType.None);
+
+            EditorGUI.indentLevel--;
         }
 
         private static void DrawModelReadiness(ImmersiveFrameworkSettingsAsset settings)
         {
             EditorGUILayout.LabelField("Model Readiness", EditorStyles.boldLabel);
-            EditorGUILayout.HelpBox(
-                "Runs the Editor-only readiness check for the minimum 1.0 authoring model, including ordered Local Player Slots, reusable participation Profiles and explicit Activity Projection/Requirements authoring. The check reports issues only; it does not create assets, modify settings or apply fallback.",
-                MessageType.None);
 
             using (new EditorGUILayout.HorizontalScope())
             {
@@ -140,78 +248,20 @@ namespace Immersive.Framework.Editor.Editor.Settings
             FrameworkAuthoringValidationGui.DrawIssues(_lastModelReadinessReport, false);
         }
 
-        private static void DrawLoggingSettings(SerializedProperty loggingConfig)
-        {
-            EditorGUILayout.LabelField("Logging", EditorStyles.boldLabel);
-            EditorGUILayout.HelpBox(
-                "Optional configuration for framework logs. Leave empty to use the built-in default: Info and above, single-line console output, and no stack trace for regular Log entries.",
-                MessageType.None);
-            EditorGUILayout.PropertyField(loggingConfig, new GUIContent("Logging Config"));
-
-            using (new EditorGUILayout.HorizontalScope())
-            {
-                if (GUILayout.Button("Create and Assign Logging Config"))
-                {
-                    var created = ImmersiveFrameworkEditorSettingsUtility.CreateLoggingConfigAsset();
-                    if (created != null)
-                    {
-                        loggingConfig.objectReferenceValue = created;
-                        Selection.activeObject = created;
-                    }
-                }
-
-                using (new EditorGUI.DisabledScope(loggingConfig.objectReferenceValue == null))
-                {
-                    if (GUILayout.Button("Select Logging Config"))
-                    {
-                        Selection.activeObject = loggingConfig.objectReferenceValue;
-                    }
-                }
-            }
-
-            EditorGUILayout.HelpBox(
-                "Logging Config rules are evaluated by owner type first, then namespace/category prefix, then the default minimum level. Use namespace rules to hide verbose framework areas without changing code.",
-                MessageType.None);
-        }
-
-        private static void DrawBootStatus(ImmersiveFrameworkSettingsAsset settings)
-        {
-            EditorGUILayout.LabelField("Boot Status", EditorStyles.boldLabel);
-
-            if (settings.EditorPlayModeStartup == FrameworkEditorPlayModeStartup.CurrentSceneOnly)
-            {
-                EditorGUILayout.HelpBox(
-                    "Skipped in Editor Play Mode: Startup is set to Current Scene Only. The open scene will run without Game Application, Game Flow, or Scene Lifecycle boot.",
-                    MessageType.Info);
-                return;
-            }
-
-            var bootStatus = FrameworkBootValidator.Validate(settings);
-            if (bootStatus.Succeeded)
-            {
-                EditorGUILayout.HelpBox(
-                    $"Ready: {bootStatus.Message} Validation Mode: {bootStatus.ValidationMode}. {FrameworkValidationModePolicy.GetSummary(bootStatus.ValidationMode)}",
-                    MessageType.Info);
-            }
-            else
-            {
-                EditorGUILayout.HelpBox(
-                    $"Required: {bootStatus.Message}",
-                    MessageType.Error);
-            }
-        }
-
-        private static void DrawConfigurationFiles(ImmersiveFrameworkSettingsAsset settings, Object loggingConfig)
+        private static void DrawConfigurationFiles(
+            ImmersiveFrameworkSettingsAsset settings,
+            Object loggingConfig)
         {
             EditorGUILayout.LabelField("Configuration Files", EditorStyles.boldLabel);
 
             using (new EditorGUI.DisabledScope(true))
             {
-                EditorGUILayout.TextField("Settings Asset", ImmersiveFrameworkEditorSettingsUtility.GetSettingsAssetPath(settings));
-                string loggingConfigPath = loggingConfig != null
-                    ? AssetDatabase.GetAssetPath(loggingConfig)
-                    : "Not assigned";
-                EditorGUILayout.TextField("Logging Config", loggingConfigPath);
+                EditorGUILayout.TextField(
+                    "Settings Asset",
+                    ImmersiveFrameworkEditorSettingsUtility.GetSettingsAssetPath(settings));
+                EditorGUILayout.TextField(
+                    "Logging Config",
+                    loggingConfig != null ? AssetDatabase.GetAssetPath(loggingConfig) : "Not assigned");
             }
 
             using (new EditorGUILayout.HorizontalScope())
@@ -228,12 +278,16 @@ namespace Immersive.Framework.Editor.Editor.Settings
             }
         }
 
-        private static void DrawCurrentScope()
+        private static void DrawStatusRow(string label, string status)
         {
-            EditorGUILayout.LabelField("Current Scope", EditorStyles.boldLabel);
-            EditorGUILayout.HelpBox(
-                "This settings page assigns the active Game Application, controls Editor Play Mode startup, configures framework logging, previews boot validation, and runs the complete Model Readiness aggregation for ordered Slots and Activity participation authoring. Mutable join, selection, runtime projection, materialization and occupancy remain outside Project Settings.",
-                MessageType.None);
+            using (new EditorGUILayout.HorizontalScope())
+            {
+                EditorGUILayout.PrefixLabel(label);
+                EditorGUILayout.SelectableLabel(
+                    status,
+                    EditorStyles.label,
+                    GUILayout.Height(EditorGUIUtility.singleLineHeight));
+            }
         }
     }
 }

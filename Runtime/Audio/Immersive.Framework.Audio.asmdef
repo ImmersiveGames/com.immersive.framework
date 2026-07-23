@@ -3,6 +3,7 @@
   "rootNamespace": "Immersive.Framework.Audio",
   "references": [
     "Immersive.Framework.Runtime",
+    "Immersive.Logging.Runtime",
     "Immersive.Audio.Runtime",
     "Immersive.Audio.Unity"
   ],
