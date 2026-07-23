@@ -51,7 +51,12 @@ namespace Immersive.Framework.Editor.Editor.Authoring
             EditorGUILayout.PropertyField(_description, new GUIContent("Description"));
             if (_activityId == null || !ActivityId.IsValidText(_activityId.stringValue))
             {
-                EditorGUILayout.HelpBox("Activity ID is missing or malformed. Use the explicit Activity ID Migration tool for existing assets; it never runs automatically.", MessageType.Error);
+                EditorGUILayout.HelpBox("Activity ID is missing or malformed. Generate a new canonical ID explicitly, or use Activity ID Migration for a coordinated project migration.", MessageType.Error);
+                if (_activityId != null && GUILayout.Button("Generate ID"))
+                {
+                    _activityId.stringValue =
+                        ImmersiveFrameworkEditorSettingsUtility.GenerateActivityIdText();
+                }
             }
 
             DrawIdentityDebug();

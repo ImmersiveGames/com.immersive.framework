@@ -46,7 +46,12 @@ namespace Immersive.Framework.Editor.Editor.Authoring
 
             if (_routeId == null || !RouteId.IsValidText(_routeId.stringValue))
             {
-                EditorGUILayout.HelpBox("Route ID is missing or malformed. Create Routes through the official authoring flow; validation never repairs identity silently.", MessageType.Error);
+                EditorGUILayout.HelpBox("Route ID is missing or malformed. Generate a new canonical ID explicitly; validation never repairs identity silently.", MessageType.Error);
+                if (_routeId != null && GUILayout.Button("Generate ID"))
+                {
+                    _routeId.stringValue =
+                        ImmersiveFrameworkEditorSettingsUtility.GenerateRouteIdText();
+                }
             }
 
             DrawIdentityDebug();

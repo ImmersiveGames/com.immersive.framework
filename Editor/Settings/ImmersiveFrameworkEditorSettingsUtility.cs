@@ -84,12 +84,18 @@ namespace Immersive.Framework.Editor.Editor.Settings
             return route;
         }
 
+        internal static string GenerateRouteIdText() => GenerateAuthoringIdText();
+
+        internal static string GenerateActivityIdText() => GenerateAuthoringIdText();
+
         private static void AssignNewRouteId(RouteAsset route)
         {
             var serialized = new SerializedObject(route);
-            serialized.FindProperty("routeId").stringValue = Guid.NewGuid().ToString("N");
+            serialized.FindProperty("routeId").stringValue = GenerateRouteIdText();
             serialized.ApplyModifiedPropertiesWithoutUndo();
         }
+
+        private static string GenerateAuthoringIdText() => Guid.NewGuid().ToString("N");
 
         internal static ActivityAsset CreateStartupActivityAsset()
         {
