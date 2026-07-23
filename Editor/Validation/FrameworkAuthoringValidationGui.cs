@@ -105,7 +105,7 @@ namespace Immersive.Framework.Editor.Editor.Validation
                         logger.Warning(message);
                         break;
                     default:
-                        logger.Info(message);
+                        logger.Debug(message);
                         break;
                 }
             }

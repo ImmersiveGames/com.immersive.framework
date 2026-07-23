@@ -1,7 +1,9 @@
 using Immersive.Audio.Authoring;
 using Immersive.Framework.ApiStatus;
 using Immersive.Framework.Authoring;
+using Immersive.Framework.Diagnostics;
 using Immersive.Framework.RouteLifecycle;
+using Immersive.Logging.Records;
 using UnityEngine;
 
 namespace Immersive.Framework.Audio
@@ -14,11 +16,10 @@ namespace Immersive.Framework.Audio
     [FrameworkApiStatus(FrameworkApiStatus.Experimental, "F47C optional framework-owned BGM adapter.")]
     public sealed class FrameworkRouteBgmBinding : RouteContentBehaviour
     {
-        private const string LogPrefix = "[FRAMEWORK_BGM]";
-
         [SerializeField] private AudioBgmCueAsset routeBgm;
         [SerializeField] private FrameworkBgmDirector director;
         [SerializeField] private FrameworkActivityBgmBinding startupActivityBgmBinding;
+        private FrameworkLogger logger;
 
         public AudioBgmCueAsset RouteBgm => routeBgm;
 
@@ -30,7 +31,7 @@ namespace Immersive.Framework.Audio
         {
             if (director == null)
             {
-                Debug.LogError($"{LogPrefix} Route BGM binding requires a FrameworkBgmDirector.", this);
+                Error("Route BGM binding requires a FrameworkBgmDirector.");
                 return;
             }
 
@@ -52,9 +53,11 @@ namespace Immersive.Framework.Audio
                 return;
             }
 
-            Debug.LogWarning(
-                $"{LogPrefix} Route has Startup Activity but no valid explicit Startup Activity BGM binding was assigned. route='{context.RouteName}' startupActivity='{FormatActivity(startupActivity)}'. Route BGM fallback will be applied.",
-                this);
+            Warning(
+                "Route has Startup Activity but no valid explicit Startup Activity BGM binding was assigned. Route BGM fallback will be applied.",
+                LogFields.Of(
+                    LogFields.Field("route", context.RouteName),
+                    LogFields.Field("startupActivity", FormatActivity(startupActivity))));
             director.Refresh();
         }
 
@@ -62,7 +65,7 @@ namespace Immersive.Framework.Audio
         {
             if (director == null)
             {
-                Debug.LogError($"{LogPrefix} Route BGM binding requires a FrameworkBgmDirector.", this);
+                Error("Route BGM binding requires a FrameworkBgmDirector.");
                 return;
             }
 
@@ -72,6 +75,23 @@ namespace Immersive.Framework.Audio
         private static string FormatActivity(ActivityAsset activity)
         {
             return activity != null ? activity.ActivityName : "<none>";
+        }
+
+        private void Warning(string message, params LogField[] fields)
+        {
+            EnsureLogger();
+            logger.Warning(message, fields);
+        }
+
+        private void Error(string message, params LogField[] fields)
+        {
+            EnsureLogger();
+            logger.Error(message, fields);
+        }
+
+        private void EnsureLogger()
+        {
+            logger ??= FrameworkLogger.Create<FrameworkRouteBgmBinding>();
         }
     }
 }

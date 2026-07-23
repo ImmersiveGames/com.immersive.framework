@@ -226,7 +226,7 @@ namespace Immersive.Framework.Pause
 
             if (result.Succeeded || result.Ignored)
             {
-                _logger.Info(PhysicalInputLog, fields);
+                _logger.Debug(PhysicalInputLog, fields);
                 return;
             }
 

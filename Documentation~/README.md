@@ -17,6 +17,7 @@ Guides                 current product usage
 - [Player usage](Guides/Player-Usage.md)
 - [Camera usage](Guides/Camera-Usage.md)
 - [Audio usage](Guides/Audio-Usage.md)
+- [Logging usage](Guides/Logging-Usage.md)
 - [Reset usage](Guides/Reset-Usage.md)
 
 ## Canonical decisions

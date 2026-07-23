@@ -1,4 +1,5 @@
 using Immersive.Framework.Common;
+using Immersive.Framework.Diagnostics;
 using Unity.Cinemachine;
 using UnityEngine;
 
@@ -25,6 +26,7 @@ namespace Immersive.Framework.Camera
         private CameraOutputContext context;
         private CameraOutputRigApplicator applicator;
         private CameraOutputSession session;
+        private FrameworkLogger logger;
 
         public string OutputIdText => outputId.NormalizeText();
         public UnityEngine.Camera UnityCamera => unityCamera;
@@ -134,22 +136,23 @@ namespace Immersive.Framework.Camera
             lastStatus = status.NormalizeTextOrFallback("Unknown");
             lastDiagnostic = diagnostic.NormalizeText();
 
-            if (!logDiagnostics)
-            {
-                return;
-            }
-
             string message =
                 $"[FRAMEWORK_CAMERA] Camera Output Session Binding status='{lastStatus}' diagnostic='{lastDiagnostic}'.";
 
+            EnsureLogger();
             if (error)
             {
-                Debug.LogError(message, this);
+                logger.Error(message);
             }
-            else
+            else if (logDiagnostics)
             {
-                Debug.Log(message, this);
+                logger.Debug(message);
             }
+        }
+
+        private void EnsureLogger()
+        {
+            logger ??= FrameworkLogger.Create<CameraOutputSessionBinding>();
         }
     }
 }

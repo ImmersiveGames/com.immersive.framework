@@ -633,7 +633,7 @@ namespace Immersive.Framework.ContentAnchor
             }
 
             EnsureLogger();
-            _logger.Info(
+            _logger.Debug(
                 message,
                 LogFields.Of(
                     LogFields.Field("status", result.Status.ToString()),

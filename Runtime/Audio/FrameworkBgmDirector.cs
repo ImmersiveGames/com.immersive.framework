@@ -2,6 +2,8 @@ using Immersive.Audio.Authoring;
 using Immersive.Audio.Contracts;
 using Immersive.Audio.Unity.Hosts;
 using Immersive.Framework.ApiStatus;
+using Immersive.Framework.Diagnostics;
+using Immersive.Logging.Records;
 using UnityEngine;
 
 namespace Immersive.Framework.Audio
@@ -15,8 +17,6 @@ namespace Immersive.Framework.Audio
     [FrameworkApiStatus(FrameworkApiStatus.Experimental, "F47C optional framework-owned BGM adapter.")]
     public sealed class FrameworkBgmDirector : MonoBehaviour
     {
-        private const string LogPrefix = "[FRAMEWORK_BGM]";
-
         [Header("Audio")]
         [SerializeField] private AudioRuntimeHost audioRuntimeHost;
 
@@ -32,6 +32,7 @@ namespace Immersive.Framework.Audio
         private bool currentEffectiveIsExplicitSilence;
         private bool hasAppliedBgm;
         private AudioPlaybackResult lastPlaybackResult;
+        private FrameworkLogger logger;
 
         public AudioBgmCueAsset CurrentRouteBgm => currentRouteBgm;
 
@@ -62,7 +63,12 @@ namespace Immersive.Framework.Audio
             hasActiveActivityBgmBinding = false;
             currentActivityPolicy = FrameworkBgmActivityPolicy.UseOwnOrRoute;
 
-            Log($"Route BGM set. routeBgm='{FormatCue(cue)}' retainedActivityBgm='<cleared>' deferRefreshForStartupActivity='{deferRefreshForStartupActivity}'.");
+            Trace(
+                "Route BGM set.",
+                LogFields.Of(
+                    LogFields.Field("routeBgm", FormatCue(cue)),
+                    LogFields.Field("retainedActivityBgm", "<cleared>"),
+                    LogFields.Field("deferRefreshForStartupActivity", deferRefreshForStartupActivity)));
 
             if (!deferRefreshForStartupActivity)
             {
@@ -74,7 +80,11 @@ namespace Immersive.Framework.Audio
         {
             if (cue != null && !ReferenceEquals(currentRouteBgm, cue))
             {
-                Log($"Route BGM clear ignored as stale. requested='{FormatCue(cue)}' currentRouteBgm='{FormatCue(currentRouteBgm)}'.");
+                Trace(
+                    "Route BGM clear ignored as stale.",
+                    LogFields.Of(
+                        LogFields.Field("requested", FormatCue(cue)),
+                        LogFields.Field("currentRouteBgm", FormatCue(currentRouteBgm))));
                 return;
             }
 
@@ -84,7 +94,7 @@ namespace Immersive.Framework.Audio
             hasActiveActivityBgmBinding = false;
             currentActivityPolicy = FrameworkBgmActivityPolicy.UseOwnOrRoute;
 
-            Log("Route BGM cleared. Activity retention cleared with Route scope.");
+            Trace("Route BGM cleared. Activity retention cleared with Route scope.");
             Refresh();
         }
 
@@ -97,7 +107,7 @@ namespace Immersive.Framework.Audio
             {
                 currentActivityBgm = null;
                 retainedActivityBgmForCurrentRoute = null;
-                Log("Activity BGM policy Silence applied. Activity retention cleared.");
+                Trace("Activity BGM policy Silence applied. Activity retention cleared.");
                 Refresh();
                 return;
             }
@@ -105,7 +115,9 @@ namespace Immersive.Framework.Audio
             if (currentActivityPolicy == FrameworkBgmActivityPolicy.UseRoute)
             {
                 currentActivityBgm = null;
-                Log($"Activity BGM policy UseRoute applied. retainedActivityBgm='{FormatCue(retainedActivityBgmForCurrentRoute)}'.");
+                Trace(
+                    "Activity BGM policy UseRoute applied.",
+                    LogFields.Field("retainedActivityBgm", FormatCue(retainedActivityBgmForCurrentRoute)));
                 Refresh();
                 return;
             }
@@ -117,7 +129,12 @@ namespace Immersive.Framework.Audio
                 retainedActivityBgmForCurrentRoute = cue;
             }
 
-            Log($"Activity BGM set. activityBgm='{FormatCue(cue)}' policy='{currentActivityPolicy}' retainedActivityBgm='{FormatCue(retainedActivityBgmForCurrentRoute)}'.");
+            Trace(
+                "Activity BGM set.",
+                LogFields.Of(
+                    LogFields.Field("activityBgm", FormatCue(cue)),
+                    LogFields.Field("policy", currentActivityPolicy),
+                    LogFields.Field("retainedActivityBgm", FormatCue(retainedActivityBgmForCurrentRoute))));
             Refresh();
         }
 
@@ -130,7 +147,11 @@ namespace Immersive.Framework.Audio
         {
             if (currentActivityBgm != null && cue != null && !ReferenceEquals(currentActivityBgm, cue))
             {
-                Log($"Activity BGM clear ignored as stale. requested='{FormatCue(cue)}' currentActivityBgm='{FormatCue(currentActivityBgm)}'.");
+                Trace(
+                    "Activity BGM clear ignored as stale.",
+                    LogFields.Of(
+                        LogFields.Field("requested", FormatCue(cue)),
+                        LogFields.Field("currentActivityBgm", FormatCue(currentActivityBgm))));
                 return;
             }
 
@@ -138,7 +159,11 @@ namespace Immersive.Framework.Audio
             hasActiveActivityBgmBinding = false;
             currentActivityPolicy = FrameworkBgmActivityPolicy.UseOwnOrRoute;
 
-            Log($"Activity BGM cleared. retainedActivityBgm='{FormatCue(retainedActivityBgmForCurrentRoute)}' deferRefresh='{deferRefreshForActivityTransition}'.");
+            Trace(
+                "Activity BGM cleared.",
+                LogFields.Of(
+                    LogFields.Field("retainedActivityBgm", FormatCue(retainedActivityBgmForCurrentRoute)),
+                    LogFields.Field("deferRefresh", deferRefreshForActivityTransition)));
 
             if (!deferRefreshForActivityTransition)
             {
@@ -153,7 +178,11 @@ namespace Immersive.Framework.Audio
                 && ReferenceEquals(currentEffectiveBgm, next.Cue)
                 && currentEffectiveIsExplicitSilence == next.IsExplicitSilence)
             {
-                Log($"BGM refresh skipped. effectiveBgm='{FormatCue(next.Cue)}' reason='{next.Reason}'.");
+                Trace(
+                    "BGM refresh skipped.",
+                    LogFields.Of(
+                        LogFields.Field("effectiveBgm", FormatCue(next.Cue)),
+                        LogFields.Field("reason", next.Reason)));
                 return lastPlaybackResult;
             }
 
@@ -163,7 +192,12 @@ namespace Immersive.Framework.Audio
 
             if (audioRuntimeHost == null)
             {
-                Debug.LogError($"{LogPrefix} AudioRuntimeHost is missing. effectiveBgm='{FormatCue(next.Cue)}' reason='{next.Reason}'.", this);
+                EnsureLogger();
+                logger.Error(
+                    "BGM could not be applied because AudioRuntimeHost is missing.",
+                    LogFields.Of(
+                        LogFields.Field("effectiveBgm", FormatCue(next.Cue)),
+                        LogFields.Field("reason", next.Reason)));
                 lastPlaybackResult = AudioPlaybackResult.Failure(
                     AudioPlaybackStatus.FailedServiceNotReady,
                     new AudioConfigurationIssue(
@@ -177,7 +211,12 @@ namespace Immersive.Framework.Audio
                 ? audioRuntimeHost.PlayBgm(next.Cue)
                 : audioRuntimeHost.StopBgm();
 
-            Log($"BGM applied. effectiveBgm='{FormatCue(next.Cue)}' reason='{next.Reason}' status='{lastPlaybackResult.Status}'.");
+            Debug(
+                "BGM applied.",
+                LogFields.Of(
+                    LogFields.Field("effectiveBgm", FormatCue(next.Cue)),
+                    LogFields.Field("reason", next.Reason),
+                    LogFields.Field("status", lastPlaybackResult.Status)));
             return lastPlaybackResult;
         }
 
@@ -221,12 +260,27 @@ namespace Immersive.Framework.Audio
             return BgmResolution.FromCue(currentRouteBgm, "route");
         }
 
-        private void Log(string message)
+        private void Trace(string message, params LogField[] fields)
         {
             if (logTransitions)
             {
-                Debug.Log($"{LogPrefix} {message}", this);
+                EnsureLogger();
+                logger.Trace(message, fields);
             }
+        }
+
+        private void Debug(string message, params LogField[] fields)
+        {
+            if (logTransitions)
+            {
+                EnsureLogger();
+                logger.Debug(message, fields);
+            }
+        }
+
+        private void EnsureLogger()
+        {
+            logger ??= FrameworkLogger.Create<FrameworkBgmDirector>();
         }
 
         private static FrameworkBgmActivityPolicy NormalizeActivityPolicy(FrameworkBgmActivityPolicy policy)

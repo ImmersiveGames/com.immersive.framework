@@ -44,11 +44,11 @@ namespace Immersive.Framework.Pause
 
             if (!hasSceneAdapters)
             {
-                logger.Info("Pause surface is not configured. Logical Pause will remain available without visual Pause presentation.");
+                logger.Debug("Pause surface is not configured. Logical Pause will remain available without visual Pause presentation.");
                 return new PauseSurfaceRuntime("Pause Surface", Array.Empty<IPauseSurfaceAdapter>());
             }
 
-            logger.Info("Pause surface resolved.", LogFields.Field("scene", resolvedSceneLabel));
+            logger.Debug("Pause surface resolved.", LogFields.Field("scene", resolvedSceneLabel));
             logger.Debug(
                 "Pause surface diagnostics.",
                 LogFields.Of(

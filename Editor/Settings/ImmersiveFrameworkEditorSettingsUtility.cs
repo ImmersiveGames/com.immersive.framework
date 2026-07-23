@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using Immersive.Framework.Authoring;
+using Immersive.Framework.Diagnostics;
 using Immersive.Logging.Unity;
 using UnityEditor;
 using UnityEngine;
@@ -30,7 +31,7 @@ namespace Immersive.Framework.Editor.Editor.Settings
             if (existingSettings.Count > 1)
             {
                 var paths = string.Join("\n", existingSettings.Select(AssetDatabase.GetAssetPath));
-                Debug.LogError(
+                FrameworkLogger.Create(typeof(ImmersiveFrameworkEditorSettingsUtility)).Error(
                     $"Multiple Immersive Framework settings assets were found in Resources folders. Keep exactly one {nameof(ImmersiveFrameworkSettingsAsset)} named {ImmersiveFrameworkSettingsAsset.ResourcesPath}.asset.\n{paths}");
                 return null;
             }

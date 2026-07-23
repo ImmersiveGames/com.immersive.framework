@@ -297,7 +297,7 @@ namespace Immersive.Framework.GlobalUi
                 }
                 else
                 {
-                    logger.Info("UIGlobal scene is not configured. The runtime will keep explicit NoOp behavior.");
+                    logger.Debug("UIGlobal scene is not configured. The runtime will keep explicit NoOp behavior.");
                 }
 
                 return new GlobalUiSceneRuntime(
@@ -403,7 +403,7 @@ namespace Immersive.Framework.GlobalUi
                     $"UIGlobal scene '{label}' loaded and persisted with rootCount='{persistedRoots.Count}' transitionAdapterCount='{transitionAdapters.Count}' loadingAdapterCount='{loadingAdapters.Count}' pauseAdapterCount='{pauseAdapters.Count}'.");
             }
 
-            logger.Info("UIGlobal scene loaded.", LogFields.Field("scene", label));
+            logger.Debug("UIGlobal scene loaded.", LogFields.Field("scene", label));
             logger.Debug(
                 "UIGlobal scene diagnostics.",
                 LogFields.Of(

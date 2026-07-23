@@ -508,7 +508,7 @@ namespace Immersive.Framework.ApplicationLifecycle
                 return result;
             }
 
-            _logger.Info(
+            _logger.Debug(
                 "Startup Route Primary Scene prepared before UIGlobal load.",
                 BuildStartupPrimaryScenePreparationSummaryFields(result));
             _logger.Debug(
@@ -1460,11 +1460,11 @@ namespace Immersive.Framework.ApplicationLifecycle
 
             if (!hasSceneAdapters)
             {
-                _logger.Info("Transition surface is not configured. Transition will remain explicit NoOp.");
+                _logger.Debug("Transition surface is not configured. Transition will remain explicit NoOp.");
                 return NoOpTransitionOrchestrator.Instance;
             }
 
-            _logger.Info("Transition surface resolved.", LogFields.Field("scene", sceneLabel));
+            _logger.Debug("Transition surface resolved.", LogFields.Field("scene", sceneLabel));
             _logger.Debug(
                 "Transition surface diagnostics.",
                 LogFields.Of(
@@ -1629,7 +1629,7 @@ namespace Immersive.Framework.ApplicationLifecycle
 
             if (result.Kind is FrameworkRouteRequestKind.IgnoredAlreadyActive or FrameworkRouteRequestKind.IgnoredAlreadyInFlight)
             {
-                _logger.Warning(result.Message, BuildRouteRequestSummaryFields(result, loadingDiagnostics));
+                _logger.Info(result.Message, BuildRouteRequestSummaryFields(result, loadingDiagnostics));
                 _logger.Debug("Route Request diagnostics. " + result.Message, BuildRouteRequestDiagnosticFields(result, loadingDiagnostics));
                 return;
             }
@@ -1662,7 +1662,7 @@ namespace Immersive.Framework.ApplicationLifecycle
 
             if (result.Kind is FrameworkActivityRequestKind.IgnoredAlreadyActive or FrameworkActivityRequestKind.IgnoredAlreadyInFlight or FrameworkActivityRequestKind.IgnoredNoActiveActivity)
             {
-                _logger.Warning(result.Message, BuildActivityRequestSummaryFields(result, loadingDiagnostics));
+                _logger.Info(result.Message, BuildActivityRequestSummaryFields(result, loadingDiagnostics));
                 _logger.Debug("Activity Request diagnostics. " + result.Message, BuildActivityRequestDiagnosticFields(result, loadingDiagnostics));
                 return;
             }

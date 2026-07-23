@@ -63,7 +63,7 @@ namespace Immersive.Framework.Bootstrap
                     return;
                 }
 
-                logger.Info(
+                logger.Debug(
                     "Player participation Session runtime initialized.",
                     BuildPlayerParticipationRuntimeFields(playerParticipationInitialization));
 
@@ -230,7 +230,7 @@ namespace Immersive.Framework.Bootstrap
 
             if (!isConfigured)
             {
-                logger.Info(
+                logger.Debug(
                     "Local Player provisioning is not configured.",
                     LogFields.Of(
                         LogFields.Field("status", "NotConfigured"),
@@ -256,7 +256,7 @@ namespace Immersive.Framework.Bootstrap
 
             PlayerParticipationSnapshot snapshot = null;
             module.TryGetSnapshot(out snapshot);
-            logger.Info(
+            logger.Debug(
                 "Local Player provisioning Session runtime initialized.",
                 LogFields.Of(
                     LogFields.Field("status", "Ready"),

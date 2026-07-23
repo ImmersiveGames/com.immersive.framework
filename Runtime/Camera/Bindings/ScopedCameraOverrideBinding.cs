@@ -1,5 +1,6 @@
 using Immersive.Framework.CameraAuthoring;
 using Immersive.Framework.Common;
+using Immersive.Framework.Diagnostics;
 using UnityEngine;
 
 namespace Immersive.Framework.Camera
@@ -31,6 +32,7 @@ namespace Immersive.Framework.Camera
 
         private CameraOutputSessionBinding outputSession;
         private ICameraRequestPublisher publisher;
+        private FrameworkLogger logger;
 
         public string ScopeId => scopeId.NormalizeText();
         public string RequestIdText => requestId.NormalizeText();
@@ -187,9 +189,21 @@ namespace Immersive.Framework.Camera
         {
             lastStatus = status.NormalizeTextOrFallback("Unknown");
             lastDiagnostic = diagnostic.NormalizeText();
-            if (!logDiagnostics) return;
             string message = $"[FRAMEWORK_CAMERA] override='{GetType().Name}' status='{lastStatus}' owner='{OwnerDiagnosticName}' scope='{ScopeId}' request='{RequestIdText}' precedence='{precedence}' diagnostic='{lastDiagnostic}'.";
-            if (error) Debug.LogError(message, this); else Debug.Log(message, this);
+            EnsureLogger();
+            if (error)
+            {
+                logger.Error(message);
+            }
+            else if (logDiagnostics)
+            {
+                logger.Debug(message);
+            }
+        }
+
+        private void EnsureLogger()
+        {
+            logger ??= FrameworkLogger.Create(GetType());
         }
 
         protected abstract CameraRequestOwnerKind OwnerKind { get; }

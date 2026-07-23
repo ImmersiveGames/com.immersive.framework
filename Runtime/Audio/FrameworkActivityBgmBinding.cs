@@ -2,6 +2,8 @@ using Immersive.Audio.Authoring;
 using Immersive.Framework.ActivityFlow;
 using Immersive.Framework.ApiStatus;
 using Immersive.Framework.Authoring;
+using Immersive.Framework.Diagnostics;
+using Immersive.Logging.Records;
 using UnityEngine;
 
 namespace Immersive.Framework.Audio
@@ -14,12 +16,11 @@ namespace Immersive.Framework.Audio
     [FrameworkApiStatus(FrameworkApiStatus.Experimental, "F47C optional framework-owned BGM adapter.")]
     public sealed class FrameworkActivityBgmBinding : ActivityContentBehaviour
     {
-        private const string LogPrefix = "[FRAMEWORK_BGM]";
-
         [SerializeField] private ActivityAsset assignedActivity;
         [SerializeField] private AudioBgmCueAsset activityBgm;
         [SerializeField] private FrameworkBgmActivityPolicy policy = FrameworkBgmActivityPolicy.UseOwnOrRoute;
         [SerializeField] private FrameworkBgmDirector director;
+        private FrameworkLogger logger;
 
         public ActivityAsset AssignedActivity => assignedActivity;
 
@@ -36,36 +37,49 @@ namespace Immersive.Framework.Audio
         {
             if (director == null)
             {
-                Debug.LogError($"{LogPrefix} Activity BGM binding requires a FrameworkBgmDirector.", this);
+                Error("Activity BGM binding requires a FrameworkBgmDirector.");
                 return false;
             }
 
             if (expectedDirector != null && !ReferenceEquals(director, expectedDirector))
             {
-                Debug.LogWarning(
-                    $"{LogPrefix} Startup Activity BGM binding ignored because it targets a different director. route='{routeName}' activityBgm='{FormatCue(activityBgm)}'.",
-                    this);
+                Warning(
+                    "Startup Activity BGM binding ignored because it targets a different director.",
+                    LogFields.Of(
+                        LogFields.Field("route", routeName),
+                        LogFields.Field("activityBgm", FormatCue(activityBgm))));
                 return false;
             }
 
             if (!MatchesExpectedActivity(expectedActivity, out string assignedActivityName, out bool hasActivityEvidence))
             {
-                Debug.LogWarning(
-                    $"{LogPrefix} Startup Activity BGM binding ignored because it does not match the Route Startup Activity. route='{routeName}' expectedActivity='{FormatActivity(expectedActivity)}' assignedActivity='{assignedActivityName}' activityBgm='{FormatCue(activityBgm)}'.",
-                    this);
+                Warning(
+                    "Startup Activity BGM binding ignored because it does not match the Route Startup Activity.",
+                    LogFields.Of(
+                        LogFields.Field("route", routeName),
+                        LogFields.Field("expectedActivity", FormatActivity(expectedActivity)),
+                        LogFields.Field("assignedActivity", assignedActivityName),
+                        LogFields.Field("activityBgm", FormatCue(activityBgm))));
                 return false;
             }
 
             if (!hasActivityEvidence)
             {
-                Debug.LogWarning(
-                    $"{LogPrefix} Startup Activity BGM binding has no assigned Activity evidence. Explicit Route reference will be used. route='{routeName}' expectedActivity='{FormatActivity(expectedActivity)}' activityBgm='{FormatCue(activityBgm)}'.",
-                    this);
+                Warning(
+                    "Startup Activity BGM binding has no assigned Activity evidence. Explicit Route reference will be used.",
+                    LogFields.Of(
+                        LogFields.Field("route", routeName),
+                        LogFields.Field("expectedActivity", FormatActivity(expectedActivity)),
+                        LogFields.Field("activityBgm", FormatCue(activityBgm))));
             }
 
-            Debug.Log(
-                $"{LogPrefix} Startup Activity BGM pre-applied from explicit Route binding. route='{routeName}' activity='{FormatActivity(expectedActivity)}' activityBgm='{FormatCue(activityBgm)}' policy='{policy}'.",
-                this);
+            Debug(
+                "Startup Activity BGM pre-applied from explicit Route binding.",
+                LogFields.Of(
+                    LogFields.Field("route", routeName),
+                    LogFields.Field("activity", FormatActivity(expectedActivity)),
+                    LogFields.Field("activityBgm", FormatCue(activityBgm)),
+                    LogFields.Field("policy", policy)));
             director.SetActivityBgm(activityBgm, policy);
             return true;
         }
@@ -74,7 +88,7 @@ namespace Immersive.Framework.Audio
         {
             if (director == null)
             {
-                Debug.LogError($"{LogPrefix} Activity BGM binding requires a FrameworkBgmDirector.", this);
+                Error("Activity BGM binding requires a FrameworkBgmDirector.");
                 return;
             }
 
@@ -85,7 +99,7 @@ namespace Immersive.Framework.Audio
         {
             if (director == null)
             {
-                Debug.LogError($"{LogPrefix} Activity BGM binding requires a FrameworkBgmDirector.", this);
+                Error("Activity BGM binding requires a FrameworkBgmDirector.");
                 return;
             }
 
@@ -133,6 +147,29 @@ namespace Immersive.Framework.Audio
         private static string FormatActivity(ActivityAsset activity)
         {
             return activity != null ? activity.ActivityName : "<none>";
+        }
+
+        private void Debug(string message, params LogField[] fields)
+        {
+            EnsureLogger();
+            logger.Debug(message, fields);
+        }
+
+        private void Warning(string message, params LogField[] fields)
+        {
+            EnsureLogger();
+            logger.Warning(message, fields);
+        }
+
+        private void Error(string message, params LogField[] fields)
+        {
+            EnsureLogger();
+            logger.Error(message, fields);
+        }
+
+        private void EnsureLogger()
+        {
+            logger ??= FrameworkLogger.Create<FrameworkActivityBgmBinding>();
         }
     }
 }

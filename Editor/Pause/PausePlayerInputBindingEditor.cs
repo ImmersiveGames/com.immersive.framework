@@ -1,3 +1,4 @@
+using Immersive.Framework.Diagnostics;
 using Immersive.Framework.Pause;
 using Immersive.Framework.UnityInput;
 using UnityEditor;
@@ -25,15 +26,16 @@ namespace Immersive.Framework.Editor.Pause
 
         private static void Apply(PausePlayerInputBinding binding)
         {
+            var logger = FrameworkLogger.Create<PausePlayerInputBindingEditor>();
             if (binding.PlayerInput == null)
             {
-                Debug.LogError("Pause PlayerInput Binding Apply/Rebuild requires PlayerInput.", binding);
+                logger.Error("Pause PlayerInput Binding Apply/Rebuild requires PlayerInput.");
                 return;
             }
             UnityPlayerInputGateAdapter[] adapters = binding.GetComponents<UnityPlayerInputGateAdapter>();
             if (adapters.Length > 1)
             {
-                Debug.LogError("Pause PlayerInput Binding Apply/Rebuild found more than one UnityPlayerInputGateAdapter. Resolve the conflict manually.", binding);
+                logger.Error("Pause PlayerInput Binding Apply/Rebuild found more than one UnityPlayerInputGateAdapter. Resolve the conflict manually.");
                 return;
             }
             UnityPlayerInputGateAdapter adapter = adapters.Length == 0
@@ -41,7 +43,7 @@ namespace Immersive.Framework.Editor.Pause
                 : adapters[0];
             if (adapter == null || (adapter.PlayerInput != null && !ReferenceEquals(adapter.PlayerInput, binding.PlayerInput)))
             {
-                Debug.LogError("Pause PlayerInput Binding Apply/Rebuild found an incompatible UnityPlayerInputGateAdapter and will not overwrite it.", binding);
+                logger.Error("Pause PlayerInput Binding Apply/Rebuild found an incompatible UnityPlayerInputGateAdapter and will not overwrite it.");
                 return;
             }
             var serialized = new SerializedObject(adapter);

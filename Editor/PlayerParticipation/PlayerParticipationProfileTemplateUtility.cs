@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.IO;
+using Immersive.Framework.Diagnostics;
 using Immersive.Framework.PlayerParticipation;
 using UnityEditor;
 using UnityEngine;
@@ -131,7 +132,7 @@ namespace Immersive.Framework.Editor.Editor.PlayerParticipation
                 EditorGUIUtility.PingObject(firstCreated);
             }
 
-            Debug.Log(
+            FrameworkLogger.Create(typeof(PlayerParticipationProfileTemplateUtility)).Info(
                 $"[Immersive.Framework][PlayerParticipation] Created {created.Count} asset(s) for {label}. " +
                 "The assets are explicit authoring inputs and are not hidden runtime defaults.");
         }

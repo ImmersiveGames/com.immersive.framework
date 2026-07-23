@@ -2,6 +2,7 @@ using System;
 using Immersive.Framework.Actors;
 using Immersive.Framework.CameraAuthoring;
 using Immersive.Framework.Common;
+using Immersive.Framework.Diagnostics;
 using Immersive.Framework.PlayerParticipation;
 using UnityEngine;
 
@@ -53,6 +54,7 @@ namespace Immersive.Framework.Camera
         [SerializeField] private string lastDiagnostic;
 
         private LocalPlayerCameraRequestPublisher publisher;
+        private FrameworkLogger logger;
 
         public LocalPlayerHostAuthoring LocalPlayerHost => localPlayerHost;
         public PlayerActorDeclaration PlayerActor => playerActor;
@@ -456,24 +458,25 @@ namespace Immersive.Framework.Camera
             lastStatus = status.NormalizeTextOrFallback("Unknown");
             lastDiagnostic = diagnostic.NormalizeText();
 
-            if (!logDiagnostics)
-            {
-                return;
-            }
-
             string message =
                 $"[FRAMEWORK_CAMERA] Local Player Camera Request Binding status='{lastStatus}' " +
                 $"publisherSource='{PublisherSource}' owner='LocalPlayer' " +
                 $"slot='{GetSlotDiagnosticId()}' request='{RequestIdText}' " +
                 $"output='{GetOutputDiagnosticId()}' diagnostic='{lastDiagnostic}'.";
+            EnsureLogger();
             if (error)
             {
-                Debug.LogError(message, this);
+                logger.Error(message);
             }
-            else
+            else if (logDiagnostics)
             {
-                Debug.Log(message, this);
+                logger.Debug(message);
             }
+        }
+
+        private void EnsureLogger()
+        {
+            logger ??= FrameworkLogger.Create<LocalPlayerCameraRequestBinding>();
         }
 
         private string GetSlotDiagnosticId()

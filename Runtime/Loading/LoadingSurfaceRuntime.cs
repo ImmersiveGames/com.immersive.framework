@@ -73,7 +73,7 @@ namespace Immersive.Framework.Loading
             if (!hasSceneAdapters)
             {
                 const string infoMessage = "Loading surface is not configured. Loading will remain explicit NoOp.";
-                logger.Info(infoMessage);
+                logger.Debug(infoMessage);
                 return new LoadingSurfaceRuntime(
                     LoadingSurfacePolicy.NoneConfigured,
                     "Loading Surface",
@@ -84,7 +84,7 @@ namespace Immersive.Framework.Loading
                     infoMessage);
             }
 
-            logger.Info("Loading surface resolved.", LogFields.Field("scene", resolvedSceneLabel));
+            logger.Debug("Loading surface resolved.", LogFields.Field("scene", resolvedSceneLabel));
             logger.Debug(
                 "Loading surface diagnostics.",
                 LogFields.Of(

@@ -1,5 +1,6 @@
 using System;
 using Immersive.Framework.Actors;
+using Immersive.Framework.Diagnostics;
 using Immersive.Framework.PlayerParticipation;
 using UnityEditor;
 using UnityEngine;
@@ -240,13 +241,14 @@ namespace Immersive.Framework.Editor.PlayerParticipation
 
             string message =
                 $"[Immersive.Framework][SceneLocalPlayerAdmission] status='{result.Status}' succeeded='{result.Succeeded}' createdEvidence='{result.EvidenceCreated}' updatedEvidence='{result.EvidenceUpdated}' diagnostic='{result.Message}'.";
+            var logger = FrameworkLogger.Create(typeof(SceneLocalPlayerAdmissionAuthoringUtility));
             if (result.Succeeded)
             {
-                Debug.Log(message, authoring);
+                logger.Info(message);
             }
             else
             {
-                Debug.LogWarning(message, authoring);
+                logger.Warning(message);
             }
         }
     }
