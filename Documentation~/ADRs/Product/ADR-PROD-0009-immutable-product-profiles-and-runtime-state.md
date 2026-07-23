@@ -2,6 +2,7 @@
 
 Status: Accepted  
 Date: 2026-07-12  
+Amended: 2026-07-22 — Activity participation Projection and Requirement Level are inline configuration, not Policy Profiles
 Package: `com.immersive.framework`  
 Area: Product Authoring / ScriptableObject Semantics / Runtime State  
 Related: `ADR-PROD-0004`, `ADR-PROD-0006`, `ADR-PROD-0007`, `ADR-PROD-0008`, `ADR-PROD-0011`, `ADR-PROD-0012`
@@ -119,10 +120,10 @@ does not represent mutable Session state
 does not materialize technical components by itself
 ```
 
-Example:
+Examples require an independently reusable rule set with more than owner-local scalar configuration. A single enum whose authority is one owning asset is not sufficient justification for a Policy Profile.
 
 ```text
-PlayerParticipationRequirementsProfile
+future reusable multi-field policy assets with demonstrated cross-owner identity
 ```
 
 A Policy Profile is appropriate when several Activities or product surfaces need to
@@ -277,15 +278,11 @@ A Session creates mutable runtime Slot state that references the Profile.
 The Profile is not the joined player, connected device or occupancy.
 
 
-### PlayerParticipationRequirementsProfile
+### Activity participation requirements
 
-`PlayerParticipationRequirementsProfile` is a Policy Profile.
-
-It contains immutable Activity admission requirements and has no Player, Slot, Actor or
-Session identity authority.
-
-Activities reference it directly. Runtime admission state and evaluation results remain
-scoped runtime data.
+The progressive `PlayerParticipationRequirementLevel` belongs directly to `ActivityAsset`.
+It is contextual owner-local configuration, not a Policy Profile. Runtime admission state
+and evaluation results remain scoped runtime data.
 
 ## Runtime immutability
 
@@ -404,7 +401,7 @@ Profile, Recipe, Composer, runtime state and materialization have distinct roles
 
 ActorProfile and PlayerSlotProfile are immutable Identity Profile references.
 
-PlayerParticipationRequirementsProfile is an immutable Policy Profile reference.
+Activity participation Projection and Requirement Level are immutable inline Activity configuration.
 
 Profile IDs are authored once in the owning Profile.
 

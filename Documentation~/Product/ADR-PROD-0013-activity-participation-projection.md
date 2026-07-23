@@ -2,14 +2,14 @@
 
 Status: Accepted  
 Date: 2026-07-13  
-Amended: 2026-07-22 — Projection is Activity-owned serialized configuration, not a reusable Profile asset
+Amended: 2026-07-22 — Projection and Requirement Level are Activity-owned serialized configuration, not reusable Profile assets
 Package: `com.immersive.framework`  
 Area: Activity Authoring / Player Participation Projection  
 Related: `ADR-PROD-0007`, `ADR-PROD-0009`, `ADR-PROD-0011`, `ADR-PROD-0012`, `P3-PLAYER-PARTICIPATION-MATERIALIZATION-IMPLEMENTATION-PLAN`
 
 ## Context
 
-`PlayerParticipationRequirementsProfile` defines the progressive readiness level required by an Activity, but it does not select which Session Slots are evaluated.
+`PlayerParticipationRequirementLevel` defines the progressive readiness required by an Activity, but it does not select which Session Slots are evaluated.
 
 The P3 plan assigns this decision to `DG-P3-01` and requires a minimum product shape supporting:
 
@@ -22,30 +22,28 @@ an explicit Activity subset
 The decision must preserve:
 
 ```text
-Requirements Profile = reusable readiness policy
+Activity Requirement Level = contextual readiness policy
 Activity Projection configuration = contextual Slot selection
 PlayerSlotProfile = immutable Slot identity
 Session state = mutable participation facts
 ```
 
-A reusable Requirements Profile must not contain Activity-specific Slot identities.
+The Requirement Level and Projection are separate Activity-owned decisions. Slot identities remain owned by `PlayerSlotProfile`.
 
 ## Decision
 
-Every `ActivityAsset` owns one explicit Projection configuration and references one
-mandatory Requirements Profile:
+Every `ActivityAsset` owns one explicit Projection configuration and one Requirement Level:
 
 ```text
 Activity Participation Projection configuration
-Player Participation Requirements Profile
+Player Participation Requirement Level
 ```
 
 Projection is not a `ScriptableObject`. It has no independent product identity, metadata or
 cross-owner authority; it only configures the Activity that evaluates it. Keeping it as a
 separate asset added navigation without adding a reusable product concept.
 
-The serialized enum fields always hold a concrete value. The Requirements reference remains
-mandatory. An Activity with no Players uses:
+The serialized enum fields always hold a concrete value. An Activity with no Players uses:
 
 ```text
 Projection: No Slots
@@ -69,7 +67,7 @@ Rules:
 ```text
 Explicit Slots must be empty.
 Zero Participant Policy must be Allowed.
-A non-None Requirements Profile is contradictory and invalid.
+A non-None Requirement Level is contradictory and invalid.
 ```
 
 #### AllJoinedSlots
@@ -99,7 +97,7 @@ Zero Participant Policy must be Rejected.
 Slot identity is never copied as inline text.
 ```
 
-The explicit set is evaluated as authored. A Slot that has not joined is not silently removed from the set; the Requirements Profile can therefore reject missing Joined state.
+The explicit set is evaluated as authored. A Slot that has not joined is not silently removed from the set; the Requirement Level can therefore reject missing Joined state.
 
 ## Zero-participant decision
 
@@ -127,7 +125,7 @@ Open Activity
 -> choose No Slots, All Joined Slots or Explicit Slots
 -> declare zero-participant behavior
 -> add explicit PlayerSlotProfile references when applicable
--> assign Requirements Profile
+-> choose Requirement Level
 -> inspect designer summary
 -> use Advanced / Debug for technical evidence
 ```
@@ -135,10 +133,10 @@ Open Activity
 ## Guardrails
 
 ```text
-Do not put Slot identities inside Requirements Profiles.
+Do not put Slot identities inside Requirement configuration.
 Do not use null as No Slots, All Joined Slots or None.
 Do not derive PlayerSlotId from PlayerInput.playerIndex.
-Do not store Joined or readiness state in Profiles.
+Do not store Joined or readiness state in the Activity asset.
 Do not create a runtime manager in P3D.
 Do not evaluate Activity admission in P3D.
 Do not add teams, roles, spectators or online topology without a later decision.

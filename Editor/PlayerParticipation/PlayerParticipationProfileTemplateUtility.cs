@@ -26,17 +26,6 @@ namespace Immersive.Framework.Editor.Editor.PlayerParticipation
         }
 
         [MenuItem(
-            "Assets/Create/Immersive Framework/Player/Templates/Participation Requirements Set",
-            false,
-            211)]
-        private static void CreateParticipationRequirementsProfiles()
-        {
-            string folder = EnsureTemplateFolder();
-            List<Object> created = CreateRequirementsProfileSet(folder);
-            CompleteCreation(created, "Player Participation Requirements templates");
-        }
-
-        [MenuItem(
             "Assets/Create/Immersive Framework/Player/Templates/Complete Local Player Profile Set",
             false,
             214)]
@@ -45,7 +34,6 @@ namespace Immersive.Framework.Editor.Editor.PlayerParticipation
             string folder = EnsureTemplateFolder();
             var created = new List<Object>();
             created.AddRange(CreatePlayerSlotProfileSet(folder));
-            created.AddRange(CreateRequirementsProfileSet(folder));
             CompleteCreation(created, "complete local Player Profile template set");
         }
 
@@ -57,43 +45,6 @@ namespace Immersive.Framework.Editor.Editor.PlayerParticipation
             created.Add(CreatePlayerSlotProfile(folder, 3, new Color(0.35f, 0.85f, 0.40f, 1f)));
             created.Add(CreatePlayerSlotProfile(folder, 4, new Color(0.85f, 0.35f, 0.90f, 1f)));
             return created;
-        }
-
-        private static List<Object> CreateRequirementsProfileSet(string folder)
-        {
-            return new List<Object>
-            {
-                CreateRequirementsProfile(
-                    folder,
-                    "PlayerParticipation_None",
-                    "Player Participation — None",
-                    "Activity requires no Player participation. This is the explicit no-Player policy.",
-                    PlayerParticipationRequirementLevel.None),
-                CreateRequirementsProfile(
-                    folder,
-                    "PlayerParticipation_JoinedSlots",
-                    "Player Participation — Joined Slots",
-                    "Every projected Slot must be joined; Actor selection is not required.",
-                    PlayerParticipationRequirementLevel.JoinedSlots),
-                CreateRequirementsProfile(
-                    folder,
-                    "PlayerParticipation_SelectedActors",
-                    "Player Participation — Selected Actors",
-                    "Every projected joined Slot must have an explicit Actor Profile selection.",
-                    PlayerParticipationRequirementLevel.SelectedActors),
-                CreateRequirementsProfile(
-                    folder,
-                    "PlayerParticipation_LogicalActorsPrepared",
-                    "Player Participation — Logical Actors Prepared",
-                    "Every projected selected Actor must have valid logical Actor composition and contextual preparation evidence.",
-                    PlayerParticipationRequirementLevel.LogicalActorsPrepared),
-                CreateRequirementsProfile(
-                    folder,
-                    "PlayerParticipation_GameplayReady",
-                    "Player Participation — Gameplay Ready",
-                    "Every projected Player must satisfy the complete applicable gameplay-readiness contract.",
-                    PlayerParticipationRequirementLevel.GameplayReady)
-            };
         }
 
         private static PlayerSlotProfile CreatePlayerSlotProfile(
@@ -116,27 +67,6 @@ namespace Immersive.Framework.Editor.Editor.PlayerParticipation
 
             string assetPath = AssetDatabase.GenerateUniqueAssetPath(
                 $"{folder}/PlayerSlot_Player{playerNumber}.asset");
-            AssetDatabase.CreateAsset(profile, assetPath);
-            return profile;
-        }
-
-        private static PlayerParticipationRequirementsProfile CreateRequirementsProfile(
-            string folder,
-            string fileName,
-            string displayName,
-            string description,
-            PlayerParticipationRequirementLevel requirementLevel)
-        {
-            var profile = ScriptableObject.CreateInstance<PlayerParticipationRequirementsProfile>();
-            profile.name = displayName;
-
-            var serializedProfile = new SerializedObject(profile);
-            serializedProfile.FindProperty("displayName").stringValue = displayName;
-            serializedProfile.FindProperty("description").stringValue = description;
-            serializedProfile.FindProperty("requirementLevel").intValue = (int)requirementLevel;
-            serializedProfile.ApplyModifiedPropertiesWithoutUndo();
-
-            string assetPath = AssetDatabase.GenerateUniqueAssetPath($"{folder}/{fileName}.asset");
             AssetDatabase.CreateAsset(profile, assetPath);
             return profile;
         }

@@ -17,7 +17,7 @@ namespace Immersive.Framework.Editor.Editor.Authoring
         private SerializedProperty _playerParticipationProjectionMode;
         private SerializedProperty _playerParticipationZeroParticipantPolicy;
         private SerializedProperty _playerParticipationExplicitSlotProfiles;
-        private SerializedProperty _playerParticipationRequirementsProfile;
+        private SerializedProperty _playerParticipationRequirementLevel;
         private SerializedProperty _activityContentProfile;
         private SerializedProperty _visualTransitionMode;
         private SerializedProperty _transitionGateMode;
@@ -35,8 +35,8 @@ namespace Immersive.Framework.Editor.Editor.Authoring
                 serializedObject.FindProperty("playerParticipationZeroParticipantPolicy");
             _playerParticipationExplicitSlotProfiles =
                 serializedObject.FindProperty("playerParticipationExplicitSlotProfiles");
-            _playerParticipationRequirementsProfile =
-                serializedObject.FindProperty("playerParticipationRequirementsProfile");
+            _playerParticipationRequirementLevel =
+                serializedObject.FindProperty("playerParticipationRequirementLevel");
             _activityContentProfile = serializedObject.FindProperty("activityContentProfile");
             _visualTransitionMode = serializedObject.FindProperty("visualTransitionMode");
             _transitionGateMode = serializedObject.FindProperty("transitionGateMode");
@@ -79,7 +79,7 @@ namespace Immersive.Framework.Editor.Editor.Authoring
             EditorGUILayout.Space(6);
             EditorGUILayout.LabelField("Current Scope", EditorStyles.boldLabel);
             EditorGUILayout.HelpBox(
-                "This Activity authors Player Slot projection and reusable readiness requirements, but P3D does not evaluate Session state or block runtime admission yet. Runtime participation authority and lifecycle evaluation remain later cuts.",
+                "This Activity owns its Player Slot projection and readiness requirement. Runtime systems evaluate this explicit configuration without mutating the asset.",
                 MessageType.None);
 
             serializedObject.ApplyModifiedProperties();
@@ -92,7 +92,7 @@ namespace Immersive.Framework.Editor.Editor.Authoring
         {
             EditorGUILayout.LabelField("Player Participation", EditorStyles.boldLabel);
             EditorGUILayout.HelpBox(
-                "Projection belongs to this Activity and selects which Session Slots are evaluated. Requirements defines the reusable readiness level those projected Slots must satisfy. Use No Slots + an explicit None Requirements Profile for an Activity with no Players.",
+                "Projection selects which Session Slots are evaluated. Requirement Level defines the progressive readiness those projected Slots must satisfy. Use No Slots + None for an Activity with no Players.",
                 MessageType.Info);
 
             EditorGUILayout.PropertyField(
@@ -118,23 +118,10 @@ namespace Immersive.Framework.Editor.Editor.Authoring
                 _playerParticipationZeroParticipantPolicy,
                 new GUIContent("Zero Participants"));
             EditorGUILayout.PropertyField(
-                _playerParticipationRequirementsProfile,
-                new GUIContent("Requirements Profile"));
+                _playerParticipationRequirementLevel,
+                new GUIContent("Requirement Level"));
 
             DrawParticipationSummary();
-
-            using (new EditorGUILayout.HorizontalScope())
-            {
-                using (new EditorGUI.DisabledScope(
-                           _playerParticipationRequirementsProfile.objectReferenceValue == null))
-                {
-                    if (GUILayout.Button("Select Requirements"))
-                    {
-                        Selection.activeObject =
-                            _playerParticipationRequirementsProfile.objectReferenceValue;
-                    }
-                }
-            }
 
             _showParticipationDebug = EditorGUILayout.Foldout(
                 _showParticipationDebug,
@@ -183,33 +170,20 @@ namespace Immersive.Framework.Editor.Editor.Authoring
 
         private void DrawParticipationSummary()
         {
-            var requirements =
-                _playerParticipationRequirementsProfile.objectReferenceValue as
-                    PlayerParticipationRequirementsProfile;
-
-            if (requirements == null)
-            {
-                EditorGUILayout.HelpBox(
-                    "Incomplete Player participation authoring. Assign an explicit Requirements Profile; null does not select a default.",
-                    MessageType.Error);
-                return;
-            }
-
             ActivityParticipationProjectionMode projectionMode =
                 (ActivityParticipationProjectionMode)
                 _playerParticipationProjectionMode.intValue;
+            PlayerParticipationRequirementLevel requirementLevel =
+                (PlayerParticipationRequirementLevel)
+                _playerParticipationRequirementLevel.intValue;
             EditorGUILayout.HelpBox(
                 $"Projection: {projectionMode}\n" +
-                $"Requirements: {requirements.DisplayName} ({requirements.RequirementLevel})",
+                $"Requirement Level: {requirementLevel}",
                 MessageType.None);
         }
 
         private void DrawParticipationDebug()
         {
-            var requirements =
-                _playerParticipationRequirementsProfile.objectReferenceValue as
-                    PlayerParticipationRequirementsProfile;
-
             using (new EditorGUI.DisabledScope(true))
             {
                 EditorGUILayout.TextField(
@@ -227,7 +201,8 @@ namespace Immersive.Framework.Editor.Editor.Authoring
                         : 0);
                 EditorGUILayout.TextField(
                     "Requirement Level",
-                    requirements != null ? requirements.RequirementLevel.ToString() : "Missing");
+                    ((PlayerParticipationRequirementLevel)
+                        _playerParticipationRequirementLevel.intValue).ToString());
             }
         }
 

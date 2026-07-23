@@ -15,7 +15,7 @@ ADRs are decision history, not the current setup guide. Read [Current State](../
 | [ADR-PROD-0009](Product/ADR-PROD-0009-immutable-product-profiles-and-runtime-state.md) | Immutable product Profiles and runtime-state separation. |
 | [ADR-PROD-0010](Product/ADR-PROD-0010-manual-local-player-join-and-player-input-manager-authority.md) | Manual local Player join and PlayerInputManager provisioning authority. |
 | [ADR-PROD-0011](Product/ADR-PROD-0011-ordered-local-player-slot-allocation-and-visual-identity.md) | Ordered local Player Slot allocation and visual identity. |
-| [ADR-PROD-0012](Product/ADR-PROD-0012-activity-player-participation-requirements-profiles.md) | Activity Player Participation Requirements Profiles. |
+| [ADR-PROD-0012](Product/ADR-PROD-0012-activity-player-participation-requirements-profiles.md) | Activity-owned Player Participation Requirement Level. |
 | [ADR-PROD-0013](Product/ADR-PROD-0013-scene-local-player-admission.md) | Admission of an explicitly authored scene-existing local Player Host. |
 | [ADR-PROD-0014](Product/ADR-PROD-0014-activity-transition-authority-readiness-and-finalization.md) | Activity transition authority, readiness, commit and previous-Activity finalization contract. |
 | [ADR-PROD-0015](Product/ADR-PROD-0015-pause-activity-binding-intent.md) | Activity-owned Pause intent with session-owned runtime and future activity-scoped registration. |

@@ -175,11 +175,8 @@ namespace Immersive.Framework.GameFlow
             ActivityAsset activity)
         {
             return activity != null &&
-                activity.PlayerParticipationRequirementsProfile != null &&
-                activity.PlayerParticipationRequirementsProfile
-                    .HasDefinedRequirementLevel &&
-                activity.PlayerParticipationRequirementsProfile
-                    .RequirementLevel ==
+                activity.HasDefinedPlayerParticipationRequirementLevel &&
+                activity.PlayerParticipationRequirementLevel ==
                     PlayerParticipationRequirementLevel.GameplayReady;
         }
     }

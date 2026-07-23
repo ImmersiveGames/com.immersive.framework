@@ -43,17 +43,7 @@ namespace Immersive.Framework.PlayerParticipation
                     "Activity Player admission evaluation requires an explicit ActivityAsset.");
             }
 
-            PlayerParticipationRequirementsProfile requirements =
-                activity.PlayerParticipationRequirementsProfile;
-            if (requirements == null)
-            {
-                return GlobalFailure(
-                    activity.ActivityName,
-                    ActivityPlayerAdmissionEvaluationCode.MissingRequirementsProfile,
-                    $"Activity '{activity.ActivityName}' is missing its mandatory Player Participation Requirements Profile.");
-            }
-
-            if (!requirements.HasDefinedRequirementLevel)
+            if (!activity.HasDefinedPlayerParticipationRequirementLevel)
             {
                 return GlobalFailure(
                     activity.ActivityName,
@@ -70,14 +60,15 @@ namespace Immersive.Framework.PlayerParticipation
                     string.Empty,
                     activity.PlayerParticipationProjectionMode,
                     activity.PlayerParticipationZeroParticipantPolicy,
-                    requirements.RequirementLevel,
+                    activity.PlayerParticipationRequirementLevel,
                     ActivityPlayerAdmissionEvaluationStatus.Failed,
                     ActivityPlayerAdmissionEvaluationCode.InvalidProjection,
                     Array.Empty<ActivityPlayerAdmissionSlotResult>(),
                     projectionIssue);
             }
 
-            PlayerParticipationRequirementLevel level = requirements.RequirementLevel;
+            PlayerParticipationRequirementLevel level =
+                activity.PlayerParticipationRequirementLevel;
             if (descriptor.ProjectsNoSlots && level != PlayerParticipationRequirementLevel.None)
             {
                 return new ActivityPlayerAdmissionEvaluationResult(
@@ -89,7 +80,7 @@ namespace Immersive.Framework.PlayerParticipation
                     ActivityPlayerAdmissionEvaluationStatus.Failed,
                     ActivityPlayerAdmissionEvaluationCode.ContradictoryNoSlotsRequirement,
                     Array.Empty<ActivityPlayerAdmissionSlotResult>(),
-                    "NoSlots projection can only be paired with the explicit None requirements Profile.");
+                    "NoSlots projection can only be paired with Requirement Level None.");
             }
 
             if (descriptor.ProjectsNoSlots)

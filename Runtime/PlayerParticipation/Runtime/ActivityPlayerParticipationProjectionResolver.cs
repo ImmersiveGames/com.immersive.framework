@@ -36,17 +36,14 @@ namespace Immersive.Framework.PlayerParticipation
                 return false;
             }
 
-            PlayerParticipationRequirementsProfile requirements =
-                activity.PlayerParticipationRequirementsProfile;
-            if (requirements == null ||
-                !requirements.HasDefinedRequirementLevel)
+            if (!activity.HasDefinedPlayerParticipationRequirementLevel)
             {
                 issue =
-                    $"Activity '{activity.ActivityName}' requires a valid Player Participation Requirements Profile.";
+                    $"Activity '{activity.ActivityName}' has an invalid Player participation Requirement Level.";
                 return false;
             }
 
-            requirementLevel = requirements.RequirementLevel;
+            requirementLevel = activity.PlayerParticipationRequirementLevel;
             PlayerParticipationSnapshot session =
                 participationContext.CreateSnapshot();
             if (session == null || !session.IsInitialized)

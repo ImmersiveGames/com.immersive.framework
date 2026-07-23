@@ -6,8 +6,8 @@ using UnityEditor;
 namespace Immersive.Framework.Editor.Editor.PlayerParticipation
 {
     /// <summary>
-    /// Editor-only validation for Activity-owned participation Projection and Requirements authoring.
-    /// It reports issues only and never mutates Activity or Profile assets.
+    /// Editor-only validation for Activity-owned participation Projection and Requirement authoring.
+    /// It reports issues only and never mutates Activity assets.
     /// </summary>
     internal static class ActivityParticipationProjectionAuthoringValidator
     {
@@ -15,8 +15,7 @@ namespace Immersive.Framework.Editor.Editor.PlayerParticipation
         {
             return ValidateActivity(
                 activity,
-                FrameworkValidationMode.Standard,
-                includeReferencedProfileValidation: true);
+                FrameworkValidationMode.Standard);
         }
 
         internal static FrameworkAuthoringValidationReport ValidateProjectAssets(
@@ -38,8 +37,7 @@ namespace Immersive.Framework.Editor.Editor.PlayerParticipation
                 report.AddRange(
                     ValidateActivity(
                         activity,
-                        validationMode,
-                        includeReferencedProfileValidation: false));
+                        validationMode));
             }
 
             if (activityGuids.Length == 0)
@@ -60,8 +58,7 @@ namespace Immersive.Framework.Editor.Editor.PlayerParticipation
 
         private static FrameworkAuthoringValidationReport ValidateActivity(
             ActivityAsset activity,
-            FrameworkValidationMode validationMode,
-            bool includeReferencedProfileValidation)
+            FrameworkValidationMode validationMode)
         {
             var report = new FrameworkAuthoringValidationReport(validationMode);
 
@@ -71,25 +68,20 @@ namespace Immersive.Framework.Editor.Editor.PlayerParticipation
                 return report;
             }
 
-            PlayerParticipationRequirementsProfile requirements =
-                activity.PlayerParticipationRequirementsProfile;
-
-            bool requirementsValid = requirements != null && requirements.HasDefinedRequirementLevel;
+            PlayerParticipationRequirementLevel requirementLevel =
+                activity.PlayerParticipationRequirementLevel;
+            bool requirementsValid =
+                activity.HasDefinedPlayerParticipationRequirementLevel;
             ActivityParticipationProjectionDescriptor descriptor = default;
             bool projectionValid = activity.TryGetPlayerParticipationProjectionDescriptor(
                 out descriptor,
                 out string projectionIssue);
 
-            if (requirements == null)
+            if (!requirementsValid)
             {
                 report.AddError(
-                    $"Activity '{activity.ActivityName}' is missing its mandatory Player Participation Requirements Profile. Use an explicit None Profile when the Activity requires no Players.",
+                    $"Activity '{activity.ActivityName}' has an invalid Player participation Requirement Level.",
                     activity);
-            }
-            else if (includeReferencedProfileValidation)
-            {
-                report.AddRange(
-                    PlayerParticipationAuthoringValidator.ValidateRequirementsProfile(requirements));
             }
 
             if (!projectionValid)
@@ -99,19 +91,21 @@ namespace Immersive.Framework.Editor.Editor.PlayerParticipation
 
             if (requirementsValid && projectionValid)
             {
-                if (descriptor.ProjectsNoSlots && !requirements.IsExplicitNone)
+                if (descriptor.ProjectsNoSlots &&
+                    requirementLevel != PlayerParticipationRequirementLevel.None)
                 {
                     report.AddError(
-                        $"Activity '{activity.ActivityName}' projects No Slots but requires participation level '{requirements.RequirementLevel}'. Use an explicit None requirements Profile or select a participant projection.",
+                        $"Activity '{activity.ActivityName}' projects No Slots but requires participation level '{requirementLevel}'. Use Requirement Level None or select a participant projection.",
                         activity);
                 }
-                else if (descriptor.ProjectsNoSlots && requirements.IsExplicitNone)
+                else if (descriptor.ProjectsNoSlots &&
+                    requirementLevel == PlayerParticipationRequirementLevel.None)
                 {
                     report.AddInfo(
                         "Activity Player participation is explicitly configured for no Players: Projection='NoSlots', Requirements='None'.",
                         activity);
                 }
-                else if (requirements.IsExplicitNone)
+                else if (requirementLevel == PlayerParticipationRequirementLevel.None)
                 {
                     report.AddInfo(
                         $"Activity projects '{descriptor.Mode}' while Requirements='None'. Projected Slots impose no admission-readiness requirement in this configuration.",
@@ -120,7 +114,7 @@ namespace Immersive.Framework.Editor.Editor.PlayerParticipation
                 else if (descriptor.ProjectsAllJoinedSlots && descriptor.AllowsZeroParticipants)
                 {
                     report.AddInfo(
-                        $"Activity projects All Joined Slots and explicitly allows zero participants while requiring '{requirements.RequirementLevel}' from every projected Slot.",
+                        $"Activity projects All Joined Slots and explicitly allows zero participants while requiring '{requirementLevel}' from every projected Slot.",
                         activity);
                 }
             }
@@ -128,7 +122,7 @@ namespace Immersive.Framework.Editor.Editor.PlayerParticipation
             if (report.IsValid && requirementsValid && projectionValid)
             {
                 report.AddInfo(
-                    $"Activity Player participation authoring is valid. projection='{descriptor.Mode}' requirements='{requirements.RequirementLevel}'.",
+                    $"Activity Player participation authoring is valid. projection='{descriptor.Mode}' requirementLevel='{requirementLevel}'.",
                     activity);
             }
 

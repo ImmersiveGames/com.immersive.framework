@@ -155,9 +155,7 @@ namespace Immersive.Framework.PlayerParticipation
                     "Activity has no automatic Scene Local Player Admission surfaces.");
             }
 
-            PlayerParticipationRequirementsProfile requirements =
-                activity.PlayerParticipationRequirementsProfile;
-            if (requirements == null || !requirements.HasDefinedRequirementLevel)
+            if (!activity.HasDefinedPlayerParticipationRequirementLevel)
             {
                 return Failure(
                     SceneLocalPlayerAdmissionActivityLifecycleStatus.FailedRequirement,
@@ -168,8 +166,10 @@ namespace Immersive.Framework.PlayerParticipation
                     $"Activity '{activity.ActivityName}' requires a valid Player Participation Requirements Profile.");
             }
 
+            PlayerParticipationRequirementLevel requirementLevel =
+                activity.PlayerParticipationRequirementLevel;
             bool requiresActorAdoption =
-                (int)requirements.RequirementLevel >=
+                (int)requirementLevel >=
                 (int)PlayerParticipationRequirementLevel.LogicalActorsPrepared;
             if (requiresActorAdoption &&
                 (preparationModule == null || !preparationModule.IsReady))
@@ -180,7 +180,7 @@ namespace Immersive.Framework.PlayerParticipation
                     owner,
                     resolvedSource,
                     resolvedReason,
-                    $"Activity '{activity.ActivityName}' requires '{requirements.RequirementLevel}', but the host-scoped Player Actor preparation authority is unavailable.");
+                    $"Activity '{activity.ActivityName}' requires '{requirementLevel}', but the host-scoped Player Actor preparation authority is unavailable.");
             }
 
             var entries = new List<Entry>(authoring.Count);

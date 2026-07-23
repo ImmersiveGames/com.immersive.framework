@@ -155,20 +155,17 @@ namespace Immersive.Framework.PlayerParticipation
                     "Target Activity is missing.");
             }
 
-            PlayerParticipationRequirementsProfile requirements =
-                targetActivity.PlayerParticipationRequirementsProfile;
-            if (requirements == null ||
-                !requirements.HasDefinedRequirementLevel)
+            if (!targetActivity.HasDefinedPlayerParticipationRequirementLevel)
             {
                 return Reject(
                     ActivityPlayerLifecycleAdmissionStatus.RejectedInvalidRequest,
                     Operation,
                     resolvedSource,
                     resolvedReason,
-                    $"Activity '{targetActivity.ActivityName}' has no valid Player Participation Requirements Profile.");
+                    $"Activity '{targetActivity.ActivityName}' has an invalid Player participation Requirement Level.");
             }
 
-            if (requirements.RequirementLevel !=
+            if (targetActivity.PlayerParticipationRequirementLevel !=
                 PlayerParticipationRequirementLevel.GameplayReady)
             {
                 ActivityPlayerLifecycleAdmissionResult notRequired =

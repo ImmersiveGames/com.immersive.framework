@@ -125,41 +125,6 @@ namespace Immersive.Framework.Editor.Editor.PlayerParticipation
                 FrameworkValidationMode.Standard);
         }
 
-        internal static FrameworkAuthoringValidationReport ValidateRequirementsProfile(
-            PlayerParticipationRequirementsProfile profile)
-        {
-            var report = new FrameworkAuthoringValidationReport(FrameworkValidationMode.Standard);
-
-            if (profile == null)
-            {
-                report.AddError("Player Participation Requirements Profile is missing.", null);
-                return report;
-            }
-
-            if (string.IsNullOrWhiteSpace(profile.DisplayName))
-            {
-                report.AddWarning(
-                    "Player Participation Requirements Profile has no Display Name. Give the reusable policy a designer-facing name.",
-                    profile);
-            }
-
-            if (!profile.HasDefinedRequirementLevel)
-            {
-                report.AddError(
-                    $"Player Participation Requirements Profile '{profile.name}' has an invalid Requirement Level.",
-                    profile);
-            }
-
-            if (report.IsValid)
-            {
-                report.AddInfo(
-                    $"Participation Requirements Profile is valid. level='{profile.RequirementLevel}' explicitNone='{profile.IsExplicitNone}'.",
-                    profile);
-            }
-
-            return report;
-        }
-
         internal static FrameworkAuthoringValidationReport ValidateProjectProfiles(
             FrameworkValidationMode validationMode)
         {
@@ -201,15 +166,6 @@ namespace Immersive.Framework.Editor.Editor.PlayerParticipation
                 validSlotProfiles++;
             }
 
-            string[] requirementsGuids = AssetDatabase.FindAssets("t:PlayerParticipationRequirementsProfile");
-            for (int index = 0; index < requirementsGuids.Length; index++)
-            {
-                string assetPath = AssetDatabase.GUIDToAssetPath(requirementsGuids[index]);
-                PlayerParticipationRequirementsProfile profile =
-                    AssetDatabase.LoadAssetAtPath<PlayerParticipationRequirementsProfile>(assetPath);
-                report.AddRange(ValidateRequirementsProfile(profile));
-            }
-
             report.AddRange(
                 PlayerActorSelectionAuthoringValidator.ValidateProjectActorSelectionProfiles(
                     validationMode));
@@ -221,17 +177,10 @@ namespace Immersive.Framework.Editor.Editor.PlayerParticipation
                     null);
             }
 
-            if (requirementsGuids.Length == 0)
-            {
-                report.AddOptionalSkip(
-                    "No Player Participation Requirements Profiles exist yet. Create the official requirements set before P3D Activity participation authoring.",
-                    null);
-            }
-
             if (report.IsValid)
             {
                 report.AddInfo(
-                    $"Player participation Profile project validation passed. slotProfiles='{validSlotProfiles}' requirementsProfiles='{requirementsGuids.Length}'.",
+                    $"Player participation Profile project validation passed. slotProfiles='{validSlotProfiles}'. Activity requirements are configured inline.",
                     null);
             }
 

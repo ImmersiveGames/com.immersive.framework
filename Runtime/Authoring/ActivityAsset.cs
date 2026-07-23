@@ -11,7 +11,7 @@ namespace Immersive.Framework.Authoring
 {
     /// <summary>
     /// API status: Experimental. Public authoring asset for a gameplay Activity.
-    /// Activity participation intent is explicit through Activity-owned Projection configuration and a Requirements Profile.
+    /// Activity participation intent is explicit through Activity-owned Projection and Requirement configuration.
     /// </summary>
     [CreateAssetMenu(
         fileName = "Activity",
@@ -49,8 +49,9 @@ namespace Immersive.Framework.Authoring
             Array.Empty<PlayerSlotProfile>();
 
         [SerializeField]
-        [Tooltip("Mandatory reusable Profile defining the readiness level required from projected Player Slots. Activities with no Players use an explicit None Profile.")]
-        private PlayerParticipationRequirementsProfile playerParticipationRequirementsProfile;
+        [Tooltip("Progressive readiness level required from every projected Player Slot. None is the explicit no-requirement value.")]
+        private PlayerParticipationRequirementLevel playerParticipationRequirementLevel =
+            PlayerParticipationRequirementLevel.None;
 
         [SerializeField]
         [Tooltip("Optional Activity Content Profile. Declares Activity-owned scenes for composition and release by Activity operations.")]
@@ -98,8 +99,13 @@ namespace Immersive.Framework.Authoring
         public IReadOnlyList<PlayerSlotProfile> PlayerParticipationExplicitSlotProfiles =>
             playerParticipationExplicitSlotProfiles ?? Array.Empty<PlayerSlotProfile>();
 
-        public PlayerParticipationRequirementsProfile PlayerParticipationRequirementsProfile =>
-            playerParticipationRequirementsProfile;
+        public PlayerParticipationRequirementLevel PlayerParticipationRequirementLevel =>
+            playerParticipationRequirementLevel;
+
+        public bool HasDefinedPlayerParticipationRequirementLevel =>
+            Enum.IsDefined(
+                typeof(PlayerParticipationRequirementLevel),
+                playerParticipationRequirementLevel);
 
         public bool HasPlayerParticipationConfiguration =>
             Enum.IsDefined(
@@ -108,7 +114,7 @@ namespace Immersive.Framework.Authoring
             Enum.IsDefined(
                 typeof(ActivityParticipationZeroParticipantPolicy),
                 playerParticipationZeroParticipantPolicy) &&
-            playerParticipationRequirementsProfile != null;
+            HasDefinedPlayerParticipationRequirementLevel;
 
         public bool TryGetPlayerParticipationProjectionDescriptor(
             out ActivityParticipationProjectionDescriptor descriptor,
