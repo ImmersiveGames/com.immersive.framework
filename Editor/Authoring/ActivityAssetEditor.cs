@@ -19,6 +19,7 @@ namespace Immersive.Framework.Editor.Editor.Authoring
         private SerializedProperty _activityContentProfile;
         private SerializedProperty _visualTransitionMode;
         private SerializedProperty _transitionGateMode;
+        private bool _showIdentityDebug;
         private bool _showParticipationDebug;
 
         private void OnEnable()
@@ -46,13 +47,14 @@ namespace Immersive.Framework.Editor.Editor.Authoring
 
             EditorGUILayout.Space(6);
             EditorGUILayout.LabelField("Identity", EditorStyles.boldLabel);
-            EditorGUILayout.PropertyField(_activityId, new GUIContent("Activity ID", "Stable functional identity. Do not change it because of a cosmetic rename."));
             EditorGUILayout.PropertyField(_activityName, new GUIContent("Activity Name", "Designer-facing name used for presentation and diagnostics only."));
+            EditorGUILayout.PropertyField(_description, new GUIContent("Description"));
             if (_activityId == null || !ActivityId.IsValidText(_activityId.stringValue))
             {
                 EditorGUILayout.HelpBox("Activity ID is missing or malformed. Use the explicit Activity ID Migration tool for existing assets; it never runs automatically.", MessageType.Error);
             }
-            EditorGUILayout.PropertyField(_description, new GUIContent("Description"));
+
+            DrawIdentityDebug();
 
             EditorGUILayout.Space(6);
             DrawPlayerParticipation();
@@ -121,6 +123,41 @@ namespace Immersive.Framework.Editor.Editor.Authoring
             if (_showParticipationDebug)
             {
                 DrawParticipationDebug();
+            }
+        }
+
+        private void DrawIdentityDebug()
+        {
+            _showIdentityDebug = EditorGUILayout.Foldout(
+                _showIdentityDebug,
+                "Advanced / Debug",
+                true);
+            if (!_showIdentityDebug)
+            {
+                return;
+            }
+
+            string activityId = _activityId != null
+                ? _activityId.stringValue ?? string.Empty
+                : string.Empty;
+            using (new EditorGUILayout.HorizontalScope())
+            {
+                using (new EditorGUI.DisabledScope(true))
+                {
+                    EditorGUILayout.TextField(
+                        new GUIContent(
+                            "Activity ID",
+                            "Stable functional identity. It is independent from Activity Name and asset filename."),
+                        activityId);
+                }
+
+                using (new EditorGUI.DisabledScope(string.IsNullOrWhiteSpace(activityId)))
+                {
+                    if (GUILayout.Button("Copy ID", GUILayout.Width(70)))
+                    {
+                        EditorGUIUtility.systemCopyBuffer = activityId;
+                    }
+                }
             }
         }
 

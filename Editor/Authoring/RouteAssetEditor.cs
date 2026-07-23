@@ -43,16 +43,13 @@ namespace Immersive.Framework.Editor.Editor.Authoring
             EditorGUILayout.LabelField("Identity", EditorStyles.boldLabel);
             EditorGUILayout.PropertyField(_routeName, new GUIContent("Route Name", "Designer-facing name used for presentation and diagnostics only."));
             EditorGUILayout.PropertyField(_description, new GUIContent("Description"));
-            _showIdentityDebug = EditorGUILayout.Foldout(_showIdentityDebug, "Advanced / Debug", true);
-            if (_showIdentityDebug)
-            {
-                EditorGUILayout.PropertyField(_routeId, new GUIContent("Route ID", "Stable functional identity. It is independent from Route Name and Primary Scene."));
-            }
 
             if (_routeId == null || !RouteId.IsValidText(_routeId.stringValue))
             {
                 EditorGUILayout.HelpBox("Route ID is missing or malformed. Create Routes through the official authoring flow; validation never repairs identity silently.", MessageType.Error);
             }
+
+            DrawIdentityDebug();
 
             EditorGUILayout.Space(6);
             DrawPrimaryScene();
@@ -101,6 +98,41 @@ namespace Immersive.Framework.Editor.Editor.Authoring
             EditorGUILayout.LabelField("Authoring Validation", EditorStyles.boldLabel);
             FrameworkAuthoringValidationGui.DrawSummary(report);
             FrameworkAuthoringValidationGui.DrawIssues(report, false);
+        }
+
+        private void DrawIdentityDebug()
+        {
+            _showIdentityDebug = EditorGUILayout.Foldout(
+                _showIdentityDebug,
+                "Advanced / Debug",
+                true);
+            if (!_showIdentityDebug)
+            {
+                return;
+            }
+
+            string routeId = _routeId != null
+                ? _routeId.stringValue ?? string.Empty
+                : string.Empty;
+            using (new EditorGUILayout.HorizontalScope())
+            {
+                using (new EditorGUI.DisabledScope(true))
+                {
+                    EditorGUILayout.TextField(
+                        new GUIContent(
+                            "Route ID",
+                            "Stable functional identity. It is independent from Route Name and Primary Scene."),
+                        routeId);
+                }
+
+                using (new EditorGUI.DisabledScope(string.IsNullOrWhiteSpace(routeId)))
+                {
+                    if (GUILayout.Button("Copy ID", GUILayout.Width(70)))
+                    {
+                        EditorGUIUtility.systemCopyBuffer = routeId;
+                    }
+                }
+            }
         }
 
         private void DrawPrimaryScene()
