@@ -5,11 +5,10 @@ Date: 2026-07-10
 Package: `com.immersive.framework`  
 Area: Camera Product Surface / Runtime Authority  
 Supersedes: `ADR-PROD-0005`, C3–C8 camera ownership and activation decisions
-Amended by: `ADR-PROD-0013` — Player camera targets must come from a typed target source independent of `PreAuthoredPlayerComposer`.
 
 ## Context
 
-The current camera lane correctly established Cinemachine as the presentation engine and a typed Player/Actor target provider as an explicit source of follow/look-at targets. However, the implemented product shape still conflates:
+The current camera lane correctly established Cinemachine as the presentation engine and an explicit typed Player target source for follow/look-at targets. However, the implemented product shape still conflates:
 
 ```text
 target source
@@ -82,7 +81,7 @@ A target source provides target evidence only.
 Examples:
 
 ```text
-Prepared Player Actor target provider
+Typed Player camera target source
 Boss or Actor target provider
 Explicit transform target provider
 Shared player-group target provider
@@ -98,7 +97,7 @@ must not select or activate a camera
 must not mutate Cinemachine priority
 ```
 
-A typed Player/Actor target provider remains a valid explicit target source. It does not own a Cinemachine Camera and must not depend on `PreAuthoredPlayerComposer`.
+A typed Player camera target source remains valid explicit target evidence. It does not own a Cinemachine Camera, select the winning request, or assume Local Player runtime authority.
 
 ### 2. Camera rig recipe
 
@@ -335,7 +334,7 @@ The following decisions from the prior camera work remain valid:
 ```text
 Cinemachine is mandatory.
 The framework does not reimplement Follow, LookAt, damping or blending.
-A typed Player/Actor target provider may expose CameraTarget and LookAtTarget.
+A typed Player target source may expose CameraTarget and LookAtTarget.
 Target resolution is explicit and typed.
 Required missing targets block explicitly.
 No Camera.main fallback.

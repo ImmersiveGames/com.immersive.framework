@@ -1,10 +1,14 @@
-> Superseded as current Player implementation guidance by `P3-ADR-Canonical-Player-Lane` and `ADR-PROD-0013`. This document remains historical evidence for the product-surface pattern.
-
 # ADR-PROD-0004 — First Reference Product Surface
 
-Status: Superseded for current Player guidance  
-Date: 2026-07-09  
-Superseded: 2026-07-16
+Status: Superseded for Local Player implementation  
+Date: 2026-07-09
+
+> Historical decision. The product-surface principles remain valid, but the
+> concrete `PlayerRecipe` / `PlayerComposer` proposal is not current
+> implementation guidance. The current Local Player model separates the
+> `PlayerInputManager`-provisioned technical host, its `Actor Mount`, the
+> contextual Logical Actor materialized from `ActorProfile`, and the scoped
+> runtime contexts that own participation and Actor preparation.
 
 ## Context
 
@@ -15,6 +19,9 @@ The package has strong runtime foundations in GameApplication, Route, Activity, 
 FIRSTGAME also exposed the largest usability leak around the player. A minimal real player currently requires many technical declarations, input bindings, reset adapters, camera anchors, and validation/repair tools.
 
 ## Decision
+
+The following records the original reference-surface proposal and is retained
+for historical traceability.
 
 The first reference product surface is:
 

@@ -1,11 +1,19 @@
 # ADR-PROD-0008 — Actor Profile, Logical Actor Host and Presentation Materialization
 
-Status: Accepted  
+Status: Accepted; Local Player host sections superseded  
 Date: 2026-07-12  
 Package: `com.immersive.framework`  
 Area: Actor Product Surface / Runtime Materialization / Presentation  
 Related: `ADR-PROD-0007`, `ADR-PROD-0009`, `ADR-PROD-0010`, `F45-ADR-ACTOR-001`, `F08-ADR-RUNTIME-001`, `ADR-PROD-0004`, `ADR-PROD-0006`
-Extended by: `ADR-PROD-0013`
+
+> Applicability note: the generic `ActorProfile`, Logical Actor and Presentation
+> separation remains current. Sections that place `PlayerInput`,
+> `PlayerActorDeclaration` or `PlayerComposer` directly on the
+> `ActorProfile`'s canonical Logical Actor Host are historical. The current
+> Local Player composition is `PlayerInputManager` → technical Local Player
+> Host → `Actor Mount` → contextual Logical Actor materialized from
+> `ActorProfile`. Participation and Actor-preparation runtime contexts retain
+> their scoped authority.
 
 ## Context
 
@@ -106,7 +114,7 @@ It is a concrete runtime `GameObject`.
 
 For generic Actors, the Profile-to-host relationship is materialized through the official RuntimeContent boundary.
 
-For runtime-created local Players, `PlayerInputManager` provisions the configured local Player host after an explicit framework-authorized manual join, and the framework then applies the selected `ActorProfile`. For a scene-existing local Player, `ADR-PROD-0013` admits an explicitly referenced externally owned Host and Logical Actor without calling `JoinPlayer` or creating a second host.
+For local Players, `PlayerInputManager` provisions the configured local Player host after an explicit framework-authorized manual join, and the framework then applies/adopts the selected `ActorProfile`. The exact final relationship between the Profile's canonical logical content and the manager's configured `playerPrefab` is intentionally deferred to a subsequent decision.
 
 ### Actor Presentation / Skin
 
@@ -347,7 +355,7 @@ Presentation / Skin contract
 Representative optional contents may include:
 
 ```text
-PlayerComposer when the Actor is player-controllable
+typed camera target sources when the Actor is player-controllable
 input and control endpoints
 camera target anchors
 reset endpoints
@@ -430,9 +438,9 @@ assigns runtime identity and contextual participation
 admits the Actor into the context
 ```
 
-### Local Player paths
+### Local Player path
 
-The runtime-created local Player path is specialized by `ADR-PROD-0010`:
+The local Player path is specialized by `ADR-PROD-0010`:
 
 ```text
 framework or authorized product adapter requests manual join
@@ -444,17 +452,7 @@ framework or authorized product adapter requests manual join
 -> admits the Player into the contextual lifetime
 ```
 
-The scene-existing local Player path is specialized by `ADR-PROD-0013`:
-
-```text
-Activity authoring references an existing Host and Logical Actor
--> framework reserves the explicit PlayerSlotProfile
--> framework stages and commits admission
--> framework registers the existing Actor for preparation
--> release removes contextual evidence without destroying external objects
-```
-
-Neither physical path transfers Slot, Profile, occupancy or contextual lifetime authority to `PlayerInputManager` or to the scene object itself.
+This specialized technical provisioner does not transfer Slot, Profile, occupancy or contextual lifetime authority to `PlayerInputManager`.
 
 The exact shape used to apply ActorProfile-specific logical composition after local Player provisioning remains a separate decision.
 
@@ -721,8 +719,8 @@ ActorProfile identifies the canonical logical Actor product content.
 
 Generic Actors are materialized through RuntimeContent.
 
-Runtime-created local Players are provisioned through PlayerInputManager after an explicit authorized
-manual join and are then admitted/configured by the framework. Scene-existing local Players are admitted through `ADR-PROD-0013` without physical provisioning.
+Local Players are provisioned through PlayerInputManager after an explicit authorized
+manual join and are then admitted/configured by the framework.
 
 The created host receives runtime Actor identity after materialization.
 
@@ -791,7 +789,7 @@ Player specialization does not require two declaration components or a parallel 
 
 RuntimeContent remains the official generic Actor host materialization boundary.
 
-PlayerInputManager is the explicit specialized physical provisioner for runtime-created local Player hosts. Scene Local Player Admission is an admission-only path for externally owned scene hosts.
+PlayerInputManager is the explicit specialized physical provisioner for local Player hosts.
 ```
 
 ### Cost
@@ -808,8 +806,9 @@ ActorDeclaration must become inheritable without weakening its common identity a
 PlayerActorDeclaration must be reconciled as the derived declaration and must require
 Unity PlayerInput for the local Player product shape.
 
-Existing PlayerRecipe and PlayerComposer responsibilities must be reconciled
-with ActorProfile without creating competing product authorities.
+Any future designer-facing Local Player composition surface must remain limited
+to the technical host and must not compete with `ActorProfile`, participation,
+Actor preparation or contextual materialization authorities.
 ```
 
 ## Suggested commit message
