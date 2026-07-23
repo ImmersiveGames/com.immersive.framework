@@ -5,60 +5,33 @@ authoring, diagnostics and validation.
 
 Current version: `1.0.0-preview.17`.
 
-## H2 closure
-
-H2.4 closes the explicit runtime-port migration in the package source. Runtime
-authoring and Unity adapters bind the narrow port they require from the
-composition root; they do not discover a global `FrameworkRuntimeHost`.
-
-`FrameworkRuntimeHost` remains the application/session composition root. Its
-factory is stateless: it does not retain a static current-host reference or
-offer a static lookup API. QA resolves a host only inside its friend-assembly
-harness, from loaded scenes, and rejects anything other than exactly one
-candidate.
-
-The H2.4 Unity evidence is approved: the focused smoke passed with 10 cases.
-See the current execution status below.
-
-## Current product surfaces
+## Product surfaces
 
 ```text
-PlayerRecipe (optional) -> PlayerComposer -> Validate -> Apply/Rebuild
-GameApplication -> UIGlobal Host Registration -> LocalPlayerProvisioningAuthoring -> canonical P3 runtime lane
-CameraRigRecipe -> CameraRigComposer -> Validate -> Apply/Rebuild
-PausePlayerInputBinding -> PauseProductBindingRuntimeContext -> InputMode transaction -> UnityPlayerInputStateWriter
+GameApplicationAsset -> bootstrap -> scoped Framework runtime
+LocalPlayerProvisioningAuthoring -> manual local Player join
+SceneLocalPlayerAdmissionAuthoring -> scene-owned local Player admission
+CameraRigRecipe -> CameraRigComposer -> Validate / Apply/Rebuild
+FrameworkBgmDirector -> Route/Activity BGM bindings -> Immersive Audio
+PausePlayerInputBinding -> InputMode transaction -> PlayerInput state writer
+Reset authoring -> explicit runtime ports -> ResetRegistry / ResetExecutor
 ```
 
-P3 is the only Player runtime lane. Session join assigns `PlayerSlotId` to the
-stable `LocalPlayerHostAuthoring`; Player prefabs and `PlayerComposer` do not
-pre-author Slot identity. The former passive F49/F51/F52 graph is removed.
+`FrameworkRuntimeHost` is an internal application/session composition root. It
+does not expose a static current-host registry or service-locator API. Required
+runtime dependencies are supplied through typed bindings and fail explicitly
+when unavailable.
 
-Camera authoring and physical output ownership remain separate. Route, Activity,
-Local Player and Session publish typed requests into the explicit output context.
-
-Pause has one product path. While running it enables `Global + configured
-gameplay action map`; the default gameplay action-map name is `Player`. While
-paused it enables `Global`. A QA fixture may configure `Gameplay` without
-violating the contract. The retired Pause/InputMode bridge APIs are not part of
-the package surface.
-
-## Current delivery state
-
-H2 is closed and Unity-validated.
-`FRAMEWORK-HYGIENE-1` is committed at `fe90949e...` with 18 modified and 130
-removed files, including the superseded Pause/InputMode bridges and
-UnityInputTarget model. User-provided and approved Unity evidence confirms
-package compile, QA compile, framework boot, focused regressions and Pause
-lifecycle/reentry. QA migration commit: `2a388add59da9e8829c3200a5fa6761c32b5f574`.
-No compatibility API was restored. The package release is `1.0.0-preview.17`.
-
-## Start reading
+## Documentation
 
 - [Documentation index](Documentation~/README.md)
-- [Current State](Documentation~/Current/00-Current-State.md)
-- [Player Architecture Flow](Documentation~/Guides/Player-Architecture-Flow.md)
-- [Camera Product Usage](Documentation~/Guides/Camera-Product-Usage.md)
-- [H2 execution status](Documentation~/Current/05-Execution-Status.md)
+- [Current tracker](Documentation~/Architecture/Tracking/IF-TRACK-Framework.md)
+- [Framework usage](Documentation~/Guides/Framework-Usage.md)
+- [Player usage](Documentation~/Guides/Player-Usage.md)
+- [Camera usage](Documentation~/Guides/Camera-Usage.md)
+- [Audio usage](Documentation~/Guides/Audio-Usage.md)
+- [Reset usage](Documentation~/Guides/Reset-Usage.md)
 
-QAFramework owns synthetic technical validation. FIRSTGAME owns minimal real-game
-proof. Consumer assets and old project architecture do not belong in this package.
+QAFramework owns synthetic technical validation. FIRSTGAME owns real-game
+integration proof. Consumer assets and the old Base/NewScripts architecture do
+not belong in this package.

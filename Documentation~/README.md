@@ -1,109 +1,33 @@
 # Immersive Framework Documentation
 
-## Operational entry points
+This package keeps one compact documentation topology:
 
 ```text
-Current/05-Execution-Status.md
-  canonical operational state and H2.4 validation handoff
-
-Current/00-Current-State.md
-  supported runtime-authority boundary
-
-Current/01-Roadmap.md
-  H2 closure and validation gate
-
-Current/02-Usage-Map.md
-  designer-first product surfaces
+Architecture/ADRs      accepted decisions and explicit pending decisions
+Architecture/Plans     immutable approved execution route
+Architecture/Tracking  the only mutable status board
+Guides                 current product usage
 ```
 
-## H2.4 closure
+## Start here
 
-H2 is closed and Unity-validated in `1.0.0-preview.16`.
+- [Current framework tracker](Architecture/Tracking/IF-TRACK-Framework.md)
+- [Immutable evolution plan](Architecture/Plans/IF-PLAN-Framework-Evolution.v1.md)
+- [Framework usage](Guides/Framework-Usage.md)
+- [Player usage](Guides/Player-Usage.md)
+- [Camera usage](Guides/Camera-Usage.md)
+- [Audio usage](Guides/Audio-Usage.md)
+- [Reset usage](Guides/Reset-Usage.md)
 
-```text
-GameApplication bootstrap
--> stateless FrameworkRuntimeHost factory
--> explicit feature runtime ports
--> authoring / Unity adapter bindings
-```
+## Canonical decisions
 
-The package has no static current-host field or lookup API. QA-only host
-resolution is confined to the QA friend-assembly harness and requires exactly
-one loaded candidate; it is not a package service locator or runtime fallback.
+- [Core lifecycle and runtime authority](Architecture/ADRs/IF-ADR-001-Core-Lifecycle-and-Runtime-Authority.md)
+- [Product authoring model](Architecture/ADRs/IF-ADR-002-Product-Authoring-Model.md)
+- [Player participation and Actor lifecycle](Architecture/ADRs/IF-ADR-003-Player-Participation-and-Actor-Lifecycle.md)
+- [Camera requests and output authority](Architecture/ADRs/IF-ADR-004-Camera-Requests-and-Output-Authority.md)
+- [Input, Pause, Gate and Reset](Architecture/ADRs/IF-ADR-005-Input-Pause-Gate-and-Reset.md)
+- [Loading, transition, persistence and diagnostics](Architecture/ADRs/IF-ADR-006-Loading-Transition-Persistence-and-Diagnostics.md)
+- [Optional Audio BGM adapter](Architecture/ADRs/IF-ADR-007-Optional-Audio-BGM-Adapter.md)
 
-The H2.4 Play Mode smoke evidence is approved (`Passed`, 10 cases). Read
-`Current/05-Execution-Status.md` for the recorded delivery state.
-
-## Camera status
-
-Camera C9 is closed at the current single-output product level.
-
-Canonical authoring:
-
-```text
-CameraRigRecipe
--> CameraRigComposer
--> Validate
--> Apply/Rebuild virtual Cinemachine rig
-```
-
-Canonical runtime:
-
-```text
-persistent UIGlobal output
--> CameraOutputSession
--> CameraOutputContext
--> Player / Activity / Route / Session requests
--> selected Cinemachine rig
-```
-
-Default precedence:
-
-```text
-Player 50 < Activity 100 < Route 200 < Session 300
-```
-
-Read:
-
-- `Guides/Camera-Product-Usage.md`
-- `Guides/Camera-Architecture-Flow.md`
-- `Current/Camera-Delivery-Reconciliation.md`
-- `ADRs/Product/ADR-PROD-0006-camera-requests-output-contexts.md`
-
-## Pause status
-
-Canonical Pause composition is:
-
-```text
-PausePlayerInputBinding
--> PauseProductBindingRuntimeContext
--> InputMode transaction
--> UnityPlayerInputGateAdapter
--> UnityPlayerInputStateWriter
-```
-
-Running enables `Global + configured gameplay action map`, whose default name is
-`Player`; paused enables `Global`. QA may configure that gameplay map as
-`Gameplay`. The earlier
-`PauseInputModeUnityPlayerInputRuntimeBridge` and
-`PauseInputActionRuntimeBridgeTrigger` topology is removed. Superseded Input ADRs
-remain historical records only.
-
-## FRAMEWORK-HYGIENE-1 reconciliation
-
-Commit `fe90949e401a5d01c9f12a75dbc989ce0d8ac02e` modified 18 files and
-removed 130 files. It removed the superseded Pause/InputMode bridge family and
-the superseded UnityInputTarget family without adding wrappers, aliases or a
-parallel runtime authority.
-
-The source cut and release gate are closed. User-provided and approved Unity
-evidence confirms package compile, QA compile, framework boot, focused
-regressions and Pause lifecycle/reentry, including clean teardown with
-`Time.timeScale == 1`. The QA migration is commit
-`2a388add59da9e8829c3200a5fa6761c32b5f574`; no compatibility API was restored.
-The documented and manifest version is `1.0.0-preview.17`.
-
-## Next selection
-
-No post-H2 implementation cut is active. The next product lane may now be
-selected without reopening H2.4.
+ADRs decide. The plan defines the stable route. The tracker records progress.
+Git history retains superseded audits, manifests, closeouts and micro-cut notes.
