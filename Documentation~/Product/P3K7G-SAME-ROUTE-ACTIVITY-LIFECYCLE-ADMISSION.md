@@ -152,7 +152,7 @@ Existing product authoring remains authoritative:
 
 ```text
 ActivityAsset
-ActivityParticipationProjectionProfile
+Activity-owned Projection configuration
 PlayerParticipationRequirementsProfile
 PlayerSlotProfile
 ActorProfile

@@ -1,5 +1,7 @@
 # P3D.1 — Activity Participation Projection Foundation
 
+> Historical closure record. `PROD-ASSET-1D` later removed the external Projection Profile and moved the same typed configuration directly into `ActivityAsset`. The descriptor and projection semantics remain current.
+
 ## Objective
 
 Close `DG-P3-01` and establish the reusable Activity Projection product contract without implementing Session state or Activity admission runtime.

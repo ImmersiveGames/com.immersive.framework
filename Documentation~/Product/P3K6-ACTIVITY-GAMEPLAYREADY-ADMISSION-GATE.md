@@ -7,7 +7,7 @@ Type: **Activity-scoped runtime evaluation / technical integration**
 
 ```text
 ActivityAsset
-+ mandatory ActivityParticipationProjectionProfile
++ Activity-owned Projection configuration
 + mandatory PlayerParticipationRequirementsProfile
 + current Session participation snapshot
 + current Actor preparation snapshot when required
@@ -22,7 +22,9 @@ Profile, Composer or parallel Activity component.
 
 ```text
 Activity Inspector > Player Participation
-  Projection Profile
+  Slot Projection
+  Zero Participants
+  Explicit Slots when applicable
   Requirements Profile
 ```
 

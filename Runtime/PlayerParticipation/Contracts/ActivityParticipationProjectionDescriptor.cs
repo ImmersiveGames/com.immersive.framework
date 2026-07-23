@@ -4,7 +4,7 @@ using System.Collections.Generic;
 namespace Immersive.Framework.PlayerParticipation
 {
     /// <summary>
-    /// Immutable evaluation input produced by an Activity participation projection Profile.
+    /// Immutable evaluation input produced by Activity-owned participation projection authoring.
     /// It carries no mutable Session state and performs no runtime lookup.
     /// </summary>
     public readonly struct ActivityParticipationProjectionDescriptor

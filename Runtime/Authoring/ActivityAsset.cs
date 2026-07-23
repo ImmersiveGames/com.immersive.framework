@@ -1,6 +1,9 @@
+using System;
+using System.Collections.Generic;
 using Immersive.Framework.ApiStatus;
 using Immersive.Framework.Common;
 using Immersive.Framework.PlayerParticipation;
+using Immersive.Framework.PlayerSlots;
 using Immersive.Framework.Transition;
 using UnityEngine;
 
@@ -8,7 +11,7 @@ namespace Immersive.Framework.Authoring
 {
     /// <summary>
     /// API status: Experimental. Public authoring asset for a gameplay Activity.
-    /// Activity participation intent is explicit through separate Projection and Requirements Profiles.
+    /// Activity participation intent is explicit through Activity-owned Projection configuration and a Requirements Profile.
     /// </summary>
     [CreateAssetMenu(
         fileName = "Activity",
@@ -31,8 +34,19 @@ namespace Immersive.Framework.Authoring
         private string description = string.Empty;
 
         [SerializeField]
-        [Tooltip("Mandatory reusable Profile selecting which Session Player Slots this Activity projects. Null is invalid and never means a permissive default.")]
-        private ActivityParticipationProjectionProfile playerParticipationProjectionProfile;
+        [Tooltip("Selects which Session Player Slots this Activity projects.")]
+        private ActivityParticipationProjectionMode playerParticipationProjectionMode =
+            ActivityParticipationProjectionMode.NoSlots;
+
+        [SerializeField]
+        [Tooltip("Declares whether a dynamic projection may resolve to zero participating Slots.")]
+        private ActivityParticipationZeroParticipantPolicy playerParticipationZeroParticipantPolicy =
+            ActivityParticipationZeroParticipantPolicy.Allowed;
+
+        [SerializeField]
+        [Tooltip("Ordered Slot Profile references used only by Explicit Slots. Identity remains owned by each PlayerSlotProfile.")]
+        private PlayerSlotProfile[] playerParticipationExplicitSlotProfiles =
+            Array.Empty<PlayerSlotProfile>();
 
         [SerializeField]
         [Tooltip("Mandatory reusable Profile defining the readiness level required from projected Player Slots. Activities with no Players use an explicit None Profile.")]
@@ -75,28 +89,131 @@ namespace Immersive.Framework.Authoring
 
         public string Description => description ?? string.Empty;
 
-        public ActivityParticipationProjectionProfile PlayerParticipationProjectionProfile =>
-            playerParticipationProjectionProfile;
+        public ActivityParticipationProjectionMode PlayerParticipationProjectionMode =>
+            playerParticipationProjectionMode;
+
+        public ActivityParticipationZeroParticipantPolicy PlayerParticipationZeroParticipantPolicy =>
+            playerParticipationZeroParticipantPolicy;
+
+        public IReadOnlyList<PlayerSlotProfile> PlayerParticipationExplicitSlotProfiles =>
+            playerParticipationExplicitSlotProfiles ?? Array.Empty<PlayerSlotProfile>();
 
         public PlayerParticipationRequirementsProfile PlayerParticipationRequirementsProfile =>
             playerParticipationRequirementsProfile;
 
         public bool HasPlayerParticipationConfiguration =>
-            playerParticipationProjectionProfile != null &&
+            Enum.IsDefined(
+                typeof(ActivityParticipationProjectionMode),
+                playerParticipationProjectionMode) &&
+            Enum.IsDefined(
+                typeof(ActivityParticipationZeroParticipantPolicy),
+                playerParticipationZeroParticipantPolicy) &&
             playerParticipationRequirementsProfile != null;
 
         public bool TryGetPlayerParticipationProjectionDescriptor(
             out ActivityParticipationProjectionDescriptor descriptor,
             out string issue)
         {
-            if (playerParticipationProjectionProfile == null)
+            descriptor = default;
+
+            if (!Enum.IsDefined(
+                    typeof(ActivityParticipationProjectionMode),
+                    playerParticipationProjectionMode))
             {
-                descriptor = default;
-                issue = $"Activity '{ActivityName}' requires an explicit Activity Participation Projection Profile.";
+                issue = $"Activity '{ActivityName}' has an invalid Player participation Projection Mode.";
                 return false;
             }
 
-            return playerParticipationProjectionProfile.TryCreateDescriptor(out descriptor, out issue);
+            if (!Enum.IsDefined(
+                    typeof(ActivityParticipationZeroParticipantPolicy),
+                    playerParticipationZeroParticipantPolicy))
+            {
+                issue = $"Activity '{ActivityName}' has an invalid Zero Participant Policy.";
+                return false;
+            }
+
+            PlayerSlotProfile[] slots =
+                playerParticipationExplicitSlotProfiles ?? Array.Empty<PlayerSlotProfile>();
+
+            switch (playerParticipationProjectionMode)
+            {
+                case ActivityParticipationProjectionMode.NoSlots:
+                    if (slots.Length != 0)
+                    {
+                        issue = $"Activity '{ActivityName}' uses NoSlots but contains {slots.Length} Explicit Slot reference(s).";
+                        return false;
+                    }
+
+                    if (playerParticipationZeroParticipantPolicy !=
+                        ActivityParticipationZeroParticipantPolicy.Allowed)
+                    {
+                        issue = $"Activity '{ActivityName}' uses NoSlots and therefore requires Zero Participants = Allowed.";
+                        return false;
+                    }
+                    break;
+
+                case ActivityParticipationProjectionMode.AllJoinedSlots:
+                    if (slots.Length != 0)
+                    {
+                        issue = $"Activity '{ActivityName}' uses AllJoinedSlots but contains {slots.Length} Explicit Slot reference(s).";
+                        return false;
+                    }
+                    break;
+
+                case ActivityParticipationProjectionMode.ExplicitSlots:
+                    if (slots.Length == 0)
+                    {
+                        issue = $"Activity '{ActivityName}' uses ExplicitSlots but has no PlayerSlotProfile references.";
+                        return false;
+                    }
+
+                    if (playerParticipationZeroParticipantPolicy !=
+                        ActivityParticipationZeroParticipantPolicy.Rejected)
+                    {
+                        issue = $"Activity '{ActivityName}' uses ExplicitSlots and therefore requires Zero Participants = Rejected.";
+                        return false;
+                    }
+                    break;
+            }
+
+            var profileOwners = new HashSet<PlayerSlotProfile>();
+            var identityOwners = new HashSet<PlayerSlotId>();
+            for (int index = 0; index < slots.Length; index++)
+            {
+                PlayerSlotProfile slotProfile = slots[index];
+                if (slotProfile == null)
+                {
+                    issue = $"Activity '{ActivityName}' Explicit Slots[{index}] is missing.";
+                    return false;
+                }
+
+                if (!profileOwners.Add(slotProfile))
+                {
+                    issue = $"Activity '{ActivityName}' repeats PlayerSlotProfile '{slotProfile.name}' at Explicit Slots[{index}].";
+                    return false;
+                }
+
+                if (!slotProfile.TryGetPlayerSlotId(
+                        out PlayerSlotId playerSlotId,
+                        out string identityIssue))
+                {
+                    issue = identityIssue;
+                    return false;
+                }
+
+                if (!identityOwners.Add(playerSlotId))
+                {
+                    issue = $"Activity '{ActivityName}' contains duplicate PlayerSlotId '{playerSlotId}' at Explicit Slots[{index}].";
+                    return false;
+                }
+            }
+
+            descriptor = new ActivityParticipationProjectionDescriptor(
+                playerParticipationProjectionMode,
+                playerParticipationZeroParticipantPolicy,
+                slots);
+            issue = string.Empty;
+            return true;
         }
 
         public ActivityContentProfileAsset ActivityContentProfile => activityContentProfile;

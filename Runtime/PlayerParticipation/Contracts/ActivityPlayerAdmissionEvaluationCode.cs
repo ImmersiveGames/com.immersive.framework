@@ -13,7 +13,6 @@ namespace Immersive.Framework.PlayerParticipation
         None = 0,
         Satisfied = 10,
         MissingActivity = 20,
-        MissingProjectionProfile = 30,
         MissingRequirementsProfile = 40,
         InvalidProjection = 50,
         InvalidRequirementLevel = 60,

@@ -22,7 +22,7 @@ No new gameplay component or diagnostic-first authoring flow is introduced. The 
 
 ```text
 ActivityAsset
-  Projection Profile
+  Activity-owned Projection configuration
   Requirements Profile
 
 PlayerSlotProfile
@@ -44,7 +44,7 @@ The preparation module creates the participant during Session composition. The p
 
 ```text
 1. Validate exact Activity RuntimeScopeContext.
-2. Resolve Projection Profile in deterministic order.
+2. Resolve the Activity-owned Projection configuration in deterministic order.
 3. Validate Requirements Profile.
 4. Require Joined state when the progressive level needs it.
 5. Select the Slot default Actor when SelectedActors or higher is required and no selection exists.

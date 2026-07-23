@@ -43,14 +43,6 @@ namespace Immersive.Framework.PlayerParticipation
                     "Activity Player admission evaluation requires an explicit ActivityAsset.");
             }
 
-            if (activity.PlayerParticipationProjectionProfile == null)
-            {
-                return GlobalFailure(
-                    activity.ActivityName,
-                    ActivityPlayerAdmissionEvaluationCode.MissingProjectionProfile,
-                    $"Activity '{activity.ActivityName}' is missing its mandatory participation Projection Profile.");
-            }
-
             PlayerParticipationRequirementsProfile requirements =
                 activity.PlayerParticipationRequirementsProfile;
             if (requirements == null)
@@ -76,8 +68,8 @@ namespace Immersive.Framework.PlayerParticipation
                 return new ActivityPlayerAdmissionEvaluationResult(
                     activity.ActivityName,
                     string.Empty,
-                    activity.PlayerParticipationProjectionProfile.ProjectionMode,
-                    activity.PlayerParticipationProjectionProfile.ZeroParticipantPolicy,
+                    activity.PlayerParticipationProjectionMode,
+                    activity.PlayerParticipationZeroParticipantPolicy,
                     requirements.RequirementLevel,
                     ActivityPlayerAdmissionEvaluationStatus.Failed,
                     ActivityPlayerAdmissionEvaluationCode.InvalidProjection,

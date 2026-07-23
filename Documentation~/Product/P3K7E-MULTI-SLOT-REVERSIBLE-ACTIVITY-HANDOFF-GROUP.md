@@ -106,7 +106,7 @@ remains authoritative:
 
 ```text
 ActivityAsset
-  Projection Profile
+  Activity-owned Projection configuration
   Requirements Profile
 
 PlayerSlotProfile / ActorProfile

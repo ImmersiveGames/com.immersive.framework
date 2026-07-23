@@ -1,5 +1,7 @@
 # P3D.2 — Activity Participation Templates and Model Readiness
 
+> Historical closure record. `PROD-ASSET-1D` later removed Projection template assets because projection is now configured directly in each `ActivityAsset`. Model Readiness still validates the resulting Activity-owned configuration.
+
 ## Objective
 
 Complete the P3D authoring layer with valid reusable Projection templates, one canonical Model Readiness aggregation path and a technical QA handoff.

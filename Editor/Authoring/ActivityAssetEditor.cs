@@ -14,7 +14,9 @@ namespace Immersive.Framework.Editor.Editor.Authoring
         private SerializedProperty _activityName;
         private SerializedProperty _activityId;
         private SerializedProperty _description;
-        private SerializedProperty _playerParticipationProjectionProfile;
+        private SerializedProperty _playerParticipationProjectionMode;
+        private SerializedProperty _playerParticipationZeroParticipantPolicy;
+        private SerializedProperty _playerParticipationExplicitSlotProfiles;
         private SerializedProperty _playerParticipationRequirementsProfile;
         private SerializedProperty _activityContentProfile;
         private SerializedProperty _visualTransitionMode;
@@ -27,8 +29,12 @@ namespace Immersive.Framework.Editor.Editor.Authoring
             _activityName = serializedObject.FindProperty("activityName");
             _activityId = serializedObject.FindProperty("activityId");
             _description = serializedObject.FindProperty("description");
-            _playerParticipationProjectionProfile =
-                serializedObject.FindProperty("playerParticipationProjectionProfile");
+            _playerParticipationProjectionMode =
+                serializedObject.FindProperty("playerParticipationProjectionMode");
+            _playerParticipationZeroParticipantPolicy =
+                serializedObject.FindProperty("playerParticipationZeroParticipantPolicy");
+            _playerParticipationExplicitSlotProfiles =
+                serializedObject.FindProperty("playerParticipationExplicitSlotProfiles");
             _playerParticipationRequirementsProfile =
                 serializedObject.FindProperty("playerParticipationRequirementsProfile");
             _activityContentProfile = serializedObject.FindProperty("activityContentProfile");
@@ -86,12 +92,31 @@ namespace Immersive.Framework.Editor.Editor.Authoring
         {
             EditorGUILayout.LabelField("Player Participation", EditorStyles.boldLabel);
             EditorGUILayout.HelpBox(
-                "Projection selects which Session Slots are evaluated. Requirements defines the readiness level those projected Slots must satisfy. Both references are mandatory; use explicit No Slots + None Profiles for an Activity with no Players.",
+                "Projection belongs to this Activity and selects which Session Slots are evaluated. Requirements defines the reusable readiness level those projected Slots must satisfy. Use No Slots + an explicit None Requirements Profile for an Activity with no Players.",
                 MessageType.Info);
 
             EditorGUILayout.PropertyField(
-                _playerParticipationProjectionProfile,
-                new GUIContent("Projection Profile"));
+                _playerParticipationProjectionMode,
+                new GUIContent("Slot Projection"));
+
+            ActivityParticipationProjectionMode projectionMode =
+                _playerParticipationProjectionMode != null &&
+                !_playerParticipationProjectionMode.hasMultipleDifferentValues
+                    ? (ActivityParticipationProjectionMode)
+                        _playerParticipationProjectionMode.intValue
+                    : ActivityParticipationProjectionMode.NoSlots;
+
+            if (projectionMode == ActivityParticipationProjectionMode.ExplicitSlots)
+            {
+                EditorGUILayout.PropertyField(
+                    _playerParticipationExplicitSlotProfiles,
+                    new GUIContent("Explicit Slots"),
+                    true);
+            }
+
+            EditorGUILayout.PropertyField(
+                _playerParticipationZeroParticipantPolicy,
+                new GUIContent("Zero Participants"));
             EditorGUILayout.PropertyField(
                 _playerParticipationRequirementsProfile,
                 new GUIContent("Requirements Profile"));
@@ -100,16 +125,6 @@ namespace Immersive.Framework.Editor.Editor.Authoring
 
             using (new EditorGUILayout.HorizontalScope())
             {
-                using (new EditorGUI.DisabledScope(
-                           _playerParticipationProjectionProfile.objectReferenceValue == null))
-                {
-                    if (GUILayout.Button("Select Projection"))
-                    {
-                        Selection.activeObject =
-                            _playerParticipationProjectionProfile.objectReferenceValue;
-                    }
-                }
-
                 using (new EditorGUI.DisabledScope(
                            _playerParticipationRequirementsProfile.objectReferenceValue == null))
                 {
@@ -168,32 +183,29 @@ namespace Immersive.Framework.Editor.Editor.Authoring
 
         private void DrawParticipationSummary()
         {
-            var projection =
-                _playerParticipationProjectionProfile.objectReferenceValue as
-                    ActivityParticipationProjectionProfile;
             var requirements =
                 _playerParticipationRequirementsProfile.objectReferenceValue as
                     PlayerParticipationRequirementsProfile;
 
-            if (projection == null || requirements == null)
+            if (requirements == null)
             {
                 EditorGUILayout.HelpBox(
-                    "Incomplete Player participation authoring. Assign both explicit Profiles; null does not select a default.",
+                    "Incomplete Player participation authoring. Assign an explicit Requirements Profile; null does not select a default.",
                     MessageType.Error);
                 return;
             }
 
+            ActivityParticipationProjectionMode projectionMode =
+                (ActivityParticipationProjectionMode)
+                _playerParticipationProjectionMode.intValue;
             EditorGUILayout.HelpBox(
-                $"Projection: {projection.DisplayName} ({projection.ProjectionMode})\n" +
+                $"Projection: {projectionMode}\n" +
                 $"Requirements: {requirements.DisplayName} ({requirements.RequirementLevel})",
                 MessageType.None);
         }
 
         private void DrawParticipationDebug()
         {
-            var projection =
-                _playerParticipationProjectionProfile.objectReferenceValue as
-                    ActivityParticipationProjectionProfile;
             var requirements =
                 _playerParticipationRequirementsProfile.objectReferenceValue as
                     PlayerParticipationRequirementsProfile;
@@ -202,13 +214,17 @@ namespace Immersive.Framework.Editor.Editor.Authoring
             {
                 EditorGUILayout.TextField(
                     "Projection Mode",
-                    projection != null ? projection.ProjectionMode.ToString() : "Missing");
+                    ((ActivityParticipationProjectionMode)
+                        _playerParticipationProjectionMode.intValue).ToString());
                 EditorGUILayout.TextField(
                     "Zero Participant Policy",
-                    projection != null ? projection.ZeroParticipantPolicy.ToString() : "Missing");
+                    ((ActivityParticipationZeroParticipantPolicy)
+                        _playerParticipationZeroParticipantPolicy.intValue).ToString());
                 EditorGUILayout.IntField(
                     "Explicit Slot Count",
-                    projection != null ? projection.ExplicitSlotProfiles.Count : 0);
+                    _playerParticipationExplicitSlotProfiles != null
+                        ? _playerParticipationExplicitSlotProfiles.arraySize
+                        : 0);
                 EditorGUILayout.TextField(
                     "Requirement Level",
                     requirements != null ? requirements.RequirementLevel.ToString() : "Missing");

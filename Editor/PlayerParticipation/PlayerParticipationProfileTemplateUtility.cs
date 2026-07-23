@@ -37,17 +37,6 @@ namespace Immersive.Framework.Editor.Editor.PlayerParticipation
         }
 
         [MenuItem(
-            "Assets/Create/Immersive Framework/Player/Templates/Activity Projection Set",
-            false,
-            212)]
-        private static void CreateActivityProjectionProfiles()
-        {
-            string folder = EnsureTemplateFolder();
-            List<Object> created = CreateProjectionProfileSet(folder);
-            CompleteCreation(created, "Activity Participation Projection templates");
-        }
-
-        [MenuItem(
             "Assets/Create/Immersive Framework/Player/Templates/Complete Local Player Profile Set",
             false,
             214)]
@@ -57,7 +46,6 @@ namespace Immersive.Framework.Editor.Editor.PlayerParticipation
             var created = new List<Object>();
             created.AddRange(CreatePlayerSlotProfileSet(folder));
             created.AddRange(CreateRequirementsProfileSet(folder));
-            created.AddRange(CreateProjectionProfileSet(folder));
             CompleteCreation(created, "complete local Player Profile template set");
         }
 
@@ -108,34 +96,6 @@ namespace Immersive.Framework.Editor.Editor.PlayerParticipation
             };
         }
 
-        private static List<Object> CreateProjectionProfileSet(string folder)
-        {
-            return new List<Object>
-            {
-                CreateProjectionProfile(
-                    folder,
-                    "ActivityParticipation_NoPlayers",
-                    "Activity Participation — No Players",
-                    "Projects no Player Slots. Pair with the explicit None requirements Profile.",
-                    ActivityParticipationProjectionMode.NoSlots,
-                    ActivityParticipationZeroParticipantPolicy.Allowed),
-                CreateProjectionProfile(
-                    folder,
-                    "ActivityParticipation_AllJoined_ZeroAllowed",
-                    "Activity Participation — All Joined (Zero Allowed)",
-                    "Projects every currently Joined Slot and permits the Activity to continue when no Slot is joined.",
-                    ActivityParticipationProjectionMode.AllJoinedSlots,
-                    ActivityParticipationZeroParticipantPolicy.Allowed),
-                CreateProjectionProfile(
-                    folder,
-                    "ActivityParticipation_AllJoined_AtLeastOne",
-                    "Activity Participation — All Joined (At Least One)",
-                    "Projects every currently Joined Slot and rejects an empty projected set.",
-                    ActivityParticipationProjectionMode.AllJoinedSlots,
-                    ActivityParticipationZeroParticipantPolicy.Rejected)
-            };
-        }
-
         private static PlayerSlotProfile CreatePlayerSlotProfile(
             string folder,
             int playerNumber,
@@ -174,31 +134,6 @@ namespace Immersive.Framework.Editor.Editor.PlayerParticipation
             serializedProfile.FindProperty("displayName").stringValue = displayName;
             serializedProfile.FindProperty("description").stringValue = description;
             serializedProfile.FindProperty("requirementLevel").intValue = (int)requirementLevel;
-            serializedProfile.ApplyModifiedPropertiesWithoutUndo();
-
-            string assetPath = AssetDatabase.GenerateUniqueAssetPath($"{folder}/{fileName}.asset");
-            AssetDatabase.CreateAsset(profile, assetPath);
-            return profile;
-        }
-
-        private static ActivityParticipationProjectionProfile CreateProjectionProfile(
-            string folder,
-            string fileName,
-            string displayName,
-            string description,
-            ActivityParticipationProjectionMode projectionMode,
-            ActivityParticipationZeroParticipantPolicy zeroParticipantPolicy)
-        {
-            var profile = ScriptableObject.CreateInstance<ActivityParticipationProjectionProfile>();
-            profile.name = displayName;
-
-            var serializedProfile = new SerializedObject(profile);
-            serializedProfile.FindProperty("displayName").stringValue = displayName;
-            serializedProfile.FindProperty("description").stringValue = description;
-            serializedProfile.FindProperty("projectionMode").intValue = (int)projectionMode;
-            serializedProfile.FindProperty("zeroParticipantPolicy").intValue =
-                (int)zeroParticipantPolicy;
-            serializedProfile.FindProperty("explicitSlotProfiles").arraySize = 0;
             serializedProfile.ApplyModifiedPropertiesWithoutUndo();
 
             string assetPath = AssetDatabase.GenerateUniqueAssetPath($"{folder}/{fileName}.asset");

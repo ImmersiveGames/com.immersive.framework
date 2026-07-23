@@ -34,7 +34,7 @@ Existing authoring remains authoritative:
 
 ```text
 RouteAsset.StartupActivity
-ActivityParticipationProjectionProfile
+Activity-owned Projection configuration
 PlayerParticipationRequirementsProfile
 PlayerSlotProfile
 ActorProfile
