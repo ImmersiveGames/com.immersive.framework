@@ -62,7 +62,7 @@ and requires destructive removal of the superseded Director/binding/activation a
 Cinemachine is mandatory.
 The framework does not reimplement Follow, LookAt, damping or blending.
 Target sources are explicit and typed.
-An explicit typed Player target source may expose CameraTarget and LookAtTarget.
+A typed Local Player target source may expose CameraTarget and LookAtTarget.
 Apply/Rebuild must be idempotent.
 No Camera.main fallback.
 No object-name or hierarchy-path functional identity.

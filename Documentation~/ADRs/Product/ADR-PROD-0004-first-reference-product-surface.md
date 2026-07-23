@@ -1,14 +1,9 @@
 # ADR-PROD-0004 — First Reference Product Surface
 
-Status: Superseded for Local Player implementation  
+Status: Superseded for the Local Player shape by `ADR-PROD-0007`, `ADR-PROD-0008`, and `ADR-PROD-0010`  
 Date: 2026-07-09
 
-> Historical decision. The product-surface principles remain valid, but the
-> concrete `PlayerRecipe` / `PlayerComposer` proposal is not current
-> implementation guidance. The current Local Player model separates the
-> `PlayerInputManager`-provisioned technical host, its `Actor Mount`, the
-> contextual Logical Actor materialized from `ActorProfile`, and the scoped
-> runtime contexts that own participation and Actor preparation.
+> Historical direction only. This ADR proposed the first product-surface experiment; it does not describe an implemented `PlayerRecipe` or `PlayerComposer`. Current Local Player architecture is defined by the related Player participation, Actor materialization, and manual-join ADRs.
 
 ## Context
 
@@ -18,20 +13,17 @@ The package has strong runtime foundations in GameApplication, Route, Activity, 
 
 FIRSTGAME also exposed the largest usability leak around the player. A minimal real player currently requires many technical declarations, input bindings, reset adapters, camera anchors, and validation/repair tools.
 
-## Decision
+## Historical decision
 
-The following records the original reference-surface proposal and is retained
-for historical traceability.
-
-The first reference product surface is:
+The first reference product surface was proposed as:
 
 ```text
 Player Recipe / Player Composer
 ```
 
-The first slice must prove that a user can create and configure a framework-ready player without manually understanding every internal contract.
+The intended first slice was meant to prove that a user could create and configure a framework-ready player without manually understanding every internal contract.
 
-The player surface becomes the reference model for later product surfaces such as Camera, Global UI, Resettable Object, Route/Activity, Input, and Content.
+That proposal remains useful as product-direction history, but the named `PlayerRecipe` / `PlayerComposer` shape is not current implementation guidance.
 
 ## Product goals
 

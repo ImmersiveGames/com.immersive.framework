@@ -1,19 +1,10 @@
 # ADR-PROD-0008 — Actor Profile, Logical Actor Host and Presentation Materialization
 
-Status: Accepted; Local Player host sections superseded  
+Status: Accepted  
 Date: 2026-07-12  
 Package: `com.immersive.framework`  
 Area: Actor Product Surface / Runtime Materialization / Presentation  
 Related: `ADR-PROD-0007`, `ADR-PROD-0009`, `ADR-PROD-0010`, `F45-ADR-ACTOR-001`, `F08-ADR-RUNTIME-001`, `ADR-PROD-0004`, `ADR-PROD-0006`
-
-> Applicability note: the generic `ActorProfile`, Logical Actor and Presentation
-> separation remains current. Sections that place `PlayerInput`,
-> `PlayerActorDeclaration` or `PlayerComposer` directly on the
-> `ActorProfile`'s canonical Logical Actor Host are historical. The current
-> Local Player composition is `PlayerInputManager` → technical Local Player
-> Host → `Actor Mount` → contextual Logical Actor materialized from
-> `ActorProfile`. Participation and Actor-preparation runtime contexts retain
-> their scoped authority.
 
 ## Context
 
@@ -355,7 +346,7 @@ Presentation / Skin contract
 Representative optional contents may include:
 
 ```text
-typed camera target sources when the Actor is player-controllable
+local Player host/control composition when the Actor is player-controllable
 input and control endpoints
 camera target anchors
 reset endpoints
@@ -401,7 +392,9 @@ A Local Player Actor is therefore a specialized Actor, not a second parallel ent
 
 The specialized declaration preserves all generic Actor behavior while adding Player-only bridges.
 
-### Current P3 implementation gate
+### Historical P3 implementation gate
+
+This subsection records the temporary minimum used by the P3 implementation sequence. It is not evidence that the temporary gate remains the current package state.
 
 Actor Presentation / Skin has not yet been ported into the new framework.
 
@@ -806,9 +799,8 @@ ActorDeclaration must become inheritable without weakening its common identity a
 PlayerActorDeclaration must be reconciled as the derived declaration and must require
 Unity PlayerInput for the local Player product shape.
 
-Any future designer-facing Local Player composition surface must remain limited
-to the technical host and must not compete with `ActorProfile`, participation,
-Actor preparation or contextual materialization authorities.
+Any future designer-facing Local Player authoring surface must be reconciled with
+ActorProfile without creating competing product authorities.
 ```
 
 ## Suggested commit message

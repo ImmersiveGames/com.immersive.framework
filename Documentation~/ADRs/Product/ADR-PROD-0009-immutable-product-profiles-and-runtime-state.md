@@ -86,7 +86,6 @@ Examples:
 ```text
 ActorProfile
 PlayerSlotProfile
-PlayerParticipationRequirementsProfile
 ```
 
 Identity Profile metadata may include:

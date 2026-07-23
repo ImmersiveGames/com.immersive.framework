@@ -94,13 +94,13 @@ namespace Immersive.Framework.PlayerParticipation
             {
                 runtimeContext = null;
                 initializationResult = PlayerParticipationRuntimeContext.TryCreateWithActorSelectionPolicy(
-                    PlayerActorSelectionDuplicatePolicy.Unspecified,
-                    0,
-                    false,
-                    null,
-                    source,
-                    reason,
-                    out _);
+                    orderedProfiles: null,
+                    initialDynamicCapacity: 0,
+                    initialJoiningOpen: false,
+                    actorSelectionDuplicatePolicy: PlayerActorSelectionDuplicatePolicy.Unspecified,
+                    source: source,
+                    reason: reason,
+                    context: out _);
                 return initializationResult;
             }
 
