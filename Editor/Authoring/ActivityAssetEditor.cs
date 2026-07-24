@@ -1,4 +1,3 @@
-using System;
 using Immersive.Framework.Authoring;
 using Immersive.Framework.Editor.Editor.PlayerParticipation;
 using Immersive.Framework.Editor.Editor.Settings;
@@ -31,23 +30,33 @@ namespace Immersive.Framework.Editor.Editor.Authoring
 
         private void OnEnable()
         {
-            _activityName = serializedObject.FindProperty("activityName");
-            _activityId = serializedObject.FindProperty("activityId");
-            _description = serializedObject.FindProperty("description");
+            _activityName =
+                serializedObject.FindProperty("activityName");
+            _activityId =
+                serializedObject.FindProperty("activityId");
+            _description =
+                serializedObject.FindProperty("description");
             _playerParticipationProjectionMode =
-                serializedObject.FindProperty("playerParticipationProjectionMode");
+                serializedObject.FindProperty(
+                    "playerParticipationProjectionMode");
             _playerParticipationZeroParticipantPolicy =
-                serializedObject.FindProperty("playerParticipationZeroParticipantPolicy");
+                serializedObject.FindProperty(
+                    "playerParticipationZeroParticipantPolicy");
             _playerParticipationExplicitSlotProfiles =
-                serializedObject.FindProperty("playerParticipationExplicitSlotProfiles");
+                serializedObject.FindProperty(
+                    "playerParticipationExplicitSlotProfiles");
             _playerParticipationRequirementLevel =
-                serializedObject.FindProperty("playerParticipationRequirementLevel");
+                serializedObject.FindProperty(
+                    "playerParticipationRequirementLevel");
             _activityContentProfile =
-                serializedObject.FindProperty("activityContentProfile");
+                serializedObject.FindProperty(
+                    "activityContentProfile");
             _visualTransitionMode =
-                serializedObject.FindProperty("visualTransitionMode");
+                serializedObject.FindProperty(
+                    "visualTransitionMode");
             _transitionGateMode =
-                serializedObject.FindProperty("transitionGateMode");
+                serializedObject.FindProperty(
+                    "transitionGateMode");
         }
 
         public override void OnInspectorGUI()
@@ -74,8 +83,11 @@ namespace Immersive.Framework.Editor.Editor.Authoring
             EditorGUILayout.Space(8f);
             DrawAdvancedDiagnostics();
 
-            bool modified = serializedObject.ApplyModifiedProperties();
-            if (modified && _lastValidationReport != null)
+            bool modified =
+                serializedObject.ApplyModifiedProperties();
+
+            if (modified &&
+                _lastValidationReport != null)
             {
                 _validationOutdated = true;
             }
@@ -83,7 +95,9 @@ namespace Immersive.Framework.Editor.Editor.Authoring
 
         private void DrawHeader()
         {
-            EditorGUILayout.LabelField("Activity", EditorStyles.boldLabel);
+            EditorGUILayout.LabelField(
+                "Activity",
+                EditorStyles.boldLabel);
             EditorGUILayout.HelpBox(
                 "An Activity represents a step or mode inside a Route, such as Title, Character Select, Exploration, Results or Credits.",
                 MessageType.Info);
@@ -91,7 +105,9 @@ namespace Immersive.Framework.Editor.Editor.Authoring
 
         private void DrawOverview()
         {
-            EditorGUILayout.LabelField("Overview", EditorStyles.boldLabel);
+            EditorGUILayout.LabelField(
+                "Overview",
+                EditorStyles.boldLabel);
             EditorGUILayout.PropertyField(
                 _activityName,
                 new GUIContent(
@@ -103,32 +119,16 @@ namespace Immersive.Framework.Editor.Editor.Authoring
                     "Description",
                     "Optional note explaining the purpose of this Activity."));
 
-            DrawIdentityProblem();
-        }
-
-        private void DrawIdentityProblem()
-        {
-            if (_activityId != null &&
-                ActivityId.IsValidText(_activityId.stringValue))
-            {
-                return;
-            }
-
             EditorGUILayout.HelpBox(
-                "Activity ID is missing or malformed. Generate a canonical ID explicitly, or use Activity ID Migration for a coordinated project migration.",
-                MessageType.Error);
-
-            if (_activityId != null &&
-                GUILayout.Button("Generate Activity ID"))
-            {
-                _activityId.stringValue =
-                    ImmersiveFrameworkEditorSettingsUtility.GenerateActivityIdText();
-            }
+                "Stable identity checks run only through Validate Activity. Technical identity remains visible under Advanced / Diagnostics.",
+                MessageType.None);
         }
 
         private void DrawPlayers()
         {
-            EditorGUILayout.LabelField("Players", EditorStyles.boldLabel);
+            EditorGUILayout.LabelField(
+                "Players",
+                EditorStyles.boldLabel);
             EditorGUILayout.HelpBox(
                 "Choose which local Players belong to this Activity and how ready they must be before it can proceed.",
                 MessageType.None);
@@ -139,11 +139,7 @@ namespace Immersive.Framework.Editor.Editor.Authoring
                     "Who Participates",
                     "Selects which Session Player Slots are included by this Activity."));
 
-            ActivityParticipationProjectionMode projectionMode =
-                GetProjectionMode();
-
-            if (projectionMode ==
-                ActivityParticipationProjectionMode.ExplicitSlots)
+            if (UsesExplicitSlots())
             {
                 EditorGUILayout.PropertyField(
                     _playerParticipationExplicitSlotProfiles,
@@ -158,7 +154,6 @@ namespace Immersive.Framework.Editor.Editor.Authoring
                 new GUIContent(
                     "If No Players Are Available",
                     "Controls whether a dynamic Player selection may resolve to zero participants."));
-
             EditorGUILayout.PropertyField(
                 _playerParticipationRequirementLevel,
                 new GUIContent(
@@ -166,149 +161,27 @@ namespace Immersive.Framework.Editor.Editor.Authoring
                     "Progressive readiness required from every participating Player."));
 
             EditorGUILayout.HelpBox(
-                BuildParticipationSummary(),
-                ResolveParticipationMessageType());
+                "Projection, zero-participant and readiness coherence is evaluated only through Validate Activity.",
+                MessageType.None);
         }
 
-        private string BuildParticipationSummary()
+        private bool UsesExplicitSlots()
         {
-            if (!TryGetDefinedEnum(
-                    _playerParticipationProjectionMode,
-                    out ActivityParticipationProjectionMode projectionMode))
-            {
-                return "Who Participates contains an invalid serialized value. Run Validate Activity for details.";
-            }
-
-            if (!TryGetDefinedEnum(
-                    _playerParticipationZeroParticipantPolicy,
-                    out ActivityParticipationZeroParticipantPolicy zeroPolicy))
-            {
-                return "If No Players Are Available contains an invalid serialized value. Run Validate Activity for details.";
-            }
-
-            if (!TryGetDefinedEnum(
-                    _playerParticipationRequirementLevel,
-                    out PlayerParticipationRequirementLevel requirementLevel))
-            {
-                return "Ready When contains an invalid serialized value. Run Validate Activity for details.";
-            }
-
-            string participants = BuildProjectionSummary(projectionMode);
-            string zeroParticipants = BuildZeroParticipantSummary(zeroPolicy);
-            string readiness = BuildRequirementSummary(requirementLevel);
-
-            return $"{participants}\n{zeroParticipants}\n{readiness}";
-        }
-
-        private MessageType ResolveParticipationMessageType()
-        {
-            if (!TryGetDefinedEnum(
-                    _playerParticipationProjectionMode,
-                    out ActivityParticipationProjectionMode projectionMode) ||
-                !TryGetDefinedEnum(
-                    _playerParticipationZeroParticipantPolicy,
-                    out ActivityParticipationZeroParticipantPolicy zeroPolicy) ||
-                !TryGetDefinedEnum(
-                    _playerParticipationRequirementLevel,
-                    out PlayerParticipationRequirementLevel requirementLevel))
-            {
-                return MessageType.Error;
-            }
-
-            if (projectionMode == ActivityParticipationProjectionMode.NoSlots &&
-                (zeroPolicy != ActivityParticipationZeroParticipantPolicy.Allowed ||
-                 requirementLevel != PlayerParticipationRequirementLevel.None))
-            {
-                return MessageType.Error;
-            }
-
-            if (projectionMode ==
-                    ActivityParticipationProjectionMode.ExplicitSlots &&
-                (zeroPolicy != ActivityParticipationZeroParticipantPolicy.Rejected ||
-                 _playerParticipationExplicitSlotProfiles == null ||
-                 _playerParticipationExplicitSlotProfiles.arraySize == 0))
-            {
-                return MessageType.Error;
-            }
-
-            return MessageType.Info;
-        }
-
-        private static string BuildProjectionSummary(
-            ActivityParticipationProjectionMode mode)
-        {
-            switch (mode)
-            {
-                case ActivityParticipationProjectionMode.NoSlots:
-                    return "No Players participate in this Activity. Use this for menus, credits or non-player sequences.";
-
-                case ActivityParticipationProjectionMode.AllJoinedSlots:
-                    return "All local Players currently joined to the Session participate.";
-
-                case ActivityParticipationProjectionMode.ExplicitSlots:
-                    return "Only the configured Player Slots participate.";
-
-                default:
-                    return $"Participation mode '{mode}' is not supported by this Inspector.";
-            }
-        }
-
-        private static string BuildZeroParticipantSummary(
-            ActivityParticipationZeroParticipantPolicy policy)
-        {
-            switch (policy)
-            {
-                case ActivityParticipationZeroParticipantPolicy.Allowed:
-                    return "The Activity may proceed when no participating Players are available.";
-
-                case ActivityParticipationZeroParticipantPolicy.Rejected:
-                    return "The Activity is blocked when no participating Players are available.";
-
-                default:
-                    return $"Zero-player policy '{policy}' is not supported by this Inspector.";
-            }
-        }
-
-        private static string BuildRequirementSummary(
-            PlayerParticipationRequirementLevel level)
-        {
-            switch (level)
-            {
-                case PlayerParticipationRequirementLevel.None:
-                    return "No Player readiness is required.";
-
-                case PlayerParticipationRequirementLevel.JoinedSlots:
-                    return "Every participating Player Slot must be joined.";
-
-                case PlayerParticipationRequirementLevel.SelectedActors:
-                    return "Every participating Player must have an Actor selected.";
-
-                case PlayerParticipationRequirementLevel.LogicalActorsPrepared:
-                    return "Every participating Player must have its logical Actor prepared.";
-
-                case PlayerParticipationRequirementLevel.GameplayReady:
-                    return "Every participating Player must satisfy complete gameplay readiness.";
-
-                default:
-                    return $"Readiness level '{level}' is not supported by this Inspector.";
-            }
-        }
-
-        private ActivityParticipationProjectionMode GetProjectionMode()
-        {
-            return TryGetDefinedEnum(
-                _playerParticipationProjectionMode,
-                out ActivityParticipationProjectionMode value)
-                    ? value
-                    : ActivityParticipationProjectionMode.NoSlots;
+            return _playerParticipationProjectionMode != null &&
+                   !_playerParticipationProjectionMode
+                       .hasMultipleDifferentValues &&
+                   _playerParticipationProjectionMode.intValue ==
+                   (int)ActivityParticipationProjectionMode
+                       .ExplicitSlots;
         }
 
         private void DrawActivityContent()
         {
-            _showActivityContent = EditorGUILayout.Foldout(
-                _showActivityContent,
-                "Activity Content",
-                true);
+            _showActivityContent =
+                EditorGUILayout.Foldout(
+                    _showActivityContent,
+                    "Activity Content",
+                    true);
 
             if (!_showActivityContent)
             {
@@ -321,13 +194,13 @@ namespace Immersive.Framework.Editor.Editor.Authoring
                     "Content Profile",
                     "Optional Activity-owned scenes composed and released with this Activity."));
 
-            UnityEngine.Object profile =
+            Object profile =
                 _activityContentProfile.objectReferenceValue;
 
             if (profile == null)
             {
                 EditorGUILayout.HelpBox(
-                    "No Activity-owned scenes. This Activity currently uses the scenes already provided by its Route.",
+                    "No Activity-owned content Profile is assigned.",
                     MessageType.None);
 
                 if (GUILayout.Button("Add Content Profile"))
@@ -335,9 +208,11 @@ namespace Immersive.Framework.Editor.Editor.Authoring
                     ActivityContentProfileAsset created =
                         ImmersiveFrameworkEditorSettingsUtility
                             .CreateActivityContentProfileAsset();
+
                     if (created != null)
                     {
-                        _activityContentProfile.objectReferenceValue = created;
+                        _activityContentProfile
+                            .objectReferenceValue = created;
                         Selection.activeObject = created;
                         EditorGUIUtility.PingObject(created);
                     }
@@ -347,8 +222,8 @@ namespace Immersive.Framework.Editor.Editor.Authoring
             }
 
             EditorGUILayout.HelpBox(
-                "Scenes from this Profile are composed when the Activity starts and released through the existing Activity operation path.",
-                MessageType.Info);
+                "The assigned Profile declares Activity-owned scene content.",
+                MessageType.None);
 
             if (GUILayout.Button("Open Content Profile"))
             {
@@ -359,14 +234,15 @@ namespace Immersive.Framework.Editor.Editor.Authoring
 
         private void DrawTransition()
         {
-            EditorGUILayout.LabelField("Transition", EditorStyles.boldLabel);
+            EditorGUILayout.LabelField(
+                "Transition",
+                EditorStyles.boldLabel);
 
             EditorGUILayout.PropertyField(
                 _visualTransitionMode,
                 new GUIContent(
                     "Presentation",
                     "Controls whether Activity changes are seamless, use a fade, or use fade with loading presentation."));
-
             EditorGUILayout.PropertyField(
                 _transitionGateMode,
                 new GUIContent(
@@ -374,74 +250,15 @@ namespace Immersive.Framework.Editor.Editor.Authoring
                     "Controls which requests and capabilities remain blocked while this Activity transition is running."));
 
             EditorGUILayout.HelpBox(
-                BuildTransitionSummary(),
-                ResolveTransitionMessageType());
-        }
-
-        private string BuildTransitionSummary()
-        {
-            if (!TryGetDefinedEnum(
-                    _visualTransitionMode,
-                    out ActivityVisualTransitionMode mode))
-            {
-                return "Presentation contains an invalid serialized value. Run Validate Activity for details.";
-            }
-
-            if (!TryGetDefinedEnum(
-                    _transitionGateMode,
-                    out TransitionGateMode gateMode))
-            {
-                return "Block During Transition contains an invalid serialized value. Run Validate Activity for details.";
-            }
-
-            string presentation;
-            switch (mode)
-            {
-                case ActivityVisualTransitionMode.Seamless:
-                    presentation =
-                        "The Activity changes without the shared fade or loading presentation.";
-                    break;
-
-                case ActivityVisualTransitionMode.Fade:
-                    presentation =
-                        "The Activity change uses the shared fade presentation.";
-                    break;
-
-                case ActivityVisualTransitionMode.FadeWithLoading:
-                    presentation =
-                        "The Activity change uses the shared fade and loading presentation when requested.";
-                    break;
-
-                default:
-                    presentation =
-                        $"Presentation mode '{mode}' is not supported by this Inspector.";
-                    break;
-            }
-
-            return $"{presentation}\nBlocking policy: {gateMode}.";
-        }
-
-        private MessageType ResolveTransitionMessageType()
-        {
-            if (!TryGetDefinedEnum(
-                    _visualTransitionMode,
-                    out ActivityVisualTransitionMode mode) ||
-                !TryGetDefinedEnum(
-                    _transitionGateMode,
-                    out TransitionGateMode gateMode))
-            {
-                return MessageType.Error;
-            }
-
-            return mode != ActivityVisualTransitionMode.Seamless &&
-                   gateMode != TransitionGateMode.InputInteractionAndGameplay
-                ? MessageType.Warning
-                : MessageType.Info;
+                "Presentation and transition-gate coherence is evaluated only through Validate Activity.",
+                MessageType.None);
         }
 
         private void DrawValidation()
         {
-            EditorGUILayout.LabelField("Validation", EditorStyles.boldLabel);
+            EditorGUILayout.LabelField(
+                "Validation",
+                EditorStyles.boldLabel);
 
             if (_lastValidationReport == null)
             {
@@ -478,13 +295,16 @@ namespace Immersive.Framework.Editor.Editor.Authoring
 
         private void RunValidation()
         {
-            ActivityAsset activity = (ActivityAsset)target;
+            ActivityAsset activity =
+                (ActivityAsset)target;
 
             _lastValidationReport =
-                FrameworkAuthoringValidator.ValidateActivity(activity);
+                FrameworkAuthoringValidator.ValidateActivity(
+                    activity);
             _lastValidationReport.AddRange(
-                FrameworkIdentityAuthoringValidator.ValidateProjectAssets(
-                    FrameworkValidationMode.Standard));
+                FrameworkIdentityAuthoringValidator
+                    .ValidateProjectAssets(
+                        FrameworkValidationMode.Standard));
             _lastValidationReport.AddRange(
                 ActivityParticipationProjectionAuthoringValidator
                     .ValidateActivity(activity));
@@ -494,10 +314,11 @@ namespace Immersive.Framework.Editor.Editor.Authoring
 
         private void DrawAdvancedDiagnostics()
         {
-            _showAdvancedDiagnostics = EditorGUILayout.Foldout(
-                _showAdvancedDiagnostics,
-                "Advanced / Diagnostics",
-                true);
+            _showAdvancedDiagnostics =
+                EditorGUILayout.Foldout(
+                    _showAdvancedDiagnostics,
+                    "Advanced / Diagnostics",
+                    true);
 
             if (!_showAdvancedDiagnostics)
             {
@@ -513,9 +334,10 @@ namespace Immersive.Framework.Editor.Editor.Authoring
 
         private void DrawActivityId()
         {
-            string activityId = _activityId != null
-                ? _activityId.stringValue ?? string.Empty
-                : string.Empty;
+            string activityId =
+                _activityId != null
+                    ? _activityId.stringValue ?? string.Empty
+                    : string.Empty;
 
             using (new EditorGUILayout.HorizontalScope())
             {
@@ -529,14 +351,36 @@ namespace Immersive.Framework.Editor.Editor.Authoring
                 }
 
                 using (new EditorGUI.DisabledScope(
-                           string.IsNullOrWhiteSpace(activityId)))
+                           !string.IsNullOrWhiteSpace(
+                               activityId)))
                 {
-                    if (GUILayout.Button("Copy ID", GUILayout.Width(70f)))
+                    if (GUILayout.Button(
+                            "Generate ID",
+                            GUILayout.Width(90f)))
                     {
-                        EditorGUIUtility.systemCopyBuffer = activityId;
+                        _activityId.stringValue =
+                            ImmersiveFrameworkEditorSettingsUtility
+                                .GenerateActivityIdText();
+                    }
+                }
+
+                using (new EditorGUI.DisabledScope(
+                           string.IsNullOrWhiteSpace(
+                               activityId)))
+                {
+                    if (GUILayout.Button(
+                            "Copy ID",
+                            GUILayout.Width(70f)))
+                    {
+                        EditorGUIUtility.systemCopyBuffer =
+                            activityId;
                     }
                 }
             }
+
+            EditorGUILayout.HelpBox(
+                "Activity ID validity is checked only by Validate Activity. Existing IDs are not replaced automatically.",
+                MessageType.None);
         }
 
         private void DrawParticipationDiagnostics()
@@ -550,23 +394,21 @@ namespace Immersive.Framework.Editor.Editor.Authoring
             {
                 EditorGUILayout.TextField(
                     "Projection Mode",
-                    GetRawEnumName<ActivityParticipationProjectionMode>(
+                    GetSerializedEnumLabel(
                         _playerParticipationProjectionMode));
-
                 EditorGUILayout.TextField(
                     "Zero Participant Policy",
-                    GetRawEnumName<ActivityParticipationZeroParticipantPolicy>(
+                    GetSerializedEnumLabel(
                         _playerParticipationZeroParticipantPolicy));
-
                 EditorGUILayout.IntField(
                     "Explicit Slot Count",
                     _playerParticipationExplicitSlotProfiles != null
-                        ? _playerParticipationExplicitSlotProfiles.arraySize
+                        ? _playerParticipationExplicitSlotProfiles
+                            .arraySize
                         : 0);
-
                 EditorGUILayout.TextField(
                     "Requirement Level",
-                    GetRawEnumName<PlayerParticipationRequirementLevel>(
+                    GetSerializedEnumLabel(
                         _playerParticipationRequirementLevel));
             }
         }
@@ -590,12 +432,11 @@ namespace Immersive.Framework.Editor.Editor.Authoring
 
                 EditorGUILayout.TextField(
                     "Transition Presentation",
-                    GetRawEnumName<ActivityVisualTransitionMode>(
+                    GetSerializedEnumLabel(
                         _visualTransitionMode));
-
                 EditorGUILayout.TextField(
                     "Transition Gate",
-                    GetRawEnumName<TransitionGateMode>(
+                    GetSerializedEnumLabel(
                         _transitionGateMode));
             }
         }
@@ -640,29 +481,8 @@ namespace Immersive.Framework.Editor.Editor.Authoring
                 false);
         }
 
-        private static bool TryGetDefinedEnum<TEnum>(
-            SerializedProperty property,
-            out TEnum value)
-            where TEnum : struct, Enum
-        {
-            value = default;
-
-            if (property == null ||
-                property.hasMultipleDifferentValues)
-            {
-                return false;
-            }
-
-            value = (TEnum)Enum.ToObject(
-                typeof(TEnum),
-                property.intValue);
-
-            return Enum.IsDefined(typeof(TEnum), value);
-        }
-
-        private static string GetRawEnumName<TEnum>(
+        private static string GetSerializedEnumLabel(
             SerializedProperty property)
-            where TEnum : struct, Enum
         {
             if (property == null)
             {
@@ -674,13 +494,18 @@ namespace Immersive.Framework.Editor.Editor.Authoring
                 return "Mixed Values";
             }
 
-            TEnum value = (TEnum)Enum.ToObject(
-                typeof(TEnum),
-                property.intValue);
+            string[] displayNames =
+                property.enumDisplayNames;
+            int selectedIndex =
+                property.enumValueIndex;
 
-            return Enum.IsDefined(typeof(TEnum), value)
-                ? value.ToString()
-                : $"Invalid ({property.intValue})";
+            if (selectedIndex >= 0 &&
+                selectedIndex < displayNames.Length)
+            {
+                return displayNames[selectedIndex];
+            }
+
+            return $"Serialized value {property.intValue}";
         }
     }
 }

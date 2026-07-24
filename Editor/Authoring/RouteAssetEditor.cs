@@ -18,6 +18,7 @@ namespace Immersive.Framework.Editor.Editor.Authoring
         private SerializedProperty _transitionGateMode;
         private SerializedProperty _description;
 
+        private SceneAsset _primarySceneAsset;
         private FrameworkAuthoringValidationReport _lastValidationReport;
         private bool _validationOutdated;
         private bool _showAdditionalContent;
@@ -33,6 +34,8 @@ namespace Immersive.Framework.Editor.Editor.Authoring
             _startupActivity = serializedObject.FindProperty("startupActivity");
             _transitionGateMode = serializedObject.FindProperty("transitionGateMode");
             _description = serializedObject.FindProperty("description");
+
+            _primarySceneAsset = ResolvePrimarySceneAsset();
         }
 
         public override void OnInspectorGUI()
@@ -72,17 +75,23 @@ namespace Immersive.Framework.Editor.Editor.Authoring
         [MenuItem("Assets/Create/Immersive Framework/Route", false, 10)]
         private static void CreateRouteAsset()
         {
-            RouteAsset route = ImmersiveFrameworkEditorSettingsUtility.CreateStartupRouteAsset();
-            if (route != null)
+            RouteAsset route =
+                ImmersiveFrameworkEditorSettingsUtility.CreateStartupRouteAsset();
+
+            if (route == null)
             {
-                Selection.activeObject = route;
-                EditorGUIUtility.PingObject(route);
+                return;
             }
+
+            Selection.activeObject = route;
+            EditorGUIUtility.PingObject(route);
         }
 
         private void DrawHeader()
         {
-            EditorGUILayout.LabelField("Route", EditorStyles.boldLabel);
+            EditorGUILayout.LabelField(
+                "Route",
+                EditorStyles.boldLabel);
             EditorGUILayout.HelpBox(
                 "A Route represents a major destination in the game flow, such as Main Menu, Gameplay, Results or Credits.",
                 MessageType.Info);
@@ -90,7 +99,9 @@ namespace Immersive.Framework.Editor.Editor.Authoring
 
         private void DrawOverview()
         {
-            EditorGUILayout.LabelField("Overview", EditorStyles.boldLabel);
+            EditorGUILayout.LabelField(
+                "Overview",
+                EditorStyles.boldLabel);
             EditorGUILayout.PropertyField(
                 _routeName,
                 new GUIContent(
@@ -102,115 +113,77 @@ namespace Immersive.Framework.Editor.Editor.Authoring
                     "Description",
                     "Optional note explaining the purpose of this destination."));
 
-            DrawApplicationRole();
-            DrawIdentityProblem();
-        }
-
-        private void DrawApplicationRole()
-        {
-            RouteAsset route = (RouteAsset)target;
-            GameApplicationAsset activeApplication =
-                ImmersiveFrameworkEditorSettingsUtility.GetActiveGameApplication();
-
-            if (activeApplication == null)
-            {
-                EditorGUILayout.HelpBox(
-                    "No active Game Application is assigned. This Route can still be authored, but its application role cannot be determined.",
-                    MessageType.None);
-                return;
-            }
-
-            if (activeApplication.StartupRoute == route)
-            {
-                EditorGUILayout.HelpBox(
-                    "Startup Route — this Route is the active application's entry point.",
-                    MessageType.Info);
-                return;
-            }
-
             EditorGUILayout.HelpBox(
-                "Application Route — this Route can be entered later through Game Flow.",
+                "Stable identity and application-role checks run only through Validate Route. Technical identity remains visible under Advanced / Diagnostics.",
                 MessageType.None);
-        }
-
-        private void DrawIdentityProblem()
-        {
-            if (_routeId != null && RouteId.IsValidText(_routeId.stringValue))
-            {
-                return;
-            }
-
-            EditorGUILayout.HelpBox(
-                "Route ID is missing or malformed. Generate a canonical ID explicitly; validation never repairs identity silently.",
-                MessageType.Error);
-
-            if (_routeId != null && GUILayout.Button("Generate Route ID"))
-            {
-                _routeId.stringValue =
-                    ImmersiveFrameworkEditorSettingsUtility.GenerateRouteIdText();
-            }
         }
 
         private void DrawPrimaryScene()
         {
-            EditorGUILayout.LabelField("Primary Scene", EditorStyles.boldLabel);
+            EditorGUILayout.LabelField(
+                "Primary Scene",
+                EditorStyles.boldLabel);
 
-            SceneAsset currentScene = LoadCurrentSceneAsset();
-            SceneAsset selectedScene = (SceneAsset)EditorGUILayout.ObjectField(
-                new GUIContent(
-                    "Scene",
-                    "Main Unity scene opened when this Route starts."),
-                currentScene,
-                typeof(SceneAsset),
-                false);
+            SceneAsset selectedScene =
+                (SceneAsset)EditorGUILayout.ObjectField(
+                    new GUIContent(
+                        "Scene",
+                        "Main Unity scene opened when this Route starts."),
+                    _primarySceneAsset,
+                    typeof(SceneAsset),
+                    false);
 
-            if (selectedScene != currentScene)
+            if (selectedScene != _primarySceneAsset)
             {
                 SetPrimaryScene(selectedScene);
-                currentScene = selectedScene;
-            }
-
-            if (currentScene == null)
-            {
-                EditorGUILayout.HelpBox(
-                    "A Primary Scene is required before this Route can run.",
-                    MessageType.Error);
-                return;
+                _primarySceneAsset = selectedScene;
             }
 
             EditorGUILayout.HelpBox(
-                "Ready — this scene is the main environment opened by this Route. Use Validate Route to verify Build Profile availability.",
-                MessageType.Info);
+                "Assign the main environment for this Route. Scene existence and Build Profile checks run only through Validate Route.",
+                MessageType.None);
 
-            if (GUILayout.Button("Open Primary Scene"))
+            using (new EditorGUI.DisabledScope(
+                       _primarySceneAsset == null))
             {
-                AssetDatabase.OpenAsset(currentScene);
+                if (GUILayout.Button("Open Primary Scene"))
+                {
+                    AssetDatabase.OpenAsset(
+                        _primarySceneAsset);
+                }
             }
         }
 
         private void DrawFirstActivity()
         {
-            EditorGUILayout.LabelField("First Activity", EditorStyles.boldLabel);
+            EditorGUILayout.LabelField(
+                "First Activity",
+                EditorStyles.boldLabel);
             EditorGUILayout.PropertyField(
                 _startupActivity,
                 new GUIContent(
                     "Activity",
                     "Optional Activity started after the Primary Scene is ready."));
 
-            Object activity = _startupActivity.objectReferenceValue;
+            Object activity =
+                _startupActivity.objectReferenceValue;
+
             if (activity == null)
             {
                 EditorGUILayout.HelpBox(
-                    "This Route opens its Primary Scene without starting an Activity.",
+                    "This Route opens without automatically starting an Activity.",
                     MessageType.None);
 
                 if (GUILayout.Button("Create First Activity"))
                 {
                     ActivityAsset created =
-                        ImmersiveFrameworkEditorSettingsUtility.CreateStartupActivityAsset();
+                        ImmersiveFrameworkEditorSettingsUtility
+                            .CreateStartupActivityAsset();
+
                     if (created != null)
                     {
-                        _startupActivity.objectReferenceValue = created;
+                        _startupActivity.objectReferenceValue =
+                            created;
                         Selection.activeObject = created;
                         EditorGUIUtility.PingObject(created);
                     }
@@ -221,7 +194,7 @@ namespace Immersive.Framework.Editor.Editor.Authoring
 
             EditorGUILayout.HelpBox(
                 "This Activity starts after the Primary Scene is ready.",
-                MessageType.Info);
+                MessageType.None);
 
             if (GUILayout.Button("Open Activity"))
             {
@@ -232,10 +205,11 @@ namespace Immersive.Framework.Editor.Editor.Authoring
 
         private void DrawAdditionalContent()
         {
-            _showAdditionalContent = EditorGUILayout.Foldout(
-                _showAdditionalContent,
-                "Additional Content",
-                true);
+            _showAdditionalContent =
+                EditorGUILayout.Foldout(
+                    _showAdditionalContent,
+                    "Additional Content",
+                    true);
 
             if (!_showAdditionalContent)
             {
@@ -248,20 +222,25 @@ namespace Immersive.Framework.Editor.Editor.Authoring
                     "Content Profile",
                     "Optional additional Route-scoped scenes composed with the Primary Scene."));
 
-            Object profile = _routeContentProfile.objectReferenceValue;
+            Object profile =
+                _routeContentProfile.objectReferenceValue;
+
             if (profile == null)
             {
                 EditorGUILayout.HelpBox(
-                    "No additional Route content. This Route currently uses only its Primary Scene.",
+                    "No additional Route content is assigned.",
                     MessageType.None);
 
                 if (GUILayout.Button("Add Content Profile"))
                 {
                     RouteContentProfileAsset created =
-                        ImmersiveFrameworkEditorSettingsUtility.CreateRouteContentProfileAsset();
+                        ImmersiveFrameworkEditorSettingsUtility
+                            .CreateRouteContentProfileAsset();
+
                     if (created != null)
                     {
-                        _routeContentProfile.objectReferenceValue = created;
+                        _routeContentProfile.objectReferenceValue =
+                            created;
                         Selection.activeObject = created;
                         EditorGUIUtility.PingObject(created);
                     }
@@ -271,8 +250,8 @@ namespace Immersive.Framework.Editor.Editor.Authoring
             }
 
             EditorGUILayout.HelpBox(
-                "Additional scenes from this Profile are composed with the Route.",
-                MessageType.Info);
+                "The assigned Profile declares additional Route-scoped scenes.",
+                MessageType.None);
 
             if (GUILayout.Button("Open Content Profile"))
             {
@@ -283,7 +262,9 @@ namespace Immersive.Framework.Editor.Editor.Authoring
 
         private void DrawTransition()
         {
-            EditorGUILayout.LabelField("Transition", EditorStyles.boldLabel);
+            EditorGUILayout.LabelField(
+                "Transition",
+                EditorStyles.boldLabel);
             EditorGUILayout.PropertyField(
                 _transitionGateMode,
                 new GUIContent(
@@ -291,30 +272,15 @@ namespace Immersive.Framework.Editor.Editor.Authoring
                     "Controls which capabilities remain blocked while this Route transition is running."));
 
             EditorGUILayout.HelpBox(
-                BuildTransitionSummary(),
+                "The selected policy is evaluated by the Route transition runtime. Serialized-value and policy checks run only through Validate Route.",
                 MessageType.None);
-        }
-
-        private string BuildTransitionSummary()
-        {
-            if (_transitionGateMode == null)
-            {
-                return "Transition policy is unavailable.";
-            }
-
-            string[] displayNames = _transitionGateMode.enumDisplayNames;
-            int selectedIndex = _transitionGateMode.enumValueIndex;
-            if (selectedIndex < 0 || selectedIndex >= displayNames.Length)
-            {
-                return "Transition policy contains an invalid serialized value. Run Validate Route for details.";
-            }
-
-            return $"Current policy: {displayNames[selectedIndex]}. The selected capabilities remain blocked until the Route transition completes.";
         }
 
         private void DrawValidation()
         {
-            EditorGUILayout.LabelField("Validation", EditorStyles.boldLabel);
+            EditorGUILayout.LabelField(
+                "Validation",
+                EditorStyles.boldLabel);
 
             if (_lastValidationReport == null)
             {
@@ -351,23 +317,30 @@ namespace Immersive.Framework.Editor.Editor.Authoring
 
         private void RunValidation()
         {
-            RouteAsset route = (RouteAsset)target;
+            RouteAsset route =
+                (RouteAsset)target;
 
             _lastValidationReport =
-                FrameworkAuthoringValidator.ValidateRoute(route, true);
+                FrameworkAuthoringValidator.ValidateRoute(
+                    route,
+                    true);
             _lastValidationReport.AddRange(
-                FrameworkIdentityAuthoringValidator.ValidateProjectAssets(
-                    FrameworkValidationMode.Standard));
+                FrameworkIdentityAuthoringValidator
+                    .ValidateProjectAssets(
+                        FrameworkValidationMode.Standard));
 
+            _primarySceneAsset =
+                ResolvePrimarySceneAsset();
             _validationOutdated = false;
         }
 
         private void DrawAdvancedDiagnostics()
         {
-            _showAdvancedDiagnostics = EditorGUILayout.Foldout(
-                _showAdvancedDiagnostics,
-                "Advanced / Diagnostics",
-                true);
+            _showAdvancedDiagnostics =
+                EditorGUILayout.Foldout(
+                    _showAdvancedDiagnostics,
+                    "Advanced / Diagnostics",
+                    true);
 
             if (!_showAdvancedDiagnostics)
             {
@@ -382,9 +355,10 @@ namespace Immersive.Framework.Editor.Editor.Authoring
 
         private void DrawRouteId()
         {
-            string routeId = _routeId != null
-                ? _routeId.stringValue ?? string.Empty
-                : string.Empty;
+            string routeId =
+                _routeId != null
+                    ? _routeId.stringValue ?? string.Empty
+                    : string.Empty;
 
             using (new EditorGUILayout.HorizontalScope())
             {
@@ -397,18 +371,44 @@ namespace Immersive.Framework.Editor.Editor.Authoring
                         routeId);
                 }
 
-                using (new EditorGUI.DisabledScope(string.IsNullOrWhiteSpace(routeId)))
+                using (new EditorGUI.DisabledScope(
+                           !string.IsNullOrWhiteSpace(routeId)))
                 {
-                    if (GUILayout.Button("Copy ID", GUILayout.Width(70f)))
+                    if (GUILayout.Button(
+                            "Generate ID",
+                            GUILayout.Width(90f)))
                     {
-                        EditorGUIUtility.systemCopyBuffer = routeId;
+                        _routeId.stringValue =
+                            ImmersiveFrameworkEditorSettingsUtility
+                                .GenerateRouteIdText();
+                    }
+                }
+
+                using (new EditorGUI.DisabledScope(
+                           string.IsNullOrWhiteSpace(routeId)))
+                {
+                    if (GUILayout.Button(
+                            "Copy ID",
+                            GUILayout.Width(70f)))
+                    {
+                        EditorGUIUtility.systemCopyBuffer =
+                            routeId;
                     }
                 }
             }
+
+            EditorGUILayout.HelpBox(
+                "Route ID validity is checked only by Validate Route. Existing IDs are not replaced automatically.",
+                MessageType.None);
         }
 
         private void DrawTechnicalReferences()
         {
+            EditorGUILayout.Space(4f);
+            EditorGUILayout.LabelField(
+                "Technical References",
+                EditorStyles.boldLabel);
+
             using (new EditorGUI.DisabledScope(true))
             {
                 EditorGUILayout.TextField(
@@ -438,7 +438,9 @@ namespace Immersive.Framework.Editor.Editor.Authoring
         private void DrawCurrentScope()
         {
             EditorGUILayout.Space(4f);
-            EditorGUILayout.LabelField("Current Scope", EditorStyles.boldLabel);
+            EditorGUILayout.LabelField(
+                "Current Scope",
+                EditorStyles.boldLabel);
             EditorGUILayout.HelpBox(
                 "This Route declares identity, one Primary Scene, optional Route-scoped additional content, an optional First Activity and transition blocking policy. Runtime lifecycle, materialization, Player participation, input, camera, pause and gameplay remain owned by their respective systems.",
                 MessageType.None);
@@ -447,7 +449,9 @@ namespace Immersive.Framework.Editor.Editor.Authoring
         private void DrawFullValidationReport()
         {
             EditorGUILayout.Space(4f);
-            EditorGUILayout.LabelField("Validation Report", EditorStyles.boldLabel);
+            EditorGUILayout.LabelField(
+                "Validation Report",
+                EditorStyles.boldLabel);
 
             if (_lastValidationReport == null)
             {
@@ -464,16 +468,18 @@ namespace Immersive.Framework.Editor.Editor.Authoring
                     MessageType.Warning);
             }
 
-            FrameworkAuthoringValidationGui.DrawSummary(_lastValidationReport);
+            FrameworkAuthoringValidationGui.DrawSummary(
+                _lastValidationReport);
             FrameworkAuthoringValidationGui.DrawIssues(
                 _lastValidationReport,
                 false);
         }
 
-        private SceneAsset LoadCurrentSceneAsset()
+        private SceneAsset ResolvePrimarySceneAsset()
         {
             if (_primaryScenePath == null ||
-                string.IsNullOrWhiteSpace(_primaryScenePath.stringValue))
+                string.IsNullOrWhiteSpace(
+                    _primaryScenePath.stringValue))
             {
                 return null;
             }
@@ -482,23 +488,28 @@ namespace Immersive.Framework.Editor.Editor.Authoring
                 _primaryScenePath.stringValue);
         }
 
-        private void SetPrimaryScene(SceneAsset sceneAsset)
+        private void SetPrimaryScene(
+            SceneAsset sceneAsset)
         {
-            if (_primaryScenePath == null || _primarySceneName == null)
+            if (_primaryScenePath == null ||
+                _primarySceneName == null)
             {
                 return;
             }
 
             if (sceneAsset == null)
             {
-                _primaryScenePath.stringValue = string.Empty;
-                _primarySceneName.stringValue = string.Empty;
+                _primaryScenePath.stringValue =
+                    string.Empty;
+                _primarySceneName.stringValue =
+                    string.Empty;
                 return;
             }
 
             _primaryScenePath.stringValue =
                 AssetDatabase.GetAssetPath(sceneAsset);
-            _primarySceneName.stringValue = sceneAsset.name;
+            _primarySceneName.stringValue =
+                sceneAsset.name;
         }
     }
 }

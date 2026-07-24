@@ -2,19 +2,22 @@ using System;
 using System.Collections.Generic;
 using Immersive.Framework.ActivityFlow;
 using Immersive.Framework.Authoring;
+using Immersive.Framework.Camera;
 using Immersive.Framework.ContentAnchor;
 using Immersive.Framework.ContentFlow;
-using Immersive.Framework.Camera;
 using Immersive.Framework.CycleReset;
-using Immersive.Framework.Loading;
 using Immersive.Framework.Editor.Editor.Authoring;
+using Immersive.Framework.Loading;
 using Immersive.Framework.RouteLifecycle;
-using Immersive.Framework.TransitionEffects;
 using Immersive.Framework.Transition;
+using Immersive.Framework.TransitionEffects;
+using Unity.Cinemachine;
 using UnityEditor;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 using Object = UnityEngine.Object;
+
 namespace Immersive.Framework.Editor.Editor.Validation
 {
     internal static class FrameworkAuthoringValidator
@@ -34,9 +37,12 @@ namespace Immersive.Framework.Editor.Editor.Validation
                 return report;
             }
 
-            report.AddInfo($"Validation Mode policy: {FrameworkValidationModePolicy.GetSummary(validationMode)}", settings);
+            report.AddInfo(
+                $"Validation Mode policy: {FrameworkValidationModePolicy.GetSummary(validationMode)}",
+                settings);
 
-            if (settings.EditorPlayModeStartup == FrameworkEditorPlayModeStartup.CurrentSceneOnly)
+            if (settings.EditorPlayModeStartup ==
+                FrameworkEditorPlayModeStartup.CurrentSceneOnly)
             {
                 report.AddInfo(
                     "Editor Play Mode Startup is Current Scene Only. Framework boot validation is skipped in Play Mode, but authoring assets can still be checked.",
@@ -51,24 +57,44 @@ namespace Immersive.Framework.Editor.Editor.Validation
             }
             else
             {
-                report.AddRange(ValidateGameApplication(settings.ActiveGameApplication, true, validationMode));
+                report.AddRange(
+                    ValidateGameApplication(
+                        settings.ActiveGameApplication,
+                        true,
+                        validationMode));
             }
 
             if (includeOpenSceneBindings)
             {
-                ValidateOpenSceneActivityLocalVisibilityAdapters(report, validationMode);
-                ValidateOpenSceneRouteContentBindings(report, validationMode);
-                ValidateOpenSceneRouteContentAnchors(report, validationMode);
-                ValidateOpenSceneActivityContentAnchors(report, validationMode);
-                ValidateOpenSceneUnityContentAnchorMaterializationBridges(report, validationMode);
-                ValidateOpenSceneCycleResetTriggers(report, validationMode);
-                FrameworkLocalPlayerCameraPublicationValidator.ValidateOpenScenes(report);
-                FrameworkResetRestartAuthoringValidator.ValidateOpenScenes(report);
+                ValidateOpenSceneActivityLocalVisibilityAdapters(
+                    report,
+                    validationMode);
+                ValidateOpenSceneRouteContentBindings(
+                    report,
+                    validationMode);
+                ValidateOpenSceneRouteContentAnchors(
+                    report,
+                    validationMode);
+                ValidateOpenSceneActivityContentAnchors(
+                    report,
+                    validationMode);
+                ValidateOpenSceneUnityContentAnchorMaterializationBridges(
+                    report,
+                    validationMode);
+                ValidateOpenSceneCycleResetTriggers(
+                    report,
+                    validationMode);
+                FrameworkLocalPlayerCameraPublicationValidator
+                    .ValidateOpenScenes(report);
+                FrameworkResetRestartAuthoringValidator
+                    .ValidateOpenScenes(report);
             }
 
             if (!report.HasIssues)
             {
-                report.AddInfo("Authoring validation passed with no findings.", settings);
+                report.AddInfo(
+                    "Authoring validation passed with no findings.",
+                    settings);
             }
 
             return report;
@@ -78,78 +104,129 @@ namespace Immersive.Framework.Editor.Editor.Validation
             GameApplicationAsset gameApplication,
             bool validateDependencies)
         {
-            return ValidateGameApplication(gameApplication, validateDependencies, ResolveValidationMode(gameApplication));
+            return ValidateGameApplication(
+                gameApplication,
+                validateDependencies,
+                ResolveValidationMode(gameApplication));
         }
 
-        internal static FrameworkAuthoringValidationReport ValidateRoute(RouteAsset route, bool validateDependencies)
+        internal static FrameworkAuthoringValidationReport ValidateRoute(
+            RouteAsset route,
+            bool validateDependencies)
         {
-            return ValidateRoute(route, validateDependencies, FrameworkValidationMode.Standard);
+            return ValidateRoute(
+                route,
+                validateDependencies,
+                FrameworkValidationMode.Standard);
         }
 
-        internal static FrameworkAuthoringValidationReport ValidateActivity(ActivityAsset activity)
+        internal static FrameworkAuthoringValidationReport ValidateActivity(
+            ActivityAsset activity)
         {
-            return ValidateActivity(activity, FrameworkValidationMode.Standard);
+            return ValidateActivity(
+                activity,
+                FrameworkValidationMode.Standard);
         }
 
-        internal static FrameworkAuthoringValidationReport ValidateActivityContentProfile(ActivityContentProfileAsset profile)
+        internal static FrameworkAuthoringValidationReport
+            ValidateActivityContentProfile(
+                ActivityContentProfileAsset profile)
         {
-            return ValidateActivityContentProfile(profile, FrameworkValidationMode.Standard);
+            return ValidateActivityContentProfile(
+                profile,
+                FrameworkValidationMode.Standard);
         }
 
-        internal static FrameworkAuthoringValidationReport ValidateActivityLocalVisibilityAdapter(ActivityLocalVisibilityAdapter binding)
+        internal static FrameworkAuthoringValidationReport
+            ValidateActivityLocalVisibilityAdapter(
+                ActivityLocalVisibilityAdapter binding)
         {
-            return ValidateActivityLocalVisibilityAdapter(binding, FrameworkValidationMode.Standard);
+            return ValidateActivityLocalVisibilityAdapter(
+                binding,
+                FrameworkValidationMode.Standard);
         }
 
-        internal static FrameworkAuthoringValidationReport ValidateRouteContentBinding(RouteContentBinding binding)
+        internal static FrameworkAuthoringValidationReport
+            ValidateRouteContentBinding(
+                RouteContentBinding binding)
         {
-            return ValidateRouteContentBinding(binding, FrameworkValidationMode.Standard);
+            return ValidateRouteContentBinding(
+                binding,
+                FrameworkValidationMode.Standard);
         }
 
-        internal static FrameworkAuthoringValidationReport ValidateRouteContentAnchor(RouteContentAnchor anchor)
+        internal static FrameworkAuthoringValidationReport
+            ValidateRouteContentAnchor(
+                RouteContentAnchor anchor)
         {
-            return ValidateRouteContentAnchor(anchor, FrameworkValidationMode.Standard);
+            return ValidateRouteContentAnchor(
+                anchor,
+                FrameworkValidationMode.Standard);
         }
 
-        internal static FrameworkAuthoringValidationReport ValidateActivityContentAnchor(ActivityContentAnchor anchor)
+        internal static FrameworkAuthoringValidationReport
+            ValidateActivityContentAnchor(
+                ActivityContentAnchor anchor)
         {
-            return ValidateActivityContentAnchor(anchor, FrameworkValidationMode.Standard);
+            return ValidateActivityContentAnchor(
+                anchor,
+                FrameworkValidationMode.Standard);
         }
 
-        internal static FrameworkAuthoringValidationReport ValidateUnityContentAnchorMaterializationBridge(UnityContentAnchorMaterializationBridge bridge)
+        internal static FrameworkAuthoringValidationReport
+            ValidateUnityContentAnchorMaterializationBridge(
+                UnityContentAnchorMaterializationBridge bridge)
         {
-            return ValidateUnityContentAnchorMaterializationBridge(bridge, FrameworkValidationMode.Standard);
+            return ValidateUnityContentAnchorMaterializationBridge(
+                bridge,
+                FrameworkValidationMode.Standard);
         }
 
-        internal static FrameworkAuthoringValidationReport ValidateUnityContentAnchorMaterializationBridgeSet(UnityContentAnchorMaterializationBridgeSet bridgeSet)
+        internal static FrameworkAuthoringValidationReport
+            ValidateUnityContentAnchorMaterializationBridgeSet(
+                UnityContentAnchorMaterializationBridgeSet bridgeSet)
         {
-            return ValidateUnityContentAnchorMaterializationBridgeSet(bridgeSet, FrameworkValidationMode.Standard);
-        }
-        internal static FrameworkAuthoringValidationReport ValidateRouteCycleResetTrigger(RouteCycleResetTrigger trigger)
-        {
-            return ValidateRouteCycleResetTrigger(trigger, FrameworkValidationMode.Standard);
-        }
-
-        internal static FrameworkAuthoringValidationReport ValidateActivityCycleResetTrigger(ActivityCycleResetTrigger trigger)
-        {
-            return ValidateActivityCycleResetTrigger(trigger, FrameworkValidationMode.Standard);
+            return ValidateUnityContentAnchorMaterializationBridgeSet(
+                bridgeSet,
+                FrameworkValidationMode.Standard);
         }
 
+        internal static FrameworkAuthoringValidationReport
+            ValidateRouteCycleResetTrigger(
+                RouteCycleResetTrigger trigger)
+        {
+            return ValidateRouteCycleResetTrigger(
+                trigger,
+                FrameworkValidationMode.Standard);
+        }
+
+        internal static FrameworkAuthoringValidationReport
+            ValidateActivityCycleResetTrigger(
+                ActivityCycleResetTrigger trigger)
+        {
+            return ValidateActivityCycleResetTrigger(
+                trigger,
+                FrameworkValidationMode.Standard);
+        }
 
         private static FrameworkAuthoringValidationReport ValidateGameApplication(
             GameApplicationAsset gameApplication,
             bool validateDependencies,
             FrameworkValidationMode validationMode)
         {
-            var report = new FrameworkAuthoringValidationReport(validationMode);
+            var report =
+                new FrameworkAuthoringValidationReport(validationMode);
 
             if (gameApplication == null)
             {
-                report.AddError("Game Application is missing.", null);
+                report.AddError(
+                    "Game Application is missing.",
+                    null);
                 return report;
             }
 
-            if (string.IsNullOrWhiteSpace(gameApplication.ApplicationName))
+            if (string.IsNullOrWhiteSpace(
+                    gameApplication.ApplicationName))
             {
                 report.AddWarning(
                     "Game Application has no display name. The asset name will be used in diagnostics.",
@@ -164,118 +241,604 @@ namespace Immersive.Framework.Editor.Editor.Validation
             }
             else if (validateDependencies)
             {
-                report.AddRange(ValidateRoute(gameApplication.StartupRoute, true, validationMode));
+                report.AddRange(
+                    ValidateRoute(
+                        gameApplication.StartupRoute,
+                        true,
+                        validationMode));
             }
 
-            ValidateGlobalUiSceneConfiguration(report, gameApplication, validateDependencies);
+            ValidatePersistentContentComposition(
+                report,
+                gameApplication,
+                validateDependencies);
 
             if (!report.HasIssues)
             {
-                report.AddInfo("Game Application authoring is valid for the current framework scope.", gameApplication);
+                report.AddInfo(
+                    "Game Application authoring is valid for the current framework scope.",
+                    gameApplication);
             }
 
             return report;
         }
 
-        private static void ValidateGlobalUiSceneConfiguration(
+        private static void ValidatePersistentContentComposition(
             FrameworkAuthoringValidationReport report,
             GameApplicationAsset gameApplication,
             bool validateDependencies)
         {
-            if (gameApplication.GlobalUiScenePolicyValue == GlobalUiScenePolicy.NoneConfigured)
-            {
-                if (gameApplication.HasGlobalUiScene)
-                {
-                    report.AddWarning(
-                        "UIGlobal Scene is assigned, but Global UI Scene Policy is NoneConfigured. The scene will not be loaded and explicit NoOp behavior remains active.",
-                        gameApplication);
-                }
-                else
-                {
-                    report.AddInfo(
-                        "UIGlobal scene is configured as explicit NoOp.",
-                        gameApplication);
-                }
+            PersistentContentComposition composition =
+                gameApplication.PersistentContent;
 
-                return;
-            }
-
-            if (!gameApplication.HasGlobalUiScene)
+            if (composition == null)
             {
                 report.AddError(
-                    "Global UI Scene Policy is Required, but UIGlobal Scene is missing.",
+                    "Persistent Content composition is missing.",
                     gameApplication);
                 return;
             }
+
+            SceneAsset sceneAsset =
+                composition.ContainerScene as SceneAsset;
+            if (sceneAsset == null)
+            {
+                report.AddError(
+                    composition.ContainerScene == null
+                        ? "Persistent Content Container Scene is missing."
+                        : "Persistent Content Container Scene must directly reference a Unity Scene asset.",
+                    gameApplication);
+            }
+
+            GameObject cameraPrefab =
+                composition.CameraOutputPrefab;
+            GameObject presentationPrefab =
+                composition.PresentationCanvasPrefab;
+
+            ValidatePersistentCameraPrefab(
+                report,
+                gameApplication,
+                cameraPrefab);
+            ValidatePersistentPresentationPrefab(
+                report,
+                gameApplication,
+                presentationPrefab);
+
+            if (cameraPrefab != null &&
+                cameraPrefab == presentationPrefab)
+            {
+                report.AddError(
+                    "Persistent Content Camera Output and Presentation Canvas must reference distinct prefab roots.",
+                    gameApplication);
+            }
+
+            if (sceneAsset == null)
+            {
+                return;
+            }
+
+            string scenePath =
+                AssetDatabase.GetAssetPath(sceneAsset);
 
             ValidateSceneAssetReference(
                 report,
                 gameApplication,
-                gameApplication.GlobalUiScenePath,
-                gameApplication.GlobalUiSceneName,
-                "UIGlobal Scene");
+                scenePath,
+                sceneAsset.name,
+                "Persistent Content Container Scene");
 
-            ValidateGlobalUiSceneBuildSettings(report, gameApplication);
-
-            if (validateDependencies)
-            {
-                ValidateGlobalUiSceneAdapters(report, gameApplication);
-            }
-        }
-
-        private static void ValidateGlobalUiSceneBuildSettings(
-            FrameworkAuthoringValidationReport report,
-            GameApplicationAsset gameApplication)
-        {
-            var scenePath = gameApplication.GlobalUiScenePath;
-            if (string.IsNullOrWhiteSpace(scenePath))
+            if (!IsSceneInBuildSettings(scenePath))
             {
                 report.AddError(
-                    "Global UI Scene Policy is Required, but UIGlobal Scene path is empty.",
+                    $"Persistent Content Container Scene '{scenePath}' is not enabled in the Build Profile.",
                     gameApplication);
+            }
+
+            ValidateUniqueBuildSceneName(
+                report,
+                gameApplication,
+                sceneAsset.name,
+                scenePath);
+
+            if (!validateDependencies ||
+                cameraPrefab == null ||
+                presentationPrefab == null)
+            {
                 return;
             }
 
-            var scenes = EditorBuildSettings.scenes;
-            var found = false;
+            ValidatePersistentContentScene(
+                report,
+                gameApplication,
+                scenePath,
+                cameraPrefab,
+                presentationPrefab);
+        }
+
+        private static void ValidatePersistentCameraPrefab(
+            FrameworkAuthoringValidationReport report,
+            GameApplicationAsset owner,
+            GameObject prefab)
+        {
+            if (!ValidatePrefabAsset(
+                    report,
+                    owner,
+                    prefab,
+                    "Camera Output Prefab"))
+            {
+                return;
+            }
+
+            UnityEngine.Camera[] cameras =
+                prefab.GetComponentsInChildren<UnityEngine.Camera>(true);
+            CinemachineBrain[] brains =
+                prefab.GetComponentsInChildren<CinemachineBrain>(true);
+            CameraOutputSessionBinding[] outputBindings =
+                prefab.GetComponentsInChildren<CameraOutputSessionBinding>(true);
+            SessionCameraOverrideBinding[] overrideBindings =
+                prefab.GetComponentsInChildren<SessionCameraOverrideBinding>(true);
+
+            ValidateExactComponentCount(
+                report,
+                owner,
+                "Camera Output Prefab",
+                "Unity Camera",
+                cameras.Length);
+            ValidateExactComponentCount(
+                report,
+                owner,
+                "Camera Output Prefab",
+                nameof(CinemachineBrain),
+                brains.Length);
+            ValidateExactComponentCount(
+                report,
+                owner,
+                "Camera Output Prefab",
+                nameof(CameraOutputSessionBinding),
+                outputBindings.Length);
+            ValidateExactComponentCount(
+                report,
+                owner,
+                "Camera Output Prefab",
+                nameof(SessionCameraOverrideBinding),
+                overrideBindings.Length);
+
+            if (outputBindings.Length != 1)
+            {
+                return;
+            }
+
+            CameraOutputSessionBinding binding =
+                outputBindings[0];
+
+            if (string.IsNullOrWhiteSpace(
+                    binding.OutputIdText))
+            {
+                report.AddError(
+                    "Camera Output Prefab requires an explicit Camera Output ID.",
+                    owner);
+            }
+
+            if (binding.UnityCamera == null)
+            {
+                report.AddError(
+                    "Camera Output Prefab binding requires an explicit Unity Camera.",
+                    owner);
+            }
+
+            if (binding.CinemachineBrain == null)
+            {
+                report.AddError(
+                    "Camera Output Prefab binding requires an explicit Cinemachine Brain.",
+                    owner);
+            }
+
+            if (binding.UnityCamera != null &&
+                binding.CinemachineBrain != null &&
+                binding.UnityCamera.gameObject !=
+                binding.CinemachineBrain.gameObject)
+            {
+                report.AddError(
+                    "Camera Output Prefab requires its Unity Camera and Cinemachine Brain on the same physical output GameObject.",
+                    owner);
+            }
+        }
+
+        private static void ValidatePersistentPresentationPrefab(
+            FrameworkAuthoringValidationReport report,
+            GameApplicationAsset owner,
+            GameObject prefab)
+        {
+            if (!ValidatePrefabAsset(
+                    report,
+                    owner,
+                    prefab,
+                    "Presentation Canvas Prefab"))
+            {
+                return;
+            }
+
+            Canvas[] canvases =
+                prefab.GetComponentsInChildren<Canvas>(true);
+            int transitionAdapterCount =
+                CountAdaptersInHierarchy<ITransitionEffectAdapter>(prefab);
+            int loadingAdapterCount =
+                CountAdaptersInHierarchy<ILoadingSurfaceAdapter>(prefab);
+
+            ValidateExactComponentCount(
+                report,
+                owner,
+                "Presentation Canvas Prefab",
+                nameof(Canvas),
+                canvases.Length);
+
+            if (transitionAdapterCount == 0)
+            {
+                report.AddError(
+                    "Presentation Canvas Prefab requires at least one ITransitionEffectAdapter implementation.",
+                    owner);
+            }
+
+            if (loadingAdapterCount == 0)
+            {
+                report.AddError(
+                    "Presentation Canvas Prefab requires at least one ILoadingSurfaceAdapter implementation.",
+                    owner);
+            }
+        }
+
+        private static bool ValidatePrefabAsset(
+            FrameworkAuthoringValidationReport report,
+            GameApplicationAsset owner,
+            GameObject prefab,
+            string label)
+        {
+            if (prefab == null)
+            {
+                report.AddError(
+                    $"Persistent Content {label} is missing.",
+                    owner);
+                return false;
+            }
+
+            if (!PrefabUtility.IsPartOfPrefabAsset(prefab))
+            {
+                report.AddError(
+                    $"Persistent Content {label} must reference a prefab asset or Prefab Variant, not a scene object.",
+                    owner);
+                return false;
+            }
+
+            return true;
+        }
+
+        private static void ValidateExactComponentCount(
+            FrameworkAuthoringValidationReport report,
+            GameApplicationAsset owner,
+            string scope,
+            string componentLabel,
+            int count)
+        {
+            if (count == 1)
+            {
+                return;
+            }
+
+            report.AddError(
+                $"{scope} requires exactly one {componentLabel}, but found '{count}'.",
+                owner);
+        }
+
+        private static int CountAdaptersInHierarchy<TAdapter>(
+            GameObject root)
+        {
+            if (root == null)
+            {
+                return 0;
+            }
+
+            MonoBehaviour[] behaviours =
+                root.GetComponentsInChildren<MonoBehaviour>(true);
+            int count = 0;
+
+            for (int index = 0;
+                 index < behaviours.Length;
+                 index++)
+            {
+                if (behaviours[index] is TAdapter)
+                {
+                    count++;
+                }
+            }
+
+            return count;
+        }
+
+        private static void ValidateUniqueBuildSceneName(
+            FrameworkAuthoringValidationReport report,
+            GameApplicationAsset owner,
+            string sceneName,
+            string expectedPath)
+        {
+            if (string.IsNullOrWhiteSpace(sceneName))
+            {
+                report.AddError(
+                    "Persistent Content Container Scene has no valid scene name.",
+                    owner);
+                return;
+            }
+
+            EditorBuildSettingsScene[] scenes =
+                EditorBuildSettings.scenes;
+            int enabledNameMatches = 0;
+
             if (scenes != null)
             {
-                for (var i = 0; i < scenes.Length; i++)
+                for (int index = 0;
+                     index < scenes.Length;
+                     index++)
                 {
-                    var scene = scenes[i];
-                    if (scene != null && string.Equals(scene.path, scenePath, System.StringComparison.OrdinalIgnoreCase))
+                    EditorBuildSettingsScene scene =
+                        scenes[index];
+                    if (scene == null ||
+                        !scene.enabled)
                     {
-                        found = true;
-                        break;
+                        continue;
+                    }
+
+                    string candidateName =
+                        System.IO.Path.GetFileNameWithoutExtension(
+                            scene.path);
+                    if (string.Equals(
+                            candidateName,
+                            sceneName,
+                            StringComparison.OrdinalIgnoreCase))
+                    {
+                        enabledNameMatches++;
                     }
                 }
             }
 
-            if (!found)
+            if (enabledNameMatches != 1)
             {
                 report.AddError(
-                    $"UIGlobal Scene '{scenePath}' is not included in Build Settings.",
-                    gameApplication);
+                    $"Persistent Content Container Scene name '{sceneName}' must be unique among enabled Build Profile scenes. matches='{enabledNameMatches}' expectedPath='{expectedPath}'.",
+                    owner);
             }
         }
 
-        private static bool IsSceneInBuildSettings(string scenePath)
+        private static void ValidatePersistentContentScene(
+            FrameworkAuthoringValidationReport report,
+            GameApplicationAsset owner,
+            string scenePath,
+            GameObject cameraPrefab,
+            GameObject presentationPrefab)
+        {
+            SceneValidationScope sceneScope = default;
+
+            try
+            {
+                sceneScope =
+                    FrameworkEditorSceneValidationUtility
+                        .OpenSceneForValidation(scenePath);
+                Scene scene = sceneScope.Scene;
+
+                if (!scene.IsValid() ||
+                    !scene.isLoaded)
+                {
+                    report.AddError(
+                        $"Persistent Content Container Scene '{scenePath}' could not be opened for composition validation.",
+                        owner);
+                    return;
+                }
+
+                int cameraPrefabInstances =
+                    CountExactPrefabInstances(
+                        scene,
+                        cameraPrefab);
+                int presentationPrefabInstances =
+                    CountExactPrefabInstances(
+                        scene,
+                        presentationPrefab);
+
+                if (cameraPrefabInstances != 1)
+                {
+                    report.AddError(
+                        $"Persistent Content Container Scene requires exactly one instance of Camera Output Prefab '{cameraPrefab.name}', but found '{cameraPrefabInstances}'.",
+                        owner);
+                }
+
+                if (presentationPrefabInstances != 1)
+                {
+                    report.AddError(
+                        $"Persistent Content Container Scene requires exactly one instance of Presentation Canvas Prefab '{presentationPrefab.name}', but found '{presentationPrefabInstances}'.",
+                        owner);
+                }
+
+                ValidateExactSceneComponentCount<UnityEngine.Camera>(
+                    report,
+                    owner,
+                    scene,
+                    "Unity Camera");
+                ValidateExactSceneComponentCount<CinemachineBrain>(
+                    report,
+                    owner,
+                    scene,
+                    nameof(CinemachineBrain));
+                ValidateExactSceneComponentCount<CameraOutputSessionBinding>(
+                    report,
+                    owner,
+                    scene,
+                    nameof(CameraOutputSessionBinding));
+                ValidateExactSceneComponentCount<SessionCameraOverrideBinding>(
+                    report,
+                    owner,
+                    scene,
+                    nameof(SessionCameraOverrideBinding));
+
+                int transitionAdapterCount =
+                    CountSceneAdapters<ITransitionEffectAdapter>(scene);
+                int loadingAdapterCount =
+                    CountSceneAdapters<ILoadingSurfaceAdapter>(scene);
+
+                if (transitionAdapterCount == 0)
+                {
+                    report.AddError(
+                        $"Persistent Content Container Scene '{scenePath}' requires at least one ITransitionEffectAdapter implementation.",
+                        owner);
+                }
+
+                if (loadingAdapterCount == 0)
+                {
+                    report.AddError(
+                        $"Persistent Content Container Scene '{scenePath}' requires at least one ILoadingSurfaceAdapter implementation.",
+                        owner);
+                }
+
+                if (cameraPrefabInstances == 1 &&
+                    presentationPrefabInstances == 1 &&
+                    transitionAdapterCount > 0 &&
+                    loadingAdapterCount > 0)
+                {
+                    report.AddInfo(
+                        $"Persistent Content Container Scene '{scenePath}' contains the declared Camera Output and Presentation Canvas prefab instances.",
+                        owner);
+                }
+            }
+            catch (Exception exception)
+            {
+                report.AddError(
+                    $"Persistent Content Container Scene '{scenePath}' could not be validated. {exception.Message}",
+                    owner);
+            }
+            finally
+            {
+                sceneScope.CloseIfOwned();
+            }
+        }
+
+        private static int CountExactPrefabInstances(
+            Scene scene,
+            GameObject expectedPrefab)
+        {
+            if (!scene.IsValid() ||
+                !scene.isLoaded ||
+                expectedPrefab == null)
+            {
+                return 0;
+            }
+
+            int count = 0;
+            GameObject[] roots =
+                scene.GetRootGameObjects();
+
+            for (int rootIndex = 0;
+                 rootIndex < roots.Length;
+                 rootIndex++)
+            {
+                Transform[] transforms =
+                    roots[rootIndex]
+                        .GetComponentsInChildren<Transform>(true);
+
+                for (int transformIndex = 0;
+                     transformIndex < transforms.Length;
+                     transformIndex++)
+                {
+                    GameObject candidate =
+                        transforms[transformIndex].gameObject;
+
+                    if (!PrefabUtility.IsAnyPrefabInstanceRoot(candidate))
+                    {
+                        continue;
+                    }
+
+                    GameObject source =
+                        PrefabUtility.GetCorrespondingObjectFromSource(
+                            candidate);
+
+                    if (source == expectedPrefab)
+                    {
+                        count++;
+                    }
+                }
+            }
+
+            return count;
+        }
+
+        private static void ValidateExactSceneComponentCount<TComponent>(
+            FrameworkAuthoringValidationReport report,
+            GameApplicationAsset owner,
+            Scene scene,
+            string label)
+            where TComponent : Component
+        {
+            int count =
+                CountSceneComponents<TComponent>(scene);
+
+            if (count == 1)
+            {
+                return;
+            }
+
+            report.AddError(
+                $"Persistent Content Container Scene requires exactly one {label}, but found '{count}'.",
+                owner);
+        }
+
+        private static int CountSceneComponents<TComponent>(
+            Scene scene)
+            where TComponent : Component
+        {
+            if (!scene.IsValid() ||
+                !scene.isLoaded)
+            {
+                return 0;
+            }
+
+            int count = 0;
+            GameObject[] roots =
+                scene.GetRootGameObjects();
+
+            for (int index = 0;
+                 index < roots.Length;
+                 index++)
+            {
+                count += roots[index]
+                    .GetComponentsInChildren<TComponent>(true)
+                    .Length;
+            }
+
+            return count;
+        }
+
+        private static bool IsSceneInBuildSettings(
+            string scenePath)
         {
             if (string.IsNullOrWhiteSpace(scenePath))
             {
                 return false;
             }
 
-            var scenes = EditorBuildSettings.scenes;
+            EditorBuildSettingsScene[] scenes =
+                EditorBuildSettings.scenes;
             if (scenes == null)
             {
                 return false;
             }
 
-            for (var i = 0; i < scenes.Length; i++)
+            for (int index = 0;
+                 index < scenes.Length;
+                 index++)
             {
-                var scene = scenes[i];
-                if (scene != null && string.Equals(scene.path, scenePath, StringComparison.OrdinalIgnoreCase))
+                EditorBuildSettingsScene scene =
+                    scenes[index];
+                if (scene != null &&
+                    scene.enabled &&
+                    string.Equals(
+                        scene.path,
+                        scenePath,
+                        StringComparison.OrdinalIgnoreCase))
                 {
                     return true;
                 }
@@ -284,101 +847,47 @@ namespace Immersive.Framework.Editor.Editor.Validation
             return false;
         }
 
-        private static void ValidateGlobalUiSceneAdapters(
-            FrameworkAuthoringValidationReport report,
-            GameApplicationAsset gameApplication)
+        private static int CountSceneAdapters<TAdapter>(
+            Scene scene)
         {
-            var scenePath = gameApplication.GlobalUiScenePath;
-            if (string.IsNullOrWhiteSpace(scenePath))
-            {
-                return;
-            }
-
-            var sceneScope = default(SceneValidationScope);
-            try
-            {
-                sceneScope = FrameworkEditorSceneValidationUtility.OpenSceneForValidation(scenePath);
-                var scene = sceneScope.Scene;
-                if (!scene.IsValid() || !scene.isLoaded)
-                {
-                    report.AddError(
-                        $"UIGlobal Scene '{scenePath}' could not be loaded for adapter validation.",
-                        gameApplication);
-                    return;
-                }
-
-                var transitionAdapterCount = CountSceneAdapters<ITransitionEffectAdapter>(scene);
-                var loadingAdapterCount = CountSceneAdapters<ILoadingSurfaceAdapter>(scene);
-
-                if (transitionAdapterCount == 0)
-                {
-                    report.AddError(
-                        $"UIGlobal Scene '{scenePath}' must contain at least one ITransitionEffectAdapter implementation.",
-                        gameApplication);
-                }
-                else
-                {
-                    report.AddInfo(
-                        $"UIGlobal Scene '{scenePath}' contains {transitionAdapterCount} Transition adapter(s).",
-                        gameApplication);
-                }
-
-                if (loadingAdapterCount == 0)
-                {
-                    report.AddError(
-                        $"UIGlobal Scene '{scenePath}' must contain at least one ILoadingSurfaceAdapter implementation.",
-                        gameApplication);
-                }
-                else
-                {
-                    report.AddInfo(
-                        $"UIGlobal Scene '{scenePath}' contains {loadingAdapterCount} Loading adapter(s).",
-                        gameApplication);
-                }
-            }
-            catch (Exception exception)
-            {
-                report.AddError(
-                    $"UIGlobal Scene '{scenePath}' could not be validated. {exception.Message}",
-                    gameApplication);
-            }
-            finally
-            {
-                sceneScope.CloseIfOwned();
-            }
-        }
-
-        private static int CountSceneAdapters<TAdapter>(UnityEngine.SceneManagement.Scene scene)
-        {
-            if (!scene.IsValid() || !scene.isLoaded)
+            if (!scene.IsValid() ||
+                !scene.isLoaded)
             {
                 return 0;
             }
 
-            var roots = scene.GetRootGameObjects();
-            if (roots == null || roots.Length == 0)
+            GameObject[] roots =
+                scene.GetRootGameObjects();
+            if (roots == null ||
+                roots.Length == 0)
             {
                 return 0;
             }
 
-            var count = 0;
-            for (var i = 0; i < roots.Length; i++)
+            int count = 0;
+            for (int rootIndex = 0;
+                 rootIndex < roots.Length;
+                 rootIndex++)
             {
-                var root = roots[i];
+                GameObject root =
+                    roots[rootIndex];
                 if (root == null)
                 {
                     continue;
                 }
 
-                var behaviours = root.GetComponentsInChildren<MonoBehaviour>(true);
+                MonoBehaviour[] behaviours =
+                    root.GetComponentsInChildren<MonoBehaviour>(true);
                 if (behaviours == null)
                 {
                     continue;
                 }
 
-                for (var j = 0; j < behaviours.Length; j++)
+                for (int behaviourIndex = 0;
+                     behaviourIndex < behaviours.Length;
+                     behaviourIndex++)
                 {
-                    if (behaviours[j] is TAdapter)
+                    if (behaviours[behaviourIndex] is TAdapter)
                     {
                         count++;
                     }

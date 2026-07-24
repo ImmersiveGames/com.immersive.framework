@@ -16,27 +16,36 @@ namespace Immersive.Framework.Editor.Editor.Validation
             ImmersiveFrameworkSettingsAsset settings,
             bool includeOpenSceneBindings)
         {
-            var validationMode = ResolveValidationMode(settings);
-            var report = new FrameworkAuthoringValidationReport(validationMode);
+            FrameworkValidationMode validationMode =
+                ResolveValidationMode(settings);
+            var report =
+                new FrameworkAuthoringValidationReport(validationMode);
 
-            report.AddRange(FrameworkAuthoringValidator.ValidateProjectSettings(settings, includeOpenSceneBindings));
+            report.AddRange(
+                FrameworkAuthoringValidator.ValidateProjectSettings(
+                    settings,
+                    includeOpenSceneBindings));
 
-            if (settings == null)
+            if (settings == null ||
+                settings.ActiveGameApplication == null)
             {
                 AddReadinessSummary(report);
                 return report;
             }
 
-            var gameApplication = settings.ActiveGameApplication;
-            if (gameApplication == null)
-            {
-                AddReadinessSummary(report);
-                return report;
-            }
+            GameApplicationAsset gameApplication =
+                settings.ActiveGameApplication;
 
-            ValidateGameApplicationModel(report, gameApplication);
-            ValidateRouteModel(report, gameApplication.StartupRoute, "Startup Route");
-            ValidateGlobalUiSurfaceModel(report, gameApplication);
+            ValidateGameApplicationModel(
+                report,
+                gameApplication);
+            ValidateRouteModel(
+                report,
+                gameApplication.StartupRoute,
+                "Startup Route");
+            ValidatePersistentContentSurfaceModel(
+                report,
+                gameApplication);
             AddReadinessSummary(report);
 
             return report;
@@ -52,16 +61,23 @@ namespace Immersive.Framework.Editor.Editor.Validation
                 "validationMode",
                 "Game Application Validation Mode");
 
-            ValidateEnumField<GlobalUiScenePolicy>(
-                report,
-                gameApplication,
-                "globalUiScenePolicy",
-                "Game Application UIGlobal Scene Policy");
+            SerializedObject serializedApplication =
+                new SerializedObject(gameApplication);
+            SerializedProperty persistentContent =
+                serializedApplication.FindProperty("persistentContent");
 
-            if (gameApplication.GlobalUiScenePolicyValue == GlobalUiScenePolicy.NoneConfigured && gameApplication.HasGlobalUiScene)
+            if (persistentContent == null)
             {
-                report.AddWarning(
-                    "Model Readiness: UIGlobal Scene is assigned while policy is NoneConfigured. This is explicit no-op behavior; switch policy to Required when shared surfaces are expected.",
+                report.AddError(
+                    "Model Readiness: Game Application Persistent Content composition field could not be found.",
+                    gameApplication);
+                return;
+            }
+
+            if (gameApplication.PersistentContent == null)
+            {
+                report.AddError(
+                    "Model Readiness: Game Application Persistent Content composition is missing.",
                     gameApplication);
             }
         }
@@ -76,7 +92,12 @@ namespace Immersive.Framework.Editor.Editor.Validation
                 return;
             }
 
-            ValidateSceneBuildSettings(report, route, route.PrimaryScenePath, $"{label} Primary Scene", true);
+            ValidateSceneBuildSettings(
+                report,
+                route,
+                route.PrimaryScenePath,
+                $"{label} Primary Scene",
+                true);
             ValidateEnumField<TransitionGateMode>(
                 report,
                 route,
@@ -91,7 +112,10 @@ namespace Immersive.Framework.Editor.Editor.Validation
             }
             else
             {
-                ValidateActivityModel(report, route.StartupActivity, $"{label} Startup Activity");
+                ValidateActivityModel(
+                    report,
+                    route.StartupActivity,
+                    $"{label} Startup Activity");
             }
 
             if (route.RouteContentProfile == null)
@@ -102,7 +126,10 @@ namespace Immersive.Framework.Editor.Editor.Validation
                 return;
             }
 
-            ValidateRouteContentProfile(report, route.RouteContentProfile, $"{label} Route Content Profile");
+            ValidateRouteContentProfile(
+                report,
+                route.RouteContentProfile,
+                $"{label} Route Content Profile");
         }
 
         private static void ValidateActivityModel(
@@ -112,7 +139,9 @@ namespace Immersive.Framework.Editor.Editor.Validation
         {
             if (activity == null)
             {
-                report.AddError($"Model Readiness: {label} is missing.", null);
+                report.AddError(
+                    $"Model Readiness: {label} is missing.",
+                    null);
                 return;
             }
 
@@ -135,7 +164,10 @@ namespace Immersive.Framework.Editor.Editor.Validation
                 return;
             }
 
-            ValidateActivityContentProfileReadiness(report, activity.ActivityContentProfile, $"{label} Activity Content Profile");
+            ValidateActivityContentProfileReadiness(
+                report,
+                activity.ActivityContentProfile,
+                $"{label} Activity Content Profile");
         }
 
         private static void ValidateRouteContentProfile(
@@ -145,7 +177,9 @@ namespace Immersive.Framework.Editor.Editor.Validation
         {
             if (profile == null)
             {
-                report.AddOptionalSkip($"Model Readiness: {label} is absent. Route content scene validation is skipped.", null);
+                report.AddOptionalSkip(
+                    $"Model Readiness: {label} is absent. Route content scene validation is skipped.",
+                    null);
                 return;
             }
 
@@ -157,13 +191,20 @@ namespace Immersive.Framework.Editor.Editor.Validation
                 return;
             }
 
-            for (int i = 0; i < profile.AdditionalScenes.Count; i++)
+            for (int index = 0;
+                 index < profile.AdditionalScenes.Count;
+                 index++)
             {
-                var entry = profile.AdditionalScenes[i];
-                string entryLabel = $"{label} scene index {i}";
+                var entry =
+                    profile.AdditionalScenes[index];
+                string entryLabel =
+                    $"{label} scene index {index}";
+
                 if (entry == null)
                 {
-                    report.AddError($"Model Readiness: {entryLabel} is null.", profile);
+                    report.AddError(
+                        $"Model Readiness: {entryLabel} is null.",
+                        profile);
                     continue;
                 }
 
@@ -174,7 +215,13 @@ namespace Immersive.Framework.Editor.Editor.Validation
                         profile);
                 }
 
-                ValidateSceneEntry(report, profile, entry.ScenePath, entry.HasScene, entry.Requiredness, entryLabel);
+                ValidateSceneEntry(
+                    report,
+                    profile,
+                    entry.ScenePath,
+                    entry.HasScene,
+                    entry.Requiredness,
+                    entryLabel);
             }
         }
 
@@ -185,7 +232,9 @@ namespace Immersive.Framework.Editor.Editor.Validation
         {
             if (profile == null)
             {
-                report.AddOptionalSkip($"Model Readiness: {label} is absent. Activity content scene validation is skipped.", null);
+                report.AddOptionalSkip(
+                    $"Model Readiness: {label} is absent. Activity content scene validation is skipped.",
+                    null);
                 return;
             }
 
@@ -197,13 +246,20 @@ namespace Immersive.Framework.Editor.Editor.Validation
                 return;
             }
 
-            for (int i = 0; i < profile.Scenes.Count; i++)
+            for (int index = 0;
+                 index < profile.Scenes.Count;
+                 index++)
             {
-                var entry = profile.Scenes[i];
-                string entryLabel = $"{label} scene index {i}";
+                var entry =
+                    profile.Scenes[index];
+                string entryLabel =
+                    $"{label} scene index {index}";
+
                 if (entry == null)
                 {
-                    report.AddError($"Model Readiness: {entryLabel} is null.", profile);
+                    report.AddError(
+                        $"Model Readiness: {entryLabel} is null.",
+                        profile);
                     continue;
                 }
 
@@ -214,7 +270,13 @@ namespace Immersive.Framework.Editor.Editor.Validation
                         profile);
                 }
 
-                ValidateSceneEntry(report, profile, entry.ScenePath, entry.HasScene, entry.Requiredness, entryLabel);
+                ValidateSceneEntry(
+                    report,
+                    profile,
+                    entry.ScenePath,
+                    entry.HasScene,
+                    entry.Requiredness,
+                    entryLabel);
             }
         }
 
@@ -226,98 +288,124 @@ namespace Immersive.Framework.Editor.Editor.Validation
             FrameworkContentRequiredness requiredness,
             string label)
         {
-            bool required = requiredness == FrameworkContentRequiredness.Required;
+            bool required =
+                requiredness == FrameworkContentRequiredness.Required;
+
             if (!hasScene)
             {
                 if (required)
                 {
-                    report.AddError($"Model Readiness: {label} is Required but has no scene assigned.", context);
+                    report.AddError(
+                        $"Model Readiness: {label} is Required but has no scene assigned.",
+                        context);
                 }
                 else
                 {
-                    report.AddOptionalSkip($"Model Readiness: {label} has no scene assigned and is Optional.", context);
+                    report.AddOptionalSkip(
+                        $"Model Readiness: {label} has no scene assigned and is Optional.",
+                        context);
                 }
 
                 return;
             }
 
-            ValidateSceneAsset(report, context, scenePath, label, required);
-            ValidateSceneBuildSettings(report, context, scenePath, label, required);
+            ValidateSceneAsset(
+                report,
+                context,
+                scenePath,
+                label,
+                required);
+            ValidateSceneBuildSettings(
+                report,
+                context,
+                scenePath,
+                label,
+                required);
         }
 
-        private static void ValidateGlobalUiSurfaceModel(
+        private static void ValidatePersistentContentSurfaceModel(
             FrameworkAuthoringValidationReport report,
             GameApplicationAsset gameApplication)
         {
-            if (gameApplication.GlobalUiScenePolicyValue == GlobalUiScenePolicy.NoneConfigured)
-            {
-                report.AddOptionalSkip(
-                    "Model Readiness: UIGlobal policy is NoneConfigured. Shared Transition, Loading and resident Pause surface validation is skipped by explicit no-op policy.",
-                    gameApplication);
-                return;
-            }
+            PersistentContentComposition composition =
+                gameApplication.PersistentContent;
 
-            if (!gameApplication.HasGlobalUiScene)
+            if (composition == null ||
+                composition.ContainerScene == null)
             {
                 return;
             }
 
-            ValidateSceneBuildSettings(report, gameApplication, gameApplication.GlobalUiScenePath, "UIGlobal Scene", true);
+            SceneAsset sceneAsset =
+                composition.ContainerScene as SceneAsset;
+            if (sceneAsset == null)
+            {
+                return;
+            }
 
-            var sceneScope = default(SceneValidationScope);
+            string scenePath =
+                AssetDatabase.GetAssetPath(sceneAsset);
+            if (string.IsNullOrWhiteSpace(scenePath))
+            {
+                return;
+            }
+
+            var sceneScope =
+                default(SceneValidationScope);
+
             try
             {
-                sceneScope = FrameworkEditorSceneValidationUtility.OpenSceneForValidation(gameApplication.GlobalUiScenePath);
-                var scene = sceneScope.Scene;
-                if (!scene.IsValid() || !scene.isLoaded)
+                sceneScope =
+                    FrameworkEditorSceneValidationUtility
+                        .OpenSceneForValidation(scenePath);
+                UnityEngine.SceneManagement.Scene scene =
+                    sceneScope.Scene;
+
+                if (!scene.IsValid() ||
+                    !scene.isLoaded)
                 {
                     report.AddError(
-                        $"Model Readiness: UIGlobal Scene '{gameApplication.GlobalUiScenePath}' could not be loaded for surface readiness validation.",
+                        $"Model Readiness: Persistent Content Container Scene '{scenePath}' could not be loaded for readiness validation.",
                         gameApplication);
                     return;
                 }
 
-                int transitionAdapterCount = CountSceneAdapters<ITransitionEffectAdapter>(scene);
-                int loadingAdapterCount = CountSceneAdapters<ILoadingSurfaceAdapter>(scene);
-                int pauseAdapterCount = CountSceneAdapters<IPauseSurfaceAdapter>(scene);
+                int transitionAdapterCount =
+                    CountSceneAdapters<ITransitionEffectAdapter>(scene);
+                int loadingAdapterCount =
+                    CountSceneAdapters<ILoadingSurfaceAdapter>(scene);
+                int pauseAdapterCount =
+                    CountSceneAdapters<IPauseSurfaceAdapter>(scene);
 
-                if (transitionAdapterCount > 0)
-                {
-                    report.AddInfo(
-                        $"Model Readiness: UIGlobal Scene '{gameApplication.GlobalUiScenePath}' contains {transitionAdapterCount} Transition adapter(s).",
-                        gameApplication);
-                }
-                else if (RequiresTransitionInteractionBlocking(gameApplication))
-                {
-                    report.AddWarning(
-                        $"Model Readiness: UIGlobal Scene '{gameApplication.GlobalUiScenePath}' has no Transition adapter, but Route/Activity Transition Gate policy expects interaction blocking during visual transitions.",
-                        gameApplication);
-                }
-
-                if (loadingAdapterCount > 0)
-                {
-                    report.AddInfo(
-                        $"Model Readiness: UIGlobal Scene '{gameApplication.GlobalUiScenePath}' contains {loadingAdapterCount} Loading adapter(s).",
-                        gameApplication);
-                }
+                report.AddInfo(
+                    $"Model Readiness: Persistent Content Container Scene '{scenePath}' contains transitionAdapters='{transitionAdapterCount}' loadingAdapters='{loadingAdapterCount}'.",
+                    gameApplication);
 
                 if (pauseAdapterCount == 0)
                 {
                     report.AddOptionalSkip(
-                        $"Model Readiness: UIGlobal Scene '{gameApplication.GlobalUiScenePath}' has no resident Pause adapter. This is skipped because the current Model has no serialized 'Pause expected' policy.",
+                        $"Model Readiness: Persistent Content Container Scene '{scenePath}' has no resident Pause adapter. This is skipped because the current model has no serialized 'Pause expected' policy.",
                         gameApplication);
                 }
                 else
                 {
                     report.AddInfo(
-                        $"Model Readiness: UIGlobal Scene '{gameApplication.GlobalUiScenePath}' contains {pauseAdapterCount} resident Pause adapter(s).",
+                        $"Model Readiness: Persistent Content Container Scene '{scenePath}' contains {pauseAdapterCount} resident Pause adapter(s).",
+                        gameApplication);
+                }
+
+                if (transitionAdapterCount == 0 &&
+                    RequiresTransitionInteractionBlocking(gameApplication))
+                {
+                    report.AddWarning(
+                        $"Model Readiness: Persistent Content Container Scene '{scenePath}' has no Transition adapter, but Route/Activity Transition Gate policy expects interaction blocking during visual transitions.",
                         gameApplication);
                 }
             }
             catch (Exception exception)
             {
                 report.AddError(
-                    $"Model Readiness: UIGlobal Scene '{gameApplication.GlobalUiScenePath}' could not be validated. {exception.Message}",
+                    $"Model Readiness: Persistent Content Container Scene '{scenePath}' could not be validated. {exception.Message}",
                     gameApplication);
             }
             finally
@@ -326,23 +414,32 @@ namespace Immersive.Framework.Editor.Editor.Validation
             }
         }
 
-        private static bool RequiresTransitionInteractionBlocking(GameApplicationAsset gameApplication)
+        private static bool RequiresTransitionInteractionBlocking(
+            GameApplicationAsset gameApplication)
         {
-            if (gameApplication == null || gameApplication.StartupRoute == null)
+            if (gameApplication == null ||
+                gameApplication.StartupRoute == null)
             {
                 return false;
             }
 
-            var route = gameApplication.StartupRoute;
-            if (TransitionGateBlockerPolicy.BlocksInteractionAcceptance(route.TransitionGateMode))
+            RouteAsset route =
+                gameApplication.StartupRoute;
+            if (TransitionGateBlockerPolicy
+                .BlocksInteractionAcceptance(
+                    route.TransitionGateMode))
             {
                 return true;
             }
 
-            var activity = route.StartupActivity;
-            return activity != null
-                && activity.VisualTransitionMode != ActivityVisualTransitionMode.Seamless
-                && TransitionGateBlockerPolicy.BlocksInteractionAcceptance(activity.TransitionGateMode);
+            ActivityAsset activity =
+                route.StartupActivity;
+            return activity != null &&
+                   activity.VisualTransitionMode !=
+                       ActivityVisualTransitionMode.Seamless &&
+                   TransitionGateBlockerPolicy
+                       .BlocksInteractionAcceptance(
+                           activity.TransitionGateMode);
         }
 
         private static void ValidateEnumField<TEnum>(
@@ -357,18 +454,31 @@ namespace Immersive.Framework.Editor.Editor.Validation
                 return;
             }
 
-            var serializedObject = new SerializedObject(owner);
-            var property = serializedObject.FindProperty(serializedFieldName);
+            var serializedObject =
+                new SerializedObject(owner);
+            SerializedProperty property =
+                serializedObject.FindProperty(serializedFieldName);
+
             if (property == null)
             {
-                report.AddError($"Model Readiness: {label} field '{serializedFieldName}' could not be found.", owner);
+                report.AddError(
+                    $"Model Readiness: {label} field '{serializedFieldName}' could not be found.",
+                    owner);
                 return;
             }
 
-            var value = (TEnum)Enum.ToObject(typeof(TEnum), property.intValue);
-            if (!Enum.IsDefined(typeof(TEnum), value))
+            TEnum value =
+                (TEnum)Enum.ToObject(
+                    typeof(TEnum),
+                    property.intValue);
+
+            if (!Enum.IsDefined(
+                    typeof(TEnum),
+                    value))
             {
-                report.AddError($"Model Readiness: {label} has invalid value '{property.intValue}'.", owner);
+                report.AddError(
+                    $"Model Readiness: {label} has invalid value '{property.intValue}'.",
+                    owner);
             }
         }
 
@@ -383,25 +493,39 @@ namespace Immersive.Framework.Editor.Editor.Validation
             {
                 if (required)
                 {
-                    report.AddError($"Model Readiness: {label} path is empty.", context);
+                    report.AddError(
+                        $"Model Readiness: {label} path is empty.",
+                        context);
                 }
                 else
                 {
-                    report.AddOptionalSkip($"Model Readiness: {label} path is empty and optional.", context);
+                    report.AddOptionalSkip(
+                        $"Model Readiness: {label} path is empty and optional.",
+                        context);
                 }
 
                 return;
             }
 
-            if (!scenePath.StartsWith("Assets/", StringComparison.Ordinal) || !scenePath.EndsWith(".unity", StringComparison.Ordinal))
+            if (!scenePath.StartsWith(
+                    "Assets/",
+                    StringComparison.Ordinal) ||
+                !scenePath.EndsWith(
+                    ".unity",
+                    StringComparison.Ordinal))
             {
-                report.AddError($"Model Readiness: {label} path must be a project-relative Unity scene under Assets. Current path: '{scenePath}'.", context);
+                report.AddError(
+                    $"Model Readiness: {label} path must be a project-relative Unity scene under Assets. Current path: '{scenePath}'.",
+                    context);
                 return;
             }
 
-            if (AssetDatabase.LoadAssetAtPath<SceneAsset>(scenePath) == null)
+            if (AssetDatabase.LoadAssetAtPath<SceneAsset>(
+                    scenePath) == null)
             {
-                report.AddError($"Model Readiness: {label} scene asset could not be found at '{scenePath}'.", context);
+                report.AddError(
+                    $"Model Readiness: {label} scene asset could not be found at '{scenePath}'.",
+                    context);
             }
         }
 
@@ -412,43 +536,53 @@ namespace Immersive.Framework.Editor.Editor.Validation
             string label,
             bool required)
         {
-            if (string.IsNullOrWhiteSpace(scenePath))
-            {
-                return;
-            }
-
-            if (IsSceneInBuildSettings(scenePath))
+            if (string.IsNullOrWhiteSpace(scenePath) ||
+                IsSceneInBuildSettings(scenePath))
             {
                 return;
             }
 
             if (required)
             {
-                report.AddError($"Model Readiness: {label} scene '{scenePath}' is not included in Build Settings.", context);
+                report.AddError(
+                    $"Model Readiness: {label} scene '{scenePath}' is not included in Build Settings.",
+                    context);
             }
             else
             {
-                report.AddOptionalSkip($"Model Readiness: {label} scene '{scenePath}' is optional and not included in Build Settings.", context);
+                report.AddOptionalSkip(
+                    $"Model Readiness: {label} scene '{scenePath}' is optional and not included in Build Settings.",
+                    context);
             }
         }
 
-        private static bool IsSceneInBuildSettings(string scenePath)
+        private static bool IsSceneInBuildSettings(
+            string scenePath)
         {
             if (string.IsNullOrWhiteSpace(scenePath))
             {
                 return false;
             }
 
-            var scenes = EditorBuildSettings.scenes;
+            EditorBuildSettingsScene[] scenes =
+                EditorBuildSettings.scenes;
             if (scenes == null)
             {
                 return false;
             }
 
-            for (int i = 0; i < scenes.Length; i++)
+            for (int index = 0;
+                 index < scenes.Length;
+                 index++)
             {
-                var scene = scenes[i];
-                if (scene != null && string.Equals(scene.path, scenePath, StringComparison.OrdinalIgnoreCase))
+                EditorBuildSettingsScene scene =
+                    scenes[index];
+                if (scene != null &&
+                    scene.enabled &&
+                    string.Equals(
+                        scene.path,
+                        scenePath,
+                        StringComparison.OrdinalIgnoreCase))
                 {
                     return true;
                 }
@@ -457,37 +591,43 @@ namespace Immersive.Framework.Editor.Editor.Validation
             return false;
         }
 
-        private static int CountSceneAdapters<TAdapter>(UnityEngine.SceneManagement.Scene scene)
+        private static int CountSceneAdapters<TAdapter>(
+            UnityEngine.SceneManagement.Scene scene)
         {
-            if (!scene.IsValid() || !scene.isLoaded)
+            if (!scene.IsValid() ||
+                !scene.isLoaded)
             {
                 return 0;
             }
 
-            var roots = scene.GetRootGameObjects();
+            GameObject[] roots =
+                scene.GetRootGameObjects();
             if (roots == null)
             {
                 return 0;
             }
 
             int count = 0;
-            for (int i = 0; i < roots.Length; i++)
+
+            for (int rootIndex = 0;
+                 rootIndex < roots.Length;
+                 rootIndex++)
             {
-                var root = roots[i];
+                GameObject root =
+                    roots[rootIndex];
                 if (root == null)
                 {
                     continue;
                 }
 
-                var behaviours = root.GetComponentsInChildren<MonoBehaviour>(true);
-                if (behaviours == null)
-                {
-                    continue;
-                }
+                MonoBehaviour[] behaviours =
+                    root.GetComponentsInChildren<MonoBehaviour>(true);
 
-                for (int j = 0; j < behaviours.Length; j++)
+                for (int behaviourIndex = 0;
+                     behaviourIndex < behaviours.Length;
+                     behaviourIndex++)
                 {
-                    if (behaviours[j] is TAdapter)
+                    if (behaviours[behaviourIndex] is TAdapter)
                     {
                         count++;
                     }
@@ -497,16 +637,19 @@ namespace Immersive.Framework.Editor.Editor.Validation
             return count;
         }
 
-        private static void AddReadinessSummary(FrameworkAuthoringValidationReport report)
+        private static void AddReadinessSummary(
+            FrameworkAuthoringValidationReport report)
         {
             report.AddInfo(
                 $"Model Readiness completed. totalIssues='{report.TotalIssueCount}' blockingIssues='{report.ErrorCount}' warnings='{report.WarningCount}' optionalSkips='{report.OptionalSkipCount}'.",
                 null);
         }
 
-        private static FrameworkValidationMode ResolveValidationMode(ImmersiveFrameworkSettingsAsset settings)
+        private static FrameworkValidationMode ResolveValidationMode(
+            ImmersiveFrameworkSettingsAsset settings)
         {
-            return settings != null && settings.ActiveGameApplication != null
+            return settings != null &&
+                   settings.ActiveGameApplication != null
                 ? settings.ActiveGameApplication.ValidationMode
                 : FrameworkValidationMode.Strict;
         }

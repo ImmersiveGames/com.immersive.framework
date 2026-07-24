@@ -7,27 +7,18 @@ using UnityEngine;
 namespace Immersive.Framework.Authoring
 {
     /// <summary>
-    /// API status: Experimental. Policy for the canonical app/session scoped Unity UI scene.
-    /// The Startup Route Primary Scene is prepared first; then Global UI is loaded additively,
-    /// its roots are persisted under the FrameworkRuntimeHost, and Transition/Loading adapters are discovered from that scene.
-    /// </summary>
-    [FrameworkApiStatus(FrameworkApiStatus.Experimental, "F24E canonical UIGlobal scene policy for GameApplication authoring.")]
-    public enum GlobalUiScenePolicy
-    {
-        NoneConfigured = 0,
-        Required = 1
-    }
-
-    /// <summary>
-    /// API status: Experimental. Public authoring root retained as the baseline entry point before F1 identity/status hardening.
-    /// Public root asset for an Immersive game/application.
-    /// Keep this asset small: it should grow only when a real framework cut needs a new decision.
+    /// API status: Experimental. Public authoring root for one Immersive game/application.
+    ///
+    /// The asset owns application-level intent only. Mutable Session, Player, Route, Activity,
+    /// Camera and scene runtime state remain outside this asset.
     /// </summary>
     [CreateAssetMenu(
         fileName = "GameApplication",
         menuName = "Immersive Framework/Game Application",
         order = 0)]
-    [FrameworkApiStatus(FrameworkApiStatus.Experimental, "Baseline surface kept for development use until the owning roadmap phase stabilizes it.")]
+    [FrameworkApiStatus(
+        FrameworkApiStatus.Experimental,
+        "Baseline product authoring surface for application configuration.")]
     public sealed class GameApplicationAsset : ScriptableObject
     {
         [SerializeField]
@@ -35,7 +26,7 @@ namespace Immersive.Framework.Authoring
         private string applicationName = "Game Application";
 
         [SerializeField]
-        [Tooltip("First route requested by the Game Flow after framework boot. The Route declares the Primary Scene loaded by Scene Lifecycle.")]
+        [Tooltip("First Route requested by Game Flow after framework boot. The Route declares the first Primary Scene.")]
         private RouteAsset startupRoute;
 
         [SerializeField]
@@ -48,20 +39,14 @@ namespace Immersive.Framework.Authoring
             PlayerActorSelectionDuplicatePolicy.AllowDuplicates;
 
         [SerializeField]
-        [Tooltip("Controls whether this Game Application uses a canonical app/session scoped UIGlobal scene. Required loads it additively after the Startup Route Primary Scene is prepared, persists its UI roots under the FrameworkRuntimeHost, and discovers Transition/Loading adapters from it.")]
-        private GlobalUiScenePolicy globalUiScenePolicy = GlobalUiScenePolicy.NoneConfigured;
-
-        [SerializeField]
-        [Tooltip("Project-relative path of the canonical UIGlobal scene. Managed by the Game Application Inspector.")]
-        private string globalUiScenePath = string.Empty;
-
-        [SerializeField]
-        [Tooltip("Cached human-readable UIGlobal scene name shown in framework diagnostics.")]
-        private string globalUiSceneName = string.Empty;
+        [Tooltip("Concrete scene and prefab composition retained for the application lifetime. The scene is authored manually; the framework validates and consumes it without creating or repairing content.")]
+        private PersistentContentComposition persistentContent =
+            new PersistentContentComposition();
 
         [SerializeField]
         [Tooltip("Controls validation and diagnostics severity. Required configuration fails in every mode; Strict promotes warnings, Standard keeps them, Release suppresses info diagnostics.")]
-        private FrameworkValidationMode validationMode = FrameworkValidationMode.Standard;
+        private FrameworkValidationMode validationMode =
+            FrameworkValidationMode.Standard;
 
         public string ApplicationName
         {
@@ -72,7 +57,9 @@ namespace Immersive.Framework.Authoring
                     return applicationName.Trim();
                 }
 
-                return !string.IsNullOrWhiteSpace(name) ? name : "Game Application";
+                return !string.IsNullOrWhiteSpace(name)
+                    ? name
+                    : "Game Application";
             }
         }
 
@@ -85,7 +72,10 @@ namespace Immersive.Framework.Authoring
         public IReadOnlyList<PlayerSlotProfile> LocalPlayerSlots =>
             localPlayerSlots ?? Array.Empty<PlayerSlotProfile>();
 
-        public int LocalPlayerSlotCount => localPlayerSlots != null ? localPlayerSlots.Length : 0;
+        public int LocalPlayerSlotCount =>
+            localPlayerSlots != null
+                ? localPlayerSlots.Length
+                : 0;
 
         /// <summary>
         /// Session duplicate-selection policy composed into PlayerParticipationRuntimeContext.
@@ -97,7 +87,19 @@ namespace Immersive.Framework.Authoring
         public bool HasDefinedPlayerActorSelectionDuplicatePolicy =>
             playerActorSelectionDuplicatePolicy.IsDefinedPolicy();
 
-        public bool TryGetLocalPlayerSlot(int configuredIndex, out PlayerSlotProfile playerSlotProfile)
+        public PersistentContentComposition PersistentContent =>
+            persistentContent;
+
+        public bool HasPersistentContentComposition =>
+            persistentContent != null &&
+            persistentContent.IsComplete;
+
+        public FrameworkValidationMode ValidationMode =>
+            validationMode;
+
+        public bool TryGetLocalPlayerSlot(
+            int configuredIndex,
+            out PlayerSlotProfile playerSlotProfile)
         {
             if (localPlayerSlots == null ||
                 configuredIndex < 0 ||
@@ -110,35 +112,5 @@ namespace Immersive.Framework.Authoring
             playerSlotProfile = localPlayerSlots[configuredIndex];
             return playerSlotProfile != null;
         }
-
-        public GlobalUiScenePolicy GlobalUiScenePolicyValue => globalUiScenePolicy;
-
-        public string GlobalUiScenePath => globalUiScenePath ?? string.Empty;
-
-        public string GlobalUiSceneName
-        {
-            get
-            {
-                if (!string.IsNullOrWhiteSpace(globalUiSceneName))
-                {
-                    return globalUiSceneName.Trim();
-                }
-
-                if (!string.IsNullOrWhiteSpace(globalUiScenePath))
-                {
-                    string fileName = System.IO.Path.GetFileNameWithoutExtension(globalUiScenePath);
-                    if (!string.IsNullOrWhiteSpace(fileName))
-                    {
-                        return fileName;
-                    }
-                }
-
-                return string.Empty;
-            }
-        }
-
-        public bool HasGlobalUiScene => !string.IsNullOrWhiteSpace(globalUiScenePath);
-
-        public FrameworkValidationMode ValidationMode => validationMode;
     }
 }

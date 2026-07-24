@@ -1,7 +1,7 @@
 # Framework Usage
 
 Status: Current
-Last updated: 2026-07-23
+Last updated: 2026-07-24
 
 ## Create and author
 
@@ -11,17 +11,73 @@ Last updated: 2026-07-23
 3. Create `RouteAsset` and `ActivityAsset` assets for the application flow.
 4. Configure startup Route, primary/additive scenes, Activity participation,
    transition and gate policies.
-5. Provide the `UIGlobal` scene surfaces required by the selected modules.
+5. Configure the Game Application Persistent Content composition.
 6. Use the package bootstrap surface to start the application.
 
 Required configuration is not repaired by hidden lookup. Missing bindings return
 typed diagnostics and block the owning operation.
+
+## Persistent Content composition
+
+The Game Application declares:
+
+```text
+Container Scene
+Camera Output Prefab
+Presentation Canvas Prefab
+```
+
+The scene is composed manually through normal Unity authoring:
+
+1. Create or open a dedicated Container Scene.
+2. Add exactly one instance of the selected Camera Output prefab.
+3. Add exactly one instance of the selected Presentation Canvas prefab.
+4. Position and configure the hierarchy visually.
+5. Add the Container Scene to the active Build Profile.
+6. Assign the scene and exact prefab assets in the Game Application.
+7. Press `Validate Configuration`.
+
+The framework does not create or repair this scene. Use package minimum prefabs,
+Prefab Variants or consumer-owned prefab implementations.
+
+### Camera Output contract
+
+The selected prefab must contain exactly:
+
+```text
+Unity Camera
+CinemachineBrain
+CameraOutputSessionBinding
+SessionCameraOverrideBinding
+```
+
+The binding must explicitly reference the same physical Camera and Brain and use
+an explicit Output ID.
+
+### Presentation Canvas contract
+
+The selected prefab must contain:
+
+```text
+one Canvas
+at least one Transition adapter
+at least one Loading adapter
+```
+
+Game-specific artwork and layout remain consumer-owned.
+
+### Runtime behavior
+
+The framework loads the Container Scene, retains each complete authored root
+hierarchy and unloads the source scene. The objects persist; the source scene does
+not.
 
 ## Runtime model
 
 ```text
 GameApplicationAsset
 -> bootstrap
+-> Persistent Content load and retention
 -> internal FrameworkRuntimeHost
 -> Session
 -> Route lifecycle
@@ -34,13 +90,15 @@ receive narrow feature ports through bootstrap or lifecycle composition.
 
 ## Apply and rebuild
 
-Only product surfaces with derived technical materialization expose
-Apply/Rebuild. Camera is the mature example. Do not expect Apply/Rebuild to
-invent required application policy, identity or runtime ownership.
+Only product surfaces with derived technical materialization expose Apply/Rebuild.
+Camera Rig authoring is one example.
+
+Persistent Content does not expose Apply/Rebuild because its concrete scene and
+prefab instances are authored directly through Unity.
 
 ## Diagnose
 
-- Start with Inspector validation and Advanced/Debug evidence.
+- Start with Inspector validation and Advanced/Diagnostics evidence.
 - Use typed result/status/issue fields rather than parsing log text.
 - Inspect the current Route, Activity, readiness and feature snapshots.
 - Fix the owner that failed to supply a required dependency.

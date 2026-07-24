@@ -29,6 +29,7 @@ Guides                 current product usage
 - [Input, Pause, Gate and Reset](Architecture/ADRs/IF-ADR-005-Input-Pause-Gate-and-Reset.md)
 - [Loading, transition, persistence and diagnostics](Architecture/ADRs/IF-ADR-006-Loading-Transition-Persistence-and-Diagnostics.md)
 - [Optional Audio BGM adapter](Architecture/ADRs/IF-ADR-007-Optional-Audio-BGM-Adapter.md)
+- [Persistent Application Content composition](Architecture/ADRs/IF-ADR-008-Persistent-Application-Content-Composition.md)
 
 ADRs decide. The plan defines the stable route. The tracker records progress.
 Git history retains superseded audits, manifests, closeouts and micro-cut notes.

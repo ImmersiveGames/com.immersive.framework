@@ -1,17 +1,17 @@
 using System;
 using System.Collections.Generic;
+using Immersive.Framework.ActivityRestart;
 using Immersive.Framework.ApiStatus;
 using Immersive.Framework.Authoring;
+using Immersive.Framework.Camera;
+using Immersive.Framework.Common;
+using Immersive.Framework.CycleReset;
 using Immersive.Framework.Diagnostics;
+using Immersive.Framework.GameFlow;
 using Immersive.Framework.Loading;
 using Immersive.Framework.Pause;
-using Immersive.Framework.TransitionEffects;
-using Immersive.Framework.Common;
-using Immersive.Framework.Camera;
 using Immersive.Framework.PlayerParticipation;
-using Immersive.Framework.GameFlow;
-using Immersive.Framework.CycleReset;
-using Immersive.Framework.ActivityRestart;
+using Immersive.Framework.TransitionEffects;
 using Immersive.Logging.Records;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -19,12 +19,18 @@ using UnityEngine.SceneManagement;
 namespace Immersive.Framework.GlobalUi
 {
     /// <summary>
-    /// API status: Internal. Loads the canonical app/session-scoped UIGlobal scene additively after the
-    /// Startup Route Primary Scene is prepared, moves its authored UI roots under the persistent
-    /// FrameworkRuntimeHost, and exposes visual adapters.
-    /// It does not own RouteLifecycle, ActivityFlow, SceneLifecycle, Loading lifecycle or Transition lifecycle.
+    /// Internal runtime loader for the application Persistent Content Container Scene.
+    ///
+    /// The source scene is loaded additively, its complete authored root hierarchies are moved
+    /// to Unity's persistent runtime scene, and the source scene is unloaded. The source scene
+    /// is an authoring container; the retained objects own the application lifetime.
+    ///
+    /// This class keeps its historical internal name until the runtime namespace migration cut.
+    /// It is not a public product surface.
     /// </summary>
-    [FrameworkApiStatus(FrameworkApiStatus.Internal, "F24E canonical UIGlobal scene loader; scene-authored visual surfaces only.")]
+    [FrameworkApiStatus(
+        FrameworkApiStatus.Internal,
+        "Persistent Content Container Scene loader. Historical internal type name retained until runtime namespace migration.")]
     internal sealed class GlobalUiSceneRuntime
     {
         private readonly ITransitionEffectAdapter[] _transitionAdapters;
@@ -33,9 +39,7 @@ namespace Immersive.Framework.GlobalUi
         private readonly GameObject[] _persistedRoots;
 
         private GlobalUiSceneRuntime(
-            GlobalUiScenePolicy policy,
-            string scenePath,
-            string sceneName,
+            UnityEngine.Object containerScene,
             string label,
             IReadOnlyList<GameObject> persistedRoots,
             IReadOnlyList<ITransitionEffectAdapter> transitionAdapters,
@@ -45,72 +49,107 @@ namespace Immersive.Framework.GlobalUi
             string blockingConfigurationMessage,
             string message)
         {
-            Policy = policy;
-            ScenePath = Normalize(scenePath);
-            SceneName = Normalize(sceneName);
-            Label = label.NormalizeTextOrFallback("UIGlobal");
+            ContainerScene = containerScene;
+            SceneName = containerScene != null
+                ? containerScene.name.NormalizeText()
+                : string.Empty;
+            Label = label.NormalizeTextOrFallback("Persistent Content");
             PersistedRootCount = persistedRoots?.Count ?? 0;
-            _persistedRoots = FrameworkCollectionCopy.ToArrayOrEmpty(persistedRoots);
-            _transitionAdapters = FrameworkCollectionCopy.ToArrayOrEmpty(transitionAdapters);
-            _loadingAdapters = FrameworkCollectionCopy.ToArrayOrEmpty(loadingAdapters);
-            _pauseAdapters = FrameworkCollectionCopy.ToArrayOrEmpty(pauseAdapters);
-            HasBlockingConfigurationIssue = hasBlockingConfigurationIssue;
-            BlockingConfigurationMessage = Normalize(blockingConfigurationMessage);
-            Message = Normalize(message);
+            _persistedRoots =
+                FrameworkCollectionCopy.ToArrayOrEmpty(persistedRoots);
+            _transitionAdapters =
+                FrameworkCollectionCopy.ToArrayOrEmpty(transitionAdapters);
+            _loadingAdapters =
+                FrameworkCollectionCopy.ToArrayOrEmpty(loadingAdapters);
+            _pauseAdapters =
+                FrameworkCollectionCopy.ToArrayOrEmpty(pauseAdapters);
+            HasBlockingConfigurationIssue =
+                hasBlockingConfigurationIssue;
+            BlockingConfigurationMessage =
+                blockingConfigurationMessage.NormalizeText();
+            Message = message.NormalizeText();
         }
 
-        public GlobalUiScenePolicy Policy { get; }
-        public string ScenePath { get; }
+        public UnityEngine.Object ContainerScene { get; }
+
         public string SceneName { get; }
+
         public string Label { get; }
+
         public int PersistedRootCount { get; }
-        public int TransitionAdapterCount => _transitionAdapters.Length;
-        public int LoadingAdapterCount => _loadingAdapters.Length;
-        public int PauseAdapterCount => _pauseAdapters.Length;
+
+        public int TransitionAdapterCount =>
+            _transitionAdapters.Length;
+
+        public int LoadingAdapterCount =>
+            _loadingAdapters.Length;
+
+        public int PauseAdapterCount =>
+            _pauseAdapters.Length;
+
         public bool HasBlockingConfigurationIssue { get; }
+
         public string BlockingConfigurationMessage { get; }
+
         public string Message { get; }
-        public IReadOnlyList<ITransitionEffectAdapter> TransitionAdapters => _transitionAdapters;
-        public IReadOnlyList<ILoadingSurfaceAdapter> LoadingAdapters => _loadingAdapters;
-        public IReadOnlyList<IPauseSurfaceAdapter> PauseAdapters => _pauseAdapters;
+
+        public IReadOnlyList<ITransitionEffectAdapter> TransitionAdapters =>
+            _transitionAdapters;
+
+        public IReadOnlyList<ILoadingSurfaceAdapter> LoadingAdapters =>
+            _loadingAdapters;
+
+        public IReadOnlyList<IPauseSurfaceAdapter> PauseAdapters =>
+            _pauseAdapters;
+
         internal GlobalUiPauseRequestTriggerBindingResult
-            TryBindPauseRequestTriggers(IPauseProductRequestPort pauseProductRequest)
+            TryBindPauseRequestTriggers(
+                IPauseProductRequestPort pauseProductRequest)
         {
-            return TryBindPauseRequestTriggers(_persistedRoots, pauseProductRequest);
+            return TryBindPauseRequestTriggers(
+                _persistedRoots,
+                pauseProductRequest);
         }
 
-        internal RouteRequestTriggerBindingResult TryBindRouteRequestTriggers(
-            IRouteRuntimePort routeRuntime)
+        internal RouteRequestTriggerBindingResult
+            TryBindRouteRequestTriggers(
+                IRouteRuntimePort routeRuntime)
         {
-            return RouteRequestTriggerBinding.TryBind(_persistedRoots, routeRuntime);
+            return RouteRequestTriggerBinding.TryBind(
+                _persistedRoots,
+                routeRuntime);
         }
 
-        internal ActivityRequestTriggerBindingResult TryBindActivityRequestTriggers(
-            IActivityRuntimePort activityRuntime)
+        internal ActivityRequestTriggerBindingResult
+            TryBindActivityRequestTriggers(
+                IActivityRuntimePort activityRuntime)
         {
             return ActivityRequestTriggerBinding.TryBind(
                 _persistedRoots,
                 activityRuntime);
         }
 
-        internal RouteCycleResetTriggerBindingResult TryBindRouteCycleResetTriggers(
-            IRouteCycleResetRuntimePort routeCycleResetRuntime)
+        internal RouteCycleResetTriggerBindingResult
+            TryBindRouteCycleResetTriggers(
+                IRouteCycleResetRuntimePort routeCycleResetRuntime)
         {
             return RouteCycleResetTriggerBinding.TryBind(
                 _persistedRoots,
                 routeCycleResetRuntime);
         }
 
-        internal ActivityCycleResetTriggerBindingResult TryBindActivityCycleResetTriggers(
-            IActivityCycleResetRuntimePort activityCycleResetRuntime)
+        internal ActivityCycleResetTriggerBindingResult
+            TryBindActivityCycleResetTriggers(
+                IActivityCycleResetRuntimePort activityCycleResetRuntime)
         {
             return ActivityCycleResetTriggerBinding.TryBind(
                 _persistedRoots,
                 activityCycleResetRuntime);
         }
 
-        internal ActivityRestartTriggerBindingResult TryBindActivityRestartTriggers(
-            IActivityRestartRuntimePort activityRestartRuntime)
+        internal ActivityRestartTriggerBindingResult
+            TryBindActivityRestartTriggers(
+                IActivityRestartRuntimePort activityRestartRuntime)
         {
             return ActivityRestartTriggerBinding.TryBind(
                 _persistedRoots,
@@ -140,12 +179,14 @@ namespace Immersive.Framework.GlobalUi
                 IReadOnlyList<GameObject> persistentRoots,
                 IPauseProductRequestPort pauseProductRequest)
         {
-            int rootCount = CountRoots(persistentRoots);
+            int rootCount =
+                CountRoots(persistentRoots);
+
             if (pauseProductRequest == null)
             {
                 return GlobalUiPauseRequestTriggerBindingResult.Rejected(
                     "RejectedMissingPauseProductRequest",
-                    $"UIGlobal Pause request trigger binding requires a Pause product request port. roots='{rootCount}' triggers='0' bound='0' idempotent='0' rejected='0'.",
+                    $"Persistent Content Pause request trigger binding requires a Pause product request port. roots='{rootCount}' triggers='0' bound='0' idempotent='0' rejected='0'.",
                     rootCount,
                     0,
                     0,
@@ -155,6 +196,7 @@ namespace Immersive.Framework.GlobalUi
 
             List<PauseRequestTrigger> triggers =
                 CollectPauseRequestTriggers(persistentRoots);
+
             if (triggers.Count == 0)
             {
                 return GlobalUiPauseRequestTriggerBindingResult.OptionalAbsent(
@@ -165,11 +207,19 @@ namespace Immersive.Framework.GlobalUi
             int idempotentCount = 0;
             int rejectedCount = 0;
             var issues = new List<string>();
-            for (int index = 0; index < triggers.Count; index++)
+
+            for (int index = 0;
+                 index < triggers.Count;
+                 index++)
             {
-                PauseRequestTrigger trigger = triggers[index];
-                bool wasBound = trigger.HasPauseProductRequestBinding;
-                if (trigger.TryBindPauseProductRequest(pauseProductRequest, out string issue))
+                PauseRequestTrigger trigger =
+                    triggers[index];
+                bool wasBound =
+                    trigger.HasPauseProductRequestBinding;
+
+                if (trigger.TryBindPauseProductRequest(
+                        pauseProductRequest,
+                        out string issue))
                 {
                     if (wasBound)
                     {
@@ -184,7 +234,9 @@ namespace Immersive.Framework.GlobalUi
                 }
 
                 rejectedCount++;
-                string sceneName = trigger.gameObject.scene.name.NormalizeTextOrFallback("<unknown>");
+                string sceneName =
+                    trigger.gameObject.scene.name
+                        .NormalizeTextOrFallback("<unknown>");
                 issues.Add(
                     $"trigger='{trigger.name}' scene='{sceneName}' issue='{issue.NormalizeTextOrFallback("unknown")}'.");
             }
@@ -193,7 +245,7 @@ namespace Immersive.Framework.GlobalUi
             {
                 return GlobalUiPauseRequestTriggerBindingResult.Rejected(
                     "RejectedTriggerBinding",
-                    $"UIGlobal Pause request trigger binding failed. roots='{rootCount}' triggers='{triggers.Count}' bound='{boundCount}' idempotent='{idempotentCount}' rejected='{rejectedCount}'. {string.Join(" ", issues)}",
+                    $"Persistent Content Pause request trigger binding failed. roots='{rootCount}' triggers='{triggers.Count}' bound='{boundCount}' idempotent='{idempotentCount}' rejected='{rejectedCount}'. {string.Join(" ", issues)}",
                     rootCount,
                     triggers.Count,
                     boundCount,
@@ -213,11 +265,25 @@ namespace Immersive.Framework.GlobalUi
             out SessionCameraOverrideBinding sessionOverride,
             out string diagnostic)
         {
-            outputSession = FindSingle<CameraOutputSessionBinding>();
-            sessionOverride = FindSingle<SessionCameraOverrideBinding>();
-            if (outputSession == null || sessionOverride == null)
+            List<CameraOutputSessionBinding> outputCandidates =
+                FindAll<CameraOutputSessionBinding>();
+            List<SessionCameraOverrideBinding> overrideCandidates =
+                FindAll<SessionCameraOverrideBinding>();
+
+            outputSession =
+                outputCandidates.Count == 1
+                    ? outputCandidates[0]
+                    : null;
+            sessionOverride =
+                overrideCandidates.Count == 1
+                    ? overrideCandidates[0]
+                    : null;
+
+            if (outputSession == null ||
+                sessionOverride == null)
             {
-                diagnostic = "UIGlobal requires exactly one CameraOutputSessionBinding and one SessionCameraOverrideBinding.";
+                diagnostic =
+                    $"Persistent Content requires exactly one CameraOutputSessionBinding and one SessionCameraOverrideBinding. outputSessions='{outputCandidates.Count}' sessionOverrides='{overrideCandidates.Count}'.";
                 return false;
             }
 
@@ -235,10 +301,11 @@ namespace Immersive.Framework.GlobalUi
 
             List<LocalPlayerProvisioningHostRegistration> registrations =
                 FindAll<LocalPlayerProvisioningHostRegistration>();
+
             if (registrations.Count == 0)
             {
                 diagnostic =
-                    "UIGlobal has no Local Player Provisioning Host Registration. Local Player provisioning is explicitly unavailable.";
+                    "Persistent Content has no Local Player Provisioning Host Registration. Local Player provisioning is explicitly unavailable.";
                 return true;
             }
 
@@ -246,7 +313,7 @@ namespace Immersive.Framework.GlobalUi
             if (registrations.Count != 1)
             {
                 diagnostic =
-                    $"UIGlobal requires exactly one Local Player Provisioning Host Registration when provisioning is configured, but found '{registrations.Count}'.";
+                    $"Persistent Content requires exactly one Local Player Provisioning Host Registration when provisioning is configured, but found '{registrations.Count}'.";
                 return false;
             }
 
@@ -255,77 +322,67 @@ namespace Immersive.Framework.GlobalUi
                     out string issue))
             {
                 diagnostic =
-                    $"UIGlobal Local Player Provisioning Host Registration is invalid. {issue}";
+                    $"Persistent Content Local Player Provisioning Host Registration is invalid. {issue}";
                 return false;
             }
 
             diagnostic =
-                $"Resolved Local Player provisioning authoring '{authoring.name}' through the explicit UIGlobal Host Registration.";
+                $"Resolved Local Player provisioning authoring '{authoring.name}' through the explicit Persistent Content Host Registration.";
             return true;
         }
 
-        internal static async Awaitable<GlobalUiSceneRuntime> LoadAndPersistAsync(
-            GameApplicationAsset application,
-            Transform persistentParent,
-            FrameworkLogger logger)
+        internal static async Awaitable<GlobalUiSceneRuntime>
+            LoadAndPersistAsync(
+                GameApplicationAsset application,
+                Transform persistentParent,
+                FrameworkLogger logger)
         {
-            logger ??= FrameworkLogger.Create<GlobalUiSceneRuntime>();
+            logger ??=
+                FrameworkLogger.Create<GlobalUiSceneRuntime>();
 
             if (application == null)
             {
-                const string message = "UIGlobal scene is not configured because the Game Application is missing.";
-                logger.Warning(message);
-                return new GlobalUiSceneRuntime(
-                    GlobalUiScenePolicy.NoneConfigured,
-                    string.Empty,
-                    string.Empty,
-                    "UIGlobal",
-                    Array.Empty<GameObject>(),
-                    Array.Empty<ITransitionEffectAdapter>(),
-                    Array.Empty<ILoadingSurfaceAdapter>(),
-                    Array.Empty<IPauseSurfaceAdapter>(),
-                    false,
-                    string.Empty,
-                    message);
+                const string message =
+                    "Persistent Content cannot load because the Game Application is missing.";
+                logger.Error(message);
+                return Failed(null, message);
             }
 
-            if (application.GlobalUiScenePolicyValue == GlobalUiScenePolicy.NoneConfigured)
-            {
-                if (application.HasGlobalUiScene)
-                {
-                    logger.Warning($"UIGlobal scene '{application.GlobalUiScenePath}' is assigned but Global UI Scene Policy is NoneConfigured. The scene will not be loaded and the runtime will keep explicit NoOp behavior.");
-                }
-                else
-                {
-                    logger.Debug("UIGlobal scene is not configured. The runtime will keep explicit NoOp behavior.");
-                }
+            PersistentContentComposition composition =
+                application.PersistentContent;
 
-                return new GlobalUiSceneRuntime(
-                    application.GlobalUiScenePolicyValue,
-                    application.GlobalUiScenePath,
-                    application.GlobalUiSceneName,
-                    "UIGlobal",
-                    Array.Empty<GameObject>(),
-                    Array.Empty<ITransitionEffectAdapter>(),
-                    Array.Empty<ILoadingSurfaceAdapter>(),
-                    Array.Empty<IPauseSurfaceAdapter>(),
-                    false,
-                    string.Empty,
-                    "UIGlobal scene is explicit NoOp.");
-            }
-
-            if (!application.HasGlobalUiScene)
+            if (composition == null ||
+                !composition.IsComplete)
             {
-                const string message = "Global UI Scene Policy is Required, but UIGlobal Scene is missing.";
+                const string message =
+                    "Persistent Content composition is incomplete. Container Scene, Camera Output Prefab and Presentation Canvas Prefab are required.";
                 logger.Error(message);
                 return Failed(application, message);
             }
 
-            string scenePath = application.GlobalUiScenePath;
-            var asyncOperation = SceneManager.LoadSceneAsync(scenePath, LoadSceneMode.Additive);
+            UnityEngine.Object containerScene =
+                composition.ContainerScene;
+            string sceneName =
+                composition.ContainerSceneName;
+
+            if (containerScene == null ||
+                string.IsNullOrWhiteSpace(sceneName))
+            {
+                const string message =
+                    "Persistent Content Container Scene reference is missing or invalid.";
+                logger.Error(message);
+                return Failed(application, message);
+            }
+
+            AsyncOperation asyncOperation =
+                SceneManager.LoadSceneAsync(
+                    sceneName,
+                    LoadSceneMode.Additive);
+
             if (asyncOperation == null)
             {
-                string message = $"UIGlobal scene '{scenePath}' could not be loaded. Ensure it is in Build Settings.";
+                string message =
+                    $"Persistent Content Container Scene '{sceneName}' could not be loaded. Ensure the directly referenced scene is enabled in the Build Profile and has a unique scene name.";
                 logger.Error(message);
                 return Failed(application, message);
             }
@@ -335,46 +392,57 @@ namespace Immersive.Framework.GlobalUi
                 await Awaitable.NextFrameAsync();
             }
 
-            // Resolve only by the path used for LoadSceneAsync. Name fallback can attach to a
-            // different loaded scene that happens to share GlobalUiSceneName.
-            var scene = SceneManager.GetSceneByPath(scenePath);
-            if (!scene.IsValid() || !scene.isLoaded)
+            Scene scene =
+                SceneManager.GetSceneByName(sceneName);
+
+            if (!scene.IsValid() ||
+                !scene.isLoaded)
             {
-                string message = $"UIGlobal scene '{scenePath}' finished loading but could not be resolved as a loaded scene by path.";
+                string message =
+                    $"Persistent Content Container Scene '{sceneName}' finished loading but could not be resolved as a loaded scene by its validated unique name.";
                 logger.Error(message);
                 return Failed(application, message);
             }
 
-            GameObject[] roots = scene.GetRootGameObjects();
-            var persistedRoots = new List<GameObject>();
+            GameObject[] roots =
+                scene.GetRootGameObjects();
+            var persistedRoots =
+                new List<GameObject>();
+
             if (roots != null)
             {
-                for (int i = 0; i < roots.Length; i++)
+                for (int index = 0;
+                     index < roots.Length;
+                     index++)
                 {
-                    var root = roots[i];
+                    GameObject root = roots[index];
                     if (root == null)
                     {
                         continue;
                     }
 
-                    root.name = root.name.EndsWith(" (UIGlobal)", StringComparison.Ordinal)
-                        ? root.name
-                        : root.name + " (UIGlobal)";
-                    root.transform.SetParent(persistentParent, false);
+                    // Preserve the complete authored root hierarchy. Do not flatten or re-parent
+                    // Camera, Canvas, Audio or future Lighting content under the runtime host.
+                    UnityEngine.Object.DontDestroyOnLoad(root);
                     persistedRoots.Add(root);
                 }
             }
 
-            List<ITransitionEffectAdapter> transitionAdapters = CollectAdapters<ITransitionEffectAdapter>(persistedRoots);
-            List<ILoadingSurfaceAdapter> loadingAdapters = CollectAdapters<ILoadingSurfaceAdapter>(persistedRoots);
-            List<IPauseSurfaceAdapter> pauseAdapters = CollectAdapters<IPauseSurfaceAdapter>(persistedRoots);
-            string blockingMessage = BuildBlockingMessageIfRequired(
-                application.GlobalUiScenePolicyValue,
-                application.GlobalUiSceneName,
-                transitionAdapters.Count,
-                loadingAdapters.Count);
+            List<ITransitionEffectAdapter> transitionAdapters =
+                CollectAdapters<ITransitionEffectAdapter>(persistedRoots);
+            List<ILoadingSurfaceAdapter> loadingAdapters =
+                CollectAdapters<ILoadingSurfaceAdapter>(persistedRoots);
+            List<IPauseSurfaceAdapter> pauseAdapters =
+                CollectAdapters<IPauseSurfaceAdapter>(persistedRoots);
 
-            var unloadOperation = SceneManager.UnloadSceneAsync(scene);
+            string blockingMessage =
+                BuildBlockingMessageIfRequired(
+                    sceneName,
+                    transitionAdapters.Count,
+                    loadingAdapters.Count);
+
+            AsyncOperation unloadOperation =
+                SceneManager.UnloadSceneAsync(scene);
             if (unloadOperation != null)
             {
                 while (!unloadOperation.isDone)
@@ -383,16 +451,18 @@ namespace Immersive.Framework.GlobalUi
                 }
             }
 
-            string label = string.IsNullOrWhiteSpace(application.GlobalUiSceneName)
-                ? "UIGlobal"
-                : application.GlobalUiSceneName;
-            if (!string.IsNullOrWhiteSpace(blockingMessage))
+            string label =
+                sceneName.NormalizeTextOrFallback(
+                    "Persistent Content");
+
+            if (!string.IsNullOrWhiteSpace(
+                    blockingMessage))
             {
-                logger.Error($"UIGlobal scene '{label}' loaded and persisted, but required adapters are missing. {blockingMessage}");
+                logger.Error(
+                    $"Persistent Content Container Scene '{label}' loaded and its roots were retained, but required presentation adapters are missing. {blockingMessage}");
+
                 return new GlobalUiSceneRuntime(
-                    application.GlobalUiScenePolicyValue,
-                    application.GlobalUiScenePath,
-                    application.GlobalUiSceneName,
+                    containerScene,
                     label,
                     persistedRoots,
                     transitionAdapters,
@@ -400,23 +470,31 @@ namespace Immersive.Framework.GlobalUi
                     pauseAdapters,
                     true,
                     blockingMessage,
-                    $"UIGlobal scene '{label}' loaded and persisted with rootCount='{persistedRoots.Count}' transitionAdapterCount='{transitionAdapters.Count}' loadingAdapterCount='{loadingAdapters.Count}' pauseAdapterCount='{pauseAdapters.Count}'.");
+                    $"Persistent Content loaded with rootCount='{persistedRoots.Count}' transitionAdapterCount='{transitionAdapters.Count}' loadingAdapterCount='{loadingAdapters.Count}' pauseAdapterCount='{pauseAdapters.Count}'.");
             }
 
-            logger.Debug("UIGlobal scene loaded.", LogFields.Field("scene", label));
             logger.Debug(
-                "UIGlobal scene diagnostics.",
+                "Persistent Content loaded.",
+                LogFields.Field("scene", label));
+            logger.Debug(
+                "Persistent Content diagnostics.",
                 LogFields.Of(
                     LogFields.Field("scene", label),
-                    LogFields.Field("rootCount", persistedRoots.Count),
-                    LogFields.Field("transitionAdapterCount", transitionAdapters.Count),
-                    LogFields.Field("loadingAdapterCount", loadingAdapters.Count),
-                    LogFields.Field("pauseAdapterCount", pauseAdapters.Count)));
+                    LogFields.Field(
+                        "rootCount",
+                        persistedRoots.Count),
+                    LogFields.Field(
+                        "transitionAdapterCount",
+                        transitionAdapters.Count),
+                    LogFields.Field(
+                        "loadingAdapterCount",
+                        loadingAdapters.Count),
+                    LogFields.Field(
+                        "pauseAdapterCount",
+                        pauseAdapters.Count)));
 
             return new GlobalUiSceneRuntime(
-                application.GlobalUiScenePolicyValue,
-                application.GlobalUiScenePath,
-                application.GlobalUiSceneName,
+                containerScene,
                 label,
                 persistedRoots,
                 transitionAdapters,
@@ -424,16 +502,21 @@ namespace Immersive.Framework.GlobalUi
                 pauseAdapters,
                 false,
                 string.Empty,
-                "UIGlobal scene loaded and persisted.");
+                "Persistent Content loaded and retained for the application lifetime.");
         }
 
-        private static GlobalUiSceneRuntime Failed(GameApplicationAsset application, string message)
+        private static GlobalUiSceneRuntime Failed(
+            GameApplicationAsset application,
+            string message)
         {
+            UnityEngine.Object sceneReference =
+                application?.PersistentContent?.ContainerScene;
+            string label =
+                application?.PersistentContent?.ContainerSceneName;
+
             return new GlobalUiSceneRuntime(
-                application != null ? application.GlobalUiScenePolicyValue : GlobalUiScenePolicy.NoneConfigured,
-                application != null ? application.GlobalUiScenePath : string.Empty,
-                application != null ? application.GlobalUiSceneName : string.Empty,
-                application != null ? application.GlobalUiSceneName : "UIGlobal",
+                sceneReference,
+                label,
                 Array.Empty<GameObject>(),
                 Array.Empty<ITransitionEffectAdapter>(),
                 Array.Empty<ILoadingSurfaceAdapter>(),
@@ -443,31 +526,38 @@ namespace Immersive.Framework.GlobalUi
                 message);
         }
 
-        private static List<TAdapter> CollectAdapters<TAdapter>(IReadOnlyList<GameObject> roots)
+        private static List<TAdapter> CollectAdapters<TAdapter>(
+            IReadOnlyList<GameObject> roots)
         {
             var adapters = new List<TAdapter>();
-            if (roots == null || roots.Count == 0)
+            if (roots == null ||
+                roots.Count == 0)
             {
                 return adapters;
             }
 
-            for (int i = 0; i < roots.Count; i++)
+            for (int rootIndex = 0;
+                 rootIndex < roots.Count;
+                 rootIndex++)
             {
-                var root = roots[i];
+                GameObject root = roots[rootIndex];
                 if (root == null)
                 {
                     continue;
                 }
 
-                MonoBehaviour[] behaviours = root.GetComponentsInChildren<MonoBehaviour>(true);
+                MonoBehaviour[] behaviours =
+                    root.GetComponentsInChildren<MonoBehaviour>(true);
                 if (behaviours == null)
                 {
                     continue;
                 }
 
-                for (int j = 0; j < behaviours.Length; j++)
+                for (int behaviourIndex = 0;
+                     behaviourIndex < behaviours.Length;
+                     behaviourIndex++)
                 {
-                    if (behaviours[j] is TAdapter adapter)
+                    if (behaviours[behaviourIndex] is TAdapter adapter)
                     {
                         adapters.Add(adapter);
                     }
@@ -477,17 +567,23 @@ namespace Immersive.Framework.GlobalUi
             return adapters;
         }
 
-        private static List<PauseRequestTrigger> CollectPauseRequestTriggers(
-            IReadOnlyList<GameObject> roots)
+        private static List<PauseRequestTrigger>
+            CollectPauseRequestTriggers(
+                IReadOnlyList<GameObject> roots)
         {
-            var triggers = new List<PauseRequestTrigger>();
-            var seen = new HashSet<PauseRequestTrigger>();
+            var triggers =
+                new List<PauseRequestTrigger>();
+            var seen =
+                new HashSet<PauseRequestTrigger>();
+
             if (roots == null)
             {
                 return triggers;
             }
 
-            for (int rootIndex = 0; rootIndex < roots.Count; rootIndex++)
+            for (int rootIndex = 0;
+                 rootIndex < roots.Count;
+                 rootIndex++)
             {
                 GameObject root = roots[rootIndex];
                 if (root == null)
@@ -497,12 +593,15 @@ namespace Immersive.Framework.GlobalUi
 
                 PauseRequestTrigger[] candidates =
                     root.GetComponentsInChildren<PauseRequestTrigger>(true);
+
                 for (int candidateIndex = 0;
-                    candidateIndex < candidates.Length;
-                    candidateIndex++)
+                     candidateIndex < candidates.Length;
+                     candidateIndex++)
                 {
-                    PauseRequestTrigger candidate = candidates[candidateIndex];
-                    if (candidate != null && seen.Add(candidate))
+                    PauseRequestTrigger candidate =
+                        candidates[candidateIndex];
+                    if (candidate != null &&
+                        seen.Add(candidate))
                     {
                         triggers.Add(candidate);
                     }
@@ -512,7 +611,8 @@ namespace Immersive.Framework.GlobalUi
             return triggers;
         }
 
-        private static int CountRoots(IReadOnlyList<GameObject> roots)
+        private static int CountRoots(
+            IReadOnlyList<GameObject> roots)
         {
             if (roots == null)
             {
@@ -520,7 +620,9 @@ namespace Immersive.Framework.GlobalUi
             }
 
             int count = 0;
-            for (int index = 0; index < roots.Count; index++)
+            for (int index = 0;
+                 index < roots.Count;
+                 index++)
             {
                 if (roots[index] != null)
                 {
@@ -531,20 +633,28 @@ namespace Immersive.Framework.GlobalUi
             return count;
         }
 
-        private T FindSingle<T>() where T : MonoBehaviour
-        {
-            List<T> candidates = FindAll<T>();
-            return candidates.Count == 1 ? candidates[0] : null;
-        }
-
-        private List<T> FindAll<T>() where T : MonoBehaviour
+        private List<T> FindAll<T>()
+            where T : MonoBehaviour
         {
             var resolved = new List<T>();
-            for (int rootIndex = 0; rootIndex < _persistedRoots.Length; rootIndex++)
+
+            for (int rootIndex = 0;
+                 rootIndex < _persistedRoots.Length;
+                 rootIndex++)
             {
-                T[] candidates = _persistedRoots[rootIndex]
-                    .GetComponentsInChildren<T>(true);
-                for (int index = 0; index < candidates.Length; index++)
+                GameObject root =
+                    _persistedRoots[rootIndex];
+                if (root == null)
+                {
+                    continue;
+                }
+
+                T[] candidates =
+                    root.GetComponentsInChildren<T>(true);
+
+                for (int index = 0;
+                     index < candidates.Length;
+                     index++)
                 {
                     if (candidates[index] != null)
                     {
@@ -557,17 +667,12 @@ namespace Immersive.Framework.GlobalUi
         }
 
         private static string BuildBlockingMessageIfRequired(
-            GlobalUiScenePolicy policy,
             string label,
             int transitionAdapterCount,
             int loadingAdapterCount)
         {
-            if (policy != GlobalUiScenePolicy.Required)
-            {
-                return string.Empty;
-            }
-
             var missing = new List<string>(2);
+
             if (transitionAdapterCount == 0)
             {
                 missing.Add("Transition adapter");
@@ -583,12 +688,8 @@ namespace Immersive.Framework.GlobalUi
                 return string.Empty;
             }
 
-            return $"UIGlobal scene '{label}' is required, but missing {string.Join(" and ", missing)}.";
-        }
-
-        private static string Normalize(string value)
-        {
-            return value.NormalizeText();
+            return
+                $"Persistent Content Container Scene '{label}' is missing {string.Join(" and ", missing)}.";
         }
     }
 }
