@@ -1,21 +1,22 @@
-using Immersive.Framework.Authoring;
 using UnityEngine;
 
 namespace Immersive.Framework.Camera
 {
+    /// <summary>
+    /// Scene-authored Session-scoped Camera override.
+    ///
+    /// Session ownership is expressed by the explicit Scope ID inherited from
+    /// ScopedCameraOverrideBinding. The binding intentionally has no
+    /// consumer-project asset reference, so it can live in reusable package
+    /// Scene Templates.
+    /// </summary>
     [DisallowMultipleComponent]
     [AddComponentMenu("Immersive Framework/Camera/Session Camera Override")]
     public sealed class SessionCameraOverrideBinding :
         ScopedCameraOverrideBinding
     {
         [SerializeField]
-        private GameApplicationAsset assignedGameApplication;
-
-        [SerializeField]
         private CameraOutputSessionBinding persistentOutputSession;
-
-        public GameApplicationAsset AssignedGameApplication =>
-            assignedGameApplication;
 
         public CameraOutputSessionBinding PersistentOutputSession =>
             persistentOutputSession;
@@ -27,9 +28,9 @@ namespace Immersive.Framework.Camera
             CameraRequestLifetimeKind.Session;
 
         protected override string OwnerDiagnosticName =>
-            assignedGameApplication != null
-                ? assignedGameApplication.ApplicationName
-                : "<missing-session>";
+            !string.IsNullOrWhiteSpace(ScopeId)
+                ? ScopeId
+                : "<session>";
 
         private void OnEnable()
         {
@@ -37,7 +38,7 @@ namespace Immersive.Framework.Camera
 
             SetOwnerActive(
                 $"Session camera override is available. " +
-                $"application='{OwnerDiagnosticName}'.");
+                $"scope='{OwnerDiagnosticName}'.");
         }
 
         private void OnDisable()
@@ -48,14 +49,7 @@ namespace Immersive.Framework.Camera
         protected override bool TryValidateOwner(
             out string diagnostic)
         {
-            if (assignedGameApplication == null)
-            {
-                diagnostic =
-                    "Session Camera Override requires an assigned " +
-                    "GameApplicationAsset.";
-                return false;
-            }
-
+            // The base configuration validates the explicit Session Scope ID.
             diagnostic = string.Empty;
             return true;
         }

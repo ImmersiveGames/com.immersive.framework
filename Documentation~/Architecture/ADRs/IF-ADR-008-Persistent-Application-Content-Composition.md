@@ -84,6 +84,10 @@ The Game Application never references the `SceneTemplateAsset` itself.
 The template may use package prefabs, normal GameObjects or other Unity assets.
 After scene creation, those objects are ordinary Unity authoring content.
 
+Reusable template components must not serialize references to consumer-specific
+assets. Session identity is expressed through explicit scoped IDs and runtime
+contracts.
+
 ### Asset creation boundary
 
 Frozen rule:
@@ -254,6 +258,8 @@ duplicate Model Readiness scene scan removed
 documentation for the official Scene Template direction
 ```
 
-The official source scene must first be saved and validated physically in Unity.
-The `.scenetemplate` asset is then authored from that scene through Unity's native
+The official package source scene is stored under
+`Editor/SceneTemplates/PersistentContent`.
+
+The `.scenetemplate` asset is authored from that source through Unity's native
 Scene Template workflow, preserving canonical GUID and dependency metadata.

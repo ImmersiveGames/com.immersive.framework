@@ -477,7 +477,6 @@ namespace Immersive.Framework.Editor.Editor.Validation
                 {
                     ValidateSessionCameraOverrideBinding(
                         report,
-                        owner,
                         outputBindings.Length == 1
                             ? outputBindings[0]
                             : null,
@@ -533,26 +532,12 @@ namespace Immersive.Framework.Editor.Editor.Validation
 
         private static void ValidateSessionCameraOverrideBinding(
             FrameworkAuthoringValidationReport report,
-            GameApplicationAsset owner,
             CameraOutputSessionBinding expectedOutput,
             SessionCameraOverrideBinding binding)
         {
             if (binding == null)
             {
                 return;
-            }
-
-            if (binding.AssignedGameApplication == null)
-            {
-                report.AddError(
-                    "Persistent Content Session Camera Override requires an assigned Game Application.",
-                    binding);
-            }
-            else if (binding.AssignedGameApplication != owner)
-            {
-                report.AddError(
-                    $"Persistent Content Session Camera Override references Game Application '{binding.AssignedGameApplication.ApplicationName}', but the validated owner is '{owner.ApplicationName}'.",
-                    binding);
             }
 
             if (binding.PersistentOutputSession == null)

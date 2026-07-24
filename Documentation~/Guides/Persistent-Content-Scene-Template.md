@@ -85,8 +85,12 @@ at least one ITransitionEffectAdapter
 at least one ILoadingSurfaceAdapter
 ```
 
-The Camera bindings must contain their explicit IDs, output reference, rig,
-application owner and target references required by the current validator.
+The Camera bindings must contain their explicit IDs, output reference, rig and
+target references required by the current validator.
+
+`SessionCameraOverrideBinding` intentionally does not reference a consumer
+application asset. Session ownership is already explicit through its Scope ID,
+which keeps the source scene reusable across projects.
 
 ## Scene Template boundary
 
@@ -108,17 +112,17 @@ explicit validation.
 
 ## Package asset layout
 
-Recommended final layout:
-
 ```text
-Samples~ or Templates/
-  PersistentContent/
-    PersistentContentTemplateSource.unity
-    ImmersivePersistentContent.scenetemplate
+Editor/SceneTemplates/PersistentContent/
+  PersistentContentTemplateSource.unity
+  ImmersivePersistentContent.scenetemplate
 ```
 
-The exact package folder should be chosen when the physical scene and its metadata
-are available.
+The source scene is Editor-only package content. Consumer projects instantiate a
+normal runtime `.unity` scene from the template.
+
+The core source scene is render-pipeline-neutral. Render-pipeline-specific Camera
+components belong to explicitly scoped template variants or consumer composition.
 
 ## Validation
 
@@ -134,3 +138,48 @@ Validate Configuration
   inspect contracts
   close only when validator owns the load
 ```
+
+
+## Creating the Scene Template asset
+
+Select:
+
+```text
+Editor/SceneTemplates/PersistentContent/
+  PersistentContentTemplateSource.unity
+```
+
+Use Unity's native command:
+
+```text
+Assets
+  Create
+    Scene Template From Scene
+```
+
+Save the generated asset beside the source scene as:
+
+```text
+ImmersivePersistentContent.scenetemplate
+```
+
+Configure:
+
+```text
+Title:
+  Immersive Persistent Content
+
+Description:
+  Application-persistent Camera, Transition and Loading composition for the
+  Immersive Framework.
+
+Pin in New Scene Dialog:
+  enabled
+```
+
+Keep all dependencies referenced rather than cloned. The source scene depends on
+framework runtime scripts and Cinemachine implementations that must continue
+referencing their package assets.
+
+The generated `.scenetemplate` and `.meta` complete the final Unity-authored asset
+cut.
