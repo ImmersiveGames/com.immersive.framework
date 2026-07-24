@@ -1,5 +1,6 @@
 using Immersive.Framework.Authoring;
 using Immersive.Framework.Editor.Editor.PlayerParticipation;
+using Immersive.Framework.Editor.Editor.PersistentContent;
 using Immersive.Framework.Editor.Editor.Settings;
 using Immersive.Framework.Editor.Editor.Validation;
 using UnityEditor;
@@ -285,6 +286,48 @@ namespace Immersive.Framework.Editor.Editor.Authoring
 
                     AssetDatabase.OpenAsset(
                         selectedScene);
+
+                    GUIUtility.ExitGUI();
+                }
+            }
+
+            EditorGUILayout.Space(4f);
+            EditorGUILayout.LabelField(
+                "Template Preparation",
+                EditorStyles.miniBoldLabel);
+            EditorGUILayout.HelpBox(
+                "Use this explicit one-shot action only on an open Content Scene that has no Camera composition yet. It creates the minimum Session Camera baseline with Undo and leaves the scene unsaved for review. Existing partial Camera content blocks the operation and is never repaired automatically.",
+                MessageType.None);
+
+            using (new EditorGUI.DisabledScope(
+                       selectedScene == null))
+            {
+                if (GUILayout.Button(
+                        "Add Minimum Camera to Open Scene"))
+                {
+                    serializedObject.ApplyModifiedProperties();
+
+                    bool succeeded =
+                        PersistentContentCameraBaselineUtility
+                            .TryCreateOrPreserve(
+                                (GameApplicationAsset)target,
+                                out _,
+                                out string diagnostic);
+
+                    if (_lastValidationReport != null &&
+                        succeeded)
+                    {
+                        _validationOutdated = true;
+                    }
+
+                    _serializedBindingsDirty = true;
+
+                    EditorUtility.DisplayDialog(
+                        succeeded
+                            ? "Persistent Content Camera"
+                            : "Persistent Content Camera — Blocked",
+                        diagnostic,
+                        "OK");
 
                     GUIUtility.ExitGUI();
                 }

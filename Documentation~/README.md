@@ -16,6 +16,7 @@ Guides                 current product usage
 - [Framework usage](Guides/Framework-Usage.md)
 - [Player usage](Guides/Player-Usage.md)
 - [Camera usage](Guides/Camera-Usage.md)
+- [Persistent Content Camera baseline](Guides/Persistent-Content-Camera-Baseline.md)
 - [Audio usage](Guides/Audio-Usage.md)
 - [Logging usage](Guides/Logging-Usage.md)
 - [Reset usage](Guides/Reset-Usage.md)

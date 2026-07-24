@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using Immersive.Framework.ActivityFlow;
 using Immersive.Framework.Authoring;
 using Immersive.Framework.Camera;
+using Immersive.Framework.CameraAuthoring;
 using Immersive.Framework.ContentAnchor;
 using Immersive.Framework.ContentFlow;
 using Immersive.Framework.CycleReset;
@@ -468,6 +469,21 @@ namespace Immersive.Framework.Editor.Editor.Validation
                     }
                 }
 
+                SessionCameraOverrideBinding[] sessionBindings =
+                    GetSceneComponents<SessionCameraOverrideBinding>(
+                        scene);
+
+                if (sessionBindings.Length == 1)
+                {
+                    ValidateSessionCameraOverrideBinding(
+                        report,
+                        owner,
+                        outputBindings.Length == 1
+                            ? outputBindings[0]
+                            : null,
+                        sessionBindings[0]);
+                }
+
                 int canvasCount =
                     CountSceneComponents<Canvas>(
                         scene);
@@ -512,6 +528,137 @@ namespace Immersive.Framework.Editor.Editor.Validation
             finally
             {
                 sceneScope.CloseIfOwned();
+            }
+        }
+
+        private static void ValidateSessionCameraOverrideBinding(
+            FrameworkAuthoringValidationReport report,
+            GameApplicationAsset owner,
+            CameraOutputSessionBinding expectedOutput,
+            SessionCameraOverrideBinding binding)
+        {
+            if (binding == null)
+            {
+                return;
+            }
+
+            if (binding.AssignedGameApplication == null)
+            {
+                report.AddError(
+                    "Persistent Content Session Camera Override requires an assigned Game Application.",
+                    binding);
+            }
+            else if (binding.AssignedGameApplication != owner)
+            {
+                report.AddError(
+                    $"Persistent Content Session Camera Override references Game Application '{binding.AssignedGameApplication.ApplicationName}', but the validated owner is '{owner.ApplicationName}'.",
+                    binding);
+            }
+
+            if (binding.PersistentOutputSession == null)
+            {
+                report.AddError(
+                    "Persistent Content Session Camera Override requires an explicit Camera Output Session Binding.",
+                    binding);
+            }
+            else if (expectedOutput != null &&
+                     binding.PersistentOutputSession != expectedOutput)
+            {
+                report.AddError(
+                    "Persistent Content Session Camera Override must reference the unique Camera Output Session Binding in the same Content Scene.",
+                    binding);
+            }
+
+            if (string.IsNullOrWhiteSpace(
+                    binding.ScopeId))
+            {
+                report.AddError(
+                    "Persistent Content Session Camera Override requires an explicit Scope ID.",
+                    binding);
+            }
+
+            if (string.IsNullOrWhiteSpace(
+                    binding.RequestIdText))
+            {
+                report.AddError(
+                    "Persistent Content Session Camera Override requires an explicit Request ID.",
+                    binding);
+            }
+
+            if (string.IsNullOrWhiteSpace(
+                    binding.TieBreakerId))
+            {
+                report.AddError(
+                    "Persistent Content Session Camera Override requires an explicit Tie Breaker ID.",
+                    binding);
+            }
+
+            if (binding.RigComposer == null)
+            {
+                report.AddError(
+                    "Persistent Content Session Camera Override requires an explicit Camera Rig Composer.",
+                    binding);
+            }
+            else
+            {
+                ValidatePersistentSessionRigComposer(
+                    report,
+                    binding.RigComposer);
+            }
+
+            if (binding.TargetSource == null)
+            {
+                report.AddError(
+                    "Persistent Content Session Camera Override requires an explicit Target Source Transform.",
+                    binding);
+            }
+        }
+
+        private static void ValidatePersistentSessionRigComposer(
+            FrameworkAuthoringValidationReport report,
+            CameraRigComposer composer)
+        {
+            if (composer == null)
+            {
+                return;
+            }
+
+            if (!composer.TryValidateForApply(
+                    out string issue))
+            {
+                report.AddError(
+                    $"Persistent Content Session Camera Rig is not authorable. {issue}",
+                    composer);
+            }
+
+            if (composer.CinemachineCamera == null)
+            {
+                report.AddError(
+                    "Persistent Content Session Camera Rig requires an explicit Cinemachine Camera reference.",
+                    composer);
+            }
+
+            if (composer.TargetSourceBehaviour == null &&
+                composer.TargetSourceKind ==
+                CameraTargetSourceKind.ExplicitTransform)
+            {
+                if (composer.FollowRequirement ==
+                        CameraTargetRequirement.Required &&
+                    composer.ExplicitFollowTarget == null)
+                {
+                    report.AddError(
+                        "Persistent Content Session Camera Rig requires an explicit Follow Target.",
+                        composer);
+                }
+
+                if (composer.LookAtRequirement ==
+                        CameraTargetRequirement.Required &&
+                    composer.ExplicitLookAtTarget == null)
+                {
+                    report.AddError(
+                        "Persistent Content Session Camera Rig requires an explicit Look At Target.",
+                        composer);
+                }
             }
         }
 
