@@ -267,7 +267,7 @@ namespace Immersive.Framework.Editor.Editor.Authoring
             }
 
             EditorGUILayout.HelpBox(
-                "Create the scene from the official Persistent Content Scene Template when available, or author an equivalent scene manually. The Game Application references the created scene, never the Scene Template asset.",
+                "Create the scene from the official Persistent Content Scene Template, or author an equivalent scene manually. The Game Application only references, opens and validates the created scene; it never creates scene content or other assets.",
                 MessageType.None);
 
             using (new EditorGUI.DisabledScope(
@@ -289,6 +289,7 @@ namespace Immersive.Framework.Editor.Editor.Authoring
                     GUIUtility.ExitGUI();
                 }
             }
+
         }
 
         private void DrawValidation()

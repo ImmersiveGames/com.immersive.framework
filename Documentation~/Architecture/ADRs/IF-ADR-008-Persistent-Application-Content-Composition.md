@@ -84,6 +84,22 @@ The Game Application never references the `SceneTemplateAsset` itself.
 The template may use package prefabs, normal GameObjects or other Unity assets.
 After scene creation, those objects are ordinary Unity authoring content.
 
+### Asset creation boundary
+
+Frozen rule:
+
+```text
+Assets do not create other assets.
+```
+
+`GameApplicationAsset`, `RouteAsset`, `ActivityAsset`, Recipes, Profiles and
+other authoring assets may reference and validate dependencies, but they do not
+create scenes, prefabs, templates or sibling assets.
+
+Product assets may expose navigation and validation actions only. Reusable asset
+creation belongs to Unity-native creation surfaces, package menus or manually
+authored package assets, never to another asset Inspector.
+
 ## Prefabs
 
 Prefabs remain optional building blocks inside the Content Scene.
@@ -208,6 +224,7 @@ Application validator instead of opening the scene a second time.
 - `PersistentContentSource`.
 - Generic module lists.
 - Automatic scene, prefab or asset creation.
+- Asset Inspectors that create sibling assets or scene content.
 - Apply/Rebuild over Persistent Content.
 - Hidden repair or fallback objects.
 - Scene Template references in runtime configuration.
@@ -226,7 +243,7 @@ content as long as the required contracts remain valid.
 
 ## Current implementation coverage
 
-`PERSISTENT-COMPOSITION-SCENE-ONLY-1` provides:
+The current implementation provides:
 
 ```text
 scene-only PersistentContentComposition
@@ -237,6 +254,6 @@ duplicate Model Readiness scene scan removed
 documentation for the official Scene Template direction
 ```
 
-The actual package `.unity` source scene and `.scenetemplate` asset must be authored
-and saved through Unity in the next asset cut so Unity writes their canonical GUID
-and dependency metadata.
+The official source scene must first be saved and validated physically in Unity.
+The `.scenetemplate` asset is then authored from that scene through Unity's native
+Scene Template workflow, preserving canonical GUID and dependency metadata.
