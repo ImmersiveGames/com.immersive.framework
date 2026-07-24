@@ -285,35 +285,9 @@ namespace Immersive.Framework.Editor.Editor.Validation
             {
                 report.AddError(
                     composition.ContainerScene == null
-                        ? "Persistent Content Container Scene is missing."
-                        : "Persistent Content Container Scene must directly reference a Unity Scene asset.",
+                        ? "Persistent Content Scene is missing."
+                        : "Persistent Content Scene must directly reference a Unity Scene asset.",
                     gameApplication);
-            }
-
-            GameObject cameraPrefab =
-                composition.CameraOutputPrefab;
-            GameObject presentationPrefab =
-                composition.PresentationCanvasPrefab;
-
-            ValidatePersistentCameraPrefab(
-                report,
-                gameApplication,
-                cameraPrefab);
-            ValidatePersistentPresentationPrefab(
-                report,
-                gameApplication,
-                presentationPrefab);
-
-            if (cameraPrefab != null &&
-                cameraPrefab == presentationPrefab)
-            {
-                report.AddError(
-                    "Persistent Content Camera Output and Presentation Canvas must reference distinct prefab roots.",
-                    gameApplication);
-            }
-
-            if (sceneAsset == null)
-            {
                 return;
             }
 
@@ -325,12 +299,12 @@ namespace Immersive.Framework.Editor.Editor.Validation
                 gameApplication,
                 scenePath,
                 sceneAsset.name,
-                "Persistent Content Container Scene");
+                "Persistent Content Scene");
 
             if (!IsSceneInBuildSettings(scenePath))
             {
                 report.AddError(
-                    $"Persistent Content Container Scene '{scenePath}' is not enabled in the Build Profile.",
+                    $"Persistent Content Scene '{scenePath}' is not enabled in the Build Profile.",
                     gameApplication);
             }
 
@@ -340,9 +314,7 @@ namespace Immersive.Framework.Editor.Editor.Validation
                 sceneAsset.name,
                 scenePath);
 
-            if (!validateDependencies ||
-                cameraPrefab == null ||
-                presentationPrefab == null)
+            if (!validateDependencies)
             {
                 return;
             }
@@ -350,208 +322,7 @@ namespace Immersive.Framework.Editor.Editor.Validation
             ValidatePersistentContentScene(
                 report,
                 gameApplication,
-                scenePath,
-                cameraPrefab,
-                presentationPrefab);
-        }
-
-        private static void ValidatePersistentCameraPrefab(
-            FrameworkAuthoringValidationReport report,
-            GameApplicationAsset owner,
-            GameObject prefab)
-        {
-            if (!ValidatePrefabAsset(
-                    report,
-                    owner,
-                    prefab,
-                    "Camera Output Prefab"))
-            {
-                return;
-            }
-
-            UnityEngine.Camera[] cameras =
-                prefab.GetComponentsInChildren<UnityEngine.Camera>(true);
-            CinemachineBrain[] brains =
-                prefab.GetComponentsInChildren<CinemachineBrain>(true);
-            CameraOutputSessionBinding[] outputBindings =
-                prefab.GetComponentsInChildren<CameraOutputSessionBinding>(true);
-            SessionCameraOverrideBinding[] overrideBindings =
-                prefab.GetComponentsInChildren<SessionCameraOverrideBinding>(true);
-
-            ValidateExactComponentCount(
-                report,
-                owner,
-                "Camera Output Prefab",
-                "Unity Camera",
-                cameras.Length);
-            ValidateExactComponentCount(
-                report,
-                owner,
-                "Camera Output Prefab",
-                nameof(CinemachineBrain),
-                brains.Length);
-            ValidateExactComponentCount(
-                report,
-                owner,
-                "Camera Output Prefab",
-                nameof(CameraOutputSessionBinding),
-                outputBindings.Length);
-            ValidateExactComponentCount(
-                report,
-                owner,
-                "Camera Output Prefab",
-                nameof(SessionCameraOverrideBinding),
-                overrideBindings.Length);
-
-            if (outputBindings.Length != 1)
-            {
-                return;
-            }
-
-            CameraOutputSessionBinding binding =
-                outputBindings[0];
-
-            if (string.IsNullOrWhiteSpace(
-                    binding.OutputIdText))
-            {
-                report.AddError(
-                    "Camera Output Prefab requires an explicit Camera Output ID.",
-                    owner);
-            }
-
-            if (binding.UnityCamera == null)
-            {
-                report.AddError(
-                    "Camera Output Prefab binding requires an explicit Unity Camera.",
-                    owner);
-            }
-
-            if (binding.CinemachineBrain == null)
-            {
-                report.AddError(
-                    "Camera Output Prefab binding requires an explicit Cinemachine Brain.",
-                    owner);
-            }
-
-            if (binding.UnityCamera != null &&
-                binding.CinemachineBrain != null &&
-                binding.UnityCamera.gameObject !=
-                binding.CinemachineBrain.gameObject)
-            {
-                report.AddError(
-                    "Camera Output Prefab requires its Unity Camera and Cinemachine Brain on the same physical output GameObject.",
-                    owner);
-            }
-        }
-
-        private static void ValidatePersistentPresentationPrefab(
-            FrameworkAuthoringValidationReport report,
-            GameApplicationAsset owner,
-            GameObject prefab)
-        {
-            if (!ValidatePrefabAsset(
-                    report,
-                    owner,
-                    prefab,
-                    "Presentation Canvas Prefab"))
-            {
-                return;
-            }
-
-            Canvas[] canvases =
-                prefab.GetComponentsInChildren<Canvas>(true);
-            int transitionAdapterCount =
-                CountAdaptersInHierarchy<ITransitionEffectAdapter>(prefab);
-            int loadingAdapterCount =
-                CountAdaptersInHierarchy<ILoadingSurfaceAdapter>(prefab);
-
-            ValidateExactComponentCount(
-                report,
-                owner,
-                "Presentation Canvas Prefab",
-                nameof(Canvas),
-                canvases.Length);
-
-            if (transitionAdapterCount == 0)
-            {
-                report.AddError(
-                    "Presentation Canvas Prefab requires at least one ITransitionEffectAdapter implementation.",
-                    owner);
-            }
-
-            if (loadingAdapterCount == 0)
-            {
-                report.AddError(
-                    "Presentation Canvas Prefab requires at least one ILoadingSurfaceAdapter implementation.",
-                    owner);
-            }
-        }
-
-        private static bool ValidatePrefabAsset(
-            FrameworkAuthoringValidationReport report,
-            GameApplicationAsset owner,
-            GameObject prefab,
-            string label)
-        {
-            if (prefab == null)
-            {
-                report.AddError(
-                    $"Persistent Content {label} is missing.",
-                    owner);
-                return false;
-            }
-
-            if (!PrefabUtility.IsPartOfPrefabAsset(prefab))
-            {
-                report.AddError(
-                    $"Persistent Content {label} must reference a prefab asset or Prefab Variant, not a scene object.",
-                    owner);
-                return false;
-            }
-
-            return true;
-        }
-
-        private static void ValidateExactComponentCount(
-            FrameworkAuthoringValidationReport report,
-            GameApplicationAsset owner,
-            string scope,
-            string componentLabel,
-            int count)
-        {
-            if (count == 1)
-            {
-                return;
-            }
-
-            report.AddError(
-                $"{scope} requires exactly one {componentLabel}, but found '{count}'.",
-                owner);
-        }
-
-        private static int CountAdaptersInHierarchy<TAdapter>(
-            GameObject root)
-        {
-            if (root == null)
-            {
-                return 0;
-            }
-
-            MonoBehaviour[] behaviours =
-                root.GetComponentsInChildren<MonoBehaviour>(true);
-            int count = 0;
-
-            for (int index = 0;
-                 index < behaviours.Length;
-                 index++)
-            {
-                if (behaviours[index] is TAdapter)
-                {
-                    count++;
-                }
-            }
-
-            return count;
+                scenePath);
         }
 
         private static void ValidateUniqueBuildSceneName(
@@ -563,7 +334,7 @@ namespace Immersive.Framework.Editor.Editor.Validation
             if (string.IsNullOrWhiteSpace(sceneName))
             {
                 report.AddError(
-                    "Persistent Content Container Scene has no valid scene name.",
+                    "Persistent Content Scene has no valid scene name.",
                     owner);
                 return;
             }
@@ -602,7 +373,7 @@ namespace Immersive.Framework.Editor.Editor.Validation
             if (enabledNameMatches != 1)
             {
                 report.AddError(
-                    $"Persistent Content Container Scene name '{sceneName}' must be unique among enabled Build Profile scenes. matches='{enabledNameMatches}' expectedPath='{expectedPath}'.",
+                    $"Persistent Content Scene name '{sceneName}' must be unique among enabled Build Profile scenes. matches='{enabledNameMatches}' expectedPath='{expectedPath}'.",
                     owner);
             }
         }
@@ -610,9 +381,7 @@ namespace Immersive.Framework.Editor.Editor.Validation
         private static void ValidatePersistentContentScene(
             FrameworkAuthoringValidationReport report,
             GameApplicationAsset owner,
-            string scenePath,
-            GameObject cameraPrefab,
-            GameObject presentationPrefab)
+            string scenePath)
         {
             SceneValidationScope sceneScope = default;
 
@@ -621,39 +390,20 @@ namespace Immersive.Framework.Editor.Editor.Validation
                 sceneScope =
                     FrameworkEditorSceneValidationUtility
                         .OpenSceneForValidation(scenePath);
-                Scene scene = sceneScope.Scene;
+                Scene scene =
+                    sceneScope.Scene;
 
                 if (!scene.IsValid() ||
                     !scene.isLoaded)
                 {
                     report.AddError(
-                        $"Persistent Content Container Scene '{scenePath}' could not be opened for composition validation.",
+                        $"Persistent Content Scene '{scenePath}' could not be opened for composition validation.",
                         owner);
                     return;
                 }
 
-                int cameraPrefabInstances =
-                    CountExactPrefabInstances(
-                        scene,
-                        cameraPrefab);
-                int presentationPrefabInstances =
-                    CountExactPrefabInstances(
-                        scene,
-                        presentationPrefab);
-
-                if (cameraPrefabInstances != 1)
-                {
-                    report.AddError(
-                        $"Persistent Content Container Scene requires exactly one instance of Camera Output Prefab '{cameraPrefab.name}', but found '{cameraPrefabInstances}'.",
-                        owner);
-                }
-
-                if (presentationPrefabInstances != 1)
-                {
-                    report.AddError(
-                        $"Persistent Content Container Scene requires exactly one instance of Presentation Canvas Prefab '{presentationPrefab.name}', but found '{presentationPrefabInstances}'.",
-                        owner);
-                }
+                GameObject[] roots =
+                    scene.GetRootGameObjects();
 
                 ValidateExactSceneComponentCount<UnityEngine.Camera>(
                     report,
@@ -676,39 +426,87 @@ namespace Immersive.Framework.Editor.Editor.Validation
                     scene,
                     nameof(SessionCameraOverrideBinding));
 
+                CameraOutputSessionBinding[] outputBindings =
+                    GetSceneComponents<CameraOutputSessionBinding>(
+                        scene);
+
+                if (outputBindings.Length == 1)
+                {
+                    CameraOutputSessionBinding binding =
+                        outputBindings[0];
+
+                    if (string.IsNullOrWhiteSpace(
+                            binding.OutputIdText))
+                    {
+                        report.AddError(
+                            "Persistent Content Camera Output requires an explicit Output ID.",
+                            binding);
+                    }
+
+                    if (binding.UnityCamera == null)
+                    {
+                        report.AddError(
+                            "Persistent Content Camera Output requires an explicit Unity Camera reference.",
+                            binding);
+                    }
+
+                    if (binding.CinemachineBrain == null)
+                    {
+                        report.AddError(
+                            "Persistent Content Camera Output requires an explicit Cinemachine Brain reference.",
+                            binding);
+                    }
+
+                    if (binding.UnityCamera != null &&
+                        binding.CinemachineBrain != null &&
+                        binding.UnityCamera.gameObject !=
+                        binding.CinemachineBrain.gameObject)
+                    {
+                        report.AddError(
+                            "Persistent Content Unity Camera and Cinemachine Brain must belong to the same physical output GameObject.",
+                            binding);
+                    }
+                }
+
+                int canvasCount =
+                    CountSceneComponents<Canvas>(
+                        scene);
                 int transitionAdapterCount =
-                    CountSceneAdapters<ITransitionEffectAdapter>(scene);
+                    CountSceneAdapters<ITransitionEffectAdapter>(
+                        scene);
                 int loadingAdapterCount =
-                    CountSceneAdapters<ILoadingSurfaceAdapter>(scene);
+                    CountSceneAdapters<ILoadingSurfaceAdapter>(
+                        scene);
+
+                if (canvasCount == 0)
+                {
+                    report.AddError(
+                        $"Persistent Content Scene '{scenePath}' requires at least one Canvas.",
+                        owner);
+                }
 
                 if (transitionAdapterCount == 0)
                 {
                     report.AddError(
-                        $"Persistent Content Container Scene '{scenePath}' requires at least one ITransitionEffectAdapter implementation.",
+                        $"Persistent Content Scene '{scenePath}' requires at least one ITransitionEffectAdapter implementation.",
                         owner);
                 }
 
                 if (loadingAdapterCount == 0)
                 {
                     report.AddError(
-                        $"Persistent Content Container Scene '{scenePath}' requires at least one ILoadingSurfaceAdapter implementation.",
+                        $"Persistent Content Scene '{scenePath}' requires at least one ILoadingSurfaceAdapter implementation.",
                         owner);
                 }
 
-                if (cameraPrefabInstances == 1 &&
-                    presentationPrefabInstances == 1 &&
-                    transitionAdapterCount > 0 &&
-                    loadingAdapterCount > 0)
-                {
-                    report.AddInfo(
-                        $"Persistent Content Container Scene '{scenePath}' contains the declared Camera Output and Presentation Canvas prefab instances.",
-                        owner);
-                }
+                report.AddInfo(
+                    $"Persistent Content Scene composition scanned. roots='{roots.Length}' canvases='{canvasCount}' transitionAdapters='{transitionAdapterCount}' loadingAdapters='{loadingAdapterCount}'.",
+                    owner);
             }
             catch (Exception exception)
             {
                 report.AddError(
-                    $"Persistent Content Container Scene '{scenePath}' could not be validated. {exception.Message}",
+                    $"Persistent Content Scene '{scenePath}' could not be validated. {exception.Message}",
                     owner);
             }
             finally
@@ -717,53 +515,39 @@ namespace Immersive.Framework.Editor.Editor.Validation
             }
         }
 
-        private static int CountExactPrefabInstances(
-            Scene scene,
-            GameObject expectedPrefab)
+        private static TComponent[] GetSceneComponents<TComponent>(
+            Scene scene)
+            where TComponent : Component
         {
             if (!scene.IsValid() ||
-                !scene.isLoaded ||
-                expectedPrefab == null)
+                !scene.isLoaded)
             {
-                return 0;
+                return Array.Empty<TComponent>();
             }
 
-            int count = 0;
+            var components =
+                new List<TComponent>();
             GameObject[] roots =
                 scene.GetRootGameObjects();
 
-            for (int rootIndex = 0;
-                 rootIndex < roots.Length;
-                 rootIndex++)
+            for (int index = 0;
+                 index < roots.Length;
+                 index++)
             {
-                Transform[] transforms =
-                    roots[rootIndex]
-                        .GetComponentsInChildren<Transform>(true);
+                TComponent[] rootComponents =
+                    roots[index]
+                        .GetComponentsInChildren<TComponent>(
+                            true);
 
-                for (int transformIndex = 0;
-                     transformIndex < transforms.Length;
-                     transformIndex++)
+                if (rootComponents != null &&
+                    rootComponents.Length > 0)
                 {
-                    GameObject candidate =
-                        transforms[transformIndex].gameObject;
-
-                    if (!PrefabUtility.IsAnyPrefabInstanceRoot(candidate))
-                    {
-                        continue;
-                    }
-
-                    GameObject source =
-                        PrefabUtility.GetCorrespondingObjectFromSource(
-                            candidate);
-
-                    if (source == expectedPrefab)
-                    {
-                        count++;
-                    }
+                    components.AddRange(
+                        rootComponents);
                 }
             }
 
-            return count;
+            return components.ToArray();
         }
 
         private static void ValidateExactSceneComponentCount<TComponent>(
@@ -782,7 +566,7 @@ namespace Immersive.Framework.Editor.Editor.Validation
             }
 
             report.AddError(
-                $"Persistent Content Container Scene requires exactly one {label}, but found '{count}'.",
+                $"Persistent Content Scene requires exactly one {label}, but found '{count}'.",
                 owner);
         }
 

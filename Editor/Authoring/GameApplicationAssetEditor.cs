@@ -17,16 +17,20 @@ namespace Immersive.Framework.Editor.Editor.Authoring
         private SerializedProperty _playerActorSelectionDuplicatePolicy;
         private SerializedProperty _persistentContent;
         private SerializedProperty _containerScene;
-        private SerializedProperty _cameraOutputPrefab;
-        private SerializedProperty _presentationCanvasPrefab;
         private SerializedProperty _validationMode;
 
         private ReorderableList _localPlayerSlotsList;
         private FrameworkAuthoringValidationReport _lastValidationReport;
+        private bool _serializedBindingsDirty = true;
         private bool _validationOutdated;
         private bool _showAdvancedDiagnostics;
 
         private void OnEnable()
+        {
+            _serializedBindingsDirty = true;
+        }
+
+        private void RefreshSerializedBindings()
         {
             _applicationName =
                 serializedObject.FindProperty("applicationName");
@@ -40,34 +44,35 @@ namespace Immersive.Framework.Editor.Editor.Authoring
             _persistentContent =
                 serializedObject.FindProperty("persistentContent");
             _containerScene =
-                _persistentContent?.FindPropertyRelative("containerScene");
-            _cameraOutputPrefab =
                 _persistentContent?.FindPropertyRelative(
-                    "cameraOutputPrefab");
-            _presentationCanvasPrefab =
-                _persistentContent?.FindPropertyRelative(
-                    "presentationCanvasPrefab");
+                    "containerScene");
             _validationMode =
                 serializedObject.FindProperty("validationMode");
 
-            _localPlayerSlotsList = new ReorderableList(
-                serializedObject,
-                _localPlayerSlots,
-                true,
-                true,
-                true,
-                true);
-            _localPlayerSlotsList.drawHeaderCallback = rect =>
-                EditorGUI.LabelField(
-                    rect,
-                    $"Player Slots — {_localPlayerSlots.arraySize} configured");
+            _localPlayerSlotsList =
+                new ReorderableList(
+                    serializedObject,
+                    _localPlayerSlots,
+                    true,
+                    true,
+                    true,
+                    true);
+
+            _localPlayerSlotsList.drawHeaderCallback =
+                rect =>
+                    EditorGUI.LabelField(
+                        rect,
+                        $"Player Slots — {_localPlayerSlots.arraySize} configured");
+
             _localPlayerSlotsList.elementHeight =
                 EditorGUIUtility.singleLineHeight + 4f;
+
             _localPlayerSlotsList.drawElementCallback =
                 (rect, index, active, focused) =>
                 {
                     SerializedProperty element =
-                        _localPlayerSlots.GetArrayElementAtIndex(index);
+                        _localPlayerSlots
+                            .GetArrayElementAtIndex(index);
                     rect.y += 2f;
                     rect.height =
                         EditorGUIUtility.singleLineHeight;
@@ -76,11 +81,18 @@ namespace Immersive.Framework.Editor.Editor.Authoring
                         element,
                         new GUIContent($"{index + 1}."));
                 };
+
+            _serializedBindingsDirty = false;
         }
 
         public override void OnInspectorGUI()
         {
-            serializedObject.Update();
+            serializedObject.UpdateIfRequiredOrScript();
+
+            if (_serializedBindingsDirty)
+            {
+                RefreshSerializedBindings();
+            }
 
             EditorGUILayout.LabelField(
                 "Game Application",
@@ -233,7 +245,7 @@ namespace Immersive.Framework.Editor.Editor.Authoring
                 "Persistent Content",
                 EditorStyles.boldLabel);
             EditorGUILayout.HelpBox(
-                "Compose this scene manually in Unity. Add the selected prefab instances and configure positions, anchors and overrides through the normal Scene and Prefab workflows.",
+                "The Content Scene is the complete composition authority. Author Camera, presentation, future Audio or Lighting and any other application-persistent objects directly in that scene. Prefabs and Prefab Variants remain optional Unity building blocks.",
                 MessageType.None);
 
             SceneAsset currentScene =
@@ -241,8 +253,8 @@ namespace Immersive.Framework.Editor.Editor.Authoring
             SceneAsset selectedScene =
                 (SceneAsset)EditorGUILayout.ObjectField(
                     new GUIContent(
-                        "Container Scene",
-                        "Scene used as the visual authoring container for content retained throughout the application."),
+                        "Content Scene",
+                        "Scene containing the complete composition retained throughout the application."),
                     currentScene,
                     typeof(SceneAsset),
                     false);
@@ -254,49 +266,27 @@ namespace Immersive.Framework.Editor.Editor.Authoring
                     selectedScene;
             }
 
-            EditorGUILayout.PropertyField(
-                _cameraOutputPrefab,
-                new GUIContent(
-                    "Camera Output Prefab",
-                    "Exact prefab or Prefab Variant expected to provide the physical Camera output in the Container Scene."));
-            EditorGUILayout.PropertyField(
-                _presentationCanvasPrefab,
-                new GUIContent(
-                    "Presentation Canvas Prefab",
-                    "Exact prefab or Prefab Variant expected to provide Transition and Loading presentation in the Container Scene."));
+            EditorGUILayout.HelpBox(
+                "Create the scene from the official Persistent Content Scene Template when available, or author an equivalent scene manually. The Game Application references the created scene, never the Scene Template asset.",
+                MessageType.None);
 
-            using (new EditorGUILayout.HorizontalScope())
+            using (new EditorGUI.DisabledScope(
+                       selectedScene == null))
             {
-                using (new EditorGUI.DisabledScope(
-                           selectedScene == null))
+                if (GUILayout.Button(
+                        "Open Content Scene"))
                 {
-                    if (GUILayout.Button(
-                            "Open Container Scene"))
-                    {
-                        AssetDatabase.OpenAsset(selectedScene);
-                    }
-                }
+                    // Opening a scene replaces the current Editor context and
+                    // disposes this Inspector's SerializedObject immediately.
+                    // Persist pending edits, invalidate cached bindings and stop
+                    // the current IMGUI event before DrawValidation executes.
+                    serializedObject.ApplyModifiedProperties();
+                    _serializedBindingsDirty = true;
 
-                using (new EditorGUI.DisabledScope(
-                           _cameraOutputPrefab?.objectReferenceValue == null))
-                {
-                    if (GUILayout.Button(
-                            "Select Camera Prefab"))
-                    {
-                        SelectAndPing(
-                            _cameraOutputPrefab.objectReferenceValue);
-                    }
-                }
+                    AssetDatabase.OpenAsset(
+                        selectedScene);
 
-                using (new EditorGUI.DisabledScope(
-                           _presentationCanvasPrefab?.objectReferenceValue == null))
-                {
-                    if (GUILayout.Button(
-                            "Select Canvas Prefab"))
-                    {
-                        SelectAndPing(
-                            _presentationCanvasPrefab.objectReferenceValue);
-                    }
+                    GUIUtility.ExitGUI();
                 }
             }
         }
@@ -311,7 +301,7 @@ namespace Immersive.Framework.Editor.Editor.Authoring
                 new GUIContent("Mode"));
 
             EditorGUILayout.HelpBox(
-                "Scene, prefab and project-profile validation runs only when Validate Configuration is pressed. Inspector repaint does not open scenes or inspect prefab hierarchies.",
+                "Scene-content and project-profile validation runs only when Validate Configuration is pressed. Inspector repaint does not open or inspect the Content Scene.",
                 MessageType.None);
 
             DrawStatusRow(
@@ -322,8 +312,14 @@ namespace Immersive.Framework.Editor.Editor.Authoring
                     "Validate Configuration"))
             {
                 serializedObject.ApplyModifiedProperties();
-                serializedObject.Update();
                 RunAuthoringValidation();
+                _serializedBindingsDirty = true;
+
+                // Validation may open and close scenes, which can invalidate
+                // cached SerializedProperty instances during the current IMGUI
+                // event. Stop drawing now and let Unity rebuild the Inspector
+                // safely on the next repaint.
+                GUIUtility.ExitGUI();
             }
         }
 
@@ -344,19 +340,9 @@ namespace Immersive.Framework.Editor.Editor.Authoring
             using (new EditorGUI.DisabledScope(true))
             {
                 EditorGUILayout.ObjectField(
-                    "Container Scene",
+                    "Content Scene",
                     _containerScene?.objectReferenceValue,
                     typeof(SceneAsset),
-                    false);
-                EditorGUILayout.ObjectField(
-                    "Camera Output Prefab",
-                    _cameraOutputPrefab?.objectReferenceValue,
-                    typeof(GameObject),
-                    false);
-                EditorGUILayout.ObjectField(
-                    "Presentation Canvas Prefab",
-                    _presentationCanvasPrefab?.objectReferenceValue,
-                    typeof(GameObject),
                     false);
                 EditorGUILayout.IntField(
                     "Configured Player Capacity",
@@ -364,7 +350,7 @@ namespace Immersive.Framework.Editor.Editor.Authoring
             }
 
             EditorGUILayout.HelpBox(
-                "The Game Application declares the concrete composition. The framework validates and consumes the authored scene but does not create, apply, rebuild or repair it.",
+                "The Game Application declares one concrete Content Scene. The framework validates the contracts present in that scene and consumes its complete authored hierarchy without creating, applying, rebuilding or repairing content.",
                 MessageType.None);
 
             EditorGUILayout.Space(4f);
@@ -440,16 +426,5 @@ namespace Immersive.Framework.Editor.Editor.Authoring
             }
         }
 
-        private static void SelectAndPing(
-            UnityEngine.Object targetObject)
-        {
-            if (targetObject == null)
-            {
-                return;
-            }
-
-            Selection.activeObject = targetObject;
-            EditorGUIUtility.PingObject(targetObject);
-        }
     }
 }

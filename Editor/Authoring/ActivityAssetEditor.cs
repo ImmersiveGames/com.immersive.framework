@@ -24,11 +24,17 @@ namespace Immersive.Framework.Editor.Editor.Authoring
         private SerializedProperty _transitionGateMode;
 
         private FrameworkAuthoringValidationReport _lastValidationReport;
+        private bool _serializedBindingsDirty = true;
         private bool _validationOutdated;
         private bool _showActivityContent;
         private bool _showAdvancedDiagnostics;
 
         private void OnEnable()
+        {
+            _serializedBindingsDirty = true;
+        }
+
+        private void RefreshSerializedBindings()
         {
             _activityName =
                 serializedObject.FindProperty("activityName");
@@ -57,13 +63,20 @@ namespace Immersive.Framework.Editor.Editor.Authoring
             _transitionGateMode =
                 serializedObject.FindProperty(
                     "transitionGateMode");
+
+            _serializedBindingsDirty = false;
         }
 
         public override void OnInspectorGUI()
         {
-            serializedObject.Update();
+            serializedObject.UpdateIfRequiredOrScript();
 
-            DrawHeader();
+            if (_serializedBindingsDirty)
+            {
+                RefreshSerializedBindings();
+            }
+
+            DrawInspectorHeader();
 
             EditorGUILayout.Space(6f);
             DrawOverview();
@@ -93,7 +106,7 @@ namespace Immersive.Framework.Editor.Editor.Authoring
             }
         }
 
-        private void DrawHeader()
+        private void DrawInspectorHeader()
         {
             EditorGUILayout.LabelField(
                 "Activity",
@@ -288,8 +301,13 @@ namespace Immersive.Framework.Editor.Editor.Authoring
             if (GUILayout.Button("Validate Activity"))
             {
                 serializedObject.ApplyModifiedProperties();
-                serializedObject.Update();
                 RunValidation();
+                _serializedBindingsDirty = true;
+
+                // Validation can scan project assets and invalidate cached
+                // SerializedProperty instances during the current IMGUI event.
+                // Repaint with a fresh Inspector state instead of continuing.
+                GUIUtility.ExitGUI();
             }
         }
 

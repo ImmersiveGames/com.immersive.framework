@@ -352,10 +352,10 @@ namespace Immersive.Framework.GlobalUi
                 application.PersistentContent;
 
             if (composition == null ||
-                !composition.IsComplete)
+                !composition.HasContainerScene)
             {
                 const string message =
-                    "Persistent Content composition is incomplete. Container Scene, Camera Output Prefab and Presentation Canvas Prefab are required.";
+                    "Persistent Content composition is incomplete. A Content Scene is required.";
                 logger.Error(message);
                 return Failed(application, message);
             }

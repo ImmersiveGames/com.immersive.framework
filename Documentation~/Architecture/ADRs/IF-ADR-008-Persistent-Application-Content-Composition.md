@@ -8,8 +8,8 @@ Superseded by: none
 ## Context
 
 An Immersive game needs application-scoped content that survives Route and
-Activity scene changes. The current implementation calls this content
-`UIGlobal`, although the actual composition already includes more than UI:
+Activity scene changes. The previous `UIGlobal` vocabulary described only part
+of the actual composition:
 
 ```text
 physical Camera output
@@ -20,90 +20,107 @@ future global Audio
 future application-scoped Lighting or Volume content
 ```
 
-A dedicated Unity scene remains useful because it allows the developer to author
-and inspect the concrete composition visually. Canvas anchors, Camera transforms,
-Audio placement and future lighting content must remain normal Unity authoring.
+A dedicated Unity scene is the clearest authoring boundary because Camera
+placement, Canvas anchors, Audio placement, Volumes, lighting and project-specific
+persistent objects remain visible and editable together.
 
-The scene asset itself is not the runtime lifetime authority. The framework loads
-it as a source container, retains its root object hierarchies and unloads the
-source scene.
+The scene asset is the authoring source, not the runtime lifetime authority.
+Runtime loads it, retains its complete root hierarchies and unloads the source
+scene.
 
 ## Decision
 
-`GameApplicationAsset` is the single authoring authority for one concrete
-Persistent Content composition:
+`GameApplicationAsset` is the single application-level authority for:
 
 ```text
 Persistent Content
-  Container Scene
-  Camera Output Prefab
-  Presentation Canvas Prefab
+  Content Scene
 ```
 
-The serialized group is `PersistentContentComposition`.
+The serialized group remains `PersistentContentComposition`.
 
-### Container Scene
-
-The Container Scene is stored as one direct Unity asset reference. The public
-model does not serialize separate path and cached-name fields.
-
-The scene is the visual composition boundary. Every authored root belongs to the
-application-persistent content set.
+The Content Scene is the complete concrete composition. `GameApplicationAsset`
+does not separately declare Camera or presentation prefabs.
 
 ```text
 PersistentContent.unity
-  Camera Output prefab instance
-  Presentation Canvas prefab instance
-  future Audio objects
-  future Lighting or Volume objects
+  Camera output
+  Presentation Canvas
+  optional Player provisioning
+  future Audio
+  future Lighting or Volumes
   other explicitly persistent application content
 ```
 
-The framework does not require a named root, `_Framework` container, Composer or
-module marker.
-
-### Prefab references
-
-`Camera Output Prefab` and `Presentation Canvas Prefab` identify the exact prefab
-implementations expected in the Container Scene.
-
-They may reference:
+The framework does not require:
 
 ```text
-package-provided minimum prefabs
-Prefab Variants in the consumer project
-studio package prefabs
-consumer-owned prefabs
+named roots
+_Framework container
+Composer
+module markers
+Recipe
+prefab identity
 ```
 
-The framework uses these references for authoring validation. It does not
-instantiate them automatically.
+## Scene Template
 
-### Manual composition
+The package may distribute an official Persistent Content `SceneTemplateAsset`
+and its source scene.
 
-The developer uses the normal Unity workflow:
+The Scene Template is an Editor creation surface:
 
 ```text
-create or open the Container Scene
-add the selected prefab instances
-position and configure them visually
-use Prefab Variants or normal overrides where appropriate
-validate the Game Application
+File
+  New Scene
+    Immersive Persistent Content
+```
+
+The created `.unity` scene becomes the application composition and is assigned to
+`GameApplicationAsset`.
+
+The Game Application never references the `SceneTemplateAsset` itself.
+
+The template may use package prefabs, normal GameObjects or other Unity assets.
+After scene creation, those objects are ordinary Unity authoring content.
+
+## Prefabs
+
+Prefabs remain optional building blocks inside the Content Scene.
+
+Valid implementations may originate from:
+
+```text
+package minimum prefabs
+Prefab Variants
+studio packages
+consumer-owned prefabs
+manually authored scene objects
+```
+
+Validation proves the contracts present in the scene. It does not require that a
+Camera, Canvas or adapter came from a specific prefab.
+
+## Manual authoring
+
+The developer uses the native Unity workflow:
+
+```text
+create a scene from the official Scene Template
+or create an equivalent scene manually
+
+edit hierarchy, positions, anchors and overrides
+assign the created scene to GameApplication
+enable it in the active Build Profile
+run Validate Configuration
 ```
 
 The framework validates and executes the composition. It does not create,
-materialize, apply, rebuild, repair or silently replace it.
+materialize, apply, rebuild, repair or silently replace content.
 
-## Current required modules
+## Current required scene contracts
 
-The current playable-client baseline requires:
-
-```text
-exactly one selected Camera Output prefab instance
-exactly one selected Presentation Canvas prefab instance
-```
-
-The Camera Output prefab must provide exactly:
+The playable-client baseline requires exactly:
 
 ```text
 one Unity Camera
@@ -112,106 +129,114 @@ one CameraOutputSessionBinding
 one SessionCameraOverrideBinding
 ```
 
-The Presentation Canvas prefab must provide:
+`CameraOutputSessionBinding` must declare:
 
 ```text
-one Canvas
+explicit Output ID
+explicit Unity Camera reference
+explicit CinemachineBrain reference
+Camera and Brain on the same physical output GameObject
+```
+
+Presentation requires:
+
+```text
+at least one Canvas
 at least one ITransitionEffectAdapter
 at least one ILoadingSurfaceAdapter
 ```
 
-The physical Camera requirement exists because the current product architecture
-owns one application/session output. It is not a dependency of a Screen Space
-Overlay Canvas.
+Additional authored objects are allowed.
+
+Future Audio and Lighting contracts enter only after their ownership and runtime
+authority are explicit.
 
 ## Runtime lifetime
 
-Runtime loads the Container Scene additively from the direct scene reference,
-collects its root objects, transfers each complete root hierarchy to Unity's
-persistent runtime scene and unloads the source scene.
+Runtime loads the Content Scene additively, retains every complete root hierarchy
+through Unity's persistent runtime lifetime and unloads the source scene.
 
-Runtime must preserve:
+Runtime preserves:
 
 ```text
 parent-child hierarchy
 RectTransform anchors
 local transforms
-internal object references
-Prefab instance structure
+internal references
+Prefab instance relationships
 visual and spatial composition
 ```
 
-Runtime must not flatten the hierarchy, discover modules by object name or
-silently create missing required objects.
+Runtime must not flatten hierarchy, discover modules by object name or silently
+create missing required objects.
 
-The current runtime resolves the build-loadable scene by its direct reference
-name. Editor validation therefore requires that name to be unique among enabled
-Build Profile scenes.
+The current runtime resolves the build-loadable scene by its directly referenced
+scene name. Editor validation therefore requires that name to be unique among
+enabled Build Profile scenes.
 
 ## Validation
 
-Validation is explicit and non-mutating.
+Validation is explicit, button-driven and non-mutating.
 
-It checks:
+Inspector repaint does not open or inspect the Content Scene.
+
+`Validate Configuration` checks:
 
 ```text
-Container Scene direct reference
+direct Content Scene reference
+scene asset validity
 Build Profile inclusion
 unique enabled build scene name
-Camera Output prefab contract
-Presentation Canvas prefab contract
-exact selected prefab instances in the Container Scene
-unique physical Camera/session output bindings
-Transition and Loading adapter availability
+Camera output component counts and bindings
+Canvas availability
+Transition adapter availability
+Loading adapter availability
 ```
 
-Additional authored objects are allowed. Future Audio and Lighting modules enter
-only after their ownership contracts are defined.
+The validator opens the scene additively only when requested and closes it only
+when the validator owns that temporary load.
+
+`Model Readiness` delegates the same scene-contract proof to the canonical Game
+Application validator instead of opening the scene a second time.
 
 ## Rejected scope
 
-- `PersistentContentRecipe` asset.
-- `PersistentContentComposer` component.
-- `PersistentContentSource` marker.
-- Generic module enum or module list.
-- `_Framework` materialization container.
-- Automatic asset, scene or prefab creation.
+- Camera Output or Presentation Canvas prefab fields in `GameApplicationAsset`.
+- Required prefab identity or Prefab Variant ancestry.
+- `PersistentContentRecipe`.
+- `PersistentContentComposer`.
+- `PersistentContentSource`.
+- Generic module lists.
+- Automatic scene, prefab or asset creation.
 - Apply/Rebuild over Persistent Content.
 - Hidden repair or fallback objects.
-- Separate serialized scene path and cached scene name.
-- Silent fallback Route when a destination scene fails.
+- Scene Template references in runtime configuration.
+- Silent fallback Route.
 - Premature Audio, Lighting, headless or multi-output contracts.
-
-## Framework Runtime Scene
-
-A future internal Framework Runtime Scene may provide a valid active-scene context
-during bootstrap and explicit gaps between Route Primary Scenes.
-
-That scene is not part of this cut. It will be a technical safety context, not a
-fallback Route and not a way to hide destination-load failure.
 
 ## Consequences
 
-The product surface becomes smaller and uses native Unity authoring directly.
-Prefab reuse remains available through package assets and Prefab Variants without
-a second composition tool.
+The product has one concrete source of truth: the Content Scene.
 
-The Container Scene clearly communicates what will persist while runtime lifetime
-remains separate from the source scene asset.
+Scene Templates provide a native reusable starting point without making template
+or prefab origin part of runtime authority.
+
+Projects remain free to replace, unpack, variant or manually author their scene
+content as long as the required contracts remain valid.
 
 ## Current implementation coverage
 
-`PERSISTENT-COMPOSITION-1` introduces:
+`PERSISTENT-COMPOSITION-SCENE-ONLY-1` provides:
 
 ```text
-PersistentContentComposition
-GameApplication Persistent Content Inspector section
-direct Container Scene reference
-explicit prefab references
-non-mutating prefab and scene validation
-runtime retention of complete root hierarchies
-updated Persistent Content diagnostics
+scene-only PersistentContentComposition
+Game Application Content Scene Inspector
+explicit scene-content validation
+runtime requirement reduced to the Content Scene
+duplicate Model Readiness scene scan removed
+documentation for the official Scene Template direction
 ```
 
-Minimum package prefabs, Audio, Lighting and Framework Runtime Scene are subsequent
-cuts.
+The actual package `.unity` source scene and `.scenetemplate` asset must be authored
+and saved through Unity in the next asset cut so Unity writes their canonical GUID
+and dependency metadata.

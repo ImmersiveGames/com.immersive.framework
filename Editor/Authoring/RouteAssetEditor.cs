@@ -20,29 +20,50 @@ namespace Immersive.Framework.Editor.Editor.Authoring
 
         private SceneAsset _primarySceneAsset;
         private FrameworkAuthoringValidationReport _lastValidationReport;
+        private bool _serializedBindingsDirty = true;
         private bool _validationOutdated;
         private bool _showAdditionalContent;
         private bool _showAdvancedDiagnostics;
 
         private void OnEnable()
         {
-            _routeName = serializedObject.FindProperty("routeName");
-            _routeId = serializedObject.FindProperty("routeId");
-            _primaryScenePath = serializedObject.FindProperty("primaryScenePath");
-            _primarySceneName = serializedObject.FindProperty("primarySceneName");
-            _routeContentProfile = serializedObject.FindProperty("routeContentProfile");
-            _startupActivity = serializedObject.FindProperty("startupActivity");
-            _transitionGateMode = serializedObject.FindProperty("transitionGateMode");
-            _description = serializedObject.FindProperty("description");
+            _serializedBindingsDirty = true;
+        }
 
-            _primarySceneAsset = ResolvePrimarySceneAsset();
+        private void RefreshSerializedBindings()
+        {
+            _routeName =
+                serializedObject.FindProperty("routeName");
+            _routeId =
+                serializedObject.FindProperty("routeId");
+            _primaryScenePath =
+                serializedObject.FindProperty("primaryScenePath");
+            _primarySceneName =
+                serializedObject.FindProperty("primarySceneName");
+            _routeContentProfile =
+                serializedObject.FindProperty("routeContentProfile");
+            _startupActivity =
+                serializedObject.FindProperty("startupActivity");
+            _transitionGateMode =
+                serializedObject.FindProperty("transitionGateMode");
+            _description =
+                serializedObject.FindProperty("description");
+
+            _primarySceneAsset =
+                ResolvePrimarySceneAsset();
+            _serializedBindingsDirty = false;
         }
 
         public override void OnInspectorGUI()
         {
-            serializedObject.Update();
+            serializedObject.UpdateIfRequiredOrScript();
 
-            DrawHeader();
+            if (_serializedBindingsDirty)
+            {
+                RefreshSerializedBindings();
+            }
+
+            DrawInspectorHeader();
 
             EditorGUILayout.Space(6f);
             DrawOverview();
@@ -87,7 +108,7 @@ namespace Immersive.Framework.Editor.Editor.Authoring
             EditorGUIUtility.PingObject(route);
         }
 
-        private void DrawHeader()
+        private void DrawInspectorHeader()
         {
             EditorGUILayout.LabelField(
                 "Route",
@@ -148,8 +169,15 @@ namespace Immersive.Framework.Editor.Editor.Authoring
             {
                 if (GUILayout.Button("Open Primary Scene"))
                 {
+                    // Scene opening invalidates the current Inspector serialized
+                    // context. End this IMGUI event immediately after navigation.
+                    serializedObject.ApplyModifiedProperties();
+                    _serializedBindingsDirty = true;
+
                     AssetDatabase.OpenAsset(
                         _primarySceneAsset);
+
+                    GUIUtility.ExitGUI();
                 }
             }
         }
@@ -310,8 +338,13 @@ namespace Immersive.Framework.Editor.Editor.Authoring
             if (GUILayout.Button("Validate Route"))
             {
                 serializedObject.ApplyModifiedProperties();
-                serializedObject.Update();
                 RunValidation();
+                _serializedBindingsDirty = true;
+
+                // Project-wide identity validation can refresh imported assets.
+                // End this IMGUI event before cached SerializedProperty
+                // instances are drawn again.
+                GUIUtility.ExitGUI();
             }
         }
 

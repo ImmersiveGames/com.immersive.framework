@@ -39,7 +39,7 @@ namespace Immersive.Framework.Authoring
             PlayerActorSelectionDuplicatePolicy.AllowDuplicates;
 
         [SerializeField]
-        [Tooltip("Concrete scene and prefab composition retained for the application lifetime. The scene is authored manually; the framework validates and consumes it without creating or repairing content.")]
+        [Tooltip("Concrete scene composition retained for the application lifetime. The scene is authored manually; the framework validates and consumes it without creating or repairing content.")]
         private PersistentContentComposition persistentContent =
             new PersistentContentComposition();
 

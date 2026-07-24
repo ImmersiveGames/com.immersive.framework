@@ -1,10 +1,7 @@
 using System;
 using Immersive.Framework.Authoring;
 using Immersive.Framework.ContentFlow;
-using Immersive.Framework.Loading;
-using Immersive.Framework.Pause;
 using Immersive.Framework.Transition;
-using Immersive.Framework.TransitionEffects;
 using UnityEditor;
 using UnityEngine;
 
@@ -43,9 +40,6 @@ namespace Immersive.Framework.Editor.Editor.Validation
                 report,
                 gameApplication.StartupRoute,
                 "Startup Route");
-            ValidatePersistentContentSurfaceModel(
-                report,
-                gameApplication);
             AddReadinessSummary(report);
 
             return report;
@@ -323,125 +317,6 @@ namespace Immersive.Framework.Editor.Editor.Validation
                 required);
         }
 
-        private static void ValidatePersistentContentSurfaceModel(
-            FrameworkAuthoringValidationReport report,
-            GameApplicationAsset gameApplication)
-        {
-            PersistentContentComposition composition =
-                gameApplication.PersistentContent;
-
-            if (composition == null ||
-                composition.ContainerScene == null)
-            {
-                return;
-            }
-
-            SceneAsset sceneAsset =
-                composition.ContainerScene as SceneAsset;
-            if (sceneAsset == null)
-            {
-                return;
-            }
-
-            string scenePath =
-                AssetDatabase.GetAssetPath(sceneAsset);
-            if (string.IsNullOrWhiteSpace(scenePath))
-            {
-                return;
-            }
-
-            var sceneScope =
-                default(SceneValidationScope);
-
-            try
-            {
-                sceneScope =
-                    FrameworkEditorSceneValidationUtility
-                        .OpenSceneForValidation(scenePath);
-                UnityEngine.SceneManagement.Scene scene =
-                    sceneScope.Scene;
-
-                if (!scene.IsValid() ||
-                    !scene.isLoaded)
-                {
-                    report.AddError(
-                        $"Model Readiness: Persistent Content Container Scene '{scenePath}' could not be loaded for readiness validation.",
-                        gameApplication);
-                    return;
-                }
-
-                int transitionAdapterCount =
-                    CountSceneAdapters<ITransitionEffectAdapter>(scene);
-                int loadingAdapterCount =
-                    CountSceneAdapters<ILoadingSurfaceAdapter>(scene);
-                int pauseAdapterCount =
-                    CountSceneAdapters<IPauseSurfaceAdapter>(scene);
-
-                report.AddInfo(
-                    $"Model Readiness: Persistent Content Container Scene '{scenePath}' contains transitionAdapters='{transitionAdapterCount}' loadingAdapters='{loadingAdapterCount}'.",
-                    gameApplication);
-
-                if (pauseAdapterCount == 0)
-                {
-                    report.AddOptionalSkip(
-                        $"Model Readiness: Persistent Content Container Scene '{scenePath}' has no resident Pause adapter. This is skipped because the current model has no serialized 'Pause expected' policy.",
-                        gameApplication);
-                }
-                else
-                {
-                    report.AddInfo(
-                        $"Model Readiness: Persistent Content Container Scene '{scenePath}' contains {pauseAdapterCount} resident Pause adapter(s).",
-                        gameApplication);
-                }
-
-                if (transitionAdapterCount == 0 &&
-                    RequiresTransitionInteractionBlocking(gameApplication))
-                {
-                    report.AddWarning(
-                        $"Model Readiness: Persistent Content Container Scene '{scenePath}' has no Transition adapter, but Route/Activity Transition Gate policy expects interaction blocking during visual transitions.",
-                        gameApplication);
-                }
-            }
-            catch (Exception exception)
-            {
-                report.AddError(
-                    $"Model Readiness: Persistent Content Container Scene '{scenePath}' could not be validated. {exception.Message}",
-                    gameApplication);
-            }
-            finally
-            {
-                sceneScope.CloseIfOwned();
-            }
-        }
-
-        private static bool RequiresTransitionInteractionBlocking(
-            GameApplicationAsset gameApplication)
-        {
-            if (gameApplication == null ||
-                gameApplication.StartupRoute == null)
-            {
-                return false;
-            }
-
-            RouteAsset route =
-                gameApplication.StartupRoute;
-            if (TransitionGateBlockerPolicy
-                .BlocksInteractionAcceptance(
-                    route.TransitionGateMode))
-            {
-                return true;
-            }
-
-            ActivityAsset activity =
-                route.StartupActivity;
-            return activity != null &&
-                   activity.VisualTransitionMode !=
-                       ActivityVisualTransitionMode.Seamless &&
-                   TransitionGateBlockerPolicy
-                       .BlocksInteractionAcceptance(
-                           activity.TransitionGateMode);
-        }
-
         private static void ValidateEnumField<TEnum>(
             FrameworkAuthoringValidationReport report,
             UnityEngine.Object owner,
@@ -589,52 +464,6 @@ namespace Immersive.Framework.Editor.Editor.Validation
             }
 
             return false;
-        }
-
-        private static int CountSceneAdapters<TAdapter>(
-            UnityEngine.SceneManagement.Scene scene)
-        {
-            if (!scene.IsValid() ||
-                !scene.isLoaded)
-            {
-                return 0;
-            }
-
-            GameObject[] roots =
-                scene.GetRootGameObjects();
-            if (roots == null)
-            {
-                return 0;
-            }
-
-            int count = 0;
-
-            for (int rootIndex = 0;
-                 rootIndex < roots.Length;
-                 rootIndex++)
-            {
-                GameObject root =
-                    roots[rootIndex];
-                if (root == null)
-                {
-                    continue;
-                }
-
-                MonoBehaviour[] behaviours =
-                    root.GetComponentsInChildren<MonoBehaviour>(true);
-
-                for (int behaviourIndex = 0;
-                     behaviourIndex < behaviours.Length;
-                     behaviourIndex++)
-                {
-                    if (behaviours[behaviourIndex] is TAdapter)
-                    {
-                        count++;
-                    }
-                }
-            }
-
-            return count;
         }
 
         private static void AddReadinessSummary(
