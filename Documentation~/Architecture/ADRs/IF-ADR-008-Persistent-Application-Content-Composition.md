@@ -158,13 +158,18 @@ explicit CinemachineBrain reference
 Camera and Brain on the same physical output GameObject
 ```
 
-Presentation requires:
+Presentation and UI input require:
 
 ```text
 at least one Canvas
 at least one ITransitionEffectAdapter
 at least one ILoadingSurfaceAdapter
+exactly one EventSystem
+exactly one InputSystemUIInputModule
 ```
+
+The EventSystem and Input System UI module are explicit scene content. The module
+uses referenced package UI actions and is not created or repaired by a pipeline.
 
 Additional authored objects are allowed.
 
@@ -234,6 +239,35 @@ Application validator instead of opening the scene a second time.
 - Scene Template references in runtime configuration.
 - Silent fallback Route.
 - Premature Audio, Lighting, headless or multi-output contracts.
+
+## Scene Template Pipeline policy
+
+The official Persistent Content template may use an `ISceneTemplatePipeline` only
+for non-mutating verification after instantiation.
+
+Allowed:
+
+```text
+inspect the newly instantiated scene
+validate required contracts
+report missing scripts and invalid references
+emit diagnostic PASS or ERROR evidence
+```
+
+Rejected:
+
+```text
+create or delete scene objects
+repair references
+save the consumer scene
+assign consumer assets
+edit Build Profile configuration
+create or clone assets
+```
+
+Template source edits are propagated through an explicit package-maintenance action
+that updates the existing SceneTemplateAsset pipeline reference and synchronizes the required referenced Input System dependencies.
+This action is not part of the GameApplication Inspector or consumer authoring flow.
 
 ## Consequences
 

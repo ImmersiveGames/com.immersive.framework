@@ -15,6 +15,8 @@ using Immersive.Framework.TransitionEffects;
 using Unity.Cinemachine;
 using UnityEditor;
 using UnityEngine;
+using UnityEngine.EventSystems;
+using UnityEngine.InputSystem.UI;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 using Object = UnityEngine.Object;
@@ -109,6 +111,47 @@ namespace Immersive.Framework.Editor.Editor.Validation
                 gameApplication,
                 validateDependencies,
                 ResolveValidationMode(gameApplication));
+        }
+
+        internal static FrameworkAuthoringValidationReport
+            ValidatePersistentContentTemplateScene(
+                Scene scene,
+                Object context)
+        {
+            var report =
+                new FrameworkAuthoringValidationReport(
+                    FrameworkValidationMode.Standard);
+
+            if (!scene.IsValid() ||
+                !scene.isLoaded)
+            {
+                report.AddError(
+                    "Persistent Content template scene is invalid or not loaded.",
+                    context);
+                return report;
+            }
+
+            string sceneLabel =
+                !string.IsNullOrWhiteSpace(scene.path)
+                    ? scene.path
+                    : !string.IsNullOrWhiteSpace(scene.name)
+                        ? scene.name
+                        : "<untitled>";
+
+            ValidatePersistentContentSceneContents(
+                report,
+                context,
+                scene,
+                sceneLabel);
+
+            if (report.ErrorCount == 0)
+            {
+                report.AddInfo(
+                    "Persistent Content template scene satisfies the current composition contract.",
+                    context);
+            }
+
+            return report;
         }
 
         internal static FrameworkAuthoringValidationReport ValidateRoute(
@@ -403,120 +446,11 @@ namespace Immersive.Framework.Editor.Editor.Validation
                     return;
                 }
 
-                GameObject[] roots =
-                    scene.GetRootGameObjects();
-
-                ValidateExactSceneComponentCount<UnityEngine.Camera>(
+                ValidatePersistentContentSceneContents(
                     report,
                     owner,
                     scene,
-                    "Unity Camera");
-                ValidateExactSceneComponentCount<CinemachineBrain>(
-                    report,
-                    owner,
-                    scene,
-                    nameof(CinemachineBrain));
-                ValidateExactSceneComponentCount<CameraOutputSessionBinding>(
-                    report,
-                    owner,
-                    scene,
-                    nameof(CameraOutputSessionBinding));
-                ValidateExactSceneComponentCount<SessionCameraOverrideBinding>(
-                    report,
-                    owner,
-                    scene,
-                    nameof(SessionCameraOverrideBinding));
-
-                CameraOutputSessionBinding[] outputBindings =
-                    GetSceneComponents<CameraOutputSessionBinding>(
-                        scene);
-
-                if (outputBindings.Length == 1)
-                {
-                    CameraOutputSessionBinding binding =
-                        outputBindings[0];
-
-                    if (string.IsNullOrWhiteSpace(
-                            binding.OutputIdText))
-                    {
-                        report.AddError(
-                            "Persistent Content Camera Output requires an explicit Output ID.",
-                            binding);
-                    }
-
-                    if (binding.UnityCamera == null)
-                    {
-                        report.AddError(
-                            "Persistent Content Camera Output requires an explicit Unity Camera reference.",
-                            binding);
-                    }
-
-                    if (binding.CinemachineBrain == null)
-                    {
-                        report.AddError(
-                            "Persistent Content Camera Output requires an explicit Cinemachine Brain reference.",
-                            binding);
-                    }
-
-                    if (binding.UnityCamera != null &&
-                        binding.CinemachineBrain != null &&
-                        binding.UnityCamera.gameObject !=
-                        binding.CinemachineBrain.gameObject)
-                    {
-                        report.AddError(
-                            "Persistent Content Unity Camera and Cinemachine Brain must belong to the same physical output GameObject.",
-                            binding);
-                    }
-                }
-
-                SessionCameraOverrideBinding[] sessionBindings =
-                    GetSceneComponents<SessionCameraOverrideBinding>(
-                        scene);
-
-                if (sessionBindings.Length == 1)
-                {
-                    ValidateSessionCameraOverrideBinding(
-                        report,
-                        outputBindings.Length == 1
-                            ? outputBindings[0]
-                            : null,
-                        sessionBindings[0]);
-                }
-
-                int canvasCount =
-                    CountSceneComponents<Canvas>(
-                        scene);
-                int transitionAdapterCount =
-                    CountSceneAdapters<ITransitionEffectAdapter>(
-                        scene);
-                int loadingAdapterCount =
-                    CountSceneAdapters<ILoadingSurfaceAdapter>(
-                        scene);
-
-                if (canvasCount == 0)
-                {
-                    report.AddError(
-                        $"Persistent Content Scene '{scenePath}' requires at least one Canvas.",
-                        owner);
-                }
-
-                if (transitionAdapterCount == 0)
-                {
-                    report.AddError(
-                        $"Persistent Content Scene '{scenePath}' requires at least one ITransitionEffectAdapter implementation.",
-                        owner);
-                }
-
-                if (loadingAdapterCount == 0)
-                {
-                    report.AddError(
-                        $"Persistent Content Scene '{scenePath}' requires at least one ILoadingSurfaceAdapter implementation.",
-                        owner);
-                }
-
-                report.AddInfo(
-                    $"Persistent Content Scene composition scanned. roots='{roots.Length}' canvases='{canvasCount}' transitionAdapters='{transitionAdapterCount}' loadingAdapters='{loadingAdapterCount}'.",
-                    owner);
+                    scenePath);
             }
             catch (Exception exception)
             {
@@ -527,6 +461,271 @@ namespace Immersive.Framework.Editor.Editor.Validation
             finally
             {
                 sceneScope.CloseIfOwned();
+            }
+        }
+
+        private static void ValidatePersistentContentSceneContents(
+            FrameworkAuthoringValidationReport report,
+            Object owner,
+            Scene scene,
+            string sceneLabel)
+        {
+            GameObject[] roots =
+                scene.GetRootGameObjects();
+
+            ValidateExactSceneComponentCount<UnityEngine.Camera>(
+                report,
+                owner,
+                scene,
+                "Unity Camera");
+            ValidateExactSceneComponentCount<CinemachineBrain>(
+                report,
+                owner,
+                scene,
+                nameof(CinemachineBrain));
+            ValidateExactSceneComponentCount<CameraOutputSessionBinding>(
+                report,
+                owner,
+                scene,
+                nameof(CameraOutputSessionBinding));
+            ValidateExactSceneComponentCount<SessionCameraOverrideBinding>(
+                report,
+                owner,
+                scene,
+                nameof(SessionCameraOverrideBinding));
+            ValidateExactSceneComponentCount<EventSystem>(
+                report,
+                owner,
+                scene,
+                nameof(EventSystem));
+            ValidateExactSceneComponentCount<InputSystemUIInputModule>(
+                report,
+                owner,
+                scene,
+                nameof(InputSystemUIInputModule));
+
+            CameraOutputSessionBinding[] outputBindings =
+                GetSceneComponents<CameraOutputSessionBinding>(
+                    scene);
+
+            if (outputBindings.Length == 1)
+            {
+                CameraOutputSessionBinding binding =
+                    outputBindings[0];
+
+                if (string.IsNullOrWhiteSpace(
+                        binding.OutputIdText))
+                {
+                    report.AddError(
+                        "Persistent Content Camera Output requires an explicit Output ID.",
+                        binding);
+                }
+
+                if (binding.UnityCamera == null)
+                {
+                    report.AddError(
+                        "Persistent Content Camera Output requires an explicit Unity Camera reference.",
+                        binding);
+                }
+
+                if (binding.CinemachineBrain == null)
+                {
+                    report.AddError(
+                        "Persistent Content Camera Output requires an explicit Cinemachine Brain reference.",
+                        binding);
+                }
+
+                if (binding.UnityCamera != null &&
+                    binding.CinemachineBrain != null &&
+                    binding.UnityCamera.gameObject !=
+                    binding.CinemachineBrain.gameObject)
+                {
+                    report.AddError(
+                        "Persistent Content Unity Camera and Cinemachine Brain must belong to the same physical output GameObject.",
+                        binding);
+                }
+            }
+
+            SessionCameraOverrideBinding[] sessionBindings =
+                GetSceneComponents<SessionCameraOverrideBinding>(
+                    scene);
+
+            if (sessionBindings.Length == 1)
+            {
+                ValidateSessionCameraOverrideBinding(
+                    report,
+                    outputBindings.Length == 1
+                        ? outputBindings[0]
+                        : null,
+                    sessionBindings[0]);
+            }
+
+            EventSystem[] eventSystems =
+                GetSceneComponents<EventSystem>(
+                    scene);
+            InputSystemUIInputModule[] inputModules =
+                GetSceneComponents<InputSystemUIInputModule>(
+                    scene);
+
+            if (eventSystems.Length == 1)
+            {
+                EventSystem eventSystem =
+                    eventSystems[0];
+
+                if (!eventSystem.enabled)
+                {
+                    report.AddError(
+                        "Persistent Content EventSystem must be enabled.",
+                        eventSystem);
+                }
+
+                if (!eventSystem.sendNavigationEvents)
+                {
+                    report.AddError(
+                        "Persistent Content EventSystem must send navigation events for Move, Submit and Cancel UI input.",
+                        eventSystem);
+                }
+            }
+
+            if (inputModules.Length == 1)
+            {
+                ValidatePersistentContentUiInputModule(
+                    report,
+                    inputModules[0]);
+            }
+
+            if (eventSystems.Length == 1 &&
+                inputModules.Length == 1 &&
+                eventSystems[0].gameObject !=
+                inputModules[0].gameObject)
+            {
+                report.AddError(
+                    "Persistent Content EventSystem and InputSystemUIInputModule must belong to the same GameObject.",
+                    inputModules[0]);
+            }
+
+            int legacyInputModuleCount =
+                CountSceneComponents<StandaloneInputModule>(
+                    scene);
+            if (legacyInputModuleCount > 0)
+            {
+                report.AddError(
+                    $"Persistent Content Scene '{sceneLabel}' must not contain StandaloneInputModule when the Input System UI module is authoritative. found='{legacyInputModuleCount}'.",
+                    owner);
+            }
+
+            int missingScriptCount =
+                CountMissingScripts(
+                    scene,
+                    out GameObject firstMissingScriptObject);
+            if (missingScriptCount > 0)
+            {
+                report.AddError(
+                    $"Persistent Content Scene '{sceneLabel}' contains missing MonoBehaviour scripts. count='{missingScriptCount}'.",
+                    firstMissingScriptObject != null
+                        ? firstMissingScriptObject
+                        : owner);
+            }
+
+            int canvasCount =
+                CountSceneComponents<Canvas>(
+                    scene);
+            int transitionAdapterCount =
+                CountSceneAdapters<ITransitionEffectAdapter>(
+                    scene);
+            int loadingAdapterCount =
+                CountSceneAdapters<ILoadingSurfaceAdapter>(
+                    scene);
+
+            if (canvasCount == 0)
+            {
+                report.AddError(
+                    $"Persistent Content Scene '{sceneLabel}' requires at least one Canvas.",
+                    owner);
+            }
+
+            if (transitionAdapterCount == 0)
+            {
+                report.AddError(
+                    $"Persistent Content Scene '{sceneLabel}' requires at least one ITransitionEffectAdapter implementation.",
+                    owner);
+            }
+
+            if (loadingAdapterCount == 0)
+            {
+                report.AddError(
+                    $"Persistent Content Scene '{sceneLabel}' requires at least one ILoadingSurfaceAdapter implementation.",
+                    owner);
+            }
+
+            report.AddInfo(
+                $"Persistent Content Scene composition scanned. roots='{roots.Length}' canvases='{canvasCount}' eventSystems='{eventSystems.Length}' inputSystemUiModules='{inputModules.Length}' legacyInputModules='{legacyInputModuleCount}' transitionAdapters='{transitionAdapterCount}' loadingAdapters='{loadingAdapterCount}' missingScripts='{missingScriptCount}'.",
+                owner);
+        }
+
+        private static void ValidatePersistentContentUiInputModule(
+            FrameworkAuthoringValidationReport report,
+            InputSystemUIInputModule inputModule)
+        {
+            if (inputModule == null)
+            {
+                return;
+            }
+
+            if (!inputModule.enabled)
+            {
+                report.AddError(
+                    "Persistent Content InputSystemUIInputModule must be enabled.",
+                    inputModule);
+            }
+
+            if (inputModule.actionsAsset == null)
+            {
+                report.AddError(
+                    "Persistent Content InputSystemUIInputModule requires an explicit Actions Asset.",
+                    inputModule);
+            }
+
+            if (inputModule.point == null)
+            {
+                report.AddError(
+                    "Persistent Content InputSystemUIInputModule requires an explicit Point action.",
+                    inputModule);
+            }
+
+            if (inputModule.leftClick == null)
+            {
+                report.AddError(
+                    "Persistent Content InputSystemUIInputModule requires an explicit Left Click action.",
+                    inputModule);
+            }
+
+            if (inputModule.scrollWheel == null)
+            {
+                report.AddError(
+                    "Persistent Content InputSystemUIInputModule requires an explicit Scroll Wheel action.",
+                    inputModule);
+            }
+
+            if (inputModule.move == null)
+            {
+                report.AddError(
+                    "Persistent Content InputSystemUIInputModule requires an explicit Move action.",
+                    inputModule);
+            }
+
+            if (inputModule.submit == null)
+            {
+                report.AddError(
+                    "Persistent Content InputSystemUIInputModule requires an explicit Submit action.",
+                    inputModule);
+            }
+
+            if (inputModule.cancel == null)
+            {
+                report.AddError(
+                    "Persistent Content InputSystemUIInputModule requires an explicit Cancel action.",
+                    inputModule);
             }
         }
 
@@ -647,6 +846,61 @@ namespace Immersive.Framework.Editor.Editor.Validation
             }
         }
 
+        private static int CountMissingScripts(
+            Scene scene,
+            out GameObject firstContext)
+        {
+            firstContext = null;
+
+            if (!scene.IsValid() ||
+                !scene.isLoaded)
+            {
+                return 0;
+            }
+
+            int count = 0;
+            GameObject[] roots =
+                scene.GetRootGameObjects();
+
+            for (int rootIndex = 0;
+                 rootIndex < roots.Length;
+                 rootIndex++)
+            {
+                Transform[] transforms =
+                    roots[rootIndex]
+                        .GetComponentsInChildren<Transform>(
+                            true);
+
+                for (int transformIndex = 0;
+                     transformIndex < transforms.Length;
+                     transformIndex++)
+                {
+                    GameObject gameObject =
+                        transforms[transformIndex].gameObject;
+                    int objectMissingCount =
+                        GameObjectUtility
+                            .GetMonoBehavioursWithMissingScriptCount(
+                                gameObject);
+
+                    if (objectMissingCount <= 0)
+                    {
+                        continue;
+                    }
+
+                    if (firstContext == null)
+                    {
+                        firstContext =
+                            gameObject;
+                    }
+
+                    count +=
+                        objectMissingCount;
+                }
+            }
+
+            return count;
+        }
+
         private static TComponent[] GetSceneComponents<TComponent>(
             Scene scene)
             where TComponent : Component
@@ -684,7 +938,7 @@ namespace Immersive.Framework.Editor.Editor.Validation
 
         private static void ValidateExactSceneComponentCount<TComponent>(
             FrameworkAuthoringValidationReport report,
-            GameApplicationAsset owner,
+            Object owner,
             Scene scene,
             string label)
             where TComponent : Component

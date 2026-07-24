@@ -79,6 +79,8 @@ exactly one Unity Camera
 exactly one CinemachineBrain
 exactly one CameraOutputSessionBinding
 exactly one SessionCameraOverrideBinding
+exactly one EventSystem
+exactly one InputSystemUIInputModule
 
 at least one Canvas
 at least one ITransitionEffectAdapter
@@ -87,6 +89,11 @@ at least one ILoadingSurfaceAdapter
 
 The Camera bindings must contain their explicit IDs, output reference, rig and
 target references required by the current validator.
+
+The EventSystem and InputSystem UI module live on the same root GameObject. The UI
+module references the Input System package's built-in `DefaultInputActions`, so the
+template remains consumer-neutral while still providing Point, Left Click, Scroll,
+Move, Submit and Cancel actions explicitly.
 
 `SessionCameraOverrideBinding` intentionally does not reference a consumer
 application asset. Session ownership is already explicit through its Scope ID,
@@ -123,6 +130,63 @@ normal runtime `.unity` scene from the template.
 
 The core source scene is render-pipeline-neutral. Render-pipeline-specific Camera
 components belong to explicitly scoped template variants or consumer composition.
+
+## Scene Template Pipeline
+
+The official template uses:
+
+```text
+PersistentContentSceneTemplatePipeline
+```
+
+The pipeline is verification-only:
+
+```text
+BeforeTemplateInstantiation
+  no mutation
+
+AfterTemplateInstantiation
+  validate the instantiated scene
+  log PASS or explicit contract errors
+```
+
+It checks the same Camera, presentation and EventSystem contracts used by explicit
+Game Application validation. It also reports missing scripts and rejects a legacy
+`StandaloneInputModule` in the persistent composition.
+
+The pipeline never:
+
+```text
+creates GameObjects
+repairs references
+saves the new scene
+assigns a GameApplication
+adds the scene to the Build Profile
+creates or clones assets
+```
+
+## Refreshing the official template
+
+After editing the package source scene, run:
+
+```text
+Tools
+  Immersive Framework
+    Package Maintenance
+      Refresh Persistent Content Template
+```
+
+This explicit package-maintenance action:
+
+```text
+validates the existing source scene
+binds the existing pipeline script
+synchronizes the required referenced Input System dependencies
+saves the existing SceneTemplateAsset
+```
+
+It does not create any asset. The action must run from the editable framework
+package repository; Git-installed read-only package copies are rejected explicitly.
 
 ## Validation
 
@@ -181,5 +245,7 @@ Keep all dependencies referenced rather than cloned. The source scene depends on
 framework runtime scripts and Cinemachine implementations that must continue
 referencing their package assets.
 
-The generated `.scenetemplate` and `.meta` complete the final Unity-authored asset
-cut.
+After the source scene changes, use the explicit package-maintenance refresh action
+so the existing `.scenetemplate` records the pipeline and the new Input System
+dependency. Then create a new scene from the template and confirm the pipeline logs a
+passing instantiation report.
