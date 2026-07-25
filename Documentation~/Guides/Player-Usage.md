@@ -9,8 +9,7 @@ Last updated: 2026-07-25
 2. Optionally assign each Slot a default `ActorProfile`.
 3. Add the Profiles to `GameApplicationAsset` in allocation order.
 4. Choose the explicit duplicate Actor-selection policy.
-5. On each `ActivityAsset`, configure Projection, zero-participant behavior and
-   Requirement Level.
+5. Configure each Activity participation requirement.
 
 Slot order is product configuration. Unity player index, hierarchy order and
 join callback order are not Slot identity.
@@ -29,88 +28,62 @@ LocalPlayerHostAuthoring
 empty Actor Mount
 ```
 
-Do not pre-author a `PlayerSlotId`. The official join request reserves a Slot,
-calls `PlayerInputManager.JoinPlayer`, validates the host and commits or rolls
-back the reservation.
+Do not pre-author a `PlayerSlotId`. Runtime admission associates the official
+host with its logical Slot.
 
 ## Scene-owned local Player
 
 Use `SceneLocalPlayerAdmissionAuthoring` when the Activity scene already owns
-the local Player Host and logical Actor.
+the local Player Host and logical Actor. The framework admits and releases
+contextual evidence without instantiating, destroying or silently deactivating
+the scene-owned objects.
 
-1. Reference the exact host, Slot Profile, Actor Profile and logical Actor evidence.
-2. Validate/Apply the authoring surface.
-3. Use the Activity lifecycle timing defined by the component.
-4. Keep physical ownership `ExternalSceneOwned`.
+## Pause integration
 
-The framework admits and releases contextual evidence. It does not instantiate,
-destroy or silently deactivate these scene-owned objects.
-
-## Actor selection and readiness
-
-Actor selection occurs after join and targets `PlayerSlotId`. A joined Slot may
-remain without a selection. Activity requirements progress through:
+Physical Pause input belongs to the official Player:
 
 ```text
-None
-JoinedSlots
-SelectedActors
-LogicalActorsPrepared
-GameplayReady
+PlayerInput
+UnityPlayerInputGateAdapter
+PausePlayerInputBinding
 ```
 
-Changing selection after logical Actor preparation requires a future explicit
-replacement transaction and is rejected by the current model.
-
-## Pause and Camera integration
-
-Add `PausePlayerInputBinding` to the same GameObject as the relevant
-`PlayerInput`. Add `PlayerGameplayCameraAuthoring` to the admitted Player Actor
-when gameplay camera publication is required. Both become eligible through the
-canonical Player/Activity lifecycle; neither is a parallel Player authority.
-
-`PauseActivityBindingAuthoring` declares that an Activity requires Pause for its
-officially admitted local Player. The current policy supports one eligible local
-Player and rejects ambiguity.
+`Global` is an action map of that PlayerInput, not a second global Player.
 
 `PauseRequestTrigger` is not a Player component. It may live in Persistent
-Content, Route scenes or Activity scenes. The framework injects its request port
-from the corresponding composition lifecycle. A Trigger never searches for the
-runtime host.
+Content, Route scenes or Activity scenes and receives its request port from the
+corresponding composition lifecycle.
 
-Buttons and `Escape` converge on the same Pause product runtime. Therefore,
-although a Button does not require an input action press, the current product
-still requires one active official `PausePlayerInputBinding` to transact
-PlayerInput posture.
+Authored buttons can apply application-only Pause without an active Player
+binding. In that mode the framework changes logical Pause, TimeScale and
+presentation but does not modify action maps.
+
+Therefore:
+
+```text
+Escape / Gamepad Start
+  requires official Player binding
+
+Pause / Resume / Toggle Button
+  does not require a Player
+  requires a composed PauseRequestTrigger
+```
 
 See [Pause Usage](Pause-Usage.md).
 
 ## Diagnose
 
-Inspect Slot allocation/reservation, selected Actor Profile, preparation,
-occupancy, input eligibility, camera eligibility and admission as separate
-evidence. Never infer one layer from another.
+Inspect Slot allocation, admission, Actor selection, logical Actor preparation,
+input eligibility and camera eligibility as separate evidence.
 
 For Pause, distinguish:
 
 ```text
-Trigger binding
-  PauseRequestTrigger.ProductRequestBindingStatus
-
-Player binding
-  PausePlayerInputBinding.BindingStatus
+PauseRequestTrigger.ProductRequestBindingStatus
+PauseRequestTrigger.LastProductStatus
+PauseRequestTrigger.LastExecutionMode
+PausePlayerInputBinding.BindingStatus
 ```
 
-A bound Trigger does not prove that an official Player binding is active.
-
-## Manual validation
-
-1. Compile Framework and QAFramework.
-2. Run focused Player join, selection, preparation, gameplay admission and
-   scene-admission suites.
-3. Confirm failed joins release reservations.
-4. Confirm Activity exit releases in reverse dependency order.
-5. Confirm scene-owned host/Actor objects survive successful release.
-6. Confirm Route and Activity Pause triggers bind on scene availability and
-   release before unload.
-7. Validate the same official flow in FIRSTGAME before a product release.
+A bound Trigger does not imply that a Player binding exists; it may legitimately
+execute in `ApplicationOnly` mode.

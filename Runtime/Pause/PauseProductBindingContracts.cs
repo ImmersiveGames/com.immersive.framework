@@ -4,21 +4,40 @@ namespace Immersive.Framework.Pause
 {
     internal interface IPauseProductBindingPort
     {
-        bool TryRegister(PausePlayerInputBinding binding, out PauseProductBindingToken token, out string diagnostic);
-        bool ReleaseBinding(PauseProductBindingToken token, string reason, out string diagnostic);
+        bool TryRegister(
+            PausePlayerInputBinding binding,
+            out PauseProductBindingToken token,
+            out string diagnostic);
+
+        bool ReleaseBinding(
+            PauseProductBindingToken token,
+            string reason,
+            out string diagnostic);
     }
 
     internal interface IPauseProductRequestPort
     {
-        PauseProductRequestResult RequestPause(PauseRequest request);
-        bool TryGetPauseSnapshot(out PauseSnapshot snapshot);
+        PauseProductRequestResult RequestPause(
+            PauseRequest request);
+
+        bool TryGetPauseSnapshot(
+            out PauseSnapshot snapshot);
     }
 
     internal interface IPauseProductApplicationPort
     {
-        bool TryApplyProductPause(PauseRequest request, out PauseResult result, out string diagnostic);
-        bool TryRestorePauseSnapshot(PauseSnapshot snapshot, string reason, out string diagnostic);
-        bool TryGetApplicationPauseSnapshot(out PauseSnapshot snapshot);
+        bool TryApplyProductPause(
+            PauseRequest request,
+            out PauseResult result,
+            out string diagnostic);
+
+        bool TryRestorePauseSnapshot(
+            PauseSnapshot snapshot,
+            string reason,
+            out string diagnostic);
+
+        bool TryGetApplicationPauseSnapshot(
+            out PauseSnapshot snapshot);
     }
 
     internal enum PauseProductBindingState
@@ -32,21 +51,39 @@ namespace Immersive.Framework.Pause
 
     internal readonly struct PauseProductBindingToken
     {
-        internal PauseProductBindingToken(long generation, int playerInstanceId)
+        internal PauseProductBindingToken(
+            long generation,
+            int playerInstanceId)
         {
             Generation = generation;
             PlayerInstanceId = playerInstanceId;
         }
 
         internal long Generation { get; }
+
         internal int PlayerInstanceId { get; }
-        internal bool IsValid => Generation > 0 && PlayerInstanceId != 0;
+
+        internal bool IsValid =>
+            Generation > 0 &&
+            PlayerInstanceId != 0;
     }
 
     internal enum PauseProductRequestStatus
     {
         Unknown = 0,
+
+        /// <summary>
+        /// Pause was applied together with the canonical PlayerInput/InputMode
+        /// transaction.
+        /// </summary>
         Applied = 10,
+
+        /// <summary>
+        /// Pause was applied to the application without a PlayerInput transaction
+        /// because no active Player binding existed.
+        /// </summary>
+        AppliedWithoutPlayerInput = 15,
+
         Ignored = 20,
         BindingUnavailable = 30,
         Rejected = 40,
@@ -55,7 +92,11 @@ namespace Immersive.Framework.Pause
 
     internal readonly struct PauseProductRequestResult
     {
-        internal PauseProductRequestResult(PauseProductRequestStatus status, PauseResult pauseResult, InputModeRuntimeOperationResult inputModeResult, string diagnostic)
+        internal PauseProductRequestResult(
+            PauseProductRequestStatus status,
+            PauseResult pauseResult,
+            InputModeRuntimeOperationResult inputModeResult,
+            string diagnostic)
         {
             Status = status;
             PauseResult = pauseResult;
@@ -64,10 +105,33 @@ namespace Immersive.Framework.Pause
         }
 
         internal PauseProductRequestStatus Status { get; }
+
         internal PauseResult PauseResult { get; }
+
         internal InputModeRuntimeOperationResult InputModeResult { get; }
+
         internal string Diagnostic { get; }
-        internal bool Succeeded => Status == PauseProductRequestStatus.Applied;
-        internal bool Ignored => Status == PauseProductRequestStatus.Ignored;
+
+        internal bool Succeeded =>
+            Status is
+                PauseProductRequestStatus.Applied or
+                PauseProductRequestStatus.AppliedWithoutPlayerInput;
+
+        internal bool Ignored =>
+            Status == PauseProductRequestStatus.Ignored;
+
+        internal bool AppliedWithPlayerInput =>
+            Status == PauseProductRequestStatus.Applied;
+
+        internal bool AppliedWithoutPlayerInput =>
+            Status ==
+            PauseProductRequestStatus.AppliedWithoutPlayerInput;
+
+        internal string ExecutionMode =>
+            AppliedWithPlayerInput
+                ? "PlayerInputTransaction"
+                : AppliedWithoutPlayerInput
+                    ? "ApplicationOnly"
+                    : "None";
     }
 }

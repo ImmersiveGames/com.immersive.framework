@@ -1,6 +1,6 @@
 # Pause Usage
 
-Status: Current  
+Status: Current
 Last updated: 2026-07-25
 
 ## Responsibilities
@@ -10,8 +10,8 @@ PauseRuntime
   owns logical Running / Paused state
 
 PausePlayerInputBinding
-  connects the officially admitted PlayerInput
-  owns Global / Gameplay input posture through the product runtime
+  connects an official PlayerInput
+  owns Global / Gameplay posture when present
 
 PauseRequestTrigger
   exposes Pause / Resume / Toggle to UnityEvent and UI Button
@@ -25,9 +25,11 @@ SceneLifecycleRuntime
 
 No authored component searches for `FrameworkRuntimeHost`.
 
-## Required Player composition
+## Two supported request modes
 
-The current Pause product requires one active official Player binding:
+### Physical Player input
+
+`Escape` or Gamepad Start requires:
 
 ```text
 Local Player Host
@@ -36,39 +38,46 @@ Local Player Host
   PausePlayerInputBinding
 ```
 
-The Player host is admitted through the canonical Player/Activity lifecycle.
-`PlayerSlotId` is runtime evidence and is not fixed in the prefab.
+The configured `PlayerInput.actions` contains `Global/PauseToggle` and the
+configured gameplay action map.
 
-The configured `PlayerInput.actions` must contain:
-
-```text
-Global
-  PauseToggle
-    Keyboard / Escape
-    Gamepad / Start
-
-configured gameplay action map
-```
-
-`Global` is an action map of the Player, not a second or global Player.
-
-## Persistent presentation
-
-The application Persistent Content scene contains the reusable presentation:
+Result:
 
 ```text
-GlobalCanvas
-  PauseSurface
-    UnityPauseSurfaceAdapter
-    Visual
-      Resume Button
-        PauseRequestTrigger
+productStatus = Applied
+executionMode = PlayerInputTransaction
 ```
 
-The adapter only projects Pause state. It does not own Pause, input maps or
-`Time.timeScale`.
+Pause, InputMode and action maps commit as one transaction.
 
-## Authored request triggers
+### Authored button without Player input
+
+A UI Button may call:
+
+```text
+PauseRequestTrigger.RequestPause
+PauseRequestTrigger.RequestResume
+PauseRequestTrigger.TogglePause
+```
+
+The Trigger requires an injected `IPauseProductRequestPort`, but it does not
+require an active `PausePlayerInputBinding`.
+
+Result:
+
+```text
+productStatus = AppliedWithoutPlayerInput
+executionMode = ApplicationOnly
+```
+
+The framework applies logical Pause, `Time.timeScale` and the persistent Pause
+surface. It does not create a Player and does not modify action maps.
+
+This is explicit product behavior, not a silent fallback. If Player binding
+evidence is failed or inconsistent, the request is rejected as
+`BindingUnavailable`.
+
+## Trigger locations
 
 `PauseRequestTrigger` may be authored in:
 
@@ -85,84 +94,69 @@ Persistent Content
   bound during application boot
 
 Route / Activity
-  bound when SceneLifecycle reports the exact scene roots as available
-  released before that exact scene unloads
+  bound from exact SceneLifecycle roots
+  released before the exact scene unloads
 ```
 
-The Trigger never needs a serialized runtime reference and must not call a
-singleton or scene search.
+## Diagnostics
 
-## Buttons
+Every authored request emits a structured framework log.
 
-Configure a Unity UI Button persistent call to one of:
+Application-only success:
 
 ```text
-PauseRequestTrigger.RequestPause
-PauseRequestTrigger.RequestResume
-PauseRequestTrigger.TogglePause
+[INFO][Immersive.Framework][PauseRequestTrigger]
+Pause Request completed.
+productStatus='AppliedWithoutPlayerInput'
+executionMode='ApplicationOnly'
 ```
 
-A button does not require an input action to be pressed. It still uses the same
-Pause product runtime as `Escape`, so the current product requires an active
-official `PausePlayerInputBinding`.
-
-Two distinct diagnostics matter:
+PlayerInput transaction success:
 
 ```text
-"Pause product request port is not bound."
-  the Trigger was not composed by Persistent Content or SceneLifecycle
-
-"no active PlayerInput binding is available"
-  the Trigger has the request port, but no official PausePlayerInputBinding
-  is active
+productStatus='Applied'
+executionMode='PlayerInputTransaction'
 ```
 
-## Runtime flow
+Distinguish:
 
 ```text
-Escape / Gamepad Start
-  -> PausePlayerInputBinding
-  -> PauseProductBindingRuntimeContext
+Pause product request port is not bound
+  Trigger was not composed
 
-or
+AppliedWithoutPlayerInput
+  Trigger was composed and logical Pause succeeded without Player input
 
-UI Button
-  -> PauseRequestTrigger
-  -> injected IPauseProductRequestPort
-  -> PauseProductBindingRuntimeContext
+BindingUnavailable
+  Player binding evidence exists but is failed/inconsistent
 
-then
-
-PauseRuntime
-  -> PauseSnapshot
-  -> PauseSurfaceRuntime
-  -> UnityPauseSurfaceAdapter
+Failed
+  logical or physical application failed
 ```
 
-## Rejected compositions
+## Persistent presentation
+
+The application Persistent Content scene normally contains:
 
 ```text
-PauseRequestTrigger
-  -> FindObjectOfType<FrameworkRuntimeHost>
-
-PauseRequestTrigger
-  -> FrameworkRuntimeHost.Instance
-
-PauseRequestTrigger
-  -> global service locator
-
-duplicate PlayerInput created only to listen for Escape
+GlobalCanvas
+  PauseSurface
+    UnityPauseSurfaceAdapter
+    Visual
+      Resume Button
+        PauseRequestTrigger
 ```
+
+The adapter only projects Pause state. It does not own Pause, input maps or
+`Time.timeScale`.
 
 ## Manual validation
 
-1. Enter an Activity with one officially admitted local Player.
-2. Confirm `PausePlayerInputBinding.BindingStatus` is `Bound`.
-3. Confirm Route and Activity `PauseRequestTrigger.ProductRequestBindingStatus`
-   are `Bound`.
-4. Call Pause from the Route trigger.
-5. Confirm logical state is `Paused`, only `Global` remains enabled and the
-   persistent surface appears.
-6. Call Resume from the Activity or persistent trigger.
-7. Leave the Activity and Route.
-8. Confirm scene release completes without foreign/stale binding diagnostics.
+1. Enter gameplay with no `PausePlayerInputBinding`.
+2. Confirm Route/Activity Trigger binding reports `Bound`.
+3. Press the authored Pause button.
+4. Confirm `AppliedWithoutPlayerInput`, paused TimeScale and visible surface.
+5. Press Resume and confirm `Running`.
+6. Repeat with an official Player binding.
+7. Confirm `Applied` and `PlayerInputTransaction`.
+8. Leave Route/Activity and confirm exact trigger release.
