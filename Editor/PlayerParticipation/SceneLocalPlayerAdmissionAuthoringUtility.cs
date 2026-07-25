@@ -31,8 +31,8 @@ namespace Immersive.Framework.Editor.PlayerParticipation
     }
 
     /// <summary>
-    /// Editor-only validation and evidence materialization for Scene Local Player Admission.
-    /// This utility never reserves a Slot, assigns runtime identity or starts gameplay.
+    /// Editor-only validation and internal evidence materialization for one
+    /// Scene-Provided Player composer.
     /// </summary>
     public static class SceneLocalPlayerAdmissionAuthoringUtility
     {
@@ -41,8 +41,13 @@ namespace Immersive.Framework.Editor.PlayerParticipation
             bool logDiagnostics = true)
         {
             SceneLocalPlayerAdmissionAuthoringResult result =
-                ValidateCore(authoring, requireEvidence: true);
-            Record(authoring, result, logDiagnostics);
+                ValidateCore(
+                    authoring,
+                    requireEvidence: true);
+            Record(
+                authoring,
+                result,
+                logDiagnostics);
             return result;
         }
 
@@ -52,71 +57,102 @@ namespace Immersive.Framework.Editor.PlayerParticipation
             bool useUndo = true)
         {
             SceneLocalPlayerAdmissionAuthoringResult preflight =
-                ValidateCore(authoring, requireEvidence: false);
+                ValidateCore(
+                    authoring,
+                    requireEvidence: false);
             if (!preflight.Succeeded)
             {
-                Record(authoring, preflight, logDiagnostics);
+                Record(
+                    authoring,
+                    preflight,
+                    logDiagnostics);
                 return preflight;
             }
 
-            PlayerActorDeclaration actor = authoring.SceneLogicalPlayerActor;
-            ActorProfile actorProfile = authoring.ActorProfile;
-            GameObject profilePrefab = actorProfile.LogicalActorHostPrefab;
-            GameObject sourcePrefab = ResolveSourcePrefab(actor.gameObject);
+            PlayerActorDeclaration actor =
+                authoring.SceneLogicalPlayerActor;
+            ActorProfile actorProfile =
+                authoring.ActorProfile;
+            GameObject profilePrefab =
+                actorProfile.LogicalActorHostPrefab;
+            GameObject sourcePrefab =
+                ResolveSourcePrefab(actor.gameObject);
+
             if (sourcePrefab == null)
             {
                 var result = Failure(
                     SceneLocalPlayerAdmissionAuthoringStatus.MissingProfileEvidence,
                     "Scene Logical Player Actor is not connected to a prefab source. Author the Actor from the selected Actor Profile Logical Actor Host prefab before Apply / Rebuild.");
-                Record(authoring, result, logDiagnostics);
+                Record(
+                    authoring,
+                    result,
+                    logDiagnostics);
                 return result;
             }
 
-            if (!ReferenceEquals(sourcePrefab, profilePrefab))
+            if (!ReferenceEquals(
+                    sourcePrefab,
+                    profilePrefab))
             {
                 var result = Failure(
                     SceneLocalPlayerAdmissionAuthoringStatus.IncompatibleProfileEvidence,
                     $"Scene Logical Player Actor prefab source '{sourcePrefab.name}' does not match Actor Profile '{actorProfile.name}' Logical Actor Host prefab '{profilePrefab.name}'.");
-                Record(authoring, result, logDiagnostics);
+                Record(
+                    authoring,
+                    result,
+                    logDiagnostics);
                 return result;
             }
 
-            SceneLogicalPlayerActorEvidence evidence =
-                actor.GetComponent<SceneLogicalPlayerActorEvidence>();
-            bool created = evidence == null;
-            if (created)
+            bool created =
+                !authoring.HasTypedActorEvidence;
+            bool updated =
+                created ||
+                !authoring.IsTypedActorEvidenceCompatibleWith(
+                    actorProfile) ||
+                !string.Equals(
+                    authoring.EvidenceDiagnostic,
+                    BuildDiagnostic(
+                        actorProfile,
+                        profilePrefab,
+                        actor),
+                    StringComparison.Ordinal);
+
+            if (useUndo)
             {
-                evidence = useUndo
-                    ? Undo.AddComponent<SceneLogicalPlayerActorEvidence>(actor.gameObject)
-                    : actor.gameObject.AddComponent<SceneLogicalPlayerActorEvidence>();
-            }
-            else if (useUndo)
-            {
-                Undo.RecordObject(evidence, "Apply Scene Local Player Actor Evidence");
+                Undo.RecordObject(
+                    authoring,
+                    "Apply Scene-Provided Player Evidence");
             }
 
-            string diagnostic =
-                $"Profile='{actorProfile.name}' sourcePrefab='{profilePrefab.name}' actor='{actor.name}'.";
-            bool updated = created ||
-                !ReferenceEquals(evidence.ActorProfile, actorProfile) ||
-                !ReferenceEquals(evidence.LogicalActorHostPrefab, profilePrefab) ||
-                !string.Equals(evidence.AuthoringDiagnostic, diagnostic, StringComparison.Ordinal);
-
-            evidence.EditorSetEvidence(actorProfile, profilePrefab, diagnostic);
-            EditorUtility.SetDirty(evidence);
-            EditorUtility.SetDirty(actor.gameObject);
+            authoring.EditorSetProfileEvidence(
+                actorProfile,
+                profilePrefab,
+                BuildDiagnostic(
+                    actorProfile,
+                    profilePrefab,
+                    actor));
+            EditorUtility.SetDirty(authoring);
 
             SceneLocalPlayerAdmissionAuthoringResult validation =
-                ValidateCore(authoring, requireEvidence: true);
-            var final = validation.Succeeded
-                ? new SceneLocalPlayerAdmissionAuthoringResult(
-                    true,
-                    SceneLocalPlayerAdmissionAuthoringStatus.Valid,
-                    "Scene Local Player Admission authoring is valid. Typed profile evidence was materialized without assigning runtime identity or starting admission.",
-                    created,
-                    updated)
-                : validation;
-            Record(authoring, final, logDiagnostics);
+                ValidateCore(
+                    authoring,
+                    requireEvidence: true);
+
+            var final =
+                validation.Succeeded
+                    ? new SceneLocalPlayerAdmissionAuthoringResult(
+                        true,
+                        SceneLocalPlayerAdmissionAuthoringStatus.Valid,
+                        "Scene-Provided Player authoring is valid. Typed Actor Profile evidence is stored in the composer; no runtime identity or gameplay was started.",
+                        created,
+                        updated)
+                    : validation;
+
+            Record(
+                authoring,
+                final,
+                logDiagnostics);
             return final;
         }
 
@@ -128,25 +164,39 @@ namespace Immersive.Framework.Editor.PlayerParticipation
             {
                 return Failure(
                     SceneLocalPlayerAdmissionAuthoringStatus.InvalidReferences,
-                    "Scene Local Player Admission validation requires a target component.");
+                    "Scene-Provided Player validation requires a target component.");
             }
 
             if (!authoring.HasCompleteReferences)
             {
                 return Failure(
                     SceneLocalPlayerAdmissionAuthoringStatus.InvalidReferences,
-                    "Assign Player Slot Profile, Local Player Host, Actor Profile and Scene Logical Player Actor.");
+                    "Assign Player Slot Profile, Actor Profile and Scene Logical Player Actor. Local Player Host is resolved from this same GameObject.");
             }
 
-            if (!authoring.PlayerSlotProfile.TryGetPlayerSlotId(out _, out string slotIssue))
+            if (!ReferenceEquals(
+                    authoring.LocalPlayerHost.gameObject,
+                    authoring.gameObject))
+            {
+                return Failure(
+                    SceneLocalPlayerAdmissionAuthoringStatus.InvalidHost,
+                    "Scene-Provided Player composer and Local Player Host must exist on the same GameObject.");
+            }
+
+            if (!authoring.PlayerSlotProfile.TryGetPlayerSlotId(
+                    out _,
+                    out string slotIssue))
             {
                 return Failure(
                     SceneLocalPlayerAdmissionAuthoringStatus.InvalidSlotProfile,
                     slotIssue);
             }
 
-            ActorProfile profile = authoring.ActorProfile;
-            if (!profile.TryGetActorProfileId(out _, out string profileIssue) ||
+            ActorProfile profile =
+                authoring.ActorProfile;
+            if (!profile.TryGetActorProfileId(
+                    out _,
+                    out string profileIssue) ||
                 profile.ActorKind != ActorKind.Player ||
                 profile.ActorRole != ActorRole.Protagonist ||
                 profile.LogicalActorHostPrefab == null)
@@ -158,10 +208,11 @@ namespace Immersive.Framework.Editor.PlayerParticipation
                         : profileIssue);
             }
 
-            if (!authoring.LocalPlayerHost.TryValidateAdmissionConfiguration(
-                    authoring.SceneLogicalPlayerActor,
-                    allowExistingLogicalActor: true,
-                    out string hostIssue))
+            if (!authoring.LocalPlayerHost
+                    .TryValidateAdmissionConfiguration(
+                        authoring.SceneLogicalPlayerActor,
+                        allowExistingLogicalActor: true,
+                        out string hostIssue))
             {
                 return Failure(
                     SceneLocalPlayerAdmissionAuthoringStatus.InvalidHost,
@@ -173,42 +224,88 @@ namespace Immersive.Framework.Editor.PlayerParticipation
                 return new SceneLocalPlayerAdmissionAuthoringResult(
                     true,
                     SceneLocalPlayerAdmissionAuthoringStatus.Valid,
-                    "Scene Local Player Admission references and hierarchy are valid for evidence materialization.",
+                    "Scene-Provided Player references and hierarchy are valid for evidence materialization.",
                     false,
                     false);
             }
 
-            if (!authoring.TryValidateRuntimeEvidence(out string runtimeIssue))
+            if (!authoring.TryValidateRuntimeEvidence(
+                    out string runtimeIssue))
             {
                 SceneLocalPlayerAdmissionAuthoringStatus status =
-                    authoring.SceneLogicalPlayerActor.GetComponent<SceneLogicalPlayerActorEvidence>() == null
-                        ? SceneLocalPlayerAdmissionAuthoringStatus.MissingProfileEvidence
-                        : SceneLocalPlayerAdmissionAuthoringStatus.IncompatibleProfileEvidence;
-                return Failure(status, runtimeIssue);
+                    authoring.HasTypedActorEvidence
+                        ? SceneLocalPlayerAdmissionAuthoringStatus.IncompatibleProfileEvidence
+                        : SceneLocalPlayerAdmissionAuthoringStatus.MissingProfileEvidence;
+                return Failure(
+                    status,
+                    runtimeIssue);
             }
 
             return new SceneLocalPlayerAdmissionAuthoringResult(
                 true,
                 SceneLocalPlayerAdmissionAuthoringStatus.Valid,
-                "Scene Local Player Admission authoring and serialized profile evidence are valid.",
+                "Scene-Provided Player authoring and internal profile evidence are valid.",
                 false,
                 false);
         }
 
-        private static GameObject ResolveSourcePrefab(GameObject instance)
+        private static string BuildDiagnostic(
+            ActorProfile actorProfile,
+            GameObject profilePrefab,
+            PlayerActorDeclaration actor)
+        {
+            return
+                $"Profile='{actorProfile.name}' sourcePrefab='{profilePrefab.name}' actor='{actor.name}'.";
+        }
+
+        private static GameObject ResolveSourcePrefab(
+            GameObject instance)
         {
             if (instance == null)
             {
                 return null;
             }
 
-            GameObject source = PrefabUtility.GetCorrespondingObjectFromSource(instance);
-            if (source == null)
+            // For a nested Actor prefab inside Player_SceneProvided, resolving the
+            // outer corresponding source returns the composed Player prefab root.
+            // The nearest prefab instance root preserves the authored Actor prefab
+            // boundary that ActorProfile.LogicalActorHostPrefab must match.
+            GameObject nearestInstanceRoot =
+                PrefabUtility.GetNearestPrefabInstanceRoot(instance);
+
+            if (nearestInstanceRoot != null)
             {
-                return null;
+                GameObject originalNestedSource =
+                    PrefabUtility.GetCorrespondingObjectFromOriginalSource(
+                        nearestInstanceRoot);
+                if (originalNestedSource != null)
+                {
+                    return originalNestedSource.transform.root.gameObject;
+                }
+
+                GameObject nestedSource =
+                    PrefabUtility.GetCorrespondingObjectFromSource(
+                        nearestInstanceRoot);
+                if (nestedSource != null)
+                {
+                    return nestedSource.transform.root.gameObject;
+                }
             }
 
-            return source.transform.root.gameObject;
+            GameObject originalSource =
+                PrefabUtility.GetCorrespondingObjectFromOriginalSource(
+                    instance);
+            if (originalSource != null)
+            {
+                return originalSource.transform.root.gameObject;
+            }
+
+            GameObject source =
+                PrefabUtility.GetCorrespondingObjectFromSource(
+                    instance);
+            return source != null
+                ? source.transform.root.gameObject
+                : null;
         }
 
         private static SceneLocalPlayerAdmissionAuthoringResult Failure(
@@ -230,7 +327,9 @@ namespace Immersive.Framework.Editor.PlayerParticipation
         {
             if (authoring != null)
             {
-                authoring.EditorSetAuthoringResult(result.Status, result.Message);
+                authoring.EditorSetAuthoringResult(
+                    result.Status,
+                    result.Message);
                 EditorUtility.SetDirty(authoring);
             }
 
@@ -240,8 +339,11 @@ namespace Immersive.Framework.Editor.PlayerParticipation
             }
 
             string message =
-                $"[Immersive.Framework][SceneLocalPlayerAdmission] status='{result.Status}' succeeded='{result.Succeeded}' createdEvidence='{result.EvidenceCreated}' updatedEvidence='{result.EvidenceUpdated}' diagnostic='{result.Message}'.";
-            var logger = FrameworkLogger.Create(typeof(SceneLocalPlayerAdmissionAuthoringUtility));
+                $"[Immersive.Framework][SceneProvidedPlayer] status='{result.Status}' succeeded='{result.Succeeded}' createdEvidence='{result.EvidenceCreated}' updatedEvidence='{result.EvidenceUpdated}' diagnostic='{result.Message}'.";
+
+            var logger =
+                FrameworkLogger.Create(
+                    typeof(SceneLocalPlayerAdmissionAuthoringUtility));
             if (result.Succeeded)
             {
                 logger.Info(message);

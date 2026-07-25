@@ -112,6 +112,62 @@ destroy, deactivate or duplicate them silently.
 Scene-Provided describes the origin of the Logical Player. Physical ownership and
 contextual release remain explicit evidence.
 
+#### Canonical Scene-Provided authoring shape
+
+The package authoring model uses two prefab boundaries:
+
+```text
+Actor_PlayerSceneProvided
+  PlayerActorDeclaration
+  Actor-owned gameplay components
+  Anchors
+  Visual
+
+Player_SceneProvided
+  PlayerInput
+  LocalPlayerHostAuthoring
+  SceneLocalPlayerAdmissionAuthoring
+  Actor Mount
+    Actor_PlayerSceneProvided
+```
+
+`ActorProfile.LogicalActorHostPrefab` references
+`Actor_PlayerSceneProvided`, never the outer `Player_SceneProvided` composition.
+
+The outer composition is the object a designer places in a scene. It owns the
+stable Local Player Host and the Scene-Provided composer. The nested Actor prefab
+owns the Logical Actor declaration and Actor-specific gameplay components.
+
+The Scene-Provided composer resolves `LocalPlayerHostAuthoring` from the same
+GameObject. The Host is therefore a structural invariant, not another manually
+assigned cross-reference.
+
+The composer keeps only the principal authoring intent visible:
+
+```text
+Player Slot Profile
+Actor Profile
+Scene Logical Player Actor
+Admission Timing
+```
+
+`Apply / Rebuild` validates the nested prefab source and stores typed Actor Profile
+evidence inside the composer. It does not add a visible evidence component to the
+Actor, reserve a Slot, assign runtime identity or start gameplay.
+
+The generic Local Player Host validator proves only shared host invariants:
+
+```text
+explicit same-root PlayerInput
+exactly one PlayerInput in the Host hierarchy
+explicit child Actor Mount
+no second PlayerInput under Actor Mount
+```
+
+Whether Actor Mount must be empty or contain one authored Logical Actor is a
+source-specific rule owned by the Manager-Provisioned validator or the
+Scene-Provided composer validator.
+
 ### Session-Persistent Logical Player
 
 Application/Session composition may provide a Logical Player outside any Route or
@@ -213,6 +269,32 @@ Slot projection
 Failures retain typed evidence for explicit retry; no silent rollback or fallback
 Slot is allowed.
 
+## Scene ownership and lifecycle scope
+
+A Scene-Provided Player can be physically owned by a Route scene or by an Activity
+content scene. Physical scene ownership and participation lifetime are separate:
+
+```text
+scene
+  owns Host and Actor GameObjects
+
+Activity
+  requests and releases participation
+
+PlayerParticipationRuntimeContext
+  owns Slot reservation and Joined state
+```
+
+The accepted architecture supports both Route and Activity scene origins.
+
+Current automatic lifecycle coverage remains narrower: the implemented admission
+participant recognizes Scene-Provided authoring declared through the active
+Activity content scene set. A composer located only in a Route Primary Scene is
+not yet declared covered or validated by the current runtime implementation.
+
+Route Primary Scene discovery/admission must be closed by an explicit runtime and
+QA/FIRSTGAME cut. Documentation must not claim that this path already passes.
+
 ## Canonical naming rule
 
 Documentation and new APIs must use:
@@ -257,6 +339,7 @@ explicit migration cut after usage and serialized-reference impact are audited.
 - Recreating Actor or materialization already validly provided by a source.
 - Route/Activity ownership of a Session-Persistent Logical Player identity.
 - Multiplayer Pause policy, networking, teams and role quotas in the current cut.
+- Claiming Route Primary Scene admission without focused runtime evidence.
 
 ## Consequences
 
@@ -270,6 +353,9 @@ parts without creating duplicate Player semantics.
 
 Activities can gate readiness without owning Session participation.
 
+Scene-Provided prefab composition is explicit and inspectable. Designers place one
+outer prefab while retaining separate Host and Actor contracts.
+
 ## Current implementation coverage
 
 The P3 participation lane, ordered Slot allocation, Actor selection, inline
@@ -279,18 +365,36 @@ The Manager-Provisioned Logical Player source exists through manual
 `PlayerInputManager` provisioning.
 
 The Scene-Provided Logical Player source exists through
-`SceneLocalPlayerAdmissionAuthoring`, which currently admits an existing host and
-Logical Actor with external scene ownership.
+`SceneLocalPlayerAdmissionAuthoring`, displayed as the Scene-Provided Player
+Composer. The current authoring shape has been validated in FIRSTGAME with:
+
+```text
+Local Player Host validation: valid
+Apply / Rebuild: valid
+Composer validation: valid
+nested Actor prefab source: compatible with ActorProfile
+internal typed profile evidence: created and valid
+```
+
+This proof is authoring-only. It does not prove Play Mode admission from the Route
+Primary Scene.
+
+Automatic lifecycle admission is currently declared covered for authoring resolved
+through Activity content scene declarations. Route Primary Scene coverage remains a
+runtime integration gap.
 
 The Session-Persistent Logical Player source is not yet implemented. Its authoring
 surface, admission operation, validation and materialization reconciliation remain
-the next product gap.
+a later product gap.
 
 Current class names still reflect older shorthand in places. This ADR freezes the
 canonical terminology but does not rename serialized components or APIs.
 
 ## Pending decisions
 
+- Runtime discovery and admission contract for a Scene-Provided Player in the
+  active Route Primary Scene.
+- Focused QA and FIRSTGAME proof for Route-scene admission and release.
 - Exact authoring component and request/result contract for Session-Persistent Logical Player.
 - Exact rules for adopting source-provided Actor and materialization evidence.
 - API/component rename map and serialized-reference migration strategy.
