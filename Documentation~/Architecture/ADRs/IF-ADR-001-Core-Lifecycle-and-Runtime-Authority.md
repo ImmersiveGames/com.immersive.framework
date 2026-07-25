@@ -1,7 +1,7 @@
 # IF-ADR-001 — Core Lifecycle and Runtime Authority
 
 Status: Accepted
-Last updated: 2026-07-23
+Last updated: 2026-07-25
 Supersedes: legacy baseline, lifecycle, scene, runtime-content and host-authority ADR fragments
 Superseded by: none
 
@@ -10,6 +10,10 @@ Superseded by: none
 The framework needs one owner for application/session composition, Route and
 Activity lifecycle, scene/content ownership and feature runtime bindings without
 turning that owner into globally discoverable mutable state.
+
+Session-scoped participation can outlive Route and Activity changes. In particular,
+a Logical Player may exist as a Session participant before a Route or Activity is
+active and may remain valid after contextual gameplay content is released.
 
 ## Decision
 
@@ -28,9 +32,26 @@ The ownership hierarchy is:
 
 ```text
 Game Application / Session
+  -> session-scoped authorities and participants
+     -> Logical Players
   -> Route
-    -> Activity
-      -> scoped content, participants and runtime materialization
+     -> Activity
+        -> contextual projection, readiness and materialization
+```
+
+A Logical Player is a Session participant associated with a typed
+`PlayerSlotId`. Its existence does not imply an Actor, materialization,
+presentation or gameplay readiness.
+
+Route and Activity do not own the identity or lifetime of a Session Logical Player.
+They may:
+
+```text
+project eligible Logical Players
+require progressive participation evidence
+prepare or adopt contextual Actor content
+enable contextual input, Camera and gameplay
+release only the contextual parts they own
 ```
 
 Route owns its identity, primary/additive scene intent and local lifecycle.
@@ -46,6 +67,7 @@ may appear in diagnostics but are not cross-domain functional keys.
 
 - Framework settings, bootstrap, module composition and diagnostics.
 - Session, Route and Activity lifecycle.
+- Session-scoped Logical Player participation independent of Route/Activity lifetime.
 - Scene loading/composition and explicit content ownership.
 - Runtime materialization with request, result, handle and ordered release.
 - Explicit narrow runtime ports and fail-fast required configuration.
@@ -57,6 +79,8 @@ may appear in diagnostics but are not cross-domain functional keys.
 - Silent fallback for required modules.
 - Technical packages owning framework lifecycle.
 - Camera, audio, Player or gameplay rules becoming Route/Activity identity.
+- Requiring every Logical Player to originate inside a Route or Activity.
+- Destroying or invalidating a Session Logical Player only because Route or Activity exits.
 - Strings, hierarchy paths or `GameObject.name` fabricating identity.
 
 ## Consequences
@@ -66,12 +90,21 @@ Unity adapters may be components, but runtime authority remains scoped and
 explicit. QA-only host resolution is test harness infrastructure and is not a
 production access path.
 
+Session participation and contextual gameplay lifetime remain separate. Route and
+Activity can consume a Logical Player without becoming its Session authority or
+physical owner.
+
 ## Current implementation coverage
 
 The internal host, explicit feature ports, bootstrap, Route/Activity runtimes,
 scene lifecycle, content ownership and typed identity primitives exist. H2.4 and
 the subsequent hygiene cut removed static host authority and superseded
 compatibility paths; their Unity evidence is recorded in the tracker.
+
+`PlayerParticipationRuntimeContext` already represents Session-scoped participation.
+The Manager-Provisioned and Scene-Provided Logical Player sources exist. The
+Session-Persistent Logical Player source is an accepted architectural gap and is
+not documented as implemented by this ADR update.
 
 The more explicit Activity transition vocabulary separating authority, phase,
 readiness and previous-Activity finalization remains only partially represented
@@ -82,3 +115,4 @@ and must not be documented as complete.
 - Final public/internal transaction snapshot for Activity authority commit and
   previous-Activity finalization.
 - Cancellation and compensation policy before Activity authority commit.
+- Concrete authoring and runtime contract for the Session-Persistent Logical Player source.

@@ -1,7 +1,7 @@
 # IF-ADR-008 — Persistent Application Content Composition
 
 Status: Accepted
-Last updated: 2026-07-24
+Last updated: 2026-07-25
 Supersedes: ad-hoc `UIGlobal` scene policy and path/name authoring
 Superseded by: none
 
@@ -16,7 +16,8 @@ physical Camera output
 Transition presentation
 Loading presentation
 Pause presentation
-optional Player provisioning
+optional Manager-Provisioned Logical Player setup
+optional Session-Persistent Logical Player source
 future global Audio
 future application-scoped Lighting or Volume content
 ```
@@ -41,7 +42,7 @@ Persistent Content
 The serialized group remains `PersistentContentComposition`.
 
 The Content Scene is the complete concrete composition. `GameApplicationAsset`
-does not separately declare Camera or presentation prefabs.
+does not separately declare Camera, presentation or Logical Player prefabs.
 
 ```text
 PersistentContent.unity
@@ -50,7 +51,8 @@ PersistentContent.unity
     Transition surface
     Loading surface
     Pause surface
-  optional Player provisioning
+  optional Manager-Provisioned Logical Player setup
+  optional Session-Persistent Logical Player source
   future Audio
   future Lighting or Volumes
   other explicitly persistent application content
@@ -66,6 +68,57 @@ module markers
 Recipe
 prefab identity
 ```
+
+## Logical Player boundary
+
+Persistent Content may participate in the Player domain in two distinct ways.
+
+### Manager-Provisioned setup
+
+Persistent Content may contain the explicit technical composition used by
+`PlayerInputManager` to create Local Player Hosts after an authorized join request.
+
+That setup does not itself represent the admitted Logical Player. The framework
+reserves a Slot, provisions the host and admits the resulting Logical Player into
+`PlayerParticipationRuntimeContext`.
+
+### Session-Persistent Logical Player source
+
+Persistent Content may provide a Logical Player that exists at Game
+Application/Session scope without belonging to a Route or Activity.
+
+```text
+Persistent Content physical composition
+  -> Session-Persistent Logical Player source
+  -> PlayerParticipationRuntimeContext
+  -> typed PlayerSlotId
+```
+
+The persistent scene may provide:
+
+```text
+Logical Player only
+Logical Player + Local Player Host
+Logical Player + Actor
+Logical Player + Actor materialization/presentation
+```
+
+Logical Player, Actor and materialization remain separate contracts. The framework
+must compose missing parts and adopt valid provided parts without duplication.
+
+The Content Scene owns the authored physical composition. It is not the logical
+participation authority. `PlayerParticipationRuntimeContext` remains the single
+Session authority.
+
+Route and Activity may project and consume the Session-Persistent Logical Player,
+but they do not own its identity or Session lifetime.
+
+A Scene-Provided Logical Player authored inside a Route or Activity scene remains a
+different source defined by `IF-ADR-003`; it is not reclassified as Session
+Persistent merely because its object survives temporarily.
+
+The Session-Persistent source is accepted architecture but is not implemented by
+the current runtime.
 
 ## Scene Template
 
@@ -123,7 +176,7 @@ manually authored scene objects
 ```
 
 Validation proves the contracts present in the scene. It does not require that a
-Camera, Canvas or adapter came from a specific prefab.
+Camera, Canvas, adapter or Logical Player source came from a specific prefab.
 
 ## Manual authoring
 
@@ -140,7 +193,12 @@ run Validate Configuration
 ```
 
 The framework validates and executes the composition. It does not create,
-materialize, apply, rebuild, repair or silently replace content.
+materialize, apply, rebuild, repair or silently replace Persistent Content scene
+objects.
+
+Feature-specific runtime modules may still prepare missing contextual Actor or
+gameplay content after a Logical Player source has been admitted. That operation is
+not Apply/Rebuild over Persistent Content.
 
 ## Current required scene contracts
 
@@ -184,7 +242,8 @@ Pause presentation is application-scoped content. The surface projects the logic
 `PauseRequestTrigger.RequestResume`.
 
 Escape is not supplied by the Persistent Content presentation. It requires an
-officially admitted local Player host containing:
+officially admitted local Logical Player with a compatible Local Player Host
+containing:
 
 ```text
 PlayerInput
@@ -194,11 +253,17 @@ PausePlayerInputBinding
 ```
 
 The physical host is associated with a logical `PlayerSlotId` by the official
-Player lifecycle; the prefab does not serialize a Slot identity. `Global` is an
-action map on that PlayerInput, not a separate global Player. A
-`PlayerInputManager` in Persistent Content may provision hosts, but it does not by
-itself capture Escape or submit Pause. The framework does not create a fake or
-duplicate input-only Player when no admitted Player exists.
+Player lifecycle; a generic host prefab does not serialize a Slot identity.
+`Global` is an action map on that PlayerInput, not a separate global Player.
+
+A `PlayerInputManager` in Persistent Content may provision hosts, but it does not by
+itself create Logical Player authority, capture Escape or submit Pause. The
+framework does not create a fake or duplicate input-only Logical Player when no
+admitted Logical Player exists.
+
+Player provisioning and Session-Persistent Logical Player sources remain optional
+Persistent Content contracts. They are validated only when their matching product
+surface is configured.
 
 Additional authored objects are allowed.
 
@@ -228,6 +293,10 @@ The current runtime resolves the build-loadable scene by its directly referenced
 scene name. Editor validation therefore requires that name to be unique among
 enabled Build Profile scenes.
 
+Physical persistence of a scene object does not automatically admit a Logical
+Player. Logical admission must occur through the explicit Player participation
+contract.
+
 ## Validation
 
 Validation is explicit, button-driven and non-mutating.
@@ -248,6 +317,7 @@ Loading adapter availability
 Pause adapter availability
 Pause request trigger availability
 authored Resume button binding
+configured optional Player source contracts
 ```
 
 The validator opens the scene additively only when requested and closes it only
@@ -256,9 +326,13 @@ when the validator owns that temporary load.
 `Model Readiness` delegates the same scene-contract proof to the canonical Game
 Application validator instead of opening the scene a second time.
 
+The exact Session-Persistent Logical Player validation contract remains pending
+until its official authoring component exists.
+
 ## Rejected scope
 
 - Camera Output or Presentation Canvas prefab fields in `GameApplicationAsset`.
+- Logical Player prefab fields in `GameApplicationAsset`.
 - Required prefab identity or Prefab Variant ancestry.
 - `PersistentContentRecipe`.
 - `PersistentContentComposer`.
@@ -269,6 +343,8 @@ Application validator instead of opening the scene a second time.
 - Apply/Rebuild over Persistent Content.
 - Hidden repair or fallback objects.
 - Standalone or duplicate PlayerInput created only to capture application Pause.
+- A second Logical Player participation runtime or parallel Slot authority.
+- Treating a persistent scene object as an admitted Logical Player without explicit admission.
 - Treating a `Global` action map as a global Player authority.
 - Scene Template references in runtime configuration.
 - Silent fallback Route.
@@ -300,18 +376,24 @@ create or clone assets
 ```
 
 Template source edits are propagated through an explicit package-maintenance action
-that updates the existing SceneTemplateAsset pipeline reference and synchronizes the required referenced Input System and Pause dependencies.
+that updates the existing SceneTemplateAsset pipeline reference and synchronizes
+the required referenced Input System and Pause dependencies.
 This action is not part of the GameApplication Inspector or consumer authoring flow.
 
 ## Consequences
 
-The product has one concrete source of truth: the Content Scene.
+The product has one concrete source of truth for persistent physical composition:
+the Content Scene.
 
 Scene Templates provide a native reusable starting point without making template
 or prefab origin part of runtime authority.
 
 Projects remain free to replace, unpack, variant or manually author their scene
 content as long as the required contracts remain valid.
+
+Persistent physical composition and Session Logical Player authority remain
+separate. A Session-Persistent source can survive Route/Activity changes without
+creating a parallel Player participation model.
 
 ## Current implementation coverage
 
@@ -321,9 +403,10 @@ The current implementation provides:
 scene-only PersistentContentComposition
 Game Application Content Scene Inspector
 explicit scene-content validation
-persistent Pause presentation and authored Resume control
+persistent Camera, Transition, Loading and Pause presentation
 runtime requirement reduced to the Content Scene
 duplicate Model Readiness scene scan removed
+optional Manager-Provisioned setup registration
 documentation for the official Scene Template direction
 ```
 
@@ -332,3 +415,13 @@ The official package source scene is stored under
 
 The `.scenetemplate` asset is authored from that source through Unity's native
 Scene Template workflow, preserving canonical GUID and dependency metadata.
+
+The Session-Persistent Logical Player source, its authoring surface and its
+validation/runtime admission contract are not yet implemented.
+
+## Pending decisions
+
+- Official authoring component for Session-Persistent Logical Player.
+- Exact admission request/result and physical-ownership evidence.
+- Whether the official Persistent Content template includes an optional sample
+  source or leaves it entirely consumer-authored.
