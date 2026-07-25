@@ -15,6 +15,7 @@ Guides                 current product usage
 - [Immutable evolution plan](Architecture/Plans/IF-PLAN-Framework-Evolution.v1.md)
 - [Framework usage](Guides/Framework-Usage.md)
 - [Player usage](Guides/Player-Usage.md)
+- [Pause usage](Guides/Pause-Usage.md)
 - [Camera usage](Guides/Camera-Usage.md)
 - [Persistent Content Scene Template](Guides/Persistent-Content-Scene-Template.md)
 - [Audio usage](Guides/Audio-Usage.md)

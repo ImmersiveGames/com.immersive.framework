@@ -15,6 +15,7 @@ of the actual composition:
 physical Camera output
 Transition presentation
 Loading presentation
+Pause presentation
 optional Player provisioning
 future global Audio
 future application-scoped Lighting or Volume content
@@ -46,6 +47,9 @@ does not separately declare Camera or presentation prefabs.
 PersistentContent.unity
   Camera output
   Presentation Canvas
+    Transition surface
+    Loading surface
+    Pause surface
   optional Player provisioning
   future Audio
   future Lighting or Volumes
@@ -164,12 +168,37 @@ Presentation and UI input require:
 at least one Canvas
 at least one ITransitionEffectAdapter
 at least one ILoadingSurfaceAdapter
+exactly one IPauseSurfaceAdapter
+at least one PauseRequestTrigger
+at least one authored Resume button
 exactly one EventSystem
 exactly one InputSystemUIInputModule
 ```
 
 The EventSystem and Input System UI module are explicit scene content. The module
 uses referenced package UI actions and is not created or repaired by a pipeline.
+
+Pause presentation is application-scoped content. The surface projects the logical
+`PauseSnapshot`; it does not own Pause state, input, Gate evaluation or
+`Time.timeScale`. The persistent scene supplies an authored Resume button through
+`PauseRequestTrigger.RequestResume`.
+
+Escape is not supplied by the Persistent Content presentation. It requires an
+officially admitted local Player host containing:
+
+```text
+PlayerInput
+LocalPlayerHostAuthoring
+UnityPlayerInputGateAdapter
+PausePlayerInputBinding
+```
+
+The physical host is associated with a logical `PlayerSlotId` by the official
+Player lifecycle; the prefab does not serialize a Slot identity. `Global` is an
+action map on that PlayerInput, not a separate global Player. A
+`PlayerInputManager` in Persistent Content may provision hosts, but it does not by
+itself capture Escape or submit Pause. The framework does not create a fake or
+duplicate input-only Player when no admitted Player exists.
 
 Additional authored objects are allowed.
 
@@ -216,6 +245,9 @@ Camera output component counts and bindings
 Canvas availability
 Transition adapter availability
 Loading adapter availability
+Pause adapter availability
+Pause request trigger availability
+authored Resume button binding
 ```
 
 The validator opens the scene additively only when requested and closes it only
@@ -236,6 +268,8 @@ Application validator instead of opening the scene a second time.
 - Asset Inspectors that create sibling assets or scene content.
 - Apply/Rebuild over Persistent Content.
 - Hidden repair or fallback objects.
+- Standalone or duplicate PlayerInput created only to capture application Pause.
+- Treating a `Global` action map as a global Player authority.
 - Scene Template references in runtime configuration.
 - Silent fallback Route.
 - Premature Audio, Lighting, headless or multi-output contracts.
@@ -266,7 +300,7 @@ create or clone assets
 ```
 
 Template source edits are propagated through an explicit package-maintenance action
-that updates the existing SceneTemplateAsset pipeline reference and synchronizes the required referenced Input System dependencies.
+that updates the existing SceneTemplateAsset pipeline reference and synchronizes the required referenced Input System and Pause dependencies.
 This action is not part of the GameApplication Inspector or consumer authoring flow.
 
 ## Consequences
@@ -287,6 +321,7 @@ The current implementation provides:
 scene-only PersistentContentComposition
 Game Application Content Scene Inspector
 explicit scene-content validation
+persistent Pause presentation and authored Resume control
 runtime requirement reduced to the Content Scene
 duplicate Model Readiness scene scan removed
 documentation for the official Scene Template direction

@@ -107,6 +107,43 @@ namespace Immersive.Framework.Pause
             return false;
         }
 
+        internal bool TryReleasePauseProductRequest(
+            IPauseProductRequestPort expectedPauseProductRequest,
+            out string issue)
+        {
+            if (expectedPauseProductRequest == null)
+            {
+                issue =
+                    "Pause product request release requires the exact non-null bound port.";
+                _pauseRuntimeBindingDiagnostic = issue;
+                return false;
+            }
+
+            if (_pauseProductRequest == null)
+            {
+                issue = string.Empty;
+                _pauseRuntimeBindingDiagnostic =
+                    "Pause product request port is already released.";
+                return true;
+            }
+
+            if (!object.ReferenceEquals(
+                    _pauseProductRequest,
+                    expectedPauseProductRequest))
+            {
+                issue =
+                    "Pause product request release rejected a foreign or stale port.";
+                _pauseRuntimeBindingDiagnostic = issue;
+                return false;
+            }
+
+            _pauseProductRequest = null;
+            issue = string.Empty;
+            _pauseRuntimeBindingDiagnostic =
+                "Pause product request port was released by Scene Lifecycle.";
+            return true;
+        }
+
         private void Awake()
         {
             _logger = FrameworkLogger.Create<PauseRequestTrigger>();

@@ -9,6 +9,7 @@ using Immersive.Framework.ContentFlow;
 using Immersive.Framework.CycleReset;
 using Immersive.Framework.Editor.Editor.Authoring;
 using Immersive.Framework.Loading;
+using Immersive.Framework.Pause;
 using Immersive.Framework.RouteLifecycle;
 using Immersive.Framework.Transition;
 using Immersive.Framework.TransitionEffects;
@@ -566,6 +567,20 @@ namespace Immersive.Framework.Editor.Editor.Validation
             InputSystemUIInputModule[] inputModules =
                 GetSceneComponents<InputSystemUIInputModule>(
                     scene);
+            UnityPauseSurfaceAdapter[] builtInPauseAdapters =
+                GetSceneComponents<UnityPauseSurfaceAdapter>(
+                    scene);
+            PauseRequestTrigger[] pauseRequestTriggers =
+                GetSceneComponents<PauseRequestTrigger>(
+                    scene);
+
+            if (builtInPauseAdapters.Length == 1)
+            {
+                ValidatePersistentPauseSurfaceAdapter(
+                    report,
+                    scene,
+                    builtInPauseAdapters[0]);
+            }
 
             if (eventSystems.Length == 1)
             {
@@ -636,6 +651,12 @@ namespace Immersive.Framework.Editor.Editor.Validation
             int loadingAdapterCount =
                 CountSceneAdapters<ILoadingSurfaceAdapter>(
                     scene);
+            int pauseAdapterCount =
+                CountSceneAdapters<IPauseSurfaceAdapter>(
+                    scene);
+            int resumeButtonCount =
+                CountResumeButtons(
+                    pauseRequestTriggers);
 
             if (canvasCount == 0)
             {
@@ -658,9 +679,132 @@ namespace Immersive.Framework.Editor.Editor.Validation
                     owner);
             }
 
+            if (pauseAdapterCount != 1)
+            {
+                report.AddError(
+                    $"Persistent Content Scene '{sceneLabel}' requires exactly one IPauseSurfaceAdapter implementation. found='{pauseAdapterCount}'.",
+                    owner);
+            }
+
+            if (pauseRequestTriggers.Length == 0)
+            {
+                report.AddError(
+                    $"Persistent Content Scene '{sceneLabel}' requires at least one PauseRequestTrigger for authored Pause controls.",
+                    owner);
+            }
+
+            if (resumeButtonCount == 0)
+            {
+                report.AddError(
+                    $"Persistent Content Scene '{sceneLabel}' requires at least one interactable Button whose persistent OnClick invokes PauseRequestTrigger.RequestResume.",
+                    owner);
+            }
+
             report.AddInfo(
-                $"Persistent Content Scene composition scanned. roots='{roots.Length}' canvases='{canvasCount}' eventSystems='{eventSystems.Length}' inputSystemUiModules='{inputModules.Length}' legacyInputModules='{legacyInputModuleCount}' transitionAdapters='{transitionAdapterCount}' loadingAdapters='{loadingAdapterCount}' missingScripts='{missingScriptCount}'.",
+                $"Persistent Content Scene composition scanned. roots='{roots.Length}' canvases='{canvasCount}' eventSystems='{eventSystems.Length}' inputSystemUiModules='{inputModules.Length}' legacyInputModules='{legacyInputModuleCount}' transitionAdapters='{transitionAdapterCount}' loadingAdapters='{loadingAdapterCount}' pauseAdapters='{pauseAdapterCount}' pauseRequestTriggers='{pauseRequestTriggers.Length}' resumeButtons='{resumeButtonCount}' missingScripts='{missingScriptCount}'.",
                 owner);
+        }
+
+        private static void ValidatePersistentPauseSurfaceAdapter(
+            FrameworkAuthoringValidationReport report,
+            Scene expectedScene,
+            UnityPauseSurfaceAdapter adapter)
+        {
+            if (adapter == null)
+            {
+                return;
+            }
+
+            if (adapter.CanvasGroup == null)
+            {
+                report.AddError(
+                    "Persistent Content Unity Pause Surface Adapter requires an explicit CanvasGroup.",
+                    adapter);
+            }
+
+            if (adapter.SurfaceRoot == null)
+            {
+                report.AddError(
+                    "Persistent Content Unity Pause Surface Adapter requires an explicit Surface Root.",
+                    adapter);
+            }
+
+            if (adapter.CanvasGroup != null &&
+                adapter.SurfaceRoot != null &&
+                adapter.CanvasGroup.gameObject !=
+                adapter.SurfaceRoot)
+            {
+                report.AddError(
+                    "Persistent Content Unity Pause Surface Adapter requires its CanvasGroup on the configured Surface Root.",
+                    adapter);
+            }
+
+            if (adapter.SurfaceRoot != null &&
+                adapter.SurfaceRoot.scene !=
+                expectedScene)
+            {
+                report.AddError(
+                    "Persistent Content Unity Pause Surface Adapter Surface Root must belong to the same Content Scene.",
+                    adapter);
+            }
+
+            if (!adapter.ApplyRunningStateOnAwake)
+            {
+                report.AddError(
+                    "Persistent Content Unity Pause Surface Adapter must apply the initial Running presentation on Awake.",
+                    adapter);
+            }
+        }
+
+        private static int CountResumeButtons(
+            IReadOnlyList<PauseRequestTrigger> triggers)
+        {
+            if (triggers == null ||
+                triggers.Count == 0)
+            {
+                return 0;
+            }
+
+            int count = 0;
+            for (int triggerIndex = 0;
+                 triggerIndex < triggers.Count;
+                 triggerIndex++)
+            {
+                PauseRequestTrigger trigger =
+                    triggers[triggerIndex];
+                if (trigger == null)
+                {
+                    continue;
+                }
+
+                Button button =
+                    trigger.GetComponent<Button>();
+                if (button == null ||
+                    !button.interactable)
+                {
+                    continue;
+                }
+
+                int eventCount =
+                    button.onClick.GetPersistentEventCount();
+                for (int eventIndex = 0;
+                     eventIndex < eventCount;
+                     eventIndex++)
+                {
+                    if (button.onClick.GetPersistentTarget(eventIndex) ==
+                            trigger &&
+                        string.Equals(
+                            button.onClick.GetPersistentMethodName(eventIndex),
+                            nameof(PauseRequestTrigger.RequestResume),
+                            StringComparison.Ordinal))
+                    {
+                        count++;
+                        break;
+                    }
+                }
+            }
+
+            return count;
         }
 
         private static void ValidatePersistentContentUiInputModule(

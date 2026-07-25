@@ -1,7 +1,7 @@
 # Player Usage
 
 Status: Current
-Last updated: 2026-07-23
+Last updated: 2026-07-25
 
 ## Configure participation
 
@@ -17,8 +17,8 @@ join callback order are not Slot identity.
 
 ## Runtime-provisioned local Player
 
-In `UIGlobal`, configure one `LocalPlayerProvisioningAuthoring` with an explicit
-manual-join `PlayerInputManager`, then reference it through
+In Persistent Content, configure one `LocalPlayerProvisioningAuthoring` with an
+explicit manual-join `PlayerInputManager`, then reference it through
 `LocalPlayerProvisioningHostRegistration`.
 
 The Player prefab contains:
@@ -73,11 +73,35 @@ canonical Player/Activity lifecycle; neither is a parallel Player authority.
 officially admitted local Player. The current policy supports one eligible local
 Player and rejects ambiguity.
 
+`PauseRequestTrigger` is not a Player component. It may live in Persistent
+Content, Route scenes or Activity scenes. The framework injects its request port
+from the corresponding composition lifecycle. A Trigger never searches for the
+runtime host.
+
+Buttons and `Escape` converge on the same Pause product runtime. Therefore,
+although a Button does not require an input action press, the current product
+still requires one active official `PausePlayerInputBinding` to transact
+PlayerInput posture.
+
+See [Pause Usage](Pause-Usage.md).
+
 ## Diagnose
 
 Inspect Slot allocation/reservation, selected Actor Profile, preparation,
 occupancy, input eligibility, camera eligibility and admission as separate
 evidence. Never infer one layer from another.
+
+For Pause, distinguish:
+
+```text
+Trigger binding
+  PauseRequestTrigger.ProductRequestBindingStatus
+
+Player binding
+  PausePlayerInputBinding.BindingStatus
+```
+
+A bound Trigger does not prove that an official Player binding is active.
 
 ## Manual validation
 
@@ -87,4 +111,6 @@ evidence. Never infer one layer from another.
 3. Confirm failed joins release reservations.
 4. Confirm Activity exit releases in reverse dependency order.
 5. Confirm scene-owned host/Actor objects survive successful release.
-6. Validate the same official flow in FIRSTGAME before a product release.
+6. Confirm Route and Activity Pause triggers bind on scene availability and
+   release before unload.
+7. Validate the same official flow in FIRSTGAME before a product release.

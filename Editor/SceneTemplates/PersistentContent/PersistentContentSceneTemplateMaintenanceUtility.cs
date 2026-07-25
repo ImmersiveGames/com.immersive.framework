@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using Immersive.Framework.Diagnostics;
 using Immersive.Framework.Editor.Editor.Authoring;
 using Immersive.Framework.Editor.Editor.Validation;
+using Immersive.Framework.Pause;
 using Immersive.Logging.Records;
 using UnityEditor;
 using UnityEditor.SceneTemplate;
@@ -18,8 +19,8 @@ namespace Immersive.Framework.Editor.Editor.SceneTemplates
     /// Scene Template.
     ///
     /// It does not create assets. It validates the existing source scene, binds
-    /// the existing pipeline script and synchronizes the required referenced
-    /// Input System dependencies after source-scene edits.
+    /// the existing pipeline script and synchronizes required referenced Input System
+    /// and Pause dependencies after source-scene edits.
     /// </summary>
     internal static class PersistentContentSceneTemplateMaintenanceUtility
     {
@@ -151,6 +152,41 @@ namespace Immersive.Framework.Editor.Editor.SceneTemplates
                     return;
                 }
 
+                UnityPauseSurfaceAdapter pauseSurfaceAdapter =
+                    FindSceneComponent<UnityPauseSurfaceAdapter>(
+                        sceneScope.Scene);
+                if (pauseSurfaceAdapter == null)
+                {
+                    logger.Error(
+                        "Persistent Content Scene Template refresh requires the built-in UnityPauseSurfaceAdapter in the validated source scene.");
+                    return;
+                }
+
+                PauseRequestTrigger pauseRequestTrigger =
+                    FindSceneComponent<PauseRequestTrigger>(
+                        sceneScope.Scene);
+                if (pauseRequestTrigger == null)
+                {
+                    logger.Error(
+                        "Persistent Content Scene Template refresh requires at least one PauseRequestTrigger in the validated source scene.");
+                    return;
+                }
+
+                MonoScript pauseSurfaceAdapterScript =
+                    MonoScript.FromMonoBehaviour(
+                        pauseSurfaceAdapter);
+                MonoScript pauseRequestTriggerScript =
+                    MonoScript.FromMonoBehaviour(
+                        pauseRequestTrigger);
+
+                if (pauseSurfaceAdapterScript == null ||
+                    pauseRequestTriggerScript == null)
+                {
+                    logger.Error(
+                        "Persistent Content Scene Template refresh could not resolve required Pause script assets.");
+                    return;
+                }
+
                 Undo.RecordObject(
                     template,
                     "Refresh Persistent Content Scene Template");
@@ -161,7 +197,9 @@ namespace Immersive.Framework.Editor.Editor.SceneTemplates
                 SynchronizeRequiredReferenceDependencies(
                     template,
                     inputModuleScript,
-                    inputModule.actionsAsset);
+                    inputModule.actionsAsset,
+                    pauseSurfaceAdapterScript,
+                    pauseRequestTriggerScript);
 
                 EditorUtility.SetDirty(
                     template);
