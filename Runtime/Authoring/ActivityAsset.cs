@@ -39,7 +39,7 @@ namespace Immersive.Framework.Authoring
             ActivityParticipationProjectionMode.NoSlots;
 
         [SerializeField]
-        [Tooltip("Declares whether a dynamic projection may resolve to zero participating Slots.")]
+        [Tooltip("Declares whether this Activity may continue when its projection resolves to zero admitted Logical Players.")]
         private ActivityParticipationZeroParticipantPolicy playerParticipationZeroParticipantPolicy =
             ActivityParticipationZeroParticipantPolicy.Allowed;
 
@@ -49,7 +49,7 @@ namespace Immersive.Framework.Authoring
             Array.Empty<PlayerSlotProfile>();
 
         [SerializeField]
-        [Tooltip("Progressive readiness level required from every projected Player Slot. None is the explicit no-requirement value.")]
+        [Tooltip("Progressive readiness required from every projected Logical Player. For a Scene-Provided Logical Player, Logical Actors Prepared is the recommended baseline when the scene already provides the Actor.")]
         private PlayerParticipationRequirementLevel playerParticipationRequirementLevel =
             PlayerParticipationRequirementLevel.None;
 
@@ -71,14 +71,15 @@ namespace Immersive.Framework.Authoring
             {
                 if (!HasValidActivityId)
                 {
-                    throw new System.InvalidOperationException("Activity ID is missing or invalid.");
+                    throw new InvalidOperationException("Activity ID is missing or invalid.");
                 }
 
                 return new ActivityId(activityId);
             }
         }
 
-        public bool HasValidActivityId => global::Immersive.Framework.Authoring.ActivityId.IsValidText(activityId);
+        public bool HasValidActivityId =>
+            global::Immersive.Framework.Authoring.ActivityId.IsValidText(activityId);
 
         public bool HasSameIdentity(ActivityAsset other) =>
             other != null &&
@@ -172,13 +173,6 @@ namespace Immersive.Framework.Authoring
                         issue = $"Activity '{ActivityName}' uses ExplicitSlots but has no PlayerSlotProfile references.";
                         return false;
                     }
-
-                    if (playerParticipationZeroParticipantPolicy !=
-                        ActivityParticipationZeroParticipantPolicy.Rejected)
-                    {
-                        issue = $"Activity '{ActivityName}' uses ExplicitSlots and therefore requires Zero Participants = Rejected.";
-                        return false;
-                    }
                     break;
             }
 
@@ -226,13 +220,14 @@ namespace Immersive.Framework.Authoring
 
         public bool HasActivityContentProfile => activityContentProfile != null;
 
-        public bool HasActivityContentScenes => activityContentProfile != null && activityContentProfile.HasScenes;
+        public bool HasActivityContentScenes =>
+            activityContentProfile != null && activityContentProfile.HasScenes;
 
         public ActivityVisualTransitionMode VisualTransitionMode
         {
             get
             {
-                return System.Enum.IsDefined(typeof(ActivityVisualTransitionMode), visualTransitionMode)
+                return Enum.IsDefined(typeof(ActivityVisualTransitionMode), visualTransitionMode)
                     ? visualTransitionMode
                     : ActivityVisualTransitionMode.Seamless;
             }
@@ -242,7 +237,7 @@ namespace Immersive.Framework.Authoring
         {
             get
             {
-                return System.Enum.IsDefined(typeof(TransitionGateMode), transitionGateMode)
+                return Enum.IsDefined(typeof(TransitionGateMode), transitionGateMode)
                     ? transitionGateMode
                     : TransitionGateMode.LifecycleRequestsOnly;
             }

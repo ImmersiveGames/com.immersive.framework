@@ -166,12 +166,24 @@ namespace Immersive.Framework.Editor.Editor.Authoring
                 _playerParticipationZeroParticipantPolicy,
                 new GUIContent(
                     "If No Players Are Available",
-                    "Controls whether a dynamic Player selection may resolve to zero participants."));
+                    "Allowed lets this Activity continue when its projected Slots currently have no admitted Logical Players. Rejected blocks that state."));
+
+            if (UsesExplicitSlots() && AllowsZeroParticipants())
+            {
+                EditorGUILayout.HelpBox(
+                    "Explicit Player Slots are configured, but this Activity may continue while none of them are admitted. This is valid when the Player source is optional or still being authored.",
+                    MessageType.Info);
+            }
+
             EditorGUILayout.PropertyField(
                 _playerParticipationRequirementLevel,
                 new GUIContent(
                     "Ready When",
-                    "Progressive readiness required from every participating Player."));
+                    "Progressive readiness required from every participating Logical Player."));
+
+            EditorGUILayout.HelpBox(
+                "Scene-Provided guidance: use Joined Slots to prove Logical Player admission only. Logical Actors Prepared is the recommended baseline when the scene already provides the Actor. Use Gameplay Ready only when the Activity must also wait for input, Camera and gameplay eligibility.",
+                MessageType.Info);
 
             EditorGUILayout.HelpBox(
                 "Projection, zero-participant and readiness coherence is evaluated only through Validate Activity.",
@@ -186,6 +198,16 @@ namespace Immersive.Framework.Editor.Editor.Authoring
                    _playerParticipationProjectionMode.intValue ==
                    (int)ActivityParticipationProjectionMode
                        .ExplicitSlots;
+        }
+
+        private bool AllowsZeroParticipants()
+        {
+            return _playerParticipationZeroParticipantPolicy != null &&
+                   !_playerParticipationZeroParticipantPolicy
+                       .hasMultipleDifferentValues &&
+                   _playerParticipationZeroParticipantPolicy.intValue ==
+                   (int)ActivityParticipationZeroParticipantPolicy
+                       .Allowed;
         }
 
         private void DrawActivityContent()

@@ -18,7 +18,7 @@ namespace Immersive.Framework.Actors
     public class ActorDeclaration : MonoBehaviour, IActor
     {
         [Tooltip("Stable framework ActorId. Do not use GameObject names, tags, scene paths or prefab paths as functional keys.")]
-        [SerializeField] private string actorId = "qa.actor.generic";
+        [SerializeField] private string actorId = string.Empty;
 
         [Tooltip("Broad Actor category. Specialized declarations may expose a fixed category instead.")]
         [HideInInspector, SerializeField] private ActorKind actorKind = ActorKind.NonPlayer;
@@ -27,7 +27,7 @@ namespace Immersive.Framework.Actors
         [HideInInspector, SerializeField] private ActorRole actorRole = ActorRole.Neutral;
 
         [Tooltip("Human-readable diagnostic label only.")]
-        [SerializeField] private string displayName = "QA Actor";
+        [SerializeField] private string displayName = string.Empty;
 
         [Tooltip("Diagnostic reason/source for this declaration.")]
         [SerializeField] private string reason = "actor.declaration";

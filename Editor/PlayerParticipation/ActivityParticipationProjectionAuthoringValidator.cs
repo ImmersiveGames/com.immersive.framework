@@ -46,6 +46,7 @@ namespace Immersive.Framework.Editor.Editor.PlayerParticipation
                     "No Activity assets exist in the project. Activity Player participation authoring validation is skipped.",
                     null);
             }
+
             if (report.IsValid)
             {
                 report.AddInfo(
@@ -111,10 +112,10 @@ namespace Immersive.Framework.Editor.Editor.PlayerParticipation
                         $"Activity projects '{descriptor.Mode}' while Requirements='None'. Projected Slots impose no admission-readiness requirement in this configuration.",
                         activity);
                 }
-                else if (descriptor.ProjectsAllJoinedSlots && descriptor.AllowsZeroParticipants)
+                else if (descriptor.AllowsZeroParticipants)
                 {
                     report.AddInfo(
-                        $"Activity projects All Joined Slots and explicitly allows zero participants while requiring '{requirementLevel}' from every projected Slot.",
+                        $"Activity projects '{descriptor.Mode}' and explicitly allows zero participants while requiring '{requirementLevel}' from every projected Logical Player.",
                         activity);
                 }
             }
@@ -122,7 +123,7 @@ namespace Immersive.Framework.Editor.Editor.PlayerParticipation
             if (report.IsValid && requirementsValid && projectionValid)
             {
                 report.AddInfo(
-                    $"Activity Player participation authoring is valid. projection='{descriptor.Mode}' requirementLevel='{requirementLevel}'.",
+                    $"Activity Player participation authoring is valid. projection='{descriptor.Mode}' allowsZeroParticipants='{descriptor.AllowsZeroParticipants}' requirementLevel='{requirementLevel}'.",
                     activity);
             }
 

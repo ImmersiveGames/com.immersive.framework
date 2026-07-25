@@ -121,15 +121,5 @@ namespace Immersive.Framework.Editor.PlayerParticipation
                     GUILayout.MinHeight(72));
             }
         }
-
-        [MenuItem("GameObject/Immersive Framework/Player/Scene Local Player Admission", false, 20)]
-        private static void CreateSurface(MenuCommand command)
-        {
-            var root = new GameObject("Scene Local Player Admission");
-            Undo.RegisterCreatedObjectUndo(root, "Create Scene Local Player Admission");
-            GameObjectUtility.SetParentAndAlign(root, command.context as GameObject);
-            root.AddComponent<SceneLocalPlayerAdmissionAuthoring>();
-            Selection.activeGameObject = root;
-        }
     }
 }
