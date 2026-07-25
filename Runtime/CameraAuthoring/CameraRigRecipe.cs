@@ -13,38 +13,82 @@ namespace Immersive.Framework.CameraAuthoring
         "Reusable presentation intent for a materialized Cinemachine Camera rig.")]
     public sealed class CameraRigRecipe : ScriptableObject
     {
-        [Header("Designer Defaults")]
-        [SerializeField] private CameraRigPresentationIntent presentationIntent =
+        [Header("Camera Behavior Defaults")]
+
+        [Tooltip(
+            "Reusable camera presentation behavior. " +
+            "The current Camera Rig Composer supports Follow only.")]
+        [SerializeField]
+        private CameraRigPresentationIntent presentationIntent =
             CameraRigPresentationIntent.Follow;
-        [SerializeField] private CameraTargetSourceKind targetSourceKind =
+
+        [Tooltip(
+            "Declares the kind of target source expected by the Camera Rig Composer. " +
+            "The Recipe does not assign a target-source component or scene Transform.")]
+        [SerializeField]
+        private CameraTargetSourceKind targetSourceKind =
             CameraTargetSourceKind.ExplicitTransform;
-        [SerializeField] private CameraTargetRequirement followRequirement =
+
+        [Tooltip(
+            "Controls whether a Follow target is required, optional or unused. " +
+            "Follow presentation currently requires Follow to participate.")]
+        [SerializeField]
+        private CameraTargetRequirement followRequirement =
             CameraTargetRequirement.Required;
-        [SerializeField] private CameraTargetRequirement lookAtRequirement =
+
+        [Tooltip(
+            "Controls whether a Look At target is required, optional or unused.")]
+        [SerializeField]
+        private CameraTargetRequirement lookAtRequirement =
             CameraTargetRequirement.Optional;
-        [SerializeField] private Vector3 followOffset =
+
+        [Tooltip(
+            "Default local offset applied to Cinemachine Follow when the Composer runs Apply / Rebuild.")]
+        [SerializeField]
+        private Vector3 followOffset =
             new Vector3(0f, 5f, -8f);
 
-        [Header("Rig Materialization Defaults")]
-        [SerializeField] private bool createCinemachineCameraIfMissing = true;
-        [SerializeField] private string cinemachineCameraObjectName =
+        [Header("Advanced Materialization Defaults")]
+
+        [Tooltip(
+            "Allows Apply / Rebuild to create a local Cinemachine Camera when the Composer has no assigned camera.")]
+        [SerializeField]
+        private bool createCinemachineCameraIfMissing = true;
+
+        [Tooltip(
+            "Name used only when Apply / Rebuild creates a Cinemachine Camera. " +
+            "An empty value falls back to 'Cinemachine Camera'.")]
+        [SerializeField]
+        private string cinemachineCameraObjectName =
             "Cinemachine Camera";
-        [SerializeField] private bool logApplyRebuildDiagnostics = true;
+
+        [Tooltip(
+            "Writes detailed Apply / Rebuild diagnostics through the framework logging system.")]
+        [SerializeField]
+        private bool logApplyRebuildDiagnostics = true;
 
         public CameraRigPresentationIntent PresentationIntent =>
             presentationIntent;
+
         public CameraTargetSourceKind TargetSourceKind =>
             targetSourceKind;
+
         public CameraTargetRequirement FollowRequirement =>
             followRequirement;
+
         public CameraTargetRequirement LookAtRequirement =>
             lookAtRequirement;
-        public Vector3 FollowOffset => followOffset;
+
+        public Vector3 FollowOffset =>
+            followOffset;
+
         public bool CreateCinemachineCameraIfMissing =>
             createCinemachineCameraIfMissing;
+
         public string CinemachineCameraObjectName =>
             cinemachineCameraObjectName.NormalizeTextOrFallback(
                 "Cinemachine Camera");
+
         public bool LogApplyRebuildDiagnostics =>
             logApplyRebuildDiagnostics;
     }
