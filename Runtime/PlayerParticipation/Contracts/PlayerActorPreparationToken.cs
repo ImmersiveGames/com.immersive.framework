@@ -19,42 +19,73 @@ namespace Immersive.Framework.PlayerParticipation
         internal PlayerActorPreparationToken(
             string sessionContextId,
             PlayerSlotId playerSlotId,
+            PlayerSlotAssignmentToken assignmentToken,
+            PlayerHostBindingIdentity hostBindingIdentity,
+            ActorProfileId actorProfileId,
+            int selectionRevision,
             ActorId actorId,
             RuntimeContentIdentity runtimeContentIdentity,
-            int materializationRevision)
+            int materializationRevision,
+            int correlationRevision)
         {
             SessionContextId = sessionContextId.NormalizeText();
             PlayerSlotId = playerSlotId;
+            AssignmentToken = assignmentToken;
+            HostBindingIdentity = hostBindingIdentity;
+            ActorProfileId = actorProfileId;
+            SelectionRevision = selectionRevision;
             ActorId = actorId;
             RuntimeContentIdentity = runtimeContentIdentity;
             MaterializationRevision = materializationRevision;
+            CorrelationRevision = correlationRevision;
         }
 
         public string SessionContextId { get; }
         public PlayerSlotId PlayerSlotId { get; }
+        public PlayerSlotAssignmentToken AssignmentToken { get; }
+        public PlayerHostBindingIdentity HostBindingIdentity { get; }
+        public ActorProfileId ActorProfileId { get; }
+        public int SelectionRevision { get; }
         public ActorId ActorId { get; }
         public RuntimeContentIdentity RuntimeContentIdentity { get; }
         public int MaterializationRevision { get; }
+        public int CorrelationRevision { get; }
 
         public bool IsValid =>
             !string.IsNullOrEmpty(SessionContextId) &&
             PlayerSlotId.IsValid &&
+            AssignmentToken.IsValid &&
+            string.Equals(
+                SessionContextId,
+                AssignmentToken.SessionContextId,
+                StringComparison.Ordinal) &&
+            AssignmentToken.PlayerSlotId == PlayerSlotId &&
+            HostBindingIdentity.IsValid &&
+            AssignmentToken.HostBindingIdentity == HostBindingIdentity &&
+            ActorProfileId.IsValid &&
+            SelectionRevision > 0 &&
             ActorId.IsValid &&
             RuntimeContentIdentity.IsValid &&
-            MaterializationRevision > 0;
+            MaterializationRevision > 0 &&
+            CorrelationRevision > 0;
 
         public string StableText => IsValid
             ? $"player-actor-preparation:{SessionContextId}:{PlayerSlotId.Value.Value}:" +
-              $"{ActorId.Value.Value}:{MaterializationRevision}"
+              $"{ActorId.Value.Value}:{CorrelationRevision}"
             : string.Empty;
 
         public bool Equals(PlayerActorPreparationToken other)
         {
             return string.Equals(SessionContextId, other.SessionContextId, StringComparison.Ordinal) &&
                 PlayerSlotId == other.PlayerSlotId &&
+                AssignmentToken == other.AssignmentToken &&
+                HostBindingIdentity == other.HostBindingIdentity &&
+                ActorProfileId == other.ActorProfileId &&
+                SelectionRevision == other.SelectionRevision &&
                 ActorId == other.ActorId &&
                 RuntimeContentIdentity == other.RuntimeContentIdentity &&
-                MaterializationRevision == other.MaterializationRevision;
+                MaterializationRevision == other.MaterializationRevision &&
+                CorrelationRevision == other.CorrelationRevision;
         }
 
         public override bool Equals(object obj)
@@ -68,9 +99,14 @@ namespace Immersive.Framework.PlayerParticipation
             {
                 int hashCode = StringComparer.Ordinal.GetHashCode(SessionContextId ?? string.Empty);
                 hashCode = hashCode * 397 ^ PlayerSlotId.GetHashCode();
+                hashCode = hashCode * 397 ^ AssignmentToken.GetHashCode();
+                hashCode = hashCode * 397 ^ HostBindingIdentity.GetHashCode();
+                hashCode = hashCode * 397 ^ ActorProfileId.GetHashCode();
+                hashCode = hashCode * 397 ^ SelectionRevision;
                 hashCode = hashCode * 397 ^ ActorId.GetHashCode();
                 hashCode = hashCode * 397 ^ RuntimeContentIdentity.GetHashCode();
                 hashCode = hashCode * 397 ^ MaterializationRevision;
+                hashCode = hashCode * 397 ^ CorrelationRevision;
                 return hashCode;
             }
         }

@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 using Immersive.Framework.PlayerSlots;
 using Immersive.Framework.RuntimeContent;
 
@@ -11,9 +10,6 @@ namespace Immersive.Framework.PlayerParticipation
             sceneLocalPlayerCompositeLifecycleParticipant;
         private SceneLocalPlayerAdmissionRuntimeHostModule
             composedSceneLocalPlayerAdmissionModule;
-        private readonly HashSet<PlayerSlotId> sceneOwnedHostRegistrations =
-            new HashSet<PlayerSlotId>();
-
         internal bool TryComposeSceneLocalPlayerAdmissionLifecycle(
             SceneLocalPlayerAdmissionRuntimeHostModule sceneModule,
             out string issue)
@@ -101,11 +97,13 @@ namespace Immersive.Framework.PlayerParticipation
                 return invalid;
             }
 
-            if (!TryRegisterSceneLocalPlayerHost(
+            if (!TryGetRegisteredHost(
                     playerSlotId,
-                    authoring.LocalPlayerHost,
-                    out bool registeredNow,
-                    out issue))
+                    out LocalPlayerHostAuthoring registeredHost,
+                    out issue) ||
+                !ReferenceEquals(
+                    registeredHost,
+                    authoring.LocalPlayerHost))
             {
                 return new ScenePlayerActorAdoptionResult(
                     ScenePlayerActorAdoptionStatus.RejectedHostMismatch,
@@ -128,19 +126,6 @@ namespace Immersive.Framework.PlayerParticipation
                     source,
                     reason);
             authoring.SetActorAdoptionResult(result);
-            if (result != null && result.Succeeded)
-            {
-                if (registeredNow)
-                {
-                    sceneOwnedHostRegistrations.Add(playerSlotId);
-                }
-            }
-            else if (registeredNow)
-            {
-                joinedHosts.Remove(playerSlotId);
-                joinedHostBindings.Remove(playerSlotId);
-                joinedHostAssignmentTokens.Remove(playerSlotId);
-            }
 
             diagnostic = result != null
                 ? result.ToDiagnosticString()
@@ -175,14 +160,6 @@ namespace Immersive.Framework.PlayerParticipation
                 authoring.SetActorAdoptionResult(result);
             }
 
-            if (result != null && result.Succeeded &&
-                sceneOwnedHostRegistrations.Remove(expectedToken.PlayerSlotId))
-            {
-                TryUnregisterSceneLocalPlayerHost(
-                    expectedToken.PlayerSlotId,
-                    authoring != null ? authoring.LocalPlayerHost : null);
-            }
-
             diagnostic = result != null
                 ? result.ToDiagnosticString()
                 : "Scene Player Actor adoption release returned no result.";
@@ -211,98 +188,6 @@ namespace Immersive.Framework.PlayerParticipation
                     out summary);
         }
 
-        private bool TryRegisterSceneLocalPlayerHost(
-            PlayerSlotId playerSlotId,
-            LocalPlayerHostAuthoring host,
-            out bool registeredNow,
-            out string issue)
-        {
-            registeredNow = false;
-            issue = string.Empty;
-            if (!playerSlotId.IsValid ||
-                host == null ||
-                !host.IsJoined ||
-                !host.HasJoinedSlot ||
-                host.JoinedPlayerSlotId != playerSlotId)
-            {
-                issue = "Scene Local Player Host registration requires matching Joined Host and Slot evidence.";
-                return false;
-            }
-
-            if (!participationContext.TryGetCurrentAssignment(
-                    playerSlotId,
-                    out PlayerSlotAssignmentSnapshot assignment) ||
-                assignment.AssignmentOrigin !=
-                    PlayerSlotAssignmentOrigin.SceneProvided)
-            {
-                issue =
-                    "Scene Local Player Host registration requires the canonical Scene-Provided Slot assignment.";
-                return false;
-            }
-
-            if (joinedHosts.TryGetValue(
-                    playerSlotId,
-                    out LocalPlayerHostAuthoring existing))
-            {
-                if (ReferenceEquals(existing, host))
-                {
-                    if (sceneOwnedHostRegistrations.Contains(playerSlotId) &&
-                        joinedHostBindings.TryGetValue(
-                            playerSlotId,
-                            out PlayerHostBindingIdentity existingBinding) &&
-                        existingBinding == assignment.HostBindingIdentity)
-                    {
-                        return true;
-                    }
-
-                    issue =
-                        $"Player Slot '{playerSlotId.StableText}' is already registered by another Local Player physical source.";
-                    return false;
-                }
-
-                if (existing == null ||
-                    !existing.IsJoined ||
-                    !existing.HasJoinedSlot ||
-                    existing.JoinedPlayerSlotId != playerSlotId)
-                {
-                    joinedHosts.Remove(playerSlotId);
-                    joinedHostBindings.Remove(playerSlotId);
-                    joinedHostAssignmentTokens.Remove(playerSlotId);
-                }
-                else
-                {
-                    issue =
-                        $"Player Slot '{playerSlotId.StableText}' is already registered to another Local Player Host.";
-                    return false;
-                }
-            }
-
-            joinedHosts.Add(playerSlotId, host);
-            joinedHostBindings[playerSlotId] =
-                assignment.HostBindingIdentity;
-            joinedHostAssignmentTokens[playerSlotId] =
-                assignment.AssignmentToken;
-            registeredNow = true;
-            return true;
-        }
-
-        private void TryUnregisterSceneLocalPlayerHost(
-            PlayerSlotId playerSlotId,
-            LocalPlayerHostAuthoring expectedHost)
-        {
-            if (!playerSlotId.IsValid ||
-                !joinedHosts.TryGetValue(
-                    playerSlotId,
-                    out LocalPlayerHostAuthoring registered) ||
-                !ReferenceEquals(registered, expectedHost))
-            {
-                return;
-            }
-
-            joinedHosts.Remove(playerSlotId);
-            joinedHostBindings.Remove(playerSlotId);
-            joinedHostAssignmentTokens.Remove(playerSlotId);
-        }
     }
 
     internal static class LocalPlayerProvisioningSceneAdmissionLifecycleExtensions

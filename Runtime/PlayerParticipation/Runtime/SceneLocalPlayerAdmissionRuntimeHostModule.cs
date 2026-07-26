@@ -42,6 +42,7 @@ namespace Immersive.Framework.PlayerParticipation
         private readonly List<SceneLocalPlayerAdmissionAuthoring> boundAuthoring = new();
         private FrameworkRuntimeHost runtimeHost;
         private PlayerParticipationRuntimeContext participationContext;
+        private PlayerActorPreparationRuntimeHostModule hostEvidenceOwner;
         private SceneLocalPlayerAdmissionRuntime runtime;
         private RouteAsset activityLifecycleRouteContext;
         private ActivityAsset activityLifecycleActivityContext;
@@ -122,8 +123,20 @@ namespace Immersive.Framework.PlayerParticipation
                 return false;
             }
 
+            PlayerActorPreparationRuntimeHostModule targetHostEvidenceOwner =
+                targetRuntimeHost.GetComponent<PlayerActorPreparationRuntimeHostModule>();
+            if (targetHostEvidenceOwner == null ||
+                !targetHostEvidenceOwner.IsReady)
+            {
+                issue =
+                    "Scene Local Player admission requires the ready host-scoped physical Host evidence projection.";
+                diagnostic = issue;
+                return false;
+            }
+
             runtimeHost = targetRuntimeHost;
             participationContext = targetParticipationContext;
+            hostEvidenceOwner = targetHostEvidenceOwner;
             runtime = new SceneLocalPlayerAdmissionRuntime(targetParticipationContext);
             SceneManager.sceneLoaded += HandleSceneLoaded;
             BindLoadedScenes();
@@ -170,6 +183,38 @@ namespace Immersive.Framework.PlayerParticipation
                 assignmentOwner,
                 source,
                 reason);
+            if (result != null && result.Succeeded)
+            {
+                PlayerHostEvidenceResult registration =
+                    hostEvidenceOwner.RegisterHostEvidence(
+                        result.Token.PlayerSlotId,
+                        PlayerSlotAssignmentOrigin.SceneProvided,
+                        result.Token.AssignmentToken,
+                        result.Token.AssignmentToken.HostBindingIdentity,
+                        authoring.LocalPlayerHost,
+                        source,
+                        reason);
+                if (!registration.Succeeded)
+                {
+                    SceneLocalPlayerAdmissionRuntimeResult rollback =
+                        runtime.TryRelease(
+                            authoring,
+                            result.Token,
+                            source,
+                            "scene-host-evidence-registration-failed");
+                    result = HostEvidenceFailure(
+                        "AdmitSceneLocalPlayer",
+                        result,
+                        rollback,
+                        registration,
+                        rollback != null && rollback.Succeeded
+                            ? SceneLocalPlayerAdmissionRuntimeStatus.FailedHostCommit
+                            : SceneLocalPlayerAdmissionRuntimeStatus.FailedCompensation,
+                        source,
+                        reason);
+                }
+            }
+
             diagnostic = result.ToDiagnosticString();
             authoring.SetRuntimeResult(result, diagnostic);
             return result;
@@ -193,7 +238,7 @@ namespace Immersive.Framework.PlayerParticipation
             }
 
             runtime.TryGetActiveToken(authoring, out SceneLocalPlayerAdmissionToken token);
-            SceneLocalPlayerAdmissionRuntimeResult result = runtime.TryRelease(
+            SceneLocalPlayerAdmissionRuntimeResult result = TryReleaseWithHostEvidence(
                 authoring,
                 token,
                 source,
@@ -221,7 +266,7 @@ namespace Immersive.Framework.PlayerParticipation
                         : diagnostic);
             }
 
-            SceneLocalPlayerAdmissionRuntimeResult result = runtime.TryRelease(
+            SceneLocalPlayerAdmissionRuntimeResult result = TryReleaseWithHostEvidence(
                 authoring,
                 expectedToken,
                 source,
@@ -229,6 +274,127 @@ namespace Immersive.Framework.PlayerParticipation
             diagnostic = result.ToDiagnosticString();
             authoring.SetRuntimeResult(result, diagnostic);
             return result;
+        }
+
+        private SceneLocalPlayerAdmissionRuntimeResult TryReleaseWithHostEvidence(
+            SceneLocalPlayerAdmissionAuthoring authoring,
+            SceneLocalPlayerAdmissionToken expectedToken,
+            string source,
+            string reason)
+        {
+            if (!expectedToken.IsValid)
+            {
+                return runtime.TryRelease(
+                    authoring,
+                    expectedToken,
+                    source,
+                    reason);
+            }
+
+            if (!runtime.TryGetActiveToken(
+                    authoring,
+                    out SceneLocalPlayerAdmissionToken activeToken) ||
+                activeToken != expectedToken)
+            {
+                return runtime.TryRelease(
+                    authoring,
+                    expectedToken,
+                    source,
+                    reason);
+            }
+
+            PlayerHostEvidenceResult evidenceRelease =
+                hostEvidenceOwner.ReleaseHostEvidence(
+                    expectedToken.PlayerSlotId,
+                    expectedToken.AssignmentToken,
+                    expectedToken.AssignmentToken.HostBindingIdentity,
+                    authoring.LocalPlayerHost,
+                    source,
+                    reason);
+            if (!evidenceRelease.Succeeded)
+            {
+                return HostEvidenceFailure(
+                    "ReleaseSceneLocalPlayer",
+                    null,
+                    null,
+                    evidenceRelease,
+                    SceneLocalPlayerAdmissionRuntimeStatus.RejectedForeignOrStaleToken,
+                    source,
+                    reason,
+                    authoring,
+                    expectedToken);
+            }
+
+            SceneLocalPlayerAdmissionRuntimeResult result = runtime.TryRelease(
+                authoring,
+                expectedToken,
+                source,
+                reason);
+            if (result != null && result.Succeeded)
+            {
+                return result;
+            }
+
+            PlayerHostEvidenceResult restoration =
+                hostEvidenceOwner.RegisterHostEvidence(
+                    expectedToken.PlayerSlotId,
+                    PlayerSlotAssignmentOrigin.SceneProvided,
+                    expectedToken.AssignmentToken,
+                    expectedToken.AssignmentToken.HostBindingIdentity,
+                    authoring.LocalPlayerHost,
+                    source,
+                    "restore-scene-host-evidence-after-release-failure");
+            return result != null && restoration.Succeeded
+                ? result
+                : HostEvidenceFailure(
+                    "ReleaseSceneLocalPlayer",
+                    result,
+                    null,
+                    restoration,
+                    SceneLocalPlayerAdmissionRuntimeStatus.FailedCompensation,
+                    source,
+                    reason,
+                    authoring,
+                    expectedToken);
+        }
+
+        private static SceneLocalPlayerAdmissionRuntimeResult HostEvidenceFailure(
+            string operation,
+            SceneLocalPlayerAdmissionRuntimeResult primary,
+            SceneLocalPlayerAdmissionRuntimeResult compensation,
+            PlayerHostEvidenceResult evidence,
+            SceneLocalPlayerAdmissionRuntimeStatus status,
+            string source,
+            string reason,
+            SceneLocalPlayerAdmissionAuthoring authoring = null,
+            SceneLocalPlayerAdmissionToken token = default)
+        {
+            SceneLocalPlayerAdmissionRuntimeResult basis = primary ?? compensation;
+            return new SceneLocalPlayerAdmissionRuntimeResult(
+                status,
+                status,
+                operation,
+                authoring ?? basis?.Authoring,
+                token.IsValid
+                    ? token
+                    : basis != null
+                        ? basis.Token
+                        : default,
+                basis?.ReservationResult,
+                basis?.SlotOperationResult,
+                compensation?.CompensationResult,
+                basis != null ? basis.PreviousSlot : default,
+                compensation != null
+                    ? compensation.CurrentSlot
+                    : basis != null
+                        ? basis.CurrentSlot
+                        : default,
+                source,
+                reason,
+                $"Physical Host evidence operation failed. {evidence.ToDiagnosticString()} " +
+                $"compensationSucceeded='{(compensation != null && compensation.Succeeded)}'.",
+                basis?.AssignmentResult,
+                compensation?.AssignmentCompensationResult);
         }
 
         internal bool TryGetActiveToken(
@@ -398,7 +564,7 @@ namespace Immersive.Framework.PlayerParticipation
 
             if (runtime != null && runtime.TryGetActiveToken(authoring, out SceneLocalPlayerAdmissionToken token))
             {
-                SceneLocalPlayerAdmissionRuntimeResult result = runtime.TryRelease(
+                SceneLocalPlayerAdmissionRuntimeResult result = TryReleaseWithHostEvidence(
                     authoring,
                     token,
                     nameof(SceneLocalPlayerAdmissionRuntimeHostModule),
@@ -686,7 +852,7 @@ namespace Immersive.Framework.PlayerParticipation
 
                 if (runtime != null && runtime.TryGetActiveToken(authoring, out SceneLocalPlayerAdmissionToken token))
                 {
-                    runtime.TryRelease(
+                    TryReleaseWithHostEvidence(
                         authoring,
                         token,
                         nameof(SceneLocalPlayerAdmissionRuntimeHostModule),
@@ -700,6 +866,7 @@ namespace Immersive.Framework.PlayerParticipation
             activityLifecycleRouteContext = null;
             activityLifecycleActivityContext = null;
             runtime = null;
+            hostEvidenceOwner = null;
             participationContext = null;
             runtimeHost = null;
             diagnostic = "Session Scene Local Player admission runtime was released.";

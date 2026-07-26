@@ -22,14 +22,23 @@ namespace Immersive.Framework.PlayerParticipation
         {
             internal PreparationRecord(
                 PlayerActorMaterializationHandle handle,
+                LocalPlayerHostAuthoring host,
                 PlayerActorPreparationSummary summary)
             {
                 Handle = handle ?? throw new ArgumentNullException(nameof(handle));
+                Host = host != null
+                    ? host
+                    : throw new ArgumentNullException(nameof(host));
                 Summary = summary;
             }
 
             internal PlayerActorMaterializationHandle Handle { get; }
+            internal LocalPlayerHostAuthoring Host { get; }
             internal PlayerActorPreparationSummary Summary { get; set; }
+            internal PlayerActorCorrelationEvidence ActorEvidence =>
+                Summary.ActorEvidence;
+            internal PlayerActorPhysicalOwnership PhysicalOwnership =>
+                Summary.ActorEvidence.PhysicalOwnership;
         }
 
         private sealed class RetainedReleaseFailure
@@ -47,6 +56,7 @@ namespace Immersive.Framework.PlayerParticipation
         }
 
         private readonly PlayerParticipationRuntimeContext participationContext;
+        private readonly PlayerHostEvidenceProjection hostEvidenceProjection;
         private readonly AttachedPlayerActorMaterializationAdapter materializationAdapter;
         private readonly string sessionContextId;
         private readonly Dictionary<PlayerSlotId, PreparationRecord> records =
@@ -55,18 +65,22 @@ namespace Immersive.Framework.PlayerParticipation
             new List<RetainedReleaseFailure>();
 
         private int revision;
+        private int actorCorrelationRevision;
         private PlayerActorPreparationStatus lastOperationStatus;
         private string lastOperationMessage;
 
         private PlayerActorPreparationRuntimeContext(
             PlayerParticipationRuntimeContext participationContext,
+            PlayerHostEvidenceProjection hostEvidenceProjection,
             AttachedPlayerActorMaterializationAdapter materializationAdapter,
             string sessionContextId)
         {
             this.participationContext = participationContext;
+            this.hostEvidenceProjection = hostEvidenceProjection;
             this.materializationAdapter = materializationAdapter;
             this.sessionContextId = sessionContextId;
             revision = 1;
+            actorCorrelationRevision = 0;
             lastOperationStatus = PlayerActorPreparationStatus.None;
             lastOperationMessage = "Player Actor preparation runtime context initialized.";
         }
@@ -76,6 +90,7 @@ namespace Immersive.Framework.PlayerParticipation
 
         internal static bool TryCreate(
             PlayerParticipationRuntimeContext participationContext,
+            PlayerHostEvidenceProjection hostEvidenceProjection,
             AttachedPlayerActorMaterializationAdapter materializationAdapter,
             out PlayerActorPreparationRuntimeContext context,
             out string issue)
@@ -92,6 +107,12 @@ namespace Immersive.Framework.PlayerParticipation
             if (materializationAdapter == null)
             {
                 issue = "Player Actor preparation requires an attached materialization adapter.";
+                return false;
+            }
+
+            if (hostEvidenceProjection == null)
+            {
+                issue = "Player Actor preparation requires the correlated physical Host evidence projection.";
                 return false;
             }
 
@@ -114,8 +135,19 @@ namespace Immersive.Framework.PlayerParticipation
                 return false;
             }
 
+            if (!string.Equals(
+                    participationSnapshot.ContextId,
+                    hostEvidenceProjection.SessionContextId,
+                    StringComparison.Ordinal))
+            {
+                issue =
+                    "Player Actor preparation context and Host evidence projection belong to different Session identities.";
+                return false;
+            }
+
             context = new PlayerActorPreparationRuntimeContext(
                 participationContext,
+                hostEvidenceProjection,
                 materializationAdapter,
                 participationSnapshot.ContextId);
             return true;
@@ -124,7 +156,6 @@ namespace Immersive.Framework.PlayerParticipation
         internal PlayerActorPreparationResult TryPrepareSelectedActor(
             RuntimeScopeContext scopeContext,
             PlayerSlotId playerSlotId,
-            LocalPlayerHostAuthoring localPlayerHost,
             string source,
             string reason)
         {
@@ -218,52 +249,61 @@ namespace Immersive.Framework.PlayerParticipation
                     "Prepare Selected Actor requires an explicit ActorProfile selection for the Joined Slot.");
             }
 
-            if (localPlayerHost == null)
-            {
-                return CreateResult(
-                    PlayerActorPreparationStatus.RejectedHostUnavailable,
-                    operation,
-                    playerSlotId,
-                    unprepared,
-                    unprepared,
-                    null,
-                    null,
-                    false,
-                    false,
-                    string.Empty,
-                    false,
-                    false,
-                    string.Empty,
-                    "Prepare Selected Actor requires the explicit joined Local Player Host.");
-            }
-
-            if (!localPlayerHost.HasJoinedSlot ||
-                localPlayerHost.JoinedPlayerSlotId != playerSlotId)
-            {
-                return CreateResult(
-                    PlayerActorPreparationStatus.RejectedHostSlotMismatch,
-                    operation,
-                    playerSlotId,
-                    unprepared,
-                    unprepared,
-                    null,
-                    null,
-                    false,
-                    false,
-                    string.Empty,
-                    false,
-                    false,
-                    string.Empty,
-                    "Local Player Host joined Slot evidence does not match the requested Player Slot.");
-            }
-
             if (records.TryGetValue(playerSlotId, out PreparationRecord existing))
             {
+                PlayerActorCorrelationEvidence actorEvidence =
+                    existing.Summary.ActorEvidence;
+                if (!existing.Summary.IsPrepared || !actorEvidence.IsValid)
+                {
+                    return CreateResult(
+                        PlayerActorPreparationStatus.RejectedPreparedActorConflict,
+                        operation,
+                        playerSlotId,
+                        existing.Summary,
+                        existing.Summary,
+                        null,
+                        null,
+                        false,
+                        false,
+                        string.Empty,
+                        false,
+                        false,
+                        string.Empty,
+                        "Player Slot already has a different or failed prepared Logical Actor. Release or replace it explicitly.");
+                }
+
+                if (!TryResolveCurrentActorCorrelation(
+                        scopeContext,
+                        playerSlotId,
+                        actorEvidence.AssignmentOrigin,
+                        existing.Host,
+                        out PlayerSlotAssignmentSnapshot existingAssignment,
+                        out PlayerHostEvidenceSnapshot existingHostEvidence,
+                        out string existingCorrelationIssue))
+                {
+                    return CreateResult(
+                        PlayerActorPreparationStatus.RejectedHostUnavailable,
+                        operation,
+                        playerSlotId,
+                        existing.Summary,
+                        existing.Summary,
+                        null,
+                        null,
+                        false,
+                        false,
+                        string.Empty,
+                        false,
+                        false,
+                        string.Empty,
+                        existingCorrelationIssue);
+                }
+
                 if (IsCurrentIdempotentPreparation(
                         existing,
                         scopeContext,
                         slot,
-                        localPlayerHost))
+                        existingAssignment,
+                        existingHostEvidence))
                 {
                     return CreateResult(
                         PlayerActorPreparationStatus.SucceededAlreadyPrepared,
@@ -298,6 +338,34 @@ namespace Immersive.Framework.PlayerParticipation
                     string.Empty,
                     "Player Slot already has a different or failed prepared Logical Actor. Release or replace it explicitly.");
             }
+
+            if (!TryResolveCurrentActorCorrelation(
+                    scopeContext,
+                    playerSlotId,
+                    PlayerSlotAssignmentOrigin.ManagerProvisioned,
+                    null,
+                    out PlayerSlotAssignmentSnapshot assignment,
+                    out PlayerHostEvidenceSnapshot hostEvidence,
+                    out string correlationIssue))
+            {
+                return CreateResult(
+                    PlayerActorPreparationStatus.RejectedHostUnavailable,
+                    operation,
+                    playerSlotId,
+                    unprepared,
+                    unprepared,
+                    null,
+                    null,
+                    false,
+                    false,
+                    string.Empty,
+                    false,
+                    false,
+                    string.Empty,
+                    correlationIssue);
+            }
+
+            LocalPlayerHostAuthoring localPlayerHost = hostEvidence.Host;
 
             PlayerActorMaterializationResult materializationResult =
                 materializationAdapter.TryMaterialize(
@@ -369,11 +437,16 @@ namespace Immersive.Framework.PlayerParticipation
             PlayerActorPreparationSummary prepared = CreatePreparedSummary(
                 slot,
                 handle,
+                assignment,
+                hostEvidence,
+                PlayerActorPhysicalOwnership.FrameworkOwned,
                 PlayerActorPreparationState.Prepared,
                 resolvedSource,
                 resolvedReason,
                 "Selected Logical Player Actor prepared and activated.");
-            records.Add(playerSlotId, new PreparationRecord(handle, prepared));
+            records.Add(
+                playerSlotId,
+                new PreparationRecord(handle, localPlayerHost, prepared));
             revision++;
             return CreateResult(
                 PlayerActorPreparationStatus.SucceededPrepared,
@@ -525,10 +598,9 @@ namespace Immersive.Framework.PlayerParticipation
                 out string releaseIssue);
             if (!released)
             {
-                PlayerActorPreparationSummary failedSummary = CreatePreparedSummary(
-                    slot,
-                    record.Handle,
-                    PlayerActorPreparationState.ReleaseFailed,
+                PlayerActorPreparationSummary failedSummary =
+                    CreateFailedReleaseSummary(
+                    record.Summary,
                     resolvedSource,
                     resolvedReason,
                     releaseIssue);
@@ -803,6 +875,32 @@ namespace Immersive.Framework.PlayerParticipation
                     "Replacement ActorProfile already matches the current prepared Actor.");
             }
 
+            if (!TryResolveCurrentActorCorrelation(
+                    scopeContext,
+                    playerSlotId,
+                    currentRecord.Summary.ActorEvidence.AssignmentOrigin,
+                    currentRecord.Host,
+                    out PlayerSlotAssignmentSnapshot assignment,
+                    out PlayerHostEvidenceSnapshot hostEvidence,
+                    out string correlationIssue))
+            {
+                return CreateResult(
+                    PlayerActorPreparationStatus.RejectedHostUnavailable,
+                    operation,
+                    playerSlotId,
+                    currentRecord.Summary,
+                    currentRecord.Summary,
+                    null,
+                    null,
+                    false,
+                    false,
+                    string.Empty,
+                    false,
+                    false,
+                    string.Empty,
+                    correlationIssue);
+            }
+
             PlayerActorMaterializationResult replacementMaterialization =
                 materializationAdapter.TryMaterialize(
                     scopeContext,
@@ -937,6 +1035,9 @@ namespace Immersive.Framework.PlayerParticipation
             PlayerActorPreparationSummary replacementSummary = CreatePreparedSummary(
                 committedSlot,
                 replacementHandle,
+                assignment,
+                hostEvidence,
+                PlayerActorPhysicalOwnership.FrameworkOwned,
                 PlayerActorPreparationState.Prepared,
                 resolvedSource,
                 resolvedReason,
@@ -944,6 +1045,7 @@ namespace Immersive.Framework.PlayerParticipation
             PlayerActorPreparationSummary previousSummary = currentRecord.Summary;
             records[playerSlotId] = new PreparationRecord(
                 replacementHandle,
+                currentRecord.Host,
                 replacementSummary);
             revision++;
 
@@ -1118,7 +1220,8 @@ namespace Immersive.Framework.PlayerParticipation
             PreparationRecord record,
             RuntimeScopeContext scopeContext,
             PlayerSlotRuntimeSnapshot slot,
-            LocalPlayerHostAuthoring host)
+            PlayerSlotAssignmentSnapshot assignment,
+            PlayerHostEvidenceSnapshot hostEvidence)
         {
             return record != null &&
                 record.Summary.IsPrepared &&
@@ -1126,17 +1229,25 @@ namespace Immersive.Framework.PlayerParticipation
                 record.Handle.Request.Owner == scopeContext.Owner &&
                 record.Handle.Request.ActorProfileId == slot.SelectedActorProfileId &&
                 record.Summary.SelectionRevision == slot.SelectionRevision &&
-                ReferenceEquals(record.Handle.LocalPlayerHost, host);
+                record.Summary.ActorEvidence.AssignmentOrigin ==
+                    assignment.AssignmentOrigin &&
+                record.Summary.ActorEvidence.AssignmentToken ==
+                    assignment.AssignmentToken &&
+                record.Summary.ActorEvidence.HostBindingIdentity ==
+                    hostEvidence.HostBindingIdentity &&
+                ReferenceEquals(record.Host, hostEvidence.Host) &&
+                ReferenceEquals(record.Handle.LocalPlayerHost, hostEvidence.Host);
         }
 
         private bool MatchesExpectedPreparation(
             PreparationRecord record,
             PlayerActorPreparationToken expectedPreparation)
         {
-            return !expectedPreparation.IsValid ||
-                (record != null &&
-                 expectedPreparation.SessionContextId == sessionContextId &&
-                 expectedPreparation == record.Summary.Token);
+            return expectedPreparation.IsValid &&
+                record != null &&
+                expectedPreparation.SessionContextId == sessionContextId &&
+                expectedPreparation.PlayerSlotId == record.Summary.PlayerSlotId &&
+                expectedPreparation == record.Summary.Token;
         }
 
         private bool HasPreparedOrFailedRecord(PlayerSlotId playerSlotId)
@@ -1193,6 +1304,88 @@ namespace Immersive.Framework.PlayerParticipation
                 snapshot);
         }
 
+        private bool TryResolveCurrentActorCorrelation(
+            RuntimeScopeContext scopeContext,
+            PlayerSlotId playerSlotId,
+            PlayerSlotAssignmentOrigin expectedOrigin,
+            LocalPlayerHostAuthoring expectedHost,
+            out PlayerSlotAssignmentSnapshot assignment,
+            out PlayerHostEvidenceSnapshot hostEvidence,
+            out string issue)
+        {
+            assignment = default;
+            hostEvidence = default;
+            issue = string.Empty;
+
+            if (!scopeContext.IsValid ||
+                scopeContext.Owner.Scope is not
+                    RuntimeContentScope.Activity and not
+                    RuntimeContentScope.Route)
+            {
+                issue =
+                    "Logical Player Actor preparation requires an explicit Activity or Route Runtime Content owner.";
+                return false;
+            }
+
+            if (!participationContext.TryGetCurrentAssignment(
+                    playerSlotId,
+                    out assignment) ||
+                !assignment.IsAssigned ||
+                assignment.AssignmentOrigin != expectedOrigin)
+            {
+                issue =
+                    $"Player Slot '{playerSlotId.StableText}' has no current '{expectedOrigin}' assignment.";
+                return false;
+            }
+
+            if (expectedOrigin == PlayerSlotAssignmentOrigin.ManagerProvisioned)
+            {
+                if (assignment.AssignmentOwner.Scope != RuntimeContentScope.Session)
+                {
+                    issue =
+                        "Manager-Provisioned Actor preparation requires a Session-owned assignment.";
+                    return false;
+                }
+            }
+            else if (assignment.AssignmentOwner != scopeContext.Owner)
+            {
+                issue =
+                    "Scene-Provided Actor adoption owner must match the explicit assignment owner.";
+                return false;
+            }
+
+            PlayerHostEvidenceResult confirmation =
+                hostEvidenceProjection.ConfirmHostEvidence(
+                    playerSlotId,
+                    nameof(PlayerActorPreparationRuntimeContext),
+                    "confirm-host-before-actor-correlation");
+            if (confirmation == null || !confirmation.Succeeded)
+            {
+                issue = confirmation != null
+                    ? confirmation.ToDiagnosticString()
+                    : "Physical Host evidence confirmation returned no result.";
+                return false;
+            }
+
+            hostEvidence = confirmation.CurrentEvidence;
+            if (hostEvidence.AssignmentOrigin != expectedOrigin ||
+                hostEvidence.AssignmentToken != assignment.AssignmentToken ||
+                hostEvidence.HostBindingIdentity != assignment.HostBindingIdentity ||
+                !hostEvidence.HostIsAvailable ||
+                !hostEvidence.Host.IsJoined ||
+                !hostEvidence.Host.HasJoinedSlot ||
+                hostEvidence.Host.JoinedPlayerSlotId != playerSlotId ||
+                (expectedHost != null &&
+                 !ReferenceEquals(expectedHost, hostEvidence.Host)))
+            {
+                issue =
+                    "Physical Host evidence does not match the current assignment, binding, origin or expected Host.";
+                return false;
+            }
+
+            return true;
+        }
+
         private PlayerActorPreparationSummary CreateUnpreparedSummary(
             PlayerSlotRuntimeSnapshot slot,
             string source,
@@ -1206,6 +1399,7 @@ namespace Immersive.Framework.PlayerParticipation
                 slot.SelectedActorProfileId,
                 slot.SelectionRevision,
                 default,
+                default,
                 source,
                 reason,
                 message);
@@ -1214,11 +1408,28 @@ namespace Immersive.Framework.PlayerParticipation
         private PlayerActorPreparationSummary CreatePreparedSummary(
             PlayerSlotRuntimeSnapshot slot,
             PlayerActorMaterializationHandle handle,
+            PlayerSlotAssignmentSnapshot assignment,
+            PlayerHostEvidenceSnapshot hostEvidence,
+            PlayerActorPhysicalOwnership physicalOwnership,
             PlayerActorPreparationState state,
             string source,
             string reason,
             string message)
         {
+            actorCorrelationRevision++;
+            var actorEvidence = new PlayerActorCorrelationEvidence(
+                assignment.AssignmentOrigin,
+                assignment.AssignmentToken,
+                hostEvidence.HostBindingIdentity,
+                slot.SelectedActorProfileId,
+                slot.SelectionRevision,
+                handle.Request.ActorId,
+                handle.Request.RuntimeContentIdentity,
+                handle.Request.MaterializationRevision,
+                physicalOwnership,
+                actorCorrelationRevision,
+                source,
+                reason);
             return new PlayerActorPreparationSummary(
                 sessionContextId,
                 slot.PlayerSlotId,
@@ -1226,6 +1437,26 @@ namespace Immersive.Framework.PlayerParticipation
                 slot.SelectedActorProfileId,
                 slot.SelectionRevision,
                 handle.CreateSnapshot(),
+                actorEvidence,
+                source,
+                reason,
+                message);
+        }
+
+        private static PlayerActorPreparationSummary CreateFailedReleaseSummary(
+            PlayerActorPreparationSummary current,
+            string source,
+            string reason,
+            string message)
+        {
+            return new PlayerActorPreparationSummary(
+                current.SessionContextId,
+                current.PlayerSlotId,
+                PlayerActorPreparationState.ReleaseFailed,
+                current.SelectedActorProfileId,
+                current.SelectionRevision,
+                current.Materialization,
+                current.ActorEvidence,
                 source,
                 reason,
                 message);

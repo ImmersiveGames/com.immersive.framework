@@ -20,6 +20,7 @@ namespace Immersive.Framework.PlayerParticipation
             ActorProfileId selectedActorProfileId,
             int selectionRevision,
             PlayerActorMaterializationSnapshot materialization,
+            PlayerActorCorrelationEvidence actorEvidence,
             string source,
             string reason,
             string message)
@@ -30,6 +31,7 @@ namespace Immersive.Framework.PlayerParticipation
             SelectedActorProfileId = selectedActorProfileId;
             SelectionRevision = selectionRevision;
             Materialization = materialization;
+            ActorEvidence = actorEvidence;
             Source = source.NormalizeText();
             Reason = reason.NormalizeText();
             Message = message.NormalizeText();
@@ -41,6 +43,7 @@ namespace Immersive.Framework.PlayerParticipation
         public ActorProfileId SelectedActorProfileId { get; }
         public int SelectionRevision { get; }
         public PlayerActorMaterializationSnapshot Materialization { get; }
+        public PlayerActorCorrelationEvidence ActorEvidence { get; }
         public string Source { get; }
         public string Reason { get; }
         public string Message { get; }
@@ -49,17 +52,13 @@ namespace Immersive.Framework.PlayerParticipation
             Materialization.IsValid ? Materialization.ActorProfileId : default;
 
         public PlayerActorPreparationToken Token =>
-            HasMaterialization
-                ? new PlayerActorPreparationToken(
-                    SessionContextId,
-                    PlayerSlotId,
-                    Materialization.ActorId,
-                    Materialization.RuntimeContentIdentity,
-                    Materialization.MaterializationRevision)
+            HasActorEvidence
+                ? ActorEvidence.PreparationToken
                 : default;
 
         public bool HasSelection => SelectedActorProfileId.IsValid;
         public bool HasMaterialization => Materialization.IsValid;
+        public bool HasActorEvidence => ActorEvidence.IsValid;
         public bool IsPrepared => State == PlayerActorPreparationState.Prepared;
         public bool IsReleaseFailed => State == PlayerActorPreparationState.ReleaseFailed;
         public bool IsUnprepared => State == PlayerActorPreparationState.Unprepared;
@@ -69,11 +68,21 @@ namespace Immersive.Framework.PlayerParticipation
             PlayerSlotId.IsValid &&
             State != PlayerActorPreparationState.None &&
             SelectionRevision >= 0 &&
-            ((State == PlayerActorPreparationState.Unprepared && !HasMaterialization) ||
+            ((State == PlayerActorPreparationState.Unprepared &&
+              !HasMaterialization &&
+              !HasActorEvidence) ||
              (State is PlayerActorPreparationState.Prepared or PlayerActorPreparationState.ReleaseFailed &&
               HasSelection &&
               HasMaterialization &&
+              HasActorEvidence &&
               SelectedActorProfileId == PreparedActorProfileId &&
+              SelectedActorProfileId == ActorEvidence.ActorProfileId &&
+              SelectionRevision == ActorEvidence.SelectionRevision &&
+              PlayerSlotId == ActorEvidence.PlayerSlotId &&
+              Materialization.ActorId == ActorEvidence.ActorId &&
+              Materialization.RuntimeContentIdentity == ActorEvidence.RuntimeContentIdentity &&
+              Materialization.MaterializationRevision ==
+                  ActorEvidence.MaterializationRevision &&
               Token.IsValid));
 
         public string ToDiagnosticString()
@@ -82,6 +91,7 @@ namespace Immersive.Framework.PlayerParticipation
                 $"state='{State}' selectedActorProfile='{(SelectedActorProfileId.IsValid ? SelectedActorProfileId.StableText : string.Empty)}' " +
                 $"selectionRevision='{SelectionRevision}' preparationToken='{Token.StableText}' " +
                 $"materialization='{(Materialization.IsValid ? Materialization.ToDiagnosticString() : string.Empty)}' " +
+                $"actorEvidence='{(ActorEvidence.IsValid ? ActorEvidence.ToDiagnosticString() : string.Empty)}' " +
                 $"source='{Source}' reason='{Reason}' message='{Message}'";
         }
     }

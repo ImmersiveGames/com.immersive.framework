@@ -93,6 +93,18 @@ namespace Immersive.Framework.PlayerParticipation
                 return false;
             }
 
+            if (!TryResolveCurrentActorCorrelation(
+                    candidate.MaterializationHandle.Request.ScopeContext,
+                    slotId,
+                    previous.Summary.ActorEvidence.AssignmentOrigin,
+                    previous.Host,
+                    out PlayerSlotAssignmentSnapshot assignment,
+                    out PlayerHostEvidenceSnapshot hostEvidence,
+                    out issue))
+            {
+                return false;
+            }
+
             if (!candidate.TryActivate(
                     resolvedSource,
                     resolvedReason,
@@ -120,12 +132,16 @@ namespace Immersive.Framework.PlayerParticipation
             PlayerActorPreparationSummary promotedSummary = CreatePreparedSummary(
                 slot,
                 candidate.MaterializationHandle,
+                assignment,
+                hostEvidence,
+                PlayerActorPhysicalOwnership.FrameworkOwned,
                 PlayerActorPreparationState.Prepared,
                 resolvedSource,
                 resolvedReason,
                 "Target Activity candidate is the current active P3J preparation during gameplay handoff.");
             var promotedRecord = new PreparationRecord(
                 candidate.MaterializationHandle,
+                previous.Host,
                 promotedSummary);
             records[slotId] = promotedRecord;
             promotionSequence++;
@@ -291,6 +307,20 @@ namespace Immersive.Framework.PlayerParticipation
                 !record.Summary.IsPrepared)
             {
                 issue = "Prepared physical evidence requires the exact current P3J preparation token.";
+                return false;
+            }
+
+            PlayerCurrentActorEvidenceResult confirmation =
+                ConfirmCurrentActorEvidence(
+                    playerSlotId,
+                    expectedPreparation,
+                    nameof(PlayerActorPreparationRuntimeContext),
+                    "resolve-prepared-physical-evidence");
+            if (confirmation == null || !confirmation.Succeeded)
+            {
+                issue = confirmation != null
+                    ? confirmation.ToDiagnosticString()
+                    : "Prepared Actor correlation confirmation returned no result.";
                 return false;
             }
 

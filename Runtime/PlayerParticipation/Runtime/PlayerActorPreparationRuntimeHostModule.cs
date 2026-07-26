@@ -20,17 +20,9 @@ namespace Immersive.Framework.PlayerParticipation
         "P3J.5/P3J.6 FrameworkRuntimeHost integration for real local Player Actor preparation and Activity lifecycle.")]
     internal sealed partial class PlayerActorPreparationRuntimeHostModule : MonoBehaviour
     {
-        private readonly Dictionary<PlayerSlotId, LocalPlayerHostAuthoring> joinedHosts =
-            new Dictionary<PlayerSlotId, LocalPlayerHostAuthoring>();
-        private readonly Dictionary<PlayerSlotId, PlayerHostBindingIdentity>
-            joinedHostBindings =
-                new Dictionary<PlayerSlotId, PlayerHostBindingIdentity>();
-        private readonly Dictionary<PlayerSlotId, PlayerSlotAssignmentToken>
-            joinedHostAssignmentTokens =
-                new Dictionary<PlayerSlotId, PlayerSlotAssignmentToken>();
-
         private FrameworkRuntimeHost runtimeHost;
         private PlayerParticipationRuntimeContext participationContext;
+        private PlayerHostEvidenceProjection hostEvidenceProjection;
         private PlayerActorPreparationRuntimeContext preparationContext;
         private ActivityPlayerActorLifecycleParticipant activityLifecycleParticipant;
         private LocalPlayerJoinResult lastJoinResult;
@@ -47,7 +39,8 @@ namespace Immersive.Framework.PlayerParticipation
 
         internal string Diagnostic => diagnostic;
         internal LocalPlayerJoinResult LastJoinResult => lastJoinResult;
-        internal int RegisteredHostCount => joinedHosts.Count;
+        internal int RegisteredHostCount =>
+            hostEvidenceProjection?.RetainedEvidenceCount ?? 0;
         internal int JoinRequestCount => joinRequestCount;
         internal int PreparationRequestCount => preparationRequestCount;
 
@@ -128,8 +121,11 @@ namespace Immersive.Framework.PlayerParticipation
             var adapter = new AttachedPlayerActorMaterializationAdapter(
                 runtimeContentRuntime,
                 participationSnapshot.ContextId);
+            var targetHostEvidenceProjection =
+                new PlayerHostEvidenceProjection(targetParticipationContext);
             if (!PlayerActorPreparationRuntimeContext.TryCreate(
                     targetParticipationContext,
+                    targetHostEvidenceProjection,
                     adapter,
                     out PlayerActorPreparationRuntimeContext targetPreparationContext,
                     out issue))
@@ -140,6 +136,7 @@ namespace Immersive.Framework.PlayerParticipation
 
             runtimeHost = targetRuntimeHost;
             participationContext = targetParticipationContext;
+            hostEvidenceProjection = targetHostEvidenceProjection;
             preparationContext = targetPreparationContext;
             activityLifecycleParticipant = new ActivityPlayerActorLifecycleParticipant(
                 this,
@@ -157,6 +154,7 @@ namespace Immersive.Framework.PlayerParticipation
                 targetRuntimeHost.SetPauseActivityBindingPlayerEvidence(null);
                 activityLifecycleParticipant = null;
                 preparationContext = null;
+                hostEvidenceProjection = null;
                 participationContext = null;
                 runtimeHost = null;
                 diagnostic =
@@ -273,53 +271,20 @@ namespace Immersive.Framework.PlayerParticipation
                 return false;
             }
 
-            PlayerSlotAssignmentResult assignmentConfirmation =
-                participationContext.TryConfirmCurrentAssignment(
-                    slot.PlayerSlotId,
-                    joinResult.AssignmentToken,
-                    nameof(PlayerActorPreparationRuntimeHostModule),
-                    "register-manager-provisioned-host");
-            if (assignmentConfirmation == null ||
-                !assignmentConfirmation.Succeeded ||
-                assignmentConfirmation.CurrentAssignment.AssignmentOrigin !=
-                    PlayerSlotAssignmentOrigin.ManagerProvisioned ||
-                assignmentConfirmation.CurrentAssignment.HostBindingIdentity !=
-                    joinResult.HostBindingIdentity)
+            PlayerHostEvidenceResult registration = RegisterHostEvidence(
+                slot.PlayerSlotId,
+                PlayerSlotAssignmentOrigin.ManagerProvisioned,
+                joinResult.AssignmentToken,
+                joinResult.HostBindingIdentity,
+                host,
+                nameof(PlayerActorPreparationRuntimeHostModule),
+                "register-manager-provisioned-host");
+            if (!registration.Succeeded)
             {
-                issue =
-                    "Joined Local Player Host has no matching canonical Manager-Provisioned Slot assignment.";
+                issue = registration.ToDiagnosticString();
                 return false;
             }
 
-            if (joinedHosts.TryGetValue(slot.PlayerSlotId, out LocalPlayerHostAuthoring existing))
-            {
-                if (ReferenceEquals(existing, host))
-                {
-                    if (!joinedHostBindings.TryGetValue(
-                            slot.PlayerSlotId,
-                            out PlayerHostBindingIdentity existingBinding) ||
-                        existingBinding != joinResult.HostBindingIdentity)
-                    {
-                        issue =
-                            $"Player Slot '{slot.PlayerSlotId.StableText}' physical Host evidence conflicts with its canonical Host binding.";
-                        return false;
-                    }
-
-                    RecordSuccessfulJoin(joinResult);
-                    RegisterActivityLifecycleSource();
-                    return true;
-                }
-
-                issue =
-                    $"Player Slot '{slot.PlayerSlotId.StableText}' is already registered to another Local Player Host.";
-                return false;
-            }
-
-            joinedHosts.Add(slot.PlayerSlotId, host);
-            joinedHostBindings[slot.PlayerSlotId] =
-                joinResult.HostBindingIdentity;
-            joinedHostAssignmentTokens[slot.PlayerSlotId] =
-                joinResult.AssignmentToken;
             RecordSuccessfulJoin(joinResult);
             RegisterActivityLifecycleSource();
             diagnostic =
@@ -334,80 +299,113 @@ namespace Immersive.Framework.PlayerParticipation
         {
             host = null;
             issue = string.Empty;
-
-            if (!IsReady)
+            if (!IsReady || hostEvidenceProjection == null)
             {
                 issue = diagnostic;
                 return false;
             }
 
-            if (!playerSlotId.IsValid)
-            {
-                issue = "Registered host lookup requires a valid Player Slot identity.";
-                return false;
-            }
+            bool found = hostEvidenceProjection.TryGetHostEvidence(
+                playerSlotId,
+                out host,
+                out PlayerHostEvidenceResult result);
+            issue = found ? string.Empty : result.ToDiagnosticString();
+            return found;
+        }
 
-            if (!joinedHosts.TryGetValue(playerSlotId, out host) || host == null)
-            {
-                joinedHosts.Remove(playerSlotId);
-                joinedHostBindings.Remove(playerSlotId);
-                joinedHostAssignmentTokens.Remove(playerSlotId);
-                host = null;
-                issue =
-                    $"No joined Local Player Host is registered for Player Slot '{playerSlotId.StableText}'.";
-                return false;
-            }
-
-            if (!host.IsJoined ||
-                !host.HasJoinedSlot ||
-                host.JoinedPlayerSlotId != playerSlotId)
-            {
-                joinedHosts.Remove(playerSlotId);
-                joinedHostBindings.Remove(playerSlotId);
-                joinedHostAssignmentTokens.Remove(playerSlotId);
-                host = null;
-                issue =
-                    $"Registered Local Player Host no longer has matching Joined Slot evidence for '{playerSlotId.StableText}'.";
-                return false;
-            }
-
-            if (!joinedHostBindings.TryGetValue(
+        internal PlayerHostEvidenceResult RegisterHostEvidence(
+            PlayerSlotId playerSlotId,
+            PlayerSlotAssignmentOrigin assignmentOrigin,
+            PlayerSlotAssignmentToken assignmentToken,
+            PlayerHostBindingIdentity hostBindingIdentity,
+            LocalPlayerHostAuthoring host,
+            string source,
+            string reason)
+        {
+            return hostEvidenceProjection != null
+                ? hostEvidenceProjection.RegisterHostEvidence(
                     playerSlotId,
-                    out PlayerHostBindingIdentity hostBindingIdentity) ||
-                !joinedHostAssignmentTokens.TryGetValue(
-                    playerSlotId,
-                    out PlayerSlotAssignmentToken assignmentToken))
-            {
-                joinedHosts.Remove(playerSlotId);
-                joinedHostBindings.Remove(playerSlotId);
-                joinedHostAssignmentTokens.Remove(playerSlotId);
-                host = null;
-                issue =
-                    $"Registered Local Player Host has no canonical assignment correlation for '{playerSlotId.StableText}'.";
-                return false;
-            }
+                    assignmentOrigin,
+                    assignmentToken,
+                    hostBindingIdentity,
+                    host,
+                    source,
+                    reason)
+                : UnavailableHostEvidenceResult(
+                    "RegisterHostEvidence",
+                    source,
+                    reason);
+        }
 
-            PlayerSlotAssignmentResult confirmation =
-                participationContext.TryConfirmCurrentAssignment(
+        internal PlayerHostEvidenceResult ConfirmHostEvidence(
+            PlayerSlotId playerSlotId,
+            string source,
+            string reason)
+        {
+            return hostEvidenceProjection != null
+                ? hostEvidenceProjection.ConfirmHostEvidence(
+                    playerSlotId,
+                    source,
+                    reason)
+                : UnavailableHostEvidenceResult(
+                    "ConfirmHostEvidence",
+                    source,
+                    reason);
+        }
+
+        internal PlayerHostEvidenceResult ReleaseHostEvidence(
+            PlayerSlotId playerSlotId,
+            PlayerSlotAssignmentToken assignmentToken,
+            PlayerHostBindingIdentity hostBindingIdentity,
+            LocalPlayerHostAuthoring expectedHost,
+            string source,
+            string reason)
+        {
+            return hostEvidenceProjection != null
+                ? hostEvidenceProjection.ReleaseHostEvidence(
                     playerSlotId,
                     assignmentToken,
-                    nameof(PlayerActorPreparationRuntimeHostModule),
-                    "validate-registered-host");
-            if (confirmation == null ||
-                !confirmation.Succeeded ||
-                confirmation.CurrentAssignment.HostBindingIdentity !=
-                    hostBindingIdentity)
-            {
-                joinedHosts.Remove(playerSlotId);
-                joinedHostBindings.Remove(playerSlotId);
-                joinedHostAssignmentTokens.Remove(playerSlotId);
-                host = null;
-                issue =
-                    $"Registered Local Player Host assignment is no longer current for '{playerSlotId.StableText}'.";
-                return false;
-            }
+                    hostBindingIdentity,
+                    expectedHost,
+                    source,
+                    reason)
+                : UnavailableHostEvidenceResult(
+                    "ReleaseHostEvidence",
+                    source,
+                    reason);
+        }
 
-            return true;
+        internal bool TryGetRetainedHostEvidence(
+            PlayerSlotId playerSlotId,
+            out PlayerHostEvidenceSnapshot evidence)
+        {
+            evidence = default;
+            return hostEvidenceProjection != null &&
+                hostEvidenceProjection.TryGetRetainedEvidence(
+                    playerSlotId,
+                    out evidence);
+        }
+
+        internal PlayerHostEvidenceResult ClearDivergentHostEvidence(
+            PlayerSlotId playerSlotId,
+            PlayerSlotAssignmentToken assignmentToken,
+            PlayerHostBindingIdentity hostBindingIdentity,
+            LocalPlayerHostAuthoring expectedHost,
+            string source,
+            string reason)
+        {
+            return hostEvidenceProjection != null
+                ? hostEvidenceProjection.ClearDivergentHostEvidence(
+                    playerSlotId,
+                    assignmentToken,
+                    hostBindingIdentity,
+                    expectedHost,
+                    source,
+                    reason)
+                : UnavailableHostEvidenceResult(
+                    "ClearDivergentHostEvidence",
+                    source,
+                    reason);
         }
 
         internal PlayerActorSelectionResult TrySelectActorProfile(
@@ -481,21 +479,10 @@ namespace Immersive.Framework.PlayerParticipation
                     diagnostic);
             }
 
-            if (!TryGetRegisteredHost(playerSlotId, out LocalPlayerHostAuthoring host,
-                    out string issue))
-            {
-                return PlayerActorPreparationResult.HostUnavailable(
-                    "PrepareSelectedActor",
-                    playerSlotId,
-                    issue,
-                    preparationContext.CreateSnapshot());
-            }
-
             PlayerActorPreparationResult result =
                 preparationContext.TryPrepareSelectedActor(
                     scopeContext,
                     playerSlotId,
-                    host,
                     source,
                     reason);
             diagnostic = result.ToDiagnosticString();
@@ -525,6 +512,64 @@ namespace Immersive.Framework.PlayerParticipation
                     reason);
             diagnostic = result.ToDiagnosticString();
             return result;
+        }
+
+        internal bool TryGetCurrentActorEvidence(
+            PlayerSlotId playerSlotId,
+            out PlayerActorCorrelationEvidence evidence,
+            out PlayerCurrentActorEvidenceResult result)
+        {
+            evidence = default;
+            result = null;
+            return preparationContext != null &&
+                preparationContext.TryGetCurrentActorEvidence(
+                    playerSlotId,
+                    out evidence,
+                    out result);
+        }
+
+        internal PlayerCurrentActorEvidenceResult ConfirmCurrentActorEvidence(
+            PlayerSlotId playerSlotId,
+            PlayerActorPreparationToken expectedPreparation,
+            string source,
+            string reason)
+        {
+            return preparationContext != null
+                ? preparationContext.ConfirmCurrentActorEvidence(
+                    playerSlotId,
+                    expectedPreparation,
+                    source,
+                    reason)
+                : new PlayerCurrentActorEvidenceResult(
+                    PlayerCurrentActorEvidenceStatus.RejectedInvalidRequest,
+                    "ConfirmCurrentActorEvidence",
+                    default,
+                    default,
+                    source,
+                    reason,
+                    diagnostic);
+        }
+
+        internal bool TryGetRetainedActorEvidence(
+            PlayerSlotId playerSlotId,
+            out PlayerActorCorrelationEvidence evidence)
+        {
+            evidence = default;
+            return preparationContext != null &&
+                preparationContext.TryGetRetainedActorEvidence(
+                    playerSlotId,
+                    out evidence);
+        }
+
+        internal bool TryGetCurrentSlotActorSnapshot(
+            PlayerSlotId playerSlotId,
+            out CurrentPlayerSlotActorSnapshot snapshot)
+        {
+            snapshot = default;
+            return preparationContext != null &&
+                preparationContext.TryGetCurrentSlotActorSnapshot(
+                    playerSlotId,
+                    out snapshot);
         }
 
         internal PlayerActorPreparationResult TryReplacePreparedActor(
@@ -580,7 +625,7 @@ namespace Immersive.Framework.PlayerParticipation
             snapshot = new PlayerActorPreparationRuntimeHostSnapshot(
                 IsReady,
                 preparation.SessionContextId,
-                joinedHosts.Count,
+                RegisteredHostCount,
                 joinRequestCount,
                 preparationRequestCount,
                 lastJoinResult != null ? lastJoinResult.Status : LocalPlayerJoinStatus.None,
@@ -680,6 +725,22 @@ namespace Immersive.Framework.PlayerParticipation
             lastJoinResult = joinResult;
         }
 
+        private PlayerHostEvidenceResult UnavailableHostEvidenceResult(
+            string operation,
+            string source,
+            string reason)
+        {
+            return new PlayerHostEvidenceResult(
+                PlayerHostEvidenceStatus.RejectedInvalidRequest,
+                operation,
+                default,
+                default,
+                null,
+                source,
+                reason,
+                diagnostic);
+        }
+
         private bool TryGetProvisioningRuntime(
             out LocalPlayerProvisioningRuntimeHostModule provisioning,
             out string issue)
@@ -722,9 +783,8 @@ namespace Immersive.Framework.PlayerParticipation
                     out _);
             }
 
-            joinedHosts.Clear();
-            joinedHostBindings.Clear();
-            joinedHostAssignmentTokens.Clear();
+            hostEvidenceProjection?.ClearAll();
+            hostEvidenceProjection = null;
             activityLifecycleParticipant = null;
             preparationContext = null;
             participationContext = null;

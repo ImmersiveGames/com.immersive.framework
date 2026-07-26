@@ -156,6 +156,27 @@ namespace Immersive.Framework.PlayerParticipation
                     "Scene Player Actor adoption requires matching committed Host and Slot evidence.");
             }
 
+            if (!TryResolveCurrentActorCorrelation(
+                    scopeContext,
+                    playerSlotId,
+                    PlayerSlotAssignmentOrigin.SceneProvided,
+                    host,
+                    out PlayerSlotAssignmentSnapshot assignment,
+                    out PlayerHostEvidenceSnapshot hostEvidence,
+                    out issue))
+            {
+                return SceneAdoptionResult(
+                    ScenePlayerActorAdoptionStatus.RejectedHostMismatch,
+                    operation,
+                    playerSlotId,
+                    authoring,
+                    default,
+                    false,
+                    resolvedSource,
+                    resolvedReason,
+                    issue);
+            }
+
             if (sceneActor == null ||
                 host.ActorMount == null ||
                 (!ReferenceEquals(sceneActor.transform, host.ActorMount) &&
@@ -461,11 +482,16 @@ namespace Immersive.Framework.PlayerParticipation
                 PlayerActorPreparationSummary prepared = CreatePreparedSummary(
                     slot,
                     handle,
+                    assignment,
+                    hostEvidence,
+                    PlayerActorPhysicalOwnership.ExternalSceneOwned,
                     PlayerActorPreparationState.Prepared,
                     resolvedSource,
                     resolvedReason,
                     "External Scene Logical Player Actor adopted and prepared without physical ownership transfer.");
-                records.Add(playerSlotId, new PreparationRecord(handle, prepared));
+                records.Add(
+                    playerSlotId,
+                    new PreparationRecord(handle, host, prepared));
                 revision++;
 
                 var token = new ScenePlayerActorAdoptionToken(

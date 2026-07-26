@@ -13,13 +13,25 @@ namespace Immersive.Framework.PlayerParticipation
             out string issue)
         {
             preparation = default;
+            PlayerCurrentActorEvidenceResult confirmation = null;
             if (preparationContext == null ||
-                !preparationContext.TryGetPreparationSummary(
+                !preparationContext.TryGetCurrentActorEvidence(
                     playerSlotId,
-                    out preparation) ||
-                !preparation.IsValid)
+                    out _,
+                    out confirmation) ||
+                confirmation == null ||
+                !confirmation.Succeeded)
             {
-                issue = "Current P3J preparation evidence is unavailable.";
+                issue = confirmation != null
+                    ? confirmation.ToDiagnosticString()
+                    : "Current P3J preparation evidence is unavailable.";
+                return false;
+            }
+
+            preparation = confirmation.Preparation;
+            if (!preparation.IsValid)
+            {
+                issue = confirmation.ToDiagnosticString();
                 return false;
             }
 
