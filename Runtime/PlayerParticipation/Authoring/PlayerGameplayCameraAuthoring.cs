@@ -1,43 +1,110 @@
 using Immersive.Framework.ApiStatus;
+using Immersive.Framework.Camera;
 using Immersive.Framework.CameraAuthoring;
 using UnityEngine;
 
 namespace Immersive.Framework.PlayerParticipation
 {
     /// <summary>
-    /// Explicit camera endpoint on one contextual Logical Player Actor.
-    /// It carries no PlayerInput, Slot/Actor string identity, request identity,
-    /// winner policy or lifecycle behavior.
+    /// Declares that one contextual Logical Player Actor participates in the
+    /// gameplay Camera product.
+    ///
+    /// The referenced CameraRigComposer is the single authority for targets,
+    /// target requirements and framing. This component carries only participation,
+    /// requiredness and arbitration intent.
     /// </summary>
     [DisallowMultipleComponent]
     [AddComponentMenu(
-        "Immersive Framework/Player/Player Gameplay Camera Authoring")]
+        "Immersive Framework/Player/Gameplay Camera")]
     [FrameworkApiStatus(
         FrameworkApiStatus.Experimental,
         "P3K.4 explicit contextual Player camera eligibility authoring.")]
-    public sealed class PlayerGameplayCameraAuthoring : MonoBehaviour
+    public sealed class PlayerGameplayCameraAuthoring :
+        MonoBehaviour
     {
-        [Header("Policy")]
+        [Header("Participation")]
         [SerializeField]
         private PlayerGameplayCameraRequiredness requiredness =
             PlayerGameplayCameraRequiredness.Optional;
 
-        [Header("Explicit Actor-Owned References")]
-        [SerializeField] private CameraRigComposer cameraRig;
-        [SerializeField] private Transform followTarget;
-        [SerializeField] private Transform lookAtTarget;
+        [Header("Camera")]
+        [SerializeField]
+        private CameraRigComposer cameraRig;
 
-        [Header("Arbitration Intent")]
-        [SerializeField] private int precedence = 50;
+        [Header("Arbitration")]
+        [SerializeField]
+        private int precedence = 50;
 
-        public PlayerGameplayCameraRequiredness Requiredness => requiredness;
-        public CameraRigComposer CameraRig => cameraRig;
-        public Transform FollowTarget => followTarget;
-        public Transform LookAtTarget => lookAtTarget;
-        public int Precedence => precedence;
+        public PlayerGameplayCameraRequiredness Requiredness =>
+            requiredness;
+
+        public CameraRigComposer CameraRig =>
+            cameraRig;
+
+        public int Precedence =>
+            precedence;
+
+        public Transform FollowTarget
+        {
+            get
+            {
+                return TryResolveCameraTargets(
+                        out CameraResolvedTargets targets,
+                        out _)
+                    ? targets.FollowTarget
+                    : null;
+            }
+        }
+
+        public Transform LookAtTarget
+        {
+            get
+            {
+                return TryResolveCameraTargets(
+                        out CameraResolvedTargets targets,
+                        out _)
+                    ? targets.LookAtTarget
+                    : null;
+            }
+        }
 
         public bool HasExplicitCameraReferences =>
             cameraRig != null &&
-            followTarget != null;
+            TryResolveCameraTargets(
+                out CameraResolvedTargets targets,
+                out _) &&
+            targets.FollowTarget != null;
+
+        public bool TryResolveCameraTargets(
+            out CameraResolvedTargets targets,
+            out string diagnostic)
+        {
+            targets = default;
+
+            if (cameraRig == null)
+            {
+                diagnostic =
+                    "Player Gameplay Camera requires an explicit Camera Rig Composer.";
+                return false;
+            }
+
+            CameraTargetResolveResult resolution =
+                cameraRig.ResolveConfiguredCameraTargets();
+
+            if (!resolution.IsSucceeded)
+            {
+                diagnostic =
+                    $"Player Gameplay Camera could not resolve its Camera Rig targets. {resolution.BlockingIssue}";
+                return false;
+            }
+
+            targets =
+                resolution.Targets;
+
+            diagnostic =
+                resolution.DiagnosticSummary;
+
+            return true;
+        }
     }
 }
