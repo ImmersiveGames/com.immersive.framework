@@ -28,9 +28,21 @@ namespace Immersive.Framework.ActivityFlow
 
         private RouteAsset Route { get; }
 
+        /// <summary>
+        /// Internal lifecycle authority. Package participants can consume the exact
+        /// Route supplied by ActivityFlow without reconstructing it from loaded scenes.
+        /// </summary>
+        internal RouteAsset RouteContext => Route;
+
         private ActivityAsset PreviousActivity { get; }
 
         private ActivityAsset NextActivity { get; }
+
+        /// <summary>
+        /// Internal target Activity authority paired with <see cref="RouteContext"/>.
+        /// It prevents retained Route context from being reused by a different transition.
+        /// </summary>
+        internal ActivityAsset NextActivityContext => NextActivity;
 
         public string Source { get; }
 

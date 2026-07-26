@@ -59,6 +59,10 @@ namespace Immersive.Framework.PlayerParticipation
                     "Scene Local Player composite lifecycle requires a valid Activity transition request.");
             }
 
+            sceneModule.SetActivityLifecycleContext(
+                request.RouteContext,
+                request.NextActivityContext);
+
             ActivityContentExecutionParticipantCollection collection =
                 ActivityContentExecutionParticipantCollection.FromParticipants(
                     new IActivityContentExecutionParticipant[] { this });

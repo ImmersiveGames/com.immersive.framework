@@ -42,6 +42,8 @@ namespace Immersive.Framework.PlayerParticipation
         private FrameworkRuntimeHost runtimeHost;
         private PlayerParticipationRuntimeContext participationContext;
         private SceneLocalPlayerAdmissionRuntime runtime;
+        private RouteAsset activityLifecycleRouteContext;
+        private ActivityAsset activityLifecycleActivityContext;
         private string diagnostic = "Scene Local Player admission runtime is not initialized.";
         private bool shuttingDown;
 
@@ -54,6 +56,14 @@ namespace Immersive.Framework.PlayerParticipation
         internal int BoundAuthoringCount => boundAuthoring.Count;
         internal int ActiveAdmissionCount => runtime?.ActiveAdmissionCount ?? 0;
         internal PlayerParticipationRuntimeContext ParticipationContext => participationContext;
+
+        internal void SetActivityLifecycleContext(
+            RouteAsset route,
+            ActivityAsset nextActivity)
+        {
+            activityLifecycleRouteContext = route;
+            activityLifecycleActivityContext = nextActivity;
+        }
 
         internal static bool TryAttach(
             FrameworkRuntimeHost runtimeHost,
@@ -281,6 +291,9 @@ namespace Immersive.Framework.PlayerParticipation
 
             ReconcileLoadedSceneAuthoring();
 
+            RouteAsset routeContext =
+                ResolveActivityLifecycleRouteContext(activity);
+
             PlayerParticipationSnapshot snapshot = participationContext.CreateSnapshot();
             if (snapshot == null || !snapshot.IsInitialized)
             {
@@ -297,7 +310,10 @@ namespace Immersive.Framework.PlayerParticipation
                 SceneLocalPlayerAdmissionAuthoring candidate = boundAuthoring[index];
                 if (candidate == null ||
                     candidate.AdmissionTiming != SceneLocalPlayerAdmissionTiming.OnActivityEnter ||
-                    !IsDeclaredByActivity(candidate, activity))
+                    !IsDeclaredByActivityOrRoute(
+                        candidate,
+                        activity,
+                        routeContext))
                 {
                     continue;
                 }
@@ -494,6 +510,53 @@ namespace Immersive.Framework.PlayerParticipation
         }
 
 
+        private RouteAsset ResolveActivityLifecycleRouteContext(
+            ActivityAsset activity)
+        {
+            if (activity == null ||
+                activityLifecycleActivityContext == null ||
+                !activityLifecycleActivityContext.HasSameIdentity(activity))
+            {
+                return null;
+            }
+
+            return activityLifecycleRouteContext;
+        }
+
+        private static bool IsDeclaredByActivityOrRoute(
+            SceneLocalPlayerAdmissionAuthoring authoring,
+            ActivityAsset activity,
+            RouteAsset route)
+        {
+            return IsDeclaredByRoutePrimaryScene(authoring, route) ||
+                IsDeclaredByActivity(authoring, activity);
+        }
+
+        private static bool IsDeclaredByRoutePrimaryScene(
+            SceneLocalPlayerAdmissionAuthoring authoring,
+            RouteAsset route)
+        {
+            if (authoring == null ||
+                route == null ||
+                !route.HasPrimaryScene ||
+                !authoring.gameObject.scene.IsValid())
+            {
+                return false;
+            }
+
+            string scenePath =
+                NormalizeScenePath(authoring.gameObject.scene.path);
+            string routePrimaryScenePath =
+                NormalizeScenePath(route.PrimaryScenePath);
+
+            return !string.IsNullOrEmpty(scenePath) &&
+                !string.IsNullOrEmpty(routePrimaryScenePath) &&
+                string.Equals(
+                    scenePath,
+                    routePrimaryScenePath,
+                    StringComparison.OrdinalIgnoreCase);
+        }
+
         private static bool IsDeclaredByActivity(
             SceneLocalPlayerAdmissionAuthoring authoring,
             ActivityAsset activity)
@@ -631,6 +694,8 @@ namespace Immersive.Framework.PlayerParticipation
             }
 
             boundAuthoring.Clear();
+            activityLifecycleRouteContext = null;
+            activityLifecycleActivityContext = null;
             runtime = null;
             participationContext = null;
             runtimeHost = null;
