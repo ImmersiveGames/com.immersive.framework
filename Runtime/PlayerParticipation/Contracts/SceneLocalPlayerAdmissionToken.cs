@@ -20,18 +20,21 @@ namespace Immersive.Framework.PlayerParticipation
             string contextId,
             int operationSequence,
             PlayerSlotId playerSlotId,
-            int joinedSlotRevision)
+            int joinedSlotRevision,
+            PlayerSlotAssignmentToken assignmentToken = default)
         {
             ContextId = contextId.NormalizeText();
             OperationSequence = operationSequence;
             PlayerSlotId = playerSlotId;
             JoinedSlotRevision = joinedSlotRevision;
+            AssignmentToken = assignmentToken;
         }
 
         public string ContextId { get; }
         public int OperationSequence { get; }
         public PlayerSlotId PlayerSlotId { get; }
         public int JoinedSlotRevision { get; }
+        public PlayerSlotAssignmentToken AssignmentToken { get; }
 
         public bool IsValid =>
             !string.IsNullOrEmpty(ContextId) &&
@@ -40,7 +43,7 @@ namespace Immersive.Framework.PlayerParticipation
             JoinedSlotRevision >= 0;
 
         public string StableText => IsValid
-            ? $"{ContextId}:{OperationSequence}:{PlayerSlotId.StableText}:{JoinedSlotRevision}"
+            ? $"{ContextId}:{OperationSequence}:{PlayerSlotId.StableText}:{JoinedSlotRevision}:{AssignmentToken.StableText}"
             : string.Empty;
 
         public bool Equals(SceneLocalPlayerAdmissionToken other)
@@ -48,7 +51,8 @@ namespace Immersive.Framework.PlayerParticipation
             return string.Equals(ContextId, other.ContextId, StringComparison.Ordinal) &&
                 OperationSequence == other.OperationSequence &&
                 PlayerSlotId == other.PlayerSlotId &&
-                JoinedSlotRevision == other.JoinedSlotRevision;
+                JoinedSlotRevision == other.JoinedSlotRevision &&
+                AssignmentToken == other.AssignmentToken;
         }
 
         public override bool Equals(object obj)
@@ -64,6 +68,7 @@ namespace Immersive.Framework.PlayerParticipation
                 hashCode = hashCode * 397 ^ OperationSequence;
                 hashCode = hashCode * 397 ^ PlayerSlotId.GetHashCode();
                 hashCode = hashCode * 397 ^ JoinedSlotRevision;
+                hashCode = hashCode * 397 ^ AssignmentToken.GetHashCode();
                 return hashCode;
             }
         }

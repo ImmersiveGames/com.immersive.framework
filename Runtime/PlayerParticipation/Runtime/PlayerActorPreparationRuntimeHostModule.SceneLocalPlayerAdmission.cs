@@ -138,6 +138,8 @@ namespace Immersive.Framework.PlayerParticipation
             else if (registeredNow)
             {
                 joinedHosts.Remove(playerSlotId);
+                joinedHostBindings.Remove(playerSlotId);
+                joinedHostAssignmentTokens.Remove(playerSlotId);
             }
 
             diagnostic = result != null
@@ -227,13 +229,28 @@ namespace Immersive.Framework.PlayerParticipation
                 return false;
             }
 
+            if (!participationContext.TryGetCurrentAssignment(
+                    playerSlotId,
+                    out PlayerSlotAssignmentSnapshot assignment) ||
+                assignment.AssignmentOrigin !=
+                    PlayerSlotAssignmentOrigin.SceneProvided)
+            {
+                issue =
+                    "Scene Local Player Host registration requires the canonical Scene-Provided Slot assignment.";
+                return false;
+            }
+
             if (joinedHosts.TryGetValue(
                     playerSlotId,
                     out LocalPlayerHostAuthoring existing))
             {
                 if (ReferenceEquals(existing, host))
                 {
-                    if (sceneOwnedHostRegistrations.Contains(playerSlotId))
+                    if (sceneOwnedHostRegistrations.Contains(playerSlotId) &&
+                        joinedHostBindings.TryGetValue(
+                            playerSlotId,
+                            out PlayerHostBindingIdentity existingBinding) &&
+                        existingBinding == assignment.HostBindingIdentity)
                     {
                         return true;
                     }
@@ -249,6 +266,8 @@ namespace Immersive.Framework.PlayerParticipation
                     existing.JoinedPlayerSlotId != playerSlotId)
                 {
                     joinedHosts.Remove(playerSlotId);
+                    joinedHostBindings.Remove(playerSlotId);
+                    joinedHostAssignmentTokens.Remove(playerSlotId);
                 }
                 else
                 {
@@ -259,6 +278,10 @@ namespace Immersive.Framework.PlayerParticipation
             }
 
             joinedHosts.Add(playerSlotId, host);
+            joinedHostBindings[playerSlotId] =
+                assignment.HostBindingIdentity;
+            joinedHostAssignmentTokens[playerSlotId] =
+                assignment.AssignmentToken;
             registeredNow = true;
             return true;
         }
@@ -277,6 +300,8 @@ namespace Immersive.Framework.PlayerParticipation
             }
 
             joinedHosts.Remove(playerSlotId);
+            joinedHostBindings.Remove(playerSlotId);
+            joinedHostAssignmentTokens.Remove(playerSlotId);
         }
     }
 

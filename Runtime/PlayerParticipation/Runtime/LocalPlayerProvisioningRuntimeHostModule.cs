@@ -261,6 +261,17 @@ namespace Immersive.Framework.PlayerParticipation
                 "Local Player provisioning bridge returned no result.");
         }
 
+        internal LocalPlayerJoinResult RollbackCommittedJoin(
+            LocalPlayerJoinResult joinResult,
+            string reason)
+        {
+            return bridge != null
+                ? bridge.RollbackCommittedJoin(joinResult, reason)
+                : LocalPlayerJoinResult.RuntimeUnavailable(
+                    joinResult != null ? joinResult.Request : default,
+                    "Local Player provisioning bridge is unavailable for committed join rollback.");
+        }
+
         internal PlayerParticipationOperationResult TryOpenJoining(
             string source,
             string reason)

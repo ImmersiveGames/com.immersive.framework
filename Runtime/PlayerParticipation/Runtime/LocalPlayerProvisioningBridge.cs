@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using Immersive.Framework.ApiStatus;
 using Immersive.Framework.Common;
+using Immersive.Framework.RuntimeContent;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
@@ -313,10 +314,53 @@ namespace Immersive.Framework.PlayerParticipation
                     commitResult);
             }
 
-            localPlayerHost.CommitStagedAdmission(
-                commitResult.Slot,
-                request.Source,
-                request.Reason);
+            PlayerHostBindingIdentity hostBindingIdentity =
+                participationContext.CreateHostBindingIdentity();
+            RuntimeContentOwner assignmentOwner =
+                participationContext.CreateSessionAssignmentOwner();
+            PlayerSlotAssignmentResult assignmentResult =
+                participationContext.BeginAssignment(
+                    commitResult.Slot.PlayerSlotId,
+                    PlayerSlotAssignmentOrigin.ManagerProvisioned,
+                    assignmentOwner,
+                    hostBindingIdentity,
+                    request.Source,
+                    request.Reason);
+            if (assignmentResult == null || !assignmentResult.Succeeded)
+            {
+                return FailCommittedJoinAndRollback(
+                    LocalPlayerJoinStatus.FailedAdmission,
+                    pendingJoin,
+                    provisionedPlayerInput,
+                    pendingJoin.CallbackPlayerInput,
+                    localPlayerHost,
+                    commitResult,
+                    assignmentResult,
+                    assignmentResult != null
+                        ? "Canonical current Slot assignment failed. " +
+                          assignmentResult.Message
+                        : "Canonical current Slot assignment returned no result.");
+            }
+
+            try
+            {
+                localPlayerHost.CommitStagedAdmission(
+                    commitResult.Slot,
+                    request.Source,
+                    request.Reason);
+            }
+            catch (Exception exception)
+            {
+                return FailCommittedJoinAndRollback(
+                    LocalPlayerJoinStatus.FailedAdmission,
+                    pendingJoin,
+                    provisionedPlayerInput,
+                    pendingJoin.CallbackPlayerInput,
+                    localPlayerHost,
+                    commitResult,
+                    assignmentResult,
+                    $"Local Player Host commit threw '{exception.GetType().Name}': {exception.Message}");
+            }
 
             LocalPlayerJoinCallbackConfirmation callbackConfirmation =
                 pendingJoin.CallbackConfirmation;
@@ -336,6 +380,7 @@ namespace Immersive.Framework.PlayerParticipation
                 provisionedPlayerInput,
                 localPlayerHost,
                 callbackConfirmation,
+                assignmentResult,
                 "Local Player technical host transferred to the persistent FrameworkRuntimeHost and admitted to the reserved Session Slot. Logical Actor remains unprepared.");
             pendingJoin = null;
             return Complete(succeeded);
@@ -352,6 +397,84 @@ namespace Immersive.Framework.PlayerParticipation
             }
 
             return callbackConfirmations.TryGetValue(operationId, out confirmation);
+        }
+
+        internal LocalPlayerJoinResult RollbackCommittedJoin(
+            LocalPlayerJoinResult joinResult,
+            string reason)
+        {
+            const string source = nameof(LocalPlayerProvisioningBridge);
+            string resolvedReason = reason.NormalizeTextOrFallback(
+                "committed-join-rollback");
+            if (joinResult == null ||
+                !joinResult.Succeeded ||
+                !joinResult.AssignmentToken.IsValid ||
+                !joinResult.Slot.PlayerSlotId.IsValid)
+            {
+                return Complete(CreateRejected(
+                    LocalPlayerJoinStatus.FailedRollback,
+                    joinResult != null ? joinResult.OperationId : default,
+                    joinResult != null ? joinResult.Request : default,
+                    "Committed Local Player join rollback requires complete successful join evidence."));
+            }
+
+            PlayerSlotAssignmentResult assignmentRollback =
+                participationContext.ReleaseAssignment(
+                    joinResult.Slot.PlayerSlotId,
+                    joinResult.AssignmentToken,
+                    source,
+                    resolvedReason);
+            string hostIssue = string.Empty;
+            bool hostRestored =
+                joinResult.LocalPlayerHost != null &&
+                joinResult.LocalPlayerHost.TryReleaseCommittedAdmission(
+                    joinResult.Slot.PlayerSlotId,
+                    source,
+                    resolvedReason,
+                    out hostIssue);
+            PlayerParticipationOperationResult slotRollback =
+                participationContext.TryAbandonJoinedSlotAfterAssignmentFailure(
+                    joinResult.Slot.PlayerSlotId,
+                    source,
+                    resolvedReason);
+
+            RejectDistinctPlayers(
+                joinResult.PlayerInput,
+                null,
+                resolvedReason);
+            callbackConfirmations.Remove(joinResult.OperationId);
+
+            bool assignmentRestored =
+                assignmentRollback != null &&
+                assignmentRollback.Succeeded;
+            bool slotRestored =
+                slotRollback != null &&
+                slotRollback.Succeeded;
+            LocalPlayerJoinStatus status =
+                assignmentRestored && hostRestored && slotRestored
+                    ? LocalPlayerJoinStatus.FailedAdmission
+                    : LocalPlayerJoinStatus.FailedRollback;
+            string message =
+                "Committed Local Player join rolled back because physical Host registration failed. " +
+                $"assignmentReleased='{assignmentRestored}' hostReleased='{hostRestored}' " +
+                $"slotReleased='{slotRestored}' hostIssue='{hostIssue}'.";
+            return Complete(CreateRollbackResult(
+                status,
+                joinResult.OperationId,
+                joinResult.Request,
+                joinResult.ReservationResult,
+                joinResult.CommitResult,
+                slotRollback,
+                slotRollback != null && slotRollback.Slot.IsValid
+                    ? slotRollback.Slot
+                    : joinResult.Slot,
+                joinResult.PlayerInput,
+                joinResult.LocalPlayerHost,
+                joinResult.CallbackConfirmation,
+                message,
+                LocalPlayerJoinStatus.FailedAdmission,
+                joinResult.AssignmentResult,
+                assignmentRollback));
         }
 
         public void Dispose()
@@ -566,6 +689,77 @@ namespace Immersive.Framework.PlayerParticipation
             return Complete(result);
         }
 
+        private LocalPlayerJoinResult FailCommittedJoinAndRollback(
+            LocalPlayerJoinStatus originalStatus,
+            PendingLocalPlayerJoin pending,
+            PlayerInput directPlayerInput,
+            PlayerInput callbackPlayerInput,
+            LocalPlayerHostAuthoring host,
+            PlayerParticipationOperationResult commitResult,
+            PlayerSlotAssignmentResult assignmentResult,
+            string message)
+        {
+            PlayerSlotAssignmentResult assignmentRollback = null;
+            if (assignmentResult != null &&
+                assignmentResult.Status ==
+                    PlayerSlotAssignmentStatus.SucceededAssigned)
+            {
+                assignmentRollback = participationContext.ReleaseAssignment(
+                    commitResult.Slot.PlayerSlotId,
+                    assignmentResult.CurrentAssignment.AssignmentToken,
+                    pending.Request.Source,
+                    "manager-assignment-rollback");
+            }
+
+            host?.RollbackStagedAdmission(
+                pending.Request.Source,
+                "manager-assignment-rollback");
+
+            PlayerParticipationOperationResult slotRollback =
+                participationContext.TryAbandonJoinedSlotAfterAssignmentFailure(
+                    commitResult.Slot.PlayerSlotId,
+                    pending.Request.Source,
+                    "manager-assignment-rollback");
+
+            RejectDistinctPlayers(
+                directPlayerInput,
+                callbackPlayerInput,
+                "local-player-join-rejected");
+
+            bool assignmentRestored =
+                assignmentRollback == null ||
+                assignmentRollback.Succeeded;
+            bool slotRestored = slotRollback != null && slotRollback.Succeeded;
+            LocalPlayerJoinStatus finalStatus =
+                assignmentRestored && slotRestored
+                    ? originalStatus
+                    : LocalPlayerJoinStatus.FailedRollback;
+            string finalMessage = finalStatus == LocalPlayerJoinStatus.FailedRollback
+                ? message +
+                  $" Explicit rollback failed. assignmentRestored='{assignmentRestored}' slotRestored='{slotRestored}'."
+                : message;
+
+            LocalPlayerJoinResult result = CreateRollbackResult(
+                finalStatus,
+                pending.OperationId,
+                pending.Request,
+                pending.ReservationResult,
+                commitResult,
+                slotRollback,
+                slotRollback != null && slotRollback.Slot.IsValid
+                    ? slotRollback.Slot
+                    : commitResult.Slot,
+                directPlayerInput,
+                host,
+                pending.CallbackConfirmation,
+                finalMessage,
+                originalStatus,
+                assignmentResult,
+                assignmentRollback);
+            pendingJoin = null;
+            return Complete(result);
+        }
+
         private void HandlePlayerJoined(PlayerInput playerInput)
         {
             if (disposed)
@@ -766,7 +960,9 @@ namespace Immersive.Framework.PlayerParticipation
                 result.UnityPlayerIndex,
                 confirmation,
                 result.Message,
-                result.OriginalStatus);
+                result.OriginalStatus,
+                result.AssignmentResult,
+                result.AssignmentRollbackResult);
         }
 
         private static LocalPlayerJoinResult CreateRejected(
@@ -793,13 +989,15 @@ namespace Immersive.Framework.PlayerParticipation
             PlayerInput playerInput,
             LocalPlayerHostAuthoring host,
             LocalPlayerJoinCallbackConfirmation callbackConfirmation,
+            PlayerSlotAssignmentResult assignmentResult,
             string message)
         {
             return CreateResultCore(
                 LocalPlayerJoinStatus.SucceededJoined, operationId, request,
                 reservationResult, commitResult, null, slot, playerInput, host,
                 playerInput != null ? playerInput.playerIndex : -1,
-                callbackConfirmation, message);
+                callbackConfirmation, message,
+                assignmentResult: assignmentResult);
         }
 
         private static LocalPlayerJoinResult CreateRollbackResult(
@@ -814,13 +1012,16 @@ namespace Immersive.Framework.PlayerParticipation
             LocalPlayerHostAuthoring host,
             LocalPlayerJoinCallbackConfirmation callbackConfirmation,
             string message,
-            LocalPlayerJoinStatus originalStatus)
+            LocalPlayerJoinStatus originalStatus,
+            PlayerSlotAssignmentResult assignmentResult = null,
+            PlayerSlotAssignmentResult assignmentRollbackResult = null)
         {
             return CreateResultCore(
                 status, operationId, request, reservationResult, commitResult,
                 rollbackResult, slot, playerInput, host,
                 playerInput != null ? playerInput.playerIndex : -1,
-                callbackConfirmation, message, originalStatus);
+                callbackConfirmation, message, originalStatus,
+                assignmentResult, assignmentRollbackResult);
         }
 
         private static LocalPlayerJoinResult CreateUnexpectedJoin(
@@ -849,7 +1050,9 @@ namespace Immersive.Framework.PlayerParticipation
             int unityPlayerIndex,
             LocalPlayerJoinCallbackConfirmation callbackConfirmation,
             string message,
-            LocalPlayerJoinStatus originalStatus = LocalPlayerJoinStatus.None)
+            LocalPlayerJoinStatus originalStatus = LocalPlayerJoinStatus.None,
+            PlayerSlotAssignmentResult assignmentResult = null,
+            PlayerSlotAssignmentResult assignmentRollbackResult = null)
         {
             return new LocalPlayerJoinResult(
                 status,
@@ -864,7 +1067,9 @@ namespace Immersive.Framework.PlayerParticipation
                 unityPlayerIndex,
                 callbackConfirmation,
                 message,
-                originalStatus);
+                originalStatus,
+                assignmentResult,
+                assignmentRollbackResult);
         }
     }
 }

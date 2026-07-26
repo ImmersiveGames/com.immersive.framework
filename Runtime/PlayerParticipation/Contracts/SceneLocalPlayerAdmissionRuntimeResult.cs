@@ -24,7 +24,9 @@ namespace Immersive.Framework.PlayerParticipation
             PlayerSlotRuntimeSnapshot currentSlot,
             string source,
             string reason,
-            string message)
+            string message,
+            PlayerSlotAssignmentResult assignmentResult = null,
+            PlayerSlotAssignmentResult assignmentCompensationResult = null)
         {
             Status = status;
             OriginalStatus = originalStatus == SceneLocalPlayerAdmissionRuntimeStatus.None
@@ -40,6 +42,8 @@ namespace Immersive.Framework.PlayerParticipation
             CurrentSlot = currentSlot;
             Source = source ?? string.Empty;
             Reason = reason ?? string.Empty;
+            AssignmentResult = assignmentResult;
+            AssignmentCompensationResult = assignmentCompensationResult;
             Message = message ?? string.Empty;
         }
 
@@ -55,6 +59,8 @@ namespace Immersive.Framework.PlayerParticipation
         public PlayerSlotRuntimeSnapshot CurrentSlot { get; }
         public string Source { get; }
         public string Reason { get; }
+        public PlayerSlotAssignmentResult AssignmentResult { get; }
+        public PlayerSlotAssignmentResult AssignmentCompensationResult { get; }
         public string Message { get; }
 
         public bool Succeeded => Status is
@@ -83,12 +89,14 @@ namespace Immersive.Framework.PlayerParticipation
         public bool HasReservationResult => ReservationResult != null;
         public bool HasSlotOperationResult => SlotOperationResult != null;
         public bool HasCompensationResult => CompensationResult != null;
+        public bool HasAssignmentResult => AssignmentResult != null;
 
         public string ToDiagnosticString()
         {
             return $"operation='{Operation}' status='{Status}' originalStatus='{OriginalStatus}' " +
                 $"authoring='{(Authoring != null ? Authoring.name : string.Empty)}' " +
-                $"token='{Token.StableText}' previousSlot='{SlotText(PreviousSlot)}' " +
+                $"token='{Token.StableText}' assignment='{Token.AssignmentToken.StableText}' " +
+                $"previousSlot='{SlotText(PreviousSlot)}' " +
                 $"currentSlot='{SlotText(CurrentSlot)}' source='{Source}' reason='{Reason}' " +
                 $"message='{Message}'";
         }

@@ -22,6 +22,12 @@ namespace Immersive.Framework.PlayerParticipation
     {
         private readonly Dictionary<PlayerSlotId, LocalPlayerHostAuthoring> joinedHosts =
             new Dictionary<PlayerSlotId, LocalPlayerHostAuthoring>();
+        private readonly Dictionary<PlayerSlotId, PlayerHostBindingIdentity>
+            joinedHostBindings =
+                new Dictionary<PlayerSlotId, PlayerHostBindingIdentity>();
+        private readonly Dictionary<PlayerSlotId, PlayerSlotAssignmentToken>
+            joinedHostAssignmentTokens =
+                new Dictionary<PlayerSlotId, PlayerSlotAssignmentToken>();
 
         private FrameworkRuntimeHost runtimeHost;
         private PlayerParticipationRuntimeContext participationContext;
@@ -267,10 +273,38 @@ namespace Immersive.Framework.PlayerParticipation
                 return false;
             }
 
+            PlayerSlotAssignmentResult assignmentConfirmation =
+                participationContext.TryConfirmCurrentAssignment(
+                    slot.PlayerSlotId,
+                    joinResult.AssignmentToken,
+                    nameof(PlayerActorPreparationRuntimeHostModule),
+                    "register-manager-provisioned-host");
+            if (assignmentConfirmation == null ||
+                !assignmentConfirmation.Succeeded ||
+                assignmentConfirmation.CurrentAssignment.AssignmentOrigin !=
+                    PlayerSlotAssignmentOrigin.ManagerProvisioned ||
+                assignmentConfirmation.CurrentAssignment.HostBindingIdentity !=
+                    joinResult.HostBindingIdentity)
+            {
+                issue =
+                    "Joined Local Player Host has no matching canonical Manager-Provisioned Slot assignment.";
+                return false;
+            }
+
             if (joinedHosts.TryGetValue(slot.PlayerSlotId, out LocalPlayerHostAuthoring existing))
             {
                 if (ReferenceEquals(existing, host))
                 {
+                    if (!joinedHostBindings.TryGetValue(
+                            slot.PlayerSlotId,
+                            out PlayerHostBindingIdentity existingBinding) ||
+                        existingBinding != joinResult.HostBindingIdentity)
+                    {
+                        issue =
+                            $"Player Slot '{slot.PlayerSlotId.StableText}' physical Host evidence conflicts with its canonical Host binding.";
+                        return false;
+                    }
+
                     RecordSuccessfulJoin(joinResult);
                     RegisterActivityLifecycleSource();
                     return true;
@@ -282,6 +316,10 @@ namespace Immersive.Framework.PlayerParticipation
             }
 
             joinedHosts.Add(slot.PlayerSlotId, host);
+            joinedHostBindings[slot.PlayerSlotId] =
+                joinResult.HostBindingIdentity;
+            joinedHostAssignmentTokens[slot.PlayerSlotId] =
+                joinResult.AssignmentToken;
             RecordSuccessfulJoin(joinResult);
             RegisterActivityLifecycleSource();
             diagnostic =
@@ -312,6 +350,8 @@ namespace Immersive.Framework.PlayerParticipation
             if (!joinedHosts.TryGetValue(playerSlotId, out host) || host == null)
             {
                 joinedHosts.Remove(playerSlotId);
+                joinedHostBindings.Remove(playerSlotId);
+                joinedHostAssignmentTokens.Remove(playerSlotId);
                 host = null;
                 issue =
                     $"No joined Local Player Host is registered for Player Slot '{playerSlotId.StableText}'.";
@@ -323,9 +363,47 @@ namespace Immersive.Framework.PlayerParticipation
                 host.JoinedPlayerSlotId != playerSlotId)
             {
                 joinedHosts.Remove(playerSlotId);
+                joinedHostBindings.Remove(playerSlotId);
+                joinedHostAssignmentTokens.Remove(playerSlotId);
                 host = null;
                 issue =
                     $"Registered Local Player Host no longer has matching Joined Slot evidence for '{playerSlotId.StableText}'.";
+                return false;
+            }
+
+            if (!joinedHostBindings.TryGetValue(
+                    playerSlotId,
+                    out PlayerHostBindingIdentity hostBindingIdentity) ||
+                !joinedHostAssignmentTokens.TryGetValue(
+                    playerSlotId,
+                    out PlayerSlotAssignmentToken assignmentToken))
+            {
+                joinedHosts.Remove(playerSlotId);
+                joinedHostBindings.Remove(playerSlotId);
+                joinedHostAssignmentTokens.Remove(playerSlotId);
+                host = null;
+                issue =
+                    $"Registered Local Player Host has no canonical assignment correlation for '{playerSlotId.StableText}'.";
+                return false;
+            }
+
+            PlayerSlotAssignmentResult confirmation =
+                participationContext.TryConfirmCurrentAssignment(
+                    playerSlotId,
+                    assignmentToken,
+                    nameof(PlayerActorPreparationRuntimeHostModule),
+                    "validate-registered-host");
+            if (confirmation == null ||
+                !confirmation.Succeeded ||
+                confirmation.CurrentAssignment.HostBindingIdentity !=
+                    hostBindingIdentity)
+            {
+                joinedHosts.Remove(playerSlotId);
+                joinedHostBindings.Remove(playerSlotId);
+                joinedHostAssignmentTokens.Remove(playerSlotId);
+                host = null;
+                issue =
+                    $"Registered Local Player Host assignment is no longer current for '{playerSlotId.StableText}'.";
                 return false;
             }
 
@@ -645,6 +723,8 @@ namespace Immersive.Framework.PlayerParticipation
             }
 
             joinedHosts.Clear();
+            joinedHostBindings.Clear();
+            joinedHostAssignmentTokens.Clear();
             activityLifecycleParticipant = null;
             preparationContext = null;
             participationContext = null;
@@ -706,8 +786,10 @@ namespace Immersive.Framework.PlayerParticipation
 
             if (!preparation.TryRegisterJoinedHost(result, out string issue))
             {
-                throw new InvalidOperationException(
-                    $"Successful local Player join could not register its stable host with Actor preparation authority. {issue}");
+                return provisioning.RollbackCommittedJoin(
+                    result,
+                    "actor-preparation-host-registration-failed: " +
+                    issue);
             }
 
             return result;

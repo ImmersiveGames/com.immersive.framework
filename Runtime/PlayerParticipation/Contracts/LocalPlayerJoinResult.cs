@@ -26,7 +26,9 @@ namespace Immersive.Framework.PlayerParticipation
             int unityPlayerIndex,
             LocalPlayerJoinCallbackConfirmation callbackConfirmation,
             string message,
-            LocalPlayerJoinStatus originalStatus = LocalPlayerJoinStatus.None)
+            LocalPlayerJoinStatus originalStatus = LocalPlayerJoinStatus.None,
+            PlayerSlotAssignmentResult assignmentResult = null,
+            PlayerSlotAssignmentResult assignmentRollbackResult = null)
         {
             Status = status;
             OriginalStatus = originalStatus == LocalPlayerJoinStatus.None
@@ -42,6 +44,8 @@ namespace Immersive.Framework.PlayerParticipation
             LocalPlayerHost = localPlayerHost;
             UnityPlayerIndex = unityPlayerIndex;
             CallbackConfirmation = callbackConfirmation;
+            AssignmentResult = assignmentResult;
+            AssignmentRollbackResult = assignmentRollbackResult;
             Message = message ?? string.Empty;
         }
 
@@ -57,6 +61,8 @@ namespace Immersive.Framework.PlayerParticipation
         public LocalPlayerHostAuthoring LocalPlayerHost { get; }
         public int UnityPlayerIndex { get; }
         public LocalPlayerJoinCallbackConfirmation CallbackConfirmation { get; }
+        public PlayerSlotAssignmentResult AssignmentResult { get; }
+        public PlayerSlotAssignmentResult AssignmentRollbackResult { get; }
         public string Message { get; }
 
         public bool Succeeded => Status == LocalPlayerJoinStatus.SucceededJoined;
@@ -71,6 +77,18 @@ namespace Immersive.Framework.PlayerParticipation
         public bool HasCommitEvidence => CommitResult != null;
         public bool HasRollbackEvidence => RollbackResult != null;
         public bool HasLocalPlayerHostEvidence => LocalPlayerHost != null;
+        public bool HasAssignmentEvidence =>
+            Succeeded &&
+            AssignmentResult != null &&
+            AssignmentResult.HasCurrentAssignment;
+        public PlayerSlotAssignmentSnapshot CurrentAssignment =>
+            HasAssignmentEvidence
+                ? AssignmentResult.CurrentAssignment
+                : default;
+        public PlayerSlotAssignmentToken AssignmentToken =>
+            CurrentAssignment.AssignmentToken;
+        public PlayerHostBindingIdentity HostBindingIdentity =>
+            CurrentAssignment.HostBindingIdentity;
 
         internal static LocalPlayerJoinResult RuntimeUnavailable(
             LocalPlayerJoinRequest request,
@@ -98,6 +116,7 @@ namespace Immersive.Framework.PlayerParticipation
             return $"operation='{OperationId.StableText}' status='{Status}' originalStatus='{OriginalStatus}' " +
                 $"slot='{(Slot.PlayerSlotId.IsValid ? Slot.PlayerSlotId.StableText : string.Empty)}' " +
                 $"unityPlayerIndex='{UnityPlayerIndex}' callback='{CallbackConfirmation}' " +
+                $"assignment='{AssignmentToken.StableText}' hostBinding='{HostBindingIdentity.StableText}' " +
                 $"playerInput='{(PlayerInput != null ? PlayerInput.name : string.Empty)}' " +
                 $"localPlayerHost='{(LocalPlayerHost != null ? LocalPlayerHost.name : string.Empty)}' " +
                 $"actorMount='{(LocalPlayerHost != null && LocalPlayerHost.ActorMount != null ? LocalPlayerHost.ActorMount.name : string.Empty)}' " +
