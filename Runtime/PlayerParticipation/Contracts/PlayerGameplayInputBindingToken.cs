@@ -18,89 +18,72 @@ namespace Immersive.Framework.PlayerParticipation
     {
         internal PlayerGameplayInputBindingToken(
             string sessionContextId,
-            RuntimeContentOwner owner,
             PlayerSlotId playerSlotId,
-            ActorProfileId actorProfileId,
-            ActorId actorId,
+            PlayerSlotAssignmentToken assignmentToken,
+            PlayerHostBindingIdentity hostBindingIdentity,
             PlayerActorPreparationToken preparationToken,
-            PlayerGameplayOccupancyToken occupancyToken,
-            RuntimeContentIdentity runtimeContentIdentity,
-            int materializationRevision,
-            int occupancyRevision,
             int bindingRevision)
         {
             SessionContextId = sessionContextId.NormalizeText();
-            Owner = owner;
             PlayerSlotId = playerSlotId;
-            ActorProfileId = actorProfileId;
-            ActorId = actorId;
+            AssignmentToken = assignmentToken;
+            HostBindingIdentity = hostBindingIdentity;
             PreparationToken = preparationToken;
-            OccupancyToken = occupancyToken;
-            RuntimeContentIdentity = runtimeContentIdentity;
-            MaterializationRevision = materializationRevision;
-            OccupancyRevision = occupancyRevision;
             BindingRevision = bindingRevision;
         }
 
         public string SessionContextId { get; }
-        public RuntimeContentOwner Owner { get; }
         public PlayerSlotId PlayerSlotId { get; }
-        public ActorProfileId ActorProfileId { get; }
-        public ActorId ActorId { get; }
+        public PlayerSlotAssignmentToken AssignmentToken { get; }
+        public PlayerHostBindingIdentity HostBindingIdentity { get; }
         public PlayerActorPreparationToken PreparationToken { get; }
-        public PlayerGameplayOccupancyToken OccupancyToken { get; }
-        public RuntimeContentIdentity RuntimeContentIdentity { get; }
-        public int MaterializationRevision { get; }
-        public int OccupancyRevision { get; }
         public int BindingRevision { get; }
+        public RuntimeContentOwner Owner => PreparationToken.RuntimeContentIdentity.Owner;
+        public ActorProfileId ActorProfileId => PreparationToken.ActorProfileId;
+        public ActorId ActorId => PreparationToken.ActorId;
+        public RuntimeContentIdentity RuntimeContentIdentity =>
+            PreparationToken.RuntimeContentIdentity;
+        public int MaterializationRevision =>
+            PreparationToken.MaterializationRevision;
 
         public bool IsValid =>
             !string.IsNullOrEmpty(SessionContextId) &&
-            Owner.IsValid &&
             PlayerSlotId.IsValid &&
-            ActorProfileId.IsValid &&
-            ActorId.IsValid &&
+            AssignmentToken.IsValid &&
+            HostBindingIdentity.IsValid &&
             PreparationToken.IsValid &&
-            OccupancyToken.IsValid &&
-            RuntimeContentIdentity.IsValid &&
-            RuntimeContentIdentity.Owner == Owner &&
-            MaterializationRevision > 0 &&
-            OccupancyRevision > 0 &&
             BindingRevision > 0 &&
-            string.Equals(PreparationToken.SessionContextId, SessionContextId, StringComparison.Ordinal) &&
+            string.Equals(
+                AssignmentToken.SessionContextId,
+                SessionContextId,
+                StringComparison.Ordinal) &&
+            AssignmentToken.PlayerSlotId == PlayerSlotId &&
+            AssignmentToken.HostBindingIdentity == HostBindingIdentity &&
+            string.Equals(
+                PreparationToken.SessionContextId,
+                SessionContextId,
+                StringComparison.Ordinal) &&
             PreparationToken.PlayerSlotId == PlayerSlotId &&
-            PreparationToken.ActorId == ActorId &&
-            PreparationToken.RuntimeContentIdentity == RuntimeContentIdentity &&
-            PreparationToken.MaterializationRevision == MaterializationRevision &&
-            OccupancyToken.SessionContextId == SessionContextId &&
-            OccupancyToken.Owner == Owner &&
-            OccupancyToken.PlayerSlotId == PlayerSlotId &&
-            OccupancyToken.ActorProfileId == ActorProfileId &&
-            OccupancyToken.ActorId == ActorId &&
-            OccupancyToken.PreparationToken == PreparationToken &&
-            OccupancyToken.RuntimeContentIdentity == RuntimeContentIdentity &&
-            OccupancyToken.MaterializationRevision == MaterializationRevision &&
-            OccupancyToken.OccupancyRevision == OccupancyRevision;
+            PreparationToken.AssignmentToken == AssignmentToken &&
+            PreparationToken.HostBindingIdentity == HostBindingIdentity;
 
         public string StableText => IsValid
             ? $"player-gameplay-input:{SessionContextId}:" +
-              $"{Owner.Scope}:{Owner.OwnerIdentity.Value.Value}:" +
-              $"{PlayerSlotId.Value.Value}:{ActorId.Value.Value}:" +
-              $"{MaterializationRevision}:{OccupancyRevision}:{BindingRevision}"
+              $"{PlayerSlotId.Value.Value}:" +
+              $"{AssignmentToken.AssignmentSequence}:" +
+              $"{AssignmentToken.AssignmentRevision}:" +
+              $"{HostBindingIdentity.StableText}:" +
+              $"{PreparationToken.CorrelationRevision}:" +
+              $"{BindingRevision}"
             : string.Empty;
 
         public bool Equals(PlayerGameplayInputBindingToken other)
         {
             return string.Equals(SessionContextId, other.SessionContextId, StringComparison.Ordinal) &&
-                Owner == other.Owner &&
                 PlayerSlotId == other.PlayerSlotId &&
-                ActorProfileId == other.ActorProfileId &&
-                ActorId == other.ActorId &&
+                AssignmentToken == other.AssignmentToken &&
+                HostBindingIdentity == other.HostBindingIdentity &&
                 PreparationToken == other.PreparationToken &&
-                OccupancyToken == other.OccupancyToken &&
-                RuntimeContentIdentity == other.RuntimeContentIdentity &&
-                MaterializationRevision == other.MaterializationRevision &&
-                OccupancyRevision == other.OccupancyRevision &&
                 BindingRevision == other.BindingRevision;
         }
 
@@ -112,15 +95,10 @@ namespace Immersive.Framework.PlayerParticipation
             unchecked
             {
                 int hash = StringComparer.Ordinal.GetHashCode(SessionContextId ?? string.Empty);
-                hash = hash * 397 ^ Owner.GetHashCode();
                 hash = hash * 397 ^ PlayerSlotId.GetHashCode();
-                hash = hash * 397 ^ ActorProfileId.GetHashCode();
-                hash = hash * 397 ^ ActorId.GetHashCode();
+                hash = hash * 397 ^ AssignmentToken.GetHashCode();
+                hash = hash * 397 ^ HostBindingIdentity.GetHashCode();
                 hash = hash * 397 ^ PreparationToken.GetHashCode();
-                hash = hash * 397 ^ OccupancyToken.GetHashCode();
-                hash = hash * 397 ^ RuntimeContentIdentity.GetHashCode();
-                hash = hash * 397 ^ MaterializationRevision;
-                hash = hash * 397 ^ OccupancyRevision;
                 hash = hash * 397 ^ BindingRevision;
                 return hash;
             }

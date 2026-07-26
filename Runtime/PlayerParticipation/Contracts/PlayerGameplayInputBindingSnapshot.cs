@@ -39,6 +39,25 @@ namespace Immersive.Framework.PlayerParticipation
                     if (summary.IsAllowed) AllowedCount++;
                     if (summary.IsBlockedByGate) BlockedCount++;
                     if (summary.IsReleaseFailed) ReleaseFailedCount++;
+                    if (summary.Availability ==
+                        PlayerGameplayInputAvailability.PlayerInputDisabled)
+                    {
+                        PlayerInputDisabledCount++;
+                    }
+                    if (summary.Availability ==
+                        PlayerGameplayInputAvailability.ActionsUnavailable)
+                    {
+                        ActionsUnavailableCount++;
+                    }
+                    if (summary.Availability ==
+                        PlayerGameplayInputAvailability.GateUnavailable)
+                    {
+                        GateUnavailableCount++;
+                    }
+                }
+                else if (summary.IsDivergent)
+                {
+                    DivergentCount++;
                 }
                 else if (summary.IsUnbound)
                 {
@@ -56,6 +75,10 @@ namespace Immersive.Framework.PlayerParticipation
         public int AllowedCount { get; }
         public int BlockedCount { get; }
         public int ReleaseFailedCount { get; }
+        public int DivergentCount { get; }
+        public int PlayerInputDisabledCount { get; }
+        public int ActionsUnavailableCount { get; }
+        public int GateUnavailableCount { get; }
         public PlayerGameplayInputBindingStatus LastOperationStatus { get; }
         public string LastOperationMessage { get; }
         public bool IsInitialized => !string.IsNullOrEmpty(SessionContextId) && Revision > 0;

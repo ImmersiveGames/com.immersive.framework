@@ -152,6 +152,7 @@ namespace Immersive.Framework.PlayerParticipation
             }
 
             if (!PlayerGameplayInputBindingRuntimeContext.TryCreate(
+                    targetPreparation,
                     targetOccupancy,
                     out PlayerGameplayInputBindingRuntimeContext targetInput,
                     out issue))
@@ -467,7 +468,77 @@ namespace Immersive.Framework.PlayerParticipation
             return IsReady &&
                 handoffContext.TryGetCurrentAdmission(
                     playerSlotId,
-                    out admission);
+                out admission);
+        }
+
+        internal bool TryGetCurrentInputBinding(
+            PlayerSlotId playerSlotId,
+            out PlayerGameplayInputBindingSummary binding,
+            out PlayerGameplayInputBindingResult confirmation)
+        {
+            binding = default;
+            confirmation = null;
+            return inputContext != null &&
+                inputContext.TryGetCurrentInputBinding(
+                    playerSlotId,
+                    out binding,
+                    out confirmation);
+        }
+
+        internal bool TryGetRetainedInputBinding(
+            PlayerSlotId playerSlotId,
+            out PlayerGameplayInputBindingSummary binding)
+        {
+            binding = default;
+            return inputContext != null &&
+                inputContext.TryGetRetainedInputBinding(
+                    playerSlotId,
+                    out binding);
+        }
+
+        internal PlayerGameplayInputBindingResult ConfirmCurrentInputBinding(
+            PlayerSlotId playerSlotId,
+            PlayerGameplayInputBindingToken expectedBinding,
+            string source,
+            string reason)
+        {
+            return inputContext != null
+                ? inputContext.ConfirmCurrentInputBinding(
+                    playerSlotId,
+                    expectedBinding,
+                    source,
+                    reason)
+                : null;
+        }
+
+        internal PlayerGameplayInputBindingResult RefreshInputAvailability(
+            PlayerSlotId playerSlotId,
+            PlayerGameplayInputBindingToken expectedBinding,
+            string source,
+            string reason)
+        {
+            return inputContext != null
+                ? inputContext.TryRefreshAvailability(
+                    playerSlotId,
+                    expectedBinding,
+                    source,
+                    reason)
+                : null;
+        }
+
+        internal PlayerGameplayInputBindingResult ReleaseInputBinding(
+            PlayerSlotId playerSlotId,
+            PlayerGameplayInputBindingToken expectedBinding,
+            string source,
+            string reason)
+        {
+            return inputContext != null
+                ? inputContext.TryRelease(
+                    playerSlotId,
+                    expectedBinding,
+                    source,
+                    reason)
+                : null;
         }
 
         internal PlayerActorCandidateStageResult TryStageCandidate(

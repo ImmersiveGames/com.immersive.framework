@@ -973,18 +973,19 @@ namespace Immersive.Framework.PlayerParticipation
                 return false;
             }
 
-            PlayerGameplayInputBindingSnapshot inputSnapshot =
-                inputContext.CreateSnapshot();
-            if (!inputSnapshot.TryGetSummary(
+            if (!inputContext.TryGetCurrentInputBinding(
                     playerSlotId,
-                    out resolved.InputBinding) ||
-                !resolved.InputBinding.IsBound ||
+                    out resolved.InputBinding,
+                    out PlayerGameplayInputBindingResult inputConfirmation) ||
                 resolved.InputBinding.Token != suppliedInputBinding.Token)
             {
                 rejectedStatus = PlayerGameplayAdmissionStatus
                     .RejectedForeignOrStaleInputBinding;
                 issue =
-                    "Supplied gameplay input binding is foreign, released or stale.";
+                    "Supplied gameplay input binding is foreign, released or stale. " +
+                    (inputConfirmation != null
+                        ? inputConfirmation.ToDiagnosticString()
+                        : string.Empty);
                 return false;
             }
 
@@ -1072,18 +1073,19 @@ namespace Immersive.Framework.PlayerParticipation
                 return false;
             }
 
-            PlayerGameplayInputBindingSnapshot inputSnapshot =
-                inputContext.CreateSnapshot();
-            if (!inputSnapshot.TryGetSummary(
+            if (!inputContext.TryGetCurrentInputBinding(
                     record.Token.PlayerSlotId,
-                    out resolved.InputBinding) ||
-                !resolved.InputBinding.IsBound ||
+                    out resolved.InputBinding,
+                    out PlayerGameplayInputBindingResult inputConfirmation) ||
                 resolved.InputBinding.Token != record.InputBindingToken)
             {
                 rejectedStatus = PlayerGameplayAdmissionStatus
                     .RejectedForeignOrStaleInputBinding;
                 issue =
-                    "Current gameplay admission input binding is no longer live.";
+                    "Current gameplay admission input binding is no longer live. " +
+                    (inputConfirmation != null
+                        ? inputConfirmation.ToDiagnosticString()
+                        : string.Empty);
                 return false;
             }
 

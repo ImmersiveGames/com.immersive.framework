@@ -14,6 +14,7 @@ namespace Immersive.Framework.PlayerParticipation
         SucceededAlreadyBound = 30,
         SucceededAlreadyReleased = 40,
         SucceededAvailabilityRefreshed = 50,
+        SucceededConfirmedCurrent = 60,
 
         RejectedInvalidRequest = 100,
         RejectedSessionMismatch = 110,
@@ -30,6 +31,10 @@ namespace Immersive.Framework.PlayerParticipation
         RejectedSlotAlreadyBound = 220,
         RejectedPlayerInputAlreadyBound = 230,
         RejectedForeignOrStaleBinding = 240,
+        RejectedAssignmentDivergence = 250,
+        RejectedHostDivergence = 260,
+        RejectedActorDivergence = 270,
+        RejectedPhysicalBindingDivergence = 280,
 
         FailedActionMapActivation = 300,
         FailedRollback = 310,

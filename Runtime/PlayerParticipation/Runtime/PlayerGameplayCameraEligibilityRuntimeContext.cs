@@ -900,20 +900,20 @@ namespace Immersive.Framework.PlayerParticipation
                 return false;
             }
 
-            PlayerGameplayInputBindingSnapshot inputSnapshot =
-                inputContext.CreateSnapshot();
-
-            if (!inputSnapshot.TryGetSummary(
+            if (!inputContext.TryGetCurrentInputBinding(
                     playerSlotId,
-                    out PlayerGameplayInputBindingSummary currentInput) ||
-                !currentInput.IsBound ||
+                    out PlayerGameplayInputBindingSummary currentInput,
+                    out PlayerGameplayInputBindingResult inputConfirmation) ||
                 currentInput.Token != inputBinding.Token)
             {
                 rejectedStatus =
                     PlayerGameplayCameraEligibilityStatus
                         .RejectedForeignOrStaleInputBinding;
                 issue =
-                    "Supplied gameplay input binding is no longer current.";
+                    "Supplied gameplay input binding is no longer current. " +
+                    (inputConfirmation != null
+                        ? inputConfirmation.ToDiagnosticString()
+                        : string.Empty);
                 return false;
             }
 
@@ -1191,9 +1191,7 @@ namespace Immersive.Framework.PlayerParticipation
                 input.PreparationToken == preparation.Token &&
                 input.OccupancyToken == occupancy.Token &&
                 input.Token.PreparationToken ==
-                    preparation.Token &&
-                input.Token.OccupancyToken ==
-                    occupancy.Token;
+                    preparation.Token;
         }
 
         private static bool IsOwnedByActor(

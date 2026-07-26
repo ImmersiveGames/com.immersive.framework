@@ -51,7 +51,8 @@ namespace Immersive.Framework.PlayerParticipation
             PlayerGameplayInputBindingStatus.SucceededReleased or
             PlayerGameplayInputBindingStatus.SucceededAlreadyBound or
             PlayerGameplayInputBindingStatus.SucceededAlreadyReleased or
-            PlayerGameplayInputBindingStatus.SucceededAvailabilityRefreshed;
+            PlayerGameplayInputBindingStatus.SucceededAvailabilityRefreshed or
+            PlayerGameplayInputBindingStatus.SucceededConfirmedCurrent;
 
         public bool Failed => Status is
             PlayerGameplayInputBindingStatus.FailedActionMapActivation or

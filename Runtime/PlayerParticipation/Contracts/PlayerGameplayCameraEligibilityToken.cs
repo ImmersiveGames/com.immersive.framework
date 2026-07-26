@@ -98,10 +98,8 @@ namespace Immersive.Framework.PlayerParticipation
             InputBindingToken.ActorProfileId == ActorProfileId &&
             InputBindingToken.ActorId == ActorId &&
             InputBindingToken.PreparationToken == PreparationToken &&
-            InputBindingToken.OccupancyToken == OccupancyToken &&
             InputBindingToken.RuntimeContentIdentity == RuntimeContentIdentity &&
             InputBindingToken.MaterializationRevision == MaterializationRevision &&
-            InputBindingToken.OccupancyRevision == OccupancyRevision &&
             InputBindingToken.BindingRevision == InputBindingRevision;
 
         public string StableText => IsValid

@@ -10,6 +10,7 @@ namespace Immersive.Framework.PlayerParticipation
         None = 0,
         Unbound = 10,
         Bound = 20,
-        ReleaseFailed = 30
+        ReleaseFailed = 30,
+        Divergent = 40
     }
 }

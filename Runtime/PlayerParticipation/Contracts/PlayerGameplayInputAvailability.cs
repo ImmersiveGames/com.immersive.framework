@@ -9,6 +9,9 @@ namespace Immersive.Framework.PlayerParticipation
     {
         Unknown = 0,
         Allowed = 10,
-        BlockedByGate = 20
+        BlockedByGate = 20,
+        PlayerInputDisabled = 30,
+        ActionsUnavailable = 40,
+        GateUnavailable = 50
     }
 }

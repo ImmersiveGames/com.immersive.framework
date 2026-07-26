@@ -20,6 +20,8 @@ namespace Immersive.Framework.PlayerParticipation
             PlayerSlotId playerSlotId,
             PlayerGameplayInputBindingState state,
             PlayerGameplayInputAvailability availability,
+            PlayerSlotAssignmentToken assignmentToken,
+            PlayerHostBindingIdentity hostBindingIdentity,
             ActorProfileId actorProfileId,
             ActorId actorId,
             RuntimeContentOwner owner,
@@ -28,9 +30,11 @@ namespace Immersive.Framework.PlayerParticipation
             PlayerGameplayOccupancyToken occupancyToken,
             PlayerGameplayInputBindingToken token,
             string actionMapName,
+            string currentActionMapName,
             string previousActionMapName,
             string playerInputName,
             int bindingRevision,
+            int availabilityRevision,
             string source,
             string reason,
             string message)
@@ -39,6 +43,8 @@ namespace Immersive.Framework.PlayerParticipation
             PlayerSlotId = playerSlotId;
             State = state;
             Availability = availability;
+            AssignmentToken = assignmentToken;
+            HostBindingIdentity = hostBindingIdentity;
             ActorProfileId = actorProfileId;
             ActorId = actorId;
             Owner = owner;
@@ -47,9 +53,11 @@ namespace Immersive.Framework.PlayerParticipation
             OccupancyToken = occupancyToken;
             Token = token;
             ActionMapName = actionMapName.NormalizeText();
+            CurrentActionMapName = currentActionMapName.NormalizeText();
             PreviousActionMapName = previousActionMapName.NormalizeText();
             PlayerInputName = playerInputName.NormalizeText();
             BindingRevision = bindingRevision;
+            AvailabilityRevision = availabilityRevision;
             Source = source.NormalizeText();
             Reason = reason.NormalizeText();
             Message = message.NormalizeText();
@@ -59,6 +67,8 @@ namespace Immersive.Framework.PlayerParticipation
         public PlayerSlotId PlayerSlotId { get; }
         public PlayerGameplayInputBindingState State { get; }
         public PlayerGameplayInputAvailability Availability { get; }
+        public PlayerSlotAssignmentToken AssignmentToken { get; }
+        public PlayerHostBindingIdentity HostBindingIdentity { get; }
         public ActorProfileId ActorProfileId { get; }
         public ActorId ActorId { get; }
         public RuntimeContentOwner Owner { get; }
@@ -67,9 +77,12 @@ namespace Immersive.Framework.PlayerParticipation
         public PlayerGameplayOccupancyToken OccupancyToken { get; }
         public PlayerGameplayInputBindingToken Token { get; }
         public string ActionMapName { get; }
+        public string DesiredActionMapName => ActionMapName;
+        public string CurrentActionMapName { get; }
         public string PreviousActionMapName { get; }
         public string PlayerInputName { get; }
         public int BindingRevision { get; }
+        public int AvailabilityRevision { get; }
         public string Source { get; }
         public string Reason { get; }
         public string Message { get; }
@@ -77,6 +90,7 @@ namespace Immersive.Framework.PlayerParticipation
         public bool IsUnbound => State == PlayerGameplayInputBindingState.Unbound;
         public bool IsBound => State == PlayerGameplayInputBindingState.Bound;
         public bool IsReleaseFailed => State == PlayerGameplayInputBindingState.ReleaseFailed;
+        public bool IsDivergent => State == PlayerGameplayInputBindingState.Divergent;
         public bool IsAllowed => IsBound && Availability == PlayerGameplayInputAvailability.Allowed;
         public bool IsBlockedByGate => IsBound && Availability == PlayerGameplayInputAvailability.BlockedByGate;
 
@@ -85,24 +99,31 @@ namespace Immersive.Framework.PlayerParticipation
             PlayerSlotId.IsValid &&
             State != PlayerGameplayInputBindingState.None &&
             BindingRevision >= 0 &&
+            AvailabilityRevision >= 0 &&
             (IsUnbound
                 ? Availability == PlayerGameplayInputAvailability.Unknown &&
+                  !AssignmentToken.IsValid && !HostBindingIdentity.IsValid &&
                   !ActorProfileId.IsValid && !ActorId.IsValid && !Owner.IsValid &&
                   !RuntimeContentIdentity.IsValid && !PreparationToken.IsValid &&
                   !OccupancyToken.IsValid && !Token.IsValid &&
-                  string.IsNullOrEmpty(ActionMapName) && string.IsNullOrEmpty(PlayerInputName)
-                : ActorProfileId.IsValid && ActorId.IsValid && Owner.IsValid &&
+                  string.IsNullOrEmpty(ActionMapName) &&
+                  string.IsNullOrEmpty(CurrentActionMapName) &&
+                  string.IsNullOrEmpty(PlayerInputName)
+                : AssignmentToken.IsValid && HostBindingIdentity.IsValid &&
+                  AssignmentToken.HostBindingIdentity == HostBindingIdentity &&
+                  ActorProfileId.IsValid && ActorId.IsValid && Owner.IsValid &&
                   RuntimeContentIdentity.IsValid && RuntimeContentIdentity.Owner == Owner &&
                   PreparationToken.IsValid && OccupancyToken.IsValid && Token.IsValid &&
                   !string.IsNullOrEmpty(ActionMapName) && !string.IsNullOrEmpty(PlayerInputName) &&
                   Token.SessionContextId == SessionContextId &&
                   Token.PlayerSlotId == PlayerSlotId &&
+                  Token.AssignmentToken == AssignmentToken &&
+                  Token.HostBindingIdentity == HostBindingIdentity &&
                   Token.ActorProfileId == ActorProfileId &&
                   Token.ActorId == ActorId &&
                   Token.Owner == Owner &&
                   Token.RuntimeContentIdentity == RuntimeContentIdentity &&
                   Token.PreparationToken == PreparationToken &&
-                  Token.OccupancyToken == OccupancyToken &&
                   Token.BindingRevision == BindingRevision &&
                   Availability != PlayerGameplayInputAvailability.Unknown);
 
@@ -110,13 +131,16 @@ namespace Immersive.Framework.PlayerParticipation
         {
             return $"session='{SessionContextId}' slot='{(PlayerSlotId.IsValid ? PlayerSlotId.StableText : string.Empty)}' " +
                 $"state='{State}' availability='{Availability}' " +
+                $"assignment='{AssignmentToken.StableText}' hostBinding='{HostBindingIdentity.StableText}' " +
                 $"actorProfile='{(ActorProfileId.IsValid ? ActorProfileId.StableText : string.Empty)}' " +
                 $"actor='{(ActorId.IsValid ? ActorId.StableText : string.Empty)}' " +
                 $"owner='{(Owner.IsValid ? Owner.StableText : string.Empty)}' " +
                 $"runtimeContent='{(RuntimeContentIdentity.IsValid ? RuntimeContentIdentity.StableText : string.Empty)}' " +
                 $"preparationToken='{PreparationToken.StableText}' occupancyToken='{OccupancyToken.StableText}' " +
-                $"bindingToken='{Token.StableText}' actionMap='{ActionMapName}' previousMap='{PreviousActionMapName}' " +
+                $"bindingToken='{Token.StableText}' desiredActionMap='{DesiredActionMapName}' " +
+                $"currentActionMap='{CurrentActionMapName}' previousMap='{PreviousActionMapName}' " +
                 $"playerInput='{PlayerInputName}' bindingRevision='{BindingRevision}' " +
+                $"availabilityRevision='{AvailabilityRevision}' " +
                 $"source='{Source}' reason='{Reason}' message='{Message}'";
         }
 
@@ -133,9 +157,11 @@ namespace Immersive.Framework.PlayerParticipation
                 playerSlotId,
                 PlayerGameplayInputBindingState.Unbound,
                 PlayerGameplayInputAvailability.Unknown,
+                default, default,
                 default, default, default, default, default, default, default,
-                string.Empty, string.Empty, string.Empty,
+                string.Empty, string.Empty, string.Empty, string.Empty,
                 bindingRevision,
+                0,
                 source,
                 reason,
                 message);

@@ -1,7 +1,7 @@
 # IF-ADR-005 — Input, Pause, Gate and Reset
 
 Status: Accepted
-Last updated: 2026-07-25
+Last updated: 2026-07-26
 Superseded by: none
 
 ## Context
@@ -87,6 +87,43 @@ Route / Activity
 Physical Escape/Gamepad Pause still requires an officially admitted Player with
 `PlayerInput`, `UnityPlayerInputGateAdapter` and `PausePlayerInputBinding`.
 
+### Canonical gameplay Input binding
+
+`PlayerGameplayInputBindingRuntimeContext` is the sole authority for the
+gameplay Input capability of the current Actor. A binding is admitted only
+after confirming the canonical assignment, Host and Actor preparation evidence:
+
+```text
+Session + PlayerSlotId
+  + PlayerSlotAssignmentToken
+  + PlayerHostBindingIdentity
+  + PlayerActorPreparationToken
+  + Input binding revision
+```
+
+Gate state, Pause state, `PlayerInput.enabled`, current action-map enabled state,
+source, reason and diagnostics are availability or operation evidence; they are
+not part of binding identity.
+
+The read model therefore exposes two independent axes:
+
+```text
+Binding:      Unbound | Bound | ReleaseFailed | Divergent
+Availability: Allowed | BlockedByGate | PlayerInputDisabled
+              | ActionsUnavailable | GateUnavailable
+```
+
+Closing or reopening the Gate and applying or removing Pause preserve the exact
+binding token. Explicitly changing the desired gameplay action map is a
+structural reconfiguration and renews only the binding revision.
+
+Current lookup reconfirms the CPSA-3 Actor evidence and the exact physical
+`LocalPlayerHostAuthoring`, `PlayerInput`, `PlayerActorDeclaration` and Gate
+adapter. Divergence blocks downstream use but retains the physical record and
+token. Lookup never releases, restores or changes the Gate. Exact-token release
+continues to work after assignment, Host, Actor or Activity-owner divergence so
+stale physical materialization can be cleaned explicitly.
+
 ## Rejected alternatives
 
 ```text
@@ -96,6 +133,9 @@ singleton or service locator
 silently ignoring missing PlayerInput
 silently treating failed Player binding as application-only
 modifying action maps when no Player binding exists
+using OccupancyToken alone as proof of Player, Host, Actor or Input identity
+renewing Input identity when Gate, Pause or transient action-map state changes
+destructive cleanup during current-binding lookup
 ```
 
 ## Consequences

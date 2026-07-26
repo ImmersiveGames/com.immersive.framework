@@ -29,6 +29,7 @@ namespace Immersive.Framework.PlayerParticipation
         }
 
         private readonly string sessionContextId;
+        private readonly PlayerActorPreparationRuntimeHostModule preparationModule;
         private readonly PlayerGameplayOccupancyRuntimeContext occupancyContext;
         private readonly PlayerSlotId[] orderedSlots;
         private readonly Dictionary<PlayerSlotId, PlayerGameplayInputBindingSummary> slots;
@@ -42,10 +43,12 @@ namespace Immersive.Framework.PlayerParticipation
 
         private PlayerGameplayInputBindingRuntimeContext(
             string sessionContextId,
+            PlayerActorPreparationRuntimeHostModule preparationModule,
             PlayerGameplayOccupancyRuntimeContext occupancyContext,
             PlayerSlotId[] orderedSlots)
         {
             this.sessionContextId = sessionContextId;
+            this.preparationModule = preparationModule;
             this.occupancyContext = occupancyContext;
             this.orderedSlots = orderedSlots;
             slots = new Dictionary<PlayerSlotId, PlayerGameplayInputBindingSummary>(
@@ -72,12 +75,20 @@ namespace Immersive.Framework.PlayerParticipation
         internal int Revision => revision;
 
         internal static bool TryCreate(
+            PlayerActorPreparationRuntimeHostModule preparationModule,
             PlayerGameplayOccupancyRuntimeContext occupancyContext,
             out PlayerGameplayInputBindingRuntimeContext context,
             out string issue)
         {
             context = null;
             issue = string.Empty;
+
+            if (preparationModule == null || !preparationModule.IsReady)
+            {
+                issue =
+                    "Gameplay input binding requires the current Actor preparation authority.";
+                return false;
+            }
 
             if (occupancyContext == null)
             {
@@ -137,6 +148,7 @@ namespace Immersive.Framework.PlayerParticipation
 
             context = new PlayerGameplayInputBindingRuntimeContext(
                 occupancySnapshot.SessionContextId,
+                preparationModule,
                 occupancyContext,
                 ordered);
             return true;
@@ -252,6 +264,57 @@ namespace Immersive.Framework.PlayerParticipation
                     "Preparation and occupancy identities are foreign, mismatched or stale.");
             }
 
+            PlayerCurrentActorEvidenceResult actorConfirmation =
+                preparationModule.ConfirmCurrentActorEvidence(
+                    requestedSlot,
+                    preparation.Token,
+                    resolvedSource,
+                    resolvedReason);
+            if (actorConfirmation == null || !actorConfirmation.Succeeded)
+            {
+                return Reject(
+                    ActorConfirmationFailureStatus(actorConfirmation),
+                    Operation,
+                    requestedSlot,
+                    previous,
+                    actorConfirmation != null
+                        ? actorConfirmation.ToDiagnosticString()
+                        : "Current Actor evidence confirmation returned no result.");
+            }
+
+            PlayerActorCorrelationEvidence actorEvidence =
+                actorConfirmation.RetainedEvidence;
+            preparation = actorConfirmation.Preparation;
+            if (!preparationModule.TryGetPreparedPhysicalEvidence(
+                    requestedSlot,
+                    preparation.Token,
+                    out LocalPlayerHostAuthoring currentHost,
+                    out PlayerInput currentPlayerInput,
+                    out PlayerActorDeclaration currentActorDeclaration,
+                    out _,
+                    out string physicalIssue))
+            {
+                return Reject(
+                    PlayerGameplayInputBindingStatus
+                        .RejectedPhysicalBindingDivergence,
+                    Operation,
+                    requestedSlot,
+                    previous,
+                    physicalIssue);
+            }
+
+            if (!ReferenceEquals(host, currentHost) ||
+                !ReferenceEquals(actorDeclaration, currentActorDeclaration))
+            {
+                return Reject(
+                    PlayerGameplayInputBindingStatus
+                        .RejectedPhysicalBindingDivergence,
+                    Operation,
+                    requestedSlot,
+                    previous,
+                    "Supplied Host or Actor declaration is not the exact current CPSA-3 physical evidence.");
+            }
+
             if (!TryValidateHost(
                     requestedSlot,
                     host,
@@ -264,6 +327,16 @@ namespace Immersive.Framework.PlayerParticipation
                     requestedSlot,
                     previous,
                     hostIssue);
+            }
+
+            if (!ReferenceEquals(playerInput, currentPlayerInput))
+            {
+                return Reject(
+                    PlayerGameplayInputBindingStatus.RejectedPlayerInputMismatch,
+                    Operation,
+                    requestedSlot,
+                    previous,
+                    "Supplied PlayerInput is not the exact current CPSA-3 physical PlayerInput evidence.");
             }
 
             if (!TryValidateActor(
@@ -329,21 +402,26 @@ namespace Immersive.Framework.PlayerParticipation
                     $"Stable-host PlayerInput has no gameplay action map '{actionMapName}'.");
             }
 
-            if (previous.IsBound || previous.IsReleaseFailed)
+            if (previous.IsBound || previous.IsReleaseFailed || previous.IsDivergent)
             {
-                if (previous.OccupancyToken == occupancy.Token &&
+                BindingRecord existing = null;
+                bool sameStructuralEvidence =
+                    previous.AssignmentToken == actorEvidence.AssignmentToken &&
+                    previous.HostBindingIdentity ==
+                        actorEvidence.HostBindingIdentity &&
                     previous.PreparationToken == preparation.Token &&
                     previous.ActorId == occupancy.ActorId &&
-                    previous.ActionMapName == actionMapName &&
                     records.TryGetValue(
                         requestedSlot,
-                        out BindingRecord existing) &&
+                        out existing) &&
                     ReferenceEquals(existing.Host, host) &&
                     ReferenceEquals(
                         existing.ActorDeclaration,
                         actorDeclaration) &&
                     ReferenceEquals(existing.PlayerInput, playerInput) &&
-                    ReferenceEquals(existing.GateAdapter, gateAdapter))
+                    ReferenceEquals(existing.GateAdapter, gateAdapter);
+                if (sameStructuralEvidence &&
+                    previous.ActionMapName == actionMapName)
                 {
                     gateAdapter.ApplyCurrentGate();
                     PlayerGameplayInputBindingSummary refreshed =
@@ -352,7 +430,13 @@ namespace Immersive.Framework.PlayerParticipation
                             gateAdapter,
                             resolvedSource,
                             resolvedReason,
-                            "Gameplay input binding is already current.");
+                            "Gameplay input binding is already current.",
+                            PlayerGameplayInputBindingState.Bound);
+                    if (refreshed.State != previous.State ||
+                        refreshed.Availability != previous.Availability)
+                    {
+                        revision++;
+                    }
                     slots[requestedSlot] = refreshed;
                     lastOperationStatus =
                         PlayerGameplayInputBindingStatus
@@ -368,6 +452,22 @@ namespace Immersive.Framework.PlayerParticipation
                         true,
                         string.Empty,
                         lastOperationMessage);
+                }
+
+                if (sameStructuralEvidence &&
+                    previous.ActionMapName != actionMapName &&
+                    !previous.IsReleaseFailed)
+                {
+                    return TryReconfigureDesiredActionMap(
+                        requestedSlot,
+                        previous,
+                        existing,
+                        actorEvidence,
+                        preparation,
+                        occupancy,
+                        actionMapName,
+                        resolvedSource,
+                        resolvedReason);
                 }
 
                 return Reject(
@@ -440,25 +540,23 @@ namespace Immersive.Framework.PlayerParticipation
             revision++;
             var token = new PlayerGameplayInputBindingToken(
                 sessionContextId,
-                occupancy.Owner,
                 requestedSlot,
-                occupancy.ActorProfileId,
-                occupancy.ActorId,
+                actorEvidence.AssignmentToken,
+                actorEvidence.HostBindingIdentity,
                 preparation.Token,
-                occupancy.Token,
-                occupancy.RuntimeContentIdentity,
-                occupancy.Token.MaterializationRevision,
-                occupancy.OccupancyRevision,
                 bindingSequence);
             PlayerGameplayInputAvailability availability =
-                gateAdapter.IsBlockedByAdapter
-                    ? PlayerGameplayInputAvailability.BlockedByGate
-                    : PlayerGameplayInputAvailability.Allowed;
+                ResolveAvailability(
+                    playerInput,
+                    gateAdapter,
+                    actionMapName);
             var current = new PlayerGameplayInputBindingSummary(
                 sessionContextId,
                 requestedSlot,
                 PlayerGameplayInputBindingState.Bound,
                 availability,
+                actorEvidence.AssignmentToken,
+                actorEvidence.HostBindingIdentity,
                 occupancy.ActorProfileId,
                 occupancy.ActorId,
                 occupancy.Owner,
@@ -467,9 +565,11 @@ namespace Immersive.Framework.PlayerParticipation
                 occupancy.Token,
                 token,
                 actionMapName,
+                CurrentActionMapName(playerInput),
                 actionMapWrite.PreviousActionMapName,
                 playerInput.name,
                 bindingSequence,
+                1,
                 resolvedSource,
                 resolvedReason,
                 "Prepared Logical Player Actor is bound to the stable-host PlayerInput through the canonical physical writer.");
@@ -492,6 +592,390 @@ namespace Immersive.Framework.PlayerParticipation
                 lastOperationStatus,
                 Operation,
                 requestedSlot,
+                previous,
+                current,
+                false,
+                true,
+                string.Empty,
+                lastOperationMessage);
+        }
+
+        private PlayerGameplayInputBindingResult
+            TryReconfigureDesiredActionMap(
+                PlayerSlotId playerSlotId,
+                PlayerGameplayInputBindingSummary previous,
+                BindingRecord record,
+                PlayerActorCorrelationEvidence actorEvidence,
+                PlayerActorPreparationSummary preparation,
+                PlayerGameplayOccupancySummary occupancy,
+                string desiredActionMapName,
+                string source,
+                string reason)
+        {
+            const string Operation = "ReconfigureGameplayInputActionMap";
+            if (record.GateAdapter == null ||
+                record.GateAdapter.IsBlockedByAdapter)
+            {
+                return Reject(
+                    PlayerGameplayInputBindingStatus
+                        .RejectedGateAdapterMismatch,
+                    Operation,
+                    playerSlotId,
+                    previous,
+                    "Desired action-map reconfiguration requires the exact Gate adapter in an unblocked state.");
+            }
+
+            if (!record.GateAdapter.TryRestoreActionMap(
+                    record.ActionMapWrite,
+                    source,
+                    reason,
+                    out string restoreIssue))
+            {
+                return MarkReleaseFailed(
+                    Operation,
+                    playerSlotId,
+                    previous,
+                    source,
+                    reason,
+                    restoreIssue);
+            }
+
+            if (!record.GateAdapter.TrySelectActionMap(
+                    desiredActionMapName,
+                    source,
+                    reason,
+                    out UnityPlayerInputActionMapWriteReceipt newWrite,
+                    out string activationIssue))
+            {
+                bool rollbackSucceeded =
+                    record.GateAdapter.TrySelectActionMap(
+                        previous.DesiredActionMapName,
+                        source,
+                        "desired-action-map-reconfiguration-rollback",
+                        out UnityPlayerInputActionMapWriteReceipt rollbackWrite,
+                        out string rollbackIssue);
+                if (rollbackSucceeded)
+                {
+                    record.ActionMapWrite = rollbackWrite;
+                }
+
+                return rollbackSucceeded
+                    ? Failure(
+                        PlayerGameplayInputBindingStatus
+                            .FailedActionMapActivation,
+                        Operation,
+                        playerSlotId,
+                        previous,
+                        true,
+                        true,
+                        string.Empty,
+                        $"Desired action map '{desiredActionMapName}' could not be activated. {activationIssue}")
+                    : MarkReleaseFailed(
+                        Operation,
+                        playerSlotId,
+                        previous,
+                        source,
+                        reason,
+                        $"{activationIssue} Rollback failed. {rollbackIssue}");
+            }
+
+            try
+            {
+                record.GateAdapter.ApplyCurrentGate();
+            }
+            catch (Exception exception)
+            {
+                bool restoredNewWrite =
+                    record.GateAdapter.TryRestoreActionMap(
+                        newWrite,
+                        source,
+                        "desired-action-map-gate-application-rollback",
+                        out string restoreNewIssue);
+                UnityPlayerInputActionMapWriteReceipt rollbackWrite = default;
+                string rollbackIssue = string.Empty;
+                bool reboundPrevious =
+                    restoredNewWrite &&
+                    record.GateAdapter.TrySelectActionMap(
+                        previous.DesiredActionMapName,
+                        source,
+                        "desired-action-map-reconfiguration-rollback",
+                        out rollbackWrite,
+                        out rollbackIssue);
+                if (reboundPrevious)
+                {
+                    record.ActionMapWrite = rollbackWrite;
+                    return Failure(
+                        PlayerGameplayInputBindingStatus
+                            .FailedActionMapActivation,
+                        Operation,
+                        playerSlotId,
+                        previous,
+                        true,
+                        true,
+                        string.Empty,
+                        $"The desired action map was selected, but its Gate state could not be materialized. {exception.Message}");
+                }
+
+                string rollbackDiagnostic =
+                    restoredNewWrite
+                        ? rollbackIssue
+                        : restoreNewIssue;
+                return MarkReleaseFailed(
+                    Operation,
+                    playerSlotId,
+                    previous,
+                    source,
+                    reason,
+                    $"The desired action map Gate materialization failed and rollback could not restore the previous binding. {exception.Message} {rollbackDiagnostic}");
+            }
+
+            bindingSequence++;
+            revision++;
+            var token = new PlayerGameplayInputBindingToken(
+                sessionContextId,
+                playerSlotId,
+                actorEvidence.AssignmentToken,
+                actorEvidence.HostBindingIdentity,
+                preparation.Token,
+                bindingSequence);
+            var current = new PlayerGameplayInputBindingSummary(
+                sessionContextId,
+                playerSlotId,
+                PlayerGameplayInputBindingState.Bound,
+                ResolveAvailability(
+                    record.PlayerInput,
+                    record.GateAdapter,
+                    desiredActionMapName),
+                actorEvidence.AssignmentToken,
+                actorEvidence.HostBindingIdentity,
+                actorEvidence.ActorProfileId,
+                actorEvidence.ActorId,
+                actorEvidence.Owner,
+                actorEvidence.RuntimeContentIdentity,
+                preparation.Token,
+                occupancy.Token,
+                token,
+                desiredActionMapName,
+                CurrentActionMapName(record.PlayerInput),
+                newWrite.PreviousActionMapName,
+                record.PlayerInput.name,
+                bindingSequence,
+                1,
+                source,
+                reason,
+                "Desired gameplay action map was explicitly reconfigured with a new Input binding identity.");
+            record.ActionMapWrite = newWrite;
+            slots[playerSlotId] = current;
+            lastOperationStatus =
+                PlayerGameplayInputBindingStatus.SucceededBound;
+            lastOperationMessage = current.Message;
+            return Result(
+                lastOperationStatus,
+                Operation,
+                playerSlotId,
+                previous,
+                current,
+                false,
+                true,
+                string.Empty,
+                lastOperationMessage);
+        }
+
+        internal bool TryGetCurrentInputBinding(
+            PlayerSlotId playerSlotId,
+            out PlayerGameplayInputBindingSummary summary,
+            out PlayerGameplayInputBindingResult confirmation)
+        {
+            if (!playerSlotId.IsValid ||
+                !slots.TryGetValue(
+                    playerSlotId,
+                    out PlayerGameplayInputBindingSummary retained))
+            {
+                confirmation = Reject(
+                    PlayerGameplayInputBindingStatus.RejectedInvalidRequest,
+                    "LookupCurrentInputBinding",
+                    playerSlotId,
+                    default,
+                    "Current Input binding lookup requires a configured Player Slot.");
+                summary = default;
+                return false;
+            }
+
+            confirmation = ConfirmCurrentInputBinding(
+                playerSlotId,
+                retained.Token,
+                nameof(PlayerGameplayInputBindingRuntimeContext),
+                "lookup-current-input-binding");
+            summary = confirmation != null && confirmation.Succeeded
+                ? confirmation.CurrentSummary
+                : default;
+            return confirmation != null && confirmation.Succeeded;
+        }
+
+        internal bool TryGetRetainedInputBinding(
+            PlayerSlotId playerSlotId,
+            out PlayerGameplayInputBindingSummary summary)
+        {
+            if (playerSlotId.IsValid &&
+                slots.TryGetValue(playerSlotId, out summary) &&
+                !summary.IsUnbound &&
+                records.ContainsKey(playerSlotId))
+            {
+                return true;
+            }
+
+            summary = default;
+            return false;
+        }
+
+        internal PlayerGameplayInputBindingResult ConfirmCurrentInputBinding(
+            PlayerSlotId playerSlotId,
+            PlayerGameplayInputBindingToken expectedBinding,
+            string source,
+            string reason)
+        {
+            const string Operation = "ConfirmCurrentInputBinding";
+            string resolvedSource = source.NormalizeTextOrFallback(
+                nameof(PlayerGameplayInputBindingRuntimeContext));
+            string resolvedReason = reason.NormalizeTextOrFallback(
+                "confirm-current-input-binding");
+
+            if (!playerSlotId.IsValid ||
+                !slots.TryGetValue(
+                    playerSlotId,
+                    out PlayerGameplayInputBindingSummary previous))
+            {
+                return Reject(
+                    PlayerGameplayInputBindingStatus.RejectedInvalidRequest,
+                    Operation,
+                    playerSlotId,
+                    default,
+                    "Current Input binding confirmation requires a configured Player Slot.");
+            }
+
+            if (previous.IsUnbound ||
+                !expectedBinding.IsValid ||
+                expectedBinding.PlayerSlotId != playerSlotId ||
+                expectedBinding != previous.Token ||
+                !records.TryGetValue(playerSlotId, out BindingRecord record))
+            {
+                return Reject(
+                    PlayerGameplayInputBindingStatus
+                        .RejectedForeignOrStaleBinding,
+                    Operation,
+                    playerSlotId,
+                    previous,
+                    "Current Input binding confirmation requires the exact retained binding evidence.");
+            }
+
+            PlayerCurrentActorEvidenceResult actorConfirmation =
+                preparationModule.ConfirmCurrentActorEvidence(
+                    playerSlotId,
+                    previous.PreparationToken,
+                    resolvedSource,
+                    resolvedReason);
+            if (actorConfirmation == null || !actorConfirmation.Succeeded)
+            {
+                return MarkDivergent(
+                    ActorConfirmationFailureStatus(actorConfirmation),
+                    Operation,
+                    previous,
+                    resolvedSource,
+                    resolvedReason,
+                    actorConfirmation != null
+                        ? actorConfirmation.ToDiagnosticString()
+                        : "Current Actor evidence confirmation returned no result.");
+            }
+
+            PlayerActorCorrelationEvidence evidence =
+                actorConfirmation.RetainedEvidence;
+            if (evidence.AssignmentToken != previous.AssignmentToken)
+            {
+                return MarkDivergent(
+                    PlayerGameplayInputBindingStatus
+                        .RejectedAssignmentDivergence,
+                    Operation,
+                    previous,
+                    resolvedSource,
+                    resolvedReason,
+                    "Current assignment differs from the retained Input binding.");
+            }
+
+            if (evidence.HostBindingIdentity != previous.HostBindingIdentity)
+            {
+                return MarkDivergent(
+                    PlayerGameplayInputBindingStatus.RejectedHostDivergence,
+                    Operation,
+                    previous,
+                    resolvedSource,
+                    resolvedReason,
+                    "Current Host binding identity differs from retained Input evidence.");
+            }
+
+            if (evidence.PreparationToken != previous.PreparationToken ||
+                evidence.ActorProfileId != previous.ActorProfileId ||
+                evidence.ActorId != previous.ActorId ||
+                evidence.Owner != previous.Owner)
+            {
+                return MarkDivergent(
+                    PlayerGameplayInputBindingStatus.RejectedActorDivergence,
+                    Operation,
+                    previous,
+                    resolvedSource,
+                    resolvedReason,
+                    "Current Actor correlation differs from retained Input evidence.");
+            }
+
+            if (!preparationModule.TryGetPreparedPhysicalEvidence(
+                    playerSlotId,
+                    previous.PreparationToken,
+                    out LocalPlayerHostAuthoring currentHost,
+                    out PlayerInput currentPlayerInput,
+                    out PlayerActorDeclaration currentDeclaration,
+                    out _,
+                    out string physicalIssue) ||
+                !ReferenceEquals(record.Host, currentHost) ||
+                !ReferenceEquals(record.PlayerInput, currentPlayerInput) ||
+                !ReferenceEquals(record.ActorDeclaration, currentDeclaration) ||
+                record.GateAdapter == null ||
+                !ReferenceEquals(
+                    record.GateAdapter.PlayerInput,
+                    currentPlayerInput))
+            {
+                return MarkDivergent(
+                    PlayerGameplayInputBindingStatus
+                        .RejectedPhysicalBindingDivergence,
+                    Operation,
+                    previous,
+                    resolvedSource,
+                    resolvedReason,
+                    string.IsNullOrWhiteSpace(physicalIssue)
+                        ? "Retained Input physical evidence differs from the current Actor and Host."
+                        : physicalIssue);
+            }
+
+            PlayerGameplayInputBindingSummary current =
+                RefreshSummaryAvailability(
+                    previous,
+                    record.GateAdapter,
+                    resolvedSource,
+                    resolvedReason,
+                    "Input binding is current; availability was observed without changing binding identity.",
+                    PlayerGameplayInputBindingState.Bound);
+            if (current.State != previous.State ||
+                current.Availability != previous.Availability)
+            {
+                revision++;
+            }
+
+            slots[playerSlotId] = current;
+            lastOperationStatus =
+                PlayerGameplayInputBindingStatus.SucceededConfirmedCurrent;
+            lastOperationMessage = current.Message;
+            return Result(
+                lastOperationStatus,
+                Operation,
+                playerSlotId,
                 previous,
                 current,
                 false,
@@ -535,7 +1019,10 @@ namespace Immersive.Framework.PlayerParticipation
                     "Availability refresh requires the exact current input binding token.");
             }
 
-            record.GateAdapter.ApplyCurrentGate();
+            if (record.GateAdapter != null)
+            {
+                record.GateAdapter.ApplyCurrentGate();
+            }
             string resolvedSource = source.NormalizeTextOrFallback(
                 nameof(PlayerGameplayInputBindingRuntimeContext));
             string resolvedReason = reason.NormalizeTextOrFallback(
@@ -546,9 +1033,11 @@ namespace Immersive.Framework.PlayerParticipation
                     record.GateAdapter,
                     resolvedSource,
                     resolvedReason,
-                    record.GateAdapter.IsBlockedByAdapter
-                        ? "Gameplay input is blocked by the current Gate state."
-                        : "Gameplay input is allowed by the current Gate state.");
+                    AvailabilityMessage(
+                        ResolveAvailability(
+                            record.PlayerInput,
+                            record.GateAdapter,
+                            previous.DesiredActionMapName)));
 
             if (current.Availability != previous.Availability)
             {
@@ -734,7 +1223,9 @@ namespace Immersive.Framework.PlayerParticipation
             {
                 PlayerGameplayInputBindingSummary summary =
                     snapshot.Slots[index];
-                if (!summary.IsBound && !summary.IsReleaseFailed)
+                if (!summary.IsBound &&
+                    !summary.IsReleaseFailed &&
+                    !summary.IsDivergent)
                 {
                     continue;
                 }
@@ -903,15 +1394,21 @@ namespace Immersive.Framework.PlayerParticipation
                 UnityPlayerInputGateAdapter gateAdapter,
                 string source,
                 string reason,
-                string message)
+                string message,
+                PlayerGameplayInputBindingState? state = null)
         {
+            PlayerGameplayInputAvailability availability =
+                ResolveAvailability(
+                    gateAdapter != null ? gateAdapter.PlayerInput : null,
+                    gateAdapter,
+                    previous.DesiredActionMapName);
             return new PlayerGameplayInputBindingSummary(
                 previous.SessionContextId,
                 previous.PlayerSlotId,
-                previous.State,
-                gateAdapter != null && gateAdapter.IsBlockedByAdapter
-                    ? PlayerGameplayInputAvailability.BlockedByGate
-                    : PlayerGameplayInputAvailability.Allowed,
+                state ?? previous.State,
+                availability,
+                previous.AssignmentToken,
+                previous.HostBindingIdentity,
                 previous.ActorProfileId,
                 previous.ActorId,
                 previous.Owner,
@@ -920,9 +1417,14 @@ namespace Immersive.Framework.PlayerParticipation
                 previous.OccupancyToken,
                 previous.Token,
                 previous.ActionMapName,
+                CurrentActionMapName(
+                    gateAdapter != null ? gateAdapter.PlayerInput : null),
                 previous.PreviousActionMapName,
                 previous.PlayerInputName,
                 previous.BindingRevision,
+                availability != previous.Availability
+                    ? previous.AvailabilityRevision + 1
+                    : previous.AvailabilityRevision,
                 source,
                 reason,
                 message);
@@ -942,6 +1444,8 @@ namespace Immersive.Framework.PlayerParticipation
                 previous.PlayerSlotId,
                 PlayerGameplayInputBindingState.ReleaseFailed,
                 previous.Availability,
+                previous.AssignmentToken,
+                previous.HostBindingIdentity,
                 previous.ActorProfileId,
                 previous.ActorId,
                 previous.Owner,
@@ -950,9 +1454,11 @@ namespace Immersive.Framework.PlayerParticipation
                 previous.OccupancyToken,
                 previous.Token,
                 previous.ActionMapName,
+                previous.CurrentActionMapName,
                 previous.PreviousActionMapName,
                 previous.PlayerInputName,
                 previous.BindingRevision,
+                previous.AvailabilityRevision,
                 source,
                 reason,
                 $"Gameplay input release failed. {issue}");
@@ -970,6 +1476,151 @@ namespace Immersive.Framework.PlayerParticipation
                 false,
                 issue,
                 lastOperationMessage);
+        }
+
+        private PlayerGameplayInputBindingResult MarkDivergent(
+            PlayerGameplayInputBindingStatus status,
+            string operation,
+            PlayerGameplayInputBindingSummary previous,
+            string source,
+            string reason,
+            string issue)
+        {
+            revision++;
+            PlayerGameplayInputAvailability availability =
+                records.TryGetValue(
+                    previous.PlayerSlotId,
+                    out BindingRecord record)
+                    ? ResolveAvailability(
+                        record.PlayerInput,
+                        record.GateAdapter,
+                        previous.DesiredActionMapName)
+                    : PlayerGameplayInputAvailability.GateUnavailable;
+            var current = new PlayerGameplayInputBindingSummary(
+                previous.SessionContextId,
+                previous.PlayerSlotId,
+                PlayerGameplayInputBindingState.Divergent,
+                availability,
+                previous.AssignmentToken,
+                previous.HostBindingIdentity,
+                previous.ActorProfileId,
+                previous.ActorId,
+                previous.Owner,
+                previous.RuntimeContentIdentity,
+                previous.PreparationToken,
+                previous.OccupancyToken,
+                previous.Token,
+                previous.ActionMapName,
+                previous.CurrentActionMapName,
+                previous.PreviousActionMapName,
+                previous.PlayerInputName,
+                previous.BindingRevision,
+                availability != previous.Availability
+                    ? previous.AvailabilityRevision + 1
+                    : previous.AvailabilityRevision,
+                source,
+                reason,
+                $"Retained Input binding is divergent and cannot be used as current. {issue}");
+            slots[previous.PlayerSlotId] = current;
+            lastOperationStatus = status;
+            lastOperationMessage = current.Message;
+            return Result(
+                status,
+                operation,
+                previous.PlayerSlotId,
+                previous,
+                current,
+                false,
+                true,
+                string.Empty,
+                lastOperationMessage);
+        }
+
+        private static PlayerGameplayInputBindingStatus
+            ActorConfirmationFailureStatus(
+                PlayerCurrentActorEvidenceResult confirmation)
+        {
+            if (confirmation == null)
+            {
+                return PlayerGameplayInputBindingStatus
+                    .RejectedActorDivergence;
+            }
+
+            return confirmation.Status switch
+            {
+                PlayerCurrentActorEvidenceStatus
+                    .RejectedAssignmentDivergence =>
+                    PlayerGameplayInputBindingStatus
+                        .RejectedAssignmentDivergence,
+                PlayerCurrentActorEvidenceStatus
+                    .RejectedHostDivergence =>
+                    PlayerGameplayInputBindingStatus
+                        .RejectedHostDivergence,
+                _ => PlayerGameplayInputBindingStatus
+                    .RejectedActorDivergence
+            };
+        }
+
+        private static PlayerGameplayInputAvailability ResolveAvailability(
+            PlayerInput playerInput,
+            UnityPlayerInputGateAdapter gateAdapter,
+            string desiredActionMapName)
+        {
+            if (gateAdapter == null ||
+                playerInput == null ||
+                !ReferenceEquals(gateAdapter.PlayerInput, playerInput))
+            {
+                return PlayerGameplayInputAvailability.GateUnavailable;
+            }
+
+            if (!playerInput.enabled)
+            {
+                return PlayerGameplayInputAvailability.PlayerInputDisabled;
+            }
+
+            if (gateAdapter.IsBlockedByAdapter)
+            {
+                return PlayerGameplayInputAvailability.BlockedByGate;
+            }
+
+            if (playerInput.actions == null)
+            {
+                return PlayerGameplayInputAvailability.ActionsUnavailable;
+            }
+
+            InputActionMap desiredMap = playerInput.actions.FindActionMap(
+                desiredActionMapName.NormalizeText(),
+                throwIfNotFound: false);
+            return desiredMap != null && desiredMap.enabled
+                ? PlayerGameplayInputAvailability.Allowed
+                : PlayerGameplayInputAvailability.ActionsUnavailable;
+        }
+
+        private static string CurrentActionMapName(PlayerInput playerInput)
+        {
+            return playerInput != null &&
+                playerInput.currentActionMap != null
+                    ? playerInput.currentActionMap.name.NormalizeText()
+                    : string.Empty;
+        }
+
+        private static string AvailabilityMessage(
+            PlayerGameplayInputAvailability availability)
+        {
+            return availability switch
+            {
+                PlayerGameplayInputAvailability.Allowed =>
+                    "Gameplay input is currently allowed.",
+                PlayerGameplayInputAvailability.BlockedByGate =>
+                    "Gameplay input is currently blocked by the Gate.",
+                PlayerGameplayInputAvailability.PlayerInputDisabled =>
+                    "Gameplay input binding is retained while PlayerInput is disabled.",
+                PlayerGameplayInputAvailability.ActionsUnavailable =>
+                    "Gameplay input binding is retained while the desired action map is unavailable.",
+                PlayerGameplayInputAvailability.GateUnavailable =>
+                    "Gameplay input binding is retained while its Gate adapter is unavailable.",
+                _ => "Gameplay input availability is unknown."
+            };
         }
 
         private PlayerGameplayInputBindingSummary GetSummaryOrDefault(
