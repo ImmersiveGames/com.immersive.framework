@@ -20,33 +20,49 @@ namespace Immersive.Framework.UnityInput
         "H2.2.9 explicit Input Gate runtime binding using the canonical Unity PlayerInput physical writer.")]
     public sealed class UnityPlayerInputGateAdapter : MonoBehaviour
     {
-        private const string DefaultSource = nameof(UnityPlayerInputGateAdapter);
+        private const string DefaultSource =
+            nameof(UnityPlayerInputGateAdapter);
 
         [Header("Target")]
         [Tooltip("Gameplay-owned PlayerInput to gate. If empty, the adapter looks on the same GameObject.")]
-        [SerializeField] private PlayerInput playerInput;
+        [SerializeField]
+        private PlayerInput playerInput;
 
-        [Tooltip("Action map blocked when Block Mode is Disable Action Map.")]
-        [SerializeField] private string gameplayActionMapName = "Player";
+        [SerializeField]
+        private PlayerInputActionMapReference gameplayActionMap;
+
+        [SerializeField, HideInInspector]
+        private string gameplayActionMapName = "Player";
 
         [Header("Gate Conditions")]
-        [SerializeField] private bool blockOnInputAcceptance = true;
-        [SerializeField] private bool blockOnGameplayAction = true;
+        [SerializeField]
+        private bool blockOnInputAcceptance = true;
+
+        [SerializeField]
+        private bool blockOnGameplayAction = true;
 
         [Header("Blocking")]
-
         [Tooltip("When enabled, the adapter asks the canonical writer to restore only state changed by this Gate block.")]
-        [SerializeField] private bool restorePreviousState = true;
-        [SerializeField] private bool applyOnEnable = true;
+        [SerializeField]
+        private bool restorePreviousState = true;
+
+        [SerializeField]
+        private bool applyOnEnable = true;
 
         [Header("Diagnostics")]
-        [SerializeField] private bool logStateChanges = true;
-        [SerializeField] private bool logMissingRuntimeOnce = true;
-        [SerializeField] private bool logMissingTargetOnce = true;
+        [SerializeField]
+        private bool logStateChanges = true;
+
+        [SerializeField]
+        private bool logMissingRuntimeOnce = true;
+
+        [SerializeField]
+        private bool logMissingTargetOnce = true;
 
         private FrameworkLogger _logger;
         private IInputGateRuntimePort _inputGateRuntime;
-        private string _inputGateRuntimeBindingDiagnostic = "Input Gate runtime port is not bound.";
+        private string _inputGateRuntimeBindingDiagnostic =
+            "Input Gate runtime port is not bound.";
         private bool _isBlockedByAdapter;
         private bool _actionMapWasEnabledBeforeBlock;
         private string _lastStatus = "NotApplied";
@@ -54,29 +70,120 @@ namespace Immersive.Framework.UnityInput
         private bool _loggedMissingRuntime;
         private bool _loggedMissingTarget;
 
-        public PlayerInput PlayerInput => ResolvePlayerInput();
-        public string GameplayActionMapName =>
-            gameplayActionMapName.NormalizeTextOrFallback("Player");
-        public bool BlockOnInputAcceptance => blockOnInputAcceptance;
-        public bool BlockOnGameplayAction => blockOnGameplayAction;
-        public bool IsBlockedByAdapter => _isBlockedByAdapter;
-        public string LastStatus => _lastStatus.NormalizeText();
-        public string LastReason => _lastReason.NormalizeText();
-        public bool HasInputGateRuntimeBinding => _inputGateRuntime != null;
+        public PlayerInput PlayerInput =>
+            ResolvePlayerInput();
+
+        public PlayerInputActionMapReference GameplayActionMapReference =>
+            gameplayActionMap;
+
+        public string GameplayActionMapName
+        {
+            get
+            {
+                return TryResolveGameplayActionMap(
+                        out InputActionMap map,
+                        out _)
+                    ? map.name.NormalizeText()
+                    : string.Empty;
+            }
+        }
+
+        public bool BlockOnInputAcceptance =>
+            blockOnInputAcceptance;
+
+        public bool BlockOnGameplayAction =>
+            blockOnGameplayAction;
+
+        public bool IsBlockedByAdapter =>
+            _isBlockedByAdapter;
+
+        public string LastStatus =>
+            _lastStatus.NormalizeText();
+
+        public string LastReason =>
+            _lastReason.NormalizeText();
+
+        public bool HasInputGateRuntimeBinding =>
+            _inputGateRuntime != null;
+
         public string InputGateRuntimeBindingStatus =>
-            HasInputGateRuntimeBinding ? "Bound" : "Missing";
+            HasInputGateRuntimeBinding
+                ? "Bound"
+                : "Missing";
+
         public string InputGateRuntimeBindingDiagnostic =>
             _inputGateRuntimeBindingDiagnostic;
 
-        private void Awake() => EnsureLogger();
+        public bool TryValidateAuthoring(
+            out string diagnostic)
+        {
+            PlayerInput resolvedPlayerInput =
+                ResolvePlayerInput();
+
+            if (resolvedPlayerInput == null ||
+                resolvedPlayerInput.actions == null)
+            {
+                diagnostic =
+                    "Unity PlayerInput Gate Adapter requires a PlayerInput with actions.";
+                return false;
+            }
+
+            if (!gameplayActionMap.TryResolve(
+                    resolvedPlayerInput.actions,
+                    out _,
+                    out diagnostic))
+            {
+                diagnostic =
+                    $"Unity PlayerInput Gate Adapter Gameplay Action Map is invalid. {diagnostic}";
+                return false;
+            }
+
+            diagnostic = string.Empty;
+            return true;
+        }
+
+        public bool TryResolveGameplayActionMap(
+            out InputActionMap actionMap,
+            out string diagnostic)
+        {
+            PlayerInput resolvedPlayerInput =
+                ResolvePlayerInput();
+
+            if (resolvedPlayerInput == null ||
+                resolvedPlayerInput.actions == null)
+            {
+                actionMap = null;
+                diagnostic =
+                    "Gameplay Action Map resolution requires PlayerInput actions.";
+                return false;
+            }
+
+            return gameplayActionMap.TryResolve(
+                resolvedPlayerInput.actions,
+                out actionMap,
+                out diagnostic);
+        }
+
+        private void Awake() =>
+            EnsureLogger();
 
         private void Reset()
         {
-            playerInput = GetComponent<PlayerInput>();
-            if (string.IsNullOrWhiteSpace(gameplayActionMapName))
+            playerInput =
+                GetComponent<PlayerInput>();
+
+            TryMigrateLegacyGameplayMap();
+        }
+
+        private void OnValidate()
+        {
+            if (playerInput == null)
             {
-                gameplayActionMapName = "Player";
+                playerInput =
+                    GetComponent<PlayerInput>();
             }
+
+            TryMigrateLegacyGameplayMap();
         }
 
         internal bool TryBindInputGateRuntime(
@@ -85,7 +192,8 @@ namespace Immersive.Framework.UnityInput
         {
             if (inputGateRuntime == null)
             {
-                issue = "Input Gate runtime port binding requires a non-null port.";
+                issue =
+                    "Input Gate runtime port binding requires a non-null port.";
                 _inputGateRuntimeBindingDiagnostic = issue;
                 return false;
             }
@@ -100,7 +208,9 @@ namespace Immersive.Framework.UnityInput
                 return true;
             }
 
-            if (ReferenceEquals(_inputGateRuntime, inputGateRuntime))
+            if (ReferenceEquals(
+                    _inputGateRuntime,
+                    inputGateRuntime))
             {
                 issue = string.Empty;
                 _inputGateRuntimeBindingDiagnostic =
@@ -117,23 +227,35 @@ namespace Immersive.Framework.UnityInput
         private void OnEnable()
         {
             EnsureLogger();
+
             if (applyOnEnable)
             {
-                ApplyFromCurrentRuntimeGate("on-enable");
+                ApplyFromCurrentRuntimeGate(
+                    "on-enable");
             }
         }
 
-        private void Update() => ApplyFromCurrentRuntimeGate("update");
+        private void Update() =>
+            ApplyFromCurrentRuntimeGate(
+                "update");
 
-        private void OnDisable() => RestoreIfNeeded("component-disabled");
-        private void OnDestroy() => RestoreIfNeeded("component-destroyed");
+        private void OnDisable() =>
+            RestoreIfNeeded(
+                "component-disabled");
+
+        private void OnDestroy() =>
+            RestoreIfNeeded(
+                "component-destroyed");
 
         [ContextMenu("Immersive Framework/Unity Input/Gate Adapter/Apply Current Gate")]
         public void ApplyCurrentGate() =>
-            ApplyFromCurrentRuntimeGate("context-menu");
+            ApplyFromCurrentRuntimeGate(
+                "context-menu");
 
         [ContextMenu("Immersive Framework/Unity Input/Gate Adapter/Restore")]
-        public void Restore() => RestoreIfNeeded("context-menu-restore");
+        public void Restore() =>
+            RestoreIfNeeded(
+                "context-menu-restore");
 
         internal bool TrySelectActionMap(
             string actionMapName,
@@ -143,10 +265,14 @@ namespace Immersive.Framework.UnityInput
             out string issue)
         {
             receipt = default;
-            PlayerInput resolvedPlayerInput = ResolvePlayerInput();
+
+            PlayerInput resolvedPlayerInput =
+                ResolvePlayerInput();
+
             if (resolvedPlayerInput == null)
             {
-                issue = "PlayerInput write authority requires an explicit PlayerInput target.";
+                issue =
+                    "PlayerInput write authority requires an explicit PlayerInput target.";
                 return false;
             }
 
@@ -161,20 +287,20 @@ namespace Immersive.Framework.UnityInput
 
             if (_isBlockedByAdapter)
             {
-                bool selectedGameplayMap = string.Equals(
-                    actionMapName.NormalizeText(),
-                    GameplayActionMapName,
-                    System.StringComparison.Ordinal);
+                bool selectedGameplayMap =
+                    string.Equals(
+                        actionMapName.NormalizeText(),
+                        GameplayActionMapName,
+                        System.StringComparison.Ordinal);
+
                 if (!selectedGameplayMap)
                 {
-                    // Another explicit posture superseded the gameplay map while the Gate was
-                    // blocked. Releasing the Gate must not resurrect the older gameplay map.
                     _actionMapWasEnabledBeforeBlock = false;
                 }
                 else
                 {
-                    // The new explicit baseline wants gameplay enabled after the Gate releases.
                     _actionMapWasEnabledBeforeBlock = true;
+
                     if (!UnityPlayerInputStateWriter.TrySetActionMapEnabled(
                             resolvedPlayerInput,
                             GameplayActionMapName,
@@ -188,8 +314,11 @@ namespace Immersive.Framework.UnityInput
                 }
             }
 
-            _lastStatus = "ActionMapSelectedByAuthority";
-            _lastReason = reason.NormalizeTextOrFallback("action-map-selection");
+            _lastStatus =
+                "ActionMapSelectedByAuthority";
+            _lastReason =
+                reason.NormalizeTextOrFallback(
+                    "action-map-selection");
             return true;
         }
 
@@ -199,7 +328,9 @@ namespace Immersive.Framework.UnityInput
             string reason,
             out string issue)
         {
-            PlayerInput resolvedPlayerInput = ResolvePlayerInput();
+            PlayerInput resolvedPlayerInput =
+                ResolvePlayerInput();
+
             if (!UnityPlayerInputStateWriter.TryRestoreActionMap(
                     resolvedPlayerInput,
                     receipt,
@@ -210,12 +341,16 @@ namespace Immersive.Framework.UnityInput
 
             if (_isBlockedByAdapter)
             {
-                bool restoredGameplayMap = string.Equals(
-                    UnityPlayerInputStateWriter.CurrentActionMapName(
-                        resolvedPlayerInput),
-                    GameplayActionMapName,
-                    System.StringComparison.Ordinal);
-                _actionMapWasEnabledBeforeBlock = restoredGameplayMap;
+                bool restoredGameplayMap =
+                    string.Equals(
+                        UnityPlayerInputStateWriter.CurrentActionMapName(
+                            resolvedPlayerInput),
+                        GameplayActionMapName,
+                        System.StringComparison.Ordinal);
+
+                _actionMapWasEnabledBeforeBlock =
+                    restoredGameplayMap;
+
                 if (restoredGameplayMap &&
                     !UnityPlayerInputStateWriter.TrySetActionMapEnabled(
                         resolvedPlayerInput,
@@ -229,8 +364,11 @@ namespace Immersive.Framework.UnityInput
                 }
             }
 
-            _lastStatus = "ActionMapRestoredByAuthority";
-            _lastReason = reason.NormalizeTextOrFallback("action-map-restore");
+            _lastStatus =
+                "ActionMapRestoredByAuthority";
+            _lastReason =
+                reason.NormalizeTextOrFallback(
+                    "action-map-restore");
             return true;
         }
 
@@ -243,7 +381,10 @@ namespace Immersive.Framework.UnityInput
             out string issue)
         {
             receipt = default;
-            PlayerInput resolvedPlayerInput = ResolvePlayerInput();
+
+            PlayerInput resolvedPlayerInput =
+                ResolvePlayerInput();
+
             if (resolvedPlayerInput == null)
             {
                 issue =
@@ -261,13 +402,19 @@ namespace Immersive.Framework.UnityInput
                 return false;
             }
 
-            _actionMapWasEnabledBeforeBlock = ContainsActionMap(
-                enabledActionMapNames,
-                GameplayActionMapName);
-            ApplyFromCurrentRuntimeGate("action-map-set-applied");
-            _lastStatus = "ActionMapSetAppliedByAuthority";
-            _lastReason = reason.NormalizeTextOrFallback(
-                "action-map-set-application");
+            _actionMapWasEnabledBeforeBlock =
+                ContainsActionMap(
+                    enabledActionMapNames,
+                    GameplayActionMapName);
+
+            ApplyFromCurrentRuntimeGate(
+                "action-map-set-applied");
+
+            _lastStatus =
+                "ActionMapSetAppliedByAuthority";
+            _lastReason =
+                reason.NormalizeTextOrFallback(
+                    "action-map-set-application");
             return true;
         }
 
@@ -277,7 +424,9 @@ namespace Immersive.Framework.UnityInput
             string reason,
             out string issue)
         {
-            PlayerInput resolvedPlayerInput = ResolvePlayerInput();
+            PlayerInput resolvedPlayerInput =
+                ResolvePlayerInput();
+
             if (!UnityPlayerInputStateWriter.TryRestoreActionMapSet(
                     resolvedPlayerInput,
                     receipt,
@@ -287,39 +436,67 @@ namespace Immersive.Framework.UnityInput
             }
 
             _actionMapWasEnabledBeforeBlock =
-                ResolveGameplayActionMap(resolvedPlayerInput)?.enabled ?? false;
-            ApplyFromCurrentRuntimeGate("action-map-set-restored");
-            _lastStatus = "ActionMapSetRestoredByAuthority";
-            _lastReason = reason.NormalizeTextOrFallback(
-                "action-map-set-restore");
+                TryResolveGameplayActionMap(
+                    out InputActionMap gameplayMap,
+                    out _) &&
+                gameplayMap.enabled;
+
+            ApplyFromCurrentRuntimeGate(
+                "action-map-set-restored");
+
+            _lastStatus =
+                "ActionMapSetRestoredByAuthority";
+            _lastReason =
+                reason.NormalizeTextOrFallback(
+                    "action-map-set-restore");
             return true;
         }
 
-        internal bool TryCapturePosture(out PausePlayerInputPostureReceipt receipt, out string issue) =>
-            UnityPlayerInputStateWriter.TryCapturePosture(ResolvePlayerInput(), out receipt, out issue);
+        internal bool TryCapturePosture(
+            out PausePlayerInputPostureReceipt receipt,
+            out string issue) =>
+            UnityPlayerInputStateWriter.TryCapturePosture(
+                ResolvePlayerInput(),
+                out receipt,
+                out issue);
 
-        internal bool TryRestorePosture(PausePlayerInputPostureReceipt receipt, out string issue) =>
-            UnityPlayerInputStateWriter.TryRestorePosture(ResolvePlayerInput(), receipt, out issue);
+        internal bool TryRestorePosture(
+            PausePlayerInputPostureReceipt receipt,
+            out string issue) =>
+            UnityPlayerInputStateWriter.TryRestorePosture(
+                ResolvePlayerInput(),
+                receipt,
+                out issue);
 
-        private void ApplyFromCurrentRuntimeGate(string reason)
+        private void ApplyFromCurrentRuntimeGate(
+            string reason)
         {
             EnsureLogger();
 
-            IInputGateRuntimePort inputGateRuntime = _inputGateRuntime;
+            IInputGateRuntimePort inputGateRuntime =
+                _inputGateRuntime;
+
             if (inputGateRuntime == null)
             {
                 const string diagnostic =
                     "Input Gate runtime port is not bound. The adapter will retry on Update.";
-                _inputGateRuntimeBindingDiagnostic = diagnostic;
 
-                RestoreIfNeeded("input-gate-runtime-unbound");
+                _inputGateRuntimeBindingDiagnostic =
+                    diagnostic;
+
+                RestoreIfNeeded(
+                    "input-gate-runtime-unbound");
+
                 if (!_isBlockedByAdapter)
                 {
-                    _lastStatus = "SkippedMissingInputGateRuntime";
-                    _lastReason = reason.NormalizeText();
+                    _lastStatus =
+                        "SkippedMissingInputGateRuntime";
+                    _lastReason =
+                        reason.NormalizeText();
                 }
 
-                if (logMissingRuntimeOnce && !_loggedMissingRuntime)
+                if (logMissingRuntimeOnce &&
+                    !_loggedMissingRuntime)
                 {
                     _loggedMissingRuntime = true;
                     _logger.Trace(
@@ -335,23 +512,33 @@ namespace Immersive.Framework.UnityInput
                 return;
             }
 
-            GateSnapshot gateSnapshot = inputGateRuntime.CurrentGateSnapshot;
-            bool blocksInput = blockOnInputAcceptance &&
+            GateSnapshot gateSnapshot =
+                inputGateRuntime.CurrentGateSnapshot;
+
+            bool blocksInput =
+                blockOnInputAcceptance &&
                 gateSnapshot.IsBlocked(
                     GateScope.Input,
                     GateDomain.InputAcceptance);
-            bool blocksGameplay = blockOnGameplayAction &&
+
+            bool blocksGameplay =
+                blockOnGameplayAction &&
                 gateSnapshot.IsBlocked(
                     GateScope.Gameplay,
                     GateDomain.GameplayAction);
 
-            if (blocksInput || blocksGameplay)
+            if (blocksInput ||
+                blocksGameplay)
             {
-                ApplyBlock(reason, blocksInput, blocksGameplay);
+                ApplyBlock(
+                    reason,
+                    blocksInput,
+                    blocksGameplay);
                 return;
             }
 
-            RestoreIfNeeded(reason);
+            RestoreIfNeeded(
+                reason);
         }
 
         private void ApplyBlock(
@@ -359,11 +546,16 @@ namespace Immersive.Framework.UnityInput
             bool blocksInput,
             bool blocksGameplay)
         {
-            PlayerInput resolvedPlayerInput = ResolvePlayerInput();
+            PlayerInput resolvedPlayerInput =
+                ResolvePlayerInput();
+
             if (resolvedPlayerInput == null)
             {
-                _lastStatus = "SkippedMissingPlayerInput";
-                _lastReason = reason.NormalizeText();
+                _lastStatus =
+                    "SkippedMissingPlayerInput";
+                _lastReason =
+                    reason.NormalizeText();
+
                 LogMissingTargetOnce(
                     "Unity PlayerInput Gate Adapter requires a PlayerInput target.",
                     reason,
@@ -387,29 +579,59 @@ namespace Immersive.Framework.UnityInput
         {
             if (_isBlockedByAdapter)
             {
-                _lastStatus = "AlreadyBlocked";
-                _lastReason = reason.NormalizeText();
+                _lastStatus =
+                    "AlreadyBlocked";
+                _lastReason =
+                    reason.NormalizeText();
+                return;
+            }
+
+            if (!TryResolveGameplayActionMap(
+                    out InputActionMap gameplayMap,
+                    out string mapIssue))
+            {
+                _lastStatus =
+                    "FailedGameplayActionMapResolution";
+                _lastReason =
+                    reason.NormalizeText();
+
+                LogWriteFailure(
+                    mapIssue,
+                    reason,
+                    blocksInput,
+                    blocksGameplay);
                 return;
             }
 
             if (!UnityPlayerInputStateWriter.TrySetActionMapEnabled(
                     resolvedPlayerInput,
-                    GameplayActionMapName,
+                    gameplayMap.name,
                     false,
                     out bool previousEnabled,
                     out _,
                     out string issue))
             {
-                _lastStatus = "FailedActionMapBlock";
-                _lastReason = reason.NormalizeText();
-                LogWriteFailure(issue, reason, blocksInput, blocksGameplay);
+                _lastStatus =
+                    "FailedActionMapBlock";
+                _lastReason =
+                    reason.NormalizeText();
+
+                LogWriteFailure(
+                    issue,
+                    reason,
+                    blocksInput,
+                    blocksGameplay);
                 return;
             }
 
-            _actionMapWasEnabledBeforeBlock = previousEnabled;
+            _actionMapWasEnabledBeforeBlock =
+                previousEnabled;
             _isBlockedByAdapter = true;
-            _lastStatus = "BlockedActionMap";
-            _lastReason = reason.NormalizeText();
+            _lastStatus =
+                "BlockedActionMap";
+            _lastReason =
+                reason.NormalizeText();
+
             LogStateChange(
                 "Unity PlayerInput Gate Adapter requested gameplay action-map blocking.",
                 _lastStatus,
@@ -419,49 +641,78 @@ namespace Immersive.Framework.UnityInput
                 blocksGameplay);
         }
 
-        private void RestoreIfNeeded(string reason)
+        private void RestoreIfNeeded(
+            string reason)
         {
             if (!_isBlockedByAdapter)
             {
-                _lastStatus = "Allowed";
-                _lastReason = reason.NormalizeText();
+                _lastStatus =
+                    "Allowed";
+                _lastReason =
+                    reason.NormalizeText();
                 return;
             }
 
-            PlayerInput resolvedPlayerInput = ResolvePlayerInput();
+            PlayerInput resolvedPlayerInput =
+                ResolvePlayerInput();
+
             if (resolvedPlayerInput == null)
             {
                 _isBlockedByAdapter = false;
-                _lastStatus = "ReleasedMissingPlayerInput";
-                _lastReason = reason.NormalizeText();
+                _lastStatus =
+                    "ReleasedMissingPlayerInput";
+                _lastReason =
+                    reason.NormalizeText();
                 return;
             }
 
             bool restored = true;
             string issue = string.Empty;
-            if (restorePreviousState && _actionMapWasEnabledBeforeBlock)
+
+            if (restorePreviousState &&
+                _actionMapWasEnabledBeforeBlock)
             {
-                restored = UnityPlayerInputStateWriter.TrySetActionMapEnabled(
-                    resolvedPlayerInput,
-                    GameplayActionMapName,
-                    true,
-                    out _,
-                    out _,
-                    out issue);
+                if (!TryResolveGameplayActionMap(
+                        out InputActionMap gameplayMap,
+                        out issue))
+                {
+                    restored = false;
+                }
+                else
+                {
+                    restored =
+                        UnityPlayerInputStateWriter.TrySetActionMapEnabled(
+                            resolvedPlayerInput,
+                            gameplayMap.name,
+                            true,
+                            out _,
+                            out _,
+                            out issue);
+                }
             }
 
             if (!restored)
             {
-                _lastStatus = "ReleaseFailed";
-                _lastReason = reason.NormalizeText();
-                LogWriteFailure(issue, reason, false, false);
+                _lastStatus =
+                    "ReleaseFailed";
+                _lastReason =
+                    reason.NormalizeText();
+
+                LogWriteFailure(
+                    issue,
+                    reason,
+                    false,
+                    false);
                 return;
             }
 
             _isBlockedByAdapter = false;
             _actionMapWasEnabledBeforeBlock = false;
-            _lastStatus = "Released";
-            _lastReason = reason.NormalizeText();
+            _lastStatus =
+                "Released";
+            _lastReason =
+                reason.NormalizeText();
+
             LogStateChange(
                 "Unity PlayerInput Gate Adapter released gameplay input through the canonical writer.",
                 _lastStatus,
@@ -480,8 +731,12 @@ namespace Immersive.Framework.UnityInput
                 return false;
             }
 
-            string expected = expectedActionMapName.NormalizeText();
-            for (int index = 0; index < actionMapNames.Count; index++)
+            string expected =
+                expectedActionMapName.NormalizeText();
+
+            for (int index = 0;
+                 index < actionMapNames.Count;
+                 index++)
             {
                 if (string.Equals(
                         actionMapNames[index].NormalizeText(),
@@ -496,20 +751,46 @@ namespace Immersive.Framework.UnityInput
         }
 
         private PlayerInput ResolvePlayerInput() =>
-            playerInput != null ? playerInput : GetComponent<PlayerInput>();
+            playerInput != null
+                ? playerInput
+                : GetComponent<PlayerInput>();
 
-        private InputActionMap ResolveGameplayActionMap(
-            PlayerInput resolvedPlayerInput)
+        private void TryMigrateLegacyGameplayMap()
         {
+            if (gameplayActionMap.IsConfigured)
+            {
+                return;
+            }
+
+            PlayerInput resolvedPlayerInput =
+                ResolvePlayerInput();
+
             if (resolvedPlayerInput == null ||
                 resolvedPlayerInput.actions == null)
             {
-                return null;
+                return;
             }
 
-            return resolvedPlayerInput.actions.FindActionMap(
-                GameplayActionMapName,
-                throwIfNotFound: false);
+            string legacyName =
+                gameplayActionMapName.NormalizeText();
+
+            if (string.IsNullOrEmpty(
+                    legacyName))
+            {
+                return;
+            }
+
+            InputActionMap legacyMap =
+                resolvedPlayerInput.actions.FindActionMap(
+                    legacyName,
+                    false);
+
+            if (legacyMap != null)
+            {
+                gameplayActionMap =
+                    PlayerInputActionMapReference.From(
+                        legacyMap);
+            }
         }
 
         private void LogWriteFailure(
@@ -519,17 +800,29 @@ namespace Immersive.Framework.UnityInput
             bool blocksGameplay)
         {
             EnsureLogger();
+
             _logger.Warning(
                 "Unity PlayerInput Gate Adapter physical write failed.",
                 LogFields.Of(
-                    LogFields.Field("status", _lastStatus),
-                    LogFields.Field("issue", issue.NormalizeText()),
-                    LogFields.Field("blocksInputAcceptance", blocksInput),
-                    LogFields.Field("blocksGameplayAction", blocksGameplay),
-                    LogFields.Field("source", DefaultSource),
+                    LogFields.Field(
+                        "status",
+                        _lastStatus),
+                    LogFields.Field(
+                        "issue",
+                        issue.NormalizeText()),
+                    LogFields.Field(
+                        "blocksInputAcceptance",
+                        blocksInput),
+                    LogFields.Field(
+                        "blocksGameplayAction",
+                        blocksGameplay),
+                    LogFields.Field(
+                        "source",
+                        DefaultSource),
                     LogFields.Field(
                         "reason",
-                        reason.NormalizeTextOrFallback("gate-adapter"))));
+                        reason.NormalizeTextOrFallback(
+                            "gate-adapter"))));
         }
 
         private void LogMissingTargetOnce(
@@ -538,12 +831,14 @@ namespace Immersive.Framework.UnityInput
             bool blocksInput,
             bool blocksGameplay)
         {
-            if (!logMissingTargetOnce || _loggedMissingTarget)
+            if (!logMissingTargetOnce ||
+                _loggedMissingTarget)
             {
                 return;
             }
 
             _loggedMissingTarget = true;
+
             _logger.Warning(
                 message,
                 BuildLogFields(
@@ -584,44 +879,75 @@ namespace Immersive.Framework.UnityInput
             bool blocksInput,
             bool blocksGameplay)
         {
-            PlayerInput resolvedPlayerInput = ResolvePlayerInput();
-            InputActionMap actionMap =
-                ResolveGameplayActionMap(resolvedPlayerInput);
+            PlayerInput resolvedPlayerInput =
+                ResolvePlayerInput();
+
+            bool resolvedMap =
+                TryResolveGameplayActionMap(
+                    out InputActionMap actionMap,
+                    out string actionMapDiagnostic);
 
             return LogFields.Of(
                 LogFields.Field(
                     "status",
-                    status.NormalizeTextOrFallback("Unknown")),
-                LogFields.Field("blockedByAdapter", blocked),
-                LogFields.Field("blockMode", "DisableGameplayActionMap"),
+                    status.NormalizeTextOrFallback(
+                        "Unknown")),
+                LogFields.Field(
+                    "blockedByAdapter",
+                    blocked),
+                LogFields.Field(
+                    "blockMode",
+                    "DisableGameplayActionMap"),
                 LogFields.Field(
                     "blockOnInputAcceptance",
                     blockOnInputAcceptance),
                 LogFields.Field(
                     "blockOnGameplayAction",
                     blockOnGameplayAction),
-                LogFields.Field("blocksInputAcceptance", blocksInput),
-                LogFields.Field("blocksGameplayAction", blocksGameplay),
+                LogFields.Field(
+                    "blocksInputAcceptance",
+                    blocksInput),
+                LogFields.Field(
+                    "blocksGameplayAction",
+                    blocksGameplay),
                 LogFields.Field(
                     "playerInput",
                     resolvedPlayerInput != null
                         ? resolvedPlayerInput.name
                         : "<none>"),
-                LogFields.Field("actionMap", GameplayActionMapName),
+                LogFields.Field(
+                    "actionMap",
+                    resolvedMap
+                        ? actionMap.name
+                        : "<unresolved>"),
+                LogFields.Field(
+                    "actionMapId",
+                    gameplayActionMap.ActionMapId),
                 LogFields.Field(
                     "actionMapEnabled",
-                    actionMap != null && actionMap.enabled),
+                    resolvedMap &&
+                    actionMap.enabled),
+                LogFields.Field(
+                    "actionMapDiagnostic",
+                    actionMapDiagnostic.NormalizeText()),
                 LogFields.Field(
                     "restorePreviousState",
                     restorePreviousState),
-                LogFields.Field("physicalWriter", nameof(UnityPlayerInputStateWriter)),
-                LogFields.Field("source", DefaultSource),
+                LogFields.Field(
+                    "physicalWriter",
+                    nameof(UnityPlayerInputStateWriter)),
+                LogFields.Field(
+                    "source",
+                    DefaultSource),
                 LogFields.Field(
                     "reason",
-                    reason.NormalizeTextOrFallback("gate-adapter")));
+                    reason.NormalizeTextOrFallback(
+                        "gate-adapter")));
         }
 
         private void EnsureLogger() =>
-            _logger ??= FrameworkLogger.Create<UnityPlayerInputGateAdapter>();
+            _logger ??=
+                FrameworkLogger.Create<
+                    UnityPlayerInputGateAdapter>();
     }
 }
