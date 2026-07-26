@@ -5,6 +5,7 @@ using Immersive.Framework.ApiStatus;
 using Immersive.Framework.ApplicationLifecycle;
 using Immersive.Framework.Authoring;
 using Immersive.Framework.PlayerSlots;
+using Immersive.Framework.RuntimeContent;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
@@ -148,6 +149,7 @@ namespace Immersive.Framework.PlayerParticipation
 
         internal SceneLocalPlayerAdmissionRuntimeResult TryAdmit(
             SceneLocalPlayerAdmissionAuthoring authoring,
+            RuntimeContentOwner assignmentOwner,
             string source,
             string reason)
         {
@@ -165,6 +167,7 @@ namespace Immersive.Framework.PlayerParticipation
 
             SceneLocalPlayerAdmissionRuntimeResult result = runtime.TryAdmit(
                 authoring,
+                assignmentOwner,
                 source,
                 reason);
             diagnostic = result.ToDiagnosticString();

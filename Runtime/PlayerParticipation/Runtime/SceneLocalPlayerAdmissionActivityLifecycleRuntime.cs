@@ -189,6 +189,7 @@ namespace Immersive.Framework.PlayerParticipation
                 SceneLocalPlayerAdmissionAuthoring surface = authoring[index];
                 SceneLocalPlayerAdmissionRuntimeResult admission = module.TryAdmit(
                     surface,
+                    owner,
                     resolvedSource,
                     $"{resolvedReason}:admit:{index}");
                 if (admission == null || !admission.Succeeded || !admission.Token.IsValid)
@@ -673,6 +674,7 @@ namespace Immersive.Framework.PlayerParticipation
                 Entry entry = released[index];
                 SceneLocalPlayerAdmissionRuntimeResult admission = module.TryAdmit(
                     entry.Authoring,
+                    owner,
                     source,
                     $"{reason}:compensate-admission:{index}");
                 if (admission == null || !admission.Succeeded || !admission.Token.IsValid)

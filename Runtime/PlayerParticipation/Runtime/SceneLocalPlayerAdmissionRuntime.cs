@@ -7,6 +7,15 @@ using Immersive.Framework.RuntimeContent;
 
 namespace Immersive.Framework.PlayerParticipation
 {
+    internal interface ISceneLocalPlayerAssignmentReleaseRuntimePort
+    {
+        PlayerSlotAssignmentResult ReleaseAssignment(
+            PlayerSlotId playerSlotId,
+            PlayerSlotAssignmentToken expectedToken,
+            string source,
+            string reason);
+    }
+
     /// <summary>
     /// Session-scoped plain C# authority for admitting and releasing externally owned scene
     /// Local Player Hosts. Physical object creation/destruction, Actor selection and gameplay
@@ -41,21 +50,32 @@ namespace Immersive.Framework.PlayerParticipation
         }
 
         private readonly PlayerParticipationRuntimeContext participationContext;
+        private readonly ISceneLocalPlayerAssignmentReleaseRuntimePort assignmentReleasePort;
         private readonly List<AdmissionRecord> records = new();
         private readonly Dictionary<PlayerSlotId, AdmissionRecord> recordsBySlot = new();
         private int operationSequence;
 
         internal SceneLocalPlayerAdmissionRuntime(
             PlayerParticipationRuntimeContext participationContext)
+            : this(participationContext, participationContext)
+        {
+        }
+
+        internal SceneLocalPlayerAdmissionRuntime(
+            PlayerParticipationRuntimeContext participationContext,
+            ISceneLocalPlayerAssignmentReleaseRuntimePort assignmentReleasePort)
         {
             this.participationContext = participationContext ??
                 throw new ArgumentNullException(nameof(participationContext));
+            this.assignmentReleasePort = assignmentReleasePort ??
+                throw new ArgumentNullException(nameof(assignmentReleasePort));
         }
 
         internal int ActiveAdmissionCount => records.Count;
 
         internal SceneLocalPlayerAdmissionRuntimeResult TryAdmit(
             SceneLocalPlayerAdmissionAuthoring authoring,
+            RuntimeContentOwner assignmentOwner,
             string source,
             string reason)
         {
@@ -82,6 +102,25 @@ namespace Immersive.Framework.PlayerParticipation
                     "Scene Local Player admission requires an explicit authoring surface.");
             }
 
+            if (!assignmentOwner.IsValid ||
+                assignmentOwner.Scope is not RuntimeContentScope.Activity and not
+                    RuntimeContentScope.Route)
+            {
+                return Result(
+                    SceneLocalPlayerAdmissionRuntimeStatus.RejectedInvalidRequest,
+                    operation,
+                    authoring,
+                    default,
+                    null,
+                    null,
+                    null,
+                    default,
+                    default,
+                    resolvedSource,
+                    resolvedReason,
+                    "Scene Local Player admission requires an explicit Activity or Route assignment owner.");
+            }
+
             AdmissionRecord existing = FindRecordByAuthoring(authoring);
             if (existing != null)
             {
@@ -103,7 +142,9 @@ namespace Immersive.Framework.PlayerParticipation
                     currentSlotMatches &&
                     assignmentConfirmation.Succeeded &&
                     assignmentConfirmation.CurrentAssignment.AssignmentOrigin ==
-                        PlayerSlotAssignmentOrigin.SceneProvided)
+                        PlayerSlotAssignmentOrigin.SceneProvided &&
+                    assignmentConfirmation.CurrentAssignment.AssignmentOwner ==
+                        assignmentOwner)
                 {
                     existing.JoinedSlot = currentSlot;
                     return Result(
@@ -324,8 +365,6 @@ namespace Immersive.Framework.PlayerParticipation
 
             PlayerHostBindingIdentity hostBindingIdentity =
                 participationContext.CreateHostBindingIdentity();
-            RuntimeContentOwner assignmentOwner =
-                participationContext.CreateSessionAssignmentOwner();
             PlayerSlotAssignmentResult assignment =
                 participationContext.BeginAssignment(
                     commit.Slot.PlayerSlotId,
@@ -709,7 +748,7 @@ namespace Immersive.Framework.PlayerParticipation
             }
 
             PlayerSlotAssignmentResult assignmentRelease =
-                participationContext.ReleaseAssignment(
+                assignmentReleasePort.ReleaseAssignment(
                     record.Token.PlayerSlotId,
                     expectedToken.AssignmentToken,
                     resolvedSource,

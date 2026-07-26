@@ -6,7 +6,8 @@ using Immersive.Framework.RuntimeContent;
 
 namespace Immersive.Framework.PlayerParticipation
 {
-    internal sealed partial class PlayerParticipationRuntimeContext
+    internal sealed partial class PlayerParticipationRuntimeContext :
+        ISceneLocalPlayerAssignmentReleaseRuntimePort
     {
         private sealed class CurrentAssignmentRecord
         {
@@ -129,7 +130,7 @@ namespace Immersive.Framework.PlayerParticipation
                     "Current assignment origin must be ManagerProvisioned or SceneProvided.");
             }
 
-            if (!IsCurrentSessionOwner(owner))
+            if (!IsAssignmentOwnerValidForOrigin(origin, owner))
             {
                 return AssignmentResult(
                     PlayerSlotAssignmentStatus.RejectedInvalidOwner,
@@ -139,7 +140,9 @@ namespace Immersive.Framework.PlayerParticipation
                     default,
                     resolvedSource,
                     resolvedReason,
-                    "Current assignment owner must be the explicit owner of this Session participation context.");
+                    origin == PlayerSlotAssignmentOrigin.ManagerProvisioned
+                        ? "Manager-provisioned assignment owner must be the explicit owner of this Session participation context."
+                        : "Scene-provided assignment owner must be an explicit Activity or Route owner.");
             }
 
             if (!hostBindingIdentity.IsValid ||
@@ -195,15 +198,7 @@ namespace Immersive.Framework.PlayerParticipation
                 bool sameEvidence =
                     existing.Origin == origin &&
                     existing.Owner == owner &&
-                    existing.HostBindingIdentity == hostBindingIdentity &&
-                    string.Equals(
-                        existing.Source,
-                        resolvedSource,
-                        StringComparison.Ordinal) &&
-                    string.Equals(
-                        existing.Reason,
-                        resolvedReason,
-                        StringComparison.Ordinal);
+                    existing.HostBindingIdentity == hostBindingIdentity;
                 return AssignmentResult(
                     sameEvidence
                         ? PlayerSlotAssignmentStatus.SucceededAlreadyAssigned
@@ -215,7 +210,7 @@ namespace Immersive.Framework.PlayerParticipation
                     resolvedSource,
                     resolvedReason,
                     sameEvidence
-                        ? "The exact current assignment evidence is already committed."
+                        ? "The same current assignment domain evidence is already committed."
                         : $"Player Slot '{playerSlotId.StableText}' already has another current assignment.");
             }
 
@@ -314,6 +309,20 @@ namespace Immersive.Framework.PlayerParticipation
                 source,
                 reason,
                 release: true);
+        }
+
+        PlayerSlotAssignmentResult
+            ISceneLocalPlayerAssignmentReleaseRuntimePort.ReleaseAssignment(
+                PlayerSlotId playerSlotId,
+                PlayerSlotAssignmentToken expectedToken,
+                string source,
+                string reason)
+        {
+            return ReleaseAssignment(
+                playerSlotId,
+                expectedToken,
+                source,
+                reason);
         }
 
         internal PlayerParticipationOperationResult TryAbandonJoinedSlotAfterAssignmentFailure(
@@ -534,11 +543,28 @@ namespace Immersive.Framework.PlayerParticipation
                 "Current Player Slot assignment released; the previous token is now stale.");
         }
 
-        private bool IsCurrentSessionOwner(RuntimeContentOwner owner)
+        private bool IsAssignmentOwnerValidForOrigin(
+            PlayerSlotAssignmentOrigin origin,
+            RuntimeContentOwner owner)
         {
-            return owner.IsValid &&
-                owner.Scope == RuntimeContentScope.Session &&
-                string.Equals(owner.OwnerId, contextId, StringComparison.Ordinal);
+            if (!owner.IsValid)
+            {
+                return false;
+            }
+
+            return origin switch
+            {
+                PlayerSlotAssignmentOrigin.ManagerProvisioned =>
+                    owner.Scope == RuntimeContentScope.Session &&
+                    string.Equals(
+                        owner.OwnerId,
+                        contextId,
+                        StringComparison.Ordinal),
+                PlayerSlotAssignmentOrigin.SceneProvided =>
+                    owner.Scope is RuntimeContentScope.Activity or
+                        RuntimeContentScope.Route,
+                _ => false
+            };
         }
 
         private PlayerSlotAssignmentSnapshot CreateAssignmentSnapshot(

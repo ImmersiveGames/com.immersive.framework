@@ -2,6 +2,7 @@ using System;
 using Immersive.Framework.Actors;
 using Immersive.Framework.ApiStatus;
 using Immersive.Framework.PlayerSlots;
+using Immersive.Framework.RuntimeContent;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
@@ -240,6 +241,7 @@ namespace Immersive.Framework.PlayerParticipation
         /// lifecycle participant; this component never self-admits from Awake, Start or OnEnable.
         /// </summary>
         public SceneLocalPlayerAdmissionRuntimeResult RequestAdmission(
+            RuntimeContentOwner assignmentOwner,
             string source,
             string reason)
         {
@@ -257,6 +259,7 @@ namespace Immersive.Framework.PlayerParticipation
 
             return runtimeModule.TryAdmit(
                 this,
+                assignmentOwner,
                 source,
                 reason);
         }

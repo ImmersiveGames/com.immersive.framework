@@ -40,6 +40,14 @@ namespace Immersive.Framework.PlayerParticipation
             new(PlayerInputReferenceComparer.Instance);
 
         private PendingLocalPlayerJoin pendingJoin;
+
+        internal int AdmittedPlayerCount => admittedPlayers.Count;
+        internal bool IsAdmittedPlayer(PlayerInput playerInput)
+        {
+            return !ReferenceEquals(playerInput, null) &&
+                admittedPlayers.Contains(playerInput);
+        }
+
         private int operationSequence;
         private bool disposed;
 
@@ -511,7 +519,7 @@ namespace Immersive.Framework.PlayerParticipation
             admittedPlayers.Clear();
         }
 
-        private bool TryAttachHostToSessionLifetime(
+        internal bool TryAttachHostToSessionLifetime(
             LocalPlayerHostAuthoring host,
             out string issue)
         {
