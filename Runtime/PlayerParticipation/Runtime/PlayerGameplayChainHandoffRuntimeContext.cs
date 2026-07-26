@@ -32,6 +32,9 @@ namespace Immersive.Framework.PlayerParticipation
             internal bool InputCreated;
             internal bool CameraCreated;
             internal bool AdmissionCreated;
+            internal bool NestedRollbackAttempted;
+            internal bool NestedRollbackSucceeded;
+            internal string NestedRollbackMessage;
         }
 
         private sealed class HandoffRecord
@@ -1086,29 +1089,47 @@ namespace Immersive.Framework.PlayerParticipation
             if (TryBuildChain(preparation, chain, source, reason, out issue))
             {
                 admission = chain.Admission;
-                rollbackSucceeded = true;
+                rollbackSucceeded = false;
                 return true;
             }
 
             string buildIssue = issue;
-            rollbackAttempted =
+            bool chainRollbackRequired =
                 chain.AdmissionCreated ||
                 chain.CameraCreated ||
                 chain.InputCreated ||
                 chain.OccupancyCreated;
+            rollbackAttempted =
+                chain.NestedRollbackAttempted ||
+                chainRollbackRequired;
             if (!rollbackAttempted)
             {
-                rollbackSucceeded = true;
+                rollbackSucceeded = false;
                 rollbackMessage = string.Empty;
                 issue = buildIssue;
                 return false;
             }
 
-            rollbackSucceeded = TryReleaseChain(
-                chain,
-                source,
-                "ensure-current-gameplay-chain-rollback",
-                out rollbackMessage);
+            bool chainRollbackSucceeded = true;
+            string chainRollbackMessage = string.Empty;
+            if (chainRollbackRequired)
+            {
+                chainRollbackSucceeded = TryReleaseChain(
+                    chain,
+                    source,
+                    "ensure-current-gameplay-chain-rollback",
+                    out chainRollbackMessage);
+            }
+
+            bool nestedRollbackSucceeded =
+                !chain.NestedRollbackAttempted ||
+                chain.NestedRollbackSucceeded;
+            rollbackSucceeded =
+                nestedRollbackSucceeded &&
+                chainRollbackSucceeded;
+            rollbackMessage = Join(
+                chain.NestedRollbackMessage,
+                chainRollbackMessage);
             issue = Join(buildIssue, rollbackMessage);
             return false;
         }
@@ -1195,6 +1216,9 @@ namespace Immersive.Framework.PlayerParticipation
                 reason);
             if (!input.Succeeded)
             {
+                chain.NestedRollbackAttempted = input.RollbackAttempted;
+                chain.NestedRollbackSucceeded = input.RollbackSucceeded;
+                chain.NestedRollbackMessage = input.RollbackMessage;
                 issue = input.ToDiagnosticString();
                 return false;
             }
@@ -1249,6 +1273,9 @@ namespace Immersive.Framework.PlayerParticipation
                 reason);
             if (!admission.Succeeded)
             {
+                chain.NestedRollbackAttempted = admission.RollbackAttempted;
+                chain.NestedRollbackSucceeded = admission.RollbackSucceeded;
+                chain.NestedRollbackMessage = admission.RollbackIssue;
                 if (admission.RollbackAttempted && admission.RollbackSucceeded)
                 {
                     chain.CameraCreated = false;

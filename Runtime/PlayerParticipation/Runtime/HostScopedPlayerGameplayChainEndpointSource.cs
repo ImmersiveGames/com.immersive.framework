@@ -86,6 +86,15 @@ namespace Immersive.Framework.PlayerParticipation
             }
 
             gateAdapter = gateAdapters[0];
+            if (!gateAdapter.TryBindInputGateRuntime(
+                    runtimeHost,
+                    out issue))
+            {
+                issue =
+                    $"Stable Local Player Host '{host.name}' Gate adapter could not bind to the canonical FrameworkRuntimeHost Gate authority. {issue}";
+                gateAdapter = null;
+                return false;
+            }
 
             PlayerGameplayCameraAuthoring[] cameraAuthorings =
                 actorDeclaration.GetComponentsInChildren<PlayerGameplayCameraAuthoring>(

@@ -257,6 +257,110 @@ namespace Immersive.Framework.PlayerParticipation
                         "Gameplay admission is already current.");
                 }
 
+                AdmissionRecord currentRecord = null;
+                bool canMigrateStructuralInput =
+                    previous.IsReleaseFailed == false &&
+                    previous.OccupancyToken == occupancy.Token &&
+                    records.TryGetValue(
+                        playerSlotId,
+                        out currentRecord) &&
+                    currentRecord.OccupancyToken == occupancy.Token &&
+                    currentRecord.CameraEligibilityState ==
+                        cameraEligibility.State &&
+                    currentRecord.CameraRequiredness ==
+                        cameraEligibility.Requiredness &&
+                    !currentRecord.CameraEligibilityReleased &&
+                    !currentRecord.InputBindingReleased &&
+                    !currentRecord.OccupancyReleased &&
+                    (cameraEligibility.IsSkippedOptional
+                        ? currentRecord.CameraRequestReleased
+                        : !currentRecord.CameraRequestReleased &&
+                          currentRecord.Publisher != null &&
+                          currentRecord.Publisher.IsPublished);
+
+                if (canMigrateStructuralInput)
+                {
+                    int migratedAdmissionRevision = admissionSequence + 1;
+                    var migratedToken = new PlayerGameplayAdmissionToken(
+                        sessionContextId,
+                        occupancy.Owner,
+                        playerSlotId,
+                        occupancy.ActorProfileId,
+                        occupancy.ActorId,
+                        occupancy.RuntimeContentIdentity,
+                        occupancy.Token.MaterializationRevision,
+                        occupancy.OccupancyRevision,
+                        inputBinding.BindingRevision,
+                        cameraEligibility.EligibilityRevision,
+                        migratedAdmissionRevision);
+                    var migratedRecord = new AdmissionRecord
+                    {
+                        Token = migratedToken,
+                        OccupancyToken = occupancy.Token,
+                        InputBindingToken = inputBinding.Token,
+                        CameraEligibilityToken = cameraEligibility.Token,
+                        CameraEligibilityState = cameraEligibility.State,
+                        CameraRequiredness = cameraEligibility.Requiredness,
+                        Publisher = currentRecord.Publisher,
+                        Request = currentRecord.Request,
+                        CameraPublisherSource =
+                            currentRecord.CameraPublisherSource,
+                        CameraRequestReleased =
+                            currentRecord.CameraRequestReleased,
+                        CameraEligibilityReleased = false,
+                        InputBindingReleased = false,
+                        OccupancyReleased = false
+                    };
+                    PlayerGameplayAdmissionState migratedState =
+                        inputBinding.IsAllowed
+                            ? PlayerGameplayAdmissionState.Ready
+                            : PlayerGameplayAdmissionState
+                                .BlockedByInputGate;
+                    PlayerGameplayAdmissionSummary migrated = CreateSummary(
+                        occupancy,
+                        inputBinding,
+                        cameraEligibility,
+                        migratedRecord,
+                        migratedState,
+                        resolvedSource,
+                        resolvedReason,
+                        migratedState == PlayerGameplayAdmissionState.Ready
+                            ? "Gameplay admission migrated to the new structural Input and Camera tokens while preserving the active camera publication."
+                            : "Gameplay admission migrated to the new structural Input and Camera tokens while remaining blocked by the current Input Gate.");
+
+                    if (!migrated.IsValid)
+                    {
+                        return Reject(
+                            PlayerGameplayAdmissionStatus
+                                .RejectedInvalidRequest,
+                            Operation,
+                            playerSlotId,
+                            previous,
+                            "Gameplay admission migration produced incoherent evidence.");
+                    }
+
+                    admissionSequence = migratedAdmissionRevision;
+                    revision++;
+                    slots[playerSlotId] = migrated;
+                    records[playerSlotId] = migratedRecord;
+                    lastOperationStatus =
+                        migratedState == PlayerGameplayAdmissionState.Ready
+                            ? PlayerGameplayAdmissionStatus.SucceededReady
+                            : PlayerGameplayAdmissionStatus
+                                .SucceededBlockedByInputGate;
+                    lastOperationMessage = migrated.Message;
+                    return Result(
+                        lastOperationStatus,
+                        Operation,
+                        playerSlotId,
+                        previous,
+                        migrated,
+                        false,
+                        false,
+                        string.Empty,
+                        lastOperationMessage);
+                }
+
                 return Reject(
                     PlayerGameplayAdmissionStatus
                         .RejectedSlotAlreadyAdmitted,

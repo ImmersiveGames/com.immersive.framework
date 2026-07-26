@@ -338,7 +338,6 @@ namespace Immersive.Framework.PlayerParticipation
             SlotRecord slot = playerSlotId.IsValid ? FindSlot(playerSlotId) : null;
             if (slot == null ||
                 slot.AllocationState != PlayerSlotAllocationState.Joined ||
-                slot.SelectedActorProfile != null ||
                 currentAssignments.ContainsKey(playerSlotId))
             {
                 return CreateResult(
@@ -346,10 +345,20 @@ namespace Immersive.Framework.PlayerParticipation
                     "AbandonJoinedSlotAfterAssignmentFailure",
                     resolvedSource,
                     resolvedReason,
-                    "Joined Slot assignment rollback requires a Joined Slot with no Actor selection and no current assignment.",
+                    "Joined Slot assignment rollback requires a Joined Slot with no current assignment.",
                     previousRevision,
                     slot != null ? CreateSlotSnapshot(slot) : default,
                     default);
+            }
+
+            bool actorSelectionCleared = slot.SelectedActorProfile != null;
+            if (actorSelectionCleared)
+            {
+                CommitActorSelection(
+                    slot,
+                    null,
+                    resolvedSource,
+                    resolvedReason);
             }
 
             slot.AllocationState = PlayerSlotAllocationState.Available;
@@ -363,7 +372,9 @@ namespace Immersive.Framework.PlayerParticipation
                 "AbandonJoinedSlotAfterAssignmentFailure",
                 resolvedSource,
                 resolvedReason,
-                "Joined Slot admission rolled back after assignment failure.",
+                actorSelectionCleared
+                    ? "Persistent Actor selection cleared and Joined Slot admission rolled back after assignment failure."
+                    : "Joined Slot admission rolled back after assignment failure.",
                 previousRevision,
                 CreateSlotSnapshot(slot),
                 default);

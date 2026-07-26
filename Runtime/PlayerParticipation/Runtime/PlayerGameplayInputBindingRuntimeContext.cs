@@ -25,7 +25,7 @@ namespace Immersive.Framework.PlayerParticipation
             internal PlayerActorDeclaration ActorDeclaration;
             internal PlayerInput PlayerInput;
             internal UnityPlayerInputGateAdapter GateAdapter;
-            internal UnityPlayerInputActionMapWriteReceipt ActionMapWrite;
+            internal UnityPlayerInputActionMapWriteReceipt ReleaseActionMapWrite;
         }
 
         private readonly string sessionContextId;
@@ -582,7 +582,7 @@ namespace Immersive.Framework.PlayerParticipation
                     ActorDeclaration = actorDeclaration,
                     PlayerInput = playerInput,
                     GateAdapter = gateAdapter,
-                    ActionMapWrite = actionMapWrite
+                    ReleaseActionMapWrite = actionMapWrite
                 });
             slots[requestedSlot] = current;
             lastOperationStatus =
@@ -625,21 +625,6 @@ namespace Immersive.Framework.PlayerParticipation
                     "Desired action-map reconfiguration requires the exact Gate adapter in an unblocked state.");
             }
 
-            if (!record.GateAdapter.TryRestoreActionMap(
-                    record.ActionMapWrite,
-                    source,
-                    reason,
-                    out string restoreIssue))
-            {
-                return MarkReleaseFailed(
-                    Operation,
-                    playerSlotId,
-                    previous,
-                    source,
-                    reason,
-                    restoreIssue);
-            }
-
             if (!record.GateAdapter.TrySelectActionMap(
                     desiredActionMapName,
                     source,
@@ -652,12 +637,8 @@ namespace Immersive.Framework.PlayerParticipation
                         previous.DesiredActionMapName,
                         source,
                         "desired-action-map-reconfiguration-rollback",
-                        out UnityPlayerInputActionMapWriteReceipt rollbackWrite,
+                        out _,
                         out string rollbackIssue);
-                if (rollbackSucceeded)
-                {
-                    record.ActionMapWrite = rollbackWrite;
-                }
 
                 return rollbackSucceeded
                     ? Failure(
@@ -691,7 +672,6 @@ namespace Immersive.Framework.PlayerParticipation
                         source,
                         "desired-action-map-gate-application-rollback",
                         out string restoreNewIssue);
-                UnityPlayerInputActionMapWriteReceipt rollbackWrite = default;
                 string rollbackIssue = string.Empty;
                 bool reboundPrevious =
                     restoredNewWrite &&
@@ -699,11 +679,10 @@ namespace Immersive.Framework.PlayerParticipation
                         previous.DesiredActionMapName,
                         source,
                         "desired-action-map-reconfiguration-rollback",
-                        out rollbackWrite,
+                        out _,
                         out rollbackIssue);
                 if (reboundPrevious)
                 {
-                    record.ActionMapWrite = rollbackWrite;
                     return Failure(
                         PlayerGameplayInputBindingStatus
                             .FailedActionMapActivation,
@@ -764,7 +743,6 @@ namespace Immersive.Framework.PlayerParticipation
                 source,
                 reason,
                 "Desired gameplay action map was explicitly reconfigured with a new Input binding identity.");
-            record.ActionMapWrite = newWrite;
             slots[playerSlotId] = current;
             lastOperationStatus =
                 PlayerGameplayInputBindingStatus.SucceededBound;
@@ -1157,7 +1135,7 @@ namespace Immersive.Framework.PlayerParticipation
                 }
 
                 if (!record.GateAdapter.TryRestoreActionMap(
-                        record.ActionMapWrite,
+                        record.ReleaseActionMapWrite,
                         resolvedSource,
                         resolvedReason,
                         out string restoreIssue))

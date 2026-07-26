@@ -310,23 +310,90 @@ namespace Immersive.Framework.PlayerParticipation
                 if (previous.IsEligible &&
                     previous.PreparationToken == preparation.Token &&
                     previous.OccupancyToken == occupancy.Token &&
-                    previous.InputBindingToken == inputBinding.Token &&
                     records.TryGetValue(
                         playerSlotId,
                         out EligibilityRecord currentRecord) &&
                     IsSameAuthoring(currentRecord, authoring))
                 {
+                    if (previous.InputBindingToken == inputBinding.Token)
+                    {
+                        lastOperationStatus =
+                            PlayerGameplayCameraEligibilityStatus
+                                .SucceededAlreadyEligible;
+                        lastOperationMessage =
+                            "Prepared Player camera authoring is already eligible.";
+                        return Result(
+                            lastOperationStatus,
+                            Operation,
+                            playerSlotId,
+                            previous,
+                            previous,
+                            lastOperationMessage);
+                    }
+
+                    int migratedEligibilityRevision = eligibilitySequence + 1;
+                    var migratedToken = new PlayerGameplayCameraEligibilityToken(
+                        sessionContextId,
+                        occupancy.Owner,
+                        playerSlotId,
+                        occupancy.ActorProfileId,
+                        occupancy.ActorId,
+                        occupancy.PreparationToken,
+                        occupancy.Token,
+                        inputBinding.Token,
+                        occupancy.RuntimeContentIdentity,
+                        inputBinding.Token.MaterializationRevision,
+                        occupancy.OccupancyRevision,
+                        inputBinding.BindingRevision,
+                        migratedEligibilityRevision);
+                    var migrated = new PlayerGameplayCameraEligibilitySummary(
+                        sessionContextId,
+                        playerSlotId,
+                        PlayerGameplayCameraEligibilityState.Eligible,
+                        currentRecord.Requiredness,
+                        occupancy.ActorProfileId,
+                        occupancy.ActorId,
+                        occupancy.Owner,
+                        occupancy.RuntimeContentIdentity,
+                        occupancy.PreparationToken,
+                        occupancy.Token,
+                        inputBinding.Token,
+                        migratedToken,
+                        previous.CameraRigName,
+                        previous.FollowTargetName,
+                        previous.LookAtTargetName,
+                        currentRecord.Precedence,
+                        currentRecord.RequestId,
+                        currentRecord.LifetimeScopeId,
+                        currentRecord.TieBreakerId,
+                        migratedEligibilityRevision,
+                        resolvedSource,
+                        resolvedReason,
+                        "Camera eligibility migrated to the new structural Input binding while preserving the current camera request identity.");
+
+                    if (!migrated.IsValid)
+                    {
+                        return Reject(
+                            PlayerGameplayCameraEligibilityStatus
+                                .RejectedRigConfiguration,
+                            Operation,
+                            playerSlotId,
+                            previous,
+                            "Camera eligibility migration produced incoherent evidence.");
+                    }
+
+                    eligibilitySequence = migratedEligibilityRevision;
+                    revision++;
+                    slots[playerSlotId] = migrated;
                     lastOperationStatus =
-                        PlayerGameplayCameraEligibilityStatus
-                            .SucceededAlreadyEligible;
-                    lastOperationMessage =
-                        "Prepared Player camera authoring is already eligible.";
+                        PlayerGameplayCameraEligibilityStatus.SucceededEligible;
+                    lastOperationMessage = migrated.Message;
                     return Result(
                         lastOperationStatus,
                         Operation,
                         playerSlotId,
                         previous,
-                        previous,
+                        migrated,
                         lastOperationMessage);
                 }
 
@@ -478,20 +545,89 @@ namespace Immersive.Framework.PlayerParticipation
             {
                 if (previous.IsSkippedOptional &&
                     previous.PreparationToken == preparation.Token &&
-                    previous.OccupancyToken == occupancy.Token &&
-                    previous.InputBindingToken == inputBinding.Token)
+                    previous.OccupancyToken == occupancy.Token)
                 {
+                    if (previous.InputBindingToken == inputBinding.Token)
+                    {
+                        lastOperationStatus =
+                            PlayerGameplayCameraEligibilityStatus
+                                .SucceededAlreadySkipped;
+                        lastOperationMessage =
+                            "Optional per-Player camera is already skipped.";
+                        return Result(
+                            lastOperationStatus,
+                            Operation,
+                            playerSlotId,
+                            previous,
+                            previous,
+                            lastOperationMessage);
+                    }
+
+                    int migratedEligibilityRevision = eligibilitySequence + 1;
+                    var migratedToken = new PlayerGameplayCameraEligibilityToken(
+                        sessionContextId,
+                        occupancy.Owner,
+                        playerSlotId,
+                        occupancy.ActorProfileId,
+                        occupancy.ActorId,
+                        occupancy.PreparationToken,
+                        occupancy.Token,
+                        inputBinding.Token,
+                        occupancy.RuntimeContentIdentity,
+                        inputBinding.Token.MaterializationRevision,
+                        occupancy.OccupancyRevision,
+                        inputBinding.BindingRevision,
+                        migratedEligibilityRevision);
+                    var migrated = new PlayerGameplayCameraEligibilitySummary(
+                        sessionContextId,
+                        playerSlotId,
+                        PlayerGameplayCameraEligibilityState.SkippedOptional,
+                        PlayerGameplayCameraRequiredness.Optional,
+                        occupancy.ActorProfileId,
+                        occupancy.ActorId,
+                        occupancy.Owner,
+                        occupancy.RuntimeContentIdentity,
+                        occupancy.PreparationToken,
+                        occupancy.Token,
+                        inputBinding.Token,
+                        migratedToken,
+                        string.Empty,
+                        string.Empty,
+                        string.Empty,
+                        0,
+                        string.Empty,
+                        string.Empty,
+                        string.Empty,
+                        migratedEligibilityRevision,
+                        resolvedSource,
+                        resolvedReason,
+                        "Optional camera decision migrated to the new structural Input binding.");
+
+                    if (!migrated.IsValid)
+                    {
+                        return Reject(
+                            PlayerGameplayCameraEligibilityStatus
+                                .RejectedInvalidRequest,
+                            Operation,
+                            playerSlotId,
+                            previous,
+                            "Optional camera migration produced incoherent evidence.");
+                    }
+
+                    eligibilitySequence = migratedEligibilityRevision;
+                    revision++;
+                    slots[playerSlotId] = migrated;
+                    records.Remove(playerSlotId);
                     lastOperationStatus =
                         PlayerGameplayCameraEligibilityStatus
-                            .SucceededAlreadySkipped;
-                    lastOperationMessage =
-                        "Optional per-Player camera is already skipped.";
+                            .SucceededSkippedOptional;
+                    lastOperationMessage = migrated.Message;
                     return Result(
                         lastOperationStatus,
                         Operation,
                         playerSlotId,
                         previous,
-                        previous,
+                        migrated,
                         lastOperationMessage);
                 }
 
