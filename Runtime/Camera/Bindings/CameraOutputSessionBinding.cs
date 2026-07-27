@@ -1,3 +1,4 @@
+using System;
 using Immersive.Framework.Common;
 using Immersive.Framework.Diagnostics;
 using Unity.Cinemachine;
@@ -13,7 +14,7 @@ namespace Immersive.Framework.Camera
     [AddComponentMenu("Immersive Framework/Camera/Camera Output Session Binding")]
     public sealed class CameraOutputSessionBinding : MonoBehaviour
     {
-        [SerializeField] private string outputId = "camera.output.main";
+        [SerializeField] private string outputId;
         [SerializeField] private UnityEngine.Camera unityCamera;
         [SerializeField] private CinemachineBrain cinemachineBrain;
         [SerializeField] private bool initializeOnAwake = true;
@@ -37,6 +38,14 @@ namespace Immersive.Framework.Camera
         public CameraOutputSession Session => session;
         public string LastStatus => lastStatus ?? string.Empty;
         public string LastDiagnostic => lastDiagnostic ?? string.Empty;
+
+        private void Reset()
+        {
+            if (string.IsNullOrWhiteSpace(outputId))
+            {
+                outputId = Guid.NewGuid().ToString("N");
+            }
+        }
 
         private void Awake()
         {
@@ -97,7 +106,7 @@ namespace Immersive.Framework.Camera
                         cinemachineBrain));
                 session = new CameraOutputSession(context, applicator);
             }
-            catch (System.Exception exception)
+            catch (Exception exception)
             {
                 context = null;
                 applicator = null;
