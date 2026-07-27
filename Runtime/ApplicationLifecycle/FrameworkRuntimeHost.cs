@@ -60,6 +60,7 @@ namespace Immersive.Framework.ApplicationLifecycle
         private ResetRegistry _resetRegistry;
         private LoadingSurfaceRuntime _loadingSurfaceRuntime;
         private GlobalUiSceneRuntime _globalUiSceneRuntime;
+        private CameraOutputInjectionRuntime _cameraOutputInjectionRuntime;
         private CameraOutputSessionInjectionRuntime _cameraOutputSessionInjectionRuntime;
         private int _objectEntryRuntimeContextRevision;
         private int _objectEntryRuntimeContextInvalidationCount;
@@ -365,11 +366,19 @@ namespace Immersive.Framework.ApplicationLifecycle
                 return failed;
             }
 
+            _cameraOutputInjectionRuntime?.Dispose();
+            _cameraOutputInjectionRuntime = new CameraOutputInjectionRuntime(
+                cameraOutputSession);
             _cameraOutputSessionInjectionRuntime?.Dispose();
-            _cameraOutputSessionInjectionRuntime = new CameraOutputSessionInjectionRuntime(
-                cameraOutputSession,
-                sessionCameraOverride);
+            _cameraOutputSessionInjectionRuntime = null;
             SetPlayerGameplayCameraOutputSession(cameraOutputSession);
+
+            if (sessionCameraOverride != null)
+            {
+                _cameraOutputSessionInjectionRuntime =
+                    new CameraOutputSessionInjectionRuntime(
+                        sessionCameraOverride);
+            }
 
             _loadingSurfaceRuntime = CreateLoadingSurfaceRuntime(_globalUiSceneRuntime);
             _pauseSurfaceRuntime = CreatePauseSurfaceRuntime(_globalUiSceneRuntime);
@@ -1470,9 +1479,16 @@ namespace Immersive.Framework.ApplicationLifecycle
                 LogFields.Of(
                     LogFields.Field("scene", sceneLabel),
                     LogFields.Field("adapterCount", sceneAdapters.Count)));
-            return new SessionCameraTransitionOrchestrator(
-                new TransitionEffectOrchestrator(sceneAdapters, sceneLabel),
-                sessionCameraOverride);
+            var transitionOrchestrator =
+                new TransitionEffectOrchestrator(
+                    sceneAdapters,
+                    sceneLabel);
+
+            return sessionCameraOverride != null
+                ? new SessionCameraTransitionOrchestrator(
+                    transitionOrchestrator,
+                    sessionCameraOverride)
+                : transitionOrchestrator;
         }
 
 
@@ -2845,6 +2861,8 @@ namespace Immersive.Framework.ApplicationLifecycle
                 "framework-runtime-host-destroy");
             _cameraOutputSessionInjectionRuntime?.Dispose();
             _cameraOutputSessionInjectionRuntime = null;
+            _cameraOutputInjectionRuntime?.Dispose();
+            _cameraOutputInjectionRuntime = null;
             _pauseTimeScaleRuntime?.RestoreIfCaptured("framework-runtime-host-destroy");
 
 

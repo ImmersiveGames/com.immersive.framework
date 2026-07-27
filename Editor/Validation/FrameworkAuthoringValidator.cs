@@ -474,36 +474,17 @@ namespace Immersive.Framework.Editor.Editor.Validation
             GameObject[] roots =
                 scene.GetRootGameObjects();
 
-            ValidateExactSceneComponentCount<UnityEngine.Camera>(
-                report,
-                owner,
-                scene,
-                "Unity Camera");
-            ValidateExactSceneComponentCount<CinemachineBrain>(
-                report,
-                owner,
-                scene,
-                nameof(CinemachineBrain));
             ValidateExactSceneComponentCount<CameraOutputSessionBinding>(
                 report,
                 owner,
                 scene,
                 nameof(CameraOutputSessionBinding));
-            ValidateExactSceneComponentCount<SessionCameraOverrideBinding>(
+            ValidateMaximumSceneComponentCount<SessionCameraOverrideBinding>(
                 report,
                 owner,
                 scene,
-                nameof(SessionCameraOverrideBinding));
-            ValidateExactSceneComponentCount<EventSystem>(
-                report,
-                owner,
-                scene,
-                nameof(EventSystem));
-            ValidateExactSceneComponentCount<InputSystemUIInputModule>(
-                report,
-                owner,
-                scene,
-                nameof(InputSystemUIInputModule));
+                nameof(SessionCameraOverrideBinding),
+                1);
 
             CameraOutputSessionBinding[] outputBindings =
                 GetSceneComponents<CameraOutputSessionBinding>(
@@ -574,12 +555,14 @@ namespace Immersive.Framework.Editor.Editor.Validation
                 GetSceneComponents<PauseRequestTrigger>(
                     scene);
 
-            if (builtInPauseAdapters.Length == 1)
+            for (int index = 0;
+                 index < builtInPauseAdapters.Length;
+                 index++)
             {
                 ValidatePersistentPauseSurfaceAdapter(
                     report,
                     scene,
-                    builtInPauseAdapters[0]);
+                    builtInPauseAdapters[index]);
             }
 
             if (eventSystems.Length == 1)
@@ -657,48 +640,6 @@ namespace Immersive.Framework.Editor.Editor.Validation
             int resumeButtonCount =
                 CountResumeButtons(
                     pauseRequestTriggers);
-
-            if (canvasCount == 0)
-            {
-                report.AddError(
-                    $"Persistent Content Scene '{sceneLabel}' requires at least one Canvas.",
-                    owner);
-            }
-
-            if (transitionAdapterCount == 0)
-            {
-                report.AddError(
-                    $"Persistent Content Scene '{sceneLabel}' requires at least one ITransitionEffectAdapter implementation.",
-                    owner);
-            }
-
-            if (loadingAdapterCount == 0)
-            {
-                report.AddError(
-                    $"Persistent Content Scene '{sceneLabel}' requires at least one ILoadingSurfaceAdapter implementation.",
-                    owner);
-            }
-
-            if (pauseAdapterCount != 1)
-            {
-                report.AddError(
-                    $"Persistent Content Scene '{sceneLabel}' requires exactly one IPauseSurfaceAdapter implementation. found='{pauseAdapterCount}'.",
-                    owner);
-            }
-
-            if (pauseRequestTriggers.Length == 0)
-            {
-                report.AddError(
-                    $"Persistent Content Scene '{sceneLabel}' requires at least one PauseRequestTrigger for authored Pause controls.",
-                    owner);
-            }
-
-            if (resumeButtonCount == 0)
-            {
-                report.AddError(
-                    $"Persistent Content Scene '{sceneLabel}' requires at least one interactable Button whose persistent OnClick invokes PauseRequestTrigger.RequestResume.",
-                    owner);
-            }
 
             report.AddInfo(
                 $"Persistent Content Scene composition scanned. roots='{roots.Length}' canvases='{canvasCount}' eventSystems='{eventSystems.Length}' inputSystemUiModules='{inputModules.Length}' legacyInputModules='{legacyInputModuleCount}' transitionAdapters='{transitionAdapterCount}' loadingAdapters='{loadingAdapterCount}' pauseAdapters='{pauseAdapterCount}' pauseRequestTriggers='{pauseRequestTriggers.Length}' resumeButtons='{resumeButtonCount}' missingScripts='{missingScriptCount}'.",
@@ -1097,6 +1038,26 @@ namespace Immersive.Framework.Editor.Editor.Validation
 
             report.AddError(
                 $"Persistent Content Scene requires exactly one {label}, but found '{count}'.",
+                owner);
+        }
+
+        private static void ValidateMaximumSceneComponentCount<TComponent>(
+            FrameworkAuthoringValidationReport report,
+            Object owner,
+            Scene scene,
+            string label,
+            int maximum)
+            where TComponent : Component
+        {
+            int count = CountSceneComponents<TComponent>(scene);
+
+            if (count <= maximum)
+            {
+                return;
+            }
+
+            report.AddError(
+                $"Persistent Content Scene permits at most '{maximum}' {label}, but found '{count}'.",
                 owner);
         }
 

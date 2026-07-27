@@ -75,32 +75,28 @@ save another asset silently
 ## Minimum current source-scene contracts
 
 ```text
-exactly one Unity Camera
-exactly one CinemachineBrain
 exactly one CameraOutputSessionBinding
-exactly one SessionCameraOverrideBinding
-exactly one EventSystem
-exactly one InputSystemUIInputModule
-exactly one IPauseSurfaceAdapter
-
-at least one Canvas
-at least one ITransitionEffectAdapter
-at least one ILoadingSurfaceAdapter
-at least one PauseRequestTrigger
-at least one authored Resume Button
+zero or one SessionCameraOverrideBinding
 ```
 
-The Camera bindings must contain their explicit IDs, output reference, rig and
-target references required by the current validator.
+The Camera Output must contain its explicit Output ID and references to the
+physical Unity Camera and Cinemachine Brain. Transition, Loading, Pause and
+Session Camera are optional modules. Their absence is explicit NoOp/optional
+composition; the template retains all of them as a complete starting point.
 
 The EventSystem and InputSystem UI module live on the same root GameObject. The UI
 module references the Input System package's built-in `DefaultInputActions`, so the
 template remains consumer-neutral while still providing Point, Left Click, Scroll,
 Move, Submit and Cancel actions explicitly.
 
-`SessionCameraOverrideBinding` intentionally does not reference a consumer
-application asset. Session ownership is already explicit through its Scope ID,
-which keeps the source scene reusable across projects.
+The persistent output is mandatory. `SessionCameraOverrideBinding` is optional:
+omit it when Persistent Content does not need a Session-scoped Camera request.
+Player, Activity and Route Camera publication continue to use the explicit
+output without creating an implicit Session request.
+
+When authored, `SessionCameraOverrideBinding` intentionally does not reference
+a consumer application asset. Session ownership is already explicit through its
+Scope ID, which keeps the source scene reusable across projects.
 
 
 ## Persistent Pause presentation

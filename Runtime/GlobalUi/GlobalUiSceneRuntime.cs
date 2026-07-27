@@ -270,22 +270,27 @@ namespace Immersive.Framework.GlobalUi
             List<SessionCameraOverrideBinding> overrideCandidates =
                 FindAll<SessionCameraOverrideBinding>();
 
-            outputSession =
-                outputCandidates.Count == 1
-                    ? outputCandidates[0]
-                    : null;
-            sessionOverride =
-                overrideCandidates.Count == 1
-                    ? overrideCandidates[0]
-                    : null;
+            outputSession = null;
+            sessionOverride = null;
 
-            if (outputSession == null ||
-                sessionOverride == null)
+            if (outputCandidates.Count != 1)
             {
                 diagnostic =
-                    $"Persistent Content requires exactly one CameraOutputSessionBinding and one SessionCameraOverrideBinding. outputSessions='{outputCandidates.Count}' sessionOverrides='{overrideCandidates.Count}'.";
+                    $"Persistent Content requires exactly one CameraOutputSessionBinding. outputSessions='{outputCandidates.Count}'.";
                 return false;
             }
+
+            if (overrideCandidates.Count > 1)
+            {
+                diagnostic =
+                    $"Persistent Content permits zero or one SessionCameraOverrideBinding. sessionOverrides='{overrideCandidates.Count}'.";
+                return false;
+            }
+
+            outputSession = outputCandidates[0];
+            sessionOverride = overrideCandidates.Count == 1
+                ? overrideCandidates[0]
+                : null;
 
             diagnostic = string.Empty;
             return true;
@@ -435,12 +440,6 @@ namespace Immersive.Framework.GlobalUi
             List<IPauseSurfaceAdapter> pauseAdapters =
                 CollectAdapters<IPauseSurfaceAdapter>(persistedRoots);
 
-            string blockingMessage =
-                BuildBlockingMessageIfRequired(
-                    sceneName,
-                    transitionAdapters.Count,
-                    loadingAdapters.Count);
-
             AsyncOperation unloadOperation =
                 SceneManager.UnloadSceneAsync(scene);
             if (unloadOperation != null)
@@ -454,24 +453,6 @@ namespace Immersive.Framework.GlobalUi
             string label =
                 sceneName.NormalizeTextOrFallback(
                     "Persistent Content");
-
-            if (!string.IsNullOrWhiteSpace(
-                    blockingMessage))
-            {
-                logger.Error(
-                    $"Persistent Content Container Scene '{label}' loaded and its roots were retained, but required presentation adapters are missing. {blockingMessage}");
-
-                return new GlobalUiSceneRuntime(
-                    containerScene,
-                    label,
-                    persistedRoots,
-                    transitionAdapters,
-                    loadingAdapters,
-                    pauseAdapters,
-                    true,
-                    blockingMessage,
-                    $"Persistent Content loaded with rootCount='{persistedRoots.Count}' transitionAdapterCount='{transitionAdapters.Count}' loadingAdapterCount='{loadingAdapters.Count}' pauseAdapterCount='{pauseAdapters.Count}'.");
-            }
 
             logger.Debug(
                 "Persistent Content loaded.",
@@ -666,30 +647,5 @@ namespace Immersive.Framework.GlobalUi
             return resolved;
         }
 
-        private static string BuildBlockingMessageIfRequired(
-            string label,
-            int transitionAdapterCount,
-            int loadingAdapterCount)
-        {
-            var missing = new List<string>(2);
-
-            if (transitionAdapterCount == 0)
-            {
-                missing.Add("Transition adapter");
-            }
-
-            if (loadingAdapterCount == 0)
-            {
-                missing.Add("Loading adapter");
-            }
-
-            if (missing.Count == 0)
-            {
-                return string.Empty;
-            }
-
-            return
-                $"Persistent Content Container Scene '{label}' is missing {string.Join(" and ", missing)}.";
-        }
     }
 }

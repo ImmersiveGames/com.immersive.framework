@@ -57,29 +57,31 @@ The official Scene Template provides a minimum starting scene. Assign the create
 Until the official template asset is added, create an equivalent dedicated scene
 manually.
 
-### Required Camera contracts
+### Minimal Persistent Content contract
 
-The Content Scene requires exactly:
+The Content Scene requires exactly one:
 
 ```text
-Unity Camera
-CinemachineBrain
 CameraOutputSessionBinding
-SessionCameraOverrideBinding
 ```
 
-The output binding requires an explicit Output ID and explicit references to the
+The output binding requires an explicit Output ID and explicit references to its
 physical Camera and Brain.
 
-### Required presentation contracts
+`SessionCameraOverrideBinding` is optional: author zero or one when the
+Persistent Content needs to publish a Session-scoped Camera request. Player,
+Activity and Route Camera publication use the mandatory output without creating
+an implicit Session request.
 
-The Content Scene requires:
+Transition, Loading and Pause presentation are optional modules. With no
+Transition or Loading adapters, their runtimes remain explicit NoOp; no surface,
+binding or visual fallback is created.
 
-```text
-at least one Canvas
-at least one Transition adapter
-at least one Loading adapter
-```
+### Optional presentation modules
+
+Canvas, Transition, Loading and Pause authoring are optional. Add each module
+only when the application needs its explicit presentation behavior; their
+absence does not block Persistent Content boot.
 
 Game-specific artwork, hierarchy and layout remain consumer-owned.
 
