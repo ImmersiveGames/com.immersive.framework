@@ -37,7 +37,6 @@ namespace Immersive.Framework.PlayerParticipation
                 else if (summary.IsBlockedByInputGate) BlockedByInputGateCount++;
                 else if (summary.IsReleaseFailed) ReleaseFailedCount++;
                 else if (summary.IsNotAdmitted) NotAdmittedCount++;
-                if (summary.CameraRequestPublished) PublishedCameraCount++;
             }
         }
 
@@ -49,7 +48,6 @@ namespace Immersive.Framework.PlayerParticipation
         public int BlockedByInputGateCount { get; }
         public int ReleaseFailedCount { get; }
         public int NotAdmittedCount { get; }
-        public int PublishedCameraCount { get; }
         public PlayerGameplayAdmissionStatus LastOperationStatus { get; }
         public string LastOperationMessage { get; }
 

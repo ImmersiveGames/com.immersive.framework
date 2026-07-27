@@ -225,6 +225,7 @@ namespace Immersive.Framework.PlayerParticipation
                         currentPreparation,
                         slotRecord.Occupancy,
                         slotRecord.Input,
+                        outputSession,
                         actorDeclaration,
                         cameraAuthoring,
                         source,
@@ -237,6 +238,7 @@ namespace Immersive.Framework.PlayerParticipation
                         currentPreparation,
                         slotRecord.Occupancy,
                         slotRecord.Input,
+                        outputSession,
                         cameraRequiredness,
                         source,
                         reason);
@@ -264,7 +266,6 @@ namespace Immersive.Framework.PlayerParticipation
                         slotRecord.Occupancy,
                         slotRecord.Input,
                         slotRecord.Camera,
-                        outputSession,
                         source,
                         reason);
                 if (!admissionResult.Succeeded)
@@ -328,8 +329,6 @@ namespace Immersive.Framework.PlayerParticipation
             for (int index = record.Slots.Count - 1; index >= 0; index--)
             {
                 SlotRecord slot = record.Slots[index];
-                bool lowerGameplayChainReleased = false;
-
                 if (slot.AdmissionCreated && slot.Admission.Token.IsValid)
                 {
                     PlayerGameplayAdmissionResult released =
@@ -345,64 +344,46 @@ namespace Immersive.Framework.PlayerParticipation
                     }
 
                     slot.AdmissionCreated = false;
-                    slot.CameraCreated = false;
-                    slot.InputCreated = false;
-                    slot.OccupancyCreated = false;
-                    lowerGameplayChainReleased = true;
                 }
 
-                if (!lowerGameplayChainReleased)
+                if (slot.CameraCreated && slot.Camera.Token.IsValid)
                 {
-                    if (slot.CameraCreated && slot.Camera.Token.IsValid)
+                    PlayerGameplayCameraEligibilityResult released =
+                        cameraContext.TryRelease(
+                            slot.Slot,
+                            slot.Camera.Token,
+                            source,
+                            reason);
+                    if (!released.Succeeded)
                     {
-                        PlayerGameplayCameraEligibilityResult released =
-                            cameraContext.TryRelease(
-                                slot.Slot,
-                                slot.Camera.Token,
-                                source,
-                                reason);
-                        if (!released.Succeeded)
-                        {
-                            failures.Add(released.ToDiagnosticString());
-                            continue;
-                        }
-
-                        slot.CameraCreated = false;
+                        failures.Add(released.ToDiagnosticString());
+                        continue;
                     }
+                    slot.CameraCreated = false;
+                }
 
-                    if (slot.InputCreated && slot.Input.Token.IsValid)
+                if (slot.InputCreated && slot.Input.Token.IsValid)
+                {
+                    PlayerGameplayInputBindingResult released =
+                        inputContext.TryRelease(slot.Slot, slot.Input.Token, source, reason);
+                    if (!released.Succeeded)
                     {
-                        PlayerGameplayInputBindingResult released =
-                            inputContext.TryRelease(
-                                slot.Slot,
-                                slot.Input.Token,
-                                source,
-                                reason);
-                        if (!released.Succeeded)
-                        {
-                            failures.Add(released.ToDiagnosticString());
-                            continue;
-                        }
-
-                        slot.InputCreated = false;
+                        failures.Add(released.ToDiagnosticString());
+                        continue;
                     }
+                    slot.InputCreated = false;
+                }
 
-                    if (slot.OccupancyCreated && slot.Occupancy.Token.IsValid)
+                if (slot.OccupancyCreated && slot.Occupancy.Token.IsValid)
+                {
+                    PlayerGameplayOccupancyResult released =
+                        occupancyContext.TryReleaseOccupancy(slot.Slot, slot.Occupancy.Token, source, reason);
+                    if (!released.Succeeded)
                     {
-                        PlayerGameplayOccupancyResult released =
-                            occupancyContext.TryReleaseOccupancy(
-                                slot.Slot,
-                                slot.Occupancy.Token,
-                                source,
-                                reason);
-                        if (!released.Succeeded)
-                        {
-                            failures.Add(released.ToDiagnosticString());
-                            continue;
-                        }
-
-                        slot.OccupancyCreated = false;
+                        failures.Add(released.ToDiagnosticString());
+                        continue;
                     }
+                    slot.OccupancyCreated = false;
                 }
 
                 if (slot.PreparationCreated && slot.Preparation.Token.IsValid)

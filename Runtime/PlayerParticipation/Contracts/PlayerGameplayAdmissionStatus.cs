@@ -28,14 +28,6 @@ namespace Immersive.Framework.PlayerParticipation
         RejectedSlotAlreadyAdmitted = 109,
         RejectedForeignOrStaleAdmission = 110,
 
-        FailedCameraOutputResolution = 200,
-        FailedCameraRequestCreation = 201,
-        FailedCameraPublisherCreation = 202,
-        FailedCameraPublication = 203,
-        FailedCameraRelease = 210,
-        FailedCameraEligibilityRelease = 211,
-        FailedInputBindingRelease = 212,
-        FailedOccupancyRelease = 213,
-        FailedAdmissionRollback = 214
+        FailedAdmissionRollback = 200
     }
 }

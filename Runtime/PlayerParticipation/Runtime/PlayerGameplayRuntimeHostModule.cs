@@ -532,6 +532,24 @@ namespace Immersive.Framework.PlayerParticipation
             string source,
             string reason)
         {
+            if (admissionContext != null &&
+                admissionContext.CreateSnapshot().TryGetSummary(
+                    playerSlotId,
+                    out PlayerGameplayAdmissionSummary admission) &&
+                admission.IsAdmitted)
+            {
+                PlayerGameplayAdmissionResult admissionRelease =
+                    admissionContext.TryRelease(
+                        playerSlotId,
+                        admission.Token,
+                        source,
+                        $"{reason}; input-release");
+                if (!admissionRelease.Succeeded)
+                {
+                    return null;
+                }
+            }
+
             return inputContext != null
                 ? inputContext.TryRelease(
                     playerSlotId,
