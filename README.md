@@ -11,7 +11,7 @@ Current version: `1.0.0-preview.17`.
 GameApplicationAsset -> bootstrap -> scoped Framework runtime
 LocalPlayerProvisioningAuthoring -> manual local Player join
 SceneLocalPlayerAdmissionAuthoring -> scene-owned local Player admission
-CameraRigRecipe -> CameraRigComposer -> Validate / Apply/Rebuild
+CameraRigComposer -> Validate / Apply/Rebuild (Unity Preset optional)
 FrameworkBgmDirector -> Route/Activity BGM bindings -> Immersive Audio
 PausePlayerInputBinding -> InputMode transaction -> PlayerInput state writer
 Reset authoring -> explicit runtime ports -> ResetRegistry / ResetExecutor

@@ -424,7 +424,7 @@ Goal: make the admitted Actor pleasant to control and view.
 - Keep movement as FIRSTGAME gameplay code.
 - Bind movement to the admitted Player's `PlayerInput`.
 - Apply `PausePlayerInputBinding` on the relevant Player object, ready for FG-5.
-- Create a reusable `CameraRigRecipe`.
+- Use a Unity Preset only when reusable `CameraRigComposer` values are needed.
 - Add and configure `CameraRigComposer`.
 - Validate and run Apply/Rebuild twice.
 - Configure the persistent single output in `UIGlobal`:

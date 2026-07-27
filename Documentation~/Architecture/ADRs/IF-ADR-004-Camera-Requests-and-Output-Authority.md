@@ -14,7 +14,7 @@ priority.
 
 ## Decision
 
-Reusable presentation intent uses `CameraRigRecipe`. A concrete
+Reusable authoring values use Unity Presets when needed. A concrete
 `CameraRigComposer` validates and idempotently Apply/Rebuilds the virtual
 Cinemachine rig, targets and framing. It does not create the persistent physical
 output or select the active rig.

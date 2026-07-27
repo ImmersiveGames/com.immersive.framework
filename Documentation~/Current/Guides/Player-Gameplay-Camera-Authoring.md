@@ -72,6 +72,10 @@ Apply / Rebuild Rig
 A missing local Cinemachine Camera is always created. Existing local
 Cinemachine components are reused and repaired idempotently.
 
+This materialization behavior is fixed: the local Camera uses the technical
+name `Cinemachine Camera`. Neither creation nor naming is a designer-editable
+Composer policy.
+
 Apply / Rebuild never creates:
 
 ```text

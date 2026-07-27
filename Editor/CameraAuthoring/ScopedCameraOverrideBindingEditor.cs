@@ -32,7 +32,12 @@ namespace Immersive.Framework.Editor.CameraAuthoring
             _showAdvanced = EditorGUILayout.Foldout(_showAdvanced, "Advanced", true);
             if (_showAdvanced)
             {
-                EditorGUILayout.PropertyField(serializedObject.FindProperty("outputSession"));
+                var inspectedBinding = (ScopedCameraOverrideBinding)target;
+                EditorGUILayout.LabelField(
+                    "Camera Output",
+                    inspectedBinding.OutputSession != null
+                        ? inspectedBinding.OutputSession.OutputIdText
+                        : "Injected at runtime");
                 EditorGUILayout.PropertyField(serializedObject.FindProperty("logDiagnostics"));
             }
 
