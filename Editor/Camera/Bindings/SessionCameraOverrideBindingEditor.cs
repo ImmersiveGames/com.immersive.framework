@@ -46,7 +46,7 @@ namespace Immersive.Framework.Editor.CameraAuthoring
         {
             serializedObject.UpdateIfRequiredOrScript();
 
-            DrawHeader();
+            DrawInspectorHeader();
 
             EditorGUILayout.Space(6f);
             DrawCameraRequest();
@@ -66,7 +66,7 @@ namespace Immersive.Framework.Editor.CameraAuthoring
             }
         }
 
-        private static void DrawHeader()
+        private static void DrawInspectorHeader()
         {
             EditorGUILayout.LabelField(
                 "Session Camera Override",

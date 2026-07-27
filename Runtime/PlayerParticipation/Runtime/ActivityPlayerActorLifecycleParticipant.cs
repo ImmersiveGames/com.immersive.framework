@@ -247,15 +247,6 @@ namespace Immersive.Framework.PlayerParticipation
                 return Blocking(request, "activity-player-actor-projection-failed", projectionIssue);
             }
 
-            if (requirementLevel == PlayerParticipationRequirementLevel.GameplayReady)
-            {
-                return ExecuteGameplayReadyAdoptionEnter(
-                    request,
-                    activity,
-                    owner,
-                    projectedSlots);
-            }
-
             if (projectedSlots.Count == 0)
             {
                 activeRecord = new ActiveActivityRecord(
@@ -283,6 +274,15 @@ namespace Immersive.Framework.PlayerParticipation
                     nameof(ActivityPlayerActorLifecycleParticipant),
                     "activity-player-actor-enter-no-participants",
                     lastSnapshot.Message);
+            }
+
+            if (requirementLevel == PlayerParticipationRequirementLevel.GameplayReady)
+            {
+                return ExecuteGameplayReadyAdoptionEnter(
+                    request,
+                    activity,
+                    owner,
+                    projectedSlots);
             }
 
             var prepared = new List<PreparedSlotRecord>();

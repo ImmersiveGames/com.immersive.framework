@@ -29,12 +29,11 @@ namespace Immersive.Framework.GameFlow
 
             if (activityPlayerLifecycleAdmissionRuntime == null)
             {
-                return ActivityPlayerLifecycleAdmissionResult
-                    .RejectedRuntimeUnavailable(
-                        "PrepareRouteStartupActivityPlayerAdmission",
-                        source,
-                        reason,
-                        "GameplayReady Route Startup Activity requires the official Player Gameplay Admission lifecycle runtime.");
+                return ActivityPlayerLifecycleAdmissionResult.RejectedRuntimeUnavailable(
+                    "PrepareRouteStartupActivityPlayerAdmission",
+                    source,
+                    reason,
+                    "Player lifecycle admission runtime is unavailable for a GameplayReady Route Startup Activity.");
             }
 
             return activityPlayerLifecycleAdmissionRuntime

@@ -372,15 +372,10 @@ namespace Immersive.Framework.RouteLifecycle
             {
                 return RouteLifecycleStartResult.Failed(startupActivityFlowResult.Message);
             }
+            ActivityFlowStartResult routeStartupActivityFlowResult =
+                startupActivityFlowResult;
             if (beforeStartupActivityActivation != null)
             {
-                if (!startupActivityFlowResult.IsActivityReady)
-                {
-                    return RouteLifecycleStartResult.Failed(
-                        "GameplayReady Route Startup Activity did not complete lifecycle adoption. " +
-                        startupActivityFlowResult.Message);
-                }
-
                 if (previousActivity != null)
                 {
                     RouteStartupActivityScopeFinalizationResult
@@ -393,8 +388,15 @@ namespace Immersive.Framework.RouteLifecycle
                                     reason);
                     if (!previousActivityScopeFinalization.Succeeded)
                     {
-                        return RouteLifecycleStartResult.Failed(
-                            "Previous Activity scope finalization failed after Route Startup Player handoff. " +
+                        routeStartupActivityFlowResult =
+                            startupActivityFlowResult.WithActivityTransition(
+                                startupActivityFlowResult.ActivityTransitionSnapshot
+                                    .WithPostCommitFinalizationFailure(
+                                        previousActivityScopeFinalization
+                                            .ToDiagnosticString()));
+                        Debug.LogWarning(
+                            "Route Startup Player handoff committed destination authority, " +
+                            "but previous Activity scope finalization reported an issue. " +
                             previousActivityScopeFinalization.ToDiagnosticString());
                     }
                 }
@@ -406,7 +408,7 @@ namespace Immersive.Framework.RouteLifecycle
             // release evidence visible in the consolidated Route diagnostics.
             var activityFlowResult = !route.HasStartupActivity && activityRouteExitResult.Completed
                 ? activityRouteExitResult
-                : startupActivityFlowResult;
+                : routeStartupActivityFlowResult;
 
             var currentRouteOwner = runtimeRouteEnterResult.Owner;
             var previousRouteOwner = previousRoute != null

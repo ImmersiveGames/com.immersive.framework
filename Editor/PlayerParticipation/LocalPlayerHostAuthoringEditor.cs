@@ -32,7 +32,7 @@ namespace Immersive.Framework.Editor.Editor.PlayerParticipation
             LocalPlayerHostAuthoring host =
                 (LocalPlayerHostAuthoring)target;
 
-            DrawHeader();
+            DrawInspectorHeader();
             DrawTechnicalHost();
             DrawValidation(host);
             DrawAdvanced(host);
@@ -45,7 +45,7 @@ namespace Immersive.Framework.Editor.Editor.PlayerParticipation
             }
         }
 
-        private static void DrawHeader()
+        private static void DrawInspectorHeader()
         {
             EditorGUILayout.LabelField(
                 "Local Player Host",

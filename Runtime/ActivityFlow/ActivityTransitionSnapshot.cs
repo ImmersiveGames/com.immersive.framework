@@ -108,6 +108,33 @@ namespace Immersive.Framework.ActivityFlow
                 PreviousActivityFinalizationStatus.NotRequired or
                 PreviousActivityFinalizationStatus.Succeeded;
 
+        internal ActivityTransitionSnapshot WithPostCommitFinalizationFailure(
+            string diagnostic)
+        {
+            if (!IsValid || !CommitReached)
+            {
+                return this;
+            }
+
+            return new ActivityTransitionSnapshot(
+                Sequence,
+                ActivityTransitionPhase.CommittedFinalizationFailed,
+                ActivityTransitionTerminalStatus.CommittedFinalizationFailed,
+                PreviousActivity,
+                TargetActivity,
+                true,
+                PreviousContentExited,
+                PreviousParticipantsExited,
+                TargetParticipantsEntered,
+                TargetContentEntered,
+                PreviousActivityFinalizationStatus.Failed,
+                PreviousScenesReleased,
+                ReadinessState,
+                Source,
+                Reason,
+                diagnostic);
+        }
+
         public string ToDiagnosticString()
         {
             string previousId = ActivityIdText(PreviousActivity);

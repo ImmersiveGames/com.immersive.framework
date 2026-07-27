@@ -165,20 +165,7 @@ namespace Immersive.Framework.PlayerParticipation
                     $"Activity '{targetActivity.ActivityName}' has an invalid Player participation Requirement Level.");
             }
 
-            if (targetActivity.PlayerParticipationRequirementLevel !=
-                PlayerParticipationRequirementLevel.GameplayReady)
-            {
-                ActivityPlayerLifecycleAdmissionResult notRequired =
-                    ActivityPlayerLifecycleAdmissionResult.NotRequiredResult(
-                        Operation,
-                        resolvedSource,
-                        resolvedReason,
-                        $"Activity '{targetActivity.ActivityName}' does not require GameplayReady; Activity Player handoff is not required.");
-                lastSnapshot = notRequired.CurrentSnapshot;
-                return notRequired;
-            }
-
-            if (previousActivity == null ||
+            if (previousActivity != null &&
                 previousActivity.HasSameIdentity(targetActivity))
             {
                 return Reject(
@@ -189,28 +176,17 @@ namespace Immersive.Framework.PlayerParticipation
                     "Same-Route Activity Player admission requires a different currently active Activity.");
             }
 
-            RuntimeContentOwner previousOwner =
-                CreateActivityOwner(previousActivity);
-            RuntimeContentOwner targetOwner =
-                CreateActivityOwner(targetActivity);
-            if (previousOwner == targetOwner)
-            {
-                return Reject(
-                    ActivityPlayerLifecycleAdmissionStatus.RejectedInvalidRequest,
-                    Operation,
-                    resolvedSource,
-                    resolvedReason,
-                    "Previous and target Activities resolve to the same RuntimeContent owner.");
-            }
-
             if (active != null)
             {
                 if ((active.State ==
                          ActivityPlayerLifecycleAdmissionState.ReadyToCommit ||
-                     active.State ==
+                    active.State ==
                          ActivityPlayerLifecycleAdmissionState.TransitionAuthorized) &&
-                    active.PreviousActivity != null && active.PreviousActivity.HasSameIdentity(previousActivity) &&
-                    active.TargetActivity != null && active.TargetActivity.HasSameIdentity(targetActivity))
+                    previousActivity != null &&
+                    active.PreviousActivity != null &&
+                    active.PreviousActivity.HasSameIdentity(previousActivity) &&
+                    active.TargetActivity != null &&
+                    active.TargetActivity.HasSameIdentity(targetActivity))
                 {
                     ActivityPlayerLifecycleAdmissionSnapshot snapshot =
                         Snapshot(active);
@@ -229,6 +205,43 @@ namespace Immersive.Framework.PlayerParticipation
                     resolvedSource,
                     resolvedReason,
                     "Another Activity Player lifecycle admission transaction is active.");
+            }
+
+            if (targetActivity.PlayerParticipationRequirementLevel !=
+                PlayerParticipationRequirementLevel.GameplayReady)
+            {
+                return PublishSameRouteNotRequired(
+                    previousActivity,
+                    targetActivity,
+                    targetActivity.PlayerParticipationRequirementLevel,
+                    resolvedSource,
+                    resolvedReason,
+                    $"Activity '{targetActivity.ActivityName}' does not require GameplayReady; Activity Player handoff is not required.");
+            }
+
+            if (previousActivity == null)
+            {
+                return PublishSameRouteNotRequired(
+                    null,
+                    targetActivity,
+                    targetActivity.PlayerParticipationRequirementLevel,
+                    resolvedSource,
+                    resolvedReason,
+                    "No previous Activity ownership is available; target Activity will calculate GameplayReady readiness without handoff.");
+            }
+
+            RuntimeContentOwner previousOwner =
+                CreateActivityOwner(previousActivity);
+            RuntimeContentOwner targetOwner =
+                CreateActivityOwner(targetActivity);
+            if (previousOwner == targetOwner)
+            {
+                return Reject(
+                    ActivityPlayerLifecycleAdmissionStatus.RejectedInvalidRequest,
+                    Operation,
+                    resolvedSource,
+                    resolvedReason,
+                    "Previous and target Activities resolve to the same RuntimeContent owner.");
             }
 
             if (!ActivityPlayerParticipationProjectionResolver.TryResolve(
@@ -259,14 +272,13 @@ namespace Immersive.Framework.PlayerParticipation
 
             if (projectedSlots.Count == 0)
             {
-                ActivityPlayerLifecycleAdmissionResult notRequired =
-                    ActivityPlayerLifecycleAdmissionResult.NotRequiredResult(
-                        Operation,
-                        resolvedSource,
-                        resolvedReason,
-                        "GameplayReady target projects no Player Slots; no Player handoff is required.");
-                lastSnapshot = notRequired.CurrentSnapshot;
-                return notRequired;
+                return PublishSameRouteNotRequired(
+                    previousActivity,
+                    targetActivity,
+                    requirementLevel,
+                    resolvedSource,
+                    resolvedReason,
+                    "GameplayReady target projects no Player Slots; no Player handoff is required.");
             }
 
             PlayerGameplayAdmissionSnapshot currentAdmission =
@@ -274,13 +286,74 @@ namespace Immersive.Framework.PlayerParticipation
             if (currentAdmission == null ||
                 !currentAdmission.IsInitialized)
             {
-                return Reject(
-                    ActivityPlayerLifecycleAdmissionStatus
-                        .RejectedCurrentGameplayNotReady,
-                    Operation,
+                return PublishSameRouteNotRequired(
+                    previousActivity,
+                    targetActivity,
+                    requirementLevel,
                     resolvedSource,
                     resolvedReason,
-                    "Current gameplay admission snapshot is unavailable.");
+                    "Current gameplay admission is unavailable; no transferable GameplayReady ownership exists.");
+            }
+
+            int transferableSlotCount = 0;
+            for (int index = 0; index < projectedSlots.Count; index++)
+            {
+                PlayerSlotRuntimeSnapshot slot = projectedSlots[index];
+                if (!slot.IsJoined || !slot.HasSelectedActor)
+                {
+                    continue;
+                }
+
+                if (!currentAdmission.TryGetSummary(
+                        slot.PlayerSlotId,
+                        out PlayerGameplayAdmissionSummary admission) ||
+                    !admission.GameplayReady)
+                {
+                    continue;
+                }
+
+                if (!admission.Token.IsValid || admission.Owner != previousOwner)
+                {
+                    return Reject(
+                        ActivityPlayerLifecycleAdmissionStatus.RejectedCurrentGameplayNotReady,
+                        Operation,
+                        resolvedSource,
+                        resolvedReason,
+                        $"Projected Slot '{slot.PlayerSlotId.StableText}' has contradictory GameplayReady admission evidence.");
+                }
+
+                if (!preparationModule.TryGetCurrentPreparation(
+                        slot.PlayerSlotId,
+                        out PlayerActorPreparationSummary preparation,
+                        out _ ) || !preparation.IsPrepared)
+                {
+                    continue;
+                }
+
+                if (preparation.Token != admission.PreparationToken ||
+                    preparation.Materialization.Owner != admission.Owner ||
+                    preparation.Materialization.Owner != previousOwner)
+                {
+                    return Reject(
+                        ActivityPlayerLifecycleAdmissionStatus.RejectedCurrentGameplayNotReady,
+                        Operation,
+                        resolvedSource,
+                        resolvedReason,
+                        $"Projected Slot '{slot.PlayerSlotId.StableText}' has contradictory GameplayReady/P3J ownership evidence.");
+                }
+
+                transferableSlotCount++;
+            }
+
+            if (transferableSlotCount != projectedSlots.Count)
+            {
+                return PublishSameRouteNotRequired(
+                    previousActivity,
+                    targetActivity,
+                    requirementLevel,
+                    resolvedSource,
+                    resolvedReason,
+                    "The relevant Player Slot set has no complete transferable GameplayReady ownership; target Activity will calculate its own readiness without partial handoff.");
             }
 
             var record = new TransactionRecord
@@ -572,16 +645,42 @@ namespace Immersive.Framework.PlayerParticipation
                     "Previous and target Routes resolve to the same RuntimeContent owner.");
             }
 
+            if (previousActivity == null)
+            {
+                return PublishRouteStartupNotRequired(
+                    previousRoute,
+                    targetRoute,
+                    null,
+                    targetActivity,
+                    resolvedSource,
+                    resolvedReason,
+                    "No previous Activity ownership is available; Route Startup Player handoff is not required.");
+            }
+
             ActivityPlayerLifecycleAdmissionResult preparation =
                 TryPrepareSameRouteSwitch(
                     previousActivity,
                     targetActivity,
                     resolvedSource,
                     resolvedReason);
-            if (preparation == null ||
-                preparation.NotRequired ||
-                !preparation.ReadyForTransition ||
-                active == null)
+            if (preparation == null)
+            {
+                return preparation;
+            }
+
+            if (preparation.NotRequired)
+            {
+                return PublishRouteStartupNotRequired(
+                    previousRoute,
+                    targetRoute,
+                    previousActivity,
+                    targetActivity,
+                    resolvedSource,
+                    resolvedReason,
+                    preparation.Message);
+            }
+
+            if (!preparation.ReadyForTransition || active == null)
             {
                 return preparation;
             }
@@ -1292,6 +1391,115 @@ namespace Immersive.Framework.PlayerParticipation
             slot.Message =
                 "Target P3J preparation and P3K.5 admission captured.";
             return true;
+        }
+
+        private ActivityPlayerLifecycleAdmissionResult PublishSameRouteNotRequired(
+            ActivityAsset previousActivity,
+            ActivityAsset targetActivity,
+            PlayerParticipationRequirementLevel requirementLevel,
+            string source,
+            string reason,
+            string message)
+        {
+            RuntimeContentOwner previousOwner = previousActivity != null &&
+                previousActivity.HasValidActivityId
+                ? CreateActivityOwner(previousActivity)
+                : default;
+            RuntimeContentOwner targetOwner = CreateActivityOwner(targetActivity);
+            PlayerParticipationSnapshot participation = participationContext.CreateSnapshot();
+            transactionSequence++;
+            var token = new ActivityPlayerLifecycleAdmissionToken(
+                participation.ContextId,
+                previousOwner,
+                targetOwner,
+                ActivityPlayerLifecycleAdmissionFlowKind.SameRouteActivitySwitch,
+                default,
+                default,
+                transactionSequence);
+            var snapshot = new ActivityPlayerLifecycleAdmissionSnapshot(
+                token,
+                ActivityPlayerLifecycleAdmissionState.NotRequired,
+                ActivityPlayerLifecycleAdmissionStatus.SucceededNotRequired,
+                ActivityPlayerLifecycleAdmissionFlowKind.SameRouteActivitySwitch,
+                string.Empty,
+                string.Empty,
+                previousActivity != null ? previousActivity.ActivityName : string.Empty,
+                targetActivity.ActivityName,
+                previousOwner,
+                targetOwner,
+                requirementLevel,
+                null,
+                Array.Empty<ActivityPlayerLifecycleAdmissionSlotSnapshot>(),
+                false,
+                false,
+                ActivityPlayerPreviousExitDisposition.None,
+                false,
+                false,
+                source,
+                reason,
+                message);
+            lastSnapshot = snapshot;
+            return Result(
+                ActivityPlayerLifecycleAdmissionStatus.SucceededNotRequired,
+                "PrepareSameRouteActivityPlayerAdmission",
+                snapshot,
+                snapshot,
+                message);
+        }
+
+        private ActivityPlayerLifecycleAdmissionResult PublishRouteStartupNotRequired(
+            RouteAsset previousRoute,
+            RouteAsset targetRoute,
+            ActivityAsset previousActivity,
+            ActivityAsset targetActivity,
+            string source,
+            string reason,
+            string message)
+        {
+            RuntimeContentOwner previousOwner = previousActivity != null &&
+                previousActivity.HasValidActivityId
+                ? CreateActivityOwner(previousActivity)
+                : default;
+            RuntimeContentOwner targetOwner = CreateActivityOwner(targetActivity);
+            PlayerParticipationSnapshot participation = participationContext.CreateSnapshot();
+            transactionSequence++;
+            var token = new ActivityPlayerLifecycleAdmissionToken(
+                participation.ContextId,
+                previousOwner,
+                targetOwner,
+                ActivityPlayerLifecycleAdmissionFlowKind.RouteStartupActivitySwitch,
+                previousRoute.RouteId,
+                targetRoute.RouteId,
+                transactionSequence);
+            var snapshot = new ActivityPlayerLifecycleAdmissionSnapshot(
+                token,
+                ActivityPlayerLifecycleAdmissionState.NotRequired,
+                ActivityPlayerLifecycleAdmissionStatus.SucceededNotRequired,
+                ActivityPlayerLifecycleAdmissionFlowKind.RouteStartupActivitySwitch,
+                previousRoute.RouteName,
+                targetRoute.RouteName,
+                previousActivity != null ? previousActivity.ActivityName : string.Empty,
+                targetActivity.ActivityName,
+                previousOwner,
+                targetOwner,
+                PlayerParticipationRequirementLevel.GameplayReady,
+                null,
+                Array.Empty<ActivityPlayerLifecycleAdmissionSlotSnapshot>(),
+                false,
+                false,
+                ActivityPlayerPreviousExitDisposition.None,
+                false,
+                false,
+                source,
+                reason,
+                message);
+            lastSnapshot = snapshot;
+            return Result(
+                ActivityPlayerLifecycleAdmissionStatus.SucceededNotRequired,
+                "PrepareRouteStartupActivityPlayerAdmission",
+                snapshot,
+                snapshot,
+                message);
         }
 
         private ActivityPlayerLifecycleAdmissionResult FailAndCleanup(

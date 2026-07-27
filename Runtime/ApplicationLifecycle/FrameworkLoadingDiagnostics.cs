@@ -158,6 +158,20 @@ namespace Immersive.Framework.ApplicationLifecycle
                 0);
         }
 
+        public static FrameworkLoadingDiagnostics NotExecutedRequestRejected()
+        {
+            return new FrameworkLoadingDiagnostics(
+                "NotExecutedRequestRejected",
+                NoneText,
+                "NotExecuted",
+                "NotExecuted",
+                FrameworkLoadingProgress.Unsupported(
+                    "SkippedBeforePresentation",
+                    "Loading callbacks were not executed because the request was rejected before presentation."),
+                0,
+                0);
+        }
+
         public static FrameworkLoadingDiagnostics FailedRequiredUnitySurfaceMissing()
         {
             return new FrameworkLoadingDiagnostics(

@@ -22,9 +22,6 @@ namespace Immersive.Framework.Pause
         private PlayerInputActionMapReference gameplayActionMap;
 
         [SerializeField, HideInInspector]
-        private string globalActionMapName = "Global";
-
-        [SerializeField, HideInInspector]
         private string gameplayActionMapName = "Player";
 
         private IPauseProductBindingPort _port;

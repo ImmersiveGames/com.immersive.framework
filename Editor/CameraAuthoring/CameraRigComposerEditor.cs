@@ -108,7 +108,7 @@ namespace Immersive.Framework.Editor.CameraAuthoring
         {
             serializedObject.UpdateIfRequiredOrScript();
 
-            DrawHeader();
+            DrawInspectorHeader();
 
             EditorGUILayout.Space(8f);
             DrawCameraBehavior();
@@ -132,7 +132,7 @@ namespace Immersive.Framework.Editor.CameraAuthoring
             }
         }
 
-        private static void DrawHeader()
+        private static void DrawInspectorHeader()
         {
             EditorGUILayout.LabelField(
                 "Camera Rig Composer",

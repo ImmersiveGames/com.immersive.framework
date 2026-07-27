@@ -341,19 +341,8 @@ namespace Immersive.Framework.GameFlow
                         transitionGateDiagnostics);
                 }
 
-                if (routeLifecycleResult.ActivityFlowResult.Activity != null &&
-                    !routeLifecycleResult.ActivityFlowResult.IsActivityReady)
-                {
-                    return FrameworkRouteRequestResult.FailedInvalidConfig(
-                        "Route Startup Activity did not reach readiness. " +
-                        routeLifecycleResult.ActivityFlowResult.Message,
-                        targetRoute,
-                        resolvedSource,
-                        resolvedReason,
-                        transitionGateDiagnostics);
-                }
-
-                if (!IsRouteStartupPlayerLifecycleCompleted(
+                if (!routeStartupPlayerAdmissionPreparation.NotRequired &&
+                    !IsRouteStartupPlayerLifecycleCompleted(
                         routeStartupPlayerAdmissionPreparation,
                         out string routeStartupLifecycleIssue))
                 {
@@ -431,6 +420,15 @@ namespace Immersive.Framework.GameFlow
                 return FrameworkActivityRequestResult.FailedInvalidConfig(
                     "Activity Request failed. Target Activity is missing.",
                     null,
+                    resolvedSource,
+                    resolvedReason);
+            }
+
+            if (!targetActivity.HasValidActivityId)
+            {
+                return FrameworkActivityRequestResult.FailedInvalidConfig(
+                    "Activity Request failed. Target Activity ID is missing or invalid.",
+                    targetActivity,
                     resolvedSource,
                     resolvedReason);
             }
@@ -604,19 +602,6 @@ namespace Immersive.Framework.GameFlow
                         GameFlowRequestOperationKind.Activity,
                         transitionGateDiagnostics);
                 }
-                if (!activityFlowResult.IsActivityReady)
-                {
-                    return FrameworkActivityRequestResult.FailedInvalidConfig(
-                        "Target Activity did not reach readiness. " +
-                        activityFlowResult.Message,
-                        targetActivity,
-                        resolvedSource,
-                        resolvedReason,
-                        activityTransitionMode,
-                        GameFlowRequestOperationKind.Activity,
-                        transitionGateDiagnostics);
-                }
-
                 return FrameworkActivityRequestResult.SucceededWith(
                     targetActivity,
                     resolvedSource,

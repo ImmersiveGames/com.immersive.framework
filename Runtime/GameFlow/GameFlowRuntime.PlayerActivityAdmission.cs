@@ -22,24 +22,22 @@ namespace Immersive.Framework.GameFlow
                 string source,
                 string reason)
         {
-            if (!RequiresGameplayReady(targetActivity))
-            {
-                return ActivityPlayerLifecycleAdmissionResult
-                    .NotRequiredResult(
-                        "PrepareSameRouteActivityPlayerAdmission",
-                        source,
-                        reason,
-                        "Target Activity does not require GameplayReady.");
-            }
-
             if (activityPlayerLifecycleAdmissionRuntime == null)
             {
-                return ActivityPlayerLifecycleAdmissionResult
-                    .RejectedRuntimeUnavailable(
+                if (!RequiresGameplayReady(targetActivity))
+                {
+                    return ActivityPlayerLifecycleAdmissionResult.NotRequiredResult(
                         "PrepareSameRouteActivityPlayerAdmission",
                         source,
                         reason,
-                        "GameplayReady Activity switch requires the official P3K.7G Player lifecycle admission runtime.");
+                        "Target Activity does not require GameplayReady and Player lifecycle admission runtime is unavailable.");
+                }
+
+                return ActivityPlayerLifecycleAdmissionResult.RejectedRuntimeUnavailable(
+                    "PrepareSameRouteActivityPlayerAdmission",
+                    source,
+                    reason,
+                    "Player lifecycle admission runtime is unavailable; target Activity requires GameplayReady.");
             }
 
             return activityPlayerLifecycleAdmissionRuntime

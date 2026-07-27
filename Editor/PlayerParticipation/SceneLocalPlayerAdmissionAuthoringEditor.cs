@@ -38,7 +38,7 @@ namespace Immersive.Framework.Editor.PlayerParticipation
             SceneLocalPlayerAdmissionAuthoring authoring =
                 (SceneLocalPlayerAdmissionAuthoring)target;
 
-            DrawHeader();
+            DrawInspectorHeader();
             DrawParticipation();
             DrawLogicalActor();
             DrawAdmission();
@@ -58,7 +58,7 @@ namespace Immersive.Framework.Editor.PlayerParticipation
             DrawDebug(authoring);
         }
 
-        private static void DrawHeader()
+        private static void DrawInspectorHeader()
         {
             EditorGUILayout.LabelField(
                 "Scene-Provided Player",

@@ -636,14 +636,18 @@ namespace Immersive.Framework.ApplicationLifecycle
                 RefreshObjectEntryRuntimeContextSnapshot($"FrameworkRuntimeHost:route-request-kept:{NormalizeLifecycleSource(source)}");
             }
 
-            var loadingDiagnostics = showLoadingSurface
+            var loadingDiagnostics = showLoadingSurface &&
+                loadingBeforeResult.Status != LoadingSurfaceResultStatus.Unknown &&
+                loadingAfterResult.Status != LoadingSurfaceResultStatus.Unknown
                 ? FrameworkLoadingDiagnostics.FromUnitySurface(
                     loadingBeforeResult,
                     loadingAfterResult,
                     _loadingSurfaceRuntime.AdapterCount,
                     _loadingSurfaceRuntime.ProgressSupported,
                     loadingProgressReporter.LastProgress)
-                : FrameworkLoadingDiagnostics.SucceededWithNoOp();
+                : !routeResult.Succeeded
+                    ? FrameworkLoadingDiagnostics.NotExecutedRequestRejected()
+                    : FrameworkLoadingDiagnostics.SucceededWithNoOp();
 
             if (!showLoadingSurface && routeResult.Kind == FrameworkRouteRequestKind.IgnoredAlreadyActive)
             {
@@ -664,6 +668,19 @@ namespace Immersive.Framework.ApplicationLifecycle
             string source,
             string reason)
         {
+            if (_gameFlowRuntime == null)
+            {
+                var runtimeUnavailableResult = FrameworkActivityRequestResult.FailedRuntimeUnavailable(
+                    "Activity request rejected because Game Flow runtime is not initialized yet.",
+                    targetActivity,
+                    NormalizeLifecycleSource(source),
+                    reason.NormalizeTextOrFallback("None"));
+                LogActivityRequestResult(
+                    runtimeUnavailableResult,
+                    FrameworkLoadingDiagnostics.NotExecutedRequestRejected());
+                return runtimeUnavailableResult;
+            }
+
             InvalidateObjectEntryRuntimeContextSnapshot($"activity-request:{NormalizeLifecycleSource(source)}");
             var previousActivity = _state.CurrentActivity;
             bool showLoadingSurface = ShouldShowActivityLoadingSurface(targetActivity, previousActivity, source, reason);
@@ -723,14 +740,18 @@ namespace Immersive.Framework.ApplicationLifecycle
                 RefreshObjectEntryRuntimeContextSnapshot($"FrameworkRuntimeHost:activity-request-kept:{NormalizeLifecycleSource(source)}");
             }
 
-            var loadingDiagnostics = showLoadingSurface
+            var loadingDiagnostics = showLoadingSurface &&
+                loadingBeforeResult.Status != LoadingSurfaceResultStatus.Unknown &&
+                loadingAfterResult.Status != LoadingSurfaceResultStatus.Unknown
                 ? FrameworkLoadingDiagnostics.FromUnitySurface(
                     loadingBeforeResult,
                     loadingAfterResult,
                     _loadingSurfaceRuntime.AdapterCount,
                     _loadingSurfaceRuntime.ProgressSupported,
                     loadingProgressReporter.LastProgress)
-                : CreateSkippedActivityLoadingDiagnostics(result);
+                : !result.Succeeded
+                    ? FrameworkLoadingDiagnostics.NotExecutedRequestRejected()
+                    : CreateSkippedActivityLoadingDiagnostics(result);
 
             LogActivityRequestResult(result, loadingDiagnostics);
             return result;
