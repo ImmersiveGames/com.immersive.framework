@@ -32,6 +32,11 @@ namespace Immersive.Framework.Camera
                 ? ScopeId
                 : "<session>";
 
+        private void Reset()
+        {
+            EnsureMissingAuthoringIds();
+        }
+
         private void OnEnable()
         {
             SetOutputSession(persistentOutputSession);

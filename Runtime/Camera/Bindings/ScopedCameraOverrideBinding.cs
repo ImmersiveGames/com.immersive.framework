@@ -1,3 +1,4 @@
+using System;
 using Immersive.Framework.CameraAuthoring;
 using Immersive.Framework.Common;
 using Immersive.Framework.Diagnostics;
@@ -46,6 +47,29 @@ namespace Immersive.Framework.Camera
         public bool IsOwnerActive => ownerActive;
         public string LastStatus => lastStatus ?? string.Empty;
         public string LastDiagnostic => lastDiagnostic ?? string.Empty;
+
+        /// <summary>
+        /// Initializes only missing stable authoring identities.
+        /// Existing values are preserved. Derived authoring components call this
+        /// from their Unity Reset hook so creation remains explicit and Editor-only.
+        /// </summary>
+        protected void EnsureMissingAuthoringIds()
+        {
+            if (string.IsNullOrWhiteSpace(scopeId))
+            {
+                scopeId = Guid.NewGuid().ToString("N");
+            }
+
+            if (string.IsNullOrWhiteSpace(requestId))
+            {
+                requestId = Guid.NewGuid().ToString("N");
+            }
+
+            if (string.IsNullOrWhiteSpace(tieBreakerId))
+            {
+                tieBreakerId = Guid.NewGuid().ToString("N");
+            }
+        }
 
         public CameraOverrideResult RequestOverride()
         {
