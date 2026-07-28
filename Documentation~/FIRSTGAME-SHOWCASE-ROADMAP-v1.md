@@ -1,26 +1,55 @@
-# FIRSTGAME Showcase — Roadmap v1
+# FIRSTGAME Showcase — Roadmap v1.1
 
-Status: Proposed  
-Date: 2026-07-23  
-Target: `ImmersiveGames/planet-devourer` as the real-game consumer and public showcase of `com.immersive.framework`
+Status: Active execution roadmap  
+Last updated: 2026-07-28  
+Target: `ImmersiveGames/planet-devourer` as the real-game consumer and eventual public showcase of `com.immersive.framework`
 
 ## 1. Decision summary
 
-FIRSTGAME should become a small, polished game that demonstrates the framework through normal play. It must not look like a QA scene, a feature gallery, or a collection of debug buttons.
+FIRSTGAME is developed in two connected modes:
 
-The first release target is one complete vertical slice:
+```text
+consumer integration workshop
+  focused Routes, scenes and prefab variants expose assembly order and UX friction
+
+public game slice
+  the proven composition is converged into a normal, polished game flow
+```
+
+The current menu may expose focused development entries while the framework is being assembled. Those entries are temporary developer UX, not the final player-facing product.
+
+The implementation order follows how a real consumer incrementally builds a game:
+
+```text
+Game Application and Routes
+-> Persistent Content
+-> persistent Camera Output
+-> Pause without a Player
+-> Pause on the official Player
+-> Scene-Provided Logical Player
+-> Player gameplay Camera
+-> Manager-Provisioned Logical Player
+-> Session-Persistent Logical Player product cut
+-> real gameplay loop
+```
+
+This order intentionally proves visible composition and ownership before advanced gameplay.
+
+## 2. Final showcase direction
+
+The first polished release target remains one complete vertical slice:
 
 ```text
 Boot
 -> Title
 -> Start
--> explicit single-player admission
+-> explicit single-player participation
 -> short playable objective
 -> completion
 -> replay or return to title
 ```
 
-The recommended working concept is:
+Recommended concept:
 
 ## Planet Devourer — Core Harvest
 
@@ -37,780 +66,1109 @@ one completion target
 no combat required
 ```
 
-This concept is intentionally mechanically small. It gives the framework real responsibilities without requiring enemy AI, inventory, progression, procedural generation, multiplayer, or save data in the first release.
-
-## 2. Why this is the correct minimum
-
-The vertical slice can naturally exercise:
-
-| Framework surface | Real use in the demo |
-|---|---|
-| Game Application | Declares the application and startup flow |
-| Route / Activity | Separates title and playable context |
-| Player participation | Admits one explicit local Player |
-| Actor selection/composition | Assigns the one playable Actor explicitly |
-| Input | Drives game-specific movement and actions |
-| Camera | Follows the admitted Player through the official request/output path |
-| Global UI | Hosts persistent output, transition, loading and pause surfaces |
-| Pause / InputMode / Gate | Pauses and restores the real playable loop |
-| Reset / Activity restart | Restores the run without an ad-hoc scene reload |
-| Diagnostics | Explains failures and runtime state outside the normal player experience |
-
-Audio BGM is useful polish, but its framework adapter is still marked Experimental. It must not block the first playable release.
+The game concept stays mechanically small so the framework carries real lifecycle, Player, input, Camera, Pause, reset and diagnostics responsibilities without requiring unrelated advanced systems.
 
 ## 3. Source-of-truth rule
 
-Implementation must follow the current package source and current canonical guides in Git.
+Implementation and documentation follow current Git.
 
-The supplied `ADR-PROD-*` documents remain valuable for principles such as:
-
-```text
-designer-first product surfaces
-Profiles versus Recipes versus runtime state
-explicit scoped runtime authority
-diagnostics are not product UX
-FIRSTGAME proves usability
-```
-
-Where those documents differ from the current package, the current Git documentation wins.
-
-Known current differences:
+Baseline inspected for this roadmap update:
 
 ```text
-Activity participation Projection, zero-participant behavior and Requirement Level
-are currently authored directly on ActivityAsset.
+planet-devourer
+  ef66f6230cdde576d5ad88ec9ab09bb5466fa963
 
-Actor duplicate-selection policy is currently configured on GameApplicationAsset.
+com.immersive.framework
+  91cdb98b1bbf33cc6a48aa08614dafc4713e4344
 
-The current public Player product surfaces are
-LocalPlayerProvisioningAuthoring,
-LocalPlayerProvisioningHostRegistration,
-LocalPlayerHostAuthoring,
-SceneLocalPlayerAdmissionAuthoring,
-PlayerGameplayCameraAuthoring
-and related typed bindings.
+QAFramework
+  4c8fea40949143b2f663de8a6361a7f13ab51a43
 ```
 
-The roadmap must not reintroduce an older product shape merely because an older ADR still describes it.
+The repositories remain read-only for planning work. Changes are delivered as explicit files or ZIP packages for manual application.
 
-## 4. Frozen boundaries
-
-### Package
-
-`com.immersive.framework` owns reusable product surfaces, contracts, runtime behavior, diagnostics and current usage documentation.
-
-### QAFramework
-
-QAFramework proves framework contracts and regressions after an official package change exists.
-
-### FIRSTGAME
-
-FIRSTGAME owns game rules, movement, objectives, visual composition and the real usability proof.
-
-FIRSTGAME may contain thin game-specific commands and adapters. It must not contain:
+When architecture documents, current guides and source differ:
 
 ```text
-framework compatibility facades
-local replacements for official runtime contexts
-copied QA fixtures
-automatic repair/setup tools used to hide product friction
-new implicit global managers
+current package source and current canonical guide win
+ADR records the accepted decision and implementation boundary
+FIRSTGAME records consumer assembly and manual proof
+QA records technical contract proof
 ```
 
-If a normal recurring workflow needs such a workaround, execution pauses and the reusable issue is evaluated in the package first.
+## 4. Frozen repository roles
 
-## 5. First release definition
+### `com.immersive.framework`
 
-The first public milestone is:
+Owns:
 
 ```text
-FIRSTGAME Showcase 0.1 — Playable Minimum
+runtime
+contracts
+product authoring surfaces
+Editor tooling
+validators
+diagnostics
+canonical guides
+ADRs
+official templates/samples
 ```
 
-It is complete only when a player can:
+### `QAFramework`
 
-1. launch the game;
-2. understand the single objective without reading diagnostics;
-3. start the run;
-4. control the Player with the intended device;
-5. see a stable gameplay camera;
-6. collect the required fragments;
-7. complete the core;
-8. pause and resume safely;
-9. restart the run;
-10. finish and replay or return to title.
+Owns:
 
-The Unity Console and QA menus are not part of this player journey.
+```text
+technical contract proof
+negative cases
+transaction rollback
+idempotence
+regressions
+```
 
-## 6. Roadmap overview
+### `planet-devourer`
 
-| Cut | Outcome | Primary proof |
+Owns:
+
+```text
+game rules and movement
+real scene/prefab composition
+consumer UX proof
+focused development variants
+manual Play Mode records
+final gameplay presentation
+```
+
+FIRSTGAME must not contain framework compatibility facades, copied QA fixtures, parallel runtime authorities, implicit global managers or automatic repair tooling that hides product friction.
+
+## 5. Evidence vocabulary
+
+Every cut distinguishes:
+
+```text
+Present in Git
+Authoring Ready
+Runtime Implemented
+QA Passed
+FIRSTGAME Manual Proof Passed
+Blocked by Framework
+```
+
+Do not collapse those states into a generic `done`.
+
+Source presence does not prove Play Mode behavior. Authoring validation does not prove runtime admission. A QA pass does not prove consumer usability.
+
+## 6. Current demo inventory
+
+### Application
+
+```text
+FG_GameApplication.asset
+startup Route
+four ordered local Player Slot Profiles
+Actor duplicate-selection policy
+Conteiner Scene as Persistent Content
+```
+
+### Enabled scenes
+
+```text
+FG_UIGlobal
+FG_Menu
+FG_Gameplay
+Conteiner Scene
+SceneProvidedGameplay
+```
+
+### Current menu entries
+
+```text
+Start Game
+  general gameplay Route request
+
+Player Local Test
+  FG_PlayerSceneProvider
+  SceneProvidedGameplay
+```
+
+### Current focused Player prefabs
+
+```text
+Actor_PlayerSceneProvided
+Player_SceneProvided
+Player_SceneProvided_With_Pause
+Player_SceneProvided_With_Camera
+```
+
+### Current source coverage
+
+| Player source | Package | FIRSTGAME |
 |---|---|---|
-| FG-0 | Consumer baseline and UX protocol | We know exactly what exists and what will be reused |
-| FG-1 | Application shell | Boot, Title and gameplay Route/Activity topology works |
-| FG-2 | Canonical local Player | One Player is explicitly admitted with correct Slot and Actor evidence |
-| FG-3 | Movement and gameplay Camera | The admitted Player is controllable and framed through official surfaces |
-| FG-4 | Core Harvest loop | The project is a real, completable game |
-| FG-5 | Pause, restart, transition and loading | Framework lifecycle features operate the real loop |
-| FG-6 | Showcase 0.1 release candidate | The slice is understandable, polished and reproducible from documentation |
+| Scene-Provided | runtime and authoring implemented | active focused test |
+| Manager-Provisioned | runtime and authoring implemented | next consumer assembly |
+| Session-Persistent | accepted architecture only | blocked |
 
-Cuts are sequential. A cut closes only with user-run Unity evidence and a short UX record.
+## 7. Roadmap overview
 
----
+| Cut | Type | Outcome | Current state |
+|---|---|---|---|
+| FG-0 | integration | Game Application, menu and Route foundation | Present in Git |
+| FG-1 | UX/product integration | Persistent Content and persistent Camera Output | Present in Git; manual record maintained in FIRSTGAME |
+| FG-2 | UX/product integration | Pause outside and on the Player | Present in Git; manual record maintained in FIRSTGAME |
+| FG-3 | Player integration | Scene-Provided Player admission | Current focused proof |
+| FG-4 | Camera integration | Scene-Provided Player gameplay Camera | Current focused proof |
+| FG-5 | Player integration | Manager-Provisioned comparison path | Next |
+| FG-6 | package product cut | Session-Persistent Player source | Blocked by package gap |
+| FG-7 | real gameplay | Core Harvest vertical slice | Planned after source comparison |
+| FG-8 | release | Showcase 0.1 release candidate | Planned |
 
-## 7. FG-0 — Consumer inventory and UX baseline
-
-Type: integration audit / product UX  
-Goal: establish the exact starting point without modifying framework contracts.
-
-### Scope
-
-- Update the package in FIRSTGAME to the intended reviewed revision.
-- Confirm Unity version, package dependencies and current compilation state.
-- Inventory existing scenes, prefabs, input actions, movement code, objective content, UI, audio and reusable visual assets.
-- Identify legacy or backup content that may supply game content but must not supply architecture.
-- Choose the concrete assets that will become `UIGlobal`, Title, Gameplay and the local Player Host.
-- Record the current manual baseline before authoring P3 integration.
-
-### Out of scope
-
-- Adding framework components.
-- Repairing product friction.
-- Designing advanced gameplay.
-- Copying assets from QA.
-
-### Product surface affected
-
-None yet. This cut establishes the consumer baseline against which usability will be measured.
-
-### Expected files
-
-- This roadmap.
-- One short FIRSTGAME integration journal.
-- No package or QA changes.
-- No gameplay asset mutation unless required only to recover a compilable baseline.
-
-Exact existing asset paths must be recorded after inspecting the Unity project; the roadmap does not guess them.
-
-### Manual flow
-
-```text
-Open project
--> compile
--> inspect current scenes and assets
--> run existing preserved content
--> classify reusable game content versus obsolete integration
-```
-
-### Acceptance
-
-Technical:
-
-- FIRSTGAME imports and compiles against the intended package revision.
-- No obsolete setup/repair tool is treated as required.
-- The selected scenes and Player content are identified.
-
-Product:
-
-- We can explain what the game will reuse and what will be authored anew.
-- The selected minimum can be completed without first building advanced systems.
-
-### Gains
-
-Architectural: prevents preserved gameplay content from silently restoring superseded integration.  
-Usability: creates a measurable “before” state for the manual framework workflow.
-
-Suggested commit:
-
-```text
-docs(firstgame): define showcase baseline and integration journal
-```
+Cuts are sequential by dependency, but documentation may be updated whenever Git state moves. A cut closes only with the evidence required for its type.
 
 ---
 
-## 8. FG-1 — Application shell
+## 8. FG-0 — Application, menu and Route foundation
 
-Type: integration real / product UX  
-Goal: produce the smallest understandable application flow before adding the Player.
+### Objective
+
+Create the smallest understandable application shell and development entry menu.
 
 ### Scope
 
-- Create or confirm one explicit `GameApplicationAsset`.
-- Configure the startup Route.
-- Author a Title context with no required Player participation.
-- Author a Gameplay Route and Activity with explicit participation fields.
-- Establish the persistent `UIGlobal` surfaces required by the selected modules.
-- Add one visible Start command that requests the intended transition through the framework.
-- Add a simple return-to-title path for early lifecycle proof.
+- one explicit `GameApplicationAsset`;
+- startup Route;
+- Player-independent menu navigation;
+- general gameplay Route;
+- focused Route entry for integration tests;
+- explicit return-to-menu behavior;
+- enabled scenes recorded in Build Settings.
 
 ### Out of scope
 
-- Player admission.
-- Movement and camera follow.
-- Objectives.
-- Pause, reset and audio polish.
+- requiring a Player for basic navigation;
+- gameplay objective;
+- multiplayer;
+- implicit scene lookup.
 
-### Product surface affected
+### Type
+
+`integration real + product UX`
+
+### Files affected
+
+```text
+FG_GameApplication.asset
+FG_Menu.unity
+FG_UIGlobal.unity
+FG_Gameplay.unity
+Route and Activity assets
+EditorBuildSettings.asset
+```
+
+### Product surface
 
 ```text
 GameApplicationAsset
 RouteAsset
 ActivityAsset
-UIGlobal
-bootstrap and lifecycle diagnostics
+RouteRequestTrigger
+Persistent/global composition
 ```
 
-### Expected files
-
-- FIRSTGAME application, Route and Activity assets.
-- Title and Gameplay scene updates.
-- A thin game-specific Start/Return command if UI needs one.
-- No package or QA changes unless a reusable product blocker is confirmed.
-
-### Player flow
+### Expected use flow
 
 ```text
-Launch
--> Title visible
--> Start
--> covered transition
--> empty Gameplay context
--> Return
--> Title restored
+Boot
+-> Menu
+-> select one explicit Route
+-> enter declared primary scene
+-> exit
+-> Menu restored
 ```
 
-### Focused smoke
+### Technical smoke
 
-- Startup Route resolves.
-- Title Activity enters.
-- Gameplay Route/Activity enters and exits.
-- Re-entry does not retain the previous scope.
-
-### Acceptance
-
-Technical:
-
+- Route navigation works without an admitted Player.
 - Required references are explicit.
-- Missing configuration blocks with typed diagnostics.
-- No scene-name search, singleton or fallback is added.
+- Invalid requests produce typed diagnostics.
+- Re-entry does not retain the prior Route scope.
 
-Product:
+### Technical acceptance
 
-- A developer can reconstruct the shell using the current Framework Usage guide.
-- The player sees a normal title/game transition, not a QA control panel.
+- compiles;
+- no scene-name discovery fallback;
+- no singleton or parallel navigation authority;
+- Route and Activity identity remain typed.
+
+### Product acceptance
+
+- developer can see which menu entry opens which test;
+- menu remains understandable without diagnostics;
+- focused test entries are clearly development-only.
 
 ### Gains
 
-Architectural: validates lifecycle ownership before Player complexity is introduced.  
-Usability: isolates whether Game Application, Route, Activity and `UIGlobal` authoring are understandable.
+Architectural: isolates Game Flow from Player availability.  
+Usability: gives the consumer a visible, incremental entry point.
 
-Suggested commit:
+### Suggested commit
 
 ```text
-feat(firstgame): build framework application shell
+feat(firstgame): build application and route test shell
 ```
 
 ---
 
-## 9. FG-2 — Canonical single local Player
+## 9. FG-1 — Persistent Content and Camera Output
 
-Type: integration real / Player product UX  
-Goal: manually assemble one official local Player path and record every point of friction.
+### Objective
 
-### Decision
-
-Use the runtime-provisioned path for the showcase minimum:
-
-```text
-manual-join PlayerInputManager
--> LocalPlayerProvisioningAuthoring
--> LocalPlayerProvisioningHostRegistration
--> LocalPlayerHostAuthoring
--> explicit Slot reservation and admission
-```
-
-Reason: it uses the framework's canonical single-player/multiplayer-compatible path and tests the product surface that most strongly needs real-game UX proof.
-
-`SceneLocalPlayerAdmissionAuthoring` remains a valid later comparison case, not a second simultaneous Player authority.
+Establish Session-owned persistent composition before contextual gameplay Cameras.
 
 ### Scope
 
-- Create one `PlayerSlotProfile`.
-- Create or identify one explicit `ActorProfile`.
-- Add the Slot to `GameApplicationAsset` in allocation order.
-- Configure the explicit Actor selection/default policy on the Game Application.
-- Configure one manual-join `PlayerInputManager` in `UIGlobal`.
-- Prepare the local Player prefab with `PlayerInput`, `LocalPlayerHostAuthoring` and an empty Actor Mount.
-- Issue one authorized join through the official typed path.
-- Configure the Gameplay Activity participation Projection, zero-participant behavior and Requirement Level.
-- Prove admission, selection, preparation, occupancy and release as distinct facts.
+- `Conteiner Scene` assigned through `GameApplicationAsset` Persistent Content;
+- one physical Camera Output;
+- persistent presentation/loading surfaces;
+- scoped/session Camera override authoring;
+- explicit restoration after contextual release.
 
 ### Out of scope
 
-- A character-selection screen.
-- A second local Player.
-- Split screen.
-- Disconnect/reconnect.
-- Online play.
-- Replacing the selected Actor after preparation.
+- Player gameplay Camera;
+- creating output Camera from a Player rig;
+- `Camera.main` fallback;
+- multiple physical outputs.
 
-### Product surface affected
+### Type
 
-Player Slot, Actor selection, local provisioning, Activity participation and diagnostics.
+`UX/product integration`
 
-### Expected files
-
-- FIRSTGAME Slot and Actor Profile assets.
-- Local Player Host prefab updates.
-- `UIGlobal` provisioning authoring.
-- Gameplay Activity authoring.
-- At most one thin game-specific “start single-player” command.
-
-### Player flow
+### Files affected
 
 ```text
-Start selected
--> authorized local join
--> first configured Slot reserved
--> PlayerInputManager provisions host
--> framework admits Player
--> default Actor selected/prepared
--> Gameplay Activity becomes eligible
+Conteiner Scene.unity
+FG_GameApplication.asset
+persistent Camera authoring assets/components
 ```
 
-### Focused smoke
-
-- Correct Slot is reserved.
-- Failed provisioning releases the reservation.
-- `playerIndex` is not used as `PlayerSlotId`.
-- Activity admission blocks when required evidence is missing.
-- Exit releases admission cleanly.
-
-### Acceptance
-
-Technical:
-
-- Manual join is the only local Player provisioning path.
-- The join has a correlated pending operation.
-- No local Player is silently adopted.
-- No second framework Player spawner exists.
-
-Product:
-
-- A developer can identify which asset answers Slot, Actor and concrete Player Host.
-- The default Inspector does not require understanding internal runtime IDs.
-- Advanced/Debug explains the admission result.
-
-### Gains
-
-Architectural: proves the current canonical Player authority in a consumer.  
-Usability: exposes whether Player setup is genuinely product-ready rather than merely QA-ready.
-
-Suggested commit:
+### Product surface
 
 ```text
-feat(firstgame): integrate canonical local player admission
-```
-
----
-
-## 10. FG-3 — Movement and gameplay Camera
-
-Type: integration real / gameplay foundation  
-Goal: make the admitted Actor pleasant to control and view.
-
-### Scope
-
-- Keep movement as FIRSTGAME gameplay code.
-- Bind movement to the admitted Player's `PlayerInput`.
-- Apply `PausePlayerInputBinding` on the relevant Player object, ready for FG-5.
-- Use a Unity Preset only when reusable `CameraRigComposer` values are needed.
-- Add and configure `CameraRigComposer`.
-- Validate and run Apply/Rebuild twice.
-- Configure the persistent single output in `UIGlobal`:
-
-```text
-Unity Camera
-CinemachineBrain
+Persistent Content composition
 CameraOutputSessionBinding
-SessionCameraOverrideBinding
+session/scoped override bindings
+CameraOutputContext
 ```
 
-- Add `PlayerGameplayCameraAuthoring` to the admitted Player Actor.
-- Prove Player camera publication and release without a duplicate publisher.
-
-### Out of scope
-
-- Activity and Route camera overrides.
-- Cutscene camera.
-- Multiple outputs.
-- Split screen.
-- Framework-owned movement.
-
-### Product surface affected
-
-Input binding, Camera Recipe/Composer, Player camera eligibility and output-scoped runtime authority.
-
-### Player flow
+### Expected use flow
 
 ```text
-Gameplay admission
--> input becomes eligible
--> Player request becomes eligible
--> CameraOutputContext selects Player request
--> movement and follow operate together
+Boot Persistent Content
+-> default physical output active
+-> enter contextual Route
+-> contextual request/override selected
+-> exit
+-> previous/default state restored
 ```
 
-### Focused smoke
+### Technical smoke
 
-- Apply/Rebuild is idempotent.
-- Exactly one physical output exists.
-- Exactly one Player publisher exists.
-- Missing targets fail explicitly.
-- Exit releases camera and input eligibility.
+- one Unity Camera and AudioListener authority;
+- request identity is explicit;
+- duplicate entry does not duplicate override identity;
+- release restores previous state.
 
-### Acceptance
+### Technical acceptance
 
-Technical:
+- no output created by a local Camera rig;
+- no global lookup;
+- scoped release is deterministic;
+- diagnostics show current/default/override state.
 
-- No `Camera.main`, scene search, name lookup or direct Camera toggling.
-- Cinemachine performs presentation; framework owns request selection.
-- Movement code does not become framework code.
+### Product acceptance
 
-Product:
-
-- Movement and framing feel intentional.
-- A developer can author the rig without manually manipulating internal request priority.
-- Advanced/Debug identifies output, request, targets and winner.
+- Inspector explains physical output versus contextual request;
+- a consumer can author the persistent scene without reading runtime internals.
 
 ### Gains
 
-Architectural: preserves the boundary between game movement and framework participation/camera authority.  
-Usability: validates the most visible Composer and Apply/Rebuild workflow in a real scene.
+Architectural: separates physical output from presentation requests.  
+Usability: makes persistence visible before Player complexity.
 
-Suggested commit:
+### Suggested commit
 
 ```text
-feat(firstgame): add player control and gameplay camera
+feat(firstgame): prove persistent camera output composition
 ```
 
 ---
 
-## 11. FG-4 — Core Harvest playable loop
+## 10. FG-2 — Pause surfaces
 
-Type: gameplay / integration real  
-Goal: turn the framework integration into a complete game.
+### Objective
+
+Prove Pause as an application capability and as Player-bound physical input without conflating the two.
 
 ### Scope
 
-- Create a compact arena.
-- Place three explicit energy fragments.
-- Add collection feedback and an objective counter.
-- Add a central core that accepts collected fragments.
-- Complete the run when all fragments are delivered.
-- Provide a result and Replay/Return choice through normal game UI.
-- Keep objective state in FIRSTGAME runtime code.
-- Register only the relevant gameplay state with framework Reset where restart requires it.
+- application-only authored Pause control;
+- Player `PausePlayerInputBinding` variant;
+- `UnityPlayerInputGateAdapter` gameplay action-map blocking;
+- resume and scope release;
+- diagnostics for execution mode and binding state.
 
 ### Out of scope
 
-- Combat.
-- Enemy AI.
-- Inventory system.
-- Procedural level generation.
-- Save/progression.
-- Multiple playable Actors.
+- multiplayer Pause policy;
+- a second global Player;
+- hidden input-map repair;
+- networking.
 
-### Product surface affected
+### Type
 
-The framework is used by a real gameplay loop, but does not own the loop's rules.
+`UX/product integration`
 
-### Player flow
+### Files affected
 
 ```text
-Enter arena
--> locate fragment
--> absorb fragment
--> deliver to core
--> repeat three times
--> core completes
--> result
--> replay or title
+Pause authoring in persistent/route scenes
+Player_SceneProvided_With_Pause.prefab
+Player input action references
 ```
 
-### Focused smoke
+### Product surface
 
-- Each fragment counts once.
-- Completion occurs once.
-- Re-entering the Activity starts from a valid state.
-- No objective state leaks across an unintended scope.
+```text
+PauseRequestTrigger
+PausePlayerInputBinding
+UnityPlayerInputGateAdapter
+Pause runtime/presentation context
+```
 
-### Acceptance
+### Expected use flow
 
-Technical:
+```text
+Application-only
+  authored button -> logical Pause -> resume
 
-- FIRSTGAME owns collection, delivery and completion rules.
-- Framework APIs are used only for lifecycle, participation, camera, reset and transitions.
-- Runtime state is not written into Profile/Recipe assets.
+Player-bound
+  Player Pause action -> logical Pause -> gameplay map gated -> resume/restored
+```
 
-Product:
+### Technical smoke
 
-- A first-time player understands the objective.
-- A run can be completed without debug controls.
-- The loop is short enough for repeated framework demonstrations.
+- application-only Pause works without Player binding;
+- Player Pause requires one eligible admitted Player;
+- only the configured gameplay map is gated;
+- prior map state restores;
+- exit releases bindings.
+
+### Technical acceptance
+
+- no implicit Player discovery;
+- no silent fallback from Player-bound to application-only input;
+- execution mode is diagnostic;
+- TimeScale/presentation follow policy.
+
+### Product acceptance
+
+- consumer can explain button Pause versus Player physical input;
+- default Inspector shows required references;
+- Advanced/Debug exposes binding evidence.
 
 ### Gains
 
-Architectural: proves the framework can support a game without absorbing game-specific rules.  
-Usability: changes the proof from “configured correctly” to “usable to build something complete.”
+Architectural: separates request authority from physical input source.  
+Usability: allows Pause to be tested before and after Player admission.
 
-Suggested commit:
+### Suggested commit
 
 ```text
-feat(firstgame): implement core harvest gameplay loop
+feat(firstgame): prove application and player pause paths
 ```
 
 ---
 
-## 12. FG-5 — Lifecycle product minimum
+## 11. FG-3 — Scene-Provided Logical Player
 
-Type: framework integration / UX validation  
-Goal: prove the framework features that make the slice feel production-ready.
+### Objective
+
+Admit a Player already authored in the Route Primary Scene and adopt its existing Logical Actor without duplication.
 
 ### Scope
 
-- Add an interactive Pause UI.
-- Bind pause to the officially admitted local Player.
-- Prove pause/resume and Activity exit while paused.
-- Configure Object Reset for fragments, core and run-local state where appropriate.
-- Configure `ActivityRestartTrigger` for Replay/Restart.
-- Use the canonical transition/loading cover for Route/Activity changes.
-- Verify return to Title and repeated Start.
-- Add BGM only if the optional Audio adapter can be integrated without blocking the release.
+- explicit `PlayerSlotProfile` and `ActorProfile`;
+- canonical Actor and outer Player prefab boundaries;
+- `LocalPlayerHostAuthoring`;
+- `SceneLocalPlayerAdmissionAuthoring`;
+- Route Primary Scene admission;
+- Actor correlation/adoption;
+- Activity readiness and reverse-order release;
+- re-entry proof.
 
 ### Out of scope
 
-- Multiplayer pause policy.
-- Save slots.
-- Checkpoints.
-- A generic menu framework.
-- Custom transition engine.
+- `PlayerInputManager` provisioning;
+- second Player;
+- split-screen;
+- Session-Persistent identity;
+- character replacement.
 
-### Product surface affected
+### Type
 
-Pause/InputMode/Gate, Reset, Activity restart, loading/transition and optionally Audio BGM.
+`Player integration + product UX`
 
-### Player flow
+### Files affected
 
 ```text
-Play
--> pause
--> resume
--> restart
--> Activity resets and re-enters
--> complete
--> transition to result/title
--> play again
+Actor_PlayerSceneProvided.prefab
+Player_SceneProvided.prefab
+SceneProvidedGameplay.unity
+FG_PlayerSceneProvider.asset
+Activity_PlayerLocalProvider.asset
+Player Slot and Actor Profile assets
 ```
 
-### Focused smoke
+### Product surface
 
-- `Time.timeScale` returns to the correct state after resume, restart and exit.
-- Gameplay input is blocked while paused and restored once.
-- Reset participants execute in declared order.
-- Activity restart uses canonical lifecycle ordering.
-- Transition cover does not expose invalid intermediate camera/content state.
-- Repeated play does not duplicate persistent `UIGlobal` authorities.
+```text
+PlayerSlotProfile
+ActorProfile
+LocalPlayerHostAuthoring
+SceneLocalPlayerAdmissionAuthoring
+PlayerParticipationRuntimeContext
+Activity participation fields
+```
 
-### Acceptance
+### Expected use flow
 
-Technical:
+```text
+Player Local Test
+-> Route Primary Scene loads
+-> explicit Scene-Provided composition resolved
+-> Slot admitted
+-> existing Host validated
+-> existing Logical Actor adopted
+-> Activity reaches configured readiness
+-> exit releases contextual evidence
+```
 
-- Pause has one binding and one physical state writer.
-- Restart is not implemented as an ad-hoc scene reload.
-- Required Reset failures block explicitly.
-- Optional BGM remains isolated from Framework Core.
+### Technical smoke
 
-Product:
+- one typed Slot assignment;
+- one Host identity;
+- one current Actor correlation;
+- source records external scene ownership;
+- no provisioning call;
+- no duplicate Actor;
+- second entry does not duplicate admission.
 
-- Pause, restart and replay are accessible through normal UI.
-- No diagnostic or smoke menu is needed to recover the game.
-- Failure messages identify the missing owner or binding.
+### Technical acceptance
+
+- runtime recognizes active Route Primary Scene authoring;
+- failure is explicit when Slot/Profile/Actor evidence is invalid;
+- release preserves scene ownership and clears contextual evidence;
+- no name or `playerIndex` identity.
+
+### Product acceptance
+
+- designer places one outer prefab;
+- Inspector shows Slot, Actor and scene Actor intent;
+- Apply/Rebuild is idempotent and non-destructive;
+- Advanced/Debug explains adoption and ownership.
 
 ### Gains
 
-Architectural: validates lifecycle composition across several framework domains.  
-Usability: turns the playable prototype into a credible minimum product.
+Architectural: proves scene origin without creating a second participation lane.  
+Usability: validates a common single-player authoring workflow.
 
-Suggested commit:
+### Current state
 
 ```text
-feat(firstgame): complete pause reset and transition lifecycle
+Runtime Implemented
+Authoring Ready in FIRSTGAME
+Focused manual admission/release proof in progress
+```
+
+### Suggested commit
+
+```text
+feat(firstgame): prove scene-provided player admission
 ```
 
 ---
 
-## 13. FG-6 — Showcase 0.1 release candidate
+## 12. FG-4 — Scene-Provided Player gameplay Camera
 
-Type: product polish / documentation / release validation  
-Goal: make the minimum demonstrable to someone who did not build it.
+### Objective
+
+Add one contextual Player Camera without transferring physical output authority to the Player.
 
 ### Scope
 
-- Improve tutorial prompt, objective feedback and result feedback.
-- Normalize input prompts for the supported device set.
-- Perform visual and audio polish that does not introduce new framework scope.
-- Remove temporary debug UI from the player-facing build.
-- Keep Advanced/Debug evidence available to developers.
-- Write a short “How this showcase uses the framework” guide.
-- Re-run the complete manual journey several times.
-- Record actual setup friction and package follow-ups.
+- explicit Player Camera targets;
+- `CameraRigComposer` inside Actor hierarchy;
+- idempotent local Cinemachine materialization;
+- `PlayerGameplayCameraAuthoring`;
+- Player/Actor-correlated Camera eligibility;
+- request precedence and output restoration;
+- Pause interaction.
 
 ### Out of scope
 
-- Adding features because they are available in the framework.
-- Large content expansion.
-- Architecture refactoring without a confirmed blocker.
+- creating Unity Camera/Brain/AudioListener from the rig;
+- cinematics;
+- split-screen;
+- implicit target resolution.
 
-### Expected files
+### Type
 
-- FIRSTGAME player-facing polish.
-- A short showcase usage/architecture guide.
-- A final UX findings list classified by owner.
-- Package/QA changes only through separate approved cuts.
+`Camera integration + gameplay foundation`
 
-### Acceptance
+### Files affected
 
-Technical:
+```text
+Player_SceneProvided_With_Camera.prefab
+SceneProvidedGameplay.unity
+Actor Camera anchors
+game-specific movement binding
+```
 
-- Clean import and compile.
-- No framework error diagnostics on the happy path.
-- Repeated Title → Play → Pause → Restart → Complete → Replay/Title is stable.
-- No leaked Route, Activity, Player, Camera, Pause or Reset scope.
+### Product surface
 
-Product:
+```text
+CameraRigComposer
+PlayerGameplayCameraAuthoring
+PlayerGameplayCameraEligibilityRuntimeContext
+CameraOutputContext
+```
 
-- The game is understandable without framework knowledge.
-- The framework contribution is explainable without showing QA tools.
-- Another developer can reproduce the official integration from current guides and the showcase guide.
+### Expected use flow
+
+```text
+Scene-Provided Player admitted
+-> Actor evidence prepared/adopted
+-> Camera rig targets resolve
+-> Player Camera eligibility published
+-> persistent output selects request
+-> exit releases request
+-> prior/default output restored
+```
+
+### Technical smoke
+
+- explicit Follow/LookAt targets;
+- local Cinemachine Camera materialized once;
+- no physical output duplication;
+- request exists only while eligible;
+- Pause/resume does not lose Camera identity;
+- re-entry does not duplicate request identity.
+
+### Technical acceptance
+
+- no `Camera.main` lookup;
+- rig belongs to the same Actor hierarchy;
+- missing required targets block explicitly;
+- output restoration is deterministic.
+
+### Product acceptance
+
+- designer understands rig versus output;
+- Apply/Rebuild reports created/repaired/already valid evidence;
+- default Inspector remains focused;
+- debug mode exposes request and target evidence.
 
 ### Gains
 
-Architectural: produces real consumer evidence for the next package decisions.  
-Usability: establishes the first credible public showcase baseline.
+Architectural: preserves output authority while adding contextual presentation.  
+Usability: turns Player composition into a visible playable result.
 
-Suggested commit:
+### Current state
 
 ```text
-release(firstgame): prepare showcase 0.1 playable minimum
+Authoring Ready in FIRSTGAME
+Focused manual arbitration/restoration proof in progress
 ```
 
-## 14. Mandatory UX evaluation protocol
+### Suggested commit
 
-Every manual cut records:
+```text
+feat(firstgame): prove scene player camera request flow
+```
 
-| Field | Question |
-|---|---|
-| Task | What was the developer trying to accomplish? |
-| Starting point | Which current package guide or Create surface was used? |
-| Steps | How many meaningful manual actions were required? |
-| Time | How long did the first successful setup take? |
-| Ambiguity | Which field, term or object ownership was unclear? |
-| Error quality | Did failure identify the missing owner/reference and corrective action? |
-| Repetition | Was the same identity/reference entered more than once? |
-| Technical exposure | Did the default Inspector expose internal contracts unnecessarily? |
-| Recovery | Could the developer fix the issue without a repair script? |
-| Idempotency | Did Apply/Rebuild or repeated setup preserve intentional work? |
-| Classification | Game issue, guide issue, product-surface issue, runtime defect or QA gap? |
+---
+
+## 13. FG-5 — Manager-Provisioned Logical Player comparison
+
+### Objective
+
+Build the same minimum playable capability with a runtime-created Host so a consumer can compare origin, ownership and assembly sequence.
+
+### Scope
+
+- separate menu entry, Route and test scene;
+- Persistent Content provisioning surface;
+- manual-join `PlayerInputManager`;
+- `LocalPlayerProvisioningAuthoring`;
+- `LocalPlayerProvisioningHostRegistration`;
+- Player prefab with `PlayerInput`, `LocalPlayerHostAuthoring` and empty Actor Mount;
+- explicit authorized join;
+- ordered Slot reservation;
+- Actor preparation;
+- rollback and Slot reuse proof;
+- equivalent movement/Pause/Camera integration after admission.
+
+### Out of scope
+
+- second simultaneous Player;
+- automatic join;
+- split-screen;
+- device reconnect;
+- network participation.
+
+### Type
+
+`Player integration + comparison UX`
+
+### Files created or changed
+
+Expected FIRSTGAME paths, finalized during implementation:
+
+```text
+new Manager-Provisioned Route asset
+new focused gameplay scene
+new Player_ManagerProvisioned prefab
+Persistent Content provisioning prefab/composition
+menu entry
+Activity participation asset/update
+```
+
+No package or QA file changes unless a reusable blocker is confirmed.
+
+### Product surface
+
+```text
+PlayerInputManager
+LocalPlayerProvisioningAuthoring
+LocalPlayerProvisioningHostRegistration
+LocalPlayerHostAuthoring
+Slot reservation/current assignment diagnostics
+Actor preparation
+```
+
+### Expected use flow
+
+```text
+select Manager-Provisioned test
+-> enter Route
+-> issue explicit join
+-> reserve Slot
+-> PlayerInputManager creates Host
+-> validate and admit Logical Player
+-> prepare Actor
+-> enable input/Camera/gameplay
+-> exit and release
+```
+
+### Technical smoke
+
+- framework reserves Slot before physical provisioning;
+- exactly one Host is created;
+- `playerIndex` remains diagnostic;
+- failed join rolls back reservation and Host evidence;
+- successful exit allows Slot reuse;
+- re-entry is deterministic.
+
+### Technical acceptance
+
+- one provisioning authority;
+- no automatic join lane;
+- no silent Host adoption;
+- no fallback Slot;
+- rollback is explicit and diagnostic.
+
+### Product acceptance
+
+- developer can distinguish provisioning Host, Slot, Actor and Activity policy;
+- Inspector explains where the Player prefab is configured;
+- join command and result are discoverable;
+- negative recovery does not require internal code inspection.
+
+### Gains
+
+Architectural: proves the runtime-created source against the same canonical authority.  
+Usability: reveals which Player source is clearer for real consumers.
+
+### Suggested commit
+
+```text
+feat(firstgame): add manager-provisioned player comparison
+```
+
+---
+
+## 14. FG-6 — Session-Persistent Logical Player product cut
+
+### Objective
+
+Create an official package source for Logical Player identity that exists at Session scope outside all Routes and Activities.
+
+### Current state
+
+`Blocked by Framework`.
+
+### Scope
+
+Package first:
+
+```text
+authoring component or composer
+explicit admission request/result
+typed ownership and lifetime evidence
+Slot assignment policy
+optional Host/Actor adoption
+contextual materialization reconciliation
+Session versus Activity release diagnostics
+short canonical guide
+```
+
+Then QA:
+
+```text
+admission
+Route changes
+Activity projection
+Actor preparation/adoption
+release ordering
+invalid configuration
+idempotence
+```
+
+Then FIRSTGAME:
+
+```text
+separate comparison Route
+persistent identity across Menu and Gameplay
+contextual Actor/Camera/input proof
+```
+
+### Out of scope
+
+- FIRSTGAME local workaround;
+- arbitrary persistent prefab treated as participation authority;
+- global singleton or service locator;
+- network account/session system.
+
+### Type
+
+`package product + QA + consumer integration`
+
+### Files created or changed
+
+Must be declared by the dedicated package cut. FIRSTGAME files are not created until the official contract exists.
+
+### Product surface affected
+
+```text
+Game Application / Session composition
+PlayerParticipationRuntimeContext
+new Session-Persistent authoring surface
+Actor/materialization reconciliation
+Diagnostics
+```
+
+### Expected use flow
+
+```text
+Session starts
+-> explicit Session-Persistent Logical Player admitted
+-> Menu Route projects or ignores it
+-> Gameplay Route projects it
+-> contextual Actor/input/Camera prepared
+-> Gameplay exits
+-> contextual parts release
+-> Logical Player Session identity remains
+```
+
+### Technical smoke
+
+- one Session participation authority;
+- Route exit does not destroy Logical Player identity;
+- contextual evidence releases independently;
+- existing valid Host/Actor parts are adopted, not duplicated;
+- missing required policy fails explicitly.
+
+### Technical acceptance
+
+- no global lookup;
+- no parallel Slot registry;
+- lifetime and ownership are typed;
+- invalid state has no silent fallback;
+- QA proves transitions and rollback.
+
+### Product acceptance
+
+- designer can see Session intent separately from Activity intent;
+- Inspector explains what persists and what is contextual;
+- Apply/Rebuild is explicit and idempotent;
+- FIRSTGAME can assemble it without internal contract knowledge.
+
+### Gains
+
+Architectural: completes the three-source model through one authority.  
+Usability: supports persistent local participation without ad-hoc managers.
+
+### Suggested commits
+
+Package:
+
+```text
+feat(player): add session-persistent logical player source
+```
+
+QA:
+
+```text
+test(player): prove session-persistent participation lifecycle
+```
+
+FIRSTGAME:
+
+```text
+feat(firstgame): prove session-persistent player integration
+```
+
+---
+
+## 15. FG-7 — Core Harvest real gameplay loop
+
+### Objective
+
+Converge the selected production Player source into one short, complete game loop.
+
+### Scope
+
+- compact arena;
+- one controllable Actor;
+- three collectible energy fragments;
+- central core completion target;
+- clear objective UI;
+- completion result;
+- restart/replay and return-to-title;
+- game-specific movement and objective code remain in FIRSTGAME.
+
+### Out of scope
+
+- combat;
+- inventory;
+- progression;
+- save data;
+- procedural generation;
+- required multiplayer;
+- advanced audio system.
+
+### Type
+
+`real gameplay integration`
+
+### Files created or changed
+
+```text
+gameplay scenes/prefabs
+FIRSTGAME objective components
+UI presentation
+Activity restart/completion commands
+selected production Player prefab/composition
+```
+
+### Product surface affected
+
+```text
+Route/Activity lifecycle
+Player participation
+input and Camera
+Pause
+reset/restart
+loading/transition
+Global UI
+Diagnostics
+```
+
+### Expected use flow
+
+```text
+Title
+-> Start
+-> Player ready
+-> collect three fragments
+-> feed central core
+-> completion
+-> replay or return
+```
+
+### Technical smoke
+
+- objective state belongs to the Activity/run;
+- restart clears objective state without ad-hoc scene reload authority;
+- Pause gates gameplay correctly;
+- exit releases Player contextual evidence;
+- second run is clean.
+
+### Technical acceptance
+
+- compiles and passes relevant QA package gates;
+- no hidden fallback;
+- failures are diagnostic;
+- framework contracts remain preserved.
+
+### Product acceptance
+
+- player understands objective without debug UI;
+- normal play path does not expose validator/smoke controls;
+- setup is documented from a clean consumer perspective;
+- selected Player source is justified by prior comparison.
+
+### Gains
+
+Architectural: proves framework responsibilities in a real loop.  
+Usability: converts integration pieces into a usable game product.
+
+### Suggested commit
+
+```text
+feat(firstgame): build core harvest playable loop
+```
+
+---
+
+## 16. FG-8 — Showcase 0.1 release candidate
+
+### Objective
+
+Make the slice understandable, polished and reproducible.
+
+### Scope
+
+- final title and result presentation;
+- loading/transition polish;
+- short setup documentation;
+- remove or hide development-only menu entries from release configuration without deleting test scenes;
+- negative diagnostics remain available in Advanced/Debug workflows;
+- final manual regression record.
+
+### Out of scope
+
+- broad feature expansion;
+- new Player source;
+- unproven experimental adapter as release blocker.
+
+### Type
+
+`release + documentation`
+
+### Files created or changed
+
+```text
+release scenes/UI
+consumer setup guide
+final scenario records
+build configuration
+```
+
+### Product surface affected
+
+All surfaces proven by the vertical slice.
+
+### Expected use flow
+
+```text
+launch
+-> understand title
+-> start
+-> play and complete
+-> pause/restart safely
+-> replay or return
+```
+
+### Technical smoke
+
+- clean boot;
+- complete run;
+- Pause/resume;
+- restart;
+- return/re-entry;
+- no missing references or duplicate authorities;
+- logs remain concise and diagnostic.
+
+### Technical acceptance
+
+- compiles;
+- relevant QA technical gates pass;
+- manual FIRSTGAME scenarios pass;
+- no silent fallback;
+- package and consumer docs agree.
+
+### Product acceptance
+
+- no QA-style control panel in player journey;
+- one clear objective;
+- stable input and Camera;
+- reproducible authoring steps;
+- Advanced/Debug remains available for technical inspection.
+
+### Gains
+
+Architectural: establishes a maintained real consumer baseline.  
+Usability: demonstrates that the framework can build an understandable game, not only valid contracts.
+
+### Suggested commit
+
+```text
+release(firstgame): prepare showcase 0.1 candidate
+```
+
+## 17. UX observation protocol
+
+For every manual assembly or validation session, record:
+
+```text
+task
+starting surface
+steps taken
+time to first valid Play result
+ambiguous terms
+repeated references
+error quality
+recovery path
+technical fields exposed by default
+Advanced/Debug usefulness
+Apply/Rebuild idempotence
+whether the issue belongs to FIRSTGAME, package, QA or docs
+```
 
 Severity:
 
 ```text
-UX-0  observation
-UX-1  minor wording or ordering friction
-UX-2  repeated confusion or avoidable manual wiring
-UX-3  common workflow requires technical-contract knowledge
-UX-4  common workflow requires consumer facade, hidden fallback or repair tool
+Observation
+  understandable friction that does not block completion
+
+Product issue
+  recurring workflow is unnecessarily difficult or unclear
+
+Blocker
+  consumer cannot complete the official workflow without internal knowledge,
+  local workaround or silent invalid state
 ```
 
-`UX-3` and `UX-4` block promotion of that product surface until disposition is explicit.
+## 18. Definition of success
 
-## 15. Where a finding belongs
-
-| Finding | Owner |
-|---|---|
-| Game objective, movement feel, arena or UI theme | FIRSTGAME |
-| Reusable Create/Inspector/Apply workflow is missing or confusing | Package |
-| Public runtime contract is incorrect or incomplete | Package, then QA |
-| Official contract needs a regression proof | QAFramework |
-| Current guide omits or teaches the wrong public flow | Package documentation |
-| One-off consumer glue expresses a game rule | FIRSTGAME |
-| Consumer glue recreates framework authority | Stop and redesign in Package |
-
-## 16. Advanced roadmap after Showcase 0.1
-
-Advanced work begins only after FG-6 closes.
-
-### Showcase 0.2 — Camera and Activity storytelling
-
-- Add a short arrival Activity.
-- Add an explicit Activity camera override.
-- Release it back to the Player camera.
-- Add a completion/result Activity.
-- Validate request restoration and transition timing.
-
-### Showcase 0.3 — Actor presentation and choice
-
-- Add at least two `ActorProfile` options.
-- Add a small selection Activity.
-- Keep Slot, Actor selection, logical host and presentation visibly distinct.
-- Do not start until the current Actor Presentation/Skin product surface is ready enough to avoid local replacement architecture.
-
-### Showcase 0.4 — Local cooperative proof
-
-- Add a second ordered `PlayerSlotProfile`.
-- Open a real join window.
-- Add a second Player and differentiated Slot presentation.
-- Add split-screen only after multi-output Camera becomes official package scope.
-- Add multiplayer Pause policy only after it is explicitly decided.
-
-### Showcase 0.5 — Persistence and progression
-
-- Save selected Actor and completed showcase goals.
-- Add a small persistent unlock or best-run result.
-- Use typed persistence boundaries; do not mutate Profile assets.
-- First mature package authoring and QA coverage for persistence.
-
-### Showcase 1.0 — Public framework demo
-
-- Package-ready onboarding guide.
-- Stable build.
-- Clear feature attribution.
-- Accessibility and input pass.
-- Performance and release QA.
-- No experimental framework dependency on the critical path.
-
-## 17. Features deliberately deferred
+The roadmap succeeds when:
 
 ```text
-online multiplayer
-network authority
-reconnect state machines
-split-screen before multi-output Camera
-multiplayer Pause policy
-combat framework
-inventory framework
-procedural generation framework
-generic quest system
-save/progression before a real product requirement
+a developer can follow the assembly sequence
+Player source differences are explicit
+framework materializes contracts without hiding architecture
+FIRSTGAME proves real use
+QA proves technical behavior
+final player journey contains no QA-style setup flow
 ```
-
-Deferral is part of the product design. These features would dilute the first consumer usability proof and make framework failures harder to isolate.
-
-## 18. Recommended next action
-
-Start only FG-0.
-
-Its output should be a concrete inventory of the current FIRSTGAME project and a proposed asset-by-asset mapping for FG-1. Do not author the Player, Camera or gameplay loop during that audit.
-
-After FG-0, close the exact FG-1 file manifest based on the real project tree and execute the application shell manually.
