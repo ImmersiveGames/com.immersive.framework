@@ -87,7 +87,15 @@ namespace Immersive.Framework.PlayerParticipation
                 $"requirement='{RequirementLevel}' status='{Status}' code='{Code}' " +
                 $"projected='{ProjectedSlotCount}' satisfied='{SatisfiedSlotCount}' " +
                 $"pending='{PendingSlotCount}' blocked='{BlockedSlotCount}' failed='{FailedSlotCount}' " +
-                $"message='{Message}'";
+                $"message='{Message}' slots='{FormatSlots()}'";
+        }
+
+        private string FormatSlots()
+        {
+            if (slots.Length == 0) return "<none>";
+            var diagnostics = new string[slots.Length];
+            for (int index = 0; index < slots.Length; index++) diagnostics[index] = slots[index].ToDiagnosticString();
+            return string.Join(" || ", diagnostics);
         }
     }
 }

@@ -1,0 +1,19 @@
+{
+  "name": "Immersive.Framework.PlayerParticipation.Tests",
+  "rootNamespace": "Immersive.Framework.PlayerParticipation.Tests",
+  "references": [
+    "Immersive.Framework.Runtime"
+  ],
+  "includePlatforms": [],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": false,
+  "defineConstraints": [],
+  "versionDefines": [],
+  "noEngineReferences": false,
+  "optionalUnityReferences": [
+    "TestAssemblies"
+  ]
+}

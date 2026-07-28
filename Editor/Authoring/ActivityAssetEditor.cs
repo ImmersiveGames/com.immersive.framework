@@ -28,6 +28,7 @@ namespace Immersive.Framework.Editor.Editor.Authoring
         private bool _validationOutdated;
         private bool _showActivityContent;
         private bool _showAdvancedDiagnostics;
+        private bool _showReadinessLevels;
 
         private void OnEnable()
         {
@@ -181,13 +182,82 @@ namespace Immersive.Framework.Editor.Editor.Authoring
                     "Ready When",
                     "Progressive readiness required from every participating Logical Player."));
 
-            EditorGUILayout.HelpBox(
-                "Scene-Provided guidance: use Joined Slots to prove Logical Player admission only. Logical Actors Prepared is the recommended baseline when the scene already provides the Actor. Use Gameplay Ready only when the Activity must also wait for input, Camera and gameplay eligibility.",
-                MessageType.Info);
+            DrawReadinessGuidance();
 
             EditorGUILayout.HelpBox(
                 "Projection, zero-participant and readiness coherence is evaluated only through Validate Activity.",
                 MessageType.None);
+        }
+
+        private void DrawReadinessGuidance()
+        {
+            if (_playerParticipationRequirementLevel == null ||
+                _playerParticipationRequirementLevel.hasMultipleDifferentValues)
+            {
+                return;
+            }
+
+            var level = (PlayerParticipationRequirementLevel)
+                _playerParticipationRequirementLevel.intValue;
+            EditorGUILayout.LabelField("Requires", EditorStyles.miniBoldLabel);
+            EditorGUILayout.LabelField(GetReadinessSummary(level), EditorStyles.wordWrappedMiniLabel);
+            if (level == PlayerParticipationRequirementLevel.GameplayReady)
+            {
+                EditorGUILayout.HelpBox(
+                    "Gameplay Ready is not the same as the Player Actor existing. The Activity also waits for input, Camera and gameplay eligibility.",
+                    MessageType.Info);
+            }
+
+            string guidance = GetReadinessGuidance(level);
+            if (!string.IsNullOrEmpty(guidance))
+            {
+                EditorGUILayout.LabelField(guidance, EditorStyles.wordWrappedMiniLabel);
+            }
+
+            _showReadinessLevels = EditorGUILayout.Foldout(
+                _showReadinessLevels,
+                "Understand readiness levels",
+                true);
+            if (!_showReadinessLevels) return;
+
+            EditorGUILayout.HelpBox(
+                "Readiness is cumulative. Choose the lowest readiness level that the Activity genuinely requires.",
+                MessageType.None);
+            DrawReadinessLevel("Joined Slots", "Participating Logical Players have joined their configured Slots.");
+            DrawReadinessLevel("Selected Actors", "Joined Slots also have an Actor Profile selected.");
+            DrawReadinessLevel("Logical Actors Prepared", "Selected Actors also have a prepared or adopted Logical Actor. This is the recommended baseline when a Scene-Provided Player already contains its Actor but Camera and gameplay eligibility are not required.");
+            DrawReadinessLevel("Gameplay Ready", "All previous evidence is present, and the Player is eligible for gameplay input, gameplay Camera and gameplay actions.");
+        }
+
+        private static void DrawReadinessLevel(string title, string description)
+        {
+            EditorGUILayout.LabelField(title, EditorStyles.miniBoldLabel);
+            EditorGUILayout.LabelField(description, EditorStyles.wordWrappedMiniLabel);
+        }
+
+        private static string GetReadinessSummary(PlayerParticipationRequirementLevel level)
+        {
+            return level switch
+            {
+                PlayerParticipationRequirementLevel.None => "The Activity does not wait for Player readiness.",
+                PlayerParticipationRequirementLevel.JoinedSlots => "Joined Slot",
+                PlayerParticipationRequirementLevel.SelectedActors => "Joined Slot + selected Actor",
+                PlayerParticipationRequirementLevel.LogicalActorsPrepared => "Joined Slot + selected Actor + prepared or adopted Logical Actor",
+                PlayerParticipationRequirementLevel.GameplayReady => "Joined Slot + selected Actor + prepared Logical Actor + gameplay input, Camera and gameplay eligibility",
+                _ => "The selected readiness level is invalid. Run Validate Activity."
+            };
+        }
+
+        private static string GetReadinessGuidance(PlayerParticipationRequirementLevel level)
+        {
+            return level switch
+            {
+                PlayerParticipationRequirementLevel.JoinedSlots => "Use for admission tests, lobbies or Activities that only need participating Players.",
+                PlayerParticipationRequirementLevel.SelectedActors => "Use when the Activity needs an Actor choice but does not need the Actor prepared yet.",
+                PlayerParticipationRequirementLevel.LogicalActorsPrepared => "Use when gameplay objects must already exist or be adopted, but Camera and gameplay eligibility are not required.",
+                PlayerParticipationRequirementLevel.GameplayReady => "Use only when the Activity must remain NotReady until the Player can be controlled, viewed through the gameplay Camera and admitted to gameplay actions.",
+                _ => string.Empty
+            };
         }
 
         private bool UsesExplicitSlots()

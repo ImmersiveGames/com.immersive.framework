@@ -92,6 +92,11 @@ namespace Immersive.Framework.Editor.Editor.PlayerParticipation
 
             if (requirementsValid && projectionValid)
             {
+                report.AddInfo("Players / Readiness", activity);
+                report.AddInfo($"Selected requirement: {requirementLevel}.", activity);
+                AddRuntimeEvidenceReport(report, requirementLevel, activity);
+                report.AddInfo("Authoring evidence: projection, explicit Slot references, duplicate Slot identities and zero-participant policy are validated from this ActivityAsset.", activity);
+
                 if (descriptor.ProjectsNoSlots &&
                     requirementLevel != PlayerParticipationRequirementLevel.None)
                 {
@@ -128,6 +133,26 @@ namespace Immersive.Framework.Editor.Editor.PlayerParticipation
             }
 
             return report;
+        }
+
+        private static void AddRuntimeEvidenceReport(
+            FrameworkAuthoringValidationReport report,
+            PlayerParticipationRequirementLevel requirementLevel,
+            ActivityAsset activity)
+        {
+            var required = PlayerParticipationReadinessRequirements.GetRequiredEvidence(requirementLevel);
+            if (required.Count == 0)
+            {
+                report.AddInfo("Runtime-dependent evidence: none. This Activity does not wait for Player readiness.", activity);
+                return;
+            }
+
+            report.AddInfo("Cumulative runtime evidence required:", activity);
+            for (int index = 0; index < required.Count; index++)
+            {
+                report.AddInfo($"  {index + 1}. {PlayerParticipationReadinessRequirements.GetDisplayName(required[index])}", activity);
+            }
+            report.AddInfo("Runtime-dependent evidence: joined Slot, Actor selection, Logical Actor preparation, input eligibility, Camera eligibility and gameplay eligibility require runtime evidence. They are not provable from this ActivityAsset alone.", activity);
         }
     }
 }

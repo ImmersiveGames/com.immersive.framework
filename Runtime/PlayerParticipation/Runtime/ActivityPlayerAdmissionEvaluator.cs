@@ -726,6 +726,8 @@ namespace Immersive.Framework.PlayerParticipation
             bool ready,
             string message)
         {
+            PlayerParticipationReadinessEvidence[] satisfiedEvidence = BuildEvidence(requirement, joined, selected, prepared, ready, true);
+            PlayerParticipationReadinessEvidence[] missingEvidence = BuildEvidence(requirement, joined, selected, prepared, ready, false);
             return new ActivityPlayerAdmissionSlotResult(
                 projected.ProjectedIndex,
                 projected.Slot.ConfiguredIndex,
@@ -740,7 +742,34 @@ namespace Immersive.Framework.PlayerParticipation
                 selected,
                 prepared,
                 ready,
+                satisfiedEvidence,
+                missingEvidence,
                 message);
+        }
+
+        private static PlayerParticipationReadinessEvidence[] BuildEvidence(
+            PlayerParticipationRequirementLevel requirement,
+            bool joined,
+            bool selected,
+            bool prepared,
+            bool gameplayReady,
+            bool satisfied)
+        {
+            var result = new List<PlayerParticipationReadinessEvidence>();
+            IReadOnlyList<PlayerParticipationReadinessEvidence> required = PlayerParticipationReadinessRequirements.GetRequiredEvidence(requirement);
+            for (int index = 0; index < required.Count; index++)
+            {
+                PlayerParticipationReadinessEvidence evidence = required[index];
+                bool present = evidence switch
+                {
+                    PlayerParticipationReadinessEvidence.JoinedSlot => joined,
+                    PlayerParticipationReadinessEvidence.SelectedActor => selected,
+                    PlayerParticipationReadinessEvidence.LogicalActorPrepared => prepared,
+                    _ => gameplayReady
+                };
+                if (present == satisfied) result.Add(evidence);
+            }
+            return result.ToArray();
         }
 
         private static ActivityPlayerAdmissionEvaluationStatus Aggregate(

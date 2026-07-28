@@ -1,3 +1,5 @@
+using System;
+using System.Collections.Generic;
 using Immersive.Framework.Actors;
 using Immersive.Framework.ApiStatus;
 using Immersive.Framework.Common;
@@ -14,6 +16,9 @@ namespace Immersive.Framework.PlayerParticipation
         "P3K.6 immutable per-Slot Activity Player admission result.")]
     public readonly struct ActivityPlayerAdmissionSlotResult
     {
+        private readonly PlayerParticipationReadinessEvidence[] satisfiedEvidence;
+        private readonly PlayerParticipationReadinessEvidence[] missingEvidence;
+
         internal ActivityPlayerAdmissionSlotResult(
             int projectedIndex,
             int configuredIndex,
@@ -28,6 +33,8 @@ namespace Immersive.Framework.PlayerParticipation
             bool selectedActor,
             bool logicalActorPrepared,
             bool gameplayReady,
+            PlayerParticipationReadinessEvidence[] satisfiedEvidence,
+            PlayerParticipationReadinessEvidence[] missingEvidence,
             string message)
         {
             ProjectedIndex = projectedIndex;
@@ -43,6 +50,8 @@ namespace Immersive.Framework.PlayerParticipation
             SelectedActor = selectedActor;
             LogicalActorPrepared = logicalActorPrepared;
             GameplayReady = gameplayReady;
+            this.satisfiedEvidence = satisfiedEvidence ?? Array.Empty<PlayerParticipationReadinessEvidence>();
+            this.missingEvidence = missingEvidence ?? Array.Empty<PlayerParticipationReadinessEvidence>();
             Message = message.NormalizeText();
         }
 
@@ -59,6 +68,8 @@ namespace Immersive.Framework.PlayerParticipation
         public bool SelectedActor { get; }
         public bool LogicalActorPrepared { get; }
         public bool GameplayReady { get; }
+        public IReadOnlyList<PlayerParticipationReadinessEvidence> SatisfiedEvidence => satisfiedEvidence ?? Array.Empty<PlayerParticipationReadinessEvidence>();
+        public IReadOnlyList<PlayerParticipationReadinessEvidence> MissingEvidence => missingEvidence ?? Array.Empty<PlayerParticipationReadinessEvidence>();
         public string Message { get; }
 
         public bool IsSatisfied => Status == ActivityPlayerAdmissionSlotStatus.Satisfied;
@@ -84,7 +95,16 @@ namespace Immersive.Framework.PlayerParticipation
                 $"selectedActorProfile='{(SelectedActorProfileId.IsValid ? SelectedActorProfileId.StableText : string.Empty)}' " +
                 $"preparedActor='{(PreparedActorId.IsValid ? PreparedActorId.StableText : string.Empty)}' " +
                 $"joined='{Joined}' selected='{SelectedActor}' prepared='{LogicalActorPrepared}' ready='{GameplayReady}' " +
+                $"satisfied='{FormatEvidence(SatisfiedEvidence)}' missing='{FormatEvidence(MissingEvidence)}' " +
                 $"message='{Message}'";
+        }
+
+        private static string FormatEvidence(IReadOnlyList<PlayerParticipationReadinessEvidence> evidence)
+        {
+            if (evidence == null || evidence.Count == 0) return "<none>";
+            var names = new string[evidence.Count];
+            for (int index = 0; index < evidence.Count; index++) names[index] = PlayerParticipationReadinessRequirements.GetDisplayName(evidence[index]);
+            return string.Join(", ", names);
         }
     }
 }
