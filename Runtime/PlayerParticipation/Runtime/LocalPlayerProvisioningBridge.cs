@@ -409,7 +409,8 @@ namespace Immersive.Framework.PlayerParticipation
 
         internal LocalPlayerJoinResult RollbackCommittedJoin(
             LocalPlayerJoinResult joinResult,
-            string reason)
+            string reason,
+            bool explicitCallerRollback = false)
         {
             const string source = nameof(LocalPlayerProvisioningBridge);
             string resolvedReason = reason.NormalizeTextOrFallback(
@@ -463,7 +464,9 @@ namespace Immersive.Framework.PlayerParticipation
                     ? LocalPlayerJoinStatus.FailedAdmission
                     : LocalPlayerJoinStatus.FailedRollback;
             string message =
-                "Committed Local Player join rolled back because physical Host registration failed. " +
+                (explicitCallerRollback
+                    ? "Committed Local Player join was rolled back explicitly. "
+                    : "Committed Local Player join rolled back because physical Host registration failed. ") +
                 $"assignmentReleased='{assignmentRestored}' hostReleased='{hostRestored}' " +
                 $"slotReleased='{slotRestored}' hostIssue='{hostIssue}'.";
             return Complete(CreateRollbackResult(

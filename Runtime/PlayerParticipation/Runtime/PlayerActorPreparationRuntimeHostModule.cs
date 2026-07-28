@@ -848,8 +848,8 @@ namespace Immersive.Framework.PlayerParticipation
             {
                 return provisioning.RollbackCommittedJoin(
                     result,
-                    "actor-preparation-host-registration-failed: " +
-                    issue);
+                    "actor-preparation-host-registration-failed: " + issue,
+                    explicitCallerRollback: false);
             }
 
             return result;

@@ -2,6 +2,7 @@ using System;
 using Immersive.Framework.ApiStatus;
 using Immersive.Framework.ApplicationLifecycle;
 using Immersive.Framework.Common;
+using Immersive.Framework.PlayerSlots;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
@@ -265,11 +266,193 @@ namespace Immersive.Framework.PlayerParticipation
             LocalPlayerJoinResult joinResult,
             string reason)
         {
-            return bridge != null
-                ? bridge.RollbackCommittedJoin(joinResult, reason)
-                : LocalPlayerJoinResult.RuntimeUnavailable(
+            return RollbackCommittedJoin(joinResult, reason, explicitCallerRollback: true);
+        }
+
+        internal LocalPlayerJoinResult RollbackCommittedJoin(
+            LocalPlayerJoinResult joinResult,
+            string reason,
+            bool explicitCallerRollback)
+        {
+            const string source = nameof(LocalPlayerProvisioningRuntimeHostModule);
+            if (bridge == null)
+            {
+                return LocalPlayerJoinResult.RuntimeUnavailable(
                     joinResult != null ? joinResult.Request : default,
                     "Local Player provisioning bridge is unavailable for committed join rollback.");
+            }
+
+            if (joinResult == null || !joinResult.Succeeded ||
+                !joinResult.Slot.PlayerSlotId.IsValid ||
+                !joinResult.AssignmentToken.IsValid ||
+                !joinResult.HostBindingIdentity.IsValid ||
+                joinResult.LocalPlayerHost == null ||
+                joinResult.PlayerInput == null)
+            {
+                return CreateRollbackFailure(
+                    joinResult,
+                    "Committed Local Player join rollback requires complete successful join, assignment, Host binding and physical Host evidence.");
+            }
+
+            if (!runtimeHost.TryGetPlayerActorPreparationRuntime(
+                    out PlayerActorPreparationRuntimeHostModule preparation))
+            {
+                return CreateRollbackFailure(
+                    joinResult,
+                    "FrameworkRuntimeHost has no ready Player Actor preparation authority for committed join rollback.");
+            }
+
+            if (preparation.TryGetSnapshot(
+                    out PlayerActorPreparationRuntimeHostSnapshot preparationSnapshot) &&
+                TryGetActivePreparation(preparationSnapshot, joinResult.Slot.PlayerSlotId,
+                    out PlayerActorPreparationSummary activePreparation))
+            {
+                return CreateRollbackFailure(
+                    joinResult,
+                    "Committed Local Player join rollback is blocked by active Player Actor preparation. " +
+                    $"slot='{joinResult.Slot.PlayerSlotId.StableText}' preparation='{activePreparation.Token.StableText}'.");
+            }
+
+            if (runtimeHost.TryGetPlayerGameplayRuntimeSnapshot(
+                    out PlayerGameplayRuntimeHostSnapshot gameplaySnapshot) &&
+                HasActiveGameplayState(gameplaySnapshot, joinResult.Slot.PlayerSlotId))
+            {
+                return CreateRollbackFailure(
+                    joinResult,
+                    "Committed Local Player join rollback is blocked by active Gameplay ownership, candidate or handoff state. " +
+                    $"slot='{joinResult.Slot.PlayerSlotId.StableText}' " +
+                    $"gameplay='{gameplaySnapshot.ToDiagnosticString()}'.");
+            }
+
+            bool retainedEvidence = preparation.TryGetRetainedHostEvidence(
+                joinResult.Slot.PlayerSlotId,
+                out _);
+            PlayerHostEvidenceResult hostEvidenceRelease = retainedEvidence
+                ? preparation.ReleaseHostEvidence(
+                    joinResult.Slot.PlayerSlotId,
+                    joinResult.AssignmentToken,
+                    joinResult.HostBindingIdentity,
+                    joinResult.LocalPlayerHost,
+                    source,
+                    reason)
+                : null;
+            if (hostEvidenceRelease != null && !hostEvidenceRelease.Succeeded)
+            {
+                return CreateRollbackFailure(
+                    joinResult,
+                    "Committed Local Player join rollback could not release exact Host evidence. " +
+                    hostEvidenceRelease.ToDiagnosticString());
+            }
+
+            LocalPlayerJoinResult rollback = bridge.RollbackCommittedJoin(
+                joinResult,
+                reason,
+                explicitCallerRollback);
+            bool bridgeSucceeded = rollback?.RollbackResult != null &&
+                                  rollback.RollbackResult.Succeeded;
+            if (bridgeSucceeded)
+            {
+                diagnostic =
+                    $"Committed Local Player join was rolled back explicitly. " +
+                    $"slot='{joinResult.Slot.PlayerSlotId.StableText}' " +
+                    $"hostEvidenceReleased='{(hostEvidenceRelease != null)}'.";
+                return rollback;
+            }
+
+            PlayerHostEvidenceResult compensation = hostEvidenceRelease != null
+                ? preparation.RegisterHostEvidence(
+                    joinResult.Slot.PlayerSlotId,
+                    PlayerSlotAssignmentOrigin.ManagerProvisioned,
+                    joinResult.AssignmentToken,
+                    joinResult.HostBindingIdentity,
+                    joinResult.LocalPlayerHost,
+                    source,
+                    "rollback-bridge-failed-compensation")
+                : null;
+            return CreateRollbackFailure(
+                joinResult,
+                "Committed Local Player join rollback failed after Host evidence release. " +
+                $"hostEvidenceReleased='{(hostEvidenceRelease != null)}' " +
+                $"bridgeRollbackStatus='{rollback?.Status}' " +
+                $"assignmentReleased='{rollback?.AssignmentRollbackResult?.Succeeded}' " +
+                $"hostAdmissionReleased='{(rollback != null && rollback.RollbackResult != null)}' " +
+                $"slotReleased='{rollback?.RollbackResult?.Succeeded}' " +
+                $"compensationAttempted='{(compensation != null)}' " +
+                $"compensationSucceeded='{(compensation?.Succeeded == true)}' " +
+                $"bridge='{rollback?.ToDiagnosticString()}' compensation='{compensation?.ToDiagnosticString()}'.");
+        }
+
+        private static bool TryGetActivePreparation(
+            PlayerActorPreparationRuntimeHostSnapshot snapshot,
+            PlayerSlotId slotId,
+            out PlayerActorPreparationSummary preparation)
+        {
+            preparation = default;
+            PlayerActorPreparationSnapshot summaries = snapshot?.Preparation;
+            if (summaries == null) return false;
+            for (int index = 0; index < summaries.Slots.Count; index++)
+            {
+                PlayerActorPreparationSummary candidate = summaries.Slots[index];
+                if (candidate.PlayerSlotId != slotId || !candidate.IsPrepared) continue;
+                preparation = candidate;
+                return true;
+            }
+
+            return false;
+        }
+
+        private static bool HasActiveGameplayState(
+            PlayerGameplayRuntimeHostSnapshot snapshot,
+            PlayerSlotId slotId)
+        {
+            bool admitted = snapshot?.Admission != null &&
+                snapshot.Admission.TryGetSummary(
+                    slotId,
+                    out PlayerGameplayAdmissionSummary admission) &&
+                admission.IsAdmitted;
+            bool occupied = snapshot?.Occupancy != null &&
+                snapshot.Occupancy.TryGetSummary(
+                    slotId,
+                    out PlayerGameplayOccupancySummary occupancy) &&
+                occupancy.IsOccupied;
+            bool inputBound = snapshot?.InputBinding != null &&
+                snapshot.InputBinding.TryGetSummary(
+                    slotId,
+                    out PlayerGameplayInputBindingSummary input) &&
+                input.IsBound;
+            bool cameraEligible = snapshot?.CameraEligibility != null &&
+                snapshot.CameraEligibility.TryGetSummary(
+                    slotId,
+                    out PlayerGameplayCameraEligibilitySummary camera) &&
+                camera.IsEligible;
+            return admitted || occupied || inputBound || cameraEligible ||
+                   (snapshot?.CandidateCount ?? 0) != 0 ||
+                   (snapshot?.ActivePerSlotHandoffCount ?? 0) != 0 ||
+                   snapshot?.HasActiveHandoffGroup == true;
+        }
+
+        private static LocalPlayerJoinResult CreateRollbackFailure(
+            LocalPlayerJoinResult joinResult,
+            string message)
+        {
+            return new LocalPlayerJoinResult(
+                LocalPlayerJoinStatus.FailedRollback,
+                joinResult != null ? joinResult.OperationId : default,
+                joinResult != null ? joinResult.Request : default,
+                joinResult?.ReservationResult,
+                joinResult?.CommitResult,
+                null,
+                joinResult != null ? joinResult.Slot : default,
+                joinResult?.PlayerInput,
+                joinResult?.LocalPlayerHost,
+                joinResult != null ? joinResult.UnityPlayerIndex : -1,
+                joinResult != null
+                    ? joinResult.CallbackConfirmation
+                    : LocalPlayerJoinCallbackConfirmation.None,
+                message,
+                LocalPlayerJoinStatus.FailedRollback,
+                joinResult?.AssignmentResult,
+                null);
         }
 
         internal PlayerParticipationOperationResult TryOpenJoining(
