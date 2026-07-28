@@ -15,6 +15,7 @@ using Immersive.Framework.CycleReset;
 using Immersive.Framework.Loading;
 using Immersive.Framework.Identity;
 using Immersive.Framework.ObjectEntry;
+using Immersive.Framework.ObjectReset;
 using Immersive.Framework.Reset;
 using UnityEngine;
 using Immersive.Framework.ApiStatus;
@@ -1262,7 +1263,9 @@ namespace Immersive.Framework.ApplicationLifecycle
                 _pauseActivityBindingRuntime,
                 _pauseProductBindingRuntime);
             _sceneLifecycleRuntime = new SceneLifecycleRuntime(
-                new PauseProductBindingSceneLifecycleParticipant(_pauseProductBindingRuntime));
+                new PauseProductBindingSceneLifecycleParticipant(_pauseProductBindingRuntime),
+                new ObjectResetProductBindingSceneLifecycleParticipant(
+                    (IResetExecutionRuntimePort)this));
             _runtimeSessionScopeResult = CreateSessionScopeRoot(application, "FrameworkRuntimeHost", "session-start");
             _state = FrameworkRuntimeState.Empty(application);
         }
