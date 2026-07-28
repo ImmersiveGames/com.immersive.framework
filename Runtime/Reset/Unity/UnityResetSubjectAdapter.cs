@@ -10,6 +10,14 @@ using UnityEngine;
 
 namespace Immersive.Framework.Reset.Unity
 {
+    internal enum ResetSubjectRegistrationOutcome
+    {
+        Unknown,
+        Registered,
+        DeferredOwnerUnavailable,
+        Rejected
+    }
+
     /// <summary>
     /// Unity authoring adapter for ResetSubject registration.
     /// This adapter is the resetability facet of an object; it does not require ObjectEntryDeclaration.
@@ -73,6 +81,8 @@ namespace Immersive.Framework.Reset.Unity
         public ResetSubjectId SubjectId => _subject.SubjectId;
 
         public int RegisteredParticipantCount => _participantHandles.Count;
+
+        internal ResetSubjectRegistrationOutcome LastRegistrationOutcome { get; private set; }
 
         public UnityResetSubjectIdGenerationMode IdGeneration => idGeneration;
 
@@ -192,12 +202,14 @@ namespace Immersive.Framework.Reset.Unity
             _registrationAttempted = true;
             if (IsRegistered)
             {
+                LastRegistrationOutcome = ResetSubjectRegistrationOutcome.Registered;
                 return true;
             }
 
             IResetRegistrationRuntimePort runtime = _resetRegistrationRuntime;
             if (runtime == null)
             {
+                LastRegistrationOutcome = ResetSubjectRegistrationOutcome.Rejected;
                 LogRuntimeUnavailable(reason);
                 return false;
             }
@@ -207,6 +219,9 @@ namespace Immersive.Framework.Reset.Unity
                     out RuntimeContentOwner owner,
                     out string issue))
             {
+                LastRegistrationOutcome = IsExpectedDeferredRegistration(reason)
+                    ? ResetSubjectRegistrationOutcome.DeferredOwnerUnavailable
+                    : ResetSubjectRegistrationOutcome.Rejected;
                 LogOwnerUnavailable(reason, issue);
                 return false;
             }
@@ -219,6 +234,7 @@ namespace Immersive.Framework.Reset.Unity
                 CreateAndRegisterSubject(runtime, owner, reason);
             if (!subjectResult.Succeeded)
             {
+                LastRegistrationOutcome = ResetSubjectRegistrationOutcome.Rejected;
                 Logger.Warning(
                     "Unity Reset Subject Adapter registration rejected by ResetRegistry.",
                     LogFields.Field("status", subjectResult.Status.ToString()),
@@ -249,6 +265,7 @@ namespace Immersive.Framework.Reset.Unity
             _registeredRuntime = runtime;
             _subjectHandle = subjectResult.Handle;
             _subject = subjectResult.Subject;
+            LastRegistrationOutcome = ResetSubjectRegistrationOutcome.Registered;
             RegisterParticipants(reason);
 
             Logger.Debug(
@@ -459,6 +476,11 @@ namespace Immersive.Framework.Reset.Unity
         {
             if (IsExpectedDeferredRegistration(reason))
             {
+                return;
+            }
+
+            if (IsExpectedDeferredRegistration(reason))
+            {
                 if (_ownerUnavailableLogged &&
                     string.Equals(
                         _lastOwnerUnavailableIssue,
@@ -519,18 +541,7 @@ namespace Immersive.Framework.Reset.Unity
         {
             return retryUntilRuntimeAvailable &&
                 registerOnEnable &&
-                (string.Equals(
-                     reason,
-                     "on-enable",
-                     StringComparison.Ordinal) ||
-                 string.Equals(
-                     reason,
-                     "start",
-                     StringComparison.Ordinal) ||
-                 string.Equals(
-                     reason,
-                     "update-retry",
-                     StringComparison.Ordinal));
+                (scope == ResetSubjectScope.Activity || scope == ResetSubjectScope.Route);
         }
 
         private ResetRegistryOperationResult CreateAndRegisterSubject(

@@ -2,14 +2,14 @@ using System;
 using System.Collections.Generic;
 using Immersive.Framework.Common;
 using Immersive.Framework.Diagnostics;
-using Immersive.Framework.Reset;
+using Immersive.Framework.ObjectReset;
 using Immersive.Framework.Reset.Unity;
 using Immersive.Framework.SceneLifecycle;
 using Immersive.Logging.Records;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
-namespace Immersive.Framework.ObjectReset
+namespace Immersive.Framework.Reset.Composition
 {
     /// <summary>
     /// Composes Reset authoring surfaces from explicit Scene Lifecycle roots.
@@ -52,15 +52,27 @@ namespace Immersive.Framework.ObjectReset
                 return false;
             }
 
+            bool hasAuthoredSurfaces = adapterBinding.AdapterCount > 0
+                || objectBinding.TriggerCount > 0
+                || groupBinding.TriggerCount > 0;
+            if (!hasAuthoredSurfaces)
+            {
+                logger.Debug("Reset Scene Lifecycle composition found no authored Reset surfaces.", LogFields.Of(
+                    LogFields.Field("operation", "SceneAvailable"),
+                    LogFields.Field("scene", SceneLabel(scene))));
+                return true;
+            }
+
             logger.Info("Reset Scene Lifecycle composition completed.", LogFields.Of(
                 LogFields.Field("operation", "SceneAvailable"),
                 LogFields.Field("scene", SceneLabel(scene)),
                 LogFields.Field("subjectAdapters", adapterBinding.AdapterCount),
                 LogFields.Field("newSubjectAdapters", adapterBinding.BoundCount),
                 LogFields.Field("idempotentSubjectAdapters", adapterBinding.IdempotentCount),
+                LogFields.Field("deferredSubjectAdapters", registration.DeferredSubjects),
                 LogFields.Field("rejectedSubjectAdapters", adapterBinding.RejectedCount),
-                LogFields.Field("registeredSubjects", registration.RegisteredSubjects),
-                LogFields.Field("registeredParticipants", registration.RegisteredParticipants),
+                LogFields.Field("activeRegisteredSubjects", registration.RegisteredSubjects),
+                LogFields.Field("activeRegisteredParticipants", registration.RegisteredParticipants),
                 LogFields.Field("objectTriggers", objectBinding.TriggerCount),
                 LogFields.Field("newObjectTriggers", objectBinding.BoundCount),
                 LogFields.Field("idempotentObjectTriggers", objectBinding.IdempotentCount),
@@ -99,6 +111,15 @@ namespace Immersive.Framework.ObjectReset
             int objectTriggers = CountComponents<ObjectResetTrigger>(roots);
             int groupTriggers = CountComponents<ObjectResetGroupTrigger>(roots);
             diagnostic = $"Reset Scene Lifecycle release completed. scene='{SceneLabel(scene)}' subjectAdapters='{adapters.Count}' registeredSubjectsReleased='{releasedSubjects}' registeredParticipantsReleased='{releasedParticipants}' objectTriggers='{objectTriggers}' groupTriggers='{groupTriggers}'.";
+            if (releasedSubjects == 0 && releasedParticipants == 0)
+            {
+                logger.Debug("Reset Scene Lifecycle release completed with no state changes.", LogFields.Of(
+                    LogFields.Field("operation", "SceneReleasing"),
+                    LogFields.Field("scene", SceneLabel(scene)),
+                    LogFields.Field("reason", reason.NormalizeTextOrFallback("scene-release"))));
+                return true;
+            }
+
             logger.Info("Reset Scene Lifecycle release completed.", LogFields.Of(
                 LogFields.Field("operation", "SceneReleasing"),
                 LogFields.Field("scene", SceneLabel(scene)),
@@ -120,6 +141,7 @@ namespace Immersive.Framework.ObjectReset
         {
             int registeredSubjects = 0;
             int registeredParticipants = 0;
+            int deferredSubjects = 0;
             foreach (UnityResetSubjectAdapter adapter in subjectAdapters)
             {
                 if (adapter == null)
@@ -130,10 +152,23 @@ namespace Immersive.Framework.ObjectReset
                 bool wasRegistered = adapter.IsRegistered;
                 if (!adapter.RefreshRegistrationForCurrentOwner(reason))
                 {
-                    logger.Warning("Reset Subject registration deferred.", LogFields.Of(
-                        LogFields.Field("adapter", adapter.name),
-                        LogFields.Field("scope", adapter.Scope),
-                        LogFields.Field("reason", "Registration was deferred or rejected by the reset registration runtime.")));
+                    if (adapter.LastRegistrationOutcome == ResetSubjectRegistrationOutcome.DeferredOwnerUnavailable)
+                    {
+                        deferredSubjects++;
+                        logger.Debug("Reset Subject registration deferred until runtime owner becomes available.", LogFields.Of(
+                            LogFields.Field("adapter", adapter.name),
+                            LogFields.Field("scope", adapter.Scope),
+                            LogFields.Field("refreshReason", reason),
+                            LogFields.Field("retryEnabled", true),
+                            LogFields.Field("currentOwnerAvailable", false),
+                            LogFields.Field("outcome", "DeferredOwnerUnavailable")));
+                    }
+                    else
+                    {
+                        logger.Warning("Reset Subject registration rejected.", LogFields.Of(
+                            LogFields.Field("adapter", adapter.name),
+                            LogFields.Field("scope", adapter.Scope)));
+                    }
                     continue;
                 }
 
@@ -153,7 +188,7 @@ namespace Immersive.Framework.ObjectReset
                 }
             }
 
-            return new RegistrationSummary(registeredSubjects, registeredParticipants);
+            return new RegistrationSummary(registeredSubjects, registeredParticipants, deferredSubjects);
         }
 
         private void CollectSubjectAdapters(IReadOnlyList<GameObject> roots)
@@ -193,20 +228,22 @@ namespace Immersive.Framework.ObjectReset
         }
 
         private static string BuildAvailableDiagnostic(Scene scene, UnityResetSubjectAdapterBindingResult adapterBinding, RegistrationSummary registration, ObjectResetTriggerBindingResult objectBinding, ObjectResetGroupTriggerBindingResult groupBinding) =>
-            $"Reset Scene Lifecycle composition completed. operation='SceneAvailable' scene='{SceneLabel(scene)}' subjectAdapters='{adapterBinding.AdapterCount}' newSubjectAdapters='{adapterBinding.BoundCount}' idempotentSubjectAdapters='{adapterBinding.IdempotentCount}' rejectedSubjectAdapters='{adapterBinding.RejectedCount}' registeredSubjects='{registration.RegisteredSubjects}' registeredParticipants='{registration.RegisteredParticipants}' objectTriggers='{objectBinding.TriggerCount}' newObjectTriggers='{objectBinding.BoundCount}' idempotentObjectTriggers='{objectBinding.IdempotentCount}' rejectedObjectTriggers='{objectBinding.RejectedCount}' groupTriggers='{groupBinding.TriggerCount}' newGroupTriggers='{groupBinding.BoundCount}' idempotentGroupTriggers='{groupBinding.IdempotentCount}' rejectedGroupTriggers='{groupBinding.RejectedCount}'.";
+            $"Reset Scene Lifecycle composition completed. operation='SceneAvailable' scene='{SceneLabel(scene)}' subjectAdapters='{adapterBinding.AdapterCount}' newSubjectAdapters='{adapterBinding.BoundCount}' idempotentSubjectAdapters='{adapterBinding.IdempotentCount}' rejectedSubjectAdapters='{adapterBinding.RejectedCount}' activeRegisteredSubjects='{registration.RegisteredSubjects}' activeRegisteredParticipants='{registration.RegisteredParticipants}' objectTriggers='{objectBinding.TriggerCount}' newObjectTriggers='{objectBinding.BoundCount}' idempotentObjectTriggers='{objectBinding.IdempotentCount}' rejectedObjectTriggers='{objectBinding.RejectedCount}' groupTriggers='{groupBinding.TriggerCount}' newGroupTriggers='{groupBinding.BoundCount}' idempotentGroupTriggers='{groupBinding.IdempotentCount}' rejectedGroupTriggers='{groupBinding.RejectedCount}'.";
 
         private static string SceneLabel(Scene scene) => scene.IsValid() ? scene.name.NormalizeTextOrFallback("<unnamed>") : "<invalid>";
 
         private readonly struct RegistrationSummary
         {
-            internal RegistrationSummary(int registeredSubjects, int registeredParticipants)
+            internal RegistrationSummary(int registeredSubjects, int registeredParticipants, int deferredSubjects)
             {
                 RegisteredSubjects = registeredSubjects;
                 RegisteredParticipants = registeredParticipants;
+                DeferredSubjects = deferredSubjects;
             }
 
             internal int RegisteredSubjects { get; }
             internal int RegisteredParticipants { get; }
+            internal int DeferredSubjects { get; }
         }
     }
 }

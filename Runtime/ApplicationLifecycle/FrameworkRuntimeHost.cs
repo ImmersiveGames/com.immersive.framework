@@ -16,6 +16,7 @@ using Immersive.Framework.Loading;
 using Immersive.Framework.Identity;
 using Immersive.Framework.ObjectEntry;
 using Immersive.Framework.ObjectReset;
+using Immersive.Framework.Reset.Composition;
 using Immersive.Framework.Reset;
 using UnityEngine;
 using Immersive.Framework.ApiStatus;

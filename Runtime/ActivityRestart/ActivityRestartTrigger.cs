@@ -4,7 +4,9 @@ using Immersive.Framework.ApiStatus;
 using Immersive.Framework.Authoring;
 using Immersive.Framework.Common;
 using Immersive.Framework.GameFlow;
+using Immersive.Framework.Diagnostics;
 using Immersive.Framework.Reset;
+using Immersive.Logging.Records;
 using UnityEngine;
 
 namespace Immersive.Framework.ActivityRestart
@@ -21,6 +23,10 @@ namespace Immersive.Framework.ActivityRestart
         private const string DefaultReason = "Activity Restart";
 
         private readonly EventBus<ActivityRestartTriggerEvent> _requestEvents = new EventBus<ActivityRestartTriggerEvent>();
+        private FrameworkLogger _logger;
+        private int _invocationCount;
+        private int _acceptedRequestCount;
+        private int _rejectedRequestCount;
         private bool _requestInFlight;
         private IActivityRestartRuntimePort _activityRestartRuntime;
         private string _activityRestartRuntimeBindingDiagnostic = "Activity Restart runtime port is not bound.";
@@ -43,6 +49,9 @@ namespace Immersive.Framework.ActivityRestart
         [SerializeField] private ResetSelectionConfig resetSelection = new ResetSelectionConfig();
 
         public bool IsRequestInFlight => _requestInFlight;
+        public int InvocationCount => _invocationCount;
+        public int AcceptedRequestCount => _acceptedRequestCount;
+        public int RejectedRequestCount => _rejectedRequestCount;
         public FlowRequestEventPhase LastEventPhase => _lastEventPhase;
         public FlowRequestOutcome LastOutcome => _lastOutcome;
         public string LastReason => _lastReason;
@@ -62,6 +71,7 @@ namespace Immersive.Framework.ActivityRestart
         public bool HasActivityRestartRuntimeBinding => _activityRestartRuntime != null;
         public string ActivityRestartRuntimeBindingStatus => HasActivityRestartRuntimeBinding ? "Bound" : "Missing";
         public string ActivityRestartRuntimeBindingDiagnostic => _activityRestartRuntimeBindingDiagnostic;
+        public string LastDiagnostic => _lastMessage;
 
         public IEventBinding SubscribeRequestEvents(Action<ActivityRestartTriggerEvent> handler) => _requestEvents.Subscribe(handler);
 
@@ -103,8 +113,21 @@ namespace Immersive.Framework.ActivityRestart
         public async Awaitable<ActivityRestartResult> RequestActivityRestartAsync()
         {
             string resolvedReason = ResolveReason();
+            _invocationCount++;
+            EnsureLogger();
+            _logger.Debug("Activity Restart trigger invoked.", LogFields.Of(
+                LogFields.Field("trigger", name),
+                LogFields.Field("gameObject", gameObject != null ? gameObject.name : string.Empty),
+                LogFields.Field("invocationSequence", _invocationCount),
+                LogFields.Field("source", DefaultSource),
+                LogFields.Field("reason", resolvedReason),
+                LogFields.Field("targetMode", targetActivity != null ? "ExplicitActivity" : "CurrentActivity"),
+                LogFields.Field("selectionMode", ResetSelectionMode.ToString()),
+                LogFields.Field("hasRuntimeBinding", HasActivityRestartRuntimeBinding),
+                LogFields.Field("requestInFlight", _requestInFlight)));
             if (_requestInFlight)
             {
+                _rejectedRequestCount++;
                 const string inFlightMessage = "Activity Restart ignored. This Activity Restart Trigger already has a request in flight.";
                 ActivityRestartResult ignored = ActivityRestartResult.Rejected(
                     ActivityRestartResultStatus.RejectedAlreadyInFlight,
@@ -114,12 +137,14 @@ namespace Immersive.Framework.ActivityRestart
                     resolvedReason,
                     inFlightMessage);
                 PublishCompleted(FlowRequestOutcome.Ignored, resolvedReason, inFlightMessage, ignored, true, default, default);
+                _logger.Warning("Activity Restart request rejected because another request is already in progress.", LogFields.Field("invocationSequence", _invocationCount));
                 return ignored;
             }
 
             IActivityRestartRuntimePort activityRestartRuntime = _activityRestartRuntime;
             if (activityRestartRuntime == null)
             {
+                _rejectedRequestCount++;
                 const string unavailableMessage = "Activity Restart failed. Activity Restart runtime port is not bound.";
                 _activityRestartRuntimeBindingDiagnostic = "Activity Restart runtime port is not bound.";
                 ActivityRestartResult unavailable = ActivityRestartResult.Rejected(
@@ -130,10 +155,15 @@ namespace Immersive.Framework.ActivityRestart
                     resolvedReason,
                     unavailableMessage);
                 PublishCompleted(FlowRequestOutcome.Failed, resolvedReason, unavailableMessage, unavailable, true, default, default);
+                _logger.Error("Activity Restart request rejected because the runtime port is not bound.", LogFields.Of(
+                    LogFields.Field("invocationSequence", _invocationCount),
+                    LogFields.Field("correctiveAction", "Ensure this trigger is present in roots processed by the official Activity Restart product binding.")));
                 return unavailable;
             }
 
+            _acceptedRequestCount++;
             _requestInFlight = true;
+            _logger.Debug("Activity Restart request accepted.", LogFields.Field("requestSequence", _acceptedRequestCount));
             PublishSubmitted(resolvedReason);
             ActivityRestartRuntimeResult runtimeResult;
             try
@@ -168,6 +198,7 @@ namespace Immersive.Framework.ActivityRestart
             ResetExecutionResult resetExecutionResult = runtimeResult.ResetExecutionResult;
             string completedMessage = result != null ? result.Message : "Activity Restart failed. Runtime port returned no result.";
             PublishCompleted(MapOutcome(result), resolvedReason, completedMessage, result, result != null, selectionResolution, resetExecutionResult);
+            LogCompletedResult(result);
             return result;
         }
 
@@ -204,6 +235,37 @@ namespace Immersive.Framework.ActivityRestart
 #endif
 
         private string ResolveReason() => reason.NormalizeTextOrFallback(DefaultReason);
+
+        private void EnsureLogger() => _logger ??= FrameworkLogger.Create<ActivityRestartTrigger>();
+
+        private void LogCompletedResult(ActivityRestartResult result)
+        {
+            if (result == null)
+            {
+                _logger.Error("Activity Restart failed.", LogFields.Field("diagnostic", "Runtime port returned no result."));
+                return;
+            }
+
+            LogField[] fields = LogFields.Of(
+                LogFields.Field("status", result.Status.ToString()),
+                LogFields.Field("activity", result.ActivityName),
+                LogFields.Field("resetStatus", result.ResetStatus.ToString()),
+                LogFields.Field("resetSubjects", result.ResetSubjectCount),
+                LogFields.Field("resetParticipants", result.ResetParticipantCount),
+                LogFields.Field("clearStatus", result.ClearStatus),
+                LogFields.Field("reentryStatus", result.ReenterStatus),
+                LogFields.Field("blockingIssues", result.ResetBlockingIssueCount),
+                LogFields.Field("source", result.Source),
+                LogFields.Field("reason", result.Reason));
+            if (result.Succeeded || result.CompletedWithWarnings)
+            {
+                _logger.Info("Activity Restart completed.", fields);
+                _logger.Debug("Activity Restart diagnostics. " + result.ToDiagnosticString(), fields);
+                return;
+            }
+
+            _logger.Error("Activity Restart failed.", fields);
+        }
 
         private static string ResolveActivityName(ActivityAsset activity) =>
             activity != null ? activity.ActivityName.NormalizeTextOrFallback(activity.name) : string.Empty;

@@ -111,10 +111,13 @@ namespace Immersive.Framework.PlayerParticipation
                 ? CurrentEvidence
                 : PreviousEvidence;
             return $"operation='{Operation}' status='{Status}' " +
-                $"slot='{evidence.PlayerSlotId.StableText}' " +
+                $"slot='{(evidence.PlayerSlotId.IsValid ? evidence.PlayerSlotId.StableText : "<invalid>")}' " +
+                $"slotValid='{evidence.PlayerSlotId.IsValid}' " +
                 $"origin='{evidence.AssignmentOrigin}' " +
-                $"assignment='{evidence.AssignmentToken.StableText}' " +
-                $"binding='{evidence.HostBindingIdentity.StableText}' " +
+                $"assignment='{(evidence.AssignmentToken.IsValid ? evidence.AssignmentToken.StableText : "<invalid>")}' " +
+                $"assignmentValid='{evidence.AssignmentToken.IsValid}' " +
+                $"binding='{(evidence.HostBindingIdentity.IsValid ? evidence.HostBindingIdentity.StableText : "<invalid>")}' " +
+                $"bindingValid='{evidence.HostBindingIdentity.IsValid}' " +
                 $"hostReferenceRetained='{evidence.HasRetainedHostReference}' " +
                 $"hostAvailable='{evidence.HostIsAvailable}' " +
                 $"source='{Source}' reason='{Reason}' message='{Message}'";
