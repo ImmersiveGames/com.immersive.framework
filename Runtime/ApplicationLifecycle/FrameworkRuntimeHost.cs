@@ -50,6 +50,7 @@ namespace Immersive.Framework.ApplicationLifecycle
         private PauseTimeScaleRuntime _pauseTimeScaleRuntime;
         private PauseSurfaceRuntime _pauseSurfaceRuntime;
         private SceneLifecycleRuntime _sceneLifecycleRuntime;
+        private ResetProductBindingSceneLifecycleParticipant _resetProductBindingSceneLifecycleParticipant;
         private PauseProductBindingRuntimeContext _pauseProductBindingRuntime;
         private PauseActivityBindingRuntimeContext _pauseActivityBindingRuntime;
         private PauseActivityBindingRuntimeHostModule _pauseActivityBindingModule;
@@ -306,6 +307,7 @@ namespace Immersive.Framework.ApplicationLifecycle
             var sceneResult = declarationSource.CollectScoped(context);
             _objectEntryRuntimeContextSnapshot = sceneResult.ToRuntimeContextSnapshot(source);
             _objectEntryRuntimeContextRevision++;
+            _resetProductBindingSceneLifecycleParticipant?.RefreshSubjectRegistrationsForCurrentOwners(source);
             return _objectEntryRuntimeContextSnapshot;
         }
 
@@ -1262,10 +1264,14 @@ namespace Immersive.Framework.ApplicationLifecycle
             _pauseActivityBindingModule = new PauseActivityBindingRuntimeHostModule(
                 _pauseActivityBindingRuntime,
                 _pauseProductBindingRuntime);
+            _resetProductBindingSceneLifecycleParticipant =
+                new ResetProductBindingSceneLifecycleParticipant(
+                    (IResetRegistrationRuntimePort)this,
+                    (IResetExecutionRuntimePort)this,
+                    (IResetSelectionExecutionRuntimePort)this);
             _sceneLifecycleRuntime = new SceneLifecycleRuntime(
                 new PauseProductBindingSceneLifecycleParticipant(_pauseProductBindingRuntime),
-                new ObjectResetProductBindingSceneLifecycleParticipant(
-                    (IResetExecutionRuntimePort)this));
+                _resetProductBindingSceneLifecycleParticipant);
             _runtimeSessionScopeResult = CreateSessionScopeRoot(application, "FrameworkRuntimeHost", "session-start");
             _state = FrameworkRuntimeState.Empty(application);
         }

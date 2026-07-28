@@ -272,6 +272,52 @@ namespace Immersive.Framework.Reset.Unity
             return true;
         }
 
+        internal bool RefreshRegistrationForCurrentOwner(string reason)
+        {
+            if (!registerOnEnable)
+            {
+                return true;
+            }
+
+            IResetRegistrationRuntimePort runtime = _resetRegistrationRuntime;
+            if (runtime == null)
+            {
+                return RegisterWithCurrentHost(reason);
+            }
+
+            bool ownerAvailable = runtime.TryResolveCurrentResetOwner(
+                scope,
+                out RuntimeContentOwner currentOwner,
+                out _);
+            if (!ownerAvailable)
+            {
+                if (IsRegistered)
+                {
+                    if (!ClearRegistration(reason + ":owner-unavailable"))
+                    {
+                        return false;
+                    }
+                }
+
+                return RegisterWithCurrentHost(reason);
+            }
+
+            if (IsRegistered && _subject.Owner.Equals(currentOwner))
+            {
+                return true;
+            }
+
+            if (IsRegistered)
+            {
+                if (!ClearRegistration(reason + ":owner-changed"))
+                {
+                    return false;
+                }
+            }
+
+            return RegisterWithCurrentHost(reason);
+        }
+
         public bool ClearRegistration()
         {
             return ClearRegistration("manual");
