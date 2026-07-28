@@ -47,6 +47,9 @@ namespace Immersive.Framework.PlayerParticipation
         private RouteAsset activityLifecycleRouteContext;
         private ActivityAsset activityLifecycleActivityContext;
         private string diagnostic = "Scene Local Player admission runtime is not initialized.";
+        private SceneLocalPlayerAdmissionDiagnosticsSnapshot lastDiagnostics =
+            SceneLocalPlayerAdmissionDiagnosticsSnapshot.Empty(
+                "No Scene-Provided Player admission operation has been recorded.");
         private bool shuttingDown;
 
         internal bool IsReady =>
@@ -58,6 +61,7 @@ namespace Immersive.Framework.PlayerParticipation
         internal int BoundAuthoringCount => boundAuthoring.Count;
         internal int ActiveAdmissionCount => runtime?.ActiveAdmissionCount ?? 0;
         internal PlayerParticipationRuntimeContext ParticipationContext => participationContext;
+        internal SceneLocalPlayerAdmissionDiagnosticsSnapshot LastDiagnostics => lastDiagnostics;
 
         internal void SetActivityLifecycleContext(
             RouteAsset route,
@@ -178,6 +182,9 @@ namespace Immersive.Framework.PlayerParticipation
                         : diagnostic);
             }
 
+            bool hadActiveAdmission = runtime.TryGetActiveToken(
+                authoring,
+                out _);
             SceneLocalPlayerAdmissionRuntimeResult result = runtime.TryAdmit(
                 authoring,
                 assignmentOwner,
@@ -215,6 +222,7 @@ namespace Immersive.Framework.PlayerParticipation
                 }
             }
 
+            RecordOperation(result, hadActiveAdmission, false);
             diagnostic = result.ToDiagnosticString();
             authoring.SetRuntimeResult(result, diagnostic);
             return result;
@@ -243,6 +251,7 @@ namespace Immersive.Framework.PlayerParticipation
                 token,
                 source,
                 reason);
+            RecordOperation(result, token.IsValid, true);
             diagnostic = result.ToDiagnosticString();
             authoring.SetRuntimeResult(result, diagnostic);
             return result;
@@ -271,6 +280,7 @@ namespace Immersive.Framework.PlayerParticipation
                 expectedToken,
                 source,
                 reason);
+            RecordOperation(result, expectedToken.IsValid, true);
             diagnostic = result.ToDiagnosticString();
             authoring.SetRuntimeResult(result, diagnostic);
             return result;
@@ -569,6 +579,7 @@ namespace Immersive.Framework.PlayerParticipation
                     token,
                     nameof(SceneLocalPlayerAdmissionRuntimeHostModule),
                     "authoring-destroyed-best-effort-release");
+                RecordOperation(result, true, true);
                 diagnostic = result.ToDiagnosticString();
             }
 
@@ -852,11 +863,12 @@ namespace Immersive.Framework.PlayerParticipation
 
                 if (runtime != null && runtime.TryGetActiveToken(authoring, out SceneLocalPlayerAdmissionToken token))
                 {
-                    TryReleaseWithHostEvidence(
+                    SceneLocalPlayerAdmissionRuntimeResult result = TryReleaseWithHostEvidence(
                         authoring,
                         token,
                         nameof(SceneLocalPlayerAdmissionRuntimeHostModule),
                         "runtime-host-shutdown-best-effort-release");
+                    RecordOperation(result, true, true);
                 }
 
                 authoring.UnbindRuntime(this, "Session Scene Local Player admission runtime was released.");
@@ -870,6 +882,50 @@ namespace Immersive.Framework.PlayerParticipation
             participationContext = null;
             runtimeHost = null;
             diagnostic = "Session Scene Local Player admission runtime was released.";
+        }
+
+        private void RecordOperation(
+            SceneLocalPlayerAdmissionRuntimeResult result,
+            bool hadActiveAdmission,
+            bool releaseRequested)
+        {
+            if (result == null)
+            {
+                return;
+            }
+
+            PlayerSlotId slot = result.Token.PlayerSlotId.IsValid
+                ? result.Token.PlayerSlotId
+                : result.CurrentSlot.PlayerSlotId.IsValid
+                    ? result.CurrentSlot.PlayerSlotId
+                    : result.PreviousSlot.PlayerSlotId;
+            ActorId actor = result.Authoring != null &&
+                result.Authoring.SceneLogicalPlayerActor != null
+                    ? result.Authoring.SceneLogicalPlayerActor.ActorId
+                    : default;
+            bool hostEvidencePresent = slot.IsValid &&
+                hostEvidenceOwner != null &&
+                hostEvidenceOwner.TryGetRetainedHostEvidence(slot, out _);
+            PlayerParticipationSnapshot participation =
+                participationContext != null
+                    ? participationContext.CreateSnapshot()
+                    : null;
+            lastDiagnostics = new SceneLocalPlayerAdmissionDiagnosticsSnapshot(
+                result.Operation,
+                result.Status,
+                result.Source,
+                result.Reason,
+                result.Message,
+                hadActiveAdmission,
+                releaseRequested,
+                result.Status == SceneLocalPlayerAdmissionRuntimeStatus.SucceededReleased,
+                result.Status == SceneLocalPlayerAdmissionRuntimeStatus.SucceededAlreadyReleased,
+                slot,
+                actor,
+                hostEvidencePresent,
+                result.Token.IsValid,
+                ActiveAdmissionCount,
+                participation != null ? participation.JoinedCount : 0);
         }
     }
 }

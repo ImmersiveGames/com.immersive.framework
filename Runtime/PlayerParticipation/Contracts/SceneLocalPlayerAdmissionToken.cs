@@ -43,7 +43,7 @@ namespace Immersive.Framework.PlayerParticipation
             JoinedSlotRevision >= 0;
 
         public string StableText => IsValid
-            ? $"{ContextId}:{OperationSequence}:{PlayerSlotId.StableText}:{JoinedSlotRevision}:{AssignmentToken.StableText}"
+            ? $"{ContextId}:{OperationSequence}:{PlayerSlotId.StableText}:{JoinedSlotRevision}:{(AssignmentToken.IsValid ? AssignmentToken.StableText : "<none>")}"
             : string.Empty;
 
         public bool Equals(SceneLocalPlayerAdmissionToken other)

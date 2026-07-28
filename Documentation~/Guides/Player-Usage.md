@@ -286,6 +286,25 @@ focused Play Mode admission/release passed
 
 The FIRSTGAME repository tracks the manual consumer proof separately. Source presence alone is not a Play Mode pass.
 
+### Release and persistent diagnostics
+
+Activity exit and Route exit release the Scene-Provided admission. Activity Restart
+performs that exit before a later reentry. Runtime teardown repeats the same release
+contract safely: an already released admission is an explicit idempotent result, not
+an error and never authorizes release of a different Host.
+
+During Gameplay, inspect the **Scene-Provided Player Composer** for the active
+admission, Host, Slot and Actor. After its scene unloads, select the persistent
+`FrameworkRuntimeHost` and open **Advanced / Debug**. The `Scene-Provided
+Admissions` projection records the last real operation, its source/reason/status,
+whether release succeeded or was already complete, the typed Slot/Actor when
+available, Host-evidence presence and the active/occupied counts after the operation.
+
+This projection is diagnostic only. It does not retain scene objects, assign Slots,
+admit Players or replace `PlayerParticipationRuntimeContext` authority. A missing
+Hierarchy object is not sufficient proof of release; the persistent diagnostic is
+the direct release evidence. `PlayerInput.playerIndex` is never a `PlayerSlotId`.
+
 ---
 
 ## Session-Persistent Logical Player

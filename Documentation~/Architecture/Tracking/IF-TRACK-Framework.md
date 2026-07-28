@@ -1,7 +1,7 @@
 # IF-TRACK — Immersive Framework
 
 Status: Active
-Last updated: 2026-07-25
+Last updated: 2026-07-28
 Package version: `1.0.0-preview.17`
 Plan: [IF-PLAN-Framework-Evolution.v1.md](../Plans/IF-PLAN-Framework-Evolution.v1.md)
 
@@ -38,6 +38,7 @@ history, not active navigation.
 | Runtime authority | Explicit narrow ports; no static host lookup | Closed | Bootstrap and internal host bindings | None in current scope | Preserve boundary | H2.4 user evidence: 10 focused cases passed |
 | Package hygiene | Remove superseded Pause/Input and UnityInputTarget paths | Closed | Source and QA migration delivered | None in current scope | Do not restore compatibility APIs | User evidence: compile, boot and focused regressions passed |
 | Player | One canonical P3 lane | Partial product | Provisioned Player; Scene-Provided prefab/composer authoring; Activity-content admission path; selection, admission and release contracts | Route Primary Scene admission; Session-Persistent source; multiplayer/reconnect; focused real-game runtime proof | Validate Route-scene runtime path before creating or changing code | Host and composer authoring PASS in FIRSTGAME; no Route-scene Play Mode admission claim |
+| PLAYER-DIAG-1 | Scene-Provided release diagnostics | Implemented / QA Pending / FIRSTGAME Pending | Total evidence formatting, host-scoped immutable last-operation projection and Advanced/Debug host view | Unity import, QA execution and focused FIRSTGAME teardown flows | Run the dedicated release/reentry matrix | No Unity execution in this implementation cut |
 | Camera | Request/output authority | Closed for current single-output scope | Recipe/Composer, output session/context and scoped requests | Split-screen/multiple outputs | Keep single-output boundary explicit | Prior QA/FIRSTGAME evidence recorded; not rerun |
 | Audio BGM adapter | Optional Route/Activity BGM semantics | Implemented experimental | Separate adapter assembly delegates playback to `com.immersive.audio` | Product maturity and current consumer proof | Preserve optional dependency boundary | Not rerun for docs cut |
 | Pause/InputMode | One product binding and one physical writer | Closed for current single-player scope | Running/paused posture, lifecycle release and Gate integration | Interactive Pause UI; multiplayer policy | Preserve canonical binding | User evidence includes Pause lifecycle/reentry |

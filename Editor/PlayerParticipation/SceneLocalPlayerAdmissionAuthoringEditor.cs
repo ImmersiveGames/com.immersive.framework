@@ -1,4 +1,6 @@
 using Immersive.Framework.PlayerParticipation;
+using Immersive.Framework.Editor.Common;
+using Immersive.Framework.Actors;
 using UnityEditor;
 using UnityEngine;
 
@@ -39,6 +41,8 @@ namespace Immersive.Framework.Editor.PlayerParticipation
                 (SceneLocalPlayerAdmissionAuthoring)target;
 
             DrawInspectorHeader();
+            FrameworkAuthoringInspectorGui.IntentSummary(
+                "Admit this scene-authored Player into the current Activity lifecycle.");
             DrawParticipation();
             DrawLogicalActor();
             DrawAdmission();
@@ -55,6 +59,7 @@ namespace Immersive.Framework.Editor.PlayerParticipation
 
             DrawActions(authoring);
             DrawStatus(authoring);
+            DrawRuntimeAdmission(authoring);
             DrawDebug(authoring);
         }
 
@@ -166,6 +171,24 @@ namespace Immersive.Framework.Editor.PlayerParticipation
             EditorGUILayout.HelpBox(
                 authoring.LastAuthoringDiagnostic,
                 MessageType.Error);
+        }
+
+        private static void DrawRuntimeAdmission(
+            SceneLocalPlayerAdmissionAuthoring authoring)
+        {
+            FrameworkAuthoringInspectorGui.Section("Runtime Admission");
+            using (new EditorGUI.DisabledScope(true))
+            {
+                EditorGUILayout.ObjectField("Scene Player Host", authoring.LocalPlayerHost, typeof(LocalPlayerHostAuthoring), true);
+                EditorGUILayout.ObjectField("Actor", authoring.SceneLogicalPlayerActor, typeof(PlayerActorDeclaration), true);
+                EditorGUILayout.TextField("Slot", authoring.PlayerSlotProfile != null ? authoring.PlayerSlotProfile.name : "<not configured>");
+                EditorGUILayout.LabelField("Admission", authoring.HasActiveAdmission ? "Admitted" : Application.isPlaying ? "Not admitted" : "Not Playing");
+                if (Application.isPlaying)
+                {
+                    EditorGUILayout.LabelField("Runtime", authoring.RuntimeReady ? "Ready" : "Unavailable");
+                    EditorGUILayout.HelpBox(authoring.RuntimeDiagnostic, authoring.RuntimeReady ? MessageType.Info : MessageType.Warning);
+                }
+            }
         }
 
         private void DrawDebug(

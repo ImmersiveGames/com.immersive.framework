@@ -1,6 +1,6 @@
-using System;
 using UnityEditor;
 using UnityEngine;
+using Immersive.Framework.Editor.Common;
 
 namespace Immersive.Framework.Editor.Reset
 {
@@ -17,7 +17,9 @@ namespace Immersive.Framework.Editor.Reset
                 return false;
             }
 
-            subjectId.stringValue = "reset.subject." + Guid.NewGuid().ToString("N");
+            subjectId.stringValue = FrameworkAuthoringSuggestionUtility.SuggestIdentity(
+                subjectId.serializedObject.targetObject,
+                "reset.subject");
             return true;
         }
 
@@ -28,7 +30,9 @@ namespace Immersive.Framework.Editor.Reset
                 return false;
             }
 
-            participantId.stringValue = "reset.participant." + Guid.NewGuid().ToString("N");
+            participantId.stringValue = FrameworkAuthoringSuggestionUtility.SuggestIdentity(
+                participantId.serializedObject.targetObject,
+                "reset.participant");
             return true;
         }
 
