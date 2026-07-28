@@ -22,16 +22,13 @@ namespace Immersive.Framework.PlayerParticipation
     public sealed class PlayerGameplayCameraAuthoring :
         MonoBehaviour
     {
-        [Header("Participation")]
         [SerializeField]
         private PlayerGameplayCameraRequiredness requiredness =
             PlayerGameplayCameraRequiredness.Optional;
-
-        [Header("Camera")]
+        
         [SerializeField]
         private CameraRigComposer cameraRig;
-
-        [Header("Arbitration")]
+        
         [SerializeField]
         private int precedence = 50;
 

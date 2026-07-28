@@ -1,5 +1,6 @@
 using Immersive.Framework.Camera;
 using Immersive.Framework.PlayerParticipation;
+using Immersive.Framework.GameFlow.Diagnostics;
 
 namespace Immersive.Framework.ApplicationLifecycle
 {
@@ -21,6 +22,45 @@ namespace Immersive.Framework.ApplicationLifecycle
         {
             playerActivityLifecycleAdmissionRuntime = runtime;
             ApplyPlayerActivityLifecycleAdmissionRuntime();
+        }
+
+        internal bool TryInstallGameFlowDiagnosticFaultPlan(
+            IGameFlowDiagnosticFaultPlan plan,
+            out string issue)
+        {
+            issue = string.Empty;
+            if (plan == null)
+            {
+                issue = "Game Flow diagnostic fault plan is required.";
+                return false;
+            }
+
+            if (_gameFlowRuntime == null ||
+                playerActivityLifecycleAdmissionRuntime is not ActivityPlayerLifecycleAdmissionRuntimeContext lifecycle)
+            {
+                issue = "FrameworkRuntimeHost has no canonical Game Flow lifecycle authority.";
+                return false;
+            }
+
+            if (_gameFlowRuntime.HasLifecycleRequestInFlight || lifecycle.HasActiveTransaction)
+            {
+                issue = "Game Flow diagnostic faults cannot be installed during an active lifecycle request or transaction.";
+                return false;
+            }
+
+            _gameFlowRuntime.SetDiagnosticFaultPlan(plan);
+            lifecycle.SetDiagnosticFaultPlan(plan);
+            return true;
+        }
+
+        internal void ClearGameFlowDiagnosticFaultPlan(IGameFlowDiagnosticFaultPlan plan)
+        {
+            if (_gameFlowRuntime == null ||
+                playerActivityLifecycleAdmissionRuntime is not ActivityPlayerLifecycleAdmissionRuntimeContext lifecycle)
+                return;
+
+            _gameFlowRuntime.SetDiagnosticFaultPlan(NoOpGameFlowDiagnosticFaultPlan.Instance);
+            lifecycle.SetDiagnosticFaultPlan(NoOpGameFlowDiagnosticFaultPlan.Instance);
         }
 
         private void ApplyPlayerActivityLifecycleAdmissionRuntime()

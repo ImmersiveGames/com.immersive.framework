@@ -60,7 +60,16 @@ namespace Immersive.Framework.GameFlow
 
         internal GameFlowRequestOperationKind OperationKind { get; }
 
-        public bool Succeeded => Kind == FrameworkActivityRequestKind.Succeeded;
+        public bool Succeeded =>
+            Kind == FrameworkActivityRequestKind.Succeeded;
+
+        public bool CommitBoundaryReached =>
+            Kind ==
+            FrameworkActivityRequestKind
+                .FailedCommittedTargetNotReady;
+
+        public bool DestinationAuthoritative =>
+            Succeeded || CommitBoundaryReached;
 
         public static FrameworkActivityRequestResult FailedInvalidConfig(
             string message,
@@ -97,6 +106,32 @@ namespace Immersive.Framework.GameFlow
                 source,
                 reason,
                 default);
+        }
+
+        internal static FrameworkActivityRequestResult
+            FailedCommittedTargetNotReady(
+                string message,
+                ActivityAsset targetActivity,
+                string source,
+                string reason,
+                ActivityFlowStartResult activityFlowResult,
+                FrameworkTransitionDiagnostics transitionDiagnostics = default,
+                TransitionGateDiagnostics transitionGateDiagnostics = default,
+                ActivityVisualTransitionMode activityTransitionMode =
+                    ActivityVisualTransitionMode.Seamless)
+        {
+            return new FrameworkActivityRequestResult(
+                FrameworkActivityRequestKind
+                    .FailedCommittedTargetNotReady,
+                message,
+                targetActivity,
+                source,
+                reason,
+                activityFlowResult,
+                transitionDiagnostics,
+                transitionGateDiagnostics,
+                activityTransitionMode,
+                GameFlowRequestOperationKind.Activity);
         }
 
         public static FrameworkActivityRequestResult IgnoredAlreadyActive(

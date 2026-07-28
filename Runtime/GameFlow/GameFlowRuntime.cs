@@ -14,6 +14,7 @@ using Immersive.Framework.TransitionEffects;
 using Immersive.Framework.Loading;
 using Immersive.Framework.Common;
 using Immersive.Framework.PlayerParticipation;
+using Immersive.Framework.GameFlow.Diagnostics;
 using Immersive.Framework.Pause;
 using Immersive.Framework.SceneLifecycle;
 using UnityEngine;
@@ -491,6 +492,19 @@ namespace Immersive.Framework.GameFlow
                     activityTransitionMode);
             }
 
+            if (TryConsumeDiagnosticFault(
+                    Diagnostics.GameFlowDiagnosticFaultCheckpoint.BeforeLoadingPresentation,
+                    "RequestActivity", string.Empty, string.Empty,
+                    out string loadingDiagnostic))
+            {
+                return FrameworkActivityRequestResult.FailedInvalidConfig(
+                    loadingDiagnostic,
+                    targetActivity,
+                    resolvedSource,
+                    resolvedReason,
+                    activityTransitionMode);
+            }
+
             ActivityPlayerLifecycleAdmissionResult playerAdmissionPreparation =
                 PrepareActivityPlayerLifecycleAdmission(
                     previousActivity,
@@ -572,6 +586,43 @@ namespace Immersive.Framework.GameFlow
                 if (afterActivityLifecycle != null)
                 {
                     await afterActivityLifecycle();
+                }
+
+                if (CanConsumeCommittedTargetNotReadyFault(
+                        targetActivity,
+                        activityFlowResult,
+                        playerAdmissionAuthorization,
+                        out string committedFaultIssue) &&
+                    TryConsumeDiagnosticFault(
+                        GameFlowDiagnosticFaultCheckpoint.AfterCommitBeforeTargetReadiness,
+                        "RequestActivity",
+                        playerAdmissionAuthorization.CurrentSnapshot.Token.IsValid
+                            ? playerAdmissionAuthorization.CurrentSnapshot.Token.ToString()
+                            : string.Empty,
+                        string.Empty,
+                        out string committedFaultDiagnostic))
+                {
+                    transitionGateDiagnostics = ReleaseTransitionGate(
+                        transitionGateMode, transitionGateSnapshot);
+                    var committedTransitionDiagnostics =
+                        new FrameworkTransitionDiagnostics(
+                            TransitionScope.Activity,
+                            transitionBefore,
+                            default);
+                    string diagnostic =
+                        committedFaultDiagnostic.NormalizeTextOrFallback(
+                            committedFaultIssue);
+
+                    return FrameworkActivityRequestResult
+                        .FailedCommittedTargetNotReady(
+                            diagnostic,
+                            targetActivity,
+                            resolvedSource,
+                            resolvedReason,
+                            activityFlowResult,
+                            committedTransitionDiagnostics,
+                            transitionGateDiagnostics,
+                            activityTransitionMode);
                 }
 
                 var transitionAfter = await ExecuteActivityTransitionAsync(
@@ -1282,6 +1333,51 @@ namespace Immersive.Framework.GameFlow
         private Task<RouteLifecycleStartResult> StartRouteCoreAsync(RouteAsset route, string source, string reason)
         {
             return StartRouteCoreAsync(route, source, reason, NoOpFrameworkLoadingProgressReporter.Instance);
+        }
+
+        private bool CanConsumeCommittedTargetNotReadyFault(
+            ActivityAsset targetActivity,
+            ActivityFlowStartResult activityFlowResult,
+            ActivityPlayerLifecycleAdmissionResult authorization,
+            out string issue)
+        {
+            issue = string.Empty;
+            if (targetActivity == null || !targetActivity.HasValidActivityId ||
+                !ReferenceEquals(_routeLifecycleRuntime.CurrentActivity, targetActivity))
+            {
+                issue = "Committed target diagnostic fault requires the published target Activity.";
+                return false;
+            }
+
+            if (authorization == null || authorization.NotRequired ||
+                authorization.CurrentSnapshot == null ||
+                !authorization.CurrentSnapshot.Token.IsValid ||
+                activityPlayerLifecycleAdmissionRuntime == null)
+            {
+                issue = "Committed target diagnostic fault requires a Player lifecycle authorization.";
+                return false;
+            }
+
+            ActivityPlayerLifecycleAdmissionSnapshot lifecycle =
+                activityPlayerLifecycleAdmissionRuntime.CreateSnapshot();
+            RuntimeContentOwner targetOwner = RuntimeContentOwner.Activity(
+                targetActivity.ActivityId.StableText,
+                targetActivity.ActivityName);
+            if (lifecycle == null || !lifecycle.IsCommitted ||
+                lifecycle.IsRollbackAvailable || lifecycle.TargetOwner != targetOwner ||
+                lifecycle.IsReadyToCommit || lifecycle.IsTransitionAuthorized)
+            {
+                issue = "Committed target diagnostic fault requires an irreversible Player lifecycle commit for the published target.";
+                return false;
+            }
+
+            if (!ReferenceEquals(activityFlowResult.Activity, targetActivity))
+            {
+                issue = "Committed target diagnostic fault requires target Activity flow evidence.";
+                return false;
+            }
+
+            return true;
         }
 
         private Task<RouteLifecycleStartResult> StartRouteCoreAsync(

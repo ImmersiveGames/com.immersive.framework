@@ -27,6 +27,15 @@ namespace Immersive.Framework.GameFlow
                         "Target Route Startup Activity does not require GameplayReady.");
             }
 
+            if (TryConsumeDiagnosticFault(
+                    Diagnostics.GameFlowDiagnosticFaultCheckpoint.LifecycleRuntimeAvailability,
+                    "PrepareRouteStartupActivityPlayerAdmission", string.Empty, string.Empty,
+                    out string diagnostic))
+            {
+                return ActivityPlayerLifecycleAdmissionResult.RejectedRuntimeUnavailable(
+                    "PrepareRouteStartupActivityPlayerAdmission", source, reason, diagnostic);
+            }
+
             if (activityPlayerLifecycleAdmissionRuntime == null)
             {
                 return ActivityPlayerLifecycleAdmissionResult.RejectedRuntimeUnavailable(

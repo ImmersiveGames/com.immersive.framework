@@ -5,6 +5,7 @@ using Immersive.Framework.Authoring;
 using Immersive.Framework.Common;
 using Immersive.Framework.PlayerSlots;
 using Immersive.Framework.RuntimeContent;
+using Immersive.Framework.GameFlow.Diagnostics;
 
 namespace Immersive.Framework.PlayerParticipation
 {
@@ -61,6 +62,14 @@ namespace Immersive.Framework.PlayerParticipation
 
         internal int Revision => revision;
         internal bool HasActiveGroup => active != null;
+
+        internal void SetDiagnosticFaultPlan(IGameFlowDiagnosticFaultPlan plan)
+        {
+            if (promotionRuntime is PlayerGameplayChainHandoffRuntimeContext handoff)
+            {
+                handoff.SetDiagnosticFaultPlan(plan);
+            }
+        }
 
         internal static bool TryCreate(
             IPlayerGameplayChainPromotionRuntime promotionRuntime,

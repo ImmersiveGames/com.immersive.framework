@@ -28,6 +28,11 @@ namespace Immersive.Framework.PlayerParticipation
             string source,
             string reason);
 
+        ActivityPlayerLifecycleAdmissionResult TryRetryCommitCleanup(
+            ActivityPlayerLifecycleAdmissionToken expectedTransaction,
+            string source,
+            string reason);
+
         ActivityPlayerLifecycleAdmissionResult TryRollback(
             ActivityPlayerLifecycleAdmissionToken expectedTransaction,
             string source,

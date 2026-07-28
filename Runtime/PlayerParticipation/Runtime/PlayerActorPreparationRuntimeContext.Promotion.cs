@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using Immersive.Framework.Actors;
 using Immersive.Framework.Common;
 using Immersive.Framework.PlayerSlots;
+using Immersive.Framework.GameFlow.Diagnostics;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
@@ -232,6 +233,7 @@ namespace Immersive.Framework.PlayerParticipation
             PlayerActorPreparationHandoff handoff,
             string source,
             string reason,
+            IGameFlowDiagnosticFaultPlan diagnosticFaultPlan,
             out string issue)
         {
             issue = string.Empty;
@@ -261,6 +263,22 @@ namespace Immersive.Framework.PlayerParticipation
                 }
 
                 handoff.CandidateOwnershipCompleted = true;
+            }
+
+            GameFlowDiagnosticFaultDecision decision =
+                (diagnosticFaultPlan ?? NoOpGameFlowDiagnosticFaultPlan.Instance)
+                .Evaluate(new GameFlowDiagnosticFaultRequest(
+                    GameFlowDiagnosticFaultCheckpoint.AfterCandidateOwnershipBeforePreviousCleanup,
+                    "CommitPlayerActorPreparationHandoff",
+                    handoff.CurrentPreparation.Token.IsValid
+                        ? handoff.CurrentPreparation.Token.ToString()
+                        : string.Empty,
+                    handoff.PlayerSlotId.IsValid ? handoff.PlayerSlotId.StableText : string.Empty));
+            if (handoff.CandidateOwnershipCompleted &&
+                !handoff.PreviousActorReleased && decision.ShouldFail)
+            {
+                issue = decision.Diagnostic;
+                return false;
             }
 
             if (!handoff.PreviousActorReleased)

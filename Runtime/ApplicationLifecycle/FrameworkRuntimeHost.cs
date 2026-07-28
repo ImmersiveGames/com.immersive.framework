@@ -730,10 +730,13 @@ namespace Immersive.Framework.ApplicationLifecycle
                 ShowLoadingAfterTransitionGate,
                 HideLoadingBeforeTransitionRelease,
                 loadingProgressReporter);
-            if (result.Succeeded)
+            if (result.Succeeded || result.DestinationAuthoritative)
             {
-                _state = FrameworkRuntimeState.FromActivityRequestResult(_state, result);
-                RefreshObjectEntryRuntimeContextSnapshot($"FrameworkRuntimeHost:activity-request:{NormalizeLifecycleSource(source)}");
+                _state = FrameworkRuntimeState.FromActivityRequestResult(
+                    _state,
+                    result);
+                RefreshObjectEntryRuntimeContextSnapshot(
+                    $"FrameworkRuntimeHost:activity-request:{NormalizeLifecycleSource(source)}");
             }
             else if (result.Kind == FrameworkActivityRequestKind.IgnoredAlreadyActive)
             {
@@ -749,7 +752,7 @@ namespace Immersive.Framework.ApplicationLifecycle
                     _loadingSurfaceRuntime.AdapterCount,
                     _loadingSurfaceRuntime.ProgressSupported,
                     loadingProgressReporter.LastProgress)
-                : !result.Succeeded
+                : !result.Succeeded && !result.DestinationAuthoritative
                     ? FrameworkLoadingDiagnostics.NotExecutedRequestRejected()
                     : CreateSkippedActivityLoadingDiagnostics(result);
 
@@ -1347,7 +1350,9 @@ namespace Immersive.Framework.ApplicationLifecycle
                 return false;
             }
 
-            if (_gameFlowRuntime == null || targetActivity == null)
+            if (_gameFlowRuntime == null ||
+                targetActivity == null ||
+                !targetActivity.HasValidActivityId)
             {
                 return false;
             }

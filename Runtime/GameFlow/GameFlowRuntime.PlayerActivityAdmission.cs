@@ -1,6 +1,7 @@
 using Immersive.Framework.ActivityFlow;
 using Immersive.Framework.Authoring;
 using Immersive.Framework.PlayerParticipation;
+using Immersive.Framework.GameFlow.Diagnostics;
 
 namespace Immersive.Framework.GameFlow
 {
@@ -8,11 +9,31 @@ namespace Immersive.Framework.GameFlow
     {
         private IActivityPlayerLifecycleAdmissionRuntime
             activityPlayerLifecycleAdmissionRuntime;
+        private IGameFlowDiagnosticFaultPlan diagnosticFaultPlan =
+            NoOpGameFlowDiagnosticFaultPlan.Instance;
 
         internal void SetActivityPlayerLifecycleAdmissionRuntime(
             IActivityPlayerLifecycleAdmissionRuntime runtime)
         {
             activityPlayerLifecycleAdmissionRuntime = runtime;
+        }
+
+        internal void SetDiagnosticFaultPlan(IGameFlowDiagnosticFaultPlan plan)
+        {
+            diagnosticFaultPlan = plan ?? NoOpGameFlowDiagnosticFaultPlan.Instance;
+        }
+
+        private bool TryConsumeDiagnosticFault(
+            GameFlowDiagnosticFaultCheckpoint checkpoint,
+            string operation,
+            string transaction,
+            string slot,
+            out string diagnostic)
+        {
+            GameFlowDiagnosticFaultDecision decision = diagnosticFaultPlan.Evaluate(
+                new GameFlowDiagnosticFaultRequest(checkpoint, operation, transaction, slot));
+            diagnostic = decision.Diagnostic;
+            return decision.ShouldFail;
         }
 
         private ActivityPlayerLifecycleAdmissionResult
@@ -22,6 +43,14 @@ namespace Immersive.Framework.GameFlow
                 string source,
                 string reason)
         {
+            if (TryConsumeDiagnosticFault(
+                    GameFlowDiagnosticFaultCheckpoint.LifecycleRuntimeAvailability,
+                    "PrepareSameRouteActivityPlayerAdmission", string.Empty, string.Empty,
+                    out string diagnostic))
+            {
+                return ActivityPlayerLifecycleAdmissionResult.RejectedRuntimeUnavailable(
+                    "PrepareSameRouteActivityPlayerAdmission", source, reason, diagnostic);
+            }
             if (activityPlayerLifecycleAdmissionRuntime == null)
             {
                 if (!RequiresGameplayReady(targetActivity))

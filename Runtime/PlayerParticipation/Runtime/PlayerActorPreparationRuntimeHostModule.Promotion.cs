@@ -1,5 +1,6 @@
 using Immersive.Framework.Actors;
 using Immersive.Framework.PlayerSlots;
+using Immersive.Framework.GameFlow.Diagnostics;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
@@ -94,6 +95,7 @@ namespace Immersive.Framework.PlayerParticipation
             PlayerActorPreparationHandoff handoff,
             string source,
             string reason,
+            IGameFlowDiagnosticFaultPlan diagnosticFaultPlan,
             out string issue)
         {
             if (preparationContext == null)
@@ -106,6 +108,7 @@ namespace Immersive.Framework.PlayerParticipation
                 handoff,
                 source,
                 reason,
+                diagnosticFaultPlan,
                 out issue);
             diagnostic = succeeded
                 ? "Player Actor preparation handoff committed and previous Actor released."

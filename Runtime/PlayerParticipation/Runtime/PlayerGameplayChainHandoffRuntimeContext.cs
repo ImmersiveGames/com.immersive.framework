@@ -7,6 +7,7 @@ using Immersive.Framework.Camera;
 using Immersive.Framework.Common;
 using Immersive.Framework.PlayerSlots;
 using Immersive.Framework.UnityInput;
+using Immersive.Framework.GameFlow.Diagnostics;
 
 namespace Immersive.Framework.PlayerParticipation
 {
@@ -69,6 +70,8 @@ namespace Immersive.Framework.PlayerParticipation
         private readonly Dictionary<PlayerSlotId, PlayerGameplayChainHandoffSnapshot>
             committedHandoffs =
                 new Dictionary<PlayerSlotId, PlayerGameplayChainHandoffSnapshot>();
+        private IGameFlowDiagnosticFaultPlan diagnosticFaultPlan =
+            NoOpGameFlowDiagnosticFaultPlan.Instance;
 
         private int revision = 1;
         private int handoffSequence;
@@ -99,6 +102,11 @@ namespace Immersive.Framework.PlayerParticipation
         internal string SessionContextId => sessionContextId;
         internal int Revision => revision;
         internal int ActiveHandoffCount => active.Count;
+
+        internal void SetDiagnosticFaultPlan(IGameFlowDiagnosticFaultPlan plan)
+        {
+            diagnosticFaultPlan = plan ?? NoOpGameFlowDiagnosticFaultPlan.Instance;
+        }
 
         internal static bool TryCreate(
             PlayerActorPreparationRuntimeHostModule preparationModule,
@@ -599,6 +607,7 @@ namespace Immersive.Framework.PlayerParticipation
                     record.PreparationHandoff,
                     resolvedSource,
                     resolvedReason,
+                    diagnosticFaultPlan,
                     out string commitIssue))
             {
                 bool ownershipCompleted =
@@ -777,6 +786,7 @@ namespace Immersive.Framework.PlayerParticipation
                     record.PreparationHandoff,
                     source,
                     reason,
+                    diagnosticFaultPlan,
                     out issue))
             {
                 record.Snapshot = Snapshot(

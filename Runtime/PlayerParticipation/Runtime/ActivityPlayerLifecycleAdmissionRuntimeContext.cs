@@ -5,6 +5,7 @@ using Immersive.Framework.Authoring;
 using Immersive.Framework.Common;
 using Immersive.Framework.PlayerSlots;
 using Immersive.Framework.RuntimeContent;
+using Immersive.Framework.GameFlow.Diagnostics;
 
 namespace Immersive.Framework.PlayerParticipation
 {
@@ -67,6 +68,8 @@ namespace Immersive.Framework.PlayerParticipation
         private readonly PlayerGameplayAdmissionRuntimeContext admissionContext;
         private readonly PlayerGameplayChainHandoffRuntimeContext handoffContext;
         private readonly ActivityPlayerHandoffGroupRuntimeContext groupContext;
+        private IGameFlowDiagnosticFaultPlan diagnosticFaultPlan =
+            NoOpGameFlowDiagnosticFaultPlan.Instance;
 
         private TransactionRecord active;
         private ActivityPlayerLifecycleAdmissionSnapshot completed;
@@ -131,6 +134,29 @@ namespace Immersive.Framework.PlayerParticipation
                 handoffContext,
                 groupContext);
             return true;
+        }
+
+        internal void SetDiagnosticFaultPlan(IGameFlowDiagnosticFaultPlan plan)
+        {
+            diagnosticFaultPlan = plan ?? NoOpGameFlowDiagnosticFaultPlan.Instance;
+            groupContext.SetDiagnosticFaultPlan(diagnosticFaultPlan);
+        }
+
+        internal bool HasActiveTransaction => active != null;
+
+        private bool TryConsumeDiagnosticFault(
+            GameFlowDiagnosticFaultCheckpoint checkpoint,
+            string operation,
+            string transaction,
+            PlayerSlotId slot,
+            out string diagnostic)
+        {
+            GameFlowDiagnosticFaultDecision decision = diagnosticFaultPlan.Evaluate(
+                new GameFlowDiagnosticFaultRequest(
+                    checkpoint, operation, transaction,
+                    slot.IsValid ? slot.StableText : string.Empty));
+            diagnostic = decision.Diagnostic;
+            return decision.ShouldFail;
         }
 
         public ActivityPlayerLifecycleAdmissionResult TryPrepareSameRouteSwitch(
@@ -342,6 +368,22 @@ namespace Immersive.Framework.PlayerParticipation
                         $"Projected Slot '{slot.PlayerSlotId.StableText}' has contradictory GameplayReady/P3J ownership evidence.");
                 }
 
+                bool tokenFault = TryConsumeDiagnosticFault(
+                    GameFlowDiagnosticFaultCheckpoint.CurrentPreparationTokenValidation,
+                    Operation, string.Empty, slot.PlayerSlotId,
+                    out string tokenDiagnostic);
+                bool ownerFault = TryConsumeDiagnosticFault(
+                    GameFlowDiagnosticFaultCheckpoint.CurrentOwnershipValidation,
+                    Operation, string.Empty, slot.PlayerSlotId,
+                    out string ownerDiagnostic);
+                if (tokenFault || ownerFault)
+                {
+                    return Reject(
+                        ActivityPlayerLifecycleAdmissionStatus.RejectedCurrentGameplayNotReady,
+                        Operation, resolvedSource, resolvedReason,
+                        string.IsNullOrEmpty(tokenDiagnostic) ? ownerDiagnostic : tokenDiagnostic);
+                }
+
                 transferableSlotCount++;
             }
 
@@ -471,6 +513,16 @@ namespace Immersive.Framework.PlayerParticipation
             for (int index = 0; index < record.Slots.Count; index++)
             {
                 SlotRecord slot = record.Slots[index];
+                if (TryConsumeDiagnosticFault(
+                        GameFlowDiagnosticFaultCheckpoint.BeforeCandidateStaging,
+                        Operation, record.Token.ToString(), slot.Slot.PlayerSlotId,
+                        out string stagingDiagnostic))
+                {
+                    return FailAndCleanup(
+                        record,
+                        ActivityPlayerLifecycleAdmissionStatus.FailedCandidateStaging,
+                        Operation, stagingDiagnostic, true);
+                }
                 PlayerActorCandidateStageResult stage =
                     candidateModule.TryStageCandidate(
                         targetContext,
@@ -990,6 +1042,115 @@ namespace Immersive.Framework.PlayerParticipation
                 Operation,
                 previous,
                 lastSnapshot,
+                record.Message);
+        }
+
+        public ActivityPlayerLifecycleAdmissionResult TryRetryCommitCleanup(
+            ActivityPlayerLifecycleAdmissionToken expectedTransaction,
+            string source,
+            string reason)
+        {
+            const string Operation =
+                "RetryActivityPlayerLifecycleCommitCleanup";
+            string resolvedSource = source.NormalizeTextOrFallback(
+                nameof(ActivityPlayerLifecycleAdmissionRuntimeContext));
+            string resolvedReason = reason.NormalizeTextOrFallback(
+                "retry-activity-player-lifecycle-commit-cleanup");
+
+            if (completed != null &&
+                completed.Token == expectedTransaction &&
+                completed.IsCompleted)
+            {
+                return Result(
+                    ActivityPlayerLifecycleAdmissionStatus
+                        .SucceededAlreadyCommitted,
+                    Operation,
+                    completed,
+                    completed,
+                    "Activity Player lifecycle commit cleanup is already complete.");
+            }
+
+            if (!TryResolveActive(
+                    expectedTransaction,
+                    out TransactionRecord record,
+                    out string issue))
+            {
+                return RejectCurrent(
+                    ActivityPlayerLifecycleAdmissionStatus
+                        .RejectedForeignOrStaleTransaction,
+                    Operation,
+                    resolvedSource,
+                    resolvedReason,
+                    issue);
+            }
+
+            ActivityPlayerLifecycleAdmissionSnapshot previous =
+                Snapshot(record);
+            if (record.State !=
+                    ActivityPlayerLifecycleAdmissionState
+                        .CommitCleanupPending ||
+                !record.CommitCleanupPending ||
+                !record.GroupToken.IsValid)
+            {
+                return Result(
+                    ActivityPlayerLifecycleAdmissionStatus
+                        .RejectedInvalidState,
+                    Operation,
+                    previous,
+                    previous,
+                    "Lifecycle commit-cleanup retry requires an active CommitCleanupPending transaction with a valid handoff group token.");
+            }
+
+            ActivityPlayerHandoffGroupResult retry =
+                groupContext.TryRetryCommitCleanup(
+                    record.GroupToken,
+                    resolvedSource,
+                    resolvedReason);
+            record.GroupSnapshot = retry?.CurrentSnapshot;
+
+            if (retry == null || !retry.Committed)
+            {
+                record.State =
+                    ActivityPlayerLifecycleAdmissionState
+                        .CommitCleanupPending;
+                record.CommitCleanupPending = true;
+                record.LastStatus =
+                    ActivityPlayerLifecycleAdmissionStatus
+                        .SucceededCommitCleanupPending;
+                record.Message =
+                    "Target Player ownership remains authoritative; previous Actor cleanup is still pending. " +
+                    (retry != null
+                        ? retry.ToDiagnosticString()
+                        : "Activity Player handoff group cleanup retry returned no result.");
+                lastSnapshot = Snapshot(record);
+                return Result(
+                    record.LastStatus,
+                    Operation,
+                    previous,
+                    lastSnapshot,
+                    record.Message);
+            }
+
+            record.CommitCleanupPending = false;
+            record.State =
+                ActivityPlayerLifecycleAdmissionState
+                    .CommittedAwaitingLifecycle;
+            record.LastStatus =
+                ActivityPlayerLifecycleAdmissionStatus
+                    .SucceededCommitted;
+            record.Message =
+                "Activity Player handoff group commit cleanup completed; lifecycle completion is being finalized.";
+            lastSnapshot = Snapshot(record);
+
+            TryCompleteLifecycle(record);
+
+            ActivityPlayerLifecycleAdmissionSnapshot current =
+                CreateSnapshot();
+            return Result(
+                record.LastStatus,
+                Operation,
+                previous,
+                current,
                 record.Message);
         }
 
