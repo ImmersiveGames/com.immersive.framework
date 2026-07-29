@@ -1904,6 +1904,20 @@ namespace Immersive.Framework.ApplicationLifecycle
         {
             RouteLifecycleStartResult routeLifecycle = result.RouteLifecycleResult;
             ActivityFlowStartResult activityFlow = routeLifecycle.ActivityFlowResult;
+            bool alreadyActive =
+                result.Kind == FrameworkRouteRequestKind.IgnoredAlreadyActive;
+            RouteAsset currentRoute = alreadyActive
+                ? _state.CurrentRoute
+                : result.TargetRoute;
+            ActivityAsset currentActivity = alreadyActive
+                ? _state.CurrentActivity
+                : activityFlow.ActivityState.Activity;
+            string currentActivityState = alreadyActive
+                ? _state.ActivityState.DiagnosticStatus
+                : activityFlow.ActivityState.DiagnosticStatus;
+            string currentActivityReadiness = alreadyActive
+                ? _state.ActivityReadinessState.DiagnosticStatus
+                : activityFlow.ActivityReadinessState.DiagnosticStatus;
             return LogFields.Of(
                 LogFields.Field("kind", result.Kind),
                 LogFields.Field("source", result.Source),
@@ -1912,12 +1926,16 @@ namespace Immersive.Framework.ApplicationLifecycle
                 LogFields.Field("previousRoute", GetRouteName(routeLifecycle.PreviousRoute)),
                 LogFields.Field("targetRouteId", GetRouteId(result.TargetRoute)),
                 LogFields.Field("targetRoute", GetRouteName(result.TargetRoute)),
+                LogFields.Field("currentRouteId", GetRouteId(currentRoute)),
+                LogFields.Field("currentRoute", GetRouteName(currentRoute)),
                 LogFields.Field("scene", routeLifecycle.SceneLifecycleResult.SceneName),
                 LogFields.Field("transition", result.TransitionDiagnostics.TransitionText),
                 LogFields.Field("loading", loadingDiagnostics.LoadingText),
-                LogFields.Field("activity", FormatDiagnosticValue(activityFlow.ActivityState.ActivityName)),
-                LogFields.Field("activityReadiness", activityFlow.ActivityReadinessState.DiagnosticStatus),
-                LogFields.Field("blockingIssues", result.TransitionDiagnostics.BlockingIssueCount + loadingDiagnostics.BlockingIssueCount + routeLifecycle.RouteSceneCompositionResult.BlockingIssueCount + activityFlow.ActivityReadinessState.BlockingIssueCount));
+                LogFields.Field("activity", FormatDiagnosticValue(currentActivity != null ? currentActivity.ActivityName : string.Empty)),
+                LogFields.Field("currentActivity", FormatDiagnosticValue(currentActivity != null ? currentActivity.ActivityName : string.Empty)),
+                LogFields.Field("activityState", currentActivityState),
+                LogFields.Field("activityReadiness", currentActivityReadiness),
+                LogFields.Field("blockingIssues", result.TransitionDiagnostics.BlockingIssueCount + loadingDiagnostics.BlockingIssueCount + routeLifecycle.RouteSceneCompositionResult.BlockingIssueCount + (alreadyActive ? _state.ActivityReadinessState.BlockingIssueCount : activityFlow.ActivityReadinessState.BlockingIssueCount)));
         }
 
         private LogField[] BuildRouteRequestDiagnosticFields(
@@ -1926,6 +1944,20 @@ namespace Immersive.Framework.ApplicationLifecycle
         {
             RouteLifecycleStartResult routeLifecycle = result.RouteLifecycleResult;
             ActivityFlowStartResult activityFlow = routeLifecycle.ActivityFlowResult;
+            bool alreadyActive =
+                result.Kind == FrameworkRouteRequestKind.IgnoredAlreadyActive;
+            RouteAsset currentRoute = alreadyActive
+                ? _state.CurrentRoute
+                : result.TargetRoute;
+            ActivityAsset currentActivity = alreadyActive
+                ? _state.CurrentActivity
+                : activityFlow.ActivityState.Activity;
+            string currentActivityState = alreadyActive
+                ? _state.ActivityState.DiagnosticStatus
+                : activityFlow.ActivityState.DiagnosticStatus;
+            string currentActivityReadiness = alreadyActive
+                ? _state.ActivityReadinessState.DiagnosticStatus
+                : activityFlow.ActivityReadinessState.DiagnosticStatus;
             ActivityContentApplyResult activityContent = activityFlow.ActivityContentResult;
             FrameworkLifecycleOperationEvidence lifecycleOperation = BuildRouteLifecycleOperationEvidence(result, loadingDiagnostics);
             FrameworkLifecycleContentEvidence lifecycleContent = BuildRouteLifecycleContentEvidence(routeLifecycle, result.Source, result.Reason);
@@ -2032,6 +2064,7 @@ namespace Immersive.Framework.ApplicationLifecycle
                 LogFields.Field("transitionGateBlockingIssues", result.TransitionGateDiagnostics.BlockingIssuesText),
                 LogFields.Field("previousRoute", GetRouteName(routeLifecycle.PreviousRoute)),
                 LogFields.Field("targetRoute", GetRouteName(result.TargetRoute)),
+                LogFields.Field("currentRoute", GetRouteName(currentRoute)),
                 LogFields.Field("scene", routeLifecycle.SceneLifecycleResult.SceneName),
                 LogFields.Field("alreadyLoaded", routeLifecycle.SceneLifecycleResult.AlreadyLoaded),
                 LogFields.Field("loadMode", routeLifecycle.SceneLifecycleResult.LoadMode),
@@ -2096,9 +2129,10 @@ namespace Immersive.Framework.ApplicationLifecycle
                 LogFields.Field("activityContentAnchorActivityMismatch", activityFlow.ActivityContentAnchorDiscoveryResult.SkippedActivityMismatchCount),
                 LogFields.Field("routeContentEnterReceivers", routeLifecycle.RouteContentEnterResult.ReceiverCount),
                 LogFields.Field("routeContentExitReceivers", routeLifecycle.RouteContentExitResult.ReceiverCount),
-                LogFields.Field("activity", FormatDiagnosticValue(activityFlow.ActivityState.ActivityName)),
-                LogFields.Field("activityState", activityFlow.ActivityState.DiagnosticStatus),
-                LogFields.Field("activityReadiness", activityFlow.ActivityReadinessState.DiagnosticStatus),
+                LogFields.Field("activity", FormatDiagnosticValue(currentActivity != null ? currentActivity.ActivityName : string.Empty)),
+                LogFields.Field("currentActivity", FormatDiagnosticValue(currentActivity != null ? currentActivity.ActivityName : string.Empty)),
+                LogFields.Field("activityState", currentActivityState),
+                LogFields.Field("activityReadiness", currentActivityReadiness),
                 LogFields.Field("runtimeActivityScope", activityFlow.RuntimeActivityScopeResult.DiagnosticStatus),
                 LogFields.Field("runtimeActivityRootEnter", activityFlow.RuntimeActivityScopeResult.EnterStatus),
                 LogFields.Field("runtimeActivityRootExit", activityFlow.RuntimeActivityScopeResult.ExitStatus),
@@ -2165,6 +2199,17 @@ namespace Immersive.Framework.ApplicationLifecycle
             FrameworkLoadingDiagnostics loadingDiagnostics)
         {
             ActivityFlowStartResult activityFlow = result.ActivityFlowResult;
+            bool alreadyActive =
+                result.Kind == FrameworkActivityRequestKind.IgnoredAlreadyActive;
+            ActivityAsset currentActivity = alreadyActive
+                ? _state.CurrentActivity
+                : activityFlow.ActivityState.Activity;
+            string currentActivityState = alreadyActive
+                ? _state.ActivityState.DiagnosticStatus
+                : activityFlow.ActivityState.DiagnosticStatus;
+            string currentActivityReadiness = alreadyActive
+                ? _state.ActivityReadinessState.DiagnosticStatus
+                : activityFlow.ActivityReadinessState.DiagnosticStatus;
             return LogFields.Of(
                 LogFields.Field("kind", result.Kind),
                 LogFields.Field("source", result.Source),
@@ -2173,12 +2218,16 @@ namespace Immersive.Framework.ApplicationLifecycle
                 LogFields.Field("previousActivity", GetActivityName(activityFlow.PreviousActivity)),
                 LogFields.Field("targetActivityId", GetActivityId(result.TargetActivity)),
                 LogFields.Field("targetActivity", GetActivityName(result.TargetActivity)),
-                LogFields.Field("currentActivity", FormatDiagnosticValue(activityFlow.ActivityState.ActivityName)),
-                LogFields.Field("activityState", activityFlow.ActivityState.DiagnosticStatus),
-                LogFields.Field("activityReadiness", activityFlow.ActivityReadinessState.DiagnosticStatus),
+                LogFields.Field("currentActivity", FormatDiagnosticValue(currentActivity != null ? currentActivity.ActivityName : string.Empty)),
+                LogFields.Field("activityState", currentActivityState),
+                LogFields.Field("activityReadiness", currentActivityReadiness),
                 LogFields.Field("transition", result.TransitionDiagnostics.TransitionText),
-                LogFields.Field("loading", loadingDiagnostics.LoadingText),
-                LogFields.Field("blockingIssues", result.TransitionDiagnostics.BlockingIssueCount + loadingDiagnostics.BlockingIssueCount + activityFlow.ActivityReadinessState.BlockingIssueCount));
+                LogFields.Field("loadingPresentation", loadingDiagnostics.LoadingText),
+                LogFields.Field("activitySceneComposition", activityFlow.ActivitySceneCompositionResult.DiagnosticStatus),
+                LogFields.Field("activityScenesLoaded", activityFlow.ActivitySceneCompositionResult.LoadedSceneCount),
+                LogFields.Field("activitySceneRelease", activityFlow.ActivitySceneReleaseResult.DiagnosticStatus),
+                LogFields.Field("activityScenesReleased", activityFlow.ActivitySceneReleaseResult.ReleasedSceneCount),
+                LogFields.Field("blockingIssues", result.TransitionDiagnostics.BlockingIssueCount + loadingDiagnostics.BlockingIssueCount + (alreadyActive ? _state.ActivityReadinessState.BlockingIssueCount : activityFlow.ActivityReadinessState.BlockingIssueCount)));
         }
 
         private LogField[] BuildActivityRequestDiagnosticFields(
@@ -2186,6 +2235,17 @@ namespace Immersive.Framework.ApplicationLifecycle
             FrameworkLoadingDiagnostics loadingDiagnostics)
         {
             ActivityFlowStartResult activityFlow = result.ActivityFlowResult;
+            bool alreadyActive =
+                result.Kind == FrameworkActivityRequestKind.IgnoredAlreadyActive;
+            ActivityAsset currentActivity = alreadyActive
+                ? _state.CurrentActivity
+                : activityFlow.ActivityState.Activity;
+            string currentActivityState = alreadyActive
+                ? _state.ActivityState.DiagnosticStatus
+                : activityFlow.ActivityState.DiagnosticStatus;
+            string currentActivityReadiness = alreadyActive
+                ? _state.ActivityReadinessState.DiagnosticStatus
+                : activityFlow.ActivityReadinessState.DiagnosticStatus;
             ActivityContentApplyResult activityContent = activityFlow.ActivityContentResult;
             ActivityContentLifecycleResult lifecycle = activityContent.LifecycleResult;
             FrameworkLifecycleOperationEvidence lifecycleOperation = BuildActivityLifecycleOperationEvidence(result, loadingDiagnostics);
@@ -2297,9 +2357,10 @@ namespace Immersive.Framework.ApplicationLifecycle
                 LogFields.Field("targetActivity", GetActivityName(result.TargetActivity)),
                 LogFields.Field("previousActivityId", GetActivityId(activityFlow.PreviousActivity)),
                 LogFields.Field("previousActivity", GetActivityName(activityFlow.PreviousActivity)),
-                LogFields.Field("activity", FormatDiagnosticValue(activityFlow.ActivityState.ActivityName)),
-                LogFields.Field("activityState", activityFlow.ActivityState.DiagnosticStatus),
-                LogFields.Field("activityReadiness", activityFlow.ActivityReadinessState.DiagnosticStatus),
+                LogFields.Field("activity", FormatDiagnosticValue(currentActivity != null ? currentActivity.ActivityName : string.Empty)),
+                LogFields.Field("currentActivity", FormatDiagnosticValue(currentActivity != null ? currentActivity.ActivityName : string.Empty)),
+                LogFields.Field("activityState", currentActivityState),
+                LogFields.Field("activityReadiness", currentActivityReadiness),
                 LogFields.Field("activityReadinessReason", activityFlow.ActivityReadinessState.DiagnosticReason),
                 LogFields.Field("runtimeActivityScope", activityFlow.RuntimeActivityScopeResult.DiagnosticStatus),
                 LogFields.Field("runtimeActivityRootEnter", activityFlow.RuntimeActivityScopeResult.EnterStatus),

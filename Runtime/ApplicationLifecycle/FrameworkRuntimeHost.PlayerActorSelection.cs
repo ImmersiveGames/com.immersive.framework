@@ -25,7 +25,11 @@ namespace Immersive.Framework.ApplicationLifecycle
             LocalPlayerActorSelectionRequestAuthoringBindingResult result =
                 _globalUiSceneRuntime.TryBindLocalPlayerActorSelectionRequests(
                     selectionRuntime);
-            if (result.Succeeded)
+            if (result.Succeeded && result.Status == "OptionalAbsent")
+            {
+                _logger?.Debug(result.Message);
+            }
+            else if (result.Succeeded)
             {
                 _logger?.Info(result.Message);
             }
@@ -52,7 +56,11 @@ namespace Immersive.Framework.ApplicationLifecycle
                     selectionRuntime);
             string diagnostic =
                 $"{result.Message} reason='{(string.IsNullOrWhiteSpace(reason) ? "unspecified" : reason.Trim())}'.";
-            if (result.Succeeded)
+            if (result.Succeeded && result.Status == "OptionalAbsent")
+            {
+                _logger?.Debug(diagnostic);
+            }
+            else if (result.Succeeded)
             {
                 _logger?.Info(diagnostic);
             }
