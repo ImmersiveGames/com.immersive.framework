@@ -1,49 +1,59 @@
 # Framework Usage
 
-Status: Current
-Last updated: 2026-07-24
+Status: Current  
+Last updated: 2026-07-28
 
-## Create and author
+## 1. Product workflow
 
 1. Create a `GameApplicationAsset`.
-2. Assign the ordered Player Slot configuration and explicit product policies
-   needed by the game.
-3. Create `RouteAsset` and `ActivityAsset` assets for application flow.
-4. Configure Route and Activity content, participation, transition and gate
-   policies.
-5. Create and assign the Persistent Content Scene.
-6. Use the package bootstrap surface to start the application.
+2. Configure ordered Player Slots and explicit application policies.
+3. Create `RouteAsset` and `ActivityAsset` assets.
+4. Configure Route and Activity content, participation, transition and Gate policies.
+5. Create and assign one Persistent Content Scene.
+6. Author gameplay features through their official Composer/Authoring surfaces.
+7. Use explicit Apply/Rebuild only where derived materialization exists.
+8. Validate through the owning Inspector.
+9. Enter Play Mode and inspect runtime evidence separately from authoring evidence.
 
-Required configuration is not repaired through hidden lookup. Missing contracts
-produce diagnostics and block the owning operation.
+Missing required contracts block explicitly. The framework does not repair configuration through hidden lookup.
 
-## Persistent Content
-
-The Game Application declares:
+## 2. Authority model
 
 ```text
-Content Scene
+GameApplicationAsset
+→ bootstrap
+→ Persistent Content load and retention
+→ internal FrameworkRuntimeHost
+→ Session
+→ Route lifecycle
+→ Activity lifecycle
+→ scoped feature contexts and modules
 ```
 
-The scene is the complete visual composition authority.
+`FrameworkRuntimeHost` is an internal composition root. It is not a public service locator and should not be found through static/global lookup.
+
+## 3. Persistent Content
+
+The Game Application declares one Content Scene.
+
+Example:
 
 ```text
 PersistentContent.unity
-  physical Camera output
+  physical Camera Output
   Presentation Canvas
   Transition surface
   Loading surface
+  Pause presentation
   optional Player provisioning
-  future Audio
-  future Lighting or Volumes
+  optional Audio composition
 ```
 
-Prefabs and Prefab Variants may be used inside the scene but are not separately
-declared by the Game Application.
+The scene is the concrete visual composition authority. Prefabs may be used inside it, but the Game Application does not separately declare those prefabs.
 
-### Create the scene
+### 3.1 Create the scene
 
-Preferred product flow:
+Preferred flow:
 
 ```text
 File
@@ -51,103 +61,170 @@ File
     Immersive Persistent Content
 ```
 
-The official Scene Template provides a minimum starting scene. Assign the created
-`.unity` scene to the Game Application, not the Scene Template asset.
+Assign the resulting `.unity` scene to the Game Application and enable it in the active Build Profile.
 
-Until the official template asset is added, create an equivalent dedicated scene
-manually.
+### 3.2 Minimal contract
 
-### Minimal Persistent Content contract
-
-The Content Scene requires exactly one:
+Exactly one physical Camera Output is required:
 
 ```text
 CameraOutputSessionBinding
 ```
 
-The output binding requires an explicit Output ID and explicit references to its
-physical Camera and Brain.
+It requires an explicit Output ID and explicit Camera/Brain references.
 
-`SessionCameraOverrideBinding` is optional: author zero or one when the
-Persistent Content needs to publish a Session-scoped Camera request. Player,
-Activity and Route Camera publication use the mandatory output without creating
-an implicit Session request.
+`SessionCameraOverrideBinding` is optional. Player, Route and Activity Camera requests use the physical output without creating an implicit Session request.
 
-Transition, Loading and Pause presentation are optional modules. With no
-Transition or Loading adapters, their runtimes remain explicit NoOp; no surface,
-binding or visual fallback is created.
+Transition, Loading and Pause presentation are optional. Missing optional adapters resolve to explicit NoOp behavior; no fallback object is created.
 
-### Optional presentation modules
+### 3.3 Validation
 
-Canvas, Transition, Loading and Pause authoring are optional. Add each module
-only when the application needs its explicit presentation behavior; their
-absence does not block Persistent Content boot.
-
-Game-specific artwork, hierarchy and layout remain consumer-owned.
-
-### Validate
-
-Press:
+Run:
 
 ```text
 Validate Configuration
 ```
 
-Only that explicit action opens and inspects the Content Scene.
+Validation is explicit and non-mutating. Inspector repaint does not open scenes, create objects or repair configuration.
 
-Validation checks the scene and contracts present in it. It does not require a
-specific prefab, create missing objects or repair configuration.
+## 4. Authoring and materialization
 
-### Runtime behavior
-
-The framework loads the Content Scene, retains each complete root hierarchy and
-unloads the source scene.
+Use the product layers intentionally:
 
 ```text
-content persists
-source scene does not
+Recipe / Profile / Template
+  reusable intent
+
+Composer / Authoring Component
+  concrete scene or prefab configuration
+
+Materialization
+  explicit technical components and bindings
+
+Runtime Context / Session / Service
+  scoped runtime authority
+
+Diagnostics
+  validators, snapshots, reports and smokes
 ```
 
-## Runtime model
+Apply/Rebuild must be:
+
+- explicit;
+- idempotent;
+- Undo-aware;
+- non-destructive;
+- diagnostic;
+- limited to derived technical materialization.
+
+Authoring components do not execute gameplay by accident.
+
+## 5. Runtime diagnostics
+
+The normal Inspector remains designer-first. Technical evidence belongs in:
 
 ```text
-GameApplicationAsset
--> bootstrap
--> Persistent Content load and retention
--> internal FrameworkRuntimeHost
--> Session
--> Route lifecycle
--> Activity lifecycle
--> scoped content and feature modules
+Advanced / Debug
 ```
 
-The host is a composition root, not a public service locator.
+Persistent runtime diagnostics may project immutable values from the internal host. They must not:
 
-## Apply and rebuild
+- retain scene object references;
+- create a second authority;
+- mutate runtime state;
+- survive across Play Sessions;
+- require polling or scene search.
 
-Persistent Content does not expose Apply/Rebuild because its concrete composition
-is authored directly through Unity.
+### 5.1 Scene-Provided Player release diagnostics
 
-Other product surfaces may expose Apply/Rebuild only when they own derived
-technical materialization.
+After a Scene-Provided Player scene unloads, inspect:
 
-## Diagnose
+```text
+FrameworkRuntimeHost
+  Advanced / Debug
+    Scene-Provided Admissions
+```
 
-- Run explicit Inspector validation.
-- Inspect the stored report under Advanced / Diagnostics.
-- Fix the owner that failed to supply a required dependency.
-- Do not add name lookup, scene search, fallback objects or static access.
+The projection shows:
 
-## Manual validation
+- active admission count;
+- occupied Slot count;
+- last operation/status;
+- typed Slot and authored Actor identity;
+- source/reason;
+- release success or idempotence;
+- post-operation Host-evidence presence.
 
-After applying this cut:
+This is direct diagnostic evidence that a release completed. It is not an admission/release command surface.
 
-1. Compile the package in Unity 6.5.
-2. Open the Game Application Inspector.
-3. Confirm Persistent Content exposes only `Content Scene`.
-4. Assign a dedicated scene and enable it in the active Build Profile.
-5. Run `Validate Configuration`.
-6. Confirm no scene inspection occurs merely by repainting the Inspector.
-7. Confirm validation accepts manually authored objects and does not require
-   prefab instances.
-8. Exercise Play Mode and verify the complete scene root hierarchies persist.
+See `Player-Usage.md`.
+
+## 6. Logging
+
+Use `FrameworkLogger` only.
+
+Recommended development profile:
+
+```text
+Default Minimum Level = Info
+```
+
+Operational milestones remain visible at Info. Detailed technical snapshots belong at Debug/Trace and in Inspector diagnostics.
+
+Do not use the Console as the primary authoring surface.
+
+## 7. Manual validation order
+
+For a package technical cut:
+
+```text
+1. package compiles
+2. QA consumer imports and compiles
+3. focused QA smoke/negative proof
+4. FIRSTGAME real integration
+5. documentation freeze
+```
+
+For a UX/product cut:
+
+```text
+1. define the user-facing surface
+2. prove assembly and comprehension in FIRSTGAME
+3. confirm technical contracts
+4. formalize in the package
+5. add QA after the contract stabilizes
+```
+
+A smoke pass alone does not close product usability.
+
+## 8. Current Player checkpoint
+
+The Scene-Provided Player comparison baseline is approved in FIRSTGAME for:
+
+- admission;
+- Slot `player.1`;
+- Host join;
+- Logical Actor adoption;
+- Activity readiness;
+- movement;
+- gameplay Camera;
+- Player-bound Pause;
+- Object/Group Reset;
+- Activity Restart;
+- Route release;
+- same-session reentry;
+- persistent release diagnostics;
+- teardown without the previous identity exception.
+
+The next consumer comparison is Manager-Provisioned Player assembly. Session-Persistent Player remains blocked by an official package gap.
+
+## 9. Do not introduce
+
+- implicit managers;
+- global service locators;
+- static runtime host access;
+- name/tag scene lookup;
+- fallback Slot or Actor selection;
+- hidden materialization;
+- runtime reflection without an explicit decision;
+- consumer-owned substitutes for official package authority.
