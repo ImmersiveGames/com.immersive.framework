@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using Immersive.Framework.ApiStatus;
 using Immersive.Framework.Authoring;
+using Immersive.Framework.ActivityFlow;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
@@ -55,6 +56,37 @@ namespace Immersive.Framework.SceneLifecycle
             }
 
             return GetComponentsInScene<T>(scene);
+        }
+
+        internal static IReadOnlyList<T> GetComponentsInActivityContentScope<T>(
+            ActivityContentDiscoveryScope scope,
+            ActivityAsset activity)
+            where T : Component
+        {
+            var components = new List<T>();
+            var seen = new HashSet<T>();
+
+            if (scope.Route != null)
+            {
+                AddDistinct(GetComponentsInRoutePrimaryScene<T>(scope.Route), components, seen);
+            }
+
+            IReadOnlyList<ActivityContentDiscoveryScene> scenes = scope.ActivityOwnedScenes;
+            for (int i = 0; i < scenes.Count; i++)
+            {
+                ActivityContentDiscoveryScene scene = scenes[i];
+                if (!scene.MatchesActivity(activity))
+                {
+                    continue;
+                }
+
+                AddDistinct(
+                    GetComponentsInLoadedScene<T>(scene.ScenePath, scene.SceneName),
+                    components,
+                    seen);
+            }
+
+            return components;
         }
 
         public static bool TryGetLoadedPrimaryScene(RouteAsset route, out Scene scene)
@@ -152,6 +184,27 @@ namespace Immersive.Framework.SceneLifecycle
                     {
                         components.Add(found[j]);
                     }
+                }
+            }
+        }
+
+        private static void AddDistinct<T>(
+            IReadOnlyList<T> candidates,
+            List<T> destination,
+            HashSet<T> seen)
+            where T : Component
+        {
+            if (candidates == null || destination == null || seen == null)
+            {
+                return;
+            }
+
+            for (int i = 0; i < candidates.Count; i++)
+            {
+                T candidate = candidates[i];
+                if (candidate != null && seen.Add(candidate))
+                {
+                    destination.Add(candidate);
                 }
             }
         }

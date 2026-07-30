@@ -28,6 +28,7 @@ namespace Immersive.Framework.ActivityFlow
         private readonly ActivityContentRuntime _activityContentRuntime = new ActivityContentRuntime();
         private readonly ContentAnchorDiscoveryRuntime _contentAnchorDiscoveryRuntime = new ContentAnchorDiscoveryRuntime();
         private readonly ActivityContentExecutionRuntime _activityContentExecutionRuntime = new ActivityContentExecutionRuntime();
+        private readonly ActivityReadinessParticipantSource _activityReadinessParticipantSource = new ActivityReadinessParticipantSource();
         private readonly ActivitySceneCompositionRuntime _activitySceneCompositionRuntime;
         private readonly ActivityOperationPlanner _activityOperationPlanner;
         private readonly ActivityOperationExecutor _activityOperationExecutor = new ActivityOperationExecutor();

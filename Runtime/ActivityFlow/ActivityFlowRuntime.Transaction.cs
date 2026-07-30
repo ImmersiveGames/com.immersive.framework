@@ -1067,6 +1067,20 @@ namespace Immersive.Framework.ActivityFlow
                     reason);
             ActivityContentExecutionParticipantSourceResult sourceResult =
                 ResolveActivityContentExecutionParticipants(request);
+            ActivityAsset scopedActivity = nextActivity ?? previousActivity;
+            ActivityContentDiscoveryScope readinessScope =
+                _activitySceneCompositionRuntime
+                    .CreateActivityContentDiscoveryScope(scopedActivity);
+            ActivityContentExecutionParticipantCollection readinessParticipants =
+                _activityReadinessParticipantSource.Discover(
+                    readinessScope,
+                    scopedActivity);
+            sourceResult = MergeParticipantSources(
+                request,
+                sourceResult.Collection,
+                readinessParticipants,
+                source,
+                reason);
             return new ActivityParticipantTransitionContext(
                 previousActivity,
                 nextActivity,
@@ -1074,6 +1088,30 @@ namespace Immersive.Framework.ActivityFlow
                 sourceResult.Collection,
                 source,
                 reason);
+        }
+
+        private static ActivityContentExecutionParticipantSourceResult
+            MergeParticipantSources(
+                ActivityContentExecutionParticipantSourceRequest request,
+                ActivityContentExecutionParticipantCollection first,
+                ActivityContentExecutionParticipantCollection second,
+                string source,
+                string reason)
+        {
+            IActivityContentExecutionParticipant[] firstParticipants =
+                first.SnapshotParticipants();
+            IActivityContentExecutionParticipant[] secondParticipants =
+                second.SnapshotParticipants();
+            var participants = new List<IActivityContentExecutionParticipant>(
+                firstParticipants.Length + secondParticipants.Length);
+            participants.AddRange(firstParticipants);
+            participants.AddRange(secondParticipants);
+            return ActivityContentExecutionParticipantSourceResult.FromCollection(
+                request,
+                ActivityContentExecutionParticipantCollection.FromParticipants(participants),
+                "ActivityFlowRuntime",
+                reason,
+                "Combined injected and scene-scoped Activity readiness participants.");
         }
 
         private void ExecuteActivityParticipantExit(

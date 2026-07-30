@@ -21,6 +21,7 @@ Guides                 current product usage
 - [Audio usage](Guides/Audio-Usage.md)
 - [Logging usage](Guides/Logging-Usage.md)
 - [Reset usage](Guides/Reset-Usage.md)
+- [Activity readiness](Guides/Activity-Readiness.md)
 
 ## Canonical decisions
 

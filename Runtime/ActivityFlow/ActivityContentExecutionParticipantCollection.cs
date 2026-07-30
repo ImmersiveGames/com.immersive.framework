@@ -134,6 +134,22 @@ namespace Immersive.Framework.ActivityFlow
             return selected.Count == 0 ? Array.Empty<ActivityContentExecutionParticipantEntry>() : selected.ToArray();
         }
 
+        internal IActivityContentExecutionParticipant[] SnapshotParticipants()
+        {
+            if (!HasParticipants)
+            {
+                return Array.Empty<IActivityContentExecutionParticipant>();
+            }
+
+            var participants = new IActivityContentExecutionParticipant[Entries.Count];
+            for (int i = 0; i < Entries.Count; i++)
+            {
+                participants[i] = Entries[i].Participant;
+            }
+
+            return participants;
+        }
+
         public ActivityContentExecutionParticipantCollectionIssue[] SnapshotIssues()
         {
             if (!HasIssues)
