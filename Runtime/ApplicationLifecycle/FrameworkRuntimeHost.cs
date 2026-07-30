@@ -1272,7 +1272,8 @@ namespace Immersive.Framework.ApplicationLifecycle
                     (IResetSelectionExecutionRuntimePort)this);
             _sceneLifecycleRuntime = new SceneLifecycleRuntime(
                 new PauseProductBindingSceneLifecycleParticipant(_pauseProductBindingRuntime),
-                _resetProductBindingSceneLifecycleParticipant);
+                _resetProductBindingSceneLifecycleParticipant,
+                new SceneLifecycleEventsParticipant());
             _runtimeSessionScopeResult = CreateSessionScopeRoot(application, "FrameworkRuntimeHost", "session-start");
             _state = FrameworkRuntimeState.Empty(application);
         }

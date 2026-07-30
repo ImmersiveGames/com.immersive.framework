@@ -15,6 +15,7 @@ CameraRigComposer -> Validate / Apply/Rebuild (Unity Preset optional)
 FrameworkBgmDirector -> Route/Activity BGM bindings -> Immersive Audio
 PausePlayerInputBinding -> InputMode transaction -> PlayerInput state writer
 Reset authoring -> explicit runtime ports -> ResetRegistry / ResetExecutor
+SceneLifecycleEvents -> SceneLifecycleRuntime callbacks -> explicit UnityEvents
 ```
 
 `FrameworkRuntimeHost` is an internal application/session composition root. It
@@ -31,6 +32,7 @@ when unavailable.
 - [Camera usage](Documentation~/Guides/Camera-Usage.md)
 - [Audio usage](Documentation~/Guides/Audio-Usage.md)
 - [Reset usage](Documentation~/Guides/Reset-Usage.md)
+- [Scene lifecycle events](Documentation~/Guides/Scene-Lifecycle-Events.md)
 
 QAFramework owns synthetic technical validation. FIRSTGAME owns real-game
 integration proof. Consumer assets and the old Base/NewScripts architecture do
