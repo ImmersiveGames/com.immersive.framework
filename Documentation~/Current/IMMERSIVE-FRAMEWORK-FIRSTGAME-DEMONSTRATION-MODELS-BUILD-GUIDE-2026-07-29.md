@@ -604,10 +604,10 @@ Activity_M02_B
   Requirement Level: None
 ```
 
-## Corte atual — fundação da aplicação
+## Corte atual — fundação autoral completa
 
-O scaffold unificado cria os assets, cinco cenas e três prefabs placeholders, mas não cria Persistent Content.
-Use o comando incremental deste corte:
+A primeira versão do corte dependia implicitamente do scaffold unificado M02-M16. Essa dependência deixou o
+início do M02 incompleto quando o scaffold não havia sido materializado. O comando do M02 agora é autocontido:
 
 ```text
 Tools
@@ -620,23 +620,40 @@ Tools
 O comando:
 
 ```text
+cria todos os assets autorais ausentes do M02;
+cria as cinco cenas não persistentes ausentes;
+cria os três prefabs placeholders de lifecycle;
 cria M02_PersistentContent a partir da fonte oficial do package;
-remove somente Main Camera/EventSystem gerados nas cenas conhecidas do M02;
+remove somente Main Camera/EventSystem gerados em hierarquias M02 reconhecidas;
 preserva arquivos existentes;
-não atribui referências no Game Application;
+não atribui referências entre assets;
 não adiciona participants;
+não instala bootstrap;
 não altera Build Profiles ou ProjectSettings.
 ```
 
+Semântica de startup:
+
+```text
+Build Profile entry scene: M02_Boot
+Game Application Startup Route: Route_M02_A
+Route_M02_A Primary Scene: M02_RouteA
+Game Application Content Scene: M02_PersistentContent
+```
+
+Não reutilizar `M01_PersistentContent`. A cena persistente própria do M02 preserva isolamento e ownership do
+modelo, mesmo que ambas sejam originadas da mesma template oficial.
+
 ## Primeiro bloco de montagem
 
-1. Materializar o scaffold M02-M16, caso ainda não tenha sido executado.
-2. Executar `M02 > Resolve Application Foundation`.
+1. Executar `M02 > Resolve Application Foundation`.
+2. Confirmar o inventário completo de assets, seis cenas e três prefabs.
 3. Configurar os dois Activity Content Profiles.
 4. Configurar Activities A/B como `No Slots`.
 5. Configurar Route A/B e suas startup Activities.
-6. Configurar `GA_M02_Lifecycle` com Persistent Content e startup Route A.
-7. Validar o grafo antes de adicionar qualquer lifecycle participant.
+6. Configurar `GA_M02_Lifecycle` com Content Scene `M02_PersistentContent` e Startup Route `Route_M02_A`.
+7. Colocar `M02_Boot` como cena de entrada do Build Profile.
+8. Validar o grafo antes de adicionar qualquer lifecycle participant.
 
 ## Fluxo funcional planejado
 
@@ -2105,3 +2122,34 @@ nenhum componente lifecycle foi adicionado por suposição.
 docs(firstgame): close M01 and start M02 lifecycle authoring
 ```
 
+
+
+---
+
+# 32. Correção M02 — fundação autoral autocontida
+
+## Problema observado
+
+O usuário chegou à configuração da Game Application sem possuir todo o inventário M02 e sem
+`M02_PersistentContent`. A orientação anterior dependia implicitamente do scaffold unificado M02-M16.
+
+## Regra corrigida
+
+```text
+M02 > Resolve Application Foundation
+  → materializa assets, cenas e prefabs ausentes;
+  → cria Persistent Content própria a partir da template oficial;
+  → preserva conteúdo existente;
+  → não configura referências ou runtime automaticamente.
+```
+
+## Startup oficial do modelo
+
+```text
+Unity entry scene: M02_Boot
+Startup Route: Route_M02_A
+Startup Route Primary Scene: M02_RouteA
+Content Scene: M02_PersistentContent
+```
+
+`M01_PersistentContent` não deve ser reutilizada, pois M02 precisa provar isolamento de assets e ownership.
