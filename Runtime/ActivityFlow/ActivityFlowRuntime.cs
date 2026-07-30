@@ -49,6 +49,8 @@ namespace Immersive.Framework.ActivityFlow
         private ActivityRuntimeState _currentActivityState;
         private ActivityFlowStartResult _currentActivityResult;
         private bool _hasCurrentActivityContext;
+        private ActivityReadinessOccurrenceState _pendingAuthorableReadinessState;
+        private ActivityReadinessOccurrenceState _currentAuthorableReadinessState;
 
         internal ActivityFlowRuntime(
             RuntimeContentRuntime runtimeContentRuntime,
@@ -115,6 +117,23 @@ namespace Immersive.Framework.ActivityFlow
             return HasCurrentActivityContext;
         }
 
+        internal bool TryCreateCurrentActivityContentDiscoveryScope(
+            ActivityAsset activity,
+            out ActivityContentDiscoveryScope scope)
+        {
+            scope = default;
+            if (!HasCurrentActivityContext ||
+                activity == null ||
+                !ReferenceEquals(_currentActivityState.Activity, activity))
+            {
+                return false;
+            }
+
+            scope = _activitySceneCompositionRuntime
+                .CreateActivityContentDiscoveryScope(activity);
+            return true;
+        }
+
         private void SetCurrentActivityContext(ActivityFlowStartResult result)
         {
             _currentActivityResult = result;
@@ -129,6 +148,195 @@ namespace Immersive.Framework.ActivityFlow
             _currentReadinessOccurrence = default;
             _currentActivityResult = default;
             _hasCurrentActivityContext = false;
+        }
+
+        internal bool TryGetCurrentAuthorableReadinessState(
+            out ActivityReadinessOccurrenceState state)
+        {
+            state = _currentAuthorableReadinessState;
+            if (state == null || state.IsInvalidated)
+            {
+                state = null;
+                return false;
+            }
+
+            return true;
+        }
+
+        internal bool TryGetPendingAuthorableReadinessState(
+            out ActivityReadinessOccurrenceState state)
+        {
+            state = _pendingAuthorableReadinessState;
+            if (state == null || state.IsInvalidated)
+            {
+                state = null;
+                return false;
+            }
+
+            return true;
+        }
+
+        private ActivityReadinessState BeginPendingAuthorableReadiness(
+            ActivityReadinessOccurrence occurrence,
+            ActivityReadinessState technicalBaseline,
+            IReadOnlyList<ActivityReadinessParticipant> participants,
+            string source,
+            string reason)
+        {
+            if (!occurrence.IsValid)
+            {
+                throw new ArgumentException(
+                    "Activity readiness occurrence must be valid.",
+                    nameof(occurrence));
+            }
+
+            if (!ReferenceEquals(technicalBaseline.Activity, occurrence.Activity))
+            {
+                throw new ArgumentException(
+                    "Technical readiness baseline belongs to another Activity.",
+                    nameof(technicalBaseline));
+            }
+
+            InvalidatePendingAuthorableReadiness("Reentry");
+            var pending = ActivityReadinessOccurrenceState.CreatePending(
+                occurrence,
+                technicalBaseline,
+                participants);
+            _pendingAuthorableReadinessState = pending;
+            _activityReadinessParticipantSource.StartTracking(
+                occurrence.Activity,
+                occurrence,
+                participants,
+                OnAuthorableReadinessParticipantChanged);
+
+            ActivityReadinessState aggregate =
+                ActivityReadinessRecomposer.Recompute(
+                    technicalBaseline,
+                    pending.AuthorableContribution,
+                    source,
+                    reason);
+            pending.TrySetAggregateReadiness(occurrence, aggregate);
+            return aggregate;
+        }
+
+        private void OnAuthorableReadinessParticipantChanged(
+            ActivityReadinessOccurrence occurrence,
+            ActivityReadinessParticipant participant)
+        {
+            ActivityReadinessOccurrenceState pending =
+                _pendingAuthorableReadinessState;
+            if (pending != null &&
+                !pending.IsInvalidated &&
+                pending.Occurrence.Matches(
+                    occurrence.Activity,
+                    occurrence.TransitionSequence))
+            {
+                if (!pending.TryRefreshParticipant(
+                        occurrence,
+                        participant,
+                        out ActivityReadinessAuthorableContribution
+                            pendingContribution))
+                {
+                    return;
+                }
+
+                ActivityReadinessState pendingAggregate =
+                    ActivityReadinessRecomposer.Recompute(
+                        pending.TechnicalBaseline,
+                        pendingContribution,
+                        pending.TechnicalBaseline.Source,
+                        pending.TechnicalBaseline.Reason);
+                pending.TrySetAggregateReadiness(
+                    occurrence,
+                    pendingAggregate);
+                return;
+            }
+
+            ActivityReadinessOccurrenceState current =
+                _currentAuthorableReadinessState;
+            if (current == null ||
+                !current.IsCurrent ||
+                !current.Occurrence.Matches(
+                    occurrence.Activity,
+                    occurrence.TransitionSequence) ||
+                !current.TryRefreshParticipant(
+                    occurrence,
+                    participant,
+                    out ActivityReadinessAuthorableContribution contribution))
+            {
+                return;
+            }
+
+            ActivityReadinessState aggregate =
+                ActivityReadinessRecomposer.Recompute(
+                    current.TechnicalBaseline,
+                    contribution,
+                    current.TechnicalBaseline.Source,
+                    current.TechnicalBaseline.Reason);
+            if (current.AggregateReadiness.Equals(aggregate))
+            {
+                return;
+            }
+
+            if (TryPublishPostTransitionReadiness(
+                    occurrence,
+                    aggregate,
+                    aggregate.Reason,
+                    out _))
+            {
+                current.TrySetAggregateReadiness(occurrence, aggregate);
+            }
+        }
+
+        private bool PromotePendingAuthorableReadiness(
+            ActivityReadinessOccurrence occurrence)
+        {
+            ActivityReadinessOccurrenceState pending =
+                _pendingAuthorableReadinessState;
+            if (pending == null ||
+                pending.IsInvalidated ||
+                !pending.Occurrence.Matches(
+                    occurrence.Activity,
+                    occurrence.TransitionSequence))
+            {
+                return false;
+            }
+
+            pending.MarkCurrent();
+            _currentAuthorableReadinessState = pending;
+            _pendingAuthorableReadinessState = null;
+            return true;
+        }
+
+        private void InvalidatePendingAuthorableReadiness(string reason)
+        {
+            ActivityReadinessOccurrenceState pending =
+                _pendingAuthorableReadinessState;
+            _pendingAuthorableReadinessState = null;
+            pending?.Invalidate();
+            _activityReadinessParticipantSource.ReleaseTracked(reason);
+        }
+
+        private void InvalidateCurrentAuthorableReadiness(string reason)
+        {
+            ActivityReadinessOccurrenceState current =
+                _currentAuthorableReadinessState;
+            _currentAuthorableReadinessState = null;
+            current?.Invalidate();
+            _activityReadinessParticipantSource.ReleaseTracked(reason);
+        }
+
+        private void InvalidateAuthorableReadiness(string reason)
+        {
+            ActivityReadinessOccurrenceState pending =
+                _pendingAuthorableReadinessState;
+            ActivityReadinessOccurrenceState current =
+                _currentAuthorableReadinessState;
+            _pendingAuthorableReadinessState = null;
+            _currentAuthorableReadinessState = null;
+            pending?.Invalidate();
+            current?.Invalidate();
+            _activityReadinessParticipantSource.ReleaseTracked(reason);
         }
 
         internal int PreviewActivitySceneReleaseForRouteChangeCount()

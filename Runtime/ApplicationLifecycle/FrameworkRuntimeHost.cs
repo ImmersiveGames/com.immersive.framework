@@ -72,6 +72,10 @@ namespace Immersive.Framework.ApplicationLifecycle
         private string _lastObjectEntryRuntimeContextInvalidationReason = string.Empty;
         private FrameworkRuntimeState _state;
         private FrameworkLogger _logger;
+        private ActivityReadinessOccurrence _lastPublishedActivityReadinessOccurrence;
+        private ActivityReadinessState _lastPublishedActivityReadiness;
+        private bool _hasPublishedActivityReadiness;
+        private int _activityReadinessPresentationRevision;
 
         public FrameworkRuntimeState State => _state;
 
@@ -504,6 +508,7 @@ namespace Immersive.Framework.ApplicationLifecycle
             }
 
             _state = FrameworkRuntimeState.FromGameFlowResult(_gameApplication, result);
+            PublishCurrentActivityReadinessPresentation();
             if (result.Started)
             {
                 RefreshObjectEntryRuntimeContextSnapshot("FrameworkRuntimeHost:framework-start");
@@ -577,6 +582,7 @@ namespace Immersive.Framework.ApplicationLifecycle
                 if (result.Succeeded)
                 {
                     _state = FrameworkRuntimeState.FromRouteRequestResult(_state, result, true);
+                    PublishCurrentActivityReadinessPresentation();
                     RefreshObjectEntryRuntimeContextSnapshot($"FrameworkRuntimeHost:route-request:{NormalizeLifecycleSource(source)}");
                 }
                 else if (result.Kind == FrameworkRouteRequestKind.IgnoredAlreadyActive)
@@ -638,6 +644,7 @@ namespace Immersive.Framework.ApplicationLifecycle
             if (routeResult.Succeeded)
             {
                 _state = FrameworkRuntimeState.FromRouteRequestResult(_state, routeResult, true);
+                PublishCurrentActivityReadinessPresentation();
                 RefreshObjectEntryRuntimeContextSnapshot($"FrameworkRuntimeHost:route-request:{NormalizeLifecycleSource(source)}");
             }
             else if (routeResult.Kind == FrameworkRouteRequestKind.IgnoredAlreadyActive)
@@ -744,6 +751,7 @@ namespace Immersive.Framework.ApplicationLifecycle
                 _state = FrameworkRuntimeState.FromActivityRequestResult(
                     _state,
                     result);
+                PublishCurrentActivityReadinessPresentation();
                 RefreshObjectEntryRuntimeContextSnapshot(
                     $"FrameworkRuntimeHost:activity-request:{NormalizeLifecycleSource(source)}");
             }
@@ -822,6 +830,7 @@ namespace Immersive.Framework.ApplicationLifecycle
             if (result.Succeeded)
             {
                 _state = FrameworkRuntimeState.FromActivityRequestResult(_state, result);
+                PublishCurrentActivityReadinessPresentation();
                 RefreshObjectEntryRuntimeContextSnapshot($"FrameworkRuntimeHost:activity-clear:{NormalizeLifecycleSource(source)}");
             }
             else if (result.Kind == FrameworkActivityRequestKind.IgnoredNoActiveActivity)
@@ -874,11 +883,13 @@ namespace Immersive.Framework.ApplicationLifecycle
             if (result.ClearSucceeded)
             {
                 _state = FrameworkRuntimeState.FromActivityRequestResult(_state, result.ClearResult);
+                PublishCurrentActivityReadinessPresentation();
             }
 
             if (result.ReenterSucceeded)
             {
                 _state = FrameworkRuntimeState.FromActivityRequestResult(_state, result.ReenterResult);
+                PublishCurrentActivityReadinessPresentation();
             }
 
             RefreshObjectEntryRuntimeContextSnapshot($"FrameworkRuntimeHost:activity-restart:{NormalizeLifecycleSource(source)}");
@@ -2986,6 +2997,96 @@ namespace Immersive.Framework.ApplicationLifecycle
             }
 
             _state = _state.WithActivityReadiness(routeResult, update.ReadinessState);
+            PublishCurrentActivityReadinessPresentation();
+        }
+
+        private void PublishCurrentActivityReadinessPresentation()
+        {
+            RouteLifecycleRuntime routeLifecycleRuntime =
+                _gameFlowRuntime?.CurrentRouteLifecycleRuntime;
+            ActivityFlowRuntime activityFlowRuntime =
+                routeLifecycleRuntime?.CurrentActivityFlowRuntime;
+            if (activityFlowRuntime == null ||
+                !activityFlowRuntime.TryGetCurrentAuthorableReadinessState(
+                    out ActivityReadinessOccurrenceState authorableState) ||
+                !authorableState.IsCurrent)
+            {
+                return;
+            }
+
+            ActivityReadinessOccurrence occurrence = authorableState.Occurrence;
+            ActivityReadinessState aggregate = _state.ActivityReadinessState;
+            ActivityAsset activity = authorableState.Activity;
+            if (!occurrence.IsValid ||
+                activity == null ||
+                !aggregate.HasActivity ||
+                !ReferenceEquals(activity, _state.CurrentActivity) ||
+                !ReferenceEquals(activity, aggregate.Activity) ||
+                !ReferenceEquals(activity, activityFlowRuntime.CurrentActivity) ||
+                !_gameFlowRuntime.CurrentOccurrence.Matches(
+                    activity,
+                    occurrence.TransitionSequence) ||
+                !routeLifecycleRuntime.CurrentOccurrence.Matches(
+                    activity,
+                    occurrence.TransitionSequence) ||
+                (_hasPublishedActivityReadiness &&
+                 _lastPublishedActivityReadinessOccurrence.Matches(
+                     activity,
+                     occurrence.TransitionSequence) &&
+                 _lastPublishedActivityReadiness.Equals(aggregate)) ||
+                !activityFlowRuntime.TryCreateCurrentActivityContentDiscoveryScope(
+                    activity,
+                    out ActivityContentDiscoveryScope discoveryScope))
+            {
+                return;
+            }
+
+            IReadOnlyList<ActivityReadinessEvents> observers =
+                SceneScopedComponentQuery
+                    .GetComponentsInActivityContentScope<ActivityReadinessEvents>(
+                        discoveryScope,
+                        activity);
+            if (observers.Count == 0)
+            {
+                return;
+            }
+
+            ActivityReadinessAuthorableContribution contribution =
+                authorableState.AuthorableContribution;
+            string reason = contribution.Reason.NormalizeTextOrFallback(
+                aggregate.DiagnosticReason.NormalizeTextOrFallback("None"));
+            var snapshot = new ActivityReadinessSnapshot(
+                activity,
+                aggregate.IsReady,
+                reason,
+                contribution.ParticipantCount,
+                contribution.RequiredCount,
+                contribution.OptionalCount,
+                contribution.PendingCount,
+                contribution.CompletedCount,
+                contribution.FailedCount,
+                ++_activityReadinessPresentationRevision);
+            bool published = false;
+            for (int i = 0; i < observers.Count; i++)
+            {
+                ActivityReadinessEvents observer = observers[i];
+                if (observer == null)
+                {
+                    continue;
+                }
+
+                observer.Apply(snapshot);
+                published = true;
+            }
+
+            if (!published)
+            {
+                return;
+            }
+
+            _lastPublishedActivityReadinessOccurrence = occurrence;
+            _lastPublishedActivityReadiness = aggregate;
+            _hasPublishedActivityReadiness = true;
         }
     }
 }

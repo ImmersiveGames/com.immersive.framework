@@ -9,57 +9,87 @@ namespace Immersive.Framework.ActivityFlow
     internal sealed class ActivityReadinessParticipantSource
     {
         private readonly List<ActivityReadinessParticipant> _participants = new List<ActivityReadinessParticipant>();
-        private readonly List<ActivityReadinessEvents> _observers = new List<ActivityReadinessEvents>();
-        private ActivityAsset _activity;
-        private int _revision;
+        private ActivityReadinessOccurrence _trackedOccurrence;
+        private Action<ActivityReadinessOccurrence, ActivityReadinessParticipant> _changeSink;
 
-        internal ActivityContentExecutionParticipantCollection Discover(
-            ActivityContentDiscoveryScope scope,
-            ActivityAsset activity)
+        internal IReadOnlyList<ActivityReadinessParticipant>
+            DiscoverAuthorableParticipants(
+                ActivityContentDiscoveryScope scope,
+                ActivityAsset activity)
         {
-            ReleaseTracked("Reentry");
-            _activity = activity;
-            _participants.Clear();
-            _observers.Clear();
-
             if (activity == null)
             {
-                Publish();
-                return ActivityContentExecutionParticipantCollection.Empty();
+                return Array.Empty<ActivityReadinessParticipant>();
             }
 
             IReadOnlyList<ActivityReadinessParticipant> discovered =
-                SceneScopedComponentQuery.GetComponentsInActivityContentScope<ActivityReadinessParticipant>(scope, activity);
-            var technical = new List<IActivityContentExecutionParticipant>(discovered.Count);
+                SceneScopedComponentQuery.GetComponentsInActivityContentScope<ActivityReadinessParticipant>(
+                    scope,
+                    activity);
+            var participants = new List<ActivityReadinessParticipant>(discovered.Count);
             for (int i = 0; i < discovered.Count; i++)
             {
                 ActivityReadinessParticipant participant = discovered[i];
-                if (participant == null || !participant.IsValidForDiscovery(out _))
+                if (participant != null && participant.IsValidForDiscovery(out _))
+                {
+                    participants.Add(participant);
+                }
+            }
+
+            return participants;
+        }
+
+        internal void StartTracking(
+            ActivityAsset activity,
+            ActivityReadinessOccurrence occurrence,
+            IReadOnlyList<ActivityReadinessParticipant> participants,
+            Action<ActivityReadinessOccurrence, ActivityReadinessParticipant> changeSink)
+        {
+            if (!occurrence.IsValid)
+            {
+                throw new ArgumentException(
+                    "Activity readiness occurrence must be valid.",
+                    nameof(occurrence));
+            }
+
+            if (participants == null)
+            {
+                throw new ArgumentNullException(nameof(participants));
+            }
+
+            if (changeSink == null)
+            {
+                throw new ArgumentNullException(nameof(changeSink));
+            }
+
+            ReleaseTracked("Reentry");
+            _trackedOccurrence = occurrence;
+            _changeSink = changeSink;
+
+            for (int i = 0; i < participants.Count; i++)
+            {
+                ActivityReadinessParticipant participant = participants[i];
+                if (participant == null ||
+                    !participant.IsValidForDiscovery(out _) ||
+                    _participants.Contains(participant))
                 {
                     continue;
                 }
 
                 participant.StateChanged += OnParticipantStateChanged;
                 _participants.Add(participant);
-                technical.Add(participant);
             }
 
-            IReadOnlyList<ActivityReadinessEvents> observers =
-                SceneScopedComponentQuery.GetComponentsInActivityContentScope<ActivityReadinessEvents>(scope, activity);
-            for (int i = 0; i < observers.Count; i++)
+            for (int i = 0; i < _participants.Count; i++)
             {
-                if (observers[i] != null)
-                {
-                    _observers.Add(observers[i]);
-                }
+                _participants[i].BeginPreparation(occurrence);
             }
-
-            Publish();
-            return ActivityContentExecutionParticipantCollection.FromParticipants(technical);
         }
 
         internal void ReleaseTracked(string reason)
         {
+            var releasedParticipants =
+                new List<ActivityReadinessParticipant>(_participants);
             for (int i = 0; i < _participants.Count; i++)
             {
                 ActivityReadinessParticipant participant = _participants[i];
@@ -69,62 +99,28 @@ namespace Immersive.Framework.ActivityFlow
                 }
 
                 participant.StateChanged -= OnParticipantStateChanged;
-                participant.Release(reason);
             }
-        }
 
-        private void OnParticipantStateChanged(ActivityReadinessParticipant participant)
-        {
-            Publish();
-        }
+            _changeSink = null;
+            _trackedOccurrence = default;
+            _participants.Clear();
 
-        private void Publish()
-        {
-            int required = 0;
-            int optional = 0;
-            int pending = 0;
-            int completed = 0;
-            int failed = 0;
-            string reason = _participants.Count == 0 ? "NoParticipants" : "Preparing";
-
-            for (int i = 0; i < _participants.Count; i++)
+            for (int i = 0; i < releasedParticipants.Count; i++)
             {
-                ActivityReadinessParticipant participant = _participants[i];
+                ActivityReadinessParticipant participant = releasedParticipants[i];
                 if (participant == null)
                 {
                     continue;
                 }
 
-                if (participant.Requiredness == ActivityContentExecutionRequiredness.Required) required++;
-                else optional++;
-
-                switch (participant.State)
-                {
-                    case ActivityReadinessParticipantState.Preparing: pending++; break;
-                    case ActivityReadinessParticipantState.Completed: completed++; break;
-                    case ActivityReadinessParticipantState.Failed: failed++; reason = participant.LastReason; break;
-                    case ActivityReadinessParticipantState.Idle: pending++; break;
-                }
+                participant.Release(reason);
             }
 
-            bool requiredPending = false;
-            bool requiredFailed = false;
-            for (int i = 0; i < _participants.Count; i++)
-            {
-                ActivityReadinessParticipant participant = _participants[i];
-                if (participant == null || participant.Requiredness != ActivityContentExecutionRequiredness.Required) continue;
-                requiredPending |= participant.State is ActivityReadinessParticipantState.Idle or ActivityReadinessParticipantState.Preparing;
-                requiredFailed |= participant.State == ActivityReadinessParticipantState.Failed;
-            }
+        }
 
-            bool ready = !requiredPending && !requiredFailed;
-            if (ready) reason = "Ready";
-            else if (requiredFailed) reason = "RequiredParticipantFailed";
-            var snapshot = new ActivityReadinessSnapshot(_activity, ready, reason, _participants.Count, required, optional, pending, completed, failed, ++_revision);
-            for (int i = 0; i < _observers.Count; i++)
-            {
-                _observers[i]?.Apply(snapshot);
-            }
+        private void OnParticipantStateChanged(ActivityReadinessParticipant participant)
+        {
+            _changeSink?.Invoke(_trackedOccurrence, participant);
         }
     }
 }

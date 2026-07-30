@@ -48,6 +48,18 @@ namespace Immersive.Framework.ActivityFlow
             TrySetTerminalState(ActivityReadinessParticipantState.Failed, lastReason);
         }
 
+        internal void BeginPreparation(ActivityReadinessOccurrence readinessOccurrence)
+        {
+            if (!readinessOccurrence.IsValid)
+            {
+                throw new ArgumentException(
+                    "Activity readiness occurrence must be valid.",
+                    nameof(readinessOccurrence));
+            }
+
+            BeginPreparationCore(readinessOccurrence.TransitionSequence);
+        }
+
         ActivityContentExecutionParticipantDescriptor IActivityContentExecutionParticipant.GetActivityContentExecutionDescriptor()
         {
             RuntimeContentId id = RuntimeContentId.From(participantId);
@@ -64,11 +76,7 @@ namespace Immersive.Framework.ActivityFlow
                 return ActivityContentExecutionResult.Success(request, nameof(ActivityReadinessParticipant), "Released", "Activity readiness participant released on Activity exit.");
             }
 
-            occurrence++;
-            state = ActivityReadinessParticipantState.Preparing;
-            lastReason = "Preparing";
-            preparationStarted?.Invoke();
-            StateChanged?.Invoke(this);
+            BeginPreparationCore(occurrence + 1);
 
             // Existing execution contracts are synchronous. The initial result preserves
             // their Required/Optional failure semantics while the official adapter publishes
@@ -101,6 +109,15 @@ namespace Immersive.Framework.ActivityFlow
             state = ActivityReadinessParticipantState.Released;
             lastReason = reason;
             preparationReleased?.Invoke();
+            StateChanged?.Invoke(this);
+        }
+
+        private void BeginPreparationCore(int occurrenceSequence)
+        {
+            occurrence = occurrenceSequence;
+            state = ActivityReadinessParticipantState.Preparing;
+            lastReason = "Preparing";
+            preparationStarted?.Invoke();
             StateChanged?.Invoke(this);
         }
 

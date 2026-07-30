@@ -21,6 +21,8 @@ namespace Immersive.Framework.ActivityFlow
                 ActivityAsset nextActivity,
                 ActivityContentExecutionParticipantSourceResult participantSourceResult,
                 ActivityContentExecutionParticipantCollection participants,
+                IReadOnlyList<ActivityReadinessParticipant>
+                    authorableReadinessParticipants,
                 string source,
                 string reason)
             {
@@ -28,6 +30,7 @@ namespace Immersive.Framework.ActivityFlow
                 NextActivity = nextActivity;
                 ParticipantSourceResult = participantSourceResult;
                 Participants = participants;
+                AuthorableReadinessParticipants = authorableReadinessParticipants;
                 Source = source;
                 Reason = reason;
             }
@@ -40,6 +43,9 @@ namespace Immersive.Framework.ActivityFlow
                 ParticipantSourceResult { get; }
 
             internal ActivityContentExecutionParticipantCollection Participants { get; }
+
+            internal IReadOnlyList<ActivityReadinessParticipant>
+                AuthorableReadinessParticipants { get; }
 
             internal string Source { get; }
 
@@ -122,6 +128,10 @@ namespace Immersive.Framework.ActivityFlow
             ActivityContentRuntime.ActivityContentTransitionContext
                 contentTransition = null;
             ActivityParticipantTransitionContext participantTransition = null;
+            ActivityReadinessOccurrence pendingReadinessOccurrence =
+                new ActivityReadinessOccurrence(
+                    nextActivity,
+                    transaction.Sequence);
             IFrameworkLoadingProgressReporter resolvedProgressReporter =
                 progressReporter ?? NoOpFrameworkLoadingProgressReporter.Instance;
 
@@ -296,6 +306,8 @@ namespace Immersive.Framework.ActivityFlow
 
                 transaction.BeginPreviousExit(
                     "Previous Activity content and participants started exit.");
+                InvalidateCurrentAuthorableReadiness(
+                    "ActivityReplacement");
                 _activityContentRuntime.ExitPreviousActivityContent(
                     contentTransition);
                 transaction.MarkPreviousContentExited(
@@ -305,10 +317,6 @@ namespace Immersive.Framework.ActivityFlow
                     previousActivity,
                     resolvedSource,
                     resolvedReason);
-                _currentReadinessOccurrence = new ActivityReadinessOccurrence(
-                    nextActivity,
-                    transaction.Sequence);
-
                 ExecuteActivityParticipantExit(participantTransition);
                 transaction.MarkPreviousParticipantsExited(
                     "All previous Activity participants completed Exit before target Enter.");
@@ -427,15 +435,22 @@ namespace Immersive.Framework.ActivityFlow
                         "ActivityTransition",
                         "Activity transition loading progress completed.");
 
-                ActivityReadinessState readiness = BuildTransitionReadiness(
+                ActivityReadinessState technicalBaseline = BuildTransitionReadiness(
                     _currentActivityState,
                     contentResult,
                     executionResult,
                     targetReadinessBlocked: false,
                     resolvedSource,
                     resolvedReason);
+                ActivityReadinessState aggregateReadiness =
+                    BeginPendingAuthorableReadiness(
+                        pendingReadinessOccurrence,
+                        technicalBaseline,
+                        participantTransition.AuthorableReadinessParticipants,
+                        resolvedSource,
+                        resolvedReason);
                 ActivityTransitionSnapshot snapshot = transaction.Complete(
-                    readiness,
+                    aggregateReadiness,
                     previousFinalizationSucceeded,
                     sceneReleaseSucceeded,
                     "Activity transition reached a terminal committed result.");
@@ -453,8 +468,12 @@ namespace Immersive.Framework.ActivityFlow
                         sceneReleaseResult,
                         activityOperationResult,
                         CreateActivitySceneLedgerSnapshot())
+                    .WithActivityReadinessState(aggregateReadiness)
                     .WithActivityTransition(snapshot);
+                _currentReadinessOccurrence = pendingReadinessOccurrence;
                 SetCurrentActivityContext(result);
+                PromotePendingAuthorableReadiness(
+                    pendingReadinessOccurrence);
                 return result;
             }
             catch (Exception exception)
@@ -542,6 +561,7 @@ namespace Immersive.Framework.ActivityFlow
 
                 transaction.BeginPreviousExit(
                     "Previous Activity clear exit started.");
+                InvalidateCurrentAuthorableReadiness("ActivityClear");
                 _activityContentRuntime.ExitPreviousActivityContent(
                     contentTransition);
                 transaction.MarkPreviousContentExited(
@@ -785,6 +805,8 @@ namespace Immersive.Framework.ActivityFlow
             string issue,
             ActivityOperationResult activityOperationResult)
         {
+            InvalidatePendingAuthorableReadiness(
+                "activity-transition-failed-before-commit");
             string compensationDiagnostic = string.Empty;
             if (_pauseActivityBindingLifecycle != null && targetActivity != null)
             {
@@ -896,6 +918,9 @@ namespace Immersive.Framework.ActivityFlow
                     diagnostic,
                     activityOperationResult);
             }
+
+            InvalidatePendingAuthorableReadiness(
+                "activity-transition-committed-exception");
 
             if (runtimeEnterResult.HasOwner &&
                 _pauseActivityBindingLifecycle != null &&
@@ -1064,6 +1089,7 @@ namespace Immersive.Framework.ActivityFlow
                         reason,
                         "No Activity transition participants are required."),
                     ActivityContentExecutionParticipantCollection.Empty(),
+                    Array.Empty<ActivityReadinessParticipant>(),
                     source,
                     reason);
             }
@@ -1081,21 +1107,18 @@ namespace Immersive.Framework.ActivityFlow
             ActivityContentDiscoveryScope readinessScope =
                 _activitySceneCompositionRuntime
                     .CreateActivityContentDiscoveryScope(scopedActivity);
-            ActivityContentExecutionParticipantCollection readinessParticipants =
-                _activityReadinessParticipantSource.Discover(
+            IReadOnlyList<ActivityReadinessParticipant>
+                authorableReadinessParticipants =
+                _activityReadinessParticipantSource
+                    .DiscoverAuthorableParticipants(
                     readinessScope,
                     scopedActivity);
-            sourceResult = MergeParticipantSources(
-                request,
-                sourceResult.Collection,
-                readinessParticipants,
-                source,
-                reason);
             return new ActivityParticipantTransitionContext(
                 previousActivity,
                 nextActivity,
                 sourceResult,
                 sourceResult.Collection,
+                authorableReadinessParticipants,
                 source,
                 reason);
         }
