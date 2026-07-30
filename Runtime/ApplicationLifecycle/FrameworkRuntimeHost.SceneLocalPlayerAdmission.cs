@@ -23,14 +23,19 @@ namespace Immersive.Framework.ApplicationLifecycle
         /// Composes Scene Local Player admission directly from the Session Player participation
         /// authority, then wraps the canonical Player Activity lifecycle with phase-aware Scene
         /// admission ordering. This path remains independent from PlayerInputManager provisioning.
+        ///
+        /// A Game Application with zero configured Player Slots has no Player participation
+        /// authority by design. In that case Scene Local Player admission is NotConfigured and
+        /// this method returns without attaching any Player runtime module or creating fallback state.
         /// </summary>
         private void ApplySceneLocalPlayerAdmissionRuntime()
         {
             if (!this.TryGetPlayerParticipationRuntime(
                     out PlayerParticipationRuntimeContext participationContext))
             {
-                throw new InvalidOperationException(
-                    "Scene Local Player admission requires the initialized Session Player participation context.");
+                _logger?.Debug(
+                    "Scene Local Player admission runtime is not configured because the Game Application has no Player participation runtime.");
+                return;
             }
 
             if (!SceneLocalPlayerAdmissionRuntimeHostModule.TryAttach(

@@ -47,25 +47,39 @@ namespace Immersive.Framework.Bootstrap
                 }
 
                 var runtimeHost = FrameworkRuntimeHost.Create(result.GameApplication);
-                PlayerParticipationRuntimeHostModule.Attach(
-                    runtimeHost,
-                    result.GameApplication,
-                    "ImmersiveFrameworkBootstrap",
-                    "session-start",
-                    out PlayerParticipationOperationResult playerParticipationInitialization);
-
-                if (!playerParticipationInitialization.Succeeded)
+                if (ShouldComposePlayerParticipationRuntime(result.GameApplication))
                 {
-                    logger.Error(
-                        "Player participation Session runtime initialization failed.",
-                        BuildPlayerParticipationRuntimeFields(playerParticipationInitialization));
-                    UnityEngine.Object.Destroy(runtimeHost.gameObject);
-                    return;
-                }
+                    PlayerParticipationRuntimeHostModule.Attach(
+                        runtimeHost,
+                        result.GameApplication,
+                        "ImmersiveFrameworkBootstrap",
+                        "session-start",
+                        out PlayerParticipationOperationResult playerParticipationInitialization);
 
-                logger.Debug(
-                    "Player participation Session runtime initialized.",
-                    BuildPlayerParticipationRuntimeFields(playerParticipationInitialization));
+                    if (!playerParticipationInitialization.Succeeded)
+                    {
+                        logger.Error(
+                            "Player participation Session runtime initialization failed.",
+                            BuildPlayerParticipationRuntimeFields(playerParticipationInitialization));
+                        UnityEngine.Object.Destroy(runtimeHost.gameObject);
+                        return;
+                    }
+
+                    logger.Debug(
+                        "Player participation Session runtime initialized.",
+                        BuildPlayerParticipationRuntimeFields(playerParticipationInitialization));
+                }
+                else
+                {
+                    logger.Debug(
+                        "Player participation is not configured.",
+                        LogFields.Of(
+                            LogFields.Field("status", "NotConfigured"),
+                            LogFields.Field("configuredSlots", 0),
+                            LogFields.Field(
+                                "message",
+                                "The active Game Application has no Local Player Slots. Player participation runtime composition was skipped.")));
+                }
 
                 var gameFlowResult = await runtimeHost.StartAsync();
                 if (!gameFlowResult.Started)
@@ -95,6 +109,13 @@ namespace Immersive.Framework.Bootstrap
         internal static FrameworkBootResult Boot()
         {
             return FrameworkBootValidator.Validate(LoadSettings());
+        }
+
+        internal static bool ShouldComposePlayerParticipationRuntime(
+            GameApplicationAsset gameApplication)
+        {
+            return gameApplication != null &&
+                   gameApplication.LocalPlayerSlotCount > 0;
         }
 
         private static LogField[] BuildBootSummaryFields(
