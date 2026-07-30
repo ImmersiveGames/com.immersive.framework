@@ -256,6 +256,16 @@ namespace Immersive.Framework.ActivityFlow
                 activityTransitionSnapshot);
         }
 
+        internal ActivityFlowStartResult WithActivityReadinessState(ActivityReadinessState activityReadinessState)
+        {
+            if (ActivityReadinessState.Equals(activityReadinessState)) return this;
+            return new ActivityFlowStartResult(Started, Skipped, KeptActive, Cleared, Message, ActivityState,
+                PreviousActivity, ActivityContentResult, activityReadinessState, RuntimeActivityScopeResult,
+                ActivityContentAnchorBindingCleanupResult, ActivityContentAnchorDiscoveryResult,
+                ActivityContentExecutionResult, ActivitySceneCompositionResult, ActivitySceneReleaseResult,
+                ActivityOperationResult, ActivitySceneLedgerSnapshot, ActivityTransitionSnapshot);
+        }
+
         public static ActivityFlowStartResult Failed(
             string message,
             ActivityOperationResult activityOperationResult = default(ActivityOperationResult))

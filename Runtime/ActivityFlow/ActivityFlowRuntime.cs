@@ -42,10 +42,13 @@ namespace Immersive.Framework.ActivityFlow
         private readonly IActivityRestartRuntimePort _activityRestartRuntime;
         private readonly EventBus<ActivityEnteredEvent> _activityEnteredEvents = new EventBus<ActivityEnteredEvent>();
         private readonly EventBus<ActivityExitedEvent> _activityExitedEvents = new EventBus<ActivityExitedEvent>();
+        private readonly EventBus<ActivityReadinessUpdate> _activityReadinessUpdates = new EventBus<ActivityReadinessUpdate>();
         private RouteAsset _currentRoute;
         private string _currentRouteInstanceId = string.Empty;
         private int _routeInstanceSequence;
         private ActivityRuntimeState _currentActivityState;
+        private ActivityFlowStartResult _currentActivityResult;
+        private bool _hasCurrentActivityContext;
 
         internal ActivityFlowRuntime(
             RuntimeContentRuntime runtimeContentRuntime,
@@ -93,6 +96,41 @@ namespace Immersive.Framework.ActivityFlow
 
         internal bool HasActiveActivity => _currentActivityState.IsActive;
 
+        internal ActivityReadinessOccurrence CurrentOccurrence => _currentReadinessOccurrence;
+
+        internal bool HasCurrentActivityContext =>
+            _hasCurrentActivityContext &&
+            _currentReadinessOccurrence.IsValid &&
+            _currentActivityState.IsActive;
+
+        internal bool TryGetCurrentActivityResult(out ActivityFlowStartResult result)
+        {
+            result = _currentActivityResult;
+            return HasCurrentActivityContext;
+        }
+
+        internal bool TryGetCurrentActivityReadiness(out ActivityReadinessState readiness)
+        {
+            readiness = _currentActivityResult.ActivityReadinessState;
+            return HasCurrentActivityContext;
+        }
+
+        private void SetCurrentActivityContext(ActivityFlowStartResult result)
+        {
+            _currentActivityResult = result;
+            _hasCurrentActivityContext =
+                _currentActivityState.IsActive &&
+                _currentReadinessOccurrence.IsValid &&
+                ReferenceEquals(_currentActivityState.Activity, result.Activity);
+        }
+
+        private void ClearCurrentActivityContext()
+        {
+            _currentReadinessOccurrence = default;
+            _currentActivityResult = default;
+            _hasCurrentActivityContext = false;
+        }
+
         internal int PreviewActivitySceneReleaseForRouteChangeCount()
         {
             return _activitySceneCompositionRuntime.PreviewReleaseForRouteChangeCount();
@@ -135,6 +173,11 @@ namespace Immersive.Framework.ActivityFlow
         internal IEventBinding SubscribeActivityExited(Action<ActivityExitedEvent> handler)
         {
             return _activityExitedEvents.Subscribe(handler);
+        }
+
+        internal IEventBinding SubscribeActivityReadinessUpdates(Action<ActivityReadinessUpdate> handler)
+        {
+            return _activityReadinessUpdates.Subscribe(handler);
         }
 
         internal ActivityOperationResult PreviewActivityOperation(

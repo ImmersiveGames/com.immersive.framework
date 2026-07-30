@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using Immersive.Foundation.Events;
 using Immersive.Framework.ActivityFlow;
 using Immersive.Framework.ActivityRestart;
 using Immersive.Framework.ContentAnchor;
@@ -47,6 +48,7 @@ namespace Immersive.Framework.ApplicationLifecycle
 
         private GameApplicationAsset _gameApplication;
         private GameFlowRuntime _gameFlowRuntime;
+        private IEventBinding _activityReadinessBinding;
         private PauseRuntime _pauseRuntime;
         private PauseTimeScaleRuntime _pauseTimeScaleRuntime;
         private PauseSurfaceRuntime _pauseSurfaceRuntime;
@@ -74,6 +76,8 @@ namespace Immersive.Framework.ApplicationLifecycle
         public FrameworkRuntimeState State => _state;
 
         public SessionRuntimeState SessionState => _state.SessionState;
+
+        internal GameFlowRuntime CurrentGameFlowRuntime => _gameFlowRuntime;
 
         internal PauseState PauseState => _pauseRuntime?.State ?? PauseState.Unknown;
 
@@ -430,6 +434,7 @@ namespace Immersive.Framework.ApplicationLifecycle
                 this,
                 this,
                 _sceneLifecycleRuntime);
+            _activityReadinessBinding = _gameFlowRuntime.SubscribeActivityReadinessUpdates(HandleActivityReadinessUpdate);
             ApplyPauseActivityBindingLifecycle();
             IRouteCycleResetRuntimePort routeCycleResetRuntimePort = this;
             RouteCycleResetTriggerBindingResult globalRouteCycleResetTriggerBinding =
@@ -2955,6 +2960,8 @@ namespace Immersive.Framework.ApplicationLifecycle
 
         private void OnDestroy()
         {
+            _activityReadinessBinding?.Dispose();
+            _activityReadinessBinding = null;
             ReleaseLocalPlayerActorSelectionRequests(
                 "framework-runtime-host-destroy");
             _cameraOutputSessionInjectionRuntime?.Dispose();
@@ -2964,6 +2971,21 @@ namespace Immersive.Framework.ApplicationLifecycle
             _pauseTimeScaleRuntime?.RestoreIfCaptured("framework-runtime-host-destroy");
 
 
+        }
+
+        private void HandleActivityReadinessUpdate(ActivityReadinessUpdate update)
+        {
+            if (_gameFlowRuntime == null || !update.IsValid ||
+                !ReferenceEquals(_state.CurrentRoute, _gameFlowRuntime.CurrentRoute) ||
+                !ReferenceEquals(_state.CurrentActivity, update.Activity) ||
+                !_gameFlowRuntime.CurrentOccurrence.Matches(update.Activity, update.Occurrence.TransitionSequence) ||
+                !_gameFlowRuntime.TryGetCurrentRouteLifecycleResult(out RouteLifecycleStartResult routeResult) ||
+                _state.ActivityReadinessState.Equals(update.ReadinessState))
+            {
+                return;
+            }
+
+            _state = _state.WithActivityReadiness(routeResult, update.ReadinessState);
         }
     }
 }

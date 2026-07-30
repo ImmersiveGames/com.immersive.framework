@@ -22,6 +22,7 @@ namespace Immersive.Framework.RouteLifecycle
             RouteContentSet routeContentSet,
             ContentAnchorDiscoveryResult contentAnchorDiscoveryResult,
             ActivityFlowStartResult activityFlowResult,
+            ActivityFlowRuntime activityFlowRuntime,
             string source,
             string reason,
             bool entered)
@@ -33,6 +34,7 @@ namespace Immersive.Framework.RouteLifecycle
             RouteContentSet = routeContentSet;
             ContentAnchorDiscoveryResult = contentAnchorDiscoveryResult;
             ActivityFlowResult = activityFlowResult;
+            ActivityFlowRuntime = activityFlowRuntime;
             Source = source ?? string.Empty;
             Reason = reason ?? string.Empty;
             Entered = entered;
@@ -53,6 +55,8 @@ namespace Immersive.Framework.RouteLifecycle
         public ContentAnchorSet ContentAnchorSet => ContentAnchorDiscoveryResult.AnchorSet;
 
         public ActivityFlowStartResult ActivityFlowResult { get; }
+
+        internal ActivityFlowRuntime ActivityFlowRuntime { get; }
 
         public ActivityContentSet ActivityContentSet => ActivityFlowResult.ActivityContentSet;
 
@@ -81,6 +85,9 @@ namespace Immersive.Framework.RouteLifecycle
         public bool HasContentAnchorIssues => ContentAnchorDiscoveryResult.HasIssues;
 
         public bool HasActiveActivity => ActivityState.IsActive;
+
+        internal ActivityReadinessOccurrence CurrentOccurrence =>
+            ActivityFlowRuntime != null ? ActivityFlowRuntime.CurrentOccurrence : default;
 
         public bool HasActivityContent => ActivityContentSet.HasContent;
 
@@ -119,6 +126,29 @@ namespace Immersive.Framework.RouteLifecycle
             string source,
             string reason)
         {
+            return EnteredWith(
+                route,
+                sceneLifecycleResult,
+                routeSceneCompositionResult,
+                routeContentSet,
+                contentAnchorDiscoveryResult,
+                activityFlowResult,
+                null,
+                source,
+                reason);
+        }
+
+        public static RouteRuntimeState EnteredWith(
+            RouteAsset route,
+            SceneLifecycleLoadResult sceneLifecycleResult,
+            RouteSceneCompositionResult routeSceneCompositionResult,
+            RouteContentSet routeContentSet,
+            ContentAnchorDiscoveryResult contentAnchorDiscoveryResult,
+            ActivityFlowStartResult activityFlowResult,
+            ActivityFlowRuntime activityFlowRuntime,
+            string source,
+            string reason)
+        {
             return new RouteRuntimeState(
                 route,
                 CreateRouteIdentity(route),
@@ -127,9 +157,26 @@ namespace Immersive.Framework.RouteLifecycle
                 routeContentSet,
                 contentAnchorDiscoveryResult,
                 activityFlowResult,
+                activityFlowRuntime,
                 source,
                 reason,
                 true);
+        }
+
+        internal RouteRuntimeState WithActivityFlowResult(ActivityFlowStartResult activityFlowResult)
+        {
+            return new RouteRuntimeState(
+                Route,
+                RouteIdentity,
+                SceneLifecycleResult,
+                RouteSceneCompositionResult,
+                RouteContentSet,
+                ContentAnchorDiscoveryResult,
+                activityFlowResult,
+                ActivityFlowRuntime,
+                Source,
+                Reason,
+                Entered);
         }
 
         private static FrameworkIdentityKey CreateRouteIdentity(RouteAsset route)

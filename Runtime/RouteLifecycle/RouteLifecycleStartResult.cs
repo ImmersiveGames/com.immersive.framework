@@ -111,6 +111,7 @@ namespace Immersive.Framework.RouteLifecycle
             RouteContentLifecycleDispatchResult routeContentExitResult,
             ContentReleaseResult contentReleaseResult,
             ActivityFlowStartResult activityFlowResult,
+            ActivityFlowRuntime activityFlowRuntime,
             string source,
             string reason,
             RuntimeScopeLifecycleResult runtimeRouteScopeResult = default(RuntimeScopeLifecycleResult),
@@ -126,6 +127,7 @@ namespace Immersive.Framework.RouteLifecycle
                 routeContentSet,
                 contentAnchorDiscoveryResult,
                 activityFlowResult,
+                activityFlowRuntime,
                 source,
                 reason);
             string routeStateMessage = routeState.HasIdentity ? $" routeIdentity='{routeState.DiagnosticIdentity}'." : string.Empty;
@@ -174,6 +176,17 @@ namespace Immersive.Framework.RouteLifecycle
                 runtimeRouteScopeResult,
                 routeContentAnchorBindingCleanupResult,
                 activitySceneRouteReleaseResult);
+        }
+
+        internal RouteLifecycleStartResult WithActivityFlowResult(ActivityFlowStartResult activityFlowResult)
+        {
+            RouteRuntimeState routeState = RouteState.WithActivityFlowResult(activityFlowResult);
+            return new RouteLifecycleStartResult(
+                Started, Message, Route, PreviousRoute, RouteExitResult, routeState,
+                SceneLifecycleResult, RouteSceneCompositionResult, RouteContentSet,
+                ContentAnchorDiscoveryResult, RouteContentEnterResult, RouteContentExitResult,
+                ContentReleaseResult, activityFlowResult, RuntimeRouteScopeResult,
+                RouteContentAnchorBindingCleanupResult, ActivitySceneRouteReleaseResult);
         }
 
         private static string BindingCleanupMessage(string fieldPrefix, ContentAnchorBindingLifecycleResult result)

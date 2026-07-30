@@ -1,4 +1,5 @@
 using System.Threading.Tasks;
+using Immersive.Foundation.Events;
 using Immersive.Framework.Authoring;
 using Immersive.Framework.ActivityFlow;
 using Immersive.Framework.ActivityRestart;
@@ -29,6 +30,9 @@ namespace Immersive.Framework.GameFlow
     internal sealed partial class GameFlowRuntime
     {
         private readonly RouteLifecycleRuntime _routeLifecycleRuntime;
+        private readonly EventBus<ActivityReadinessUpdate> _activityReadinessUpdates = new EventBus<ActivityReadinessUpdate>();
+        private RouteLifecycleStartResult _currentRouteLifecycleResult;
+        private bool _hasCurrentFlowContext;
         private readonly ITransitionOrchestrator _transitionOrchestrator;
         private int _transitionRequestSequence;
         private bool _routeRequestInFlight;
@@ -44,6 +48,38 @@ namespace Immersive.Framework.GameFlow
         internal GateSnapshot CurrentTransitionGateSnapshot => _transitionGateSnapshot;
 
         internal TransitionGateMode CurrentTransitionGateMode => _transitionGateMode;
+
+        internal RouteLifecycleRuntime CurrentRouteLifecycleRuntime =>
+            _hasCurrentFlowContext ? _routeLifecycleRuntime : null;
+
+        internal RouteAsset CurrentRoute =>
+            _hasCurrentFlowContext ? _routeLifecycleRuntime.CurrentRoute : null;
+
+        internal ActivityAsset CurrentActivity =>
+            _hasCurrentFlowContext ? _routeLifecycleRuntime.CurrentActivity : null;
+
+        internal ActivityReadinessOccurrence CurrentOccurrence =>
+            _hasCurrentFlowContext ? _routeLifecycleRuntime.CurrentOccurrence : default;
+
+        internal bool TryGetCurrentRouteLifecycleResult(out RouteLifecycleStartResult result)
+        {
+            result = _currentRouteLifecycleResult;
+            return _hasCurrentFlowContext;
+        }
+
+        internal IEventBinding SubscribeActivityReadinessUpdates(Action<ActivityReadinessUpdate> handler)
+        {
+            return _activityReadinessUpdates.Subscribe(handler);
+        }
+
+        private void HandleActivityReadinessUpdate(ActivityReadinessUpdate update)
+        {
+            if (!_hasCurrentFlowContext || !update.IsValid || !ReferenceEquals(update.Activity, CurrentActivity) ||
+                !CurrentOccurrence.Matches(update.Activity, update.Occurrence.TransitionSequence) ||
+                !_routeLifecycleRuntime.TryGetCurrentRouteResult(out RouteLifecycleStartResult current)) return;
+            SetCurrentFlowContext(current);
+            _activityReadinessUpdates.Publish(update);
+        }
 
         internal GameFlowRuntime(
             RuntimeContentRuntime runtimeContentRuntime,
@@ -88,6 +124,7 @@ namespace Immersive.Framework.GameFlow
                 activityCycleResetRuntime ?? throw new ArgumentNullException(nameof(activityCycleResetRuntime)),
                 activityRestartRuntime ?? throw new ArgumentNullException(nameof(activityRestartRuntime)),
                 sceneLifecycleRuntime);
+            _routeLifecycleRuntime.SubscribeActivityReadinessUpdates(HandleActivityReadinessUpdate);
         }
 
         internal void SetActivityContentExecutionParticipantSource(IActivityContentExecutionParticipantSource participantSource)
@@ -146,6 +183,8 @@ namespace Immersive.Framework.GameFlow
             {
                 return FrameworkGameFlowStartResult.Failed(routeLifecycleResult.Message);
             }
+
+            SetCurrentFlowContext(routeLifecycleResult);
 
             return FrameworkGameFlowStartResult.StartedWith(startupRoute, routeLifecycleResult);
         }
@@ -356,6 +395,7 @@ namespace Immersive.Framework.GameFlow
                         transitionGateDiagnostics);
                 }
 
+                SetCurrentFlowContext(routeLifecycleResult);
                 return FrameworkRouteRequestResult.SucceededWith(
                     targetRoute,
                     resolvedSource,
@@ -653,6 +693,7 @@ namespace Immersive.Framework.GameFlow
                         GameFlowRequestOperationKind.Activity,
                         transitionGateDiagnostics);
                 }
+                RefreshCurrentFlowContext();
                 return FrameworkActivityRequestResult.SucceededWith(
                     targetActivity,
                     resolvedSource,
@@ -816,6 +857,7 @@ namespace Immersive.Framework.GameFlow
                         transitionGateDiagnostics);
                 }
 
+                RefreshCurrentFlowContext();
                 return FrameworkActivityRequestResult.SucceededWith(
                     null,
                     resolvedSource,
@@ -1333,6 +1375,21 @@ namespace Immersive.Framework.GameFlow
         private Task<RouteLifecycleStartResult> StartRouteCoreAsync(RouteAsset route, string source, string reason)
         {
             return StartRouteCoreAsync(route, source, reason, NoOpFrameworkLoadingProgressReporter.Instance);
+        }
+
+        private void SetCurrentFlowContext(RouteLifecycleStartResult routeLifecycleResult)
+        {
+            _currentRouteLifecycleResult = routeLifecycleResult;
+            _hasCurrentFlowContext = routeLifecycleResult.Started &&
+                _routeLifecycleRuntime.HasActiveRoute;
+        }
+
+        private void RefreshCurrentFlowContext()
+        {
+            if (_routeLifecycleRuntime.TryGetCurrentRouteResult(out RouteLifecycleStartResult result))
+            {
+                SetCurrentFlowContext(result);
+            }
         }
 
         private bool CanConsumeCommittedTargetNotReadyFault(

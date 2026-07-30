@@ -59,6 +59,8 @@ namespace Immersive.Framework.ActivityFlow
         }
 
         private int _activityTransitionSequence;
+        private ActivityReadinessOccurrence _currentReadinessOccurrence;
+        private int _activityReadinessRevision;
         private ActivityTransitionRuntimeTransaction _activeActivityTransition;
         private ActivityTransitionSnapshot _lastActivityTransitionSnapshot;
 
@@ -303,6 +305,9 @@ namespace Immersive.Framework.ActivityFlow
                     previousActivity,
                     resolvedSource,
                     resolvedReason);
+                _currentReadinessOccurrence = new ActivityReadinessOccurrence(
+                    nextActivity,
+                    transaction.Sequence);
 
                 ExecuteActivityParticipantExit(participantTransition);
                 transaction.MarkPreviousParticipantsExited(
@@ -436,7 +441,7 @@ namespace Immersive.Framework.ActivityFlow
                     "Activity transition reached a terminal committed result.");
                 FinishActivityTransition(transaction);
 
-                return ActivityFlowStartResult.StartedWith(
+                ActivityFlowStartResult result = ActivityFlowStartResult.StartedWith(
                         _currentActivityState,
                         previousActivity,
                         contentResult,
@@ -449,6 +454,8 @@ namespace Immersive.Framework.ActivityFlow
                         activityOperationResult,
                         CreateActivitySceneLedgerSnapshot())
                     .WithActivityTransition(snapshot);
+                SetCurrentActivityContext(result);
+                return result;
             }
             catch (Exception exception)
             {
@@ -514,6 +521,7 @@ namespace Immersive.Framework.ActivityFlow
                     previousActivity,
                     resolvedSource,
                     resolvedReason);
+                ClearCurrentActivityContext();
                 transaction.Commit(
                     "Activity authority committed to the explicit no-active-Activity state.");
 
@@ -930,7 +938,7 @@ namespace Immersive.Framework.ActivityFlow
                     "ActivityTransition",
                     "Activity transition ended after a committed exception.");
 
-            return ActivityFlowStartResult.StartedWith(
+            ActivityFlowStartResult result = ActivityFlowStartResult.StartedWith(
                     _currentActivityState,
                     previousActivity,
                     contentResult,
@@ -943,6 +951,8 @@ namespace Immersive.Framework.ActivityFlow
                     activityOperationResult,
                     CreateActivitySceneLedgerSnapshot())
                 .WithActivityTransition(snapshot);
+            SetCurrentActivityContext(result);
+            return result;
         }
 
         private void PreparePauseActivityBindingIntent(
@@ -1317,6 +1327,39 @@ namespace Immersive.Framework.ActivityFlow
             {
                 _activeActivityTransition = null;
             }
+        }
+
+        internal bool TryPublishPostTransitionReadiness(
+            ActivityReadinessOccurrence occurrence,
+            ActivityReadinessState readinessState,
+            string reason,
+            out ActivityReadinessUpdate update)
+        {
+            update = default;
+            if (!_currentReadinessOccurrence.IsValid ||
+                !_currentReadinessOccurrence.Matches(
+                    occurrence.Activity,
+                    occurrence.TransitionSequence) ||
+                !_currentActivityState.IsActive ||
+                !ReferenceEquals(_currentActivityState.Activity, readinessState.Activity))
+            {
+                return false;
+            }
+
+            if (!_hasCurrentActivityContext || _currentActivityResult.ActivityReadinessState.Equals(readinessState))
+            {
+                return false;
+            }
+
+            _activityReadinessRevision++;
+            _currentActivityResult = _currentActivityResult.WithActivityReadinessState(readinessState);
+            update = new ActivityReadinessUpdate(
+                _currentReadinessOccurrence,
+                readinessState,
+                reason,
+                _activityReadinessRevision);
+            _activityReadinessUpdates.Publish(update);
+            return true;
         }
 
         private static bool PreviousScopeFinalizationSucceeded(

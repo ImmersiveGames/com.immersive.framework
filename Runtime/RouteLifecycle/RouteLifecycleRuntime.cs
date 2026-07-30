@@ -43,7 +43,10 @@ namespace Immersive.Framework.RouteLifecycle
         private readonly CycleResetRuntime _cycleResetRuntime = new CycleResetRuntime();
         private readonly EventBus<RouteEnteredEvent> _routeEnteredEvents = new EventBus<RouteEnteredEvent>();
         private readonly EventBus<RouteExitedEvent> _routeExitedEvents = new EventBus<RouteExitedEvent>();
+        private readonly EventBus<ActivityReadinessUpdate> _activityReadinessUpdates = new EventBus<ActivityReadinessUpdate>();
         private RouteRuntimeState _currentRouteState;
+        private RouteLifecycleStartResult _currentRouteResult;
+        private bool _hasCurrentRouteContext;
         private ICycleResetParticipantSource _cycleResetParticipantSource = EmptyCycleResetParticipantSource.Instance;
 
         internal RouteLifecycleRuntime(
@@ -74,6 +77,7 @@ namespace Immersive.Framework.RouteLifecycle
                 _activityRestartRuntime);
             _routeSceneCompositionRuntime = new RouteSceneCompositionRuntime(_sceneLifecycleRuntime);
             _contentReleaseRuntime = new ContentReleaseRuntime(_sceneLifecycleRuntime);
+            _activityFlowRuntime.SubscribeActivityReadinessUpdates(HandleActivityReadinessUpdate);
         }
 
         internal RouteRuntimeState CurrentRouteState => _currentRouteState;
@@ -83,6 +87,17 @@ namespace Immersive.Framework.RouteLifecycle
         internal RouteContentSet CurrentRouteContentSet => _currentRouteState.RouteContentSet;
 
         internal ActivityAsset CurrentActivity => _activityFlowRuntime.CurrentActivity;
+
+        internal ActivityReadinessOccurrence CurrentOccurrence => _activityFlowRuntime.CurrentOccurrence;
+
+        internal ActivityFlowRuntime CurrentActivityFlowRuntime =>
+            _hasCurrentRouteContext ? _activityFlowRuntime : null;
+
+        internal bool TryGetCurrentRouteResult(out RouteLifecycleStartResult result)
+        {
+            result = _currentRouteResult;
+            return _hasCurrentRouteContext;
+        }
 
         internal bool HasActiveRoute => CurrentRoute != null;
 
@@ -111,6 +126,25 @@ namespace Immersive.Framework.RouteLifecycle
         internal void SetActivityContentExecutionParticipantSource(IActivityContentExecutionParticipantSource participantSource)
         {
             _activityFlowRuntime.SetActivityContentExecutionParticipantSource(participantSource);
+        }
+
+        internal IEventBinding SubscribeActivityReadinessUpdates(Action<ActivityReadinessUpdate> handler)
+        {
+            return _activityReadinessUpdates.Subscribe(handler);
+        }
+
+        private void HandleActivityReadinessUpdate(ActivityReadinessUpdate update)
+        {
+            if (!_hasCurrentRouteContext || !update.IsValid ||
+                !ReferenceEquals(update.Activity, CurrentActivity) ||
+                !CurrentOccurrence.Matches(update.Activity, update.Occurrence.TransitionSequence) ||
+                !_activityFlowRuntime.TryGetCurrentActivityResult(out ActivityFlowStartResult current))
+            {
+                return;
+            }
+
+            UpdateCurrentActivityProjection(current);
+            _activityReadinessUpdates.Publish(update);
         }
 
         internal void SetPauseActivityBindingLifecycle(
@@ -439,12 +473,15 @@ namespace Immersive.Framework.RouteLifecycle
                 routeContentExitResult,
                 releaseResult,
                 activityFlowResult,
+                _activityFlowRuntime,
                 source,
                 reason,
                 routeScopeTailResult.ScopeResult,
                 routeScopeTailResult.BindingCleanupResult,
                 activitySceneRouteReleaseResult);
             _currentRouteState = result.RouteState;
+            _currentRouteResult = result;
+            _hasCurrentRouteContext = true;
             PublishRouteTransition(previousRoute, route, source, reason);
             return result;
         }
@@ -667,7 +704,7 @@ namespace Immersive.Framework.RouteLifecycle
             return StartActivityAsync(activity, source, reason, NoOpFrameworkLoadingProgressReporter.Instance);
         }
 
-        internal Task<ActivityFlowStartResult> StartActivityAsync(
+        internal async Task<ActivityFlowStartResult> StartActivityAsync(
             ActivityAsset activity,
             string source,
             string reason,
@@ -675,10 +712,12 @@ namespace Immersive.Framework.RouteLifecycle
         {
             if (CurrentRoute == null)
             {
-                return Task.FromResult(ActivityFlowStartResult.Failed("No active Route is available."));
+                return ActivityFlowStartResult.Failed("No active Route is available.");
             }
 
-            return _activityFlowRuntime.StartActivityAsync(activity, CurrentRoute, source, reason, progressReporter);
+            ActivityFlowStartResult result = await _activityFlowRuntime.StartActivityAsync(activity, CurrentRoute, source, reason, progressReporter);
+            UpdateCurrentActivityProjection(result);
+            return result;
         }
 
         internal Task<ActivityFlowStartResult> ClearActivityAsync(string source, string reason)
@@ -686,17 +725,30 @@ namespace Immersive.Framework.RouteLifecycle
             return ClearActivityAsync(source, reason, NoOpFrameworkLoadingProgressReporter.Instance);
         }
 
-        internal Task<ActivityFlowStartResult> ClearActivityAsync(
+        internal async Task<ActivityFlowStartResult> ClearActivityAsync(
             string source,
             string reason,
             IFrameworkLoadingProgressReporter progressReporter)
         {
             if (CurrentRoute == null)
             {
-                return Task.FromResult(ActivityFlowStartResult.Failed("No active Route is available."));
+                return ActivityFlowStartResult.Failed("No active Route is available.");
             }
 
-            return _activityFlowRuntime.ClearActivityAsync(CurrentRoute, source, reason, progressReporter);
+            ActivityFlowStartResult result = await _activityFlowRuntime.ClearActivityAsync(CurrentRoute, source, reason, progressReporter);
+            UpdateCurrentActivityProjection(result);
+            return result;
+        }
+
+        private void UpdateCurrentActivityProjection(ActivityFlowStartResult activityFlowResult)
+        {
+            if (!_hasCurrentRouteContext || !activityFlowResult.Completed)
+            {
+                return;
+            }
+
+            _currentRouteState = _currentRouteState.WithActivityFlowResult(activityFlowResult);
+            _currentRouteResult = _currentRouteResult.WithActivityFlowResult(activityFlowResult);
         }
 
         private RuntimeScopeLifecycleResult CreateRouteScopeRoot(RouteAsset route, string source, string reason)

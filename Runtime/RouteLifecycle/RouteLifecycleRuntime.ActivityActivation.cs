@@ -8,7 +8,7 @@ namespace Immersive.Framework.RouteLifecycle
 {
     internal sealed partial class RouteLifecycleRuntime
     {
-        internal Task<ActivityFlowStartResult>
+        internal async Task<ActivityFlowStartResult>
             StartActivityWithActivationGateAsync(
                 ActivityAsset activity,
                 string source,
@@ -18,12 +18,11 @@ namespace Immersive.Framework.RouteLifecycle
         {
             if (CurrentRoute == null)
             {
-                return Task.FromResult(
-                    ActivityFlowStartResult.Failed(
-                        "No active Route is available."));
+                return ActivityFlowStartResult.Failed(
+                    "No active Route is available.");
             }
 
-            return _activityFlowRuntime
+            ActivityFlowStartResult result = await _activityFlowRuntime
                 .StartActivityWithActivationGateAsync(
                     activity,
                     CurrentRoute,
@@ -31,6 +30,8 @@ namespace Immersive.Framework.RouteLifecycle
                     reason,
                     progressReporter,
                     beforeActivation);
+            UpdateCurrentActivityProjection(result);
+            return result;
         }
     }
 }

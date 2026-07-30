@@ -123,5 +123,13 @@ namespace Immersive.Framework.ApplicationLifecycle
             return new FrameworkRuntimeState(
                 SessionRuntimeState.FromActivityRequestResult(previousState.SessionState, activityRequestResult));
         }
+
+        internal FrameworkRuntimeState WithActivityReadiness(
+            RouteLifecycleStartResult routeLifecycleResult,
+            ActivityReadinessState activityReadinessState)
+        {
+            return new FrameworkRuntimeState(SessionState.WithActivityReadiness(
+                routeLifecycleResult, activityReadinessState));
+        }
     }
 }
