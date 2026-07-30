@@ -330,29 +330,9 @@ Código e nomes de tipos permanecem em inglês. A explicação pode ficar em por
 | Corte | Entrega | Estado |
 |---|---|---|
 | F0 | Arquitetura rastreável de `FrameworkModels`, `Shared` e raízes `M01`–`M16` | Closed |
-| S1 | Gerador unificado, não destrutivo, de conteúdo inicial para M02–M16 | Tooling Prepared |
 
-A conclusão de F0 e a disponibilidade de scaffolds não alteram o estado de nenhum modelo. Um modelo muda de
-`Pending` para `Authoring` somente quando sua montagem e configuração específicas começam na ordem do roadmap.
-
-## Regra operacional de scaffold global
-
-A criação física repetitiva de assets, cenas, materiais e prefabs pode ser antecipada por tooling Editor explícito,
-idempotente e não destrutivo. O scaffold global M02–M16 deve:
-
-```text
-preservar arquivos existentes;
-criar somente arquivos ausentes;
-não preencher referências entre assets;
-não adicionar componentes oficiais da feature;
-não montar prefabs nas cenas;
-não instalar bootstrap ou authority runtime;
-não alterar ProjectSettings ou Build Profiles;
-registrar tipos opcionais ainda indisponíveis.
-```
-
-A avaliação de UX continua concentrada em montagem, configuração, validação, entendimento dos Inspectors,
-execução, diagnóstico, cleanup e reutilização.
+A conclusão de F0 não altera o estado de nenhum modelo. Um modelo muda de `Pending` para `Authoring`
+somente quando sua montagem específica começar.
 
 | Ordem | Modelo | Tipo | Estado |
 |---:|---|---|---|
@@ -426,6 +406,7 @@ Profiles/ActivityContent_M01_B.asset
 ## Cenas
 
 ```text
+Scenes/M01_PersistentContent.unity
 Scenes/M01_Boot.unity
 Scenes/M01_Menu.unity
 Scenes/M01_Gameplay.unity
@@ -465,16 +446,34 @@ Checkpoint em 2026-07-29:
 
 ```text
 GA_M01_RouteActivity criado;
-scaffold de arquivos ausentes preparado;
-próximo passo: materializar o scaffold e configurar Profiles, Activities, Routes e Game Application.
+Profiles, Activities e Routes configurados;
+validação local bloqueada por três problemas identificados;
+correção técnica preparada no package e QA.
 ```
 
 ### Etapa 1 — Game Application
 
 - [x] Criar `GA_M01_RouteActivity`.
-- [ ] Selecionar `Route_M01_Menu` como startup Route.
-- [ ] Configurar somente os campos necessários ao modelo.
-- [ ] Salvar e executar a validação disponível no Inspector.
+- [x] Selecionar `Route_M01_Menu` como startup Route.
+- [x] Manter `Local Player Slots` vazio porque as Activities usam `Projection = No Slots`.
+- [ ] Executar `Resolve Application Foundation` para criar `M01_PersistentContent` a partir da fonte oficial.
+- [ ] Associar `M01_PersistentContent` como `Content Scene`.
+- [ ] Salvar e executar novamente `Validate Configuration`.
+
+Regra corrigida neste corte:
+
+```text
+Validate Configuration
+  valida somente a Game Application selecionada e suas dependências configuradas;
+  não agrega Actor Profiles não referenciados de M06/M07;
+  aceita zero Local Player Slots como estado explícito quando Player não está configurado.
+
+Project Profile Audit
+  continua responsável pelos assets de Player/Actor existentes no projeto.
+```
+
+Persistent Content continua obrigatório no contrato atual de Application. O M01 reutiliza essa fundação,
+mas não adiciona Camera, EventSystem ou presentation authorities nas cenas de Route/Activity.
 
 ### Etapa 2 — Routes
 
@@ -2010,37 +2009,48 @@ Esse registro não vira botão ou cena no FIRSTGAME.
 
 ```text
 F0 Folder Architecture: Closed
-S1 M02–M16 Unified Scaffold Tooling: Prepared
 M01 Route and Activity: Authoring
-Current roadmap focus: configure and validate the M01 authoring graph
+Current roadmap step: M01 — resolver Persistent Content e revalidar a Game Application
+Technical correction: local validation scope separated from project Profile audit; zero Slots accepted as optional.
 Next model after M01 closes: M02 Lifecycle Events
 ```
 
-O scaffold M02–M16 pode ser materializado antecipadamente para reduzir trabalho repetitivo, mas isso não autoriza
-configurar, validar ou executar esses modelos fora de ordem. Todos permanecem `Pending` até o foco chegar a eles.
+A evidência integrada existente em outros fluxos não substitui a montagem isolada do M01. A coleção deve
+seguir a ordem do controle geral de progresso e usar cada modelo para observar a experiência real de
+authoring.
 
-## Trabalho corrente em M01
+## M01 — Etapa 1 — Game Application
 
-```text
-configurar Activity Content Profiles;
-configurar Activities;
-configurar Routes;
-completar Game Application;
-validar o grafo;
-registrar fricções de UX;
-depois montar triggers, bootstrap e fluxo de Play Mode.
-```
-
-## Preparação disponível para M02–M16
-
-O comando abaixo cria conteúdo inicial ausente para todos os modelos restantes:
+O corte inicial de M01 cria somente:
 
 ```text
-Tools > Immersive Framework > FIRSTGAME > Scaffolds > Create Missing M02-M16
+M01_RouteActivity/Application/
+M01_RouteActivity/Routes/
+M01_RouteActivity/Activities/
+M01_RouteActivity/Scenes/
+M01_RouteActivity/Prefabs/
+M01_RouteActivity/README.md
 ```
 
-A ferramenta cria SOs comuns, cenas visualmente distinguíveis, prefabs-placeholder e materiais. Assets opcionais
-como Player Slot, Actor ou Camera Rig são criados somente quando a classe ScriptableObject correspondente estiver
-disponível no package atual. Ausências são diagnosticadas e não bloqueiam os demais modelos.
+Não criar por YAML, script ou gerador:
 
-A configuração de cada modelo continua guiada pelo seu próprio README e pela seção correspondente deste roadmap.
+```text
+GA_M01_RouteActivity.asset;
+Route_M01_Menu.asset;
+Route_M01_Gameplay.asset;
+Activity_M01_A.asset;
+Activity_M01_B.asset;
+M01_Boot.unity;
+M01_Menu.unity;
+M01_Gameplay.unity;
+M01_ActivityA_Add.unity;
+M01_ActivityB_Add.unity;
+prefabs do modelo.
+```
+
+Esses arquivos devem ser produzidos manualmente pelas superfícies oficiais do Unity/package, porque a
+sequência de criação, os campos exigidos, as mensagens do Inspector e os pontos de retorno fazem parte
+do teste de UX.
+
+A primeira ação manual é criar `GA_M01_RouteActivity`, configurar somente o que estiver disponível nesse
+momento e registrar a experiência antes de avançar para Routes.

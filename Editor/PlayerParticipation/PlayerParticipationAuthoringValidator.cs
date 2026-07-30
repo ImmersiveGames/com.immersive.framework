@@ -47,8 +47,8 @@ namespace Immersive.Framework.Editor.Editor.PlayerParticipation
             IReadOnlyList<PlayerSlotProfile> configuredSlots = gameApplication.LocalPlayerSlots;
             if (configuredSlots == null || configuredSlots.Count == 0)
             {
-                report.AddError(
-                    "Local Player Slots are missing. Configure at least one PlayerSlotProfile in allocation order; the framework does not create a fallback Player 1 Slot.",
+                report.AddOptionalSkip(
+                    "No Local Player Slots are configured. Player participation is explicitly unavailable for this Game Application; Activities using Projection = No Slots remain valid.",
                     gameApplication);
                 return report;
             }
@@ -172,8 +172,8 @@ namespace Immersive.Framework.Editor.Editor.PlayerParticipation
 
             if (slotProfileGuids.Length == 0)
             {
-                report.AddError(
-                    "No PlayerSlotProfile assets exist in the project. Create explicit Slot Profiles before configuring local participation.",
+                report.AddOptionalSkip(
+                    "No PlayerSlotProfile assets exist in the project. Player participation remains optional until explicit Slot Profiles are authored.",
                     null);
             }
 

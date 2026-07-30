@@ -98,7 +98,7 @@ namespace Immersive.Framework.Editor.Editor.Authoring
                 "Game Application",
                 EditorStyles.boldLabel);
             EditorGUILayout.HelpBox(
-                "Application-level authoring for startup flow, local Player policy and the concrete Persistent Content composition.",
+                "Application-level authoring for startup flow, optional local Player policy and the concrete Persistent Content composition.",
                 MessageType.Info);
 
             EditorGUILayout.Space(6f);
@@ -229,8 +229,11 @@ namespace Immersive.Framework.Editor.Editor.Authoring
         private void DrawLocalPlayers()
         {
             EditorGUILayout.LabelField(
-                "Local Players",
+                "Local Players (Optional)",
                 EditorStyles.boldLabel);
+            EditorGUILayout.HelpBox(
+                "Leave Player Slots empty for applications whose Activities use Projection = No Slots. Add explicit PlayerSlotProfile references only when this application enables local Player participation.",
+                MessageType.None);
             EditorGUILayout.PropertyField(
                 _playerActorSelectionDuplicatePolicy,
                 new GUIContent("Duplicate Actors"));
@@ -289,7 +292,6 @@ namespace Immersive.Framework.Editor.Editor.Authoring
                     GUIUtility.ExitGUI();
                 }
             }
-
         }
 
         private void DrawValidation()
@@ -302,7 +304,7 @@ namespace Immersive.Framework.Editor.Editor.Authoring
                 new GUIContent("Mode"));
 
             EditorGUILayout.HelpBox(
-                "Scene-content and project-profile validation runs only when Validate Configuration is pressed. Inspector repaint does not open or inspect the Content Scene.",
+                "Scene-content validation runs only when Validate Configuration is pressed. The selected Game Application and its configured dependencies are validated locally; unrelated project assets belong to explicit project audits.",
                 MessageType.None);
 
             DrawStatusRow(
@@ -351,7 +353,7 @@ namespace Immersive.Framework.Editor.Editor.Authoring
             }
 
             EditorGUILayout.HelpBox(
-                "The Game Application declares one concrete Content Scene. The framework validates the contracts present in that scene and consumes its complete authored hierarchy without creating, applying, rebuilding or repairing content.",
+                "The Game Application declares one concrete Content Scene. Player Slots are optional until a Player-participating Activity requires them. The framework validates only this application's configured graph here; project-wide Profile audits remain separate.",
                 MessageType.None);
 
             EditorGUILayout.Space(4f);
@@ -380,10 +382,6 @@ namespace Immersive.Framework.Editor.Editor.Authoring
                 PlayerParticipationAuthoringValidator
                     .ValidateGameApplication(
                         gameApplication));
-            _lastValidationReport.AddRange(
-                PlayerParticipationAuthoringValidator
-                    .ValidateProjectProfiles(
-                        gameApplication.ValidationMode));
             _validationOutdated = false;
         }
 
@@ -426,6 +424,5 @@ namespace Immersive.Framework.Editor.Editor.Authoring
                         EditorGUIUtility.singleLineHeight));
             }
         }
-
     }
 }
