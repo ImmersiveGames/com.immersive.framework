@@ -1,7 +1,7 @@
 # Immersive Framework — Roteiro Operacional de Modelos de Demonstração
 
-Status: guia de montagem — arquitetura base materializada  
-Data: 2026-07-29  
+Status: guia de montagem e tracking atualizado  
+Data: 2026-07-30  
 Destino: `ImmersiveGames/planet-devourer` — FIRSTGAME  
 Framework oficial: `ImmersiveGames/com.immersive.framework`  
 Validação técnica e casos negativos: `rinnocenti/QAFramework`
@@ -188,30 +188,6 @@ M##_FeatureName/
 
 Criar somente as pastas que o modelo realmente usa.
 
-## 5.1 Regra de materialização da arquitetura inicial
-
-O corte inicial de arquitetura cria somente:
-
-```text
-FrameworkModels/
-Shared/ e suas categorias permitidas
-raízes M01 a M16
-```
-
-As pastas internas padrão de cada modelo não são criadas antecipadamente. Elas devem surgir apenas
-quando o modelo entrar em `Authoring` e somente quando houver conteúdo real para a categoria.
-
-Para manter as raízes vazias rastreáveis no Git sem produzir assets Unity prematuros:
-
-```text
-cada raiz de modelo contém somente .gitkeep;
-folder .meta files são entregues junto com a estrutura;
-.gitkeep deve ser removido quando o primeiro arquivo real entrar na pasta;
-nenhuma cena, prefab, ScriptableObject ou script é criado neste corte.
-```
-
-Estado do corte de arquitetura em 2026-07-29: `Closed`.
-
 ---
 
 # 6. Convenções de nomenclatura
@@ -222,7 +198,7 @@ Estado do corte de arquitetura em 2026-07-29: `Closed`.
 GA_M01_RouteActivity
 Route_M01_Menu
 Route_M01_Gameplay
-Activity_M01_A
+Activity_M01_ActivityA
 PlayerSlot_M06_Player1
 Actor_M06_Default
 CameraRig_M10_Player
@@ -325,19 +301,10 @@ Código e nomes de tipos permanecem em inglês. A explicação pode ficar em por
 
 # 9. Controle geral de progresso
 
-## Fundação da coleção
-
-| Corte | Entrega | Estado |
-|---|---|---|
-| F0 | Arquitetura rastreável de `FrameworkModels`, `Shared` e raízes `M01`–`M16` | Closed |
-
-A conclusão de F0 não altera o estado de nenhum modelo. Um modelo muda de `Pending` para `Authoring`
-somente quando sua montagem específica começar.
-
 | Ordem | Modelo | Tipo | Estado |
 |---:|---|---|---|
 | 1 | M01 Route and Activity | Fundação | Closed |
-| 2 | M02 Lifecycle Events | Fundação | Authoring |
+| 2 | M02 Lifecycle Events | Fundação | Closed |
 | 3 | M03 Activity Readiness | Fundação | Pending |
 | 4 | M04 Content Anchors | Ownership | Pending |
 | 5 | M05 Anchor Materialization | Ownership opcional | Pending |
@@ -370,42 +337,28 @@ Deferred
 
 # 10. M01 — Route and Activity
 
-Status: **Closed**  
-Closed: 2026-07-30
-
 ## Objetivo
 
 Demonstrar a estrutura mínima de Application, Route e Activity sem Player, Camera de gameplay, Reset ou
 Pause.
 
-## Resultado comprovado
+## Resultado esperado para o usuário
+
+O usuário entende como:
 
 ```text
-Boot
-→ Menu Route sem Activity
-→ Gameplay Route + startup Activity A
-→ Activity B
-→ Activity A
-→ Menu
-→ Gameplay + startup Activity A novamente
+criar uma Game Application;
+adicionar Routes;
+definir startup Route;
+adicionar Activities;
+definir startup Activity;
+solicitar Route;
+solicitar Activity;
+compor cenas;
+retornar ao Menu.
 ```
 
-A execução real confirmou:
-
-```text
-zero Local Player Slots;
-Player runtime = NotConfigured;
-Scene Local Player admission = NotConfigured;
-startup Menu sem Activity;
-Gameplay inicia Activity A;
-troca A/B libera a cena anterior e carrega uma cena nova;
-retorno ao Menu limpa Gameplay e Activity;
-reentrada inicia Activity A novamente;
-activitySceneLedgerStale = 0;
-blockingIssues = 0.
-```
-
-## Assets finais
+## Assets
 
 ```text
 Application/GA_M01_RouteActivity.asset
@@ -413,14 +366,11 @@ Routes/Route_M01_Menu.asset
 Routes/Route_M01_Gameplay.asset
 Activities/Activity_M01_A.asset
 Activities/Activity_M01_B.asset
-Profiles/ActivityContent_M01_A.asset
-Profiles/ActivityContent_M01_B.asset
 ```
 
-## Cenas finais
+## Cenas
 
 ```text
-Scenes/M01_PersistentContent.unity
 Scenes/M01_Boot.unity
 Scenes/M01_Menu.unity
 Scenes/M01_Gameplay.unity
@@ -428,7 +378,7 @@ Scenes/M01_ActivityA_Add.unity
 Scenes/M01_ActivityB_Add.unity
 ```
 
-## Prefabs finais
+## Prefabs
 
 ```text
 Prefabs/PF_M01_RouteNavigation.prefab
@@ -436,302 +386,301 @@ Prefabs/PF_M01_ActivityNavigation.prefab
 Prefabs/PF_M01_CurrentContextDisplay.prefab
 ```
 
-`PF_M01_CurrentContextDisplay` permanece como placeholder e não participa do aceite. O package ainda não
-expõe uma superfície pública tipada para apresentar Current Route e Current Activity sem acesso a internals,
-reflection ou lookup global.
+## Montagem
 
-## Correções de produto originadas no M01
+### Etapa 1 — Game Application
+
+- [ ] Criar `GA_M01_RouteActivity`.
+- [ ] Selecionar `Route_M01_Menu` como startup Route.
+- [ ] Configurar somente os campos necessários ao modelo.
+- [ ] Salvar e executar a validação disponível no Inspector.
+
+### Etapa 2 — Routes
+
+- [ ] Criar `Route_M01_Menu`.
+- [ ] Associar `M01_Menu` como cena principal.
+- [ ] Não definir startup Activity no Menu.
+- [ ] Criar `Route_M01_Gameplay`.
+- [ ] Associar `M01_Gameplay` como cena principal.
+- [ ] Definir `Activity_M01_A` como startup Activity.
+
+### Etapa 3 — Activities
+
+- [ ] Criar `Activity_M01_A`.
+- [ ] Associar `M01_ActivityA_Add`.
+- [ ] Criar `Activity_M01_B`.
+- [ ] Associar `M01_ActivityB_Add`.
+- [ ] Manter participation requirements no mínimo permitido.
+
+### Etapa 4 — Controles
+
+- [ ] Adicionar `RouteRequestTrigger` ao botão `Open Gameplay`.
+- [ ] Adicionar `RouteRequestTrigger` ao botão `Back to Menu`.
+- [ ] Adicionar `ActivityRequestTrigger` aos botões `Activity A` e `Activity B`.
+- [ ] Exibir Route e Activity atuais em um painel pequeno.
+
+## Fluxo em Play Mode
 
 ```text
-Game Application local validation
-  não agrega Project Profile Audit;
-  zero Local Player Slots é válido quando Player não está configurado.
-
-Bootstrap runtime
-  não compõe Player Participation, Actor Preparation ou Player Gameplay para zero Slots.
-
-FrameworkRuntimeHost
-  não compõe Scene Local Player admission quando Player Participation está NotConfigured.
+Boot
+→ Menu
+→ Gameplay Route
+→ startup Activity A
+→ Activity B
+→ Activity A
+→ Menu
 ```
 
-## Evidência técnica
+## Evidência visual
 
 ```text
-GAME_APPLICATION_VALIDATION_SCOPE_SMOKE
-  status = Passed
-  cases = 3
-
-ZERO_SLOT_BOOTSTRAP_COMPOSITION_POLICY_SMOKE
-  status = Passed
-  cases = 5
-
-P3F_SESSION_SLOT_RUNTIME_SMOKE
-  status = Passed
-  cases = 17
-
-M01_ZERO_PLAYER_BOOT_SMOKE
-  status = Passed
-  cases = 5
+Menu visível somente no Menu;
+ambiente da Gameplay Route permanece entre Activities;
+conteúdo A aparece somente na Activity A;
+conteúdo B aparece somente na Activity B;
+retorno ao Menu remove Gameplay e Activity.
 ```
 
 ## Critério de aceite
 
-- [x] A Game Application valida sem Player configurado.
-- [x] O boot inicia a Menu Route sem Activity.
-- [x] O trigger de Route abre Gameplay.
-- [x] Gameplay inicia Activity A.
-- [x] Activity A e B alternam sem duplicação.
-- [x] Gameplay permanece durante a troca de Activity.
-- [x] Retornar ao Menu libera Gameplay e Activity.
-- [x] Reentrar em Gameplay inicia Activity A novamente.
-- [x] Nenhuma operação principal reportou blocking issue.
-- [x] Nenhuma feature de Player foi criada como fallback.
+- [ ] O fluxo completo funciona sem Console como guia.
+- [ ] As cenas carregadas são compreensíveis no Hierarchy.
+- [ ] O Inspector dos triggers deixa claro o destino.
+- [ ] O usuário consegue trocar a Activity sem editar código.
+- [ ] Nenhuma feature não relacionada foi adicionada.
+- [ ] As peças reutilizáveis estão em prefabs.
 
-## Findings de UX/produto
+## Pontos de UX a registrar
 
 ```text
-UX-M01-001 — Player era tratado como obrigatório na validação e no boot.
-Destino: corrigido no package e coberto no QA.
-
-UX-M01-002 — Persistent Content mínimo inclui Camera, Loading, Transition e Pause.
-Destino: revisão futura de Recipes/Templates de aplicação mínima.
-
-UX-M01-003 — não existe binding público tipado para Current Route/Activity.
-Destino: nova superfície de apresentação read-only no package.
-
-UX-M01-004 — logs Debug de requests são excessivamente volumosos para uso cotidiano.
-Destino: separar resumo, debug operacional e trace avançado.
+Foi fácil criar Route e Activity?
+Os menus Create estão claros?
+O Inspector explica startup Activity?
+O trigger deixa explícito o destino?
+Existe informação técnica demais no modo normal?
+O usuário entende quais cenas pertencem à Route e à Activity?
 ```
 
-## Peças reutilizáveis
+## QA Follow-ups
 
-Os prefabs de navegação podem ser testados em outro modelo, mas ainda não são templates oficiais. O painel de
-contexto não deve ser promovido enquanto o package não oferecer um binding público tipado.
+Registrar somente os casos técnicos percebidos durante a montagem, por exemplo:
+
+```text
+request repetido;
+ID duplicado;
+Activity fora da Route;
+falha de scene composition;
+cleanup parcial.
+```
+
+Não executar esses casos no FIRSTGAME.
 
 ---
 
 # 11. M02 — Lifecycle Events
 
-Status: **Authoring**  
-Started: 2026-07-30
+## Estado
+
+```text
+Package authoring surface       Passed
+FIRSTGAME manual authoring      Passed
+FIRSTGAME Play Mode smoke       Passed
+QAFramework deterministic QA    Deferred
+Roadmap status                  Closed
+```
+
+O M02 está fechado como prova de produto no FIRSTGAME. A regressão sintética no QAFramework foi adiada por
+decisão de roadmap e não bloqueia o próximo modelo.
 
 ## Objetivo
 
-Demonstrar objetos reagindo ao lifecycle oficial de Scene, Route e Activity sem criar uma autoridade paralela
-de lifecycle no jogo consumidor.
+Demonstrar que objetos scene-authored recebem callbacks reais de Scene, Route e Activity por uma superfície
+authorável no Inspector, sem implementar lifecycle paralelo.
 
-## Resultado esperado para o usuário
-
-O usuário entende:
+## Diferença em relação ao M01
 
 ```text
-qual evento pertence à Scene;
-qual evento pertence à Route;
-qual evento pertence à Activity;
-como adicionar um participant oficial;
-como ligar callbacks a apresentação local;
-como observar Enter/Exit sem usar Console como fluxo principal.
+M01
+  prova transições de Route e Activity.
+
+M02
+  prova consumo authorável dos callbacks por objetos do jogo.
 ```
 
-## Assets planejados
+## Superfícies oficiais utilizadas
 
 ```text
-Application/GA_M02_Lifecycle.asset
-Routes/Route_M02_A.asset
-Routes/Route_M02_B.asset
-Activities/Activity_M02_A.asset
-Activities/Activity_M02_B.asset
-Profiles/ActivityContent_M02_A.asset
-Profiles/ActivityContent_M02_B.asset
+SceneLifecycleEvents
+  Available / Releasing
+
+RouteContentBinding
++ RouteContentLifecycleEvents
+  Entered / Exited
+
+ActivityLocalVisibilityAdapter
++ ActivityContentLifecycleEvents
+  Entered / Exited
 ```
 
-## Cenas planejadas
+## Prefabs
 
 ```text
-Scenes/M02_PersistentContent.unity
-Scenes/M02_Boot.unity
-Scenes/M02_RouteA.unity
-Scenes/M02_RouteB.unity
-Scenes/M02_ActivityA_Add.unity
-Scenes/M02_ActivityB_Add.unity
+PF_M02_SceneLifecycleObject
+PF_M02_RouteLifecycleObject
+PF_M02_ActivityLifecycleObject
 ```
 
-## Prefabs de habilidade
+Organização validada:
 
 ```text
-Prefabs/PF_M02_SceneLifecycleObject.prefab
-Prefabs/PF_M02_RouteLifecycleObject.prefab
-Prefabs/PF_M02_ActivityLifecycleObject.prefab
+Prefab Root
+├── Visual Placeholder
+├── Label
+├── Framework Components (Configure Manually)
+│   └── componentes oficiais
+└── Bindings (Configure Manually)
+    └── M02LifecycleVisualPresenter
 ```
 
-## Regra de independência
+A descoberta começa nos roots explícitos da cena e atravessa descendentes, inclusive inativos. A posição na
+hierarquia é organização. Route/Activity assets e `localContentId` continuam sendo identidade explícita.
+
+## Montagem concluída
+
+### Base
+
+- [x] Game Application própria.
+- [x] Routes A/B próprias.
+- [x] Activities A/B próprias.
+- [x] Profiles e cenas aditivas próprias.
+- [x] Persistent Content próprio.
+- [x] Zero Local Player Slots.
+- [x] Nenhum asset operacional do M01 reutilizado, exceto navegação visual temporária.
+
+### Scene lifecycle
+
+- [x] `PF_M02_SceneLifecycleObject` criado.
+- [x] `SceneLifecycleEvents` configurado.
+- [x] `Available` ligado a `OnAvailable`.
+- [x] `Releasing` ligado a `OnReleasing`.
+- [x] Reação visual e log estruturado comprovados.
+
+### Route lifecycle
+
+- [x] `PF_M02_RouteLifecycleObject` criado.
+- [x] `RouteContentBinding` configurado em descendente organizacional.
+- [x] `RouteContentLifecycleEvents` ligado ao presenter.
+- [x] Route A/B atribuídas por override de instância.
+- [x] Enter/Exit comprovados nas duas direções.
+
+### Activity lifecycle
+
+- [x] `PF_M02_ActivityLifecycleObject` criado.
+- [x] `ActivityLocalVisibilityAdapter` configurado.
+- [x] `ActivityContentLifecycleEvents` ligado ao presenter.
+- [x] Activity A/B atribuídas por override de instância.
+- [x] Enter/Exit e reentrada comprovados.
+
+## Fluxo validado em Play Mode
 
 ```text
-não reutilizar Game Application, Routes, Activities ou cenas do M01;
-não depender do Menu do M01;
-não copiar Host, bootstrap ou componentes de cenas antigas;
-zero Player Slots permanece válido;
-Persistent Content é próprio do M02;
-scripts do consumidor apresentam estado, mas não disparam lifecycle manualmente.
-```
-
-## Grafo autoral inicial
-
-```text
-GA_M02_Lifecycle
-  Content Scene: M02_PersistentContent
-  Startup Route: Route_M02_A
-  Local Player Slots: empty
-
-Route_M02_A
-  Primary Scene: M02_RouteA
-  First Activity: Activity_M02_A
-
-Route_M02_B
-  Primary Scene: M02_RouteB
-  First Activity: Activity_M02_B
-
-Activity_M02_A
-  Activity Content Profile: ActivityContent_M02_A
-  Projection: No Slots
-  Zero Participants: Allowed
-  Requirement Level: None
-
-Activity_M02_B
-  Activity Content Profile: ActivityContent_M02_B
-  Projection: No Slots
-  Zero Participants: Allowed
-  Requirement Level: None
-```
-
-## Corte atual — fundação autoral completa
-
-A primeira versão do corte dependia implicitamente do scaffold unificado M02-M16. Essa dependência deixou o
-início do M02 incompleto quando o scaffold não havia sido materializado. O comando do M02 agora é autocontido:
-
-```text
-Tools
-→ Immersive Framework
-→ FIRSTGAME
-→ M02
-→ Resolve Application Foundation
-```
-
-O comando:
-
-```text
-cria todos os assets autorais ausentes do M02;
-cria as cinco cenas não persistentes ausentes;
-cria os três prefabs placeholders de lifecycle;
-cria M02_PersistentContent a partir da fonte oficial do package;
-remove somente Main Camera/EventSystem gerados em hierarquias M02 reconhecidas;
-preserva arquivos existentes;
-não atribui referências entre assets;
-não adiciona participants;
-não instala bootstrap;
-não altera Build Profiles ou ProjectSettings.
-```
-
-Semântica de startup:
-
-```text
-Build Profile entry scene: M02_Boot
-Game Application Startup Route: Route_M02_A
-Route_M02_A Primary Scene: M02_RouteA
-Game Application Content Scene: M02_PersistentContent
-```
-
-Não reutilizar `M01_PersistentContent`. A cena persistente própria do M02 preserva isolamento e ownership do
-modelo, mesmo que ambas sejam originadas da mesma template oficial.
-
-## Primeiro bloco de montagem
-
-1. Executar `M02 > Resolve Application Foundation`.
-2. Confirmar o inventário completo de assets, seis cenas e três prefabs.
-3. Configurar os dois Activity Content Profiles.
-4. Configurar Activities A/B como `No Slots`.
-5. Configurar Route A/B e suas startup Activities.
-6. Configurar `GA_M02_Lifecycle` com Content Scene `M02_PersistentContent` e Startup Route `Route_M02_A`.
-7. Colocar `M02_Boot` como cena de entrada do Build Profile.
-8. Validar o grafo antes de adicionar qualquer lifecycle participant.
-
-## Fluxo funcional planejado
-
-```text
-Boot
+M02_Boot
 → Route A + Activity A
+→ Activity A novamente: IgnoredAlreadyActive
 → Activity B
 → Route B + Activity B
+→ Activity B novamente: IgnoredAlreadyActive
 → Route A + Activity A
 ```
 
-Não existe etapa `Menu` neste modelo. O M02 é isolado e possui apenas Route A e Route B.
+Não existe etapa de Menu neste modelo isolado.
 
-## Comportamentos visuais planejados
+## Evidência observada
 
 ```text
-Scene Available
-  apresenta o objeto como disponível.
+Scene
+  Route A Available/Releasing
+  Route B Available/Releasing
 
-Scene Releasing
-  apresenta o estado de saída antes do unload.
+Route
+  A Enter/Exit
+  B Enter/Exit
 
-Route Enter
-  ativa a apresentação persistente da Route.
+Activity
+  A Enter/Exit
+  B Enter/Exit
 
-Route Exit
-  encerra a apresentação da Route.
-
-Activity Enter
-  ativa o objeto contextual da Activity.
-
-Activity Exit
-  encerra o estado contextual da Activity.
+Diagnostics
+  routeContentEnterBindings = 1
+  routeContentEnterReceivers = 1
+  routeContentExitBindings = 1
+  routeContentExitReceivers = 1
+  activityContentEnterBindings = 1
+  activityContentEnterReceivers = 1
+  activityContentExitBindings = 1
+  activityContentExitReceivers = 1
+  failed = 0
+  blockingIssues = 0
+  activitySceneLedgerStale = 0
 ```
 
-## Limite do código consumidor
+`IgnoredAlreadyActive` produz zero side effects e nenhum novo callback do presenter.
+
+## Critério de aceite
+
+- [x] Cada lifecycle produz uma reação visível e logável no consumidor.
+- [x] Scene, Route e Activity têm responsabilidades distinguíveis.
+- [x] Os prefabs podem ser abertos e compreendidos isoladamente.
+- [x] Nenhum script do demo assume autoridade de lifecycle.
+- [x] Nenhum callback é disparado manualmente pelo consumidor.
+- [x] Hierarquia de organização não altera descoberta.
+- [x] Reentrada Route B → Route A restaura a composição correta.
+- [x] Não há falhas, blocking issues ou ledger stale no smoke fornecido.
+
+## Findings
 
 ```text
-permitido:
-  atualizar label, material, luz, animação ou contador visual;
-  armazenar o último evento apenas para apresentação local.
+UX-M02-001
+Navigation prefabs reused from M01 are still named for M01.
+Candidate: FIRSTGAME Shared/Navigation or future package template.
 
-proibido:
-  chamar Enter/Exit manualmente;
-  decidir qual Route/Activity está ativa;
-  substituir a authority do framework;
-  usar singleton, service locator ou lookup global.
+UX-M02-002
+Scene lifecycle lacked a public Inspector bridge.
+Resolved in package with SceneLifecycleEvents.
+
+UX-M02-003
+Moving a component inside a prefab changes its fileID and can leave stale
+scene overrides. Reassign or revert orphaned overrides after restructuring.
+
+UX-M02-004
+The local presenter counts/logs its Initial visual state. Cleanup is optional
+and does not affect framework lifecycle correctness.
 ```
 
-## Critério de aceite do M02
-
-- [ ] O grafo autoral independente valida.
-- [ ] Scene, Route e Activity lifecycle são distinguíveis visualmente.
-- [ ] Os participants oficiais são configuráveis pelo Inspector.
-- [ ] Nenhum callback é disparado manualmente pelo consumidor.
-- [ ] Os prefabs são compreensíveis isoladamente.
-- [ ] A navegação repete o fluxo sem callbacks duplicados aparentes.
-- [ ] Findings técnicos são transferidos ao QA, não transformados em cenas inválidas.
-
-## Pontos de UX a registrar
+## Fora de escopo confirmado
 
 ```text
-Como o designer encontra o participant correto?
-O Inspector diferencia Enter e Exit?
-O callback aceita UnityEvent ou requer adapter?
-A requiredness é clara?
-Há configuração repetitiva entre Scene, Route e Activity?
-Um Composer/Template oficial reduziria montagem sem esconder contratos?
+receiver failure;
+required/optional readiness;
+negative mismatch cases;
+assert panel;
+fault injection;
+stress;
+Reset;
+Player;
+Pause;
+gameplay camera.
 ```
 
-## QA Follow-ups previstos
+Required/optional readiness moves to M03. Synthetic negative coverage remains a deferred QA follow-up.
+
+## QA follow-up deferred
 
 ```text
-ordem exata de callbacks;
-idempotência;
-participant obrigatório ou opcional com falha;
-exceção durante Enter ou Exit;
-reentrada repetida.
+QA-M02-001
+Activity already active must not duplicate Enter/Exit.
+Destination: QAFramework
+Status: Deferred
 ```
 
 ---
@@ -2040,116 +1989,63 @@ Esse registro não vira botão ou cena no FIRSTGAME.
 
 ---
 
-# 30. Checkpoint atual
+# 30. Próximo modelo a montar
 
-```text
-F0 Folder Architecture: Closed
-M01 Route and Activity: Closed
-M02 Lifecycle Events: Authoring
-Current roadmap step: M02 — configurar o grafo independente e materializar lifecycle participants oficiais.
-```
+## M03 — Activity Readiness
 
-## M01 — fechamento
+M01 e M02 estão fechados no FIRSTGAME. O próximo corte deve provar a experiência de authoring e diagnóstico
+de readiness, sem ampliar o M02 e sem antecipar Content Anchors.
 
-O M01 provou o caminho feliz completo em FIRSTGAME:
-
-```text
-Boot → Menu → Gameplay/A → B → A → Menu → Gameplay/A
-```
-
-Também originou e validou correções oficiais para:
-
-```text
-escopo da validação local da Game Application;
-zero Local Player Slots como feature NotConfigured;
-composição condicional da pilha runtime de Player;
-Scene Local Player admission opcional quando Player não está configurado.
-```
-
-O modelo foi fechado com `blockingIssues = 0`, cleanup de cenas, reentrada e `activitySceneLedgerStale = 0`.
-
-## M02 — corte inicial
-
-Tipo: UX/produto + integração real.
-
-```text
 Objetivo:
-  provar Scene, Route e Activity lifecycle como superfícies authoráveis e visíveis.
 
-Escopo atual:
-  fundação própria;
-  grafo Application/Routes/Activities;
-  zero Player Slots;
-  identificação dos participants oficiais atuais;
-  apresentação local sem authority paralela.
+```text
+configurar readiness required e optional;
+mostrar quando uma Activity fica Ready;
+mostrar quando uma dependência bloqueia readiness;
+distinguir falha obrigatória de ausência opcional;
+manter diagnóstico explícito e sem fallback silencioso.
+```
+
+Entregas esperadas:
+
+```text
+M03_Boot
+M03_Route
+M03_ActivityReady
+M03_ActivityBlocked
+M03_ActivityOptional
+
+GA_M03_Readiness
+Route_M03
+Activity_M03_Ready
+Activity_M03_Blocked
+Activity_M03_Optional
+
+recipe/profile ou superfície oficial existente;
+presenter compacto de readiness;
+README.md;
+UX findings;
+QA follow-ups registrados, sem implementar QA neste corte.
+```
 
 Fora de escopo:
-  readiness;
-  Player;
-  Camera de gameplay;
-  Reset;
-  Pause;
-  casos negativos e matriz de regressão.
-```
-
-## Arquivos afetados por este corte documental
 
 ```text
-com.immersive.framework
-  Documentation~/Current/IMMERSIVE-FRAMEWORK-FIRSTGAME-DEMONSTRATION-MODELS-BUILD-GUIDE-2026-07-29.md
-
-planet-devourer
-  Assets/_Project/FrameworkModels/M01_RouteActivity/README.md
-  Assets/_Project/FrameworkModels/M02_LifecycleEvents/README.md
-  Assets/_Project/FrameworkModels/M02_LifecycleEvents/Editor/M02ApplicationFoundationResolver.cs
+Content Anchors;
+materialization;
+Player;
+Reset;
+Pause;
+fault injection;
+smoke menu como fluxo principal.
 ```
 
-## Critério para avançar ao bloco de participants
+O M03 deve responder:
 
 ```text
-M02_PersistentContent existe;
-GA_M02_Lifecycle valida;
-Route A inicia Activity A;
-Route B inicia Activity B;
-Profiles A/B apontam para as cenas aditivas corretas;
-zero Player Slots permanece válido;
-nenhum componente lifecycle foi adicionado por suposição.
+como o usuário declara a intenção de readiness?
+onde ele vê o bloqueio?
+qual referência é obrigatória?
+como um estado opcional é explicado?
+como corrigir a configuração sem inspecionar logs extensos?
 ```
-
-## Commit sugerido
-
-```text
-docs(firstgame): close M01 and start M02 lifecycle authoring
-```
-
-
-
----
-
-# 32. Correção M02 — fundação autoral autocontida
-
-## Problema observado
-
-O usuário chegou à configuração da Game Application sem possuir todo o inventário M02 e sem
-`M02_PersistentContent`. A orientação anterior dependia implicitamente do scaffold unificado M02-M16.
-
-## Regra corrigida
-
-```text
-M02 > Resolve Application Foundation
-  → materializa assets, cenas e prefabs ausentes;
-  → cria Persistent Content própria a partir da template oficial;
-  → preserva conteúdo existente;
-  → não configura referências ou runtime automaticamente.
-```
-
-## Startup oficial do modelo
-
-```text
-Unity entry scene: M02_Boot
-Startup Route: Route_M02_A
-Startup Route Primary Scene: M02_RouteA
-Content Scene: M02_PersistentContent
-```
-
-`M01_PersistentContent` não deve ser reutilizada, pois M02 precisa provar isolamento de assets e ownership.

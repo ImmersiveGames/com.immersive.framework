@@ -1,7 +1,7 @@
-# Immersive Framework — Auditoria de Habilidades, Evidência e Ordem de Validação v2
+# Immersive Framework — Auditoria de Habilidades, Evidência e Ordem de Validação v3
 
-Status: Working audit / revised planning baseline  
-Data: 2026-07-29  
+Status: Working audit / M02 FIRSTGAME closure baseline  
+Data: 2026-07-30  
 Escopo: `com.immersive.framework`, `QAFramework` e `planet-devourer`  
 Objetivo: organizar as features do framework como habilidades authoráveis, distinguir prova integrada de demonstração isolada e ordenar os próximos testes por dependência real.
 
@@ -847,28 +847,74 @@ Matriz de evidência atualizada no documento de tracking.
 
 ---
 
-## Fase 1 — Fechar o que está realmente ausente
+## Fase 1 — Fechar capacidades fundamentais ausentes
 
-### 1. G2 Lifecycle Events isolados
+### 1. G2 Lifecycle Events isolados — concluído no FIRSTGAME
+
+Resultado validado:
+
+```text
+Scene Available / Releasing
+Route Enter / Exit
+Activity Enter / Exit
+UnityEvents explícitos
+presenter local com reação visual e log estruturado
+hierarquia livre dentro dos roots explícitos
+IgnoredAlreadyActive sem callbacks duplicados
+Route A → B → A com startup Activity correta
+```
+
+Evidência:
+
+```text
+routeContentEnterBindings = 1
+routeContentEnterReceivers = 1
+routeContentExitBindings = 1
+routeContentExitReceivers = 1
+activityContentEnterBindings = 1
+activityContentEnterReceivers = 1
+activityContentExitBindings = 1
+activityContentExitReceivers = 1
+failed = 0
+blockingIssues = 0
+activitySceneLedgerStale = 0
+```
+
+O package recebeu `SceneLifecycleEvents`; Route e Activity reutilizaram superfícies oficiais existentes.
+A descoberta hierárquica já era correta. A regressão observada durante a montagem veio de overrides de cena
+apontando para um `fileID` removido após reorganização do prefab.
+
+Estado:
+
+```text
+Package surface      Passed
+FIRSTGAME authoring  Passed
+FIRSTGAME smoke      Passed
+Negative QA          Deferred
+```
+
+### 2. M03 Activity Readiness
 
 Motivo:
 
-- é a infraestrutura comum mais reutilizada;
-- ensina a ordem de callbacks;
-- permite casos required/optional;
-- reduz ambiguidade ao extrair Player, Reset e Pause.
+- required/optional não deve ser misturado ao M02 já fechado;
+- readiness é a próxima dependência de produto antes de ownership/materialization;
+- precisa de superfície de diagnóstico compreensível, não apenas logs extensos;
+- prepara falhas explícitas para os modelos seguintes.
 
 Entrega mínima:
 
 ```text
-LifecycleProbe prefab
-Scene/Route/Activity event panel
-required readiness failure
-optional failure
-smoke de ordem e idempotência
+Activity Ready
+required dependency blocking readiness
+optional dependency absent without blocking
+compact readiness presentation
+diagnóstico explícito e correção authorável
 ```
 
-### 2. G3.1 Content Anchors passivos
+### 3. G3.1 Content Anchors passivos
+
+Executar após M03.
 
 Motivo:
 
@@ -876,7 +922,7 @@ Motivo:
 - prova ownership scene-authored;
 - prepara conteúdo modular, Reset owner-scoped e materialização.
 
-### 3. G3.3 Materialization Bridge
+### 4. G3.3 Materialization Bridge
 
 Somente após anchors passivos.
 
@@ -1007,7 +1053,7 @@ sem dependência de menu de smoke
 |---|---|---|---|---|
 | G0 Persistent/Diagnostics | Passed | Partial | Partial | Consolidar evidência e UX. |
 | G1 Route/Activity | Passed | Passed | Partial | Readiness + ADR-009 guards futuros. |
-| G2 Lifecycle Events | Partial/indireto | Pending | Pending | Próximo corte. |
+| G2 Lifecycle Events | Passed | Passed | Deferred | Fechado no FIRSTGAME; QA negativo adiado. |
 | G3 Content Anchors | Pending | Pending | Pending | Depois de G2. |
 | G4 Player Scene-Provided | Passed | Pending | Partial | Extrair fixture. |
 | G4 Manager-Provisioned | Pending | Pending | Pending | Após extração básica. |
@@ -1025,41 +1071,82 @@ sem dependência de menu de smoke
 # 10. Próximo corte recomendado
 
 ```text
-IF-DEMO-LIFECYCLE-CAPABILITIES-01
+IF-DEMO-ACTIVITY-READINESS-01
+```
+
+## Tipo
+
+```text
+UX/produto + integração real
 ```
 
 ## Objetivo
 
-Demonstrar como objetos scene-authored participam de Scene, Route e Activity lifecycle.
+Demonstrar como o usuário declara, entende e corrige readiness de Activity, distinguindo dependências required
+e optional sem fallback silencioso.
 
 ## Escopo
 
 ```text
-SceneAvailable
-SceneReleasing
-Route Enter/Exit
-Activity Enter/Exit
-required readiness participant
-optional readiness participant
-ordem e contadores visíveis
+Activity Ready
+required dependency blocks readiness
+optional dependency absent does not block
+readiness reason visible
+compact designer-first diagnostics
+reentry without stale readiness state
 ```
 
 ## Fora de escopo
 
 ```text
 Content Anchors
+Materialization
 Player provisioning
 Camera override
 Reset
 Pause
 Restart
+QA fault injection
+```
+
+## Fluxo esperado
+
+```text
+Boot
+→ Activity Ready
+→ Activity Blocked by required dependency
+→ correct authoring/configuration
+→ Activity Ready
+→ Activity with optional dependency absent
+→ remains Ready with explicit diagnostic
+```
+
+## Aceite técnico
+
+```text
+compila;
+sem fallback silencioso;
+required blocks explicitly;
+optional does not block;
+readiness reason is stable and diagnostic;
+no stale state after Activity changes.
+```
+
+## Aceite de produto
+
+```text
+usuário encontra a superfície de readiness no Inspector;
+usuário entende por que a Activity não está Ready;
+usuário sabe qual referência corrigir;
+optional é explicado sem parecer erro;
+presenter compacto mostra estado e razão.
 ```
 
 ## Ganho
 
-- fecha o único grupo de capacidade básica ainda sem demo própria;
-- cria o padrão de probe/evidence panel para G3 e para extração dos grupos já aprovados;
-- reduz risco de atribuir a Player, Reset ou Pause um comportamento que pertence ao Scene Lifecycle.
+- move required/optional para o modelo correto, sem reabrir o M02;
+- cria a base de diagnóstico necessária antes de Content Anchors;
+- mantém QA negativo registrado, mas fora do caminho principal de authoring.
 
 ---
 
@@ -1078,6 +1165,7 @@ IF-TRACK-Framework.md
 FIRSTGAME current-state/test-scenario review
 SceneProvidedGameplay Play Mode logs
 Route/Activity additive-scene smoke logs
+M02 Scene/Route/Activity authoring smoke 2026-07-30
 Reset/Restart Play Mode logs
 ```
 
@@ -1090,7 +1178,9 @@ A ordem arquitetural original permanece válida, mas o estado dos grupos precisa
 A leitura correta é:
 
 ```text
-G2 e G3 são os gaps de demonstração mais fundamentais.
+G2 Lifecycle Events está fechado no FIRSTGAME.
+M03 Activity Readiness é o próximo gap de produto.
+G3 Content Anchors vem depois de M03.
 G4/G5/G6/G8/G9 já têm prova integrada relevante.
 Esses grupos precisam ser extraídos e ensinados, não reconstruídos.
 Manager-Provisioned continua realmente pendente.
@@ -1102,7 +1192,8 @@ ADR-009 deve entrar como guardrail de identidade antes de futuras mudanças de a
 Próxima sequência:
 
 ```text
-Lifecycle Events
+Lifecycle Events [Closed]
+-> Activity Readiness
 -> Content Anchors
 -> Materialization
 -> extrair Scene-Provided Player/Input/Camera/Pause/Reset

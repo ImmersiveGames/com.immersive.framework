@@ -1,8 +1,9 @@
 using Immersive.Framework.ActivityFlow;
-using Immersive.Framework.Authoring;
+using Immersive.Framework.Editor.Common;
 using Immersive.Framework.Editor.Editor.Validation;
 using UnityEditor;
 using UnityEngine;
+
 namespace Immersive.Framework.Editor.Editor.Authoring
 {
     [CustomEditor(typeof(ActivityLocalVisibilityAdapter))]
@@ -12,6 +13,8 @@ namespace Immersive.Framework.Editor.Editor.Authoring
         private SerializedProperty _activity;
         private SerializedProperty _localContentId;
         private SerializedProperty _requiredness;
+        private FrameworkAuthoringValidationReport _validationReport;
+        private bool _showAdvanced;
 
         private void OnEnable()
         {
@@ -22,83 +25,225 @@ namespace Immersive.Framework.Editor.Editor.Authoring
 
         public override void OnInspectorGUI()
         {
-            serializedObject.Update();
+            serializedObject.UpdateIfRequiredOrScript();
 
-            EditorGUILayout.LabelField("Activity Local Visibility Adapter", EditorStyles.boldLabel);
-            EditorGUILayout.HelpBox(
-                "Marks this GameObject as scene-authored content for one Activity. Activity Flow activates it when the assigned Activity is active and deactivates it otherwise.",
-                MessageType.Info);
+            FrameworkAuthoringInspectorGui.ProductHeader(
+                "Activity Local Visibility Adapter",
+                "Makes one scene-authored GameObject visible only while its assigned Activity is active.");
+            FrameworkAuthoringInspectorGui.IntentSummary(BuildIntentSummary());
 
-            EditorGUILayout.Space(6);
-            EditorGUILayout.LabelField("Binding", EditorStyles.boldLabel);
-            EditorGUILayout.PropertyField(_activity, new GUIContent("Activity"));
+            EditorGUI.BeginChangeCheck();
+            DrawPrimaryAuthoring();
+            bool authoringChanged = EditorGUI.EndChangeCheck();
 
-            EditorGUILayout.Space(6);
-            EditorGUILayout.LabelField("Local Identity", EditorStyles.boldLabel);
+            serializedObject.ApplyModifiedProperties();
+            if (authoringChanged)
+            {
+                _validationReport = null;
+            }
+
+            DrawSuggestedIdentityAction();
+            DrawConfigurationStatus();
+            DrawValidation();
+
+            _showAdvanced = FrameworkAuthoringInspectorGui.AdvancedFoldout(_showAdvanced);
+            if (_showAdvanced)
+            {
+                DrawAdvanced();
+            }
+        }
+
+        private void DrawPrimaryAuthoring()
+        {
+            FrameworkAuthoringInspectorGui.Section("Activity Binding");
+            EditorGUILayout.PropertyField(
+                _activity,
+                new GUIContent(
+                    "Activity",
+                    "Activity that owns this scene-authored GameObject and controls its local visibility."));
+            DrawSelectAssetAction(_activity, "Select Activity Asset");
+
+            FrameworkAuthoringInspectorGui.Section("Local Content Identity");
             EditorGUILayout.PropertyField(
                 _localContentId,
                 new GUIContent(
                     "Local Content Id",
-                    "Explicit local id required by F5 local identity. GameObject name and hierarchy path are diagnostics only and are not used as fallback."));
+                    "Explicit identity for this local contribution. GameObject names and hierarchy paths are diagnostics only."));
             EditorGUILayout.PropertyField(
                 _requiredness,
                 new GUIContent(
                     "Requiredness",
-                    "Authoring policy recorded by F5F. Required contributions can block future consumers; Optional contributions can be skipped with diagnostics. Absence validation is not active yet."));
-            DrawLocalIdentityStatus();
-
-            DrawActivityStatus();
-            DrawHierarchyGuardrails();
-
-            EditorGUILayout.Space(6);
-            EditorGUILayout.LabelField("Current Scope", EditorStyles.boldLabel);
-            EditorGUILayout.HelpBox(
-                "This adapter only controls the active state of this GameObject. It does not spawn, pool, reset, save, bind actors, bind input, bind camera or load Activity content.",
-                MessageType.None);
-
-            serializedObject.ApplyModifiedProperties();
-
-            EditorGUILayout.Space(6);
-            DrawAuthoringValidation();
+                    "Declares whether this contribution is required or optional for consumers that evaluate local content readiness."));
         }
 
-        private void DrawAuthoringValidation()
+        private string BuildIntentSummary()
         {
-            var report = new FrameworkAuthoringValidationReport();
-            for (int i = 0; i < targets.Length; i++)
+            if (_activity == null || _localContentId == null || _requiredness == null)
             {
-                report.AddRange(FrameworkAuthoringValidator.ValidateActivityLocalVisibilityAdapter(targets[i] as ActivityLocalVisibilityAdapter));
+                return "Configure an Activity, explicit local identity and requiredness for this scene-authored contribution.";
             }
 
-            EditorGUILayout.LabelField("Authoring Validation", EditorStyles.boldLabel);
-            FrameworkAuthoringValidationGui.DrawSummary(report);
-            FrameworkAuthoringValidationGui.DrawIssues(report, false);
+            if (_activity.hasMultipleDifferentValues ||
+                _localContentId.hasMultipleDifferentValues ||
+                _requiredness.hasMultipleDifferentValues)
+            {
+                return "The selected adapters contain mixed Activity, identity or requiredness values.";
+            }
+
+            string activityName = _activity.objectReferenceValue != null
+                ? _activity.objectReferenceValue.name
+                : "<missing Activity>";
+            string identity = string.IsNullOrWhiteSpace(_localContentId.stringValue)
+                ? "<missing local identity>"
+                : _localContentId.stringValue.Trim();
+
+            return $"Show this GameObject only for Activity '{activityName}' as {GetRequirednessLabel()} local content '{identity}'.";
         }
 
-        private void DrawLocalIdentityStatus()
+        private void DrawSuggestedIdentityAction()
         {
-            if (serializedObject.isEditingMultipleObjects)
+            if (targets.Length != 1 ||
+                _localContentId == null ||
+                !string.IsNullOrWhiteSpace(_localContentId.stringValue))
             {
-                if (_localContentId.hasMultipleDifferentValues)
-                {
-                    EditorGUILayout.HelpBox(
-                        "Multiple selected adapters have different Local Content Id values.",
-                        MessageType.Info);
-                    return;
-                }
-            }
-
-            if (_localContentId == null || string.IsNullOrWhiteSpace(_localContentId.stringValue))
-            {
-                EditorGUILayout.HelpBox(
-                    "Local Content Id is required for F5 local identity. GameObject names and hierarchy paths are diagnostics only and are not fallback identities.",
-                    MessageType.Error);
                 return;
             }
 
+            if (GUILayout.Button("Use Suggested Local Content Id"))
+            {
+                FrameworkAuthoringInspectorGui.ApplySuggestion(
+                    serializedObject,
+                    _localContentId,
+                    FrameworkAuthoringSuggestionUtility.SuggestIdentity(target, "activity.local-content"),
+                    "Suggest Activity Local Content Id");
+                _validationReport = null;
+            }
+        }
+
+        private void DrawConfigurationStatus()
+        {
+            FrameworkAuthoringInspectorGui.Section("Configuration Status");
+
+            if (serializedObject.isEditingMultipleObjects &&
+                (_activity.hasMultipleDifferentValues ||
+                 _localContentId.hasMultipleDifferentValues ||
+                 _requiredness.hasMultipleDifferentValues))
+            {
+                EditorGUILayout.HelpBox(
+                    "The selected adapters use mixed authoring values. Validate to review each adapter independently.",
+                    MessageType.Info);
+                return;
+            }
+
+            bool hasError = false;
+            if (_activity.objectReferenceValue == null)
+            {
+                hasError = true;
+                EditorGUILayout.HelpBox(
+                    "Activity is missing. Assign the Activity that owns this scene-authored content.",
+                    MessageType.Error);
+            }
+
+            if (string.IsNullOrWhiteSpace(_localContentId.stringValue))
+            {
+                hasError = true;
+                EditorGUILayout.HelpBox(
+                    "Local Content Id is missing. Enter an explicit identity or use the suggested value.",
+                    MessageType.Error);
+            }
+
+            if (!serializedObject.isEditingMultipleObjects && target is ActivityLocalVisibilityAdapter adapter)
+            {
+                ActivityLocalVisibilityAdapter parent = FindParentBinding(adapter);
+                if (parent != null)
+                {
+                    EditorGUILayout.HelpBox(
+                        $"A parent GameObject also contains an Activity Local Visibility Adapter ('{parent.gameObject.name}'). Nested visibility ownership is not defined; keep adapter roots flat.",
+                        MessageType.Warning);
+                }
+
+                int childCount = CountChildBindings(adapter);
+                if (childCount > 0)
+                {
+                    EditorGUILayout.HelpBox(
+                        $"This GameObject contains {childCount} child Activity Local Visibility Adapter component(s). Nested visibility ownership is not defined; keep adapter roots flat.",
+                        MessageType.Warning);
+                }
+            }
+
+            if (!hasError)
+            {
+                EditorGUILayout.HelpBox(
+                    "Ready for authoring validation. Runtime visibility remains owned by the official Activity Content Runtime.",
+                    MessageType.Info);
+            }
+        }
+
+        private void DrawValidation()
+        {
+            FrameworkAuthoringInspectorGui.Section("Validation");
+            if (GUILayout.Button("Validate Configuration"))
+            {
+                _validationReport = new FrameworkAuthoringValidationReport();
+                for (int index = 0; index < targets.Length; index++)
+                {
+                    _validationReport.AddRange(
+                        FrameworkAuthoringValidator.ValidateActivityLocalVisibilityAdapter(
+                            targets[index] as ActivityLocalVisibilityAdapter));
+                }
+            }
+
+            if (_validationReport == null)
+            {
+                EditorGUILayout.HelpBox(
+                    "Validation is explicit and non-mutating. Run it after changing the binding or identity.",
+                    MessageType.None);
+                return;
+            }
+
+            FrameworkAuthoringValidationGui.DrawSummary(_validationReport);
+            FrameworkAuthoringValidationGui.DrawIssues(_validationReport, false);
+        }
+
+        private void DrawAdvanced()
+        {
+            if (targets.Length != 1 || !(target is ActivityLocalVisibilityAdapter adapter))
+            {
+                EditorGUILayout.HelpBox(
+                    "Advanced evidence is available for one selected adapter at a time.",
+                    MessageType.None);
+                return;
+            }
+
+            EditorGUILayout.LabelField("Assigned Activity", adapter.Activity != null ? adapter.Activity.name : "<missing>");
+            EditorGUILayout.LabelField("Normalized Local Content Id", adapter.HasExplicitLocalContentId ? adapter.LocalContentIdText : "<missing>");
+            EditorGUILayout.LabelField("Requiredness", adapter.Requiredness.ToString());
+            EditorGUILayout.LabelField("Local Scope Kind", adapter.LocalScopeKind.ToString());
+            EditorGUILayout.LabelField("Scene", adapter.gameObject.scene.IsValid() ? adapter.gameObject.scene.name : "<no scene>");
+            EditorGUILayout.LabelField("GameObject Active", adapter.gameObject.activeSelf ? "Yes" : "No");
             EditorGUILayout.HelpBox(
-                $"This Activity local visibility contribution uses explicit local id '{_localContentId.stringValue.Trim()}' and requiredness '{GetRequirednessLabel()}'.",
-                MessageType.Info);
+                "This Inspector never toggles visibility. Activity Content Runtime applies the active state through the official lifecycle.",
+                MessageType.None);
+        }
+
+        private void DrawSelectAssetAction(SerializedProperty property, string label)
+        {
+            if (serializedObject.isEditingMultipleObjects ||
+                property == null ||
+                property.hasMultipleDifferentValues ||
+                property.objectReferenceValue == null)
+            {
+                return;
+            }
+
+            using (new EditorGUILayout.HorizontalScope())
+            {
+                GUILayout.FlexibleSpace();
+                if (GUILayout.Button(label, GUILayout.Width(160f)))
+                {
+                    Selection.activeObject = property.objectReferenceValue;
+                }
+            }
         }
 
         private string GetRequirednessLabel()
@@ -108,85 +253,14 @@ namespace Immersive.Framework.Editor.Editor.Authoring
                 : "Mixed";
         }
 
-        private void DrawActivityStatus()
-        {
-            if (serializedObject.isEditingMultipleObjects)
-            {
-                if (_activity.hasMultipleDifferentValues)
-                {
-                    EditorGUILayout.HelpBox(
-                        "Multiple selected adapters have different Activity references.",
-                        MessageType.Info);
-                    return;
-                }
-            }
-
-            if (_activity.objectReferenceValue == null)
-            {
-                EditorGUILayout.HelpBox(
-                    "Activity is missing. This adapter will be skipped by Activity Content Runtime and will produce a runtime warning.",
-                    MessageType.Error);
-                return;
-            }
-
-            var activityAsset = _activity.objectReferenceValue as ActivityAsset;
-            string activityName = activityAsset != null ? activityAsset.ActivityName : _activity.objectReferenceValue.name;
-
-            EditorGUILayout.HelpBox(
-                $"This GameObject is authored as content for Activity '{activityName}'. It will be active only while that Activity is active.",
-                MessageType.Info);
-
-            using (new EditorGUILayout.HorizontalScope())
-            {
-                GUILayout.FlexibleSpace();
-                if (GUILayout.Button("Select Activity", GUILayout.Width(140)))
-                {
-                    Selection.activeObject = _activity.objectReferenceValue;
-                }
-            }
-        }
-
-        private void DrawHierarchyGuardrails()
-        {
-            if (serializedObject.isEditingMultipleObjects)
-            {
-                return;
-            }
-
-            var binding = target as ActivityLocalVisibilityAdapter;
-            if (binding == null)
-            {
-                return;
-            }
-
-            var parentBinding = FindParentBinding(binding);
-            if (parentBinding != null)
-            {
-                EditorGUILayout.HelpBox(
-                    $"A parent GameObject also has Activity Local Visibility Adapter: '{parentBinding.gameObject.name}'. Nested Activity local visibility adapter policy does not exist yet. Keep Activity local visibility adapter roots flat for now.",
-                    MessageType.Warning);
-            }
-
-            int childBindingCount = CountChildBindings(binding);
-            if (childBindingCount > 0)
-            {
-                EditorGUILayout.HelpBox(
-                    $"This GameObject contains {childBindingCount} child Activity Local Visibility Adapter component(s). Nested Activity local visibility adapter policy does not exist yet. Keep Activity local visibility adapter roots flat for now.",
-                    MessageType.Warning);
-            }
-        }
-
         private static ActivityLocalVisibilityAdapter FindParentBinding(ActivityLocalVisibilityAdapter binding)
         {
-            var parent = binding.transform.parent;
-            while (parent != null)
+            for (Transform parent = binding.transform.parent; parent != null; parent = parent.parent)
             {
-                if (parent.TryGetComponent<ActivityLocalVisibilityAdapter>(out var parentBinding))
+                if (parent.TryGetComponent(out ActivityLocalVisibilityAdapter parentBinding))
                 {
                     return parentBinding;
                 }
-
-                parent = parent.parent;
             }
 
             return null;
@@ -194,11 +268,12 @@ namespace Immersive.Framework.Editor.Editor.Authoring
 
         private static int CountChildBindings(ActivityLocalVisibilityAdapter binding)
         {
-            ActivityLocalVisibilityAdapter[] all = binding.GetComponentsInChildren<ActivityLocalVisibilityAdapter>(true);
+            ActivityLocalVisibilityAdapter[] bindings =
+                binding.GetComponentsInChildren<ActivityLocalVisibilityAdapter>(true);
             int count = 0;
-            for (int i = 0; i < all.Length; i++)
+            for (int index = 0; index < bindings.Length; index++)
             {
-                if (all[i] != null && all[i] != binding)
+                if (bindings[index] != null && bindings[index] != binding)
                 {
                     count++;
                 }
