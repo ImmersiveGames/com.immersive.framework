@@ -222,7 +222,7 @@ Estado do corte de arquitetura em 2026-07-29: `Closed`.
 GA_M01_RouteActivity
 Route_M01_Menu
 Route_M01_Gameplay
-Activity_M01_ActivityA
+Activity_M01_A
 PlayerSlot_M06_Player1
 Actor_M06_Default
 CameraRig_M10_Player
@@ -330,13 +330,33 @@ Código e nomes de tipos permanecem em inglês. A explicação pode ficar em por
 | Corte | Entrega | Estado |
 |---|---|---|
 | F0 | Arquitetura rastreável de `FrameworkModels`, `Shared` e raízes `M01`–`M16` | Closed |
+| S1 | Gerador unificado, não destrutivo, de conteúdo inicial para M02–M16 | Tooling Prepared |
 
-A conclusão de F0 não altera o estado de nenhum modelo. Um modelo muda de `Pending` para `Authoring`
-somente quando sua montagem específica começar.
+A conclusão de F0 e a disponibilidade de scaffolds não alteram o estado de nenhum modelo. Um modelo muda de
+`Pending` para `Authoring` somente quando sua montagem e configuração específicas começam na ordem do roadmap.
+
+## Regra operacional de scaffold global
+
+A criação física repetitiva de assets, cenas, materiais e prefabs pode ser antecipada por tooling Editor explícito,
+idempotente e não destrutivo. O scaffold global M02–M16 deve:
+
+```text
+preservar arquivos existentes;
+criar somente arquivos ausentes;
+não preencher referências entre assets;
+não adicionar componentes oficiais da feature;
+não montar prefabs nas cenas;
+não instalar bootstrap ou authority runtime;
+não alterar ProjectSettings ou Build Profiles;
+registrar tipos opcionais ainda indisponíveis.
+```
+
+A avaliação de UX continua concentrada em montagem, configuração, validação, entendimento dos Inspectors,
+execução, diagnóstico, cleanup e reutilização.
 
 | Ordem | Modelo | Tipo | Estado |
 |---:|---|---|---|
-| 1 | M01 Route and Activity | Fundação | Pending |
+| 1 | M01 Route and Activity | Fundação | Authoring |
 | 2 | M02 Lifecycle Events | Fundação | Pending |
 | 3 | M03 Activity Readiness | Fundação | Pending |
 | 4 | M04 Content Anchors | Ownership | Pending |
@@ -399,6 +419,8 @@ Routes/Route_M01_Menu.asset
 Routes/Route_M01_Gameplay.asset
 Activities/Activity_M01_A.asset
 Activities/Activity_M01_B.asset
+Profiles/ActivityContent_M01_A.asset
+Profiles/ActivityContent_M01_B.asset
 ```
 
 ## Cenas
@@ -421,9 +443,35 @@ Prefabs/PF_M01_CurrentContextDisplay.prefab
 
 ## Montagem
 
+### Regra operacional de criação
+
+A criação física dos assets, cenas e prefabs não faz parte da avaliação de UX deste modelo. Ela pode ser
+materializada por um scaffold Editor explícito e idempotente, desde que:
+
+```text
+preserve arquivos existentes;
+não preencha referências entre assets;
+não altere ProjectSettings ou Build Profiles;
+não instale bootstrap;
+não adicione triggers ou comportamento runtime;
+não esconda os componentes técnicos que o consumidor deverá configurar.
+```
+
+O teste de produto começa na montagem, configuração, validação, execução e entendimento do grafo autoral.
+O package atual declara cenas de Activity através de `ActivityContentProfileAsset`; por isso M01 possui dois
+Profiles auxiliares mínimos, um para cada Activity.
+
+Checkpoint em 2026-07-29:
+
+```text
+GA_M01_RouteActivity criado;
+scaffold de arquivos ausentes preparado;
+próximo passo: materializar o scaffold e configurar Profiles, Activities, Routes e Game Application.
+```
+
 ### Etapa 1 — Game Application
 
-- [ ] Criar `GA_M01_RouteActivity`.
+- [x] Criar `GA_M01_RouteActivity`.
 - [ ] Selecionar `Route_M01_Menu` como startup Route.
 - [ ] Configurar somente os campos necessários ao modelo.
 - [ ] Salvar e executar a validação disponível no Inspector.
@@ -440,9 +488,11 @@ Prefabs/PF_M01_CurrentContextDisplay.prefab
 ### Etapa 3 — Activities
 
 - [ ] Criar `Activity_M01_A`.
-- [ ] Associar `M01_ActivityA_Add`.
+- [ ] Criar `ActivityContent_M01_A` e declarar `M01_ActivityA_Add` como cena aditiva da Activity.
+- [ ] Associar `ActivityContent_M01_A` a `Activity_M01_A`.
 - [ ] Criar `Activity_M01_B`.
-- [ ] Associar `M01_ActivityB_Add`.
+- [ ] Criar `ActivityContent_M01_B` e declarar `M01_ActivityB_Add` como cena aditiva da Activity.
+- [ ] Associar `ActivityContent_M01_B` a `Activity_M01_B`.
 - [ ] Manter participation requirements no mínimo permitido.
 
 ### Etapa 4 — Controles
@@ -1954,74 +2004,43 @@ Esse registro não vira botão ou cena no FIRSTGAME.
 
 ---
 
-# 30. Próximo modelo a montar
+# 30. Próximo trabalho de montagem
 
 ## Checkpoint atual
 
 ```text
 F0 Folder Architecture: Closed
-Model states: unchanged; all remain Pending
-Next implementation cut: M02 Lifecycle Events
+S1 M02–M16 Unified Scaffold Tooling: Prepared
+M01 Route and Activity: Authoring
+Current roadmap focus: configure and validate the M01 authoring graph
+Next model after M01 closes: M02 Lifecycle Events
 ```
 
-O próximo corte deve criar somente as pastas internas realmente usadas por M02, seu README e os assets
-necessários à montagem manual. Não criar estrutura interna dos demais modelos por antecipação.
+O scaffold M02–M16 pode ser materializado antecipadamente para reduzir trabalho repetitivo, mas isso não autoriza
+configurar, validar ou executar esses modelos fora de ordem. Todos permanecem `Pending` até o foco chegar a eles.
 
-## M02 — Lifecycle Events
-
-O M01 Route/Activity já possui evidência integrada e parte da UX em evolução. O primeiro modelo novo que
-melhor testa a proposta de coleção modular é o M02.
-
-Entregas do corte:
+## Trabalho corrente em M01
 
 ```text
-M02_Boot
-M02_RouteA
-M02_RouteB
-M02_ActivityA_Add
-M02_ActivityB_Add
-
-GA_M02_Lifecycle
-Route_M02_A
-Route_M02_B
-Activity_M02_A
-Activity_M02_B
-
-PF_M02_SceneLifecycleObject
-PF_M02_RouteLifecycleObject
-PF_M02_ActivityLifecycleObject
-
-README.md
-UX findings
-QA follow-ups
+configurar Activity Content Profiles;
+configurar Activities;
+configurar Routes;
+completar Game Application;
+validar o grafo;
+registrar fricções de UX;
+depois montar triggers, bootstrap e fluxo de Play Mode.
 ```
 
-Comportamento principal:
+## Preparação disponível para M02–M16
+
+O comando abaixo cria conteúdo inicial ausente para todos os modelos restantes:
 
 ```text
-Scene lifecycle
-  controla apresentação local de cena.
-
-Route lifecycle
-  controla ambiente da Route.
-
-Activity lifecycle
-  controla conteúdo interativo da Activity.
+Tools > Immersive Framework > FIRSTGAME > Scaffolds > Create Missing M02-M16
 ```
 
-Não incluir:
+A ferramenta cria SOs comuns, cenas visualmente distinguíveis, prefabs-placeholder e materiais. Assets opcionais
+como Player Slot, Actor ou Camera Rig são criados somente quando a classe ScriptableObject correspondente estiver
+disponível no package atual. Ausências são diagnosticadas e não bloqueiam os demais modelos.
 
-```text
-participant failure;
-mismatch;
-duplicação;
-assert panel;
-fault injection;
-stress;
-Reset;
-Player;
-Pause;
-Camera de gameplay.
-```
-
-O M02 deve estabelecer o padrão de montagem que os modelos seguintes irão repetir.
+A configuração de cada modelo continua guiada pelo seu próprio README e pela seção correspondente deste roadmap.
