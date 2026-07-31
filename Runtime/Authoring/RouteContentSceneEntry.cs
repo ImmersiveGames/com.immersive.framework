@@ -10,7 +10,7 @@ namespace Immersive.Framework.Authoring
     /// F6E route scene composition executes declarations that have scene data and explicit content id.
     /// </summary>
     [Serializable]
-    [FrameworkApiStatus(FrameworkApiStatus.Experimental, "Route content scene entries are consumed by F6E route scene composition; release remains deferred.")]
+    [FrameworkApiStatus(FrameworkApiStatus.Stable, "Stable product authoring surface for application/route/activity configuration. Breaking changes require ADR/migration.")]
     public sealed class RouteContentSceneEntry
     {
         [SerializeField]

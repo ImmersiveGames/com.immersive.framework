@@ -1,9 +1,9 @@
 using System.Collections.Generic;
-using Immersive.Framework.ApiStatus;
 using Immersive.Framework.Common;
 using Immersive.Framework.Diagnostics;
 using Immersive.Framework.Gate;
 using Immersive.Logging.Records;
+using Immersive.Framework.ApiStatus;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
@@ -15,9 +15,7 @@ namespace Immersive.Framework.UnityInput
     /// </summary>
     [DisallowMultipleComponent]
     [AddComponentMenu("Immersive Framework/Unity Input/Unity PlayerInput Gate Adapter")]
-    [FrameworkApiStatus(
-        FrameworkApiStatus.Experimental,
-        "H2.2.9 explicit Input Gate runtime binding using the canonical Unity PlayerInput physical writer.")]
+    [FrameworkApiStatus(FrameworkApiStatus.Stable, "Stable single-player Pause/Input/Gate product surface. Multiplayer policy is out of scope.")]
     public sealed class UnityPlayerInputGateAdapter : MonoBehaviour
     {
         private const string DefaultSource =

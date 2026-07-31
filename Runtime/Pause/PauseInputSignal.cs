@@ -1,15 +1,15 @@
 using System;
-using Immersive.Framework.ApiStatus;
 using Immersive.Framework.Common;
+using Immersive.Framework.ApiStatus;
 
 namespace Immersive.Framework.Pause
 {
     /// <summary>
-    /// API status: Experimental. Normalized, device-agnostic Pause input signal.
+    /// API status: Stable. Normalized, device-agnostic Pause input signal.
     /// A signal describes intent only; it does not poll input, bind actions, dispatch PauseRequest,
     /// own UI navigation, mutate Pause state or change Time.timeScale.
     /// </summary>
-    [FrameworkApiStatus(FrameworkApiStatus.Experimental, "F23E Pause Input signal boundary; intent-only and no concrete input binding.")]
+    [FrameworkApiStatus(FrameworkApiStatus.Stable, "Stable single-player Pause/Input/Gate product surface. Multiplayer policy is out of scope.")]
     public readonly struct PauseInputSignal : IEquatable<PauseInputSignal>
     {
         public PauseInputSignal(

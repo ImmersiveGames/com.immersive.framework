@@ -7,7 +7,7 @@ using UnityEngine;
 namespace Immersive.Framework.Authoring
 {
     /// <summary>
-    /// API status: Experimental. Public authoring root for one Immersive game/application.
+    /// API status: Stable. Public authoring root for one Immersive game/application.
     ///
     /// The asset owns application-level intent only. Mutable Session, Player, Route, Activity,
     /// Camera and scene runtime state remain outside this asset.
@@ -16,9 +16,7 @@ namespace Immersive.Framework.Authoring
         fileName = "GameApplication",
         menuName = "Immersive Framework/Game Application",
         order = 0)]
-    [FrameworkApiStatus(
-        FrameworkApiStatus.Experimental,
-        "Baseline product authoring surface for application configuration.")]
+    [FrameworkApiStatus(FrameworkApiStatus.Stable, "Stable product authoring surface for application/route/activity configuration. Breaking changes require ADR/migration.")]
     public sealed class GameApplicationAsset : ScriptableObject
     {
         [SerializeField]

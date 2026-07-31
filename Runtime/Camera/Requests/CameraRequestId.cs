@@ -1,11 +1,13 @@
 using System;
 using Immersive.Framework.Common;
+using Immersive.Framework.ApiStatus;
 
 namespace Immersive.Framework.Camera
 {
     /// <summary>
     /// Stable identity for one admitted camera request.
     /// </summary>
+    [FrameworkApiStatus(FrameworkApiStatus.Stable, "Stable single-output Camera product surface. Multi-output/split-screen is out of scope.")]
     public readonly struct CameraRequestId : IEquatable<CameraRequestId>
     {
         public CameraRequestId(string value)

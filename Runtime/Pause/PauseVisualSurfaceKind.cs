@@ -1,12 +1,12 @@
-using Immersive.Framework.ApiStatus;
 
+using Immersive.Framework.ApiStatus;
 namespace Immersive.Framework.Pause
 {
     /// <summary>
-    /// API status: Experimental. Authoring kind for a Pause visual surface contract.
+    /// API status: Stable. Authoring kind for a Pause visual surface contract.
     /// This describes the intended Pause presentation role only; it does not materialize UI or own Pause state.
     /// </summary>
-    [FrameworkApiStatus(FrameworkApiStatus.Experimental, "F10B Pause visual surface authoring kind; no materialization behavior.")]
+    [FrameworkApiStatus(FrameworkApiStatus.Stable, "Stable single-player Pause/Input/Gate product surface. Multiplayer policy is out of scope.")]
     public enum PauseVisualSurfaceKind
     {
         Unknown = 0,

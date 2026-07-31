@@ -4,7 +4,7 @@ using Immersive.Framework.Identity;
 
 namespace Immersive.Framework.Authoring
 {
-    [FrameworkApiStatus(FrameworkApiStatus.Experimental, "Stable functional identity for an authored Activity.")]
+    [FrameworkApiStatus(FrameworkApiStatus.Stable, "Stable boundary identity primitive. Breaking changes require ADR/migration.")]
     public readonly struct ActivityId : IFrameworkIdentity, IEquatable<ActivityId>
     {
         private readonly FrameworkIdentityValue _value;

@@ -1,15 +1,15 @@
 using System;
-using Immersive.Framework.ApiStatus;
 using Immersive.Framework.Identity;
 using Immersive.Framework.Common;
+using Immersive.Framework.ApiStatus;
 
 namespace Immersive.Framework.Gate
 {
     /// <summary>
-    /// API status: Experimental. Immutable result of one Gate admission decision.
+    /// API status: Stable. Immutable result of one Gate admission decision.
     /// The decision carries enough context for diagnostics; it is not a runtime queue, UI event or input binding.
     /// </summary>
-    [FrameworkApiStatus(FrameworkApiStatus.Experimental, "F17B Gate decision primitive with explicit status/scope/domain context.")]
+    [FrameworkApiStatus(FrameworkApiStatus.Stable, "Stable single-player Pause/Input/Gate product surface. Multiplayer policy is out of scope.")]
     public readonly struct GateDecision : IEquatable<GateDecision>
     {
         public GateDecision(

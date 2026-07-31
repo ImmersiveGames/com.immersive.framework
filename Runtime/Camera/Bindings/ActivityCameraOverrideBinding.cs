@@ -1,11 +1,13 @@
 using Immersive.Framework.ActivityFlow;
 using Immersive.Framework.Authoring;
+using Immersive.Framework.ApiStatus;
 using UnityEngine;
 
 namespace Immersive.Framework.Camera
 {
     [DisallowMultipleComponent]
     [AddComponentMenu("Immersive Framework/Camera/Activity Camera Override")]
+    [FrameworkApiStatus(FrameworkApiStatus.Stable, "Stable single-output Camera product surface. Multi-output/split-screen is out of scope.")]
     public sealed class ActivityCameraOverrideBinding : ScopedCameraOverrideBinding, IActivityContentLifecycleReceiver
     {
         [SerializeField] private ActivityAsset assignedActivity;

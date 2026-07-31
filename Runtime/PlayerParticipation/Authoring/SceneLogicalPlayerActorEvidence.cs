@@ -10,9 +10,7 @@ namespace Immersive.Framework.PlayerParticipation
     /// evidence without AssetDatabase, PrefabUtility, path, name or tag lookup.
     /// </summary>
     [DisallowMultipleComponent]
-    [FrameworkApiStatus(
-        FrameworkApiStatus.Experimental,
-        "P3M4 serialized source evidence for a scene Logical Player Actor.")]
+    [FrameworkApiStatus(FrameworkApiStatus.Stable, "Stable Scene-Provided local Player product surface. Manager-Provisioned and Session-Persistent remain Experimental.")]
     public sealed class SceneLogicalPlayerActorEvidence : MonoBehaviour
     {
         [SerializeField] private ActorProfile actorProfile;

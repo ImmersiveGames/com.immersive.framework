@@ -1,8 +1,8 @@
 using System;
 using Immersive.Framework.Actors;
-using Immersive.Framework.ApiStatus;
 using Immersive.Framework.Common;
 using Immersive.Framework.PlayerSlots;
+using Immersive.Framework.ApiStatus;
 using UnityEngine;
 
 namespace Immersive.Framework.PlayerParticipation
@@ -15,9 +15,7 @@ namespace Immersive.Framework.PlayerParticipation
         fileName = "PlayerSlotProfile",
         menuName = "Immersive Framework/Player/Player Slot Profile",
         order = 10)]
-    [FrameworkApiStatus(
-        FrameworkApiStatus.Experimental,
-        "P3C/P3H immutable Player Slot identity and default Actor selection intent.")]
+    [FrameworkApiStatus(FrameworkApiStatus.Stable, "Stable Scene-Provided local Player product surface. Manager-Provisioned and Session-Persistent remain Experimental.")]
     public sealed class PlayerSlotProfile : ScriptableObject
     {
         [Header("Identity")]

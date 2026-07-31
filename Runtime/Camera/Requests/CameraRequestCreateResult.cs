@@ -1,5 +1,6 @@
 using System;
 using Immersive.Framework.Common;
+using Immersive.Framework.ApiStatus;
 
 namespace Immersive.Framework.Camera
 {
@@ -7,6 +8,7 @@ namespace Immersive.Framework.Camera
     /// Explicit result for constructing a valid camera request.
     /// Invalid mandatory data blocks creation without fallback.
     /// </summary>
+    [FrameworkApiStatus(FrameworkApiStatus.Stable, "Stable single-output Camera product surface. Multi-output/split-screen is out of scope.")]
     public readonly struct CameraRequestCreateResult
     {
         private CameraRequestCreateResult(

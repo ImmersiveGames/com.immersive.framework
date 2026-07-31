@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using Immersive.Framework.Common;
+using Immersive.Framework.ApiStatus;
 
 namespace Immersive.Framework.Camera
 {
@@ -10,6 +11,7 @@ namespace Immersive.Framework.Camera
     /// the next valid request when the current winner is released.
     /// It does not publish requests and does not apply Cinemachine state.
     /// </summary>
+    [FrameworkApiStatus(FrameworkApiStatus.Internal, "Runtime implementation detail; not game-facing API.")]
     public sealed class CameraOutputContext
     {
         private readonly CameraOutputId outputId;

@@ -1,5 +1,9 @@
+
+using Immersive.Framework.ApiStatus;
+
 namespace Immersive.Framework.Camera
 {
+    [FrameworkApiStatus(FrameworkApiStatus.Stable, "Stable single-output Camera product surface. Multi-output/split-screen is out of scope.")]
     public enum CameraOverrideOperationKind
     {
         Blocked = 0,

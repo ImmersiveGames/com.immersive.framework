@@ -8,7 +8,7 @@ namespace Immersive.Framework.GameFlow
     /// Foundation event emitted by a scene-authored RouteRequestTrigger.
     /// It is the typed integration surface for code; UnityEvent bridges must live in explicit bridge components.
     /// </summary>
-    [FrameworkApiStatus(FrameworkApiStatus.Experimental, "Baseline surface kept for development use until the owning roadmap phase stabilizes it.")]
+    [FrameworkApiStatus(FrameworkApiStatus.Stable, "Stable authored Game Flow request trigger for Route/Activity navigation. Breaking changes require ADR/migration.")]
     public sealed class RouteRequestTriggerEvent : IEvent
     {
         public RouteRequestTriggerEvent(

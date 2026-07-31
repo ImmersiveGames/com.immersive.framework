@@ -1,5 +1,6 @@
 using System;
 using Immersive.Framework.Common;
+using Immersive.Framework.ApiStatus;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
@@ -13,6 +14,7 @@ namespace Immersive.Framework.UnityInput
     /// action-asset copies and map renames remain valid.
     /// </summary>
     [Serializable]
+    [FrameworkApiStatus(FrameworkApiStatus.Stable, "Stable single-player Pause/Input/Gate product surface. Multiplayer policy is out of scope.")]
     public struct PlayerInputActionMapReference
     {
         [SerializeField]

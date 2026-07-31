@@ -1,11 +1,13 @@
 using System;
 using Immersive.Framework.Common;
+using Immersive.Framework.ApiStatus;
 
 namespace Immersive.Framework.Camera
 {
     /// <summary>
     /// Explicit result for one admission or release operation.
     /// </summary>
+    [FrameworkApiStatus(FrameworkApiStatus.Internal, "Runtime implementation detail; not game-facing API.")]
     public readonly struct CameraOutputContextResult
     {
         internal CameraOutputContextResult(

@@ -1,12 +1,12 @@
-using Immersive.Framework.ApiStatus;
 
+using Immersive.Framework.ApiStatus;
 namespace Immersive.Framework.InputMode
 {
     /// <summary>
-    /// API status: Experimental. Canonical framework input posture vocabulary.
+    /// API status: Stable. Canonical framework input posture vocabulary.
     /// This is not a Unity action map name, PlayerInput state, device pairing state or gameplay command binding.
     /// </summary>
-    [FrameworkApiStatus(FrameworkApiStatus.Experimental, "F30A InputMode posture vocabulary; no Unity Input behavior.")]
+    [FrameworkApiStatus(FrameworkApiStatus.Stable, "Stable single-player Pause/Input/Gate product surface. Multiplayer policy is out of scope.")]
     public enum InputModeKind
     {
         Unknown = 0,

@@ -6,14 +6,14 @@ using Immersive.Framework.ApiStatus;
 namespace Immersive.Framework.Authoring
 {
     /// <summary>
-    /// API status: Experimental. Authoring profile for Route-owned content declarations.
+    /// API status: Stable. Authoring profile for Route-owned content declarations.
     /// Additional scenes declared here are consumed by Route scene composition in F6E.
     /// </summary>
     [CreateAssetMenu(
         fileName = "Route Content Profile",
         menuName = "Immersive Framework/Route Content Profile",
         order = 11)]
-    [FrameworkApiStatus(FrameworkApiStatus.Experimental, "Route content profile is consumed by F6E route scene composition; release remains deferred.")]
+    [FrameworkApiStatus(FrameworkApiStatus.Stable, "Stable product authoring surface for application/route/activity configuration. Breaking changes require ADR/migration.")]
     public sealed class RouteContentProfileAsset : ScriptableObject
     {
         [SerializeField]

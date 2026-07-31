@@ -1,15 +1,15 @@
 using System;
-using Immersive.Framework.ApiStatus;
 using Immersive.Framework.Identity;
 using Immersive.Framework.Common;
+using Immersive.Framework.ApiStatus;
 
 namespace Immersive.Framework.Gate
 {
     /// <summary>
-    /// API status: Experimental. Immutable description of one active Gate blocker.
+    /// API status: Stable. Immutable description of one active Gate blocker.
     /// A blocker is passive data. It does not own lifecycle, input, UI, transition, pause or gameplay execution.
     /// </summary>
-    [FrameworkApiStatus(FrameworkApiStatus.Experimental, "F17B passive Gate blocker primitive; no runtime manager or service locator.")]
+    [FrameworkApiStatus(FrameworkApiStatus.Stable, "Stable single-player Pause/Input/Gate product surface. Multiplayer policy is out of scope.")]
     public readonly struct GateBlocker : IEquatable<GateBlocker>
     {
         private readonly FrameworkIdentityValue _blockerId;

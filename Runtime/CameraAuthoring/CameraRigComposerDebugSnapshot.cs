@@ -1,8 +1,10 @@
 using Immersive.Framework.Camera;
 using Immersive.Framework.Common;
+using Immersive.Framework.ApiStatus;
 
 namespace Immersive.Framework.CameraAuthoring
 {
+    [FrameworkApiStatus(FrameworkApiStatus.Internal, "Runtime implementation detail; not game-facing API.")]
     public readonly struct CameraRigComposerDebugSnapshot
     {
         public CameraRigComposerDebugSnapshot(CameraRigPresentationIntent presentationIntent, CameraTargetSourceKind targetSourceKind, string logicalSourceId, string diagnosticLabel, string unityCameraName, string cinemachineCameraName, string resolvedFollowTargetName, string resolvedLookAtTargetName, string applyRebuildStatus, string blockingIssue, string targetResolutionSummary, string materializationSummary)

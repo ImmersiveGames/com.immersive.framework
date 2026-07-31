@@ -1,17 +1,17 @@
-using Immersive.Framework.ApiStatus;
 using UnityEngine;
 using Immersive.Framework.Common;
+using Immersive.Framework.ApiStatus;
 
 namespace Immersive.Framework.Pause
 {
     /// <summary>
-    /// API status: Experimental. Canonical Unity adapter for a resident Pause surface authored in UIGlobal.
+    /// API status: Stable. Canonical Unity adapter for a resident Pause surface authored in UIGlobal.
     /// The adapter shows/hides an existing GameObject/CanvasGroup from Pause snapshots. It does not instantiate,
     /// own input, change Time.timeScale, or control Route/Activity lifecycle.
     /// </summary>
     [DisallowMultipleComponent]
     [AddComponentMenu("Immersive Framework/Pause/Unity Pause Resident Surface Adapter")]
-    [FrameworkApiStatus(FrameworkApiStatus.Experimental, "F10G canonical resident UIGlobal Pause surface adapter; no materialization, input, timeScale or lifecycle ownership.")]
+    [FrameworkApiStatus(FrameworkApiStatus.Stable, "Stable single-player Pause/Input/Gate product surface. Multiplayer policy is out of scope.")]
     public sealed class UnityPauseResidentSurfaceAdapter : MonoBehaviour, IPauseSurfaceAdapter
     {
         [HideInInspector]

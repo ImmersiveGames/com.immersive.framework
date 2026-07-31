@@ -5,11 +5,15 @@ using Immersive.Framework.Transition;
 namespace Immersive.Framework.Authoring
 {
     /// <summary>
-    /// API status: Experimental. Public authoring asset retained for the baseline before F1/F3 identity and route-state hardening.
+    /// API status: Stable. Public authoring asset retained for the baseline before F1/F3 identity and route-state hardening.
     /// Public authoring asset that identifies an entry in the game flow.
     /// This asset declares the route primary scene, optional route content profile, and optional startup activity.
     /// </summary>
-    [FrameworkApiStatus(FrameworkApiStatus.Experimental, "Baseline surface kept for development use until the owning roadmap phase stabilizes it.")]
+    [CreateAssetMenu(
+        fileName = "Route",
+        menuName = "Immersive Framework/Route",
+        order = 20)]
+    [FrameworkApiStatus(FrameworkApiStatus.Stable, "Stable product authoring surface for application/route/activity configuration. Breaking changes require ADR/migration.")]
     public sealed class RouteAsset : ScriptableObject
     {
         [SerializeField]

@@ -3,10 +3,10 @@ using Immersive.Framework.ApiStatus;
 namespace Immersive.Framework.Authoring
 {
     /// <summary>
-    /// API status: Experimental. Declares whether Activity-owned content is released or kept when the active Activity changes.
+    /// API status: Stable. Declares whether Activity-owned content is released or kept when the active Activity changes.
     /// Activity-owned content is always released when the owning Route changes; Route-level persistence belongs to Session content, not Activity content.
     /// </summary>
-    [FrameworkApiStatus(FrameworkApiStatus.Experimental, "F25D1 Activity content release policy controls Activity changes only; Route changes always force Activity content release.")]
+    [FrameworkApiStatus(FrameworkApiStatus.Stable, "Stable product authoring surface for application/route/activity configuration. Breaking changes require ADR/migration.")]
     public enum ActivityContentReleasePolicy
     {
         ReleaseOnActivityChange = 0,

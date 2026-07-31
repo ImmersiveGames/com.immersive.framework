@@ -1,4 +1,5 @@
 using UnityEngine;
+using Immersive.Framework.ApiStatus;
 
 namespace Immersive.Framework.Camera
 {
@@ -12,6 +13,7 @@ namespace Immersive.Framework.Camera
     /// </summary>
     [DisallowMultipleComponent]
     [AddComponentMenu("Immersive Framework/Camera/Session Camera Override")]
+    [FrameworkApiStatus(FrameworkApiStatus.Stable, "Stable single-output Camera product surface. Multi-output/split-screen is out of scope.")]
     public sealed class SessionCameraOverrideBinding :
         ScopedCameraOverrideBinding
     {

@@ -1,7 +1,7 @@
 using System;
-using Immersive.Framework.ApiStatus;
 using Immersive.Framework.Camera;
 using Immersive.Framework.Common;
+using Immersive.Framework.ApiStatus;
 using Unity.Cinemachine;
 using UnityEngine;
 
@@ -20,9 +20,7 @@ namespace Immersive.Framework.CameraAuthoring
     /// </summary>
     [DisallowMultipleComponent]
     [AddComponentMenu("Immersive Framework/Camera/Camera Rig Composer")]
-    [FrameworkApiStatus(
-        FrameworkApiStatus.Experimental,
-        "Camera rig authoring and idempotent Cinemachine Camera materialization surface.")]
+    [FrameworkApiStatus(FrameworkApiStatus.Stable, "Stable single-output Camera product surface. Multi-output/split-screen is out of scope.")]
     public sealed class CameraRigComposer : MonoBehaviour
     {
         private const string DefaultCinemachineCameraObjectName =

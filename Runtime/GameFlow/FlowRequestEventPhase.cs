@@ -4,7 +4,7 @@ namespace Immersive.Framework.GameFlow
     /// <summary>
     /// Public phase for authored Game Flow request events.
     /// </summary>
-    [FrameworkApiStatus(FrameworkApiStatus.Experimental, "Baseline surface kept for development use until the owning roadmap phase stabilizes it.")]
+    [FrameworkApiStatus(FrameworkApiStatus.Stable, "Stable Game Flow request outcome/phase vocabulary. Breaking changes require ADR/migration.")]
     public enum FlowRequestEventPhase
     {
         Submitted = 0,

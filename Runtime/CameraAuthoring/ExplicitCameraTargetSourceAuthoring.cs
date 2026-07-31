@@ -1,6 +1,6 @@
-using Immersive.Framework.ApiStatus;
 using Immersive.Framework.Camera;
 using Immersive.Framework.Common;
+using Immersive.Framework.ApiStatus;
 using UnityEngine;
 
 namespace Immersive.Framework.CameraAuthoring
@@ -12,9 +12,7 @@ namespace Immersive.Framework.CameraAuthoring
     [DisallowMultipleComponent]
     [AddComponentMenu(
         "Immersive Framework/Camera/Explicit Camera Target Source")]
-    [FrameworkApiStatus(
-        FrameworkApiStatus.Experimental,
-        "Explicit typed Camera target-source authoring without Player-specific coupling.")]
+    [FrameworkApiStatus(FrameworkApiStatus.Stable, "Stable single-output Camera product surface. Multi-output/split-screen is out of scope.")]
     public sealed class ExplicitCameraTargetSourceAuthoring :
         MonoBehaviour,
         ICameraTargetSource

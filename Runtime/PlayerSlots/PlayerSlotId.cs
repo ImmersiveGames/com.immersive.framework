@@ -1,14 +1,14 @@
 using System;
-using Immersive.Framework.ApiStatus;
 using Immersive.Framework.Identity;
+using Immersive.Framework.ApiStatus;
 
 namespace Immersive.Framework.PlayerSlots
 {
     /// <summary>
-    /// API status: Experimental. Stable logical identity for a player participation seat.
+    /// API status: Stable. Stable logical identity for a player participation seat.
     /// This is not a PlayerInput index, device id, ActorId, save slot id or camera channel id.
     /// </summary>
-    [FrameworkApiStatus(FrameworkApiStatus.Experimental, "F45C1 PlayerSlot identity primitive.")]
+    [FrameworkApiStatus(FrameworkApiStatus.Stable, "Stable boundary identity for PlayerSlot seats. Breaking changes require ADR/migration.")]
     public readonly struct PlayerSlotId : IFrameworkIdentity, IEquatable<PlayerSlotId>
     {
         private readonly FrameworkIdentityValue _value;

@@ -1,16 +1,16 @@
 using System;
-using Immersive.Framework.ApiStatus;
 using Immersive.Framework.Gate;
 using Immersive.Framework.Common;
+using Immersive.Framework.ApiStatus;
 
 namespace Immersive.Framework.Pause
 {
     /// <summary>
-    /// API status: Experimental. Passive relationship between logical Pause state and Gate capability blockers.
+    /// API status: Stable. Passive relationship between logical Pause state and Gate capability blockers.
     /// This policy describes which admission capabilities a paused framework state blocks. It does not register,
     /// apply, release or own Gate state, input, UI, overlay, component lifecycle or Time.timeScale.
     /// </summary>
-    [FrameworkApiStatus(FrameworkApiStatus.Experimental, "F27D passive Pause-to-capability Gate policy; no component blocker or input ownership.")]
+    [FrameworkApiStatus(FrameworkApiStatus.Stable, "Stable single-player Pause/Input/Gate product surface. Multiplayer policy is out of scope.")]
     public static class PauseGateBlockerPolicy
     {
         public const string PolicySource = "F27D.PauseCapabilityGate";

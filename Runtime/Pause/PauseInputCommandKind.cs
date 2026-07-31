@@ -1,12 +1,12 @@
-using Immersive.Framework.ApiStatus;
 
+using Immersive.Framework.ApiStatus;
 namespace Immersive.Framework.Pause
 {
     /// <summary>
-    /// API status: Experimental. Device-agnostic command intent for Pause input.
+    /// API status: Stable. Device-agnostic command intent for Pause input.
     /// This enum does not model Unity Input System phases, action maps or concrete controls.
     /// </summary>
-    [FrameworkApiStatus(FrameworkApiStatus.Experimental, "F23D Pause Input command vocabulary; no concrete input binding.")]
+    [FrameworkApiStatus(FrameworkApiStatus.Stable, "Stable single-player Pause/Input/Gate product surface. Multiplayer policy is out of scope.")]
     public enum PauseInputCommandKind
     {
         Unknown = 0,

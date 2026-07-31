@@ -3,19 +3,19 @@ using Immersive.Foundation.Events;
 using Immersive.Framework.Authoring;
 using Immersive.Framework.Common.FlowTriggers;
 using Immersive.Framework.Diagnostics;
-using UnityEngine;
 using Immersive.Framework.ApiStatus;
+using UnityEngine;
 
 namespace Immersive.Framework.GameFlow
 {
     /// <summary>
-    /// API status: Experimental. Public scene-authored request boundary kept for baseline smoke and development use.
+    /// API status: Stable. Public scene-authored request boundary for Route/Activity navigation.
     /// Simple scene-authored route request boundary.
     /// Designed for UnityEvents/UI Buttons to invoke requests, while publishing typed Foundation events for results.
     /// </summary>
     [DisallowMultipleComponent]
     [AddComponentMenu("Immersive Framework/Route Request Trigger")]
-    [FrameworkApiStatus(FrameworkApiStatus.Experimental, "Baseline surface kept for development use until the owning roadmap phase stabilizes it.")]
+    [FrameworkApiStatus(FrameworkApiStatus.Stable, "Stable authored Game Flow request trigger for Route/Activity navigation. Breaking changes require ADR/migration.")]
     public sealed class RouteRequestTrigger : MonoBehaviour
     {
         private const string DefaultSource = nameof(RouteRequestTrigger);

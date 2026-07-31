@@ -10,14 +10,14 @@ using UnityEngine;
 namespace Immersive.Framework.Authoring
 {
     /// <summary>
-    /// API status: Experimental. Public authoring asset for a gameplay Activity.
+    /// API status: Stable. Public authoring asset for a gameplay Activity.
     /// Activity participation intent is explicit through Activity-owned Projection and Requirement configuration.
     /// </summary>
     [CreateAssetMenu(
         fileName = "Activity",
         menuName = "Immersive Framework/Activity",
         order = 20)]
-    [FrameworkApiStatus(FrameworkApiStatus.Experimental, "Baseline surface kept for development use until the owning roadmap phase stabilizes it.")]
+    [FrameworkApiStatus(FrameworkApiStatus.Stable, "Stable product authoring surface for application/route/activity configuration. Breaking changes require ADR/migration.")]
     public sealed class ActivityAsset : ScriptableObject
     {
         [SerializeField]

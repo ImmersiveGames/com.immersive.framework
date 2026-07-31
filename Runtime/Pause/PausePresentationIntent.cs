@@ -1,14 +1,14 @@
 using System;
-using Immersive.Framework.ApiStatus;
 using Immersive.Framework.Common;
+using Immersive.Framework.ApiStatus;
 
 namespace Immersive.Framework.Pause
 {
     /// <summary>
-    /// API status: Experimental. Intent-level presentation data for Pause.
+    /// API status: Stable. Intent-level presentation data for Pause.
     /// This does not show, update or hide UI and does not require an overlay adapter.
     /// </summary>
-    [FrameworkApiStatus(FrameworkApiStatus.Experimental, "F23E Pause presentation intent; no overlay adapter or UI materialization.")]
+    [FrameworkApiStatus(FrameworkApiStatus.Stable, "Stable single-player Pause/Input/Gate product surface. Multiplayer policy is out of scope.")]
     public readonly struct PausePresentationIntent : IEquatable<PausePresentationIntent>
     {
         public PausePresentationIntent(

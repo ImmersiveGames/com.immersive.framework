@@ -1,12 +1,12 @@
-using Immersive.Framework.ApiStatus;
 
+using Immersive.Framework.ApiStatus;
 namespace Immersive.Framework.Gate
 {
     /// <summary>
-    /// API status: Experimental. Canonical outcome of one Gate admission decision.
+    /// API status: Stable. Canonical outcome of one Gate admission decision.
     /// The status is intentionally richer than bool so diagnostics can distinguish block, queue and rejection cases.
     /// </summary>
-    [FrameworkApiStatus(FrameworkApiStatus.Experimental, "F17B Gate decision status primitive; no bool-only canonical contract.")]
+    [FrameworkApiStatus(FrameworkApiStatus.Stable, "Stable single-player Pause/Input/Gate product surface. Multiplayer policy is out of scope.")]
     public enum GateDecisionStatus
     {
         /// <summary>Invalid default value.</summary>

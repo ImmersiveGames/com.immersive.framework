@@ -4,10 +4,10 @@ using Immersive.Framework.ApiStatus;
 namespace Immersive.Framework.Identity
 {
     /// <summary>
-    /// API status: Experimental. Domain-qualified framework identity key.
+    /// API status: Stable. Domain-qualified framework identity key.
     /// Use this only as a primitive bridge; prefer domain-specific identity wrappers when a concrete domain exists.
     /// </summary>
-    [FrameworkApiStatus(FrameworkApiStatus.Experimental, "Minimal domain-qualified identity key primitive introduced by F1E.")]
+    [FrameworkApiStatus(FrameworkApiStatus.Stable, "Stable boundary identity primitive. Breaking changes require ADR/migration.")]
     public readonly struct FrameworkIdentityKey : IEquatable<FrameworkIdentityKey>
     {
         public FrameworkIdentityKey(FrameworkIdentityDomain domain, FrameworkIdentityValue value)

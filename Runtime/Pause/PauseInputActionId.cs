@@ -1,14 +1,14 @@
 using System;
-using Immersive.Framework.ApiStatus;
 using Immersive.Framework.Identity;
+using Immersive.Framework.ApiStatus;
 
 namespace Immersive.Framework.Pause
 {
     /// <summary>
-    /// API status: Experimental. Stable identity for a normalized Pause input action.
+    /// API status: Stable. Stable identity for a normalized Pause input action.
     /// This is not a Unity Input System action name, action map, device binding or UI object name.
     /// </summary>
-    [FrameworkApiStatus(FrameworkApiStatus.Experimental, "F23D Pause Input action identity primitive; no concrete input asset binding.")]
+    [FrameworkApiStatus(FrameworkApiStatus.Stable, "Stable single-player Pause/Input/Gate product surface. Multiplayer policy is out of scope.")]
     public readonly struct PauseInputActionId : IFrameworkIdentity, IEquatable<PauseInputActionId>
     {
         private readonly FrameworkIdentityValue _value;

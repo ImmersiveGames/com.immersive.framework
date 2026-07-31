@@ -5,7 +5,7 @@ namespace Immersive.Framework.GameFlow
     /// Public coarse outcome for authored Game Flow requests.
     /// Specific framework result kinds remain internal implementation details.
     /// </summary>
-    [FrameworkApiStatus(FrameworkApiStatus.Experimental, "Baseline surface kept for development use until the owning roadmap phase stabilizes it.")]
+    [FrameworkApiStatus(FrameworkApiStatus.Stable, "Stable Game Flow request outcome/phase vocabulary. Breaking changes require ADR/migration.")]
     public enum FlowRequestOutcome
     {
         None = 0,

@@ -1,8 +1,8 @@
 using System;
 using Immersive.Framework.Actors;
-using Immersive.Framework.ApiStatus;
 using Immersive.Framework.PlayerSlots;
 using Immersive.Framework.RuntimeContent;
+using Immersive.Framework.ApiStatus;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
@@ -16,9 +16,7 @@ namespace Immersive.Framework.PlayerParticipation
     [DisallowMultipleComponent]
     [RequireComponent(typeof(LocalPlayerHostAuthoring))]
     [AddComponentMenu("Immersive Framework/Player/Scene-Provided Player Composer")]
-    [FrameworkApiStatus(
-        FrameworkApiStatus.Experimental,
-        "Scene-Provided Player composer with same-root Host authority and internal typed Actor profile evidence.")]
+    [FrameworkApiStatus(FrameworkApiStatus.Stable, "Stable Scene-Provided local Player product surface. Manager-Provisioned and Session-Persistent remain Experimental.")]
     public sealed class SceneLocalPlayerAdmissionAuthoring : MonoBehaviour
     {
         [SerializeField]

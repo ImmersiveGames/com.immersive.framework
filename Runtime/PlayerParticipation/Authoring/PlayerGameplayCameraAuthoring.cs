@@ -1,6 +1,6 @@
-using Immersive.Framework.ApiStatus;
 using Immersive.Framework.Camera;
 using Immersive.Framework.CameraAuthoring;
+using Immersive.Framework.ApiStatus;
 using UnityEngine;
 
 namespace Immersive.Framework.PlayerParticipation
@@ -16,9 +16,7 @@ namespace Immersive.Framework.PlayerParticipation
     [DisallowMultipleComponent]
     [AddComponentMenu(
         "Immersive Framework/Player/Gameplay Camera")]
-    [FrameworkApiStatus(
-        FrameworkApiStatus.Experimental,
-        "P3K.4 explicit contextual Player camera eligibility authoring.")]
+    [FrameworkApiStatus(FrameworkApiStatus.Stable, "Stable Scene-Provided local Player product surface. Manager-Provisioned and Session-Persistent remain Experimental.")]
     public sealed class PlayerGameplayCameraAuthoring :
         MonoBehaviour
     {

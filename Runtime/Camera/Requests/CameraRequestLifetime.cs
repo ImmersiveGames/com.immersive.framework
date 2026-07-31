@@ -1,10 +1,12 @@
 using Immersive.Framework.Common;
+using Immersive.Framework.ApiStatus;
 
 namespace Immersive.Framework.Camera
 {
     /// <summary>
     /// Typed lifetime evidence carried by a camera request.
     /// </summary>
+    [FrameworkApiStatus(FrameworkApiStatus.Stable, "Stable single-output Camera product surface. Multi-output/split-screen is out of scope.")]
     public readonly struct CameraRequestLifetime
     {
         public CameraRequestLifetime(CameraRequestLifetimeKind kind, string scopeId)

@@ -1,23 +1,21 @@
-using Immersive.Framework.ApiStatus;
 using Immersive.Framework.Common;
 using Immersive.Framework.Common.FlowTriggers;
 using Immersive.Framework.Diagnostics;
 using Immersive.Framework.GameFlow;
 using Immersive.Logging.Records;
+using Immersive.Framework.ApiStatus;
 using UnityEngine;
 
 namespace Immersive.Framework.Pause
 {
     /// <summary>
-    /// API status: Experimental. Public scene-authored request boundary for logical Pause requests.
+    /// API status: Stable. Public scene-authored request boundary for logical Pause requests.
     /// Designed for UnityEvents/UI Buttons/QA panels to invoke Pause, Resume and Toggle without owning Pause state.
     /// </summary>
     [DisallowMultipleComponent]
     [AddComponentMenu(
         "Immersive Framework/Pause/Pause Request Trigger")]
-    [FrameworkApiStatus(
-        FrameworkApiStatus.Experimental,
-        "Authored Pause request trigger for Unity-facing Pause surfaces.")]
+    [FrameworkApiStatus(FrameworkApiStatus.Stable, "Stable single-player Pause/Input/Gate product surface. Multiplayer policy is out of scope.")]
     public sealed class PauseRequestTrigger :
         MonoBehaviour
     {

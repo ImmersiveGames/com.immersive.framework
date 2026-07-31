@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using Immersive.Framework.Transition;
+using Immersive.Framework.ApiStatus;
 using UnityEngine;
 
 namespace Immersive.Framework.Camera
@@ -8,6 +9,7 @@ namespace Immersive.Framework.Camera
     /// <summary>
     /// Wraps the visual transition boundary so the persistent Session camera is active only while the curtain is closed.
     /// </summary>
+    [FrameworkApiStatus(FrameworkApiStatus.Internal, "Runtime implementation detail; not game-facing API.")]
     internal sealed class SessionCameraTransitionOrchestrator : ITransitionOrchestrator
     {
         private readonly ITransitionOrchestrator inner;

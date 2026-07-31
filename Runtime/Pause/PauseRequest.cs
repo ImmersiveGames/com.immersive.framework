@@ -1,14 +1,14 @@
 using System;
-using Immersive.Framework.ApiStatus;
 using Immersive.Framework.Common;
+using Immersive.Framework.ApiStatus;
 
 namespace Immersive.Framework.Pause
 {
     /// <summary>
-    /// API status: Experimental. Passive logical Pause request.
+    /// API status: Stable. Passive logical Pause request.
     /// A request does not read input, show UI, change Time.timeScale or execute Gate blockers.
     /// </summary>
-    [FrameworkApiStatus(FrameworkApiStatus.Experimental, "F20B passive Pause request; no runtime execution.")]
+    [FrameworkApiStatus(FrameworkApiStatus.Stable, "Stable single-player Pause/Input/Gate product surface. Multiplayer policy is out of scope.")]
     public readonly struct PauseRequest : IEquatable<PauseRequest>
     {
         public PauseRequest(

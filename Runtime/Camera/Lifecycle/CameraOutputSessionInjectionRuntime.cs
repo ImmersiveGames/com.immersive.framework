@@ -1,6 +1,7 @@
 using System;
 using UnityEngine;
 using UnityEngine.SceneManagement;
+using Immersive.Framework.ApiStatus;
 
 namespace Immersive.Framework.Camera
 {
@@ -8,6 +9,7 @@ namespace Immersive.Framework.Camera
     /// Session-owned explicit dependency injector for Session camera consumers in loaded scenes.
     /// It is constructed by FrameworkRuntimeHost and has no static access path.
     /// </summary>
+    [FrameworkApiStatus(FrameworkApiStatus.Internal, "Runtime implementation detail; not game-facing API.")]
     internal sealed class CameraOutputSessionInjectionRuntime : IDisposable
     {
         private readonly SessionCameraOverrideBinding sessionOverride;

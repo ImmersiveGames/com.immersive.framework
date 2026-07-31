@@ -1,11 +1,13 @@
 using System;
 using Immersive.Framework.Common;
+using Immersive.Framework.ApiStatus;
 
 namespace Immersive.Framework.Camera
 {
     /// <summary>
     /// Combined evidence for one context mutation and its automatic output application.
     /// </summary>
+    [FrameworkApiStatus(FrameworkApiStatus.Internal, "Runtime implementation detail; not game-facing API.")]
     public readonly struct CameraOutputSessionResult
     {
         internal CameraOutputSessionResult(

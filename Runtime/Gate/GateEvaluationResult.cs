@@ -1,16 +1,16 @@
 using System;
 using System.Collections.Generic;
 using System.Text;
-using Immersive.Framework.ApiStatus;
 using Immersive.Framework.Common;
+using Immersive.Framework.ApiStatus;
 
 namespace Immersive.Framework.Gate
 {
     /// <summary>
-    /// API status: Experimental. Aggregate result of evaluating one Gate decision against blocker/fact context.
+    /// API status: Stable. Aggregate result of evaluating one Gate decision against blocker/fact context.
     /// This is passive data; it does not execute the admitted operation, queue work or mutate lifecycle.
     /// </summary>
-    [FrameworkApiStatus(FrameworkApiStatus.Experimental, "F17B Gate evaluation result primitive with explicit blockers and facts.")]
+    [FrameworkApiStatus(FrameworkApiStatus.Stable, "Stable single-player Pause/Input/Gate product surface. Multiplayer policy is out of scope.")]
     public readonly struct GateEvaluationResult : IEquatable<GateEvaluationResult>
     {
         private readonly GateBlocker[] _blockingBlockers;

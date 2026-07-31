@@ -3,10 +3,10 @@ using Immersive.Framework.ApiStatus;
 namespace Immersive.Framework.Authoring
 {
     /// <summary>
-    /// API status: Experimental. Activity-level policy for using the session TransitionSurface during Activity requests.
+    /// API status: Stable. Activity-level policy for using the session TransitionSurface during Activity requests.
     /// This selects whether Activity Flow asks the Session UIGlobal transition/loading capabilities to wrap an Activity operation; it does not own the surfaces.
     /// </summary>
-    [FrameworkApiStatus(FrameworkApiStatus.Experimental, "F24F Activity visual transition policy; Session UIGlobal remains the surface owner.")]
+    [FrameworkApiStatus(FrameworkApiStatus.Stable, "Stable product authoring surface for application/route/activity configuration. Breaking changes require ADR/migration.")]
     public enum ActivityVisualTransitionMode
     {
         /// <summary>

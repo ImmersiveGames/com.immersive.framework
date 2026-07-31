@@ -1,6 +1,6 @@
 using System;
-using Immersive.Framework.ApiStatus;
 using Immersive.Framework.Common;
+using Immersive.Framework.ApiStatus;
 using UnityEngine;
 
 namespace Immersive.Framework.Pause
@@ -16,9 +16,7 @@ namespace Immersive.Framework.Pause
     [DisallowMultipleComponent]
     [AddComponentMenu(
         "Immersive Framework/Pause/Unity Pause Surface Adapter")]
-    [FrameworkApiStatus(
-        FrameworkApiStatus.Experimental,
-        "Persistent Content Pause presentation adapter.")]
+    [FrameworkApiStatus(FrameworkApiStatus.Stable, "Stable single-player Pause/Input/Gate product surface. Multiplayer policy is out of scope.")]
     public sealed class UnityPauseSurfaceAdapter :
         MonoBehaviour,
         IPauseSurfaceAdapter

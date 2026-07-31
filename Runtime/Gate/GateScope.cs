@@ -1,12 +1,12 @@
-using Immersive.Framework.ApiStatus;
 
+using Immersive.Framework.ApiStatus;
 namespace Immersive.Framework.Gate
 {
     /// <summary>
-    /// API status: Experimental. Explicit architectural scope evaluated by Gate.
+    /// API status: Stable. Explicit architectural scope evaluated by Gate.
     /// Scopes are framework lifecycle/content domains, not UI tabs, scene hierarchy paths or GameObject names.
     /// </summary>
-    [FrameworkApiStatus(FrameworkApiStatus.Experimental, "F17B Gate scope primitive; admission scope only, no runtime owner.")]
+    [FrameworkApiStatus(FrameworkApiStatus.Stable, "Stable single-player Pause/Input/Gate product surface. Multiplayer policy is out of scope.")]
     public enum GateScope
     {
         /// <summary>Invalid default value. Do not use for canonical Gate evaluations.</summary>

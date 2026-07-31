@@ -1,9 +1,11 @@
 using System;
 using Immersive.Framework.Common;
+using Immersive.Framework.ApiStatus;
 using Unity.Cinemachine;
 
 namespace Immersive.Framework.Camera
 {
+    [FrameworkApiStatus(FrameworkApiStatus.Internal, "Runtime implementation detail; not game-facing API.")]
     public readonly struct CameraOutputApplyResult
     {
         internal CameraOutputApplyResult(

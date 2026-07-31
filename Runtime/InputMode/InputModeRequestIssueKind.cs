@@ -1,11 +1,11 @@
-using Immersive.Framework.ApiStatus;
 
+using Immersive.Framework.ApiStatus;
 namespace Immersive.Framework.InputMode
 {
     /// <summary>
-    /// API status: Experimental. Diagnostic issue kind for passive InputMode requests.
+    /// API status: Stable. Diagnostic issue kind for passive InputMode requests.
     /// </summary>
-    [FrameworkApiStatus(FrameworkApiStatus.Experimental, "F30A InputMode request issue vocabulary.")]
+    [FrameworkApiStatus(FrameworkApiStatus.Stable, "Stable single-player Pause/Input/Gate product surface. Multiplayer policy is out of scope.")]
     public enum InputModeRequestIssueKind
     {
         None = 0,

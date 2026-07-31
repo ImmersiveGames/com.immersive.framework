@@ -5,10 +5,10 @@ using Immersive.Framework.Common;
 namespace Immersive.Framework.Identity
 {
     /// <summary>
-    /// API status: Experimental. Validated identity payload used by typed framework identity wrappers.
+    /// API status: Stable. Validated identity payload used by typed framework identity wrappers.
     /// It is not a label and should not carry human-facing display text.
     /// </summary>
-    [FrameworkApiStatus(FrameworkApiStatus.Experimental, "Minimal validated identity value primitive introduced by F1E.")]
+    [FrameworkApiStatus(FrameworkApiStatus.Stable, "Stable boundary identity primitive. Breaking changes require ADR/migration.")]
     public readonly struct FrameworkIdentityValue : IEquatable<FrameworkIdentityValue>
     {
         private readonly string _value;

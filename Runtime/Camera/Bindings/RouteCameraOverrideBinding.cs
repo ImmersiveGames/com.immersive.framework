@@ -1,11 +1,13 @@
 using Immersive.Framework.Authoring;
 using Immersive.Framework.RouteLifecycle;
+using Immersive.Framework.ApiStatus;
 using UnityEngine;
 
 namespace Immersive.Framework.Camera
 {
     [DisallowMultipleComponent]
     [AddComponentMenu("Immersive Framework/Camera/Route Camera Override")]
+    [FrameworkApiStatus(FrameworkApiStatus.Stable, "Stable single-output Camera product surface. Multi-output/split-screen is out of scope.")]
     public sealed class RouteCameraOverrideBinding : ScopedCameraOverrideBinding, IRouteContentLifecycleReceiver
     {
         [SerializeField] private RouteAsset assignedRoute;

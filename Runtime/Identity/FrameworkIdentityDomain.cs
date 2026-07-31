@@ -3,10 +3,10 @@ using Immersive.Framework.ApiStatus;
 namespace Immersive.Framework.Identity
 {
     /// <summary>
-    /// API status: Experimental. Canonical coarse-grained domains for framework identity values.
+    /// API status: Stable. Canonical coarse-grained domains for framework identity values.
     /// The zero value is invalid for new functional identities and exists only as the default enum value.
     /// </summary>
-    [FrameworkApiStatus(FrameworkApiStatus.Experimental, "Minimal typed identity domain primitive introduced by F1E.")]
+    [FrameworkApiStatus(FrameworkApiStatus.Stable, "Stable boundary identity primitive. Breaking changes require ADR/migration.")]
     public enum FrameworkIdentityDomain
     {
         /// <summary>

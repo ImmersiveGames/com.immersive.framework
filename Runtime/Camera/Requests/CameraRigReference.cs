@@ -1,4 +1,5 @@
 using Immersive.Framework.CameraAuthoring;
+using Immersive.Framework.ApiStatus;
 
 namespace Immersive.Framework.Camera
 {
@@ -11,6 +12,7 @@ namespace Immersive.Framework.Camera
     ///
     /// This reference carries evidence only and does not activate the rig.
     /// </summary>
+    [FrameworkApiStatus(FrameworkApiStatus.Stable, "Stable single-output Camera product surface. Multi-output/split-screen is out of scope.")]
     public readonly struct CameraRigReference
     {
         public CameraRigReference(

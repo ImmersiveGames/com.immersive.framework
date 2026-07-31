@@ -1,11 +1,11 @@
-using Immersive.Framework.ApiStatus;
 
+using Immersive.Framework.ApiStatus;
 namespace Immersive.Framework.InputMode
 {
     /// <summary>
-    /// API status: Experimental. Deterministic status for a passive InputMode request preview/result.
+    /// API status: Stable. Deterministic status for a passive InputMode request preview/result.
     /// </summary>
-    [FrameworkApiStatus(FrameworkApiStatus.Experimental, "F30A InputMode request status vocabulary.")]
+    [FrameworkApiStatus(FrameworkApiStatus.Stable, "Stable single-player Pause/Input/Gate product surface. Multiplayer policy is out of scope.")]
     public enum InputModeRequestStatus
     {
         Unknown = 0,

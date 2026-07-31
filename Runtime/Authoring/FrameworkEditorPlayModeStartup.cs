@@ -5,7 +5,7 @@ namespace Immersive.Framework.Authoring
     /// Editor-only startup behavior for entering Play Mode while developing scenes.
     /// Player/runtime builds always use FrameworkStartup.
     /// </summary>
-    [FrameworkApiStatus(FrameworkApiStatus.Experimental, "Baseline surface kept for development use until the owning roadmap phase stabilizes it.")]
+    [FrameworkApiStatus(FrameworkApiStatus.Stable, "Stable product authoring surface for application/route/activity configuration. Breaking changes require ADR/migration.")]
     public enum FrameworkEditorPlayModeStartup
     {
         FrameworkStartup = 0,

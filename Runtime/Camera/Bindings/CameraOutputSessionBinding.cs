@@ -1,6 +1,7 @@
 using System;
 using Immersive.Framework.Common;
 using Immersive.Framework.Diagnostics;
+using Immersive.Framework.ApiStatus;
 using Unity.Cinemachine;
 using UnityEngine;
 
@@ -12,6 +13,7 @@ namespace Immersive.Framework.Camera
     /// </summary>
     [DisallowMultipleComponent]
     [AddComponentMenu("Immersive Framework/Camera/Camera Output Session Binding")]
+    [FrameworkApiStatus(FrameworkApiStatus.Stable, "Stable single-output Camera product surface. Multi-output/split-screen is out of scope.")]
     public sealed class CameraOutputSessionBinding : MonoBehaviour
     {
         [SerializeField] private string outputId;

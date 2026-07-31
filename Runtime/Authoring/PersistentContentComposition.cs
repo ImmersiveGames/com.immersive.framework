@@ -1,5 +1,6 @@
 using System;
 using UnityEngine;
+using Immersive.Framework.ApiStatus;
 
 namespace Immersive.Framework.Authoring
 {
@@ -15,6 +16,7 @@ namespace Immersive.Framework.Authoring
     /// prefab origin is not part of this contract.
     /// </summary>
     [Serializable]
+    [FrameworkApiStatus(FrameworkApiStatus.Stable, "Stable product authoring surface for application/route/activity configuration. Breaking changes require ADR/migration.")]
     public sealed class PersistentContentComposition
     {
         [SerializeField]

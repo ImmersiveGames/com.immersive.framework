@@ -1,7 +1,7 @@
 # IF-TRACK — Immersive Framework
 
 Status: Active  
-Last updated: 2026-07-28  
+Last updated: 2026-07-31  
 Package version: `1.0.0-preview.17`
 
 ## Source baseline
@@ -47,12 +47,12 @@ Player_SceneProvided
 |---|---|---|---|---|
 | Runtime authority | Closed for current boundary | internal host composition and narrow typed ports | preserve boundary | reject static/global lookup |
 | Package hygiene | Closed for current boundary | current package and QA import | ongoing discipline | do not restore compatibility facades |
-| Player — Scene-Provided | Consumer baseline approved | authoring, Route Primary Scene admission, Slot, Host, Actor adoption, readiness, release, reentry, Activity Restart and teardown | separate Reset unload finding | freeze baseline and move to source comparison |
+| Player — Scene-Provided | Consumer baseline approved | authoring, Route Primary Scene admission, Slot, Host, Actor adoption, readiness, release, reentry, Activity Restart and teardown; **API status Wave D**: Scene-Provided product subset `Stable` | separate Reset unload finding; Manager-Provisioned remains Experimental | freeze baseline and move to source comparison |
 | PLAYER-DIAG-1 | **Closed / approved** | total invalid-evidence formatting, safe token text, persistent immutable snapshot, Advanced/Debug projection, manual restart/teardown regression | broader automated admit/release matrix remains desirable | preserve semantics |
 | Player — Manager-Provisioned | Package implemented; FIRSTGAME pending | provisioning contracts and authoring exist | real consumer assembly and negative rollback proof | create dedicated Route/scene |
 | Player — Session-Persistent | Blocked by package gap | architecture accepted | authoring, admission and lifetime contracts | new approved package cut |
-| Camera | Closed for current single-output scope | persistent output, Player request and restoration | split-screen/multiple outputs | preserve one-output boundary |
-| Pause/Input/Gate | Closed for current single-player scope | Player-bound Pause, resume and input restoration | multiplayer policy | preserve explicit binding |
+| Camera | Closed for current single-output scope | persistent output, Player request and restoration; **API status Wave 0+B**: product surfaces `Stable`, output authority `Internal` | split-screen/multiple outputs | preserve one-output boundary |
+| Pause/Input/Gate | Closed for current single-player scope | Player-bound Pause, resume and input restoration; **API status Wave C**: product surfaces `Stable` | multiplayer policy | preserve explicit binding |
 | Reset | Implemented | Object Reset, Group Reset and Activity Restart | unload `update-retry` recomposition finding | create separate Reset cut |
 | Activity transaction | Partial | readiness and cleanup foundations | explicit commit/finalization model | separate approved runtime cut |
 | Persistence | Foundation | contracts exist | product authoring and real consumer proof | product decision |
@@ -156,6 +156,62 @@ The current QA formatting smoke is intentionally narrow. A future technical cut 
 - no residual Slot/Host/Actor evidence.
 
 This does not reopen the manually approved FIRSTGAME regression.
+
+## API status promotion
+
+See `../Plans/IF-CUT-ApiStatus-Promotion.v1.md`.
+
+```text
+API status Wave 0+B
+  date: 2026-07-31
+  types promoted to Stable: 42 (Camera product + CameraAuthoring)
+  types marked Internal: 17 (Camera output/lifecycle authority + debug snapshot)
+  UNMARKED under Runtime/Camera + CameraAuthoring: 0
+  boundary: single-output Camera product API; multi-output/split-screen out of scope
+  evidence: IF-ADR-004 + TRACK Camera Closed + Camera-Usage guide
+  behavior change: none (metadata only)
+
+API status Wave A
+  date: 2026-07-31
+  types promoted to Stable: 29
+    Authoring: GameApplication/Route/Activity assets, content profiles/entries/policies,
+               PersistentContentComposition, settings, validation mode, RouteId/ActivityId
+    GameFlow: Route/Activity request triggers, events, UnityEvent bridges, phase/outcome
+    Identity: IFrameworkIdentity, FrameworkIdentityValue/Key/Domain
+  boundary: product authoring + Game Flow request envelope; Activity commit internals remain Experimental
+  evidence: IF-ADR-001/002/008 + Framework-Usage guide
+  behavior change: none (metadata only)
+  package status counts after Wave A:
+    Stable 72 | Experimental 542 | Internal 192 | DevelopmentTooling 32 | Deferred 2
+
+API status Wave C
+  date: 2026-07-31
+  types promoted to Stable: 36
+    Pause product triggers/bindings/adapters/vocabulary
+    Gate decision primitives
+    InputMode product vocabulary (Kind/Definitions/Rules/request result types)
+    UnityPlayerInputGateAdapter + PlayerInputActionMapReference
+  kept Experimental: PauseActivityBindingAuthoring*
+  kept Internal: PauseRuntime, surface/timeScale runtimes, GateRequestAdmission, UnityPlayerInputStateWriter
+  boundary: single-player Pause/Input/Gate; multiplayer out of scope
+  evidence: IF-ADR-005 + TRACK Pause/Input/Gate Closed
+  behavior change: none (metadata only)
+
+API status Wave D
+  date: 2026-07-31
+  types promoted to Stable: 6
+    PlayerSlotId, PlayerSlotProfile, LocalPlayerHostAuthoring,
+    SceneLocalPlayerAdmissionAuthoring, SceneLogicalPlayerActorEvidence,
+    PlayerGameplayCameraAuthoring
+  kept Experimental: LocalPlayerProvisioning*, LocalPlayerActorSelectionRequestAuthoring,
+    remainder of PlayerParticipation runtime
+  boundary: Scene-Provided local Player product only
+  evidence: IF-ADR-003 + TRACK Scene-Provided approved + FIRSTGAME
+  behavior change: none (metadata only)
+
+  package status counts after Waves 0+B, A, C, D:
+    Stable 114 | Experimental 501 | Internal 192 | DevelopmentTooling 32 | Deferred 2
+```
 
 ## Validation log
 

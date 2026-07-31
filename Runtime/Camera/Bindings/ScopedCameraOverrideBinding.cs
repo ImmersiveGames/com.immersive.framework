@@ -2,6 +2,7 @@ using System;
 using Immersive.Framework.CameraAuthoring;
 using Immersive.Framework.Common;
 using Immersive.Framework.Diagnostics;
+using Immersive.Framework.ApiStatus;
 using UnityEngine;
 
 namespace Immersive.Framework.Camera
@@ -10,6 +11,7 @@ namespace Immersive.Framework.Camera
     /// Shared explicit-request behavior for camera overrides owned by a lifecycle scope.
     /// Derived bindings validate their own owner identity and decide when the scope is available.
     /// </summary>
+    [FrameworkApiStatus(FrameworkApiStatus.Stable, "Stable single-output Camera product surface. Multi-output/split-screen is out of scope.")]
     public abstract class ScopedCameraOverrideBinding : MonoBehaviour, ICameraOutputSessionConsumer
     {
         [Header("Override Identity")]

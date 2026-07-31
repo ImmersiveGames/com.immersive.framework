@@ -1,12 +1,12 @@
-using Immersive.Framework.ApiStatus;
 
+using Immersive.Framework.ApiStatus;
 namespace Immersive.Framework.InputMode
 {
     /// <summary>
-    /// API status: Experimental. Canonical InputMode definition factory.
+    /// API status: Stable. Canonical InputMode definition factory.
     /// Definitions are logical framework postures, not Unity action-map names.
     /// </summary>
-    [FrameworkApiStatus(FrameworkApiStatus.Experimental, "F30A canonical InputMode definitions.")]
+    [FrameworkApiStatus(FrameworkApiStatus.Stable, "Stable single-player Pause/Input/Gate product surface. Multiplayer policy is out of scope.")]
     public static class InputModeDefinitions
     {
         public static InputModeDefinition Gameplay(string source, string reason)

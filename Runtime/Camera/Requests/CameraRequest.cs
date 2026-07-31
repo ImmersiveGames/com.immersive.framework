@@ -1,4 +1,5 @@
 using Immersive.Framework.Common;
+using Immersive.Framework.ApiStatus;
 
 namespace Immersive.Framework.Camera
 {
@@ -6,6 +7,7 @@ namespace Immersive.Framework.Camera
     /// Immutable camera intent submitted by Route, Activity, LocalPlayer or another typed owner.
     /// It does not admit itself, select a winner or mutate Cinemachine state.
     /// </summary>
+    [FrameworkApiStatus(FrameworkApiStatus.Stable, "Stable single-output Camera product surface. Multi-output/split-screen is out of scope.")]
     public readonly struct CameraRequest
     {
         internal CameraRequest(

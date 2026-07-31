@@ -93,21 +93,6 @@ namespace Immersive.Framework.Editor.Editor.Authoring
             }
         }
 
-        [MenuItem("Assets/Create/Immersive Framework/Route", false, 10)]
-        private static void CreateRouteAsset()
-        {
-            RouteAsset route =
-                ImmersiveFrameworkEditorSettingsUtility.CreateStartupRouteAsset();
-
-            if (route == null)
-            {
-                return;
-            }
-
-            Selection.activeObject = route;
-            EditorGUIUtility.PingObject(route);
-        }
-
         private void DrawInspectorHeader()
         {
             EditorGUILayout.LabelField(

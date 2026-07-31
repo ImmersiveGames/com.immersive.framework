@@ -1,14 +1,14 @@
 using System;
-using Immersive.Framework.ApiStatus;
 using Immersive.Framework.Identity;
+using Immersive.Framework.ApiStatus;
 
 namespace Immersive.Framework.Pause
 {
     /// <summary>
-    /// API status: Experimental. Stable identity for one logical Pause request.
+    /// API status: Stable. Stable identity for one logical Pause request.
     /// This is not an input action name, UI object name, menu id or Time.timeScale policy id.
     /// </summary>
-    [FrameworkApiStatus(FrameworkApiStatus.Experimental, "F20B Pause request identity primitive; passive request identity only.")]
+    [FrameworkApiStatus(FrameworkApiStatus.Stable, "Stable single-player Pause/Input/Gate product surface. Multiplayer policy is out of scope.")]
     public readonly struct PauseRequestId : IFrameworkIdentity, IEquatable<PauseRequestId>
     {
         private readonly FrameworkIdentityValue _value;

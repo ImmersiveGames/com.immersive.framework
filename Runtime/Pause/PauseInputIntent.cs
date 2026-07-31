@@ -1,14 +1,14 @@
 using System;
-using Immersive.Framework.ApiStatus;
 using Immersive.Framework.Common;
+using Immersive.Framework.ApiStatus;
 
 namespace Immersive.Framework.Pause
 {
     /// <summary>
-    /// API status: Experimental. Framework-facing Pause input intent.
+    /// API status: Stable. Framework-facing Pause input intent.
     /// It carries normalized command intent only; it does not resolve Input System actions, poll devices or dispatch PauseRequest.
     /// </summary>
-    [FrameworkApiStatus(FrameworkApiStatus.Experimental, "F23E Pause input intent; no input adapter, resolver or dispatch path.")]
+    [FrameworkApiStatus(FrameworkApiStatus.Stable, "Stable single-player Pause/Input/Gate product surface. Multiplayer policy is out of scope.")]
     public readonly struct PauseInputIntent : IEquatable<PauseInputIntent>
     {
         public PauseInputIntent(PauseInputSignal signal, string source, string reason)

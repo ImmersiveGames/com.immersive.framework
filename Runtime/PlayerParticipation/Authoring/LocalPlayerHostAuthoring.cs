@@ -1,8 +1,8 @@
 using System;
 using Immersive.Framework.Actors;
-using Immersive.Framework.ApiStatus;
 using Immersive.Framework.Common;
 using Immersive.Framework.PlayerSlots;
+using Immersive.Framework.ApiStatus;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
@@ -17,9 +17,7 @@ namespace Immersive.Framework.PlayerParticipation
     [DisallowMultipleComponent]
     [RequireComponent(typeof(PlayerInput))]
     [AddComponentMenu("Immersive Framework/Player/Local Player Host Authoring")]
-    [FrameworkApiStatus(
-        FrameworkApiStatus.Experimental,
-        "P3J.2/P3M4 stable Local Player technical host with provisioned or scene-owned admission evidence.")]
+    [FrameworkApiStatus(FrameworkApiStatus.Stable, "Stable Scene-Provided local Player product surface. Manager-Provisioned and Session-Persistent remain Experimental.")]
     public sealed class LocalPlayerHostAuthoring : MonoBehaviour
     {
         private enum AdmissionState

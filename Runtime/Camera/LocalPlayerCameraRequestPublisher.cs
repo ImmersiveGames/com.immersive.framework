@@ -1,9 +1,13 @@
+
+using Immersive.Framework.ApiStatus;
+
 namespace Immersive.Framework.Camera
 {
     /// <summary>
     /// Typed publisher for one camera request owned by an eligible local Player.
     /// It does not discover Players, select winners or mutate Cinemachine directly.
     /// </summary>
+    [FrameworkApiStatus(FrameworkApiStatus.Stable, "Stable single-output Camera product surface. Multi-output/split-screen is out of scope.")]
     public sealed class LocalPlayerCameraRequestPublisher :
         ScopedCameraRequestPublisher
     {

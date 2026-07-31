@@ -1,14 +1,14 @@
 using System;
-using Immersive.Framework.ApiStatus;
 using Immersive.Framework.Common;
+using Immersive.Framework.ApiStatus;
 
 namespace Immersive.Framework.Pause
 {
     /// <summary>
-    /// API status: Experimental. Passive diagnostics issue emitted by Pause validation or result generation.
+    /// API status: Stable. Passive diagnostics issue emitted by Pause validation or result generation.
     /// Issues do not log by themselves and do not mutate Pause, Gate, UI, input or timescale.
     /// </summary>
-    [FrameworkApiStatus(FrameworkApiStatus.Experimental, "F20B Pause issue primitive; diagnostics only.")]
+    [FrameworkApiStatus(FrameworkApiStatus.Stable, "Stable single-player Pause/Input/Gate product surface. Multiplayer policy is out of scope.")]
     public readonly struct PauseIssue : IEquatable<PauseIssue>
     {
         public PauseIssue(

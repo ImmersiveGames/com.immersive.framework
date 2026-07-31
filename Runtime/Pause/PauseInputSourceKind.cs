@@ -1,12 +1,12 @@
-using Immersive.Framework.ApiStatus;
 
+using Immersive.Framework.ApiStatus;
 namespace Immersive.Framework.Pause
 {
     /// <summary>
-    /// API status: Experimental. Coarse source category for Pause input diagnostics.
+    /// API status: Stable. Coarse source category for Pause input diagnostics.
     /// It is intentionally device-agnostic and does not select or require a concrete input package.
     /// </summary>
-    [FrameworkApiStatus(FrameworkApiStatus.Experimental, "F23D Pause Input source vocabulary; diagnostics only.")]
+    [FrameworkApiStatus(FrameworkApiStatus.Stable, "Stable single-player Pause/Input/Gate product surface. Multiplayer policy is out of scope.")]
     public enum PauseInputSourceKind
     {
         Unknown = 0,

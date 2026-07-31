@@ -8,7 +8,7 @@ namespace Immersive.Framework.Authoring
     /// Project-level backing asset for Immersive Framework settings.
     /// Users should edit this through Project Settings > Immersive Framework.
     /// </summary>
-    [FrameworkApiStatus(FrameworkApiStatus.Experimental, "Baseline surface kept for development use until the owning roadmap phase stabilizes it.")]
+    [FrameworkApiStatus(FrameworkApiStatus.Stable, "Stable product authoring surface for application/route/activity configuration. Breaking changes require ADR/migration.")]
     public sealed class ImmersiveFrameworkSettingsAsset : ScriptableObject
     {
         public const string ResourcesPath = "ImmersiveFrameworkSettings";

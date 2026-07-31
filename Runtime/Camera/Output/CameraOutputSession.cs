@@ -1,5 +1,6 @@
 using System;
 using Immersive.Framework.Common;
+using Immersive.Framework.ApiStatus;
 
 namespace Immersive.Framework.Camera
 {
@@ -8,6 +9,7 @@ namespace Immersive.Framework.Camera
     /// CameraOutputRigApplicator synchronized after every accepted mutation.
     /// Winner selection remains exclusively inside CameraOutputContext.
     /// </summary>
+    [FrameworkApiStatus(FrameworkApiStatus.Internal, "Runtime implementation detail; not game-facing API.")]
     public sealed class CameraOutputSession
     {
         private readonly CameraOutputContext context;

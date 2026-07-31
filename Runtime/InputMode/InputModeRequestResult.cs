@@ -1,14 +1,14 @@
 using System;
 using System.Text;
-using Immersive.Framework.ApiStatus;
 using Immersive.Framework.Common;
+using Immersive.Framework.ApiStatus;
 
 namespace Immersive.Framework.InputMode
 {
     /// <summary>
-    /// API status: Experimental. Result of evaluating an InputMode request without applying Unity Input behavior.
+    /// API status: Stable. Result of evaluating an InputMode request without applying Unity Input behavior.
     /// </summary>
-    [FrameworkApiStatus(FrameworkApiStatus.Experimental, "F30A passive InputMode request result.")]
+    [FrameworkApiStatus(FrameworkApiStatus.Stable, "Stable single-player Pause/Input/Gate product surface. Multiplayer policy is out of scope.")]
     public sealed class InputModeRequestResult
     {
         public InputModeRequestResult(

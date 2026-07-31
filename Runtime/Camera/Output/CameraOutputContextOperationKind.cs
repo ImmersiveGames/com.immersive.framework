@@ -1,5 +1,9 @@
+
+using Immersive.Framework.ApiStatus;
+
 namespace Immersive.Framework.Camera
 {
+    [FrameworkApiStatus(FrameworkApiStatus.Internal, "Runtime implementation detail; not game-facing API.")]
     public enum CameraOutputContextOperationKind
     {
         None = 0,

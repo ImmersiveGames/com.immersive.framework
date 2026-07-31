@@ -1,8 +1,10 @@
 using Unity.Cinemachine;
 using UnityEngine;
+using Immersive.Framework.ApiStatus;
 
 namespace Immersive.Framework.Camera
 {
+    [FrameworkApiStatus(FrameworkApiStatus.Internal, "Runtime implementation detail; not game-facing API.")]
     public readonly struct CameraOutputBinding
     {
         public CameraOutputBinding(

@@ -1,5 +1,6 @@
 using System;
 using Immersive.Framework.Common;
+using Immersive.Framework.ApiStatus;
 
 namespace Immersive.Framework.Camera
 {
@@ -7,6 +8,7 @@ namespace Immersive.Framework.Camera
     /// Typed identity for one concrete camera output or viewport.
     /// It does not discover, create or select an output.
     /// </summary>
+    [FrameworkApiStatus(FrameworkApiStatus.Stable, "Stable single-output Camera product surface. Multi-output/split-screen is out of scope.")]
     public readonly struct CameraOutputId : IEquatable<CameraOutputId>
     {
         public CameraOutputId(string value)

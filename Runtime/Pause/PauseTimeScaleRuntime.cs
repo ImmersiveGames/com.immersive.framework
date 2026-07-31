@@ -1,6 +1,6 @@
 using System;
-using Immersive.Framework.ApiStatus;
 using UnityEngine;
+using Immersive.Framework.ApiStatus;
 
 namespace Immersive.Framework.Pause
 {

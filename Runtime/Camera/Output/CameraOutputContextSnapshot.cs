@@ -1,10 +1,12 @@
 using System;
+using Immersive.Framework.ApiStatus;
 
 namespace Immersive.Framework.Camera
 {
     /// <summary>
     /// Immutable diagnostic snapshot of one output-scoped camera authority.
     /// </summary>
+    [FrameworkApiStatus(FrameworkApiStatus.Internal, "Runtime implementation detail; not game-facing API.")]
     public readonly struct CameraOutputContextSnapshot
     {
         internal CameraOutputContextSnapshot(

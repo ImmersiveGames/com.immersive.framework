@@ -1,6 +1,7 @@
 using System;
 using UnityEngine;
 using UnityEngine.SceneManagement;
+using Immersive.Framework.ApiStatus;
 
 namespace Immersive.Framework.Camera
 {
@@ -8,6 +9,7 @@ namespace Immersive.Framework.Camera
     /// Persistent-output dependency injector for camera request consumers in loaded scenes.
     /// The output is mandatory and independent from the optional Session publisher.
     /// </summary>
+    [FrameworkApiStatus(FrameworkApiStatus.Internal, "Runtime implementation detail; not game-facing API.")]
     internal sealed class CameraOutputInjectionRuntime : IDisposable
     {
         private readonly CameraOutputSessionBinding outputSession;

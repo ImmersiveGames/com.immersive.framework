@@ -4,6 +4,7 @@ using Immersive.Framework.CameraAuthoring;
 using Immersive.Framework.Common;
 using Immersive.Framework.Diagnostics;
 using Immersive.Framework.PlayerParticipation;
+using Immersive.Framework.ApiStatus;
 using UnityEngine;
 
 namespace Immersive.Framework.Camera
@@ -19,6 +20,7 @@ namespace Immersive.Framework.Camera
     [DisallowMultipleComponent]
     [AddComponentMenu(
         "Immersive Framework/Camera/Local Player Camera Request Binding")]
+    [FrameworkApiStatus(FrameworkApiStatus.Stable, "Stable single-output Camera product surface. Multi-output/split-screen is out of scope.")]
     public sealed class LocalPlayerCameraRequestBinding :
         MonoBehaviour,
         ICameraOutputSessionConsumer

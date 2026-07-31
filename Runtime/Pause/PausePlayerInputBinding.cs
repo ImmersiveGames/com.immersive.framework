@@ -1,6 +1,6 @@
-using Immersive.Framework.ApiStatus;
 using Immersive.Framework.Common;
 using Immersive.Framework.UnityInput;
+using Immersive.Framework.ApiStatus;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
@@ -8,7 +8,7 @@ namespace Immersive.Framework.Pause
 {
     [DisallowMultipleComponent]
     [AddComponentMenu("Immersive Framework/Pause/Pause PlayerInput Binding")]
-    [FrameworkApiStatus(FrameworkApiStatus.Experimental, "P1 scene-local single-player Pause product surface.")]
+    [FrameworkApiStatus(FrameworkApiStatus.Stable, "Stable single-player Pause/Input/Gate product surface. Multiplayer policy is out of scope.")]
     public sealed class PausePlayerInputBinding : MonoBehaviour
     {
         [Header("Pause PlayerInput Binding")]

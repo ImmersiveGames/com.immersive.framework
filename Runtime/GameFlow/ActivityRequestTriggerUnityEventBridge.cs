@@ -1,7 +1,7 @@
 using Immersive.Foundation.Events;
+using Immersive.Framework.ApiStatus;
 using UnityEngine;
 using UnityEngine.Events;
-using Immersive.Framework.ApiStatus;
 
 namespace Immersive.Framework.GameFlow
 {
@@ -12,7 +12,7 @@ namespace Immersive.Framework.GameFlow
     [DisallowMultipleComponent]
     [RequireComponent(typeof(ActivityRequestTrigger))]
     [AddComponentMenu("Immersive Framework/Activity Request Trigger Unity Event Bridge")]
-    [FrameworkApiStatus(FrameworkApiStatus.Experimental, "Baseline surface kept for development use until the owning roadmap phase stabilizes it.")]
+    [FrameworkApiStatus(FrameworkApiStatus.Stable, "Stable authored Game Flow request trigger for Route/Activity navigation. Breaking changes require ADR/migration.")]
     public sealed class ActivityRequestTriggerUnityEventBridge : MonoBehaviour
     {
         private ActivityRequestTrigger _trigger;

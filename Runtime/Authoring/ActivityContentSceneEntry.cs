@@ -6,11 +6,11 @@ using UnityEngine;
 namespace Immersive.Framework.Authoring
 {
     /// <summary>
-    /// API status: Experimental. Authoring declaration for one scene owned by an Activity content profile.
+    /// API status: Stable. Authoring declaration for one scene owned by an Activity content profile.
     /// Entries are validated, planned and executed by Activity scene composition when execution-ready.
     /// </summary>
     [Serializable]
-    [FrameworkApiStatus(FrameworkApiStatus.Experimental, "Activity content scene entries are loaded/released by Activity scene composition operations.")]
+    [FrameworkApiStatus(FrameworkApiStatus.Stable, "Stable product authoring surface for application/route/activity configuration. Breaking changes require ADR/migration.")]
     public sealed class ActivityContentSceneEntry
     {
         [SerializeField]

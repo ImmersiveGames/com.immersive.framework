@@ -1,16 +1,16 @@
 using System;
 using System.Collections.Generic;
-using Immersive.Framework.ApiStatus;
 using Immersive.Framework.Common;
 using Immersive.Framework.Identity;
+using Immersive.Framework.ApiStatus;
 
 namespace Immersive.Framework.Gate
 {
     /// <summary>
-    /// API status: Experimental. Passive immutable snapshot of active Gate blockers.
+    /// API status: Stable. Passive immutable snapshot of active Gate blockers.
     /// The snapshot can evaluate admission but does not own registration, lifecycle, queueing or execution.
     /// </summary>
-    [FrameworkApiStatus(FrameworkApiStatus.Experimental, "F17B passive Gate snapshot primitive; no runtime registry or flow integration.")]
+    [FrameworkApiStatus(FrameworkApiStatus.Stable, "Stable single-player Pause/Input/Gate product surface. Multiplayer policy is out of scope.")]
     public readonly struct GateSnapshot
     {
         private readonly GateBlocker[] _blockers;

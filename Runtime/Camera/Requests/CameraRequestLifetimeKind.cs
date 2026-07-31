@@ -1,9 +1,13 @@
+
+using Immersive.Framework.ApiStatus;
+
 namespace Immersive.Framework.Camera
 {
     /// <summary>
     /// Declares the scope that keeps a camera request eligible.
     /// Runtime enforcement belongs to CameraOutputContext in a later cut.
     /// </summary>
+    [FrameworkApiStatus(FrameworkApiStatus.Stable, "Stable single-output Camera product surface. Multi-output/split-screen is out of scope.")]
     public enum CameraRequestLifetimeKind
     {
         Undefined = 0,

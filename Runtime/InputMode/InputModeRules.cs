@@ -4,10 +4,10 @@ using Immersive.Framework.ApiStatus;
 namespace Immersive.Framework.InputMode
 {
     /// <summary>
-    /// API status: Experimental. Pure InputMode validation helpers.
+    /// API status: Stable. Pure InputMode validation helpers.
     /// These helpers do not read input or mutate Unity Input System state.
     /// </summary>
-    [FrameworkApiStatus(FrameworkApiStatus.Experimental, "F30A pure InputMode validation helpers.")]
+    [FrameworkApiStatus(FrameworkApiStatus.Stable, "Stable single-player Pause/Input/Gate product surface. Multiplayer policy is out of scope.")]
     public static class InputModeRules
     {
         public static bool IsValidKind(InputModeKind kind)

@@ -6,14 +6,14 @@ using UnityEngine;
 namespace Immersive.Framework.Authoring
 {
     /// <summary>
-    /// API status: Experimental. Authoring profile for Activity-owned content declarations.
+    /// API status: Stable. Authoring profile for Activity-owned content declarations.
     /// Defines Activity-owned scene content used by Activity operation planning, composition and release.
     /// </summary>
     [CreateAssetMenu(
         fileName = "Activity Content Profile",
         menuName = "Immersive Framework/Activity Content Profile",
         order = 21)]
-    [FrameworkApiStatus(FrameworkApiStatus.Experimental, "Activity content profile participates in Activity scene composition and release.")]
+    [FrameworkApiStatus(FrameworkApiStatus.Stable, "Stable product authoring surface for application/route/activity configuration. Breaking changes require ADR/migration.")]
     public sealed class ActivityContentProfileAsset : ScriptableObject
     {
         [SerializeField]
