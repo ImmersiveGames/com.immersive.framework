@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using Immersive.Framework.Authoring;
-using Immersive.Framework.ContentAnchor;
 using Immersive.Framework.Loading;
 using Immersive.Framework.RuntimeContent;
 using Immersive.Framework.Common;
@@ -122,7 +121,6 @@ namespace Immersive.Framework.ActivityFlow
             RuntimeScopeLifecycleResult runtimeEnterResult = default;
             ActivitySceneCompositionResult sceneCompositionResult = default;
             ActivityContentApplyResult contentResult = default;
-            ActivityContentAnchorDiscoveryResult anchorDiscoveryResult = default;
             ActivityContentExecutionLifecycleResult executionResult = default;
             ActivitySceneReleaseResult sceneReleaseResult = default;
             ActivityContentRuntime.ActivityContentTransitionContext
@@ -328,15 +326,6 @@ namespace Immersive.Framework.ActivityFlow
 
                 transaction.BeginTargetEnter(
                     "Target Activity requirements and participants started enter.");
-                anchorDiscoveryResult =
-                    _contentAnchorDiscoveryRuntime.DiscoverActivityAnchors(
-                        nextActivity,
-                        _currentRoute,
-                        _activitySceneCompositionRuntime
-                            .CreateActivityContentDiscoveryScope(nextActivity),
-                        resolvedSource,
-                        resolvedReason);
-
                 ExecuteActivityParticipantEnter(participantTransition);
                 ActivatePauseActivityBindingAfterPlayerAdmission(
                     transaction,
@@ -369,37 +358,37 @@ namespace Immersive.Framework.ActivityFlow
 
                 transaction.BeginPreviousFinalization(
                     "Previous Activity bindings and runtime scope started finalization.");
-                FrameworkScopeTailOperationRequest activityScopeTailRequest =
-                    new FrameworkScopeTailOperationRequest(
-                        runtimeEnterResult.Owner,
-                        previousActivity != null
-                            ? CreateActivityOwner(previousActivity)
-                            : default,
-                        runtimeEnterResult.EnterRootResult,
-                        runtimeEnterResult.Context,
-                        _runtimeContentRuntime.RootCount,
-                        resolvedSource,
-                        resolvedReason,
-                        () => _runtimeContentRuntime.RootCount);
-                var activityScopeTailResult =
-                    FrameworkScopeTailOperationExecutor.Execute(
-                        activityScopeTailRequest,
-                        cleanupRequest =>
-                            CleanupPreviousActivityContentAnchorBindings(
-                                previousActivity,
-                                nextActivity,
-                                cleanupRequest.Source,
-                                cleanupRequest.Reason),
-                        removeRequest => RemovePreviousActivityScopeRoot(
+                RuntimeScopeLifecycleResult activityScopeResult = runtimeEnterResult;
+                if (previousActivity != null &&
+                    !previousActivity.HasSameIdentity(nextActivity))
+                {
+                    RuntimeRootRegistryOperationResult previousScopeRemoval =
+                        RemovePreviousActivityScopeRoot(
                             previousActivity,
                             nextActivity,
-                            removeRequest.Source,
-                            removeRequest.Reason));
+                            resolvedSource,
+                            resolvedReason);
+                    var previousScopeResult = new RuntimeScopeLifecycleResult(
+                        RuntimeContentScope.Activity,
+                        CreateActivityOwner(previousActivity),
+                        null,
+                        previousScopeRemoval,
+                        default,
+                        _runtimeContentRuntime.RootCount,
+                        resolvedSource,
+                        resolvedReason);
+                    activityScopeResult = MergeActivityScopeResults(
+                        runtimeEnterResult,
+                        previousScopeResult,
+                        nextActivity,
+                        previousActivity,
+                        resolvedSource,
+                        resolvedReason);
+                }
                 bool scopeFinalizationSucceeded =
                     PreviousScopeFinalizationSucceeded(
                         previousActivity,
-                        activityScopeTailResult.ScopeResult,
-                        activityScopeTailResult.BindingCleanupResult);
+                        activityScopeResult);
                 bool previousFinalizationSucceeded =
                     previousExitSucceeded && scopeFinalizationSucceeded;
                 transaction.MarkPreviousFinalized(
@@ -460,9 +449,7 @@ namespace Immersive.Framework.ActivityFlow
                         _currentActivityState,
                         previousActivity,
                         contentResult,
-                        activityScopeTailResult.ScopeResult,
-                        activityScopeTailResult.BindingCleanupResult,
-                        anchorDiscoveryResult,
+                        activityScopeResult,
                         executionResult,
                         sceneCompositionResult,
                         sceneReleaseResult,
@@ -602,7 +589,6 @@ namespace Immersive.Framework.ActivityFlow
                 transaction.BeginPreviousFinalization(
                     "Previous Activity clear finalization started.");
                 RuntimeScopeLifecycleResult scopeLifecycleResult;
-                ContentAnchorBindingLifecycleResult bindingCleanupResult;
                 bool scopeFinalizationSucceeded;
                 if (previousActivity == null)
                 {
@@ -610,43 +596,29 @@ namespace Immersive.Framework.ActivityFlow
                         RuntimeContentScope.Activity,
                         resolvedSource,
                         resolvedReason);
-                    bindingCleanupResult = default;
                     scopeFinalizationSucceeded = true;
                 }
                 else
                 {
-                    FrameworkScopeTailOperationRequest activityScopeTailRequest =
-                        new FrameworkScopeTailOperationRequest(
-                            default,
-                            CreateActivityOwner(previousActivity),
+                    RuntimeRootRegistryOperationResult previousScopeRemoval =
+                        RemovePreviousActivityScopeRoot(
+                            previousActivity,
                             null,
-                            default,
-                            _runtimeContentRuntime.RootCount,
                             resolvedSource,
-                            resolvedReason,
-                            () => _runtimeContentRuntime.RootCount);
-                    var activityScopeTailResult =
-                        FrameworkScopeTailOperationExecutor.Execute(
-                            activityScopeTailRequest,
-                            cleanupRequest =>
-                                CleanupPreviousActivityContentAnchorBindings(
-                                    previousActivity,
-                                    null,
-                                    cleanupRequest.Source,
-                                    cleanupRequest.Reason),
-                            removeRequest => RemovePreviousActivityScopeRoot(
-                                previousActivity,
-                                null,
-                                removeRequest.Source,
-                                removeRequest.Reason));
-                    scopeLifecycleResult = activityScopeTailResult.ScopeResult;
-                    bindingCleanupResult =
-                        activityScopeTailResult.BindingCleanupResult;
+                            resolvedReason);
+                    scopeLifecycleResult = new RuntimeScopeLifecycleResult(
+                        RuntimeContentScope.Activity,
+                        CreateActivityOwner(previousActivity),
+                        null,
+                        previousScopeRemoval,
+                        default,
+                        _runtimeContentRuntime.RootCount,
+                        resolvedSource,
+                        resolvedReason);
                     scopeFinalizationSucceeded =
                         PreviousScopeFinalizationSucceeded(
                             previousActivity,
-                            scopeLifecycleResult,
-                            bindingCleanupResult);
+                            scopeLifecycleResult);
                 }
                 bool previousFinalizationSucceeded =
                     previousExitSucceeded && scopeFinalizationSucceeded;
@@ -716,23 +688,12 @@ namespace Immersive.Framework.ActivityFlow
                         null,
                         resolvedSource,
                         resolvedReason);
-                ActivityContentAnchorDiscoveryResult emptyDiscovery =
-                    ActivityContentAnchorDiscoveryResult.Empty(
-                        null,
-                        resolvedSource,
-                        resolvedReason,
-                        skippedNoStartupActivity
-                            ? "No startup Activity is active; Activity Content Anchor discovery was skipped."
-                            : "Activity was cleared; Activity Content Anchor discovery was skipped.");
-
                 ActivityFlowStartResult result = skippedNoStartupActivity
                     ? ActivityFlowStartResult.SkippedNoStartupActivity(
                         _currentActivityState,
                         previousActivity,
                         contentResult,
                         scopeLifecycleResult,
-                        bindingCleanupResult,
-                        emptyDiscovery,
                         executionResult,
                         sceneCompositionResult,
                         sceneReleaseResult,
@@ -743,8 +704,6 @@ namespace Immersive.Framework.ActivityFlow
                         previousActivity,
                         contentResult,
                         scopeLifecycleResult,
-                        bindingCleanupResult,
-                        emptyDiscovery,
                         executionResult,
                         sceneCompositionResult,
                         sceneReleaseResult,
@@ -968,8 +927,6 @@ namespace Immersive.Framework.ActivityFlow
                     previousActivity,
                     contentResult,
                     runtimeEnterResult,
-                    default(ContentAnchorBindingLifecycleResult),
-                    default(ActivityContentAnchorDiscoveryResult),
                     executionResult,
                     sceneCompositionResult,
                     sceneReleaseResult,
@@ -1387,16 +1344,14 @@ namespace Immersive.Framework.ActivityFlow
 
         private static bool PreviousScopeFinalizationSucceeded(
             ActivityAsset previousActivity,
-            RuntimeScopeLifecycleResult scopeResult,
-            ContentAnchorBindingLifecycleResult bindingCleanupResult)
+            RuntimeScopeLifecycleResult scopeResult)
         {
             if (previousActivity == null)
             {
                 return true;
             }
 
-            return bindingCleanupResult.Succeeded &&
-                scopeResult.HasExitRootResult &&
+            return scopeResult.HasExitRootResult &&
                 !scopeResult.Rejected;
         }
 

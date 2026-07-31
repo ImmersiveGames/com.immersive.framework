@@ -14,7 +14,6 @@ namespace Immersive.Framework.Pause
         public PausePresentationIntent(
             PauseSnapshot snapshot,
             bool shouldBeVisible,
-            PauseContentRequirement contentRequirement,
             string title,
             string detail,
             string source)
@@ -26,7 +25,6 @@ namespace Immersive.Framework.Pause
 
             Snapshot = snapshot;
             ShouldBeVisible = shouldBeVisible;
-            ContentRequirement = contentRequirement;
             Title = Normalize(title);
             Detail = Normalize(detail);
             Source = Normalize(source);
@@ -36,8 +34,6 @@ namespace Immersive.Framework.Pause
 
         public bool ShouldBeVisible { get; }
 
-        public PauseContentRequirement ContentRequirement { get; }
-
         public string Title { get; }
 
         public string Detail { get; }
@@ -45,8 +41,6 @@ namespace Immersive.Framework.Pause
         public string Source { get; }
 
         public bool IsValid => Snapshot.IsValid;
-
-        public bool HasContentRequirement => ContentRequirement.IsValid;
 
         public bool HasTitle => !string.IsNullOrWhiteSpace(Title);
 
@@ -58,7 +52,6 @@ namespace Immersive.Framework.Pause
         {
             return Snapshot.Equals(other.Snapshot)
                 && ShouldBeVisible == other.ShouldBeVisible
-                && ContentRequirement.Equals(other.ContentRequirement)
                 && string.Equals(Title, other.Title, StringComparison.Ordinal)
                 && string.Equals(Detail, other.Detail, StringComparison.Ordinal)
                 && string.Equals(Source, other.Source, StringComparison.Ordinal);
@@ -75,7 +68,6 @@ namespace Immersive.Framework.Pause
             {
                 int hashCode = Snapshot.GetHashCode();
                 hashCode = hashCode * 397 ^ ShouldBeVisible.GetHashCode();
-                hashCode = hashCode * 397 ^ ContentRequirement.GetHashCode();
                 hashCode = hashCode * 397 ^ StringComparer.Ordinal.GetHashCode(Title ?? string.Empty);
                 hashCode = hashCode * 397 ^ StringComparer.Ordinal.GetHashCode(Detail ?? string.Empty);
                 hashCode = hashCode * 397 ^ StringComparer.Ordinal.GetHashCode(Source ?? string.Empty);
@@ -93,7 +85,7 @@ namespace Immersive.Framework.Pause
             string titleText = HasTitle ? Title : "<none>";
             string detailText = HasDetail ? Detail : "<none>";
             string sourceText = HasSource ? Source : "<none>";
-            return $"state='{Snapshot.State}' visible='{ShouldBeVisible}' hasContentRequirement='{HasContentRequirement}' title='{titleText}' detail='{detailText}' source='{sourceText}'";
+            return $"state='{Snapshot.State}' visible='{ShouldBeVisible}' title='{titleText}' detail='{detailText}' source='{sourceText}'";
         }
 
         public static PausePresentationIntent FromSnapshot(
@@ -103,18 +95,7 @@ namespace Immersive.Framework.Pause
             string detail,
             string source)
         {
-            return new PausePresentationIntent(snapshot, shouldBeVisible, default, title, detail, source);
-        }
-
-        public static PausePresentationIntent FromSnapshot(
-            PauseSnapshot snapshot,
-            bool shouldBeVisible,
-            PauseContentRequirement contentRequirement,
-            string title,
-            string detail,
-            string source)
-        {
-            return new PausePresentationIntent(snapshot, shouldBeVisible, contentRequirement, title, detail, source);
+            return new PausePresentationIntent(snapshot, shouldBeVisible, title, detail, source);
         }
 
         public static bool operator ==(PausePresentationIntent left, PausePresentationIntent right)

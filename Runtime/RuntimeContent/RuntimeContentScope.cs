@@ -4,7 +4,7 @@ namespace Immersive.Framework.RuntimeContent
 {
     /// <summary>
     /// API status: Experimental. Declares the lifecycle scope that owns runtime-created content.
-    /// This is not a hierarchy lookup key and does not imply Content Anchor placement.
+    /// This is not a hierarchy lookup key.
     /// </summary>
     [FrameworkApiStatus(FrameworkApiStatus.Experimental, "F8B runtime ownership primitive; no root registry or materialization behavior yet.")]
     public enum RuntimeContentScope

@@ -4,7 +4,7 @@ namespace Immersive.Framework.RuntimeContent
 {
     /// <summary>
     /// API status: Experimental. Result vocabulary for runtime materialization contracts.
-    /// It records request/result outcome only; it does not execute materialization, destroy objects or bind Content Anchors.
+    /// It records request/result outcome only; it does not execute materialization or destroy objects.
     /// </summary>
     [FrameworkApiStatus(FrameworkApiStatus.Experimental, "F8H runtime materialization result status; adds scoped transition/cancellation rejection statuses, no materializer implementation.")]
     public enum RuntimeMaterializationStatus

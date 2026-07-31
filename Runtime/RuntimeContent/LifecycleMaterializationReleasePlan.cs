@@ -6,7 +6,7 @@ namespace Immersive.Framework.RuntimeContent
 {
     /// <summary>
     /// API status: Experimental. Immutable lifecycle-owned release plan built from registered materialization evidence.
-    /// The plan contains RuntimeReleaseRequest values only. It does not request release, execute physical cleanup, unregister RuntimeContent handles or remove ContentAnchor bindings.
+    /// The plan contains RuntimeReleaseRequest values only. It does not request release, execute physical cleanup, or unregister Runtime Content handles.
     /// </summary>
     [FrameworkApiStatus(FrameworkApiStatus.Experimental, "F9R-P lifecycle-owned materialization release plan; query/planning only, no release execution.")]
     public readonly struct LifecycleMaterializationReleasePlan : IEquatable<LifecycleMaterializationReleasePlan>
@@ -176,7 +176,6 @@ namespace Immersive.Framework.RuntimeContent
 
         public bool PerformsLogicalRuntimeContentRelease => false;
 
-        public bool PerformsContentAnchorBindingCleanup => false;
 
         public RuntimeReleaseRequest[] SnapshotRequests()
         {
@@ -247,7 +246,7 @@ namespace Immersive.Framework.RuntimeContent
             string sourceText = Source.ToDiagnosticText();
             string reasonText = Reason.ToDiagnosticText();
             string messageText = Message.ToDiagnosticText();
-            return $"targetKind='{TargetKind}' target='{targetText}' scope='{Scope}' policy='{Policy}' status='{Status}' succeeded='{Succeeded}' totalEntries='{TotalEntries}' requests='{RequestCount}' activeCandidates='{ActiveCandidates}' releaseFailedCandidates='{ReleaseFailedCandidates}' skippedReleaseRequested='{SkippedReleaseRequested}' skippedReleased='{SkippedReleased}' executesRelease='{ExecutesRelease}' physicalRelease='{PerformsPhysicalRelease}' logicalRuntimeContentRelease='{PerformsLogicalRuntimeContentRelease}' contentAnchorBindingCleanup='{PerformsContentAnchorBindingCleanup}' source='{sourceText}' reason='{reasonText}' message='{messageText}'";
+            return $"targetKind='{TargetKind}' target='{targetText}' scope='{Scope}' policy='{Policy}' status='{Status}' succeeded='{Succeeded}' totalEntries='{TotalEntries}' requests='{RequestCount}' activeCandidates='{ActiveCandidates}' releaseFailedCandidates='{ReleaseFailedCandidates}' skippedReleaseRequested='{SkippedReleaseRequested}' skippedReleased='{SkippedReleased}' executesRelease='{ExecutesRelease}' physicalRelease='{PerformsPhysicalRelease}' logicalRuntimeContentRelease='{PerformsLogicalRuntimeContentRelease}' source='{sourceText}' reason='{reasonText}' message='{messageText}'";
         }
 
         public static bool operator ==(LifecycleMaterializationReleasePlan left, LifecycleMaterializationReleasePlan right)

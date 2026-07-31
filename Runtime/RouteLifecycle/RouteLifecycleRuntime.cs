@@ -7,7 +7,6 @@ using Immersive.Framework.ActivityRestart;
 using Immersive.Framework.Authoring;
 using Immersive.Framework.SceneLifecycle;
 using Immersive.Framework.ContentFlow;
-using Immersive.Framework.ContentAnchor;
 using Immersive.Framework.ApiStatus;
 using Immersive.Framework.Common;
 using Immersive.Framework.RuntimeContent;
@@ -32,9 +31,7 @@ namespace Immersive.Framework.RouteLifecycle
         private readonly RouteContentRuntime _routeContentRuntime = new RouteContentRuntime();
         private readonly RouteSceneCompositionRuntime _routeSceneCompositionRuntime;
         private readonly ContentReleaseRuntime _contentReleaseRuntime;
-        private readonly ContentAnchorDiscoveryRuntime _contentAnchorDiscoveryRuntime = new ContentAnchorDiscoveryRuntime();
         private readonly RuntimeContentRuntime _runtimeContentRuntime;
-        private readonly RuntimeContentAnchorBinding _contentAnchorBindingRuntime;
         private readonly IRouteRuntimePort _routeRuntime;
         private readonly IActivityRuntimePort _activityRuntime;
         private readonly IRouteCycleResetRuntimePort _routeCycleResetRuntime;
@@ -51,7 +48,6 @@ namespace Immersive.Framework.RouteLifecycle
 
         internal RouteLifecycleRuntime(
             RuntimeContentRuntime runtimeContentRuntime,
-            RuntimeContentAnchorBinding contentAnchorBindingRuntime,
             IRouteRuntimePort routeRuntime,
             IActivityRuntimePort activityRuntime,
             IRouteCycleResetRuntimePort routeCycleResetRuntime,
@@ -61,7 +57,6 @@ namespace Immersive.Framework.RouteLifecycle
         {
             _sceneLifecycleRuntime = sceneLifecycleRuntime ?? new SceneLifecycleRuntime();
             _runtimeContentRuntime = runtimeContentRuntime ?? throw new ArgumentNullException(nameof(runtimeContentRuntime));
-            _contentAnchorBindingRuntime = contentAnchorBindingRuntime ?? throw new ArgumentNullException(nameof(contentAnchorBindingRuntime));
             _routeRuntime = routeRuntime ?? throw new ArgumentNullException(nameof(routeRuntime));
             _activityRuntime = activityRuntime ?? throw new ArgumentNullException(nameof(activityRuntime));
             _routeCycleResetRuntime = routeCycleResetRuntime ?? throw new ArgumentNullException(nameof(routeCycleResetRuntime));
@@ -69,7 +64,6 @@ namespace Immersive.Framework.RouteLifecycle
             _activityRestartRuntime = activityRestartRuntime ?? throw new ArgumentNullException(nameof(activityRestartRuntime));
             _activityFlowRuntime = new ActivityFlowRuntime(
                 _runtimeContentRuntime,
-                _contentAnchorBindingRuntime,
                 _sceneLifecycleRuntime,
                 _activityRuntime,
                 _routeCycleResetRuntime,
@@ -368,12 +362,6 @@ namespace Immersive.Framework.RouteLifecycle
                 routeSceneCompositionResult,
                 source,
                 reason);
-            var contentAnchorDiscoveryResult = _contentAnchorDiscoveryRuntime.DiscoverRouteAnchors(
-                route,
-                routeSceneCompositionResult,
-                source,
-                reason);
-
             var routeContentEnterResult = _routeContentRuntime.EnterRouteContent(route, previousRoute, source, reason);
 
             var startupActivityProgressReporter = FrameworkLoadingProgressReporterUtility.CreateWeightedRangeReporter(
@@ -444,23 +432,28 @@ namespace Immersive.Framework.RouteLifecycle
                 ? activityRouteExitResult
                 : routeStartupActivityFlowResult;
 
-            var currentRouteOwner = runtimeRouteEnterResult.Owner;
-            var previousRouteOwner = previousRoute != null
-                ? CreateRouteOwner(previousRoute)
-                : default(RuntimeContentOwner);
-            var routeScopeTailRequest = new FrameworkScopeTailOperationRequest(
-                currentRouteOwner,
-                previousRouteOwner,
-                runtimeRouteEnterResult.EnterRootResult,
-                runtimeRouteEnterResult.Context,
-                _runtimeContentRuntime.RootCount,
-                source,
-                reason,
-                () => _runtimeContentRuntime.RootCount);
-            var routeScopeTailResult = FrameworkScopeTailOperationExecutor.Execute(
-                routeScopeTailRequest,
-                cleanupRequest => CleanupPreviousRouteContentAnchorBindings(previousRoute, route, cleanupRequest.Source, cleanupRequest.Reason),
-                removeRequest => RemovePreviousRouteScopeRoot(previousRoute, route, removeRequest.Source, removeRequest.Reason));
+            RuntimeScopeLifecycleResult routeRuntimeScopeResult = runtimeRouteEnterResult;
+            if (previousRoute != null && !previousRoute.HasSameIdentity(route))
+            {
+                RuntimeRootRegistryOperationResult previousRouteScopeRemoval =
+                    RemovePreviousRouteScopeRoot(previousRoute, route, source, reason);
+                var previousRouteScopeResult = new RuntimeScopeLifecycleResult(
+                    RuntimeContentScope.Route,
+                    CreateRouteOwner(previousRoute),
+                    null,
+                    previousRouteScopeRemoval,
+                    default,
+                    _runtimeContentRuntime.RootCount,
+                    source,
+                    reason);
+                routeRuntimeScopeResult = MergeRouteScopeResults(
+                    runtimeRouteEnterResult,
+                    previousRouteScopeResult,
+                    route,
+                    previousRoute,
+                    source,
+                    reason);
+            }
 
             var result = RouteLifecycleStartResult.StartedWith(
                 route,
@@ -468,7 +461,6 @@ namespace Immersive.Framework.RouteLifecycle
                 sceneLifecycleResult,
                 routeSceneCompositionResult,
                 routeContentSet,
-                contentAnchorDiscoveryResult,
                 routeContentEnterResult,
                 routeContentExitResult,
                 releaseResult,
@@ -476,8 +468,7 @@ namespace Immersive.Framework.RouteLifecycle
                 _activityFlowRuntime,
                 source,
                 reason,
-                routeScopeTailResult.ScopeResult,
-                routeScopeTailResult.BindingCleanupResult,
+                routeRuntimeScopeResult,
                 activitySceneRouteReleaseResult);
             _currentRouteState = result.RouteState;
             _currentRouteResult = result;
@@ -769,18 +760,6 @@ namespace Immersive.Framework.RouteLifecycle
                 null,
                 context,
                 _runtimeContentRuntime.RootCount,
-                source,
-                reason);
-        }
-
-        private ContentAnchorBindingLifecycleResult CleanupPreviousRouteContentAnchorBindings(RouteAsset previousRoute, RouteAsset nextRoute, string source, string reason)
-        {
-            var previousOwner = previousRoute != null ? CreateRouteOwner(previousRoute) : default(RuntimeContentOwner);
-            var nextOwner = nextRoute != null ? CreateRouteOwner(nextRoute) : default(RuntimeContentOwner);
-            return ContentAnchorBindingCleanup.CleanupPreviousRuntimeOwner(
-                _contentAnchorBindingRuntime,
-                previousOwner,
-                nextOwner,
                 source,
                 reason);
         }

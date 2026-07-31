@@ -20,7 +20,6 @@ namespace Immersive.Framework.Identity
         Activity = 40,
         Content = 50,
         Local = 60,
-        ContentAnchor = 70,
         Runtime = 80,
         Diagnostics = 90,
         Qa = 100,

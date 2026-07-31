@@ -4,7 +4,7 @@ namespace Immersive.Framework.RuntimeContent
 {
     /// <summary>
     /// API status: Experimental. Lifecycle-owned registry state for one materialized runtime content entry.
-    /// This state is registry evidence only; it does not instantiate, destroy, pool, unload scenes or bind Content Anchors.
+    /// This state is registry evidence only; it does not instantiate, destroy, pool or unload scenes.
     /// </summary>
     [FrameworkApiStatus(FrameworkApiStatus.Experimental, "F9R-N lifecycle-owned materialization registry state; evidence only, no physical side effects.")]
     public enum LifecycleMaterializationEntryState

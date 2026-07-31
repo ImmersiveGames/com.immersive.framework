@@ -4,7 +4,6 @@ using System.Threading.Tasks;
 using Immersive.Foundation.Events;
 using Immersive.Framework.ActivityFlow;
 using Immersive.Framework.ActivityRestart;
-using Immersive.Framework.ContentAnchor;
 using Immersive.Framework.Authoring;
 using Immersive.Framework.Diagnostics;
 using Immersive.Framework.GameFlow;
@@ -59,7 +58,6 @@ namespace Immersive.Framework.ApplicationLifecycle
         private PauseActivityBindingRuntimeHostModule _pauseActivityBindingModule;
         private int _pauseRequestSequence;
         private RuntimeContentRuntime _runtimeContentRuntime;
-        private RuntimeContentAnchorBinding _contentAnchorBindingRuntime;
         private RuntimeScopeLifecycleResult _runtimeSessionScopeResult;
         private ObjectEntryRuntimeContextSnapshot _objectEntryRuntimeContextSnapshot;
         private ResetRegistry _resetRegistry;
@@ -295,8 +293,6 @@ namespace Immersive.Framework.ApplicationLifecycle
             }
         }
 
-        internal int ContentAnchorBindingCount => _contentAnchorBindingRuntime?.BindingCount ?? 0;
-
         internal int ObjectEntryRuntimeContextRevision => _objectEntryRuntimeContextRevision;
 
         internal int ObjectEntryRuntimeContextInvalidationCount => _objectEntryRuntimeContextInvalidationCount;
@@ -430,7 +426,6 @@ namespace Immersive.Framework.ApplicationLifecycle
             var transitionOrchestrator = CreateTransitionOrchestrator(_globalUiSceneRuntime, sessionCameraOverride);
             _gameFlowRuntime = new GameFlowRuntime(
                 _runtimeContentRuntime,
-                _contentAnchorBindingRuntime,
                 transitionOrchestrator,
                 routeRuntimePort,
                 activityRuntimePort,
@@ -1272,7 +1267,6 @@ namespace Immersive.Framework.ApplicationLifecycle
         {
             _gameApplication = application;
             _runtimeContentRuntime = new RuntimeContentRuntime();
-            _contentAnchorBindingRuntime = new RuntimeContentAnchorBinding();
             _pauseRuntime = new PauseRuntime();
             _pauseTimeScaleRuntime = new PauseTimeScaleRuntime();
             _logger = FrameworkLogger.Create<FrameworkRuntimeHost>();
@@ -1542,130 +1536,6 @@ namespace Immersive.Framework.ApplicationLifecycle
                     transitionOrchestrator,
                     sessionCameraOverride)
                 : transitionOrchestrator;
-        }
-
-
-        internal ContentAnchorBindingResult BindContentAnchor(
-            ContentAnchorSet anchorSet,
-            ContentAnchorBindingRequest request,
-            string source,
-            string reason)
-        {
-            if (_contentAnchorBindingRuntime == null)
-            {
-                throw new InvalidOperationException("Content Anchor binding runtime is not initialized.");
-            }
-
-            if (_runtimeContentRuntime == null)
-            {
-                throw new InvalidOperationException("Runtime content runtime is not initialized.");
-            }
-
-            return _contentAnchorBindingRuntime.Bind(
-                anchorSet,
-                _runtimeContentRuntime,
-                request,
-                source,
-                reason);
-        }
-
-        internal bool UnbindContentAnchor(ContentAnchorBindingRequest request)
-        {
-            if (_contentAnchorBindingRuntime == null)
-            {
-                throw new InvalidOperationException("Content Anchor binding runtime is not initialized.");
-            }
-
-            return _contentAnchorBindingRuntime.Unbind(request);
-        }
-
-        internal bool UnbindContentAnchor(ContentAnchorContentHandle handle)
-        {
-            if (_contentAnchorBindingRuntime == null)
-            {
-                throw new InvalidOperationException("Content Anchor binding runtime is not initialized.");
-            }
-
-            return _contentAnchorBindingRuntime.Unbind(handle);
-        }
-
-        internal ContentAnchorBindingLifecycleResult UnbindContentAnchorRuntimeContent(
-            RuntimeContentIdentity identity,
-            string source,
-            string reason)
-        {
-            if (_contentAnchorBindingRuntime == null)
-            {
-                throw new InvalidOperationException("Content Anchor binding runtime is not initialized.");
-            }
-
-            return _contentAnchorBindingRuntime.UnbindRuntimeContent(identity, source, reason);
-        }
-
-        internal ContentAnchorBindingLifecycleResult UnbindContentAnchorRuntimeOwner(
-            RuntimeContentOwner owner,
-            string source,
-            string reason)
-        {
-            if (_contentAnchorBindingRuntime == null)
-            {
-                throw new InvalidOperationException("Content Anchor binding runtime is not initialized.");
-            }
-
-            return _contentAnchorBindingRuntime.UnbindRuntimeOwner(owner, source, reason);
-        }
-
-        internal ContentAnchorBindingLifecycleResult UnbindContentAnchorRuntimeScope(
-            RuntimeContentScope scope,
-            string source,
-            string reason)
-        {
-            if (_contentAnchorBindingRuntime == null)
-            {
-                throw new InvalidOperationException("Content Anchor binding runtime is not initialized.");
-            }
-
-            return _contentAnchorBindingRuntime.UnbindRuntimeScope(scope, source, reason);
-        }
-
-        internal ContentAnchorContentHandle[] SnapshotContentAnchorBindings()
-        {
-            if (_contentAnchorBindingRuntime == null)
-            {
-                return Array.Empty<ContentAnchorContentHandle>();
-            }
-
-            return _contentAnchorBindingRuntime.SnapshotBindings();
-        }
-
-        internal ContentAnchorContentHandle[] SnapshotContentAnchorBindingsForRuntimeContent(RuntimeContentIdentity identity)
-        {
-            if (_contentAnchorBindingRuntime == null)
-            {
-                return Array.Empty<ContentAnchorContentHandle>();
-            }
-
-            return _contentAnchorBindingRuntime.SnapshotBindingsForRuntimeContent(identity);
-        }
-
-        internal ContentAnchorContentHandle[] SnapshotContentAnchorBindingsForRuntimeOwner(RuntimeContentOwner owner)
-        {
-            if (_contentAnchorBindingRuntime == null)
-            {
-                return Array.Empty<ContentAnchorContentHandle>();
-            }
-
-            return _contentAnchorBindingRuntime.SnapshotBindingsForRuntimeOwner(owner);
-        }
-
-        internal ContentAnchorContentHandle[] SnapshotContentAnchorBindingsForRuntimeScope(RuntimeContentScope scope)
-        {
-            if (_contentAnchorBindingRuntime == null)
-            {
-                return Array.Empty<ContentAnchorContentHandle>();
-            }
-
-            return _contentAnchorBindingRuntime.SnapshotBindingsForRuntimeScope(scope);
         }
 
 
@@ -2108,16 +1978,6 @@ namespace Immersive.Framework.ApplicationLifecycle
                 LogFields.Field("runtimeRouteContext", routeLifecycle.RuntimeRouteScopeResult.ContextStatus),
                 LogFields.Field("runtimeRootCount", routeLifecycle.RuntimeRouteScopeResult.RootCount),
                 LogFields.Field("routeContentHandles", routeLifecycle.RouteContentSet.Count),
-                LogFields.Field("contentAnchors", routeLifecycle.ContentAnchorDiscoveryResult.AnchorCount),
-                LogFields.Field("contentAnchorCandidates", routeLifecycle.ContentAnchorDiscoveryResult.CandidateCount),
-                LogFields.Field("contentAnchorIssues", routeLifecycle.ContentAnchorDiscoveryResult.IssueCount),
-                LogFields.Field("contentAnchorInvalid", routeLifecycle.ContentAnchorDiscoveryResult.InvalidAuthoringCount),
-                LogFields.Field("contentAnchorRouteMismatch", routeLifecycle.ContentAnchorDiscoveryResult.SkippedRouteMismatchCount),
-                LogFields.Field("contentAnchorBindings", ContentAnchorBindingCount),
-                LogFields.Field("routeContentAnchorBindingCleanup", routeLifecycle.RouteContentAnchorBindingCleanupResult.DiagnosticStatus),
-                LogFields.Field("routeContentAnchorBindingCleanupRemoved", routeLifecycle.RouteContentAnchorBindingCleanupResult.RemovedCount),
-                LogFields.Field("activityContentAnchorBindingCleanup", activityFlow.ActivityContentAnchorBindingCleanupResult.DiagnosticStatus),
-                LogFields.Field("activityContentAnchorBindingCleanupRemoved", activityFlow.ActivityContentAnchorBindingCleanupResult.RemovedCount),
                 LogFields.Field("activityContentExecution", activityFlow.ActivityContentExecutionResult.DiagnosticStatus),
                 LogFields.Field("activityContentExecutionParticipantSource", activityFlow.ActivityContentExecutionResult.ParticipantSourceStatus),
                 LogFields.Field("activityContentExecutionParticipantSourceIssues", activityFlow.ActivityContentExecutionResult.ParticipantSourceIssueCount),
@@ -2138,12 +1998,6 @@ namespace Immersive.Framework.ApplicationLifecycle
                 LogFields.Field("activityContentParticipantExitRequests", activityFlow.ActivityContentExecutionResult.ExitRequestCount),
                 LogFields.Field("activityContentParticipantBlockingIssues", activityFlow.ActivityContentExecutionResult.BlockingIssueCount),
                 LogFields.Field("activityContentParticipantBlocksReadiness", activityFlow.ActivityContentExecutionResult.BlocksReadiness),
-                LogFields.Field("activityContentAnchors", activityFlow.ActivityContentAnchorDiscoveryResult.AnchorCount),
-                LogFields.Field("activityContentAnchorCandidates", activityFlow.ActivityContentAnchorDiscoveryResult.CandidateCount),
-                LogFields.Field("activityContentDiscoverySceneRoots", activityFlow.ActivityContentAnchorDiscoveryResult.DiscoverySceneRootCount),
-                LogFields.Field("activityContentAnchorIssues", activityFlow.ActivityContentAnchorDiscoveryResult.IssueCount),
-                LogFields.Field("activityContentAnchorInvalid", activityFlow.ActivityContentAnchorDiscoveryResult.InvalidAuthoringCount),
-                LogFields.Field("activityContentAnchorActivityMismatch", activityFlow.ActivityContentAnchorDiscoveryResult.SkippedActivityMismatchCount),
                 LogFields.Field("routeContentEnterReceivers", routeLifecycle.RouteContentEnterResult.ReceiverCount),
                 LogFields.Field("routeContentExitReceivers", routeLifecycle.RouteContentExitResult.ReceiverCount),
                 LogFields.Field("activity", FormatDiagnosticValue(currentActivity != null ? currentActivity.ActivityName : string.Empty)),
@@ -2386,15 +2240,6 @@ namespace Immersive.Framework.ApplicationLifecycle
                 LogFields.Field("runtimeRootCount", activityFlow.RuntimeActivityScopeResult.RootCount),
                 LogFields.Field("activityReadinessIssues", activityFlow.ActivityReadinessState.BlockingIssueCount),
                 LogFields.Field("activityContentBindings", activityContent.BindingCount),
-                LogFields.Field("contentAnchorBindings", ContentAnchorBindingCount),
-                LogFields.Field("activityContentAnchors", activityFlow.ActivityContentAnchorDiscoveryResult.AnchorCount),
-                LogFields.Field("activityContentAnchorCandidates", activityFlow.ActivityContentAnchorDiscoveryResult.CandidateCount),
-                LogFields.Field("activityContentDiscoverySceneRoots", activityFlow.ActivityContentAnchorDiscoveryResult.DiscoverySceneRootCount),
-                LogFields.Field("activityContentAnchorIssues", activityFlow.ActivityContentAnchorDiscoveryResult.IssueCount),
-                LogFields.Field("activityContentAnchorInvalid", activityFlow.ActivityContentAnchorDiscoveryResult.InvalidAuthoringCount),
-                LogFields.Field("activityContentAnchorActivityMismatch", activityFlow.ActivityContentAnchorDiscoveryResult.SkippedActivityMismatchCount),
-                LogFields.Field("activityContentAnchorBindingCleanup", activityFlow.ActivityContentAnchorBindingCleanupResult.DiagnosticStatus),
-                LogFields.Field("activityContentAnchorBindingCleanupRemoved", activityFlow.ActivityContentAnchorBindingCleanupResult.RemovedCount),
                 LogFields.Field("activityContentExecution", activityFlow.ActivityContentExecutionResult.DiagnosticStatus),
                 LogFields.Field("activityContentExecutionParticipantSource", activityFlow.ActivityContentExecutionResult.ParticipantSourceStatus),
                 LogFields.Field("activityContentExecutionParticipantSourceIssues", activityFlow.ActivityContentExecutionResult.ParticipantSourceIssueCount),
@@ -2554,18 +2399,6 @@ namespace Immersive.Framework.ApplicationLifecycle
                 routeLifecycle.RouteSceneCompositionResult.Failed,
                 routeLifecycle.RouteSceneCompositionResult.NotExecuted || routeLifecycle.RouteSceneCompositionResult.SkippedCount > 0 && routeLifecycle.RouteSceneCompositionResult.LoadedCount == 0,
                 routeLifecycle.RouteSceneCompositionResult.Message);
-
-            builder.AddStage(
-                FrameworkLifecycleOperationStage.ContentAnchorBindingCleanup,
-                routeLifecycle.RouteContentAnchorBindingCleanupResult.DiagnosticStatus,
-                result.Source,
-                result.Reason,
-                0,
-                0,
-                routeLifecycle.RouteContentAnchorBindingCleanupResult.RemovedAny,
-                false,
-                !routeLifecycle.RouteContentAnchorBindingCleanupResult.Executed,
-                routeLifecycle.RouteContentAnchorBindingCleanupResult.Message);
 
             builder.AddStage(
                 FrameworkLifecycleOperationStage.RuntimeScopeEnter,
@@ -2779,18 +2612,6 @@ namespace Immersive.Framework.ApplicationLifecycle
                 activityFlow.ActivitySceneReleaseResult.FailedSceneCount > 0,
                 !activityFlow.ActivitySceneReleaseResult.Executed || activityFlow.ActivitySceneReleaseResult.SkippedSceneCount > 0 && activityFlow.ActivitySceneReleaseResult.ReleasedSceneCount == 0,
                 activityFlow.ActivitySceneReleaseResult.Message);
-
-            builder.AddStage(
-                FrameworkLifecycleOperationStage.ContentAnchorBindingCleanup,
-                activityFlow.ActivityContentAnchorBindingCleanupResult.DiagnosticStatus,
-                source,
-                reason,
-                0,
-                0,
-                activityFlow.ActivityContentAnchorBindingCleanupResult.RemovedAny,
-                false,
-                !activityFlow.ActivityContentAnchorBindingCleanupResult.Executed,
-                activityFlow.ActivityContentAnchorBindingCleanupResult.Message);
 
             builder.AddStage(
                 FrameworkLifecycleOperationStage.ActivityContentExecution,

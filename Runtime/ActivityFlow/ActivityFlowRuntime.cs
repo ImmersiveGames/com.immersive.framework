@@ -6,7 +6,6 @@ using Immersive.Framework.Authoring;
 using Immersive.Framework.ActivityRestart;
 using Immersive.Framework.Pause;
 using Immersive.Framework.ApiStatus;
-using Immersive.Framework.ContentAnchor;
 using Immersive.Framework.RuntimeContent;
 using Immersive.Framework.SceneLifecycle;
 using Immersive.Framework.Loading;
@@ -26,7 +25,6 @@ namespace Immersive.Framework.ActivityFlow
     internal sealed partial class ActivityFlowRuntime
     {
         private readonly ActivityContentRuntime _activityContentRuntime = new ActivityContentRuntime();
-        private readonly ContentAnchorDiscoveryRuntime _contentAnchorDiscoveryRuntime = new ContentAnchorDiscoveryRuntime();
         private readonly ActivityContentExecutionRuntime _activityContentExecutionRuntime = new ActivityContentExecutionRuntime();
         private readonly ActivityReadinessParticipantSource _activityReadinessParticipantSource = new ActivityReadinessParticipantSource();
         private readonly ActivitySceneCompositionRuntime _activitySceneCompositionRuntime;
@@ -35,7 +33,6 @@ namespace Immersive.Framework.ActivityFlow
         private IActivityContentExecutionParticipantSource _activityContentExecutionParticipantSource;
         private PauseActivityBindingRuntimeHostModule _pauseActivityBindingLifecycle;
         private readonly RuntimeContentRuntime _runtimeContentRuntime;
-        private readonly RuntimeContentAnchorBinding _contentAnchorBindingRuntime;
         private readonly IActivityRuntimePort _activityRuntime;
         private readonly IRouteCycleResetRuntimePort _routeCycleResetRuntime;
         private readonly IActivityCycleResetRuntimePort _activityCycleResetRuntime;
@@ -54,7 +51,6 @@ namespace Immersive.Framework.ActivityFlow
 
         internal ActivityFlowRuntime(
             RuntimeContentRuntime runtimeContentRuntime,
-            RuntimeContentAnchorBinding contentAnchorBindingRuntime,
             SceneLifecycleRuntime sceneLifecycleRuntime,
             IActivityRuntimePort activityRuntime,
             IRouteCycleResetRuntimePort routeCycleResetRuntime,
@@ -62,7 +58,6 @@ namespace Immersive.Framework.ActivityFlow
             IActivityRestartRuntimePort activityRestartRuntime)
             : this(
                 runtimeContentRuntime,
-                contentAnchorBindingRuntime,
                 sceneLifecycleRuntime,
                 activityRuntime,
                 routeCycleResetRuntime,
@@ -74,7 +69,6 @@ namespace Immersive.Framework.ActivityFlow
 
         internal ActivityFlowRuntime(
             RuntimeContentRuntime runtimeContentRuntime,
-            RuntimeContentAnchorBinding contentAnchorBindingRuntime,
             SceneLifecycleRuntime sceneLifecycleRuntime,
             IActivityRuntimePort activityRuntime,
             IRouteCycleResetRuntimePort routeCycleResetRuntime,
@@ -83,7 +77,6 @@ namespace Immersive.Framework.ActivityFlow
             IActivityContentExecutionParticipantSource activityContentExecutionParticipantSource)
         {
             _runtimeContentRuntime = runtimeContentRuntime ?? throw new ArgumentNullException(nameof(runtimeContentRuntime));
-            _contentAnchorBindingRuntime = contentAnchorBindingRuntime ?? throw new ArgumentNullException(nameof(contentAnchorBindingRuntime));
             _activityRuntime = activityRuntime ?? throw new ArgumentNullException(nameof(activityRuntime));
             _routeCycleResetRuntime = routeCycleResetRuntime ?? throw new ArgumentNullException(nameof(routeCycleResetRuntime));
             _activityCycleResetRuntime = activityCycleResetRuntime ?? throw new ArgumentNullException(nameof(activityCycleResetRuntime));
@@ -111,12 +104,6 @@ namespace Immersive.Framework.ActivityFlow
             return HasCurrentActivityContext;
         }
 
-        internal bool TryGetCurrentActivityReadiness(out ActivityReadinessState readiness)
-        {
-            readiness = _currentActivityResult.ActivityReadinessState;
-            return HasCurrentActivityContext;
-        }
-
         internal bool TryCreateCurrentActivityContentDiscoveryScope(
             ActivityAsset activity,
             out ActivityContentDiscoveryScope scope)
@@ -124,7 +111,7 @@ namespace Immersive.Framework.ActivityFlow
             scope = default;
             if (!HasCurrentActivityContext ||
                 activity == null ||
-                !ReferenceEquals(_currentActivityState.Activity, activity))
+                !ReferenceEquals(activity, CurrentActivity))
             {
                 return false;
             }
@@ -132,6 +119,12 @@ namespace Immersive.Framework.ActivityFlow
             scope = _activitySceneCompositionRuntime
                 .CreateActivityContentDiscoveryScope(activity);
             return true;
+        }
+
+        internal bool TryGetCurrentActivityReadiness(out ActivityReadinessState readiness)
+        {
+            readiness = _currentActivityResult.ActivityReadinessState;
+            return HasCurrentActivityContext;
         }
 
         private void SetCurrentActivityContext(ActivityFlowStartResult result)
@@ -980,18 +973,6 @@ namespace Immersive.Framework.ActivityFlow
                 null,
                 context,
                 _runtimeContentRuntime.RootCount,
-                source,
-                reason);
-        }
-
-        private ContentAnchorBindingLifecycleResult CleanupPreviousActivityContentAnchorBindings(ActivityAsset previousActivity, ActivityAsset nextActivity, string source, string reason)
-        {
-            var previousOwner = previousActivity != null ? CreateActivityOwner(previousActivity) : default(RuntimeContentOwner);
-            var nextOwner = nextActivity != null ? CreateActivityOwner(nextActivity) : default(RuntimeContentOwner);
-            return ContentAnchorBindingCleanup.CleanupPreviousRuntimeOwner(
-                _contentAnchorBindingRuntime,
-                previousOwner,
-                nextOwner,
                 source,
                 reason);
         }

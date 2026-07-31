@@ -4,7 +4,7 @@ namespace Immersive.Framework.RuntimeContent
 {
     /// <summary>
     /// API status: Experimental. Result vocabulary for explicit lifecycle-owned release plan execution.
-    /// Statuses report delegated release execution and lifecycle registry state changes only; they do not imply Route/Activity auto-release, Unity object destruction or ContentAnchor binding cleanup.
+    /// Statuses report delegated release execution and lifecycle registry state changes only; they do not imply Route/Activity auto-release or Unity object destruction.
     /// </summary>
     [FrameworkApiStatus(FrameworkApiStatus.Experimental, "F9R-Q explicit lifecycle materialization release execution status; no lifecycle auto-wiring.")]
     public enum LifecycleMaterializationReleaseExecutionStatus

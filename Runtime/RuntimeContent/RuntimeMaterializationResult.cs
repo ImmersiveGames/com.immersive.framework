@@ -6,9 +6,9 @@ namespace Immersive.Framework.RuntimeContent
 {
     /// <summary>
     /// API status: Experimental. Immutable result for a runtime materialization attempt.
-    /// It reports request/handle/status diagnostics only; it does not execute release, destroy objects or bind Content Anchors.
+    /// It reports request/handle/status diagnostics only; it does not execute release or destroy objects.
     /// </summary>
-    [FrameworkApiStatus(FrameworkApiStatus.Experimental, "F8G runtime materialization result contract; no release execution or Content Anchor binding.")]
+    [FrameworkApiStatus(FrameworkApiStatus.Experimental, "F8G runtime materialization result contract; no release execution.")]
     public readonly struct RuntimeMaterializationResult : IEquatable<RuntimeMaterializationResult>
     {
         public RuntimeMaterializationResult(

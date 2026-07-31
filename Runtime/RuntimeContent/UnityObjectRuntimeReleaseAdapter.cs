@@ -10,7 +10,7 @@ namespace Immersive.Framework.RuntimeContent
     /// API status: Experimental. Explicit Unity physical release proof for objects registered by UnityRuntimeMaterializedObjectRegistry.
     /// It requests Object.Destroy for adapter-created objects only; it does not perform logical RuntimeContent release by itself.
     /// </summary>
-    [FrameworkApiStatus(FrameworkApiStatus.Experimental, "F8R-E first explicit Unity physical release adapter proof; no pooling, Addressables, scene unload or ContentAnchor placement.")]
+    [FrameworkApiStatus(FrameworkApiStatus.Experimental, "F8R-E first explicit Unity physical release adapter proof; no pooling, Addressables or scene unload.")]
     public sealed class UnityObjectRuntimeReleaseAdapter : IRuntimeReleaseAdapter
     {
         private readonly UnityRuntimeMaterializedObjectRegistry _registry;

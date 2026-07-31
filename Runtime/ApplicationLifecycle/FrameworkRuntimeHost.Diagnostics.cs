@@ -22,7 +22,6 @@ namespace Immersive.Framework.ApplicationLifecycle
                     : null,
                 state.CurrentRouteName,
                 state.CurrentActivityName,
-                ContentAnchorBindingCount,
                 hasPauseSnapshot,
                 hasPauseSnapshot
                     ? pauseSnapshot.State

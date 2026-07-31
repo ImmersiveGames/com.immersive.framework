@@ -4,7 +4,7 @@ namespace Immersive.Framework.RuntimeContent
 {
     /// <summary>
     /// API status: Experimental. Result status for lifecycle-owned materialization release plan creation.
-    /// Statuses describe plan construction only; they do not execute release, destroy objects, unregister handles or clean ContentAnchor bindings.
+    /// Statuses describe plan construction only; they do not execute release, destroy objects, or unregister handles.
     /// </summary>
     [FrameworkApiStatus(FrameworkApiStatus.Experimental, "F9R-P lifecycle materialization release plan status; planning only, no release execution.")]
     public enum LifecycleMaterializationReleasePlanStatus

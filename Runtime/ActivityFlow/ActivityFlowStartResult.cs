@@ -1,6 +1,5 @@
 using Immersive.Framework.Authoring;
 using Immersive.Framework.ApiStatus;
-using Immersive.Framework.ContentAnchor;
 using Immersive.Framework.RuntimeContent;
 
 namespace Immersive.Framework.ActivityFlow
@@ -25,8 +24,6 @@ namespace Immersive.Framework.ActivityFlow
             ActivityContentApplyResult activityContentResult,
             ActivityReadinessState activityReadinessState,
             RuntimeScopeLifecycleResult runtimeActivityScopeResult = default(RuntimeScopeLifecycleResult),
-            ContentAnchorBindingLifecycleResult activityContentAnchorBindingCleanupResult = default(ContentAnchorBindingLifecycleResult),
-            ActivityContentAnchorDiscoveryResult activityContentAnchorDiscoveryResult = default(ActivityContentAnchorDiscoveryResult),
             ActivityContentExecutionLifecycleResult activityContentExecutionResult = default(ActivityContentExecutionLifecycleResult),
             ActivitySceneCompositionResult activitySceneCompositionResult = default(ActivitySceneCompositionResult),
             ActivitySceneReleaseResult activitySceneReleaseResult = default(ActivitySceneReleaseResult),
@@ -45,8 +42,6 @@ namespace Immersive.Framework.ActivityFlow
                 activityContentResult,
                 activityReadinessState,
                 runtimeActivityScopeResult,
-                activityContentAnchorBindingCleanupResult,
-                activityContentAnchorDiscoveryResult,
                 activityContentExecutionResult,
                 activitySceneCompositionResult,
                 activitySceneReleaseResult,
@@ -79,16 +74,6 @@ namespace Immersive.Framework.ActivityFlow
             _data != null
                 ? _data.RuntimeActivityScopeResult
                 : default(RuntimeScopeLifecycleResult);
-        public ContentAnchorBindingLifecycleResult
-            ActivityContentAnchorBindingCleanupResult =>
-                _data != null
-                    ? _data.ActivityContentAnchorBindingCleanupResult
-                    : default(ContentAnchorBindingLifecycleResult);
-        public ActivityContentAnchorDiscoveryResult
-            ActivityContentAnchorDiscoveryResult =>
-                _data != null
-                    ? _data.ActivityContentAnchorDiscoveryResult
-                    : default(ActivityContentAnchorDiscoveryResult);
         public ActivityContentExecutionLifecycleResult
             ActivityContentExecutionResult =>
                 _data != null
@@ -118,8 +103,6 @@ namespace Immersive.Framework.ActivityFlow
         public bool ActivityTransitionFailedBeforeCommit => ActivityTransitionSnapshot.FailedBeforeCommit;
         public bool ActivityTransitionCommittedNotReady => ActivityTransitionSnapshot.CommittedNotReady;
         public bool ActivityTransitionCommittedFinalizationFailed => ActivityTransitionSnapshot.CommittedFinalizationFailed;
-        public ContentAnchorSet ActivityContentAnchorSet => ActivityContentAnchorDiscoveryResult.AnchorSet;
-        public bool HasActivityContentAnchors => ActivityContentAnchorDiscoveryResult.HasAnchors;
         public bool HasRuntimeActivityScope => RuntimeActivityScopeResult.Executed;
         public bool HasActivityContent => ActivityContentSet.HasContent;
         public bool HasActivityContentLifecycle => ActivityContentLifecycleResult.Executed;
@@ -146,8 +129,6 @@ namespace Immersive.Framework.ActivityFlow
                 ActivityContentApplyResult activityContentResult,
                 ActivityReadinessState activityReadinessState,
                 RuntimeScopeLifecycleResult runtimeActivityScopeResult,
-                ContentAnchorBindingLifecycleResult activityContentAnchorBindingCleanupResult,
-                ActivityContentAnchorDiscoveryResult activityContentAnchorDiscoveryResult,
                 ActivityContentExecutionLifecycleResult activityContentExecutionResult,
                 ActivitySceneCompositionResult activitySceneCompositionResult,
                 ActivitySceneReleaseResult activitySceneReleaseResult,
@@ -165,10 +146,6 @@ namespace Immersive.Framework.ActivityFlow
                 ActivityContentResult = activityContentResult;
                 ActivityReadinessState = activityReadinessState;
                 RuntimeActivityScopeResult = runtimeActivityScopeResult;
-                ActivityContentAnchorBindingCleanupResult =
-                    activityContentAnchorBindingCleanupResult;
-                ActivityContentAnchorDiscoveryResult =
-                    activityContentAnchorDiscoveryResult;
                 ActivityContentExecutionResult = activityContentExecutionResult;
                 ActivitySceneCompositionResult = activitySceneCompositionResult;
                 ActivitySceneReleaseResult = activitySceneReleaseResult;
@@ -187,10 +164,6 @@ namespace Immersive.Framework.ActivityFlow
             internal ActivityContentApplyResult ActivityContentResult { get; }
             internal ActivityReadinessState ActivityReadinessState { get; }
             internal RuntimeScopeLifecycleResult RuntimeActivityScopeResult { get; }
-            internal ContentAnchorBindingLifecycleResult
-                ActivityContentAnchorBindingCleanupResult { get; }
-            internal ActivityContentAnchorDiscoveryResult
-                ActivityContentAnchorDiscoveryResult { get; }
             internal ActivityContentExecutionLifecycleResult
                 ActivityContentExecutionResult { get; }
             internal ActivitySceneCompositionResult
@@ -246,8 +219,6 @@ namespace Immersive.Framework.ActivityFlow
                 ActivityContentResult,
                 readinessState,
                 RuntimeActivityScopeResult,
-                ActivityContentAnchorBindingCleanupResult,
-                ActivityContentAnchorDiscoveryResult,
                 ActivityContentExecutionResult,
                 ActivitySceneCompositionResult,
                 ActivitySceneReleaseResult,
@@ -259,11 +230,23 @@ namespace Immersive.Framework.ActivityFlow
         internal ActivityFlowStartResult WithActivityReadinessState(ActivityReadinessState activityReadinessState)
         {
             if (ActivityReadinessState.Equals(activityReadinessState)) return this;
-            return new ActivityFlowStartResult(Started, Skipped, KeptActive, Cleared, Message, ActivityState,
-                PreviousActivity, ActivityContentResult, activityReadinessState, RuntimeActivityScopeResult,
-                ActivityContentAnchorBindingCleanupResult, ActivityContentAnchorDiscoveryResult,
-                ActivityContentExecutionResult, ActivitySceneCompositionResult, ActivitySceneReleaseResult,
-                ActivityOperationResult, ActivitySceneLedgerSnapshot, ActivityTransitionSnapshot);
+            return new ActivityFlowStartResult(
+                Started,
+                Skipped,
+                KeptActive,
+                Cleared,
+                Message,
+                ActivityState,
+                PreviousActivity,
+                ActivityContentResult,
+                activityReadinessState,
+                RuntimeActivityScopeResult,
+                ActivityContentExecutionResult,
+                ActivitySceneCompositionResult,
+                ActivitySceneReleaseResult,
+                ActivityOperationResult,
+                ActivitySceneLedgerSnapshot,
+                ActivityTransitionSnapshot);
         }
 
         public static ActivityFlowStartResult Failed(
@@ -288,8 +271,6 @@ namespace Immersive.Framework.ActivityFlow
             ActivityAsset previousActivity,
             ActivityContentApplyResult activityContentResult,
             RuntimeScopeLifecycleResult runtimeActivityScopeResult = default(RuntimeScopeLifecycleResult),
-            ContentAnchorBindingLifecycleResult activityContentAnchorBindingCleanupResult = default(ContentAnchorBindingLifecycleResult),
-            ActivityContentAnchorDiscoveryResult activityContentAnchorDiscoveryResult = default(ActivityContentAnchorDiscoveryResult),
             ActivityContentExecutionLifecycleResult activityContentExecutionResult = default(ActivityContentExecutionLifecycleResult),
             ActivitySceneCompositionResult activitySceneCompositionResult = default(ActivitySceneCompositionResult),
             ActivitySceneReleaseResult activitySceneReleaseResult = default(ActivitySceneReleaseResult),
@@ -303,7 +284,6 @@ namespace Immersive.Framework.ActivityFlow
                 activityContentExecutionResult.BlocksReadiness,
                 activityContentExecutionResult.BlockingIssueCount);
             string runtimeScopeMessage = RuntimeScopeMessage(runtimeActivityScopeResult);
-            string bindingCleanupMessage = BindingCleanupMessage(activityContentAnchorBindingCleanupResult);
             string executionMessage = ExecutionMessage(activityContentExecutionResult);
             string sceneCompositionMessage = SceneCompositionMessage(activitySceneCompositionResult);
             string sceneReleaseMessage = SceneReleaseMessage(activitySceneReleaseResult);
@@ -316,7 +296,7 @@ namespace Immersive.Framework.ActivityFlow
                     false,
                     AppendContentMessage(
                         CombineStateAndReadinessMessage(ActivityStateMessage(activityState), readinessState) +
-                        bindingCleanupMessage + executionMessage + sceneCompositionMessage +
+                        executionMessage + sceneCompositionMessage +
                         sceneReleaseMessage + runtimeScopeMessage,
                         activityContentResult),
                     activityState,
@@ -324,8 +304,6 @@ namespace Immersive.Framework.ActivityFlow
                     activityContentResult,
                     readinessState,
                     runtimeActivityScopeResult,
-                    activityContentAnchorBindingCleanupResult,
-                    activityContentAnchorDiscoveryResult,
                     activityContentExecutionResult,
                     activitySceneCompositionResult,
                     activitySceneReleaseResult,
@@ -341,15 +319,13 @@ namespace Immersive.Framework.ActivityFlow
                 AppendContentMessage(
                     $"Activity Flow cleared Activity '{previousActivity.ActivityName}' because Route has no Startup Activity. " +
                     $"{CombineStateAndReadinessMessage(ActivityStateMessage(activityState), readinessState)}" +
-                    $"{bindingCleanupMessage}{executionMessage}{sceneCompositionMessage}{sceneReleaseMessage}{runtimeScopeMessage}",
+                    $"{executionMessage}{sceneCompositionMessage}{sceneReleaseMessage}{runtimeScopeMessage}",
                     activityContentResult),
                 activityState,
                 previousActivity,
                 activityContentResult,
                 readinessState,
                 runtimeActivityScopeResult,
-                activityContentAnchorBindingCleanupResult,
-                activityContentAnchorDiscoveryResult,
                 activityContentExecutionResult,
                 activitySceneCompositionResult,
                 activitySceneReleaseResult,
@@ -362,8 +338,6 @@ namespace Immersive.Framework.ActivityFlow
             ActivityAsset previousActivity,
             ActivityContentApplyResult activityContentResult,
             RuntimeScopeLifecycleResult runtimeActivityScopeResult = default(RuntimeScopeLifecycleResult),
-            ContentAnchorBindingLifecycleResult activityContentAnchorBindingCleanupResult = default(ContentAnchorBindingLifecycleResult),
-            ActivityContentAnchorDiscoveryResult activityContentAnchorDiscoveryResult = default(ActivityContentAnchorDiscoveryResult),
             ActivityContentExecutionLifecycleResult activityContentExecutionResult = default(ActivityContentExecutionLifecycleResult),
             ActivitySceneCompositionResult activitySceneCompositionResult = default(ActivitySceneCompositionResult),
             ActivitySceneReleaseResult activitySceneReleaseResult = default(ActivitySceneReleaseResult),
@@ -382,7 +356,6 @@ namespace Immersive.Framework.ActivityFlow
                 activityContentExecutionResult.BlocksReadiness,
                 activityContentExecutionResult.BlockingIssueCount);
             string runtimeScopeMessage = RuntimeScopeMessage(runtimeActivityScopeResult);
-            string bindingCleanupMessage = BindingCleanupMessage(activityContentAnchorBindingCleanupResult);
             string executionMessage = ExecutionMessage(activityContentExecutionResult);
             string sceneCompositionMessage = SceneCompositionMessage(activitySceneCompositionResult);
             string sceneReleaseMessage = SceneReleaseMessage(activitySceneReleaseResult);
@@ -394,15 +367,13 @@ namespace Immersive.Framework.ActivityFlow
                 AppendContentMessage(
                     $"Activity Flow cleared Activity '{previousActivity.ActivityName}' by request. " +
                     $"{CombineStateAndReadinessMessage(ActivityStateMessage(activityState), readinessState)}" +
-                    $"{bindingCleanupMessage}{executionMessage}{sceneCompositionMessage}{sceneReleaseMessage}{runtimeScopeMessage}",
+                    $"{executionMessage}{sceneCompositionMessage}{sceneReleaseMessage}{runtimeScopeMessage}",
                     activityContentResult),
                 activityState,
                 previousActivity,
                 activityContentResult,
                 readinessState,
                 runtimeActivityScopeResult,
-                activityContentAnchorBindingCleanupResult,
-                activityContentAnchorDiscoveryResult,
                 activityContentExecutionResult,
                 activitySceneCompositionResult,
                 activitySceneReleaseResult,
@@ -437,8 +408,6 @@ namespace Immersive.Framework.ActivityFlow
             ActivityAsset previousActivity,
             ActivityContentApplyResult activityContentResult,
             RuntimeScopeLifecycleResult runtimeActivityScopeResult = default(RuntimeScopeLifecycleResult),
-            ContentAnchorBindingLifecycleResult activityContentAnchorBindingCleanupResult = default(ContentAnchorBindingLifecycleResult),
-            ActivityContentAnchorDiscoveryResult activityContentAnchorDiscoveryResult = default(ActivityContentAnchorDiscoveryResult),
             ActivityContentExecutionLifecycleResult activityContentExecutionResult = default(ActivityContentExecutionLifecycleResult),
             ActivitySceneCompositionResult activitySceneCompositionResult = default(ActivitySceneCompositionResult),
             ActivitySceneReleaseResult activitySceneReleaseResult = default(ActivitySceneReleaseResult),
@@ -456,15 +425,14 @@ namespace Immersive.Framework.ActivityFlow
                 ActivityStateMessage(activityState),
                 readinessState);
             string runtimeScopeMessage = RuntimeScopeMessage(runtimeActivityScopeResult);
-            string bindingCleanupMessage = BindingCleanupMessage(activityContentAnchorBindingCleanupResult);
             string executionMessage = ExecutionMessage(activityContentExecutionResult);
             string sceneCompositionMessage = SceneCompositionMessage(activitySceneCompositionResult);
             string sceneReleaseMessage = SceneReleaseMessage(activitySceneReleaseResult);
             string message = previousActivity != null && !ReferenceEquals(previousActivity, activity)
                 ? $"Activity Flow switched from Activity '{previousActivity.ActivityName}' to Activity '{activity.ActivityName}'. " +
-                  $"{stateMessage}{bindingCleanupMessage}{executionMessage}{sceneCompositionMessage}{sceneReleaseMessage}{runtimeScopeMessage}"
+                  $"{stateMessage}{executionMessage}{sceneCompositionMessage}{sceneReleaseMessage}{runtimeScopeMessage}"
                 : $"Activity Flow started Activity '{activity.ActivityName}'. " +
-                  $"{stateMessage}{bindingCleanupMessage}{executionMessage}{sceneCompositionMessage}{sceneReleaseMessage}{runtimeScopeMessage}";
+                  $"{stateMessage}{executionMessage}{sceneCompositionMessage}{sceneReleaseMessage}{runtimeScopeMessage}";
 
             return new ActivityFlowStartResult(
                 true,
@@ -477,8 +445,6 @@ namespace Immersive.Framework.ActivityFlow
                 activityContentResult,
                 readinessState,
                 runtimeActivityScopeResult,
-                activityContentAnchorBindingCleanupResult,
-                activityContentAnchorDiscoveryResult,
                 activityContentExecutionResult,
                 activitySceneCompositionResult,
                 activitySceneReleaseResult,
@@ -579,16 +545,6 @@ namespace Immersive.Framework.ActivityFlow
             }
 
             return $" activitySceneRelease='{result.DiagnosticStatus}' activitySceneReleaseScenes='{result.SceneCount}' activitySceneReleaseReleased='{result.ReleasedSceneCount}' activitySceneReleaseFailed='{result.FailedSceneCount}' activitySceneReleaseSkipped='{result.SkippedSceneCount}' activitySceneReleaseSideEffects='{result.SideEffectsExecuted}' activitySceneReleaseBlockingIssues='{result.BlockingIssueCount}'.";
-        }
-
-        private static string BindingCleanupMessage(ContentAnchorBindingLifecycleResult result)
-        {
-            if (!result.Executed)
-            {
-                return string.Empty;
-            }
-
-            return $" activityContentAnchorBindingCleanup='{result.DiagnosticStatus}' activityContentAnchorBindingCleanupRemoved='{result.RemovedCount}' activityContentAnchorBindingCleanupBefore='{result.BindingCountBefore}' activityContentAnchorBindingCleanupAfter='{result.BindingCountAfter}'.";
         }
 
         private static string AppendContentMessage(

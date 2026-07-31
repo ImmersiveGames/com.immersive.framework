@@ -9,7 +9,7 @@ namespace Immersive.Framework.Diagnostics
 {
     /// <summary>
     /// API status: Development Tooling. Synthetic smoke for the generic Participant executor primitives.
-    /// It validates Common/Participants mechanics only and does not use CycleReset, ObjectReset, Snapshot, ActivityContentExecution, LocalContribution, Route, Activity, Pause, RuntimeContent, ContentAnchor or InputMode domains.
+    /// It validates Common/Participants mechanics only and does not use CycleReset, ObjectReset, Snapshot, ActivityContentExecution, LocalContribution, Route, Activity, Pause, RuntimeContent or InputMode domains.
     /// </summary>
     [FrameworkApiStatus(FrameworkApiStatus.DevelopmentTooling, "Synthetic Participant executor smoke; Common/Participants only.")]
     internal static class ParticipantExecutorSyntheticSmokeRunner

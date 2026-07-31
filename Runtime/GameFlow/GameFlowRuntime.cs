@@ -6,7 +6,6 @@ using Immersive.Framework.ActivityRestart;
 using System;
 using Immersive.Framework.RouteLifecycle;
 using Immersive.Framework.ApiStatus;
-using Immersive.Framework.ContentAnchor;
 using Immersive.Framework.RuntimeContent;
 using Immersive.Framework.CycleReset;
 using Immersive.Framework.Gate;
@@ -83,7 +82,6 @@ namespace Immersive.Framework.GameFlow
 
         internal GameFlowRuntime(
             RuntimeContentRuntime runtimeContentRuntime,
-            RuntimeContentAnchorBinding contentAnchorBindingRuntime,
             IRouteRuntimePort routeRuntime,
             IActivityRuntimePort activityRuntime,
             IRouteCycleResetRuntimePort routeCycleResetRuntime,
@@ -92,7 +90,6 @@ namespace Immersive.Framework.GameFlow
             SceneLifecycleRuntime sceneLifecycleRuntime = null)
             : this(
                 runtimeContentRuntime,
-                contentAnchorBindingRuntime,
                 NoOpTransitionOrchestrator.Instance,
                 routeRuntime,
                 activityRuntime,
@@ -105,7 +102,6 @@ namespace Immersive.Framework.GameFlow
 
         internal GameFlowRuntime(
             RuntimeContentRuntime runtimeContentRuntime,
-            RuntimeContentAnchorBinding contentAnchorBindingRuntime,
             ITransitionOrchestrator transitionOrchestrator,
             IRouteRuntimePort routeRuntime,
             IActivityRuntimePort activityRuntime,
@@ -117,7 +113,6 @@ namespace Immersive.Framework.GameFlow
             _transitionOrchestrator = transitionOrchestrator ?? throw new ArgumentNullException(nameof(transitionOrchestrator));
             _routeLifecycleRuntime = new RouteLifecycleRuntime(
                 runtimeContentRuntime ?? throw new ArgumentNullException(nameof(runtimeContentRuntime)),
-                contentAnchorBindingRuntime ?? throw new ArgumentNullException(nameof(contentAnchorBindingRuntime)),
                 routeRuntime ?? throw new ArgumentNullException(nameof(routeRuntime)),
                 activityRuntime ?? throw new ArgumentNullException(nameof(activityRuntime)),
                 routeCycleResetRuntime ?? throw new ArgumentNullException(nameof(routeCycleResetRuntime)),

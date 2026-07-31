@@ -8,9 +8,9 @@ namespace Immersive.Framework.RuntimeContent
 {
     /// <summary>
     /// API status: Experimental. Explicit Unity adapter proof that materializes one configured prefab/template GameObject.
-    /// It is not RuntimeContent core, not a ContentAnchor placement adapter, not Addressables and not pooling.
+    /// It is not RuntimeContent core, Addressables or pooling.
     /// </summary>
-    [FrameworkApiStatus(FrameworkApiStatus.Experimental, "F8R-E first explicit Unity prefab materialization adapter proof; no ContentAnchor placement, Addressables, pooling or actor spawn.")]
+    [FrameworkApiStatus(FrameworkApiStatus.Experimental, "F8R-E first explicit Unity prefab materialization adapter proof; no Addressables, pooling or actor spawn.")]
     public sealed class UnityPrefabRuntimeMaterializationAdapter : IRuntimeMaterializationAdapter
     {
         public const string ResourceType = "UnityPrefab";

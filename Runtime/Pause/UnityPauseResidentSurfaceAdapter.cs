@@ -7,7 +7,7 @@ namespace Immersive.Framework.Pause
     /// <summary>
     /// API status: Experimental. Canonical Unity adapter for a resident Pause surface authored in UIGlobal.
     /// The adapter shows/hides an existing GameObject/CanvasGroup from Pause snapshots. It does not instantiate,
-    /// bind ContentAnchors, own input, change Time.timeScale, or control Route/Activity lifecycle.
+    /// own input, change Time.timeScale, or control Route/Activity lifecycle.
     /// </summary>
     [DisallowMultipleComponent]
     [AddComponentMenu("Immersive Framework/Pause/Unity Pause Resident Surface Adapter")]

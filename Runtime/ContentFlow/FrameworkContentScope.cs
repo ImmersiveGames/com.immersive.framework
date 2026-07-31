@@ -12,7 +12,6 @@ namespace Immersive.Framework.ContentFlow
         Session = 10,
         Route = 20,
         Activity = 30,
-        ContentAnchor = 40,
         RuntimeSpawned = 50
     }
 }

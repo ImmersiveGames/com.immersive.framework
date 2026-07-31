@@ -7,7 +7,7 @@ namespace Immersive.Framework.RuntimeContent
 {
     /// <summary>
     /// API status: Experimental. Internal logical root for runtime-created content owned by one lifecycle scope owner.
-    /// F8F keeps this as a logical lifecycle/registry boundary only: no GameObject, Transform, Instantiate, Destroy or Content Anchor binding.
+    /// F8F keeps this as a logical lifecycle and registry boundary only.
     /// </summary>
     [FrameworkApiStatus(FrameworkApiStatus.Experimental, "F8F internal logical runtime scope root; no hierarchy object or materialization behavior.")]
     internal sealed class RuntimeScopeRoot

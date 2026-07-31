@@ -157,7 +157,6 @@ Player Slot
 Default Actor
 Camera Rig Recipe
 Pause Surface
-Content Anchor Scope
 Release Policy
 ```
 
@@ -921,7 +920,6 @@ LocalPlayerProvisioningAuthoring
 PlayerGameplayCameraAuthoring
 PauseRequestTrigger
 UnityResetSubjectAdapter
-Content Anchor authoring
 ```
 
 Prove:
@@ -940,7 +938,6 @@ Prioritize:
 
 ```text
 CameraRigComposer
-Content Anchor materialization
 other mature Apply/Rebuild flows
 ```
 

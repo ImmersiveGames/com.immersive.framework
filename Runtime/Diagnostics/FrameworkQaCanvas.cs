@@ -177,9 +177,6 @@ namespace Immersive.Framework.Diagnostics
                 $"Active Route: {Display(snapshot.CurrentRouteName)}");
             GUILayout.Label(
                 $"Active Activity: {Display(snapshot.CurrentActivityName)}");
-            GUILayout.Label(
-                $"Content Anchor Bindings: {Math.Max(0, snapshot.ContentAnchorBindingCount)}");
-
             if (snapshot.HasPauseSnapshot)
             {
                 GUILayout.Label(

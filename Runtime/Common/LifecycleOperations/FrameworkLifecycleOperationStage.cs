@@ -20,7 +20,6 @@ namespace Immersive.Framework.Common.LifecycleOperations
         TransitionAfter = 120,
         LoadingAfter = 130,
         RouteExit = 140,
-        ContentAnchorBindingCleanup = 150,
         ActivityContentExecution = 160,
         ActivitySceneLedger = 170
     }

@@ -6,7 +6,7 @@ namespace Immersive.Framework.RuntimeContent
 {
     /// <summary>
     /// API status: Experimental. Internal scoped registry for logical runtime roots in the current framework runtime.
-    /// It is not a service locator and does not create hierarchy objects, materialize prefabs, destroy objects or bind Content Anchors.
+    /// It is not a service locator and does not create hierarchy objects, materialize prefabs or destroy objects.
     /// </summary>
     [FrameworkApiStatus(FrameworkApiStatus.Experimental, "F8F internal minimal runtime root registry; explicit root lifecycle only, no GameObject.Find or fallback creation.")]
     internal sealed class RuntimeRootRegistry

@@ -8,9 +8,9 @@ namespace Immersive.Framework.RuntimeContent
 {
     /// <summary>
     /// API status: Experimental. Local adapter-side registry for physical Unity objects created by runtime materialization adapters.
-    /// This is instantiable and explicit; it is not a singleton, service locator, RuntimeContent core registry replacement or Content Anchor placement system.
+    /// This is instantiable and explicit; it is not a singleton, service locator or RuntimeContent core registry replacement.
     /// </summary>
-    [FrameworkApiStatus(FrameworkApiStatus.Experimental, "F8R-E local Unity materialized object registry for adapter proof; no singleton, ContentAnchor placement, pooling or Addressables.")]
+    [FrameworkApiStatus(FrameworkApiStatus.Experimental, "F8R-E local Unity materialized object registry for adapter proof; no singleton, pooling or Addressables.")]
     public sealed class UnityRuntimeMaterializedObjectRegistry
     {
         private readonly Dictionary<RuntimeContentIdentity, UnityRuntimeMaterializedObjectEvidence> _entries;

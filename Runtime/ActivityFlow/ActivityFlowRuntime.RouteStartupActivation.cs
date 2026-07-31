@@ -1,7 +1,6 @@
 using System;
 using System.Threading.Tasks;
 using Immersive.Framework.Authoring;
-using Immersive.Framework.ContentAnchor;
 using Immersive.Framework.Loading;
 using Immersive.Framework.RuntimeContent;
 
@@ -78,32 +77,21 @@ namespace Immersive.Framework.ActivityFlow
                 string source,
                 string reason)
         {
-            string resolvedSource = NormalizeSource(source);
-            string resolvedReason = NormalizeReason(reason);
             if (previousActivity == null || targetActivity == null)
             {
                 return new RouteStartupActivityScopeFinalizationResult(
-                    default,
                     null,
                     "Route Startup previous Activity scope finalization requires both Activities.");
             }
 
-            ContentAnchorBindingLifecycleResult bindingCleanup =
-                CleanupPreviousActivityContentAnchorBindings(
-                    previousActivity,
-                    targetActivity,
-                    resolvedSource,
-                    resolvedReason);
             RuntimeRootRegistryOperationResult scopeRemoval =
                 RemovePreviousActivityScopeRoot(
                     previousActivity,
                     targetActivity,
-                    resolvedSource,
-                    resolvedReason);
+                    NormalizeSource(source),
+                    NormalizeReason(reason));
             return new RouteStartupActivityScopeFinalizationResult(
-                bindingCleanup,
                 scopeRemoval,
-                bindingCleanup.Succeeded &&
                 scopeRemoval != null &&
                 !scopeRemoval.Rejected
                     ? "Previous Activity scope finalized after Route Startup Player handoff commit."

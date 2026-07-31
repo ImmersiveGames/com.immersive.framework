@@ -6,7 +6,7 @@ namespace Immersive.Framework.RuntimeContent
 {
     /// <summary>
     /// API status: Experimental. Immutable result for one lifecycle-owned materialization registry operation.
-    /// It reports registry evidence only; it does not execute physical release, logical RuntimeContent release or ContentAnchor cleanup.
+    /// It reports registry evidence only; it does not execute physical or logical Runtime Content release.
     /// </summary>
     [FrameworkApiStatus(FrameworkApiStatus.Experimental, "F9R-N lifecycle-owned materialization registry operation result; no physical or lifecycle side effects.")]
     public readonly struct LifecycleMaterializationRegistryOperationResult : IEquatable<LifecycleMaterializationRegistryOperationResult>

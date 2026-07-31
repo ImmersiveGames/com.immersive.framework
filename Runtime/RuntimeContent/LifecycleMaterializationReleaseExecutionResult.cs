@@ -6,7 +6,7 @@ namespace Immersive.Framework.RuntimeContent
 {
     /// <summary>
     /// API status: Experimental. Immutable result of explicitly executing a lifecycle-owned release plan through a caller-provided release executor.
-    /// It records delegated runtime release results and lifecycle registry state updates. It does not instantiate content, destroy Unity objects, remove ContentAnchor bindings or wire Route/Activity lifecycle automatically.
+    /// It records delegated runtime release results and lifecycle registry state updates. It does not instantiate content, destroy Unity objects, or wire Route/Activity lifecycle automatically.
     /// </summary>
     [FrameworkApiStatus(FrameworkApiStatus.Experimental, "F9R-Q explicit lifecycle materialization release execution result; delegated executor only, no auto-release wiring.")]
     public readonly struct LifecycleMaterializationReleaseExecutionResult : IEquatable<LifecycleMaterializationReleaseExecutionResult>
@@ -111,7 +111,6 @@ namespace Immersive.Framework.RuntimeContent
 
         public bool PerformsLogicalRuntimeContentRelease => ExecutesRelease;
 
-        public bool PerformsContentAnchorBindingCleanup => false;
 
         public RuntimeReleaseResult[] SnapshotReleaseResults()
         {
@@ -187,7 +186,7 @@ namespace Immersive.Framework.RuntimeContent
             string sourceText = Source.ToDiagnosticText();
             string reasonText = Reason.ToDiagnosticText();
             string messageText = Message.ToDiagnosticText();
-            return $"status='{Status}' succeeded='{Succeeded}' requests='{RequestCount}' releaseResults='{ReleaseResultCount}' registryResults='{RegistryResultCount}' releaseRequested='{ReleaseRequested}' released='{Released}' releaseFailed='{ReleaseFailed}' missingEntries='{MissingEntries}' executesRelease='{ExecutesRelease}' physicalRelease='{PerformsPhysicalRelease}' logicalRuntimeContentRelease='{PerformsLogicalRuntimeContentRelease}' contentAnchorBindingCleanup='{PerformsContentAnchorBindingCleanup}' source='{sourceText}' reason='{reasonText}' message='{messageText}' plan={Plan.ToDiagnosticString()}";
+            return $"status='{Status}' succeeded='{Succeeded}' requests='{RequestCount}' releaseResults='{ReleaseResultCount}' registryResults='{RegistryResultCount}' releaseRequested='{ReleaseRequested}' released='{Released}' releaseFailed='{ReleaseFailed}' missingEntries='{MissingEntries}' executesRelease='{ExecutesRelease}' physicalRelease='{PerformsPhysicalRelease}' logicalRuntimeContentRelease='{PerformsLogicalRuntimeContentRelease}' source='{sourceText}' reason='{reasonText}' message='{messageText}' plan={Plan.ToDiagnosticString()}";
         }
 
         public static LifecycleMaterializationReleaseExecutionResult InvalidPlan(

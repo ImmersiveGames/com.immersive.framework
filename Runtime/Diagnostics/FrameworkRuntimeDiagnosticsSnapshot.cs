@@ -15,7 +15,6 @@ namespace Immersive.Framework.Diagnostics
             RouteAsset startupRoute,
             string currentRouteName,
             string currentActivityName,
-            int contentAnchorBindingCount,
             bool hasPauseSnapshot,
             PauseState pauseState,
             int pauseGateBlockerCount)
@@ -24,7 +23,6 @@ namespace Immersive.Framework.Diagnostics
             StartupRoute = startupRoute;
             CurrentRouteName = currentRouteName ?? string.Empty;
             CurrentActivityName = currentActivityName ?? string.Empty;
-            ContentAnchorBindingCount = contentAnchorBindingCount;
             HasPauseSnapshot = hasPauseSnapshot;
             PauseState = pauseState;
             PauseGateBlockerCount = pauseGateBlockerCount;
@@ -37,8 +35,6 @@ namespace Immersive.Framework.Diagnostics
         internal string CurrentRouteName { get; }
 
         internal string CurrentActivityName { get; }
-
-        internal int ContentAnchorBindingCount { get; }
 
         internal bool HasPauseSnapshot { get; }
 
