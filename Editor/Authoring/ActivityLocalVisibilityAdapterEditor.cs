@@ -1,4 +1,5 @@
 using Immersive.Framework.ActivityFlow;
+using Immersive.Framework.Authoring;
 using Immersive.Framework.Editor.Common;
 using Immersive.Framework.Editor.Editor.Validation;
 using UnityEditor;
@@ -10,9 +11,9 @@ namespace Immersive.Framework.Editor.Editor.Authoring
     [CanEditMultipleObjects]
     internal sealed class ActivityLocalVisibilityAdapterEditor : UnityEditor.Editor
     {
-        private static readonly GUIContent ActivityLabel = new GUIContent(
-            "Activity",
-            "The Activity that makes this GameObject visible while it is active.");
+        private static readonly GUIContent ActivitiesLabel = new GUIContent("Activities");
+        private static readonly GUIContent MatchModeLabel = new GUIContent("Match Mode");
+        private static readonly GUIContent NoActivePolicyLabel = new GUIContent("No Active Activity");
 
         private static readonly GUIContent LocalContentIdLabel = new GUIContent(
             "Local Content Id",
@@ -26,7 +27,9 @@ namespace Immersive.Framework.Editor.Editor.Authoring
             "Validate",
             "Checks the authored configuration without modifying it.");
 
-        private SerializedProperty _activity;
+        private SerializedProperty _activities;
+        private SerializedProperty _matchMode;
+        private SerializedProperty _noActiveActivityPolicy;
         private SerializedProperty _localContentId;
         private SerializedProperty _requiredness;
         private FrameworkAuthoringValidationReport _validationReport;
@@ -34,7 +37,9 @@ namespace Immersive.Framework.Editor.Editor.Authoring
 
         private void OnEnable()
         {
-            _activity = serializedObject.FindProperty("activity");
+            _activities = serializedObject.FindProperty("activities");
+            _matchMode = serializedObject.FindProperty("matchMode");
+            _noActiveActivityPolicy = serializedObject.FindProperty("noActiveActivityPolicy");
             _localContentId = serializedObject.FindProperty("localContentId");
             _requiredness = serializedObject.FindProperty("requiredness");
         }
@@ -66,8 +71,10 @@ namespace Immersive.Framework.Editor.Editor.Authoring
 
         private void DrawAuthoring()
         {
-            FrameworkAuthoringInspectorGui.Section("Activity");
-            EditorGUILayout.PropertyField(_activity, ActivityLabel);
+            FrameworkAuthoringInspectorGui.Section("Activity Rule");
+            EditorGUILayout.PropertyField(_matchMode, MatchModeLabel);
+            EditorGUILayout.PropertyField(_activities, ActivitiesLabel, true);
+            EditorGUILayout.PropertyField(_noActiveActivityPolicy, NoActivePolicyLabel);
 
             FrameworkAuthoringInspectorGui.Section("Local Content");
             EditorGUILayout.PropertyField(_localContentId, LocalContentIdLabel);
@@ -113,12 +120,17 @@ namespace Immersive.Framework.Editor.Editor.Authoring
                 return;
             }
 
-            if (_activity != null &&
-                !_activity.hasMultipleDifferentValues &&
-                _activity.objectReferenceValue == null)
+            var adapter = target as ActivityLocalVisibilityAdapter;
+            if (adapter == null)
+            {
+                return;
+            }
+
+            ActivityVisibilityEvaluation evaluation = adapter.EvaluateVisibility(null);
+            if (!evaluation.IsValid)
             {
                 EditorGUILayout.HelpBox(
-                    "Select the Activity that controls this GameObject.",
+                    $"Invalid Activity Rule: {evaluation.DiagnosticReason}.",
                     MessageType.Error);
             }
 
@@ -129,11 +141,6 @@ namespace Immersive.Framework.Editor.Editor.Authoring
                 EditorGUILayout.HelpBox(
                     "Enter an explicit Local Content Id.",
                     MessageType.Error);
-            }
-
-            if (!(target is ActivityLocalVisibilityAdapter adapter))
-            {
-                return;
             }
 
             ActivityLocalVisibilityAdapter parent = FindParentBinding(adapter);
@@ -251,11 +258,13 @@ namespace Immersive.Framework.Editor.Editor.Authoring
 
             using (new EditorGUI.DisabledScope(true))
             {
-                EditorGUILayout.TextField(
-                    "Assigned Activity",
-                    adapter.Activity != null
-                        ? adapter.Activity.name
-                        : "<missing>");
+                EditorGUILayout.TextField("Match Mode", adapter.MatchMode.ToString());
+                EditorGUILayout.TextField("No Active Activity", adapter.NoActiveActivityPolicy.ToString());
+
+                ActivityVisibilityEvaluation evaluation = adapter.EvaluateVisibility(null);
+                EditorGUILayout.TextField("Last Match Result", evaluation.HasMatch.ToString());
+                EditorGUILayout.TextField("Desired Visibility", evaluation.DesiredVisibility.ToString());
+                EditorGUILayout.TextField("Last Diagnostic", evaluation.DiagnosticReason);
 
                 EditorGUILayout.TextField(
                     "Normalized Local Content Id",
@@ -290,7 +299,7 @@ namespace Immersive.Framework.Editor.Editor.Authoring
                         : "Not Available in Edit Mode");
             }
 
-            if (adapter.Activity == null)
+            if (!adapter.TryGetSingleActivityOwner(out ActivityAsset activity))
             {
                 return;
             }
@@ -300,8 +309,8 @@ namespace Immersive.Framework.Editor.Editor.Authoring
                         "Open Activity",
                         "Selects and pings the assigned Activity asset.")))
             {
-                Selection.activeObject = adapter.Activity;
-                EditorGUIUtility.PingObject(adapter.Activity);
+                Selection.activeObject = activity;
+                EditorGUIUtility.PingObject(activity);
             }
         }
 

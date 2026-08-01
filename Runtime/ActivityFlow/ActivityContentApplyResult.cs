@@ -11,6 +11,7 @@ namespace Immersive.Framework.ActivityFlow
     {
         private ActivityContentApplyResult(int bindingCount,
             int missingActivityCount,
+            int invalidBindingCount,
             ActivityContentSet activityContentSet,
             ActivityContentLifecycleResult lifecycleResult,
             string message,
@@ -19,6 +20,7 @@ namespace Immersive.Framework.ActivityFlow
         {
             BindingCount = bindingCount;
             MissingActivityCount = missingActivityCount;
+            InvalidBindingCount = invalidBindingCount;
             ActivityContentSet = activityContentSet;
             LifecycleResult = lifecycleResult;
             Message = message ?? string.Empty;
@@ -29,6 +31,8 @@ namespace Immersive.Framework.ActivityFlow
         public int BindingCount { get; }
 
         public int MissingActivityCount { get; }
+
+        public int InvalidBindingCount { get; }
 
         public ActivityContentSet ActivityContentSet { get; }
 
@@ -54,6 +58,7 @@ namespace Immersive.Framework.ActivityFlow
         {
             return new ActivityContentApplyResult(0,
                 0,
+                0,
                 ActivityContentSet.Empty(activeActivity),
                 ActivityContentLifecycleResult.Skipped(null, activeActivity, "Unknown", "None"),
                 string.Empty,
@@ -68,6 +73,7 @@ namespace Immersive.Framework.ActivityFlow
             int deactivatedCount,
             int unchangedCount,
             int missingActivityCount,
+            int invalidBindingCount,
             ActivityContentSet activityContentSet,
             ActivityContentLifecycleResult lifecycleResult,
             string detailMessage,
@@ -93,8 +99,14 @@ namespace Immersive.Framework.ActivityFlow
                 message += $" missingActivity='{missingActivityCount}'.";
             }
 
+            if (invalidBindingCount > 0)
+            {
+                message += $" invalidBinding='{invalidBindingCount}'.";
+            }
+
             return new ActivityContentApplyResult(bindingCount,
                 missingActivityCount,
+                invalidBindingCount,
                 activityContentSet,
                 lifecycleResult,
                 message,

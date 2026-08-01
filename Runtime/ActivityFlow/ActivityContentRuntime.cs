@@ -48,7 +48,11 @@ namespace Immersive.Framework.ActivityFlow
                 return;
             }
 
-            StoreLastApplyResult(ApplyActivityTransition(activityEnteredEvent.PreviousActivity, activityEnteredEvent.Activity, activityEnteredEvent.Source, activityEnteredEvent.Reason));
+            StoreLastApplyResult(ApplyTransitionUsingRule(
+                activityEnteredEvent.PreviousActivity,
+                activityEnteredEvent.Activity,
+                activityEnteredEvent.Source,
+                activityEnteredEvent.Reason));
         }
 
         internal void HandleActivityExited(ActivityExitedEvent activityExitedEvent)
@@ -58,160 +62,33 @@ namespace Immersive.Framework.ActivityFlow
                 return;
             }
 
-            StoreLastApplyResult(ApplyActivityTransition(activityExitedEvent.Activity, null, activityExitedEvent.Source, activityExitedEvent.Reason));
+            StoreLastApplyResult(ApplyTransitionUsingRule(
+                activityExitedEvent.Activity,
+                null,
+                activityExitedEvent.Source,
+                activityExitedEvent.Reason));
         }
 
         internal ActivityContentApplyResult ApplyActiveActivity(ActivityAsset activeActivity)
         {
-            return ApplyActivityTransition(null, activeActivity, "Unknown", "None");
+            return ApplyTransitionUsingRule(null, activeActivity, "Unknown", "None");
         }
 
-        private ActivityContentApplyResult ApplyActivityTransition(ActivityAsset previousActivity, ActivityAsset activeActivity, string source, string reason)
+        private ActivityContentApplyResult ApplyTransitionUsingRule(
+            ActivityAsset previousActivity,
+            ActivityAsset activeActivity,
+            string source,
+            string reason)
         {
-            string resolvedSource = NormalizeSource(source);
-            string resolvedReason = NormalizeReason(reason);
-
-            IReadOnlyList<ActivityLocalVisibilityAdapter> bindings = CollectActivityLocalVisibilityAdapters();
-            if (bindings == null || bindings.Count == 0)
-            {
-                return ActivityContentApplyResult.Empty(activeActivity);
-            }
-
-            int bindingCount = 0;
-            int activatedCount = 0;
-            int deactivatedCount = 0;
-            int unchangedCount = 0;
-            int missingActivityCount = 0;
-            int lifecycleEnterBindingCount = 0;
-            int lifecycleEnterReceiverCount = 0;
-            int lifecycleEnterFailedReceiverCount = 0;
-            int lifecycleExitBindingCount = 0;
-            int lifecycleExitReceiverCount = 0;
-            int lifecycleExitFailedReceiverCount = 0;
-            var observedBindings = new List<string>(MaxObservedBindingsInMessage);
-            var warningBindings = new List<string>();
-            var activeContentEntries = new List<ActivityContentEntry>();
-            int omittedObservationCount = 0;
-
-            for (int i = 0; i < bindings.Count; i++)
-            {
-                var binding = bindings[i];
-                if (binding == null || !binding.IsSceneBinding)
-                {
-                    continue;
-                }
-
-                bindingCount++;
-
-                if (binding.Activity == null)
-                {
-                    missingActivityCount++;
-                    AddWarning(warningBindings, binding, "MissingActivityReference");
-                    AddObservation(
-                        observedBindings,
-                        ref omittedObservationCount,
-                        binding,
-                        "<missing>",
-                        "Ignore",
-                        "MissingActivityReference");
-                    continue;
-                }
-
-                bool shouldBeActive = activeActivity != null && binding.Activity != null && binding.Activity.HasSameIdentity(activeActivity);
-                bool exitsPreviousActivity = previousActivity != null
-                    && (activeActivity == null || !previousActivity.HasSameIdentity(activeActivity))
-                    && binding.Activity != null && binding.Activity.HasSameIdentity(previousActivity);
-                bool entersActiveActivity = shouldBeActive && (previousActivity == null || !previousActivity.HasSameIdentity(activeActivity));
-
-                if (exitsPreviousActivity)
-                {
-                    lifecycleExitBindingCount++;
-                    DispatchActivityContentExited(
-                        binding,
-                        previousActivity,
-                        activeActivity,
-                        resolvedSource,
-                        resolvedReason,
-                        out int exitReceiverCount,
-                        out int exitFailedReceiverCount);
-                    lifecycleExitReceiverCount += exitReceiverCount;
-                    lifecycleExitFailedReceiverCount += exitFailedReceiverCount;
-                }
-
-                bool wasActive = binding.gameObject.activeSelf;
-                bool changed = binding.SetContentActive(shouldBeActive);
-                string action = ResolveAction(shouldBeActive, wasActive, changed);
-                string observationReason = shouldBeActive ? "MatchedActiveActivity" : "DifferentActivity";
-
-                if (shouldBeActive)
-                {
-                    activeContentEntries.Add(CreateActivityContentEntry(binding, activeActivity, resolvedSource, resolvedReason, action));
-                }
-
-                if (entersActiveActivity)
-                {
-                    lifecycleEnterBindingCount++;
-                    DispatchActivityContentEntered(
-                        binding,
-                        activeActivity,
-                        previousActivity,
-                        resolvedSource,
-                        resolvedReason,
-                        out int enterReceiverCount,
-                        out int enterFailedReceiverCount);
-                    lifecycleEnterReceiverCount += enterReceiverCount;
-                    lifecycleEnterFailedReceiverCount += enterFailedReceiverCount;
-                }
-
-                if (changed)
-                {
-                    if (shouldBeActive)
-                    {
-                        activatedCount++;
-                    }
-                    else
-                    {
-                        deactivatedCount++;
-                    }
-                }
-                else
-                {
-                    unchangedCount++;
-                }
-
-                AddObservation(
-                    observedBindings,
-                    ref omittedObservationCount,
-                    binding,
-                    binding.Activity.ActivityName,
-                    action,
-                    observationReason);
-            }
-
-            var activityContentSet = ActivityContentSet.FromEntries(activeActivity, activeContentEntries);
-            var lifecycleResult = ActivityContentLifecycleResult.ExecutedWith(
-                previousActivity,
-                activeActivity,
-                lifecycleEnterBindingCount,
-                lifecycleEnterReceiverCount,
-                lifecycleEnterFailedReceiverCount,
-                lifecycleExitBindingCount,
-                lifecycleExitReceiverCount,
-                lifecycleExitFailedReceiverCount,
-                resolvedSource,
-                resolvedReason);
-
-            return ActivityContentApplyResult.Applied(
-                activeActivity,
-                bindingCount,
-                activatedCount,
-                deactivatedCount,
-                unchangedCount,
-                missingActivityCount,
-                activityContentSet,
-                lifecycleResult,
-                BuildDetailMessage(activeActivity, observedBindings, omittedObservationCount),
-                BuildWarningMessage(warningBindings));
+            ActivityContentTransitionContext context =
+                PrepareActivityContentTransition(
+                    previousActivity,
+                    activeActivity,
+                    source,
+                    reason);
+            ExitPreviousActivityContent(context);
+            EnterTargetActivityContent(context);
+            return CompleteActivityContentTransition(context);
         }
 
         private IReadOnlyList<ActivityLocalVisibilityAdapter> CollectActivityLocalVisibilityAdapters()
@@ -457,6 +334,23 @@ namespace Immersive.Framework.ActivityFlow
         {
             warningBindings.Add(
                 $"object='{FormatValue(binding.ObjectName)}' scene='{FormatValue(binding.SceneName)}' reason='{FormatValue(reason)}'");
+        }
+
+        private static string FormatListedActivities(ActivityLocalVisibilityAdapter binding)
+        {
+            if (binding == null || binding.Activities == null || binding.Activities.Count == 0)
+            {
+                return "<none>";
+            }
+
+            var names = new List<string>(binding.Activities.Count);
+            for (int index = 0; index < binding.Activities.Count; index++)
+            {
+                ActivityAsset activity = binding.Activities[index];
+                names.Add(activity != null ? activity.ActivityName : "<null>");
+            }
+
+            return string.Join(",", names);
         }
 
         private static string BuildDetailMessage(ActivityAsset activeActivity, IReadOnlyList<string> observedBindings, int omittedObservationCount)

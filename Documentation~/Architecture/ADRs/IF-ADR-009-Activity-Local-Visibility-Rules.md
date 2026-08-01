@@ -1,55 +1,18 @@
 # IF-ADR-009 — Activity Local Visibility Rules
 
-Status: Proposed
-Last updated: 2026-07-31
+Status: Accepted
+Last updated: 2026-08-01
 Supersedes: none
 Superseded by: none
 
 ## Context
 
-`ActivityLocalVisibilityAdapter` is a scene-authored adapter that toggles one
-local `GameObject` according to the current Activity.
+`ActivityLocalVisibilityAdapter` is a scene-authored reaction surface. It
+evaluates one local `GameObject` against the canonical current Activity; it is
+not Activity authority, scene ownership, or Activity materialization.
 
-The current authoring contract is intentionally narrow:
-
-```text
-one assigned Activity
-positive visibility rule
-visible only while that Activity is active
-```
-
-This works for content that belongs to exactly one Activity, including:
-
-```text
-local environment objects
-Activity-specific UI
-one Activity-specific menu button
-local presentation roots
-```
-
-FIRSTGAME exposed two recurring cases that the current single positive rule does
-not express clearly:
-
-```text
-one local object should be visible for several Activities
-one local object should be hidden for one or several Activities
-```
-
-The menu example makes the limitation visible:
-
-```text
-Button Cows
-  hidden while Cows is active
-  visible while another supported Activity is active
-
-Button Chickens
-  hidden while Chickens is active
-  visible while another supported Activity is active
-```
-
-With only a positive single-Activity binding, two Activities can be handled by
-cross-binding each button to the other Activity. That workaround does not scale
-and obscures the authored intent.
+Shared local UI and scene content need to express positive and negative
+visibility for one or more Activities.
 
 Route-scoped visibility is a separate concern.
 
@@ -63,25 +26,18 @@ Route exits
   -> owned scenes release
 ```
 
-Therefore, a `RouteLocalVisibilityAdapter` is not currently required for normal
-Route-owned content. `RouteContentBinding` identifies and notifies Route-local
-content; it does not own visibility.
-
-Shared UI that survives or is reused across Routes may need a separate product
-policy, but the current FIRSTGAME evidence is not sufficient to introduce a
-Route visibility adapter into the official package.
+`RouteContentBinding` identifies and notifies Route-local content; it does not
+own visibility. Route-scoped visibility is not part of this decision.
 
 ## Decision
 
-The current `ActivityLocalVisibilityAdapter` remains the implemented baseline.
-
-A future explicit product cut may evolve its authoring intent from one positive
-Activity reference into one visibility rule:
+`activities` is the only Activity visibility contract. It contains one or more
+explicit, valid `ActivityAsset` references and preserves authored order:
 
 ```text
 Activity Local Visibility Adapter
   Activities
-    one or more explicit ActivityAsset references
+    one or more valid ActivityAsset references
 
   Match Mode
     Visible When Any Listed Activity Is Active
@@ -92,7 +48,16 @@ Activity Local Visibility Adapter
     Visible
 ```
 
-The future rule evaluates only the current Activity authority.
+The rule evaluates only the canonical current Activity. Its result is
+deterministic:
+
+```text
+current Activity
++ explicit Activities
++ Match Mode
++ No Active Activity policy
+= desired local visibility
+```
 
 ### Positive mode
 
@@ -137,19 +102,18 @@ Result
 ```
 
 `No Active Activity` remains explicit because negative matching alone does not
-define whether local content should be visible before an Activity is active or
-after Activity clear.
+define visibility before an Activity is active or after Activity clear.
 
 ## Authoring rules
 
-The future authoring surface must remain explicit and designer-readable.
+The authoring surface remains explicit and designer-readable.
 
 ```text
 Activities list must contain at least one entry
-null Activity references are invalid
-duplicate Activity references are invalid
-Match Mode must be explicit
-No Active Activity behavior must be explicit
+every entry must be non-null and have a valid Activity identity
+duplicate Activity identities are invalid
+Match Mode must be supported
+No Active Activity behavior must be supported
 Local Content Id remains explicit
 Requiredness remains explicit
 ```
@@ -177,8 +141,10 @@ Advanced / Debug
   last diagnostic
 ```
 
-Normal mode must not expose runtime implementation details or permanent
-instructional HelpBoxes.
+Normal mode does not expose runtime implementation details or permanent
+instructional HelpBoxes. Invalid configuration receives neither fallback nor
+mutation: evaluation and validation report the reason, do not repair data or
+infer identity, and do not change `GameObject.activeSelf`.
 
 ## Runtime rules
 
@@ -216,89 +182,29 @@ current Activity
 
 No project search, scene-wide fallback discovery or reflection is required.
 
-## Compatibility and migration
+## Singular owner contract
 
-The existing serialized single-Activity contract maps conceptually to:
+`TryGetSingleActivityOwner` returns an owner only when the rule is valid, Match
+Mode is `Visible When Any Listed Activity Is Active`, Activities contains exactly
+one Activity, and No Active Activity is `Hidden`.
 
-```text
-Activities
-  existing Activity
+Rules with multiple Activities, negative matching, or No Active Activity set to
+`Visible` do not have a singular owner. Consumers that require one use this
+method explicitly; existing consumers have been adapted accordingly.
 
-Match Mode
-  Visible When Any Listed Activity Is Active
+## Serialized instances
 
-No Active Activity
-  Hidden
-```
-
-Any serialized migration must occur in a dedicated implementation cut with:
-
-```text
-explicit migration plan
-prefab and scene compatibility proof
-Undo-safe Editor handling where applicable
-QA coverage for existing serialized assets
-FIRSTGAME verification
-```
-
-This ADR does not authorize silent field replacement or automatic mutation of
-consumer assets.
-
-## Validation
-
-The future validator must report:
-
-```text
-empty Activities list
-null Activity entry
-duplicate Activity entry
-unsupported Match Mode
-unsupported No Active Activity policy
-missing Local Content Id
-nested visibility adapter ownership conflicts
-```
-
-Validation remains explicit and non-mutating.
-
-## QA expectations
-
-QAFramework should prove at least:
-
-```text
-single positive Activity preserves current behavior
-multiple positive Activities use any-match semantics
-single negative Activity hides on match
-multiple negative Activities hide on any match
-No Active Activity Hidden
-No Active Activity Visible
-duplicate entries fail validation
-null entries fail validation
-Activity changes update visibility idempotently
-Activity clear follows explicit policy
-invalid configuration has no silent fallback
-```
-
-## FIRSTGAME expectations
-
-FIRSTGAME should prove the feature with real shared local UI:
-
-```text
-one button visible in multiple Activities
-one button hidden while its target Activity is current
-Activity changes update the menu without reloading the Route
-Advanced / Debug explains the selected rule and current result
-```
-
-The sample must not use the adapter to replace Route scene ownership.
+Serialized instances created under the previous contract must be reauthored as
+an explicit Activities rule. There is no automatic conversion, compatibility
+window, or mutation of consumer assets.
 
 ## Rejected scope
 
-- `RouteLocalVisibilityAdapter` in the current decision.
+- `RouteLocalVisibilityAdapter`.
 - Generic boolean-expression graphs over Activities.
 - Tags, names or hierarchy paths as Activity selectors.
 - Wildcard Activity discovery.
-- Automatic Activity list population.
-- Silent migration of existing serialized assets.
+- Automatic Activity-list population or serialized-data conversion.
 - Adapter-owned Activity requests.
 - Adapter-owned scene loading or unloading.
 - Hidden fallback when the authored rule is invalid.
@@ -320,34 +226,31 @@ ownership and lifetime before introducing a Route-specific visibility adapter.
 
 ## Current implementation coverage
 
-Implemented today:
+Implemented:
 
 ```text
-one Activity reference
-positive visibility rule
-explicit Local Content Id
-explicit Requiredness
-runtime GameObject activation
-authoring validation
-```
-
-Not implemented by this ADR:
-
-```text
-Activity list
-negative match mode
+Activities-only rule evaluation
+positive and negative Match Mode
 explicit No Active Activity policy
-serialized migration
-new QA cases
-updated FIRSTGAME sample
+explicit Local Content Id and Requiredness
+non-mutating invalid evaluation and validation
+singular-owner query with explicit constraints
+Inspector and adapted consumers
 ```
 
-## Pending decisions
+## Verification evidence
 
-- Final enum and field names.
-- Whether the current component evolves in place or a new versioned component is
-  introduced.
-- Serialized migration mechanism and compatibility window.
-- Whether `No Active Activity` defaults are allowed or always require explicit
-  authored selection.
-- Exact debug evidence exposed by the Inspector.
+The current-only rule contract is technically verified by the following QA
+regressions:
+
+```text
+Rule regression: 28 cases
+Lifecycle regression: 17 cases, executed twice
+Boot/Game Flow baseline: 7 cases, executed twice
+```
+
+`CurrentActivitiesEmpty` is the only expected Activity Local Visibility Adapter
+warning. It is emitted by the intentional `activities=[]` invalid-rule fixture;
+the request result verifies that the rule remains non-mutating and does not
+produce lifecycle failures. Any other Activity Local Visibility Adapter warning
+is a regression.

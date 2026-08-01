@@ -136,7 +136,9 @@ namespace Immersive.Framework.Audio
                 adapter = GetComponentInParent<ActivityLocalVisibilityAdapter>();
             }
 
-            return adapter != null ? adapter.Activity : null;
+            return adapter != null && adapter.TryGetSingleActivityOwner(out ActivityAsset activity)
+                ? activity
+                : null;
         }
 
         private static string FormatCue(AudioBgmCueAsset cue)

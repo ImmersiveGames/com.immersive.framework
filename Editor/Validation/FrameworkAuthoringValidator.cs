@@ -1446,10 +1446,12 @@ namespace Immersive.Framework.Editor.Editor.Validation
 
             string objectName = binding.gameObject != null ? binding.gameObject.name : "<missing>";
 
-            if (binding.Activity == null)
+            ActivityVisibilityEvaluation visibilityEvaluation =
+                binding.EvaluateVisibility(null);
+            if (!visibilityEvaluation.IsValid)
             {
                 report.AddError(
-                    $"Activity Local Visibility Adapter on GameObject '{objectName}' has no Activity assigned.",
+                    $"Activity Local Visibility Adapter on GameObject '{objectName}' has an invalid Activity Rule: {visibilityEvaluation.DiagnosticReason}. Correct the indicated schema, list entry, enum or Activity identity without relying on automatic repair.",
                     binding);
             }
 

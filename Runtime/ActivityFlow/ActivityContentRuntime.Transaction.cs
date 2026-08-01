@@ -55,6 +55,8 @@ namespace Immersive.Framework.ActivityFlow
 
             internal int MissingActivityCount { get; set; }
 
+            internal int InvalidBindingCount { get; set; }
+
             internal int EnterBindingCount { get; set; }
 
             internal int EnterReceiverCount { get; set; }
@@ -100,23 +102,25 @@ namespace Immersive.Framework.ActivityFlow
                 }
 
                 context.BindingCount++;
-                if (binding.Activity != null)
+                ActivityVisibilityEvaluation evaluation =
+                    binding.EvaluateVisibility(context.ActiveActivity);
+                if (evaluation.IsValid)
                 {
                     continue;
                 }
 
-                context.MissingActivityCount++;
+                context.InvalidBindingCount++;
                 AddWarning(
                     context.WarningBindings,
                     binding,
-                    "MissingActivityReference");
+                    evaluation.DiagnosticReason);
                 AddObservation(
                     context.ObservedBindings,
                     ref context.OmittedObservationCount,
                     binding,
-                    "<missing>",
+                    FormatListedActivities(binding),
                     "Ignore",
-                    "MissingActivityReference");
+                    evaluation.DiagnosticReason);
             }
 
             return context;
@@ -139,19 +143,21 @@ namespace Immersive.Framework.ActivityFlow
             for (int index = 0; index < context.Bindings.Count; index++)
             {
                 ActivityLocalVisibilityAdapter binding = context.Bindings[index];
-                if (binding == null || !binding.IsSceneBinding ||
-                    binding.Activity == null)
+                if (binding == null || !binding.IsSceneBinding)
+                {
+                    continue;
+                }
+
+                ActivityVisibilityEvaluation previousEvaluation =
+                    binding.EvaluateVisibility(context.PreviousActivity);
+                if (!previousEvaluation.IsValid)
                 {
                     continue;
                 }
 
                 bool exitsPrevious = context.PreviousActivity != null &&
-                    !ReferenceEquals(
-                        context.PreviousActivity,
-                        context.ActiveActivity) &&
-                    ReferenceEquals(
-                        binding.Activity,
-                        context.PreviousActivity);
+                    !context.PreviousActivity.HasSameIdentity(context.ActiveActivity) &&
+                    previousEvaluation.DesiredVisibility;
 
                 if (!exitsPrevious)
                 {
@@ -170,20 +176,13 @@ namespace Immersive.Framework.ActivityFlow
                 context.ExitReceiverCount += receiverCount;
                 context.ExitFailedReceiverCount += failedReceiverCount;
 
-                bool wasActive = binding.gameObject.activeSelf;
-                bool changed = binding.SetContentActive(false);
-                RecordVisibilityChange(
-                    context,
-                    shouldBeActive: false,
-                    wasActive,
-                    changed);
                 AddObservation(
                     context.ObservedBindings,
                     ref context.OmittedObservationCount,
                     binding,
-                    binding.Activity.ActivityName,
-                    ResolveAction(false, wasActive, changed),
-                    "PreviousActivityExit");
+                    FormatListedActivities(binding),
+                    "Exit",
+                    previousEvaluation.DiagnosticReason);
             }
 
             context.ExitExecuted = true;
@@ -212,28 +211,19 @@ namespace Immersive.Framework.ActivityFlow
             for (int index = 0; index < context.Bindings.Count; index++)
             {
                 ActivityLocalVisibilityAdapter binding = context.Bindings[index];
-                if (binding == null || !binding.IsSceneBinding ||
-                    binding.Activity == null)
+                if (binding == null || !binding.IsSceneBinding)
                 {
                     continue;
                 }
 
-                bool wasPreviousActivity = context.PreviousActivity != null &&
-                    !ReferenceEquals(
-                        context.PreviousActivity,
-                        context.ActiveActivity) &&
-                    ReferenceEquals(
-                        binding.Activity,
-                        context.PreviousActivity);
-                if (wasPreviousActivity)
+                ActivityVisibilityEvaluation evaluation =
+                    binding.EvaluateVisibility(context.ActiveActivity);
+                if (!evaluation.IsValid)
                 {
                     continue;
                 }
 
-                bool shouldBeActive = context.ActiveActivity != null &&
-                    ReferenceEquals(
-                        binding.Activity,
-                        context.ActiveActivity);
+                bool shouldBeActive = evaluation.DesiredVisibility;
                 bool wasActive = binding.gameObject.activeSelf;
                 bool changed = binding.SetContentActive(shouldBeActive);
                 RecordVisibilityChange(
@@ -246,7 +236,7 @@ namespace Immersive.Framework.ActivityFlow
                     wasActive,
                     changed);
 
-                if (shouldBeActive)
+                if (evaluation.IsActivityVisible)
                 {
                     context.ActiveContentEntries.Add(
                         CreateActivityContentEntry(
@@ -255,28 +245,30 @@ namespace Immersive.Framework.ActivityFlow
                             context.Source,
                             context.Reason,
                             action));
-                    context.EnterBindingCount++;
-                    DispatchActivityContentEntered(
-                        binding,
-                        context.ActiveActivity,
-                        context.PreviousActivity,
-                        context.Source,
-                        context.Reason,
-                        out int receiverCount,
-                        out int failedReceiverCount);
-                    context.EnterReceiverCount += receiverCount;
-                    context.EnterFailedReceiverCount += failedReceiverCount;
+                    if (context.PreviousActivity == null ||
+                        !context.PreviousActivity.HasSameIdentity(context.ActiveActivity))
+                    {
+                        context.EnterBindingCount++;
+                        DispatchActivityContentEntered(
+                            binding,
+                            context.ActiveActivity,
+                            context.PreviousActivity,
+                            context.Source,
+                            context.Reason,
+                            out int receiverCount,
+                            out int failedReceiverCount);
+                        context.EnterReceiverCount += receiverCount;
+                        context.EnterFailedReceiverCount += failedReceiverCount;
+                    }
                 }
 
                 AddObservation(
                     context.ObservedBindings,
                     ref context.OmittedObservationCount,
                     binding,
-                    binding.Activity.ActivityName,
+                    FormatListedActivities(binding),
                     action,
-                    shouldBeActive
-                        ? "TargetActivityEnter"
-                        : "DifferentActivity");
+                    evaluation.DiagnosticReason);
             }
 
             context.EnterExecuted = true;
@@ -326,6 +318,7 @@ namespace Immersive.Framework.ActivityFlow
                 context.DeactivatedCount,
                 context.UnchangedCount,
                 context.MissingActivityCount,
+                context.InvalidBindingCount,
                 contentSet,
                 lifecycleResult,
                 BuildDetailMessage(

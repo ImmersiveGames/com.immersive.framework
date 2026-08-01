@@ -160,12 +160,22 @@ namespace Immersive.Framework.LocalContribution
                     continue;
                 }
 
-                if (activityFilter != null && (adapter.Activity == null || !adapter.Activity.HasSameIdentity(activityFilter)))
+                if (!adapter.TryGetSingleActivityOwner(out ActivityAsset adapterActivity))
+                {
+                    issues.Add(new LocalContributionDiscoveryIssue(
+                        LocalContributionDiscoveryIssueKind.MissingOwner,
+                        "ActivityLocalVisibilityAdapter has no singular Activity owner. Local contribution discovery requires one positive Activity with no-active hidden.",
+                        sceneName: adapter.SceneName,
+                        objectName: adapter.ObjectName));
+                    continue;
+                }
+
+                if (activityFilter != null && !adapterActivity.HasSameIdentity(activityFilter))
                 {
                     continue;
                 }
 
-                var activity = activityFilter != null ? activityFilter : adapter.Activity;
+                var activity = activityFilter != null ? activityFilter : adapterActivity;
                 if (activity == null)
                 {
                     issues.Add(new LocalContributionDiscoveryIssue(
