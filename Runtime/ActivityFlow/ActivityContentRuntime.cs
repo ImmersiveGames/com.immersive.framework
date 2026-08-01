@@ -7,6 +7,7 @@ using Immersive.Framework.SceneLifecycle;
 using UnityEngine;
 using Immersive.Framework.ApiStatus;
 using Immersive.Framework.Common;
+using Immersive.Framework.RouteLifecycle;
 
 namespace Immersive.Framework.ActivityFlow
 {
@@ -23,23 +24,13 @@ namespace Immersive.Framework.ActivityFlow
 
         private ActivityContentApplyResult _lastApplyResult;
         private bool _hasLastApplyResult;
-        private RouteAsset _routeScope;
         private ActivityContentDiscoveryScope _discoveryScope;
 
         internal bool HasLastApplyResult => _hasLastApplyResult;
 
-        internal void SetRouteScope(RouteAsset route)
-        {
-            _routeScope = route;
-        }
-
         internal void SetDiscoveryScope(ActivityContentDiscoveryScope scope)
         {
             _discoveryScope = scope;
-            if (scope.Route != null)
-            {
-                _routeScope = scope.Route;
-            }
         }
 
         internal ActivityContentApplyResult LastApplyResult => _lastApplyResult;
@@ -227,12 +218,21 @@ namespace Immersive.Framework.ActivityFlow
         {
             var bindings = new List<ActivityLocalVisibilityAdapter>();
             var scannedSceneKeys = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-            var route = _discoveryScope.Route != null ? _discoveryScope.Route : _routeScope;
-
-            if (route != null)
+            RouteContentDiscoveryScope routeScope = _discoveryScope.RouteScope;
+            IReadOnlyList<RouteContentDiscoveryScene> routeOwnedScenes = routeScope.RouteOwnedScenes;
+            for (int i = 0; i < routeOwnedScenes.Count; i++)
             {
-                AddSceneKey(scannedSceneKeys, route.PrimaryScenePath, route.PrimarySceneName);
-                AddBindings(bindings, SceneScopedComponentQuery.GetComponentsInRoutePrimaryScene<ActivityLocalVisibilityAdapter>(route));
+                var scene = routeOwnedScenes[i];
+                if (!AddSceneKey(scannedSceneKeys, scene.ScenePath, scene.SceneName))
+                {
+                    continue;
+                }
+
+                AddBindings(
+                    bindings,
+                    SceneScopedComponentQuery.GetComponentsInLoadedScene<ActivityLocalVisibilityAdapter>(
+                        scene.ScenePath,
+                        scene.SceneName));
             }
 
             IReadOnlyList<ActivityContentDiscoveryScene> activityOwnedScenes = _discoveryScope.ActivityOwnedScenes;
@@ -280,8 +280,8 @@ namespace Immersive.Framework.ActivityFlow
             }
 
             string sceneKey = !string.IsNullOrWhiteSpace(scenePath)
-                ? scenePath.Trim()
-                : !string.IsNullOrWhiteSpace(sceneName) ? sceneName.Trim() : string.Empty;
+                ? $"path:{scenePath.Trim()}"
+                : !string.IsNullOrWhiteSpace(sceneName) ? $"name:{sceneName.Trim()}" : string.Empty;
             return !string.IsNullOrWhiteSpace(sceneKey) && sceneKeys.Add(sceneKey);
         }
 

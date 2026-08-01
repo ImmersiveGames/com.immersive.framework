@@ -12,6 +12,7 @@ using Immersive.Framework.Loading;
 using Immersive.Framework.Common;
 using Immersive.Framework.GameFlow;
 using Immersive.Framework.CycleReset;
+using Immersive.Framework.RouteLifecycle;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
@@ -25,6 +26,7 @@ namespace Immersive.Framework.ActivityFlow
     internal sealed partial class ActivityFlowRuntime
     {
         private readonly ActivityContentRuntime _activityContentRuntime = new ActivityContentRuntime();
+        private RouteContentDiscoveryScope _routeContentDiscoveryScope;
         private readonly ActivityContentExecutionRuntime _activityContentExecutionRuntime = new ActivityContentExecutionRuntime();
         private readonly ActivityReadinessParticipantSource _activityReadinessParticipantSource = new ActivityReadinessParticipantSource();
         private readonly ActivitySceneCompositionRuntime _activitySceneCompositionRuntime;
@@ -358,6 +360,11 @@ namespace Immersive.Framework.ActivityFlow
         internal void SetActivityContentExecutionParticipantSource(IActivityContentExecutionParticipantSource participantSource)
         {
             _activityContentExecutionParticipantSource = participantSource ?? EmptyActivityContentExecutionParticipantSource.Instance;
+        }
+
+        internal void SetRouteContentDiscoveryScope(RouteContentDiscoveryScope scope)
+        {
+            _routeContentDiscoveryScope = scope;
         }
 
         internal void SetPauseActivityBindingLifecycle(
@@ -876,9 +883,14 @@ namespace Immersive.Framework.ActivityFlow
                 _routeInstanceSequence++;
                 _currentRoute = route;
                 _currentRouteInstanceId = CreateRouteInstanceId(route, _routeInstanceSequence);
+                if (_routeContentDiscoveryScope.Route == null ||
+                    !_routeContentDiscoveryScope.Route.HasSameIdentity(route))
+                {
+                    _routeContentDiscoveryScope = default;
+                }
             }
 
-            _activitySceneCompositionRuntime.SetRouteContext(_currentRoute, _currentRouteInstanceId);
+            _activitySceneCompositionRuntime.SetRouteContext(_currentRoute, _currentRouteInstanceId, _routeContentDiscoveryScope);
         }
 
         private static string CreateRouteInstanceId(RouteAsset route, int sequence)
@@ -918,7 +930,6 @@ namespace Immersive.Framework.ActivityFlow
                 _activitySceneCompositionRuntime.CreateActivityContentDiscoveryScope(
                     previousActivity,
                     nextActivity);
-            _activityContentRuntime.SetRouteScope(_currentRoute);
             _activityContentRuntime.SetDiscoveryScope(discoveryScope);
             _activityContentRuntime.ClearLastApplyResult();
 

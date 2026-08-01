@@ -2,23 +2,26 @@ using System;
 using System.Collections.Generic;
 using Immersive.Framework.ApiStatus;
 using Immersive.Framework.Authoring;
+using Immersive.Framework.RouteLifecycle;
 
 namespace Immersive.Framework.ActivityFlow
 {
-    [FrameworkApiStatus(FrameworkApiStatus.Internal, "F26A Activity content discovery scope for Route primary and Activity-owned loaded scenes.")]
+    [FrameworkApiStatus(FrameworkApiStatus.Internal, "Activity content discovery scope for Route-owned and Activity-owned loaded scenes.")]
     internal readonly struct ActivityContentDiscoveryScope
     {
         private readonly ActivityContentDiscoveryScene[] _activityOwnedScenes;
 
         internal ActivityContentDiscoveryScope(
-            RouteAsset route,
+            RouteContentDiscoveryScope routeScope,
             IReadOnlyList<ActivityContentDiscoveryScene> activityOwnedScenes)
         {
-            Route = route;
+            RouteScope = routeScope;
             _activityOwnedScenes = CopyScenes(activityOwnedScenes);
         }
 
-        internal RouteAsset Route { get; }
+        internal RouteContentDiscoveryScope RouteScope { get; }
+
+        internal RouteAsset Route => RouteScope.Route;
 
         internal IReadOnlyList<ActivityContentDiscoveryScene> ActivityOwnedScenes => _activityOwnedScenes ?? Array.Empty<ActivityContentDiscoveryScene>();
 

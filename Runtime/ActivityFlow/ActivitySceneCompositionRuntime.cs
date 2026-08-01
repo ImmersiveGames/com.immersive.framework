@@ -6,6 +6,7 @@ using Immersive.Framework.Authoring;
 using Immersive.Framework.SceneLifecycle;
 using Immersive.Framework.Loading;
 using Immersive.Framework.Common;
+using Immersive.Framework.RouteLifecycle;
 
 namespace Immersive.Framework.ActivityFlow
 {
@@ -20,16 +21,18 @@ namespace Immersive.Framework.ActivityFlow
         private readonly ActivitySceneLedger _ledger = new ActivitySceneLedger();
         private RouteAsset _currentRoute;
         private string _currentRouteInstanceId = string.Empty;
+        private RouteContentDiscoveryScope _routeDiscoveryScope;
 
         internal ActivitySceneCompositionRuntime(SceneLifecycleRuntime sceneLifecycleRuntime)
         {
             _sceneLifecycleRuntime = sceneLifecycleRuntime ?? throw new ArgumentNullException(nameof(sceneLifecycleRuntime));
         }
 
-        internal void SetRouteContext(RouteAsset route, string routeInstanceId)
+        internal void SetRouteContext(RouteAsset route, string routeInstanceId, RouteContentDiscoveryScope routeDiscoveryScope)
         {
             _currentRoute = route;
             _currentRouteInstanceId = Normalize(routeInstanceId);
+            _routeDiscoveryScope = routeDiscoveryScope;
         }
 
         internal int LedgerEntryCount => _ledger.EntryCount;
@@ -80,7 +83,7 @@ namespace Immersive.Framework.ActivityFlow
                 AddActivityOwnedDiscoveryScenes(secondActivity, scenes, sceneKeys);
             }
 
-            return new ActivityContentDiscoveryScope(_currentRoute, scenes);
+            return new ActivityContentDiscoveryScope(_routeDiscoveryScope, scenes);
         }
 
         internal ActivityOperationPlan CreateActivityOperationPlan(
@@ -492,10 +495,13 @@ namespace Immersive.Framework.ActivityFlow
         {
             if (!string.IsNullOrWhiteSpace(scenePath))
             {
-                return scenePath.Trim();
+                return $"path:{scenePath.Trim()}";
             }
 
-            return sceneName.NormalizeText();
+            string normalizedName = sceneName.NormalizeText();
+            return string.IsNullOrWhiteSpace(normalizedName)
+                ? string.Empty
+                : $"name:{normalizedName}";
         }
 
         private static string Normalize(string value)

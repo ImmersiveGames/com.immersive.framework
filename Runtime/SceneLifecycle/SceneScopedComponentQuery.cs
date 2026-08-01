@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using Immersive.Framework.ApiStatus;
 using Immersive.Framework.Authoring;
 using Immersive.Framework.ActivityFlow;
+using Immersive.Framework.RouteLifecycle;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
@@ -13,7 +14,7 @@ namespace Immersive.Framework.SceneLifecycle
     /// This is not a registry, service locator, materializer, loader, or lifecycle owner.
     /// It only enumerates roots from already-loaded Unity scenes selected by an explicit Route scene scope.
     /// </summary>
-    [FrameworkApiStatus(FrameworkApiStatus.Internal, "Loaded scene component query used to keep runtime content discovery scoped before F6 scene composition.")]
+    [FrameworkApiStatus(FrameworkApiStatus.Internal, "Loaded scene component query used by explicit Route and Activity content discovery scopes.")]
     internal static class SceneScopedComponentQuery
     {
         public static IReadOnlyList<T> GetComponentsInRoutePrimaryScene<T>(RouteAsset route)
@@ -58,6 +59,22 @@ namespace Immersive.Framework.SceneLifecycle
             return GetComponentsInScene<T>(scene);
         }
 
+        internal static IReadOnlyList<T> GetComponentsInRouteContentScope<T>(
+            RouteContentDiscoveryScope scope)
+            where T : Component
+        {
+            var components = new List<T>();
+            var seen = new HashSet<T>();
+            IReadOnlyList<RouteContentDiscoveryScene> scenes = scope.RouteOwnedScenes;
+            for (int i = 0; i < scenes.Count; i++)
+            {
+                RouteContentDiscoveryScene scene = scenes[i];
+                AddDistinct(GetComponentsInLoadedScene<T>(scene.ScenePath, scene.SceneName), components, seen);
+            }
+
+            return components;
+        }
+
         internal static IReadOnlyList<T> GetComponentsInActivityContentScope<T>(
             ActivityContentDiscoveryScope scope,
             ActivityAsset activity)
@@ -66,10 +83,7 @@ namespace Immersive.Framework.SceneLifecycle
             var components = new List<T>();
             var seen = new HashSet<T>();
 
-            if (scope.Route != null)
-            {
-                AddDistinct(GetComponentsInRoutePrimaryScene<T>(scope.Route), components, seen);
-            }
+            AddDistinct(GetComponentsInRouteContentScope<T>(scope.RouteScope), components, seen);
 
             IReadOnlyList<ActivityContentDiscoveryScene> scenes = scope.ActivityOwnedScenes;
             for (int i = 0; i < scenes.Count; i++)

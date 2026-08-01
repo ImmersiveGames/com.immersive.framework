@@ -1024,7 +1024,6 @@ namespace Immersive.Framework.ActivityFlow
                     .CreateActivityContentDiscoveryScope(
                         previousActivity,
                         nextActivity);
-            _activityContentRuntime.SetRouteScope(_currentRoute);
             _activityContentRuntime.SetDiscoveryScope(discoveryScope);
             _activityContentRuntime.ClearLastApplyResult();
         }

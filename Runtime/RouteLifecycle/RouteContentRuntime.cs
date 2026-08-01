@@ -18,10 +18,11 @@ namespace Immersive.Framework.RouteLifecycle
     {
         private readonly FrameworkLogger _logger = FrameworkLogger.Create<RouteContentRuntime>();
 
-        internal RouteContentLifecycleDispatchResult ExitRouteContent(RouteAsset route, RouteAsset nextRoute, string source, string reason)
+        internal RouteContentLifecycleDispatchResult ExitRouteContent(RouteContentDiscoveryScope scope, RouteAsset nextRoute, string source, string reason)
         {
             string resolvedSource = NormalizeSource(source);
             string resolvedReason = NormalizeReason(reason);
+            RouteAsset route = scope.Route;
 
             if (route == null || route.HasSameIdentity(nextRoute))
             {
@@ -33,7 +34,7 @@ namespace Immersive.Framework.RouteLifecycle
                     resolvedReason);
             }
 
-            IReadOnlyList<RouteContentBinding> bindings = SceneScopedComponentQuery.GetComponentsInRoutePrimaryScene<RouteContentBinding>(route);
+            IReadOnlyList<RouteContentBinding> bindings = SceneScopedComponentQuery.GetComponentsInRouteContentScope<RouteContentBinding>(scope);
             int bindingCount = 0;
             int receiverCount = 0;
             int failedReceiverCount = 0;
@@ -73,10 +74,11 @@ namespace Immersive.Framework.RouteLifecycle
                 resolvedReason);
         }
 
-        internal RouteContentLifecycleDispatchResult EnterRouteContent(RouteAsset route, RouteAsset previousRoute, string source, string reason)
+        internal RouteContentLifecycleDispatchResult EnterRouteContent(RouteContentDiscoveryScope scope, RouteAsset previousRoute, string source, string reason)
         {
             string resolvedSource = NormalizeSource(source);
             string resolvedReason = NormalizeReason(reason);
+            RouteAsset route = scope.Route;
 
             if (route == null || route.HasSameIdentity(previousRoute))
             {
@@ -88,7 +90,7 @@ namespace Immersive.Framework.RouteLifecycle
                     resolvedReason);
             }
 
-            IReadOnlyList<RouteContentBinding> bindings = SceneScopedComponentQuery.GetComponentsInRoutePrimaryScene<RouteContentBinding>(route);
+            IReadOnlyList<RouteContentBinding> bindings = SceneScopedComponentQuery.GetComponentsInRouteContentScope<RouteContentBinding>(scope);
             int bindingCount = 0;
             int receiverCount = 0;
             int failedReceiverCount = 0;

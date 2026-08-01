@@ -4,7 +4,7 @@ using Immersive.Framework.Common;
 
 namespace Immersive.Framework.ActivityFlow
 {
-    [FrameworkApiStatus(FrameworkApiStatus.Internal, "F26A loaded Activity-owned scene reference for Activity content discovery.")]
+    [FrameworkApiStatus(FrameworkApiStatus.Internal, "Loaded Activity-owned scene reference for Activity content discovery.")]
     internal readonly struct ActivityContentDiscoveryScene
     {
         internal ActivityContentDiscoveryScene(

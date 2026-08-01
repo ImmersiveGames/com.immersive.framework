@@ -42,6 +42,7 @@ namespace Immersive.Framework.RouteLifecycle
         private readonly EventBus<RouteExitedEvent> _routeExitedEvents = new EventBus<RouteExitedEvent>();
         private readonly EventBus<ActivityReadinessUpdate> _activityReadinessUpdates = new EventBus<ActivityReadinessUpdate>();
         private RouteRuntimeState _currentRouteState;
+        private RouteContentDiscoveryScope _currentRouteContentDiscoveryScope;
         private RouteLifecycleStartResult _currentRouteResult;
         private bool _hasCurrentRouteContext;
         private ICycleResetParticipantSource _cycleResetParticipantSource = EmptyCycleResetParticipantSource.Instance;
@@ -274,7 +275,9 @@ namespace Immersive.Framework.RouteLifecycle
             // Activity lifecycle must exit while the previous Route scene is still loaded.
             // Scene-authored Activity receivers can then release scoped camera, audio and input
             // state before their targets and rigs are destroyed by Route scene replacement.
-            var routeContentExitResult = _routeContentRuntime.ExitRouteContent(previousRoute, route, source, reason);
+            var routeContentExitResult = _routeContentRuntime.ExitRouteContent(_currentRouteContentDiscoveryScope, route, source, reason);
+            _currentRouteContentDiscoveryScope = default;
+            _activityFlowRuntime.SetRouteContentDiscoveryScope(default);
 
             var routeContentReleaseProgressReporter = FrameworkLoadingProgressReporterUtility.CreateWeightedRangeReporter(
                 progressReporter,
@@ -362,7 +365,9 @@ namespace Immersive.Framework.RouteLifecycle
                 routeSceneCompositionResult,
                 source,
                 reason);
-            var routeContentEnterResult = _routeContentRuntime.EnterRouteContent(route, previousRoute, source, reason);
+            var routeContentDiscoveryScope = RouteContentDiscoveryScope.FromCompositionResult(routeSceneCompositionResult);
+            _activityFlowRuntime.SetRouteContentDiscoveryScope(routeContentDiscoveryScope);
+            var routeContentEnterResult = _routeContentRuntime.EnterRouteContent(routeContentDiscoveryScope, previousRoute, source, reason);
 
             var startupActivityProgressReporter = FrameworkLoadingProgressReporterUtility.CreateWeightedRangeReporter(
                 progressReporter,
@@ -471,6 +476,7 @@ namespace Immersive.Framework.RouteLifecycle
                 routeRuntimeScopeResult,
                 activitySceneRouteReleaseResult);
             _currentRouteState = result.RouteState;
+            _currentRouteContentDiscoveryScope = routeContentDiscoveryScope;
             _currentRouteResult = result;
             _hasCurrentRouteContext = true;
             PublishRouteTransition(previousRoute, route, source, reason);
