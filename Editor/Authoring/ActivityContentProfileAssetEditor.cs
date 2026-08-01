@@ -9,8 +9,6 @@ namespace Immersive.Framework.Editor.Editor.Authoring
     [CustomEditor(typeof(ActivityContentProfileAsset))]
     internal sealed class ActivityContentProfileAssetEditor : UnityEditor.Editor
     {
-        private const int ScenePickerControlId = 1842101;
-
         private static readonly GUIContent DescriptionLabel =
             new GUIContent(
                 "Description",
@@ -20,6 +18,11 @@ namespace Immersive.Framework.Editor.Editor.Authoring
             new GUIContent(
                 "Scene",
                 "Activity-owned Unity scene loaded by Activity scene composition.");
+
+        private static readonly GUIContent SceneToAddLabel =
+            new GUIContent(
+                "Scene to Add",
+                "Select one Scene, then add it explicitly. Duplicate Scene declarations are rejected.");
 
         private static readonly GUIContent ContentIdLabel =
             new GUIContent(
@@ -53,6 +56,8 @@ namespace Immersive.Framework.Editor.Editor.Authoring
         private FrameworkAuthoringValidationReport _lastValidationReport;
         private bool _validationOutdated;
         private bool _showAdvancedDebug;
+        private SceneAsset _sceneToAdd;
+        private string _sceneAddMessage = string.Empty;
 
         private void OnEnable()
         {
@@ -67,8 +72,6 @@ namespace Immersive.Framework.Editor.Editor.Authoring
         public override void OnInspectorGUI()
         {
             serializedObject.UpdateIfRequiredOrScript();
-
-            HandleScenePicker();
 
             EditorGUILayout.LabelField(
                 "Activity Content Profile",
@@ -122,18 +125,27 @@ namespace Immersive.Framework.Editor.Editor.Authoring
                 }
             }
 
+            EditorGUILayout.Space(3f);
+
+            _sceneToAdd =
+                (SceneAsset)EditorGUILayout.ObjectField(
+                    SceneToAddLabel,
+                    _sceneToAdd,
+                    typeof(SceneAsset),
+                    false);
+
             using (new EditorGUILayout.HorizontalScope())
             {
-                if (GUILayout.Button(
-                        new GUIContent(
-                            "Add Scene...",
-                            "Selects a Scene asset and creates a complete entry with a suggested Content Id.")))
+                using (new EditorGUI.DisabledScope(
+                           _sceneToAdd == null))
                 {
-                    EditorGUIUtility.ShowObjectPicker<SceneAsset>(
-                        null,
-                        false,
-                        string.Empty,
-                        ScenePickerControlId);
+                    if (GUILayout.Button(
+                            new GUIContent(
+                                "Add Selected Scene",
+                                "Adds the selected Scene once, with a suggested unique Content Id.")))
+                    {
+                        AddSelectedScene();
+                    }
                 }
 
                 if (GUILayout.Button(
@@ -142,7 +154,16 @@ namespace Immersive.Framework.Editor.Editor.Authoring
                             "Adds an empty entry for manual authoring.")))
                 {
                     AddSceneEntry(null);
+                    GUIUtility.ExitGUI();
                 }
+            }
+
+            if (!string.IsNullOrWhiteSpace(
+                    _sceneAddMessage))
+            {
+                EditorGUILayout.LabelField(
+                    _sceneAddMessage,
+                    EditorStyles.wordWrappedMiniLabel);
             }
         }
 
@@ -446,34 +467,43 @@ namespace Immersive.Framework.Editor.Editor.Authoring
             }
         }
 
-        private void HandleScenePicker()
+        private void AddSelectedScene()
         {
-            Event currentEvent =
-                Event.current;
-
-            if (currentEvent == null ||
-                currentEvent.commandName !=
-                    "ObjectSelectorClosed" ||
-                EditorGUIUtility
-                    .GetObjectPickerControlID() !=
-                    ScenePickerControlId)
+            if (_sceneToAdd == null)
             {
                 return;
             }
 
-            SceneAsset selectedScene =
-                EditorGUIUtility.GetObjectPickerObject()
-                    as SceneAsset;
+            serializedObject.ApplyModifiedProperties();
 
-            if (selectedScene != null)
+            bool added =
+                ContentProfileSceneAuthoringUtility
+                    .TryAddActivityScene(
+                        (ActivityContentProfileAsset)target,
+                        _sceneToAdd,
+                        out _sceneAddMessage);
+
+            if (!added)
             {
-                AddSceneEntry(selectedScene);
+                EditorUtility.DisplayDialog(
+                    "Activity Scene Not Added",
+                    _sceneAddMessage,
+                    "OK");
+
+                return;
             }
 
-            if (currentEvent.type != EventType.Layout)
-            {
-                currentEvent.Use();
-            }
+            _sceneToAdd = null;
+            _lastValidationReport = null;
+            _validationOutdated = false;
+
+            serializedObject.UpdateIfRequiredOrScript();
+            _scenes =
+                serializedObject.FindProperty(
+                    "scenes");
+
+            GUI.FocusControl(null);
+            GUIUtility.ExitGUI();
         }
 
         private void AddSceneEntry(

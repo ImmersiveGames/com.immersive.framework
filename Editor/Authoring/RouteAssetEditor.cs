@@ -368,10 +368,7 @@ namespace Immersive.Framework.Editor.Editor.Authoring
 
             if (currentEvent.type != EventType.Layout)
             {
-                if (currentEvent.type != EventType.Layout)
-            {
                 currentEvent.Use();
-            }
             }
         }
 

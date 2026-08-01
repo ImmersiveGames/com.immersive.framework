@@ -11,7 +11,6 @@ namespace Immersive.Framework.Editor.Editor.Authoring
     [CustomEditor(typeof(ActivityAsset))]
     internal sealed class ActivityAssetEditor : UnityEditor.Editor
     {
-        private const int ActivityScenePickerControlId = 1842201;
         private static readonly GUIContent ActivityNameLabel =
             new GUIContent(
                 "Activity Name",
@@ -77,7 +76,6 @@ namespace Immersive.Framework.Editor.Editor.Authoring
         private bool _serializedBindingsDirty = true;
         private bool _validationOutdated;
         private bool _showAdvancedDebug;
-        private string _sceneActionMessage = string.Empty;
 
         private void OnEnable()
         {
@@ -125,8 +123,6 @@ namespace Immersive.Framework.Editor.Editor.Authoring
             {
                 RefreshSerializedBindings();
             }
-
-            HandleActivityScenePicker();
 
             EditorGUILayout.LabelField(
                 "Activity",
@@ -234,36 +230,13 @@ namespace Immersive.Framework.Editor.Editor.Authoring
 
             DrawActivitySceneSummary(profile);
 
-            using (new EditorGUILayout.HorizontalScope())
+            if (GUILayout.Button(
+                    new GUIContent(
+                        "Open Content Profile",
+                        "Opens the assigned Profile to add Scenes, configure policies and run detailed validation.")))
             {
-                if (GUILayout.Button(
-                        new GUIContent(
-                            "Add Scene...",
-                            "Adds an Activity-owned Scene to the assigned Content Profile and suggests a stable Content Id.")))
-                {
-                    EditorGUIUtility.ShowObjectPicker<SceneAsset>(
-                        null,
-                        false,
-                        string.Empty,
-                        ActivityScenePickerControlId);
-                }
-
-                if (GUILayout.Button(
-                        new GUIContent(
-                            "Open Content Profile",
-                            "Opens the assigned Profile for policies, IDs and detailed validation.")))
-                {
-                    Selection.activeObject = profile;
-                    EditorGUIUtility.PingObject(profile);
-                }
-            }
-
-            if (!string.IsNullOrWhiteSpace(
-                    _sceneActionMessage))
-            {
-                EditorGUILayout.LabelField(
-                    _sceneActionMessage,
-                    EditorStyles.wordWrappedMiniLabel);
+                Selection.activeObject = profile;
+                EditorGUIUtility.PingObject(profile);
             }
         }
 
@@ -291,60 +264,6 @@ namespace Immersive.Framework.Editor.Editor.Authoring
                 EditorGUILayout.LabelField(
                     $"- {sceneName}",
                     EditorStyles.miniLabel);
-            }
-        }
-
-        private void HandleActivityScenePicker()
-        {
-            Event currentEvent =
-                Event.current;
-
-            if (currentEvent == null ||
-                currentEvent.commandName !=
-                    "ObjectSelectorClosed" ||
-                EditorGUIUtility
-                    .GetObjectPickerControlID() !=
-                    ActivityScenePickerControlId)
-            {
-                return;
-            }
-
-            SceneAsset selectedScene =
-                EditorGUIUtility
-                    .GetObjectPickerObject()
-                    as SceneAsset;
-
-            ActivityContentProfileAsset profile =
-                _activityContentProfile != null
-                    ? _activityContentProfile
-                        .objectReferenceValue
-                        as ActivityContentProfileAsset
-                    : null;
-
-            if (selectedScene != null &&
-                profile != null)
-            {
-                if (!ContentProfileSceneAuthoringUtility
-                        .TryAddActivityScene(
-                            profile,
-                            selectedScene,
-                            out _sceneActionMessage))
-                {
-                    EditorUtility.DisplayDialog(
-                        "Activity Scene Not Added",
-                        _sceneActionMessage,
-                        "OK");
-                }
-                else
-                {
-                    _lastValidationReport = null;
-                    Repaint();
-                }
-            }
-
-            if (currentEvent.type != EventType.Layout)
-            {
-                currentEvent.Use();
             }
         }
 
@@ -437,13 +356,48 @@ namespace Immersive.Framework.Editor.Editor.Authoring
                 }
 
                 EditorGUILayout.HelpBox(
-                    issue.Message,
+                    FormatValidationIssueMessage(issue),
                     issue.Severity ==
                         FrameworkAuthoringValidationSeverity.Error
                             ? MessageType.Error
                             : MessageType.Warning);
 
+                DrawOpenRelatedAsset(
+                    issue.Context);
+
                 return;
+            }
+        }
+
+        private static string FormatValidationIssueMessage(
+            FrameworkAuthoringValidationIssue issue)
+        {
+            if (issue.Context is ActivityContentProfileAsset profile)
+            {
+                return
+                    $"Activity Content Profile '{profile.name}': " +
+                    issue.Message;
+            }
+
+            return issue.Message;
+        }
+
+        private void DrawOpenRelatedAsset(
+            Object context)
+        {
+            if (context == null ||
+                context == target)
+            {
+                return;
+            }
+
+            if (GUILayout.Button(
+                    new GUIContent(
+                        "Open Related Asset",
+                        "Selects the asset that produced this validation finding.")))
+            {
+                Selection.activeObject = context;
+                EditorGUIUtility.PingObject(context);
             }
         }
 
