@@ -3,7 +3,6 @@ using Immersive.Framework.Editor.Editor.PlayerParticipation;
 using Immersive.Framework.Editor.Editor.Settings;
 using Immersive.Framework.Editor.Editor.Validation;
 using Immersive.Framework.PlayerParticipation;
-using Immersive.Framework.Transition;
 using UnityEditor;
 using UnityEngine;
 
@@ -12,6 +11,57 @@ namespace Immersive.Framework.Editor.Editor.Authoring
     [CustomEditor(typeof(ActivityAsset))]
     internal sealed class ActivityAssetEditor : UnityEditor.Editor
     {
+        private const int ActivityScenePickerControlId = 1842201;
+        private static readonly GUIContent ActivityNameLabel =
+            new GUIContent(
+                "Activity Name",
+                "Designer-facing name used for presentation and diagnostics.");
+
+        private static readonly GUIContent DescriptionLabel =
+            new GUIContent(
+                "Description",
+                "Optional note describing the purpose of this Activity.");
+
+        private static readonly GUIContent ParticipationLabel =
+            new GUIContent(
+                "Who Participates",
+                "Selects which local Player Slots participate in this Activity.");
+
+        private static readonly GUIContent ExplicitSlotsLabel =
+            new GUIContent(
+                "Specific Player Slots",
+                "Ordered Player Slot Profiles included when participation uses explicit slots.");
+
+        private static readonly GUIContent ZeroParticipantsLabel =
+            new GUIContent(
+                "If No Players Are Available",
+                "Allowed lets this Activity continue with zero admitted participants. Rejected blocks that state.");
+
+        private static readonly GUIContent ReadinessLabel =
+            new GUIContent(
+                "Ready When",
+                "Minimum cumulative readiness required from every participating Player: joined, Actor selected, logical Actor prepared, or fully gameplay ready.");
+
+        private static readonly GUIContent ContentProfileLabel =
+            new GUIContent(
+                "Content Profile",
+                "Optional Activity-owned scenes composed and released with this Activity.");
+
+        private static readonly GUIContent PresentationLabel =
+            new GUIContent(
+                "Presentation",
+                "Controls whether Activity changes are seamless, use a fade, or use fade with loading presentation.");
+
+        private static readonly GUIContent TransitionGateLabel =
+            new GUIContent(
+                "Block During Transition",
+                "Controls which requests and capabilities remain blocked while this Activity transition runs.");
+
+        private static readonly GUIContent ValidateLabel =
+            new GUIContent(
+                "Validate",
+                "Validates this Activity and its configured dependencies without modifying them.");
+
         private SerializedProperty _activityName;
         private SerializedProperty _activityId;
         private SerializedProperty _description;
@@ -26,9 +76,8 @@ namespace Immersive.Framework.Editor.Editor.Authoring
         private FrameworkAuthoringValidationReport _lastValidationReport;
         private bool _serializedBindingsDirty = true;
         private bool _validationOutdated;
-        private bool _showActivityContent;
-        private bool _showAdvancedDiagnostics;
-        private bool _showReadinessLevels;
+        private bool _showAdvancedDebug;
+        private string _sceneActionMessage = string.Empty;
 
         private void OnEnable()
         {
@@ -77,25 +126,18 @@ namespace Immersive.Framework.Editor.Editor.Authoring
                 RefreshSerializedBindings();
             }
 
-            DrawInspectorHeader();
+            HandleActivityScenePicker();
 
-            EditorGUILayout.Space(6f);
+            EditorGUILayout.LabelField(
+                "Activity",
+                EditorStyles.boldLabel);
+
             DrawOverview();
-
-            EditorGUILayout.Space(8f);
             DrawPlayers();
-
-            EditorGUILayout.Space(8f);
             DrawActivityContent();
-
-            EditorGUILayout.Space(8f);
             DrawTransition();
-
-            EditorGUILayout.Space(8f);
             DrawValidation();
-
-            EditorGUILayout.Space(8f);
-            DrawAdvancedDiagnostics();
+            DrawAdvancedDebug();
 
             bool modified =
                 serializedObject.ApplyModifiedProperties();
@@ -107,157 +149,42 @@ namespace Immersive.Framework.Editor.Editor.Authoring
             }
         }
 
-        private void DrawInspectorHeader()
-        {
-            EditorGUILayout.LabelField(
-                "Activity",
-                EditorStyles.boldLabel);
-            EditorGUILayout.HelpBox(
-                "An Activity represents a step or mode inside a Route, such as Title, Character Select, Exploration, Results or Credits.",
-                MessageType.Info);
-        }
-
         private void DrawOverview()
         {
-            EditorGUILayout.LabelField(
-                "Overview",
-                EditorStyles.boldLabel);
+            DrawSection("Overview");
+
             EditorGUILayout.PropertyField(
                 _activityName,
-                new GUIContent(
-                    "Activity Name",
-                    "Designer-facing name used for presentation and diagnostics."));
+                ActivityNameLabel);
+
             EditorGUILayout.PropertyField(
                 _description,
-                new GUIContent(
-                    "Description",
-                    "Optional note explaining the purpose of this Activity."));
-
-            EditorGUILayout.HelpBox(
-                "Stable identity checks run only through Validate Activity. Technical identity remains visible under Advanced / Diagnostics.",
-                MessageType.None);
+                DescriptionLabel);
         }
 
         private void DrawPlayers()
         {
-            EditorGUILayout.LabelField(
-                "Players",
-                EditorStyles.boldLabel);
-            EditorGUILayout.HelpBox(
-                "Choose which local Players belong to this Activity and how ready they must be before it can proceed.",
-                MessageType.None);
+            DrawSection("Players");
 
             EditorGUILayout.PropertyField(
                 _playerParticipationProjectionMode,
-                new GUIContent(
-                    "Who Participates",
-                    "Selects which Session Player Slots are included by this Activity."));
+                ParticipationLabel);
 
             if (UsesExplicitSlots())
             {
                 EditorGUILayout.PropertyField(
                     _playerParticipationExplicitSlotProfiles,
-                    new GUIContent(
-                        "Specific Player Slots",
-                        "Ordered Player Slot Profiles included by this Activity."),
+                    ExplicitSlotsLabel,
                     true);
             }
 
             EditorGUILayout.PropertyField(
                 _playerParticipationZeroParticipantPolicy,
-                new GUIContent(
-                    "If No Players Are Available",
-                    "Allowed lets this Activity continue when its projected Slots currently have no admitted Logical Players. Rejected blocks that state."));
-
-            if (UsesExplicitSlots() && AllowsZeroParticipants())
-            {
-                EditorGUILayout.HelpBox(
-                    "Explicit Player Slots are configured, but this Activity may continue while none of them are admitted. This is valid when the Player source is optional or still being authored.",
-                    MessageType.Info);
-            }
+                ZeroParticipantsLabel);
 
             EditorGUILayout.PropertyField(
                 _playerParticipationRequirementLevel,
-                new GUIContent(
-                    "Ready When",
-                    "Progressive readiness required from every participating Logical Player."));
-
-            DrawReadinessGuidance();
-
-            EditorGUILayout.HelpBox(
-                "Projection, zero-participant and readiness coherence is evaluated only through Validate Activity.",
-                MessageType.None);
-        }
-
-        private void DrawReadinessGuidance()
-        {
-            if (_playerParticipationRequirementLevel == null ||
-                _playerParticipationRequirementLevel.hasMultipleDifferentValues)
-            {
-                return;
-            }
-
-            var level = (PlayerParticipationRequirementLevel)
-                _playerParticipationRequirementLevel.intValue;
-            EditorGUILayout.LabelField("Requires", EditorStyles.miniBoldLabel);
-            EditorGUILayout.LabelField(GetReadinessSummary(level), EditorStyles.wordWrappedMiniLabel);
-            if (level == PlayerParticipationRequirementLevel.GameplayReady)
-            {
-                EditorGUILayout.HelpBox(
-                    "Gameplay Ready is not the same as the Player Actor existing. The Activity also waits for input, Camera and gameplay eligibility.",
-                    MessageType.Info);
-            }
-
-            string guidance = GetReadinessGuidance(level);
-            if (!string.IsNullOrEmpty(guidance))
-            {
-                EditorGUILayout.LabelField(guidance, EditorStyles.wordWrappedMiniLabel);
-            }
-
-            _showReadinessLevels = EditorGUILayout.Foldout(
-                _showReadinessLevels,
-                "Understand readiness levels",
-                true);
-            if (!_showReadinessLevels) return;
-
-            EditorGUILayout.HelpBox(
-                "Readiness is cumulative. Choose the lowest readiness level that the Activity genuinely requires.",
-                MessageType.None);
-            DrawReadinessLevel("Joined Slots", "Participating Logical Players have joined their configured Slots.");
-            DrawReadinessLevel("Selected Actors", "Joined Slots also have an Actor Profile selected.");
-            DrawReadinessLevel("Logical Actors Prepared", "Selected Actors also have a prepared or adopted Logical Actor. This is the recommended baseline when a Scene-Provided Player already contains its Actor but Camera and gameplay eligibility are not required.");
-            DrawReadinessLevel("Gameplay Ready", "All previous evidence is present, and the Player is eligible for gameplay input, gameplay Camera and gameplay actions.");
-        }
-
-        private static void DrawReadinessLevel(string title, string description)
-        {
-            EditorGUILayout.LabelField(title, EditorStyles.miniBoldLabel);
-            EditorGUILayout.LabelField(description, EditorStyles.wordWrappedMiniLabel);
-        }
-
-        private static string GetReadinessSummary(PlayerParticipationRequirementLevel level)
-        {
-            return level switch
-            {
-                PlayerParticipationRequirementLevel.None => "The Activity does not wait for Player readiness.",
-                PlayerParticipationRequirementLevel.JoinedSlots => "Joined Slot",
-                PlayerParticipationRequirementLevel.SelectedActors => "Joined Slot + selected Actor",
-                PlayerParticipationRequirementLevel.LogicalActorsPrepared => "Joined Slot + selected Actor + prepared or adopted Logical Actor",
-                PlayerParticipationRequirementLevel.GameplayReady => "Joined Slot + selected Actor + prepared Logical Actor + gameplay input, Camera and gameplay eligibility",
-                _ => "The selected readiness level is invalid. Run Validate Activity."
-            };
-        }
-
-        private static string GetReadinessGuidance(PlayerParticipationRequirementLevel level)
-        {
-            return level switch
-            {
-                PlayerParticipationRequirementLevel.JoinedSlots => "Use for admission tests, lobbies or Activities that only need participating Players.",
-                PlayerParticipationRequirementLevel.SelectedActors => "Use when the Activity needs an Actor choice but does not need the Actor prepared yet.",
-                PlayerParticipationRequirementLevel.LogicalActorsPrepared => "Use when gameplay objects must already exist or be adopted, but Camera and gameplay eligibility are not required.",
-                PlayerParticipationRequirementLevel.GameplayReady => "Use only when the Activity must remain NotReady until the Player can be controlled, viewed through the gameplay Camera and admitted to gameplay actions.",
-                _ => string.Empty
-            };
+                ReadinessLabel);
         }
 
         private bool UsesExplicitSlots()
@@ -270,45 +197,24 @@ namespace Immersive.Framework.Editor.Editor.Authoring
                        .ExplicitSlots;
         }
 
-        private bool AllowsZeroParticipants()
-        {
-            return _playerParticipationZeroParticipantPolicy != null &&
-                   !_playerParticipationZeroParticipantPolicy
-                       .hasMultipleDifferentValues &&
-                   _playerParticipationZeroParticipantPolicy.intValue ==
-                   (int)ActivityParticipationZeroParticipantPolicy
-                       .Allowed;
-        }
-
         private void DrawActivityContent()
         {
-            _showActivityContent =
-                EditorGUILayout.Foldout(
-                    _showActivityContent,
-                    "Activity Content",
-                    true);
-
-            if (!_showActivityContent)
-            {
-                return;
-            }
+            DrawSection("Activity Content");
 
             EditorGUILayout.PropertyField(
                 _activityContentProfile,
-                new GUIContent(
-                    "Content Profile",
-                    "Optional Activity-owned scenes composed and released with this Activity."));
+                ContentProfileLabel);
 
-            Object profile =
-                _activityContentProfile.objectReferenceValue;
+            ActivityContentProfileAsset profile =
+                _activityContentProfile.objectReferenceValue
+                    as ActivityContentProfileAsset;
 
             if (profile == null)
             {
-                EditorGUILayout.HelpBox(
-                    "No Activity-owned content Profile is assigned.",
-                    MessageType.None);
-
-                if (GUILayout.Button("Add Content Profile"))
+                if (GUILayout.Button(
+                        new GUIContent(
+                            "Create Content Profile",
+                            "Creates and assigns an Activity Content Profile before scenes are added.")))
                 {
                     ActivityContentProfileAsset created =
                         ImmersiveFrameworkEditorSettingsUtility
@@ -326,81 +232,162 @@ namespace Immersive.Framework.Editor.Editor.Authoring
                 return;
             }
 
-            EditorGUILayout.HelpBox(
-                "The assigned Profile declares Activity-owned scene content.",
-                MessageType.None);
+            DrawActivitySceneSummary(profile);
 
-            if (GUILayout.Button("Open Content Profile"))
+            using (new EditorGUILayout.HorizontalScope())
             {
-                Selection.activeObject = profile;
-                EditorGUIUtility.PingObject(profile);
+                if (GUILayout.Button(
+                        new GUIContent(
+                            "Add Scene...",
+                            "Adds an Activity-owned Scene to the assigned Content Profile and suggests a stable Content Id.")))
+                {
+                    EditorGUIUtility.ShowObjectPicker<SceneAsset>(
+                        null,
+                        false,
+                        string.Empty,
+                        ActivityScenePickerControlId);
+                }
+
+                if (GUILayout.Button(
+                        new GUIContent(
+                            "Open Content Profile",
+                            "Opens the assigned Profile for policies, IDs and detailed validation.")))
+                {
+                    Selection.activeObject = profile;
+                    EditorGUIUtility.PingObject(profile);
+                }
+            }
+
+            if (!string.IsNullOrWhiteSpace(
+                    _sceneActionMessage))
+            {
+                EditorGUILayout.LabelField(
+                    _sceneActionMessage,
+                    EditorStyles.wordWrappedMiniLabel);
+            }
+        }
+
+        private void DrawActivitySceneSummary(
+            ActivityContentProfileAsset profile)
+        {
+            EditorGUILayout.LabelField(
+                "Scenes",
+                profile.SceneCount.ToString());
+
+            for (int index = 0;
+                 index < profile.SceneCount;
+                 index++)
+            {
+                ActivityContentSceneEntry entry =
+                    profile.Scenes[index];
+
+                string sceneName =
+                    entry != null &&
+                    !string.IsNullOrWhiteSpace(
+                        entry.SceneName)
+                        ? entry.SceneName
+                        : "<missing Scene>";
+
+                EditorGUILayout.LabelField(
+                    $"- {sceneName}",
+                    EditorStyles.miniLabel);
+            }
+        }
+
+        private void HandleActivityScenePicker()
+        {
+            Event currentEvent =
+                Event.current;
+
+            if (currentEvent == null ||
+                currentEvent.commandName !=
+                    "ObjectSelectorClosed" ||
+                EditorGUIUtility
+                    .GetObjectPickerControlID() !=
+                    ActivityScenePickerControlId)
+            {
+                return;
+            }
+
+            SceneAsset selectedScene =
+                EditorGUIUtility
+                    .GetObjectPickerObject()
+                    as SceneAsset;
+
+            ActivityContentProfileAsset profile =
+                _activityContentProfile != null
+                    ? _activityContentProfile
+                        .objectReferenceValue
+                        as ActivityContentProfileAsset
+                    : null;
+
+            if (selectedScene != null &&
+                profile != null)
+            {
+                if (!ContentProfileSceneAuthoringUtility
+                        .TryAddActivityScene(
+                            profile,
+                            selectedScene,
+                            out _sceneActionMessage))
+                {
+                    EditorUtility.DisplayDialog(
+                        "Activity Scene Not Added",
+                        _sceneActionMessage,
+                        "OK");
+                }
+                else
+                {
+                    _lastValidationReport = null;
+                    Repaint();
+                }
+            }
+
+            if (currentEvent.type != EventType.Layout)
+            {
+                currentEvent.Use();
             }
         }
 
         private void DrawTransition()
         {
-            EditorGUILayout.LabelField(
-                "Transition",
-                EditorStyles.boldLabel);
+            DrawSection("Transition");
 
             EditorGUILayout.PropertyField(
                 _visualTransitionMode,
-                new GUIContent(
-                    "Presentation",
-                    "Controls whether Activity changes are seamless, use a fade, or use fade with loading presentation."));
+                PresentationLabel);
+
             EditorGUILayout.PropertyField(
                 _transitionGateMode,
-                new GUIContent(
-                    "Block During Transition",
-                    "Controls which requests and capabilities remain blocked while this Activity transition is running."));
-
-            EditorGUILayout.HelpBox(
-                "Presentation and transition-gate coherence is evaluated only through Validate Activity.",
-                MessageType.None);
+                TransitionGateLabel);
         }
 
         private void DrawValidation()
         {
-            EditorGUILayout.LabelField(
-                "Validation",
-                EditorStyles.boldLabel);
+            DrawSection("Validation");
 
-            if (_lastValidationReport == null)
+            using (new EditorGUILayout.HorizontalScope())
             {
-                EditorGUILayout.HelpBox(
-                    "Not validated. Run validation after configuring the Activity.",
-                    MessageType.None);
-            }
-            else if (_validationOutdated)
-            {
-                EditorGUILayout.HelpBox(
-                    "Validation result is outdated because the Activity changed.",
-                    MessageType.Warning);
-            }
-            else if (_lastValidationReport.IsValid)
-            {
-                EditorGUILayout.HelpBox(
-                    "Ready — no blocking Activity configuration issues were found.",
-                    MessageType.Info);
-            }
-            else
-            {
-                EditorGUILayout.HelpBox(
-                    $"Needs Attention — {_lastValidationReport.ErrorCount} blocking issue(s) were found.",
-                    MessageType.Error);
+                if (GUILayout.Button(
+                        ValidateLabel,
+                        GUILayout.Width(96f)))
+                {
+                    serializedObject.ApplyModifiedProperties();
+                    RunValidation();
+                    _serializedBindingsDirty = true;
+
+                    GUIUtility.ExitGUI();
+                }
+
+                GUILayout.Space(8f);
+
+                EditorGUILayout.LabelField(
+                    GetValidationStatus(),
+                    EditorStyles.miniBoldLabel);
+
+                GUILayout.FlexibleSpace();
             }
 
-            if (GUILayout.Button("Validate Activity"))
-            {
-                serializedObject.ApplyModifiedProperties();
-                RunValidation();
-                _serializedBindingsDirty = true;
-
-                // Validation can scan project assets and invalidate cached
-                // SerializedProperty instances during the current IMGUI event.
-                // Repaint with a fresh Inspector state instead of continuing.
-                GUIUtility.ExitGUI();
-            }
+            DrawFirstActionableValidationIssue();
         }
 
         private void RunValidation()
@@ -411,10 +398,12 @@ namespace Immersive.Framework.Editor.Editor.Authoring
             _lastValidationReport =
                 FrameworkAuthoringValidator.ValidateActivity(
                     activity);
+
             _lastValidationReport.AddRange(
                 FrameworkIdentityAuthoringValidator
                     .ValidateProjectAssets(
                         FrameworkValidationMode.Standard));
+
             _lastValidationReport.AddRange(
                 ActivityParticipationProjectionAuthoringValidator
                     .ValidateActivity(activity));
@@ -422,24 +411,123 @@ namespace Immersive.Framework.Editor.Editor.Authoring
             _validationOutdated = false;
         }
 
-        private void DrawAdvancedDiagnostics()
+        private void DrawFirstActionableValidationIssue()
         {
-            _showAdvancedDiagnostics =
-                EditorGUILayout.Foldout(
-                    _showAdvancedDiagnostics,
-                    "Advanced / Diagnostics",
-                    true);
-
-            if (!_showAdvancedDiagnostics)
+            if (_lastValidationReport == null ||
+                _validationOutdated ||
+                (_lastValidationReport.ErrorCount == 0 &&
+                 _lastValidationReport.WarningCount == 0))
             {
                 return;
             }
 
+            for (int index = 0;
+                 index < _lastValidationReport.Issues.Count;
+                 index++)
+            {
+                FrameworkAuthoringValidationIssue issue =
+                    _lastValidationReport.Issues[index];
+
+                if (issue.Severity !=
+                        FrameworkAuthoringValidationSeverity.Error &&
+                    issue.Severity !=
+                        FrameworkAuthoringValidationSeverity.Warning)
+                {
+                    continue;
+                }
+
+                EditorGUILayout.HelpBox(
+                    issue.Message,
+                    issue.Severity ==
+                        FrameworkAuthoringValidationSeverity.Error
+                            ? MessageType.Error
+                            : MessageType.Warning);
+
+                return;
+            }
+        }
+
+        private void DrawAdvancedDebug()
+        {
+            EditorGUILayout.Space(7f);
+
+            _showAdvancedDebug =
+                EditorGUILayout.Foldout(
+                    _showAdvancedDebug,
+                    new GUIContent(
+                        "Advanced / Debug",
+                        "Shows stable identity, technical references and the complete validation report."),
+                    true);
+
+            if (!_showAdvancedDebug)
+            {
+                return;
+            }
+
+            EditorGUI.indentLevel++;
+
             DrawActivityId();
-            DrawParticipationDiagnostics();
-            DrawTechnicalReferences();
-            DrawCurrentScope();
-            DrawFullValidationReport();
+
+            using (new EditorGUI.DisabledScope(true))
+            {
+                EditorGUILayout.TextField(
+                    "Projection Mode",
+                    GetSerializedEnumLabel(
+                        _playerParticipationProjectionMode));
+
+                EditorGUILayout.TextField(
+                    "Zero Participant Policy",
+                    GetSerializedEnumLabel(
+                        _playerParticipationZeroParticipantPolicy));
+
+                EditorGUILayout.IntField(
+                    "Explicit Slot Count",
+                    _playerParticipationExplicitSlotProfiles != null
+                        ? _playerParticipationExplicitSlotProfiles
+                            .arraySize
+                        : 0);
+
+                EditorGUILayout.TextField(
+                    "Requirement Level",
+                    GetSerializedEnumLabel(
+                        _playerParticipationRequirementLevel));
+
+                EditorGUILayout.ObjectField(
+                    "Content Profile Reference",
+                    _activityContentProfile != null
+                        ? _activityContentProfile.objectReferenceValue
+                        : null,
+                    typeof(ActivityContentProfileAsset),
+                    false);
+
+                EditorGUILayout.TextField(
+                    "Transition Presentation",
+                    GetSerializedEnumLabel(
+                        _visualTransitionMode));
+
+                EditorGUILayout.TextField(
+                    "Transition Gate",
+                    GetSerializedEnumLabel(
+                        _transitionGateMode));
+
+                EditorGUILayout.TextField(
+                    "Validation Status",
+                    GetValidationStatus());
+            }
+
+            EditorGUILayout.Space(4f);
+            EditorGUILayout.LabelField(
+                "Validation Report",
+                EditorStyles.boldLabel);
+
+            FrameworkAuthoringValidationGui.DrawSummary(
+                _lastValidationReport);
+
+            FrameworkAuthoringValidationGui.DrawIssues(
+                _lastValidationReport,
+                false);
+
+            EditorGUI.indentLevel--;
         }
 
         private void DrawActivityId()
@@ -487,108 +575,31 @@ namespace Immersive.Framework.Editor.Editor.Authoring
                     }
                 }
             }
-
-            EditorGUILayout.HelpBox(
-                "Activity ID validity is checked only by Validate Activity. Existing IDs are not replaced automatically.",
-                MessageType.None);
         }
 
-        private void DrawParticipationDiagnostics()
+        private string GetValidationStatus()
         {
-            EditorGUILayout.Space(4f);
-            EditorGUILayout.LabelField(
-                "Player Participation",
-                EditorStyles.boldLabel);
-
-            using (new EditorGUI.DisabledScope(true))
-            {
-                EditorGUILayout.TextField(
-                    "Projection Mode",
-                    GetSerializedEnumLabel(
-                        _playerParticipationProjectionMode));
-                EditorGUILayout.TextField(
-                    "Zero Participant Policy",
-                    GetSerializedEnumLabel(
-                        _playerParticipationZeroParticipantPolicy));
-                EditorGUILayout.IntField(
-                    "Explicit Slot Count",
-                    _playerParticipationExplicitSlotProfiles != null
-                        ? _playerParticipationExplicitSlotProfiles
-                            .arraySize
-                        : 0);
-                EditorGUILayout.TextField(
-                    "Requirement Level",
-                    GetSerializedEnumLabel(
-                        _playerParticipationRequirementLevel));
-            }
-        }
-
-        private void DrawTechnicalReferences()
-        {
-            EditorGUILayout.Space(4f);
-            EditorGUILayout.LabelField(
-                "Technical References",
-                EditorStyles.boldLabel);
-
-            using (new EditorGUI.DisabledScope(true))
-            {
-                EditorGUILayout.ObjectField(
-                    "Content Profile Reference",
-                    _activityContentProfile != null
-                        ? _activityContentProfile.objectReferenceValue
-                        : null,
-                    typeof(ActivityContentProfileAsset),
-                    false);
-
-                EditorGUILayout.TextField(
-                    "Transition Presentation",
-                    GetSerializedEnumLabel(
-                        _visualTransitionMode));
-                EditorGUILayout.TextField(
-                    "Transition Gate",
-                    GetSerializedEnumLabel(
-                        _transitionGateMode));
-            }
-        }
-
-        private void DrawCurrentScope()
-        {
-            EditorGUILayout.Space(4f);
-            EditorGUILayout.LabelField(
-                "Current Scope",
-                EditorStyles.boldLabel);
-            EditorGUILayout.HelpBox(
-                "This Activity declares which Player Slots participate, the readiness required from them, optional Activity-owned scene content and transition presentation. Runtime systems evaluate this immutable intent without storing mutable Session state in the asset.",
-                MessageType.None);
-        }
-
-        private void DrawFullValidationReport()
-        {
-            EditorGUILayout.Space(4f);
-            EditorGUILayout.LabelField(
-                "Validation Report",
-                EditorStyles.boldLabel);
-
             if (_lastValidationReport == null)
             {
-                EditorGUILayout.HelpBox(
-                    "No validation report is available.",
-                    MessageType.None);
-                return;
+                return "Not Validated";
             }
 
             if (_validationOutdated)
             {
-                EditorGUILayout.HelpBox(
-                    "This report is outdated. Run Validate Activity again.",
-                    MessageType.Warning);
+                return "Outdated";
             }
 
-            FrameworkAuthoringValidationGui.DrawSummary(
-                _lastValidationReport);
-            FrameworkAuthoringValidationGui.DrawIssues(
-                _lastValidationReport,
-                false);
+            if (_lastValidationReport.ErrorCount > 0)
+            {
+                return "Invalid";
+            }
+
+            if (_lastValidationReport.WarningCount > 0)
+            {
+                return "Warning";
+            }
+
+            return "Valid";
         }
 
         private static string GetSerializedEnumLabel(
@@ -606,6 +617,7 @@ namespace Immersive.Framework.Editor.Editor.Authoring
 
             string[] displayNames =
                 property.enumDisplayNames;
+
             int selectedIndex =
                 property.enumValueIndex;
 
@@ -616,6 +628,15 @@ namespace Immersive.Framework.Editor.Editor.Authoring
             }
 
             return $"Serialized value {property.intValue}";
+        }
+
+        private static void DrawSection(
+            string title)
+        {
+            EditorGUILayout.Space(7f);
+            EditorGUILayout.LabelField(
+                title,
+                EditorStyles.boldLabel);
         }
     }
 }

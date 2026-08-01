@@ -1,131 +1,561 @@
 using Immersive.Framework.Authoring;
+using Immersive.Framework.Editor.Common;
+using Immersive.Framework.Editor.Editor.Validation;
 using UnityEditor;
 using UnityEngine;
+
 namespace Immersive.Framework.Editor.Editor.Authoring
 {
     [CustomEditor(typeof(RouteContentProfileAsset))]
     internal sealed class RouteContentProfileAssetEditor : UnityEditor.Editor
     {
+        private const int ScenePickerControlId = 1842102;
+
+        private static readonly GUIContent DescriptionLabel =
+            new GUIContent(
+                "Description",
+                "Optional note describing the additional Route scene composition.");
+
+        private static readonly GUIContent SceneLabel =
+            new GUIContent(
+                "Scene",
+                "Additional Unity scene loaded with the owning Route.");
+
+        private static readonly GUIContent ContentIdLabel =
+            new GUIContent(
+                "Content Id",
+                "Stable identity for this scene within the Route Content Profile. It does not change when the scene asset is renamed.");
+
+        private static readonly GUIContent RequirednessLabel =
+            new GUIContent(
+                "Requiredness",
+                "Defines whether failure to resolve this scene blocks Route scene composition.");
+
+        private static readonly GUIContent ValidateLabel =
+            new GUIContent(
+                "Validate",
+                "Validates this profile without modifying it.");
+
         private SerializedProperty _profileId;
         private SerializedProperty _additionalScenes;
         private SerializedProperty _description;
 
+        private FrameworkAuthoringValidationReport _lastValidationReport;
+        private bool _validationOutdated;
+        private bool _showAdvancedDebug;
+
         private void OnEnable()
         {
-            _profileId = serializedObject.FindProperty("profileId");
-            _additionalScenes = serializedObject.FindProperty("additionalScenes");
-            _description = serializedObject.FindProperty("description");
+            _profileId =
+                serializedObject.FindProperty("profileId");
+
+            _additionalScenes =
+                serializedObject.FindProperty("additionalScenes");
+
+            _description =
+                serializedObject.FindProperty("description");
         }
 
         public override void OnInspectorGUI()
         {
-            serializedObject.Update();
+            serializedObject.UpdateIfRequiredOrScript();
 
-            EditorGUILayout.LabelField("Route Content Profile", EditorStyles.boldLabel);
-            EditorGUILayout.HelpBox(
-                "Status: Experimental / Executed by F6E. This asset declares Route-owned additional scenes. Valid entries are loaded additively during Route scene composition; release/unload remains deferred.",
-                MessageType.Warning);
+            HandleScenePicker();
 
-            EditorGUILayout.Space(6);
-            EditorGUILayout.PropertyField(_profileId, new GUIContent("Profile Id"));
-            EditorGUILayout.PropertyField(_description, new GUIContent("Description"));
+            EditorGUILayout.LabelField(
+                "Route Content Profile",
+                EditorStyles.boldLabel);
 
-            EditorGUILayout.Space(6);
-            DrawAdditionalScenes();
+            DrawProfile();
+            DrawScenes();
+            DrawValidation();
+            DrawAdvancedDebug();
 
-            serializedObject.ApplyModifiedProperties();
+            bool modified =
+                serializedObject.ApplyModifiedProperties();
+
+            if (modified &&
+                _lastValidationReport != null)
+            {
+                _validationOutdated = true;
+            }
         }
 
-        private void DrawAdditionalScenes()
+        private void DrawProfile()
         {
-            EditorGUILayout.LabelField("Additional Route Scenes", EditorStyles.boldLabel);
-            EditorGUILayout.HelpBox(
-                "These scenes are loaded additively by F6E Route scene composition when the owning Route starts. Release/unload is still deferred to a later cut.",
-                MessageType.Warning);
+            DrawSection("Profile");
 
-            for (var i = 0; i < _additionalScenes.arraySize; i++)
+            EditorGUILayout.PropertyField(
+                _description,
+                DescriptionLabel);
+        }
+
+        private void DrawScenes()
+        {
+            DrawSection(
+                $"Additional Route Scenes ({_additionalScenes.arraySize})");
+
+            if (_additionalScenes.arraySize == 0)
             {
-                var entry = _additionalScenes.GetArrayElementAtIndex(i);
-                DrawSceneEntry(i, entry);
+                EditorGUILayout.LabelField(
+                    "No additional Route scenes configured.",
+                    EditorStyles.miniLabel);
+            }
+
+            for (int index = 0;
+                 index < _additionalScenes.arraySize;
+                 index++)
+            {
+                SerializedProperty entry =
+                    _additionalScenes
+                        .GetArrayElementAtIndex(index);
+
+                if (DrawSceneEntry(index, entry))
+                {
+                    return;
+                }
             }
 
             using (new EditorGUILayout.HorizontalScope())
             {
-                if (GUILayout.Button("Add Scene"))
+                if (GUILayout.Button(
+                        new GUIContent(
+                            "Add Scene...",
+                            "Selects a Scene asset and creates a complete entry with a suggested Content Id.")))
                 {
-                    _additionalScenes.InsertArrayElementAtIndex(_additionalScenes.arraySize);
-                    var entry = _additionalScenes.GetArrayElementAtIndex(_additionalScenes.arraySize - 1);
-                    ResetSceneEntry(entry);
+                    EditorGUIUtility.ShowObjectPicker<SceneAsset>(
+                        null,
+                        false,
+                        string.Empty,
+                        ScenePickerControlId);
                 }
 
-                using (new EditorGUI.DisabledScope(_additionalScenes.arraySize == 0))
+                if (GUILayout.Button(
+                        new GUIContent(
+                            "Add Empty",
+                            "Adds an empty entry for manual authoring.")))
                 {
-                    if (GUILayout.Button("Remove Last"))
+                    AddSceneEntry(null);
+                }
+            }
+        }
+
+        private bool DrawSceneEntry(
+            int index,
+            SerializedProperty entry)
+        {
+            SerializedProperty contentId =
+                entry.FindPropertyRelative("contentId");
+
+            SerializedProperty scenePath =
+                entry.FindPropertyRelative("scenePath");
+
+            SerializedProperty sceneName =
+                entry.FindPropertyRelative("sceneName");
+
+            SerializedProperty requiredness =
+                entry.FindPropertyRelative("requiredness");
+
+            SceneAsset currentScene =
+                LoadSceneAsset(scenePath.stringValue);
+
+            string title =
+                currentScene != null
+                    ? currentScene.name
+                    : !string.IsNullOrWhiteSpace(
+                        sceneName.stringValue)
+                        ? sceneName.stringValue
+                        : $"Scene {index + 1}";
+
+            EditorGUILayout.BeginVertical(
+                EditorStyles.helpBox);
+
+            using (new EditorGUILayout.HorizontalScope())
+            {
+                EditorGUILayout.LabelField(
+                    title,
+                    EditorStyles.boldLabel);
+
+                if (GUILayout.Button(
+                        "Remove",
+                        GUILayout.Width(72f)))
+                {
+                    Undo.RecordObject(
+                        target,
+                        "Remove Route Content Scene");
+
+                    _additionalScenes
+                        .DeleteArrayElementAtIndex(index);
+
+                    serializedObject.ApplyModifiedProperties();
+                    EditorUtility.SetDirty(target);
+
+                    _lastValidationReport = null;
+
+                    EditorGUILayout.EndVertical();
+                    GUIUtility.ExitGUI();
+                    return true;
+                }
+            }
+
+            SceneAsset selectedScene =
+                (SceneAsset)EditorGUILayout.ObjectField(
+                    SceneLabel,
+                    currentScene,
+                    typeof(SceneAsset),
+                    false);
+
+            if (selectedScene != currentScene)
+            {
+                Undo.RecordObject(
+                    target,
+                    "Assign Route Content Scene");
+
+                SetScene(
+                    scenePath,
+                    sceneName,
+                    selectedScene);
+
+                _lastValidationReport = null;
+            }
+
+            EditorGUILayout.PropertyField(
+                contentId,
+                ContentIdLabel);
+
+            if (selectedScene != null &&
+                string.IsNullOrWhiteSpace(
+                    contentId.stringValue))
+            {
+                using (new EditorGUILayout.HorizontalScope())
+                {
+                    GUILayout.FlexibleSpace();
+
+                    if (GUILayout.Button(
+                            new GUIContent(
+                                "Use Suggested Id",
+                                "Creates a deterministic Content Id from the selected Scene name."),
+                            GUILayout.Width(132f)))
                     {
-                        _additionalScenes.DeleteArrayElementAtIndex(_additionalScenes.arraySize - 1);
+                        ApplySuggestedContentId(
+                            contentId,
+                            selectedScene);
+                    }
+                }
+            }
+
+            EditorGUILayout.PropertyField(
+                requiredness,
+                RequirednessLabel);
+
+            if (selectedScene == null)
+            {
+                EditorGUILayout.HelpBox(
+                    "Select a Scene.",
+                    MessageType.Error);
+            }
+
+            EditorGUILayout.EndVertical();
+            return false;
+        }
+
+        private void DrawValidation()
+        {
+            DrawSection("Validation");
+
+            using (new EditorGUILayout.HorizontalScope())
+            {
+                if (GUILayout.Button(
+                        ValidateLabel,
+                        GUILayout.Width(96f)))
+                {
+                    serializedObject.ApplyModifiedProperties();
+
+                    _lastValidationReport =
+                        RouteContentProfileAuthoringValidator
+                            .Validate(
+                                (RouteContentProfileAsset)target);
+
+                    _validationOutdated = false;
+                }
+
+                GUILayout.Space(8f);
+
+                EditorGUILayout.LabelField(
+                    GetValidationStatus(),
+                    EditorStyles.miniBoldLabel);
+
+                GUILayout.FlexibleSpace();
+            }
+
+            DrawFirstActionableIssue();
+        }
+
+        private void DrawFirstActionableIssue()
+        {
+            if (_lastValidationReport == null ||
+                _validationOutdated ||
+                (_lastValidationReport.ErrorCount == 0 &&
+                 _lastValidationReport.WarningCount == 0))
+            {
+                return;
+            }
+
+            for (int index = 0;
+                 index < _lastValidationReport.Issues.Count;
+                 index++)
+            {
+                FrameworkAuthoringValidationIssue issue =
+                    _lastValidationReport.Issues[index];
+
+                if (issue.Severity !=
+                        FrameworkAuthoringValidationSeverity.Error &&
+                    issue.Severity !=
+                        FrameworkAuthoringValidationSeverity.Warning)
+                {
+                    continue;
+                }
+
+                EditorGUILayout.HelpBox(
+                    issue.Message,
+                    issue.Severity ==
+                        FrameworkAuthoringValidationSeverity.Error
+                            ? MessageType.Error
+                            : MessageType.Warning);
+
+                return;
+            }
+        }
+
+        private void DrawAdvancedDebug()
+        {
+            EditorGUILayout.Space(7f);
+
+            _showAdvancedDebug =
+                EditorGUILayout.Foldout(
+                    _showAdvancedDebug,
+                    new GUIContent(
+                        "Advanced / Debug",
+                        "Shows stable profile identity, cached scene paths and the complete validation report."),
+                    true);
+
+            if (!_showAdvancedDebug)
+            {
+                return;
+            }
+
+            EditorGUI.indentLevel++;
+
+            DrawProfileId();
+
+            using (new EditorGUI.DisabledScope(true))
+            {
+                for (int index = 0;
+                     index < _additionalScenes.arraySize;
+                     index++)
+                {
+                    SerializedProperty entry =
+                        _additionalScenes
+                            .GetArrayElementAtIndex(index);
+
+                    SerializedProperty scenePath =
+                        entry.FindPropertyRelative("scenePath");
+
+                    SerializedProperty sceneName =
+                        entry.FindPropertyRelative("sceneName");
+
+                    string label =
+                        !string.IsNullOrWhiteSpace(
+                            sceneName.stringValue)
+                            ? sceneName.stringValue
+                            : $"Scene {index + 1}";
+
+                    EditorGUILayout.TextField(
+                        $"{label} Path",
+                        scenePath.stringValue ?? string.Empty);
+                }
+
+                EditorGUILayout.TextField(
+                    "Validation Status",
+                    GetValidationStatus());
+            }
+
+            EditorGUILayout.Space(4f);
+            EditorGUILayout.LabelField(
+                "Validation Report",
+                EditorStyles.boldLabel);
+
+            FrameworkAuthoringValidationGui.DrawSummary(
+                _lastValidationReport);
+
+            FrameworkAuthoringValidationGui.DrawIssues(
+                _lastValidationReport,
+                false);
+
+            EditorGUI.indentLevel--;
+        }
+
+        private void DrawProfileId()
+        {
+            string profileId =
+                _profileId != null
+                    ? _profileId.stringValue ?? string.Empty
+                    : string.Empty;
+
+            using (new EditorGUILayout.HorizontalScope())
+            {
+                EditorGUILayout.PropertyField(
+                    _profileId,
+                    new GUIContent(
+                        "Profile Id",
+                        "Stable profile identity used in diagnostics. Existing values are never regenerated automatically."));
+
+                using (new EditorGUI.DisabledScope(
+                           !string.IsNullOrWhiteSpace(
+                               profileId)))
+                {
+                    if (GUILayout.Button(
+                            "Suggest",
+                            GUILayout.Width(70f)))
+                    {
+                        FrameworkAuthoringInspectorGui
+                            .ApplySuggestion(
+                                serializedObject,
+                                _profileId,
+                                FrameworkAuthoringSuggestionUtility
+                                    .SuggestIdentity(
+                                        target,
+                                        "route.content-profile"),
+                                "Suggest Route Content Profile Id");
+
+                        _lastValidationReport = null;
                     }
                 }
             }
         }
 
-        private void DrawSceneEntry(int index, SerializedProperty entry)
+        private void HandleScenePicker()
         {
-            var contentId = entry.FindPropertyRelative("contentId");
-            var scenePath = entry.FindPropertyRelative("scenePath");
-            var sceneName = entry.FindPropertyRelative("sceneName");
-            var requiredness = entry.FindPropertyRelative("requiredness");
+            Event currentEvent =
+                Event.current;
 
-            EditorGUILayout.BeginVertical(EditorStyles.helpBox);
-            using (new EditorGUILayout.HorizontalScope())
+            if (currentEvent == null ||
+                currentEvent.commandName !=
+                    "ObjectSelectorClosed" ||
+                EditorGUIUtility
+                    .GetObjectPickerControlID() !=
+                    ScenePickerControlId)
             {
-                EditorGUILayout.LabelField($"Scene {index + 1}", EditorStyles.boldLabel);
-                if (GUILayout.Button("Remove", GUILayout.Width(80)))
-                {
-                    _additionalScenes.DeleteArrayElementAtIndex(index);
-                    EditorGUILayout.EndVertical();
-                    return;
-                }
+                return;
             }
 
-            EditorGUILayout.PropertyField(contentId, new GUIContent("Content Id"));
+            SceneAsset selectedScene =
+                EditorGUIUtility.GetObjectPickerObject()
+                    as SceneAsset;
 
-            var currentScene = LoadSceneAsset(scenePath.stringValue);
-            var selectedScene = (SceneAsset)EditorGUILayout.ObjectField(
-                new GUIContent("Scene"),
-                currentScene,
-                typeof(SceneAsset),
-                false);
-
-            if (selectedScene != currentScene)
+            if (selectedScene != null)
             {
-                SetScene(scenePath, sceneName, selectedScene);
+                AddSceneEntry(selectedScene);
             }
 
-            EditorGUILayout.PropertyField(requiredness, new GUIContent("Requiredness"));
-
-            using (new EditorGUI.DisabledScope(true))
+            if (currentEvent.type != EventType.Layout)
             {
-                EditorGUILayout.TextField("Scene Path", scenePath.stringValue ?? string.Empty);
+                currentEvent.Use();
             }
-
-            if (string.IsNullOrWhiteSpace(scenePath.stringValue))
-            {
-                EditorGUILayout.HelpBox(
-                    "Scene is missing. Optional entries are skipped by composition; required entries can block the Route once executed.",
-                    MessageType.Warning);
-            }
-
-            EditorGUILayout.EndVertical();
         }
 
-        private static SceneAsset LoadSceneAsset(string scenePath)
+        private void AddSceneEntry(
+            SceneAsset sceneAsset)
+        {
+            Undo.RecordObject(
+                target,
+                "Add Route Content Scene");
+
+            int index =
+                _additionalScenes.arraySize;
+
+            _additionalScenes
+                .InsertArrayElementAtIndex(index);
+
+            SerializedProperty entry =
+                _additionalScenes
+                    .GetArrayElementAtIndex(index);
+
+            ResetSceneEntry(entry);
+
+            if (sceneAsset != null)
+            {
+                SetScene(
+                    entry.FindPropertyRelative("scenePath"),
+                    entry.FindPropertyRelative("sceneName"),
+                    sceneAsset);
+
+                entry.FindPropertyRelative("contentId")
+                    .stringValue =
+                    FrameworkAuthoringSuggestionUtility
+                        .SuggestIdentity(
+                            sceneAsset,
+                            "route.content");
+            }
+
+            serializedObject.ApplyModifiedProperties();
+            EditorUtility.SetDirty(target);
+
+            _lastValidationReport = null;
+        }
+
+        private void ApplySuggestedContentId(
+            SerializedProperty contentId,
+            SceneAsset sceneAsset)
+        {
+            FrameworkAuthoringInspectorGui.ApplySuggestion(
+                serializedObject,
+                contentId,
+                FrameworkAuthoringSuggestionUtility
+                    .SuggestIdentity(
+                        sceneAsset,
+                        "route.content"),
+                "Suggest Route Content Id");
+
+            _lastValidationReport = null;
+        }
+
+        private string GetValidationStatus()
+        {
+            if (_lastValidationReport == null)
+            {
+                return "Not Validated";
+            }
+
+            if (_validationOutdated)
+            {
+                return "Outdated";
+            }
+
+            if (_lastValidationReport.ErrorCount > 0)
+            {
+                return "Invalid";
+            }
+
+            if (_lastValidationReport.WarningCount > 0)
+            {
+                return "Warning";
+            }
+
+            return "Valid";
+        }
+
+        private static SceneAsset LoadSceneAsset(
+            string scenePath)
         {
             if (string.IsNullOrWhiteSpace(scenePath))
             {
                 return null;
             }
 
-            return AssetDatabase.LoadAssetAtPath<SceneAsset>(scenePath);
+            return AssetDatabase
+                .LoadAssetAtPath<SceneAsset>(
+                    scenePath);
         }
 
         private static void SetScene(
@@ -135,21 +565,47 @@ namespace Immersive.Framework.Editor.Editor.Authoring
         {
             if (sceneAsset == null)
             {
-                scenePath.stringValue = string.Empty;
-                sceneName.stringValue = string.Empty;
+                scenePath.stringValue =
+                    string.Empty;
+
+                sceneName.stringValue =
+                    string.Empty;
+
                 return;
             }
 
-            scenePath.stringValue = AssetDatabase.GetAssetPath(sceneAsset);
-            sceneName.stringValue = sceneAsset.name;
+            scenePath.stringValue =
+                AssetDatabase.GetAssetPath(
+                    sceneAsset);
+
+            sceneName.stringValue =
+                sceneAsset.name;
         }
 
-        private static void ResetSceneEntry(SerializedProperty entry)
+        private static void ResetSceneEntry(
+            SerializedProperty entry)
         {
-            entry.FindPropertyRelative("contentId").stringValue = string.Empty;
-            entry.FindPropertyRelative("scenePath").stringValue = string.Empty;
-            entry.FindPropertyRelative("sceneName").stringValue = string.Empty;
-            entry.FindPropertyRelative("requiredness").enumValueIndex = 0;
+            entry.FindPropertyRelative("contentId")
+                .stringValue = string.Empty;
+
+            entry.FindPropertyRelative("scenePath")
+                .stringValue = string.Empty;
+
+            entry.FindPropertyRelative("sceneName")
+                .stringValue = string.Empty;
+
+            entry.FindPropertyRelative("requiredness")
+                .enumValueIndex = 0;
+        }
+
+        private static void DrawSection(
+            string title)
+        {
+            EditorGUILayout.Space(7f);
+
+            EditorGUILayout.LabelField(
+                title,
+                EditorStyles.boldLabel);
         }
     }
 }

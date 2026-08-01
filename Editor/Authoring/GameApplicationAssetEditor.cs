@@ -11,6 +11,36 @@ namespace Immersive.Framework.Editor.Editor.Authoring
     [CustomEditor(typeof(GameApplicationAsset))]
     internal sealed class GameApplicationAssetEditor : UnityEditor.Editor
     {
+        private static readonly GUIContent ApplicationNameLabel =
+            new GUIContent(
+                "Application Name",
+                "Designer-facing name used in selection and diagnostics.");
+
+        private static readonly GUIContent StartupRouteLabel =
+            new GUIContent(
+                "Startup Route",
+                "Route requested when this Game Application starts.");
+
+        private static readonly GUIContent DuplicateActorsLabel =
+            new GUIContent(
+                "Duplicate Actors",
+                "Controls whether more than one local Player Slot may select the same Actor.");
+
+        private static readonly GUIContent ContentSceneLabel =
+            new GUIContent(
+                "Content Scene",
+                "Scene kept for the lifetime of this Game Application. It owns application-persistent Camera, UI and other shared content.");
+
+        private static readonly GUIContent ValidationModeLabel =
+            new GUIContent(
+                "Mode",
+                "Controls validation strictness for this Game Application graph.");
+
+        private static readonly GUIContent ValidateLabel =
+            new GUIContent(
+                "Validate",
+                "Validates this Game Application and its configured dependencies without modifying them.");
+
         private SerializedProperty _applicationName;
         private SerializedProperty _startupRoute;
         private SerializedProperty _localPlayerSlots;
@@ -23,7 +53,7 @@ namespace Immersive.Framework.Editor.Editor.Authoring
         private FrameworkAuthoringValidationReport _lastValidationReport;
         private bool _serializedBindingsDirty = true;
         private bool _validationOutdated;
-        private bool _showAdvancedDiagnostics;
+        private bool _showAdvancedDebug;
 
         private void OnEnable()
         {
@@ -62,7 +92,7 @@ namespace Immersive.Framework.Editor.Editor.Authoring
                 rect =>
                     EditorGUI.LabelField(
                         rect,
-                        $"Player Slots — {_localPlayerSlots.arraySize} configured");
+                        $"Player Slots — {_localPlayerSlots.arraySize}");
 
             _localPlayerSlotsList.elementHeight =
                 EditorGUIUtility.singleLineHeight + 4f;
@@ -73,9 +103,11 @@ namespace Immersive.Framework.Editor.Editor.Authoring
                     SerializedProperty element =
                         _localPlayerSlots
                             .GetArrayElementAtIndex(index);
+
                     rect.y += 2f;
                     rect.height =
                         EditorGUIUtility.singleLineHeight;
+
                     EditorGUI.PropertyField(
                         rect,
                         element,
@@ -97,30 +129,17 @@ namespace Immersive.Framework.Editor.Editor.Authoring
             EditorGUILayout.LabelField(
                 "Game Application",
                 EditorStyles.boldLabel);
-            EditorGUILayout.HelpBox(
-                "Application-level authoring for startup flow, optional local Player policy and the concrete Persistent Content composition.",
-                MessageType.Info);
 
-            EditorGUILayout.Space(6f);
             DrawApplication();
-
-            EditorGUILayout.Space(8f);
             DrawStartup();
-
-            EditorGUILayout.Space(8f);
             DrawLocalPlayers();
-
-            EditorGUILayout.Space(8f);
             DrawPersistentContent();
-
-            EditorGUILayout.Space(8f);
             DrawValidation();
-
-            EditorGUILayout.Space(8f);
-            DrawAdvancedDiagnostics();
+            DrawAdvancedDebug();
 
             bool modified =
                 serializedObject.ApplyModifiedProperties();
+
             if (modified &&
                 _lastValidationReport != null)
             {
@@ -130,33 +149,37 @@ namespace Immersive.Framework.Editor.Editor.Authoring
 
         private void DrawApplication()
         {
-            EditorGUILayout.LabelField(
-                "Application",
-                EditorStyles.boldLabel);
+            DrawSection("Application");
+
             EditorGUILayout.PropertyField(
                 _applicationName,
-                new GUIContent("Application Name"));
+                ApplicationNameLabel);
 
-            var gameApplication =
+            GameApplicationAsset gameApplication =
                 (GameApplicationAsset)target;
-            var activeGameApplication =
+
+            GameApplicationAsset activeGameApplication =
                 ImmersiveFrameworkEditorSettingsUtility
                     .GetActiveGameApplication();
+
             bool isActive =
                 activeGameApplication == gameApplication;
 
             DrawStatusRow(
                 "Project Status",
                 isActive
-                    ? "● Active"
+                    ? "Active"
                     : activeGameApplication == null
-                        ? "○ No active application"
-                        : $"○ Inactive — {activeGameApplication.ApplicationName}");
+                        ? "No Active Application"
+                        : $"Inactive — {activeGameApplication.ApplicationName}");
 
             using (new EditorGUILayout.HorizontalScope())
             {
                 if (!isActive &&
-                    GUILayout.Button("Set Active"))
+                    GUILayout.Button(
+                        new GUIContent(
+                            "Set Active",
+                            "Assigns this asset as the active Game Application in Framework Settings.")))
                 {
                     ImmersiveFrameworkEditorSettingsUtility
                         .AssignActiveGameApplication(
@@ -164,7 +187,9 @@ namespace Immersive.Framework.Editor.Editor.Authoring
                 }
 
                 if (GUILayout.Button(
-                        "Open Framework Settings"))
+                        new GUIContent(
+                            "Open Framework Settings",
+                            "Opens the project-level Immersive Framework settings.")))
                 {
                     SettingsService.OpenProjectSettings(
                         "Project/Immersive Framework");
@@ -174,37 +199,32 @@ namespace Immersive.Framework.Editor.Editor.Authoring
 
         private void DrawStartup()
         {
-            EditorGUILayout.LabelField(
-                "Startup",
-                EditorStyles.boldLabel);
+            DrawSection("Startup");
+
             EditorGUILayout.PropertyField(
                 _startupRoute,
-                new GUIContent("Startup Route"));
+                StartupRouteLabel);
 
-            var route =
+            RouteAsset route =
                 _startupRoute.objectReferenceValue as RouteAsset;
+
             if (route == null)
             {
-                using (new EditorGUILayout.HorizontalScope())
+                if (GUILayout.Button(
+                        new GUIContent(
+                            "Create Startup Route",
+                            "Creates a new Route asset and assigns it as the startup Route.")))
                 {
-                    if (GUILayout.Button(
-                            "Create Startup Route"))
-                    {
-                        var created =
-                            ImmersiveFrameworkEditorSettingsUtility
-                                .CreateStartupRouteAsset();
-                        if (created != null)
-                        {
-                            _startupRoute.objectReferenceValue =
-                                created;
-                            Selection.activeObject = created;
-                        }
-                    }
+                    RouteAsset created =
+                        ImmersiveFrameworkEditorSettingsUtility
+                            .CreateStartupRouteAsset();
 
-                    GUILayout.FlexibleSpace();
-                    EditorGUILayout.LabelField(
-                        "Assign an existing Route above",
-                        EditorStyles.miniLabel);
+                    if (created != null)
+                    {
+                        _startupRoute.objectReferenceValue =
+                            created;
+                        Selection.activeObject = created;
+                    }
                 }
 
                 return;
@@ -212,13 +232,19 @@ namespace Immersive.Framework.Editor.Editor.Authoring
 
             using (new EditorGUILayout.HorizontalScope())
             {
-                if (GUILayout.Button("Open Route"))
+                if (GUILayout.Button(
+                        new GUIContent(
+                            "Open Route",
+                            "Selects and pings the assigned startup Route.")))
                 {
                     Selection.activeObject = route;
                     EditorGUIUtility.PingObject(route);
                 }
 
-                if (GUILayout.Button("Replace"))
+                if (GUILayout.Button(
+                        new GUIContent(
+                            "Replace",
+                            "Clears the current Route reference so another Route can be assigned.")))
                 {
                     _startupRoute.objectReferenceValue = null;
                     GUI.FocusControl(null);
@@ -228,36 +254,26 @@ namespace Immersive.Framework.Editor.Editor.Authoring
 
         private void DrawLocalPlayers()
         {
-            EditorGUILayout.LabelField(
-                "Local Players (Optional)",
-                EditorStyles.boldLabel);
-            EditorGUILayout.HelpBox(
-                "Leave Player Slots empty for applications whose Activities use Projection = No Slots. Add explicit PlayerSlotProfile references only when this application enables local Player participation.",
-                MessageType.None);
+            DrawSection("Local Players (Optional)");
+
             EditorGUILayout.PropertyField(
                 _playerActorSelectionDuplicatePolicy,
-                new GUIContent("Duplicate Actors"));
+                DuplicateActorsLabel);
 
-            EditorGUILayout.Space(4f);
+            EditorGUILayout.Space(3f);
             _localPlayerSlotsList?.DoLayoutList();
         }
 
         private void DrawPersistentContent()
         {
-            EditorGUILayout.LabelField(
-                "Persistent Content",
-                EditorStyles.boldLabel);
-            EditorGUILayout.HelpBox(
-                "The Content Scene is the complete composition authority. Author Camera, presentation, future Audio or Lighting and any other application-persistent objects directly in that scene. Prefabs and Prefab Variants remain optional Unity building blocks.",
-                MessageType.None);
+            DrawSection("Persistent Content");
 
             SceneAsset currentScene =
                 _containerScene?.objectReferenceValue as SceneAsset;
+
             SceneAsset selectedScene =
                 (SceneAsset)EditorGUILayout.ObjectField(
-                    new GUIContent(
-                        "Content Scene",
-                        "Scene containing the complete composition retained throughout the application."),
+                    ContentSceneLabel,
                     currentScene,
                     typeof(SceneAsset),
                     false);
@@ -269,99 +285,158 @@ namespace Immersive.Framework.Editor.Editor.Authoring
                     selectedScene;
             }
 
-            EditorGUILayout.HelpBox(
-                "Create the scene from the official Persistent Content Scene Template, or author an equivalent scene manually. The Game Application only references, opens and validates the created scene; it never creates scene content or other assets.",
-                MessageType.None);
-
-            using (new EditorGUI.DisabledScope(
-                       selectedScene == null))
+            if (selectedScene == null)
             {
-                if (GUILayout.Button(
-                        "Open Content Scene"))
-                {
-                    // Opening a scene replaces the current Editor context and
-                    // disposes this Inspector's SerializedObject immediately.
-                    // Persist pending edits, invalidate cached bindings and stop
-                    // the current IMGUI event before DrawValidation executes.
-                    serializedObject.ApplyModifiedProperties();
-                    _serializedBindingsDirty = true;
+                EditorGUILayout.HelpBox(
+                    "Select the Persistent Content Scene.",
+                    MessageType.Error);
+                return;
+            }
 
-                    AssetDatabase.OpenAsset(
-                        selectedScene);
+            if (GUILayout.Button(
+                    new GUIContent(
+                        "Open Content Scene",
+                        "Opens the assigned Persistent Content Scene.")))
+            {
+                serializedObject.ApplyModifiedProperties();
+                _serializedBindingsDirty = true;
 
-                    GUIUtility.ExitGUI();
-                }
+                AssetDatabase.OpenAsset(
+                    selectedScene);
+
+                GUIUtility.ExitGUI();
             }
         }
 
         private void DrawValidation()
         {
-            EditorGUILayout.LabelField(
-                "Validation",
-                EditorStyles.boldLabel);
+            DrawSection("Validation");
+
             EditorGUILayout.PropertyField(
                 _validationMode,
-                new GUIContent("Mode"));
+                ValidationModeLabel);
 
-            EditorGUILayout.HelpBox(
-                "Scene-content validation runs only when Validate Configuration is pressed. The selected Game Application and its configured dependencies are validated locally; unrelated project assets belong to explicit project audits.",
-                MessageType.None);
-
-            DrawStatusRow(
-                "Last Result",
-                GetValidationStatus());
-
-            if (GUILayout.Button(
-                    "Validate Configuration"))
+            using (new EditorGUILayout.HorizontalScope())
             {
-                serializedObject.ApplyModifiedProperties();
-                RunAuthoringValidation();
-                _serializedBindingsDirty = true;
+                if (GUILayout.Button(
+                        ValidateLabel,
+                        GUILayout.Width(96f)))
+                {
+                    serializedObject.ApplyModifiedProperties();
+                    RunAuthoringValidation();
+                    _serializedBindingsDirty = true;
 
-                // Validation may open and close scenes, which can invalidate
-                // cached SerializedProperty instances during the current IMGUI
-                // event. Stop drawing now and let Unity rebuild the Inspector
-                // safely on the next repaint.
-                GUIUtility.ExitGUI();
+                    GUIUtility.ExitGUI();
+                }
+
+                GUILayout.Space(8f);
+
+                EditorGUILayout.LabelField(
+                    GetValidationStatus(),
+                    EditorStyles.miniBoldLabel);
+
+                GUILayout.FlexibleSpace();
+            }
+
+            DrawFirstActionableValidationIssue();
+        }
+
+        private void DrawFirstActionableValidationIssue()
+        {
+            if (_lastValidationReport == null ||
+                _validationOutdated ||
+                (_lastValidationReport.ErrorCount == 0 &&
+                 _lastValidationReport.WarningCount == 0))
+            {
+                return;
+            }
+
+            for (int index = 0;
+                 index < _lastValidationReport.Issues.Count;
+                 index++)
+            {
+                FrameworkAuthoringValidationIssue issue =
+                    _lastValidationReport.Issues[index];
+
+                if (issue.Severity !=
+                        FrameworkAuthoringValidationSeverity.Error &&
+                    issue.Severity !=
+                        FrameworkAuthoringValidationSeverity.Warning)
+                {
+                    continue;
+                }
+
+                EditorGUILayout.HelpBox(
+                    issue.Message,
+                    issue.Severity ==
+                        FrameworkAuthoringValidationSeverity.Error
+                            ? MessageType.Error
+                            : MessageType.Warning);
+
+                return;
             }
         }
 
-        private void DrawAdvancedDiagnostics()
+        private void DrawAdvancedDebug()
         {
-            _showAdvancedDiagnostics =
+            EditorGUILayout.Space(7f);
+
+            _showAdvancedDebug =
                 EditorGUILayout.Foldout(
-                    _showAdvancedDiagnostics,
-                    "Advanced / Diagnostics",
+                    _showAdvancedDebug,
+                    new GUIContent(
+                        "Advanced / Debug",
+                        "Shows read-only technical evidence and the complete validation report."),
                     true);
-            if (!_showAdvancedDiagnostics)
+
+            if (!_showAdvancedDebug)
             {
                 return;
             }
 
             EditorGUI.indentLevel++;
 
+            GameApplicationAsset activeGameApplication =
+                ImmersiveFrameworkEditorSettingsUtility
+                    .GetActiveGameApplication();
+
             using (new EditorGUI.DisabledScope(true))
             {
+                EditorGUILayout.ObjectField(
+                    "Active Game Application",
+                    activeGameApplication,
+                    typeof(GameApplicationAsset),
+                    false);
+
+                EditorGUILayout.ObjectField(
+                    "Startup Route",
+                    _startupRoute?.objectReferenceValue,
+                    typeof(RouteAsset),
+                    false);
+
                 EditorGUILayout.ObjectField(
                     "Content Scene",
                     _containerScene?.objectReferenceValue,
                     typeof(SceneAsset),
                     false);
+
                 EditorGUILayout.IntField(
                     "Configured Player Capacity",
                     _localPlayerSlots?.arraySize ?? 0);
-            }
 
-            EditorGUILayout.HelpBox(
-                "The Game Application declares one concrete Content Scene. Player Slots are optional until a Player-participating Activity requires them. The framework validates only this application's configured graph here; project-wide Profile audits remain separate.",
-                MessageType.None);
+                EditorGUILayout.TextField(
+                    "Validation Status",
+                    GetValidationStatus());
+            }
 
             EditorGUILayout.Space(4f);
             EditorGUILayout.LabelField(
                 "Validation Report",
                 EditorStyles.boldLabel);
+
             FrameworkAuthoringValidationGui.DrawSummary(
                 _lastValidationReport);
+
             FrameworkAuthoringValidationGui.DrawIssues(
                 _lastValidationReport,
                 false);
@@ -371,17 +446,20 @@ namespace Immersive.Framework.Editor.Editor.Authoring
 
         private void RunAuthoringValidation()
         {
-            var gameApplication =
+            GameApplicationAsset gameApplication =
                 (GameApplicationAsset)target;
+
             _lastValidationReport =
                 FrameworkAuthoringValidator
                     .ValidateGameApplication(
                         gameApplication,
                         true);
+
             _lastValidationReport.AddRange(
                 PlayerParticipationAuthoringValidator
                     .ValidateGameApplication(
                         gameApplication));
+
             _validationOutdated = false;
         }
 
@@ -389,25 +467,34 @@ namespace Immersive.Framework.Editor.Editor.Authoring
         {
             if (_lastValidationReport == null)
             {
-                return "○ Not validated";
+                return "Not Validated";
             }
 
             if (_validationOutdated)
             {
-                return "○ Outdated — configuration changed";
+                return "Outdated";
             }
 
             if (_lastValidationReport.ErrorCount > 0)
             {
-                return $"● Configuration has {_lastValidationReport.ErrorCount} error{(_lastValidationReport.ErrorCount == 1 ? string.Empty : "s")}";
+                return "Invalid";
             }
 
             if (_lastValidationReport.WarningCount > 0)
             {
-                return $"● Valid with {_lastValidationReport.WarningCount} warning{(_lastValidationReport.WarningCount == 1 ? string.Empty : "s")}";
+                return "Warning";
             }
 
-            return "● Valid — no errors or warnings";
+            return "Valid";
+        }
+
+        private static void DrawSection(
+            string title)
+        {
+            EditorGUILayout.Space(7f);
+            EditorGUILayout.LabelField(
+                title,
+                EditorStyles.boldLabel);
         }
 
         private static void DrawStatusRow(
@@ -417,11 +504,9 @@ namespace Immersive.Framework.Editor.Editor.Authoring
             using (new EditorGUILayout.HorizontalScope())
             {
                 EditorGUILayout.PrefixLabel(label);
-                EditorGUILayout.SelectableLabel(
+                EditorGUILayout.LabelField(
                     status,
-                    EditorStyles.label,
-                    GUILayout.Height(
-                        EditorGUIUtility.singleLineHeight));
+                    EditorStyles.miniBoldLabel);
             }
         }
     }
