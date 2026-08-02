@@ -24,9 +24,9 @@ namespace Immersive.Framework.PlayerParticipation
         public bool IsCompatibleWith(ActorProfile expectedProfile)
         {
             return expectedProfile != null &&
-                ReferenceEquals(actorProfile, expectedProfile) &&
+                actorProfile == expectedProfile &&
                 expectedProfile.LogicalActorHostPrefab != null &&
-                ReferenceEquals(logicalActorHostPrefab, expectedProfile.LogicalActorHostPrefab);
+                logicalActorHostPrefab == expectedProfile.LogicalActorHostPrefab;
         }
 
 #if UNITY_EDITOR

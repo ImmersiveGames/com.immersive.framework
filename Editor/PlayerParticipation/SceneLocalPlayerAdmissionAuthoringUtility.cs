@@ -90,7 +90,7 @@ namespace Immersive.Framework.Editor.PlayerParticipation
                 return result;
             }
 
-            if (!ReferenceEquals(
+            if (!AreSamePrefabAsset(
                     sourcePrefab,
                     profilePrefab))
             {
@@ -174,9 +174,7 @@ namespace Immersive.Framework.Editor.PlayerParticipation
                     "Assign Player Slot Profile, Actor Profile and Scene Logical Player Actor. Local Player Host is resolved from this same GameObject.");
             }
 
-            if (!ReferenceEquals(
-                    authoring.LocalPlayerHost.gameObject,
-                    authoring.gameObject))
+            if (authoring.LocalPlayerHost.gameObject != authoring.gameObject)
             {
                 return Failure(
                     SceneLocalPlayerAdmissionAuthoringStatus.InvalidHost,
@@ -306,6 +304,35 @@ namespace Immersive.Framework.Editor.PlayerParticipation
             return source != null
                 ? source.transform.root.gameObject
                 : null;
+        }
+
+        private static bool AreSamePrefabAsset(
+            GameObject first,
+            GameObject second)
+        {
+            if (first == null || second == null)
+            {
+                return first == second;
+            }
+
+            if (first == second)
+            {
+                return true;
+            }
+
+            return AssetDatabase.TryGetGUIDAndLocalFileIdentifier(
+                       first,
+                       out string firstGuid,
+                       out long firstLocalId) &&
+                   AssetDatabase.TryGetGUIDAndLocalFileIdentifier(
+                       second,
+                       out string secondGuid,
+                       out long secondLocalId) &&
+                   string.Equals(
+                       firstGuid,
+                       secondGuid,
+                       StringComparison.Ordinal) &&
+                   firstLocalId == secondLocalId;
         }
 
         private static SceneLocalPlayerAdmissionAuthoringResult Failure(

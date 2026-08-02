@@ -131,13 +131,9 @@ namespace Immersive.Framework.PlayerParticipation
             ActorProfile expectedProfile)
         {
             return expectedProfile != null &&
-                ReferenceEquals(
-                    evidenceActorProfile,
-                    expectedProfile) &&
+                evidenceActorProfile == expectedProfile &&
                 expectedProfile.LogicalActorHostPrefab != null &&
-                ReferenceEquals(
-                    evidenceLogicalActorHostPrefab,
-                    expectedProfile.LogicalActorHostPrefab);
+                evidenceLogicalActorHostPrefab == expectedProfile.LogicalActorHostPrefab;
         }
 
         public bool TryGetPlayerSlotId(

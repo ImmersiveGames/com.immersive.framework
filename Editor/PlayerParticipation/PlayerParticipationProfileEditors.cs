@@ -1,3 +1,6 @@
+using System;
+using System.Globalization;
+using System.Text;
 using Immersive.Framework.Actors;
 using Immersive.Framework.Editor.Editor.Validation;
 using Immersive.Framework.PlayerParticipation;
@@ -41,58 +44,48 @@ namespace Immersive.Framework.Editor.Editor.PlayerParticipation
             serializedObject.Update();
 
             EditorGUI.BeginChangeCheck();
-            DrawIdentity();
+            DrawPlayerSlot();
             DrawPresentation();
-            DrawActorSelectionDefault();
-            bool authoringChanged = EditorGUI.EndChangeCheck();
+            DrawActorSelection();
+            bool normalAuthoringChanged = EditorGUI.EndChangeCheck();
 
-            serializedObject.ApplyModifiedProperties();
-
-            if (authoringChanged)
+            bool normalPropertiesApplied = serializedObject.ApplyModifiedProperties();
+            if (normalAuthoringChanged || normalPropertiesApplied)
             {
                 ClearValidationResult();
-                Repaint();
             }
 
-            DrawPrimaryActions();
-
-            if (_hasValidationResult && _validationReport != null)
-            {
-                DrawValidationResult(_validationReport);
-            }
-
-            if (_showAdvanced)
-            {
-                DrawAdvanced((PlayerSlotProfile)target);
-            }
+            DrawProductActions();
+            DrawValidationSummary();
+            DrawAdvancedSection();
         }
 
-        private void DrawIdentity()
+        private void DrawPlayerSlot()
         {
-            DrawSection("Identity");
-
-            _playerSlotId.stringValue = EditorGUILayout.TextField(
-                new GUIContent(
-                    "Player Slot Id",
-                    "Canonical stable PlayerSlotId owned by this Profile."),
-                _playerSlotId.stringValue);
+            DrawSection("Player Slot");
 
             EditorGUILayout.PropertyField(
                 _displayName,
                 new GUIContent(
                     "Display Name",
-                    "Designer-facing name used to present this Slot."));
+                    "Designer-facing name used to present this local participation Slot."));
 
             EditorGUILayout.PropertyField(
                 _description,
                 new GUIContent(
                     "Description",
-                    "Optional designer-facing description of this Slot."));
+                    "Optional designer-facing description explaining the purpose of this Slot."));
         }
 
         private void DrawPresentation()
         {
             DrawSection("Presentation");
+
+            EditorGUILayout.PropertyField(
+                _icon,
+                new GUIContent(
+                    "Icon",
+                    "Optional Sprite used to recognize this Slot in selection and diagnostic surfaces."));
 
             _accentColor.colorValue = EditorGUILayout.ColorField(
                 new GUIContent(
@@ -101,28 +94,22 @@ namespace Immersive.Framework.Editor.Editor.PlayerParticipation
                 _accentColor.colorValue);
 
             EditorGUILayout.PropertyField(
-                _icon,
-                new GUIContent(
-                    "Icon",
-                    "Optional Sprite used to present this Slot."));
-
-            DrawIconPreview();
-
-            EditorGUILayout.PropertyField(
                 _displayOrder,
                 new GUIContent(
                     "Display Order",
-                    "Presentation metadata only. Game Application array order controls default local Slot allocation."));
+                    "Controls presentation sorting only. Game Application Slot order controls default local allocation."));
+
+            DrawIconPreview();
         }
 
-        private void DrawActorSelectionDefault()
+        private void DrawActorSelection()
         {
-            DrawSection("Actor Selection Default");
+            DrawSection("Actor Selection");
 
             _defaultActorProfile.objectReferenceValue = EditorGUILayout.ObjectField(
                 new GUIContent(
-                    "Default Actor Profile",
-                    "Optional immutable default Actor selection intent. Session runtime applies it through the canonical selection operation after the Slot is Joined."),
+                    "Default Actor",
+                    "Optional Actor selected by default after this Slot joins. An Activity or explicit selection flow may provide another Actor later."),
                 _defaultActorProfile.objectReferenceValue,
                 typeof(ActorProfile),
                 false);
@@ -192,7 +179,7 @@ namespace Immersive.Framework.Editor.Editor.PlayerParticipation
                 ? target.name
                 : _displayName.stringValue.Trim();
             string slotId = string.IsNullOrWhiteSpace(_playerSlotId.stringValue)
-                ? "No Player Slot Id"
+                ? "No Player Slot ID"
                 : _playerSlotId.stringValue.Trim();
             string iconName = sprite != null ? sprite.name : "No icon assigned";
 
@@ -219,23 +206,13 @@ namespace Immersive.Framework.Editor.Editor.PlayerParticipation
             GUI.Label(rect, text, style);
         }
 
-        private void DrawPrimaryActions()
+        private void DrawProductActions()
         {
-            EditorGUILayout.Space(5f);
-            using (new EditorGUILayout.HorizontalScope())
-            {
-                if (GUILayout.Button("Validate"))
-                {
-                    RunValidation();
-                }
+            DrawSection("Product Actions");
 
-                string advancedLabel = _showAdvanced
-                    ? "Hide Advanced / Debug"
-                    : "Advanced / Debug";
-                if (GUILayout.Button(advancedLabel))
-                {
-                    _showAdvanced = !_showAdvanced;
-                }
+            if (GUILayout.Button("Validate"))
+            {
+                RunValidation();
             }
         }
 
@@ -252,32 +229,86 @@ namespace Immersive.Framework.Editor.Editor.PlayerParticipation
         {
             _validationReport = null;
             _hasValidationResult = false;
+            Repaint();
         }
 
-        private static void DrawValidationResult(
-            FrameworkAuthoringValidationReport report)
+        private void DrawValidationSummary()
         {
-            DrawSection("Validation Result");
-            FrameworkAuthoringValidationGui.DrawSummary(report);
-            FrameworkAuthoringValidationGui.DrawIssues(report, false);
+            DrawSection("Validation Summary");
+
+            if (!_hasValidationResult || _validationReport == null)
+            {
+                EditorGUILayout.LabelField(
+                    "Not Validated",
+                    EditorStyles.miniLabel);
+                return;
+            }
+
+            FrameworkAuthoringValidationGui.DrawSummary(_validationReport);
+            FrameworkAuthoringValidationGui.DrawIssues(_validationReport, false);
         }
 
-        private static void DrawAdvanced(PlayerSlotProfile profile)
+        private void DrawAdvancedSection()
         {
-            DrawSection("Advanced / Debug");
+            EditorGUILayout.Space(6f);
+            _showAdvanced = EditorGUILayout.Foldout(
+                _showAdvanced,
+                "Advanced / Debug",
+                true);
 
+            if (!_showAdvanced)
+            {
+                return;
+            }
+
+            serializedObject.Update();
+            EditorGUI.BeginChangeCheck();
+
+            EditorGUILayout.PropertyField(
+                _playerSlotId,
+                new GUIContent(
+                    "Player Slot ID",
+                    "Canonical stable PlayerSlotId owned by this Profile. Changing it may invalidate external references."));
+
+            string suggestedId = PlayerProfileIdSuggestionUtility.SuggestPlayerSlotId(
+                _displayName.stringValue,
+                target.name);
+            DrawIdSuggestion(
+                _playerSlotId,
+                suggestedId);
+
+            bool advancedAuthoringChanged = EditorGUI.EndChangeCheck();
+            bool advancedPropertiesApplied = serializedObject.ApplyModifiedProperties();
+            if (advancedAuthoringChanged || advancedPropertiesApplied)
+            {
+                ClearValidationResult();
+            }
+
+            DrawAdvancedEvidence((PlayerSlotProfile)target);
+        }
+
+        private static void DrawAdvancedEvidence(PlayerSlotProfile profile)
+        {
             using (new EditorGUI.DisabledScope(true))
             {
-                EditorGUILayout.TextField("Asset Path", AssetDatabase.GetAssetPath(profile));
-                EditorGUILayout.TextField("Normalized Identity", profile.PlayerSlotIdText);
+                EditorGUILayout.TextField(
+                    "Asset Path",
+                    AssetDatabase.GetAssetPath(profile));
+                EditorGUILayout.TextField(
+                    "Normalized Identity",
+                    profile.PlayerSlotIdText);
 
                 string typedIdentity = profile.TryGetPlayerSlotId(
                     out var playerSlotId,
                     out string issue)
                     ? playerSlotId.ToString()
                     : $"Invalid: {issue}";
-                EditorGUILayout.TextField("Typed PlayerSlotId", typedIdentity);
-                EditorGUILayout.Toggle("Has Default Actor", profile.HasDefaultActorProfile);
+                EditorGUILayout.TextField(
+                    "Typed PlayerSlotId",
+                    typedIdentity);
+                EditorGUILayout.Toggle(
+                    "Has Default Actor",
+                    profile.HasDefaultActorProfile);
 
                 ActorProfile defaultActor = profile.DefaultActorProfile;
                 string defaultIdentity = defaultActor != null &&
@@ -286,7 +317,35 @@ namespace Immersive.Framework.Editor.Editor.PlayerParticipation
                         out _)
                     ? actorProfileId.ToString()
                     : string.Empty;
-                EditorGUILayout.TextField("Default ActorProfileId", defaultIdentity);
+                EditorGUILayout.TextField(
+                    "Default ActorProfileId",
+                    defaultIdentity);
+            }
+        }
+
+        private static void DrawIdSuggestion(
+            SerializedProperty idProperty,
+            string suggestedId)
+        {
+            EditorGUILayout.LabelField(
+                "Suggested ID",
+                string.IsNullOrWhiteSpace(suggestedId) ? "Unavailable" : suggestedId,
+                EditorStyles.miniLabel);
+
+            bool canApply =
+                !idProperty.hasMultipleDifferentValues &&
+                string.IsNullOrWhiteSpace(idProperty.stringValue) &&
+                !string.IsNullOrWhiteSpace(suggestedId);
+
+            using (new EditorGUI.DisabledScope(!canApply))
+            {
+                if (GUILayout.Button(new GUIContent(
+                    "Use Suggested ID",
+                    "Applies the displayed deterministic suggestion only while the ID is empty. Run Validate afterward to check project uniqueness.")))
+                {
+                    idProperty.stringValue = suggestedId;
+                    GUI.FocusControl(null);
+                }
             }
         }
 
@@ -294,6 +353,106 @@ namespace Immersive.Framework.Editor.Editor.PlayerParticipation
         {
             EditorGUILayout.Space(6f);
             EditorGUILayout.LabelField(title, EditorStyles.boldLabel);
+        }
+    }
+
+    internal static class PlayerProfileIdSuggestionUtility
+    {
+        internal static string SuggestPlayerSlotId(
+            string displayName,
+            string assetName)
+        {
+            string slug = BuildSlug(SelectSource(displayName, assetName));
+            slug = TrimPrefix(slug, "player-slot-");
+            slug = TrimPrefix(slug, "slot-");
+            slug = TrimPrefix(slug, "player-");
+            slug = TrimSuffix(slug, "-player-slot");
+            slug = TrimSuffix(slug, "-slot");
+
+            return $"player.{ResolveSuffix(slug)}";
+        }
+
+        internal static string SuggestActorProfileId(
+            string displayName,
+            string assetName)
+        {
+            string slug = BuildSlug(SelectSource(displayName, assetName));
+            slug = TrimPrefix(slug, "actor-profile-");
+            slug = TrimPrefix(slug, "actor-");
+            slug = TrimSuffix(slug, "-actor-profile");
+            slug = TrimSuffix(slug, "-actor");
+
+            return $"actor-profile.{ResolveSuffix(slug)}";
+        }
+
+        private static string SelectSource(string displayName, string assetName)
+        {
+            return !string.IsNullOrWhiteSpace(displayName)
+                ? displayName
+                : assetName;
+        }
+
+        private static string ResolveSuffix(string slug)
+        {
+            return string.IsNullOrWhiteSpace(slug) ? "default" : slug;
+        }
+
+        private static string BuildSlug(string source)
+        {
+            if (string.IsNullOrWhiteSpace(source))
+            {
+                return string.Empty;
+            }
+
+            string normalizedSource = source
+                .Trim()
+                .Normalize(NormalizationForm.FormD);
+            var builder = new StringBuilder(normalizedSource.Length);
+            bool pendingSeparator = false;
+
+            foreach (char character in normalizedSource)
+            {
+                UnicodeCategory category =
+                    CharUnicodeInfo.GetUnicodeCategory(character);
+                if (category == UnicodeCategory.NonSpacingMark)
+                {
+                    continue;
+                }
+
+                if (char.IsLetterOrDigit(character))
+                {
+                    if (pendingSeparator && builder.Length > 0)
+                    {
+                        builder.Append('-');
+                    }
+
+                    builder.Append(char.ToLower(character, CultureInfo.InvariantCulture));
+                    pendingSeparator = false;
+                }
+                else
+                {
+                    pendingSeparator = true;
+                }
+            }
+
+            return builder
+                .ToString()
+                .Normalize(NormalizationForm.FormC)
+                .Trim('-');
+        }
+
+        private static string TrimPrefix(string value, string prefix)
+        {
+            return value.StartsWith(prefix, StringComparison.Ordinal)
+                ? value.Substring(prefix.Length)
+                : value;
+        }
+
+        private static string TrimSuffix(string value, string suffix)
+        {
+            return value.EndsWith(suffix, StringComparison.Ordinal)
+                ? value.Substring(0, value.Length - suffix.Length)
+                : value;
         }
     }
 }

@@ -18,21 +18,22 @@ namespace Immersive.Framework.Actors
         "P3H immutable selectable Actor Profile authoring foundation.")]
     public sealed class ActorProfile : ScriptableObject
     {
-        [Header("Identity")]
         [Tooltip("Canonical stable ActorProfileId authored only by this Profile.")]
         [SerializeField] private string actorProfileId = "actor-profile.player.default";
+
         [SerializeField] private string displayName = "Player Actor";
+
         [TextArea(2, 6)]
         [SerializeField] private string description;
+
         [SerializeField] private Sprite icon;
 
-        [Header("Classification")]
         [Tooltip("Broad framework Actor category. This is not a project-specific class taxonomy.")]
         [SerializeField] private ActorKind actorKind = ActorKind.Player;
+
         [Tooltip("Broad framework Actor role. This is not a loadout, team or character class.")]
         [SerializeField] private ActorRole actorRole = ActorRole.Protagonist;
 
-        [Header("Logical Composition")]
         [Tooltip("Canonical Logical Actor Host prefab. ActorProfile never instantiates it by itself.")]
         [SerializeField] private GameObject logicalActorHostPrefab;
 

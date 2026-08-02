@@ -312,14 +312,14 @@ namespace Immersive.Framework.PlayerParticipation
                 return false;
             }
 
-            if (!ReferenceEquals(playerInput.gameObject, gameObject))
+            if (playerInput.gameObject != gameObject)
             {
                 issue = "Local Player Host PlayerInput must exist on the same GameObject as LocalPlayerHostAuthoring.";
                 return false;
             }
 
             PlayerInput[] playerInputs = GetComponentsInChildren<PlayerInput>(true);
-            if (playerInputs.Length != 1 || !ReferenceEquals(playerInputs[0], playerInput))
+            if (playerInputs.Length != 1 || playerInputs[0] != playerInput)
             {
                 issue = $"Local Player Host requires exactly one PlayerInput in its hierarchy. Found '{playerInputs.Length}'.";
                 return false;
@@ -331,7 +331,7 @@ namespace Immersive.Framework.PlayerParticipation
                 return false;
             }
 
-            if (ReferenceEquals(actorMount, transform) || !actorMount.IsChildOf(transform))
+            if (actorMount == transform || !actorMount.IsChildOf(transform))
             {
                 issue = "Local Player Host Actor Mount must be a child of the technical host root.";
                 return false;
@@ -363,7 +363,7 @@ namespace Immersive.Framework.PlayerParticipation
                 return false;
             }
 
-            if (!ReferenceEquals(expectedSceneActor.transform, actorMount) &&
+            if (expectedSceneActor.transform != actorMount &&
                 !expectedSceneActor.transform.IsChildOf(actorMount))
             {
                 issue = "Scene Logical Player Actor must exist under the exact Local Player Host Actor Mount.";
@@ -373,14 +373,14 @@ namespace Immersive.Framework.PlayerParticipation
             PlayerActorDeclaration[] playerDeclarations =
                 actorMount.GetComponentsInChildren<PlayerActorDeclaration>(true);
             if (playerDeclarations.Length != 1 ||
-                !ReferenceEquals(playerDeclarations[0], expectedSceneActor))
+                playerDeclarations[0] != expectedSceneActor)
             {
                 issue = $"Scene Local Player admission requires exactly one PlayerActorDeclaration under Actor Mount. Found '{playerDeclarations.Length}'.";
                 return false;
             }
 
             if (actorDeclarations.Length != 1 ||
-                !ReferenceEquals(actorDeclarations[0], expectedSceneActor))
+                actorDeclarations[0] != expectedSceneActor)
             {
                 issue = $"Scene Local Player admission requires one canonical PlayerActorDeclaration and no additional ActorDeclaration. Found '{actorDeclarations.Length}'.";
                 return false;
