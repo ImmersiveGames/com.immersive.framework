@@ -42,10 +42,12 @@ namespace Immersive.Framework.PlayerParticipation
                     Add(issues, LocalPlayerProvisioningIssueKind.MissingPlayerInputManager, resolvedSource, "Provisioning requires an explicit PlayerInputManager.");
                 else if (!ReferenceEquals(manager.gameObject, authoring.gameObject))
                     Add(issues, LocalPlayerProvisioningIssueKind.DivergentPlayerInputManager, resolvedSource, "PlayerInputManager must be owned by the provisioning surface GameObject.");
-                if (authoring.PlayerPrefab == null)
-                    Add(issues, LocalPlayerProvisioningIssueKind.MissingPlayerPrefab, resolvedSource, "Provisioning requires an explicit Player prefab.");
-                else if (authoring.PlayerPrefab.GetComponent<LocalPlayerHostAuthoring>() == null)
-                    Add(issues, LocalPlayerProvisioningIssueKind.InvalidPlayerHost, resolvedSource, "The Player prefab must contain LocalPlayerHostAuthoring on its root.");
+                if (authoring.LocalPlayerHostPrefab == null)
+                    Add(issues, LocalPlayerProvisioningIssueKind.MissingLocalPlayerHostPrefab, resolvedSource, "Provisioning requires an explicit Local Player Host Prefab.");
+                else if (authoring.LocalPlayerHostPrefab.GetComponent<LocalPlayerHostAuthoring>() == null)
+                    Add(issues, LocalPlayerProvisioningIssueKind.InvalidPlayerHost, resolvedSource, "The Local Player Host Prefab must contain LocalPlayerHostAuthoring on its root.");
+                if (authoring.HasManagerPrefabDivergence)
+                    Add(issues, LocalPlayerProvisioningIssueKind.DivergentManagerPrefab, resolvedSource, "PlayerInputManager Player Prefab diverges from the authored Local Player Host Prefab. Resolve the conflict explicitly before boot.");
                 if (authoring.TechnicalMaxPlayerCount <= 0)
                     Add(issues, LocalPlayerProvisioningIssueKind.InvalidCapacity, resolvedSource, "Provisioning capacity must be greater than zero.");
                 if (!authoring.UsesManualJoin)

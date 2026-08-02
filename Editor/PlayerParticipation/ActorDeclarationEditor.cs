@@ -8,240 +8,249 @@ namespace Immersive.Framework.Editor.Editor.PlayerParticipation
 {
     /// <summary>
     /// Designer-first inspector shared by ActorDeclaration and specialized declarations.
-    /// Stable identity and diagnostics remain available without dominating the product surface.
+    /// Stable identity and technical evidence remain available under Advanced / Debug.
     /// </summary>
     [CustomEditor(typeof(ActorDeclaration), true)]
     internal sealed class ActorDeclarationEditor : UnityEditor.Editor
     {
         private const string LegacyQaActorId = "qa.actor.generic";
 
-        private SerializedProperty _actorId;
-        private SerializedProperty _actorKind;
-        private SerializedProperty _actorRole;
-        private SerializedProperty _displayName;
-        private SerializedProperty _reason;
+        private SerializedProperty actorId;
+        private SerializedProperty actorKind;
+        private SerializedProperty actorRole;
+        private SerializedProperty displayName;
+        private SerializedProperty reason;
 
-        private FrameworkAuthoringValidationReport _lastValidationReport;
-        private bool _validationOutdated;
-        private bool _showAdvanced;
+        private FrameworkAuthoringValidationReport lastValidationReport;
+        private bool validationOutdated;
+        private bool showAdvanced;
 
         private void OnEnable()
         {
-            _actorId = serializedObject.FindProperty("actorId");
-            _actorKind = serializedObject.FindProperty("actorKind");
-            _actorRole = serializedObject.FindProperty("actorRole");
-            _displayName = serializedObject.FindProperty("displayName");
-            _reason = serializedObject.FindProperty("reason");
+            actorId = serializedObject.FindProperty("actorId");
+            actorKind = serializedObject.FindProperty("actorKind");
+            actorRole = serializedObject.FindProperty("actorRole");
+            displayName = serializedObject.FindProperty("displayName");
+            reason = serializedObject.FindProperty("reason");
         }
 
         public override void OnInspectorGUI()
         {
             serializedObject.UpdateIfRequiredOrScript();
 
-            ActorDeclaration declaration = (ActorDeclaration)target;
-            bool isPlayer = declaration is PlayerActorDeclaration;
+            ActorDeclaration declaration =
+                (ActorDeclaration)target;
+            bool isPlayer =
+                declaration is PlayerActorDeclaration;
 
-            DrawHeader(isPlayer);
-            DrawIdentity();
+            EditorGUI.BeginChangeCheck();
+            DrawActor();
             DrawClassification(isPlayer);
-            DrawValidation(declaration);
-            DrawAdvanced(declaration);
+            bool primaryChanged =
+                EditorGUI.EndChangeCheck();
 
-            bool modified = serializedObject.ApplyModifiedProperties();
-            if (modified && _lastValidationReport != null)
+            bool primaryModified =
+                serializedObject.ApplyModifiedProperties();
+
+            if (primaryChanged || primaryModified)
             {
-                _validationOutdated = true;
+                MarkValidationOutdated();
             }
+
+            DrawActions(declaration);
+            DrawValidationSummary();
+
+            if (Application.isPlaying && isPlayer)
+            {
+                DrawRuntimeStatus(
+                    (PlayerActorDeclaration)declaration);
+            }
+
+            DrawAdvanced(declaration);
         }
 
-        private static void DrawHeader(bool isPlayer)
+        private void DrawActor()
         {
-            EditorGUILayout.LabelField(
-                isPlayer ? "Player Actor" : "Actor",
-                EditorStyles.boldLabel);
-            EditorGUILayout.HelpBox(
-                isPlayer
-                    ? "Declares one Logical Player Actor. PlayerInput belongs to the Local Player Host; this component owns only Actor identity and classification."
-                    : "Declares one logical Actor identity. Movement, input, presentation, materialization and lifetime remain owned by their explicit systems.",
-                MessageType.Info);
-        }
+            DrawSection("Actor");
 
-        private void DrawIdentity()
-        {
-            EditorGUILayout.Space(6f);
-            EditorGUILayout.LabelField(
-                "Identity",
-                EditorStyles.boldLabel);
             EditorGUILayout.PropertyField(
-                _displayName,
+                displayName,
                 new GUIContent(
                     "Display Name",
-                    "Human-readable label used in authoring and diagnostics. It is not functional identity."));
+                    "Human-readable Actor label used in authoring and diagnostics. It is not functional identity."));
         }
 
-        private void DrawClassification(bool isPlayer)
+        private void DrawClassification(
+            bool isPlayer)
         {
-            EditorGUILayout.Space(6f);
-            EditorGUILayout.LabelField(
-                "Classification",
-                EditorStyles.boldLabel);
+            DrawSection("Classification");
 
             if (isPlayer)
             {
-                EditorGUILayout.HelpBox(
-                    "This specialized declaration is always classified as Player / Protagonist.",
-                    MessageType.None);
+                using (new EditorGUI.DisabledScope(true))
+                {
+                    EditorGUILayout.TextField(
+                        "Actor Kind",
+                        ActorKind.Player.ToString());
+                    EditorGUILayout.TextField(
+                        "Actor Role",
+                        ActorRole.Protagonist.ToString());
+                }
+
                 return;
             }
 
             EditorGUILayout.PropertyField(
-                _actorKind,
+                actorKind,
                 new GUIContent(
                     "Actor Kind",
                     "Broad Actor category used by framework contracts."));
+
             EditorGUILayout.PropertyField(
-                _actorRole,
+                actorRole,
                 new GUIContent(
                     "Actor Role",
                     "Broad gameplay role used by framework contracts."));
         }
 
-        private void DrawValidation(ActorDeclaration declaration)
+        private void DrawActions(
+            ActorDeclaration declaration)
         {
-            EditorGUILayout.Space(6f);
-            EditorGUILayout.LabelField(
-                "Validation",
-                EditorStyles.boldLabel);
+            DrawSection("Actions");
 
-            if (_lastValidationReport == null)
-            {
-                EditorGUILayout.HelpBox(
-                    "Not validated. Run validation after configuring the Actor.",
-                    MessageType.None);
-            }
-            else if (_validationOutdated)
-            {
-                EditorGUILayout.HelpBox(
-                    "Validation result is outdated because the Actor configuration changed.",
-                    MessageType.Warning);
-            }
-            else if (_lastValidationReport.IsValid)
-            {
-                EditorGUILayout.HelpBox(
-                    "Ready — no blocking Actor authoring issues were found.",
-                    MessageType.Info);
-            }
-            else
-            {
-                EditorGUILayout.HelpBox(
-                    $"Needs Attention — {_lastValidationReport.ErrorCount} blocking issue(s) were found.",
-                    MessageType.Error);
-            }
-
-            if (GUILayout.Button("Validate Actor"))
+            if (GUILayout.Button(
+                    new GUIContent(
+                        "Validate Actor",
+                        "Validate Actor identity, classification and Player-specific hierarchy rules without modifying runtime state.")))
             {
                 serializedObject.ApplyModifiedProperties();
-                _lastValidationReport =
-                    ActorDeclarationAuthoringValidator.Validate(declaration);
-                _validationOutdated = false;
+                lastValidationReport =
+                    ActorDeclarationAuthoringValidator.Validate(
+                        declaration);
+                validationOutdated = false;
             }
         }
 
-        private void DrawAdvanced(ActorDeclaration declaration)
+        private void DrawValidationSummary()
+        {
+            DrawSection("Validation Summary");
+
+            if (lastValidationReport == null)
+            {
+                EditorGUILayout.LabelField(
+                    "Status",
+                    "Not Validated");
+                return;
+            }
+
+            if (validationOutdated)
+            {
+                EditorGUILayout.LabelField(
+                    "Status",
+                    "Not Validated — configuration changed");
+                return;
+            }
+
+            if (lastValidationReport.IsValid)
+            {
+                EditorGUILayout.LabelField(
+                    "Status",
+                    "Valid");
+                return;
+            }
+
+            EditorGUILayout.LabelField(
+                "Status",
+                "Invalid");
+
+            EditorGUILayout.HelpBox(
+                $"{lastValidationReport.ErrorCount} blocking issue(s) were found. Correct the Actor configuration and validate again.",
+                MessageType.Error);
+
+            FrameworkAuthoringValidationGui.DrawIssues(
+                lastValidationReport,
+                false);
+        }
+
+        private static void DrawRuntimeStatus(
+            PlayerActorDeclaration player)
+        {
+            DrawSection("Runtime Status");
+
+            using (new EditorGUI.DisabledScope(true))
+            {
+                EditorGUILayout.LabelField(
+                    "Player Input Binding",
+                    player.HasPlayerInputEvidence
+                        ? "Bound"
+                        : "Unbound");
+
+                EditorGUILayout.ObjectField(
+                    "Player Input",
+                    player.PlayerInput,
+                    typeof(UnityEngine.Object),
+                    true);
+            }
+        }
+
+        private void DrawAdvanced(
+            ActorDeclaration declaration)
         {
             EditorGUILayout.Space(6f);
-            _showAdvanced =
+            showAdvanced =
                 EditorGUILayout.Foldout(
-                    _showAdvanced,
+                    showAdvanced,
                     "Advanced / Debug",
                     true);
 
-            if (!_showAdvanced)
+            if (!showAdvanced)
             {
                 return;
             }
 
-            DrawActorId();
+            EditorGUI.BeginChangeCheck();
 
-            EditorGUILayout.Space(4f);
-            EditorGUILayout.LabelField(
-                "Diagnostics",
-                EditorStyles.boldLabel);
-            EditorGUILayout.PropertyField(
-                _reason,
-                new GUIContent(
-                    "Reason",
-                    "Diagnostic declaration source/reason. It is not Actor identity."));
+            DrawStableIdentity();
+            DrawDiagnostics();
 
-            using (new EditorGUI.DisabledScope(true))
+            bool advancedChanged =
+                EditorGUI.EndChangeCheck();
+
+            bool advancedModified =
+                serializedObject.ApplyModifiedProperties();
+
+            if (advancedChanged || advancedModified)
             {
-                EditorGUILayout.TextField(
-                    "Runtime Type",
-                    declaration.GetType().FullName);
-                EditorGUILayout.EnumPopup(
-                    "Effective Actor Kind",
-                    declaration.ActorKind);
-                EditorGUILayout.EnumPopup(
-                    "Effective Actor Role",
-                    declaration.ActorRole);
-
-                if (declaration is PlayerActorDeclaration player)
-                {
-                    EditorGUILayout.Toggle(
-                        "Local Host PlayerInput Bound",
-                        player.HasPlayerInputEvidence);
-                    EditorGUILayout.ObjectField(
-                        "Bound PlayerInput",
-                        player.PlayerInput,
-                        typeof(UnityEngine.Object),
-                        true);
-                }
+                MarkValidationOutdated();
             }
 
-            if (_lastValidationReport != null)
-            {
-                EditorGUILayout.Space(4f);
-                EditorGUILayout.LabelField(
-                    "Validation Report",
-                    EditorStyles.boldLabel);
-                if (_validationOutdated)
-                {
-                    EditorGUILayout.HelpBox(
-                        "This report is outdated. Run Validate Actor again.",
-                        MessageType.Warning);
-                }
-
-                FrameworkAuthoringValidationGui.DrawSummary(
-                    _lastValidationReport);
-                FrameworkAuthoringValidationGui.DrawIssues(
-                    _lastValidationReport,
-                    false);
-            }
+            DrawTechnicalEvidence(declaration);
+            DrawValidationEvidence();
         }
 
-        private void DrawActorId()
+        private void DrawStableIdentity()
         {
-            EditorGUILayout.LabelField(
-                "Stable Identity",
-                EditorStyles.boldLabel);
+            DrawSection("Stable Identity");
 
-            string actorId =
-                _actorId != null
-                    ? _actorId.stringValue ?? string.Empty
+            string currentActorId =
+                actorId != null
+                    ? actorId.stringValue ?? string.Empty
                     : string.Empty;
+
             bool isLegacyPlaceholder =
                 string.Equals(
-                    actorId.Trim(),
+                    currentActorId.Trim(),
                     LegacyQaActorId,
                     StringComparison.Ordinal);
+
             bool canGenerate =
-                string.IsNullOrWhiteSpace(actorId) ||
+                string.IsNullOrWhiteSpace(currentActorId) ||
                 isLegacyPlaceholder;
 
             if (isLegacyPlaceholder)
             {
                 EditorGUILayout.HelpBox(
-                    "This component uses the legacy QA placeholder. Replace it explicitly before product use.",
+                    "This Actor uses the legacy QA placeholder. Replace it before product use.",
                     MessageType.Warning);
             }
 
@@ -252,37 +261,129 @@ namespace Immersive.Framework.Editor.Editor.PlayerParticipation
                     EditorGUILayout.TextField(
                         new GUIContent(
                             "Actor ID",
-                            "Stable functional identity. It must not change when the GameObject, prefab or display name changes."),
-                        actorId);
+                            "Stable functional identity. It must not change when the GameObject, prefab or Display Name changes."),
+                        currentActorId);
                 }
 
                 using (new EditorGUI.DisabledScope(!canGenerate))
                 {
+                    string buttonLabel =
+                        isLegacyPlaceholder
+                            ? "Replace ID"
+                            : "Generate ID";
+
                     if (GUILayout.Button(
-                            isLegacyPlaceholder ? "Replace ID" : "Generate ID",
+                            buttonLabel,
                             GUILayout.Width(90f)))
                     {
-                        _actorId.stringValue =
+                        actorId.stringValue =
                             $"actor.{Guid.NewGuid():N}";
                     }
                 }
 
                 using (new EditorGUI.DisabledScope(
-                           string.IsNullOrWhiteSpace(actorId)))
+                           string.IsNullOrWhiteSpace(
+                               currentActorId)))
                 {
                     if (GUILayout.Button(
                             "Copy ID",
                             GUILayout.Width(70f)))
                     {
                         EditorGUIUtility.systemCopyBuffer =
-                            actorId.Trim();
+                            currentActorId.Trim();
                     }
                 }
             }
+        }
 
-            EditorGUILayout.HelpBox(
-                "Actor ID is generated explicitly and remains read-only after assignment. Existing identities are never replaced automatically.",
-                MessageType.None);
+        private void DrawDiagnostics()
+        {
+            DrawSection("Diagnostics");
+
+            EditorGUILayout.PropertyField(
+                reason,
+                new GUIContent(
+                    "Reason",
+                    "Diagnostic declaration source or reason. It is not Actor identity."));
+        }
+
+        private static void DrawTechnicalEvidence(
+            ActorDeclaration declaration)
+        {
+            DrawSection("Technical Evidence");
+
+            using (new EditorGUI.DisabledScope(true))
+            {
+                EditorGUILayout.TextField(
+                    "Runtime Type",
+                    declaration.GetType().FullName);
+
+                EditorGUILayout.TextField(
+                    "Effective Actor Kind",
+                    declaration.ActorKind.ToString());
+
+                EditorGUILayout.TextField(
+                    "Effective Actor Role",
+                    declaration.ActorRole.ToString());
+
+                if (declaration is PlayerActorDeclaration player)
+                {
+                    EditorGUILayout.Toggle(
+                        "PlayerInput Evidence",
+                        player.HasPlayerInputEvidence);
+
+                    EditorGUILayout.ObjectField(
+                        "Bound PlayerInput",
+                        player.PlayerInput,
+                        typeof(UnityEngine.Object),
+                        true);
+                }
+            }
+        }
+
+        private void DrawValidationEvidence()
+        {
+            if (lastValidationReport == null)
+            {
+                return;
+            }
+
+            DrawSection("Validation Evidence");
+
+            if (validationOutdated)
+            {
+                EditorGUILayout.LabelField(
+                    "Status",
+                    "Not Validated — configuration changed");
+                return;
+            }
+
+            FrameworkAuthoringValidationGui.DrawSummary(
+                lastValidationReport);
+
+            FrameworkAuthoringValidationGui.DrawIssues(
+                lastValidationReport,
+                false);
+        }
+
+        private void MarkValidationOutdated()
+        {
+            if (lastValidationReport == null)
+            {
+                return;
+            }
+
+            validationOutdated = true;
+            Repaint();
+        }
+
+        private static void DrawSection(
+            string title)
+        {
+            EditorGUILayout.Space(6f);
+            EditorGUILayout.LabelField(
+                title,
+                EditorStyles.boldLabel);
         }
     }
 }

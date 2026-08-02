@@ -1,6 +1,5 @@
-using Immersive.Framework.PlayerParticipation;
-using Immersive.Framework.Editor.Common;
 using Immersive.Framework.Actors;
+using Immersive.Framework.PlayerParticipation;
 using UnityEditor;
 using UnityEngine;
 
@@ -40,16 +39,15 @@ namespace Immersive.Framework.Editor.PlayerParticipation
             SceneLocalPlayerAdmissionAuthoring authoring =
                 (SceneLocalPlayerAdmissionAuthoring)target;
 
-            DrawInspectorHeader();
-            FrameworkAuthoringInspectorGui.IntentSummary(
-                "Admit this scene-authored Player into the current Activity lifecycle.");
-            DrawParticipation();
-            DrawLogicalActor();
+            EditorGUI.BeginChangeCheck();
+            DrawScenePlayer();
             DrawAdmission();
+            bool authoringChanged = EditorGUI.EndChangeCheck();
 
             bool modified =
                 serializedObject.ApplyModifiedProperties();
-            if (modified)
+
+            if (authoringChanged || modified)
             {
                 authoring.EditorSetAuthoringResult(
                     SceneLocalPlayerAdmissionAuthoringStatus.NotValidated,
@@ -58,72 +56,63 @@ namespace Immersive.Framework.Editor.PlayerParticipation
             }
 
             DrawActions(authoring);
-            DrawStatus(authoring);
-            DrawRuntimeAdmission(authoring);
+            DrawValidationSummary(authoring);
+
+            if (Application.isPlaying)
+            {
+                DrawRuntimeStatus(authoring);
+            }
+
             DrawDebug(authoring);
         }
 
-        private static void DrawInspectorHeader()
+        private void DrawScenePlayer()
         {
-            EditorGUILayout.LabelField(
-                "Scene-Provided Player",
-                EditorStyles.boldLabel);
-            EditorGUILayout.HelpBox(
-                "Composes one local Player that already exists in a scene. The Local Player Host is resolved from this same GameObject. The Logical Player Actor remains an explicit authored prefab instance under Actor Mount.",
-                MessageType.Info);
-        }
+            DrawSection("Scene Player");
 
-        private void DrawParticipation()
-        {
-            EditorGUILayout.Space(6f);
-            EditorGUILayout.LabelField(
-                "Participation",
-                EditorStyles.boldLabel);
             EditorGUILayout.PropertyField(
                 playerSlotProfile,
                 new GUIContent(
-                    "Player Slot Profile",
-                    "Exact configured Session Slot admitted by this Scene-Provided Player."));
-        }
+                    "Player Slot",
+                    "Exact configured Session Player Slot admitted by this Scene-Provided Player."));
 
-        private void DrawLogicalActor()
-        {
-            EditorGUILayout.Space(6f);
-            EditorGUILayout.LabelField(
-                "Logical Actor",
-                EditorStyles.boldLabel);
             EditorGUILayout.PropertyField(
                 actorProfile,
                 new GUIContent(
                     "Actor Profile",
-                    "Player / Protagonist profile whose Logical Actor Host prefab is used by the authored Actor instance."));
+                    "Player / Protagonist Actor Profile whose canonical Logical Actor Host prefab must match the authored Scene Actor."));
+
             EditorGUILayout.PropertyField(
                 sceneLogicalPlayerActor,
                 new GUIContent(
-                    "Scene Logical Player Actor",
-                    "Exact PlayerActorDeclaration under the same-root Local Player Host Actor Mount."));
+                    "Scene Actor",
+                    "Exact PlayerActorDeclaration authored under this Host's Actor Mount."));
         }
 
         private void DrawAdmission()
         {
-            EditorGUILayout.Space(6f);
-            EditorGUILayout.LabelField(
-                "Admission",
-                EditorStyles.boldLabel);
+            DrawSection("Admission");
+
             EditorGUILayout.PropertyField(
                 admissionTiming,
                 new GUIContent(
-                    "Admission Timing",
-                    "Scoped lifecycle moment that requests admission. This component never self-admits from Awake, Start or OnEnable."));
+                    "Timing",
+                    "Activity lifecycle moment in which this existing scene Player requests admission."));
         }
 
         private static void DrawActions(
             SceneLocalPlayerAdmissionAuthoring authoring)
         {
-            EditorGUILayout.Space(6f);
+            DrawSection("Actions");
+
+            using (new EditorGUI.DisabledScope(
+                       Application.isPlaying))
             using (new EditorGUILayout.HorizontalScope())
             {
-                if (GUILayout.Button("Apply / Rebuild"))
+                if (GUILayout.Button(
+                        new GUIContent(
+                            "Apply / Rebuild",
+                            "Store or update the framework-owned typed Actor evidence. This does not create, replace or unpack the scene Player.")))
                 {
                     SceneLocalPlayerAdmissionAuthoringUtility
                         .ApplyOrRebuild(
@@ -132,7 +121,10 @@ namespace Immersive.Framework.Editor.PlayerParticipation
                             true);
                 }
 
-                if (GUILayout.Button("Validate"))
+                if (GUILayout.Button(
+                        new GUIContent(
+                            "Validate",
+                            "Validate the authored composition and stored typed Actor evidence without starting runtime admission.")))
                 {
                     SceneLocalPlayerAdmissionAuthoringUtility
                         .Validate(
@@ -140,54 +132,104 @@ namespace Immersive.Framework.Editor.PlayerParticipation
                             true);
                 }
             }
+
+            if (Application.isPlaying)
+            {
+                EditorGUILayout.LabelField(
+                    "Authoring actions are unavailable in Play Mode.",
+                    EditorStyles.miniLabel);
+            }
         }
 
-        private static void DrawStatus(
+        private static void DrawValidationSummary(
             SceneLocalPlayerAdmissionAuthoring authoring)
         {
-            EditorGUILayout.Space(6f);
-            EditorGUILayout.LabelField(
-                "Validation",
-                EditorStyles.boldLabel);
+            DrawSection("Validation Summary");
 
-            if (authoring.LastAuthoringStatus ==
+            SceneLocalPlayerAdmissionAuthoringStatus status =
+                authoring.LastAuthoringStatus;
+
+            if (status ==
                 SceneLocalPlayerAdmissionAuthoringStatus.NotValidated)
             {
-                EditorGUILayout.HelpBox(
-                    authoring.LastAuthoringDiagnostic,
-                    MessageType.None);
+                EditorGUILayout.LabelField(
+                    "Status",
+                    "Not Validated");
+
+                if (!string.IsNullOrWhiteSpace(
+                        authoring.LastAuthoringDiagnostic))
+                {
+                    EditorGUILayout.LabelField(
+                        authoring.LastAuthoringDiagnostic,
+                        EditorStyles.wordWrappedMiniLabel);
+                }
+
                 return;
             }
 
-            if (authoring.LastAuthoringStatus ==
+            if (status ==
                 SceneLocalPlayerAdmissionAuthoringStatus.Valid)
             {
-                EditorGUILayout.HelpBox(
-                    authoring.LastAuthoringDiagnostic,
-                    MessageType.Info);
+                EditorGUILayout.LabelField(
+                    "Status",
+                    authoring.HasTypedActorEvidence
+                        ? "Valid — typed Actor evidence is stored"
+                        : "Valid");
+
                 return;
             }
 
+            EditorGUILayout.LabelField(
+                "Status",
+                "Invalid");
+
             EditorGUILayout.HelpBox(
-                authoring.LastAuthoringDiagnostic,
+                string.IsNullOrWhiteSpace(
+                    authoring.LastAuthoringDiagnostic)
+                    ? "The Scene-Provided Player authoring is invalid."
+                    : authoring.LastAuthoringDiagnostic,
                 MessageType.Error);
         }
 
-        private static void DrawRuntimeAdmission(
+        private static void DrawRuntimeStatus(
             SceneLocalPlayerAdmissionAuthoring authoring)
         {
-            FrameworkAuthoringInspectorGui.Section("Runtime Admission");
+            DrawSection("Runtime Status");
+
             using (new EditorGUI.DisabledScope(true))
             {
-                EditorGUILayout.ObjectField("Scene Player Host", authoring.LocalPlayerHost, typeof(LocalPlayerHostAuthoring), true);
-                EditorGUILayout.ObjectField("Actor", authoring.SceneLogicalPlayerActor, typeof(PlayerActorDeclaration), true);
-                EditorGUILayout.TextField("Slot", authoring.PlayerSlotProfile != null ? authoring.PlayerSlotProfile.name : "<not configured>");
-                EditorGUILayout.LabelField("Admission", authoring.HasActiveAdmission ? "Admitted" : Application.isPlaying ? "Not admitted" : "Not Playing");
-                if (Application.isPlaying)
-                {
-                    EditorGUILayout.LabelField("Runtime", authoring.RuntimeReady ? "Ready" : "Unavailable");
-                    EditorGUILayout.HelpBox(authoring.RuntimeDiagnostic, authoring.RuntimeReady ? MessageType.Info : MessageType.Warning);
-                }
+                EditorGUILayout.LabelField(
+                    "Admission",
+                    authoring.HasActiveAdmission
+                        ? "Admitted"
+                        : "Not Admitted");
+
+                EditorGUILayout.LabelField(
+                    "Runtime",
+                    authoring.RuntimeReady
+                        ? "Ready"
+                        : "Unavailable");
+
+                EditorGUILayout.ObjectField(
+                    "Host",
+                    authoring.LocalPlayerHost,
+                    typeof(LocalPlayerHostAuthoring),
+                    true);
+
+                EditorGUILayout.ObjectField(
+                    "Actor",
+                    authoring.SceneLogicalPlayerActor,
+                    typeof(PlayerActorDeclaration),
+                    true);
+            }
+
+            if (!authoring.RuntimeReady &&
+                !string.IsNullOrWhiteSpace(
+                    authoring.RuntimeDiagnostic))
+            {
+                EditorGUILayout.HelpBox(
+                    authoring.RuntimeDiagnostic,
+                    MessageType.Warning);
             }
         }
 
@@ -200,10 +242,13 @@ namespace Immersive.Framework.Editor.PlayerParticipation
                     showDebug,
                     "Advanced / Debug",
                     true);
+
             if (!showDebug)
             {
                 return;
             }
+
+            DrawSection("Resolved Composition");
 
             using (new EditorGUI.DisabledScope(true))
             {
@@ -212,6 +257,7 @@ namespace Immersive.Framework.Editor.PlayerParticipation
                     authoring.LocalPlayerHost,
                     typeof(LocalPlayerHostAuthoring),
                     true);
+
                 EditorGUILayout.ObjectField(
                     "Resolved Actor Mount",
                     authoring.LocalPlayerHost != null
@@ -219,6 +265,7 @@ namespace Immersive.Framework.Editor.PlayerParticipation
                         : null,
                     typeof(Transform),
                     true);
+
                 EditorGUILayout.TextField(
                     "Player Slot ID",
                     authoring.TryGetPlayerSlotId(
@@ -226,52 +273,87 @@ namespace Immersive.Framework.Editor.PlayerParticipation
                         out _)
                             ? slot.StableText
                             : string.Empty);
+            }
+
+            DrawSection("Typed Actor Evidence");
+
+            using (new EditorGUI.DisabledScope(true))
+            {
                 EditorGUILayout.Toggle(
-                    "Typed Actor Evidence",
+                    "Evidence Stored",
                     authoring.HasTypedActorEvidence);
+
                 EditorGUILayout.ObjectField(
-                    "Evidence Actor Profile",
+                    "Actor Profile",
                     authoring.EvidenceActorProfile,
-                    typeof(Immersive.Framework.Actors.ActorProfile),
+                    typeof(ActorProfile),
                     false);
+
                 EditorGUILayout.ObjectField(
-                    "Evidence Actor Prefab",
+                    "Actor Prefab",
                     authoring.EvidenceLogicalActorHostPrefab,
                     typeof(GameObject),
                     false);
+
                 EditorGUILayout.TextArea(
                     authoring.EvidenceDiagnostic,
                     GUILayout.MinHeight(42f));
+            }
+
+            DrawSection("Runtime Evidence");
+
+            using (new EditorGUI.DisabledScope(true))
+            {
                 EditorGUILayout.Toggle(
                     "Host Joined",
                     authoring.LocalPlayerHost != null &&
                     authoring.LocalPlayerHost.IsJoined);
+
                 EditorGUILayout.Toggle(
                     "Runtime Ready",
                     authoring.RuntimeReady);
+
                 EditorGUILayout.Toggle(
                     "Active Admission",
                     authoring.HasActiveAdmission);
+
                 EditorGUILayout.TextArea(
                     authoring.RuntimeDiagnostic,
                     GUILayout.MinHeight(42f));
+            }
 
-                ScenePlayerActorAdoptionResult adoption =
-                    authoring.LastActorAdoptionResult;
+            DrawSection("Actor Adoption");
+
+            ScenePlayerActorAdoptionResult adoption =
+                authoring.LastActorAdoptionResult;
+
+            using (new EditorGUI.DisabledScope(true))
+            {
                 EditorGUILayout.TextField(
-                    "Actor Ownership",
+                    "Physical Ownership",
                     authoring.ActorPhysicalOwnership.ToString());
+
                 EditorGUILayout.TextField(
                     "Adoption Status",
                     adoption != null
                         ? adoption.Status.ToString()
                         : string.Empty);
+
                 EditorGUILayout.TextArea(
                     adoption != null
                         ? adoption.ToDiagnosticString()
                         : "No Scene Actor adoption result has been recorded.",
                     GUILayout.MinHeight(72f));
             }
+        }
+
+        private static void DrawSection(
+            string title)
+        {
+            EditorGUILayout.Space(6f);
+            EditorGUILayout.LabelField(
+                title,
+                EditorStyles.boldLabel);
         }
     }
 }

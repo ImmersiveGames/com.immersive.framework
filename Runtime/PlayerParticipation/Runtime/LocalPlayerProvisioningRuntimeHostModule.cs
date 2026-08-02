@@ -49,6 +49,7 @@ namespace Immersive.Framework.PlayerParticipation
             if (runtimeHost == null)
             {
                 issue = "Local Player provisioning requires an explicit FrameworkRuntimeHost.";
+                authoring?.ReportRuntimeInitializationFailure(issue);
                 return false;
             }
 
@@ -64,7 +65,13 @@ namespace Immersive.Framework.PlayerParticipation
                 module = runtimeHost.gameObject.AddComponent<LocalPlayerProvisioningRuntimeHostModule>();
             }
 
-            return module.TryInitialize(runtimeHost, authoring, out issue);
+            bool initialized = module.TryInitialize(runtimeHost, authoring, out issue);
+            if (!initialized)
+            {
+                authoring.ReportRuntimeInitializationFailure(issue);
+            }
+
+            return initialized;
         }
 
         internal bool TryInitialize(
@@ -108,6 +115,13 @@ namespace Immersive.Framework.PlayerParticipation
                 return false;
             }
 
+            if (!targetAuthoring.TryMaterializeManagerPrefab(out string materializationDiagnostic))
+            {
+                issue = materializationDiagnostic;
+                diagnostic = issue;
+                return false;
+            }
+
             if (!TryValidateRuntimeConfiguration(
                     targetAuthoring,
                     targetParticipationContext,
@@ -144,7 +158,7 @@ namespace Immersive.Framework.PlayerParticipation
             bridge = targetBridge;
             requestCount = 0;
             diagnostic =
-                $"Local Player provisioning runtime is ready. manager='{authoring.PlayerInputManager.name}' hostPrefab='{authoring.PlayerPrefab.name}'.";
+                $"Local Player provisioning runtime is ready. manager='{authoring.PlayerInputManager.name}' localPlayerHostPrefab='{authoring.LocalPlayerHostPrefab.name}'. {materializationDiagnostic}";
 
             try
             {
@@ -193,38 +207,45 @@ namespace Immersive.Framework.PlayerParticipation
                 return false;
             }
 
-            GameObject playerPrefab = targetAuthoring.PlayerPrefab;
-            if (playerPrefab == null)
+            GameObject localPlayerHostPrefab = targetAuthoring.LocalPlayerHostPrefab;
+            if (localPlayerHostPrefab == null)
             {
-                issue = $"PlayerInputManager '{manager.name}' has no Player Prefab.";
+                issue = "Local Player provisioning authoring has no Local Player Host Prefab.";
                 return false;
             }
 
-            PlayerInput prefabPlayerInput = playerPrefab.GetComponent<PlayerInput>();
+            if (!ReferenceEquals(manager.playerPrefab, localPlayerHostPrefab))
+            {
+                issue =
+                    $"PlayerInputManager '{manager.name}' is not materialized with the authored Local Player Host Prefab '{localPlayerHostPrefab.name}'.";
+                return false;
+            }
+
+            PlayerInput prefabPlayerInput = localPlayerHostPrefab.GetComponent<PlayerInput>();
             if (prefabPlayerInput == null)
             {
-                issue = $"Player Prefab '{playerPrefab.name}' has no PlayerInput component.";
+                issue = $"Local Player Host Prefab '{localPlayerHostPrefab.name}' has no PlayerInput component.";
                 return false;
             }
 
             LocalPlayerHostAuthoring prefabHost =
-                playerPrefab.GetComponent<LocalPlayerHostAuthoring>();
+                localPlayerHostPrefab.GetComponent<LocalPlayerHostAuthoring>();
             if (prefabHost == null)
             {
-                issue = $"Player Prefab '{playerPrefab.name}' has no LocalPlayerHostAuthoring.";
+                issue = $"Local Player Host Prefab '{localPlayerHostPrefab.name}' has no LocalPlayerHostAuthoring.";
                 return false;
             }
 
             if (!ReferenceEquals(prefabHost.PlayerInput, prefabPlayerInput))
             {
                 issue =
-                    $"LocalPlayerHostAuthoring on prefab '{playerPrefab.name}' does not resolve the prefab PlayerInput.";
+                    $"LocalPlayerHostAuthoring on Local Player Host Prefab '{localPlayerHostPrefab.name}' does not resolve the prefab PlayerInput.";
                 return false;
             }
 
             if (!prefabHost.TryValidateConfiguration(out string hostIssue))
             {
-                issue = $"Player Prefab '{playerPrefab.name}' has an invalid Local Player Host. {hostIssue}";
+                issue = $"Local Player Host Prefab '{localPlayerHostPrefab.name}' is invalid. {hostIssue}";
                 return false;
             }
 

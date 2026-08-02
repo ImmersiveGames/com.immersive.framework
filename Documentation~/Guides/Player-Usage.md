@@ -366,7 +366,21 @@ LocalPlayerProvisioningHostRegistration
 
 `PlayerInputManager` must use the framework-authorized manual join path. Do not enable an independent automatic join lane that bypasses Slot reservation.
 
-### 6.2 Player prefab
+On **Local Player Provisioning**, configure:
+
+```text
+Provisioning
+  Player Input Manager
+  Local Player Host Prefab
+```
+
+The authored **Local Player Host Prefab** is the authority. Framework boot materializes it into
+`PlayerInputManager.playerPrefab` only when that technical field is empty. If the manager already
+contains a different prefab, boot fails with a blocking divergence diagnostic; it never overwrites
+the value silently. Existing scenes can use the Inspector action **Adopt Manager Player Prefab as
+Local Player Host Prefab** to perform that migration explicitly.
+
+### 6.2 Local Player Host Prefab
 
 ```text
 PlayerInput

@@ -66,39 +66,53 @@ namespace Immersive.Framework.Editor.Editor.PlayerParticipation
                     manager);
             }
 
-            GameObject playerPrefab = manager.playerPrefab;
-            if (playerPrefab == null)
+            GameObject localPlayerHostPrefab = authoring.LocalPlayerHostPrefab;
+            if (localPlayerHostPrefab == null)
             {
                 report.AddError(
-                    $"PlayerInputManager '{manager.name}' has no Player Prefab. Manual provisioning cannot create a Local Player Host.",
-                    manager);
+                    "Local Player Provisioning requires an explicit Local Player Host Prefab. " +
+                    "Do not configure this through the hidden PlayerInputManager field.",
+                    authoring);
             }
             else
             {
-                PlayerInput prefabPlayerInput = playerPrefab.GetComponent<PlayerInput>();
+                if (authoring.HasManagerPrefabDivergence)
+                {
+                    report.AddError(
+                        $"PlayerInputManager '{manager.name}' has Player Prefab '{manager.playerPrefab.name}', but the authored Local Player Host Prefab is '{localPlayerHostPrefab.name}'. Runtime boot rejects this divergence rather than overwriting it.",
+                        manager);
+                }
+                else if (manager.playerPrefab == null)
+                {
+                    report.AddInfo(
+                        $"PlayerInputManager '{manager.name}' has no Player Prefab yet. Framework boot will materialize authored Local Player Host Prefab '{localPlayerHostPrefab.name}'.",
+                        authoring);
+                }
+
+                PlayerInput prefabPlayerInput = localPlayerHostPrefab.GetComponent<PlayerInput>();
                 if (prefabPlayerInput == null)
                 {
                     report.AddError(
-                        $"Player Prefab '{playerPrefab.name}' has no PlayerInput component.",
-                        playerPrefab);
+                        $"Local Player Host Prefab '{localPlayerHostPrefab.name}' has no PlayerInput component.",
+                        localPlayerHostPrefab);
                 }
 
                 LocalPlayerHostAuthoring prefabHost =
-                    playerPrefab.GetComponent<LocalPlayerHostAuthoring>();
+                    localPlayerHostPrefab.GetComponent<LocalPlayerHostAuthoring>();
                 if (prefabHost == null)
                 {
                     report.AddError(
-                        $"Player Prefab '{playerPrefab.name}' has no LocalPlayerHostAuthoring. The provisioning prefab must declare a stable technical host rather than a Logical Actor.",
-                        playerPrefab);
+                        $"Local Player Host Prefab '{localPlayerHostPrefab.name}' has no LocalPlayerHostAuthoring. The provisioning prefab must declare a stable technical host rather than a Logical Actor.",
+                        localPlayerHostPrefab);
                 }
                 else
                 {
                     report.AddRange(LocalPlayerHostAuthoringValidator.Validate(prefabHost));
                     if (prefabPlayerInput != null &&
-                        !ReferenceEquals(prefabHost.PlayerInput, prefabPlayerInput))
+                        prefabHost.PlayerInput != prefabPlayerInput)
                     {
                         report.AddError(
-                            $"LocalPlayerHostAuthoring on prefab '{playerPrefab.name}' does not resolve the prefab PlayerInput.",
+                        $"LocalPlayerHostAuthoring on Local Player Host Prefab '{localPlayerHostPrefab.name}' does not resolve the prefab PlayerInput.",
                             prefabHost);
                     }
                 }
@@ -137,7 +151,7 @@ namespace Immersive.Framework.Editor.Editor.PlayerParticipation
             if (report.IsValid)
             {
                 report.AddInfo(
-                    $"Local Player Provisioning authoring is valid. manager='{manager.name}' joinBehavior='{manager.joinBehavior}' notificationBehavior='{manager.notificationBehavior}' playerPrefab='{(playerPrefab != null ? playerPrefab.name : string.Empty)}' maxPlayerCount='{manager.maxPlayerCount}'.",
+                    $"Local Player Provisioning authoring is valid. manager='{manager.name}' joinBehavior='{manager.joinBehavior}' notificationBehavior='{manager.notificationBehavior}' localPlayerHostPrefab='{(localPlayerHostPrefab != null ? localPlayerHostPrefab.name : string.Empty)}' materialized='{authoring.IsManagerPrefabMaterialized}' maxPlayerCount='{manager.maxPlayerCount}'.",
                     authoring);
             }
 

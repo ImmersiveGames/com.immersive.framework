@@ -1,9 +1,7 @@
-using System;
 using Immersive.Framework.Editor.Editor.Validation;
 using Immersive.Framework.PlayerParticipation;
 using UnityEditor;
 using UnityEngine;
-using UnityEngine.InputSystem;
 
 namespace Immersive.Framework.Editor.Editor.PlayerParticipation
 {
@@ -32,116 +30,135 @@ namespace Immersive.Framework.Editor.Editor.PlayerParticipation
             LocalPlayerHostAuthoring host =
                 (LocalPlayerHostAuthoring)target;
 
-            DrawInspectorHeader();
-            DrawTechnicalHost();
-            DrawValidation(host);
-            DrawAdvanced(host);
+            EditorGUI.BeginChangeCheck();
+            DrawConfiguration();
+            bool authoringChanged = EditorGUI.EndChangeCheck();
 
             bool modified =
                 serializedObject.ApplyModifiedProperties();
-            if (modified && lastValidationReport != null)
+
+            if ((authoringChanged || modified) &&
+                lastValidationReport != null)
             {
                 validationOutdated = true;
             }
-        }
 
-        private static void DrawInspectorHeader()
-        {
-            EditorGUILayout.LabelField(
-                "Local Player Host",
-                EditorStyles.boldLabel);
-            EditorGUILayout.HelpBox(
-                "Defines the stable technical root for one local Player. It owns PlayerInput and an explicit Actor Mount. A Manager-Provisioned Host keeps that Mount empty until composition; a Scene-Provided Host may already contain its authored Logical Actor.",
-                MessageType.Info);
-        }
+            DrawActions(host);
+            DrawValidationSummary();
 
-        private void DrawTechnicalHost()
-        {
-            EditorGUILayout.Space(6f);
-            EditorGUILayout.LabelField(
-                "Technical Host",
-                EditorStyles.boldLabel);
-
-            PlayerInput currentPlayerInput =
-                playerInput.objectReferenceValue as PlayerInput;
-            PlayerInput selectedPlayerInput =
-                (PlayerInput)EditorGUILayout.ObjectField(
-                    new GUIContent(
-                        "Player Input",
-                        "PlayerInput owned by this exact technical Host root."),
-                    currentPlayerInput,
-                    typeof(PlayerInput),
-                    true);
-            if (!ReferenceEquals(
-                    currentPlayerInput,
-                    selectedPlayerInput))
+            if (Application.isPlaying)
             {
-                playerInput.objectReferenceValue =
-                    selectedPlayerInput;
+                DrawRuntimeStatus(host);
             }
 
-            Transform currentActorMount =
-                actorMount.objectReferenceValue as Transform;
-            Transform selectedActorMount =
-                (Transform)EditorGUILayout.ObjectField(
-                    new GUIContent(
-                        "Actor Mount",
-                        "Explicit child that contains or receives the contextual Logical Actor."),
-                    currentActorMount,
-                    typeof(Transform),
-                    true);
-            if (!ReferenceEquals(
-                    currentActorMount,
-                    selectedActorMount))
-            {
-                actorMount.objectReferenceValue =
-                    selectedActorMount;
-            }
-
-            EditorGUILayout.HelpBox(
-                "The Host Inspector validates only shared technical invariants. Whether Actor Mount must be empty or contain one authored Actor is decided by the source-specific composer or provisioning surface.",
-                MessageType.None);
+            DrawAdvanced(host);
         }
 
-        private void DrawValidation(
+        private void DrawConfiguration()
+        {
+            DrawSection("Host Configuration");
+
+            EditorGUILayout.PropertyField(
+                playerInput,
+                new GUIContent(
+                    "Player Input",
+                    "PlayerInput owned by this exact Local Player Host root."));
+
+            EditorGUILayout.PropertyField(
+                actorMount,
+                new GUIContent(
+                    "Actor Mount",
+                    "Child transform that contains or receives the contextual Logical Actor. Scene-Provided hosts may already contain an authored Actor; Manager-Provisioned hosts begin with an empty mount."));
+        }
+
+        private void DrawActions(
             LocalPlayerHostAuthoring host)
         {
-            EditorGUILayout.Space(6f);
-            EditorGUILayout.LabelField(
-                "Validation",
-                EditorStyles.boldLabel);
+            DrawSection("Actions");
 
-            if (lastValidationReport == null)
-            {
-                EditorGUILayout.HelpBox(
-                    "Not validated. Run validation after assigning PlayerInput and Actor Mount.",
-                    MessageType.None);
-            }
-            else if (validationOutdated)
-            {
-                EditorGUILayout.HelpBox(
-                    "Validation result is outdated because the Host configuration changed.",
-                    MessageType.Warning);
-            }
-            else if (lastValidationReport.IsValid)
-            {
-                EditorGUILayout.HelpBox(
-                    "Ready — shared Local Player Host invariants are valid.",
-                    MessageType.Info);
-            }
-            else
-            {
-                EditorGUILayout.HelpBox(
-                    $"Needs Attention — {lastValidationReport.ErrorCount} blocking issue(s) were found.",
-                    MessageType.Error);
-            }
-
-            if (GUILayout.Button("Validate Host"))
+            if (GUILayout.Button(
+                    new GUIContent(
+                        "Validate Host",
+                        "Validate the shared Local Player Host invariants without modifying the Host.")))
             {
                 serializedObject.ApplyModifiedProperties();
                 lastValidationReport =
                     LocalPlayerHostAuthoringValidator.Validate(host);
                 validationOutdated = false;
+            }
+        }
+
+        private void DrawValidationSummary()
+        {
+            DrawSection("Validation Summary");
+
+            if (lastValidationReport == null)
+            {
+                EditorGUILayout.LabelField(
+                    "Status",
+                    "Not Validated");
+                return;
+            }
+
+            if (validationOutdated)
+            {
+                EditorGUILayout.LabelField(
+                    "Status",
+                    "Not Validated — configuration changed");
+                return;
+            }
+
+            if (lastValidationReport.IsValid)
+            {
+                EditorGUILayout.LabelField(
+                    "Status",
+                    "Valid");
+                return;
+            }
+
+            EditorGUILayout.LabelField(
+                "Status",
+                "Invalid");
+
+            EditorGUILayout.HelpBox(
+                $"{lastValidationReport.ErrorCount} blocking issue(s) were found. Correct the configuration and validate again.",
+                MessageType.Error);
+
+            FrameworkAuthoringValidationGui.DrawIssues(
+                lastValidationReport,
+                false);
+        }
+
+        private static void DrawRuntimeStatus(
+            LocalPlayerHostAuthoring host)
+        {
+            DrawSection("Runtime Status");
+
+            using (new EditorGUI.DisabledScope(true))
+            {
+                EditorGUILayout.LabelField(
+                    "Participation",
+                    host.IsJoined
+                        ? "Joined"
+                        : "Not Joined");
+
+                EditorGUILayout.TextField(
+                    "Player Slot",
+                    host.HasJoinedSlot
+                        ? host.JoinedPlayerSlotId.StableText
+                        : string.Empty);
+
+                EditorGUILayout.LabelField(
+                    "Logical Actor",
+                    host.HasLogicalActor
+                        ? "Present"
+                        : "Not Present");
+
+                EditorGUILayout.LabelField(
+                    "Admission",
+                    host.IsAdmissionStaged
+                        ? "Staged"
+                        : "Not Staged");
             }
         }
 
@@ -154,10 +171,13 @@ namespace Immersive.Framework.Editor.Editor.PlayerParticipation
                     showAdvanced,
                     "Advanced / Debug",
                     true);
+
             if (!showAdvanced)
             {
                 return;
             }
+
+            DrawSection("Technical Evidence");
 
             using (new EditorGUI.DisabledScope(true))
             {
@@ -170,6 +190,12 @@ namespace Immersive.Framework.Editor.Editor.PlayerParticipation
                 EditorGUILayout.Toggle(
                     "Logical Actor Present",
                     host.HasLogicalActor);
+            }
+
+            DrawSection("Participation Evidence");
+
+            using (new EditorGUI.DisabledScope(true))
+            {
                 EditorGUILayout.Toggle(
                     "Admission Staged",
                     host.IsAdmissionStaged);
@@ -192,26 +218,35 @@ namespace Immersive.Framework.Editor.Editor.PlayerParticipation
                     host.AdmissionReason);
             }
 
-            if (lastValidationReport != null)
+            if (lastValidationReport == null)
             {
-                EditorGUILayout.Space(4f);
-                EditorGUILayout.LabelField(
-                    "Validation Report",
-                    EditorStyles.boldLabel);
-
-                if (validationOutdated)
-                {
-                    EditorGUILayout.HelpBox(
-                        "This report is outdated. Run Validate Host again.",
-                        MessageType.Warning);
-                }
-
-                FrameworkAuthoringValidationGui.DrawSummary(
-                    lastValidationReport);
-                FrameworkAuthoringValidationGui.DrawIssues(
-                    lastValidationReport,
-                    false);
+                return;
             }
+
+            DrawSection("Validation Evidence");
+
+            if (validationOutdated)
+            {
+                EditorGUILayout.LabelField(
+                    "Status",
+                    "Not Validated — configuration changed");
+                return;
+            }
+
+            FrameworkAuthoringValidationGui.DrawSummary(
+                lastValidationReport);
+            FrameworkAuthoringValidationGui.DrawIssues(
+                lastValidationReport,
+                false);
+        }
+
+        private static void DrawSection(
+            string title)
+        {
+            EditorGUILayout.Space(6f);
+            EditorGUILayout.LabelField(
+                title,
+                EditorStyles.boldLabel);
         }
     }
 }

@@ -32,6 +32,7 @@ namespace Immersive.Framework.PlayerParticipation
         private readonly PlayerParticipationRuntimeContext participationContext;
         private readonly ILocalPlayerProvisioningBackend backend;
         private readonly Transform technicalHostParent;
+        private readonly GameObject expectedLocalPlayerHostPrefab;
         private readonly Dictionary<LocalPlayerJoinOperationId, LocalPlayerJoinCallbackConfirmation>
             callbackConfirmations = new();
         private readonly Dictionary<PlayerInput, LocalPlayerJoinOperationId>
@@ -55,6 +56,16 @@ namespace Immersive.Framework.PlayerParticipation
             PlayerParticipationRuntimeContext participationContext,
             ILocalPlayerProvisioningBackend backend,
             Transform technicalHostParent)
+            : this(participationContext, backend, technicalHostParent,
+                backend != null ? backend.PlayerPrefab : null)
+        {
+        }
+
+        internal LocalPlayerProvisioningBridge(
+            PlayerParticipationRuntimeContext participationContext,
+            ILocalPlayerProvisioningBackend backend,
+            Transform technicalHostParent,
+            GameObject expectedLocalPlayerHostPrefab)
         {
             this.participationContext = participationContext ??
                 throw new ArgumentNullException(nameof(participationContext));
@@ -62,6 +73,9 @@ namespace Immersive.Framework.PlayerParticipation
             this.technicalHostParent = technicalHostParent != null
                 ? technicalHostParent
                 : throw new ArgumentNullException(nameof(technicalHostParent));
+            this.expectedLocalPlayerHostPrefab = expectedLocalPlayerHostPrefab != null
+                ? expectedLocalPlayerHostPrefab
+                : throw new ArgumentNullException(nameof(expectedLocalPlayerHostPrefab));
             backend.PlayerJoined += HandlePlayerJoined;
         }
 
@@ -103,10 +117,17 @@ namespace Immersive.Framework.PlayerParticipation
                 return false;
             }
 
+            if (authoring.LocalPlayerHostPrefab == null)
+            {
+                issue = "Local Player provisioning authoring has no Local Player Host Prefab.";
+                return false;
+            }
+
             bridge = new LocalPlayerProvisioningBridge(
                 participationContext,
                 new UnityLocalPlayerProvisioningBackend(authoring.PlayerInputManager),
-                technicalHostParent);
+                technicalHostParent,
+                authoring.LocalPlayerHostPrefab);
             issue = string.Empty;
             return true;
         }
@@ -598,6 +619,14 @@ namespace Immersive.Framework.PlayerParticipation
             {
                 status = LocalPlayerJoinStatus.RejectedManagerConfiguration;
                 issue = "PlayerInputManager has no Player Prefab.";
+                return false;
+            }
+
+            if (!ReferenceEquals(prefab, expectedLocalPlayerHostPrefab))
+            {
+                status = LocalPlayerJoinStatus.RejectedManagerConfiguration;
+                issue =
+                    $"PlayerInputManager Player Prefab '{prefab.name}' diverges from the Local Player Host Prefab '{expectedLocalPlayerHostPrefab.name}' materialized during Framework boot.";
                 return false;
             }
 

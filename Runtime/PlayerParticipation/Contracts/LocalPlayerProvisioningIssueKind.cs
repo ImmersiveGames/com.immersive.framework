@@ -11,6 +11,8 @@ namespace Immersive.Framework.PlayerParticipation
         InvalidPlayerHost = 60,
         InvalidCapacity = 70,
         ManualJoinRequired = 80,
-        CSharpEventsRequired = 90
+        CSharpEventsRequired = 90,
+        MissingLocalPlayerHostPrefab = 100,
+        DivergentManagerPrefab = 110
     }
 }

@@ -22,6 +22,10 @@ namespace Immersive.Framework.PlayerParticipation
         [Tooltip("Explicit Session-authorized PlayerInputManager. Runtime code must not use PlayerInputManager.instance as a distributed lookup.")]
         private PlayerInputManager playerInputManager;
 
+        [SerializeField]
+        [Tooltip("Technical prefab created by Manager-Provisioned joins. This must contain PlayerInput and LocalPlayerHostAuthoring; it is not a Logical Actor prefab.")]
+        private GameObject localPlayerHostPrefab;
+
         [NonSerialized]
         private LocalPlayerProvisioningRuntimeHostModule runtimeModule;
 
@@ -40,8 +44,26 @@ namespace Immersive.Framework.PlayerParticipation
             playerInputManager != null &&
             playerInputManager.notificationBehavior == PlayerNotifications.InvokeCSharpEvents;
 
-        public GameObject PlayerPrefab =>
-            playerInputManager != null ? playerInputManager.playerPrefab : null;
+        /// <summary>
+        /// Explicit product authority for the technical Local Player Host created by a manual join.
+        /// </summary>
+        public GameObject LocalPlayerHostPrefab => localPlayerHostPrefab;
+
+        /// <summary>
+        /// Compatibility alias for existing consumers. New code should use LocalPlayerHostPrefab.
+        /// </summary>
+        public GameObject PlayerPrefab => LocalPlayerHostPrefab;
+
+        public bool IsManagerPrefabMaterialized =>
+            playerInputManager != null &&
+            localPlayerHostPrefab != null &&
+            playerInputManager.playerPrefab == localPlayerHostPrefab;
+
+        public bool HasManagerPrefabDivergence =>
+            playerInputManager != null &&
+            playerInputManager.playerPrefab != null &&
+            localPlayerHostPrefab != null &&
+            playerInputManager.playerPrefab != localPlayerHostPrefab;
 
         public int TechnicalMaxPlayerCount =>
             playerInputManager != null ? playerInputManager.maxPlayerCount : 0;
@@ -156,6 +178,53 @@ namespace Immersive.Framework.PlayerParticipation
             module.RegisterSceneLocalPlayerAdmissionLifecycleSourceIfAvailable();
             runtimeModule = module;
             runtimeDiagnostic = module.Diagnostic;
+        }
+
+        internal bool TryMaterializeManagerPrefab(out string diagnostic)
+        {
+            diagnostic = string.Empty;
+            if (playerInputManager == null)
+            {
+                diagnostic = "Local Player provisioning authoring has no explicit PlayerInputManager.";
+                return false;
+            }
+
+            if (localPlayerHostPrefab == null)
+            {
+                diagnostic = "Local Player Host Prefab is required on LocalPlayerProvisioningAuthoring.";
+                return false;
+            }
+
+            GameObject managerPrefab = playerInputManager.playerPrefab;
+            if (managerPrefab == null)
+            {
+                playerInputManager.playerPrefab = localPlayerHostPrefab;
+                diagnostic = $"Local Player Host Prefab '{localPlayerHostPrefab.name}' was materialized on PlayerInputManager '{playerInputManager.name}'.";
+                return true;
+            }
+
+            if (managerPrefab != localPlayerHostPrefab)
+            {
+                diagnostic =
+                    $"PlayerInputManager '{playerInputManager.name}' has divergent Player Prefab '{managerPrefab.name}'. " +
+                    $"Expected authored Local Player Host Prefab '{localPlayerHostPrefab.name}'.";
+                return false;
+            }
+
+            diagnostic = $"Local Player Host Prefab '{localPlayerHostPrefab.name}' is already materialized on PlayerInputManager '{playerInputManager.name}'.";
+            return true;
+        }
+
+        internal void ReportRuntimeInitializationFailure(string diagnostic)
+        {
+            if (RuntimeReady)
+            {
+                return;
+            }
+
+            runtimeDiagnostic = string.IsNullOrWhiteSpace(diagnostic)
+                ? "Local Player provisioning runtime initialization failed without a diagnostic."
+                : diagnostic.Trim();
         }
 
         internal void UnbindRuntime(
