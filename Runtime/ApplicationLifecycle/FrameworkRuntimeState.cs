@@ -99,7 +99,7 @@ namespace Immersive.Framework.ApplicationLifecycle
                 gameFlowResult.RouteLifecycleResult.RouteContentSet,
                 gameFlowResult.SceneLifecycleResult,
                 gameFlowResult.RouteLifecycleResult.ActivityFlowResult,
-                gameFlowResult.Started);
+                gameFlowResult.DestinationAuthoritative);
         }
 
         public static FrameworkRuntimeState FromRouteRequestResult(

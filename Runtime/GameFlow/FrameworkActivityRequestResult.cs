@@ -66,7 +66,13 @@ namespace Immersive.Framework.GameFlow
         public bool CommitBoundaryReached =>
             Kind ==
             FrameworkActivityRequestKind
-                .FailedCommittedTargetNotReady;
+                .FailedCommittedTargetNotReady ||
+            Kind ==
+            FrameworkActivityRequestKind
+                .FailedCommittedTargetReadinessInvalidated ||
+            Kind ==
+            FrameworkActivityRequestKind
+                .FailedCommittedTargetReadinessCancelled;
 
         public bool DestinationAuthoritative =>
             Succeeded || CommitBoundaryReached;
@@ -120,9 +126,8 @@ namespace Immersive.Framework.GameFlow
                 ActivityVisualTransitionMode activityTransitionMode =
                     ActivityVisualTransitionMode.Seamless)
         {
-            return new FrameworkActivityRequestResult(
-                FrameworkActivityRequestKind
-                    .FailedCommittedTargetNotReady,
+            return FailedCommittedTargetReadiness(
+                FrameworkActivityRequestKind.FailedCommittedTargetNotReady,
                 message,
                 targetActivity,
                 source,
@@ -130,7 +135,55 @@ namespace Immersive.Framework.GameFlow
                 activityFlowResult,
                 transitionDiagnostics,
                 transitionGateDiagnostics,
-                activityTransitionMode,
+                activityTransitionMode);
+        }
+
+        internal static FrameworkActivityRequestResult FailedCommittedTargetReadinessInvalidated(
+            string message,
+            ActivityAsset targetActivity,
+            string source,
+            string reason,
+            ActivityFlowStartResult activityFlowResult,
+            FrameworkTransitionDiagnostics transitionDiagnostics = default,
+            TransitionGateDiagnostics transitionGateDiagnostics = default,
+            ActivityVisualTransitionMode activityTransitionMode = ActivityVisualTransitionMode.Seamless)
+        {
+            return FailedCommittedTargetReadiness(
+                FrameworkActivityRequestKind.FailedCommittedTargetReadinessInvalidated,
+                message, targetActivity, source, reason, activityFlowResult,
+                transitionDiagnostics, transitionGateDiagnostics, activityTransitionMode);
+        }
+
+        internal static FrameworkActivityRequestResult FailedCommittedTargetReadinessCancelled(
+            string message,
+            ActivityAsset targetActivity,
+            string source,
+            string reason,
+            ActivityFlowStartResult activityFlowResult,
+            FrameworkTransitionDiagnostics transitionDiagnostics = default,
+            TransitionGateDiagnostics transitionGateDiagnostics = default,
+            ActivityVisualTransitionMode activityTransitionMode = ActivityVisualTransitionMode.Seamless)
+        {
+            return FailedCommittedTargetReadiness(
+                FrameworkActivityRequestKind.FailedCommittedTargetReadinessCancelled,
+                message, targetActivity, source, reason, activityFlowResult,
+                transitionDiagnostics, transitionGateDiagnostics, activityTransitionMode);
+        }
+
+        private static FrameworkActivityRequestResult FailedCommittedTargetReadiness(
+            FrameworkActivityRequestKind kind,
+            string message,
+            ActivityAsset targetActivity,
+            string source,
+            string reason,
+            ActivityFlowStartResult activityFlowResult,
+            FrameworkTransitionDiagnostics transitionDiagnostics,
+            TransitionGateDiagnostics transitionGateDiagnostics,
+            ActivityVisualTransitionMode activityTransitionMode)
+        {
+            return new FrameworkActivityRequestResult(
+                kind, message, targetActivity, source, reason, activityFlowResult,
+                transitionDiagnostics, transitionGateDiagnostics, activityTransitionMode,
                 GameFlowRequestOperationKind.Activity);
         }
 

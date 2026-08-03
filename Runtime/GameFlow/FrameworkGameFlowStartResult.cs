@@ -16,12 +16,17 @@ namespace Immersive.Framework.GameFlow
             bool started,
             string message,
             RouteAsset startupRoute,
-            RouteLifecycleStartResult routeLifecycleResult)
+            RouteLifecycleStartResult routeLifecycleResult,
+            bool destinationAuthoritative = false,
+            ActivityEntryReadinessExecutionStatus entryReadinessStatus =
+                ActivityEntryReadinessExecutionStatus.Unknown)
         {
             Started = started;
             Message = message ?? string.Empty;
             StartupRoute = startupRoute;
             RouteLifecycleResult = routeLifecycleResult;
+            _destinationAuthoritative = destinationAuthoritative;
+            EntryReadinessStatus = entryReadinessStatus;
         }
 
         public bool Started { get; }
@@ -31,6 +36,12 @@ namespace Immersive.Framework.GameFlow
         public RouteAsset StartupRoute { get; }
 
         public RouteLifecycleStartResult RouteLifecycleResult { get; }
+
+        public bool DestinationAuthoritative => Started || _destinationAuthoritative;
+
+        internal ActivityEntryReadinessExecutionStatus EntryReadinessStatus { get; }
+
+        private readonly bool _destinationAuthoritative;
 
         public SceneLifecycleLoadResult SceneLifecycleResult => RouteLifecycleResult.SceneLifecycleResult;
 
@@ -46,6 +57,21 @@ namespace Immersive.Framework.GameFlow
                 $"Game Flow started with Startup Route '{startupRoute.RouteName}'. {routeLifecycleResult.Message}",
                 startupRoute,
                 routeLifecycleResult);
+        }
+
+        internal static FrameworkGameFlowStartResult FailedCommittedDestination(
+            string message,
+            RouteAsset startupRoute,
+            RouteLifecycleStartResult routeLifecycleResult,
+            ActivityEntryReadinessExecutionStatus entryReadinessStatus)
+        {
+            return new FrameworkGameFlowStartResult(
+                false,
+                message,
+                startupRoute,
+                routeLifecycleResult,
+                true,
+                entryReadinessStatus);
         }
     }
 }

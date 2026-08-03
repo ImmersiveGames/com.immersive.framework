@@ -22,7 +22,13 @@ Open the `ActivityAsset` and configure **Activity Entry Readiness > Policy**:
 
 Both waiting policies require **Block During Transition = Input Interaction And Gameplay**. The framework reports incompatible authoring as an error and does not silently replace `Seamless` or strengthen the capability gate. A Route with a Startup Activity validates the Route transition gate against the Startup Activity policy because the Route operation owns that entry envelope.
 
-IF-READY-03 adds the internal occurrence-scoped wait primitive. It resolves exactly one terminal result as `Ready`, `Failed`, `Invalidated` or `Cancelled`, rejects updates from another occurrence and releases its event/cancellation subscriptions on completion. Game Flow does not consume this port until IF-READY-04, so selecting a waiting policy still does not retain Loading, Transition cover or capability gates in this cut.
+The occurrence-scoped waiter resolves exactly one terminal result as `Ready`, `Failed`, `Invalidated` or `Cancelled`, rejects updates from another occurrence and releases its event/cancellation subscriptions on completion. Game Flow consumes that result only for the initial occurrence selected by `Wait Covered` or `Wait Visible`.
+
+- **Observe Only** releases Loading, reveal and the transition gate in the normal order. Later readiness updates remain observational.
+- **Wait Visible** releases Loading and performs reveal after authority commit, then retains input, interaction and gameplay blocking until the captured occurrence is `Ready`.
+- **Wait Covered** retains Loading/cover and the same capability blocking until the captured occurrence is `Ready`; only then can Loading hide and reveal occur.
+
+If a committed destination reaches `Failed`, `Invalidated` or `Cancelled` while a waiting policy is active, the destination remains authoritative. The transient transition gate ends so a recovery Route or Activity request is admitted, while an explicit recovery blocker continues to block only input, interaction and gameplay. A successful later replacement or Activity clear releases that recovery blocker. No readiness update after release can replay reveal, Loading hide or gate application.
 
 ## Present readiness without polling
 

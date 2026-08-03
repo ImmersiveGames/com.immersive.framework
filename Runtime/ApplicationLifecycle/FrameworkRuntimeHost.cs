@@ -496,7 +496,7 @@ namespace Immersive.Framework.ApplicationLifecycle
                 throw;
             }
 
-            if (!result.Started)
+            if (!result.DestinationAuthoritative)
             {
                 ReleaseLocalPlayerActorSelectionRequests(
                     "game-flow-start-failed");
@@ -504,7 +504,7 @@ namespace Immersive.Framework.ApplicationLifecycle
 
             _state = FrameworkRuntimeState.FromGameFlowResult(_gameApplication, result);
             PublishCurrentActivityReadinessPresentation();
-            if (result.Started)
+            if (result.DestinationAuthoritative)
             {
                 RefreshObjectEntryRuntimeContextSnapshot("FrameworkRuntimeHost:framework-start");
             }
@@ -636,7 +636,7 @@ namespace Immersive.Framework.ApplicationLifecycle
                 ShowLoadingAfterTransitionGate,
                 HideLoadingBeforeTransitionRelease,
                 loadingProgressReporter);
-            if (routeResult.Succeeded)
+            if (routeResult.Succeeded || routeResult.DestinationAuthoritative)
             {
                 _state = FrameworkRuntimeState.FromRouteRequestResult(_state, routeResult, true);
                 PublishCurrentActivityReadinessPresentation();
@@ -656,7 +656,7 @@ namespace Immersive.Framework.ApplicationLifecycle
                     _loadingSurfaceRuntime.AdapterCount,
                     _loadingSurfaceRuntime.ProgressSupported,
                     loadingProgressReporter.LastProgress)
-                : !routeResult.Succeeded
+                : !routeResult.Succeeded && !routeResult.DestinationAuthoritative
                     ? FrameworkLoadingDiagnostics.NotExecutedRequestRejected()
                     : FrameworkLoadingDiagnostics.SucceededWithNoOp();
 

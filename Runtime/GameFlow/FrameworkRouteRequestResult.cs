@@ -51,6 +51,11 @@ namespace Immersive.Framework.GameFlow
 
         public bool Succeeded => Kind == FrameworkRouteRequestKind.Succeeded;
 
+        public bool DestinationAuthoritative => Succeeded ||
+            Kind == FrameworkRouteRequestKind.FailedCommittedTargetNotReady ||
+            Kind == FrameworkRouteRequestKind.FailedCommittedTargetReadinessInvalidated ||
+            Kind == FrameworkRouteRequestKind.FailedCommittedTargetReadinessCancelled;
+
         public static FrameworkRouteRequestResult FailedInvalidConfig(
             string message,
             RouteAsset targetRoute = null,
@@ -167,6 +172,21 @@ namespace Immersive.Framework.GameFlow
                 routeLifecycleResult,
                 transitionDiagnostics,
                 transitionGateDiagnostics);
+        }
+
+        internal static FrameworkRouteRequestResult FailedCommittedTargetReadiness(
+            FrameworkRouteRequestKind kind,
+            string message,
+            RouteAsset targetRoute,
+            string source,
+            string reason,
+            RouteLifecycleStartResult routeLifecycleResult,
+            FrameworkTransitionDiagnostics transitionDiagnostics = default,
+            TransitionGateDiagnostics transitionGateDiagnostics = default)
+        {
+            return new FrameworkRouteRequestResult(
+                kind, message, targetRoute, source, reason, routeLifecycleResult,
+                transitionDiagnostics, transitionGateDiagnostics);
         }
 
         private static string FormatRequestContext(string source, string reason)
