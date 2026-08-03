@@ -22,7 +22,7 @@ Open the `ActivityAsset` and configure **Activity Entry Readiness > Policy**:
 
 Both waiting policies require **Block During Transition = Input Interaction And Gameplay**. The framework reports incompatible authoring as an error and does not silently replace `Seamless` or strengthen the capability gate. A Route with a Startup Activity validates the Route transition gate against the Startup Activity policy because the Route operation owns that entry envelope.
 
-IF-READY-02 adds the policy contract, Inspector guidance and validation only. Occurrence-scoped waiting and Game Flow reveal/gate orchestration are delivered by the following readiness runtime cuts; selecting a waiting policy in this cut does not yet change Play Mode sequencing.
+IF-READY-03 adds the internal occurrence-scoped wait primitive. It resolves exactly one terminal result as `Ready`, `Failed`, `Invalidated` or `Cancelled`, rejects updates from another occurrence and releases its event/cancellation subscriptions on completion. Game Flow does not consume this port until IF-READY-04, so selecting a waiting policy still does not retain Loading, Transition cover or capability gates in this cut.
 
 ## Present readiness without polling
 

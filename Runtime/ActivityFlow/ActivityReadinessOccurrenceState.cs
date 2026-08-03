@@ -73,6 +73,7 @@ namespace Immersive.Framework.ActivityFlow
         private ActivityReadinessOccurrenceLifecycle _lifecycle;
         private ActivityReadinessState _aggregateReadiness;
         private ActivityReadinessAuthorableContribution _authorableContribution;
+        private int _revision;
 
         private ActivityReadinessOccurrenceState(
             ActivityReadinessOccurrence occurrence,
@@ -86,7 +87,10 @@ namespace Immersive.Framework.ActivityFlow
             _lifecycle = ActivityReadinessOccurrenceLifecycle.Pending;
             _authorableContribution = CalculateAuthorableContribution(_participants);
             _aggregateReadiness = technicalBaseline;
+            _revision = 1;
         }
+
+        internal event Action<ActivityReadinessOccurrenceState> Changed;
 
         internal ActivityReadinessOccurrence Occurrence => _occurrence;
         internal ActivityAsset Activity => _activity;
@@ -95,6 +99,7 @@ namespace Immersive.Framework.ActivityFlow
         internal ActivityReadinessState AggregateReadiness => _aggregateReadiness;
         internal ActivityReadinessAuthorableContribution AuthorableContribution =>
             _authorableContribution;
+        internal int Revision => _revision;
         internal bool IsPending =>
             _lifecycle == ActivityReadinessOccurrenceLifecycle.Pending;
         internal bool IsCurrent =>
@@ -181,10 +186,13 @@ namespace Immersive.Framework.ActivityFlow
 
         internal void MarkCurrent()
         {
-            if (IsPending)
+            if (!IsPending)
             {
-                _lifecycle = ActivityReadinessOccurrenceLifecycle.Current;
+                return;
             }
+
+            _lifecycle = ActivityReadinessOccurrenceLifecycle.Current;
+            PublishChanged();
         }
 
         internal void Invalidate()
@@ -199,6 +207,8 @@ namespace Immersive.Framework.ActivityFlow
             {
                 _participants[i].ClearParticipantReference();
             }
+
+            PublishChanged();
         }
 
         internal bool TrySetAggregateReadiness(
@@ -217,7 +227,14 @@ namespace Immersive.Framework.ActivityFlow
             }
 
             _aggregateReadiness = aggregate;
+            PublishChanged();
             return true;
+        }
+
+        private void PublishChanged()
+        {
+            _revision++;
+            Changed?.Invoke(this);
         }
 
         private ParticipantEntry FindParticipant(
