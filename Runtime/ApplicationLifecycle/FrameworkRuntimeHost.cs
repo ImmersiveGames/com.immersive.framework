@@ -2792,6 +2792,8 @@ namespace Immersive.Framework.ApplicationLifecycle
 
         private void OnDestroy()
         {
+            _gameFlowRuntime?.DisposeActivityEntryReadinessOrchestration();
+            _gameFlowRuntime = null;
             _activityReadinessBinding?.Dispose();
             _activityReadinessBinding = null;
             ReleaseLocalPlayerActorSelectionRequests(

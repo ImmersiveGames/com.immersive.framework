@@ -1,10 +1,10 @@
 using System;
 using System.Collections.Generic;
-using System.Threading;
 using System.Threading.Tasks;
 using Immersive.Framework.ActivityFlow;
 using Immersive.Framework.Authoring;
 using Immersive.Framework.Gate;
+using Immersive.Framework.Identity;
 using Immersive.Framework.RouteLifecycle;
 using Immersive.Framework.Transition;
 
@@ -14,6 +14,9 @@ namespace Immersive.Framework.GameFlow
     {
         private GateSnapshot _activityEntryReadinessRecoveryGateSnapshot;
         private ActivityReadinessOccurrence _activityEntryReadinessRecoveryOccurrence;
+        private FrameworkIdentityKey _activityEntryReadinessRecoveryOwner;
+        private ActivityEntryReadinessWaitScope _activityEntryReadinessWaitScope;
+        private bool _activityEntryReadinessOrchestrationDisposed;
 
         private GateSnapshot CurrentActivityEntryReadinessGateSnapshot =>
             CombineGateSnapshots(
@@ -145,7 +148,7 @@ namespace Immersive.Framework.GameFlow
         private async Task<ActivityEntryReadinessExecutionResult>
             WaitForPreparedActivityEntryReadinessAsync(
                 ActivityEntryReadinessExecutionResult prepared,
-                CancellationToken cancellationToken)
+                TransitionOperationId operationId)
         {
             if (!prepared.RequiresWait || prepared.Status != ActivityEntryReadinessExecutionStatus.Unknown)
             {
@@ -153,8 +156,30 @@ namespace Immersive.Framework.GameFlow
             }
 
             ActivityReadinessOccurrence occurrence = prepared.Occurrence;
-            ActivityEntryReadinessWaitResult waitResult =
-                await WaitForActivityEntryReadinessAsync(occurrence, cancellationToken);
+            var waitScope = BeginActivityEntryReadinessWaitScope(
+                operationId,
+                occurrence);
+            ActivityEntryReadinessWaitResult waitResult;
+            try
+            {
+                waitResult = await WaitForActivityEntryReadinessAsync(
+                    occurrence,
+                    waitScope.Token);
+            }
+            finally
+            {
+                CompleteActivityEntryReadinessWaitScope(waitScope);
+            }
+
+            if (waitResult.Cancelled && waitScope.CancellationRequested)
+            {
+                waitResult = ActivityEntryReadinessWaitResult.Cancellation(
+                    occurrence,
+                    waitResult.ReadinessState,
+                    waitScope.CancellationReason,
+                    waitResult.Revision);
+            }
+
             RefreshCurrentFlowContext();
 
             ActivityFlowStartResult finalActivityFlowResult = prepared.ActivityFlowResult;
@@ -192,15 +217,20 @@ namespace Immersive.Framework.GameFlow
             string reason)
         {
             if (!execution.IsFailure || !execution.DestinationAuthoritative ||
-                !execution.Occurrence.IsValid)
+                !execution.Occurrence.IsValid ||
+                _activityEntryReadinessOrchestrationDisposed)
             {
                 return;
             }
 
+            FrameworkIdentityKey owner = ResolveActivityEntryReadinessRecoveryOwner(
+                execution);
             _activityEntryReadinessRecoveryOccurrence = execution.Occurrence;
+            _activityEntryReadinessRecoveryOwner = owner;
             _activityEntryReadinessRecoveryGateSnapshot =
                 ActivityEntryReadinessRecoveryGatePolicy.Create(
                     execution.Occurrence,
+                    owner,
                     source,
                     reason);
         }
@@ -209,6 +239,75 @@ namespace Immersive.Framework.GameFlow
         {
             _activityEntryReadinessRecoveryGateSnapshot = GateSnapshot.Empty();
             _activityEntryReadinessRecoveryOccurrence = default;
+            _activityEntryReadinessRecoveryOwner = default;
+        }
+
+        internal void DisposeActivityEntryReadinessOrchestration()
+        {
+            if (_activityEntryReadinessOrchestrationDisposed)
+            {
+                return;
+            }
+
+            _activityEntryReadinessOrchestrationDisposed = true;
+            CancelActiveActivityEntryReadinessWait(
+                "GameFlowRuntimeDisposed");
+            ReleaseActivityEntryReadinessRecoveryGate();
+        }
+
+        private ActivityEntryReadinessWaitScope BeginActivityEntryReadinessWaitScope(
+            TransitionOperationId operationId,
+            ActivityReadinessOccurrence occurrence)
+        {
+            if (_activityEntryReadinessOrchestrationDisposed)
+            {
+                throw new ObjectDisposedException(nameof(GameFlowRuntime));
+            }
+
+            CancelActiveActivityEntryReadinessWait(
+                "ActivityEntryReadinessAuthorityReplaced");
+            var scope = new ActivityEntryReadinessWaitScope(operationId, occurrence);
+            _activityEntryReadinessWaitScope = scope;
+            return scope;
+        }
+
+        private void CompleteActivityEntryReadinessWaitScope(
+            ActivityEntryReadinessWaitScope scope)
+        {
+            if (ReferenceEquals(_activityEntryReadinessWaitScope, scope))
+            {
+                _activityEntryReadinessWaitScope = null;
+            }
+
+            scope?.Dispose();
+        }
+
+        private void CancelActiveActivityEntryReadinessWait(string reason)
+        {
+            _activityEntryReadinessWaitScope?.Cancel(reason);
+        }
+
+        private static FrameworkIdentityKey ResolveActivityEntryReadinessRecoveryOwner(
+            ActivityEntryReadinessExecutionResult execution)
+        {
+            ActivityRuntimeState activityState = execution.ActivityFlowResult.ActivityState;
+            if (!execution.Occurrence.IsValid || !activityState.HasIdentity ||
+                !ReferenceEquals(activityState.Activity, execution.Occurrence.Activity) ||
+                activityState.ActivityIdentity.Domain != FrameworkIdentityDomain.Activity)
+            {
+                throw new InvalidOperationException(
+                    "Committed Activity entry-readiness failure requires the canonical Activity runtime owner identity.");
+            }
+
+            FrameworkIdentityKey expectedOwner = FrameworkIdentityKey.From(
+                execution.Occurrence.Activity.ActivityId);
+            if (activityState.ActivityIdentity != expectedOwner)
+            {
+                throw new InvalidOperationException(
+                    "Committed Activity entry-readiness failure owner does not match the captured Activity occurrence.");
+            }
+
+            return activityState.ActivityIdentity;
         }
 
         private static ActivityEntryReadinessExecutionStatus MapWaitStatus(

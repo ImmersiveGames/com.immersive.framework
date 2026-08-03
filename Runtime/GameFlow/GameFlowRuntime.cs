@@ -205,6 +205,8 @@ namespace Immersive.Framework.GameFlow
                     observedRouteLifecycleResult);
             }
 
+            CancelActiveActivityEntryReadinessWait(
+                "GameFlowStartupAuthorityReplaced");
             _routeRequestInFlight = true;
             try
             {
@@ -272,13 +274,13 @@ namespace Immersive.Framework.GameFlow
                             routeLifecycleResult.ActivityFlowResult.Activity));
                     readinessExecution = await WaitForPreparedActivityEntryReadinessAsync(
                         readinessExecution,
-                        System.Threading.CancellationToken.None);
+                        operationId);
                 }
                 else
                 {
                     readinessExecution = await WaitForPreparedActivityEntryReadinessAsync(
                         readinessExecution,
-                        System.Threading.CancellationToken.None);
+                        operationId);
                     transitionAfter = readinessExecution.IsReady
                         ? await ExecuteTransitionAsync(
                             TransitionRequest.After(
@@ -445,6 +447,8 @@ namespace Immersive.Framework.GameFlow
 
             ActivityPlayerLifecycleAdmissionResult
                 routeStartupPlayerAdmissionAuthorization = null;
+            CancelActiveActivityEntryReadinessWait(
+                "RouteRequestAuthorityReplaced");
             _routeRequestInFlight = true;
             TransitionGateDiagnostics transitionGateDiagnostics = default;
             try
@@ -570,13 +574,13 @@ namespace Immersive.Framework.GameFlow
                             routeLifecycleResult.ActivityFlowResult.Activity));
                     readinessExecution = await WaitForPreparedActivityEntryReadinessAsync(
                         readinessExecution,
-                        System.Threading.CancellationToken.None);
+                        operationId);
                 }
                 else if (readinessExecution.Policy == ActivityEntryReadinessPolicy.WaitCovered)
                 {
                     readinessExecution = await WaitForPreparedActivityEntryReadinessAsync(
                         readinessExecution,
-                        System.Threading.CancellationToken.None);
+                        operationId);
                     if (readinessExecution.IsReady)
                     {
                         if (afterRouteLifecycle != null)
@@ -857,6 +861,8 @@ namespace Immersive.Framework.GameFlow
             }
 
             ActivityPlayerLifecycleAdmissionResult playerAdmissionAuthorization = null;
+            CancelActiveActivityEntryReadinessWait(
+                "ActivityRequestAuthorityReplaced");
             _activityRequestInFlight = true;
             TransitionGateDiagnostics transitionGateDiagnostics = default;
             try
@@ -1035,13 +1041,13 @@ namespace Immersive.Framework.GameFlow
                         activityTransitionMode);
                     readinessExecution = await WaitForPreparedActivityEntryReadinessAsync(
                         readinessExecution,
-                        System.Threading.CancellationToken.None);
+                        operationId);
                 }
                 else if (readinessExecution.Policy == ActivityEntryReadinessPolicy.WaitCovered)
                 {
                     readinessExecution = await WaitForPreparedActivityEntryReadinessAsync(
                         readinessExecution,
-                        System.Threading.CancellationToken.None);
+                        operationId);
                     if (readinessExecution.IsReady)
                     {
                         if (afterActivityLifecycle != null)
@@ -1217,6 +1223,8 @@ namespace Immersive.Framework.GameFlow
                     GameFlowRequestOperationKind.ActivityClear);
             }
 
+            CancelActiveActivityEntryReadinessWait(
+                "ActivityClearAuthorityRemoved");
             _activityRequestInFlight = true;
             TransitionGateDiagnostics transitionGateDiagnostics = default;
             try

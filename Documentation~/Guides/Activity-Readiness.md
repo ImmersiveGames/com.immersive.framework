@@ -30,6 +30,8 @@ The occurrence-scoped waiter resolves exactly one terminal result as `Ready`, `F
 
 If a committed destination reaches `Failed`, `Invalidated` or `Cancelled` while a waiting policy is active, the destination remains authoritative. The transient transition gate ends so a recovery Route or Activity request is admitted, while an explicit recovery blocker continues to block only input, interaction and gameplay. A successful later replacement or Activity clear releases that recovery blocker. No readiness update after release can replay reveal, Loading hide or gate application.
 
+Each waiting entry owns a distinct internal cancellation scope bound to its transition operation and captured occurrence. Runtime disposal or a later authority boundary cancels that scope with the typed `Cancelled` terminal result; a completed `Ready` result is never changed by later cancellation. Recovery blockers use the canonical Activity runtime identity as their owner, while unscoped capability consumers still observe them as active blockers.
+
 ## Present readiness without polling
 
 Add **Immersive Framework/Activity Readiness Events** in the same explicit Activity scope. Wire its `Preparing`, `Ready` and `Not Ready` UnityEvents to a local presenter. The presenter may update text, visuals or enabled content, but must not change readiness or look up a runtime.

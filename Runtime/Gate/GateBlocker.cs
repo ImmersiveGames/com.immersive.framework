@@ -90,7 +90,9 @@ namespace Immersive.Framework.Gate
                 return false;
             }
 
-            return !HasOwner || owner.IsValid && Owner.Equals(owner);
+            // Uma query sem owner verifica se a capability está bloqueada para qualquer owner.
+            // Uma query tipada permanece restrita ao owner correspondente.
+            return !HasOwner || !owner.IsValid || Owner.Equals(owner);
         }
 
         public bool Equals(GateBlocker other)
