@@ -6,10 +6,11 @@ namespace Immersive.Framework.ActivityFlow
 {
     /// <summary>
     /// Minimal immutable readiness snapshot for the current Activity scope.
-    /// Activity content application and required execution participants contribute compact blocking evidence.
+    /// Activity content application, synchronous execution and occurrence-scoped readiness
+    /// contributions provide separate technical, preparing and terminal-failure evidence.
     /// The complete execution lifecycle result remains owned by ActivityFlowStartResult.
     /// </summary>
-    [FrameworkApiStatus(FrameworkApiStatus.Experimental, "F4D/P3J.6 Activity readiness state with compact required execution-participant evidence.")]
+    [FrameworkApiStatus(FrameworkApiStatus.Experimental, "F4D/P3J.6 Activity readiness state with compact execution and authorable contribution evidence.")]
     internal readonly struct ActivityReadinessState
     {
         public ActivityReadinessState(
@@ -28,6 +29,12 @@ namespace Immersive.Framework.ActivityFlow
                 activityContentLifecycleResult,
                 false,
                 false,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
                 0,
                 blockingIssueCount,
                 source,
@@ -48,6 +55,45 @@ namespace Immersive.Framework.ActivityFlow
             string source,
             string reason,
             string diagnosticReason)
+            : this(
+                status,
+                activity,
+                activityContentSet,
+                activityContentLifecycleResult,
+                activityContentExecutionExecuted,
+                activityContentExecutionBlocksReadiness,
+                activityContentExecutionBlockingIssueCount,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                blockingIssueCount,
+                source,
+                reason,
+                diagnosticReason)
+        {
+        }
+
+        public ActivityReadinessState(
+            ActivityReadinessStatus status,
+            ActivityAsset activity,
+            ActivityContentSet activityContentSet,
+            ActivityContentLifecycleResult activityContentLifecycleResult,
+            bool activityContentExecutionExecuted,
+            bool activityContentExecutionBlocksReadiness,
+            int activityContentExecutionBlockingIssueCount,
+            int requiredCount,
+            int optionalCount,
+            int requiredPendingCount,
+            int requiredFailedCount,
+            int optionalPendingCount,
+            int optionalFailedCount,
+            int blockingIssueCount,
+            string source,
+            string reason,
+            string diagnosticReason)
         {
             Status = status;
             Activity = activity;
@@ -56,6 +102,12 @@ namespace Immersive.Framework.ActivityFlow
             ActivityContentExecutionExecuted = activityContentExecutionExecuted;
             ActivityContentExecutionBlocksReadiness = activityContentExecutionBlocksReadiness;
             ActivityContentExecutionBlockingIssueCount = activityContentExecutionBlockingIssueCount;
+            RequiredCount = requiredCount;
+            OptionalCount = optionalCount;
+            RequiredPendingCount = requiredPendingCount;
+            RequiredFailedCount = requiredFailedCount;
+            OptionalPendingCount = optionalPendingCount;
+            OptionalFailedCount = optionalFailedCount;
             BlockingIssueCount = blockingIssueCount;
             Source = source ?? string.Empty;
             Reason = reason ?? string.Empty;
@@ -69,17 +121,39 @@ namespace Immersive.Framework.ActivityFlow
         public bool ActivityContentExecutionExecuted { get; }
         public bool ActivityContentExecutionBlocksReadiness { get; }
         public int ActivityContentExecutionBlockingIssueCount { get; }
+        public int RequiredCount { get; }
+        public int OptionalCount { get; }
+        public int RequiredPendingCount { get; }
+        public int RequiredFailedCount { get; }
+        public int OptionalPendingCount { get; }
+        public int OptionalFailedCount { get; }
+        public int ParticipantCount => RequiredCount + OptionalCount;
+        public int PendingCount => RequiredPendingCount + OptionalPendingCount;
+        public int FailedCount => RequiredFailedCount + OptionalFailedCount;
         public int BlockingIssueCount { get; }
         public string Source { get; }
         public string Reason { get; }
         public string DiagnosticReason { get; }
         public bool IsNone => Status == ActivityReadinessStatus.None;
-        public bool IsReady => Status == ActivityReadinessStatus.Ready && Activity != null && BlockingIssueCount == 0;
+        public bool IsReady =>
+            Status == ActivityReadinessStatus.Ready &&
+            Activity != null &&
+            BlockingIssueCount == 0 &&
+            RequiredPendingCount == 0 &&
+            RequiredFailedCount == 0;
         public bool IsNotReady => Status == ActivityReadinessStatus.NotReady;
+        public bool IsPreparing =>
+            IsNotReady &&
+            RequiredPendingCount > 0 &&
+            !HasTerminalFailure;
+        public bool HasTerminalFailure =>
+            RequiredFailedCount > 0 ||
+            HasBlockingIssues;
         public bool HasActivity => Activity != null;
         public bool HasActivityContent => ActivityContentSet.HasContent;
         public bool HasLifecycleResult => ActivityContentLifecycleResult.Executed;
         public bool HasExecutionResult => ActivityContentExecutionExecuted;
+        public bool HasAuthorableReadinessEvidence => ParticipantCount > 0;
         public bool HasBlockingIssues => BlockingIssueCount > 0;
         public string ActivityName => Activity != null ? Activity.ActivityName : string.Empty;
         public string DiagnosticStatus => Status.ToString();

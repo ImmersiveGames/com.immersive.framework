@@ -70,20 +70,19 @@ namespace Immersive.Framework.ActivityFlow
 
         ActivityContentExecutionResult IActivityContentExecutionParticipant.ExecuteActivityContent(ActivityContentExecutionRequest request)
         {
-            if (request.Phase == ActivityContentExecutionPhase.Exit)
-            {
-                Release("ActivityExit");
-                return ActivityContentExecutionResult.Success(request, nameof(ActivityReadinessParticipant), "Released", "Activity readiness participant released on Activity exit.");
-            }
-
-            BeginPreparationCore(occurrence + 1);
-
-            // Existing execution contracts are synchronous. The initial result preserves
-            // their Required/Optional failure semantics while the official adapter publishes
-            // subsequent semantic completion to presentation.
-            return request.IsRequired
-                ? ActivityContentExecutionResult.BlockingFailure(request, 1, nameof(ActivityReadinessParticipant), "Preparing", "Required readiness participant is awaiting semantic completion.")
-                : ActivityContentExecutionResult.NonBlockingFailure(request, 1, nameof(ActivityReadinessParticipant), "Preparing", "Optional readiness participant is awaiting semantic completion.");
+            // Activity content execution is synchronous. The occurrence-scoped readiness
+            // tracker owns BeginPreparation, terminal aggregation and Release. Keeping this
+            // legacy adapter side-effect free prevents preparation from being started twice
+            // and prevents a normal Preparing state from being reported as execution failure.
+            return ActivityContentExecutionResult.SucceededNoOp(
+                request,
+                nameof(ActivityReadinessParticipant),
+                request.Phase == ActivityContentExecutionPhase.Exit
+                    ? "ReadinessReleaseOwnedByOccurrence"
+                    : "ReadinessPreparationOwnedByOccurrence",
+                request.Phase == ActivityContentExecutionPhase.Exit
+                    ? "Activity readiness release is owned by the occurrence-scoped readiness runtime."
+                    : "Activity readiness preparation is owned by the occurrence-scoped readiness runtime.");
         }
 
         internal bool IsValidForDiscovery(out string issue)

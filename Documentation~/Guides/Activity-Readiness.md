@@ -18,6 +18,8 @@ Add **Immersive Framework/Activity Readiness Events** in the same explicit Activ
 
 ## Lifecycle and diagnostics
 
-Required participants begin pending and block readiness until completed. Optional participants use the existing non-blocking failure semantics. Exit releases tracked participants. A completion after release is diagnosed as `LateCompletionRejected` and does not modify a later occurrence. Reentry creates new participant state.
+Required participants begin in `Preparing`. This keeps the aggregate Activity `NotReady`, but normal preparation is not a failure and does not add a blocking issue. A Required participant that completes contributes to `Ready`; a Required participant that fails produces explicit terminal blocking evidence. Optional participants remain diagnostic whether they are preparing, completed or failed and never block `Ready`.
+
+Exit releases tracked participants. A completion after release is diagnosed as `LateCompletionRejected` and does not modify a later occurrence. Reentry creates a new participant occurrence.
 
 Zero participants remain supported: the technical execution path preserves its existing `SucceededNoParticipants` behavior. The Inspector shows identity, requiredness and callbacks first; Advanced shows occurrence, state and last reason.

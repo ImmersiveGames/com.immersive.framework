@@ -22,6 +22,9 @@ namespace Immersive.Framework.ActivityFlow
             int failedCount,
             int requiredPendingCount,
             int requiredFailedCount,
+            int optionalPendingCount,
+            int optionalFailedCount,
+            bool hasRequiredReleased,
             bool isSatisfied,
             string reason)
         {
@@ -33,6 +36,9 @@ namespace Immersive.Framework.ActivityFlow
             FailedCount = failedCount;
             RequiredPendingCount = requiredPendingCount;
             RequiredFailedCount = requiredFailedCount;
+            OptionalPendingCount = optionalPendingCount;
+            OptionalFailedCount = optionalFailedCount;
+            HasRequiredReleased = hasRequiredReleased;
             IsSatisfied = isSatisfied;
             Reason = reason ?? string.Empty;
         }
@@ -45,6 +51,15 @@ namespace Immersive.Framework.ActivityFlow
         internal int FailedCount { get; }
         internal int RequiredPendingCount { get; }
         internal int RequiredFailedCount { get; }
+        internal int OptionalPendingCount { get; }
+        internal int OptionalFailedCount { get; }
+        internal bool HasRequiredReleased { get; }
+        internal bool HasTerminalFailure =>
+            RequiredFailedCount > 0 ||
+            HasRequiredReleased;
+        internal int TerminalBlockingIssueCount =>
+            RequiredFailedCount +
+            (HasRequiredReleased ? 1 : 0);
         internal bool IsSatisfied { get; }
         internal string Reason { get; }
     }
@@ -232,6 +247,8 @@ namespace Immersive.Framework.ActivityFlow
             int failedCount = 0;
             int requiredPendingCount = 0;
             int requiredFailedCount = 0;
+            int optionalPendingCount = 0;
+            int optionalFailedCount = 0;
             bool hasRequiredReleased = false;
 
             for (int i = 0; i < participants.Count; i++)
@@ -258,6 +275,10 @@ namespace Immersive.Framework.ActivityFlow
                         {
                             requiredPendingCount++;
                         }
+                        else
+                        {
+                            optionalPendingCount++;
+                        }
 
                         break;
                     case ActivityReadinessParticipantState.Completed:
@@ -268,6 +289,10 @@ namespace Immersive.Framework.ActivityFlow
                         if (isRequired)
                         {
                             requiredFailedCount++;
+                        }
+                        else
+                        {
+                            optionalFailedCount++;
                         }
 
                         break;
@@ -280,7 +305,8 @@ namespace Immersive.Framework.ActivityFlow
             if (participantCount == 0)
             {
                 return new ActivityReadinessAuthorableContribution(
-                    0, 0, 0, 0, 0, 0, 0, 0, true, "NoParticipants");
+                    0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                    false, true, "NoParticipants");
             }
 
             bool isSatisfied = requiredFailedCount == 0 &&
@@ -302,6 +328,9 @@ namespace Immersive.Framework.ActivityFlow
                 failedCount,
                 requiredPendingCount,
                 requiredFailedCount,
+                optionalPendingCount,
+                optionalFailedCount,
+                hasRequiredReleased,
                 isSatisfied,
                 reason);
         }

@@ -10,31 +10,74 @@ namespace Immersive.Framework.ActivityFlow
             string source,
             string reason)
         {
-            if (!technicalBaseline.HasActivity ||
-                !technicalBaseline.IsReady ||
-                authorableContribution.IsSatisfied)
+            if (!technicalBaseline.HasActivity || technicalBaseline.IsNone)
             {
                 return technicalBaseline;
             }
 
+            int blockingIssueCount =
+                technicalBaseline.BlockingIssueCount +
+                authorableContribution.TerminalBlockingIssueCount;
+            bool isReady =
+                technicalBaseline.IsReady &&
+                authorableContribution.IsSatisfied;
+
             return new ActivityReadinessState(
-                ActivityReadinessStatus.NotReady,
+                isReady
+                    ? ActivityReadinessStatus.Ready
+                    : ActivityReadinessStatus.NotReady,
                 technicalBaseline.Activity,
                 technicalBaseline.ActivityContentSet,
                 technicalBaseline.ActivityContentLifecycleResult,
                 technicalBaseline.ActivityContentExecutionExecuted,
                 technicalBaseline.ActivityContentExecutionBlocksReadiness,
                 technicalBaseline.ActivityContentExecutionBlockingIssueCount,
-                technicalBaseline.BlockingIssueCount + 1,
+                authorableContribution.RequiredCount,
+                authorableContribution.OptionalCount,
+                authorableContribution.RequiredPendingCount,
+                authorableContribution.RequiredFailedCount,
+                authorableContribution.OptionalPendingCount,
+                authorableContribution.OptionalFailedCount,
+                blockingIssueCount,
                 source.NormalizeTextOrFallback("Unknown"),
                 reason.NormalizeTextOrFallback("None"),
-                NormalizeDiagnosticReason(authorableContribution.Reason));
+                ResolveDiagnosticReason(
+                    technicalBaseline,
+                    authorableContribution,
+                    isReady));
         }
 
-        private static string NormalizeDiagnosticReason(string reason)
+        private static string ResolveDiagnosticReason(
+            ActivityReadinessState technicalBaseline,
+            ActivityReadinessAuthorableContribution authorableContribution,
+            bool isReady)
         {
-            return reason.NormalizeTextOrFallback(
-                "AuthorableReadinessBlocked");
+            if (!technicalBaseline.IsReady)
+            {
+                return technicalBaseline.DiagnosticReason.NormalizeTextOrFallback(
+                    "TechnicalReadinessBlocked");
+            }
+
+            if (authorableContribution.HasTerminalFailure)
+            {
+                return authorableContribution.Reason.NormalizeTextOrFallback(
+                    "RequiredParticipantFailed");
+            }
+
+            if (authorableContribution.RequiredPendingCount > 0)
+            {
+                return authorableContribution.Reason.NormalizeTextOrFallback(
+                    "Preparing");
+            }
+
+            if (isReady && authorableContribution.ParticipantCount > 0)
+            {
+                return authorableContribution.Reason.NormalizeTextOrFallback(
+                    "Ready");
+            }
+
+            return technicalBaseline.DiagnosticReason.NormalizeTextOrFallback(
+                "BaselineReady");
         }
     }
 }
