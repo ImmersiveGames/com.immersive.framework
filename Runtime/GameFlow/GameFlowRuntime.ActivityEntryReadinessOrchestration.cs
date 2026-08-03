@@ -15,7 +15,8 @@ namespace Immersive.Framework.GameFlow
         private GateSnapshot _activityEntryReadinessRecoveryGateSnapshot;
         private ActivityReadinessOccurrence _activityEntryReadinessRecoveryOccurrence;
         private FrameworkIdentityKey _activityEntryReadinessRecoveryOwner;
-        private ActivityEntryReadinessWaitScope _activityEntryReadinessWaitScope;
+        private readonly object _activityEntryReadinessOperationSyncRoot = new object();
+        private ActivityEntryReadinessActiveOperation _activityEntryReadinessActiveOperation;
         private bool _activityEntryReadinessOrchestrationDisposed;
 
         private GateSnapshot CurrentActivityEntryReadinessGateSnapshot =>
@@ -148,7 +149,8 @@ namespace Immersive.Framework.GameFlow
         private async Task<ActivityEntryReadinessExecutionResult>
             WaitForPreparedActivityEntryReadinessAsync(
                 ActivityEntryReadinessExecutionResult prepared,
-                TransitionOperationId operationId)
+                TransitionOperationId operationId,
+                RouteAsset authorityRoute)
         {
             if (!prepared.RequiresWait || prepared.Status != ActivityEntryReadinessExecutionStatus.Unknown)
             {
@@ -156,27 +158,23 @@ namespace Immersive.Framework.GameFlow
             }
 
             ActivityReadinessOccurrence occurrence = prepared.Occurrence;
-            var waitScope = BeginActivityEntryReadinessWaitScope(
+            ActivityEntryReadinessActiveOperation activeOperation =
+                BeginActivityEntryReadinessActiveOperation(
                 operationId,
-                occurrence);
-            ActivityEntryReadinessWaitResult waitResult;
-            try
-            {
-                waitResult = await WaitForActivityEntryReadinessAsync(
+                occurrence,
+                authorityRoute);
+            ActivityEntryReadinessWaitResult waitResult =
+                await WaitForActivityEntryReadinessAsync(
                     occurrence,
-                    waitScope.Token);
-            }
-            finally
-            {
-                CompleteActivityEntryReadinessWaitScope(waitScope);
-            }
+                    activeOperation.WaitScope.Token);
 
-            if (waitResult.Cancelled && waitScope.CancellationRequested)
+            if (waitResult.Cancelled &&
+                activeOperation.WaitScope.CancellationRequested)
             {
                 waitResult = ActivityEntryReadinessWaitResult.Cancellation(
                     occurrence,
                     waitResult.ReadinessState,
-                    waitScope.CancellationReason,
+                    activeOperation.WaitScope.CancellationReason,
                     waitResult.Revision);
             }
 
@@ -255,36 +253,108 @@ namespace Immersive.Framework.GameFlow
             ReleaseActivityEntryReadinessRecoveryGate();
         }
 
-        private ActivityEntryReadinessWaitScope BeginActivityEntryReadinessWaitScope(
+        internal async Task InterruptActiveActivityEntryReadinessForRouteReplacementAsync(
+            RouteAsset targetRoute)
+        {
+            ActivityEntryReadinessActiveOperation activeOperation =
+                CaptureActiveActivityEntryReadinessOperation();
+            if (activeOperation == null || activeOperation.OwnsRoute(targetRoute))
+            {
+                return;
+            }
+
+            activeOperation.RequestCancellation("RouteAuthorityReplaced");
+            await activeOperation.Unwound;
+        }
+
+        internal async Task InterruptActiveActivityEntryReadinessForActivityReplacementAsync(
+            ActivityAsset targetActivity)
+        {
+            ActivityEntryReadinessActiveOperation activeOperation =
+                CaptureActiveActivityEntryReadinessOperation();
+            if (activeOperation == null || activeOperation.OwnsActivity(targetActivity))
+            {
+                return;
+            }
+
+            activeOperation.RequestCancellation("ActivityAuthorityReplaced");
+            await activeOperation.Unwound;
+        }
+
+        internal async Task InterruptActiveActivityEntryReadinessForActivityClearAsync()
+        {
+            ActivityEntryReadinessActiveOperation activeOperation =
+                CaptureActiveActivityEntryReadinessOperation();
+            if (activeOperation == null ||
+                !activeOperation.OwnsActivity(_routeLifecycleRuntime.CurrentActivity))
+            {
+                return;
+            }
+
+            activeOperation.RequestCancellation("ActivityAuthorityRemoved");
+            await activeOperation.Unwound;
+        }
+
+        private ActivityEntryReadinessActiveOperation
+            BeginActivityEntryReadinessActiveOperation(
             TransitionOperationId operationId,
-            ActivityReadinessOccurrence occurrence)
+            ActivityReadinessOccurrence occurrence,
+            RouteAsset authorityRoute)
         {
             if (_activityEntryReadinessOrchestrationDisposed)
             {
                 throw new ObjectDisposedException(nameof(GameFlowRuntime));
             }
 
-            CancelActiveActivityEntryReadinessWait(
-                "ActivityEntryReadinessAuthorityReplaced");
-            var scope = new ActivityEntryReadinessWaitScope(operationId, occurrence);
-            _activityEntryReadinessWaitScope = scope;
-            return scope;
-        }
-
-        private void CompleteActivityEntryReadinessWaitScope(
-            ActivityEntryReadinessWaitScope scope)
-        {
-            if (ReferenceEquals(_activityEntryReadinessWaitScope, scope))
+            var activeOperation = new ActivityEntryReadinessActiveOperation(
+                operationId,
+                occurrence,
+                authorityRoute);
+            lock (_activityEntryReadinessOperationSyncRoot)
             {
-                _activityEntryReadinessWaitScope = null;
+                if (_activityEntryReadinessActiveOperation != null)
+                {
+                    throw new InvalidOperationException(
+                        "A previous Activity entry-readiness operation has not completed its lifecycle unwind.");
+                }
+
+                _activityEntryReadinessActiveOperation = activeOperation;
             }
 
-            scope?.Dispose();
+            return activeOperation;
+        }
+
+        private void CompleteActivityEntryReadinessActiveOperation(
+            TransitionOperationId operationId)
+        {
+            ActivityEntryReadinessActiveOperation activeOperation;
+            lock (_activityEntryReadinessOperationSyncRoot)
+            {
+                activeOperation = _activityEntryReadinessActiveOperation;
+                if (activeOperation == null ||
+                    activeOperation.OperationId != operationId)
+                {
+                    return;
+                }
+
+                _activityEntryReadinessActiveOperation = null;
+            }
+
+            activeOperation.CompleteUnwind();
         }
 
         private void CancelActiveActivityEntryReadinessWait(string reason)
         {
-            _activityEntryReadinessWaitScope?.Cancel(reason);
+            CaptureActiveActivityEntryReadinessOperation()?.RequestCancellation(reason);
+        }
+
+        private ActivityEntryReadinessActiveOperation
+            CaptureActiveActivityEntryReadinessOperation()
+        {
+            lock (_activityEntryReadinessOperationSyncRoot)
+            {
+                return _activityEntryReadinessActiveOperation;
+            }
         }
 
         private static FrameworkIdentityKey ResolveActivityEntryReadinessRecoveryOwner(

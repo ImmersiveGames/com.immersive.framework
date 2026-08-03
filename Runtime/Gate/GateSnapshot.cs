@@ -105,6 +105,25 @@ namespace Immersive.Framework.Gate
             return false;
         }
 
+        internal bool IsBlockedForAnyOwner(GateScope scope, GateDomain domain)
+        {
+            if (scope == GateScope.Unknown || domain == GateDomain.Unknown || !HasBlockers)
+            {
+                return false;
+            }
+
+            IReadOnlyList<GateBlocker> items = Blockers;
+            for (int i = 0; i < items.Count; i++)
+            {
+                if (items[i].BlocksForAnyOwner(scope, domain))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
         public IReadOnlyList<GateBlocker> GetBlockingBlockers(GateScope scope, GateDomain domain)
         {
             return GetBlockingBlockers(scope, domain, default);

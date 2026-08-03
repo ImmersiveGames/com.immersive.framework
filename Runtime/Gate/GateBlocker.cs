@@ -90,9 +90,17 @@ namespace Immersive.Framework.Gate
                 return false;
             }
 
-            // Uma query sem owner verifica se a capability está bloqueada para qualquer owner.
-            // Uma query tipada permanece restrita ao owner correspondente.
-            return !HasOwner || !owner.IsValid || Owner.Equals(owner);
+            return !HasOwner || (owner.IsValid && Owner.Equals(owner));
+        }
+
+        internal bool BlocksForAnyOwner(GateScope scope, GateDomain domain)
+        {
+            if (!IsValid || scope == GateScope.Unknown || domain == GateDomain.Unknown)
+            {
+                return false;
+            }
+
+            return Scope == scope && Domain == domain;
         }
 
         public bool Equals(GateBlocker other)

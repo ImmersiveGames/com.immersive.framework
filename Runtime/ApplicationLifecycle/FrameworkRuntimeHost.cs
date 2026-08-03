@@ -1702,9 +1702,9 @@ namespace Immersive.Framework.ApplicationLifecycle
                 LogFields.Field("failed", result.Failed),
                 LogFields.Field("stateChanged", result.StateChanged),
                 LogFields.Field("gateBlockers", gateSnapshot.BlockerCount),
-                LogFields.Field("blocksInputAcceptance", gateSnapshot.IsBlocked(GateScope.Input, GateDomain.InputAcceptance)),
-                LogFields.Field("blocksInteractionAcceptance", gateSnapshot.IsBlocked(GateScope.Interaction, GateDomain.InteractionAcceptance)),
-                LogFields.Field("blocksPauseRequest", gateSnapshot.IsBlocked(GateScope.Pause, GateDomain.PauseRequest)),
+                LogFields.Field("blocksInputAcceptance", gateSnapshot.IsBlockedForAnyOwner(GateScope.Input, GateDomain.InputAcceptance)),
+                LogFields.Field("blocksInteractionAcceptance", gateSnapshot.IsBlockedForAnyOwner(GateScope.Interaction, GateDomain.InteractionAcceptance)),
+                LogFields.Field("blocksPauseRequest", gateSnapshot.IsBlockedForAnyOwner(GateScope.Pause, GateDomain.PauseRequest)),
                 LogFields.Field("issues", result.IssueCount),
                 LogFields.Field("blockingIssues", result.BlockingIssueCount),
                 LogFields.Field("timeScale", timeScaleResult.IsValid ? timeScaleResult.StatusText : "Unknown"),
@@ -1750,10 +1750,10 @@ namespace Immersive.Framework.ApplicationLifecycle
             GateSnapshot transitionGateSnapshot = TransitionGateSnapshot;
             return LogFields.Of(
                 LogFields.Field("transitionGateBlockers", transitionGateSnapshot.BlockerCount),
-                LogFields.Field("transitionBlocksLifecycleRequest", transitionGateSnapshot.IsBlocked(GateScope.GameFlow, GateDomain.LifecycleRequest)),
-                LogFields.Field("transitionBlocksInputAcceptance", transitionGateSnapshot.IsBlocked(GateScope.Input, GateDomain.InputAcceptance)),
-                LogFields.Field("transitionBlocksInteractionAcceptance", transitionGateSnapshot.IsBlocked(GateScope.Interaction, GateDomain.InteractionAcceptance)),
-                LogFields.Field("transitionBlocksGameplayAction", transitionGateSnapshot.IsBlocked(GateScope.Gameplay, GateDomain.GameplayAction)));
+                LogFields.Field("transitionBlocksLifecycleRequest", transitionGateSnapshot.IsBlockedForAnyOwner(GateScope.GameFlow, GateDomain.LifecycleRequest)),
+                LogFields.Field("transitionBlocksInputAcceptance", transitionGateSnapshot.IsBlockedForAnyOwner(GateScope.Input, GateDomain.InputAcceptance)),
+                LogFields.Field("transitionBlocksInteractionAcceptance", transitionGateSnapshot.IsBlockedForAnyOwner(GateScope.Interaction, GateDomain.InteractionAcceptance)),
+                LogFields.Field("transitionBlocksGameplayAction", transitionGateSnapshot.IsBlockedForAnyOwner(GateScope.Gameplay, GateDomain.GameplayAction)));
         }
 
         private LogField[] BuildCycleResetSummaryFields(CycleResetResult result)

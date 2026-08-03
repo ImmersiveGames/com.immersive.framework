@@ -515,13 +515,13 @@ namespace Immersive.Framework.UnityInput
 
             bool blocksInput =
                 blockOnInputAcceptance &&
-                gateSnapshot.IsBlocked(
+                gateSnapshot.IsBlockedForAnyOwner(
                     GateScope.Input,
                     GateDomain.InputAcceptance);
 
             bool blocksGameplay =
                 blockOnGameplayAction &&
-                gateSnapshot.IsBlocked(
+                gateSnapshot.IsBlockedForAnyOwner(
                     GateScope.Gameplay,
                     GateDomain.GameplayAction);
 

@@ -205,12 +205,11 @@ namespace Immersive.Framework.GameFlow
                     observedRouteLifecycleResult);
             }
 
-            CancelActiveActivityEntryReadinessWait(
-                "GameFlowStartupAuthorityReplaced");
             _routeRequestInFlight = true;
+            TransitionOperationId operationId = default;
             try
             {
-                var operationId = CreateTransitionOperationId(TransitionScope.Startup);
+                operationId = CreateTransitionOperationId(TransitionScope.Startup);
                 var transitionGateMode = ResolveRouteTransitionGateMode(startupRoute);
                 var transitionGateSnapshot = ApplyTransitionGate(
                     operationId,
@@ -274,13 +273,15 @@ namespace Immersive.Framework.GameFlow
                             routeLifecycleResult.ActivityFlowResult.Activity));
                     readinessExecution = await WaitForPreparedActivityEntryReadinessAsync(
                         readinessExecution,
-                        operationId);
+                        operationId,
+                        startupRoute);
                 }
                 else
                 {
                     readinessExecution = await WaitForPreparedActivityEntryReadinessAsync(
                         readinessExecution,
-                        operationId);
+                        operationId,
+                        startupRoute);
                     transitionAfter = readinessExecution.IsReady
                         ? await ExecuteTransitionAsync(
                             TransitionRequest.After(
@@ -332,6 +333,7 @@ namespace Immersive.Framework.GameFlow
             {
                 ReleaseTransitionGateIfStillActive();
                 _routeRequestInFlight = false;
+                CompleteActivityEntryReadinessActiveOperation(operationId);
             }
         }
 
@@ -393,6 +395,8 @@ namespace Immersive.Framework.GameFlow
                     resolvedReason);
             }
 
+            await InterruptActiveActivityEntryReadinessForRouteReplacementAsync(targetRoute);
+
             var gateEvaluation = EvaluateLifecycleRequestAdmission("RouteRequest", resolvedSource, resolvedReason);
             if (!gateEvaluation.IsAllowed)
             {
@@ -447,13 +451,12 @@ namespace Immersive.Framework.GameFlow
 
             ActivityPlayerLifecycleAdmissionResult
                 routeStartupPlayerAdmissionAuthorization = null;
-            CancelActiveActivityEntryReadinessWait(
-                "RouteRequestAuthorityReplaced");
             _routeRequestInFlight = true;
+            TransitionOperationId operationId = default;
             TransitionGateDiagnostics transitionGateDiagnostics = default;
             try
             {
-                var operationId = CreateTransitionOperationId(TransitionScope.Route);
+                operationId = CreateTransitionOperationId(TransitionScope.Route);
                 var transitionGateMode = ResolveRouteTransitionGateMode(targetRoute);
                 var transitionGateSnapshot = ApplyTransitionGate(
                     operationId,
@@ -574,13 +577,15 @@ namespace Immersive.Framework.GameFlow
                             routeLifecycleResult.ActivityFlowResult.Activity));
                     readinessExecution = await WaitForPreparedActivityEntryReadinessAsync(
                         readinessExecution,
-                        operationId);
+                        operationId,
+                        targetRoute);
                 }
                 else if (readinessExecution.Policy == ActivityEntryReadinessPolicy.WaitCovered)
                 {
                     readinessExecution = await WaitForPreparedActivityEntryReadinessAsync(
                         readinessExecution,
-                        operationId);
+                        operationId,
+                        targetRoute);
                     if (readinessExecution.IsReady)
                     {
                         if (afterRouteLifecycle != null)
@@ -695,6 +700,7 @@ namespace Immersive.Framework.GameFlow
                     "route-request-finalization");
                 ReleaseTransitionGateIfStillActive();
                 _routeRequestInFlight = false;
+                CompleteActivityEntryReadinessActiveOperation(operationId);
             }
         }
 
@@ -764,6 +770,8 @@ namespace Immersive.Framework.GameFlow
                     resolvedSource,
                     resolvedReason);
             }
+
+            await InterruptActiveActivityEntryReadinessForActivityReplacementAsync(targetActivity);
 
             var gateEvaluation = EvaluateLifecycleRequestAdmission("ActivityRequest", resolvedSource, resolvedReason);
             if (!gateEvaluation.IsAllowed)
@@ -861,13 +869,12 @@ namespace Immersive.Framework.GameFlow
             }
 
             ActivityPlayerLifecycleAdmissionResult playerAdmissionAuthorization = null;
-            CancelActiveActivityEntryReadinessWait(
-                "ActivityRequestAuthorityReplaced");
             _activityRequestInFlight = true;
+            TransitionOperationId operationId = default;
             TransitionGateDiagnostics transitionGateDiagnostics = default;
             try
             {
-                var operationId = CreateTransitionOperationId(TransitionScope.Activity);
+                operationId = CreateTransitionOperationId(TransitionScope.Activity);
                 var transitionGateMode = ResolveActivityTransitionGateMode(targetActivity);
                 var transitionGateSnapshot = ApplyTransitionGate(
                     operationId,
@@ -1041,13 +1048,15 @@ namespace Immersive.Framework.GameFlow
                         activityTransitionMode);
                     readinessExecution = await WaitForPreparedActivityEntryReadinessAsync(
                         readinessExecution,
-                        operationId);
+                        operationId,
+                        currentRoute);
                 }
                 else if (readinessExecution.Policy == ActivityEntryReadinessPolicy.WaitCovered)
                 {
                     readinessExecution = await WaitForPreparedActivityEntryReadinessAsync(
                         readinessExecution,
-                        operationId);
+                        operationId,
+                        currentRoute);
                     if (readinessExecution.IsReady)
                     {
                         if (afterActivityLifecycle != null)
@@ -1142,6 +1151,7 @@ namespace Immersive.Framework.GameFlow
                     "activity-request-finalization");
                 ReleaseTransitionGateIfStillActive();
                 _activityRequestInFlight = false;
+                CompleteActivityEntryReadinessActiveOperation(operationId);
             }
         }
 
@@ -1185,6 +1195,8 @@ namespace Immersive.Framework.GameFlow
                     GameFlowRequestOperationKind.ActivityClear);
             }
 
+            await InterruptActiveActivityEntryReadinessForActivityClearAsync();
+
             var gateEvaluation = EvaluateLifecycleRequestAdmission("ClearActivityRequest", resolvedSource, resolvedReason);
             if (!gateEvaluation.IsAllowed)
             {
@@ -1223,8 +1235,6 @@ namespace Immersive.Framework.GameFlow
                     GameFlowRequestOperationKind.ActivityClear);
             }
 
-            CancelActiveActivityEntryReadinessWait(
-                "ActivityClearAuthorityRemoved");
             _activityRequestInFlight = true;
             TransitionGateDiagnostics transitionGateDiagnostics = default;
             try
