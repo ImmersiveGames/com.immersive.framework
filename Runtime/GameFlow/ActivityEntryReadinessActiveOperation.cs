@@ -39,8 +39,10 @@ namespace Immersive.Framework.GameFlow
 
         internal bool OwnsActivity(ActivityAsset activity)
         {
-            return activity != null && Occurrence.IsValid &&
-                ReferenceEquals(Occurrence.Activity, activity);
+            return activity != null &&
+                Occurrence.IsValid &&
+                Occurrence.Activity != null &&
+                Occurrence.Activity.HasSameIdentity(activity);
         }
 
         internal void RequestCancellation(string reason)
