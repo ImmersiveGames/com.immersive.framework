@@ -12,6 +12,18 @@
 
 Participants are discovered only from the explicit Route primary root and loaded scenes owned by the entering Activity. Discovery includes roots, descendants and inactive objects, removes object duplicates and never uses a global Unity lookup.
 
+## Choose the Activity entry policy
+
+Open the `ActivityAsset` and configure **Activity Entry Readiness > Policy**:
+
+- **Observe Only** preserves the current post-transition behavior. Readiness remains observable, but it does not retain visual cover or the operation capability gate. Existing assets deserialize to this policy because it is enum value `0`.
+- **Wait Covered** declares that the target must remain visually covered and that input, interaction and gameplay must remain blocked until the initial readiness occurrence reaches `Ready`. It requires **Fade** or **Fade With Loading**.
+- **Wait Visible** declares that the target may be revealed after materialization while input, interaction and gameplay remain blocked until the initial readiness occurrence reaches `Ready`.
+
+Both waiting policies require **Block During Transition = Input Interaction And Gameplay**. The framework reports incompatible authoring as an error and does not silently replace `Seamless` or strengthen the capability gate. A Route with a Startup Activity validates the Route transition gate against the Startup Activity policy because the Route operation owns that entry envelope.
+
+IF-READY-02 adds the policy contract, Inspector guidance and validation only. Occurrence-scoped waiting and Game Flow reveal/gate orchestration are delivered by the following readiness runtime cuts; selecting a waiting policy in this cut does not yet change Play Mode sequencing.
+
 ## Present readiness without polling
 
 Add **Immersive Framework/Activity Readiness Events** in the same explicit Activity scope. Wire its `Preparing`, `Ready` and `Not Ready` UnityEvents to a local presenter. The presenter may update text, visuals or enabled content, but must not change readiness or look up a runtime.

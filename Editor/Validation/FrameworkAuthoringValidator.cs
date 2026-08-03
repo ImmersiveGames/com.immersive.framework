@@ -1177,9 +1177,19 @@ namespace Immersive.Framework.Editor.Editor.Validation
                     "Route has no Startup Activity. This is valid for menu/no-activity routes.",
                     route);
             }
-            else if (validateDependencies)
+            else
             {
-                report.AddRange(ValidateActivity(route.StartupActivity, validationMode));
+                ValidateRouteStartupActivityEntryReadiness(
+                    report,
+                    route);
+
+                if (validateDependencies)
+                {
+                    report.AddRange(
+                        ValidateActivity(
+                            route.StartupActivity,
+                            validationMode));
+                }
             }
 
             if (!report.HasIssues)
@@ -1188,6 +1198,48 @@ namespace Immersive.Framework.Editor.Editor.Validation
             }
 
             return report;
+        }
+
+        private static void ValidateRouteStartupActivityEntryReadiness(
+            FrameworkAuthoringValidationReport report,
+            RouteAsset route)
+        {
+            ActivityAsset startupActivity =
+                route.StartupActivity;
+
+            if (startupActivity == null)
+            {
+                return;
+            }
+
+            if (!startupActivity.HasDefinedEntryReadinessPolicy)
+            {
+                report.AddError(
+                    $"Route Startup Activity '{startupActivity.ActivityName}' has an invalid Activity Entry Readiness Policy.",
+                    route);
+                return;
+            }
+
+            if (!startupActivity.WaitsForEntryReadiness)
+            {
+                report.AddInfo(
+                    $"Route Startup Activity '{startupActivity.ActivityName}' uses Entry Readiness = ObserveOnly. The Route transition is not retained for Activity readiness.",
+                    route);
+                return;
+            }
+
+            if (route.TransitionGateMode !=
+                TransitionGateMode.InputInteractionAndGameplay)
+            {
+                report.AddError(
+                    $"Route Startup Activity '{startupActivity.ActivityName}' uses Entry Readiness = {startupActivity.EntryReadinessPolicy}, but Route Transition Gate is '{route.TransitionGateMode}'. Waiting requires InputInteractionAndGameplay because the Route transition owns Startup Activity entry.",
+                    route);
+                return;
+            }
+
+            report.AddInfo(
+                $"Route Startup Activity entry-readiness policy '{startupActivity.EntryReadinessPolicy}' is compatible with Route Transition Gate '{route.TransitionGateMode}'.",
+                route);
         }
 
         private static FrameworkAuthoringValidationReport ValidateActivity(
@@ -1208,6 +1260,10 @@ namespace Immersive.Framework.Editor.Editor.Validation
                     "Activity ID is required and must remain stable across cosmetic renames.",
                     activity);
             }
+
+            ValidateActivityEntryReadinessPolicy(
+                report,
+                activity);
 
             switch (activity.VisualTransitionMode)
             {
@@ -1234,8 +1290,9 @@ namespace Immersive.Framework.Editor.Editor.Validation
                     "Activity Transition Gate has an invalid value.",
                     activity);
             }
-            else if (activity.VisualTransitionMode != ActivityVisualTransitionMode.Seamless
-                && activity.TransitionGateMode != TransitionGateMode.InputInteractionAndGameplay)
+            else if (!activity.WaitsForEntryReadiness &&
+                activity.VisualTransitionMode != ActivityVisualTransitionMode.Seamless &&
+                activity.TransitionGateMode != TransitionGateMode.InputInteractionAndGameplay)
             {
                 report.AddWarning(
                     "Activity uses a visible Transition Mode. Transition Gate = InputInteractionAndGameplay is recommended to block repeated UI/input/gameplay during the fade.",
@@ -1260,6 +1317,57 @@ namespace Immersive.Framework.Editor.Editor.Validation
             }
 
             return report;
+        }
+
+        private static void ValidateActivityEntryReadinessPolicy(
+            FrameworkAuthoringValidationReport report,
+            ActivityAsset activity)
+        {
+            if (!activity.HasDefinedEntryReadinessPolicy)
+            {
+                report.AddError(
+                    $"Activity '{activity.ActivityName}' has an invalid Activity Entry Readiness Policy.",
+                    activity);
+                return;
+            }
+
+            ActivityEntryReadinessPolicy policy =
+                activity.EntryReadinessPolicy;
+
+            switch (policy)
+            {
+                case ActivityEntryReadinessPolicy.ObserveOnly:
+                    report.AddInfo(
+                        "Activity Entry Readiness is ObserveOnly. Readiness remains observable and does not retain visual cover or the operation capability gate.",
+                        activity);
+                    return;
+
+                case ActivityEntryReadinessPolicy.WaitCovered:
+                    if (activity.VisualTransitionMode ==
+                        ActivityVisualTransitionMode.Seamless)
+                    {
+                        report.AddError(
+                            "Activity Entry Readiness = WaitCovered is incompatible with Transition Presentation = Seamless. Select Fade or FadeWithLoading; no visual fallback is applied.",
+                            activity);
+                    }
+                    break;
+
+                case ActivityEntryReadinessPolicy.WaitVisible:
+                    break;
+            }
+
+            if (activity.TransitionGateMode !=
+                TransitionGateMode.InputInteractionAndGameplay)
+            {
+                report.AddError(
+                    $"Activity Entry Readiness = {policy} requires Transition Gate = InputInteractionAndGameplay. The framework does not silently strengthen the authored gate.",
+                    activity);
+                return;
+            }
+
+            report.AddInfo(
+                $"Activity Entry Readiness policy '{policy}' is compatible with Transition Presentation '{activity.VisualTransitionMode}' and Transition Gate '{activity.TransitionGateMode}'.",
+                activity);
         }
 
         private static void ValidateActivityOperationGuards(

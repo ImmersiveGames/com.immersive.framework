@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using Immersive.Framework.ApiStatus;
+using Immersive.Framework.ActivityFlow;
 using Immersive.Framework.Common;
 using Immersive.Framework.PlayerParticipation;
 using Immersive.Framework.PlayerSlots;
@@ -56,6 +57,11 @@ namespace Immersive.Framework.Authoring
         [SerializeField]
         [Tooltip("Optional Activity Content Profile. Declares Activity-owned scenes for composition and release by Activity operations.")]
         private ActivityContentProfileAsset activityContentProfile;
+
+        [SerializeField]
+        [Tooltip("Declares whether initial Activity readiness is observed after release, awaited while covered, or awaited while visible. ObserveOnly preserves existing behavior.")]
+        private ActivityEntryReadinessPolicy activityEntryReadinessPolicy =
+            ActivityEntryReadinessPolicy.ObserveOnly;
 
         [SerializeField]
         [Tooltip("Defines whether Activity operations use the session TransitionSurface and, for scene side-effects, the canonical LoadingSurface. Seamless/Fade/FadeWithLoading are all valid with Activity-owned scene load/release; they select presentation.")]
@@ -222,6 +228,20 @@ namespace Immersive.Framework.Authoring
 
         public bool HasActivityContentScenes =>
             activityContentProfile != null && activityContentProfile.HasScenes;
+
+        public ActivityEntryReadinessPolicy EntryReadinessPolicy =>
+            activityEntryReadinessPolicy;
+
+        public bool HasDefinedEntryReadinessPolicy =>
+            Enum.IsDefined(
+                typeof(ActivityEntryReadinessPolicy),
+                activityEntryReadinessPolicy);
+
+        public bool WaitsForEntryReadiness =>
+            activityEntryReadinessPolicy ==
+                ActivityEntryReadinessPolicy.WaitCovered ||
+            activityEntryReadinessPolicy ==
+                ActivityEntryReadinessPolicy.WaitVisible;
 
         public ActivityVisualTransitionMode VisualTransitionMode
         {

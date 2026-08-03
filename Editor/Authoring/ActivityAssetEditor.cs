@@ -1,8 +1,10 @@
+using Immersive.Framework.ActivityFlow;
 using Immersive.Framework.Authoring;
 using Immersive.Framework.Editor.Editor.PlayerParticipation;
 using Immersive.Framework.Editor.Editor.Settings;
 using Immersive.Framework.Editor.Editor.Validation;
 using Immersive.Framework.PlayerParticipation;
+using Immersive.Framework.Transition;
 using UnityEditor;
 using UnityEngine;
 
@@ -46,6 +48,11 @@ namespace Immersive.Framework.Editor.Editor.Authoring
                 "Content Profile",
                 "Optional Activity-owned scenes composed and released with this Activity.");
 
+        private static readonly GUIContent EntryReadinessPolicyLabel =
+            new GUIContent(
+                "Policy",
+                "Observe Only releases presentation normally. Wait Covered retains visual cover. Wait Visible reveals preparation while retaining the gameplay capability gate.");
+
         private static readonly GUIContent PresentationLabel =
             new GUIContent(
                 "Presentation",
@@ -69,6 +76,7 @@ namespace Immersive.Framework.Editor.Editor.Authoring
         private SerializedProperty _playerParticipationExplicitSlotProfiles;
         private SerializedProperty _playerParticipationRequirementLevel;
         private SerializedProperty _activityContentProfile;
+        private SerializedProperty _activityEntryReadinessPolicy;
         private SerializedProperty _visualTransitionMode;
         private SerializedProperty _transitionGateMode;
 
@@ -105,6 +113,9 @@ namespace Immersive.Framework.Editor.Editor.Authoring
             _activityContentProfile =
                 serializedObject.FindProperty(
                     "activityContentProfile");
+            _activityEntryReadinessPolicy =
+                serializedObject.FindProperty(
+                    "activityEntryReadinessPolicy");
             _visualTransitionMode =
                 serializedObject.FindProperty(
                     "visualTransitionMode");
@@ -131,6 +142,7 @@ namespace Immersive.Framework.Editor.Editor.Authoring
             DrawOverview();
             DrawPlayers();
             DrawActivityContent();
+            DrawActivityEntryReadiness();
             DrawTransition();
             DrawValidation();
             DrawAdvancedDebug();
@@ -265,6 +277,86 @@ namespace Immersive.Framework.Editor.Editor.Authoring
                     $"- {sceneName}",
                     EditorStyles.miniLabel);
             }
+        }
+
+        private void DrawActivityEntryReadiness()
+        {
+            DrawSection("Activity Entry Readiness");
+
+            EditorGUILayout.PropertyField(
+                _activityEntryReadinessPolicy,
+                EntryReadinessPolicyLabel);
+
+            if (_activityEntryReadinessPolicy == null ||
+                _activityEntryReadinessPolicy.hasMultipleDifferentValues)
+            {
+                return;
+            }
+
+            var policy =
+                (ActivityEntryReadinessPolicy)
+                _activityEntryReadinessPolicy.intValue;
+
+            if (!System.Enum.IsDefined(
+                    typeof(ActivityEntryReadinessPolicy),
+                    policy))
+            {
+                EditorGUILayout.HelpBox(
+                    "Activity Entry Readiness Policy has an invalid serialized value.",
+                    MessageType.Error);
+                return;
+            }
+
+            switch (policy)
+            {
+                case ActivityEntryReadinessPolicy.ObserveOnly:
+                    EditorGUILayout.HelpBox(
+                        "Readiness remains observable after the normal Activity transition and capability-gate release. This preserves existing behavior.",
+                        MessageType.Info);
+                    break;
+                case ActivityEntryReadinessPolicy.WaitCovered:
+                    EditorGUILayout.HelpBox(
+                        "The intended entry flow keeps visual cover and the gameplay capability gate until the initial readiness occurrence reaches Ready.",
+                        MessageType.Info);
+                    break;
+                case ActivityEntryReadinessPolicy.WaitVisible:
+                    EditorGUILayout.HelpBox(
+                        "The intended entry flow reveals preparation after materialization but keeps input, interaction and gameplay blocked until Ready.",
+                        MessageType.Info);
+                    break;
+            }
+
+            if (policy ==
+                    ActivityEntryReadinessPolicy.WaitCovered &&
+                _visualTransitionMode != null &&
+                !_visualTransitionMode.hasMultipleDifferentValues &&
+                _visualTransitionMode.intValue ==
+                    (int)ActivityVisualTransitionMode.Seamless)
+            {
+                EditorGUILayout.HelpBox(
+                    "Wait Covered requires an authored visual cover. Select Fade or Fade With Loading; the framework will not replace Seamless silently.",
+                    MessageType.Error);
+            }
+
+            bool waitsForEntryReadiness =
+                policy == ActivityEntryReadinessPolicy.WaitCovered ||
+                policy == ActivityEntryReadinessPolicy.WaitVisible;
+
+            if (waitsForEntryReadiness &&
+                _transitionGateMode != null &&
+                !_transitionGateMode.hasMultipleDifferentValues &&
+                _transitionGateMode.intValue !=
+                    (int)TransitionGateMode
+                        .InputInteractionAndGameplay)
+            {
+                EditorGUILayout.HelpBox(
+                    "Waiting policies require Block During Transition = Input Interaction And Gameplay. The framework will not strengthen the authored gate silently.",
+                    MessageType.Error);
+            }
+
+            EditorGUILayout.HelpBox(
+                "Runtime entry waiting is not active yet. This field currently records and validates intent only.",
+                MessageType.Warning);
         }
 
         private void DrawTransition()
@@ -453,6 +545,11 @@ namespace Immersive.Framework.Editor.Editor.Authoring
                         : null,
                     typeof(ActivityContentProfileAsset),
                     false);
+
+                EditorGUILayout.TextField(
+                    "Entry Readiness Policy",
+                    GetSerializedEnumLabel(
+                        _activityEntryReadinessPolicy));
 
                 EditorGUILayout.TextField(
                     "Transition Presentation",
