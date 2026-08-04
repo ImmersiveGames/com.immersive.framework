@@ -331,6 +331,19 @@ namespace Immersive.Framework.ApplicationLifecycle
 
         internal async Task<FrameworkGameFlowStartResult> StartAsync()
         {
+            if (!TryApplyApplicationFrameRatePolicy(
+                    out string frameRateFailureMessage))
+            {
+                var failed =
+                    FrameworkGameFlowStartResult.Failed(
+                        frameRateFailureMessage);
+                _state =
+                    FrameworkRuntimeState.FromGameFlowResult(
+                        _gameApplication,
+                        failed);
+                return failed;
+            }
+
             InvalidateObjectEntryRuntimeContextSnapshot("framework-start");
 
             if (_globalUiSceneRuntime != null)

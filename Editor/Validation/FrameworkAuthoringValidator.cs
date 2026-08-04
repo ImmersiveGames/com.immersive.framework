@@ -252,6 +252,10 @@ namespace Immersive.Framework.Editor.Editor.Validation
                 gameApplication,
                 validateDependencies);
 
+            report.AddRange(
+                ApplicationFrameRateAuthoringValidator
+                    .Validate(gameApplication));
+
             if (!report.HasIssues)
             {
                 report.AddInfo(
