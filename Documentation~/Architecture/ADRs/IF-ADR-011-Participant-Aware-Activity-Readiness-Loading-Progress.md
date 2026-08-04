@@ -1,28 +1,17 @@
 # IF-ADR-011 — Participant-Aware Activity Readiness Loading Progress
 
-Status: Accepted  
-Last updated: 2026-08-03  
-Supersedes: implicit loading-completion semantics limited to technical Activity lifecycle progress  
-Superseded by: none
-Related decisions: IF-ADR-006, IF-ADR-007
+Status: Accepted and implemented for the initial scope  
+Last updated: 2026-08-04  
+Supersedes: implicit Loading completion semantics limited to technical Activity lifecycle progress  
+Superseded by: none  
+Related decisions: IF-ADR-006, IF-ADR-007 — Activity Entry Readiness and Reveal Gating
 
 ## Context
 
-Activity entry readiness and Loading presentation are related but distinct concerns.
-
-An Activity entry may declare:
-
-```text
-ObserveOnly
-WaitVisible
-WaitCovered
-```
-
-`WaitCovered` retains visual cover and the input, interaction and gameplay gate until the captured Activity readiness occurrence reaches a terminal result.
-
-When the Activity uses `FadeWithLoading`, the application may expose a determinate Loading surface. The current runtime reports technical progress for known scene and content operations, including release, unload, load and materialization. The readiness wait occurs after the target Activity lifecycle has materialized the occurrence.
-
-That permits an invalid product state:
+A `WaitCovered` Activity retains visual cover and the input, interaction and
+gameplay gate until the captured readiness occurrence reaches a terminal result.
+Before this decision, technical Loading could reach `100%` while Required
+readiness participants were still `Preparing`:
 
 ```text
 Loading = 100%
@@ -31,462 +20,408 @@ Required participants remain pending
 Loading and visual cover remain visible
 ```
 
-The presentation ordering remains correct, but `100%` no longer means that the covered Activity is ready to reveal.
-
-The framework already captures a fixed participant set for each readiness occurrence. Each captured participant has explicit identity, requiredness, state and reason. Participants not captured by the occurrence are not added later.
+The operation ordering was safe, but the percentage no longer represented the
+covered target's actual release readiness.
 
 ## Decision
 
-For a `WaitCovered` Activity entry with a progress-capable Loading surface, the framework projects Activity readiness into the Loading progress envelope.
+For a `WaitCovered` Activity entry with `FadeWithLoading` and a
+progress-capable Loading surface, the framework projects the captured Activity
+readiness occurrence into one operation-scoped Loading progress envelope.
 
 ```text
-Loading progress envelope
-  -> technical progress phase
-  -> Activity readiness phase
-     -> equal subdivisions for captured Required participants
-  -> terminal 100% only when aggregate Activity readiness is Ready
+Loading Show
+→ technical progress phase
+→ explicit technical boundary below 100%
+→ Activity readiness phase
+   → equal subdivisions for captured Required participants
+→ aggregate Ready
+→ Loading 100%
+→ Loading Hide
+→ transition after / reveal
+→ capability gate release
+→ request success
 ```
 
-The Loading surface remains presentation. It does not own readiness, participants, Activity authority or completion.
-
-Activity-owned scripts and readiness participants communicate only through Activity readiness contracts. They do not resolve or update the persistent Loading surface directly.
-
-The framework runtime owns the mapping from occurrence-scoped readiness updates to Loading progress.
+The Loading surface remains presentation. It does not discover participants,
+calculate readiness or become lifecycle authority. Activity-owned scripts never
+resolve or update the persistent Loading surface directly.
 
 ## Applicability
 
-Participant-aware readiness progress applies only when all of the following are true:
+Participant-aware determinate readiness progress applies only when all are true:
 
 ```text
-target Activity entry policy = WaitCovered
+target Activity policy = WaitCovered
+visual transition = FadeWithLoading
 the operation owns a target Activity entry envelope
-the operation uses a Loading surface
-the Loading surface supports determinate progress
-the target Activity readiness occurrence is valid
+an explicit Loading surface is present
+the Loading adapter supports determinate progress
+the target readiness occurrence is valid
 ```
 
 Initial operation coverage:
 
 ```text
 direct Activity request
-Route request with a Startup Activity
-Game Application startup with a Startup Activity
+Route request with Startup Activity
+Game Application startup with Startup Activity
+reentry through the same canonical request paths
 ```
 
-A restart or future operation uses the same semantics when it re-enters an Activity through the same covered entry envelope.
+Not applicable:
 
-### ObserveOnly
+```text
+ObserveOnly
+WaitVisible
+WaitCovered + Fade
+Loading adapters without determinate progress
+post-release operational readiness changes
+```
 
-`ObserveOnly` does not project readiness into Loading. Technical Loading progress completes normally and later readiness remains observational.
+## Frozen occurrence and denominator
 
-### WaitVisible
-
-`WaitVisible` does not retain Loading for readiness progress. Technical Loading may complete and hide before `Ready`; the target is visible while the capability gate remains retained.
-
-### WaitCovered with Fade
-
-`WaitCovered` with `Fade` retains visual cover but has no determinate Loading percentage to project.
-
-### WaitCovered with FadeWithLoading
-
-`WaitCovered` with `FadeWithLoading` uses participant-aware readiness progress and cannot publish successful `100%` before aggregate readiness is `Ready`.
-
-## Frozen participant set
-
-The participant set is frozen per Activity readiness occurrence.
-
-The denominator is derived from the captured occurrence after target materialization:
+The participant set is captured once per `ActivityReadinessOccurrence`.
+The denominator is:
 
 ```text
 requiredTotal = RequiredCount
 ```
 
-The framework must not:
+The framework does not:
 
 ```text
-scan the scene every frame
+scan scenes every frame
 add late-discovered participants to the active denominator
-remove participants from the denominator after progress begins
-infer participants from hierarchy, object names or gameplay objects
-recalculate the global Loading denominator from a changing participant set
+remove captured participants after progress begins
+infer readiness from hierarchy, names or gameplay objects
+change the global denominator after determinate progress begins
 ```
 
-A participant update affects the occurrence only when the participant belongs to the captured set and the update matches the same Activity and transition sequence.
-
-Reentry creates a new occurrence and a new frozen participant set.
+Only updates matching the captured Activity and transition sequence can advance
+the envelope. Reentry creates a new occurrence and a new denominator.
 
 ## Required and Optional semantics
 
-Only `Required` participants contribute to the readiness progress denominator.
+Only Required participants contribute to progress and aggregate release:
 
 ```text
 Required
-  -> participates in determinate readiness progress
-  -> blocks aggregate Ready while pending
-  -> prevents successful 100% when failed or released before completion
+  contributes equal weight
+  blocks Ready while pending
+  prevents successful 100% when failed or released before completion
 
 Optional
-  -> remains visible in diagnostics
-  -> does not contribute to the determinate denominator
-  -> does not block aggregate Ready
-  -> does not prevent successful 100% when pending or failed
+  remains diagnostic
+  never enters the denominator
+  never blocks Ready
+  never prevents successful 100% by remaining pending or failing
 ```
 
-The internal readiness contracts must expose enough evidence to distinguish:
+The immutable readiness projection exposes:
 
 ```text
 RequiredCount
 RequiredPendingCount
 RequiredCompletedCount
 RequiredFailedCount
-RequiredReleasedCount or equivalent terminal-release evidence
+RequiredReleasedCount
 
 OptionalCount
 OptionalPendingCount
 OptionalCompletedCount
 OptionalFailedCount
-```
+OptionalReleasedCount
 
-Aggregate counts that mix Required and Optional completion are insufficient for Loading projection.
+ReadinessRatio
+IsReady
+HasTerminalFailure
+Occurrence identity
+```
 
 ## Equal participant weighting
-
-Every captured `Required` participant has equal weight inside the readiness phase.
-
-The initial contract has:
-
-```text
-no authorable participant weights
-no priority-based progress weight
-no duration prediction
-no object-count inference
-no progress contribution from Optional participants
-```
 
 For `requiredTotal > 0`:
 
 ```text
-readinessRatio =
-    requiredCompletedCount / requiredTotal
+readinessRatio = requiredCompletedCount / requiredTotal
 ```
 
-For `requiredTotal == 0`, the readiness ratio is complete only when aggregate readiness is `Ready`.
+For `requiredTotal == 0`, the readiness range is terminal only when the
+aggregate readiness state is `Ready`.
 
-Participant completion alone is not sufficient for terminal `100%`; technical blocking issues remain authoritative.
+There are no authorable weights or duration estimates. One aggregate Required
+participant yields one readiness increment. Several independent increments
+require several independent Required participants.
 
-## Stable global progress envelope
+## Stable progress plan
 
-The participant count is not known before the target scene and Activity content are materialized. The global Loading denominator must not change after determinate progress begins.
-
-Activity readiness is therefore reserved as one phase before technical progress starts.
+Before technical execution begins, the operation allocates:
 
 ```text
-technical phase units = known technical operation step count
-readiness phase units = 1 when participant-aware readiness applies
-total phase units = technical phase units + readiness phase units
+technical phase units = known technical Loading step count
+readiness phase units = 1
+all phase units = technical units + readiness unit
 ```
 
-The technical phase occupies its weighted range. The readiness phase occupies the final range and is subdivided equally by the captured Required participants after the occurrence exists.
+The participant count is intentionally absent from this initial plan because it
+is known only after target materialization. The final readiness range is then
+subdivided by the frozen Required count without changing the already published
+technical range.
 
 Example:
 
 ```text
-2 technical phase units
-1 readiness phase unit
+2 technical units
+1 readiness unit
 4 Required participants
 ```
 
 ```text
 0%       operation begins
-66.67%   technical work complete; 0/4 Required complete
+66.67%   technical range complete; 0/4 Required complete
 75.00%   1/4 Required complete
 83.33%   2/4 Required complete
 91.67%   3/4 Required complete
-100.00%  4/4 Required complete and aggregate readiness is Ready
+100.00%  4/4 Required complete and aggregate Ready
 ```
 
-Participant count changes subdivisions inside the reserved readiness range. It does not rewrite the already published technical range.
+When no technical steps exist, the readiness phase owns the complete range.
 
-If there are no known technical steps but covered readiness applies, the readiness phase owns the complete determinate range.
+## Technical boundary completion
 
-## Monotonicity
+A technical child reporter maps its normalized values into the reserved
+technical range and cannot publish terminal `1.0` for the whole envelope.
 
-Loading progress for one operation and occurrence is monotonic.
+The startup path explicitly invokes the envelope's technical-range completion
+before readiness starts. This prevents the first participant update from
+appearing to skip or overwrite an incomplete technical range.
 
-The framework must not publish a value lower than the last accepted determinate value.
+Failure to reach the reserved technical boundary is explicit and throws an
+operation error; it is not normalized silently.
 
-A Required participant completed for progress purposes cannot return to pending within the same valid occurrence. An incompatible regression, occurrence replacement or mismatched update is rejected, invalidated or diagnosed; it is not repaired by decreasing Loading progress.
+## Monotonicity and update ordering
 
-No polling, frame counting or time-based estimation is used. Progress updates are driven by typed readiness occurrence changes.
-
-## Terminal completion
-
-Successful `100%` requires all of the following:
+For one operation and occurrence:
 
 ```text
-technical phase completed successfully
-captured occurrence still matches the authoritative target Activity
+accepted determinate progress never decreases
+duplicate snapshots are idempotent
+stale occurrence updates are rejected
+terminal completion is issued once
+terminal failure blocks later successful completion
+```
+
+Updates are driven by typed readiness change evidence. No polling, frame count,
+delay or time-based estimate is used.
+
+## Terminal success
+
+Successful `100%` requires:
+
+```text
+technical range completed successfully
+captured occurrence still matches the target Activity
 all Required participants completed
 no Required participant failed
-no Required participant was released before valid completion
-aggregate ActivityReadinessState.IsReady = true
-waiting operation terminal result = Ready
+no Required participant was released before completion
+aggregate readiness IsReady = true
+waiting result = Ready
 ```
 
-The final determinate Loading update is published before Loading hide and before visual reveal.
-
-Canonical successful ordering:
-
-```text
-technical progress completes below 100%
-Required participant progress advances within readiness range
-aggregate readiness becomes Ready
-Loading publishes 100%
-Loading hides
-Transition cover releases
-target Activity is revealed
-capability gate releases
-request returns success
-```
+The terminal update is published before Loading Hide. Loading Hide completes
+before transition reveal and capability release.
 
 ## Failure, invalidation and cancellation
 
-The framework does not publish successful `100%` when the readiness wait ends as:
+The envelope never publishes successful `100%` after:
 
 ```text
-Failed
-Invalidated
-Cancelled
+Required failure
+premature Required release
+occurrence invalidation
+wait cancellation
+runtime disposal
+explicit terminal failure
 ```
 
-A Required participant failure or premature release is terminal blocking evidence.
+The last valid progress snapshot is retained for diagnostics. The committed
+destination and scoped recovery-gate behavior remain governed by the Activity
+entry-readiness decision. No silent fallback converts failure into technical-only
+success.
+
+Optional failure remains non-blocking unless a separate explicit contract makes
+it blocking.
+
+## Diagnostics
+
+Operation diagnostics expose evidence equivalent to:
 
 ```text
-destination authority follows the committed-destination contract
-Loading retains the last valid progress snapshot
-request returns the typed committed-readiness failure result
-recovery gate behavior remains governed by existing readiness orchestration
+technical step count
+technical range start/end
+readiness range start/end
+captured Activity and occurrence
+Required total/completed/pending/failed/released
+Optional total/completed/pending/failed/released
+readiness ratio
+last accepted normalized progress
+rejected stale snapshot count
+terminal completion issued
+terminal failure observed
+Loading hidden
+reveal completed
 ```
 
-Optional failure does not fail aggregate readiness unless another explicit technical contract makes it blocking.
-
-No silent fallback converts failure into `Ready`.
-
-## Loading presentation contract
-
-A progress-capable Loading adapter receives normalized snapshots from the framework-owned reporter.
-
-The readiness phase exposes diagnostic metadata equivalent to:
-
-```text
-phase = ActivityReadiness
-activity identity
-occurrence transition sequence
-required total
-required pending
-required completed
-required failed
-optional total
-optional pending
-last normalized progress
-```
-
-Exact UI wording is presentation-specific. The Loading surface may display progress but never becomes the source of readiness truth.
+The host's Loading diagnostics project the final observed progress and the
+activity-entry envelope diagnostics for direct Activity, Route Startup Activity
+and Game Application Startup Activity paths. A retained Loading surface on
+failure is reported explicitly instead of being formatted as a normal Hide.
 
 ## Consumer authoring boundary
 
-A consumer completes readiness participants through the normal readiness API.
+A consumer completes readiness through the normal public participant API:
 
 ```text
-Chicken 01 reaches its destination
-  -> Chicken 01 Required participant completes
-
-Chicken 02 reaches its destination
-  -> Chicken 02 Required participant completes
+participant.CompletePreparation()
+participant.FailPreparation(reason)
 ```
 
-The framework counts completed Required participants. It does not count chickens, enemies, assets, scene objects or arbitrary gameplay concepts.
-
-A consumer may use one aggregate Required participant for a compound condition. In that case, readiness progress advances once when that participant completes.
-
-A consumer that needs multiple readiness increments authors multiple independent Required participants.
-
-Activity-owned scripts must not:
+The framework counts participants, not chickens, enemies, files, scene objects
+or arbitrary game concepts. Consumer scripts must not:
 
 ```text
 resolve the persistent Loading adapter
-write directly to the Loading progress bar
-find a FrameworkRuntimeHost
-use global lookup
-parse logs
-duplicate the framework progress calculation
+write directly to Loading progress
+find FrameworkRuntimeHost
+use global lookup or a service locator
+parse logs as a command path
+duplicate the envelope calculation
 ```
 
 ## FIRSTGAME reference proof
 
-Demo 01 Activity Readiness should prove the contract using one reusable scenario and three Activities:
-
-```text
-Observe Only
-Wait Visible
-Wait Covered
-```
-
-The `WaitCovered` configuration is:
+`planet-devourer` Demo 01 Activity Readiness uses:
 
 ```text
 Policy = WaitCovered
-Presentation = FadeWithLoading
+Visual Transition = FadeWithLoading
 Transition Gate = InputInteractionAndGameplay
+4 independent Required participants
+1 Optional participant kept pending
 ```
 
-The reference scenario may use:
+Each Chicken-to-target condition completes one assigned Required participant.
+The framework advances progress because four Required participants complete.
+The Optional participant stays pending without entering the denominator.
+
+Validated Play Mode occurrences `4` and `6` both reported:
 
 ```text
-4 independent Required readiness participants
-1 Optional readiness participant
+Required completed = 4
+Required total = 4
+Required pending = 0
+Optional total = 1
+Optional pending = 1
+Loading progress mode = Determinate
+Loading progress phase = ActivityReadiness
+Loading progress percent = 100
+request kind = Succeeded
+blocking issues = 0
 ```
 
-Each Required participant may be completed by one chicken reaching its target. Loading progresses because participants complete, not because the framework knows about chickens.
-
-The Optional participant remains pending to prove that it does not enter the denominator and does not block `Ready` or successful `100%`.
-
-FIRSTGAME is consumer proof. Permanent progress mapping belongs to `com.immersive.framework`.
+The second occurrence proves exit to Intermission and clean reentry.
 
 ## QA proof
 
-QA must provide deterministic typed evidence for at least:
+The technical harness proves:
 
 ```text
-participant set frozen for one occurrence
-4 Required participants captured
-1 Optional participant captured
-
-technical progress completes below 100%
-0/4 Required -> readiness range start
-1/4 Required -> first monotonic increment
-2/4 Required -> second monotonic increment
-3/4 Required -> third monotonic increment
-4/4 Required + aggregate Ready -> 100%
-
-Optional pending -> no denominator change
-Optional failed -> no denominator change and no Ready blockage
-Required failed -> no 100%
-Required released -> no 100%
-occurrence invalidated -> no 100%
-wait cancelled -> no 100%
-
-Loading 100% before Hide
-Hide before reveal completion
-request success only after Ready
+Required/Optional count invariants
+frozen occurrence denominator
+monotonic technical and readiness ranges
+Optional non-participation in progress
+no 100% on Required failure/release
+no 100% on invalidation/cancellation
+stale occurrence rejection
+direct Activity path
+Route Startup Activity parity
+Game Application Startup Activity parity
+100% before Hide
+Hide before reveal
+retained failure diagnostics
 ```
 
-QA uses typed progress and readiness evidence. It does not use delays, timeouts, frame polling, log parsing or global object lookup.
+The package/QA program closed 111 focused checks across the positive,
+terminal-path, Route Startup and Game Application Startup suites before the
+FIRSTGAME consumer proof.
 
-## Diagnostics
+## Implementation coverage
 
-Operation diagnostics distinguish:
+Implemented package cuts:
+
+| Cut | Commit | Result |
+|---|---|---|
+| `IF-READY-PROGRESS-01` | `2a9cb1eb7cf5dc5fc4403fbdbf99b06b062be5af` | immutable Required/Optional completion evidence |
+| `IF-READY-PROGRESS-02` | `78405ef850bba942ba19161ab2196b784c026fdc` | stable operation-scoped Loading envelope and ranges |
+| `IF-READY-PROGRESS-03` | `99893aa804a9f40cb057449d2b4900a00a2fc3ed` | WaitCovered integration across initial request paths |
+| canonical host wiring fix | `c423d4c6c9b46bac5f5eaf106be5050f46120d52` | host dispatch and retained envelope diagnostics |
+| startup technical-boundary fix | `72a6d9d4a63b2ec485053ae843ad229f325e63ff` | explicit startup technical range completion |
+
+Audited package HEAD:
 
 ```text
-technical phase range
-readiness phase range
-required total
-required completed
-required pending
-required failed
-optional total
-optional pending
-readiness ratio
-last published normalized progress
-terminal readiness status
-100% published
-Loading hide completed
-reveal completed
+272dd43cd70f3c793fb4bb2f3eef5d7d05a0df16
 ```
+
+The single commit after the readiness baseline adds the Application Frame Rate
+feature and does not alter the readiness-progress runtime files.
 
 ## Rejected alternatives
 
-- Treating readiness as an unobservable delay after technical Loading reaches `100%`.
-- Publishing `100%` while the Activity remains `Preparing`.
-- Treating all readiness as one binary step when multiple Required participants exist.
-- Counting Optional participants in the successful denominator.
+- Publishing `100%` while readiness remains `Preparing`.
+- Treating readiness as an unobservable delay after technical Loading completes.
+- Counting Optional participants in the denominator.
 - Counting gameplay objects directly.
-- Dynamically changing the global Loading denominator after progress begins.
-- Repeated scene or hierarchy scans for participants.
-- Activity content controlling the persistent Loading surface directly.
+- Dynamically changing the global denominator.
+- Polling participant state or scanning scenes repeatedly.
 - Time-based simulated readiness progress.
-- Polling participant state.
-- Silent fallback to technical-only progress for `WaitCovered`.
-- Authorable participant weights in the initial implementation.
+- Activity content controlling the persistent Loading surface.
 - A second Loading authority dedicated to readiness.
+- Silent fallback to technical-only progress for `WaitCovered`.
 
 ## Consequences
 
 Positive:
 
 ```text
-100% means the covered target Activity is ready to reveal
-multiple Required participants produce meaningful determinate progress
-Optional participants remain diagnostic without distorting completion
-the global denominator remains stable
-persistent Loading stays decoupled from Activity-owned gameplay scripts
-the same contract applies to direct Activity and Startup Activity entry
-FIRSTGAME can teach the feature through a reusable scenario
+100% means the covered Activity is ready to reveal
+multiple Required participants produce meaningful progress
+Optional participants remain diagnostic without distortion
+the denominator remains stable
+all canonical entry paths share the same semantics
+Loading stays decoupled from gameplay scripts
 ```
 
-Tradeoffs:
+Tradeoffs and current limits:
 
 ```text
-readiness state gains Required/Optional completed counts
-Loading reserves a readiness phase
-Game Flow forwards typed occurrence updates to the reporter
-QA needs ordering and monotonicity evidence
-progress is participant-granular, not continuous within one participant
+progress is participant-granular, not continuous inside one participant
+no authorable weights
+no automatic timeout
+no post-release automatic re-gating
+inactive authored participant components are still included by explicit-scope discovery
 ```
 
-Continuous progress inside one participant requires a separate future readiness-progress-source contract and is outside this ADR.
-
-## Current implementation coverage
-
-Implemented before this ADR:
-
-```text
-ObserveOnly, WaitVisible and WaitCovered policies
-occurrence-scoped readiness wait
-captured participant set per occurrence
-Required and Optional readiness aggregation
-WaitCovered retention of Loading, transition cover and capability gate
-typed Ready, Failed, Invalidated and Cancelled results
-technical Loading progress reporting
-```
-
-Not implemented when this ADR is accepted:
-
-```text
-RequiredCompletedCount and OptionalCompletedCount projection
-reserved readiness range in the Loading envelope
-participant-driven Loading progress updates
-terminal 100% gating on aggregate Ready
-QA regression for participant-aware readiness Loading progress
-FIRSTGAME WaitCovered FadeWithLoading proof
-```
-
-This ADR accepts the architecture. It does not claim implementation completion.
-
-## Required implementation order
-
-```text
-1. Update official package contracts and orchestration.
-2. Validate participant-aware progress in QAFramework.
-3. Configure and validate FIRSTGAME Demo 01 WaitCovered.
-4. Update usage documentation and samples after the runtime contract passes.
-```
+The inactive-object discovery behavior is intentional in the current query
+implementation but is an authoring friction: disabling a GameObject is not an
+exclusion mechanism. Remove the component from the explicit scope or repurpose
+it as a valid participant instead.
 
 ## Pending decisions
 
-The following remain deferred and do not block this ADR:
-
 - Optional future custom weights for Required participants.
-- Optional continuous progress source within one participant.
-- Final designer-facing wording and visuals for the official Loading prefab.
-- Whether detailed participant progress is exposed through a public diagnostic DTO or remains internal/experimental initially.
+- Optional continuous progress source inside one participant.
+- Product-facing timeout, retry and recovery authoring.
+- Dedicated authoring validation for accidental inactive/legacy participants.
+- Dedicated ADR-numbering correction for the duplicate `IF-ADR-007` identity.

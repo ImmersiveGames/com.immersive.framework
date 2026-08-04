@@ -1,18 +1,21 @@
 # IF-ADR-007 — Activity Entry Readiness and Reveal Gating
 
-Status: Accepted
-Last updated: 2026-08-01
-Supersedes: none
-Superseded by: none
-Related decisions: IF-ADR-001, IF-ADR-006
+Status: Accepted and implemented for the initial scope  
+Last updated: 2026-08-04  
+Supersedes: none  
+Superseded by: none  
+Related decisions: IF-ADR-001, IF-ADR-006, IF-ADR-011
+
+> The package currently also contains `IF-ADR-007 — Optional Audio BGM
+> Adapter`. This is a documentation-numbering defect. Use the full filename and
+> title when citing this decision until a dedicated renumbering correction is
+> approved.
 
 ## Context
 
-Loading and materializing the Unity scenes owned by an Activity does not guarantee
-that the Activity is ready to be presented or used.
-
-Post-materialization work may still be required after the target objects and typed
-runtime context exist:
+Loading and materializing the Unity scenes owned by an Activity does not prove
+that the Activity is ready to be presented or used. Post-materialization work
+may still be required after the target objects and typed runtime context exist:
 
 ```text
 apply save data to materialized objects
@@ -25,259 +28,151 @@ synchronize required network state
 validate required game-specific conditions
 ```
 
-These operations cannot always run before scene composition because they depend on
-objects that only exist after Activity content has been loaded and materialized.
-
-The framework already has an authorable Activity readiness model:
+The framework has an authorable readiness model:
 
 ```text
 ActivityReadinessParticipant
 Required / Optional contribution
 Preparing / Completed / Failed / Released states
 occurrence-scoped aggregation
-post-transition readiness updates
 presentation events and diagnostics
 ```
 
-The current runtime can commit an Activity as the active authority and complete its
-loading/transition envelope while Required readiness participants are still
-`Preparing`. The Activity later changes from `NotReady` to `Ready` as a
-post-transition state update.
-
-That behavior is useful for progressive or diagnostic scenarios, but it does not
-solve the common product requirement:
-
-```text
-Do not reveal or release normal gameplay for the target Activity until all
-Required post-materialization preparation has completed.
-```
-
-The product also needs a deliberate visible-preparation mode. A sample may reveal
-the Activity while preparation is still running so a user can understand or
-experience the readiness phase. The FIRSTGAME chicken demonstration is an example
-of this mode.
-
-The framework therefore needs an explicit Activity-owned policy that separates:
-
-```text
-Activity authority
-Activity readiness
-visual reveal
-loading presentation
-input / interaction / gameplay release
-```
+Activity authority, Activity readiness, visual reveal, Loading presentation and
+capability release are separate concerns. An Activity may be the current typed
+authority while its captured readiness occurrence remains `Preparing`.
 
 ## Decision
 
-Activity entry readiness is the occurrence-scoped post-materialization preparation
-state used to decide when the target Activity may be released for normal use.
-
-The framework treats the following as separate dimensions:
-
-```text
-Authority
-  which Activity is the current typed runtime authority
-
-Readiness
-  whether the current occurrence satisfies all Required preparation contributions
-
-Presentation
-  whether the target Activity is visually covered or revealed
-
-Capability gate
-  whether input, interaction and gameplay are allowed
-```
-
-An Activity may be the current authority while still `Preparing`. Visual reveal and
-capability release are then controlled by an explicit entry-readiness policy.
-
-## Policy authority
-
-`ActivityAsset` owns the entry-readiness intent through an explicit policy field.
-The canonical policy type is:
+`ActivityAsset` owns the initial entry-readiness intent through:
 
 ```text
 ActivityEntryReadinessPolicy
 ```
 
-The initial policy vocabulary is:
+The policy vocabulary is:
 
 ```text
 ObserveOnly
-WaitCovered
 WaitVisible
+WaitCovered
 ```
 
-The default for existing and newly migrated assets is `ObserveOnly`. This preserves
-current behavior unless an author explicitly opts into a waiting policy.
-
-A Route does not duplicate this policy. A Route request that starts a Startup
-Activity consumes the Startup Activity policy. A Route without a Startup Activity
-has no Activity entry-readiness policy to evaluate.
-
+The default is `ObserveOnly`. A Route does not duplicate this policy. A Route
+request that starts a Startup Activity consumes the Startup Activity policy.
 Activity clear operations have no target Activity readiness to await.
+
+`ActivityFlowRuntime` remains the authority for Activity identity, occurrence
+identity, participant lifecycle and readiness aggregation. `GameFlowRuntime`
+owns operation ordering, visual retention and capability-gate release.
+`FrameworkRuntimeHost` adapts explicit Loading and transition surfaces but does
+not become readiness authority.
 
 ## Policy semantics
 
 ### ObserveOnly
 
-`ObserveOnly` preserves the current post-transition model.
-
 ```text
 transition/loading begins
--> target Activity scenes load and materialize
--> target Activity becomes current authority
--> readiness participants begin
--> loading and transition are released
--> capability gate is released with the operation
--> readiness may complete or fail later
+→ target Activity scenes load and materialize
+→ target Activity becomes current authority
+→ readiness participants begin
+→ Loading and transition are released
+→ capability gate is released with the operation
+→ readiness may complete or fail later
 ```
 
-This mode is appropriate when:
-
-```text
-preparation may continue progressively after reveal
-readiness is informational or diagnostic
-content is intentionally usable before all preparation completes
-compatibility with the current behavior is required
-```
-
-`ObserveOnly` does not retain loading, transition presentation or capability gates
-for readiness.
-
-### WaitCovered
-
-`WaitCovered` retains the visual cover and capability gate until the initial
-readiness occurrence reaches `Ready`.
-
-```text
-transition before / visual cover
--> loading presentation when authored
--> target Activity scenes load and materialize
--> target Activity becomes current authority
--> readiness participants begin
--> wait for the current occurrence
--> all Required participants complete
--> Activity readiness becomes Ready
--> hide loading
--> execute transition after / reveal
--> release input, interaction and gameplay gate
-```
-
-This is the normal production policy for Activities that must not be shown in an
-incomplete state.
-
-Typical uses include:
-
-```text
-Actor materialization and skin application
-save restoration
-control and Camera binding
-required NPC or navigation preparation
-required procedural generation
-required network synchronization
-```
+Use `ObserveOnly` when preparation may continue after reveal or readiness is
+informational. It does not retain Loading, visual cover or capabilities for
+readiness.
 
 ### WaitVisible
 
-`WaitVisible` reveals the target Activity after materialization while retaining the
-capability gate until the initial readiness occurrence reaches `Ready`.
-
 ```text
-transition before / visual cover when authored
--> target Activity scenes load and materialize
--> target Activity becomes current authority
--> readiness participants begin
--> hide loading
--> execute transition after / reveal
--> keep input, interaction and gameplay blocked
--> preparation remains visible
--> all Required participants complete
--> Activity readiness becomes Ready
--> release the capability gate
+transition before / cover when authored
+→ target Activity scenes load and materialize
+→ target Activity becomes current authority
+→ readiness participants begin
+→ Loading hides
+→ transition after reveals the target
+→ input, interaction and gameplay remain blocked
+→ all Required participants complete
+→ Activity becomes Ready
+→ capability gate releases
 ```
 
-`WaitVisible` is appropriate when preparation is deliberately visible:
+Use `WaitVisible` for deliberately visible preparation, didactic samples or
+staged assembly. Visual reveal does not imply gameplay release.
+
+### WaitCovered
 
 ```text
-didactic samples
-world assembly or construction sequences
-staged scene preparation
-non-interactive visual introductions driven by readiness work
+transition before / visual cover
+→ Loading presentation when authored
+→ target Activity scenes load and materialize
+→ target Activity becomes current authority
+→ readiness participants begin
+→ wait for the captured occurrence
+→ all Required participants complete
+→ Activity becomes Ready
+→ terminal Loading progress is published when supported
+→ Loading hides
+→ transition after reveals the target
+→ input, interaction and gameplay gate releases
 ```
 
-Visual reveal does not imply gameplay release.
-
-The FIRSTGAME chicken demonstration remains valid and should use `WaitVisible` so
-the readiness phase can be observed directly.
+Use `WaitCovered` when the Activity must not be shown in an incomplete state.
 
 ## Readiness participant semantics
 
-An `ActivityReadinessParticipant` is a readiness contribution. It may perform work,
-start work owned by another system, or only observe a condition owned elsewhere.
+An `ActivityReadinessParticipant` is one readiness contribution. It may perform
+work, start work owned by another system or observe a condition owned elsewhere.
 
 ```text
-PreparationStarted
-  participant begins or observes its preparation
+Preparation Started
+  begin or observe local preparation
 
-CompletePreparation
-  the contribution completed successfully
+CompletePreparation()
+  complete this contribution successfully
 
-FailPreparation
-  the contribution reached an explicit failed state
+FailPreparation(reason)
+  complete this contribution with explicit failure
 
-Release
-  the occurrence was exited, replaced or invalidated
+Preparation Released
+  cancel or release local work when the occurrence exits
 ```
 
-Requiredness has the following entry-gate meaning:
+Requiredness controls entry release:
 
 ```text
 Required Preparing
-  blocks Ready and blocks waiting-policy release
+  blocks Ready and waiting-policy release
 
 Required Completed
   contributes to Ready
 
-Required Failed
-  produces an explicit entry-readiness failure
+Required Failed or Released before completion
+  produces terminal blocking evidence
 
-Optional Preparing or Failed
-  remains diagnostic and never blocks Ready or entry release
+Optional Preparing, Completed, Failed or Released
+  remains diagnostic and never blocks Ready
 ```
 
-An Activity with no authorable participants may become Ready from its technical
-baseline without an artificial delay.
+The participant set is frozen for one occurrence. Reentry creates a fresh
+occurrence. Completion from an old or released occurrence cannot release a new
+one.
 
-A participant is not required to publish percentage progress. Boolean or terminal
-condition evidence is sufficient.
+## Initial versus operational readiness
 
-## Initial readiness versus operational readiness
-
-The entry policy applies only to the initial readiness occurrence created for the
-current Route startup or Activity request.
-
-After the Activity has been released for normal use, later readiness changes remain
-observable but do not automatically reopen loading, close the transition curtain or
-reapply the entry capability gate.
-
-```text
-initial occurrence
-  may gate reveal and/or capability release
-
-post-release Ready -> NotReady update
-  updates runtime state and diagnostics only
-  does not start a new visual transition
-```
-
-A future policy may define runtime re-gating, but it is outside this decision.
+The entry policy applies only to the initial readiness occurrence created for
+the current startup or request. Later readiness changes remain observable but
+do not automatically reopen Loading, close the transition curtain or reapply
+the entry capability gate.
 
 ## Occurrence-scoped waiting
 
-Waiting must be typed, event-driven and keyed to one
-`ActivityReadinessOccurrence`. Polling and global lookup are not accepted.
-
-The awaitable result must distinguish at least:
+Waiting is typed, event-driven and keyed to one
+`ActivityReadinessOccurrence`. The terminal result distinguishes:
 
 ```text
 Ready
@@ -286,72 +181,59 @@ Invalidated
 Cancelled
 ```
 
-The following rules are mandatory:
+Mandatory rules:
 
 ```text
-A completion from an old occurrence cannot release a new occurrence.
-Replacing or clearing the Activity invalidates the current wait.
-Invalidation releases tracked participants.
-Late participant completion remains rejected and diagnostic.
-Exactly one terminal result may release or fail one entry gate.
+an old occurrence cannot release a replacement
+replacement or clear invalidates the current wait
+invalidation releases tracked participants
+late completion is rejected and diagnostic
+exactly one terminal result completes one entry wait
+no polling or global lookup
 ```
-
-No singleton, service locator or scene-wide fallback lookup is introduced.
-
-## Transition and loading orchestration
-
-`ActivityFlowRuntime` remains the authority for:
-
-```text
-Activity authority and occurrence identity
-participant discovery and lifecycle
-technical readiness baseline
-authorable readiness aggregation
-readiness updates and invalidation
-```
-
-`GameFlowRuntime` remains the authority for operation ordering and must consume the
-Activity policy when deciding:
-
-```text
-when loading may be hidden
-when Transition After may execute
-when the operation capability gate may be released
-```
-
-`FrameworkRuntimeHost` may continue adapting the explicit loading and transition
-surfaces to Game Flow operations. It does not become readiness authority.
-
-`LoadingSurface` presents progress and issues. It does not discover participants,
-decide readiness or own lifecycle policy.
-
-`TransitionSurface` and transition-effect adapters remain visual envelopes. They do
-not own Activity authority or readiness.
-
-`ActivityReadinessEvents` remains a presentation observer. It must not become an
-internal command path for releasing loading or gates.
 
 ## Loading progress
 
-Waiting policies add a final semantic loading phase after scene composition:
+Loading remains presentation and never becomes readiness authority.
+
+### ObserveOnly and WaitVisible
+
+These policies do not project participant completion into Loading. Their
+technical Loading behavior remains independent of the later readiness state.
+
+### WaitCovered with Fade
+
+The visual cover remains until `Ready`, but there is no determinate Loading
+surface to receive participant-aware progress.
+
+### WaitCovered with FadeWithLoading
+
+When the persistent Loading surface supports determinate progress, the
+framework uses the participant-aware envelope defined by IF-ADR-011:
 
 ```text
-LoadingScenes
-MaterializingActivity
-PreparingActivity
-Ready
+known technical phase range
+→ explicit technical boundary below 100%
+→ final readiness range
+→ equal increments for captured Required participants
+→ 100% only when aggregate readiness is Ready
+→ Hide
+→ reveal
 ```
 
-`PreparingActivity` may be indeterminate. The framework must not fabricate a
-percentage from participant counts or timers.
+Only Required participants enter the denominator. Optional participants remain
+visible in diagnostics and do not change progress or block `Ready`.
 
-Diagnostics may report participant counts and identities while the loading surface
-continues to present an indeterminate phase.
+The technical range cannot publish successful `100%`. The startup path
+explicitly completes its reserved technical boundary before readiness begins.
+A failure, invalidation or cancellation retains the last valid progress value
+and never publishes successful `100%`.
+
+The framework does not fabricate continuous progress inside one participant.
+One aggregate Required participant produces one readiness increment. Multiple
+independent increments require multiple independent Required participants.
 
 ## Transition-mode compatibility
-
-The policy and visual transition mode are independent authoring decisions, but
-invalid combinations must be diagnosed explicitly.
 
 ```text
 ObserveOnly + Seamless/Fade/FadeWithLoading
@@ -361,57 +243,42 @@ WaitVisible + Seamless/Fade/FadeWithLoading
   valid
 
 WaitCovered + Fade
-  valid; the transition cover remains until Ready
+  valid; cover remains until Ready
 
 WaitCovered + FadeWithLoading
-  valid; loading and transition cover remain until Ready
+  valid; determinate participant-aware progress when supported
 
 WaitCovered + Seamless
-  invalid; no authored visual cover can satisfy the policy intent
+  invalid; no authored visual cover satisfies the policy
 ```
 
-The framework must not silently replace `Seamless` with a fade or loading mode.
+The framework does not silently replace `Seamless` or strengthen an authored
+gate.
 
 ## Capability-gate compatibility
 
-Both waiting policies require input, interaction and gameplay to remain blocked
-until the initial occurrence is Ready.
+Both waiting policies require the authored transition gate to block input,
+interaction and gameplay until `Ready`. An insufficient gate is a blocking
+validation issue. Route Startup Activity validation evaluates the Route gate
+because the Route operation owns that entry envelope.
 
-The authored transition gate configuration must provide that protection. An
-insufficient gate mode is a blocking validation issue; the framework must not
-silently strengthen the authored policy at runtime.
-
-For an Activity request, validation evaluates the target Activity transition gate.
-For a Route request with a Startup Activity, validation evaluates the Route gate
-that wraps the startup operation against the Startup Activity entry-readiness
-policy.
-
-Lifecycle requests remain blocked while a readiness wait is actively pending for
-the same operation.
+Lifecycle requests remain blocked only while the transient operation is active.
+After a committed-destination failure, the transient gate ends and a scoped
+recovery blocker preserves unsafe capabilities while allowing an explicit
+recovery Route or Activity request.
 
 ## Failure behavior
 
-A failed Required participant is terminal for the initial entry-readiness wait. It
-must never be treated as Ready and must never trigger silent visual or gameplay
-release.
-
-The operation must publish a typed failure result containing:
-
-```text
-Activity and occurrence identity
-entry-readiness policy
-aggregate readiness snapshot
-failed Required participant identities and reasons
-visual reveal state
-capability-gate state
-whether the destination is already authoritative
-```
+A failed Required participant is terminal for the initial entry wait. It is not
+converted to `Ready` and does not silently reveal or release gameplay.
 
 For `WaitCovered`:
 
 ```text
 visual cover remains active
+Loading retains the last valid progress snapshot
 normal input, interaction and gameplay remain blocked
+request returns a typed committed-destination failure
 ```
 
 For `WaitVisible`:
@@ -419,34 +286,14 @@ For `WaitVisible`:
 ```text
 target content remains visible
 normal input, interaction and gameplay remain blocked
+request returns a typed committed-destination failure
 ```
 
-A terminal failure must not leave an unobservable request awaiting forever. The
-transient in-flight operation may finish with an explicit committed-destination
-failure, while a scoped recovery blocker preserves the unsafe capabilities.
-Lifecycle recovery requests must remain possible after that terminal result.
-
-Automatic rollback is not required by this ADR because the previous Activity may
-already have exited and released owned content. Recovery is explicit and may use a
-new Activity or Route request, retry operation or future recovery policy.
-
-## Timeout behavior
-
-The initial implementation has no automatic timeout.
-
-```text
-Required participant remains Preparing
-  -> waiting policy remains pending
-```
-
-A diagnostic watchdog may report long-running preparation, but it must not convert
-pending readiness into success or release presentation silently.
-
-Timeout and retry authoring are deferred decisions.
+Automatic rollback and automatic timeout remain outside this decision.
 
 ## Authoring surface
 
-The Activity Inspector exposes a designer-first section:
+The Activity Inspector exposes:
 
 ```text
 Activity Entry Readiness
@@ -456,182 +303,92 @@ Activity Entry Readiness
     Wait Visible
 ```
 
-The Inspector explains the consequences of each policy and validates transition and
-gate compatibility inline.
+The author also selects a compatible visual transition and transition gate.
+Readiness participants are authored in the explicit Route/Activity content
+scope. Technical components remain inspectable through Advanced/Debug
+surfaces.
 
-Advanced/Debug presentation should expose:
+## Diagnostics
+
+Runtime and Loading diagnostics expose evidence equivalent to:
 
 ```text
-current Activity and occurrence
+Activity and occurrence identity
 entry-readiness policy
 aggregate readiness state
-Required and Optional counts
-pending and failed participant identities
-visual cover/reveal state
-loading phase
-gate state
-last terminal reason
+Required total/completed/pending/failed/released
+Optional total/completed/pending/failed/released
+technical and readiness ranges
+last normalized Loading progress
+terminal completion/failure evidence
+Loading hidden
+reveal completed
+transition-gate and recovery-blocker state
 ```
 
-Technical components remain visible in an Advanced/Debug mode. The framework must
-not hide participant materialization without diagnostic access.
+## FIRSTGAME reference proof
 
-## Route startup behavior
-
-A Route request with a Startup Activity follows the same entry-readiness semantics
-as a direct Activity request.
+`planet-devourer` Demo 01 Activity Readiness proves both waiting shapes:
 
 ```text
-Route transition begins
--> Route scenes compose
--> Startup Activity scenes compose
--> Startup Activity readiness begins
--> consume Startup Activity entry policy
--> release Route transition according to that policy
+Wait Visible
+  visible preparation while capabilities remain gated
+
+Wait Covered + FadeWithLoading
+  four independent Required participants
+  one Optional participant kept pending
+  participant-aware determinate Loading progress
+  100% only after 4/4 Required complete
+  Loading Hide before reveal
+  clean exit to Intermission and reentry
 ```
 
-A Route does not author a second readiness policy. Route-level validation reports
-cross-asset incompatibilities between the Route transition/gate settings and its
-Startup Activity policy.
+The consumer owns the Chicken-to-condition mapping. The package owns readiness,
+progress projection, presentation ordering and diagnostics.
 
-## Restart, reentry and replacement
+## Implemented scope
 
-Activity restart and reentry create a new occurrence and evaluate the policy again.
-
-```text
-old occurrence invalidated
--> old participants released
--> new occurrence begins
--> new initial readiness gate is evaluated
-```
-
-A replacement request must not inherit readiness, visual-release state or gate
-release from the previous occurrence.
-
-## Accepted scope
-
-- Activity-owned entry-readiness policy.
-- `ObserveOnly`, `WaitCovered` and `WaitVisible` semantics.
-- Route Startup Activity consumption of the Activity policy.
-- Occurrence-scoped, event-driven readiness waiting.
-- Required/Optional gate semantics.
-- Explicit visual reveal and capability-release separation.
-- Loading and transition integration without presentation authority inversion.
-- Typed failure, invalidation and cancellation results.
-- Backward-compatible `ObserveOnly` default.
-- Inspector validation and runtime diagnostics.
-- QA coverage for direct Activity requests and Route startup.
-- FIRSTGAME visible-preparation demonstration through `WaitVisible`.
-
-## Rejected scope
-
-- Loading or Transition surfaces deciding Activity readiness.
-- Readiness presentation events used as hidden command paths.
-- Global managers, singletons or service-locator access.
-- Polling the scene or runtime state until it appears Ready.
-- Silent fallback from a failed Required participant.
-- Silent conversion of `WaitCovered + Seamless` into another visual mode.
-- Timer-only readiness or fabricated percentage progress.
-- Optional participants blocking entry release.
-- Automatic reopening of loading for post-release readiness changes.
-- Automatic rollback after target authority commit.
-- Implicit timeout, retry or recovery behavior.
-
-## Consequences
-
-Scene loading and Activity readiness become explicitly different stages:
-
-```text
-Scene loaded
-  does not imply Activity Ready
-
-Activity materialized
-+ all Required readiness participants completed
-  implies Activity Ready
-```
-
-Games can guarantee that Actors, skins, controls, Camera bindings and restored state
-are coherent before revealing gameplay.
-
-Samples and stylized experiences can deliberately reveal preparation while keeping
-unsafe capabilities gated.
-
-The Activity becomes the single authoring authority for entry-readiness intent.
-Routes consume Startup Activity intent without duplicating policy.
-
-The runtime gains a longer-lived operation path for waiting policies and must handle
-cancellation, failure, replacement and diagnostics without stale occurrence release.
-
-Presentation remains replaceable and does not become lifecycle authority.
-
-## Current implementation coverage
-
-The following capabilities already exist:
-
-```text
-ActivityReadinessParticipant authoring
-Required and Optional aggregation
-Preparing, Completed, Failed and Released states
-occurrence identity and late-completion rejection
-post-transition readiness propagation
-ActivityReadinessEvents presentation observer
-runtime snapshots and diagnostics
-```
-
-The following capabilities are not yet implemented and are required to complete this
-decision:
+The initial decision is implemented for:
 
 ```text
 ActivityEntryReadinessPolicy authoring
-occurrence-scoped awaitable readiness result
-WaitCovered orchestration
-WaitVisible orchestration
-loading phase integration
+ObserveOnly, WaitVisible and WaitCovered orchestration
+occurrence-scoped event-driven waiting
+Required/Optional aggregation
 transition-after retention
-capability-gate retention and recovery blocker
-cross-asset validation for Route Startup Activity
-failure presentation/recovery diagnostics
-entry-gate QA smokes and FIRSTGAME policy integration
+capability-gate retention and scoped recovery blocker
+Route Startup Activity policy consumption
+Game Application Startup Activity parity
+typed Ready, Failed, Invalidated and Cancelled results
+participant-aware WaitCovered + FadeWithLoading progress
+100% before Hide and reveal
+runtime and Loading diagnostics
 ```
 
-Until those capabilities exist, the framework must describe Activity readiness as a
-post-transition state model and must not claim that Required participants retain
-loading, fade or gameplay release.
-
-## Validation requirements
-
-The package and QA harness must prove at least:
+Package implementation evidence:
 
 ```text
-ObserveOnly preserves current behavior.
-WaitCovered keeps visual cover and capabilities blocked while Required is pending.
-WaitVisible reveals content but keeps capabilities blocked while Required is pending.
-Required completion releases exactly once.
-Optional pending or failed does not block release.
-Required failure never reveals or releases silently.
-An invalidated occurrence cannot release a replacement occurrence.
-Activity reentry creates and waits on a new occurrence.
-Route Startup Activity obeys its Activity policy.
-WaitCovered + Seamless fails validation.
-Insufficient transition gate configuration fails validation.
-Loading reports PreparingActivity without fabricated progress.
-Post-release readiness changes do not reopen the entry presentation.
+322d395  Activity entry readiness policy authoring
+89aa95d  occurrence-scoped Activity readiness waiting
+f39c6e5  reveal and capability-gate orchestration
+bd79dd5  cancellation and recovery ownership
+f5620ef  stable Activity identity comparison
+2a9cb1e  Required/Optional completion evidence
+78405ef  operation-scoped Loading progress envelope
+99893aa  WaitCovered determinate progress integration
+c423d4c  canonical host-path wiring and retained diagnostics
+72a6d9d  explicit startup technical-boundary completion
 ```
 
-FIRSTGAME must prove both product shapes:
+## Exclusions
 
 ```text
-WaitVisible
-  visible chicken preparation demonstration
-
-WaitCovered
-  production-like Activity entry hidden until Required readiness completes
+participant-authored weights
+continuous percentage from one participant
+time-based simulated readiness progress
+scene polling
+Activity content resolving the persistent Loading surface
+automatic timeout or retry
+automatic runtime re-gating after initial release
+automatic rollback after target authority commit
 ```
-
-## Pending decisions
-
-- Product-facing retry and recovery authoring after Required entry failure.
-- Optional explicit timeout policy and its recovery semantics.
-- Participant-authored progress contributions beyond terminal state.
-- Reusable readiness recipes/composers for common Actor, save, Camera and control preparation.
-- Whether future runtime re-gating requires a separate operational-readiness policy.
