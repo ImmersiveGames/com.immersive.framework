@@ -1,4 +1,5 @@
 using System;
+using System.Threading.Tasks;
 using Immersive.Framework.ActivityFlow;
 using Immersive.Framework.ApiStatus;
 using UnityEngine;
@@ -12,7 +13,7 @@ namespace Immersive.Framework.Loading
     /// </summary>
     [FrameworkApiStatus(
         FrameworkApiStatus.Internal,
-        "IF-READY-PROGRESS-02 Activity entry Loading progress envelope.")]
+        "IF-READY-PROGRESS-02/03 Activity entry Loading progress envelope.")]
     internal sealed class ActivityEntryLoadingProgressEnvelope
     {
         internal const string ReadinessPhase = "ActivityReadiness";
@@ -23,12 +24,16 @@ namespace Immersive.Framework.Loading
         private readonly IFrameworkLoadingProgressReporter _technicalReporter;
         private FrameworkLoadingProgress _lastAcceptedProgress;
         private ActivityReadinessOccurrence _readinessOccurrence;
+        private ActivityReadinessProgressSnapshot _lastReadinessSnapshot;
+        private bool _hasReadinessSnapshot;
         private bool _hasReportedProgress;
         private bool _hasDeterminateProgress;
         private bool _reportingReadyTerminal;
         private bool _terminalCompletionIssued;
         private bool _terminalFailureObserved;
         private int _rejectedReadinessSnapshotCount;
+        private readonly object _queuedReportSyncRoot = new object();
+        private Task _queuedReportTail = Task.CompletedTask;
 
         internal ActivityEntryLoadingProgressEnvelope(
             IFrameworkLoadingProgressReporter rootReporter,
@@ -66,6 +71,51 @@ namespace Immersive.Framework.Loading
         internal int RejectedReadinessSnapshotCount =>
             _rejectedReadinessSnapshotCount;
 
+        internal ActivityEntryLoadingProgressDiagnostics CreateDiagnostics(
+            bool loadingHidden,
+            bool revealCompleted)
+        {
+            return new ActivityEntryLoadingProgressDiagnostics(
+                _plan,
+                _lastReadinessSnapshot,
+                _hasReadinessSnapshot,
+                _lastAcceptedProgress,
+                _hasReportedProgress,
+                _terminalCompletionIssued,
+                _terminalFailureObserved,
+                loadingHidden,
+                revealCompleted,
+                _rejectedReadinessSnapshotCount);
+        }
+
+        internal Task QueueReadinessAsync(
+            ActivityReadinessProgressSnapshot snapshot)
+        {
+            lock (_queuedReportSyncRoot)
+            {
+                _queuedReportTail = ReportQueuedReadinessAsync(
+                    _queuedReportTail,
+                    snapshot);
+                return _queuedReportTail;
+            }
+        }
+
+        internal Task FlushQueuedReportsAsync()
+        {
+            lock (_queuedReportSyncRoot)
+            {
+                return _queuedReportTail;
+            }
+        }
+
+        private async Task ReportQueuedReadinessAsync(
+            Task previous,
+            ActivityReadinessProgressSnapshot snapshot)
+        {
+            await previous;
+            await ReportReadinessAsync(snapshot);
+        }
+
         internal async Awaitable ReportReadinessAsync(
             ActivityReadinessProgressSnapshot snapshot)
         {
@@ -95,6 +145,9 @@ namespace Immersive.Framework.Loading
                 _rejectedReadinessSnapshotCount++;
                 return;
             }
+
+            _lastReadinessSnapshot = snapshot;
+            _hasReadinessSnapshot = true;
 
             if (snapshot.HasTerminalFailure)
             {
