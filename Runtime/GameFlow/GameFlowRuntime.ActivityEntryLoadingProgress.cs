@@ -148,6 +148,9 @@ namespace Immersive.Framework.GameFlow
                         routeLifecycleResult.Message);
                 }
 
+                await progressEnvelope.CompleteTechnicalRangeAsync(
+                    "Game Application startup Route lifecycle completed.");
+
                 if (!TryPrepareActivityEntryReadinessExecution(
                         startupActivity,
                         routeLifecycleResult.ActivityFlowResult,

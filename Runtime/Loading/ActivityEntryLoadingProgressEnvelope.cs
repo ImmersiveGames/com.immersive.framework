@@ -108,6 +108,47 @@ namespace Immersive.Framework.Loading
             }
         }
 
+        internal async Awaitable CompleteTechnicalRangeAsync(
+            string message)
+        {
+            if (!IsEnabled || !_plan.HasTechnicalRange)
+            {
+                return;
+            }
+
+            if (_terminalCompletionIssued || _terminalFailureObserved)
+            {
+                throw new InvalidOperationException(
+                    "Technical Loading range cannot complete after the " +
+                    "Activity entry envelope reached a terminal state.");
+            }
+
+            if (_hasDeterminateProgress &&
+                _lastAcceptedProgress.Value01 >=
+                _plan.TechnicalRange.End01)
+            {
+                return;
+            }
+
+            string resolvedMessage = string.IsNullOrWhiteSpace(message)
+                ? "Technical Loading completed before Activity readiness."
+                : message.Trim();
+            await _technicalReporter.ReportAsync(
+                FrameworkLoadingProgress.Determinate(
+                    1f,
+                    "TechnicalLoading",
+                    resolvedMessage));
+
+            if (!_hasDeterminateProgress ||
+                _lastAcceptedProgress.Value01 <
+                _plan.TechnicalRange.End01)
+            {
+                throw new InvalidOperationException(
+                    "Technical Loading range did not reach its reserved " +
+                    "boundary before Activity readiness.");
+            }
+        }
+
         private async Task ReportQueuedReadinessAsync(
             Task previous,
             ActivityReadinessProgressSnapshot snapshot)
