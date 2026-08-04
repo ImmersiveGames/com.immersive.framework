@@ -5,12 +5,27 @@ using Immersive.Framework.SceneLifecycle;
 
 namespace Immersive.Framework.ActivityFlow
 {
-    /// <summary>Internal Unity adapter that discovers readiness participants only in explicit Activity content scenes.</summary>
+    /// <summary>
+    /// Internal Unity adapter that discovers readiness participants only in explicit
+    /// Activity content scenes and merges explicitly supplied host-scoped participants.
+    /// </summary>
     internal sealed class ActivityReadinessParticipantSource
     {
-        private readonly List<ActivityReadinessParticipant> _participants = new List<ActivityReadinessParticipant>();
+        private readonly List<ActivityReadinessParticipant> _participants =
+            new List<ActivityReadinessParticipant>();
+        private IActivityReadinessParticipantSource _explicitSource =
+            EmptyActivityReadinessParticipantSource.Instance;
         private ActivityReadinessOccurrence _trackedOccurrence;
-        private Action<ActivityReadinessOccurrence, ActivityReadinessParticipant> _changeSink;
+        private Action<
+            ActivityReadinessOccurrence,
+            ActivityReadinessParticipant> _changeSink;
+
+        internal void SetExplicitSource(
+            IActivityReadinessParticipantSource source)
+        {
+            _explicitSource = source ??
+                EmptyActivityReadinessParticipantSource.Instance;
+        }
 
         internal IReadOnlyList<ActivityReadinessParticipant>
             DiscoverAuthorableParticipants(
@@ -23,17 +38,36 @@ namespace Immersive.Framework.ActivityFlow
             }
 
             IReadOnlyList<ActivityReadinessParticipant> discovered =
-                SceneScopedComponentQuery.GetComponentsInActivityContentScope<ActivityReadinessParticipant>(
-                    scope,
-                    activity);
-            var participants = new List<ActivityReadinessParticipant>(discovered.Count);
+                SceneScopedComponentQuery
+                    .GetComponentsInActivityContentScope<
+                        ActivityReadinessParticipant>(
+                        scope,
+                        activity);
+            IReadOnlyList<ActivityReadinessParticipant> explicitParticipants =
+                _explicitSource.ResolveActivityReadinessParticipants(activity) ??
+                Array.Empty<ActivityReadinessParticipant>();
+
+            var participants =
+                new List<ActivityReadinessParticipant>(
+                    discovered.Count + explicitParticipants.Count);
+            var ids = new HashSet<string>(StringComparer.Ordinal);
+
             for (int i = 0; i < discovered.Count; i++)
             {
-                ActivityReadinessParticipant participant = discovered[i];
-                if (participant != null && participant.IsValidForDiscovery(out _))
-                {
-                    participants.Add(participant);
-                }
+                AddValidatedParticipant(
+                    participants,
+                    ids,
+                    discovered[i],
+                    "Activity content discovery");
+            }
+
+            for (int i = 0; i < explicitParticipants.Count; i++)
+            {
+                AddValidatedParticipant(
+                    participants,
+                    ids,
+                    explicitParticipants[i],
+                    "host-scoped readiness source");
             }
 
             return participants;
@@ -43,7 +77,9 @@ namespace Immersive.Framework.ActivityFlow
             ActivityAsset activity,
             ActivityReadinessOccurrence occurrence,
             IReadOnlyList<ActivityReadinessParticipant> participants,
-            Action<ActivityReadinessOccurrence, ActivityReadinessParticipant> changeSink)
+            Action<
+                ActivityReadinessOccurrence,
+                ActivityReadinessParticipant> changeSink)
         {
             if (!occurrence.IsValid)
             {
@@ -107,7 +143,8 @@ namespace Immersive.Framework.ActivityFlow
 
             for (int i = 0; i < releasedParticipants.Count; i++)
             {
-                ActivityReadinessParticipant participant = releasedParticipants[i];
+                ActivityReadinessParticipant participant =
+                    releasedParticipants[i];
                 if (participant == null)
                 {
                     continue;
@@ -115,10 +152,44 @@ namespace Immersive.Framework.ActivityFlow
 
                 participant.Release(reason);
             }
-
         }
 
-        private void OnParticipantStateChanged(ActivityReadinessParticipant participant)
+        private static void AddValidatedParticipant(
+            List<ActivityReadinessParticipant> target,
+            HashSet<string> ids,
+            ActivityReadinessParticipant participant,
+            string source)
+        {
+            if (participant == null)
+            {
+                return;
+            }
+
+            if (!participant.IsValidForDiscovery(out string issue))
+            {
+                throw new InvalidOperationException(
+                    $"{source} returned an invalid Activity readiness participant. {issue}");
+            }
+
+            if (target.Contains(participant))
+            {
+                return;
+            }
+
+            string participantId = participant.ParticipantId.Trim();
+            if (!ids.Add(participantId))
+            {
+                throw new InvalidOperationException(
+                    $"Activity readiness participant ID '{participantId}' " +
+                    "is duplicated between discovered and explicitly " +
+                    "supplied contributions.");
+            }
+
+            target.Add(participant);
+        }
+
+        private void OnParticipantStateChanged(
+            ActivityReadinessParticipant participant)
         {
             _changeSink?.Invoke(_trackedOccurrence, participant);
         }

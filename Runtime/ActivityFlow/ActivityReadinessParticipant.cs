@@ -7,21 +7,32 @@ using UnityEngine.Events;
 namespace Immersive.Framework.ActivityFlow
 {
     /// <summary>
-    /// Scene-authored readiness contribution. The ActivityFlow runtime discovers and starts it;
-    /// gameplay completes or fails it through the typed public methods below.
+    /// Activity readiness contribution. Normal consumers author it in Activity content;
+    /// package runtime modules may materialize an internal instance through the narrow
+    /// runtime configuration path. ActivityFlow remains the occurrence authority.
     /// </summary>
     [DisallowMultipleComponent]
     [AddComponentMenu("Immersive Framework/Activity Readiness Participant")]
-    [FrameworkApiStatus(FrameworkApiStatus.Experimental, "M03 authorable Activity readiness participant.")]
-    public sealed class ActivityReadinessParticipant : MonoBehaviour, IActivityContentExecutionParticipant
+    [FrameworkApiStatus(
+        FrameworkApiStatus.Experimental,
+        "M03 authorable Activity readiness participant.")]
+    public sealed class ActivityReadinessParticipant :
+        MonoBehaviour,
+        IActivityContentExecutionParticipant
     {
         [Header("Identity")]
         [SerializeField] private string participantId;
-        [SerializeField] private ActivityContentExecutionRequiredness requiredness = ActivityContentExecutionRequiredness.Required;
+        [SerializeField]
+        private ActivityContentExecutionRequiredness requiredness =
+            ActivityContentExecutionRequiredness.Required;
         [SerializeField] private int order;
+
         [Header("Callbacks")]
-        [SerializeField] private UnityEvent preparationStarted = new UnityEvent();
-        [SerializeField] private UnityEvent preparationReleased = new UnityEvent();
+        [SerializeField]
+        private UnityEvent preparationStarted = new UnityEvent();
+        [SerializeField]
+        private UnityEvent preparationReleased = new UnityEvent();
+
         [Header("Runtime Diagnostics")]
         [SerializeField] private ActivityReadinessParticipantState state;
         [SerializeField] private string lastReason;
@@ -39,16 +50,58 @@ namespace Immersive.Framework.ActivityFlow
 
         public void CompletePreparation()
         {
-            TrySetTerminalState(ActivityReadinessParticipantState.Completed, "Completed");
+            TrySetTerminalState(
+                ActivityReadinessParticipantState.Completed,
+                "Completed");
         }
 
         public void FailPreparation(string reason)
         {
-            lastReason = string.IsNullOrWhiteSpace(reason) ? "Failed" : reason;
-            TrySetTerminalState(ActivityReadinessParticipantState.Failed, lastReason);
+            lastReason = string.IsNullOrWhiteSpace(reason)
+                ? "Failed"
+                : reason;
+            TrySetTerminalState(
+                ActivityReadinessParticipantState.Failed,
+                lastReason);
         }
 
-        internal void BeginPreparation(ActivityReadinessOccurrence readinessOccurrence)
+        internal void ConfigureRuntimeParticipant(
+            string stableParticipantId,
+            ActivityContentExecutionRequiredness participantRequiredness,
+            int participantOrder)
+        {
+            if (state == ActivityReadinessParticipantState.Preparing)
+            {
+                throw new InvalidOperationException(
+                    "A runtime readiness participant cannot be reconfigured while preparing.");
+            }
+
+            if (string.IsNullOrWhiteSpace(stableParticipantId))
+            {
+                throw new ArgumentException(
+                    "Runtime readiness participant identity is required.",
+                    nameof(stableParticipantId));
+            }
+
+            if (participantRequiredness ==
+                    ActivityContentExecutionRequiredness.Unknown ||
+                !Enum.IsDefined(
+                    typeof(ActivityContentExecutionRequiredness),
+                    participantRequiredness))
+            {
+                throw new ArgumentOutOfRangeException(
+                    nameof(participantRequiredness),
+                    participantRequiredness,
+                    "Runtime readiness participant requiredness must be Required or Optional.");
+            }
+
+            participantId = stableParticipantId.Trim();
+            requiredness = participantRequiredness;
+            order = participantOrder;
+        }
+
+        internal void BeginPreparation(
+            ActivityReadinessOccurrence readinessOccurrence)
         {
             if (!readinessOccurrence.IsValid)
             {
@@ -60,20 +113,40 @@ namespace Immersive.Framework.ActivityFlow
             BeginPreparationCore(readinessOccurrence.TransitionSequence);
         }
 
-        ActivityContentExecutionParticipantDescriptor IActivityContentExecutionParticipant.GetActivityContentExecutionDescriptor()
+        ActivityContentExecutionParticipantDescriptor
+            IActivityContentExecutionParticipant
+                .GetActivityContentExecutionDescriptor()
         {
             RuntimeContentId id = RuntimeContentId.From(participantId);
-            return requiredness == ActivityContentExecutionRequiredness.Required
-                ? ActivityContentExecutionParticipantDescriptor.Required(id, true, true, order, name, nameof(ActivityReadinessParticipant), "Authorable readiness participant")
-                : ActivityContentExecutionParticipantDescriptor.Optional(id, true, true, order, name, nameof(ActivityReadinessParticipant), "Authorable readiness participant");
+            return requiredness ==
+                    ActivityContentExecutionRequiredness.Required
+                ? ActivityContentExecutionParticipantDescriptor.Required(
+                    id,
+                    true,
+                    true,
+                    order,
+                    name,
+                    nameof(ActivityReadinessParticipant),
+                    "Authorable readiness participant")
+                : ActivityContentExecutionParticipantDescriptor.Optional(
+                    id,
+                    true,
+                    true,
+                    order,
+                    name,
+                    nameof(ActivityReadinessParticipant),
+                    "Authorable readiness participant");
         }
 
-        ActivityContentExecutionResult IActivityContentExecutionParticipant.ExecuteActivityContent(ActivityContentExecutionRequest request)
+        ActivityContentExecutionResult
+            IActivityContentExecutionParticipant.ExecuteActivityContent(
+                ActivityContentExecutionRequest request)
         {
-            // Activity content execution is synchronous. The occurrence-scoped readiness
-            // tracker owns BeginPreparation, terminal aggregation and Release. Keeping this
-            // legacy adapter side-effect free prevents preparation from being started twice
-            // and prevents a normal Preparing state from being reported as execution failure.
+            // Activity content execution is synchronous. The occurrence-scoped
+            // readiness tracker owns BeginPreparation, terminal aggregation and
+            // Release. Keeping this legacy adapter side-effect free prevents
+            // preparation from being started twice and prevents a normal Preparing
+            // state from being reported as execution failure.
             return ActivityContentExecutionResult.SucceededNoOp(
                 request,
                 nameof(ActivityReadinessParticipant),
@@ -93,7 +166,8 @@ namespace Immersive.Framework.ActivityFlow
                 return false;
             }
 
-            if (requiredness == ActivityContentExecutionRequiredness.Unknown)
+            if (requiredness ==
+                ActivityContentExecutionRequiredness.Unknown)
             {
                 issue = "Requiredness must be Required or Optional.";
                 return false;
@@ -120,7 +194,9 @@ namespace Immersive.Framework.ActivityFlow
             StateChanged?.Invoke(this);
         }
 
-        private void TrySetTerminalState(ActivityReadinessParticipantState terminalState, string reason)
+        private void TrySetTerminalState(
+            ActivityReadinessParticipantState terminalState,
+            string reason)
         {
             if (state != ActivityReadinessParticipantState.Preparing)
             {

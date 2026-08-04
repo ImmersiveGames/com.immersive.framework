@@ -7,12 +7,15 @@ namespace Immersive.Framework.PlayerParticipation
     /// </summary>
     [FrameworkApiStatus(
         FrameworkApiStatus.Experimental,
-        "P3J.6 Activity-scoped Logical Player Actor lifecycle result status.")]
+        "IF-M07-10 Activity-scoped Logical Player Actor lifecycle status with readiness reconcile.")]
     public enum ActivityPlayerActorLifecycleStatus
     {
         None = 0,
         SucceededEntered = 10,
         SucceededEnteredNoParticipants = 20,
+        SucceededEnteredPreparing = 21,
+        SucceededReconciledPreparing = 22,
+        SucceededReconciledReady = 23,
         SucceededExited = 30,
         SucceededExitedNoActors = 40,
         RejectedForeignOrStaleActivity = 100,
@@ -21,6 +24,7 @@ namespace Immersive.Framework.PlayerParticipation
         FailedRequirement = 130,
         FailedSelection = 140,
         FailedPreparation = 150,
+        FailedReconcile = 155,
         FailedRelease = 160,
         FailedRollback = 170
     }

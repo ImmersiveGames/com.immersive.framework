@@ -11,7 +11,7 @@ namespace Immersive.Framework.PlayerParticipation
     /// </summary>
     [FrameworkApiStatus(
         FrameworkApiStatus.Experimental,
-        "P3J.6 Activity-scoped Logical Player Actor lifecycle diagnostics.")]
+        "IF-M07-10 Activity-scoped Logical Player Actor lifecycle diagnostics.")]
     public sealed class ActivityPlayerActorLifecycleSnapshot
     {
         private readonly ActivityPlayerActorSlotLifecycleSnapshot[] slots;
@@ -55,12 +55,23 @@ namespace Immersive.Framework.PlayerParticipation
         public int FailedCount { get; }
         public IReadOnlyList<ActivityPlayerActorSlotLifecycleSnapshot> Slots => slots;
         public string Message { get; }
+
         public bool Succeeded => Status is
             ActivityPlayerActorLifecycleStatus.SucceededEntered or
             ActivityPlayerActorLifecycleStatus.SucceededEnteredNoParticipants or
+            ActivityPlayerActorLifecycleStatus.SucceededEnteredPreparing or
+            ActivityPlayerActorLifecycleStatus.SucceededReconciledPreparing or
+            ActivityPlayerActorLifecycleStatus.SucceededReconciledReady or
             ActivityPlayerActorLifecycleStatus.SucceededExited or
             ActivityPlayerActorLifecycleStatus.SucceededExitedNoActors;
-        public bool Failed => !Succeeded && Status != ActivityPlayerActorLifecycleStatus.None;
+
+        public bool IsPreparing => Status is
+            ActivityPlayerActorLifecycleStatus.SucceededEnteredPreparing or
+            ActivityPlayerActorLifecycleStatus.SucceededReconciledPreparing;
+
+        public bool Failed =>
+            !Succeeded && Status != ActivityPlayerActorLifecycleStatus.None;
+
         public bool HasOwner => Owner.IsValid;
 
         internal static ActivityPlayerActorLifecycleSnapshot Empty(string message)
@@ -81,9 +92,13 @@ namespace Immersive.Framework.PlayerParticipation
 
         public string ToDiagnosticString()
         {
-            return $"status='{Status}' activity='{ActivityName}' owner='{(Owner.IsValid ? Owner.StableText : string.Empty)}' " +
-                $"requirement='{RequirementLevel}' projected='{ProjectedSlotCount}' selected='{SelectedCount}' " +
-                $"prepared='{PreparedCount}' released='{ReleasedCount}' failed='{FailedCount}' message='{Message}'";
+            return
+                $"status='{Status}' activity='{ActivityName}' " +
+                $"owner='{(Owner.IsValid ? Owner.StableText : string.Empty)}' " +
+                $"requirement='{RequirementLevel}' projected='{ProjectedSlotCount}' " +
+                $"selected='{SelectedCount}' prepared='{PreparedCount}' " +
+                $"released='{ReleasedCount}' failed='{FailedCount}' " +
+                $"message='{Message}'";
         }
     }
 }
