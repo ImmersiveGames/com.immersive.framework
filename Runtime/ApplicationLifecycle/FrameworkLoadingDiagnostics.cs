@@ -35,7 +35,8 @@ namespace Immersive.Framework.ApplicationLifecycle
             int adapterEvidenceIssueCount = 0,
             int adapterEvidenceBlockingIssueCount = 0,
             string adapterEvidenceNamesText = NoneText,
-            string adapterEvidenceStatusesText = NoneText)
+            string adapterEvidenceStatusesText = NoneText,
+            ActivityEntryLoadingProgressDiagnostics activityEntryProgress = default)
         {
             LoadingText = Normalize(loadingText);
             VisualText = Normalize(visualText);
@@ -52,6 +53,7 @@ namespace Immersive.Framework.ApplicationLifecycle
             AdapterEvidenceBlockingIssueCount = adapterEvidenceBlockingIssueCount < 0 ? 0 : adapterEvidenceBlockingIssueCount;
             AdapterEvidenceNamesText = Normalize(adapterEvidenceNamesText).NormalizeTextOrFallback(NoneText);
             AdapterEvidenceStatusesText = Normalize(adapterEvidenceStatusesText).NormalizeTextOrFallback(NoneText);
+            ActivityEntryProgress = activityEntryProgress;
         }
 
         public string LoadingText { get; }
@@ -84,7 +86,11 @@ namespace Immersive.Framework.ApplicationLifecycle
 
         public string AdapterEvidenceStatusesText { get; }
 
+        public ActivityEntryLoadingProgressDiagnostics ActivityEntryProgress { get; }
+
         public bool HasAdapterEvidence => AdapterEvidenceCount > 0;
+
+        public bool HasActivityEntryProgress => ActivityEntryProgress.IsValid;
 
         public bool ProgressSupported => Progress.Supported;
 
@@ -208,7 +214,8 @@ namespace Immersive.Framework.ApplicationLifecycle
             LoadingSurfaceResult afterResult,
             int adapterCount,
             bool progressSupported,
-            FrameworkLoadingProgress observedProgress)
+            FrameworkLoadingProgress observedProgress,
+            ActivityEntryLoadingProgressDiagnostics activityEntryProgress = default)
         {
             int blockingIssueCount = beforeResult.BlockingIssueCount + afterResult.BlockingIssueCount;
             string beforeText = StatusText(beforeResult);
@@ -230,7 +237,44 @@ namespace Immersive.Framework.ApplicationLifecycle
                 beforeResult.AdapterEvidenceIssueCount + afterResult.AdapterEvidenceIssueCount,
                 beforeResult.AdapterEvidenceBlockingIssueCount + afterResult.AdapterEvidenceBlockingIssueCount,
                 BuildAdapterEvidenceNamesText(beforeResult, afterResult),
-                BuildAdapterEvidenceStatusesText(beforeResult, afterResult));
+                BuildAdapterEvidenceStatusesText(beforeResult, afterResult),
+                activityEntryProgress);
+        }
+
+
+        public static FrameworkLoadingDiagnostics
+            FromRetainedActivityEntrySurface(
+                LoadingSurfaceResult beforeResult,
+                int adapterCount,
+                bool progressSupported,
+                FrameworkLoadingProgress observedProgress,
+                ActivityEntryLoadingProgressDiagnostics activityEntryProgress)
+        {
+            FrameworkLoadingProgress progress = ResolveObservedProgress(
+                progressSupported,
+                observedProgress);
+            bool terminalFailure =
+                activityEntryProgress.TerminalFailureObserved;
+            return new FrameworkLoadingDiagnostics(
+                terminalFailure
+                    ? "RetainedForActivityEntryFailure"
+                    : "RetainedForActivityEntryReadiness",
+                UnitySurfaceText,
+                StatusText(beforeResult),
+                "Retained",
+                progress,
+                beforeResult.BlockingIssueCount +
+                (terminalFailure ? 1 : 0),
+                adapterCount,
+                beforeResult.AdapterEvidenceCount,
+                beforeResult.AppliedAdapterEvidenceCount,
+                beforeResult.SkippedAdapterEvidenceCount,
+                beforeResult.FailedAdapterEvidenceCount,
+                beforeResult.AdapterEvidenceIssueCount,
+                beforeResult.AdapterEvidenceBlockingIssueCount,
+                BuildAdapterEvidenceNamesText(beforeResult),
+                BuildAdapterEvidenceStatusesText(beforeResult),
+                activityEntryProgress);
         }
 
         private static string DetermineSurfaceLoadingText(
@@ -253,6 +297,23 @@ namespace Immersive.Framework.ApplicationLifecycle
             }
 
             return "SucceededWithUnitySurface";
+        }
+
+
+        private static string BuildAdapterEvidenceNamesText(
+            LoadingSurfaceResult result)
+        {
+            var builder = new StringBuilder();
+            AppendAdapterEvidenceNames(builder, result);
+            return builder.Length > 0 ? builder.ToString() : NoneText;
+        }
+
+        private static string BuildAdapterEvidenceStatusesText(
+            LoadingSurfaceResult result)
+        {
+            var builder = new StringBuilder();
+            AppendAdapterEvidenceStatuses(builder, result);
+            return builder.Length > 0 ? builder.ToString() : NoneText;
         }
 
         private static string BuildAdapterEvidenceNamesText(

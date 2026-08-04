@@ -10,14 +10,27 @@ namespace Immersive.Framework.ApplicationLifecycle
     {
         private FrameworkLoadingDiagnostics
             _lastStartupActivityEntryLoadingDiagnostics;
+        private FrameworkLoadingDiagnostics
+            _lastRouteActivityEntryLoadingDiagnostics;
+        private FrameworkLoadingDiagnostics
+            _lastActivityEntryLoadingDiagnostics;
 
         internal FrameworkLoadingDiagnostics
             LastStartupActivityEntryLoadingDiagnostics =>
                 _lastStartupActivityEntryLoadingDiagnostics;
 
+        internal FrameworkLoadingDiagnostics
+            LastRouteActivityEntryLoadingDiagnostics =>
+                _lastRouteActivityEntryLoadingDiagnostics;
+
+        internal FrameworkLoadingDiagnostics
+            LastActivityEntryLoadingDiagnostics =>
+                _lastActivityEntryLoadingDiagnostics;
+
         private async Task<FrameworkGameFlowStartResult>
             StartGameFlowWithActivityEntryLoadingProgressAsync()
         {
+            _lastStartupActivityEntryLoadingDiagnostics = default;
             RouteAsset startupRoute =
                 _gameApplication != null
                     ? _gameApplication.StartupRoute
@@ -104,12 +117,15 @@ namespace Immersive.Framework.ApplicationLifecycle
                             loadingAfterResult,
                             _loadingSurfaceRuntime.AdapterCount,
                             _loadingSurfaceRuntime.ProgressSupported,
-                            progressReporter.LastProgress)
-                        : FrameworkLoadingDiagnostics.FromUnitySurface(
-                            loadingBeforeResult,
-                            loadingAfterResult,
-                            _loadingSurfaceRuntime.AdapterCount,
-                            _loadingSurfaceRuntime.ProgressSupported);
+                            progressReporter.LastProgress,
+                            activityEntryProgressDiagnostics)
+                        : FrameworkLoadingDiagnostics
+                            .FromRetainedActivityEntrySurface(
+                                loadingBeforeResult,
+                                _loadingSurfaceRuntime.AdapterCount,
+                                _loadingSurfaceRuntime.ProgressSupported,
+                                progressReporter.LastProgress,
+                                activityEntryProgressDiagnostics);
             }
             else
             {

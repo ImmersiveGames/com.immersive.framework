@@ -160,9 +160,11 @@ namespace Immersive.Framework.GameFlow
             ActivityReadinessOccurrence occurrence = prepared.Occurrence;
             ActivityEntryReadinessActiveOperation activeOperation =
                 BeginActivityEntryReadinessActiveOperation(
-                operationId,
-                occurrence,
-                authorityRoute);
+                    operationId,
+                    occurrence,
+                    authorityRoute);
+            await ReportInitialActivityEntryLoadingProgressAsync(
+                prepared);
             ActivityEntryReadinessWaitResult waitResult =
                 await WaitForActivityEntryReadinessAsync(
                     occurrence,
