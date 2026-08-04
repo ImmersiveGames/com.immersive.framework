@@ -20,25 +20,50 @@ namespace Immersive.Framework.ActivityFlow
             int pendingCount,
             int completedCount,
             int failedCount,
+            int releasedCount,
             int requiredPendingCount,
+            int requiredCompletedCount,
             int requiredFailedCount,
+            int requiredReleasedCount,
             int optionalPendingCount,
+            int optionalCompletedCount,
             int optionalFailedCount,
-            bool hasRequiredReleased,
+            int optionalReleasedCount,
             bool isSatisfied,
             string reason)
         {
+            ValidateCounts(
+                participantCount,
+                requiredCount,
+                optionalCount,
+                pendingCount,
+                completedCount,
+                failedCount,
+                releasedCount,
+                requiredPendingCount,
+                requiredCompletedCount,
+                requiredFailedCount,
+                requiredReleasedCount,
+                optionalPendingCount,
+                optionalCompletedCount,
+                optionalFailedCount,
+                optionalReleasedCount);
+
             ParticipantCount = participantCount;
             RequiredCount = requiredCount;
             OptionalCount = optionalCount;
             PendingCount = pendingCount;
             CompletedCount = completedCount;
             FailedCount = failedCount;
+            ReleasedCount = releasedCount;
             RequiredPendingCount = requiredPendingCount;
+            RequiredCompletedCount = requiredCompletedCount;
             RequiredFailedCount = requiredFailedCount;
+            RequiredReleasedCount = requiredReleasedCount;
             OptionalPendingCount = optionalPendingCount;
+            OptionalCompletedCount = optionalCompletedCount;
             OptionalFailedCount = optionalFailedCount;
-            HasRequiredReleased = hasRequiredReleased;
+            OptionalReleasedCount = optionalReleasedCount;
             IsSatisfied = isSatisfied;
             Reason = reason ?? string.Empty;
         }
@@ -49,19 +74,83 @@ namespace Immersive.Framework.ActivityFlow
         internal int PendingCount { get; }
         internal int CompletedCount { get; }
         internal int FailedCount { get; }
+        internal int ReleasedCount { get; }
         internal int RequiredPendingCount { get; }
+        internal int RequiredCompletedCount { get; }
         internal int RequiredFailedCount { get; }
+        internal int RequiredReleasedCount { get; }
         internal int OptionalPendingCount { get; }
+        internal int OptionalCompletedCount { get; }
         internal int OptionalFailedCount { get; }
-        internal bool HasRequiredReleased { get; }
+        internal int OptionalReleasedCount { get; }
+        internal bool HasRequiredReleased => RequiredReleasedCount > 0;
         internal bool HasTerminalFailure =>
             RequiredFailedCount > 0 ||
-            HasRequiredReleased;
+            RequiredReleasedCount > 0;
         internal int TerminalBlockingIssueCount =>
             RequiredFailedCount +
-            (HasRequiredReleased ? 1 : 0);
+            RequiredReleasedCount;
         internal bool IsSatisfied { get; }
         internal string Reason { get; }
+
+        private static void ValidateCounts(
+            int participantCount,
+            int requiredCount,
+            int optionalCount,
+            int pendingCount,
+            int completedCount,
+            int failedCount,
+            int releasedCount,
+            int requiredPendingCount,
+            int requiredCompletedCount,
+            int requiredFailedCount,
+            int requiredReleasedCount,
+            int optionalPendingCount,
+            int optionalCompletedCount,
+            int optionalFailedCount,
+            int optionalReleasedCount)
+        {
+            ValidateNonNegative(participantCount, nameof(participantCount));
+            ValidateNonNegative(requiredCount, nameof(requiredCount));
+            ValidateNonNegative(optionalCount, nameof(optionalCount));
+            ValidateNonNegative(pendingCount, nameof(pendingCount));
+            ValidateNonNegative(completedCount, nameof(completedCount));
+            ValidateNonNegative(failedCount, nameof(failedCount));
+            ValidateNonNegative(releasedCount, nameof(releasedCount));
+            ValidateNonNegative(requiredPendingCount, nameof(requiredPendingCount));
+            ValidateNonNegative(requiredCompletedCount, nameof(requiredCompletedCount));
+            ValidateNonNegative(requiredFailedCount, nameof(requiredFailedCount));
+            ValidateNonNegative(requiredReleasedCount, nameof(requiredReleasedCount));
+            ValidateNonNegative(optionalPendingCount, nameof(optionalPendingCount));
+            ValidateNonNegative(optionalCompletedCount, nameof(optionalCompletedCount));
+            ValidateNonNegative(optionalFailedCount, nameof(optionalFailedCount));
+            ValidateNonNegative(optionalReleasedCount, nameof(optionalReleasedCount));
+
+            if (participantCount != requiredCount + optionalCount ||
+                pendingCount != requiredPendingCount + optionalPendingCount ||
+                completedCount != requiredCompletedCount + optionalCompletedCount ||
+                failedCount != requiredFailedCount + optionalFailedCount ||
+                releasedCount != requiredReleasedCount + optionalReleasedCount ||
+                requiredCount != requiredPendingCount + requiredCompletedCount +
+                    requiredFailedCount + requiredReleasedCount ||
+                optionalCount != optionalPendingCount + optionalCompletedCount +
+                    optionalFailedCount + optionalReleasedCount)
+            {
+                throw new ArgumentException(
+                    "Activity readiness contribution counts are inconsistent.");
+            }
+        }
+
+        private static void ValidateNonNegative(int value, string parameterName)
+        {
+            if (value < 0)
+            {
+                throw new ArgumentOutOfRangeException(
+                    parameterName,
+                    value,
+                    "Activity readiness contribution counts cannot be negative.");
+            }
+        }
     }
 
     internal sealed class ActivityReadinessOccurrenceState
@@ -99,6 +188,10 @@ namespace Immersive.Framework.ActivityFlow
         internal ActivityReadinessState AggregateReadiness => _aggregateReadiness;
         internal ActivityReadinessAuthorableContribution AuthorableContribution =>
             _authorableContribution;
+        internal ActivityReadinessProgressSnapshot ProgressSnapshot =>
+            ActivityReadinessProgressSnapshot.Create(
+                _occurrence,
+                _aggregateReadiness);
         internal int Revision => _revision;
         internal bool IsPending =>
             _lifecycle == ActivityReadinessOccurrenceLifecycle.Pending;
@@ -262,11 +355,15 @@ namespace Immersive.Framework.ActivityFlow
             int pendingCount = 0;
             int completedCount = 0;
             int failedCount = 0;
+            int releasedCount = 0;
             int requiredPendingCount = 0;
+            int requiredCompletedCount = 0;
             int requiredFailedCount = 0;
+            int requiredReleasedCount = 0;
             int optionalPendingCount = 0;
+            int optionalCompletedCount = 0;
             int optionalFailedCount = 0;
-            bool hasRequiredReleased = false;
+            int optionalReleasedCount = 0;
 
             for (int i = 0; i < participants.Count; i++)
             {
@@ -300,6 +397,15 @@ namespace Immersive.Framework.ActivityFlow
                         break;
                     case ActivityReadinessParticipantState.Completed:
                         completedCount++;
+                        if (isRequired)
+                        {
+                            requiredCompletedCount++;
+                        }
+                        else
+                        {
+                            optionalCompletedCount++;
+                        }
+
                         break;
                     case ActivityReadinessParticipantState.Failed:
                         failedCount++;
@@ -314,7 +420,16 @@ namespace Immersive.Framework.ActivityFlow
 
                         break;
                     case ActivityReadinessParticipantState.Released:
-                        hasRequiredReleased |= isRequired;
+                        releasedCount++;
+                        if (isRequired)
+                        {
+                            requiredReleasedCount++;
+                        }
+                        else
+                        {
+                            optionalReleasedCount++;
+                        }
+
                         break;
                 }
             }
@@ -322,16 +437,18 @@ namespace Immersive.Framework.ActivityFlow
             if (participantCount == 0)
             {
                 return new ActivityReadinessAuthorableContribution(
-                    0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                    false, true, "NoParticipants");
+                    0, 0, 0, 0, 0, 0, 0,
+                    0, 0, 0, 0,
+                    0, 0, 0, 0,
+                    true, "NoParticipants");
             }
 
             bool isSatisfied = requiredFailedCount == 0 &&
-                !hasRequiredReleased &&
+                requiredReleasedCount == 0 &&
                 requiredPendingCount == 0;
             string reason = requiredFailedCount > 0
                 ? "RequiredParticipantFailed"
-                : hasRequiredReleased
+                : requiredReleasedCount > 0
                     ? "RequiredParticipantReleased"
                     : requiredPendingCount > 0
                         ? "Preparing"
@@ -343,11 +460,15 @@ namespace Immersive.Framework.ActivityFlow
                 pendingCount,
                 completedCount,
                 failedCount,
+                releasedCount,
                 requiredPendingCount,
+                requiredCompletedCount,
                 requiredFailedCount,
+                requiredReleasedCount,
                 optionalPendingCount,
+                optionalCompletedCount,
                 optionalFailedCount,
-                hasRequiredReleased,
+                optionalReleasedCount,
                 isSatisfied,
                 reason);
         }

@@ -1,3 +1,4 @@
+using System;
 using Immersive.Framework.ApiStatus;
 using Immersive.Framework.Authoring;
 using Immersive.Framework.Common;
@@ -29,6 +30,10 @@ namespace Immersive.Framework.ActivityFlow
                 activityContentLifecycleResult,
                 false,
                 false,
+                0,
+                0,
+                0,
+                0,
                 0,
                 0,
                 0,
@@ -69,6 +74,10 @@ namespace Immersive.Framework.ActivityFlow
                 0,
                 0,
                 0,
+                0,
+                0,
+                0,
+                0,
                 blockingIssueCount,
                 source,
                 reason,
@@ -76,6 +85,10 @@ namespace Immersive.Framework.ActivityFlow
         {
         }
 
+        /// <summary>
+        /// Compatibility overload for callers that predate explicit completion and release counts.
+        /// Any participant not pending or failed is treated as completed; released counts are zero.
+        /// </summary>
         public ActivityReadinessState(
             ActivityReadinessStatus status,
             ActivityAsset activity,
@@ -94,7 +107,77 @@ namespace Immersive.Framework.ActivityFlow
             string source,
             string reason,
             string diagnosticReason)
+            : this(
+                status,
+                activity,
+                activityContentSet,
+                activityContentLifecycleResult,
+                activityContentExecutionExecuted,
+                activityContentExecutionBlocksReadiness,
+                activityContentExecutionBlockingIssueCount,
+                requiredCount,
+                optionalCount,
+                requiredPendingCount,
+                ResolveLegacyCompletedCount(
+                    requiredCount,
+                    requiredPendingCount,
+                    requiredFailedCount,
+                    nameof(requiredCount)),
+                requiredFailedCount,
+                0,
+                optionalPendingCount,
+                ResolveLegacyCompletedCount(
+                    optionalCount,
+                    optionalPendingCount,
+                    optionalFailedCount,
+                    nameof(optionalCount)),
+                optionalFailedCount,
+                0,
+                blockingIssueCount,
+                source,
+                reason,
+                diagnosticReason)
         {
+        }
+
+        public ActivityReadinessState(
+            ActivityReadinessStatus status,
+            ActivityAsset activity,
+            ActivityContentSet activityContentSet,
+            ActivityContentLifecycleResult activityContentLifecycleResult,
+            bool activityContentExecutionExecuted,
+            bool activityContentExecutionBlocksReadiness,
+            int activityContentExecutionBlockingIssueCount,
+            int requiredCount,
+            int optionalCount,
+            int requiredPendingCount,
+            int requiredCompletedCount,
+            int requiredFailedCount,
+            int requiredReleasedCount,
+            int optionalPendingCount,
+            int optionalCompletedCount,
+            int optionalFailedCount,
+            int optionalReleasedCount,
+            int blockingIssueCount,
+            string source,
+            string reason,
+            string diagnosticReason)
+        {
+            ValidateContributionCounts(
+                requiredCount,
+                requiredPendingCount,
+                requiredCompletedCount,
+                requiredFailedCount,
+                requiredReleasedCount,
+                nameof(requiredCount));
+            ValidateContributionCounts(
+                optionalCount,
+                optionalPendingCount,
+                optionalCompletedCount,
+                optionalFailedCount,
+                optionalReleasedCount,
+                nameof(optionalCount));
+
             Status = status;
             Activity = activity;
             ActivityContentSet = activityContentSet;
@@ -105,9 +188,13 @@ namespace Immersive.Framework.ActivityFlow
             RequiredCount = requiredCount;
             OptionalCount = optionalCount;
             RequiredPendingCount = requiredPendingCount;
+            RequiredCompletedCount = requiredCompletedCount;
             RequiredFailedCount = requiredFailedCount;
+            RequiredReleasedCount = requiredReleasedCount;
             OptionalPendingCount = optionalPendingCount;
+            OptionalCompletedCount = optionalCompletedCount;
             OptionalFailedCount = optionalFailedCount;
+            OptionalReleasedCount = optionalReleasedCount;
             BlockingIssueCount = blockingIssueCount;
             Source = source ?? string.Empty;
             Reason = reason ?? string.Empty;
@@ -124,12 +211,18 @@ namespace Immersive.Framework.ActivityFlow
         public int RequiredCount { get; }
         public int OptionalCount { get; }
         public int RequiredPendingCount { get; }
+        public int RequiredCompletedCount { get; }
         public int RequiredFailedCount { get; }
+        public int RequiredReleasedCount { get; }
         public int OptionalPendingCount { get; }
+        public int OptionalCompletedCount { get; }
         public int OptionalFailedCount { get; }
+        public int OptionalReleasedCount { get; }
         public int ParticipantCount => RequiredCount + OptionalCount;
         public int PendingCount => RequiredPendingCount + OptionalPendingCount;
+        public int CompletedCount => RequiredCompletedCount + OptionalCompletedCount;
         public int FailedCount => RequiredFailedCount + OptionalFailedCount;
+        public int ReleasedCount => RequiredReleasedCount + OptionalReleasedCount;
         public int BlockingIssueCount { get; }
         public string Source { get; }
         public string Reason { get; }
@@ -140,7 +233,8 @@ namespace Immersive.Framework.ActivityFlow
             Activity != null &&
             BlockingIssueCount == 0 &&
             RequiredPendingCount == 0 &&
-            RequiredFailedCount == 0;
+            RequiredFailedCount == 0 &&
+            RequiredReleasedCount == 0;
         public bool IsNotReady => Status == ActivityReadinessStatus.NotReady;
         public bool IsPreparing =>
             IsNotReady &&
@@ -148,6 +242,7 @@ namespace Immersive.Framework.ActivityFlow
             !HasTerminalFailure;
         public bool HasTerminalFailure =>
             RequiredFailedCount > 0 ||
+            RequiredReleasedCount > 0 ||
             HasBlockingIssues;
         public bool HasActivity => Activity != null;
         public bool HasActivityContent => ActivityContentSet.HasContent;
@@ -276,6 +371,60 @@ namespace Immersive.Framework.ActivityFlow
                 resolvedSource,
                 resolvedReason,
                 diagnosticReason);
+        }
+
+        private static int ResolveLegacyCompletedCount(
+            int totalCount,
+            int pendingCount,
+            int failedCount,
+            string parameterName)
+        {
+            ValidateNonNegative(totalCount, parameterName);
+            ValidateNonNegative(pendingCount, nameof(pendingCount));
+            ValidateNonNegative(failedCount, nameof(failedCount));
+
+            int completedCount = totalCount - pendingCount - failedCount;
+            if (completedCount < 0)
+            {
+                throw new ArgumentException(
+                    "Pending and failed participant counts cannot exceed the total count.",
+                    parameterName);
+            }
+
+            return completedCount;
+        }
+
+        private static void ValidateContributionCounts(
+            int totalCount,
+            int pendingCount,
+            int completedCount,
+            int failedCount,
+            int releasedCount,
+            string parameterName)
+        {
+            ValidateNonNegative(totalCount, parameterName);
+            ValidateNonNegative(pendingCount, nameof(pendingCount));
+            ValidateNonNegative(completedCount, nameof(completedCount));
+            ValidateNonNegative(failedCount, nameof(failedCount));
+            ValidateNonNegative(releasedCount, nameof(releasedCount));
+
+            if (pendingCount + completedCount + failedCount + releasedCount != totalCount)
+            {
+                throw new ArgumentException(
+                    "Participant state counts must equal the total participant count.",
+                    parameterName);
+            }
+        }
+
+        private static void ValidateNonNegative(int value, string parameterName)
+        {
+            if (value < 0)
+            {
+                throw new ArgumentOutOfRangeException(
+                    parameterName,
+                    value,
+                    "Participant counts cannot be negative.");
+            }
         }
 
         private static string NormalizeSource(string source)
