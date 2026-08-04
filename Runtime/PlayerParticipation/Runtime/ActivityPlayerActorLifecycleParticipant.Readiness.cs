@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using Immersive.Framework.ActivityFlow;
 using Immersive.Framework.Authoring;
+using Immersive.Framework.PlayerSlots;
 
 namespace Immersive.Framework.PlayerParticipation
 {
@@ -14,13 +15,25 @@ namespace Immersive.Framework.PlayerParticipation
         public IReadOnlyList<ActivityReadinessParticipant>
             ResolveActivityReadinessParticipants(ActivityAsset activity)
         {
-            if (activity == null ||
-                playerReadinessRecord == null ||
-                playerReadinessRecord.Released ||
-                playerReadinessRecord.ProjectedSlots.Count == 0 ||
-                playerReadinessRecord.RequirementLevel ==
+            if (activity == null)
+            {
+                return Array.Empty<ActivityReadinessParticipant>();
+            }
+
+            if (!TryResolveProjection(
+                    activity,
+                    out PlayerParticipationRequirementLevel requirementLevel,
+                    out List<PlayerSlotRuntimeSnapshot> projectedSlots,
+                    out string projectionIssue))
+            {
+                throw new InvalidOperationException(
+                    "Player Activity readiness source could not resolve the " +
+                    $"Activity participation projection. {projectionIssue}");
+            }
+
+            if (requirementLevel ==
                     PlayerParticipationRequirementLevel.None ||
-                !ReferenceEquals(playerReadinessRecord.Activity, activity))
+                projectedSlots.Count == 0)
             {
                 return Array.Empty<ActivityReadinessParticipant>();
             }
@@ -51,14 +64,34 @@ namespace Immersive.Framework.PlayerParticipation
 
         private void OnPlayerReadinessPreparationStarted()
         {
+            SynchronizePlayerReadinessContributionAfterRecordCreated();
+        }
+
+        private void SynchronizePlayerReadinessContributionAfterRecordCreated()
+        {
             if (playerReadinessRecord == null ||
-                playerReadinessParticipant == null)
+                playerReadinessParticipant == null ||
+                playerReadinessParticipant.State !=
+                    ActivityReadinessParticipantState.Preparing)
             {
                 return;
             }
 
             playerReadinessRecord.Occurrence =
                 playerReadinessParticipant.Occurrence;
+            ApplyPlayerReadinessRecordTerminalState();
+        }
+
+        private void ApplyPlayerReadinessRecordTerminalState()
+        {
+            if (playerReadinessRecord == null ||
+                playerReadinessParticipant == null ||
+                playerReadinessParticipant.State !=
+                    ActivityReadinessParticipantState.Preparing)
+            {
+                return;
+            }
+
             if (playerReadinessRecord.Failed)
             {
                 playerReadinessParticipant.FailPreparation(
@@ -102,12 +135,7 @@ namespace Immersive.Framework.PlayerParticipation
                 ActivityPlayerActorReadinessReason.RequirementSatisfied;
             playerReadinessRecord.Message = message ?? string.Empty;
 
-            if (playerReadinessParticipant != null &&
-                playerReadinessParticipant.State ==
-                    ActivityReadinessParticipantState.Preparing)
-            {
-                playerReadinessParticipant.CompletePreparation();
-            }
+            ApplyPlayerReadinessRecordTerminalState();
         }
 
         private void FailPlayerReadinessContribution(
@@ -126,13 +154,7 @@ namespace Immersive.Framework.PlayerParticipation
                 ? "Player Activity readiness failed."
                 : message.Trim();
 
-            if (playerReadinessParticipant != null &&
-                playerReadinessParticipant.State ==
-                    ActivityReadinessParticipantState.Preparing)
-            {
-                playerReadinessParticipant.FailPreparation(
-                    playerReadinessRecord.Message);
-            }
+            ApplyPlayerReadinessRecordTerminalState();
         }
 
         private void ReleasePlayerReadinessRecord(string reason)

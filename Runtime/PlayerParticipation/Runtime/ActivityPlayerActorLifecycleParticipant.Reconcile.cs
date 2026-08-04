@@ -199,6 +199,7 @@ namespace Immersive.Framework.PlayerParticipation
                 ReadinessReason = ResolveAggregateReadinessReason(slots),
                 Message = "Activity Player lifecycle entered in a normal Preparing state and awaits explicit delta reconcile."
             };
+            SynchronizePlayerReadinessContributionAfterRecordCreated();
 
             activeRecord = new ActiveActivityRecord(
                 activity,
@@ -301,6 +302,7 @@ namespace Immersive.Framework.PlayerParticipation
                 Message =
                     "Activity Player lifecycle requirement was satisfied during Activity enter."
             };
+            SynchronizePlayerReadinessContributionAfterRecordCreated();
         }
 
         internal ActivityPlayerActorReconcileResult
