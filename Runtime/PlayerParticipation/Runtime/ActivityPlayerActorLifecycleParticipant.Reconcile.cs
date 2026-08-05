@@ -356,6 +356,14 @@ namespace Immersive.Framework.PlayerParticipation
 
             if (playerReadinessRecord.Completed)
             {
+                bool projectedSlotRevisionChanged =
+                    HasProjectedSlotRevisionDelta(session);
+                if (!projectedSlotRevisionChanged)
+                {
+                    playerReadinessRecord.AppliedSessionRevision =
+                        session.Revision;
+                }
+
                 lastReconcileResult = BuildReconcileResult(
                     ActivityPlayerActorReconcileStatus.SucceededNoChange,
                     session.Revision,
@@ -363,7 +371,9 @@ namespace Immersive.Framework.PlayerParticipation
                     false,
                     false,
                     true,
-                    "Activity Player readiness is already complete.");
+                    projectedSlotRevisionChanged
+                        ? "Activity Player readiness is already complete; the completed occurrence retains its existing applied revision because a projected Slot changed."
+                        : "Activity Player readiness is already complete; the Session revision changed only outside the frozen Activity projection and was acknowledged without lifecycle mutation.");
                 return lastReconcileResult;
             }
 
@@ -798,11 +808,10 @@ namespace Immersive.Framework.PlayerParticipation
             return null;
         }
 
-        private bool HasReconcileRevisionDelta(
+        private bool HasProjectedSlotRevisionDelta(
             PlayerParticipationSnapshot session)
         {
-            if (session.Revision !=
-                playerReadinessRecord.AppliedSessionRevision)
+            if (session == null)
             {
                 return true;
             }
@@ -825,6 +834,15 @@ namespace Immersive.Framework.PlayerParticipation
             }
 
             return false;
+        }
+
+        private bool HasReconcileRevisionDelta(
+            PlayerParticipationSnapshot session)
+        {
+            return
+                session.Revision !=
+                    playerReadinessRecord.AppliedSessionRevision ||
+                HasProjectedSlotRevisionDelta(session);
         }
 
         private ActivityPlayerAdmissionEvaluationResult

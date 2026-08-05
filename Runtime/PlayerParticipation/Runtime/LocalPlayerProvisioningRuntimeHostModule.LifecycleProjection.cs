@@ -386,6 +386,16 @@ namespace Immersive.Framework.PlayerParticipation
                         .SucceededExitedNoActors);
         }
 
+        private static bool IsReadinessReleased(
+            ActivityPlayerReadinessContributionRuntimeSnapshot readiness)
+        {
+            return readiness != null &&
+                string.Equals(
+                    readiness.State.ToString(),
+                    "Released",
+                    StringComparison.OrdinalIgnoreCase);
+        }
+
         private static bool TryGetSessionSlot(
             PlayerParticipationSnapshot participation,
             PlayerSlotId playerSlotId,
@@ -475,7 +485,8 @@ namespace Immersive.Framework.PlayerParticipation
                 return ManagerProvisionedPlayerLifecycleStatus.Failed;
             }
 
-            if (IsReleased(lifecycle))
+            if (IsReleased(lifecycle) ||
+                IsReadinessReleased(readiness))
             {
                 return ManagerProvisionedPlayerLifecycleStatus.Released;
             }
