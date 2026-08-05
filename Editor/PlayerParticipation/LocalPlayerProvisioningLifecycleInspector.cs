@@ -135,7 +135,7 @@ namespace Immersive.Framework.Editor.Editor.PlayerParticipation
                         DisplayOr(
                             slot.PlayerSlotId,
                             $"Slot {index + 1}"),
-                        BuildSlotStage(slot));
+                        BuildSlotStage(snapshot, slot));
                 }
             }
         }
@@ -293,7 +293,7 @@ namespace Immersive.Framework.Editor.Editor.PlayerParticipation
 
                 case ManagerProvisionedPlayerLifecycleStatus.Ready:
                     return
-                        "Manager-Provisioned Player lifecycle is ready for gameplay.";
+                        "Manager-Provisioned Player lifecycle satisfies the current Activity entry policy.";
 
                 case ManagerProvisionedPlayerLifecycleStatus.Failed:
                     return
@@ -341,34 +341,82 @@ namespace Immersive.Framework.Editor.Editor.PlayerParticipation
         }
 
         private static string BuildSlotStage(
+            ManagerProvisionedPlayerLifecycleSnapshot snapshot,
             ManagerProvisionedPlayerLifecycleSlotSnapshot slot)
         {
-            if (!slot.HasTechnicalHost)
+            PlayerParticipationRequirementLevel requirementLevel =
+                ResolveRequirementLevel(snapshot);
+
+            if (Requires(
+                    requirementLevel,
+                    PlayerParticipationRequirementLevel.JoinedSlots) &&
+                !slot.HasTechnicalHost)
             {
                 return "No technical Host";
             }
 
-            if (!slot.HasSelectedActor)
+            if (Requires(
+                    requirementLevel,
+                    PlayerParticipationRequirementLevel.SelectedActors) &&
+                !slot.HasSelectedActor)
             {
                 return "Waiting for Actor selection";
             }
 
-            if (!slot.LogicalActorPrepared)
+            if (Requires(
+                    requirementLevel,
+                    PlayerParticipationRequirementLevel
+                        .LogicalActorsPrepared) &&
+                !slot.LogicalActorPrepared)
             {
                 return "Preparing Logical Actor";
             }
 
-            if (!slot.PhysicalActorMaterialized)
+            if (Requires(
+                    requirementLevel,
+                    PlayerParticipationRequirementLevel
+                        .LogicalActorsPrepared) &&
+                !slot.PhysicalActorMaterialized)
             {
                 return "Materializing Physical Actor";
             }
 
-            if (!slot.GameplayAdmitted)
+            if (Requires(
+                    requirementLevel,
+                    PlayerParticipationRequirementLevel.GameplayReady) &&
+                !slot.GameplayAdmitted)
             {
                 return "Waiting for gameplay admission";
             }
 
-            return "Ready";
+            return "Ready for current entry policy";
+        }
+
+        private static PlayerParticipationRequirementLevel
+            ResolveRequirementLevel(
+                ManagerProvisionedPlayerLifecycleSnapshot snapshot)
+        {
+            if (snapshot != null &&
+                Enum.TryParse(
+                    snapshot.EntryPolicy,
+                    false,
+                    out PlayerParticipationRequirementLevel parsed) &&
+                Enum.IsDefined(
+                    typeof(PlayerParticipationRequirementLevel),
+                    parsed))
+            {
+                return parsed;
+            }
+
+            // Unknown policy must remain conservative in the diagnostic UI.
+            return PlayerParticipationRequirementLevel.GameplayReady;
+        }
+
+        private static bool Requires(
+            PlayerParticipationRequirementLevel actual,
+            PlayerParticipationRequirementLevel required)
+        {
+            return (int)actual >= (int)required;
         }
 
         private static string DisplayOr(

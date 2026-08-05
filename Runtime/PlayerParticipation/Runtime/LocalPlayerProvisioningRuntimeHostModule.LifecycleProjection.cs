@@ -127,6 +127,8 @@ namespace Immersive.Framework.PlayerParticipation
             bool joinedSlotMissingLogicalPreparation = false;
             bool joinedSlotMissingPhysicalMaterialization = false;
             bool joinedSlotMissingGameplayAdmission = false;
+            bool projectedPreparationFailed = false;
+            bool projectedGameplayAdmissionFailed = false;
 
             for (int index = 0;
                  index < activitySlots.Count;
@@ -183,13 +185,16 @@ namespace Immersive.Framework.PlayerParticipation
                     hasPreparation &&
                     preparationSummary.HasMaterialization;
 
-                bool gameplayAdmitted =
+                PlayerGameplayAdmissionSummary gameplayAdmission =
+                    default;
+                bool hasGameplayAdmission =
                     gameplayAvailable &&
                     gameplaySnapshot.Admission != null &&
                     gameplaySnapshot.Admission.TryGetSummary(
                         slot.PlayerSlotId,
-                        out PlayerGameplayAdmissionSummary
-                            gameplayAdmission) &&
+                        out gameplayAdmission);
+                bool gameplayAdmitted =
+                    hasGameplayAdmission &&
                     gameplayAdmission.IsAdmitted;
 
                 if (slot.IsJoined)
@@ -207,6 +212,12 @@ namespace Immersive.Framework.PlayerParticipation
                     joinedSlotMissingGameplayAdmission |=
                         physicalActorMaterialized &&
                         !gameplayAdmitted;
+                    projectedPreparationFailed |=
+                        hasPreparation &&
+                        preparationSummary.IsReleaseFailed;
+                    projectedGameplayAdmissionFailed |=
+                        hasGameplayAdmission &&
+                        gameplayAdmission.IsReleaseFailed;
                 }
 
                 projectedSlots.Add(
@@ -272,10 +283,16 @@ namespace Immersive.Framework.PlayerParticipation
                 hasGateEvidence &&
                 readinessContribution.GateHeld;
 
+            PlayerParticipationRequirementLevel requirementLevel =
+                ResolveRequirementLevel(
+                    lifecycle,
+                    reconciliationSnapshot,
+                    readinessMatchesProjectedActivity
+                        ? readinessContribution
+                        : null);
+
             ManagerProvisionedPlayerLifecycleStatus status =
                 ResolveStatus(
-                    preparationSnapshot,
-                    gameplaySnapshot,
                     reconciliationSnapshot,
                     reconcileResult,
                     lifecycle,
@@ -285,7 +302,10 @@ namespace Immersive.Framework.PlayerParticipation
                     projectedSlots.Count,
                     projectedJoinedCount,
                     projectedJoinedWithoutSelectedActorCount,
+                    requirementLevel,
                     projectedSlotMissingSessionEvidence,
+                    projectedPreparationFailed,
+                    projectedGameplayAdmissionFailed,
                     joinedSlotMissingLogicalPreparation,
                     joinedSlotMissingPhysicalMaterialization,
                     joinedSlotMissingGameplayAdmission);
@@ -295,8 +315,9 @@ namespace Immersive.Framework.PlayerParticipation
                 !string.IsNullOrWhiteSpace(
                     readinessContribution.RequirementLevel)
                     ? readinessContribution.RequirementLevel
-                    : lifecycle != null
-                        ? lifecycle.RequirementLevel.ToString()
+                    : (lifecycle != null ||
+                       reconciliationSnapshot?.Activity != null)
+                        ? requirementLevel.ToString()
                         : string.Empty;
 
             string readinessStatus =
@@ -416,8 +437,6 @@ namespace Immersive.Framework.PlayerParticipation
         }
 
         private static ManagerProvisionedPlayerLifecycleStatus ResolveStatus(
-            PlayerActorPreparationRuntimeHostSnapshot preparation,
-            PlayerGameplayRuntimeHostSnapshot gameplay,
             PlayerActivityReconciliationRuntimeHostSnapshot reconciliation,
             ActivityPlayerActorReconcileResult reconcileResult,
             ActivityPlayerActorLifecycleSnapshot lifecycle,
@@ -425,16 +444,33 @@ namespace Immersive.Framework.PlayerParticipation
             int projectedSlotCount,
             int projectedJoinedCount,
             int projectedJoinedWithoutSelectedActorCount,
+            PlayerParticipationRequirementLevel requirementLevel,
             bool projectedSlotMissingSessionEvidence,
+            bool projectedPreparationFailed,
+            bool projectedGameplayAdmissionFailed,
             bool missingLogicalPreparation,
             bool missingPhysicalMaterialization,
             bool missingGameplayAdmission)
         {
+            bool requiresJoinedSlots = Requires(
+                requirementLevel,
+                PlayerParticipationRequirementLevel.JoinedSlots);
+            bool requiresSelectedActors = Requires(
+                requirementLevel,
+                PlayerParticipationRequirementLevel.SelectedActors);
+            bool requiresLogicalActors = Requires(
+                requirementLevel,
+                PlayerParticipationRequirementLevel.LogicalActorsPrepared);
+            bool requiresGameplayReady = Requires(
+                requirementLevel,
+                PlayerParticipationRequirementLevel.GameplayReady);
+
             if (projectedSlotMissingSessionEvidence ||
                 readiness?.Failed == true ||
                 reconcileResult?.Failed == true ||
-                (preparation?.ReleaseFailedCount ?? 0) > 0 ||
-                (gameplay?.Admission?.ReleaseFailedCount ?? 0) > 0)
+                (requiresLogicalActors && projectedPreparationFailed) ||
+                (requiresGameplayReady &&
+                 projectedGameplayAdmissionFailed))
             {
                 return ManagerProvisionedPlayerLifecycleStatus.Failed;
             }
@@ -452,41 +488,108 @@ namespace Immersive.Framework.PlayerParticipation
                     .WaitingForActivity;
             }
 
-            if (projectedSlotCount > 0 &&
-                projectedJoinedCount == 0)
+            if (requiresJoinedSlots &&
+                projectedJoinedCount < projectedSlotCount)
             {
                 return ManagerProvisionedPlayerLifecycleStatus
                     .WaitingForJoin;
             }
 
-            if (projectedJoinedWithoutSelectedActorCount > 0)
+            if (requiresSelectedActors &&
+                projectedJoinedWithoutSelectedActorCount > 0)
             {
                 return ManagerProvisionedPlayerLifecycleStatus
                     .WaitingForActorSelection;
             }
 
-            if (missingLogicalPreparation)
+            if (requiresLogicalActors &&
+                missingLogicalPreparation)
             {
                 return ManagerProvisionedPlayerLifecycleStatus
                     .PreparingLogicalActor;
             }
 
-            if (missingPhysicalMaterialization)
+            if (requiresLogicalActors &&
+                missingPhysicalMaterialization)
             {
                 return ManagerProvisionedPlayerLifecycleStatus
                     .MaterializingPhysicalActor;
             }
 
-            if (readiness?.GateHeld == true ||
-                missingGameplayAdmission ||
-                reconcileResult == null ||
-                !reconcileResult.Completed)
+            if (requiresGameplayReady &&
+                missingGameplayAdmission)
             {
                 return ManagerProvisionedPlayerLifecycleStatus
                     .PreparingGameplayAdmission;
             }
 
+            bool readinessCompleted =
+                requirementLevel ==
+                    PlayerParticipationRequirementLevel.None ||
+                projectedSlotCount == 0 ||
+                readiness?.Completed == true ||
+                reconcileResult?.Completed == true;
+
+            if (!readinessCompleted)
+            {
+                return requiresGameplayReady
+                    ? ManagerProvisionedPlayerLifecycleStatus
+                        .PreparingGameplayAdmission
+                    : requiresLogicalActors
+                        ? ManagerProvisionedPlayerLifecycleStatus
+                            .PreparingLogicalActor
+                        : requiresSelectedActors
+                            ? ManagerProvisionedPlayerLifecycleStatus
+                                .WaitingForActorSelection
+                            : ManagerProvisionedPlayerLifecycleStatus
+                                .WaitingForJoin;
+            }
+
             return ManagerProvisionedPlayerLifecycleStatus.Ready;
+        }
+
+        private static bool Requires(
+            PlayerParticipationRequirementLevel actual,
+            PlayerParticipationRequirementLevel required)
+        {
+            return (int)actual >= (int)required;
+        }
+
+        private static PlayerParticipationRequirementLevel
+            ResolveRequirementLevel(
+                ActivityPlayerActorLifecycleSnapshot lifecycle,
+                PlayerActivityReconciliationRuntimeHostSnapshot reconciliation,
+                ActivityPlayerReadinessContributionRuntimeSnapshot readiness)
+        {
+            if (lifecycle != null &&
+                Enum.IsDefined(
+                    typeof(PlayerParticipationRequirementLevel),
+                    lifecycle.RequirementLevel))
+            {
+                return lifecycle.RequirementLevel;
+            }
+
+            if (readiness != null &&
+                Enum.TryParse(
+                    readiness.RequirementLevel,
+                    false,
+                    out PlayerParticipationRequirementLevel parsed) &&
+                Enum.IsDefined(
+                    typeof(PlayerParticipationRequirementLevel),
+                    parsed))
+            {
+                return parsed;
+            }
+
+            if (reconciliation?.Activity != null &&
+                reconciliation.Activity
+                    .HasDefinedPlayerParticipationRequirementLevel)
+            {
+                return reconciliation.Activity
+                    .PlayerParticipationRequirementLevel;
+            }
+
+            return PlayerParticipationRequirementLevel.None;
         }
 
         private static string BuildSlotDiagnostic(
