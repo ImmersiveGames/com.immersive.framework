@@ -89,6 +89,21 @@ namespace Immersive.Framework.PlayerParticipation
                 reconciliationSnapshot = null;
             }
 
+            ActivityPlayerReadinessContributionRuntimeSnapshot
+                readinessContribution = null;
+            bool readinessContributionAvailable =
+                preparationAvailable &&
+                preparation
+                    .TryGetActivityPlayerReadinessContributionSnapshot(
+                        out readinessContribution) &&
+                readinessContribution != null &&
+                readinessContribution.IsAvailable;
+
+            if (!readinessContributionAvailable)
+            {
+                readinessContribution = null;
+            }
+
             ActivityPlayerActorReconcileResult reconcileResult =
                 reconciliationSnapshot?.ReconcileResult;
             ActivityPlayerActorLifecycleSnapshot lifecycle =
@@ -175,6 +190,47 @@ namespace Immersive.Framework.PlayerParticipation
                             gameplayAdmitted)));
             }
 
+            string activityName =
+                !string.IsNullOrWhiteSpace(reconcileResult?.ActivityName)
+                    ? reconcileResult.ActivityName
+                    : reconciliationSnapshot?.Activity != null
+                        ? reconciliationSnapshot.Activity.ActivityName
+                        : readinessContributionAvailable
+                            ? readinessContribution.ActivityName
+                            : string.Empty;
+
+            int occurrence =
+                reconcileResult != null
+                    ? reconcileResult.Occurrence
+                    : reconciliationSnapshot?.Occurrence > 0
+                        ? reconciliationSnapshot.Occurrence
+                        : readinessContribution?.Occurrence ?? 0;
+
+            bool readinessMatchesProjectedActivity =
+                readinessContributionAvailable &&
+                readinessContribution.HasOccurrence &&
+                (occurrence <= 0 ||
+                 readinessContribution.Occurrence == occurrence) &&
+                (string.IsNullOrWhiteSpace(activityName) ||
+                 string.IsNullOrWhiteSpace(
+                     readinessContribution.ActivityName) ||
+                 string.Equals(
+                     activityName,
+                     readinessContribution.ActivityName,
+                     StringComparison.Ordinal));
+
+            ManagerProvisionedPlayerGateEvidenceScope gateEvidenceScope =
+                readinessMatchesProjectedActivity
+                    ? ManagerProvisionedPlayerGateEvidenceScope
+                        .ActivityPlayerReadinessContribution
+                    : ManagerProvisionedPlayerGateEvidenceScope.None;
+
+            bool hasGateEvidence =
+                readinessMatchesProjectedActivity;
+            bool gateHeld =
+                hasGateEvidence &&
+                readinessContribution.GateHeld;
+
             ManagerProvisionedPlayerLifecycleStatus status =
                 ResolveStatus(
                     participation,
@@ -183,38 +239,37 @@ namespace Immersive.Framework.PlayerParticipation
                     reconciliationSnapshot,
                     reconcileResult,
                     lifecycle,
+                    readinessMatchesProjectedActivity
+                        ? readinessContribution
+                        : null,
                     joinedSlotMissingLogicalPreparation,
                     joinedSlotMissingPhysicalMaterialization,
                     joinedSlotMissingGameplayAdmission);
 
-            string activityName =
-                !string.IsNullOrWhiteSpace(reconcileResult?.ActivityName)
-                    ? reconcileResult.ActivityName
-                    : reconciliationSnapshot?.Activity != null
-                        ? reconciliationSnapshot.Activity.ActivityName
-                        : string.Empty;
-
-            int occurrence =
-                reconcileResult != null
-                    ? reconcileResult.Occurrence
-                    : reconciliationSnapshot?.Occurrence ?? 0;
-
             string entryPolicy =
-                lifecycle != null
-                    ? lifecycle.RequirementLevel.ToString()
-                    : string.Empty;
+                readinessContributionAvailable &&
+                !string.IsNullOrWhiteSpace(
+                    readinessContribution.RequirementLevel)
+                    ? readinessContribution.RequirementLevel
+                    : lifecycle != null
+                        ? lifecycle.RequirementLevel.ToString()
+                        : string.Empty;
 
             string readinessStatus =
-                reconcileResult != null
-                    ? reconcileResult.Status.ToString()
-                    : reconciliationSnapshot != null
-                        ? reconciliationSnapshot.Status.ToString()
-                        : string.Empty;
+                readinessContributionAvailable
+                    ? readinessContribution.State.ToString()
+                    : reconcileResult != null
+                        ? reconcileResult.Status.ToString()
+                        : reconciliationSnapshot != null
+                            ? reconciliationSnapshot.Status.ToString()
+                            : string.Empty;
 
             string readinessReason =
-                reconcileResult != null
-                    ? reconcileResult.ReadinessReason.ToString()
-                    : string.Empty;
+                readinessContributionAvailable
+                    ? readinessContribution.LastReason
+                    : reconcileResult != null
+                        ? reconcileResult.ReadinessReason.ToString()
+                        : string.Empty;
 
             int hostCount =
                 preparationSnapshot?.RegisteredHostCount ?? 0;
@@ -226,7 +281,10 @@ namespace Immersive.Framework.PlayerParticipation
                 gameplayAvailable,
                 gameplaySnapshot,
                 reconciliationAvailable,
-                reconciliationSnapshot);
+                reconciliationSnapshot,
+                readinessContributionAvailable,
+                readinessContribution,
+                readinessMatchesProjectedActivity);
 
             snapshot =
                 new ManagerProvisionedPlayerLifecycleSnapshot(
@@ -240,8 +298,9 @@ namespace Immersive.Framework.PlayerParticipation
                     entryPolicy,
                     readinessStatus,
                     readinessReason,
-                    false,
-                    false,
+                    gateEvidenceScope,
+                    hasGateEvidence,
+                    gateHeld,
                     participation.JoiningOpen,
                     hostCount,
                     projectedSlots,
@@ -281,11 +340,13 @@ namespace Immersive.Framework.PlayerParticipation
             PlayerActivityReconciliationRuntimeHostSnapshot reconciliation,
             ActivityPlayerActorReconcileResult reconcileResult,
             ActivityPlayerActorLifecycleSnapshot lifecycle,
+            ActivityPlayerReadinessContributionRuntimeSnapshot readiness,
             bool missingLogicalPreparation,
             bool missingPhysicalMaterialization,
             bool missingGameplayAdmission)
         {
-            if (reconcileResult?.Failed == true ||
+            if (readiness?.Failed == true ||
+                reconcileResult?.Failed == true ||
                 (preparation?.ReleaseFailedCount ?? 0) > 0 ||
                 (gameplay?.Admission?.ReleaseFailedCount ?? 0) > 0)
             {
@@ -334,7 +395,8 @@ namespace Immersive.Framework.PlayerParticipation
                     .MaterializingPhysicalActor;
             }
 
-            if (missingGameplayAdmission ||
+            if (readiness?.GateHeld == true ||
+                missingGameplayAdmission ||
                 reconcileResult == null ||
                 !reconcileResult.Completed)
             {
@@ -383,7 +445,11 @@ namespace Immersive.Framework.PlayerParticipation
             bool gameplayAvailable,
             PlayerGameplayRuntimeHostSnapshot gameplay,
             bool reconciliationAvailable,
-            PlayerActivityReconciliationRuntimeHostSnapshot reconciliation)
+            PlayerActivityReconciliationRuntimeHostSnapshot reconciliation,
+            bool readinessContributionAvailable,
+            ActivityPlayerReadinessContributionRuntimeSnapshot
+                readinessContribution,
+            bool readinessMatchesProjectedActivity)
         {
             string preparationDiagnostic =
                 preparationAvailable
@@ -400,6 +466,11 @@ namespace Immersive.Framework.PlayerParticipation
                     ? reconciliation.ToDiagnosticString()
                     : "Player Activity reconciliation has not produced evidence.";
 
+            string readinessDiagnostic =
+                readinessContributionAvailable
+                    ? readinessContribution.ToDiagnosticString()
+                    : "Player readiness contribution has not produced evidence.";
+
             return
                 $"session='{participation.ContextId}' " +
                 $"sessionRevision='{participation.Revision}' " +
@@ -408,7 +479,11 @@ namespace Immersive.Framework.PlayerParticipation
                 $"preparation='{preparationDiagnostic}' " +
                 $"gameplay='{gameplayDiagnostic}' " +
                 $"reconciliation='{reconciliationDiagnostic}' " +
-                "gateEvidence='deferred-to-IF-M07-12B-2B'.";
+                $"readinessContribution='{readinessDiagnostic}' " +
+                $"readinessMatchesActivity='" +
+                $"{readinessMatchesProjectedActivity}' " +
+                "gateEvidenceScope='ActivityPlayerReadinessContribution; " +
+                "not-aggregate-activity-gate'.";
         }
     }
 }

@@ -21,6 +21,8 @@ namespace Immersive.Framework.PlayerParticipation
         private readonly IReadOnlyList<
             ManagerProvisionedPlayerLifecycleSlotSnapshot> slots;
 
+        [Obsolete(
+            "Use the overload that declares GateEvidenceScope explicitly.")]
         public ManagerProvisionedPlayerLifecycleSnapshot(
             bool isAvailable,
             ManagerProvisionedPlayerLifecycleStatus status,
@@ -32,6 +34,49 @@ namespace Immersive.Framework.PlayerParticipation
             string entryPolicy,
             string readinessStatus,
             string readinessReason,
+            bool hasGateEvidence,
+            bool gateHeld,
+            bool joiningOpen,
+            int hostCount,
+            IReadOnlyList<
+                ManagerProvisionedPlayerLifecycleSlotSnapshot> slots,
+            string diagnostic)
+            : this(
+                isAvailable,
+                status,
+                activityName,
+                activityOccurrence,
+                sessionRevision,
+                requestedSessionRevision,
+                appliedSessionRevision,
+                entryPolicy,
+                readinessStatus,
+                readinessReason,
+                hasGateEvidence
+                    ? ManagerProvisionedPlayerGateEvidenceScope
+                        .ActivityPlayerReadinessContribution
+                    : ManagerProvisionedPlayerGateEvidenceScope.None,
+                hasGateEvidence,
+                gateHeld,
+                joiningOpen,
+                hostCount,
+                slots,
+                diagnostic)
+        {
+        }
+
+        public ManagerProvisionedPlayerLifecycleSnapshot(
+            bool isAvailable,
+            ManagerProvisionedPlayerLifecycleStatus status,
+            string activityName,
+            int activityOccurrence,
+            int sessionRevision,
+            int requestedSessionRevision,
+            int appliedSessionRevision,
+            string entryPolicy,
+            string readinessStatus,
+            string readinessReason,
+            ManagerProvisionedPlayerGateEvidenceScope gateEvidenceScope,
             bool hasGateEvidence,
             bool gateHeld,
             bool joiningOpen,
@@ -54,8 +99,14 @@ namespace Immersive.Framework.PlayerParticipation
             EntryPolicy = Normalize(entryPolicy);
             ReadinessStatus = Normalize(readinessStatus);
             ReadinessReason = Normalize(readinessReason);
-            HasGateEvidence = hasGateEvidence;
-            GateHeld = hasGateEvidence && gateHeld;
+            GateEvidenceScope = hasGateEvidence
+                ? gateEvidenceScope
+                : ManagerProvisionedPlayerGateEvidenceScope.None;
+            HasGateEvidence =
+                hasGateEvidence &&
+                GateEvidenceScope !=
+                    ManagerProvisionedPlayerGateEvidenceScope.None;
+            GateHeld = HasGateEvidence && gateHeld;
             JoiningOpen = joiningOpen;
             HostCount = Math.Max(0, hostCount);
             this.slots = CopySlots(slots);
@@ -81,6 +132,13 @@ namespace Immersive.Framework.PlayerParticipation
         public string ReadinessStatus { get; }
 
         public string ReadinessReason { get; }
+
+        /// <summary>
+        /// Identifies whether the evidence describes only the official Player
+        /// readiness contribution or an aggregate Activity gate authority.
+        /// </summary>
+        public ManagerProvisionedPlayerGateEvidenceScope
+            GateEvidenceScope { get; }
 
         /// <summary>
         /// True only when GateHeld was obtained from an explicit gate/readiness
@@ -124,6 +182,7 @@ namespace Immersive.Framework.PlayerParticipation
                 string.Empty,
                 string.Empty,
                 string.Empty,
+                ManagerProvisionedPlayerGateEvidenceScope.None,
                 false,
                 false,
                 false,
@@ -143,6 +202,7 @@ namespace Immersive.Framework.PlayerParticipation
                 $"entryPolicy='{EntryPolicy}' " +
                 $"readiness='{ReadinessStatus}' " +
                 $"readinessReason='{ReadinessReason}' " +
+                $"gateEvidenceScope='{GateEvidenceScope}' " +
                 $"hasGateEvidence='{HasGateEvidence}' " +
                 $"gateHeld='{GateHeld}' joiningOpen='{JoiningOpen}' " +
                 $"hostCount='{HostCount}' slotCount='{SlotCount}' " +
