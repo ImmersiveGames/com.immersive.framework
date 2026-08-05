@@ -109,20 +109,56 @@ namespace Immersive.Framework.PlayerParticipation
             ActivityPlayerActorLifecycleSnapshot lifecycle =
                 reconcileResult?.LifecycleSnapshot;
 
+            bool lifecycleReleased = IsReleased(lifecycle);
+            IReadOnlyList<ActivityPlayerActorSlotLifecycleSnapshot>
+                activitySlots =
+                    lifecycleReleased || lifecycle == null
+                        ? Array.Empty<
+                            ActivityPlayerActorSlotLifecycleSnapshot>()
+                        : lifecycle.Slots;
+
             var projectedSlots =
                 new List<ManagerProvisionedPlayerLifecycleSlotSnapshot>(
-                    participation.ConfiguredSlotCount);
+                    activitySlots.Count);
 
+            bool projectedSlotMissingSessionEvidence = false;
+            int projectedJoinedCount = 0;
+            int projectedJoinedWithoutSelectedActorCount = 0;
             bool joinedSlotMissingLogicalPreparation = false;
             bool joinedSlotMissingPhysicalMaterialization = false;
             bool joinedSlotMissingGameplayAdmission = false;
 
             for (int index = 0;
-                 index < participation.Slots.Count;
+                 index < activitySlots.Count;
                  index++)
             {
-                PlayerSlotRuntimeSnapshot slot =
-                    participation.Slots[index];
+                ActivityPlayerActorSlotLifecycleSnapshot activitySlot =
+                    activitySlots[index];
+
+                if (!TryGetSessionSlot(
+                        participation,
+                        activitySlot.PlayerSlotId,
+                        out PlayerSlotRuntimeSnapshot slot))
+                {
+                    projectedSlotMissingSessionEvidence = true;
+                    projectedSlots.Add(
+                        new ManagerProvisionedPlayerLifecycleSlotSnapshot(
+                            activitySlot.PlayerSlotId.IsValid
+                                ? activitySlot.PlayerSlotId.StableText
+                                : string.Empty,
+                            string.Empty,
+                            false,
+                            activitySlot.SelectedActorProfileId.IsValid
+                                ? activitySlot.SelectedActorProfileId
+                                    .StableText
+                                : string.Empty,
+                            false,
+                            false,
+                            false,
+                            "Activity projection Slot has no matching " +
+                            "Session Slot evidence."));
+                    continue;
+                }
 
                 bool hasTechnicalHost =
                     preparationAvailable &&
@@ -158,6 +194,11 @@ namespace Immersive.Framework.PlayerParticipation
 
                 if (slot.IsJoined)
                 {
+                    projectedJoinedCount++;
+                    projectedJoinedWithoutSelectedActorCount +=
+                        slot.HasSelectedActor
+                            ? 0
+                            : 1;
                     joinedSlotMissingLogicalPreparation |=
                         !logicalActorPrepared;
                     joinedSlotMissingPhysicalMaterialization |=
@@ -233,7 +274,6 @@ namespace Immersive.Framework.PlayerParticipation
 
             ManagerProvisionedPlayerLifecycleStatus status =
                 ResolveStatus(
-                    participation,
                     preparationSnapshot,
                     gameplaySnapshot,
                     reconciliationSnapshot,
@@ -242,12 +282,16 @@ namespace Immersive.Framework.PlayerParticipation
                     readinessMatchesProjectedActivity
                         ? readinessContribution
                         : null,
+                    projectedSlots.Count,
+                    projectedJoinedCount,
+                    projectedJoinedWithoutSelectedActorCount,
+                    projectedSlotMissingSessionEvidence,
                     joinedSlotMissingLogicalPreparation,
                     joinedSlotMissingPhysicalMaterialization,
                     joinedSlotMissingGameplayAdmission);
 
             string entryPolicy =
-                readinessContributionAvailable &&
+                readinessMatchesProjectedActivity &&
                 !string.IsNullOrWhiteSpace(
                     readinessContribution.RequirementLevel)
                     ? readinessContribution.RequirementLevel
@@ -256,7 +300,7 @@ namespace Immersive.Framework.PlayerParticipation
                         : string.Empty;
 
             string readinessStatus =
-                readinessContributionAvailable
+                readinessMatchesProjectedActivity
                     ? readinessContribution.State.ToString()
                     : reconcileResult != null
                         ? reconcileResult.Status.ToString()
@@ -265,7 +309,7 @@ namespace Immersive.Framework.PlayerParticipation
                             : string.Empty;
 
             string readinessReason =
-                readinessContributionAvailable
+                readinessMatchesProjectedActivity
                     ? readinessContribution.LastReason
                     : reconcileResult != null
                         ? reconcileResult.ReadinessReason.ToString()
@@ -284,7 +328,9 @@ namespace Immersive.Framework.PlayerParticipation
                 reconciliationSnapshot,
                 readinessContributionAvailable,
                 readinessContribution,
-                readinessMatchesProjectedActivity);
+                readinessMatchesProjectedActivity,
+                projectedSlots.Count,
+                projectedSlotMissingSessionEvidence);
 
             snapshot =
                 new ManagerProvisionedPlayerLifecycleSnapshot(
@@ -306,6 +352,42 @@ namespace Immersive.Framework.PlayerParticipation
                     projectedSlots,
                     diagnostic);
             return true;
+        }
+
+        private static bool IsReleased(
+            ActivityPlayerActorLifecycleSnapshot lifecycle)
+        {
+            return lifecycle != null &&
+                (lifecycle.Status ==
+                    ActivityPlayerActorLifecycleStatus.SucceededExited ||
+                 lifecycle.Status ==
+                    ActivityPlayerActorLifecycleStatus
+                        .SucceededExitedNoActors);
+        }
+
+        private static bool TryGetSessionSlot(
+            PlayerParticipationSnapshot participation,
+            PlayerSlotId playerSlotId,
+            out PlayerSlotRuntimeSnapshot slot)
+        {
+            if (participation != null && playerSlotId.IsValid)
+            {
+                for (int index = 0;
+                     index < participation.Slots.Count;
+                     index++)
+                {
+                    PlayerSlotRuntimeSnapshot candidate =
+                        participation.Slots[index];
+                    if (candidate.PlayerSlotId == playerSlotId)
+                    {
+                        slot = candidate;
+                        return true;
+                    }
+                }
+            }
+
+            slot = default;
+            return false;
         }
 
         private static bool TryGetPreparation(
@@ -334,18 +416,22 @@ namespace Immersive.Framework.PlayerParticipation
         }
 
         private static ManagerProvisionedPlayerLifecycleStatus ResolveStatus(
-            PlayerParticipationSnapshot participation,
             PlayerActorPreparationRuntimeHostSnapshot preparation,
             PlayerGameplayRuntimeHostSnapshot gameplay,
             PlayerActivityReconciliationRuntimeHostSnapshot reconciliation,
             ActivityPlayerActorReconcileResult reconcileResult,
             ActivityPlayerActorLifecycleSnapshot lifecycle,
             ActivityPlayerReadinessContributionRuntimeSnapshot readiness,
+            int projectedSlotCount,
+            int projectedJoinedCount,
+            int projectedJoinedWithoutSelectedActorCount,
+            bool projectedSlotMissingSessionEvidence,
             bool missingLogicalPreparation,
             bool missingPhysicalMaterialization,
             bool missingGameplayAdmission)
         {
-            if (readiness?.Failed == true ||
+            if (projectedSlotMissingSessionEvidence ||
+                readiness?.Failed == true ||
                 reconcileResult?.Failed == true ||
                 (preparation?.ReleaseFailedCount ?? 0) > 0 ||
                 (gameplay?.Admission?.ReleaseFailedCount ?? 0) > 0)
@@ -353,12 +439,7 @@ namespace Immersive.Framework.PlayerParticipation
                 return ManagerProvisionedPlayerLifecycleStatus.Failed;
             }
 
-            if (lifecycle != null &&
-                (lifecycle.Status ==
-                    ActivityPlayerActorLifecycleStatus.SucceededExited ||
-                 lifecycle.Status ==
-                    ActivityPlayerActorLifecycleStatus
-                        .SucceededExitedNoActors))
+            if (IsReleased(lifecycle))
             {
                 return ManagerProvisionedPlayerLifecycleStatus.Released;
             }
@@ -371,13 +452,14 @@ namespace Immersive.Framework.PlayerParticipation
                     .WaitingForActivity;
             }
 
-            if (participation.JoinedCount == 0)
+            if (projectedSlotCount > 0 &&
+                projectedJoinedCount == 0)
             {
                 return ManagerProvisionedPlayerLifecycleStatus
                     .WaitingForJoin;
             }
 
-            if (participation.JoinedWithoutSelectedActorCount > 0)
+            if (projectedJoinedWithoutSelectedActorCount > 0)
             {
                 return ManagerProvisionedPlayerLifecycleStatus
                     .WaitingForActorSelection;
@@ -449,7 +531,9 @@ namespace Immersive.Framework.PlayerParticipation
             bool readinessContributionAvailable,
             ActivityPlayerReadinessContributionRuntimeSnapshot
                 readinessContribution,
-            bool readinessMatchesProjectedActivity)
+            bool readinessMatchesProjectedActivity,
+            int projectedSlotCount,
+            bool projectedSlotMissingSessionEvidence)
         {
             string preparationDiagnostic =
                 preparationAvailable
@@ -476,6 +560,9 @@ namespace Immersive.Framework.PlayerParticipation
                 $"sessionRevision='{participation.Revision}' " +
                 $"joined='{participation.JoinedCount}' " +
                 $"selected='{participation.SelectedActorCount}' " +
+                $"activityProjected='{projectedSlotCount}' " +
+                $"activitySessionMismatch='" +
+                $"{projectedSlotMissingSessionEvidence}' " +
                 $"preparation='{preparationDiagnostic}' " +
                 $"gameplay='{gameplayDiagnostic}' " +
                 $"reconciliation='{reconciliationDiagnostic}' " +
