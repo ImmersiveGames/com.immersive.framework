@@ -233,13 +233,42 @@ namespace Immersive.Framework.PlayerParticipation
                     "Another Activity Player lifecycle admission transaction is active.");
             }
 
-            if (targetActivity.PlayerParticipationRequirementLevel !=
+            // Every target projection is resolved before deciding whether
+            // GameplayReady handoff is required. Invalid authoring and a
+            // rejected runtime-zero projection must fail before transition.
+            if (!ActivityPlayerParticipationProjectionResolver.TryResolve(
+                    targetActivity,
+                    participationContext,
+                    out PlayerParticipationRequirementLevel requirementLevel,
+                    out List<PlayerSlotRuntimeSnapshot> projectedSlots,
+                    out string projectionIssue))
+            {
+                return Reject(
+                    ActivityPlayerLifecycleAdmissionStatus.RejectedInvalidRequest,
+                    Operation,
+                    resolvedSource,
+                    resolvedReason,
+                    projectionIssue);
+            }
+
+            if (requirementLevel !=
+                targetActivity.PlayerParticipationRequirementLevel)
+            {
+                return Reject(
+                    ActivityPlayerLifecycleAdmissionStatus.RejectedInvalidRequest,
+                    Operation,
+                    resolvedSource,
+                    resolvedReason,
+                    "Resolved target requirement changed while preparing Activity Player admission.");
+            }
+
+            if (requirementLevel !=
                 PlayerParticipationRequirementLevel.GameplayReady)
             {
                 return PublishSameRouteNotRequired(
                     previousActivity,
                     targetActivity,
-                    targetActivity.PlayerParticipationRequirementLevel,
+                    requirementLevel,
                     resolvedSource,
                     resolvedReason,
                     $"Activity '{targetActivity.ActivityName}' does not require GameplayReady; Activity Player handoff is not required.");
@@ -250,7 +279,7 @@ namespace Immersive.Framework.PlayerParticipation
                 return PublishSameRouteNotRequired(
                     null,
                     targetActivity,
-                    targetActivity.PlayerParticipationRequirementLevel,
+                    requirementLevel,
                     resolvedSource,
                     resolvedReason,
                     "No previous Activity ownership is available; target Activity will calculate GameplayReady readiness without handoff.");
@@ -268,32 +297,6 @@ namespace Immersive.Framework.PlayerParticipation
                     resolvedSource,
                     resolvedReason,
                     "Previous and target Activities resolve to the same RuntimeContent owner.");
-            }
-
-            if (!ActivityPlayerParticipationProjectionResolver.TryResolve(
-                    targetActivity,
-                    participationContext,
-                    out PlayerParticipationRequirementLevel requirementLevel,
-                    out List<PlayerSlotRuntimeSnapshot> projectedSlots,
-                    out string projectionIssue))
-            {
-                return Reject(
-                    ActivityPlayerLifecycleAdmissionStatus.RejectedInvalidRequest,
-                    Operation,
-                    resolvedSource,
-                    resolvedReason,
-                    projectionIssue);
-            }
-
-            if (requirementLevel !=
-                PlayerParticipationRequirementLevel.GameplayReady)
-            {
-                return Reject(
-                    ActivityPlayerLifecycleAdmissionStatus.RejectedInvalidRequest,
-                    Operation,
-                    resolvedSource,
-                    resolvedReason,
-                    "Resolved target requirement changed while preparing Activity Player admission.");
             }
 
             if (projectedSlots.Count == 0)
@@ -699,6 +702,24 @@ namespace Immersive.Framework.PlayerParticipation
 
             if (previousActivity == null)
             {
+                // Route Startup without previous Activity still requires a
+                // valid target Player projection before transition.
+                if (!ActivityPlayerParticipationProjectionResolver.TryResolve(
+                        targetActivity,
+                        participationContext,
+                        out _,
+                        out _,
+                        out string projectionIssue))
+                {
+                    return Reject(
+                        ActivityPlayerLifecycleAdmissionStatus
+                            .RejectedInvalidRequest,
+                        Operation,
+                        resolvedSource,
+                        resolvedReason,
+                        projectionIssue);
+                }
+
                 return PublishRouteStartupNotRequired(
                     previousRoute,
                     targetRoute,

@@ -362,24 +362,36 @@ namespace Immersive.Framework.GameFlow
         private static FrameworkIdentityKey ResolveActivityEntryReadinessRecoveryOwner(
             ActivityEntryReadinessExecutionResult execution)
         {
-            ActivityRuntimeState activityState = execution.ActivityFlowResult.ActivityState;
-            if (!execution.Occurrence.IsValid || !activityState.HasIdentity ||
-                !ReferenceEquals(activityState.Activity, execution.Occurrence.Activity) ||
-                activityState.ActivityIdentity.Domain != FrameworkIdentityDomain.Activity)
+            // The committed occurrence is the canonical recovery owner authority.
+            // ActivityFlow failure diagnostics may omit ActivityState identity after
+            // the target occurrence has already become authoritative.
+            if (!execution.Occurrence.IsValid ||
+                execution.Occurrence.Activity == null ||
+                !execution.Occurrence.Activity.HasValidActivityId)
             {
                 throw new InvalidOperationException(
-                    "Committed Activity entry-readiness failure requires the canonical Activity runtime owner identity.");
+                    "Committed Activity entry-readiness failure requires a valid captured Activity occurrence.");
             }
 
             FrameworkIdentityKey expectedOwner = FrameworkIdentityKey.From(
                 execution.Occurrence.Activity.ActivityId);
-            if (activityState.ActivityIdentity != expectedOwner)
+            ActivityRuntimeState activityState =
+                execution.ActivityFlowResult.ActivityState;
+            if (activityState.HasIdentity)
             {
-                throw new InvalidOperationException(
-                    "Committed Activity entry-readiness failure owner does not match the captured Activity occurrence.");
+                if (!ReferenceEquals(
+                        activityState.Activity,
+                        execution.Occurrence.Activity) ||
+                    activityState.ActivityIdentity.Domain !=
+                        FrameworkIdentityDomain.Activity ||
+                    activityState.ActivityIdentity != expectedOwner)
+                {
+                    throw new InvalidOperationException(
+                        "Committed Activity entry-readiness failure owner does not match the captured Activity occurrence.");
+                }
             }
 
-            return activityState.ActivityIdentity;
+            return expectedOwner;
         }
 
         private static ActivityEntryReadinessExecutionStatus MapWaitStatus(
