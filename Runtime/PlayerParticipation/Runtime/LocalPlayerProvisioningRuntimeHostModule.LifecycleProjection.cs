@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using Immersive.Framework.ApplicationLifecycle;
 using Immersive.Framework.PlayerSlots;
+using Immersive.Framework.RuntimeContent;
 
 namespace Immersive.Framework.PlayerParticipation
 {
@@ -106,8 +107,46 @@ namespace Immersive.Framework.PlayerParticipation
 
             ActivityPlayerActorReconcileResult reconcileResult =
                 reconciliationSnapshot?.ReconcileResult;
-            ActivityPlayerActorLifecycleSnapshot lifecycle =
+            ActivityPlayerActorLifecycleSnapshot reconciledLifecycle =
                 reconcileResult?.LifecycleSnapshot;
+            ActivityPlayerActorLifecycleSnapshot directLifecycle = null;
+            if (preparationAvailable &&
+                !preparation.TryGetActivityPlayerActorLifecycleSnapshot(
+                    out directLifecycle))
+            {
+                directLifecycle = null;
+            }
+
+            var currentOccurrence =
+                runtimeHost.CurrentGameFlowRuntime?.CurrentOccurrence ??
+                default;
+            RuntimeContentOwner currentActivityOwner =
+                currentOccurrence.IsValid &&
+                currentOccurrence.Activity != null &&
+                currentOccurrence.Activity.HasValidActivityId
+                    ? RuntimeContentOwner.Activity(
+                        currentOccurrence.Activity.ActivityId.StableText,
+                        currentOccurrence.Activity.ActivityName)
+                    : default;
+
+            ActivityPlayerActorLifecycleSnapshot lifecycle =
+                MatchesCurrentActivityOwner(
+                    directLifecycle,
+                    currentActivityOwner)
+                    ? directLifecycle
+                    : MatchesCurrentActivityOwner(
+                        reconciledLifecycle,
+                        currentActivityOwner)
+                        ? reconciledLifecycle
+                        : IsReleased(reconciledLifecycle)
+                            ? reconciledLifecycle
+                            : IsReleased(directLifecycle)
+                                ? directLifecycle
+                                : null;
+            bool lifecycleMatchesCurrentOccurrence =
+                MatchesCurrentActivityOwner(
+                    lifecycle,
+                    currentActivityOwner);
 
             bool lifecycleReleased = IsReleased(lifecycle);
             IReadOnlyList<ActivityPlayerActorSlotLifecycleSnapshot>
@@ -249,14 +288,22 @@ namespace Immersive.Framework.PlayerParticipation
                         ? reconciliationSnapshot.Activity.ActivityName
                         : readinessContributionAvailable
                             ? readinessContribution.ActivityName
-                            : string.Empty;
+                            : lifecycle != null &&
+                              (lifecycleMatchesCurrentOccurrence ||
+                               IsReleased(lifecycle))
+                                ? lifecycle.ActivityName
+                                : string.Empty;
 
             int occurrence =
                 reconcileResult != null
                     ? reconcileResult.Occurrence
                     : reconciliationSnapshot?.Occurrence > 0
                         ? reconciliationSnapshot.Occurrence
-                        : readinessContribution?.Occurrence ?? 0;
+                        : readinessContribution?.Occurrence > 0
+                            ? readinessContribution.Occurrence
+                            : lifecycleMatchesCurrentOccurrence
+                                ? currentOccurrence.TransitionSequence
+                                : 0;
 
             bool readinessMatchesProjectedActivity =
                 readinessContributionAvailable &&
@@ -296,6 +343,7 @@ namespace Immersive.Framework.PlayerParticipation
                     reconciliationSnapshot,
                     reconcileResult,
                     lifecycle,
+                    lifecycleMatchesCurrentOccurrence,
                     readinessMatchesProjectedActivity
                         ? readinessContribution
                         : null,
@@ -315,7 +363,8 @@ namespace Immersive.Framework.PlayerParticipation
                 !string.IsNullOrWhiteSpace(
                     readinessContribution.RequirementLevel)
                     ? readinessContribution.RequirementLevel
-                    : (lifecycle != null ||
+                    : (lifecycleMatchesCurrentOccurrence ||
+                       IsReleased(lifecycle) ||
                        reconciliationSnapshot?.Activity != null)
                         ? requirementLevel.ToString()
                         : string.Empty;
@@ -325,9 +374,13 @@ namespace Immersive.Framework.PlayerParticipation
                     ? readinessContribution.State.ToString()
                     : reconcileResult != null
                         ? reconcileResult.Status.ToString()
-                        : reconciliationSnapshot != null
-                            ? reconciliationSnapshot.Status.ToString()
-                            : string.Empty;
+                        : lifecycle != null &&
+                          (lifecycleMatchesCurrentOccurrence ||
+                           IsReleased(lifecycle))
+                            ? lifecycle.Status.ToString()
+                            : reconciliationSnapshot != null
+                                ? reconciliationSnapshot.Status.ToString()
+                                : string.Empty;
 
             string readinessReason =
                 readinessMatchesProjectedActivity
@@ -373,6 +426,16 @@ namespace Immersive.Framework.PlayerParticipation
                     projectedSlots,
                     diagnostic);
             return true;
+        }
+
+        private static bool MatchesCurrentActivityOwner(
+            ActivityPlayerActorLifecycleSnapshot lifecycle,
+            RuntimeContentOwner currentActivityOwner)
+        {
+            return lifecycle != null &&
+                currentActivityOwner.IsValid &&
+                lifecycle.Owner.IsValid &&
+                lifecycle.Owner == currentActivityOwner;
         }
 
         private static bool IsReleased(
@@ -450,6 +513,7 @@ namespace Immersive.Framework.PlayerParticipation
             PlayerActivityReconciliationRuntimeHostSnapshot reconciliation,
             ActivityPlayerActorReconcileResult reconcileResult,
             ActivityPlayerActorLifecycleSnapshot lifecycle,
+            bool lifecycleMatchesCurrentOccurrence,
             ActivityPlayerReadinessContributionRuntimeSnapshot readiness,
             int projectedSlotCount,
             int projectedJoinedCount,
@@ -491,9 +555,10 @@ namespace Immersive.Framework.PlayerParticipation
                 return ManagerProvisionedPlayerLifecycleStatus.Released;
             }
 
-            if (reconciliation == null ||
-                reconciliation.Activity == null ||
-                reconciliation.Occurrence <= 0)
+            if (!lifecycleMatchesCurrentOccurrence &&
+                (reconciliation == null ||
+                 reconciliation.Activity == null ||
+                 reconciliation.Occurrence <= 0))
             {
                 return ManagerProvisionedPlayerLifecycleStatus
                     .WaitingForActivity;

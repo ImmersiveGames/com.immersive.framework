@@ -9,6 +9,20 @@ namespace Immersive.Framework.PlayerParticipation
 {
     internal sealed partial class ActivityPlayerActorLifecycleParticipant
     {
+        private readonly struct ColdStartGameplayRecord
+        {
+            internal ColdStartGameplayRecord(
+                PlayerSlotId playerSlotId,
+                PlayerGameplayAdmissionToken token)
+            {
+                PlayerSlotId = playerSlotId;
+                Token = token;
+            }
+
+            internal PlayerSlotId PlayerSlotId { get; }
+            internal PlayerGameplayAdmissionToken Token { get; }
+        }
+
         private IActivityPlayerGameplayLifecycleRuntime
             gameplayLifecycleRuntime;
 
@@ -49,6 +63,20 @@ namespace Immersive.Framework.PlayerParticipation
                         ActivityPlayerGameplayAdoptedSlot> adopted,
                     out string adoptionIssue))
             {
+                bool noActiveHandoff =
+                    gameplayLifecycleRuntime is
+                        ActivityPlayerLifecycleAdmissionRuntimeContext
+                            admissionRuntime &&
+                    !admissionRuntime.HasActiveTransaction;
+                if (noActiveHandoff)
+                {
+                    return ExecuteGameplayReadyColdStartEnter(
+                        request,
+                        activity,
+                        owner,
+                        projectedSlots);
+                }
+
                 lastSnapshot = FailureSnapshot(
                     ActivityPlayerActorLifecycleStatus.FailedRequirement,
                     activity,
@@ -180,6 +208,383 @@ namespace Immersive.Framework.PlayerParticipation
                 nameof(ActivityPlayerActorLifecycleParticipant),
                 "activity-player-actor-gameplay-ready-adopted",
                 lastSnapshot.ToDiagnosticString());
+        }
+
+        private ActivityContentExecutionResult
+            ExecuteGameplayReadyColdStartEnter(
+                ActivityContentExecutionRequest request,
+                ActivityAsset activity,
+                RuntimeContentOwner owner,
+                List<PlayerSlotRuntimeSnapshot> projectedSlots)
+        {
+            PlayerGameplayRuntimeHostModule gameplayRuntime =
+                preparationModule.GetComponent<
+                    PlayerGameplayRuntimeHostModule>();
+            if (gameplayRuntime == null || !gameplayRuntime.IsReady)
+            {
+                string gameplayRuntimeIssue =
+                    gameplayRuntime != null
+                        ? gameplayRuntime.Diagnostic
+                        : "FrameworkRuntimeHost has no Player gameplay runtime module.";
+                lastSnapshot = FailureSnapshot(
+                    ActivityPlayerActorLifecycleStatus.FailedRequirement,
+                    activity,
+                    owner,
+                    PlayerParticipationRequirementLevel.GameplayReady,
+                    projectedSlots,
+                    gameplayRuntimeIssue);
+                return Blocking(
+                    request,
+                    "activity-player-actor-gameplay-ready-cold-start-runtime-missing",
+                    gameplayRuntimeIssue);
+            }
+
+            var prepared =
+                new List<PreparedSlotRecord>(projectedSlots.Count);
+            var appliedSelections =
+                new List<AppliedSelectionRecord>();
+            var appliedGameplay =
+                new List<ColdStartGameplayRecord>();
+            var admittedHosts =
+                new List<LocalPlayerHostAuthoring>(projectedSlots.Count);
+            var evidence =
+                new ActivityPlayerActorSlotLifecycleSnapshot[
+                    projectedSlots.Count];
+
+            for (int index = 0;
+                 index < projectedSlots.Count;
+                 index++)
+            {
+                PlayerSlotRuntimeSnapshot slot = projectedSlots[index];
+                if (!slot.IsJoined)
+                {
+                    return FailGameplayReadyColdStartAndRollback(
+                        request,
+                        activity,
+                        owner,
+                        projectedSlots,
+                        gameplayRuntime,
+                        appliedGameplay,
+                        prepared,
+                        appliedSelections,
+                        $"Projected Player Slot '{slot.PlayerSlotId.StableText}' changed to a non-Joined state during GameplayReady cold start.");
+                }
+
+                if (!preparationModule.TryGetRegisteredHost(
+                        slot.PlayerSlotId,
+                        out LocalPlayerHostAuthoring host,
+                        out string hostIssue))
+                {
+                    return FailGameplayReadyColdStartAndRollback(
+                        request,
+                        activity,
+                        owner,
+                        projectedSlots,
+                        gameplayRuntime,
+                        appliedGameplay,
+                        prepared,
+                        appliedSelections,
+                        hostIssue);
+                }
+
+                admittedHosts.Add(host);
+
+                bool selectionApplied = false;
+                if (!slot.HasSelectedActor)
+                {
+                    PlayerActorSelectionResult selection =
+                        preparationModule.TrySelectDefaultActor(
+                            slot.PlayerSlotId,
+                            slot.SelectionRevision,
+                            nameof(
+                                ActivityPlayerActorLifecycleParticipant),
+                            "activity-enter-gameplay-ready-cold-start-select-default-actor");
+                    if (selection == null || !selection.Succeeded)
+                    {
+                        return FailGameplayReadyColdStartAndRollback(
+                            request,
+                            activity,
+                            owner,
+                            projectedSlots,
+                            gameplayRuntime,
+                            appliedGameplay,
+                            prepared,
+                            appliedSelections,
+                            selection != null
+                                ? selection.ToDiagnosticString()
+                                : $"Default Actor selection returned no result for Slot '{slot.PlayerSlotId.StableText}'.");
+                    }
+
+                    slot = selection.Slot;
+                    selectionApplied = selection.StateChanged;
+                    if (selectionApplied)
+                    {
+                        appliedSelections.Add(
+                            new AppliedSelectionRecord(
+                                slot.PlayerSlotId,
+                                selection.SelectionRevision));
+                    }
+                }
+
+                if (!slot.HasSelectedActor)
+                {
+                    return FailGameplayReadyColdStartAndRollback(
+                        request,
+                        activity,
+                        owner,
+                        projectedSlots,
+                        gameplayRuntime,
+                        appliedGameplay,
+                        prepared,
+                        appliedSelections,
+                        $"Projected Player Slot '{slot.PlayerSlotId.StableText}' has no selected Actor after default selection.");
+                }
+
+                PlayerActorPreparationResult preparation =
+                    preparationModule.TryPrepareSelectedActor(
+                        request.RuntimeScopeContext,
+                        slot.PlayerSlotId,
+                        nameof(
+                            ActivityPlayerActorLifecycleParticipant),
+                        "activity-enter-gameplay-ready-cold-start-prepare-selected-actor");
+                if (preparation == null ||
+                    !preparation.Succeeded ||
+                    !preparation.CurrentSummary.IsPrepared ||
+                    !preparation.CurrentSummary.Token.IsValid)
+                {
+                    return FailGameplayReadyColdStartAndRollback(
+                        request,
+                        activity,
+                        owner,
+                        projectedSlots,
+                        gameplayRuntime,
+                        appliedGameplay,
+                        prepared,
+                        appliedSelections,
+                        preparation != null
+                            ? preparation.ToDiagnosticString()
+                            : $"Logical Actor preparation returned no result for Slot '{slot.PlayerSlotId.StableText}'.");
+                }
+
+                bool preparationApplied =
+                    preparation.Status ==
+                        PlayerActorPreparationStatus.SucceededPrepared;
+                PlayerActorPreparationToken preparationToken =
+                    preparation.CurrentSummary.Token;
+                prepared.Add(
+                    new PreparedSlotRecord(
+                        slot.PlayerSlotId,
+                        preparationToken,
+                        preparationApplied));
+
+                PlayerGameplayRuntimeOperationResult gameplay =
+                    gameplayRuntime.TryEnsureCurrentGameplay(
+                        slot.PlayerSlotId,
+                        nameof(
+                            ActivityPlayerActorLifecycleParticipant),
+                        "activity-enter-gameplay-ready-cold-start-ensure-current-gameplay");
+                if (gameplay == null ||
+                    !gameplay.Succeeded ||
+                    !gameplay.CurrentAdmission.IsAdmitted ||
+                    !gameplay.CurrentAdmission.Token.IsValid ||
+                    gameplay.CurrentAdmission.PreparationToken !=
+                        preparationToken ||
+                    gameplay.CurrentAdmission.Owner != owner)
+                {
+                    return FailGameplayReadyColdStartAndRollback(
+                        request,
+                        activity,
+                        owner,
+                        projectedSlots,
+                        gameplayRuntime,
+                        appliedGameplay,
+                        prepared,
+                        appliedSelections,
+                        gameplay != null
+                            ? gameplay.ToDiagnosticString()
+                            : $"Gameplay admission returned no result for Slot '{slot.PlayerSlotId.StableText}'.");
+                }
+
+                bool gameplayApplied =
+                    !gameplay.PreviousAdmission.IsAdmitted &&
+                    gameplay.CurrentAdmission.IsAdmitted;
+                if (gameplayApplied)
+                {
+                    appliedGameplay.Add(
+                        new ColdStartGameplayRecord(
+                            slot.PlayerSlotId,
+                            gameplay.CurrentAdmission.Token));
+                }
+
+                evidence[index] =
+                    new ActivityPlayerActorSlotLifecycleSnapshot(
+                        slot.PlayerSlotId,
+                        true,
+                        slot.SelectedActorProfileId,
+                        selectionApplied,
+                        preparationToken,
+                        preparationApplied,
+                        false,
+                        preparation.Status,
+                        gameplay.Message);
+            }
+
+            activeRecord = new ActiveActivityRecord(
+                activity,
+                owner,
+                PlayerParticipationRequirementLevel.GameplayReady,
+                projectedSlots.Count,
+                projectedSlots.Count,
+                prepared,
+                admittedHosts);
+            lastSnapshot =
+                new ActivityPlayerActorLifecycleSnapshot(
+                    ActivityPlayerActorLifecycleStatus
+                        .SucceededEntered,
+                    activity.ActivityName,
+                    owner,
+                    PlayerParticipationRequirementLevel.GameplayReady,
+                    projectedSlots.Count,
+                    projectedSlots.Count,
+                    prepared.Count,
+                    0,
+                    0,
+                    evidence,
+                    "Activity Player Actor lifecycle calculated GameplayReady readiness without a transferable handoff.");
+            return ActivityContentExecutionResult.Success(
+                request,
+                nameof(ActivityPlayerActorLifecycleParticipant),
+                "activity-player-actor-gameplay-ready-cold-started",
+                lastSnapshot.ToDiagnosticString());
+        }
+
+        private ActivityContentExecutionResult
+            FailGameplayReadyColdStartAndRollback(
+                ActivityContentExecutionRequest request,
+                ActivityAsset activity,
+                RuntimeContentOwner owner,
+                List<PlayerSlotRuntimeSnapshot> projectedSlots,
+                PlayerGameplayRuntimeHostModule gameplayRuntime,
+                List<ColdStartGameplayRecord> appliedGameplay,
+                List<PreparedSlotRecord> prepared,
+                List<AppliedSelectionRecord> appliedSelections,
+                string issue)
+        {
+            bool rollbackSucceeded =
+                RollbackGameplayReadyColdStart(
+                    gameplayRuntime,
+                    appliedGameplay,
+                    prepared,
+                    appliedSelections,
+                    out string rollbackIssue);
+            string finalIssue = rollbackSucceeded
+                ? issue
+                : issue + " Rollback failures: " + rollbackIssue;
+
+            activeRecord = null;
+            playerReadinessRecord = null;
+            lastSnapshot = FailureSnapshot(
+                rollbackSucceeded
+                    ? ActivityPlayerActorLifecycleStatus.FailedRequirement
+                    : ActivityPlayerActorLifecycleStatus.FailedRollback,
+                activity,
+                owner,
+                PlayerParticipationRequirementLevel.GameplayReady,
+                projectedSlots,
+                finalIssue);
+            return Blocking(
+                request,
+                rollbackSucceeded
+                    ? "activity-player-actor-gameplay-ready-cold-start-failed"
+                    : "activity-player-actor-gameplay-ready-cold-start-rollback-failed",
+                finalIssue);
+        }
+
+        private bool RollbackGameplayReadyColdStart(
+            PlayerGameplayRuntimeHostModule gameplayRuntime,
+            List<ColdStartGameplayRecord> appliedGameplay,
+            List<PreparedSlotRecord> prepared,
+            List<AppliedSelectionRecord> appliedSelections,
+            out string issue)
+        {
+            var failures = new List<string>();
+
+            for (int index = appliedGameplay.Count - 1;
+                 index >= 0;
+                 index--)
+            {
+                ColdStartGameplayRecord record =
+                    appliedGameplay[index];
+                PlayerGameplayRuntimeOperationResult release =
+                    gameplayRuntime.TryReleaseCurrentGameplay(
+                        record.PlayerSlotId,
+                        record.Token,
+                        nameof(
+                            ActivityPlayerActorLifecycleParticipant),
+                        "activity-enter-gameplay-ready-cold-start-rollback-gameplay");
+                if (release == null || !release.Succeeded)
+                {
+                    failures.Add(
+                        release != null
+                            ? release.ToDiagnosticString()
+                            : $"Gameplay rollback returned no result for Slot '{record.PlayerSlotId.StableText}'.");
+                }
+            }
+
+            for (int index = prepared.Count - 1;
+                 index >= 0;
+                 index--)
+            {
+                PreparedSlotRecord record = prepared[index];
+                if (!record.CreatedByEnter)
+                {
+                    continue;
+                }
+
+                PlayerActorPreparationResult release =
+                    preparationModule.TryReleasePreparedActor(
+                        record.PlayerSlotId,
+                        record.Token,
+                        nameof(
+                            ActivityPlayerActorLifecycleParticipant),
+                        "activity-enter-gameplay-ready-cold-start-rollback-preparation");
+                if (release == null || !release.Succeeded)
+                {
+                    failures.Add(
+                        release != null
+                            ? release.ToDiagnosticString()
+                            : $"Preparation rollback returned no result for Slot '{record.PlayerSlotId.StableText}'.");
+                }
+            }
+
+            for (int index = appliedSelections.Count - 1;
+                 index >= 0;
+                 index--)
+            {
+                AppliedSelectionRecord record =
+                    appliedSelections[index];
+                PlayerActorSelectionResult clear =
+                    preparationModule.TryClearActorSelection(
+                        new PlayerActorSelectionRequest(
+                            record.PlayerSlotId,
+                            null,
+                            nameof(
+                                ActivityPlayerActorLifecycleParticipant),
+                            "activity-enter-gameplay-ready-cold-start-rollback-selection",
+                            record.SelectionRevision));
+                if (clear == null || !clear.Succeeded)
+                {
+                    failures.Add(
+                        clear != null
+                            ? clear.ToDiagnosticString()
+                            : $"Selection rollback returned no result for Slot '{record.PlayerSlotId.StableText}'.");
+                }
+            }
+
+            issue = failures.Count == 0
+                ? string.Empty
+                : string.Join(" | ", failures);
+            return failures.Count == 0;
         }
 
         private bool TryExecuteCommittedGameplayHandoffExit(
