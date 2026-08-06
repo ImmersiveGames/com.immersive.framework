@@ -1,10 +1,13 @@
-# IF-ADR-009 — Authored Definition and Stable Identity Authority
+# IF-ADR-014 — Authored Definition and Stable Identity Authority
 
 Status: Proposed  
-Last updated: 2026-07-29  
+Last updated: 2026-08-06  
 Supersedes: none  
 Superseded by: none  
-Related decisions: IF-ADR-001, IF-ADR-002
+Related decisions: IF-ADR-001, IF-ADR-002  
+
+> Formerly numbered IF-ADR-009. Renumbered to 014 to resolve a duplicate
+> ADR number collision with Activity Local Visibility Rules (IF-ADR-009).
 
 ## Context
 

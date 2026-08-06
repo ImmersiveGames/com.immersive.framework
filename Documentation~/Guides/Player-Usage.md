@@ -1,7 +1,7 @@
 # Player Usage
 
 Status: Current  
-Last updated: 2026-07-28  
+Last updated: 2026-08-06  
 Validated reference: `PLAYER-DIAG-1`
 
 ## 1. Product model
@@ -40,9 +40,9 @@ Gameplay eligibility
 
 | Source | Use when | Product status |
 |---|---|---|
-| Manager-Provisioned | an explicit join creates a physical Host through `PlayerInputManager` | Implemented |
-| Scene-Provided | a Route or Activity scene already contains the Host and Logical Actor | Implemented and FIRSTGAME-validated |
-| Session-Persistent | Logical Player identity must outlive Route and Activity scopes | Accepted architecture; not implemented |
+| Manager-Provisioned | an explicit join creates a physical Host through `PlayerInputManager` via `LocalPlayerProvisioningAuthoring` | Package Experimental; runtime and authoring exist; FIRSTGAME consumer proof pending |
+| Scene-Provided | a Route or Activity scene already contains the Host and Logical Actor | Stable product subset; FIRSTGAME-validated |
+| Session-Persistent | Logical Player identity must outlive Route and Activity scopes | Architecture accepted; **not usable** — runtime rejects this origin |
 
 All implemented sources converge into the same Session `PlayerParticipationRuntimeContext` and typed `PlayerSlotId` authority.
 
@@ -51,11 +51,14 @@ All implemented sources converge into the same Session `PlayerParticipationRunti
 1. Create stable `PlayerSlotProfile` assets.
 2. Add them to `GameApplicationAsset` in allocation order.
 3. Choose the duplicate Actor-selection policy explicitly.
-4. Configure each `ActivityAsset`:
+4. Configure each `ActivityAsset` (fields remain **inline** until IF-ADR-012 ships):
    - participation projection;
    - zero-participant policy;
-   - readiness requirement.
+   - readiness requirement (`PlayerParticipationRequirementLevel` / Player Ready When).
 5. Use the lowest readiness level the Activity genuinely requires.
+
+There is no shipped `ActivityPlayerParticipationProfileAsset` yet. IF-ADR-012
+proposes extracting these fields into a dedicated profile asset.
 
 Readiness is cumulative:
 
@@ -465,7 +468,7 @@ local Cinemachine Camera materialization
 
 Persistent Content owns the physical output and request arbitration. The Player publishes contextual eligibility and releases it with its scope.
 
-See `../Current/Guides/Player-Gameplay-Camera-Authoring.md`.
+See [Camera-Usage](Camera-Usage.md).
 
 ---
 

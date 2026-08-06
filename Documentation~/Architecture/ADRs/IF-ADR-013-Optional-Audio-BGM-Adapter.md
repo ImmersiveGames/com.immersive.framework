@@ -1,9 +1,12 @@
-# IF-ADR-007 — Optional Audio BGM Adapter
+# IF-ADR-013 — Optional Audio BGM Adapter
 
-Status: Accepted
-Last updated: 2026-07-23
-Supersedes: F47B Audio/BGM planning ADR
-Superseded by: none
+Status: Accepted  
+Last updated: 2026-08-06  
+Supersedes: F47B Audio/BGM planning ADR  
+Superseded by: none  
+
+> Formerly numbered IF-ADR-007. Renumbered to 013 to resolve a duplicate
+> ADR number collision with Activity Entry Readiness (IF-ADR-007).
 
 ## Context
 

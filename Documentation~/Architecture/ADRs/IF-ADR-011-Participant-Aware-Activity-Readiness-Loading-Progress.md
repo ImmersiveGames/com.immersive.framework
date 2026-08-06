@@ -424,4 +424,4 @@ it as a valid participant instead.
 - Optional continuous progress source inside one participant.
 - Product-facing timeout, retry and recovery authoring.
 - Dedicated authoring validation for accidental inactive/legacy participants.
-- Dedicated ADR-numbering correction for the duplicate `IF-ADR-007` identity.
+- ~~Dedicated ADR-numbering correction for the duplicate `IF-ADR-007` identity.~~ Resolved 2026-08-06: Audio BGM is IF-ADR-013.

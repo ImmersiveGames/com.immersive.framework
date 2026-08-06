@@ -6,10 +6,8 @@ Supersedes: none
 Superseded by: none  
 Related decisions: IF-ADR-001, IF-ADR-006, IF-ADR-011
 
-> The package currently also contains `IF-ADR-007 — Optional Audio BGM
-> Adapter`. This is a documentation-numbering defect. Use the full filename and
-> title when citing this decision until a dedicated renumbering correction is
-> approved.
+> Numbering note (2026-08-06): the Optional Audio BGM Adapter decision was
+> renumbered to **IF-ADR-013**. This file is the sole IF-ADR-007.
 
 ## Context
 

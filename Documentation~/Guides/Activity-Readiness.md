@@ -60,6 +60,10 @@ Participants are discovered only from explicit Route-owned and matching
 Activity-owned loaded scenes. Discovery includes roots, descendants and inactive
 GameObjects.
 
+Package Player readiness contribution is resolved from Activity configuration and
+the current Session projection **before** Activity content lifecycle executes, so
+a Required Player participant is present when the readiness occurrence begins.
+
 Therefore:
 
 ```text

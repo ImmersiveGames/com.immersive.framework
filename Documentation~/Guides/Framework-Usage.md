@@ -1,7 +1,7 @@
 # Framework Usage
 
 Status: Current  
-Last updated: 2026-07-28
+Last updated: 2026-08-06
 
 ## 1. Product workflow
 

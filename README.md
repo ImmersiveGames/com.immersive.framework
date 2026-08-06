@@ -29,8 +29,9 @@ when unavailable.
 - [Current tracker](Documentation~/Architecture/Tracking/IF-TRACK-Framework.md)
 - [Framework usage](Documentation~/Guides/Framework-Usage.md)
 - [Player usage](Documentation~/Guides/Player-Usage.md)
+- [Activity readiness](Documentation~/Guides/Activity-Readiness.md)
+- [Pause usage](Documentation~/Guides/Pause-Usage.md)
 - [Camera usage](Documentation~/Guides/Camera-Usage.md)
-- [Audio usage](Documentation~/Guides/Audio-Usage.md)
 - [Reset usage](Documentation~/Guides/Reset-Usage.md)
 - [Scene lifecycle events](Documentation~/Guides/Scene-Lifecycle-Events.md)
 

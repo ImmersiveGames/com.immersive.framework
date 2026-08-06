@@ -1,130 +1,84 @@
 # IF-TRACK — Immersive Framework
 
 Status: Active  
-Last updated: 2026-07-31  
+Last updated: 2026-08-06  
 Package version: `1.0.0-preview.17`
 
 ## Source baseline
 
 ```text
 com.immersive.framework
-  bdb76a06a3b75adc9ac7fa5d3e63fbe457ed5ae2
-
-QAFramework
-  64f900a5c26ab07ad37f2e7d6e578e8efcfb72a4
-
-planet-devourer
-  116225d50a3c6af976355715d3216c0cb80852eb
+  95f2626caf0f9e387cc3efd46deff4b3d0831ee2
 ```
 
 ## Summary
 
-The package has one internal application/session composition root and explicit feature runtime ports. Current product areas include lifecycle, Player, Camera, Pause/Input, Gate, Reset, loading, transition, persistence foundations and diagnostics.
+The package has one internal application/session composition root and explicit
+feature runtime ports. Product areas include lifecycle, Player, Camera,
+Pause/Input/Gate, Reset, Activity readiness, loading/transition foundations,
+persistence foundations and diagnostics.
 
-The Scene-Provided Player lane now has both:
+`FrameworkRuntimeHost` is Internal. Required runtime dependencies are supplied
+through typed bindings and fail explicitly when unavailable. There is no public
+static host registry or service-locator API.
+
+Documentation topology (after 2026-08-06 condensation):
 
 ```text
-authoring proof
-runtime/manual consumer proof
+Guides/                 product usage
+Architecture/ADRs/      decisions (unique numbers)
+Architecture/Tracking/  this board (only mutable status)
+Architecture/Archive/   historic plans, audits, fix notes
 ```
-
-The approved FIRSTGAME shape is:
-
-```text
-Player_SceneProvided
-  PlayerInput
-  Local Player Host
-  Scene-Provided Player Composer
-  Actor Mount
-    Actor_PlayerSceneProvided
-```
-
-`PLAYER-DIAG-1` added persistent last-operation diagnostics and hardened teardown formatting. The focused manual regression is approved.
 
 ## Track board
 
 | Track | Real status | Proven coverage | Pending work | Next action |
 |---|---|---|---|---|
-| Runtime authority | Closed for current boundary | internal host composition and narrow typed ports | preserve boundary | reject static/global lookup |
-| Package hygiene | Closed for current boundary | current package and QA import | ongoing discipline | do not restore compatibility facades |
-| Player — Scene-Provided | Consumer baseline approved | authoring, Route Primary Scene admission, Slot, Host, Actor adoption, readiness, release, reentry, Activity Restart and teardown; **API status Wave D**: Scene-Provided product subset `Stable` | separate Reset unload finding; Manager-Provisioned remains Experimental | freeze baseline and move to source comparison |
-| PLAYER-DIAG-1 | **Closed / approved** | total invalid-evidence formatting, safe token text, persistent immutable snapshot, Advanced/Debug projection, manual restart/teardown regression | broader automated admit/release matrix remains desirable | preserve semantics |
-| Player — Manager-Provisioned | Package implemented; FIRSTGAME pending | provisioning contracts and authoring exist | real consumer assembly and negative rollback proof | create dedicated Route/scene |
-| Player — Session-Persistent | Blocked by package gap | architecture accepted | authoring, admission and lifetime contracts | new approved package cut |
-| Camera | Closed for current single-output scope | persistent output, Player request and restoration; **API status Wave 0+B**: product surfaces `Stable`, output authority `Internal` | split-screen/multiple outputs | preserve one-output boundary |
-| Pause/Input/Gate | Closed for current single-player scope | Player-bound Pause, resume and input restoration; **API status Wave C**: product surfaces `Stable` | multiplayer policy | preserve explicit binding |
-| Reset | Implemented | Object Reset, Group Reset and Activity Restart | unload `update-retry` recomposition finding | create separate Reset cut |
+| Runtime authority | Closed for current boundary | Internal host composition; narrow typed ports | preserve boundary | reject static/global lookup |
+| Package hygiene | Closed for current boundary | package + QA import discipline | ongoing | do not restore compatibility facades |
+| Player — Scene-Provided | **Closed / approved** | authoring, Route Primary Scene admission, Slot, Host, Actor adoption, readiness, release, reentry, Activity Restart, teardown; Stable product subset | broader automated admit/release matrix desirable | preserve baseline |
+| PLAYER-DIAG-1 | **Closed / approved** | invalid-evidence formatting, safe token text, immutable last-operation snapshot, Advanced/Debug projection, manual restart/teardown regression | optional automated matrix | preserve semantics |
+| Player — Manager-Provisioned | **Package Experimental** | `LocalPlayerProvisioningAuthoring` + runtime + Editor inspectors exist | FIRSTGAME consumer assembly and negative rollback proof | dedicated Route/scene consumer proof |
+| Player — Session-Persistent | **Blocked** | origin reserved in architecture | authoring, admission and lifetime contracts | runtime currently rejects; needs approved package cut |
+| Activity readiness + reveal | **Implemented (Experimental)** | ObserveOnly / WaitVisible / WaitCovered; participants; package Player readiness contribution | multiplayer policy; ADR-012 profile extract | preserve occurrence-scoped model |
+| WaitCovered Loading progress | **Implemented (Experimental)** | participant-aware determinate progress (IF-ADR-011) | product polish after more consumer proof | preserve aggregate-only Loading |
+| Camera | Closed for current single-output scope | persistent output, Player request/restoration; Stable product + Internal output authority | split-screen / multiple outputs | preserve one-output boundary |
+| Pause / Input / Gate | Closed for current single-player scope | Player-bound Pause, resume, input restoration; Stable product surfaces | multiplayer policy | preserve explicit binding |
+| Reset | Implemented (mostly Experimental) | Object Reset, Group Reset, Cycle Reset, Activity Restart | unload `update-retry` recomposition finding | separate Reset lifecycle cut |
 | Activity transaction | Partial | readiness and cleanup foundations | explicit commit/finalization model | separate approved runtime cut |
-| Persistence | Foundation | contracts exist | product authoring and real consumer proof | product decision |
+| Persistence / ProgressionSave | Foundation | contracts and store exist | product authoring and real consumer proof | product decision |
+| ObjectEntry / Local visibility | Implemented (Experimental) | adapters and declarations exist | dedicated product guides deferred | keep advanced/foundation |
+| Editor product surface (IF-ADR-010) | **Proposed** | Editor-Authoring-Standard guide + many Custom Editors | accept ADR and finish migration | keep guide as usage slice |
+| ADR-012 participation profile | **Proposed / not shipped** | requirement levels + evidence exist inline on `ActivityAsset` | profile asset, migration, circular validation, preflight | accept then implement; do not document profile as shipped |
 
-## PLAYER-DIAG-1 acceptance
+## Implementation confirmation (code-backed)
 
-### Implementation
-
-- `PlayerHostEvidenceResult.ToDiagnosticString()` formats invalid evidence explicitly.
-- `SceneLocalPlayerAdmissionToken.StableText` does not dereference an invalid assignment token.
-- The host-scoped module records an immutable last-operation snapshot.
-- The snapshot stores values/identities only.
-- `FrameworkRuntimeHost > Advanced / Debug` exposes the projection.
-- Existing statuses remain:
-  - `SucceededReleased`;
-  - `SucceededAlreadyReleased`.
-
-### QA/import
-
-- QAFramework initialized and compiled without blocking errors.
-- `QaPlayerHostEvidenceDiagnosticFormattingSmoke` is an Editor menu smoke, not an NUnit Test Runner case.
-- The smoke covers partial/invalid Host-evidence formatting.
-
-### FIRSTGAME manual proof
-
-Approved flow:
+Confirmed present in Runtime/Editor:
 
 ```text
-Menu
-→ Gameplay
-→ Activity Restart
-→ valid active admission
-→ Menu
-→ successful release snapshot
-→ Stop
+GameApplicationAsset → bootstrap → Persistent Content → FrameworkRuntimeHost
+SceneLocalPlayerAdmissionAuthoring (Scene-Provided Composer)
+LocalPlayerProvisioningAuthoring (Manager-Provisioned; Experimental)
+ActivityReadinessParticipant + entry policies + loading progress bridge
+CameraRigComposer / PlayerGameplayCameraAuthoring / CameraOutputSessionBinding
+PausePlayerInputBinding / PauseRequestTrigger / Gate / UnityPlayerInputGateAdapter
+ResetRegistry / ObjectReset / CycleReset / ActivityRestart
+FrameworkBgmDirector (optional Immersive.Audio; Experimental)
+SceneLifecycleEvents
+ActivityLocalVisibilityAdapter, ObjectEntryDeclaration
+ApiStatus: Stable ~114 | Experimental ~509 | Internal ~203 | DevelopmentTooling 32 | Deferred 2
 ```
 
-Approved active state:
+Confirmed **not** present:
 
 ```text
-Active Count = 1
-Occupied Slot Count = 1
-Last Status = SucceededAdmitted
-Host Evidence Present = Yes
+ActivityPlayerParticipationProfileAsset (IF-ADR-012)
+ManagerProvisionedPlayerComposer / ManagerProvisionedPlayerRecipe
+Session-Persistent product admission path (origin rejected at runtime)
+CameraRigRecipe (removed; Unity Preset optional)
+Public static FrameworkRuntimeHost locator
 ```
-
-Approved released state:
-
-```text
-Active Count = 0
-Occupied Slot Count = 0
-Last Status = SucceededReleased
-Release Succeeded = Yes
-Host Evidence Present = No
-```
-
-The previous teardown identity exception was not reproduced.
-
-## Current execution priority
-
-```text
-Scene-Provided comparison baseline
-  closed
-
-Manager-Provisioned comparison path
-  next
-
-Session-Persistent Player
-  blocked by package
-```
-
-The Manager-Provisioned FIRSTGAME cut should preserve the same movement, Camera, Pause and reset behavior so the comparison isolates provisioning and admission UX.
 
 ## Open findings
 
@@ -138,90 +92,83 @@ SceneReleasing unregister
 → on-disable unregister
 ```
 
-Classification:
+Non-blocking in current Player tests; possible transient recomposition during
+unload; requires its own Reset lifecycle cut.
 
-- non-blocking in current Player tests;
-- possible transient recomposition during unload;
-- outside `PLAYER-DIAG-1`;
-- requires its own Reset lifecycle cut.
+### Missing canonical Slot–Host–Actor assignment snapshot
+
+Point-in-time audit: no single authority answers “which Logical Player, Host and
+Actor currently occupy a `PlayerSlotId` under which owner/scope/lifetime?” Truth
+is split across participation, preparation, scene admission, occupancy and
+capability tokens. Historic detail:
+
+- [Auditoria-Slot-Assignment](../Archive/Audits/Auditoria-Slot-Assignment.md)
+
+### Session-Persistent package gap
+
+Architecture accepted in IF-ADR-003; product workflow unavailable. Do not
+simulate with an unscoped Persistent Content prefab.
 
 ### Automated Player matrix
 
-The current QA formatting smoke is intentionally narrow. A future technical cut may add automated:
+QA formatting smoke is intentionally narrow. Future technical cut may add
+automated admit/release, duplicate release, Activity Restart reentry, Route
+reentry and residual evidence checks. Manual FIRSTGAME regression remains
+approved.
 
-- admit/release state proof;
-- duplicate release;
-- Activity Restart reentry;
-- Route reentry;
-- no residual Slot/Host/Actor evidence.
-
-This does not reopen the manually approved FIRSTGAME regression.
-
-## API status promotion
-
-See `../Plans/IF-CUT-ApiStatus-Promotion.v1.md`.
+## Current execution priority
 
 ```text
-API status Wave 0+B
-  date: 2026-07-31
-  types promoted to Stable: 42 (Camera product + CameraAuthoring)
-  types marked Internal: 17 (Camera output/lifecycle authority + debug snapshot)
-  UNMARKED under Runtime/Camera + CameraAuthoring: 0
-  boundary: single-output Camera product API; multi-output/split-screen out of scope
-  evidence: IF-ADR-004 + TRACK Camera Closed + Camera-Usage guide
-  behavior change: none (metadata only)
+Manager-Provisioned FIRSTGAME comparison path
+  next (package surface exists)
 
-API status Wave A
-  date: 2026-07-31
-  types promoted to Stable: 29
-    Authoring: GameApplication/Route/Activity assets, content profiles/entries/policies,
-               PersistentContentComposition, settings, validation mode, RouteId/ActivityId
-    GameFlow: Route/Activity request triggers, events, UnityEvent bridges, phase/outcome
-    Identity: IFrameworkIdentity, FrameworkIdentityValue/Key/Domain
-  boundary: product authoring + Game Flow request envelope; Activity commit internals remain Experimental
-  evidence: IF-ADR-001/002/008 + Framework-Usage guide
-  behavior change: none (metadata only)
-  package status counts after Wave A:
-    Stable 72 | Experimental 542 | Internal 192 | DevelopmentTooling 32 | Deferred 2
+Session-Persistent Player
+  blocked by package
 
-API status Wave C
-  date: 2026-07-31
-  types promoted to Stable: 36
-    Pause product triggers/bindings/adapters/vocabulary
-    Gate decision primitives
-    InputMode product vocabulary (Kind/Definitions/Rules/request result types)
-    UnityPlayerInputGateAdapter + PlayerInputActionMapReference
-  kept Experimental: PauseActivityBindingAuthoring*
-  kept Internal: PauseRuntime, surface/timeScale runtimes, GateRequestAdmission, UnityPlayerInputStateWriter
-  boundary: single-player Pause/Input/Gate; multiplayer out of scope
-  evidence: IF-ADR-005 + TRACK Pause/Input/Gate Closed
-  behavior change: none (metadata only)
+IF-ADR-012 profile extract (if accepted)
+  proposed only
 
-API status Wave D
-  date: 2026-07-31
-  types promoted to Stable: 6
-    PlayerSlotId, PlayerSlotProfile, LocalPlayerHostAuthoring,
-    SceneLocalPlayerAdmissionAuthoring, SceneLogicalPlayerActorEvidence,
-    PlayerGameplayCameraAuthoring
-  kept Experimental: LocalPlayerProvisioning*, LocalPlayerActorSelectionRequestAuthoring,
-    remainder of PlayerParticipation runtime
-  boundary: Scene-Provided local Player product only
-  evidence: IF-ADR-003 + TRACK Scene-Provided approved + FIRSTGAME
-  behavior change: none (metadata only)
+Reset unload recomposition cut
+  open finding
 
-  package status counts after Waves 0+B, A, C, D:
-    Stable 114 | Experimental 501 | Internal 192 | DevelopmentTooling 32 | Deferred 2
+ObjectEntry / Local visibility product guides
+  deferred
 ```
 
-## Validation log
+## API status waves (metadata only; no behavior change)
 
-- Scene-Provided Composer authoring: passed.
-- Local Player Host validation: passed.
-- Menu → Gameplay → Menu → Stop: passed.
-- Menu → Gameplay → Menu → Gameplay → Menu → Stop: passed.
-- active persistent admission snapshot: passed.
-- persistent release snapshot: passed.
-- Activity Restart operation: passed.
-- Activity Restart → Menu → Stop teardown regression: passed.
-- visual readmission after Activity Restart: user-confirmed.
-- previous `Framework identity value must be valid` exception: not reproduced.
+Wave evidence remains embedded here. There is no separate IF-CUT plan file.
+
+```text
+Wave 0+B (2026-07-31) — Camera product Stable; output authority Internal
+Wave A   (2026-07-31) — Authoring assets, GameFlow request envelope, Identity Stable
+Wave C   (2026-07-31) — Pause / Gate / InputMode product vocabulary Stable
+Wave D   (2026-07-31) — Scene-Provided local Player product subset Stable
+
+Approximate package counts after those waves (re-counted 2026-08-06):
+  Stable ~114 | Experimental ~509 | Internal ~203 | DevelopmentTooling 32 | Deferred 2
+```
+
+Most Activity readiness, Loading/Transition, ProgressionSave, Manager-Provisioned
+and large PlayerParticipation runtime surfaces remain Experimental or Internal.
+
+## Closed notes (short)
+
+### PLAYER-DIAG-1
+
+Host-scoped last-operation diagnostics, safe invalid-evidence formatting and
+manual Menu → Gameplay → Activity Restart → Menu → Stop regression are approved.
+Do not reopen without new evidence.
+
+### Activity readiness Player source ordering
+
+Discovery must resolve Player projection before content execution so a Required
+Player participant exists when the readiness occurrence begins. Historic fix note:
+
+- [IF-M07-10-FIX1](../Archive/Fixes/IF-M07-10-FIX1-Player-Readiness-Source-Ordering.md)
+
+## Historic programs
+
+Large readiness/M07/completeness program documents are archived (not product truth):
+
+- [Archive/Plans](../Archive/Plans/)

@@ -4,7 +4,11 @@ Status: Proposed
 Last updated: 2026-07-30  
 Supersedes: fragmented Editor and Inspector UX conventions  
 Superseded by: none  
-Related decisions: IF-ADR-002, IF-ADR-006, IF-ADR-009
+Related decisions: IF-ADR-002, IF-ADR-006, IF-ADR-014 (stable identity; formerly numbered 009)
+
+> Product usage of Inspector section order is summarized in
+> [Editor-Authoring-Standard](../../Guides/Editor-Authoring-Standard.md).
+> This ADR remains the normative decision; the guide is the designer-facing slice.
 
 ## Context
 
