@@ -3,10 +3,11 @@
 Status: Accepted  
 Last updated: 2026-08-07  
 Implementation completion: **92%**  
-Implementation classification: **Runtime complete; current QA and product presentation recertification remain**  
+Implementation classification: **Runtime complete; canonical participant-aware progress and terminal QA re-certified; product presentation and focused public-only/startup cases remain**  
 Related decisions: IF-ADR-006, IF-ADR-007, IF-ADR-012  
-Audit baseline: package `9ed698e55b48077c54be5056c6951b7e52dac51b`, QA `0521d1f1804dff2806e06b1e095d47023a062b9e`, FIRSTGAME `e551643ce1b154fdb2744f97b039b4ce73bc6bf5`  
-Decision amendment baseline: package `20b03efff3fe284f2098e12daf1f9274612ea40a`
+Current package baseline: `d0955e0dc58a3cc70f8533f92d63246d941d5e20`  
+Current QA baseline: `00cedcb78d200b1b2094eafc500e348e07dc36ab`  
+FIRSTGAME baseline: `ab1bfe65c09af8988c2fe21ce06db780fe12aa70`
 
 > This is a consolidated audit revision. The normative architectural decision is
 > preserved and the implementation assessment is explicitly separated from ADR
@@ -62,23 +63,67 @@ The package implements required/optional counts including completed and released
 
 The Player/WaitCovered authoring warning is intentionally outside Loading runtime. It prevents a known product-composition trap without introducing a second completion authority.
 
+IF-TXN-01 preserves this authority separation: Loading may complete its valid projection, but final GameFlow success still depends on the accepted Transition After/reveal terminal. A failed reveal cannot be converted into success by Loading.
+
 ## Current QA evidence
 
-Historical implementation cuts and QA evidence exist, but the current cleaned QA project must re-register and run the canonical progress suite.
+The canonical participant-aware progress suite is now re-certified:
+
+```text
+Participant-Aware Readiness Loading Progress Regression
+  status: Passed
+  cases: 32/32
+  required: 4
+  optional: 1
+  optionalOutcome: FailedNonBlocking
+  ordering:
+    Technical<100
+    → 0/4 → 1/4 → 2/4 → 3/4
+    → 4/4=100
+    → Hide
+    → Reveal
+    → GateRelease
+```
+
+The terminal/failure suite is also re-certified:
+
+```text
+Participant-Aware Readiness Loading Terminal Regression
+  status: Passed
+  cases: 34/34
+  terminals:
+    RequiredFailed
+    RequiredReleased
+    ReplacementRejected
+    LateOldOccurrenceRejected
+    DuplicateTerminal
+    OwnedCancellation
+```
+
+The terminal regression confirms that on required failure the destination remains authoritative, progress does not publish terminal success, Loading/Transition remain retained as required, and the recovery gate remains active until cleanup.
+
+Cross-cut evidence:
+
+```text
+Direct Activity Readiness Policies Regression: Passed — 42/42
+IF-TXN-01 Transition Failure Authority Regression: Passed — 22/22
+Activity Readiness Post-Transition Smoke: Passed
+Identity Authority Regression: Passed — 6/6
+```
+
+This closes the previous statement that the current cleaned QA project still needed to re-register and run the canonical progress suite.
 
 ## Current FIRSTGAME evidence
 
-FIRSTGAME loading demonstrations provide practical evidence, including Player readiness as the final loading phase.
-
-Focused investigation established that Loading retention during an unjoined Required Player is expected. When `RequestJoin` is available and emitted, Player reconciliation can progress the same Activity occurrence to `Ready`; Loading should then complete through the existing readiness projection.
+FIRSTGAME loading demonstrations provide practical evidence, including Player readiness as the final loading phase. Focused investigation established that Loading retention during an unjoined Required Player is expected. When `RequestJoin` is available and emitted, Player reconciliation can progress the same Activity occurrence to `Ready`; Loading should then complete through the existing readiness projection.
 
 ## What remains
 
-- Rebuild current QA for monotonicity, duplicate reports, stale occurrence, failure, release, zero participants, optional-only participants, and supersession.
-- Validate all loading policies and startup paths use consistent phase/message semantics.
-- Add a public-only integration proof that successful `RequestJoin` under a retained WaitCovered gate progresses readiness before Loading terminal success.
+- Add focused public-only proof for `WaitCovered + WaitingForJoin + RequestJoin while gate retained + same-occurrence Ready`.
+- Expand startup-path parity where the current executed suite proves contract/wiring but not every host presentation variant.
 - Publish presentation guidance for determinate versus indeterminate technical phases.
 - Expose readiness ratio inputs and rejection counts in Advanced/Debug diagnostics.
+- Preserve stale occurrence, duplicate terminal, cancellation and supersession coverage as the QA harness evolves.
 
 ## Completion criteria
 
@@ -86,20 +131,19 @@ Focused investigation established that Loading retention during an unjoined Requ
 - Stale or foreign occurrences cannot update the active operation.
 - Failure and supersession terminate correctly without false completion.
 - A covered control-plane dependency cycle cannot be “repaired” by Loading-side false completion.
-- Current QA and FIRSTGAME pass the same scenarios.
+- Current QA and FIRSTGAME pass the same supported scenarios where consumer proof is required.
 
 ## Completion assessment
 
 ```text
 Estimated completion: 92%
 Normative status: Accepted
-Package implementation: evaluated at 9ed698e
-QA evidence: evaluated at 0521d1f
-FIRSTGAME evidence: evaluated at e551643
-Decision amendment: package 20b03eff
+Participant-aware progress QA: PASS — 32/32
+Participant-aware terminal QA: PASS — 34/34
+WaitVisible/WaitCovered integration: PASS — 42/42
+IF-TXN-01 non-regression: PASS — 22/22
+Remaining: public-only waiting/joining proof, startup/product presentation parity, Advanced/Debug polish
 ```
 
-The percentage includes architecture/contract, runtime behavior, product authoring,
-diagnostics/documentation, current QA evidence, and real-consumer evidence. A high
-runtime percentage may still be reduced when the canonical QA harness or product
-surface is incomplete.
+The percentage is intentionally unchanged: canonical progress/terminal QA is now
+current, but product presentation and focused consumer/public-only coverage remain.

@@ -3,10 +3,12 @@
 Status: Accepted  
 Last updated: 2026-08-07  
 Implementation completion: **91%**  
-Implementation classification: **Core orchestration + IF-TXN-01 transition failure authority implemented; product template gaps remain**  
+Implementation classification: **Core orchestration + IF-TXN-01 transition failure authority implemented and QA-certified; residual compensation, terminal cleanup diagnostics and product-template gaps remain**  
 Related decisions: IF-ADR-001, IF-ADR-007, IF-ADR-011, IF-ADR-015  
-Audit baseline: package `9ed698e55b48077c54be5056c6951b7e52dac51b`, QA `0521d1f1804dff2806e06b1e095d47023a062b9e`, FIRSTGAME `e551643ce1b154fdb2744f97b039b4ce73bc6bf5`  
-Transaction cut: **IF-TXN-01 GameFlow Transition Failure Authority (implemented in package)**
+Current package baseline: `d0955e0dc58a3cc70f8533f92d63246d941d5e20` (`IF-TXN-01 COMPLETE`)  
+Current QA baseline: `00cedcb78d200b1b2094eafc500e348e07dc36ab` (`IF-TXN-01 COMPLETE`)  
+FIRSTGAME baseline: `ab1bfe65c09af8988c2fe21ce06db780fe12aa70` (`Demo03Etapa04`)  
+Transaction cut: **IF-TXN-01 GameFlow Transition Failure Authority — COMPLETE**
 
 > This is a consolidated audit revision. The normative architectural decision is
 > preserved and the implementation assessment is explicitly separated from ADR
@@ -36,64 +38,105 @@ Persistent loading/transition surfaces, progress reporters, gates, typed results
 **IF-TXN-01** closes the missing GameFlow authority bridge for Transition phase results:
 
 ```text
-Transition = execution + typed TransitionResult (still passive; no lifecycle ownership)
+Transition = execution + typed TransitionResult
 GameFlow  = transaction decision from TransitionResult
 
 pre-commit Transition failure
-  Transition Before is not Completed (Failed/Rejected/Cancelled/invalid)
+  Transition Before is not accepted
   → destination lifecycle is not started
   → previous authority remains
   → FailedPreCommitTransition (Route/Activity) / PreCommitTransitionFailed (startup)
-  → transition gate released safely; no committed-target recovery
+  → transition gate released safely
+  → no committed-target recovery
 
 committed-target reveal failure
   destination already committed
-  Transition After / reveal is not Completed
+  Transition After / reveal is not accepted
   → destination remains current authority
   → request/start must not Succeeded/Started
-  → FailedCommittedTargetReveal (distinct from FailedCommittedTargetNotReady)
-  → committed-target reveal recovery gate applied (policy source IF-TXN-01, not readiness)
+  → FailedCommittedTargetReveal
+  → committed-target reveal recovery gate applied
+  → policy source remains IF-TXN-01, not readiness
   → no automatic blind rollback
 
-CompletedWithWarnings is still TransitionResult.Completed and continues the transaction.
-Loading may complete technical/readiness projection before After; Loading is not authority.
-revealCompleted / normal success only after accepted After phase.
+Accepted phase
+  → TransitionResult.Completed
+  → or intentional policy/no-visual Skipped
+
+CompletedWithWarnings remains Completed.
+Required Failed/Rejected/Cancelled are not accepted or masked as Skipped.
+Loading may complete its technical/readiness projection before After; Loading is not authority.
+Normal revealCompleted / success is only produced after an accepted After phase.
 ```
 
 ## Current QA evidence
 
-Current QA needs a rebuilt canonical transition matrix after cleanup. Historical evidence remains useful context but is not current certification.
+The core Transition/Loading/Readiness boundary is re-certified in the canonical QAFramework:
+
+```text
+IF-TXN-01 Transition Failure Authority Regression
+  Passed — 22/22
+
+Direct Activity Readiness Policies Regression
+  Passed — 42/42
+  WaitVisible = Passed
+  WaitCovered = Passed
+
+Participant-Aware Readiness Loading Terminal Regression
+  Passed — 34/34
+  confirms committed destination authority
+  confirms progress remains below terminal success on required failure
+  confirms Loading/Transition retention and recovery gate
+
+Participant-Aware Readiness Loading Progress Regression
+  Passed — 32/32
+  required=4
+  optional=1
+  optional failure non-blocking
+  ordering: Technical<100 → 0/4 → 1/4 → 2/4 → 3/4 → 4/4=100 → Hide → Reveal → GateRelease
+
+Activity Readiness Post-Transition Smoke
+  Passed — Ready→NotReady, NotReady→Ready, identical-value ignored, newRequest=False
+
+Identity Authority Regression
+  Passed — 6/6, failed=0
+```
+
+The negative terminal regression intentionally emits a runtime error record for `RequiredParticipantFailed`; that record is expected evidence, and the runner still terminates `Passed` with retained recovery protection and authoritative committed destination.
 
 ## Current FIRSTGAME evidence
 
-FIRSTGAME demonstrates covered/visible loading paths and has exposed real readiness/Route replacement edge cases that drove the latest fix.
+FIRSTGAME demonstrates covered/visible loading paths and exposed the real WaitCovered + Player external-progression composition trap that drove the authoring warning and causal audit. Deliberately breaking a required Transition surface in FIRSTGAME remains optional; QA now owns technical proof of the IF-TXN-01 failure contract.
 
 ## What remains
 
-- Host/FIRSTGAME integration proof for deliberate required-surface/adapter failure on Before and After (without leaving product surfaces broken).
-- Broader compensation after partial commit beyond typed reveal recovery (no generic rollback manager).
+- Audit Activity Clear/Restart transition paths that remain outside IF-TXN-01 authority wiring.
+- Audit gate-release failure, disposal during partial presentation, and cleanup evidence before any broader compensation cut.
+- Define compensation after partial side effects only where a concrete terminal path requires it; do not introduce a generic rollback manager by default.
 - Publish a dedicated Transition/Loading product template and policy guide.
-- Add QA for Route replacement while waiting under WaitVisible and WaitCovered.
-- Ensure every external host terminal path surfaces destination identity, operation sequence, revision/occurrence, loading diagnostics, and cleanup status.
+- Add the still-missing public-only Player waiting/joining integration cases where useful, without weakening WaitCovered or making Loading an authority.
+- Ensure every external host terminal path surfaces destination identity, operation sequence, revision/occurrence, loading diagnostics and cleanup state consistently.
 
 ## Completion criteria
 
 - No terminal path leaves cover, gate, progress, or transition state leaked.
 - Intentional supersession is distinguishable from failure.
-- Loading reaches terminal completion only when the governing operation is terminal.
-- QA and FIRSTGAME prove success, failure, cancellation, supersession, and recovery.
+- Loading reaches successful terminal completion only when the governing readiness projection permits it.
+- Transition failure before commit and reveal failure after commit are typed and authority-correct.
+- QA proves success, failure, cancellation, supersession and recovery for the supported boundary.
 
 ## Completion assessment
 
 ```text
 Estimated completion: 91%
 Normative status: Accepted
-Package implementation: IF-TXN-01 pre-commit vs committed-target reveal failure authority implemented
-QA evidence: package unit tests + GameFlow Transition Failure Authority diagnostics smoke
-FIRSTGAME evidence: evaluated at e551643; deliberate broken-surface proof still optional follow-up
+IF-TXN-01 implementation: COMPLETE
+IF-TXN-01 QA certification: PASS
+Play Mode readiness/loading recertification: PASS for the executed canonical suites
+Residuals: Clear/Restart transition authority, gate-release/partial-presentation cleanup, broader diagnostics/product templates
 ```
 
 The percentage includes architecture/contract, runtime behavior, product authoring,
-diagnostics/documentation, current QA evidence, and real-consumer evidence. A high
-runtime percentage may still be reduced when the canonical QA harness or product
-surface is incomplete.
+diagnostics/documentation, current QA evidence, and real-consumer evidence. The
+percentage is intentionally not raised merely because the IF-TXN-01 QA suite passed;
+remaining ADR-006 product and terminal-cleanup gaps are still real.

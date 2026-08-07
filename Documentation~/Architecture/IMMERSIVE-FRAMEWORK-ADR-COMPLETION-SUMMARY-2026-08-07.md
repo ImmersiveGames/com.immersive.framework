@@ -1,11 +1,10 @@
 # Immersive Framework — ADR Completion Summary
 
 Date: 2026-08-07  
-Package Git baseline: `20b03efff3fe284f2098e12daf1f9274612ea40a` (`Audits`)  
-QA baseline: `db1f90fa5dd0a847ff2791435c292d76e49f88db` (`Corte 4 — Ownership e Readiness Isolation`)  
+Package Git baseline: `d0955e0dc58a3cc70f8533f92d63246d941d5e20` (`IF-TXN-01 COMPLETE`)  
+QA baseline: `00cedcb78d200b1b2094eafc500e348e07dc36ab` (`IF-TXN-01 COMPLETE`)  
 FIRSTGAME baseline: `ab1bfe65c09af8988c2fe21ce06db780fe12aa70` (`Demo03Etapa04`)  
-Prepared package amendment: `IF-READY-WAITCOVERED-PLAYER-AUTHORING-WARNING-01` based on package `20b03eff` — **not committed yet**  
-Portfolio average: **80.0% equivalent**
+Portfolio average: **80.3% equivalent**
 
 > Portfolio arithmetic treats IF-ADR-014 `Complete for current accepted scope` as
 > 100% for the accepted scope. IF-ID-07 remains explicitly deferred by design and
@@ -13,24 +12,16 @@ Portfolio average: **80.0% equivalent**
 
 ## Important baseline changes
 
-1. The package HEAD advanced from `9ed698e` to `20b03eff`.
-2. **IF-ID is closed for the current framework boundary.** IF-ADR-014 is now `Accepted` and `Complete for current accepted scope`.
-3. IF-ID-02..06 and IF-ID-08 are complete. IF-ID-07, the application-scoped stable-ID resolver, is explicitly deferred until a real persistence/external boundary requires it.
-4. Package identity tests passed for the accepted scope, including exact-reference versus stable-ID semantics, required `RuntimeDefinitionToken` ownership isolation, collision context, explicit stable-ID regeneration and Undo.
-5. QAFramework now has the canonical IF-ID authority runner and the official closure evidence records **6/6 passed twice**, including cleanup/idempotency and readiness/ownership collision isolation.
-6. FIRSTGAME completed the IF-ID duplication/remediation workflow: copied definitions expose collisions, the conflicting asset is navigable, only the copied stable ID is regenerated, rename/move preserves identity, and the repaired definitions run successfully.
-7. The latest package `Audits` cut records the causal readiness and Player-participation audits that distinguish Activity readiness authority from Player participation progression and Loading presentation.
-8. A new package amendment is prepared for the FIRSTGAME-discovered composition trap:
-
-   ```text
-   WaitCovered
-   + ExplicitSlots
-   + PlayerParticipationRequirementLevel >= JoinedSlots
-   ```
-
-   The amendment adds a **non-mutating authoring warning** and updates IF-ADR-003, IF-ADR-007 and IF-ADR-011. It deliberately does **not** change Activity Readiness, Required/Optional semantics, Player reconciliation, Loading completion, Transition/Gate behavior or `WaitCovered` semantics.
-9. The accepted interpretation is now explicit: an unjoined Explicit Slot may legitimately remain `Preparing / WaitingForJoin`; if the only action capable of advancing it is hidden behind the retained cover, the problem is a **control-plane composition cycle**, not a Loading or readiness defect.
-10. The `WaitCovered` amendment is prepared in ZIP form against `20b03eff` but is not counted as committed package evidence until applied and validated in Unity/QA.
+1. The package HEAD is now `d0955e0` (`IF-TXN-01 COMPLETE`) and the QAFramework baseline is `00cedcb` (`IF-TXN-01 COMPLETE`).
+2. **IF-TXN-01 — GameFlow Transition Failure Authority is closed for the approved canonical Start/Route/Activity request boundary.**
+3. The package now treats non-accepted Transition Before as a pre-commit abort and non-accepted Transition After/reveal after commit as a committed-target reveal failure with recovery protection and no blind rollback.
+4. `CompletedWithWarnings` remains accepted through `TransitionResult.Completed`; intentional policy/no-visual `Skipped` remains accepted; required `Failed`/`Rejected`/`Cancelled` outcomes are not masked as `Skipped`.
+5. Canonical QA evidence is current: IF-TXN-01 22/22, Direct Activity Readiness Policies 42/42, participant-aware Loading terminal 34/34, participant-aware Loading progress 32/32, post-transition readiness PASS, Identity Authority 6/6.
+6. WaitVisible and WaitCovered Play Mode behavior are re-certified. WaitCovered retains cover/gate until Ready; WaitVisible permits reveal while the request remains pending; both end with correct destination authority and gate release.
+7. Participant-aware Loading is re-certified for success and terminal failure: optional failure is non-blocking, progress reaches 100% only at required 4/4 Ready, terminal failure remains below successful completion, and recovery protection is retained.
+8. The WaitCovered + ExplicitSlots + Player requirement warning is now present in the current package documentation/authoring boundary; it is no longer a merely prepared/uncommitted amendment.
+9. IF-ID remains closed for the current accepted boundary; IF-ID-07 remains deferred by design.
+10. FIRSTGAME remains at `ab1bfe6` for the current consumer baseline. Deliberately broken Transition surfaces are not required to close IF-TXN-01 because technical failure authority is certified in QA.
 
 ## Method
 
@@ -56,17 +47,17 @@ non-blocking future boundary.
 
 | ADR | Decision | Normative status | Completion | Current classification |
 |---|---|---:|---:|---|
-| IF-ADR-001 | Core Lifecycle and Runtime Authority | Accepted | **88%** | Substantially implemented; architectural residuals remain |
+| IF-ADR-001 | Core Lifecycle and Runtime Authority | Accepted | **90%** | IF-TXN-01 implemented and QA-certified; Session-Persistent Player and broader compensation/cleanup residuals remain |
 | IF-ADR-002 | Product Authoring Model | Accepted | **65%** | Partially implemented across the product portfolio |
-| IF-ADR-003 | Player Participation and Actor Lifecycle | Accepted | **84%** | Runtime substantially implemented; product and hardening gaps remain; covered-readiness control-plane boundary now documented in prepared amendment |
+| IF-ADR-003 | Player Participation and Actor Lifecycle | Accepted | **84%** | Runtime substantially implemented; product and hardening gaps remain; covered-readiness control-plane boundary and authoring warning are present in the current package |
 | IF-ADR-004 | Camera Requests and Output Authority | Accepted | **78%** | Core runtime implemented; isolated product proof incomplete |
 | IF-ADR-005 | Input, Pause, Gate and Reset | Accepted | **76%** | Integrated runtime exists; product extraction and negative coverage incomplete |
-| IF-ADR-006 | Loading, Transition, Persistence and Diagnostics | Accepted | **88%** | Core orchestration implemented; recovery and product gaps remain |
-| IF-ADR-007 | Activity Entry Readiness and Reveal Gating | Accepted | **96%** | Runtime contract complete; current QA recertification remains; covered external-progression cycle now documented in prepared amendment |
+| IF-ADR-006 | Loading, Transition, Persistence and Diagnostics | Accepted | **91%** | IF-TXN-01 implemented and QA-certified; Clear/Restart, gate-release/partial-presentation cleanup and product gaps remain |
+| IF-ADR-007 | Activity Entry Readiness and Reveal Gating | Accepted | **96%** | Runtime contract complete; WaitVisible/WaitCovered and post-transition QA re-certified; focused ObserveOnly/Player public-only matrix remains |
 | IF-ADR-008 | Persistent Application Content Composition | Accepted | **90%** | Product model implemented; portfolio expansion and QA remain |
 | IF-ADR-009 | Activity Local Visibility Rules | Accepted | **88%** | Runtime integrated; authoring and regression polish remain |
 | IF-ADR-010 | Editor and Inspector Product Surface Authority | Proposed | **70%** | Broad foundation exists; decision not fully accepted or consistently applied |
-| IF-ADR-011 | Participant-Aware Activity Readiness Loading Progress | Accepted | **92%** | Runtime complete; current QA and product presentation recertification remain; Loading-side non-repair rule now documented in prepared amendment |
+| IF-ADR-011 | Participant-Aware Activity Readiness Loading Progress | Accepted | **92%** | Runtime complete; canonical progress/terminal QA re-certified; public-only waiting/joining and product presentation parity remain |
 | IF-ADR-012 | Activity Player Participation Profile and Readiness Compatibility | Accepted | **90%** | Contract and runtime implemented; product/QA consolidation remains |
 | IF-ADR-013 | Optional Audio BGM Adapter | Accepted / Experimental | **65%** | Technical adapter exists; product promotion incomplete |
 | IF-ADR-014 | Authored Definition and Stable Identity Authority | **Accepted** | **100%*** | **Complete for current accepted scope; IF-ID closed; IF-ID-07 deferred by design** |
@@ -107,7 +98,7 @@ stable-ID definition collapse, cross-definition release authority, wrong occurre
 correlation, implicit identity mutation, or a real persistence/external boundary that
 requires IF-ID-07.
 
-## Prepared amendment — WaitCovered + Player readiness
+## Current decision — WaitCovered + Player readiness
 
 ### Problem recorded
 
@@ -158,46 +149,46 @@ a persistent/external control plane can issue Join/selection while covered;
 WaitVisible is intentionally selected for visible Player preparation.
 ```
 
-### ADRs affected by the prepared amendment
+### ADRs carrying the decision
 
 - **IF-ADR-003:** records Player Join/progression as a control-plane dependency and preserves `Preparing / WaitingForJoin` semantics.
 - **IF-ADR-007:** records the covered external-progression dependency cycle and explicitly rejects weakening `WaitCovered` as a repair.
 - **IF-ADR-011:** records that Loading must remain below successful terminal completion while Required readiness is still preparing and must not compensate for inaccessible controls.
 
-The existing percentages for IF-ADR-003, IF-ADR-007 and IF-ADR-011 are intentionally
-unchanged until the amendment is applied and its current package/QA validation is
-recorded. The value of this cut is primarily architectural clarification and product
-authoring prevention, not additional runtime implementation.
+The current package carries this decision and the authoring warning. IF-ADR-007 and IF-ADR-011 now also carry current QA evidence for the executed WaitVisible/WaitCovered and participant-aware Loading suites. Their percentages remain unchanged because focused public-only Player progression and product-presentation work is still open.
 
 ## Priority order
 
-### Closed — Cross-cutting identity authority
+### Closed — Transaction failure authority
 
-- **IF-ADR-014 / IF-ID:** closed for current accepted scope. Remove it from active implementation priority. IF-ID-07 remains deferred until a real persistence/external boundary exists.
+- **IF-TXN-01:** closed for canonical Start/Route/Activity request paths.
+- Pre-commit Transition failure cannot start destination lifecycle or change authority.
+- Post-commit reveal failure preserves committed authority, returns non-success and applies reveal recovery protection.
+- Canonical QA and Play Mode non-regression evidence are green.
 
-### P0 — Canonical Player consumer surface
+### P0 — Next focused architecture/product cuts
 
-- **IF-ADR-015 — 30%:** convert Demo03 findings into canonical typed commands, immutable observation, authoring, QA, and migration.
-- Ensure the future command surface explicitly distinguishes **control-plane Player operations** such as Join from gameplay capabilities that may be gated during `WaitCovered`.
+- **IF-ADR-001 / IF-ADR-006 residual terminal integrity:** audit/select a focused follow-up for Clear/Restart transition authority, gate-release failure, partial-presentation cleanup or compensation evidence. Do not introduce a generic transaction manager without concrete need.
+- **IF-ADR-015 — 30%:** canonicalize Player provisioning commands, immutable observation, authoring, QA and FIRSTGAME migration.
 
 ### P1 — Product authoring consistency
 
-- **IF-ADR-002 — 65%:** apply the product model consistently beyond the currently mature composers.
-- **IF-ADR-010 — 70%:** standardize guided creation, remediation, receipts, Advanced/Debug, and contextual cross-domain warnings.
-- Apply and validate `IF-READY-WAITCOVERED-PLAYER-AUTHORING-WARNING-01`; after package validation, add the corresponding canonical QA evidence without turning the warning into runtime policy.
+- **IF-ADR-002 — 65%:** apply the product model consistently beyond mature composers.
+- **IF-ADR-010 — 70%:** standardize guided creation, remediation, receipts, Advanced/Debug and contextual cross-domain warnings.
+- Preserve the current WaitCovered/Player authoring warning as advisory product guidance; do not turn it into runtime policy.
 
-### P2 — Runtime hardening and current QA recertification
+### P2 — Remaining hardening
 
-- IF-ADR-003 Player provisioning hardening, Leave/disconnect boundaries, and current public-only QA.
+- IF-ADR-003 Player provisioning hardening, Leave/disconnect boundaries and public-only QA.
 - IF-ADR-004 Camera priority/release/override negative matrix.
 - IF-ADR-005 Gate/Pause/Reset/Restart terminal cleanup matrix.
-- IF-ADR-006/007 replacement, cancellation, supersession, reveal, cleanup, and Player-readiness covered/visible composition matrix.
-- IF-ADR-011 loading monotonicity, stale occurrence, failure/release, zero-participant, optional-only and supersession recertification.
+- IF-ADR-007 focused ObserveOnly and Player waiting/joining/replacement matrix.
+- IF-ADR-011 public-only waiting/joining proof, startup/product presentation parity and Advanced/Debug diagnostics.
 
 ### P3 — Product demonstrations and promotion
 
-- Dedicated Player Camera, Camera Override, Reset/Restart, Pause, and Transition/Loading demonstrations.
-- Add a FIRSTGAME demonstration that makes the control-plane/gameplay-plane distinction obvious for Manager-Provisioned Player entry.
+- Dedicated Player Camera, Camera Override, Reset/Restart, Pause and Transition/Loading demonstrations.
+- Add a FIRSTGAME demonstration that makes the control-plane/gameplay-plane distinction obvious for Manager-Provisioned Player entry when useful.
 - IF-ADR-013 BGM FIRSTGAME demonstration and promotion decision.
 
 ## Portfolio interpretation
@@ -206,32 +197,37 @@ authoring prevention, not additional runtime implementation.
 Core runtime architecture
   strong and mostly implemented
 
+IF-TXN-01 transaction authority
+  CLOSED for canonical Start/Route/Activity paths
+  22/22 contract regression PASS
+  Play Mode readiness/loading non-regressions PASS
+  remaining Clear/Restart and broader cleanup/compensation are separate cuts
+
 Stable identity / IF-ID
   closed for current accepted scope
-  exact definition authority + RuntimeDefinitionToken proven
+  Identity Authority regression 6/6 PASS
   IF-ID-07 deferred by design
 
-Readiness/loading
-  contractually mature
-  Route replacement/supersession fix incorporated
-  WaitCovered + Player external-progression trap classified as product/control-plane composition
-  non-mutating authoring warning prepared; runtime semantics intentionally unchanged
+Readiness/reveal
+  WaitVisible + WaitCovered 42/42 PASS
+  post-transition readiness PASS
+  covered Player external-progression trap remains a product/control-plane composition concern
+
+Participant-aware Loading
+  progress 32/32 PASS
+  terminal/failure 34/34 PASS
+  Loading remains projection, not lifecycle/readiness authority
 
 Player lifecycle
   technically strong
-  late join/reconciliation exists
-  canonical consumer command/observation surface still missing
-  Join must remain distinguishable from gated gameplay capability
-
-Product authoring
-  proven in selected systems but inconsistent across the portfolio
-  cross-domain composition warnings are now part of the expected product surface
+  canonical consumer command/observation surface still missing (IF-ADR-015)
 
 QA
-  canonical IF-ID authority proof restored and passed
-  broader readiness/loading/player recertification still required
+  IF-TXN-01 canonical regression is in QAFramework, not package runtime
+  current transaction/readiness/loading/identity evidence is green
+  QA menu consolidation remains a future governance task, not part of this documentation cut
 
 FIRSTGAME
-  now provides real IF-ID remediation proof and active Player UX evidence
-  continues to expose product-composition issues that permanent package tooling must absorb
+  current consumer baseline remains ab1bfe6
+  continues to provide real product-composition evidence
 ```

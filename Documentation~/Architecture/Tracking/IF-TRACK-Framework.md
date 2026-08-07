@@ -8,11 +8,19 @@ Package version: `1.0.0-preview.17`
 
 ```text
 com.immersive.framework
-  99052a13ad3e1cd23bcb2a5b33fde0356f1d317c
-  IF-ID-finale
+  d0955e0dc58a3cc70f8533f92d63246d941d5e20
+  IF-TXN-01 COMPLETE
+
+QAFramework
+  00cedcb78d200b1b2094eafc500e348e07dc36ab
+  IF-TXN-01 COMPLETE
+
+FIRSTGAME
+  ab1bfe65c09af8988c2fe21ce06db780fe12aa70
+  Demo03Etapa04
 ```
 
-QAFramework and FIRSTGAME closure evidence below includes manual/local validation performed after the package identity implementation. The tracker does not invent unpublished consumer/QA commit SHAs.
+The QA evidence below includes local/manual Play Mode and Edit Mode executions on 2026-08-07 against the current package/QA workspaces. No additional unpublished commit SHA is invented for the execution itself.
 
 ## Summary
 
@@ -36,21 +44,77 @@ Architecture/Plans/     no closed execution records
 |---|---|---|---|---|
 | Runtime authority | Closed for current boundary | Internal host composition; narrow typed ports | preserve boundary | reject static/global lookup |
 | Package hygiene | Closed for current boundary | package + QA import discipline | ongoing | do not restore compatibility facades |
-| Player — Scene-Provided | **Closed / approved** | authoring, Route Primary Scene admission, Slot, Host, Actor adoption, readiness, release, reentry, Activity Restart, teardown; Stable product subset | broader automated admit/release matrix desirable | preserve baseline |
-| PLAYER-DIAG-1 | **Closed / approved** | invalid-evidence formatting, safe token text, immutable last-operation snapshot, Advanced/Debug projection, manual restart/teardown regression | optional automated matrix | preserve semantics |
-| Player — Manager-Provisioned | **Package Experimental** | `LocalPlayerProvisioningAuthoring` + runtime + Editor inspectors exist | active Activity late-join/waiting semantics and consumer hardening | follow readiness high-risk audit |
+| Player — Scene-Provided | **Closed / approved** | authoring, Route Primary Scene admission, Slot, Host, Actor adoption, readiness, release, reentry, Activity Restart, teardown | broader automated admit/release matrix desirable | preserve baseline |
+| PLAYER-DIAG-1 | **Closed / approved** | invalid-evidence formatting, safe token text, immutable last-operation snapshot, Advanced/Debug projection | optional automated matrix | preserve semantics |
+| Player — Manager-Provisioned | **Package Experimental** | `LocalPlayerProvisioningAuthoring` + runtime + Editor inspectors exist | canonical public command/observation surface and consumer hardening | IF-ADR-015 remains primary product gap |
 | Player — Session-Persistent | **Blocked** | origin reserved in architecture | authoring, admission and lifetime contracts | runtime currently rejects; needs approved package cut |
-| Activity readiness + reveal | **Implemented (Experimental); high-risk semantics under audit** | ObserveOnly / WaitVisible / WaitCovered; participants; package Player readiness contribution | zero-participant/waiting-for-join + late-join/loading causal audit | complete high-risk audit before new runtime cut |
-| WaitCovered Loading progress | **Implemented (Experimental)** | participant-aware determinate progress (IF-ADR-011) | verify semantics against active waiting/late join | preserve aggregate-only Loading until audit decides otherwise |
+| Activity readiness + reveal | **Implemented (Experimental); current core QA re-certified** | WaitVisible/WaitCovered 42/42; post-transition PASS; supersession/identity 6/6; authoring warning for covered control-plane risk | ObserveOnly-focused negatives, Player public-only waiting/joining matrix, product guidance | preserve semantics; add focused coverage only when needed |
+| WaitCovered Loading progress | **Implemented (Experimental); current core QA re-certified** | participant-aware progress 32/32; terminal/failure 34/34; WaitCovered integration 42/42 | public-only WaitingForJoin proof, startup/product presentation parity, Advanced/Debug polish | preserve aggregate-only Loading authority boundary |
 | Camera | Closed for current single-output scope | persistent output, Player request/restoration; Stable product + Internal output authority | split-screen / multiple outputs | preserve one-output boundary |
 | Pause / Input / Gate | Closed for current single-player scope | Player-bound Pause, resume, input restoration; Stable product surfaces | multiplayer policy | preserve explicit binding |
 | Reset | Implemented (mostly Experimental) | Object Reset, Group Reset, Cycle Reset, Activity Restart | unload `update-retry` recomposition finding | separate Reset lifecycle cut |
-| Activity transaction | Partial | readiness and cleanup foundations | explicit commit/finalization model | separate approved runtime cut |
+| Activity transaction | **IF-TXN-01 closed for canonical Start/Route/Activity paths** | pre-commit failure authority + committed-target reveal recovery; QA 22/22 plus Play Mode non-regressions | Clear/Restart paths, gate-release/partial-presentation cleanup, broader compensation diagnostics | audit residual terminal paths before next runtime cut |
 | Persistence / ProgressionSave | Foundation | contracts and store exist | product authoring and real consumer proof | product decision |
 | ObjectEntry / Local visibility | Implemented (Experimental) | adapters and declarations exist | dedicated product guides deferred | keep advanced/foundation |
 | Editor product surface (IF-ADR-010) | **Proposed** | Editor-Authoring-Standard guide + many Custom Editors | accept ADR and finish migration | keep guide as usage slice |
-| ADR-012 participation profile | **Proposed / not shipped** | requirement levels + evidence exist inline on `ActivityAsset` | profile asset, migration, circular validation, preflight | accept then implement; do not document profile as shipped |
-| Authored identity (IF-ADR-014) | **Closed / approved for current boundary** | IF-ID-02..06 package + tests; canonical QA 6/6 twice with idempotent cleanup; FIRSTGAME IF-ID-08 duplication/remediation proof | **IF-ID-07 deferred by design** | preserve exact-reference + token authority; reopen only on concrete boundary need/regression |
+| ADR-012 participation profile | **Accepted / substantially implemented** | requirement levels, evidence and runtime compatibility | product/QA consolidation | preserve contract; continue product hardening |
+| Authored identity (IF-ADR-014) | **Closed / approved for current boundary** | IF-ID-02..06 package + tests; canonical QA 6/6; FIRSTGAME IF-ID-08 duplication/remediation proof | IF-ID-07 deferred by design | preserve exact-reference + token authority |
+| IF-ADR-015 provisioning command/observation surface | **Proposed / 30%** | ADR and consumer prototype exist | canonical package commands, immutable observations, authoring, QA, FIRSTGAME migration | next major Player product cut |
+
+## IF-TXN-01 closure record
+
+Normative transaction rule:
+
+```text
+Transition Before not accepted
+→ abort before destination lifecycle/commit
+→ previous authority remains
+→ typed pre-commit Transition failure
+
+Transition After/reveal not accepted after commit
+→ committed destination remains authority
+→ request/start is not success
+→ no blind rollback
+→ committed-target reveal recovery protection
+→ typed reveal failure distinct from readiness failure
+
+CompletedWithWarnings
+→ accepted through TransitionResult.Completed
+
+Intentional policy/no-visual Skipped
+→ accepted
+
+Required Failed/Rejected/Cancelled
+→ not accepted and never masked as Skipped
+```
+
+Canonical QA evidence:
+
+```text
+IF-TXN-01 Transition Failure Authority
+  Passed 22/22
+
+Direct Activity Readiness Policies
+  Passed 42/42
+  WaitVisible Passed
+  WaitCovered Passed
+
+Participant-Aware Readiness Loading Terminal
+  Passed 34/34
+
+Participant-Aware Readiness Loading Progress
+  Passed 32/32
+
+Activity Readiness Post-Transition
+  Passed
+  newRequest=False
+
+Identity Authority Regression
+  Passed 6/6
+  failed=0
+```
+
+IF-TXN-01 is **COMPLETE** for the approved canonical Start/Route/Activity request boundary. Clear/Restart authority wiring, gate-release failure, broader compensation and partial-presentation cleanup remain separate future cuts.
 
 ## IF-ID closure record
 
@@ -63,52 +127,18 @@ Normative decision:
 - Occurrence/readiness/supersession authority remains definition/occurrence scoped.
 - Stable-ID collision is diagnosable and explicitly repairable; it is not runtime equality.
 
-Package proof:
-
-```text
-IF-ID-02..06 complete
-runtime identity tests passed
-Editor identity tests passed
-Unity minimum 6000.5.0f1
-```
-
-QA proof:
+QA proof remains:
 
 ```text
 runner:
   Immersive Framework QA/Game Flow/Run Identity Authority Regression
 
-cases:
-  baseline-authority-snapshot
-  route-collision-transition
-  activity-collision-transition
-  ownership-release-isolation
-  readiness-collision-isolation
-  legitimate-supersession-preservation
-
-two consecutive Play Mode executions:
-  status Passed
-  6/6 completed
-  failures none
-  cleanup none
-  teardown none
-  roots 3 -> 3
+status Passed
+6/6 completed
+failures none
+cleanup none
+teardown none
 ```
-
-FIRSTGAME proof:
-
-```text
-duplicate
-→ diagnose collision
-→ open conflicting asset
-→ regenerate copied stable ID
-→ validate
-→ run
-→ rename/move
-→ run again
-```
-
-Final consumer state is valid and contains no deliberate collision.
 
 Deferred:
 
@@ -118,59 +148,41 @@ IF-ID-07
   open only when a real save/external boundary requires it
 ```
 
-Closed execution record:
+## Closed finding — WaitCovered + externally-driven Player progression
 
-- [IF-ID archived plan](../Archive/Plans/IF-ID-IDENTITY-AUTHORITY-EXECUTION-PLAN-2026-08-06.md)
+The high-risk readiness audit is closed for the reported causal issue.
 
-## Implementation confirmation (code-backed)
-
-Confirmed present in Runtime/Editor:
+Accepted interpretation:
 
 ```text
-GameApplicationAsset → bootstrap → Persistent Content → FrameworkRuntimeHost
-SceneLocalPlayerAdmissionAuthoring (Scene-Provided Composer)
-LocalPlayerProvisioningAuthoring (Manager-Provisioned; Experimental)
-ActivityReadinessParticipant + entry policies + loading progress bridge
-CameraRigComposer / PlayerGameplayCameraAuthoring / CameraOutputSessionBinding
-PausePlayerInputBinding / PauseRequestTrigger / Gate / UnityPlayerInputGateAdapter
-ResetRegistry / ObjectReset / Cycle Reset / Activity Restart
-FrameworkBgmDirector (optional Immersive.Audio; Experimental)
-SceneLifecycleEvents
-ActivityLocalVisibilityAdapter, ObjectEntryDeclaration
-RuntimeDefinitionToken + Route/Activity owner token requirement
-Route/Activity stable-ID collision validation + regenerate UX
+Logical Actors Prepared / Player requirement
++ WaitCovered
++ Explicit Slot not yet Joined
+→ Required Player contribution may legitimately remain Preparing / WaitingForJoin
+→ Loading remains below successful terminal completion
+→ WaitCovered remains covered
 ```
 
-Confirmed **not** present / deliberately unavailable:
+If the only Join/progression control is inside covered destination gameplay, the composition creates a control-plane dependency cycle. The framework does not repair this through fake readiness, timeout, auto-Join, false Loading completion or premature reveal.
 
-```text
-ActivityPlayerParticipationProfileAsset (IF-ADR-012)
-ManagerProvisionedPlayerComposer / ManagerProvisionedPlayerRecipe
-Session-Persistent product admission path (origin rejected at runtime)
-CameraRigRecipe (removed; Unity Preset optional)
-Public static FrameworkRuntimeHost locator
-Application-scoped stable-ID resolver (IF-ID-07 deferred)
-```
+Package authoring now warns on the known risk combination. The remaining product direction is to keep control-plane operations reachable through pre-entry, automatic, persistent/external, or intentionally visible (`WaitVisible`) composition.
 
 ## Open findings
 
-### Activity readiness — active waiting / late join / loading
+### Transaction residuals after IF-TXN-01
 
-A high-risk audit is the immediate next architecture activity.
-
-It must determine the causal contract for:
+Separate future audit/cut candidates:
 
 ```text
-Logical Actors Prepared
-+ WaitCovered
-+ zero Player initially
-+ late join
-+ loading completion/reveal
+Activity Clear/Restart transition authority
+transition/gate release failure
+consumer/loading hook exception after commit
+disposal during partial presentation
+adapter partial-side-effect compensation
+full terminal cleanup receipts
 ```
 
-The audit must distinguish a legitimate active waiting state from terminal failure and determine whether active-Activity reconciliation can progress without a same-Activity re-request.
-
-No runtime fix is approved until that audit identifies the exact authority and first non-progress point.
+Do not fold these into a generic transaction manager without concrete evidence.
 
 ### Reset unload retry
 
@@ -186,40 +198,31 @@ Non-blocking in current Player tests; possible transient recomposition during un
 
 ### Missing canonical Slot–Host–Actor assignment snapshot
 
-No single authority currently answers “which Logical Player, Host and Actor currently occupy a `PlayerSlotId` under which owner/scope/lifetime?” Truth is split across participation, preparation, scene admission, occupancy and capability tokens. Historic detail remains in the archived Slot Assignment audit.
+No single authority currently answers which Logical Player, Host and Actor occupy a `PlayerSlotId` under which owner/scope/lifetime. Truth remains split across participation, preparation, scene admission, occupancy and capability tokens.
 
 ### Session-Persistent package gap
 
 Architecture accepted in IF-ADR-003; product workflow unavailable. Do not simulate with an unscoped Persistent Content prefab.
 
-### Automated Player matrix
-
-Future technical work may add automated admit/release, duplicate release, Activity Restart reentry, Route reentry and residual evidence checks. Do not merge this with the closed IF-ID runner.
-
 ## Current execution priority
 
 ```text
-Activity Readiness high-risk audit
-  zero-participant / waiting-for-join semantics
-  late-join reconciliation
-  Logical Actors Prepared dependency
-  WaitCovered loading/reveal gate
-  occurrence correlation
+IF-TXN-01
+  CLOSED for canonical Start/Route/Activity paths
 
-Manager-Provisioned Player
-  follow only after the readiness audit establishes the correct causal contract
+ADR-001 / ADR-006 residual transaction integrity
+  audit/select next focused terminal-integrity cut
+  do not introduce generic rollback/transaction manager by default
+
+IF-ADR-015
+  canonical Player provisioning command/observation surface
+  remains the major Player product gap
 
 Session-Persistent Player
   blocked by package
 
-IF-ADR-012 profile extract
-  proposed only
-
-Reset unload recomposition cut
-  open finding
-
-ObjectEntry / Local visibility product guides
-  deferred
+Reset unload recomposition
+  separate lifecycle finding
 
 IF-ID
   CLOSED for current scope
@@ -239,20 +242,18 @@ Most Activity readiness, Loading/Transition, ProgressionSave, Manager-Provisione
 
 ## Closed notes
 
+### IF-TXN-01
+
+Closed 2026-08-07 for the approved canonical GameFlow boundary after package implementation and canonical QA certification. Do not reopen merely because another subsystem has an unrelated lifecycle bug. Reopen only with evidence that non-accepted Before/After Transition outcomes can again cross the commit boundary incorrectly or produce false success.
+
 ### IF-ID
 
-Closed 2026-08-07 for the current boundary.
-
-Do not reopen stable identity work merely because another subsystem has a readiness, loading, or Player lifecycle bug. Reopen only with concrete evidence that authored-definition, occurrence, operational ownership, or explicit stable-ID remediation semantics regressed.
+Closed 2026-08-07 for the current boundary. Reopen only with concrete identity-authority evidence.
 
 ### PLAYER-DIAG-1
 
-Host-scoped last-operation diagnostics, safe invalid-evidence formatting and manual Menu → Gameplay → Activity Restart → Menu → Stop regression are approved. Do not reopen without new evidence.
-
-### Activity readiness Player source ordering
-
-Discovery must resolve Player projection before content execution so a Required Player participant exists when the readiness occurrence begins. Historic fix notes remain archived.
+Host-scoped last-operation diagnostics, safe invalid-evidence formatting and manual restart/teardown regression are approved. Do not reopen without new evidence.
 
 ## Historic programs
 
-Large readiness/M07/completeness program documents are archived and are not current product truth. Current mutable status belongs in this tracker.
+Large readiness/M07/completeness program documents are historic planning context and are not current product truth. Current mutable status belongs in this tracker.

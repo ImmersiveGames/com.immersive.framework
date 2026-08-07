@@ -3,10 +3,11 @@
 Status: Accepted  
 Last updated: 2026-08-07  
 Implementation completion: **96%**  
-Implementation classification: **Runtime contract complete; current QA recertification remains**  
+Implementation classification: **Runtime contract complete; WaitVisible/WaitCovered and post-transition readiness re-certified in current QA; focused Player/public-only matrix remains**  
 Related decisions: IF-ADR-003, IF-ADR-006, IF-ADR-009, IF-ADR-011, IF-ADR-012  
-Audit baseline: package `9ed698e55b48077c54be5056c6951b7e52dac51b`, QA `0521d1f1804dff2806e06b1e095d47023a062b9e`, FIRSTGAME `e551643ce1b154fdb2744f97b039b4ce73bc6bf5`  
-Decision amendment baseline: package `20b03efff3fe284f2098e12daf1f9274612ea40a`
+Current package baseline: `d0955e0dc58a3cc70f8533f92d63246d941d5e20`  
+Current QA baseline: `00cedcb78d200b1b2094eafc500e348e07dc36ab`  
+FIRSTGAME baseline: `ab1bfe65c09af8988c2fe21ce06db780fe12aa70`
 
 > This is a consolidated audit revision. The normative architectural decision is
 > preserved and the implementation assessment is explicitly separated from ADR
@@ -33,7 +34,7 @@ Readiness is occurrence-scoped and aggregates required/optional contribution evi
 
 `WaitCovered` deliberately retains the destination presentation and gameplay capabilities until the captured Activity readiness occurrence reaches `Ready`. A Required contribution is allowed to remain `Preparing` indefinitely when the condition it represents has not yet occurred. The framework does not fabricate readiness through timeout, presentation release, or Loading completion.
 
-This means a product can create a dependency cycle even when every runtime authority is behaving correctly:
+A product can therefore create a dependency cycle even when every runtime authority is behaving correctly:
 
 ```text
 Required readiness depends on an external/user action
@@ -46,7 +47,7 @@ Required readiness depends on an external/user action
 
 This is a control-plane composition problem, not a reason for Activity Readiness or `WaitCovered` to weaken their contracts.
 
-The package cannot generically prove whether an arbitrary readiness participant needs a user action or whether that action remains reachable. It may, however, warn about known cross-domain combinations whose authoring data exposes the risk. The initial canonical warning is:
+The package cannot generically prove whether an arbitrary readiness participant needs a user action or whether that action remains reachable. It may warn about known cross-domain combinations whose authoring data exposes the risk. The initial canonical warning is:
 
 ```text
 EntryReadinessPolicy = WaitCovered
@@ -79,23 +80,53 @@ re-request the same Activity as a reconcile mechanism.
 
 ## Current implementation coverage
 
-The package implements readiness policies, occurrence correlation, required/optional pending/completed/failed/released counts, progressive state, reveal gating, failure diagnostics, loading progress integration, and the new `Superseded` wait/execution path for authority replacement. This directly addresses the recent Route replacement/readiness issue.
+The package implements readiness policies, occurrence correlation, required/optional pending/completed/failed/released counts, progressive state, reveal gating, failure diagnostics, loading progress integration, and the `Superseded` wait/execution path for authority replacement.
 
-Activity Player participation authoring now reports a warning for the known `WaitCovered + ExplicitSlots + Player requirement >= JoinedSlots` risk. The warning teaches composition intent; runtime semantics remain unchanged.
+Activity Player participation authoring reports a warning for the known `WaitCovered + ExplicitSlots + Player requirement >= JoinedSlots` risk. The warning teaches composition intent; runtime semantics remain unchanged.
+
+IF-TXN-01 additionally guarantees that a failed/non-accepted final reveal after commit cannot be reported as ordinary success. Readiness failure and Transition reveal failure remain distinct typed terminal classes.
 
 ## Current QA evidence
 
-The runtime contract is complete, but the reorganized QA harness must re-establish the canonical policy/replacement matrix at the current HEAD.
+Current QA recertification now includes:
+
+```text
+Direct Activity Readiness Policies Regression
+  Passed — 42/42
+  WaitVisible = Passed
+  WaitCovered = Passed
+  destination authority confirmed
+  gate retained while required
+  reveal ordering confirmed
+  gate release confirmed
+
+Activity Readiness Post-Transition Smoke
+  Passed
+  ReadyToNotReady
+  NotReadyToReady
+  IdenticalValueIgnored
+  newRequest=False
+
+IF-TXN-01 Transition Failure Authority Regression
+  Passed — 22/22
+  reveal failure remains distinct from readiness failure
+  readiness failure kinds preserved
+  supersession non-authoritative mapping preserved
+
+Identity Authority Regression
+  Passed — 6/6
+  includes readiness-collision isolation and legitimate supersession preservation
+```
+
+This closes the prior statement that WaitVisible/WaitCovered current QA recertification was wholly missing. It does **not** claim that every ObserveOnly, Player-join, capacity-change, or public-only replacement scenario has been executed.
 
 ## Current FIRSTGAME evidence
 
-FIRSTGAME has exercised real WaitCovered/Player-readiness interactions and Route replacement, providing high-value consumer evidence for the fix.
-
-Focused investigation also showed that the Manager-Provisioned late-join path progresses to `Ready` when `RequestJoin` is emitted. The remaining WaitCovered product risk is ensuring that the operation required to advance readiness remains available while gameplay presentation is covered.
+FIRSTGAME has exercised real WaitCovered/Player-readiness interactions and Route replacement, providing consumer evidence for the causal model. Focused investigation showed that the Manager-Provisioned late-join path progresses to `Ready` when `RequestJoin` is emitted. The remaining WaitCovered product risk is ensuring that the operation required to advance readiness remains available while gameplay presentation is covered.
 
 ## What remains
 
-- Rebuild QA for all three policies across Ready, Preparing, Failed, Released, Invalidated, Cancelled, and Superseded outcomes.
+- Complete the focused three-policy matrix where ObserveOnly-specific negative outcomes are still not represented by the executed canonical suite.
 - Add explicit tests for required Player contribution when joining is closed, capacity changes, no Player exists, and Route replacement occurs.
 - Add a public-only `WaitCovered + WaitingForJoin + RequestJoin while gate retained + same-occurrence Ready` regression.
 - Publish a concise policy selection guide explaining when loading should remain covered.
@@ -107,20 +138,20 @@ Focused investigation also showed that the Manager-Provisioned late-join path pr
 - WaitVisible permits visible preparation without losing terminal diagnostics.
 - ObserveOnly never becomes an accidental blocking wait.
 - Known authoring combinations that can create a covered control-plane dependency cycle are warned without rejecting valid automatic/pre-entry/external-control-plane compositions.
-- Current QA passes the full policy and authority-replacement matrix.
+- Current QA passes the required policy and authority-replacement matrix for the supported boundary.
 
 ## Completion assessment
 
 ```text
 Estimated completion: 96%
 Normative status: Accepted
-Package implementation: evaluated at 9ed698e
-QA evidence: evaluated at 0521d1f
-FIRSTGAME evidence: evaluated at e551643
-Decision amendment: package 20b03eff
+WaitVisible/WaitCovered Play Mode recertification: PASS — 42/42
+Post-transition readiness: PASS
+IF-TXN-01 non-regression: PASS — 22/22
+Identity/readiness isolation: PASS — 6/6
+Remaining: focused ObserveOnly + Player/public-only matrix and product guidance
 ```
 
-The percentage includes architecture/contract, runtime behavior, product authoring,
-diagnostics/documentation, current QA evidence, and real-consumer evidence. A high
-runtime percentage may still be reduced when the canonical QA harness or product
-surface is incomplete.
+The percentage is intentionally unchanged: the new evidence closes the stale
+“current QA recertification remains” statement for the executed policies, while
+focused product/public-only cases remain open.
