@@ -44,8 +44,12 @@ namespace Immersive.Framework.GameFlow
             || _activityRequestInFlight
             || _cycleResetRequestInFlight;
 
+        /// <summary>
+        /// Canonical Transition Gate residual state only.
+        /// Does not include Activity Entry Readiness Recovery / reveal recovery blockers.
+        /// </summary>
         internal GateSnapshot CurrentTransitionGateSnapshot =>
-            CurrentActivityEntryReadinessGateSnapshot;
+            _transitionGateSnapshot;
 
         internal TransitionGateMode CurrentTransitionGateMode => _transitionGateMode;
 

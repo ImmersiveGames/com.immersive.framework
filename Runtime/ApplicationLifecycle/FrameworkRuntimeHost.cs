@@ -105,9 +105,28 @@ namespace Immersive.Framework.ApplicationLifecycle
 
         internal GateSnapshot PauseGateSnapshot => _pauseRuntime?.GateSnapshot ?? GateSnapshot.Empty();
 
+        /// <summary>
+        /// Canonical Transition Gate residual only (no readiness/reveal recovery blockers).
+        /// </summary>
         internal GateSnapshot TransitionGateSnapshot => _gameFlowRuntime?.CurrentTransitionGateSnapshot ?? GateSnapshot.Empty();
 
-        internal GateSnapshot CurrentGateSnapshot => CreateCombinedGateSnapshot(PauseGateSnapshot, TransitionGateSnapshot);
+        /// <summary>
+        /// Residual Transition Gate mode after Apply/Release (None when released).
+        /// </summary>
+        internal TransitionGateMode CurrentTransitionGateMode =>
+            _gameFlowRuntime?.CurrentTransitionGateMode ?? TransitionGateMode.None;
+
+        /// <summary>
+        /// Composite readiness admission surface: Transition Gate + readiness/reveal recovery.
+        /// </summary>
+        internal GateSnapshot ActivityEntryReadinessGateSnapshot =>
+            _gameFlowRuntime?.CurrentActivityEntryReadinessGateSnapshot ?? GateSnapshot.Empty();
+
+        /// <summary>
+        /// Combined Pause + readiness composite (preserves recovery capability blockers for input).
+        /// </summary>
+        internal GateSnapshot CurrentGateSnapshot =>
+            CreateCombinedGateSnapshot(PauseGateSnapshot, ActivityEntryReadinessGateSnapshot);
 
         internal bool TryGetPauseSnapshot(out PauseSnapshot snapshot)
         {

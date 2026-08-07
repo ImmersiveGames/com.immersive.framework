@@ -19,7 +19,11 @@ namespace Immersive.Framework.GameFlow
         private ActivityEntryReadinessActiveOperation _activityEntryReadinessActiveOperation;
         private bool _activityEntryReadinessOrchestrationDisposed;
 
-        private GateSnapshot CurrentActivityEntryReadinessGateSnapshot =>
+        /// <summary>
+        /// Composite capability gate used by readiness admission and input protection:
+        /// Transition Gate + Activity Entry Readiness / reveal Recovery Gate.
+        /// </summary>
+        internal GateSnapshot CurrentActivityEntryReadinessGateSnapshot =>
             CombineGateSnapshots(
                 _transitionGateSnapshot,
                 _activityEntryReadinessRecoveryGateSnapshot);
