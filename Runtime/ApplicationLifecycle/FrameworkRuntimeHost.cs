@@ -1623,7 +1623,9 @@ namespace Immersive.Framework.ApplicationLifecycle
                 return;
             }
 
-            if (result.Kind is FrameworkRouteRequestKind.IgnoredAlreadyActive or FrameworkRouteRequestKind.IgnoredAlreadyInFlight)
+            if (result.Kind is FrameworkRouteRequestKind.IgnoredAlreadyActive
+                or FrameworkRouteRequestKind.IgnoredAlreadyInFlight
+                or FrameworkRouteRequestKind.SupersededCommittedTargetByRouteReplacement)
             {
                 _logger.Info(result.Message, BuildRouteRequestSummaryFields(result, loadingDiagnostics));
                 _logger.Debug("Route Request diagnostics. " + result.Message, BuildRouteRequestDiagnosticFields(result, loadingDiagnostics));
@@ -1656,7 +1658,10 @@ namespace Immersive.Framework.ApplicationLifecycle
                 return;
             }
 
-            if (result.Kind is FrameworkActivityRequestKind.IgnoredAlreadyActive or FrameworkActivityRequestKind.IgnoredAlreadyInFlight or FrameworkActivityRequestKind.IgnoredNoActiveActivity)
+            if (result.Kind is FrameworkActivityRequestKind.IgnoredAlreadyActive
+                or FrameworkActivityRequestKind.IgnoredAlreadyInFlight
+                or FrameworkActivityRequestKind.IgnoredNoActiveActivity
+                or FrameworkActivityRequestKind.SupersededCommittedTargetByRouteReplacement)
             {
                 _logger.Info(result.Message, BuildActivityRequestSummaryFields(result, loadingDiagnostics));
                 _logger.Debug("Activity Request diagnostics. " + result.Message, BuildActivityRequestDiagnosticFields(result, loadingDiagnostics));

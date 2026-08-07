@@ -14,6 +14,7 @@ namespace Immersive.Framework.ActivityFlow
         Ready = 10,
         Failed = 20,
         Invalidated = 30,
-        Cancelled = 40
+        Cancelled = 40,
+        Superseded = 50
     }
 }

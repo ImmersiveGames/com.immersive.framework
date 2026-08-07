@@ -63,6 +63,11 @@ namespace Immersive.Framework.GameFlow
         public bool Succeeded =>
             Kind == FrameworkActivityRequestKind.Succeeded;
 
+        public bool Superseded =>
+            Kind ==
+            FrameworkActivityRequestKind
+                .SupersededCommittedTargetByRouteReplacement;
+
         public bool CommitBoundaryReached =>
             Kind ==
             FrameworkActivityRequestKind
@@ -168,6 +173,32 @@ namespace Immersive.Framework.GameFlow
                 FrameworkActivityRequestKind.FailedCommittedTargetReadinessCancelled,
                 message, targetActivity, source, reason, activityFlowResult,
                 transitionDiagnostics, transitionGateDiagnostics, activityTransitionMode);
+        }
+
+        internal static FrameworkActivityRequestResult
+            SupersededCommittedTargetByRouteReplacement(
+                string message,
+                ActivityAsset targetActivity,
+                string source,
+                string reason,
+                ActivityFlowStartResult activityFlowResult,
+                FrameworkTransitionDiagnostics transitionDiagnostics = default,
+                TransitionGateDiagnostics transitionGateDiagnostics = default,
+                ActivityVisualTransitionMode activityTransitionMode =
+                    ActivityVisualTransitionMode.Seamless)
+        {
+            return new FrameworkActivityRequestResult(
+                FrameworkActivityRequestKind
+                    .SupersededCommittedTargetByRouteReplacement,
+                message,
+                targetActivity,
+                source,
+                reason,
+                activityFlowResult,
+                transitionDiagnostics,
+                transitionGateDiagnostics,
+                activityTransitionMode,
+                GameFlowRequestOperationKind.Activity);
         }
 
         private static FrameworkActivityRequestResult FailedCommittedTargetReadiness(

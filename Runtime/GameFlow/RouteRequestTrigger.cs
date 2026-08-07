@@ -262,6 +262,7 @@ namespace Immersive.Framework.GameFlow
                 case FrameworkRouteRequestKind.IgnoredAlreadyInFlight:
                 case FrameworkRouteRequestKind.RejectedByTransitionGate:
                 case FrameworkRouteRequestKind.RejectedRuntimeNotReady:
+                case FrameworkRouteRequestKind.SupersededCommittedTargetByRouteReplacement:
                     return FlowRequestOutcome.Ignored;
                 default:
                     return FlowRequestOutcome.Failed;

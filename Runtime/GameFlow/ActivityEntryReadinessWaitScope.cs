@@ -12,7 +12,8 @@ namespace Immersive.Framework.GameFlow
             new CancellationTokenSource();
         private bool _cancellationRequested;
         private bool _disposed;
-        private string _cancellationReason = string.Empty;
+        private ActivityEntryReadinessInterruptionReason _interruptionReason;
+        private string _replacementRouteName = string.Empty;
 
         internal ActivityEntryReadinessWaitScope(
             TransitionOperationId operationId,
@@ -51,18 +52,33 @@ namespace Immersive.Framework.GameFlow
             }
         }
 
-        internal string CancellationReason
+        internal ActivityEntryReadinessInterruptionReason InterruptionReason
         {
             get
             {
                 lock (_syncRoot)
                 {
-                    return _cancellationReason;
+                    return _interruptionReason;
                 }
             }
         }
 
-        internal void Cancel(string reason)
+        internal string CancellationDiagnostic
+        {
+            get
+            {
+                lock (_syncRoot)
+                {
+                    return string.IsNullOrWhiteSpace(_replacementRouteName)
+                        ? _interruptionReason.ToString()
+                        : $"{_interruptionReason} replacementRoute='{_replacementRouteName}'";
+                }
+            }
+        }
+
+        internal void Cancel(
+            ActivityEntryReadinessInterruptionReason interruptionReason,
+            string replacementRouteName = null)
         {
             lock (_syncRoot)
             {
@@ -72,9 +88,8 @@ namespace Immersive.Framework.GameFlow
                 }
 
                 _cancellationRequested = true;
-                _cancellationReason = string.IsNullOrWhiteSpace(reason)
-                    ? "ActivityEntryReadinessWaitInvalidated"
-                    : reason.Trim();
+                _interruptionReason = interruptionReason;
+                _replacementRouteName = replacementRouteName ?? string.Empty;
                 _cancellationSource.Cancel();
             }
         }

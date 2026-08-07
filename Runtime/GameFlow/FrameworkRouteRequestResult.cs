@@ -51,6 +51,9 @@ namespace Immersive.Framework.GameFlow
 
         public bool Succeeded => Kind == FrameworkRouteRequestKind.Succeeded;
 
+        public bool Superseded =>
+            Kind == FrameworkRouteRequestKind.SupersededCommittedTargetByRouteReplacement;
+
         public bool DestinationAuthoritative => Succeeded ||
             Kind == FrameworkRouteRequestKind.FailedCommittedTargetNotReady ||
             Kind == FrameworkRouteRequestKind.FailedCommittedTargetReadinessInvalidated ||
@@ -187,6 +190,26 @@ namespace Immersive.Framework.GameFlow
             return new FrameworkRouteRequestResult(
                 kind, message, targetRoute, source, reason, routeLifecycleResult,
                 transitionDiagnostics, transitionGateDiagnostics);
+        }
+
+        internal static FrameworkRouteRequestResult SupersededCommittedTargetByRouteReplacement(
+            string message,
+            RouteAsset targetRoute,
+            string source,
+            string reason,
+            RouteLifecycleStartResult routeLifecycleResult,
+            FrameworkTransitionDiagnostics transitionDiagnostics = default,
+            TransitionGateDiagnostics transitionGateDiagnostics = default)
+        {
+            return new FrameworkRouteRequestResult(
+                FrameworkRouteRequestKind.SupersededCommittedTargetByRouteReplacement,
+                message,
+                targetRoute,
+                source,
+                reason,
+                routeLifecycleResult,
+                transitionDiagnostics,
+                transitionGateDiagnostics);
         }
 
         private static string FormatRequestContext(string source, string reason)

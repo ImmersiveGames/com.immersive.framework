@@ -45,9 +45,11 @@ namespace Immersive.Framework.GameFlow
                 Occurrence.Activity.HasSameIdentity(activity);
         }
 
-        internal void RequestCancellation(string reason)
+        internal void RequestCancellation(
+            ActivityEntryReadinessInterruptionReason interruptionReason,
+            string replacementRouteName = null)
         {
-            WaitScope.Cancel(reason);
+            WaitScope.Cancel(interruptionReason, replacementRouteName);
         }
 
         internal void CompleteUnwind()

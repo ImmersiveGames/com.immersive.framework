@@ -36,6 +36,7 @@ namespace Immersive.Framework.ActivityFlow
         internal bool Failed => Status == ActivityEntryReadinessWaitStatus.Failed;
         internal bool Invalidated => Status == ActivityEntryReadinessWaitStatus.Invalidated;
         internal bool Cancelled => Status == ActivityEntryReadinessWaitStatus.Cancelled;
+        internal bool Superseded => Status == ActivityEntryReadinessWaitStatus.Superseded;
 
         internal static ActivityEntryReadinessWaitResult Ready(
             ActivityReadinessOccurrence occurrence,
@@ -87,6 +88,20 @@ namespace Immersive.Framework.ActivityFlow
         {
             return new ActivityEntryReadinessWaitResult(
                 ActivityEntryReadinessWaitStatus.Cancelled,
+                occurrence,
+                readinessState,
+                reason,
+                revision);
+        }
+
+        internal static ActivityEntryReadinessWaitResult Supersession(
+            ActivityReadinessOccurrence occurrence,
+            ActivityReadinessState readinessState,
+            string reason,
+            int revision)
+        {
+            return new ActivityEntryReadinessWaitResult(
+                ActivityEntryReadinessWaitStatus.Superseded,
                 occurrence,
                 readinessState,
                 reason,

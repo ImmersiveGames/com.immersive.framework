@@ -17,6 +17,7 @@ namespace Immersive.Framework.GameFlow
         RejectedRuntimeNotReady = 6,
         FailedCommittedTargetNotReady = 7,
         FailedCommittedTargetReadinessInvalidated = 8,
-        FailedCommittedTargetReadinessCancelled = 9
+        FailedCommittedTargetReadinessCancelled = 9,
+        SupersededCommittedTargetByRouteReplacement = 10
     }
 }

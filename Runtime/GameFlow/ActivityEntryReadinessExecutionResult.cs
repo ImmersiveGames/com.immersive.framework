@@ -46,6 +46,8 @@ namespace Immersive.Framework.GameFlow
         internal bool RequiresWait => Policy is ActivityEntryReadinessPolicy.WaitVisible
             or ActivityEntryReadinessPolicy.WaitCovered;
         internal bool IsReady => Status == ActivityEntryReadinessExecutionStatus.Ready;
+        internal bool IsSuperseded =>
+            Status == ActivityEntryReadinessExecutionStatus.Superseded;
         internal bool IsFailure => Status is ActivityEntryReadinessExecutionStatus.Failed
             or ActivityEntryReadinessExecutionStatus.Invalidated
             or ActivityEntryReadinessExecutionStatus.Cancelled;

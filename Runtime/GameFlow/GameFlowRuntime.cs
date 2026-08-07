@@ -650,6 +650,32 @@ namespace Immersive.Framework.GameFlow
                     transitionGateReleased: true,
                     recoveryGateApplied: readinessExecution.IsFailure);
 
+                if (readinessExecution.IsSuperseded)
+                {
+                    if (readinessExecution.Policy ==
+                        ActivityEntryReadinessPolicy.WaitCovered &&
+                        afterRouteLifecycle != null)
+                    {
+                        await afterRouteLifecycle();
+                        readinessExecution = readinessExecution.WithPresentation(
+                            readinessExecution.RevealOccurred,
+                            loadingReleased: true,
+                            transitionGateReleased:
+                                readinessExecution.TransitionGateReleased,
+                            recoveryGateApplied: false);
+                    }
+
+                    ReleaseActivityEntryReadinessRecoveryGate();
+                    return CreateCommittedRouteReadinessResult(
+                        readinessExecution,
+                        targetRoute,
+                        resolvedSource,
+                        resolvedReason,
+                        routeLifecycleResult,
+                        transitionDiagnostics,
+                        transitionGateDiagnostics);
+                }
+
                 if (readinessExecution.IsFailure)
                 {
                     ApplyActivityEntryReadinessRecoveryGate(
@@ -1114,6 +1140,32 @@ namespace Immersive.Framework.GameFlow
                      readinessExecution.IsReady),
                     transitionGateReleased: true,
                     recoveryGateApplied: readinessExecution.IsFailure);
+
+                if (readinessExecution.IsSuperseded)
+                {
+                    if (readinessExecution.Policy ==
+                        ActivityEntryReadinessPolicy.WaitCovered &&
+                        afterActivityLifecycle != null)
+                    {
+                        await afterActivityLifecycle();
+                        readinessExecution = readinessExecution.WithPresentation(
+                            readinessExecution.RevealOccurred,
+                            loadingReleased: true,
+                            transitionGateReleased:
+                                readinessExecution.TransitionGateReleased,
+                            recoveryGateApplied: false);
+                    }
+
+                    ReleaseActivityEntryReadinessRecoveryGate();
+                    return CreateCommittedActivityReadinessResult(
+                        readinessExecution,
+                        targetActivity,
+                        resolvedSource,
+                        resolvedReason,
+                        transitionDiagnostics,
+                        transitionGateDiagnostics,
+                        activityTransitionMode);
+                }
 
                 if (readinessExecution.IsFailure)
                 {

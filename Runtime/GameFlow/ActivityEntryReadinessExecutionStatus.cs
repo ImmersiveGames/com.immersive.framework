@@ -11,6 +11,7 @@ namespace Immersive.Framework.GameFlow
         Failed = 30,
         Invalidated = 40,
         Cancelled = 50,
-        RejectedInvalidConfiguration = 60
+        RejectedInvalidConfiguration = 60,
+        Superseded = 70
     }
 }

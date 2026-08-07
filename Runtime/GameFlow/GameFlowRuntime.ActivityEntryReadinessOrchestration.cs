@@ -173,12 +173,22 @@ namespace Immersive.Framework.GameFlow
             if (waitResult.Cancelled &&
                 activeOperation.WaitScope.CancellationRequested)
             {
-                waitResult = ActivityEntryReadinessWaitResult.Cancellation(
-                    occurrence,
-                    waitResult.ReadinessState,
-                    activeOperation.WaitScope.CancellationReason,
-                    waitResult.Revision);
+                waitResult = activeOperation.WaitScope.InterruptionReason ==
+                    ActivityEntryReadinessInterruptionReason.RouteAuthorityReplaced
+                    ? ActivityEntryReadinessWaitResult.Supersession(
+                        occurrence,
+                        waitResult.ReadinessState,
+                        activeOperation.WaitScope.CancellationDiagnostic,
+                        waitResult.Revision)
+                    : ActivityEntryReadinessWaitResult.Cancellation(
+                        occurrence,
+                        waitResult.ReadinessState,
+                        activeOperation.WaitScope.CancellationDiagnostic,
+                        waitResult.Revision);
             }
+
+            ActivityEntryReadinessExecutionStatus executionStatus =
+                MapWaitStatus(waitResult.Status);
 
             RefreshCurrentFlowContext();
 
@@ -203,7 +213,7 @@ namespace Immersive.Framework.GameFlow
 
             return new ActivityEntryReadinessExecutionResult(
                 prepared.Policy,
-                MapWaitStatus(waitResult.Status),
+                executionStatus,
                 waitResult,
                 finalActivityFlowResult,
                 waitResult.Reason,
@@ -251,7 +261,7 @@ namespace Immersive.Framework.GameFlow
 
             _activityEntryReadinessOrchestrationDisposed = true;
             CancelActiveActivityEntryReadinessWait(
-                "GameFlowRuntimeDisposed");
+                ActivityEntryReadinessInterruptionReason.RuntimeDisposed);
             ReleaseActivityEntryReadinessRecoveryGate();
         }
 
@@ -265,7 +275,9 @@ namespace Immersive.Framework.GameFlow
                 return;
             }
 
-            activeOperation.RequestCancellation("RouteAuthorityReplaced");
+            activeOperation.RequestCancellation(
+                ActivityEntryReadinessInterruptionReason.RouteAuthorityReplaced,
+                targetRoute.RouteName);
             await activeOperation.Unwound;
         }
 
@@ -279,7 +291,8 @@ namespace Immersive.Framework.GameFlow
                 return;
             }
 
-            activeOperation.RequestCancellation("ActivityAuthorityReplaced");
+            activeOperation.RequestCancellation(
+                ActivityEntryReadinessInterruptionReason.ActivityAuthorityReplaced);
             await activeOperation.Unwound;
         }
 
@@ -293,7 +306,8 @@ namespace Immersive.Framework.GameFlow
                 return;
             }
 
-            activeOperation.RequestCancellation("ActivityAuthorityRemoved");
+            activeOperation.RequestCancellation(
+                ActivityEntryReadinessInterruptionReason.ActivityAuthorityRemoved);
             await activeOperation.Unwound;
         }
 
@@ -345,9 +359,11 @@ namespace Immersive.Framework.GameFlow
             activeOperation.CompleteUnwind();
         }
 
-        private void CancelActiveActivityEntryReadinessWait(string reason)
+        private void CancelActiveActivityEntryReadinessWait(
+            ActivityEntryReadinessInterruptionReason interruptionReason)
         {
-            CaptureActiveActivityEntryReadinessOperation()?.RequestCancellation(reason);
+            CaptureActiveActivityEntryReadinessOperation()?.RequestCancellation(
+                interruptionReason);
         }
 
         private ActivityEntryReadinessActiveOperation
@@ -394,7 +410,7 @@ namespace Immersive.Framework.GameFlow
             return expectedOwner;
         }
 
-        private static ActivityEntryReadinessExecutionStatus MapWaitStatus(
+        internal static ActivityEntryReadinessExecutionStatus MapWaitStatus(
             ActivityEntryReadinessWaitStatus status)
         {
             return status switch
@@ -403,6 +419,7 @@ namespace Immersive.Framework.GameFlow
                 ActivityEntryReadinessWaitStatus.Failed => ActivityEntryReadinessExecutionStatus.Failed,
                 ActivityEntryReadinessWaitStatus.Invalidated => ActivityEntryReadinessExecutionStatus.Invalidated,
                 ActivityEntryReadinessWaitStatus.Cancelled => ActivityEntryReadinessExecutionStatus.Cancelled,
+                ActivityEntryReadinessWaitStatus.Superseded => ActivityEntryReadinessExecutionStatus.Superseded,
                 _ => ActivityEntryReadinessExecutionStatus.Invalidated
             };
         }
@@ -416,6 +433,23 @@ namespace Immersive.Framework.GameFlow
             TransitionGateDiagnostics transitionGateDiagnostics,
             ActivityVisualTransitionMode transitionMode)
         {
+            if (execution.IsSuperseded)
+            {
+                string supersededMessage =
+                    "Activity Request readiness wait was superseded by a newer Route authority. " +
+                    execution.ToDiagnosticString();
+                return FrameworkActivityRequestResult
+                    .SupersededCommittedTargetByRouteReplacement(
+                        supersededMessage,
+                        targetActivity,
+                        source,
+                        reason,
+                        execution.ActivityFlowResult,
+                        transitionDiagnostics,
+                        transitionGateDiagnostics,
+                        transitionMode);
+            }
+
             string message = "Activity Request committed the target Activity but entry readiness did not complete. " +
                 execution.ToDiagnosticString();
             return execution.Status switch
@@ -443,6 +477,22 @@ namespace Immersive.Framework.GameFlow
             FrameworkTransitionDiagnostics transitionDiagnostics,
             TransitionGateDiagnostics transitionGateDiagnostics)
         {
+            if (execution.IsSuperseded)
+            {
+                string supersededMessage =
+                    "Route Request readiness wait was superseded by a newer Route authority. " +
+                    execution.ToDiagnosticString();
+                return FrameworkRouteRequestResult
+                    .SupersededCommittedTargetByRouteReplacement(
+                        supersededMessage,
+                        targetRoute,
+                        source,
+                        reason,
+                        routeLifecycleResult,
+                        transitionDiagnostics,
+                        transitionGateDiagnostics);
+            }
+
             string message = "Route Request committed the target Route but Startup Activity entry readiness did not complete. " +
                 execution.ToDiagnosticString();
             FrameworkRouteRequestKind kind = execution.Status switch
