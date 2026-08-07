@@ -1,78 +1,71 @@
 # IF-ADR-004 — Camera Requests and Output Authority
 
-Status: Accepted
-Last updated: 2026-07-23
-Supersedes: Camera C1–C9 plans, audits, manifests and product ADR fragments
-Superseded by: none
+Status: Accepted  
+Last updated: 2026-08-06  
+Implementation completion: **78%**  
+Implementation classification: **Core runtime implemented; isolated product proof incomplete**  
+Related decisions: IF-ADR-001, IF-ADR-003, IF-ADR-005, IF-ADR-010  
+Audit baseline: package `9ed698e55b48077c54be5056c6951b7e52dac51b`, QA `0521d1f1804dff2806e06b1e095d47023a062b9e`, FIRSTGAME `e551643ce1b154fdb2744f97b039b4ce73bc6bf5`
+
+> This is a consolidated audit revision. The normative architectural decision is
+> preserved and the implementation assessment is explicitly separated from ADR
+> acceptance status. Percentages are planning estimates, not automated release
+> certification.
 
 ## Context
 
-Virtual-rig authoring, physical output ownership and runtime winner selection
-must remain separate. Route, Activity, Player and Session need scoped camera
-intent without toggling cameras directly or competing through Cinemachine
-priority.
+Camera presentation needs one physical output authority while allowing Session, Route, Activity, Player, pause, and transition contexts to request presentation without directly mutating shared output or relying on hierarchy discovery.
 
 ## Decision
 
-Reusable authoring values use Unity Presets when needed. A concrete
-`CameraRigComposer` validates and idempotently Apply/Rebuilds the virtual
-Cinemachine rig, targets and framing. It does not create the persistent physical
-output or select the active rig.
+The framework owns a typed Camera request/release model and a single output authority. Request priority, ownership, replacement, release, restoration, and diagnostics are explicit. Player Camera admission is contextual to gameplay readiness. Consumers author intent through product components rather than locating or mutating the physical output directly.
 
-The persistent single-output topology is session-owned in `UIGlobal`:
+## Architectural constraints
 
-```text
-Unity Camera + CinemachineBrain
--> CameraOutputSessionBinding
--> CameraOutputSession
--> CameraOutputContext
--> CameraOutputRigApplicator
-```
-
-Typed Player, Activity, Route and Session publishers submit or release requests.
-`CameraOutputContext` is the only winner-selection authority. Default
-precedence is:
-
-```text
-Player 50 < Activity 100 < Route 200 < Session 300
-```
-
-Player publishes normal gameplay presentation only after eligibility. Activity
-and Route overrides become available with lifecycle but publish only through an
-explicit request. Session override covers transitions and releases before
-destination content is revealed.
-
-Framework Core injects the persistent output into scoped consumers. Gameplay
-scenes do not serialize cross-scene output references.
-
-## Accepted scope
-
-- Cinemachine-based virtual rig authoring and materialization.
-- One persistent physical output for the current single-player product.
-- Typed request/release, deterministic precedence and diagnostics.
-- Explicit target sources and Player gameplay eligibility.
-- Activity, Route and transition-scoped Session overrides.
-
-## Rejected scope
-
-- `Camera.main`, name lookup, singleton or global camera manager.
-- Direct physical Camera enable/disable as selection policy.
-- Independent Cinemachine-priority competition by owners.
-- `CameraRigComposer` owning output/session arbitration.
-- Cross-scene serialized references to the persistent output.
-
-## Consequences
-
-Presentation intent is reusable while runtime authority remains centralized per
-output. Releasing an override deterministically restores the next valid request.
+- Runtime authority must be scoped, typed, and lifetime-explicit.
+- Required invalid configuration must fail explicitly and diagnostically.
+- Consumer code must not depend on internal runtime modules, reflection, object-name inference, or implicit global lookup.
+- Editor tooling must be idempotent, non-destructive, and expose technical evidence through Advanced/Debug.
+- QA proves technical contracts; FIRSTGAME proves real consumer usability; permanent solutions belong in the package.
 
 ## Current implementation coverage
 
-Recipe/Composer authoring, Cinemachine materialization, output context/session,
-typed bindings, request arbitration and persistent-output injection exist.
-Current documented product scope is one physical single-player output.
+The package contains Camera output/session injection, request authority, Player gameplay camera integration, Camera Rig authoring, and priority-based presentation infrastructure. Integrated Player flows demonstrate real runtime behavior.
 
-## Pending decisions
+## Current QA evidence
 
-- Multiple physical outputs and split-screen ownership.
-- Product policy for output reassignment across local Players.
+Camera folders and regressions remain in the reorganized QA project, but complete current negative evidence was not established in this audit.
+
+## Current FIRSTGAME evidence
+
+FIRSTGAME has integrated Camera behavior through Player flows. Dedicated Player Camera and override demonstrations remain incomplete.
+
+## What remains
+
+- Create an isolated Player Camera product demonstration and manual setup guide.
+- Prove Activity, Route, and Session override priority and restoration.
+- Add QA for equal priority, stale handles, release out of order, output absence, owner destruction, and replacement during transition.
+- Complete designer-first override authoring and Advanced/Debug evidence.
+- Document which scope owns each request and how previous presentation is restored.
+
+## Completion criteria
+
+- Exactly one physical output authority exists per Session.
+- Requests and releases are typed, scoped, deterministic, and diagnostic.
+- No consumer searches the hierarchy for a Camera authority.
+- QA and FIRSTGAME prove replacement and restoration across scopes.
+
+## Completion assessment
+
+```text
+Estimated completion: 78%
+Normative status: Accepted
+Package implementation: evaluated at 9ed698e
+QA evidence: evaluated at 0521d1f
+FIRSTGAME evidence: evaluated at e551643
+```
+
+The percentage includes architecture/contract, runtime behavior, product authoring,
+diagnostics/documentation, current QA evidence, and real-consumer evidence. A high
+runtime percentage may still be reduced when the canonical QA harness or product
+surface is incomplete.

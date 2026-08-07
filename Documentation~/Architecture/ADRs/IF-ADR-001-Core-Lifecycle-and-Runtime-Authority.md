@@ -1,118 +1,84 @@
 # IF-ADR-001 — Core Lifecycle and Runtime Authority
 
-Status: Accepted
-Last updated: 2026-07-25
-Supersedes: legacy baseline, lifecycle, scene, runtime-content and host-authority ADR fragments
-Superseded by: none
+Status: Accepted  
+Last updated: 2026-08-06  
+Implementation completion: **88%**  
+Implementation classification: **Substantially implemented; architectural residuals remain**  
+Related decisions: IF-ADR-003, IF-ADR-006, IF-ADR-007, IF-ADR-014  
+Audit baseline: package `9ed698e55b48077c54be5056c6951b7e52dac51b`, QA `0521d1f1804dff2806e06b1e095d47023a062b9e`, FIRSTGAME `e551643ce1b154fdb2744f97b039b4ce73bc6bf5`
+
+> This is a consolidated audit revision. The normative architectural decision is
+> preserved and the implementation assessment is explicitly separated from ADR
+> acceptance status. Percentages are planning estimates, not automated release
+> certification.
 
 ## Context
 
-The framework needs one owner for application/session composition, Route and
-Activity lifecycle, scene/content ownership and feature runtime bindings without
-turning that owner into globally discoverable mutable state.
-
-Session-scoped participation can outlive Route and Activity changes. In particular,
-a Logical Player may exist as a Session participant before a Route or Activity is
-active and may remain valid after contextual gameplay content is released.
+The framework requires one explicit owner for application/session composition, Route and Activity lifecycle, scene/content ownership, and feature runtime bindings without creating globally discoverable mutable state. Session-scoped participation may outlive Route and Activity changes, so contextual gameplay ownership must not be confused with Session authority.
 
 ## Decision
 
-`com.immersive.framework` owns framework-specific lifecycle and product modules.
-It consumes technical primitives from `com.immersive.foundation`,
-`com.immersive.logging` and `com.immersive.pooling`; it does not reimplement
-them or push Route, Activity, Player or framework lifecycle into those packages.
-
-`FrameworkRuntimeHost` is the internal application/session composition root. Its
-factory is stateless: there is no static current-host field or lookup API.
-Authoring and Unity adapters receive narrow typed runtime ports from bootstrap,
-scene composition or the owning runtime module. Missing required bindings fail
-explicitly.
+`com.immersive.framework` owns framework-specific lifecycle and product modules. `FrameworkRuntimeHost` is the internal application/session composition root and must not expose a static current-host registry, service locator, hierarchy lookup, or implicit singleton access path. Runtime dependencies are supplied through narrow typed ports and explicit composition.
 
 The ownership hierarchy is:
 
 ```text
 Game Application / Session
-  -> session-scoped authorities and participants
+  -> Session-scoped authorities and participants
      -> Logical Players
   -> Route
      -> Activity
         -> contextual projection, readiness and materialization
 ```
 
-A Logical Player is a Session participant associated with a typed
-`PlayerSlotId`. Its existence does not imply an Actor, materialization,
-presentation or gameplay readiness.
+Route and Activity own contextual lifecycle, not Session participant identity. Missing required bindings fail explicitly. Functional identity is typed and domain-specific; names and paths are diagnostic data, not authority.
 
-Route and Activity do not own the identity or lifetime of a Session Logical Player.
-They may:
+## Architectural constraints
 
-```text
-project eligible Logical Players
-require progressive participation evidence
-prepare or adopt contextual Actor content
-enable contextual input, Camera and gameplay
-release only the contextual parts they own
-```
-
-Route owns its identity, primary/additive scene intent and local lifecycle.
-Activity is a playable/contextual step within Route and owns contextual
-readiness. Route switches exit the current Route before entering the next.
-Release frees owned content; Reset reconfigures active state and is a separate
-operation.
-
-Functional identities are typed and domain-specific. Names, paths and strings
-may appear in diagnostics but are not cross-domain functional keys.
-
-## Accepted scope
-
-- Framework settings, bootstrap, module composition and diagnostics.
-- Session, Route and Activity lifecycle.
-- Session-scoped Logical Player participation independent of Route/Activity lifetime.
-- Scene loading/composition and explicit content ownership.
-- Runtime materialization with request, result, handle and ordered release.
-- Explicit narrow runtime ports and fail-fast required configuration.
-- Structured facts distinct from human log text.
-
-## Rejected scope
-
-- Static host registry, service locator, singleton shortcut or name lookup.
-- Silent fallback for required modules.
-- Technical packages owning framework lifecycle.
-- Camera, audio, Player or gameplay rules becoming Route/Activity identity.
-- Requiring every Logical Player to originate inside a Route or Activity.
-- Destroying or invalidating a Session Logical Player only because Route or Activity exits.
-- Strings, hierarchy paths or `GameObject.name` fabricating identity.
-
-## Consequences
-
-Feature modules remain internal architectural units of one distributed package.
-Unity adapters may be components, but runtime authority remains scoped and
-explicit. QA-only host resolution is test harness infrastructure and is not a
-production access path.
-
-Session participation and contextual gameplay lifetime remain separate. Route and
-Activity can consume a Logical Player without becoming its Session authority or
-physical owner.
+- Runtime authority must be scoped, typed, and lifetime-explicit.
+- Required invalid configuration must fail explicitly and diagnostically.
+- Consumer code must not depend on internal runtime modules, reflection, object-name inference, or implicit global lookup.
+- Editor tooling must be idempotent, non-destructive, and expose technical evidence through Advanced/Debug.
+- QA proves technical contracts; FIRSTGAME proves real consumer usability; permanent solutions belong in the package.
 
 ## Current implementation coverage
 
-The internal host, explicit feature ports, bootstrap, Route/Activity runtimes,
-scene lifecycle, content ownership and typed identity primitives exist. H2.4 and
-the subsequent hygiene cut removed static host authority and superseded
-compatibility paths; their Unity evidence is recorded in the tracker.
+The package contains the scoped runtime host, bootstrap composition, Route/Activity runtimes, scene lifecycle, runtime-content ownership, explicit ports, typed results, and Session-scoped Player participation authority. Manager-Provisioned and Scene-Provided Player sources exist. The latest package change also introduces typed supersession/interruption behavior when Route authority replaces an in-flight Activity readiness operation, strengthening lifecycle unwind semantics.
 
-`PlayerParticipationRuntimeContext` already represents Session-scoped participation.
-The Manager-Provisioned and Scene-Provided Logical Player sources exist. The
-Session-Persistent Logical Player source is an accepted architectural gap and is
-not documented as implemented by this ADR update.
+## Current QA evidence
 
-The more explicit Activity transition vocabulary separating authority, phase,
-readiness and previous-Activity finalization remains only partially represented
-and must not be documented as complete.
+The current QA repository was cleaned and reorganized at the audited HEAD. Historical lifecycle smokes cannot be treated as current release evidence until the canonical suites are re-registered and executed.
 
-## Pending decisions
+## Current FIRSTGAME evidence
 
-- Final public/internal transaction snapshot for Activity authority commit and
-  previous-Activity finalization.
-- Cancellation and compensation policy before Activity authority commit.
-- Concrete authoring and runtime contract for the Session-Persistent Logical Player source.
+FIRSTGAME proves application boot, Route/Activity flow, Player participation, and additive content in real consumer scenes. Demo03 adds current consumer evidence for cross-scene Player provisioning UX.
+
+## What remains
+
+- Finalize the Activity transition transaction vocabulary: authority commit, phase, readiness, previous-Activity finalization, supersession, and unwind evidence.
+- Define cancellation and compensation rules before Activity authority commit.
+- Define and implement the Session-Persistent Logical Player source and its authoring/runtime contract.
+- Rebuild canonical QA coverage for two sessions, Route replacement during readiness waits, disposal, and required-binding failures.
+- Publish a concise lifecycle diagram and diagnostic correlation guide for Session, Route, Activity, revision, and occurrence.
+
+## Completion criteria
+
+- No static/global runtime authority or silent fallback is introduced.
+- Every transition terminal path produces typed, correlated evidence.
+- Session-Persistent Player source has explicit lifetime, authoring, release, QA, and consumer proof.
+- Canonical QA passes against the current package HEAD.
+
+## Completion assessment
+
+```text
+Estimated completion: 88%
+Normative status: Accepted
+Package implementation: evaluated at 9ed698e
+QA evidence: evaluated at 0521d1f
+FIRSTGAME evidence: evaluated at e551643
+```
+
+The percentage includes architecture/contract, runtime behavior, product authoring,
+diagnostics/documentation, current QA evidence, and real-consumer evidence. A high
+runtime percentage may still be reduced when the canonical QA harness or product
+surface is incomplete.

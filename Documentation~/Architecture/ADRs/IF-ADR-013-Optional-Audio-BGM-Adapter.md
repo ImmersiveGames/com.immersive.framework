@@ -1,87 +1,71 @@
 # IF-ADR-013 — Optional Audio BGM Adapter
 
-Status: Accepted  
+Status: Accepted / Experimental  
 Last updated: 2026-08-06  
-Supersedes: F47B Audio/BGM planning ADR  
-Superseded by: none  
+Implementation completion: **65%**  
+Implementation classification: **Technical adapter exists; product promotion incomplete**  
+Related decisions: IF-ADR-001, IF-ADR-002, IF-ADR-006, IF-ADR-010  
+Audit baseline: package `9ed698e55b48077c54be5056c6951b7e52dac51b`, QA `0521d1f1804dff2806e06b1e095d47023a062b9e`, FIRSTGAME `e551643ce1b154fdb2744f97b039b4ce73bc6bf5`
 
-> Formerly numbered IF-ADR-007. Renumbered to 013 to resolve a duplicate
-> ADR number collision with Activity Entry Readiness (IF-ADR-007).
+> This is a consolidated audit revision. The normative architectural decision is
+> preserved and the implementation assessment is explicitly separated from ADR
+> acceptance status. Percentages are planning estimates, not automated release
+> certification.
 
 ## Context
 
-Route and Activity BGM selection is framework lifecycle semantics, while cue
-assets, playback, fades and the audio runtime belong to `com.immersive.audio`.
-Neither Framework Core nor the technical Audio package should absorb the
-other's responsibility.
+BGM integration is optional and may depend on an external audio director. The framework should define a narrow adapter boundary without making a specific audio package part of Route/Activity identity or core lifecycle authority.
 
 ## Decision
 
-The framework owns an optional Unity adapter assembly:
+The framework exposes a narrow optional BGM port and Route/Activity bindings for explicit policies such as own BGM, use Route BGM, retain previous, or silence. Requests return typed ownership evidence and release deterministically. Absence of an optional integration is explicit and must not corrupt core lifecycle.
 
-```text
-Immersive.Framework.Audio
-```
+## Architectural constraints
 
-It compiles only when `com.immersive.audio` is installed, through the
-`IMMERSIVE_FRAMEWORK_AUDIO` version define. The base
-`Immersive.Framework.Runtime` assembly does not reference the Audio package,
-and `com.immersive.audio` does not know Route, Activity or framework lifecycle.
-
-The product surface is:
-
-```text
-FrameworkBgmDirector
-FrameworkRouteBgmBinding
-FrameworkActivityBgmBinding
-FrameworkBgmActivityPolicy
-```
-
-The director selects effective BGM and delegates playback to an explicit
-`AudioRuntimeHost`. It does not compose or replace Audio services.
-
-Activity policies are:
-
-```text
-UseOwnOrRoute
-UseOwnOrRetainActivityUntilRouteExit
-UseRoute
-Silence
-```
-
-Activity BGM wins when selected; retained Activity BGM may persist only within
-the current Route; Route BGM is the fallback. `Silence` is explicit user intent,
-not a missing cue or silent fallback. Route exit clears retained Activity state.
-
-## Accepted scope
-
-- Optional adapter assembly inside `com.immersive.framework`.
-- Route/Activity lifecycle bindings and startup-Activity pre-application.
-- Explicit `AudioRuntimeHost` reference.
-- Typed Audio playback result and `[FRAMEWORK_BGM]` diagnostics.
-- Route-scoped retention and explicit Silence policy.
-
-## Rejected scope
-
-- Framework base runtime depending on `com.immersive.audio`.
-- Route/Activity semantics inside the technical Audio package.
-- New package before independent release/versioning evidence exists.
-- Audio manager/service locator, scene search or implicit host lookup.
-- FIRSTGAME-specific adapters or permanent compatibility aliases.
-
-## Consequences
-
-Games without `com.immersive.audio` keep the framework base compile-safe.
-Games using it receive framework-owned BGM lifecycle semantics without
-duplicating playback primitives.
+- Runtime authority must be scoped, typed, and lifetime-explicit.
+- Required invalid configuration must fail explicitly and diagnostically.
+- Consumer code must not depend on internal runtime modules, reflection, object-name inference, or implicit global lookup.
+- Editor tooling must be idempotent, non-destructive, and expose technical evidence through Advanced/Debug.
+- QA proves technical contracts; FIRSTGAME proves real consumer usability; permanent solutions belong in the package.
 
 ## Current implementation coverage
 
-The optional asmdef, director, Route binding, Activity binding and policy enum
-exist and remain marked Experimental. The implementation delegates to
-`AudioRuntimeHost.PlayBgm`/`StopBgm` and reports missing host explicitly.
+The port, bindings, policy vocabulary, typed handles/results, and technical QA assets exist in partial/current form. The QA repository still contains Audio structure after cleanup, but this audit did not establish a complete current promotion suite.
 
-## Pending decisions
+## Current QA evidence
 
-- Evidence for a separate adapter package and independent version lifecycle.
-- Promotion from Experimental after current QA and real-game proof.
+Audio QA content exists, but release-grade positive/negative evidence must be consolidated after the harness reorganization.
+
+## Current FIRSTGAME evidence
+
+A dedicated FIRSTGAME BGM demonstration is not yet complete. The adapter should remain Experimental until real consumer integration and restoration behavior are proven.
+
+## What remains
+
+- Build FIRSTGAME M16 or equivalent real consumer demonstration.
+- Prove Route fallback, Activity override, retain previous, silence, reentry, replacement, and restoration.
+- Create a designer-first binding/Inspector workflow and short usage guide.
+- Add QA for missing optional director, rejected request, stale handle, release failure, and rapid Route/Activity changes.
+- Decide promotion criteria from Experimental to supported product surface.
+
+## Completion criteria
+
+- Core lifecycle works when the optional adapter is absent.
+- Every accepted request has deterministic release/restoration.
+- No audio-specific identity leaks into Route/Activity identity.
+- QA and FIRSTGAME prove the full policy matrix before promotion.
+
+## Completion assessment
+
+```text
+Estimated completion: 65%
+Normative status: Accepted / Experimental
+Package implementation: evaluated at 9ed698e
+QA evidence: evaluated at 0521d1f
+FIRSTGAME evidence: evaluated at e551643
+```
+
+The percentage includes architecture/contract, runtime behavior, product authoring,
+diagnostics/documentation, current QA evidence, and real-consumer evidence. A high
+runtime percentage may still be reduced when the canonical QA harness or product
+surface is incomplete.

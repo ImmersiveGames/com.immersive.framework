@@ -1,163 +1,71 @@
 # IF-ADR-005 — Input, Pause, Gate and Reset
 
-Status: Accepted
-Last updated: 2026-07-26
-Superseded by: none
+Status: Accepted  
+Last updated: 2026-08-06  
+Implementation completion: **76%**  
+Implementation classification: **Integrated runtime exists; product extraction and negative coverage incomplete**  
+Related decisions: IF-ADR-001, IF-ADR-003, IF-ADR-006, IF-ADR-010  
+Audit baseline: package `9ed698e55b48077c54be5056c6951b7e52dac51b`, QA `0521d1f1804dff2806e06b1e095d47023a062b9e`, FIRSTGAME `e551643ce1b154fdb2744f97b039b4ce73bc6bf5`
+
+> This is a consolidated audit revision. The normative architectural decision is
+> preserved and the implementation assessment is explicitly separated from ADR
+> acceptance status. Percentages are planning estimates, not automated release
+> certification.
 
 ## Context
 
-Input posture, logical Pause, capability admission and gameplay reset interact,
-but they must not become one authority. Unity side effects require explicit
-writers and authored request surfaces must not locate runtime services.
-
-Pause requests originate from two materially different surfaces:
-
-```text
-physical Player input
-authored UI / UnityEvent request
-```
-
-Requiring a Player merely to let an authored button pause the application
-couples logical Pause to physical input availability.
+Input eligibility, pause, transition gates, object/group reset, and Activity restart intersect but are not the same authority. They require explicit ownership, typed handles, deterministic release, and failure evidence.
 
 ## Decision
 
-`PauseRuntime` remains the application authority for logical Running/Paused
-state. `FrameworkRuntimeHost` remains the application port that applies logical
-Pause, `Time.timeScale` and Pause presentation.
+Input admission is derived from valid Player/gameplay state. Pause has a scoped runtime and presentation binding. Gates use exact ownership handles and never rely on anonymous counters. Reset operates through registered subjects/participants with explicit scope and results. Activity Restart reconfigures the active Activity; it is not Session Player leave or Route replacement.
 
-`PauseProductBindingRuntimeContext` supports two explicit execution modes.
+## Architectural constraints
 
-### PlayerInput transaction
+- Runtime authority must be scoped, typed, and lifetime-explicit.
+- Required invalid configuration must fail explicitly and diagnostically.
+- Consumer code must not depend on internal runtime modules, reflection, object-name inference, or implicit global lookup.
+- Editor tooling must be idempotent, non-destructive, and expose technical evidence through Advanced/Debug.
+- QA proves technical contracts; FIRSTGAME proves real consumer usability; permanent solutions belong in the package.
 
-When one `PausePlayerInputBinding` is active:
+## Current implementation coverage
 
-```text
-Pause request
-  -> logical Pause
-  -> InputMode transaction
-  -> UnityPlayerInputGateAdapter
-  -> exact action-map posture
-```
+The runtime host composes pause, time scale, pause surfaces, combined gates, reset registry, reset subjects/participants, cycle reset, object/group reset, and Activity restart. These capabilities have been exercised in integrated flows.
 
-The result is:
+## Current QA evidence
 
-```text
-PauseProductRequestStatus.Applied
-executionMode = PlayerInputTransaction
-```
+Some regression smokes were retained or moved, but the current QA baseline does not yet provide one canonical matrix for all gate, pause, reset, and restart terminal paths.
 
-### Application-only request
+## Current FIRSTGAME evidence
 
-When the runtime is cleanly unbound and no Player binding evidence exists:
+FIRSTGAME integration proves parts of the runtime, but dedicated, teachable consumer demonstrations for M09–M13 remain incomplete.
 
-```text
-PauseRequestTrigger
-  -> logical Pause
-  -> TimeScale
-  -> Pause Surface
-```
+## What remains
 
-No action map is created, resolved or modified. The result is:
+- Publish isolated product flows for Input Gate, Object Reset, Activity Restart, and Pause.
+- Add negative QA for double acquire, invalid release, owner destruction, gate leakage, pause during transition, restart while paused, stale reset subjects, required/optional reset failure, and repeated restart.
+- Create authoring surfaces that expose intent without hiding technical ownership.
+- Provide runtime status and exact-handle evidence in Advanced/Debug.
+- Clarify cleanup order during Activity exit, Route replacement, and Session disposal.
 
-```text
-PauseProductRequestStatus.AppliedWithoutPlayerInput
-executionMode = ApplicationOnly
-```
+## Completion criteria
 
-This is an explicit supported mode, not a fallback. A failed, partial or stale
-Player binding state does not degrade to application-only execution; it is
-rejected as `BindingUnavailable`.
+- Every acquired gate and registered reset object has an explicit owner and terminal cleanup.
+- Pause and restart interactions are deterministic.
+- Invalid operations fail explicitly with actionable diagnostics.
+- Product flows are independently demonstrable in FIRSTGAME and covered by canonical QA.
 
-`PauseRequestTrigger` logs every request outcome through `FrameworkLogger` and
-`com.immersive.logging`, including product status, execution mode, previous and
-current Pause states and diagnostic.
-
-Authored Trigger injection remains scoped:
+## Completion assessment
 
 ```text
-Persistent Content
-  bound during boot
-
-Route / Activity
-  bound from exact SceneLifecycle roots
-  released before unload with the exact expected port
+Estimated completion: 76%
+Normative status: Accepted
+Package implementation: evaluated at 9ed698e
+QA evidence: evaluated at 0521d1f
+FIRSTGAME evidence: evaluated at e551643
 ```
 
-Physical Escape/Gamepad Pause still requires an officially admitted Player with
-`PlayerInput`, `UnityPlayerInputGateAdapter` and `PausePlayerInputBinding`.
-
-### Canonical gameplay Input binding
-
-`PlayerGameplayInputBindingRuntimeContext` is the sole authority for the
-gameplay Input capability of the current Actor. A binding is admitted only
-after confirming the canonical assignment, Host and Actor preparation evidence:
-
-```text
-Session + PlayerSlotId
-  + PlayerSlotAssignmentToken
-  + PlayerHostBindingIdentity
-  + PlayerActorPreparationToken
-  + Input binding revision
-```
-
-Gate state, Pause state, `PlayerInput.enabled`, current action-map enabled state,
-source, reason and diagnostics are availability or operation evidence; they are
-not part of binding identity.
-
-The read model therefore exposes two independent axes:
-
-```text
-Binding:      Unbound | Bound | ReleaseFailed | Divergent
-Availability: Allowed | BlockedByGate | PlayerInputDisabled
-              | ActionsUnavailable | GateUnavailable
-```
-
-Closing or reopening the Gate and applying or removing Pause preserve the exact
-binding token. Explicitly changing the desired gameplay action map is a
-structural reconfiguration and renews only the binding revision.
-
-Current lookup reconfirms the CPSA-3 Actor evidence and the exact physical
-`LocalPlayerHostAuthoring`, `PlayerInput`, `PlayerActorDeclaration` and Gate
-adapter. Divergence blocks downstream use but retains the physical record and
-token. Lookup never releases, restores or changes the Gate. Exact-token release
-continues to work after assignment, Host, Actor or Activity-owner divergence so
-stale physical materialization can be cleaned explicitly.
-
-## Rejected alternatives
-
-```text
-creating a fake/global Player only for Escape
-PauseRequestTrigger searching for FrameworkRuntimeHost
-singleton or service locator
-silently ignoring missing PlayerInput
-silently treating failed Player binding as application-only
-modifying action maps when no Player binding exists
-using OccupancyToken alone as proof of Player, Host, Actor or Input identity
-renewing Input identity when Gate, Pause or transient action-map state changes
-destructive cleanup during current-binding lookup
-```
-
-## Consequences
-
-Menus, title screens, accessibility overlays and gameplay scenes may expose
-Pause buttons without manufacturing a Player. Games that have an official Player
-retain the stronger Pause/InputMode transaction.
-
-Diagnostics now distinguish:
-
-```text
-Applied
-AppliedWithoutPlayerInput
-Ignored
-BindingUnavailable
-Rejected
-Failed
-```
-
-## Pending decisions
-
-- Authorable `Global + UI` posture when an official Player exists.
-- Multiplayer Pause authority and per-Player request policy.
-- Binding an official Player while the application is already paused by an
-  application-only request.
+The percentage includes architecture/contract, runtime behavior, product authoring,
+diagnostics/documentation, current QA evidence, and real-consumer evidence. A high
+runtime percentage may still be reduced when the canonical QA harness or product
+surface is incomplete.

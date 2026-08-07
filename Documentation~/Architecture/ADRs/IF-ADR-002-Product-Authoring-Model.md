@@ -1,82 +1,86 @@
 # IF-ADR-002 — Product Authoring Model
 
-Status: Accepted
-Last updated: 2026-07-23
-Supersedes: fragmented product-surface specifications and manifests
-Superseded by: none
+Status: Accepted  
+Last updated: 2026-08-06  
+Implementation completion: **65%**  
+Implementation classification: **Partially implemented across the product portfolio**  
+Related decisions: IF-ADR-008, IF-ADR-010, IF-ADR-012, IF-ADR-015  
+Audit baseline: package `9ed698e55b48077c54be5056c6951b7e52dac51b`, QA `0521d1f1804dff2806e06b1e095d47023a062b9e`, FIRSTGAME `e551643ce1b154fdb2744f97b039b4ce73bc6bf5`
+
+> This is a consolidated audit revision. The normative architectural decision is
+> preserved and the implementation assessment is explicitly separated from ADR
+> acceptance status. Percentages are planning estimates, not automated release
+> certification.
 
 ## Context
 
-Framework features must be usable by Unity teams, not exposed only as contracts,
-validators and QA menus. The public vocabulary must communicate user intent and
-separate immutable authoring from scoped runtime state.
+A technically correct collection of components, validators, and smokes is not sufficient as a product. Recurrent framework features need an authorable surface that lets a designer express intent, materialize technical contracts safely, understand validation, and inspect runtime evidence without assembling internal contracts manually.
 
 ## Decision
 
-Use these roles consistently:
+When appropriate, framework systems follow layered product architecture:
 
 ```text
-Profile
-  immutable stable product identity or selectable option
-
-Recipe
-  reusable construction or materialization intent
-
-Composer / Authoring
-  concrete prefab or scene surface
-
-Apply / Rebuild
-  idempotent technical materialization from authored intent
-
-Runtime Context / Session / Module
-  mutable state with explicit lifetime and dependencies
-
-Diagnostics / Validation
-  evidence and problem reporting, not the primary product flow
+Recipe / Profile / Template
+  reusable intent
+Composer / Authoring Component
+  concrete scene or prefab composition
+Technical materialization
+  explicit components, adapters and bindings
+Scoped Runtime Context / Session / Service
+  runtime authority with explicit lifetime
+Diagnostics
+  validation, reports, logs, smokes and Advanced/Debug evidence
 ```
 
-Owner-local scalar or reference configuration stays on its owning asset unless
-an independently reusable concept is demonstrated. A ScriptableObject is not
-automatically a Profile. Profiles and Recipes are immutable runtime inputs;
-mutable state never writes back to them.
+Designer-facing flows should prefer Create menu or wizard, reusable intent assets, clear Composer components, idempotent Apply/Rebuild, designer-first Inspectors, Advanced/Debug disclosure, embedded validation, and official samples/templates. Technical components remain inspectable and are not silently hidden.
 
-Every recurring product feature should document how to create, author,
-validate, apply/rebuild when applicable, run, diagnose and integrate it into a
-real game. Inspector defaults are designer-facing; technical evidence belongs
-under Advanced/Debug.
+## Architectural constraints
 
-## Accepted scope
-
-- `GameApplicationAsset`, `RouteAsset` and `ActivityAsset` as primary intent.
-- Profiles for stable identities such as Player Slots and Actors.
-- Recipes for reusable technical construction such as Camera rigs.
-- Explicit authoring components for scene/prefab composition.
-- Idempotent Apply/Rebuild where derived components are materialized.
-- Validators and diagnostics supporting the product workflow.
-
-## Rejected scope
-
-- Manager/Coordinator/Processor as an unresolved ownership bucket.
-- New abstraction without at least two concrete use cases.
-- Validator/smoke as the only user experience.
-- Runtime mutation of Profiles or Recipes.
-- Hidden compatibility rails, reflection-based architecture or silent repair.
-- Public terminology copied from old Base/NewScripts without product review.
-
-## Consequences
-
-The package may expose several product surfaces while keeping one runtime
-authority per domain. Product authoring remains explicit and testable without
-making technical materialization the user-facing concept.
+- Runtime authority must be scoped, typed, and lifetime-explicit.
+- Required invalid configuration must fail explicitly and diagnostically.
+- Consumer code must not depend on internal runtime modules, reflection, object-name inference, or implicit global lookup.
+- Editor tooling must be idempotent, non-destructive, and expose technical evidence through Advanced/Debug.
+- QA proves technical contracts; FIRSTGAME proves real consumer usability; permanent solutions belong in the package.
 
 ## Current implementation coverage
 
-Camera has the complete Recipe → Composer → Validate → Apply/Rebuild flow.
-Scene Local Player Admission and Pause provide explicit authoring and
-validation surfaces. Local Player provisioning is explicit but does not use a
-`PlayerRecipe` or `PlayerComposer`; those obsolete claims were removed.
+The package already demonstrates the model in Persistent Application Content composition, Camera Rig authoring, Activity/Route assets, Player participation profiles, validation dashboards, and several product Inspector passes. Apply/Rebuild and managed materialization exist for selected systems, proving the direction is viable.
 
-## Pending decisions
+## Current QA evidence
 
-- Which product lane receives the next complete authoring workflow.
-- Which mature workflows warrant distributed Samples.
+Editor UX and authoring regressions exist in partial form, but the QA cleanup means product-flow coverage must be reindexed and re-executed. Current evidence is uneven by feature.
+
+## Current FIRSTGAME evidence
+
+FIRSTGAME demonstrates manual consumer assembly and exposes friction. Demo03 is actively testing Manager-Provisioned multiplayer controls and status presentation, revealing a missing official package surface described by IF-ADR-015.
+
+## What remains
+
+- Apply the full Recipe/Profile + Composer + Apply/Rebuild pattern to Manager-Provisioned Player.
+- Create canonical product surfaces for Input Gate, Pause, Reset/Restart, Transition/Loading, Camera Overrides, and optional BGM where repetition justifies them.
+- Provide guided creation, safe remediation, validation receipts, and Advanced/Debug sections consistently.
+- Publish short usage docs and templates for each recurrent product flow.
+- Define a product-surface maturity checklist and require it before a feature is described as complete.
+
+## Completion criteria
+
+- A new consumer can create and configure the feature without manually wiring internal contracts.
+- Apply/Rebuild is idempotent, non-destructive, diagnostic, and preserves user-owned content.
+- Normal Inspector shows intent; Advanced/Debug shows technical evidence.
+- QA proves authoring and materialization; FIRSTGAME proves real-game usability.
+
+## Completion assessment
+
+```text
+Estimated completion: 65%
+Normative status: Accepted
+Package implementation: evaluated at 9ed698e
+QA evidence: evaluated at 0521d1f
+FIRSTGAME evidence: evaluated at e551643
+```
+
+The percentage includes architecture/contract, runtime behavior, product authoring,
+diagnostics/documentation, current QA evidence, and real-consumer evidence. A high
+runtime percentage may still be reduced when the canonical QA harness or product
+surface is incomplete.
