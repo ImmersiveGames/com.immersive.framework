@@ -1,3 +1,4 @@
+using System;
 using System.Reflection;
 using Immersive.Framework.Authoring;
 using Immersive.Framework.GameFlow;
@@ -10,7 +11,7 @@ using UnityEngine;
 namespace Immersive.Framework.Authoring.Tests
 {
     /// <summary>
-    /// IF-ID-02 / IF-ID-03 / IF-ID-04 baseline: stable-ID equality vs authored-definition reference equality.
+    /// IF-ID package baseline: stable-ID vs reference equality, required definition tokens, ownership.
     /// </summary>
     public sealed class AuthoredIdentityAuthorityTests
     {
@@ -129,54 +130,81 @@ namespace Immersive.Framework.Authoring.Tests
         }
 
         [Test]
-        public void RuntimeContentOwner_DifferentDefinitionTokens_DoNotShareReleaseAuthority()
+        public void RouteOwner_WithoutDefinitionToken_Throws()
         {
-            RouteAsset leftAsset = CreateRoute("demo.route.shared");
-            RouteAsset rightAsset = CreateRoute("demo.route.shared");
-            try
-            {
-                RuntimeContentOwner left = RuntimeContentOwner.Route(
-                    "demo.route.shared",
+            Assert.That(
+                () => RuntimeContentOwner.Route(
+                    "demo.route.a",
                     "Route A",
-                    leftAsset.GetEntityId());
-                RuntimeContentOwner right = RuntimeContentOwner.Route(
-                    "demo.route.shared",
-                    "Route B",
-                    rightAsset.GetEntityId());
-
-                Assert.That(left.HasSameStableDefinition(right), Is.True);
-                Assert.That(left, Is.Not.EqualTo(right));
-                Assert.That(left.StableText, Does.Contain("#def-"));
-                Assert.That(right.StableText, Does.Contain("#def-"));
-            }
-            finally
-            {
-                Object.DestroyImmediate(leftAsset);
-                Object.DestroyImmediate(rightAsset);
-            }
+                    default(RuntimeDefinitionToken)),
+                Throws.TypeOf<ArgumentException>());
         }
 
         [Test]
-        public void RuntimeContentOwner_SameAssetToken_IsSameOperationalOwner()
+        public void ActivityOwner_WithoutDefinitionToken_Throws()
         {
-            ActivityAsset activity = CreateActivity("demo.activity.a");
+            Assert.That(
+                () => RuntimeContentOwner.Activity(
+                    "demo.activity.a",
+                    "Activity A",
+                    default(RuntimeDefinitionToken)),
+                Throws.TypeOf<ArgumentException>());
+        }
+
+        [Test]
+        public void RuntimeContentOwner_SameStableId_DifferentTokens_AreNotEqual()
+        {
+            RuntimeDefinitionToken leftToken = RuntimeDefinitionToken.MintAnonymous();
+            RuntimeDefinitionToken rightToken = RuntimeDefinitionToken.MintAnonymous();
+
+            RuntimeContentOwner left = RuntimeContentOwner.Route(
+                "demo.route.shared",
+                "Route A",
+                leftToken);
+            RuntimeContentOwner right = RuntimeContentOwner.Route(
+                "demo.route.shared",
+                "Route B",
+                rightToken);
+
+            Assert.That(left.HasSameStableDefinition(right), Is.True);
+            Assert.That(left, Is.Not.EqualTo(right));
+            Assert.That(left.GetHashCode(), Is.Not.EqualTo(right.GetHashCode()));
+        }
+
+        [Test]
+        public void RuntimeContentOwner_EquivalentOwners_HaveCompatibleHashes()
+        {
+            RuntimeDefinitionToken token = RuntimeDefinitionToken.MintAnonymous();
+            RuntimeContentOwner first = RuntimeContentOwner.Activity(
+                "demo.activity.a",
+                "Activity",
+                token);
+            RuntimeContentOwner second = RuntimeContentOwner.Activity(
+                "demo.activity.a",
+                "Activity",
+                token);
+
+            Assert.That(first, Is.EqualTo(second));
+            Assert.That(first.GetHashCode(), Is.EqualTo(second.GetHashCode()));
+        }
+
+        [Test]
+        public void RuntimeDefinitionToken_FromUnityObject_IsStableForSameAsset()
+        {
+            RouteAsset route = CreateRoute("demo.route.a");
             try
             {
-                EntityId token = activity.GetEntityId();
-                RuntimeContentOwner first = RuntimeContentOwner.Activity(
-                    "demo.activity.a",
-                    "Activity",
-                    token);
-                RuntimeContentOwner second = RuntimeContentOwner.Activity(
-                    "demo.activity.a",
-                    "Activity",
-                    token);
+                RuntimeDefinitionToken first =
+                    RuntimeDefinitionToken.FromUnityObject(route);
+                RuntimeDefinitionToken second =
+                    RuntimeDefinitionToken.FromUnityObject(route);
 
+                Assert.That(first.IsValid, Is.True);
                 Assert.That(first, Is.EqualTo(second));
             }
             finally
             {
-                Object.DestroyImmediate(activity);
+                Object.DestroyImmediate(route);
             }
         }
 
@@ -190,11 +218,11 @@ namespace Immersive.Framework.Authoring.Tests
                 RuntimeContentOwner leftOwner = RuntimeContentOwner.Route(
                     left.RouteId.StableText,
                     left.RouteName,
-                    left.GetEntityId());
+                    RuntimeDefinitionToken.FromUnityObject(left));
                 RuntimeContentOwner rightOwner = RuntimeContentOwner.Route(
                     right.RouteId.StableText,
                     right.RouteName,
-                    right.GetEntityId());
+                    RuntimeDefinitionToken.FromUnityObject(right));
 
                 Assert.That(left.HasSameStableId(right), Is.True);
                 Assert.That(leftOwner, Is.Not.EqualTo(rightOwner));

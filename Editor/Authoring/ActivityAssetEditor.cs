@@ -462,8 +462,7 @@ namespace Immersive.Framework.Editor.Editor.Authoring
                             ? MessageType.Error
                             : MessageType.Warning);
 
-                DrawOpenRelatedAsset(
-                    issue.Context);
+                DrawOpenConflictingAsset(issue.Context);
 
                 return;
             }
@@ -482,19 +481,17 @@ namespace Immersive.Framework.Editor.Editor.Authoring
             return issue.Message;
         }
 
-        private void DrawOpenRelatedAsset(
-            Object context)
+        private void DrawOpenConflictingAsset(Object context)
         {
-            if (context == null ||
-                context == target)
+            if (context == null || context == target)
             {
                 return;
             }
 
             if (GUILayout.Button(
                     new GUIContent(
-                        "Open Related Asset",
-                        "Selects the asset that produced this validation finding.")))
+                        "Open Conflicting Asset",
+                        "Selects and pings the other asset involved in this identity finding.")))
             {
                 Selection.activeObject = context;
                 EditorGUIUtility.PingObject(context);

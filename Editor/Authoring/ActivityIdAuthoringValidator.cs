@@ -97,12 +97,13 @@ namespace Immersive.Framework.Editor.Editor.Authoring
                         continue;
                     }
 
+                    // Context is the conflicting asset so Inspectors can open it directly.
                     report.AddError(
                         $"Stable ID collision involving this Activity. " +
                         $"id='{id.StableText}' thisAsset='{FormatPath(path)}' " +
                         $"otherAsset='{entry.Path}' scope='Definition-local'. " +
                         "Use Regenerate Stable ID on the duplicated asset.",
-                        activity);
+                        entry.Asset);
                 }
             }
 
@@ -160,12 +161,13 @@ namespace Immersive.Framework.Editor.Editor.Authoring
                         continue;
                     }
 
+                    // Context is the conflicting asset so Inspectors can open it directly.
                     report.AddError(
                         $"Stable ID collision involving this Route. " +
                         $"id='{id.StableText}' thisAsset='{FormatPath(path)}' " +
                         $"otherAsset='{entry.Path}' scope='Definition-local'. " +
                         "Use Regenerate Stable ID on the duplicated asset.",
-                        route);
+                        entry.Asset);
                 }
             }
 
@@ -173,8 +175,8 @@ namespace Immersive.Framework.Editor.Editor.Authoring
         }
 
         /// <summary>
-        /// Game Application graph: uniqueness among reachable Route/Activity definitions.
-        /// Currently the resolvable graph is the Startup Route and its Startup Activity chain.
+        /// Startup identity chain validation for one Game Application.
+        /// Covers only Startup Route and its Startup Activity — not a full application graph.
         /// </summary>
         internal static FrameworkAuthoringValidationReport ValidateGameApplicationIdentity(
             GameApplicationAsset gameApplication,
@@ -189,7 +191,7 @@ namespace Immersive.Framework.Editor.Editor.Authoring
 
             var routes = new List<RouteAsset>();
             var activities = new List<ActivityAsset>();
-            CollectApplicationGraph(gameApplication, routes, activities);
+            CollectStartupIdentityChain(gameApplication, routes, activities);
 
             var routeIds = new Dictionary<RouteId, RouteAsset>();
             for (int index = 0; index < routes.Count; index++)
@@ -204,10 +206,10 @@ namespace Immersive.Framework.Editor.Editor.Authoring
                 if (routeIds.TryGetValue(id, out RouteAsset first))
                 {
                     report.AddError(
-                        $"Game Application graph has colliding Route IDs. " +
+                        $"Startup identity chain has colliding Route IDs. " +
                         $"id='{id.StableText}' first='{AssetDatabase.GetAssetPath(first)}' " +
-                        $"second='{AssetDatabase.GetAssetPath(route)}' scope='Game Application'.",
-                        gameApplication);
+                        $"second='{AssetDatabase.GetAssetPath(route)}' scope='Startup identity chain'.",
+                        first);
                 }
                 else
                 {
@@ -228,10 +230,10 @@ namespace Immersive.Framework.Editor.Editor.Authoring
                 if (activityIds.TryGetValue(id, out ActivityAsset first))
                 {
                     report.AddError(
-                        $"Game Application graph has colliding Activity IDs. " +
+                        $"Startup identity chain has colliding Activity IDs. " +
                         $"id='{id.StableText}' first='{AssetDatabase.GetAssetPath(first)}' " +
-                        $"second='{AssetDatabase.GetAssetPath(activity)}' scope='Game Application'.",
-                        gameApplication);
+                        $"second='{AssetDatabase.GetAssetPath(activity)}' scope='Startup identity chain'.",
+                        first);
                 }
                 else
                 {
@@ -242,7 +244,8 @@ namespace Immersive.Framework.Editor.Editor.Authoring
             if (!report.HasIssues)
             {
                 report.AddInfo(
-                    "Game Application identity graph has no Route/Activity stable-ID collisions among reachable definitions.",
+                    "Startup identity chain has no Route/Activity stable-ID collisions " +
+                    "(Startup Route and its Startup Activity only).",
                     gameApplication);
             }
 
@@ -315,7 +318,7 @@ namespace Immersive.Framework.Editor.Editor.Authoring
             return true;
         }
 
-        private static void CollectApplicationGraph(
+        private static void CollectStartupIdentityChain(
             GameApplicationAsset gameApplication,
             List<RouteAsset> routes,
             List<ActivityAsset> activities)

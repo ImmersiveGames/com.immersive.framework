@@ -1916,7 +1916,7 @@ namespace Immersive.Framework.GameFlow
             RuntimeContentOwner targetOwner = RuntimeContentOwner.Activity(
                 targetActivity.ActivityId.StableText,
                 targetActivity.ActivityName,
-                targetActivity.GetEntityId());
+                RuntimeDefinitionToken.FromUnityObject(targetActivity));
             if (lifecycle == null || !lifecycle.IsCommitted ||
                 lifecycle.IsRollbackAvailable || lifecycle.TargetOwner != targetOwner ||
                 lifecycle.IsReadyToCommit || lifecycle.IsTransitionAuthorized)

@@ -685,12 +685,12 @@ namespace Immersive.Framework.PlayerParticipation
                 RuntimeContentOwner.Route(
                     previousRoute.RouteId.StableText,
                     previousRoute.RouteName,
-                    previousRoute.GetEntityId());
+                    RuntimeDefinitionToken.FromUnityObject(previousRoute));
             RuntimeContentOwner targetRouteOwner =
                 RuntimeContentOwner.Route(
                     targetRoute.RouteId.StableText,
                     targetRoute.RouteName,
-                    targetRoute.GetEntityId());
+                    RuntimeDefinitionToken.FromUnityObject(targetRoute));
             if (previousRouteOwner == targetRouteOwner)
             {
                 return Reject(
@@ -1963,7 +1963,7 @@ namespace Immersive.Framework.PlayerParticipation
             return RuntimeContentOwner.Activity(
                 activity.ActivityId.StableText,
                 activity.ActivityName,
-                activity.GetEntityId());
+                RuntimeDefinitionToken.FromUnityObject(activity));
         }
 
         private static ActivityPlayerLifecycleAdmissionSnapshot Snapshot(

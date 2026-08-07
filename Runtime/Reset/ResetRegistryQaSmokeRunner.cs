@@ -66,7 +66,10 @@ namespace Immersive.Framework.Reset
         {
             var registry = new ResetRegistry();
             object ownerObject = new object();
-            var routeOwner = RuntimeContentOwner.Route("qa.reset.route", "QA Reset Route");
+            var routeOwner = RuntimeContentOwner.Route(
+                "qa.reset.route",
+                "QA Reset Route",
+                RuntimeDefinitionToken.MintAnonymous());
             var subject = ResetSubject.SceneRoute(
                 "qa.reset.subject.scene.route",
                 routeOwner,
@@ -100,7 +103,10 @@ namespace Immersive.Framework.Reset
         {
             var registry = new ResetRegistry();
             object ownerObject = new object();
-            var activityOwner = RuntimeContentOwner.Activity("qa.reset.activity", "QA Reset Activity");
+            var activityOwner = RuntimeContentOwner.Activity(
+                "qa.reset.activity",
+                "QA Reset Activity",
+                RuntimeDefinitionToken.MintAnonymous());
 
             var first = registry.RegisterRuntimeSubject(
                 "qa.reset.runtime.box",
@@ -151,7 +157,10 @@ namespace Immersive.Framework.Reset
         {
             var registry = new ResetRegistry();
             object ownerObject = new object();
-            var activityOwner = RuntimeContentOwner.Activity("qa.reset.activity", "QA Reset Activity");
+            var activityOwner = RuntimeContentOwner.Activity(
+                "qa.reset.activity",
+                "QA Reset Activity",
+                RuntimeDefinitionToken.MintAnonymous());
             var subject = ResetSubject.SceneActivity(
                 "qa.reset.subject.scene.activity",
                 activityOwner,
@@ -211,7 +220,10 @@ namespace Immersive.Framework.Reset
         {
             var registry = new ResetRegistry();
             object ownerObject = new object();
-            var routeOwner = RuntimeContentOwner.Route("qa.reset.route", "QA Reset Route");
+            var routeOwner = RuntimeContentOwner.Route(
+                "qa.reset.route",
+                "QA Reset Route",
+                RuntimeDefinitionToken.MintAnonymous());
             var subject = ResetSubject.SceneRoute(
                 "qa.reset.subject.unregister",
                 routeOwner,
@@ -253,7 +265,10 @@ namespace Immersive.Framework.Reset
         {
             var registry = new ResetRegistry();
             object ownerObject = new object();
-            var routeOwner = RuntimeContentOwner.Route("qa.reset.route", "QA Reset Route");
+            var routeOwner = RuntimeContentOwner.Route(
+                "qa.reset.route",
+                "QA Reset Route",
+                RuntimeDefinitionToken.MintAnonymous());
             var first = ResetSubject.SceneRoute(
                 "qa.reset.subject.duplicate",
                 routeOwner,
@@ -290,7 +305,10 @@ namespace Immersive.Framework.Reset
 #if UNITY_EDITOR
             var registry = new ResetRegistry();
             var ownerObject = new GameObject("QA_ResetRegistry_StaleOwner");
-            var routeOwner = RuntimeContentOwner.Route("qa.reset.route", "QA Reset Route");
+            var routeOwner = RuntimeContentOwner.Route(
+                "qa.reset.route",
+                "QA Reset Route",
+                RuntimeDefinitionToken.MintAnonymous());
             var subject = ResetSubject.SceneRoute(
                 "qa.reset.subject.stale",
                 routeOwner,

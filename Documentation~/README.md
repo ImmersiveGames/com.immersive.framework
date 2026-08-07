@@ -7,7 +7,7 @@ Guides/                    current product usage
 Architecture/ADRs/         accepted and proposed decisions (unique numbers)
 Architecture/Tracking/     the only mutable status board
 Architecture/Archive/      historic plans, audits and fix notes
-Architecture/Plans/        no active plan file; open work lives on the tracker
+Architecture/Plans/        no closed execution records; open work belongs on the tracker
 ```
 
 ## Start here
@@ -44,11 +44,36 @@ Architecture/Plans/        no active plan file; open work lives on the tracker
 | [011](Architecture/ADRs/IF-ADR-011-Participant-Aware-Activity-Readiness-Loading-Progress.md) | Participant-aware Activity readiness Loading progress | Accepted (implemented) |
 | [012](Architecture/ADRs/IF-ADR-012-Activity-Player-Participation-Profile-and-Readiness-Compatibility.md) | Activity Player participation profile and readiness compatibility | Proposed (not shipped) |
 | [013](Architecture/ADRs/IF-ADR-013-Optional-Audio-BGM-Adapter.md) | Optional Audio BGM adapter | Accepted |
-| [014](Architecture/ADRs/IF-ADR-014-Authored-Definition-and-Stable-Identity-Authority.md) | Authored definition and stable identity authority | Proposed (IF-ID-02..06 ~75%) |
+| [014](Architecture/ADRs/IF-ADR-014-Authored-Definition-and-Stable-Identity-Authority.md) | Authored definition and stable identity authority | **Accepted (IF-ID closed; IF-ID-07 deferred)** |
 
-ADRs decide. The tracker records progress and implementation confirmation. Git
-history and [Architecture/Archive](Architecture/Archive/README.md) retain
-superseded plans, audits and micro-cut notes.
+## IF-ID closure
+
+Identity Authority is closed for the current framework boundary.
+
+```text
+Package:
+  IF-ID-02..06 complete
+  runtime + Editor identity tests passed
+
+QAFramework:
+  canonical 6-case IF-ID regression passed
+  second execution passed
+  cleanup / teardown / root restoration passed
+
+FIRSTGAME:
+  IF-ID-08 duplication/remediation workflow passed
+
+Deferred:
+  IF-ID-07 application-scoped stable-ID resolver
+```
+
+See:
+
+- [IF-ADR-014](Architecture/ADRs/IF-ADR-014-Authored-Definition-and-Stable-Identity-Authority.md)
+- [Current tracker](Architecture/Tracking/IF-TRACK-Framework.md)
+- [Archived IF-ID execution record](Architecture/Archive/Plans/IF-ID-IDENTITY-AUTHORITY-EXECUTION-PLAN-2026-08-06.md)
+
+ADRs decide. The tracker records current progress and implementation confirmation. Git history and [Architecture/Archive](Architecture/Archive/README.md) retain superseded plans, audits and micro-cut notes.
 
 ## Foundation / advanced (code present; dedicated guide deferred)
 

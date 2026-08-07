@@ -1045,7 +1045,7 @@ namespace Immersive.Framework.ActivityFlow
             return RuntimeContentOwner.Activity(
                 activity.ActivityId.StableText,
                 activity.ActivityName,
-                activity.GetEntityId());
+                RuntimeDefinitionToken.FromUnityObject(activity));
         }
 
         private static string NormalizeSource(string source)

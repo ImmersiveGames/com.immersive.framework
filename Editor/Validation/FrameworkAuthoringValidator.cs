@@ -256,7 +256,7 @@ namespace Immersive.Framework.Editor.Editor.Validation
                 ApplicationFrameRateAuthoringValidator
                     .Validate(gameApplication));
 
-            // IF-ID-06: application-scoped stable-ID uniqueness among reachable definitions.
+            // IF-ID-06: Startup identity chain only (Startup Route + Startup Activity).
             report.AddRange(
                 FrameworkIdentityAuthoringValidator
                     .ValidateGameApplicationIdentity(

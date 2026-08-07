@@ -5,6 +5,13 @@ authoring, diagnostics and validation.
 
 Current version: `1.0.0-preview.17`.
 
+## Supported Unity version
+
+```text
+Unity 6000.5.0f1 is the official minimum version.
+There is no support or test matrix for earlier Unity versions.
+```
+
 ## Product surfaces
 
 ```text

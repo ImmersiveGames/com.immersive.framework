@@ -471,7 +471,25 @@ namespace Immersive.Framework.Editor.Editor.Authoring
                             ? MessageType.Error
                             : MessageType.Warning);
 
+                DrawOpenConflictingAsset(issue.Context);
                 return;
+            }
+        }
+
+        private void DrawOpenConflictingAsset(Object context)
+        {
+            if (context == null || context == target)
+            {
+                return;
+            }
+
+            if (GUILayout.Button(
+                    new GUIContent(
+                        "Open Conflicting Asset",
+                        "Selects and pings the other asset involved in this identity finding.")))
+            {
+                Selection.activeObject = context;
+                EditorGUIUtility.PingObject(context);
             }
         }
 

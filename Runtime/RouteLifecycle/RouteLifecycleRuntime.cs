@@ -829,7 +829,7 @@ namespace Immersive.Framework.RouteLifecycle
             return RuntimeContentOwner.Route(
                 route.RouteId.StableText,
                 route.RouteName,
-                route.GetEntityId());
+                RuntimeDefinitionToken.FromUnityObject(route));
         }
     }
 }

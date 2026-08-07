@@ -3,7 +3,8 @@
   "version": "1.0.0-preview.17",
   "displayName": "Immersive Framework",
   "description": "Immersive Framework runtime, authoring, diagnostics and validation surfaces for Unity projects.",
-  "unity": "6000.0",
+  "unity": "6000.5",
+  "unityRelease": "0f1",
   "author": {
     "name": "Immersive Games"
   },

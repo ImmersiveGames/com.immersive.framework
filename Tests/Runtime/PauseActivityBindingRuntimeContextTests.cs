@@ -443,7 +443,10 @@ namespace Immersive.Framework.Pause.Tests
         private static PauseActivityBindingScope CreateScope(string activityId, int sequence)
         {
             return new PauseActivityBindingScope(
-                RuntimeContentOwner.Activity(activityId, "Test Activity"),
+                RuntimeContentOwner.Activity(
+                    activityId,
+                    "Test Activity",
+                    RuntimeDefinitionToken.MintAnonymous()),
                 sequence);
         }
 

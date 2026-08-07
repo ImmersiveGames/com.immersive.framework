@@ -20,6 +20,7 @@ namespace Immersive.Framework.GameFlow.Tests
                 Is.EqualTo(ActivityEntryReadinessExecutionStatus.Superseded));
         }
 
+        [Test]
         public void GenericCancellation_RemainsCancelled()
         {
             ActivityEntryReadinessExecutionStatus status =

@@ -2,7 +2,6 @@ using System;
 using Immersive.Framework.ApiStatus;
 using Immersive.Framework.Identity;
 using Immersive.Framework.Common;
-using UnityEngine;
 
 namespace Immersive.Framework.RuntimeContent
 {
@@ -10,9 +9,10 @@ namespace Immersive.Framework.RuntimeContent
     /// API status: Experimental. Declares who owns runtime-created content for one lifecycle scope.
     /// This is passive ownership data; it does not resolve roots, find objects or release content.
     /// <para>
-    /// IF-ADR-014 / IF-ID-05: operational equality uses stable definition identity plus a process-local
-    /// definition token (Unity <see cref="EntityId"/> of the authored asset). Stable IDs remain boundary
-    /// evidence; two distinct authored assets that share one stable ID never share release authority.
+    /// IF-ADR-014 / IF-ID-05: operational equality uses stable definition identity plus a required
+    /// process-local <see cref="RuntimeDefinitionToken"/> for Route and Activity owners. Stable IDs
+    /// remain boundary evidence; two distinct authored assets that share one stable ID never share
+    /// release authority.
     /// </para>
     /// </summary>
     [FrameworkApiStatus(FrameworkApiStatus.Experimental, "F8B runtime content owner primitive; no registry lookup behavior.")]
@@ -22,10 +22,11 @@ namespace Immersive.Framework.RuntimeContent
             RuntimeContentScope scope,
             FrameworkIdentityKey ownerIdentity,
             string ownerName,
-            EntityId definitionToken = default)
+            RuntimeDefinitionToken definitionToken = default)
         {
             ValidateScope(scope);
             ValidateOwner(scope, ownerIdentity);
+            ValidateDefinitionToken(scope, definitionToken);
 
             Scope = scope;
             OwnerIdentity = ownerIdentity;
@@ -47,18 +48,20 @@ namespace Immersive.Framework.RuntimeContent
 
         /// <summary>
         /// Process-local token for the exact authored definition instance.
-        /// Typically <c>UnityEngine.Object.GetEntityId()</c> for Route/Activity assets.
-        /// Default means the caller does not distinguish definition instances (Session/Transient).
+        /// Required for Route and Activity scopes. Default only for Session/Transient.
         /// </summary>
-        public EntityId DefinitionToken { get; }
+        public RuntimeDefinitionToken DefinitionToken { get; }
 
-        public bool IsValid => Scope != RuntimeContentScope.Unknown && OwnerIdentity.IsValid;
+        public bool IsValid =>
+            Scope != RuntimeContentScope.Unknown &&
+            OwnerIdentity.IsValid &&
+            (!RequiresDefinitionToken(Scope) || DefinitionToken.IsValid);
 
-        public bool HasDefinitionToken => !DefinitionToken.Equals(default(EntityId));
+        public bool HasDefinitionToken => DefinitionToken.IsValid;
 
         public string StableText =>
             HasDefinitionToken
-                ? $"{Scope}:{OwnerIdentity.StableText}#def-{DefinitionToken}"
+                ? $"{Scope}:{OwnerIdentity.StableText}#{DefinitionToken.StableText}"
                 : $"{Scope}:{OwnerIdentity.StableText}";
 
         public bool Equals(RuntimeContentOwner other)
@@ -105,11 +108,21 @@ namespace Immersive.Framework.RuntimeContent
                 ownerName);
         }
 
+        /// <summary>
+        /// Creates a Route operational owner. <paramref name="definitionToken"/> is required and must be valid.
+        /// </summary>
         public static RuntimeContentOwner Route(
             string routeId,
             string ownerName,
-            EntityId definitionToken = default)
+            RuntimeDefinitionToken definitionToken)
         {
+            if (!definitionToken.IsValid)
+            {
+                throw new ArgumentException(
+                    "Route runtime content owner requires a valid process-local definition token.",
+                    nameof(definitionToken));
+            }
+
             return new RuntimeContentOwner(
                 RuntimeContentScope.Route,
                 FrameworkIdentityKey.From(FrameworkIdentityDomain.Route, routeId),
@@ -117,11 +130,21 @@ namespace Immersive.Framework.RuntimeContent
                 definitionToken);
         }
 
+        /// <summary>
+        /// Creates an Activity operational owner. <paramref name="definitionToken"/> is required and must be valid.
+        /// </summary>
         public static RuntimeContentOwner Activity(
             string activityId,
             string ownerName,
-            EntityId definitionToken = default)
+            RuntimeDefinitionToken definitionToken)
         {
+            if (!definitionToken.IsValid)
+            {
+                throw new ArgumentException(
+                    "Activity runtime content owner requires a valid process-local definition token.",
+                    nameof(definitionToken));
+            }
+
             return new RuntimeContentOwner(
                 RuntimeContentScope.Activity,
                 FrameworkIdentityKey.From(FrameworkIdentityDomain.Activity, activityId),
@@ -152,6 +175,11 @@ namespace Immersive.Framework.RuntimeContent
                 default:
                     throw new ArgumentOutOfRangeException(nameof(scope), scope, "Runtime content owner domain cannot be inferred for an unknown scope.");
             }
+        }
+
+        public static bool RequiresDefinitionToken(RuntimeContentScope scope)
+        {
+            return scope == RuntimeContentScope.Route || scope == RuntimeContentScope.Activity;
         }
 
         public static bool operator ==(RuntimeContentOwner left, RuntimeContentOwner right)
@@ -185,6 +213,18 @@ namespace Immersive.Framework.RuntimeContent
                 throw new ArgumentException(
                     $"Runtime content owner for scope '{scope}' must use identity domain '{expectedDomain}', but received '{ownerIdentity.Domain}'.",
                     nameof(ownerIdentity));
+            }
+        }
+
+        private static void ValidateDefinitionToken(
+            RuntimeContentScope scope,
+            RuntimeDefinitionToken definitionToken)
+        {
+            if (RequiresDefinitionToken(scope) && !definitionToken.IsValid)
+            {
+                throw new ArgumentException(
+                    $"Runtime content owner for scope '{scope}' requires a valid process-local definition token.",
+                    nameof(definitionToken));
             }
         }
 
