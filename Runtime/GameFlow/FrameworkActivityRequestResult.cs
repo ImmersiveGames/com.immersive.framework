@@ -212,7 +212,8 @@ namespace Immersive.Framework.GameFlow
             FrameworkTransitionDiagnostics transitionDiagnostics = default,
             TransitionGateDiagnostics transitionGateDiagnostics = default,
             ActivityVisualTransitionMode activityTransitionMode =
-                ActivityVisualTransitionMode.Seamless)
+                ActivityVisualTransitionMode.Seamless,
+            GameFlowRequestOperationKind operationKind = GameFlowRequestOperationKind.Activity)
         {
             return new FrameworkActivityRequestResult(
                 FrameworkActivityRequestKind.FailedPreCommitTransition,
@@ -224,7 +225,7 @@ namespace Immersive.Framework.GameFlow
                 transitionDiagnostics,
                 transitionGateDiagnostics,
                 activityTransitionMode,
-                GameFlowRequestOperationKind.Activity);
+                operationKind);
         }
 
         internal static FrameworkActivityRequestResult FailedCommittedTargetReveal(
@@ -236,7 +237,8 @@ namespace Immersive.Framework.GameFlow
             FrameworkTransitionDiagnostics transitionDiagnostics = default,
             TransitionGateDiagnostics transitionGateDiagnostics = default,
             ActivityVisualTransitionMode activityTransitionMode =
-                ActivityVisualTransitionMode.Seamless)
+                ActivityVisualTransitionMode.Seamless,
+            GameFlowRequestOperationKind operationKind = GameFlowRequestOperationKind.Activity)
         {
             return new FrameworkActivityRequestResult(
                 FrameworkActivityRequestKind.FailedCommittedTargetReveal,
@@ -248,7 +250,7 @@ namespace Immersive.Framework.GameFlow
                 transitionDiagnostics,
                 transitionGateDiagnostics,
                 activityTransitionMode,
-                GameFlowRequestOperationKind.Activity);
+                operationKind);
         }
 
         private static FrameworkActivityRequestResult FailedCommittedTargetReadiness(

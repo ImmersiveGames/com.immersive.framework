@@ -1582,6 +1582,23 @@ namespace Immersive.Framework.GameFlow
                         previousActivity,
                         null),
                     activityTransitionMode);
+                if (!TryAcceptTransitionPhase(
+                        transitionBefore,
+                        "Before",
+                        out string clearBeforeIssue))
+                {
+                    transitionGateDiagnostics = ReleaseTransitionGate(
+                        transitionGateMode,
+                        transitionGateSnapshot);
+                    return CreatePreCommitClearTransitionFailure(
+                        clearBeforeIssue,
+                        previousActivity,
+                        resolvedSource,
+                        resolvedReason,
+                        transitionBefore,
+                        transitionGateDiagnostics,
+                        activityTransitionMode);
+                }
 
                 if (beforeActivityLifecycle != null)
                 {
@@ -1622,6 +1639,25 @@ namespace Immersive.Framework.GameFlow
                         activityTransitionMode,
                         GameFlowRequestOperationKind.ActivityClear,
                         transitionGateDiagnostics);
+                }
+
+                if (!TryAcceptTransitionPhase(
+                        transitionAfter,
+                        "After",
+                        out string clearAfterIssue))
+                {
+                    // Clear already committed to no-Activity; never restore previous Activity.
+                    ReleaseActivityEntryReadinessRecoveryGate();
+                    RefreshCurrentFlowContext();
+                    return CreatePostCommitClearTransitionFailure(
+                        clearAfterIssue,
+                        resolvedSource,
+                        resolvedReason,
+                        activityFlowResult,
+                        transitionBefore,
+                        transitionAfter,
+                        transitionGateDiagnostics,
+                        activityTransitionMode);
                 }
 
                 ReleaseActivityEntryReadinessRecoveryGate();
@@ -1850,6 +1886,23 @@ namespace Immersive.Framework.GameFlow
                         previousActivity,
                         targetActivity),
                     activityTransitionMode);
+                if (!TryAcceptTransitionPhase(
+                        transitionBefore,
+                        "Before",
+                        out string restartBeforeIssue))
+                {
+                    transitionGateDiagnostics = ReleaseTransitionGate(
+                        transitionGateMode,
+                        transitionGateSnapshot);
+                    return CreatePreCommitRestartTransitionFailure(
+                        restartBeforeIssue,
+                        targetActivity,
+                        resolvedSource,
+                        resolvedReason,
+                        transitionBefore,
+                        transitionGateDiagnostics,
+                        activityTransitionMode);
+                }
 
                 if (beforeRestartLifecycle != null)
                 {
@@ -1986,6 +2039,26 @@ namespace Immersive.Framework.GameFlow
                         clearSucceededResult,
                         reenterFailedResult,
                         "Activity Restart failed. Activity re-enter did not complete.");
+                }
+
+                if (!TryAcceptTransitionPhase(
+                        transitionAfter,
+                        "After",
+                        out string restartAfterIssue))
+                {
+                    // Re-enter already committed the new Activity/occurrence; never roll back.
+                    RefreshCurrentFlowContext();
+                    return CreatePostCommitRestartRevealFailure(
+                        restartAfterIssue,
+                        targetActivity,
+                        resolvedSource,
+                        resolvedReason,
+                        clearFlowResult,
+                        reenterFlowResult,
+                        transitionBefore,
+                        transitionAfter,
+                        transitionGateDiagnostics,
+                        activityTransitionMode);
                 }
 
                 var reenterSucceededResult = FrameworkActivityRequestResult.SucceededWith(

@@ -35,7 +35,7 @@ The framework owns persistent transition/loading surfaces and a typed orchestrat
 
 Persistent loading/transition surfaces, progress reporters, gates, typed results, diagnostics, and Activity readiness integration exist. Participant-aware progress reserves a final readiness range. Typed supersession for Route-authority replacement remains distinct from ordinary failure/cancellation.
 
-**IF-TXN-01** closes the missing GameFlow authority bridge for Transition phase results:
+**IF-TXN-01** and **IF-TXN-02** close the GameFlow authority bridge for Transition phase results on Route/Activity/startup and Activity Clear/Restart:
 
 ```text
 Transition = execution + typed TransitionResult
@@ -43,19 +43,21 @@ GameFlow  = transaction decision from TransitionResult
 
 pre-commit Transition failure
   Transition Before is not accepted
-  → destination lifecycle is not started
+  → destination lifecycle / Clear / Restart clear+re-enter is not started
   → previous authority remains
-  → FailedPreCommitTransition (Route/Activity) / PreCommitTransitionFailed (startup)
+  → FailedPreCommitTransition (Route/Activity/Clear/Restart) / PreCommitTransitionFailed (startup)
   → transition gate released safely
   → no committed-target recovery
 
-committed-target reveal failure
+committed-target reveal / post-commit presentation failure
   destination already committed
   Transition After / reveal is not accepted
   → destination remains current authority
-  → request/start must not Succeeded/Started
+    Clear: CurrentActivity stays None (no restore of previous Activity)
+    Restart: re-entered Activity/occurrence stays current (no rollback to prior occurrence)
+  → request/start/restart must not Succeeded/Started/Completed
   → FailedCommittedTargetReveal
-  → committed-target reveal recovery gate applied
+  → committed-target reveal recovery gate applied when an Activity occurrence remains
   → policy source remains IF-TXN-01, not readiness
   → no automatic blind rollback
 

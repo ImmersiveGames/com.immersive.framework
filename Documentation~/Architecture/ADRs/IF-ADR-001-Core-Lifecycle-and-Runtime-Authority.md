@@ -48,21 +48,32 @@ Route and Activity own contextual lifecycle, not Session participant identity. M
 
 The package contains the scoped runtime host, bootstrap composition, Route/Activity runtimes, scene lifecycle, runtime-content ownership, explicit ports, typed results, and Session-scoped Player participation authority. Manager-Provisioned and Scene-Provided Player sources exist. Typed supersession/interruption exists when Route authority replaces an in-flight Activity readiness operation.
 
-**IF-TXN-01** makes Transition phase outcomes authoritative at the GameFlow transaction boundary:
+**IF-TXN-01** and **IF-TXN-02** make Transition phase outcomes authoritative at the GameFlow transaction boundary for:
+
+```text
+Route request
+Activity request
+Game Application startup
+Activity Clear
+Activity Restart
+```
 
 ```text
 pre-commit Transition failure (Before not accepted)
-  → do not start destination lifecycle
+  → do not start destination lifecycle / Clear / Restart clear+re-enter
   → previous Route/Activity authority remains
   → typed FailedPreCommitTransition terminal
   → safe transition-gate cleanup
   → no committed-target recovery
 
-committed-target reveal failure (After not accepted after destination commit)
+committed-target reveal / post-commit presentation failure (After not accepted after commit)
   → keep committed destination authoritative
-  → do not return Succeeded / Started
+    Route/Activity switch: committed target remains current
+    Clear: no-Activity remains authority (never restore previous Activity)
+    Restart: re-entered Activity/occurrence remains authority (never roll back to old occurrence)
+  → do not return Succeeded / Started / Restart Completed
   → no blind rollback
-  → apply committed-target reveal recovery protection
+  → apply committed-target reveal recovery protection when an Activity occurrence remains
   → typed FailedCommittedTargetReveal terminal
   → distinct from FailedCommittedTargetNotReady (readiness)
 

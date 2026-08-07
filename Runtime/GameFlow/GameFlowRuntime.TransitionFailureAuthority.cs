@@ -76,33 +76,10 @@ namespace Immersive.Framework.GameFlow
             string source,
             string reason)
         {
-            if (_activityEntryReadinessOrchestrationDisposed)
-            {
-                return;
-            }
-
-            ActivityReadinessOccurrence occurrence = readinessExecution.Occurrence;
-            if (!occurrence.IsValid && CurrentOccurrence.IsValid)
-            {
-                occurrence = CurrentOccurrence;
-            }
-
-            if (!occurrence.IsValid || occurrence.Activity == null ||
-                !occurrence.Activity.HasValidActivityId)
-            {
-                return;
-            }
-
-            FrameworkIdentityKey owner = FrameworkIdentityKey.From(
-                occurrence.Activity.ActivityId);
-            _activityEntryReadinessRecoveryOccurrence = occurrence;
-            _activityEntryReadinessRecoveryOwner = owner;
-            _activityEntryReadinessRecoveryGateSnapshot =
-                CommittedTargetRevealRecoveryGatePolicy.Create(
-                    occurrence,
-                    owner,
-                    source,
-                    reason);
+            ApplyCommittedTargetRevealRecoveryGate(
+                readinessExecution.Occurrence,
+                source,
+                reason);
         }
 
         private FrameworkRouteRequestResult CreatePreCommitRouteTransitionFailure(
@@ -253,6 +230,189 @@ namespace Immersive.Framework.GameFlow
                 startupRoute,
                 routeLifecycleResult,
                 readinessExecution.Status);
+        }
+
+        private FrameworkActivityRequestResult CreatePreCommitClearTransitionFailure(
+            string phaseIssue,
+            ActivityAsset previousActivity,
+            string source,
+            string reason,
+            TransitionResult transitionBefore,
+            TransitionGateDiagnostics transitionGateDiagnostics,
+            ActivityVisualTransitionMode activityTransitionMode)
+        {
+            var transitionDiagnostics = FrameworkTransitionDiagnostics.Completed(
+                TransitionScope.ActivityClear,
+                transitionBefore,
+                default);
+            return FrameworkActivityRequestResult.FailedPreCommitTransition(
+                BuildPreCommitTransitionFailureMessage(
+                    "Activity Clear",
+                    phaseIssue,
+                    transitionBefore),
+                previousActivity,
+                source,
+                reason,
+                transitionDiagnostics,
+                transitionGateDiagnostics,
+                activityTransitionMode,
+                GameFlowRequestOperationKind.ActivityClear);
+        }
+
+        private FrameworkActivityRequestResult CreatePostCommitClearTransitionFailure(
+            string phaseIssue,
+            string source,
+            string reason,
+            ActivityFlowStartResult clearFlowResult,
+            TransitionResult transitionBefore,
+            TransitionResult transitionAfter,
+            TransitionGateDiagnostics transitionGateDiagnostics,
+            ActivityVisualTransitionMode activityTransitionMode)
+        {
+            var transitionDiagnostics = FrameworkTransitionDiagnostics.Completed(
+                TransitionScope.ActivityClear,
+                transitionBefore,
+                transitionAfter);
+            // Clear committed to no-Activity. Do not restore previous Activity and do not
+            // invent occurrence recovery ownership when no Activity remains authoritative.
+            return FrameworkActivityRequestResult.FailedCommittedTargetReveal(
+                BuildCommittedTargetRevealFailureMessage(
+                    "Activity Clear",
+                    phaseIssue,
+                    transitionAfter),
+                null,
+                source,
+                reason,
+                clearFlowResult,
+                transitionDiagnostics,
+                transitionGateDiagnostics,
+                activityTransitionMode,
+                GameFlowRequestOperationKind.ActivityClear);
+        }
+
+        private FrameworkActivityRestartFlowResult CreatePreCommitRestartTransitionFailure(
+            string phaseIssue,
+            ActivityAsset targetActivity,
+            string source,
+            string reason,
+            TransitionResult transitionBefore,
+            TransitionGateDiagnostics transitionGateDiagnostics,
+            ActivityVisualTransitionMode activityTransitionMode)
+        {
+            var transitionDiagnostics = FrameworkTransitionDiagnostics.Completed(
+                TransitionScope.Activity,
+                transitionBefore,
+                default);
+            string message = BuildPreCommitTransitionFailureMessage(
+                "Activity Restart",
+                phaseIssue,
+                transitionBefore);
+            var clearResult = FrameworkActivityRequestResult.FailedPreCommitTransition(
+                message + " Activity clear was not requested.",
+                null,
+                source,
+                BuildRestartStageReason(reason, "clear"),
+                transitionDiagnostics,
+                transitionGateDiagnostics,
+                activityTransitionMode,
+                GameFlowRequestOperationKind.ActivityClear);
+            var reenterResult = FrameworkActivityRequestResult.FailedPreCommitTransition(
+                message + " Activity re-enter was not requested.",
+                targetActivity,
+                source,
+                BuildRestartStageReason(reason, "reenter"),
+                transitionDiagnostics,
+                transitionGateDiagnostics,
+                activityTransitionMode,
+                GameFlowRequestOperationKind.Activity);
+            return FrameworkActivityRestartFlowResult.FailedClear(
+                clearResult,
+                reenterResult,
+                message);
+        }
+
+        private FrameworkActivityRestartFlowResult CreatePostCommitRestartRevealFailure(
+            string phaseIssue,
+            ActivityAsset targetActivity,
+            string source,
+            string reason,
+            ActivityFlowStartResult clearFlowResult,
+            ActivityFlowStartResult reenterFlowResult,
+            TransitionResult transitionBefore,
+            TransitionResult transitionAfter,
+            TransitionGateDiagnostics transitionGateDiagnostics,
+            ActivityVisualTransitionMode activityTransitionMode)
+        {
+            var transitionDiagnostics = FrameworkTransitionDiagnostics.Completed(
+                TransitionScope.Activity,
+                transitionBefore,
+                transitionAfter);
+            ApplyCommittedTargetRevealRecoveryGate(
+                CurrentOccurrence,
+                source,
+                reason);
+
+            var clearSucceededResult = FrameworkActivityRequestResult.SucceededWith(
+                null,
+                source,
+                BuildRestartStageReason(reason, "clear"),
+                clearFlowResult,
+                transitionDiagnostics,
+                transitionGateDiagnostics: transitionGateDiagnostics,
+                activityTransitionMode: activityTransitionMode);
+            var reenterRevealFailed = FrameworkActivityRequestResult.FailedCommittedTargetReveal(
+                BuildCommittedTargetRevealFailureMessage(
+                    "Activity Restart",
+                    phaseIssue,
+                    transitionAfter),
+                targetActivity,
+                source,
+                BuildRestartStageReason(reason, "reenter"),
+                reenterFlowResult,
+                transitionDiagnostics,
+                transitionGateDiagnostics,
+                activityTransitionMode,
+                GameFlowRequestOperationKind.Activity);
+            return FrameworkActivityRestartFlowResult.FailedReenter(
+                clearSucceededResult,
+                reenterRevealFailed,
+                BuildCommittedTargetRevealFailureMessage(
+                    "Activity Restart",
+                    phaseIssue,
+                    transitionAfter));
+        }
+
+        private void ApplyCommittedTargetRevealRecoveryGate(
+            ActivityReadinessOccurrence occurrence,
+            string source,
+            string reason)
+        {
+            if (_activityEntryReadinessOrchestrationDisposed)
+            {
+                return;
+            }
+
+            if (!occurrence.IsValid && CurrentOccurrence.IsValid)
+            {
+                occurrence = CurrentOccurrence;
+            }
+
+            if (!occurrence.IsValid || occurrence.Activity == null ||
+                !occurrence.Activity.HasValidActivityId)
+            {
+                return;
+            }
+
+            FrameworkIdentityKey owner = FrameworkIdentityKey.From(
+                occurrence.Activity.ActivityId);
+            _activityEntryReadinessRecoveryOccurrence = occurrence;
+            _activityEntryReadinessRecoveryOwner = owner;
+            _activityEntryReadinessRecoveryGateSnapshot =
+                CommittedTargetRevealRecoveryGatePolicy.Create(
+                    occurrence,
+                    owner,
+                    source,
+                    reason);
         }
     }
 }
