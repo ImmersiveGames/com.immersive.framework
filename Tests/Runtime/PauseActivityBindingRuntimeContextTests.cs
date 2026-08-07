@@ -487,7 +487,9 @@ namespace Immersive.Framework.Pause.Tests
                 }
 
                 nextGeneration++;
-                token = new PauseProductBindingToken(nextGeneration, binding.GetInstanceID());
+                token = new PauseProductBindingToken(
+                    nextGeneration,
+                    binding.GetEntityId().GetHashCode());
                 diagnostic = "fake registration succeeded";
                 return true;
             }

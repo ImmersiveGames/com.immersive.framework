@@ -67,7 +67,7 @@ namespace Immersive.Framework.RouteLifecycle
                 return false;
             }
 
-            return route != null && route.HasSameIdentity(candidateRoute);
+            return route != null && ReferenceEquals(route, candidateRoute);
         }
     }
 }

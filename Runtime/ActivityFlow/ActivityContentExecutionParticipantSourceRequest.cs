@@ -80,9 +80,15 @@ namespace Immersive.Framework.ActivityFlow
         {
             unchecked
             {
-                int hashCode = Route != null && Route.HasValidRouteId ? Route.RouteId.GetHashCode() : 0;
-                hashCode = hashCode * 397 ^ (PreviousActivity != null && PreviousActivity.HasValidActivityId ? PreviousActivity.ActivityId.GetHashCode() : 0);
-                hashCode = hashCode * 397 ^ (NextActivity != null && NextActivity.HasValidActivityId ? NextActivity.ActivityId.GetHashCode() : 0);
+                int hashCode = Route == null
+                    ? 0
+                    : System.Runtime.CompilerServices.RuntimeHelpers.GetHashCode(Route);
+                hashCode = hashCode * 397 ^ (PreviousActivity == null
+                    ? 0
+                    : System.Runtime.CompilerServices.RuntimeHelpers.GetHashCode(PreviousActivity));
+                hashCode = hashCode * 397 ^ (NextActivity == null
+                    ? 0
+                    : System.Runtime.CompilerServices.RuntimeHelpers.GetHashCode(NextActivity));
                 hashCode = hashCode * 397 ^ StringComparer.Ordinal.GetHashCode(Source ?? string.Empty);
                 hashCode = hashCode * 397 ^ StringComparer.Ordinal.GetHashCode(Reason ?? string.Empty);
                 return hashCode;
@@ -90,10 +96,10 @@ namespace Immersive.Framework.ActivityFlow
         }
 
         private static bool SameRoute(RouteAsset left, RouteAsset right) =>
-            left == null ? right == null : left.HasSameIdentity(right);
+            ReferenceEquals(left, right);
 
         private static bool SameActivity(ActivityAsset left, ActivityAsset right) =>
-            left == null ? right == null : left.HasSameIdentity(right);
+            ReferenceEquals(left, right);
 
         public override string ToString()
         {

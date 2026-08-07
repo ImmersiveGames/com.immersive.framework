@@ -1915,7 +1915,8 @@ namespace Immersive.Framework.GameFlow
                 activityPlayerLifecycleAdmissionRuntime.CreateSnapshot();
             RuntimeContentOwner targetOwner = RuntimeContentOwner.Activity(
                 targetActivity.ActivityId.StableText,
-                targetActivity.ActivityName);
+                targetActivity.ActivityName,
+                targetActivity.GetEntityId());
             if (lifecycle == null || !lifecycle.IsCommitted ||
                 lifecycle.IsRollbackAvailable || lifecycle.TargetOwner != targetOwner ||
                 lifecycle.IsReadyToCommit || lifecycle.IsTransitionAuthorized)

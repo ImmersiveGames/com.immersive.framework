@@ -64,11 +64,25 @@ namespace Immersive.Framework.Authoring
 
         public bool HasValidRouteId => global::Immersive.Framework.Authoring.RouteId.IsValidText(routeId);
 
-        public bool HasSameIdentity(RouteAsset other) =>
+        /// <summary>
+        /// Stable-boundary identity equality (<see cref="RouteId"/> only).
+        /// Does not mean the same authored definition: two distinct assets may share one ID (collision).
+        /// For authored-definition equality use <c>ReferenceEquals</c> on the asset references.
+        /// </summary>
+        public bool HasSameStableId(RouteAsset other) =>
             other != null &&
             HasValidRouteId &&
             other.HasValidRouteId &&
             RouteId == other.RouteId;
+
+        /// <summary>
+        /// Obsolete alias for <see cref="HasSameStableId"/>. The name incorrectly suggested authored-definition equality.
+        /// </summary>
+        [System.Obsolete(
+            "HasSameIdentity compares only RouteId (stable boundary identity). " +
+            "Use HasSameStableId for stable-ID equality, or ReferenceEquals for authored-definition equality (IF-ADR-014).",
+            false)]
+        public bool HasSameIdentity(RouteAsset other) => HasSameStableId(other);
 
         public string RouteName
         {

@@ -44,7 +44,7 @@ Architecture/Plans/        no active plan file; open work lives on the tracker
 | [011](Architecture/ADRs/IF-ADR-011-Participant-Aware-Activity-Readiness-Loading-Progress.md) | Participant-aware Activity readiness Loading progress | Accepted (implemented) |
 | [012](Architecture/ADRs/IF-ADR-012-Activity-Player-Participation-Profile-and-Readiness-Compatibility.md) | Activity Player participation profile and readiness compatibility | Proposed (not shipped) |
 | [013](Architecture/ADRs/IF-ADR-013-Optional-Audio-BGM-Adapter.md) | Optional Audio BGM adapter | Accepted |
-| [014](Architecture/ADRs/IF-ADR-014-Authored-Definition-and-Stable-Identity-Authority.md) | Authored definition and stable identity authority | Proposed |
+| [014](Architecture/ADRs/IF-ADR-014-Authored-Definition-and-Stable-Identity-Authority.md) | Authored definition and stable identity authority | Proposed (IF-ID-02..06 ~75%) |
 
 ADRs decide. The tracker records progress and implementation confirmation. Git
 history and [Architecture/Archive](Architecture/Archive/README.md) retain

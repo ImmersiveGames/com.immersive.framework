@@ -256,6 +256,13 @@ namespace Immersive.Framework.Editor.Editor.Validation
                 ApplicationFrameRateAuthoringValidator
                     .Validate(gameApplication));
 
+            // IF-ID-06: application-scoped stable-ID uniqueness among reachable definitions.
+            report.AddRange(
+                FrameworkIdentityAuthoringValidator
+                    .ValidateGameApplicationIdentity(
+                        gameApplication,
+                        validationMode));
+
             if (!report.HasIssues)
             {
                 report.AddInfo(

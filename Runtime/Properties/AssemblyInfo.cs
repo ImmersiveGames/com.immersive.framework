@@ -9,3 +9,4 @@ using System.Runtime.CompilerServices;
 [assembly: InternalsVisibleTo("Immersive.Framework.Editor")]
 [assembly: InternalsVisibleTo("Immersive.Framework.Pause.Tests")]
 [assembly: InternalsVisibleTo("Immersive.Framework.GameFlow.Tests")]
+[assembly: InternalsVisibleTo("Immersive.Framework.Authoring.Tests")]

@@ -56,6 +56,7 @@ namespace Immersive.Framework.Editor.Editor.Authoring
 
         private SceneAsset _primarySceneAsset;
         private FrameworkAuthoringValidationReport _lastValidationReport;
+        private FrameworkAuthoringValidationReport _lastProjectIdentityAudit;
         private bool _serializedBindingsDirty = true;
         private bool _validationOutdated;
         private bool _showAdvancedDebug;
@@ -420,10 +421,17 @@ namespace Immersive.Framework.Editor.Editor.Authoring
                     route,
                     true);
 
+            // IF-ID-06: definition-local identity only (collisions involving this asset).
             _lastValidationReport.AddRange(
                 FrameworkIdentityAuthoringValidator
-                    .ValidateProjectAssets(
+                    .ValidateRouteDefinitionLocal(
+                        route,
                         FrameworkValidationMode.Standard));
+
+            _lastProjectIdentityAudit =
+                FrameworkIdentityAuthoringValidator
+                    .ValidateProjectIdentityAudit(
+                        FrameworkValidationMode.Standard);
 
             _primarySceneAsset =
                 ResolvePrimarySceneAsset();
@@ -586,6 +594,84 @@ namespace Immersive.Framework.Editor.Editor.Authoring
                     }
                 }
             }
+
+            using (new EditorGUI.DisabledScope(
+                       string.IsNullOrWhiteSpace(routeId)))
+            {
+                if (GUILayout.Button(
+                        new GUIContent(
+                            "Regenerate Stable ID...",
+                            "Creates a new stable ID for this asset only. Requires confirmation. Does not run automatically on rename, move or duplicate.")))
+                {
+                    RegenerateRouteStableId();
+                }
+            }
+
+            EditorGUILayout.Space(4f);
+            EditorGUILayout.LabelField(
+                "Project Identity Audit",
+                EditorStyles.boldLabel);
+            EditorGUILayout.HelpBox(
+                "Project-wide collisions are audit evidence. They do not automatically block this definition unless this asset participates in the collision. Run Validate to refresh.",
+                MessageType.None);
+            if (_lastProjectIdentityAudit == null)
+            {
+                EditorGUILayout.HelpBox(
+                    "Project identity audit not run yet. Click Validate.",
+                    MessageType.Info);
+            }
+            else
+            {
+                FrameworkAuthoringValidationGui.DrawSummary(
+                    _lastProjectIdentityAudit);
+                FrameworkAuthoringValidationGui.DrawIssues(
+                    _lastProjectIdentityAudit,
+                    false);
+            }
+        }
+
+        private void RegenerateRouteStableId()
+        {
+            RouteAsset route = (RouteAsset)target;
+            string currentId =
+                _routeId != null
+                    ? _routeId.stringValue ?? string.Empty
+                    : string.Empty;
+
+            if (!EditorUtility.DisplayDialog(
+                    "Regenerate Route Stable ID",
+                    "This replaces the stable Route ID for this asset only.\n\n" +
+                    $"Current ID:\n{currentId}\n\n" +
+                    "Rename and move do not change the ID. Duplicate assets often keep the copied ID and need this action.\n\n" +
+                    "Continue?",
+                    "Regenerate",
+                    "Cancel"))
+            {
+                return;
+            }
+
+            if (!FrameworkIdentityAuthoringValidator.TryRegenerateStableId(
+                    route,
+                    out string previousId,
+                    out string newId,
+                    out string issue))
+            {
+                EditorUtility.DisplayDialog(
+                    "Regenerate Route Stable ID",
+                    string.IsNullOrWhiteSpace(issue)
+                        ? "Regeneration failed."
+                        : issue,
+                    "OK");
+                return;
+            }
+
+            serializedObject.Update();
+            _validationOutdated = true;
+            RunValidation();
+            EditorUtility.DisplayDialog(
+                "Route Stable ID Regenerated",
+                $"Previous ID:\n{previousId}\n\nNew ID:\n{newId}",
+                "OK");
         }
 
         private string GetValidationStatus()

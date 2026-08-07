@@ -586,7 +586,7 @@ namespace Immersive.Framework.ApplicationLifecycle
             }
 
             InvalidateObjectEntryRuntimeContextSnapshot($"route-request:{NormalizeLifecycleSource(source)}");
-            if (targetRoute != null && _state.CurrentRoute != null && _state.CurrentRoute.HasSameIdentity(targetRoute))
+            if (targetRoute != null && _state.CurrentRoute != null && ReferenceEquals(_state.CurrentRoute, targetRoute))
             {
                 var result = await _gameFlowRuntime.RequestRouteAsync(targetRoute, source, reason);
                 if (result.Succeeded)

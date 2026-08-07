@@ -1,54 +1,386 @@
 using System;
 using System.Collections.Generic;
 using Immersive.Framework.Authoring;
+using Immersive.Framework.Editor.Editor.Settings;
 using Immersive.Framework.Editor.Editor.Validation;
 using UnityEditor;
+using UnityEngine;
 
 namespace Immersive.Framework.Editor.Editor.Authoring
 {
+    /// <summary>
+    /// IF-ADR-014 / IF-ID-06: identity validation with explicit scopes.
+    /// Definition-local findings block the selected asset; project audit findings are labeled separately.
+    /// </summary>
     internal static class FrameworkIdentityAuthoringValidator
     {
-        internal static FrameworkAuthoringValidationReport ValidateProjectAssets(FrameworkValidationMode validationMode)
+        internal static FrameworkAuthoringValidationReport ValidateProjectAssets(
+            FrameworkValidationMode validationMode)
+        {
+            return ValidateProjectIdentityAudit(validationMode);
+        }
+
+        /// <summary>
+        /// Project-wide identity audit. Collisions are labeled as project-level evidence.
+        /// Does not substitute for definition-local or Game Application validation.
+        /// </summary>
+        internal static FrameworkAuthoringValidationReport ValidateProjectIdentityAudit(
+            FrameworkValidationMode validationMode)
         {
             var report = new FrameworkAuthoringValidationReport(validationMode);
-            var firstAssetById = new Dictionary<ActivityId, string>();
-            string[] guids = AssetDatabase.FindAssets("t:ActivityAsset");
+            CollectIdentityIndex(
+                report,
+                out Dictionary<ActivityId, List<AssetIdentityEntry>> activitiesById,
+                out Dictionary<RouteId, List<AssetIdentityEntry>> routesById);
 
-            for (int index = 0; index < guids.Length; index++)
+            ReportProjectCollisions(report, activitiesById, "Activity");
+            ReportProjectCollisions(report, routesById, "Route");
+
+            if (!report.HasIssues)
             {
-                string path = AssetDatabase.GUIDToAssetPath(guids[index]);
-                ActivityAsset activity = AssetDatabase.LoadAssetAtPath<ActivityAsset>(path);
-                if (activity == null)
+                report.AddInfo(
+                    "Project identity audit: no duplicate Route or Activity stable IDs found.",
+                    null);
+            }
+
+            return report;
+        }
+
+        /// <summary>
+        /// Definition-local validation for one Activity: missing/invalid ID and collisions
+        /// that involve this asset. Unrelated project collisions are excluded.
+        /// </summary>
+        internal static FrameworkAuthoringValidationReport ValidateActivityDefinitionLocal(
+            ActivityAsset activity,
+            FrameworkValidationMode validationMode = FrameworkValidationMode.Standard)
+        {
+            var report = new FrameworkAuthoringValidationReport(validationMode);
+            if (activity == null)
+            {
+                report.AddError("Activity is missing.", null);
+                return report;
+            }
+
+            string path = AssetDatabase.GetAssetPath(activity);
+            string rawId = ReadSerializedId(activity, "activityId");
+
+            if (string.IsNullOrWhiteSpace(rawId))
+            {
+                report.AddError(
+                    "Activity ID is missing. Stable identity must be authored explicitly.",
+                    activity);
+                return report;
+            }
+
+            if (!activity.HasValidActivityId)
+            {
+                report.AddError(
+                    $"Activity ID is invalid. id='{rawId}'.",
+                    activity);
+                return report;
+            }
+
+            ActivityId id = activity.ActivityId;
+            CollectIdentityIndex(
+                null,
+                out Dictionary<ActivityId, List<AssetIdentityEntry>> activitiesById,
+                out _);
+
+            if (activitiesById.TryGetValue(id, out List<AssetIdentityEntry> entries) &&
+                entries.Count > 1)
+            {
+                for (int index = 0; index < entries.Count; index++)
                 {
-                    report.AddError($"Activity asset at '{path}' could not be loaded.", null);
+                    AssetIdentityEntry entry = entries[index];
+                    if (entry.Asset == activity)
+                    {
+                        continue;
+                    }
+
+                    report.AddError(
+                        $"Stable ID collision involving this Activity. " +
+                        $"id='{id.StableText}' thisAsset='{FormatPath(path)}' " +
+                        $"otherAsset='{entry.Path}' scope='Definition-local'. " +
+                        "Use Regenerate Stable ID on the duplicated asset.",
+                        activity);
+                }
+            }
+
+            return report;
+        }
+
+        /// <summary>
+        /// Definition-local validation for one Route: missing/invalid ID and collisions
+        /// that involve this asset. Unrelated project collisions are excluded.
+        /// </summary>
+        internal static FrameworkAuthoringValidationReport ValidateRouteDefinitionLocal(
+            RouteAsset route,
+            FrameworkValidationMode validationMode = FrameworkValidationMode.Standard)
+        {
+            var report = new FrameworkAuthoringValidationReport(validationMode);
+            if (route == null)
+            {
+                report.AddError("Route is missing.", null);
+                return report;
+            }
+
+            string path = AssetDatabase.GetAssetPath(route);
+            string rawId = ReadSerializedId(route, "routeId");
+
+            if (string.IsNullOrWhiteSpace(rawId))
+            {
+                report.AddError(
+                    "Route ID is missing. Stable identity must be authored explicitly.",
+                    route);
+                return report;
+            }
+
+            if (!route.HasValidRouteId)
+            {
+                report.AddError(
+                    $"Route ID is invalid. id='{rawId}'.",
+                    route);
+                return report;
+            }
+
+            RouteId id = route.RouteId;
+            CollectIdentityIndex(
+                null,
+                out _,
+                out Dictionary<RouteId, List<AssetIdentityEntry>> routesById);
+
+            if (routesById.TryGetValue(id, out List<AssetIdentityEntry> entries) &&
+                entries.Count > 1)
+            {
+                for (int index = 0; index < entries.Count; index++)
+                {
+                    AssetIdentityEntry entry = entries[index];
+                    if (entry.Asset == route)
+                    {
+                        continue;
+                    }
+
+                    report.AddError(
+                        $"Stable ID collision involving this Route. " +
+                        $"id='{id.StableText}' thisAsset='{FormatPath(path)}' " +
+                        $"otherAsset='{entry.Path}' scope='Definition-local'. " +
+                        "Use Regenerate Stable ID on the duplicated asset.",
+                        route);
+                }
+            }
+
+            return report;
+        }
+
+        /// <summary>
+        /// Game Application graph: uniqueness among reachable Route/Activity definitions.
+        /// Currently the resolvable graph is the Startup Route and its Startup Activity chain.
+        /// </summary>
+        internal static FrameworkAuthoringValidationReport ValidateGameApplicationIdentity(
+            GameApplicationAsset gameApplication,
+            FrameworkValidationMode validationMode = FrameworkValidationMode.Standard)
+        {
+            var report = new FrameworkAuthoringValidationReport(validationMode);
+            if (gameApplication == null)
+            {
+                report.AddError("Game Application is missing.", null);
+                return report;
+            }
+
+            var routes = new List<RouteAsset>();
+            var activities = new List<ActivityAsset>();
+            CollectApplicationGraph(gameApplication, routes, activities);
+
+            var routeIds = new Dictionary<RouteId, RouteAsset>();
+            for (int index = 0; index < routes.Count; index++)
+            {
+                RouteAsset route = routes[index];
+                if (route == null || !route.HasValidRouteId)
+                {
                     continue;
                 }
 
-                var serialized = new SerializedObject(activity);
-                string rawId = serialized.FindProperty("activityId").stringValue;
+                RouteId id = route.RouteId;
+                if (routeIds.TryGetValue(id, out RouteAsset first))
+                {
+                    report.AddError(
+                        $"Game Application graph has colliding Route IDs. " +
+                        $"id='{id.StableText}' first='{AssetDatabase.GetAssetPath(first)}' " +
+                        $"second='{AssetDatabase.GetAssetPath(route)}' scope='Game Application'.",
+                        gameApplication);
+                }
+                else
+                {
+                    routeIds.Add(id, route);
+                }
+            }
+
+            var activityIds = new Dictionary<ActivityId, ActivityAsset>();
+            for (int index = 0; index < activities.Count; index++)
+            {
+                ActivityAsset activity = activities[index];
+                if (activity == null || !activity.HasValidActivityId)
+                {
+                    continue;
+                }
+
+                ActivityId id = activity.ActivityId;
+                if (activityIds.TryGetValue(id, out ActivityAsset first))
+                {
+                    report.AddError(
+                        $"Game Application graph has colliding Activity IDs. " +
+                        $"id='{id.StableText}' first='{AssetDatabase.GetAssetPath(first)}' " +
+                        $"second='{AssetDatabase.GetAssetPath(activity)}' scope='Game Application'.",
+                        gameApplication);
+                }
+                else
+                {
+                    activityIds.Add(id, activity);
+                }
+            }
+
+            if (!report.HasIssues)
+            {
+                report.AddInfo(
+                    "Game Application identity graph has no Route/Activity stable-ID collisions among reachable definitions.",
+                    gameApplication);
+            }
+
+            return report;
+        }
+
+        internal static bool TryRegenerateStableId(
+            RouteAsset route,
+            out string previousId,
+            out string newId,
+            out string issue)
+        {
+            previousId = string.Empty;
+            newId = string.Empty;
+            issue = string.Empty;
+
+            if (route == null)
+            {
+                issue = "Route is missing.";
+                return false;
+            }
+
+            var serialized = new SerializedObject(route);
+            SerializedProperty property = serialized.FindProperty("routeId");
+            if (property == null)
+            {
+                issue = "Route ID property was not found.";
+                return false;
+            }
+
+            previousId = property.stringValue ?? string.Empty;
+            newId = ImmersiveFrameworkEditorSettingsUtility.GenerateRouteIdText();
+            Undo.RecordObject(route, "Regenerate Route Stable ID");
+            property.stringValue = newId;
+            serialized.ApplyModifiedProperties();
+            EditorUtility.SetDirty(route);
+            return true;
+        }
+
+        internal static bool TryRegenerateStableId(
+            ActivityAsset activity,
+            out string previousId,
+            out string newId,
+            out string issue)
+        {
+            previousId = string.Empty;
+            newId = string.Empty;
+            issue = string.Empty;
+
+            if (activity == null)
+            {
+                issue = "Activity is missing.";
+                return false;
+            }
+
+            var serialized = new SerializedObject(activity);
+            SerializedProperty property = serialized.FindProperty("activityId");
+            if (property == null)
+            {
+                issue = "Activity ID property was not found.";
+                return false;
+            }
+
+            previousId = property.stringValue ?? string.Empty;
+            newId = ImmersiveFrameworkEditorSettingsUtility.GenerateActivityIdText();
+            Undo.RecordObject(activity, "Regenerate Activity Stable ID");
+            property.stringValue = newId;
+            serialized.ApplyModifiedProperties();
+            EditorUtility.SetDirty(activity);
+            return true;
+        }
+
+        private static void CollectApplicationGraph(
+            GameApplicationAsset gameApplication,
+            List<RouteAsset> routes,
+            List<ActivityAsset> activities)
+        {
+            RouteAsset startupRoute = gameApplication.StartupRoute;
+            if (startupRoute == null)
+            {
+                return;
+            }
+
+            routes.Add(startupRoute);
+            if (startupRoute.StartupActivity != null)
+            {
+                activities.Add(startupRoute.StartupActivity);
+            }
+        }
+
+        private static void CollectIdentityIndex(
+            FrameworkAuthoringValidationReport projectAuditReport,
+            out Dictionary<ActivityId, List<AssetIdentityEntry>> activitiesById,
+            out Dictionary<RouteId, List<AssetIdentityEntry>> routesById)
+        {
+            activitiesById = new Dictionary<ActivityId, List<AssetIdentityEntry>>();
+            routesById = new Dictionary<RouteId, List<AssetIdentityEntry>>();
+
+            string[] activityGuids = AssetDatabase.FindAssets("t:ActivityAsset");
+            for (int index = 0; index < activityGuids.Length; index++)
+            {
+                string path = AssetDatabase.GUIDToAssetPath(activityGuids[index]);
+                ActivityAsset activity = AssetDatabase.LoadAssetAtPath<ActivityAsset>(path);
+                if (activity == null)
+                {
+                    projectAuditReport?.AddError(
+                        $"Project identity audit: Activity asset at '{path}' could not be loaded.",
+                        null);
+                    continue;
+                }
+
+                string rawId = ReadSerializedId(activity, "activityId");
                 if (string.IsNullOrWhiteSpace(rawId))
                 {
-                    report.AddError($"Activity ID is missing. asset='{path}'.", activity);
+                    projectAuditReport?.AddError(
+                        $"Project identity audit: Activity ID is missing. asset='{path}' scope='Project audit'.",
+                        activity);
                     continue;
                 }
 
                 if (!activity.HasValidActivityId)
                 {
-                    report.AddError($"Activity ID is invalid. id='{rawId}' asset='{path}'.", activity);
+                    projectAuditReport?.AddError(
+                        $"Project identity audit: Activity ID is invalid. id='{rawId}' asset='{path}' scope='Project audit'.",
+                        activity);
                     continue;
                 }
 
                 ActivityId id = activity.ActivityId;
-                if (firstAssetById.TryGetValue(id, out string firstPath))
+                if (!activitiesById.TryGetValue(id, out List<AssetIdentityEntry> list))
                 {
-                    report.AddError($"Duplicate Activity ID '{id.StableText}'. firstAsset='{firstPath}' secondAsset='{path}' context='Project Activity assets'.", activity);
-                    continue;
+                    list = new List<AssetIdentityEntry>();
+                    activitiesById.Add(id, list);
                 }
 
-                firstAssetById.Add(id, path);
+                list.Add(new AssetIdentityEntry(activity, path));
             }
 
-            var firstRouteAssetById = new Dictionary<RouteId, string>();
             string[] routeGuids = AssetDatabase.FindAssets("t:RouteAsset");
             for (int index = 0; index < routeGuids.Length; index++)
             {
@@ -56,35 +388,87 @@ namespace Immersive.Framework.Editor.Editor.Authoring
                 RouteAsset route = AssetDatabase.LoadAssetAtPath<RouteAsset>(path);
                 if (route == null)
                 {
-                    report.AddError($"Route asset at '{path}' could not be loaded.", null);
+                    projectAuditReport?.AddError(
+                        $"Project identity audit: Route asset at '{path}' could not be loaded.",
+                        null);
                     continue;
                 }
 
-                var serialized = new SerializedObject(route);
-                string rawId = serialized.FindProperty("routeId").stringValue;
+                string rawId = ReadSerializedId(route, "routeId");
                 if (string.IsNullOrWhiteSpace(rawId))
                 {
-                    report.AddError($"Route ID is missing. asset='{path}'.", route);
+                    projectAuditReport?.AddError(
+                        $"Project identity audit: Route ID is missing. asset='{path}' scope='Project audit'.",
+                        route);
                     continue;
                 }
 
                 if (!route.HasValidRouteId)
                 {
-                    report.AddError($"Route ID is invalid. id='{rawId}' asset='{path}'.", route);
+                    projectAuditReport?.AddError(
+                        $"Project identity audit: Route ID is invalid. id='{rawId}' asset='{path}' scope='Project audit'.",
+                        route);
                     continue;
                 }
 
                 RouteId id = route.RouteId;
-                if (firstRouteAssetById.TryGetValue(id, out string firstPath))
+                if (!routesById.TryGetValue(id, out List<AssetIdentityEntry> list))
                 {
-                    report.AddError($"Duplicate Route ID '{id.StableText}'. firstAsset='{firstPath}' secondAsset='{path}' context='Project Route assets'.", route);
+                    list = new List<AssetIdentityEntry>();
+                    routesById.Add(id, list);
+                }
+
+                list.Add(new AssetIdentityEntry(route, path));
+            }
+        }
+
+        private static void ReportProjectCollisions<TId>(
+            FrameworkAuthoringValidationReport report,
+            Dictionary<TId, List<AssetIdentityEntry>> byId,
+            string kind)
+            where TId : struct
+        {
+            foreach (KeyValuePair<TId, List<AssetIdentityEntry>> pair in byId)
+            {
+                List<AssetIdentityEntry> entries = pair.Value;
+                if (entries.Count < 2)
+                {
                     continue;
                 }
 
-                firstRouteAssetById.Add(id, path);
+                for (int index = 1; index < entries.Count; index++)
+                {
+                    report.AddError(
+                        $"Project identity audit: duplicate {kind} ID '{pair.Key}'. " +
+                        $"firstAsset='{entries[0].Path}' secondAsset='{entries[index].Path}' " +
+                        "scope='Project audit' (not definition-local).",
+                        entries[index].Asset);
+                }
+            }
+        }
+
+        private static string ReadSerializedId(UnityEngine.Object asset, string propertyName)
+        {
+            var serialized = new SerializedObject(asset);
+            SerializedProperty property = serialized.FindProperty(propertyName);
+            return property != null ? property.stringValue ?? string.Empty : string.Empty;
+        }
+
+        private static string FormatPath(string path)
+        {
+            return string.IsNullOrWhiteSpace(path) ? "<unsaved>" : path;
+        }
+
+        private readonly struct AssetIdentityEntry
+        {
+            internal AssetIdentityEntry(UnityEngine.Object asset, string path)
+            {
+                Asset = asset;
+                Path = path ?? string.Empty;
             }
 
-            return report;
+            internal UnityEngine.Object Asset { get; }
+            internal string Path { get; }
         }
     }
 }

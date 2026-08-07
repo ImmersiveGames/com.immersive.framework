@@ -34,15 +34,18 @@ namespace Immersive.Framework.GameFlow
 
         internal bool OwnsRoute(RouteAsset route)
         {
-            return route != null && Route != null && Route.HasSameIdentity(route);
+            // IF-ID-03: wait ownership is the exact Route definition reference.
+            return route != null && Route != null && ReferenceEquals(Route, route);
         }
 
         internal bool OwnsActivity(ActivityAsset activity)
         {
+            // IF-ID-04: wait ownership is the exact Activity definition reference
+            // (occurrence sequence remains on Occurrence / WaitScope).
             return activity != null &&
                 Occurrence.IsValid &&
                 Occurrence.Activity != null &&
-                Occurrence.Activity.HasSameIdentity(activity);
+                ReferenceEquals(Occurrence.Activity, activity);
         }
 
         internal void RequestCancellation(

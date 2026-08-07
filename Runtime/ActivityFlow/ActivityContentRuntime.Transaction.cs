@@ -156,7 +156,7 @@ namespace Immersive.Framework.ActivityFlow
                 }
 
                 bool exitsPrevious = context.PreviousActivity != null &&
-                    !context.PreviousActivity.HasSameIdentity(context.ActiveActivity) &&
+                    !ReferenceEquals(context.PreviousActivity, context.ActiveActivity) &&
                     previousEvaluation.DesiredVisibility;
 
                 if (!exitsPrevious)
@@ -246,7 +246,7 @@ namespace Immersive.Framework.ActivityFlow
                             context.Reason,
                             action));
                     if (context.PreviousActivity == null ||
-                        !context.PreviousActivity.HasSameIdentity(context.ActiveActivity))
+                        !ReferenceEquals(context.PreviousActivity, context.ActiveActivity))
                     {
                         context.EnterBindingCount++;
                         DispatchActivityContentEntered(

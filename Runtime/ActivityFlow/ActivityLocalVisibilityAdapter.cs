@@ -143,13 +143,13 @@ namespace Immersive.Framework.ActivityFlow
                 for (int priorIndex = 0; priorIndex < index; priorIndex++)
                 {
                     if (activities[priorIndex] != null &&
-                        listedActivity.HasSameIdentity(activities[priorIndex]))
+                        ReferenceEquals(listedActivity, activities[priorIndex]))
                     {
                         return Invalid(activeActivity, $"CurrentActivityDuplicateAtIndex{index}");
                     }
                 }
 
-                if (activeActivity != null && listedActivity.HasSameIdentity(activeActivity))
+                if (activeActivity != null && ReferenceEquals(listedActivity, activeActivity))
                 {
                     matchedActivity = listedActivity;
                 }

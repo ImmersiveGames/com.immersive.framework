@@ -126,7 +126,8 @@ namespace Immersive.Framework.PlayerParticipation
                 currentOccurrence.Activity.HasValidActivityId
                     ? RuntimeContentOwner.Activity(
                         currentOccurrence.Activity.ActivityId.StableText,
-                        currentOccurrence.Activity.ActivityName)
+                        currentOccurrence.Activity.ActivityName,
+                        currentOccurrence.Activity.GetEntityId())
                     : default;
 
             ActivityPlayerActorLifecycleSnapshot lifecycle =

@@ -175,12 +175,12 @@ namespace Immersive.Framework.ObjectEntry
 
         internal bool MatchesRouteOwner(RouteAsset route)
         {
-            return routeOwner != null && routeOwner.HasSameIdentity(route);
+            return routeOwner != null && ReferenceEquals(routeOwner, route);
         }
 
         internal bool MatchesActivityOwner(ActivityAsset activity)
         {
-            return activityOwner != null && activityOwner.HasSameIdentity(activity);
+            return activityOwner != null && ReferenceEquals(activityOwner, activity);
         }
 
 #if UNITY_EDITOR || DEVELOPMENT_BUILD

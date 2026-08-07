@@ -39,7 +39,7 @@ namespace Immersive.Framework.Camera
         private bool TryValidateContext(ActivityContentLifecycleContext context, out string diagnostic)
         {
             if (!TryValidateOwner(out diagnostic)) return false;
-            if (context.Activity == null || !context.Activity.HasSameIdentity(assignedActivity)) { diagnostic = "Activity camera override lifecycle owner does not match the assigned ActivityId."; return false; }
+            if (context.Activity == null || !ReferenceEquals(context.Activity, assignedActivity)) { diagnostic = "Activity camera override lifecycle owner does not match the assigned Activity asset reference."; return false; }
             return true;
         }
     }

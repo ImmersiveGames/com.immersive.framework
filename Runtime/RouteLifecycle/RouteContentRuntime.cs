@@ -24,7 +24,7 @@ namespace Immersive.Framework.RouteLifecycle
             string resolvedReason = NormalizeReason(reason);
             RouteAsset route = scope.Route;
 
-            if (route == null || route.HasSameIdentity(nextRoute))
+            if (route == null || ReferenceEquals(route, nextRoute))
             {
                 return RouteContentLifecycleDispatchResult.Skipped(
                     RouteContentLifecyclePhase.Exited,
@@ -80,7 +80,7 @@ namespace Immersive.Framework.RouteLifecycle
             string resolvedReason = NormalizeReason(reason);
             RouteAsset route = scope.Route;
 
-            if (route == null || route.HasSameIdentity(previousRoute))
+            if (route == null || ReferenceEquals(route, previousRoute))
             {
                 return RouteContentLifecycleDispatchResult.Skipped(
                     RouteContentLifecyclePhase.Entered,

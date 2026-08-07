@@ -78,7 +78,7 @@ namespace Immersive.Framework.ActivityFlow
             var scenes = new List<ActivityContentDiscoveryScene>();
             var sceneKeys = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             AddActivityOwnedDiscoveryScenes(firstActivity, scenes, sceneKeys);
-            if (firstActivity == null || !firstActivity.HasSameIdentity(secondActivity))
+            if (firstActivity == null || !ReferenceEquals(firstActivity, secondActivity))
             {
                 AddActivityOwnedDiscoveryScenes(secondActivity, scenes, sceneKeys);
             }
@@ -427,7 +427,7 @@ namespace Immersive.Framework.ActivityFlow
                 return true;
             }
 
-            if (previousActivity == null || previousActivity.HasSameIdentity(targetActivity))
+            if (previousActivity == null || ReferenceEquals(previousActivity, targetActivity))
             {
                 return false;
             }

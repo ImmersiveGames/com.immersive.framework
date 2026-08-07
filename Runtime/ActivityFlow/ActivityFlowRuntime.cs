@@ -354,7 +354,10 @@ namespace Immersive.Framework.ActivityFlow
 
         internal bool IsActivityActive(ActivityAsset activity)
         {
-            return activity != null && _currentActivityState.Activity != null && _currentActivityState.Activity.HasSameIdentity(activity);
+            // IF-ADR-014 / IF-ID-04: authored-definition equality is the exact asset reference.
+            return activity != null &&
+                _currentActivityState.Activity != null &&
+                ReferenceEquals(_currentActivityState.Activity, activity);
         }
 
         internal void SetActivityContentExecutionParticipantSource(IActivityContentExecutionParticipantSource participantSource)
@@ -878,13 +881,13 @@ namespace Immersive.Framework.ActivityFlow
                 return;
             }
 
-            if (_currentRoute == null || !_currentRoute.HasSameIdentity(route))
+            if (_currentRoute == null || !ReferenceEquals(_currentRoute, route))
             {
                 _routeInstanceSequence++;
                 _currentRoute = route;
                 _currentRouteInstanceId = CreateRouteInstanceId(route, _routeInstanceSequence);
                 if (_routeContentDiscoveryScope.Route == null ||
-                    !_routeContentDiscoveryScope.Route.HasSameIdentity(route))
+                    !ReferenceEquals(_routeContentDiscoveryScope.Route, route))
                 {
                     _routeContentDiscoveryScope = default;
                 }
@@ -1039,7 +1042,10 @@ namespace Immersive.Framework.ActivityFlow
                 throw new ArgumentException("Activity runtime owner requires a valid ActivityId.", nameof(activity));
             }
 
-            return RuntimeContentOwner.Activity(activity.ActivityId.StableText, activity.ActivityName);
+            return RuntimeContentOwner.Activity(
+                activity.ActivityId.StableText,
+                activity.ActivityName,
+                activity.GetEntityId());
         }
 
         private static string NormalizeSource(string source)

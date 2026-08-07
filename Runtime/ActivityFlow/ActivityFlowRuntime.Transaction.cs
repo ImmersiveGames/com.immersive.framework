@@ -360,7 +360,7 @@ namespace Immersive.Framework.ActivityFlow
                     "Previous Activity bindings and runtime scope started finalization.");
                 RuntimeScopeLifecycleResult activityScopeResult = runtimeEnterResult;
                 if (previousActivity != null &&
-                    !previousActivity.HasSameIdentity(nextActivity))
+                    !ReferenceEquals(previousActivity, nextActivity))
                 {
                     RuntimeRootRegistryOperationResult previousScopeRemoval =
                         RemovePreviousActivityScopeRoot(

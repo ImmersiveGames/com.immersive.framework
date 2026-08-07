@@ -170,7 +170,7 @@ namespace Immersive.Framework.LocalContribution
                     continue;
                 }
 
-                if (activityFilter != null && !adapterActivity.HasSameIdentity(activityFilter))
+                if (activityFilter != null && !ReferenceEquals(adapterActivity, activityFilter))
                 {
                     continue;
                 }

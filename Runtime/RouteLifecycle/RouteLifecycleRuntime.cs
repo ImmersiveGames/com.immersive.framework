@@ -100,7 +100,8 @@ namespace Immersive.Framework.RouteLifecycle
 
         internal bool IsRouteActive(RouteAsset route)
         {
-            return route != null && CurrentRoute != null && CurrentRoute.HasSameIdentity(route);
+            // IF-ADR-014 / IF-ID-03: authored-definition equality is the exact asset reference.
+            return route != null && CurrentRoute != null && ReferenceEquals(CurrentRoute, route);
         }
 
         internal IEventBinding SubscribeRouteEntered(Action<RouteEnteredEvent> handler)
@@ -438,7 +439,8 @@ namespace Immersive.Framework.RouteLifecycle
                 : routeStartupActivityFlowResult;
 
             RuntimeScopeLifecycleResult routeRuntimeScopeResult = runtimeRouteEnterResult;
-            if (previousRoute != null && !previousRoute.HasSameIdentity(route))
+            // Definition equality: exact reference. Operational owners include definition tokens (IF-ID-05).
+            if (previousRoute != null && !ReferenceEquals(previousRoute, route))
             {
                 RuntimeRootRegistryOperationResult previousRouteScopeRemoval =
                     RemovePreviousRouteScopeRoot(previousRoute, route, source, reason);
@@ -575,12 +577,12 @@ namespace Immersive.Framework.RouteLifecycle
             string source,
             string reason)
         {
-            if (previousRoute != null && !previousRoute.HasSameIdentity(nextRoute))
+            if (previousRoute != null && !ReferenceEquals(previousRoute, nextRoute))
             {
                 _routeExitedEvents.Publish(new RouteExitedEvent(previousRoute, nextRoute, source, reason));
             }
 
-            if (nextRoute != null && (previousRoute == null || !previousRoute.HasSameIdentity(nextRoute)))
+            if (nextRoute != null && (previousRoute == null || !ReferenceEquals(previousRoute, nextRoute)))
             {
                 _routeEnteredEvents.Publish(new RouteEnteredEvent(nextRoute, previousRoute, source, reason));
             }
@@ -772,7 +774,9 @@ namespace Immersive.Framework.RouteLifecycle
 
         private RuntimeRootRegistryOperationResult RemovePreviousRouteScopeRoot(RouteAsset previousRoute, RouteAsset nextRoute, string source, string reason)
         {
-            if (previousRoute == null || previousRoute.HasSameIdentity(nextRoute))
+            // Authored-definition distinctness is reference-based (IF-ID-03).
+            // Operational owners include definition tokens so stable-ID collisions never share release authority (IF-ID-05).
+            if (previousRoute == null || ReferenceEquals(previousRoute, nextRoute))
             {
                 throw new InvalidOperationException("Route scope root removal is only valid for a distinct previous Route.");
             }
@@ -780,7 +784,8 @@ namespace Immersive.Framework.RouteLifecycle
             var owner = CreateRouteOwner(previousRoute);
             if (nextRoute != null && owner == CreateRouteOwner(nextRoute))
             {
-                throw new InvalidOperationException("Route scope root removal is only valid for a distinct previous Route.");
+                throw new InvalidOperationException(
+                    "Route scope root removal is only valid when previous and next Routes resolve to different operational owners.");
             }
 
             return _runtimeContentRuntime.RemoveScopeRoot(owner, source, reason);
@@ -821,7 +826,10 @@ namespace Immersive.Framework.RouteLifecycle
                 throw new ArgumentException("Route runtime owner requires a valid RouteId.", nameof(route));
             }
 
-            return RuntimeContentOwner.Route(route.RouteId.StableText, route.RouteName);
+            return RuntimeContentOwner.Route(
+                route.RouteId.StableText,
+                route.RouteName,
+                route.GetEntityId());
         }
     }
 }

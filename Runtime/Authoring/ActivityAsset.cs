@@ -87,11 +87,25 @@ namespace Immersive.Framework.Authoring
         public bool HasValidActivityId =>
             global::Immersive.Framework.Authoring.ActivityId.IsValidText(activityId);
 
-        public bool HasSameIdentity(ActivityAsset other) =>
+        /// <summary>
+        /// Stable-boundary identity equality (<see cref="ActivityId"/> only).
+        /// Does not mean the same authored definition: two distinct assets may share one ID (collision).
+        /// For authored-definition equality use <c>ReferenceEquals</c> on the asset references.
+        /// </summary>
+        public bool HasSameStableId(ActivityAsset other) =>
             other != null &&
             HasValidActivityId &&
             other.HasValidActivityId &&
             ActivityId == other.ActivityId;
+
+        /// <summary>
+        /// Obsolete alias for <see cref="HasSameStableId"/>. The name incorrectly suggested authored-definition equality.
+        /// </summary>
+        [Obsolete(
+            "HasSameIdentity compares only ActivityId (stable boundary identity). " +
+            "Use HasSameStableId for stable-ID equality, or ReferenceEquals for authored-definition equality (IF-ADR-014).",
+            false)]
+        public bool HasSameIdentity(ActivityAsset other) => HasSameStableId(other);
 
         public string ActivityName => activityName.NormalizeText();
 

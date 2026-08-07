@@ -2,12 +2,18 @@ using System;
 using Immersive.Framework.ApiStatus;
 using Immersive.Framework.Identity;
 using Immersive.Framework.Common;
+using UnityEngine;
 
 namespace Immersive.Framework.RuntimeContent
 {
     /// <summary>
     /// API status: Experimental. Declares who owns runtime-created content for one lifecycle scope.
     /// This is passive ownership data; it does not resolve roots, find objects or release content.
+    /// <para>
+    /// IF-ADR-014 / IF-ID-05: operational equality uses stable definition identity plus a process-local
+    /// definition token (Unity <see cref="EntityId"/> of the authored asset). Stable IDs remain boundary
+    /// evidence; two distinct authored assets that share one stable ID never share release authority.
+    /// </para>
     /// </summary>
     [FrameworkApiStatus(FrameworkApiStatus.Experimental, "F8B runtime content owner primitive; no registry lookup behavior.")]
     public readonly struct RuntimeContentOwner : IEquatable<RuntimeContentOwner>
@@ -15,7 +21,8 @@ namespace Immersive.Framework.RuntimeContent
         public RuntimeContentOwner(
             RuntimeContentScope scope,
             FrameworkIdentityKey ownerIdentity,
-            string ownerName)
+            string ownerName,
+            EntityId definitionToken = default)
         {
             ValidateScope(scope);
             ValidateOwner(scope, ownerIdentity);
@@ -23,23 +30,42 @@ namespace Immersive.Framework.RuntimeContent
             Scope = scope;
             OwnerIdentity = ownerIdentity;
             OwnerName = Normalize(ownerName);
+            DefinitionToken = definitionToken;
         }
 
         public RuntimeContentScope Scope { get; }
 
+        /// <summary>
+        /// Stable boundary identity for the owning definition (RouteId / ActivityId / session id, etc.).
+        /// Not sufficient alone for operational release authority when definition tokens differ.
+        /// </summary>
         public FrameworkIdentityKey OwnerIdentity { get; }
 
         public string OwnerId => OwnerIdentity.Value.Value;
 
         public string OwnerName { get; }
 
+        /// <summary>
+        /// Process-local token for the exact authored definition instance.
+        /// Typically <c>UnityEngine.Object.GetEntityId()</c> for Route/Activity assets.
+        /// Default means the caller does not distinguish definition instances (Session/Transient).
+        /// </summary>
+        public EntityId DefinitionToken { get; }
+
         public bool IsValid => Scope != RuntimeContentScope.Unknown && OwnerIdentity.IsValid;
 
-        public string StableText => $"{Scope}:{OwnerIdentity.StableText}";
+        public bool HasDefinitionToken => !DefinitionToken.Equals(default(EntityId));
+
+        public string StableText =>
+            HasDefinitionToken
+                ? $"{Scope}:{OwnerIdentity.StableText}#def-{DefinitionToken}"
+                : $"{Scope}:{OwnerIdentity.StableText}";
 
         public bool Equals(RuntimeContentOwner other)
         {
-            return Scope == other.Scope && OwnerIdentity.Equals(other.OwnerIdentity);
+            return Scope == other.Scope &&
+                   OwnerIdentity.Equals(other.OwnerIdentity) &&
+                   DefinitionToken.Equals(other.DefinitionToken);
         }
 
         public override bool Equals(object obj)
@@ -51,13 +77,24 @@ namespace Immersive.Framework.RuntimeContent
         {
             unchecked
             {
-                return (int)Scope * 397 ^ OwnerIdentity.GetHashCode();
+                int hashCode = (int)Scope * 397 ^ OwnerIdentity.GetHashCode();
+                hashCode = hashCode * 397 ^ DefinitionToken.GetHashCode();
+                return hashCode;
             }
         }
 
         public override string ToString()
         {
             return StableText;
+        }
+
+        /// <summary>
+        /// True when both owners share the same scope and stable boundary identity,
+        /// ignoring definition-instance tokens. Useful for diagnostics only.
+        /// </summary>
+        public bool HasSameStableDefinition(RuntimeContentOwner other)
+        {
+            return Scope == other.Scope && OwnerIdentity.Equals(other.OwnerIdentity);
         }
 
         public static RuntimeContentOwner Session(string sessionId, string ownerName)
@@ -68,20 +105,28 @@ namespace Immersive.Framework.RuntimeContent
                 ownerName);
         }
 
-        public static RuntimeContentOwner Route(string routeId, string ownerName)
+        public static RuntimeContentOwner Route(
+            string routeId,
+            string ownerName,
+            EntityId definitionToken = default)
         {
             return new RuntimeContentOwner(
                 RuntimeContentScope.Route,
                 FrameworkIdentityKey.From(FrameworkIdentityDomain.Route, routeId),
-                ownerName);
+                ownerName,
+                definitionToken);
         }
 
-        public static RuntimeContentOwner Activity(string activityId, string ownerName)
+        public static RuntimeContentOwner Activity(
+            string activityId,
+            string ownerName,
+            EntityId definitionToken = default)
         {
             return new RuntimeContentOwner(
                 RuntimeContentScope.Activity,
                 FrameworkIdentityKey.From(FrameworkIdentityDomain.Activity, activityId),
-                ownerName);
+                ownerName,
+                definitionToken);
         }
 
         public static RuntimeContentOwner Transient(string runtimeOwnerId, string ownerName)

@@ -192,7 +192,7 @@ namespace Immersive.Framework.PlayerParticipation
             }
 
             if (previousActivity != null &&
-                previousActivity.HasSameIdentity(targetActivity))
+                ReferenceEquals(previousActivity, targetActivity))
             {
                 return Reject(
                     ActivityPlayerLifecycleAdmissionStatus.RejectedUnsupportedFlow,
@@ -210,9 +210,9 @@ namespace Immersive.Framework.PlayerParticipation
                          ActivityPlayerLifecycleAdmissionState.TransitionAuthorized) &&
                     previousActivity != null &&
                     active.PreviousActivity != null &&
-                    active.PreviousActivity.HasSameIdentity(previousActivity) &&
+                    ReferenceEquals(active.PreviousActivity, previousActivity) &&
                     active.TargetActivity != null &&
-                    active.TargetActivity.HasSameIdentity(targetActivity))
+                    ReferenceEquals(active.TargetActivity, targetActivity))
                 {
                     ActivityPlayerLifecycleAdmissionSnapshot snapshot =
                         Snapshot(active);
@@ -645,7 +645,7 @@ namespace Immersive.Framework.PlayerParticipation
 
             if (previousRoute == null ||
                 targetRoute == null ||
-                previousRoute.HasSameIdentity(targetRoute))
+                ReferenceEquals(previousRoute, targetRoute))
             {
                 return Reject(
                     ActivityPlayerLifecycleAdmissionStatus
@@ -684,11 +684,13 @@ namespace Immersive.Framework.PlayerParticipation
             RuntimeContentOwner previousRouteOwner =
                 RuntimeContentOwner.Route(
                     previousRoute.RouteId.StableText,
-                    previousRoute.RouteName);
+                    previousRoute.RouteName,
+                    previousRoute.GetEntityId());
             RuntimeContentOwner targetRouteOwner =
                 RuntimeContentOwner.Route(
                     targetRoute.RouteId.StableText,
-                    targetRoute.RouteName);
+                    targetRoute.RouteName,
+                    targetRoute.GetEntityId());
             if (previousRouteOwner == targetRouteOwner)
             {
                 return Reject(
@@ -1960,7 +1962,8 @@ namespace Immersive.Framework.PlayerParticipation
 
             return RuntimeContentOwner.Activity(
                 activity.ActivityId.StableText,
-                activity.ActivityName);
+                activity.ActivityName,
+                activity.GetEntityId());
         }
 
         private static ActivityPlayerLifecycleAdmissionSnapshot Snapshot(

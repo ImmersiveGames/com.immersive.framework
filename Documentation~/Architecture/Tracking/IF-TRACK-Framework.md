@@ -51,6 +51,7 @@ Architecture/Archive/   historic plans, audits, fix notes
 | ObjectEntry / Local visibility | Implemented (Experimental) | adapters and declarations exist | dedicated product guides deferred | keep advanced/foundation |
 | Editor product surface (IF-ADR-010) | **Proposed** | Editor-Authoring-Standard guide + many Custom Editors | accept ADR and finish migration | keep guide as usage slice |
 | ADR-012 participation profile | **Proposed / not shipped** | requirement levels + evidence exist inline on `ActivityAsset` | profile asset, migration, circular validation, preflight | accept then implement; do not document profile as shipped |
+| Authored identity (IF-ADR-014) | **In progress (~75%)** | IF-ID-02..06: stable-ID vocabulary, reference authority, owner definition tokens, validation scopes, regenerate UX, package tests | IF-ID-07 resolver (when needed); IF-ID-08 FIRSTGAME proof; broader QA matrix | preserve reference + definition-token owners; no automatic ID mutation |
 
 ## Implementation confirmation (code-backed)
 
@@ -119,8 +120,13 @@ approved.
 ## Current execution priority
 
 ```text
+IF-ADR-014 identity authority (IF-ID)
+  IF-ID-02..06 landed (vocabulary, reference authority, ownership tokens, validation UX)
+  next: IF-ID-08 FIRSTGAME proof; IF-ID-07 only if save/external boundary needs resolver
+  plan: Architecture/Plans/IF-ID-IDENTITY-AUTHORITY-EXECUTION-PLAN-2026-08-06.md
+
 Manager-Provisioned FIRSTGAME comparison path
-  next (package surface exists)
+  package surface exists
 
 Session-Persistent Player
   blocked by package

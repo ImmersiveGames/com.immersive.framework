@@ -128,16 +128,16 @@ namespace Immersive.Framework.Transition
         }
 
         private static bool SameRoute(RouteAsset left, RouteAsset right) =>
-            left == null ? right == null : left.HasSameIdentity(right);
+            ReferenceEquals(left, right);
 
         private static bool SameActivity(ActivityAsset left, ActivityAsset right) =>
-            left == null ? right == null : left.HasSameIdentity(right);
+            ReferenceEquals(left, right);
 
         private static int RouteHash(RouteAsset route) =>
-            route != null && route.HasValidRouteId ? route.RouteId.GetHashCode() : 0;
+            route == null ? 0 : System.Runtime.CompilerServices.RuntimeHelpers.GetHashCode(route);
 
         private static int ActivityHash(ActivityAsset activity) =>
-            activity != null && activity.HasValidActivityId ? activity.ActivityId.GetHashCode() : 0;
+            activity == null ? 0 : System.Runtime.CompilerServices.RuntimeHelpers.GetHashCode(activity);
 
         public static TransitionRequest Before(
             TransitionOperationId operationId,

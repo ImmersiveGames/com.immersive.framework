@@ -81,6 +81,7 @@ namespace Immersive.Framework.Editor.Editor.Authoring
         private SerializedProperty _transitionGateMode;
 
         private FrameworkAuthoringValidationReport _lastValidationReport;
+        private FrameworkAuthoringValidationReport _lastProjectIdentityAudit;
         private bool _serializedBindingsDirty = true;
         private bool _validationOutdated;
         private bool _showAdvancedDebug;
@@ -410,14 +411,21 @@ namespace Immersive.Framework.Editor.Editor.Authoring
                 FrameworkAuthoringValidator.ValidateActivity(
                     activity);
 
+            // IF-ID-06: definition-local identity only (collisions involving this asset).
             _lastValidationReport.AddRange(
                 FrameworkIdentityAuthoringValidator
-                    .ValidateProjectAssets(
+                    .ValidateActivityDefinitionLocal(
+                        activity,
                         FrameworkValidationMode.Standard));
 
             _lastValidationReport.AddRange(
                 ActivityParticipationProjectionAuthoringValidator
                     .ValidateActivity(activity));
+
+            _lastProjectIdentityAudit =
+                FrameworkIdentityAuthoringValidator
+                    .ValidateProjectIdentityAudit(
+                        FrameworkValidationMode.Standard);
 
             _validationOutdated = false;
         }
@@ -626,6 +634,84 @@ namespace Immersive.Framework.Editor.Editor.Authoring
                     }
                 }
             }
+
+            using (new EditorGUI.DisabledScope(
+                       string.IsNullOrWhiteSpace(activityId)))
+            {
+                if (GUILayout.Button(
+                        new GUIContent(
+                            "Regenerate Stable ID...",
+                            "Creates a new stable ID for this asset only. Requires confirmation. Does not run automatically on rename, move or duplicate.")))
+                {
+                    RegenerateActivityStableId();
+                }
+            }
+
+            EditorGUILayout.Space(4f);
+            EditorGUILayout.LabelField(
+                "Project Identity Audit",
+                EditorStyles.boldLabel);
+            EditorGUILayout.HelpBox(
+                "Project-wide collisions are audit evidence. They do not automatically block this definition unless this asset participates in the collision. Run Validate to refresh.",
+                MessageType.None);
+            if (_lastProjectIdentityAudit == null)
+            {
+                EditorGUILayout.HelpBox(
+                    "Project identity audit not run yet. Click Validate.",
+                    MessageType.Info);
+            }
+            else
+            {
+                FrameworkAuthoringValidationGui.DrawSummary(
+                    _lastProjectIdentityAudit);
+                FrameworkAuthoringValidationGui.DrawIssues(
+                    _lastProjectIdentityAudit,
+                    false);
+            }
+        }
+
+        private void RegenerateActivityStableId()
+        {
+            ActivityAsset activity = (ActivityAsset)target;
+            string currentId =
+                _activityId != null
+                    ? _activityId.stringValue ?? string.Empty
+                    : string.Empty;
+
+            if (!EditorUtility.DisplayDialog(
+                    "Regenerate Activity Stable ID",
+                    "This replaces the stable Activity ID for this asset only.\n\n" +
+                    $"Current ID:\n{currentId}\n\n" +
+                    "Rename and move do not change the ID. Duplicate assets often keep the copied ID and need this action.\n\n" +
+                    "Continue?",
+                    "Regenerate",
+                    "Cancel"))
+            {
+                return;
+            }
+
+            if (!FrameworkIdentityAuthoringValidator.TryRegenerateStableId(
+                    activity,
+                    out string previousId,
+                    out string newId,
+                    out string issue))
+            {
+                EditorUtility.DisplayDialog(
+                    "Regenerate Activity Stable ID",
+                    string.IsNullOrWhiteSpace(issue)
+                        ? "Regeneration failed."
+                        : issue,
+                    "OK");
+                return;
+            }
+
+            serializedObject.Update();
+            _validationOutdated = true;
+            RunValidation();
+            EditorUtility.DisplayDialog(
+                "Activity Stable ID Regenerated",
+                $"Previous ID:\n{previousId}\n\nNew ID:\n{newId}",
+                "OK");
         }
 
         private string GetValidationStatus()

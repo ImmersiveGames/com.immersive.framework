@@ -695,7 +695,7 @@ namespace Immersive.Framework.PlayerParticipation
         {
             if (activity == null ||
                 activityLifecycleActivityContext == null ||
-                !activityLifecycleActivityContext.HasSameIdentity(activity))
+                !ReferenceEquals(activityLifecycleActivityContext, activity))
             {
                 return null;
             }
