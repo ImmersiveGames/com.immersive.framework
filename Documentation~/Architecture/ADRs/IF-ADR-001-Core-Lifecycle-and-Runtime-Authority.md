@@ -2,13 +2,13 @@
 
 Status: Accepted  
 Last updated: 2026-08-07  
-Implementation completion: **90%**  
-Implementation classification: **Substantially implemented; IF-TXN-01 certified in canonical QA; residual Session-Persistent Player and broader compensation remain**  
+Implementation completion: **91%**  
+Implementation classification: **Substantially implemented; IF-TXN-01 and IF-TXN-02 are implemented and certified in canonical QA; residual Session-Persistent Player and exceptional terminal-cleanup/compensation work remain**  
 Related decisions: IF-ADR-003, IF-ADR-006, IF-ADR-007, IF-ADR-014  
-Current package baseline: `d0955e0dc58a3cc70f8533f92d63246d941d5e20` (`IF-TXN-01 COMPLETE`)  
-Current QA baseline: `00cedcb78d200b1b2094eafc500e348e07dc36ab` (`IF-TXN-01 COMPLETE`)  
+Current package baseline: `193e7e954deaa430920f7967b5061b4b950ed1bb` (`IF-TXN-02`)  
+Current QA baseline: `cf3cf625260ff717d6bcc919703e6868b085285f` (`IF-TXN-02`)  
 FIRSTGAME baseline: `ab1bfe65c09af8988c2fe21ce06db780fe12aa70` (`Demo03Etapa04`)  
-Transaction cut: **IF-TXN-01 GameFlow Transition Failure Authority — COMPLETE**
+Transaction cuts: **IF-TXN-01 GameFlow Transition Failure Authority — COMPLETE**; **IF-TXN-02 Activity Clear/Restart Transition Authority Parity — COMPLETE**
 
 > This is a consolidated audit revision. The normative architectural decision is
 > preserved and the implementation assessment is explicitly separated from ADR
@@ -51,45 +51,107 @@ The package contains the scoped runtime host, bootstrap composition, Route/Activ
 **IF-TXN-01** and **IF-TXN-02** make Transition phase outcomes authoritative at the GameFlow transaction boundary for:
 
 ```text
+Game Application startup
 Route request
 Activity request
-Game Application startup
 Activity Clear
 Activity Restart
 ```
 
+The canonical continuation rule is:
+
 ```text
-pre-commit Transition failure (Before not accepted)
-  → do not start destination lifecycle / Clear / Restart clear+re-enter
-  → previous Route/Activity authority remains
-  → typed FailedPreCommitTransition terminal
-  → safe transition-gate cleanup
+accepted Transition phase
+  → TransitionResult.Completed
+  → or intentional TransitionStatus.Skipped for policy/no-visual execution
+
+non-accepted Transition Before
+  → do not advance the governing lifecycle mutation
+  → preserve the previous committed authority
+  → typed FailedPreCommitTransition / PreCommitTransitionFailed terminal
+  → release the ordinary transition gate
   → no committed-target recovery
 
-committed-target reveal / post-commit presentation failure (After not accepted after commit)
-  → keep committed destination authoritative
-    Route/Activity switch: committed target remains current
-    Clear: no-Activity remains authority (never restore previous Activity)
-    Restart: re-entered Activity/occurrence remains authority (never roll back to old occurrence)
-  → do not return Succeeded / Started / Restart Completed
+non-accepted Transition After after commit
+  → never convert the request into success
+  → preserve the authority that actually committed
   → no blind rollback
-  → apply committed-target reveal recovery protection when an Activity occurrence remains
   → typed FailedCommittedTargetReveal terminal
-  → distinct from FailedCommittedTargetNotReady (readiness)
-
-TransitionResult.Completed remains accepted.
-CompletedWithWarnings therefore continues the transaction.
-Policy Skipped remains accepted only as intentional policy/no-visual completion.
-Required Failed/Rejected/Cancelled results are not masked as Skipped.
+  → apply committed-target reveal recovery when a valid Activity occurrence remains authoritative
 ```
 
-Transition remains execution + typed result; GameFlow decides transaction continuation and terminal outcome. Route/Activity remain lifecycle authority. Loading remains presentation/progress rather than lifecycle authority.
+Authority-specific post-commit semantics are now explicit:
+
+```text
+Route / Activity switch
+  committed target remains current
+
+Activity Clear
+  CurrentActivity remains None
+  previous Activity is not restored
+
+Activity Restart
+  re-entered Activity and new occurrence remain current
+  old occurrence is not restored
+```
+
+`CompletedWithWarnings` remains accepted through `TransitionResult.Completed`. Required `Failed`, `Rejected`, `Cancelled`, or invalid results are not accepted. Transition remains execution + typed result; GameFlow decides transaction continuation and terminal outcome. Route/Activity remain lifecycle authority. Loading remains presentation/progress rather than lifecycle authority.
+
+## IF-TXN-02 certification record
+
+IF-TXN-02 extends the IF-TXN-01 authority contract without introducing a transaction manager, generic rollback, retry, or silent recovery.
+
+### Activity Clear
+
+```text
+Before not accepted
+→ Clear lifecycle is not called
+→ previous Activity remains authority
+→ FailedPreCommitTransition
+→ OperationKind = ActivityClear
+
+Clear committed + After not accepted
+→ no-Activity remains authority
+→ previous Activity is not restored
+→ request is not Succeeded
+→ FailedCommittedTargetReveal
+→ Activity readiness recovery belonging to the removed Activity is released
+```
+
+### Activity Restart
+
+```text
+Before not accepted
+→ no Clear
+→ no Re-enter
+→ previous Activity and occurrence remain authority
+→ Restart fails
+
+Clear fails
+→ no Re-enter
+→ existing clear-stage terminal semantics remain
+
+Clear committed + Re-enter fails
+→ old occurrence is not recreated
+→ Restart fails with the real resulting authority
+
+Re-enter committed + After not accepted
+→ new Activity / occurrence remains authority
+→ Restart is not Completed
+→ FailedCommittedTargetReveal on the re-enter stage
+→ reveal recovery may bind to the new occurrence
+→ no rollback to the old occurrence
+```
 
 ## Current QA evidence
 
-IF-TXN-01 is certified in the canonical QAFramework boundary against the current package/QA baselines.
+The transaction/readiness/identity boundary was manually re-certified on 2026-08-07 against the IF-TXN-02 package and QA workspaces.
 
 ```text
+IF-TXN-02 Clear/Restart Transition Authority Regression
+  status: Passed
+  cases: 16/16
+
 IF-TXN-01 Transition Failure Authority Regression
   status: Passed
   cases: 22/22
@@ -122,39 +184,46 @@ Identity Authority Regression
   failed: 0
 ```
 
-This evidence proves the IF-TXN-01 transaction decision, the WaitVisible/WaitCovered Play Mode integration, participant-aware Loading success/failure terminals, post-transition readiness mutation without a new request, and identity/ownership/supersession non-regression.
+The focused IF-TXN-02 regression proves accepted/rejected phase semantics, Clear pre/post-commit terminals, Restart pre/post-commit terminals, real-authority preservation, `Restart.Completed == false` on reveal failure, source wiring, and no-blind-rollback messaging. The Play Mode suites additionally prove no regression in readiness, Loading, cleanup Clear calls, occurrence mutation, supersession, and identity authority.
+
+The participant-aware terminal regression intentionally emits a runtime error for the deliberate `RequiredParticipantFailed` case; its final runner status is `Passed`, with the committed destination authoritative and recovery protection retained.
 
 ## Current FIRSTGAME evidence
 
-FIRSTGAME proves application boot, Route/Activity flow, Player participation, and additive content in real consumer scenes. Demo03 adds current consumer evidence for cross-scene Player provisioning UX. A deliberately broken required Transition surface is not required to close IF-TXN-01 because the technical failure boundary is certified in QA; such a consumer demonstration remains optional diagnostic/product evidence.
+FIRSTGAME proves application boot, Route/Activity flow, Player participation, and additive content in real consumer scenes. Demo03 provides current consumer evidence for cross-scene Player provisioning UX. A deliberately broken Transition surface for Clear/Restart is not required to close IF-TXN-02 because the technical failure boundary is certified in QA; such a consumer demonstration remains optional diagnostic/product evidence.
 
 ## What remains
 
-- Broaden compensation vocabulary beyond IF-TXN-01 pre-commit vs committed-target reveal terminals; generic rollback/retry remain out of scope unless a later cut explicitly requires them.
-- Audit/cover terminal integrity for Activity Clear/Restart paths that are outside the current IF-TXN-01 authority wiring.
-- Audit gate-release failure and cleanup evidence on exceptional/partial presentation paths before introducing any broader compensation mechanism.
+The Clear/Restart transaction-authority gap is closed. Remaining ADR-001 work is intentionally narrower and separate:
+
+- Audit transition/gate-release failure where ordinary cleanup itself fails.
+- Audit consumer/loading hook exceptions after commit and disposal during partial presentation.
+- Define adapter partial-side-effect compensation only where a concrete terminal path requires it; do not introduce a generic rollback/retry manager by default.
+- Improve full terminal cleanup receipts and lifecycle/diagnostic correlation evidence.
 - Define and implement the Session-Persistent Logical Player source and its authoring/runtime contract.
 - Publish a concise lifecycle diagram and diagnostic correlation guide for Session, Route, Activity, revision, occurrence, Transition operation and terminal cleanup.
 
 ## Completion criteria
 
 - No static/global runtime authority or silent fallback is introduced.
-- Every transition terminal path produces typed, correlated evidence.
+- Every supported transition terminal path produces typed, correlated evidence.
+- Committed authority always reflects the runtime mutation that actually completed.
 - Session-Persistent Player source has explicit lifetime, authoring, release, QA, and consumer proof.
 - Canonical QA passes against the current package boundary.
 
 ## Completion assessment
 
 ```text
-Estimated completion: 90%
+Estimated completion: 91%
 Normative status: Accepted
 IF-TXN-01 implementation: COMPLETE
 IF-TXN-01 QA certification: PASS
-Canonical evidence: 22/22 + 42/42 + 34/34 + 32/32 + post-transition PASS + identity 6/6
-Residuals: Session-Persistent Player, Clear/Restart transaction authority, broader compensation/cleanup diagnostics
+IF-TXN-02 implementation: COMPLETE
+IF-TXN-02 QA certification: PASS
+Canonical evidence: 16/16 + 22/22 + 42/42 + 34/34 + 32/32 + post-transition PASS + identity 6/6
+Residuals: Session-Persistent Player, exceptional gate/presentation cleanup, concrete compensation/cleanup diagnostics
 ```
 
-The percentage includes architecture/contract, runtime behavior, product authoring,
-diagnostics/documentation, current QA evidence, and real-consumer evidence. IF-TXN-01
-closure removes the previously open Transition failure-authority gap, but it does not
-claim completion of unrelated ADR-001 residuals.
+The percentage increases modestly because IF-TXN-02 closes an actual runtime/contract
+residual and is certified in QA; it is not raised merely because additional smokes were
+executed. Unrelated ADR-001 product and exceptional-cleanup gaps remain open.
