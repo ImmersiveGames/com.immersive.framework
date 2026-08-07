@@ -1,3 +1,4 @@
+using Immersive.Framework.ActivityFlow;
 using Immersive.Framework.Authoring;
 using Immersive.Framework.Editor.Editor.Validation;
 using Immersive.Framework.PlayerParticipation;
@@ -123,6 +124,12 @@ namespace Immersive.Framework.Editor.Editor.PlayerParticipation
                         $"Activity projects '{descriptor.Mode}' and explicitly allows zero participants while requiring '{requirementLevel}' from every projected Logical Player.",
                         activity);
                 }
+
+                AddCoveredPlayerProgressionWarning(
+                    report,
+                    activity,
+                    descriptor,
+                    requirementLevel);
             }
 
             if (report.IsValid && requirementsValid && projectionValid)
@@ -133,6 +140,28 @@ namespace Immersive.Framework.Editor.Editor.PlayerParticipation
             }
 
             return report;
+        }
+
+        private static void AddCoveredPlayerProgressionWarning(
+            FrameworkAuthoringValidationReport report,
+            ActivityAsset activity,
+            ActivityParticipationProjectionDescriptor descriptor,
+            PlayerParticipationRequirementLevel requirementLevel)
+        {
+            if (!activity.HasDefinedEntryReadinessPolicy ||
+                activity.EntryReadinessPolicy != ActivityEntryReadinessPolicy.WaitCovered ||
+                descriptor.Mode != ActivityParticipationProjectionMode.ExplicitSlots ||
+                requirementLevel == PlayerParticipationRequirementLevel.None)
+            {
+                return;
+            }
+
+            report.AddWarning(
+                $"Activity '{activity.ActivityName}' uses WaitCovered with ExplicitSlots and Player requirement '{requirementLevel}'. " +
+                "This is valid, but the Activity can remain covered indefinitely when a required Slot still needs Join or later Player progression and that progression can only be triggered from content hidden by the cover. " +
+                "Ensure the required Player state is satisfied before entry, progresses automatically, or can be advanced through a control-plane action available outside the covered Activity. " +
+                "Use WaitVisible when Player Join or selection is intentionally part of the visible Activity flow.",
+                activity);
         }
 
         private static void AddRuntimeEvidenceReport(
