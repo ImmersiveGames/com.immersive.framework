@@ -1,11 +1,12 @@
 # IF-ADR-001 — Core Lifecycle and Runtime Authority
 
 Status: Accepted  
-Last updated: 2026-08-06  
-Implementation completion: **88%**  
-Implementation classification: **Substantially implemented; architectural residuals remain**  
+Last updated: 2026-08-07  
+Implementation completion: **90%**  
+Implementation classification: **Substantially implemented; residual Session-Persistent Player and broader compensation remain**  
 Related decisions: IF-ADR-003, IF-ADR-006, IF-ADR-007, IF-ADR-014  
-Audit baseline: package `9ed698e55b48077c54be5056c6951b7e52dac51b`, QA `0521d1f1804dff2806e06b1e095d47023a062b9e`, FIRSTGAME `e551643ce1b154fdb2744f97b039b4ce73bc6bf5`
+Audit baseline: package `9ed698e55b48077c54be5056c6951b7e52dac51b`, QA `0521d1f1804dff2806e06b1e095d47023a062b9e`, FIRSTGAME `e551643ce1b154fdb2744f97b039b4ce73bc6bf5`  
+Transaction cut: **IF-TXN-01 GameFlow Transition Failure Authority (implemented in package)**
 
 > This is a consolidated audit revision. The normative architectural decision is
 > preserved and the implementation assessment is explicitly separated from ADR
@@ -43,7 +44,30 @@ Route and Activity own contextual lifecycle, not Session participant identity. M
 
 ## Current implementation coverage
 
-The package contains the scoped runtime host, bootstrap composition, Route/Activity runtimes, scene lifecycle, runtime-content ownership, explicit ports, typed results, and Session-scoped Player participation authority. Manager-Provisioned and Scene-Provided Player sources exist. The latest package change also introduces typed supersession/interruption behavior when Route authority replaces an in-flight Activity readiness operation, strengthening lifecycle unwind semantics.
+The package contains the scoped runtime host, bootstrap composition, Route/Activity runtimes, scene lifecycle, runtime-content ownership, explicit ports, typed results, and Session-scoped Player participation authority. Manager-Provisioned and Scene-Provided Player sources exist. Typed supersession/interruption exists when Route authority replaces an in-flight Activity readiness operation.
+
+**IF-TXN-01** makes Transition phase outcomes authoritative at the GameFlow transaction boundary:
+
+```text
+pre-commit Transition failure (Before not Completed)
+  → do not start destination lifecycle
+  → previous Route/Activity authority remains
+  → typed FailedPreCommitTransition terminal
+  → safe gate cleanup (no committed-target recovery)
+
+committed-target reveal failure (After not Completed after destination commit)
+  → keep committed destination authoritative
+  → do not return Succeeded / Started
+  → no blind rollback
+  → apply committed-target reveal recovery protection
+  → typed FailedCommittedTargetReveal terminal
+  → distinct from FailedCommittedTargetNotReady (readiness)
+
+CompletedWithWarnings remains accepted as TransitionResult.Completed.
+Policy Skipped remains accepted as intentional phase completion.
+Transition remains execution + typed result; GameFlow decides the transaction.
+Route/Activity remain lifecycle authority; Loading remains presentation/progress.
+```
 
 ## Current QA evidence
 
@@ -55,10 +79,9 @@ FIRSTGAME proves application boot, Route/Activity flow, Player participation, an
 
 ## What remains
 
-- Finalize the Activity transition transaction vocabulary: authority commit, phase, readiness, previous-Activity finalization, supersession, and unwind evidence.
-- Define cancellation and compensation rules before Activity authority commit.
+- Broaden compensation vocabulary beyond the IF-TXN-01 pre-commit vs committed-target reveal terminals (generic rollback/retry remain out of scope).
 - Define and implement the Session-Persistent Logical Player source and its authoring/runtime contract.
-- Rebuild canonical QA coverage for two sessions, Route replacement during readiness waits, disposal, and required-binding failures.
+- Rebuild full canonical QA coverage for two sessions, Route replacement during readiness waits, disposal, and required-binding failures.
 - Publish a concise lifecycle diagram and diagnostic correlation guide for Session, Route, Activity, revision, and occurrence.
 
 ## Completion criteria
@@ -71,11 +94,11 @@ FIRSTGAME proves application boot, Route/Activity flow, Player participation, an
 ## Completion assessment
 
 ```text
-Estimated completion: 88%
+Estimated completion: 90%
 Normative status: Accepted
-Package implementation: evaluated at 9ed698e
-QA evidence: evaluated at 0521d1f
-FIRSTGAME evidence: evaluated at e551643
+Package implementation: IF-TXN-01 transition failure authority implemented
+QA evidence: package unit + diagnostics smoke for IF-TXN-01; full host re-proof still external
+FIRSTGAME evidence: evaluated at e551643 (no deliberate broken transition surface left in product)
 ```
 
 The percentage includes architecture/contract, runtime behavior, product authoring,

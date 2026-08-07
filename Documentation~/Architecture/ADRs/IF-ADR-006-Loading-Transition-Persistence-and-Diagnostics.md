@@ -1,11 +1,12 @@
 # IF-ADR-006 — Loading, Transition, Persistence and Diagnostics
 
 Status: Accepted  
-Last updated: 2026-08-06  
-Implementation completion: **88%**  
-Implementation classification: **Core orchestration implemented; recovery and product gaps remain**  
+Last updated: 2026-08-07  
+Implementation completion: **91%**  
+Implementation classification: **Core orchestration + IF-TXN-01 transition failure authority implemented; product template gaps remain**  
 Related decisions: IF-ADR-001, IF-ADR-007, IF-ADR-011, IF-ADR-015  
-Audit baseline: package `9ed698e55b48077c54be5056c6951b7e52dac51b`, QA `0521d1f1804dff2806e06b1e095d47023a062b9e`, FIRSTGAME `e551643ce1b154fdb2744f97b039b4ce73bc6bf5`
+Audit baseline: package `9ed698e55b48077c54be5056c6951b7e52dac51b`, QA `0521d1f1804dff2806e06b1e095d47023a062b9e`, FIRSTGAME `e551643ce1b154fdb2744f97b039b4ce73bc6bf5`  
+Transaction cut: **IF-TXN-01 GameFlow Transition Failure Authority (implemented in package)**
 
 > This is a consolidated audit revision. The normative architectural decision is
 > preserved and the implementation assessment is explicitly separated from ADR
@@ -30,7 +31,34 @@ The framework owns persistent transition/loading surfaces and a typed orchestrat
 
 ## Current implementation coverage
 
-Persistent loading/transition surfaces, progress reporters, gates, typed results, diagnostics, and Activity readiness integration exist. Participant-aware progress reserves a final readiness range. The latest commit adds typed supersession for Route-authority replacement, avoiding misclassification of an intentional replacement as an ordinary failure/cancellation.
+Persistent loading/transition surfaces, progress reporters, gates, typed results, diagnostics, and Activity readiness integration exist. Participant-aware progress reserves a final readiness range. Typed supersession for Route-authority replacement remains distinct from ordinary failure/cancellation.
+
+**IF-TXN-01** closes the missing GameFlow authority bridge for Transition phase results:
+
+```text
+Transition = execution + typed TransitionResult (still passive; no lifecycle ownership)
+GameFlow  = transaction decision from TransitionResult
+
+pre-commit Transition failure
+  Transition Before is not Completed (Failed/Rejected/Cancelled/invalid)
+  → destination lifecycle is not started
+  → previous authority remains
+  → FailedPreCommitTransition (Route/Activity) / PreCommitTransitionFailed (startup)
+  → transition gate released safely; no committed-target recovery
+
+committed-target reveal failure
+  destination already committed
+  Transition After / reveal is not Completed
+  → destination remains current authority
+  → request/start must not Succeeded/Started
+  → FailedCommittedTargetReveal (distinct from FailedCommittedTargetNotReady)
+  → committed-target reveal recovery gate applied (policy source IF-TXN-01, not readiness)
+  → no automatic blind rollback
+
+CompletedWithWarnings is still TransitionResult.Completed and continues the transaction.
+Loading may complete technical/readiness projection before After; Loading is not authority.
+revealCompleted / normal success only after accepted After phase.
+```
 
 ## Current QA evidence
 
@@ -42,11 +70,11 @@ FIRSTGAME demonstrates covered/visible loading paths and has exposed real readin
 
 ## What remains
 
-- Prove surface-adapter failure, gate-release failure, cancellation, disposal, and committed-destination recovery.
-- Define compensation after partial commit and restoration after reveal failure.
+- Host/FIRSTGAME integration proof for deliberate required-surface/adapter failure on Before and After (without leaving product surfaces broken).
+- Broader compensation after partial commit beyond typed reveal recovery (no generic rollback manager).
 - Publish a dedicated Transition/Loading product template and policy guide.
 - Add QA for Route replacement while waiting under WaitVisible and WaitCovered.
-- Ensure all terminal results carry destination identity, operation sequence, revision/occurrence, loading diagnostics, and cleanup status.
+- Ensure every external host terminal path surfaces destination identity, operation sequence, revision/occurrence, loading diagnostics, and cleanup status.
 
 ## Completion criteria
 
@@ -58,11 +86,11 @@ FIRSTGAME demonstrates covered/visible loading paths and has exposed real readin
 ## Completion assessment
 
 ```text
-Estimated completion: 88%
+Estimated completion: 91%
 Normative status: Accepted
-Package implementation: evaluated at 9ed698e
-QA evidence: evaluated at 0521d1f
-FIRSTGAME evidence: evaluated at e551643
+Package implementation: IF-TXN-01 pre-commit vs committed-target reveal failure authority implemented
+QA evidence: package unit tests + GameFlow Transition Failure Authority diagnostics smoke
+FIRSTGAME evidence: evaluated at e551643; deliberate broken-surface proof still optional follow-up
 ```
 
 The percentage includes architecture/contract, runtime behavior, product authoring,

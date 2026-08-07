@@ -57,7 +57,8 @@ namespace Immersive.Framework.GameFlow
         public bool DestinationAuthoritative => Succeeded ||
             Kind == FrameworkRouteRequestKind.FailedCommittedTargetNotReady ||
             Kind == FrameworkRouteRequestKind.FailedCommittedTargetReadinessInvalidated ||
-            Kind == FrameworkRouteRequestKind.FailedCommittedTargetReadinessCancelled;
+            Kind == FrameworkRouteRequestKind.FailedCommittedTargetReadinessCancelled ||
+            Kind == FrameworkRouteRequestKind.FailedCommittedTargetReveal;
 
         public static FrameworkRouteRequestResult FailedInvalidConfig(
             string message,
@@ -203,6 +204,45 @@ namespace Immersive.Framework.GameFlow
         {
             return new FrameworkRouteRequestResult(
                 FrameworkRouteRequestKind.SupersededCommittedTargetByRouteReplacement,
+                message,
+                targetRoute,
+                source,
+                reason,
+                routeLifecycleResult,
+                transitionDiagnostics,
+                transitionGateDiagnostics);
+        }
+
+        internal static FrameworkRouteRequestResult FailedPreCommitTransition(
+            string message,
+            RouteAsset targetRoute,
+            string source,
+            string reason,
+            FrameworkTransitionDiagnostics transitionDiagnostics = default,
+            TransitionGateDiagnostics transitionGateDiagnostics = default)
+        {
+            return new FrameworkRouteRequestResult(
+                FrameworkRouteRequestKind.FailedPreCommitTransition,
+                message,
+                targetRoute,
+                source,
+                reason,
+                default,
+                transitionDiagnostics,
+                transitionGateDiagnostics);
+        }
+
+        internal static FrameworkRouteRequestResult FailedCommittedTargetReveal(
+            string message,
+            RouteAsset targetRoute,
+            string source,
+            string reason,
+            RouteLifecycleStartResult routeLifecycleResult,
+            FrameworkTransitionDiagnostics transitionDiagnostics = default,
+            TransitionGateDiagnostics transitionGateDiagnostics = default)
+        {
+            return new FrameworkRouteRequestResult(
+                FrameworkRouteRequestKind.FailedCommittedTargetReveal,
                 message,
                 targetRoute,
                 source,

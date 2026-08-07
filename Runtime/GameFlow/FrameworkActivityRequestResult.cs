@@ -77,7 +77,10 @@ namespace Immersive.Framework.GameFlow
                 .FailedCommittedTargetReadinessInvalidated ||
             Kind ==
             FrameworkActivityRequestKind
-                .FailedCommittedTargetReadinessCancelled;
+                .FailedCommittedTargetReadinessCancelled ||
+            Kind ==
+            FrameworkActivityRequestKind
+                .FailedCommittedTargetReveal;
 
         public bool DestinationAuthoritative =>
             Succeeded || CommitBoundaryReached;
@@ -190,6 +193,53 @@ namespace Immersive.Framework.GameFlow
             return new FrameworkActivityRequestResult(
                 FrameworkActivityRequestKind
                     .SupersededCommittedTargetByRouteReplacement,
+                message,
+                targetActivity,
+                source,
+                reason,
+                activityFlowResult,
+                transitionDiagnostics,
+                transitionGateDiagnostics,
+                activityTransitionMode,
+                GameFlowRequestOperationKind.Activity);
+        }
+
+        internal static FrameworkActivityRequestResult FailedPreCommitTransition(
+            string message,
+            ActivityAsset targetActivity,
+            string source,
+            string reason,
+            FrameworkTransitionDiagnostics transitionDiagnostics = default,
+            TransitionGateDiagnostics transitionGateDiagnostics = default,
+            ActivityVisualTransitionMode activityTransitionMode =
+                ActivityVisualTransitionMode.Seamless)
+        {
+            return new FrameworkActivityRequestResult(
+                FrameworkActivityRequestKind.FailedPreCommitTransition,
+                message,
+                targetActivity,
+                source,
+                reason,
+                default,
+                transitionDiagnostics,
+                transitionGateDiagnostics,
+                activityTransitionMode,
+                GameFlowRequestOperationKind.Activity);
+        }
+
+        internal static FrameworkActivityRequestResult FailedCommittedTargetReveal(
+            string message,
+            ActivityAsset targetActivity,
+            string source,
+            string reason,
+            ActivityFlowStartResult activityFlowResult,
+            FrameworkTransitionDiagnostics transitionDiagnostics = default,
+            TransitionGateDiagnostics transitionGateDiagnostics = default,
+            ActivityVisualTransitionMode activityTransitionMode =
+                ActivityVisualTransitionMode.Seamless)
+        {
+            return new FrameworkActivityRequestResult(
+                FrameworkActivityRequestKind.FailedCommittedTargetReveal,
                 message,
                 targetActivity,
                 source,

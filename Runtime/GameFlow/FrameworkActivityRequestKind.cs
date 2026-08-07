@@ -14,6 +14,14 @@ namespace Immersive.Framework.GameFlow
         FailedCommittedTargetNotReady = 7,
         FailedCommittedTargetReadinessInvalidated = 8,
         FailedCommittedTargetReadinessCancelled = 9,
-        SupersededCommittedTargetByRouteReplacement = 10
+        SupersededCommittedTargetByRouteReplacement = 10,
+        /// <summary>
+        /// Transition Before failed before destination Activity authority advanced.
+        /// </summary>
+        FailedPreCommitTransition = 11,
+        /// <summary>
+        /// Destination Activity already committed, but Transition After / reveal did not complete.
+        /// </summary>
+        FailedCommittedTargetReveal = 12
     }
 }

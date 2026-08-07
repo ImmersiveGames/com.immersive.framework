@@ -227,6 +227,18 @@ namespace Immersive.Framework.GameFlow
                         startupRoute,
                         null,
                         startupRoute.StartupActivity));
+                if (!TryAcceptTransitionPhase(
+                        transitionBefore,
+                        "Before",
+                        out string startupBeforeIssue))
+                {
+                    ReleaseTransitionGate(transitionGateMode, transitionGateSnapshot);
+                    return CreatePreCommitStartupTransitionFailure(
+                        startupBeforeIssue,
+                        startupRoute,
+                        transitionBefore);
+                }
+
                 var routeLifecycleResult = await StartRouteCoreAsync(
                     startupRoute,
                     "GameApplication",
@@ -271,6 +283,33 @@ namespace Immersive.Framework.GameFlow
                             startupRoute,
                             null,
                             routeLifecycleResult.ActivityFlowResult.Activity));
+                    if (!TryAcceptTransitionPhase(
+                            transitionAfter,
+                            "After",
+                            out string startupAfterVisibleIssue))
+                    {
+                        if (_routeLifecycleRuntime.TryGetCurrentRouteResult(
+                                out RouteLifecycleStartResult committedVisibleRoute) &&
+                            committedVisibleRoute.Started &&
+                            ReferenceEquals(committedVisibleRoute.Route, startupRoute))
+                        {
+                            routeLifecycleResult = committedVisibleRoute;
+                        }
+
+                        ReleaseTransitionGate(transitionGateMode, transitionGateSnapshot);
+                        readinessExecution = readinessExecution.WithPresentation(
+                            revealOccurred: false,
+                            loadingReleased: false,
+                            transitionGateReleased: true,
+                            recoveryGateApplied: true);
+                        return CreateCommittedStartupRevealFailure(
+                            startupAfterVisibleIssue,
+                            startupRoute,
+                            routeLifecycleResult,
+                            transitionAfter,
+                            readinessExecution);
+                    }
+
                     readinessExecution = await WaitForPreparedActivityEntryReadinessAsync(
                         readinessExecution,
                         operationId,
@@ -294,6 +333,33 @@ namespace Immersive.Framework.GameFlow
                                 null,
                                 readinessExecution.ActivityFlowResult.Activity))
                         : default;
+                    if (transitionAfter.IsValid &&
+                        !TryAcceptTransitionPhase(
+                            transitionAfter,
+                            "After",
+                            out string startupAfterCoveredIssue))
+                    {
+                        if (_routeLifecycleRuntime.TryGetCurrentRouteResult(
+                                out RouteLifecycleStartResult committedCoveredRoute) &&
+                            committedCoveredRoute.Started &&
+                            ReferenceEquals(committedCoveredRoute.Route, startupRoute))
+                        {
+                            routeLifecycleResult = committedCoveredRoute;
+                        }
+
+                        ReleaseTransitionGate(transitionGateMode, transitionGateSnapshot);
+                        readinessExecution = readinessExecution.WithPresentation(
+                            revealOccurred: false,
+                            loadingReleased: false,
+                            transitionGateReleased: true,
+                            recoveryGateApplied: true);
+                        return CreateCommittedStartupRevealFailure(
+                            startupAfterCoveredIssue,
+                            startupRoute,
+                            routeLifecycleResult,
+                            transitionAfter,
+                            readinessExecution);
+                    }
                 }
 
                 if (_routeLifecycleRuntime.TryGetCurrentRouteResult(
@@ -491,6 +557,22 @@ namespace Immersive.Framework.GameFlow
                         targetRoute,
                         previousActivity,
                         previousActivity));
+                if (!TryAcceptTransitionPhase(
+                        transitionBefore,
+                        "Before",
+                        out string routeBeforeIssue))
+                {
+                    transitionGateDiagnostics = ReleaseTransitionGate(
+                        transitionGateMode,
+                        transitionGateSnapshot);
+                    return CreatePreCommitRouteTransitionFailure(
+                        routeBeforeIssue,
+                        targetRoute,
+                        resolvedSource,
+                        resolvedReason,
+                        transitionBefore,
+                        transitionGateDiagnostics);
+                }
 
                 if (beforeRouteLifecycle != null)
                 {
@@ -575,6 +657,39 @@ namespace Immersive.Framework.GameFlow
                             targetRoute,
                             previousActivity,
                             routeLifecycleResult.ActivityFlowResult.Activity));
+                    if (!TryAcceptTransitionPhase(
+                            transitionAfter,
+                            "After",
+                            out string routeAfterVisibleIssue))
+                    {
+                        if (_routeLifecycleRuntime.TryGetCurrentRouteResult(
+                                out RouteLifecycleStartResult committedVisibleRoute) &&
+                            committedVisibleRoute.Started &&
+                            ReferenceEquals(committedVisibleRoute.Route, targetRoute))
+                        {
+                            routeLifecycleResult = committedVisibleRoute;
+                        }
+
+                        transitionGateDiagnostics = ReleaseTransitionGate(
+                            transitionGateMode,
+                            transitionGateSnapshot);
+                        readinessExecution = readinessExecution.WithPresentation(
+                            revealOccurred: false,
+                            loadingReleased: afterRouteLifecycle != null,
+                            transitionGateReleased: true,
+                            recoveryGateApplied: true);
+                        return CreateCommittedRouteRevealFailure(
+                            routeAfterVisibleIssue,
+                            targetRoute,
+                            resolvedSource,
+                            resolvedReason,
+                            routeLifecycleResult,
+                            transitionBefore,
+                            transitionAfter,
+                            transitionGateDiagnostics,
+                            readinessExecution);
+                    }
+
                     readinessExecution = await WaitForPreparedActivityEntryReadinessAsync(
                         readinessExecution,
                         operationId,
@@ -603,6 +718,38 @@ namespace Immersive.Framework.GameFlow
                                 targetRoute,
                                 previousActivity,
                                 readinessExecution.ActivityFlowResult.Activity));
+                        if (!TryAcceptTransitionPhase(
+                                transitionAfter,
+                                "After",
+                                out string routeAfterCoveredIssue))
+                        {
+                            if (_routeLifecycleRuntime.TryGetCurrentRouteResult(
+                                    out RouteLifecycleStartResult committedCoveredRoute) &&
+                                committedCoveredRoute.Started &&
+                                ReferenceEquals(committedCoveredRoute.Route, targetRoute))
+                            {
+                                routeLifecycleResult = committedCoveredRoute;
+                            }
+
+                            transitionGateDiagnostics = ReleaseTransitionGate(
+                                transitionGateMode,
+                                transitionGateSnapshot);
+                            readinessExecution = readinessExecution.WithPresentation(
+                                revealOccurred: false,
+                                loadingReleased: afterRouteLifecycle != null,
+                                transitionGateReleased: true,
+                                recoveryGateApplied: true);
+                            return CreateCommittedRouteRevealFailure(
+                                routeAfterCoveredIssue,
+                                targetRoute,
+                                resolvedSource,
+                                resolvedReason,
+                                routeLifecycleResult,
+                                transitionBefore,
+                                transitionAfter,
+                                transitionGateDiagnostics,
+                                readinessExecution);
+                        }
                     }
                     else
                     {
@@ -626,6 +773,38 @@ namespace Immersive.Framework.GameFlow
                             targetRoute,
                             previousActivity,
                             routeLifecycleResult.ActivityFlowResult.Activity));
+                    if (!TryAcceptTransitionPhase(
+                            transitionAfter,
+                            "After",
+                            out string routeAfterObserveIssue))
+                    {
+                        if (_routeLifecycleRuntime.TryGetCurrentRouteResult(
+                                out RouteLifecycleStartResult committedObserveRoute) &&
+                            committedObserveRoute.Started &&
+                            ReferenceEquals(committedObserveRoute.Route, targetRoute))
+                        {
+                            routeLifecycleResult = committedObserveRoute;
+                        }
+
+                        transitionGateDiagnostics = ReleaseTransitionGate(
+                            transitionGateMode,
+                            transitionGateSnapshot);
+                        readinessExecution = readinessExecution.WithPresentation(
+                            revealOccurred: false,
+                            loadingReleased: afterRouteLifecycle != null,
+                            transitionGateReleased: true,
+                            recoveryGateApplied: true);
+                        return CreateCommittedRouteRevealFailure(
+                            routeAfterObserveIssue,
+                            targetRoute,
+                            resolvedSource,
+                            resolvedReason,
+                            routeLifecycleResult,
+                            transitionBefore,
+                            transitionAfter,
+                            transitionGateDiagnostics,
+                            readinessExecution);
+                    }
                 }
 
                 if (_routeLifecycleRuntime.TryGetCurrentRouteResult(
@@ -937,6 +1116,23 @@ namespace Immersive.Framework.GameFlow
                         previousActivity,
                         targetActivity),
                     activityTransitionMode);
+                if (!TryAcceptTransitionPhase(
+                        transitionBefore,
+                        "Before",
+                        out string activityBeforeIssue))
+                {
+                    transitionGateDiagnostics = ReleaseTransitionGate(
+                        transitionGateMode,
+                        transitionGateSnapshot);
+                    return CreatePreCommitActivityTransitionFailure(
+                        activityBeforeIssue,
+                        targetActivity,
+                        resolvedSource,
+                        resolvedReason,
+                        transitionBefore,
+                        transitionGateDiagnostics,
+                        activityTransitionMode);
+                }
 
                 if (beforeActivityLifecycle != null)
                 {
@@ -1072,6 +1268,32 @@ namespace Immersive.Framework.GameFlow
                             previousActivity,
                             activityFlowResult.Activity),
                         activityTransitionMode);
+                    if (!TryAcceptTransitionPhase(
+                            transitionAfter,
+                            "After",
+                            out string activityAfterVisibleIssue))
+                    {
+                        transitionGateDiagnostics = ReleaseTransitionGate(
+                            transitionGateMode,
+                            transitionGateSnapshot);
+                        readinessExecution = readinessExecution.WithPresentation(
+                            revealOccurred: false,
+                            loadingReleased: afterActivityLifecycle != null,
+                            transitionGateReleased: true,
+                            recoveryGateApplied: true);
+                        return CreateCommittedActivityRevealFailure(
+                            activityAfterVisibleIssue,
+                            targetActivity,
+                            resolvedSource,
+                            resolvedReason,
+                            activityFlowResult,
+                            transitionBefore,
+                            transitionAfter,
+                            transitionGateDiagnostics,
+                            activityTransitionMode,
+                            readinessExecution);
+                    }
+
                     readinessExecution = await WaitForPreparedActivityEntryReadinessAsync(
                         readinessExecution,
                         operationId,
@@ -1101,6 +1323,31 @@ namespace Immersive.Framework.GameFlow
                                 previousActivity,
                                 readinessExecution.ActivityFlowResult.Activity),
                             activityTransitionMode);
+                        if (!TryAcceptTransitionPhase(
+                                transitionAfter,
+                                "After",
+                                out string activityAfterCoveredIssue))
+                        {
+                            transitionGateDiagnostics = ReleaseTransitionGate(
+                                transitionGateMode,
+                                transitionGateSnapshot);
+                            readinessExecution = readinessExecution.WithPresentation(
+                                revealOccurred: false,
+                                loadingReleased: afterActivityLifecycle != null,
+                                transitionGateReleased: true,
+                                recoveryGateApplied: true);
+                            return CreateCommittedActivityRevealFailure(
+                                activityAfterCoveredIssue,
+                                targetActivity,
+                                resolvedSource,
+                                resolvedReason,
+                                readinessExecution.ActivityFlowResult,
+                                transitionBefore,
+                                transitionAfter,
+                                transitionGateDiagnostics,
+                                activityTransitionMode,
+                                readinessExecution);
+                        }
                     }
                     else
                     {
@@ -1125,6 +1372,31 @@ namespace Immersive.Framework.GameFlow
                             previousActivity,
                             activityFlowResult.Activity),
                         activityTransitionMode);
+                    if (!TryAcceptTransitionPhase(
+                            transitionAfter,
+                            "After",
+                            out string activityAfterObserveIssue))
+                    {
+                        transitionGateDiagnostics = ReleaseTransitionGate(
+                            transitionGateMode,
+                            transitionGateSnapshot);
+                        readinessExecution = readinessExecution.WithPresentation(
+                            revealOccurred: false,
+                            loadingReleased: afterActivityLifecycle != null,
+                            transitionGateReleased: true,
+                            recoveryGateApplied: true);
+                        return CreateCommittedActivityRevealFailure(
+                            activityAfterObserveIssue,
+                            targetActivity,
+                            resolvedSource,
+                            resolvedReason,
+                            activityFlowResult,
+                            transitionBefore,
+                            transitionAfter,
+                            transitionGateDiagnostics,
+                            activityTransitionMode,
+                            readinessExecution);
+                    }
                 }
 
                 var transitionDiagnostics = FrameworkTransitionDiagnostics.Completed(

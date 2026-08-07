@@ -100,16 +100,31 @@ namespace Immersive.Framework.GameFlow
                     transitionGateMode,
                     "GameApplication",
                     "startup");
-                await ExecuteTransitionAsync(
-                    TransitionRequest.Before(
-                        operationId,
-                        TransitionScope.Startup,
-                        "GameApplication",
-                        "startup",
-                        null,
+                TransitionResult transitionBefore =
+                    await ExecuteTransitionAsync(
+                        TransitionRequest.Before(
+                            operationId,
+                            TransitionScope.Startup,
+                            "GameApplication",
+                            "startup",
+                            null,
+                            startupRoute,
+                            null,
+                            startupActivity));
+                if (!TryAcceptTransitionPhase(
+                        transitionBefore,
+                        "Before",
+                        out string startupLoadingBeforeIssue))
+                {
+                    progressEnvelope.MarkTerminalFailure();
+                    ReleaseTransitionGate(
+                        transitionGateMode,
+                        transitionGateSnapshot);
+                    return CreatePreCommitStartupTransitionFailure(
+                        startupLoadingBeforeIssue,
                         startupRoute,
-                        null,
-                        startupActivity));
+                        transitionBefore);
+                }
 
                 if (beforeRouteLifecycle != null)
                 {
@@ -188,16 +203,50 @@ namespace Immersive.Framework.GameFlow
                         loadingHidden = true;
                     }
 
-                    await ExecuteTransitionAsync(
-                        TransitionRequest.After(
-                            operationId,
-                            TransitionScope.Startup,
-                            "GameApplication",
-                            "startup",
-                            null,
+                    TransitionResult transitionAfter =
+                        await ExecuteTransitionAsync(
+                            TransitionRequest.After(
+                                operationId,
+                                TransitionScope.Startup,
+                                "GameApplication",
+                                "startup",
+                                null,
+                                startupRoute,
+                                null,
+                                readinessExecution.ActivityFlowResult.Activity));
+                    if (!TryAcceptTransitionPhase(
+                            transitionAfter,
+                            "After",
+                            out string startupLoadingAfterIssue))
+                    {
+                        await progressForwarder.MarkTerminalFailureAsync();
+                        if (_routeLifecycleRuntime.TryGetCurrentRouteResult(
+                                out RouteLifecycleStartResult
+                                    committedRevealRoute) &&
+                            committedRevealRoute.Started &&
+                            ReferenceEquals(
+                                committedRevealRoute.Route,
+                                startupRoute))
+                        {
+                            routeLifecycleResult = committedRevealRoute;
+                        }
+
+                        ReleaseTransitionGate(
+                            transitionGateMode,
+                            transitionGateSnapshot);
+                        readinessExecution = readinessExecution.WithPresentation(
+                            revealOccurred: false,
+                            loadingReleased: afterRouteLifecycle != null,
+                            transitionGateReleased: true,
+                            recoveryGateApplied: true);
+                        return CreateCommittedStartupRevealFailure(
+                            startupLoadingAfterIssue,
                             startupRoute,
-                            null,
-                            readinessExecution.ActivityFlowResult.Activity));
+                            routeLifecycleResult,
+                            transitionAfter,
+                            readinessExecution);
+                    }
+
                     revealCompleted = true;
                 }
                 else

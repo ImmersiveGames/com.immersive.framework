@@ -19,7 +19,9 @@ namespace Immersive.Framework.GameFlow
             RouteLifecycleStartResult routeLifecycleResult,
             bool destinationAuthoritative = false,
             ActivityEntryReadinessExecutionStatus entryReadinessStatus =
-                ActivityEntryReadinessExecutionStatus.Unknown)
+                ActivityEntryReadinessExecutionStatus.Unknown,
+            bool committedTargetRevealFailed = false,
+            bool preCommitTransitionFailed = false)
         {
             Started = started;
             Message = message ?? string.Empty;
@@ -27,6 +29,8 @@ namespace Immersive.Framework.GameFlow
             RouteLifecycleResult = routeLifecycleResult;
             _destinationAuthoritative = destinationAuthoritative;
             EntryReadinessStatus = entryReadinessStatus;
+            CommittedTargetRevealFailed = committedTargetRevealFailed;
+            PreCommitTransitionFailed = preCommitTransitionFailed;
         }
 
         public bool Started { get; }
@@ -38,6 +42,17 @@ namespace Immersive.Framework.GameFlow
         public RouteLifecycleStartResult RouteLifecycleResult { get; }
 
         public bool DestinationAuthoritative => Started || _destinationAuthoritative;
+
+        /// <summary>
+        /// True when Startup destination was committed but Transition After / reveal failed.
+        /// Distinct from readiness failure.
+        /// </summary>
+        public bool CommittedTargetRevealFailed { get; }
+
+        /// <summary>
+        /// True when Transition Before failed before Startup destination lifecycle/commit.
+        /// </summary>
+        public bool PreCommitTransitionFailed { get; }
 
         internal ActivityEntryReadinessExecutionStatus EntryReadinessStatus { get; }
 
@@ -72,6 +87,38 @@ namespace Immersive.Framework.GameFlow
                 routeLifecycleResult,
                 true,
                 entryReadinessStatus);
+        }
+
+        internal static FrameworkGameFlowStartResult FailedPreCommitTransition(
+            string message,
+            RouteAsset startupRoute = null)
+        {
+            return new FrameworkGameFlowStartResult(
+                false,
+                message,
+                startupRoute,
+                default,
+                destinationAuthoritative: false,
+                entryReadinessStatus: ActivityEntryReadinessExecutionStatus.Unknown,
+                committedTargetRevealFailed: false,
+                preCommitTransitionFailed: true);
+        }
+
+        internal static FrameworkGameFlowStartResult FailedCommittedTargetReveal(
+            string message,
+            RouteAsset startupRoute,
+            RouteLifecycleStartResult routeLifecycleResult,
+            ActivityEntryReadinessExecutionStatus entryReadinessStatus)
+        {
+            return new FrameworkGameFlowStartResult(
+                false,
+                message,
+                startupRoute,
+                routeLifecycleResult,
+                destinationAuthoritative: true,
+                entryReadinessStatus: entryReadinessStatus,
+                committedTargetRevealFailed: true,
+                preCommitTransitionFailed: false);
         }
     }
 }
