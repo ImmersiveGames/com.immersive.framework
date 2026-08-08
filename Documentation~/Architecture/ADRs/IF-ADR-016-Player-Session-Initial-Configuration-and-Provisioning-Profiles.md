@@ -3,7 +3,7 @@
 Status: **Proposed**  
 Last updated: 2026-08-08  
 Implementation completion: **80% for the ADR-specific scope**  
-Implementation classification: **Package contracts, authored Profiles, pure resolution, Session runtime initialization, designer-first Inspector/diagnostics and QA contract closure are implemented. FIRSTGAME consumer proof is intentionally deferred. The typed complete creation-time Session Profile override remains an explicit implementation gap until verified/implemented.**  
+Implementation classification: **Package contracts, authored Profiles, pure resolution, Session runtime initialization, typed complete creation-time Session Profile override, designer-first Inspector/diagnostics and QA contract closure are implemented. FIRSTGAME consumer proof is intentionally deferred.**  
 Related decisions: IF-ADR-001, IF-ADR-002, IF-ADR-003, IF-ADR-010, IF-ADR-012, IF-ADR-015  
 Supersedes: none  
 Superseded by: none
@@ -850,6 +850,13 @@ IF-SESSION-CONFIG-05  CLOSED
   structural configuration frozen for Session lifetime
   mixed per-Slot provisioning integrated with existing authorities
 
+IF-SESSION-CONFIG-05B  CLOSED / QA CERTIFIED
+  typed creation-time PlayerSessionProfile override
+  explicit override replaces GameApplication default as one complete source
+  invalid explicit override fails without fallback
+  no field-by-field merge
+  CONFIG-05B override smoke: 4/4 PASS
+
 IF-SESSION-CONFIG-06  CLOSED FOR CURRENT PACKAGE UX CUT
   designer-first Inspectors + Advanced/Debug diagnostics
   further UX refinement intentionally deferred to FIRSTGAME consumer proof
@@ -866,17 +873,32 @@ IF-SESSION-CONFIG-09  PARTIAL
   ADR acceptance remains blocked by remaining acceptance gaps
 ```
 
-### Remaining implementation gap before ADR acceptance
+### Remaining evidence before ADR acceptance
 
-The normative ADR still requires a typed **creation-time Session Profile override** that replaces the GameApplication default as one complete source, without field-by-field merge. The implementation evidence produced through IF-SESSION-CONFIG-05 reports only:
+The typed **creation-time Session Profile override** is now implemented and QA-certified through IF-SESSION-CONFIG-05B.
+
+Certified precedence:
 
 ```text
-GameApplicationAsset
-  PlayerSessionEnabled
-  DefaultPlayerSessionProfile
+Player Session disabled
+  -> valid absence
+
+enabled + explicit PlayerSessionProfile
+  -> resolve only the explicit Profile
+
+enabled + no explicit Profile
+  -> resolve GameApplicationAsset.DefaultPlayerSessionProfile
+
+enabled + invalid explicit Profile
+  -> typed failure
+  -> no fallback to GameApplication default
+
+explicit override
+  -> complete Profile source
+  -> no field-by-field merge
 ```
 
-Therefore the complete Session-creation override must remain **OPEN** until the current package source proves that the contract already exists or a focused package cut implements it. Do not infer this capability from per-Slot provisioning overrides.
+The CONFIG-05B smoke passes **4/4** cases covering default selection, explicit replacement, invalid-explicit no-fallback and structural no-merge behavior.
 
 The real Route/Activity non-reapply behavior is ADR-aligned and contract-separated, but the current Edit Mode QA suite intentionally does not certify a full ActivityFlow transition using `FrameworkRuntimeHost`. This is an integration-evidence gap, not evidence of a second authority.
 
@@ -1057,9 +1079,11 @@ QA
   public/internal classification explicit
 
 Creation-time complete Session Profile override
-  OPEN / NOT YET PROVEN IMPLEMENTED
-  must replace GameApplication default as a complete source
-  must not field-merge
+  IMPLEMENTED / QA CERTIFIED
+  IF-SESSION-CONFIG-05B: PASS 4/4
+  replaces GameApplication default as a complete source
+  invalid explicit override does not fall back
+  no field-by-field merge
 
 Route/Activity real non-reapply integration evidence
   NOT DIRECTLY CERTIFIED by current Edit Mode smoke
@@ -1071,7 +1095,7 @@ Runtime command/observation surface
   separate IF-ADR-015 work
 ```
 
-The next ADR-016 implementation work should first close or disprove the creation-time override gap with a focused source audit/package cut. FIRSTGAME remains the final product-usability proof and is intentionally postponed while higher-value package implementation continues.
+The creation-time override gap is closed by IF-SESSION-CONFIG-05B and QA-certified 4/4. FIRSTGAME remains the final product-usability proof and is intentionally postponed while higher-value package implementation continues. The full Route/Activity non-reapply behavior remains an integration-evidence gap, not an implementation contradiction.
 
 ---
 

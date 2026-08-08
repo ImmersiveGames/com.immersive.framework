@@ -22,7 +22,8 @@ Portfolio average: **80.9% equivalent**
 10. No generic transaction manager, rollback manager, release token or silent fallback was introduced.
 11. FIRSTGAME change is not required for IF-TXN-03A technical closure.
 12. **IF-ADR-016 has progressed through package implementation, designer authoring and QA closure:** IF-SESSION-CONFIG-05 is 6/6 PASS and IF-SESSION-CONFIG-07 is 17/17 PASS.
-13. IF-ADR-016 remains **Proposed** because FIRSTGAME manual consumer proof is deferred and the normative complete creation-time Session Profile override is not yet proven implemented.
+13. **IF-SESSION-CONFIG-05B is now closed and QA-certified 4/4:** the complete creation-time Session Profile override replaces the GameApplication default, does not field-merge and does not fall back after an invalid explicit override.
+14. IF-ADR-016 remains **Proposed** because FIRSTGAME manual consumer proof is deferred and full Route/Activity non-reapplication is not yet directly certified through real integration.
 
 ## Method
 
@@ -57,11 +58,11 @@ Percentages are deliberately reduced when runtime code exists but current QA, pr
 | IF-ADR-013 | Optional Audio BGM Adapter | Accepted / Experimental | **65%** | Technical adapter exists; product promotion incomplete |
 | IF-ADR-014 | Authored Definition and Stable Identity Authority | **Accepted** | **100%*** | **Complete for current accepted scope; IF-ID closed; IF-ID-07 deferred by design** |
 | IF-ADR-015 | Player Provisioning Commands and Consumer Observation Surface | Proposed | **30%** | ADR and consumer prototype exist; official package surface not shipped |
-| IF-ADR-016 | Player Session Initial Configuration and Provisioning Profiles | Proposed | **80%** | Contracts, Profiles, resolver, Session runtime initialization, Inspectors and QA are implemented; complete creation-time Profile override and FIRSTGAME proof remain |
+| IF-ADR-016 | Player Session Initial Configuration and Provisioning Profiles | Proposed | **90%** | Contracts, Profiles, resolver, Session runtime initialization, complete creation-time Profile override, Inspectors and QA are implemented; FIRSTGAME proof and full Route/Activity integration evidence remain |
 
 `*` IF-ADR-014 uses 100% only for portfolio arithmetic. Its official ADR wording remains `Complete for current accepted scope`.
 
-Portfolio arithmetic: `(92+65+84+78+78+94+96+90+88+70+94+90+65+100+30+80) / 16 = 80.9%` rounded to one decimal.
+Portfolio arithmetic: `(92+65+84+78+78+94+96+90+88+70+94+90+65+100+30+90) / 16 = 81.6%` rounded to one decimal.
 
 ## IF-TXN-03A closure incorporated
 
@@ -161,6 +162,13 @@ IF-SESSION-CONFIG-07 Player Session Contract Closure
   PUBLIC-ONLY cases PASS
   PARTIAL PUBLIC EVIDENCE cases PASS
   INTERNAL TECHNICAL cases PASS
+
+IF-SESSION-CONFIG-05B Session Profile Override
+  PASS — 4/4
+  no override uses GameApplication default
+  explicit override replaces default completely
+  invalid explicit override does not fall back
+  explicit override does not field-merge
 ```
 
 Certified behaviors include authored Slot order, Capacity bounds, mixed per-Slot Scene/Manager provisioning, no provisioning fallback/skip, post-initialization structural freeze, Actor resolution policy separation, late-Join frozen provisioning, typed failures and immutable effective evidence.
@@ -191,7 +199,7 @@ Do not introduce a generic transaction/rollback manager without concrete evidenc
 
 Player architecture now has two focused open fronts:
 
-- **IF-ADR-016 closure gap:** verify/implement the complete creation-time Session Profile override; FIRSTGAME manual proof remains deferred.
+- **IF-ADR-016:** creation-time complete Session Profile override is closed; FIRSTGAME manual proof remains deferred and real Route/Activity non-reapplication is not directly certified.
 - **IF-ADR-015:** canonical scoped runtime consumer command/observation surface remains the major public Player API gap.
 
 These can be prioritized independently of the next exceptional terminal-integrity audit.
@@ -240,8 +248,9 @@ Participant-aware Loading
 Player lifecycle
   technically strong
   IF-ADR-016 authored Session initialization implemented and QA green
-  IF-ADR-016 creation-time complete Profile override still open
+  IF-ADR-016 creation-time complete Profile override CLOSED / 4/4 PASS
   IF-ADR-016 FIRSTGAME manual proof deferred
+  IF-ADR-016 full Route/Activity non-reapply integration not directly certified
   canonical consumer command/observation surface still missing (IF-ADR-015)
 
 QA

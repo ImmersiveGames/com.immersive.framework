@@ -77,7 +77,7 @@ Two gates are mandatory:
 
 ### Open ADR-016 package gap discovered during closure
 
-The normative ADR requires an explicit creation-time `PlayerSessionProfile` override that **replaces the GameApplication default as one complete source**. Current implementation evidence only reports GameApplication enablement plus `DefaultPlayerSessionProfile`. This must be audited and, if absent, implemented as a focused package cut before ADR acceptance. Per-Slot provisioning overrides do not satisfy this requirement.
+The normative creation-time `PlayerSessionProfile` override is now **implemented and QA-certified** by IF-SESSION-CONFIG-05B. It replaces the GameApplication default as one complete source, performs no field merge, and an invalid explicit override fails without fallback to the default.
 
 ### Evidence intentionally not overclaimed
 
@@ -1035,15 +1035,16 @@ Before moving ADR-016 to acceptance, perform the smallest remaining package audi
 
 ```text
 IF-SESSION-CONFIG-05B — Creation-Time Session Profile Override Closure
-```
 
-Objective:
+Status: **CLOSED / QA CERTIFIED**
 
-1. inspect current Session/bootstrap creation API for an existing typed explicit `PlayerSessionProfile` override;
-2. if it already exists, certify that it replaces the GameApplication default completely and never field-merges;
-3. if absent, add the smallest typed creation-time input necessary;
-4. resolve exactly one effective Profile source before Session initialization;
-5. do not add a second Session authority, live Profile synchronization, service locator or fallback;
-6. add focused QA evidence only after the package contract exists.
+Implemented:
 
-After that, the remaining closure work is FIRSTGAME manual consumer proof plus final ADR acceptance/documentation.
+1. `FrameworkRuntimeHost.TryCreate(...)` accepts an optional typed `PlayerSessionProfile` explicit creation input;
+2. bootstrap automatic path passes `null`, preserving GameApplication default behavior;
+3. explicit Profile replaces the default as one complete source;
+4. invalid explicit Profile fails without fallback;
+5. no field-by-field merge occurs;
+6. CONFIG-05B QA smoke passes 4/4.
+
+Remaining closure work is FIRSTGAME manual consumer proof, appropriate Route/Activity integration evidence, and final ADR acceptance/documentation.

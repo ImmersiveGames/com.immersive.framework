@@ -489,10 +489,17 @@ The suite covers default/override resolution, Slot identity/order, Capacity boun
 
 ### 13.3 Remaining gaps
 
-Two gaps must not be hidden by the successful QA result:
+The previous creation-time Session Profile override gap is now **closed** by IF-SESSION-CONFIG-05B:
 
-1. **Complete creation-time Session Profile override** — the ADR normatively requires an explicit creation-time Profile source that replaces the GameApplication default as a complete source with no field merge. The implementation reports through cut 05 only prove `PlayerSessionEnabled` + `DefaultPlayerSessionProfile`; therefore this capability remains open until verified in source or implemented by a focused cut.
-2. **FIRSTGAME manual consumer proof** — intentionally deferred to prioritize more package implementation. The package UX cut is sufficient to continue architecture work, but real-game usability remains unproven.
+- typed explicit `PlayerSessionProfile` input at canonical Session creation;
+- explicit Profile replaces the GameApplication default completely;
+- invalid explicit Profile fails without fallback;
+- no field merge;
+- QA smoke 4/4 PASS.
+
+Remaining gaps:
+
+1. **FIRSTGAME manual consumer proof** — intentionally deferred to prioritize more package implementation. The package UX cut is sufficient to continue architecture work, but real-game usability remains unproven.
 
 The existing Edit Mode QA also does not directly execute a real Route/Activity transition to prove non-reapplication through full ActivityFlow. This remains an integration-evidence gap, not a contradiction of the Session/Activity authority model.
 
@@ -501,7 +508,36 @@ The existing Edit Mode QA also does not directly execute a real Route/Activity t
 IF-ADR-016 remains **Proposed**. It should not move to Accepted until:
 
 ```text
-creation-time complete Session Profile override is closed or normatively removed by explicit decision;
+creation-time complete Session Profile override is QA-certified through IF-SESSION-CONFIG-05B;
 FIRSTGAME manual consumer proof is completed;
 final documentation/closure audit confirms no duplicated ADR-015 consumer authority.
 ```
+
+
+### 13.5 IF-SESSION-CONFIG-05B closure — 2026-08-08
+
+The complete creation-time Session Profile override required by S02 is implemented and QA-certified.
+
+```text
+no explicit Profile
+  -> GameApplication default
+
+explicit Profile
+  -> complete replacement source
+
+invalid explicit Profile
+  -> typed failure
+  -> no fallback to default
+
+field merge
+  -> not performed
+```
+
+QA evidence:
+
+```text
+IF-SESSION-CONFIG-05B Session Profile Override Smoke
+  PASS — 4/4
+```
+
+This removes the implementation gap previously recorded for S02. It does not close FIRSTGAME product-usability proof or full Route/Activity transition non-reapplication evidence.
