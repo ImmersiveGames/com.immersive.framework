@@ -424,3 +424,84 @@ It must not absorb IF-ADR-015 command/observation scope or IF-ADR-012 Activity p
 ```
 
 No implementation should use FIRSTGAME as the permanent home of these contracts.
+
+---
+
+## 13. Implementation and QA closure update — 2026-08-08
+
+The ADR-016 implementation progressed through IF-SESSION-CONFIG-07. Current evidence is:
+
+```text
+01 Canonical contracts / reuse boundary                 CLOSED
+02 Player Provisioning Profile                          CLOSED
+03 Player Session Profile                               CLOSED
+04 Pure Effective Configuration Resolver                CLOSED
+05 Session runtime integration                          CLOSED / QA 6 of 6 PASS
+06 Designer-first Inspector / diagnostics               CLOSED for current package UX cut
+07 QA contract closure                                  CLOSED / 17 of 17 PASS
+08 FIRSTGAME real consumer proof                        DEFERRED by priority
+09 Documentation / ADR acceptance                       PARTIAL
+```
+
+### 13.1 Implemented authority shape
+
+The implemented flow now matches the intended authority separation:
+
+```text
+GameApplication authored default
+  -> PlayerSessionProfile
+  -> PlayerProvisioningProfile
+  -> pure deterministic resolution
+  -> EffectivePlayerSessionConfiguration
+  -> one-time Session initialization
+  -> existing PlayerParticipation runtime authority
+```
+
+The runtime integration preserves:
+
+```text
+ordered Supported Slots
+Initial Capacity
+Initial Joining intent
+per-Slot frozen Host provisioning
+Actor Resolution policy
+Default Actor evidence
+```
+
+and does not introduce a second mutable Player manager/state store.
+
+### 13.2 QA evidence
+
+`IF-SESSION-CONFIG-05` certifies 6/6 runtime-integration cases:
+
+```text
+disabled valid absence
+enabled missing Profile failure
+Manager ordered allocation
+mixed Scene/Manager provisioning with no skip/fallback
+Profile edit after initialization does not rewrite Session
+LeaveUnresolved blocks automatic default Actor selection
+```
+
+`IF-SESSION-CONFIG-07` certifies 17/17 contract-closure cases, with explicit classification into `PUBLIC-ONLY`, `PARTIAL PUBLIC EVIDENCE`, and `INTERNAL TECHNICAL`.
+
+The suite covers default/override resolution, Slot identity/order, Capacity bounds, Scene-only and mixed provisioning, unsupported overrides, no provisioning fallback, late-Join frozen provisioning, Actor-resolution policy, typed failures, immutable evidence, and Session-vs-Activity structural separation.
+
+### 13.3 Remaining gaps
+
+Two gaps must not be hidden by the successful QA result:
+
+1. **Complete creation-time Session Profile override** — the ADR normatively requires an explicit creation-time Profile source that replaces the GameApplication default as a complete source with no field merge. The implementation reports through cut 05 only prove `PlayerSessionEnabled` + `DefaultPlayerSessionProfile`; therefore this capability remains open until verified in source or implemented by a focused cut.
+2. **FIRSTGAME manual consumer proof** — intentionally deferred to prioritize more package implementation. The package UX cut is sufficient to continue architecture work, but real-game usability remains unproven.
+
+The existing Edit Mode QA also does not directly execute a real Route/Activity transition to prove non-reapplication through full ActivityFlow. This remains an integration-evidence gap, not a contradiction of the Session/Activity authority model.
+
+### 13.4 Closure rule
+
+IF-ADR-016 remains **Proposed**. It should not move to Accepted until:
+
+```text
+creation-time complete Session Profile override is closed or normatively removed by explicit decision;
+FIRSTGAME manual consumer proof is completed;
+final documentation/closure audit confirms no duplicated ADR-015 consumer authority.
+```
