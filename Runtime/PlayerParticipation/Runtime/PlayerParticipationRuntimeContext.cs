@@ -16,11 +16,18 @@ namespace Immersive.Framework.PlayerParticipation
     {
         private sealed class SlotRecord
         {
-            internal SlotRecord(int configuredIndex, PlayerSlotProfile profile, PlayerSlotId playerSlotId)
+            internal SlotRecord(
+                int configuredIndex,
+                PlayerSlotProfile profile,
+                PlayerSlotId playerSlotId,
+                ActorProfile defaultActorProfile,
+                PlayerHostProvisioningMode hostProvisioningMode)
             {
                 ConfiguredIndex = configuredIndex;
                 Profile = profile;
                 PlayerSlotId = playerSlotId;
+                DefaultActorProfile = defaultActorProfile;
+                HostProvisioningMode = hostProvisioningMode;
                 AllocationState = PlayerSlotAllocationState.Available;
                 Revision = 0;
                 Source = "PlayerParticipationRuntimeContext";
@@ -34,6 +41,8 @@ namespace Immersive.Framework.PlayerParticipation
             internal int ConfiguredIndex { get; }
             internal PlayerSlotProfile Profile { get; }
             internal PlayerSlotId PlayerSlotId { get; }
+            internal ActorProfile DefaultActorProfile { get; }
+            internal PlayerHostProvisioningMode HostProvisioningMode { get; }
             internal PlayerSlotAllocationState AllocationState { get; set; }
             internal PlayerSlotReservationToken ReservationToken { get; set; }
             internal int Revision { get; set; }
@@ -48,6 +57,7 @@ namespace Immersive.Framework.PlayerParticipation
         private readonly string contextId;
         private readonly List<SlotRecord> slots;
         private readonly PlayerActorSelectionDuplicatePolicy actorSelectionDuplicatePolicy;
+        private readonly PlayerActorResolutionPolicy actorResolutionPolicy;
         private int revision;
         private int reservationSequence;
         private int dynamicCapacity;
@@ -59,13 +69,15 @@ namespace Immersive.Framework.PlayerParticipation
             List<SlotRecord> slots,
             int initialDynamicCapacity,
             bool initialJoiningOpen,
-            PlayerActorSelectionDuplicatePolicy actorSelectionDuplicatePolicy)
+            PlayerActorSelectionDuplicatePolicy actorSelectionDuplicatePolicy,
+            PlayerActorResolutionPolicy actorResolutionPolicy)
         {
             contextId = Guid.NewGuid().ToString("N");
             this.slots = slots ?? throw new ArgumentNullException(nameof(slots));
             dynamicCapacity = initialDynamicCapacity;
             joiningOpen = initialJoiningOpen;
             this.actorSelectionDuplicatePolicy = actorSelectionDuplicatePolicy;
+            this.actorResolutionPolicy = actorResolutionPolicy;
             revision = 1;
             lastOperationStatus = PlayerParticipationOperationStatus.Succeeded;
             lastOperationMessage = "Player participation runtime context initialized.";
@@ -82,6 +94,7 @@ namespace Immersive.Framework.PlayerParticipation
             return TryCreateCore(
                 orderedProfiles, initialDynamicCapacity, initialJoiningOpen,
                 PlayerActorSelectionDuplicatePolicy.Unspecified,
+                PlayerActorResolutionPolicy.ResolveConfiguredDefault,
                 "Initialize", "Player participation runtime context initialized.",
                 source, reason, out context);
         }
@@ -118,9 +131,75 @@ namespace Immersive.Framework.PlayerParticipation
 
             return TryCreateCore(
                 orderedProfiles, initialDynamicCapacity, initialJoiningOpen,
-                actorSelectionDuplicatePolicy, "InitializeWithActorSelectionPolicy",
+                actorSelectionDuplicatePolicy,
+                PlayerActorResolutionPolicy.ResolveConfiguredDefault,
+                "InitializeWithActorSelectionPolicy",
                 $"Player participation runtime context initialized with Actor selection policy '{actorSelectionDuplicatePolicy}'.",
                 resolvedSource, resolvedReason, out context);
+        }
+
+        internal static PlayerParticipationOperationResult TryCreateWithEffectiveConfiguration(
+            EffectivePlayerSessionConfiguration effectiveConfiguration,
+            PlayerActorSelectionDuplicatePolicy actorSelectionDuplicatePolicy,
+            string source,
+            string reason,
+            out PlayerParticipationRuntimeContext context)
+        {
+            string resolvedSource = source.NormalizeTextOrFallback(nameof(PlayerParticipationRuntimeContext));
+            string resolvedReason = reason.NormalizeTextOrFallback("initialization");
+
+            if (effectiveConfiguration == null)
+            {
+                context = null;
+                return CreateInitializationFailure(
+                    resolvedSource,
+                    resolvedReason,
+                    "Effective Player Session configuration is required.");
+            }
+
+            if (actorSelectionDuplicatePolicy == PlayerActorSelectionDuplicatePolicy.Unspecified ||
+                !actorSelectionDuplicatePolicy.IsDefinedPolicy())
+            {
+                context = null;
+                return CreateInitializationFailure(
+                    resolvedSource,
+                    resolvedReason,
+                    $"Player Actor selection duplicate policy '{actorSelectionDuplicatePolicy}' is invalid for a Player Session context.");
+            }
+
+            if (!effectiveConfiguration.ActorResolutionPolicy.IsDefinedPolicy())
+            {
+                context = null;
+                return CreateInitializationFailure(
+                    resolvedSource,
+                    resolvedReason,
+                    $"Effective Actor resolution policy '{effectiveConfiguration.ActorResolutionPolicy}' is invalid.");
+            }
+
+            if (!TryCreateEffectiveSlotRecords(
+                    effectiveConfiguration.Slots,
+                    out List<SlotRecord> records,
+                    out string issue))
+            {
+                context = null;
+                return CreateInitializationFailure(resolvedSource, resolvedReason, issue);
+            }
+
+            context = new PlayerParticipationRuntimeContext(
+                records,
+                effectiveConfiguration.InitialCapacity,
+                effectiveConfiguration.InitialJoiningOpen,
+                actorSelectionDuplicatePolicy,
+                effectiveConfiguration.ActorResolutionPolicy);
+            return context.CreateResult(
+                PlayerParticipationOperationStatus.Succeeded,
+                "InitializeWithEffectivePlayerSessionConfiguration",
+                resolvedSource,
+                resolvedReason,
+                "Player participation runtime context initialized from immutable effective Player Session configuration.",
+                0,
+                default,
+                default);
         }
 
         private static PlayerParticipationOperationResult TryCreateCore(
@@ -128,6 +207,7 @@ namespace Immersive.Framework.PlayerParticipation
             int initialDynamicCapacity,
             bool initialJoiningOpen,
             PlayerActorSelectionDuplicatePolicy actorSelectionDuplicatePolicy,
+            PlayerActorResolutionPolicy actorResolutionPolicy,
             string operation,
             string successMessage,
             string source,
@@ -150,7 +230,11 @@ namespace Immersive.Framework.PlayerParticipation
             }
 
             context = new PlayerParticipationRuntimeContext(
-                records, initialDynamicCapacity, initialJoiningOpen, actorSelectionDuplicatePolicy);
+                records,
+                initialDynamicCapacity,
+                initialJoiningOpen,
+                actorSelectionDuplicatePolicy,
+                actorResolutionPolicy);
             return context.CreateResult(
                 PlayerParticipationOperationStatus.Succeeded, operation,
                 resolvedSource, resolvedReason, successMessage, 0, default, default);
@@ -218,6 +302,17 @@ namespace Immersive.Framework.PlayerParticipation
             string source,
             string reason)
         {
+            return TryReserveNextAvailableSlot(
+                PlayerHostProvisioningMode.ManagerProvisioned,
+                source,
+                reason);
+        }
+
+        internal PlayerParticipationOperationResult TryReserveNextAvailableSlot(
+            PlayerHostProvisioningMode requiredHostProvisioningMode,
+            string source,
+            string reason)
+        {
             string resolvedSource = source.NormalizeTextOrFallback("Unknown");
             string resolvedReason = reason.NormalizeTextOrFallback("reserve-next-slot");
             int previousRevision = revision;
@@ -268,6 +363,19 @@ namespace Immersive.Framework.PlayerParticipation
                     "Slot reservation rejected because no configured Slot is Available.",
                     previousRevision,
                     default,
+                    default);
+            }
+
+            if (selected.HostProvisioningMode != requiredHostProvisioningMode)
+            {
+                return CreateResult(
+                    PlayerParticipationOperationStatus.RejectedInvalidRequest,
+                    "ReserveNextAvailableSlot",
+                    resolvedSource,
+                    resolvedReason,
+                    $"Slot reservation rejected because first available Slot '{selected.PlayerSlotId.StableText}' requires '{selected.HostProvisioningMode}' provisioning, not '{requiredHostProvisioningMode}'. No provisioning fallback was applied.",
+                    previousRevision,
+                    CreateSlotSnapshot(selected),
                     default);
             }
 
@@ -357,8 +465,24 @@ namespace Immersive.Framework.PlayerParticipation
             string reason)
         {
             SlotRecord record = FindSlot(playerSlotId);
-            ActorProfile defaultActorProfile = record != null && record.Profile != null
-                ? record.Profile.DefaultActorProfile
+            if (actorResolutionPolicy == PlayerActorResolutionPolicy.LeaveUnresolved)
+            {
+                return CreateActorSelectionResult(
+                    PlayerActorSelectionStatus.RejectedDefaultResolutionDisabled,
+                    "SelectDefaultActor",
+                    playerSlotId,
+                    record != null ? record.SelectedActorProfile : null,
+                    null,
+                    record != null ? record.SelectionRevision : 0,
+                    record != null ? record.SelectionRevision : 0,
+                    source,
+                    reason,
+                    default,
+                    "Default Actor resolution is disabled by the immutable Player Session configuration.");
+            }
+
+            ActorProfile defaultActorProfile = record != null
+                ? record.DefaultActorProfile
                 : null;
             var request = new PlayerActorSelectionRequest(
                 playerSlotId,
@@ -1049,9 +1173,9 @@ namespace Immersive.Framework.PlayerParticipation
             records = new List<SlotRecord>();
             issue = string.Empty;
 
-            if (orderedProfiles == null || orderedProfiles.Count == 0)
+            if (orderedProfiles == null)
             {
-                issue = "At least one configured PlayerSlotProfile is required.";
+                issue = "Configured Player Slot profiles are required.";
                 return false;
             }
 
@@ -1084,7 +1208,53 @@ namespace Immersive.Framework.PlayerParticipation
                     return false;
                 }
 
-                records.Add(new SlotRecord(index, profile, playerSlotId));
+                records.Add(new SlotRecord(
+                    index,
+                    profile,
+                    playerSlotId,
+                    profile.DefaultActorProfile,
+                    PlayerHostProvisioningMode.ManagerProvisioned));
+            }
+
+            return true;
+        }
+
+        private static bool TryCreateEffectiveSlotRecords(
+            IReadOnlyList<EffectivePlayerSlotProvisioning> effectiveSlots,
+            out List<SlotRecord> records,
+            out string issue)
+        {
+            records = new List<SlotRecord>();
+            issue = string.Empty;
+
+            if (effectiveSlots == null)
+            {
+                issue = "Effective Player Session Slots are required.";
+                return false;
+            }
+
+            var identities = new HashSet<PlayerSlotId>();
+            for (int index = 0; index < effectiveSlots.Count; index++)
+            {
+                EffectivePlayerSlotProvisioning effectiveSlot = effectiveSlots[index];
+                if (!effectiveSlot.IsValid)
+                {
+                    issue = $"Effective Player Session Slot at index '{index}' is invalid.";
+                    return false;
+                }
+
+                if (!identities.Add(effectiveSlot.PlayerSlotId))
+                {
+                    issue = $"Effective Player Session Slot at index '{index}' repeats PlayerSlotId '{effectiveSlot.PlayerSlotId.StableText}'.";
+                    return false;
+                }
+
+                records.Add(new SlotRecord(
+                    index,
+                    effectiveSlot.PlayerSlotProfile,
+                    effectiveSlot.PlayerSlotId,
+                    effectiveSlot.DefaultActorProfile,
+                    effectiveSlot.HostProvisioningMode));
             }
 
             return true;

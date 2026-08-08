@@ -3,6 +3,7 @@ using Immersive.Framework.Editor.Editor.PlayerParticipation;
 using Immersive.Framework.Editor.Editor.Settings;
 using Immersive.Framework.Editor.Editor.Validation;
 using Immersive.Framework.Performance;
+using Immersive.Framework.PlayerParticipation;
 using UnityEditor;
 using UnityEditorInternal;
 using UnityEngine;
@@ -26,6 +27,16 @@ namespace Immersive.Framework.Editor.Editor.Authoring
             new GUIContent(
                 "Duplicate Actors",
                 "Controls whether more than one local Player Slot may select the same Actor.");
+
+        private static readonly GUIContent PlayerSessionEnabledLabel =
+            new GUIContent(
+                "Enabled",
+                "Creates the Player Session from the Default Player Session Profile during application boot.");
+
+        private static readonly GUIContent DefaultPlayerSessionProfileLabel =
+            new GUIContent(
+                "Default Player Session Profile (Required)",
+                "Reusable authored initial configuration resolved once when Player Session starts.");
 
         private static readonly GUIContent FrameRateModeLabel =
             new GUIContent(
@@ -60,6 +71,8 @@ namespace Immersive.Framework.Editor.Editor.Authoring
         private SerializedProperty _applicationName;
         private SerializedProperty _startupRoute;
         private SerializedProperty _localPlayerSlots;
+        private SerializedProperty _playerSessionEnabled;
+        private SerializedProperty _defaultPlayerSessionProfile;
         private SerializedProperty _playerActorSelectionDuplicatePolicy;
         private SerializedProperty _frameRatePolicy;
         private SerializedProperty _frameRateMode;
@@ -88,6 +101,10 @@ namespace Immersive.Framework.Editor.Editor.Authoring
                 serializedObject.FindProperty("startupRoute");
             _localPlayerSlots =
                 serializedObject.FindProperty("localPlayerSlots");
+            _playerSessionEnabled =
+                serializedObject.FindProperty("playerSessionEnabled");
+            _defaultPlayerSessionProfile =
+                serializedObject.FindProperty("defaultPlayerSessionProfile");
             _playerActorSelectionDuplicatePolicy =
                 serializedObject.FindProperty(
                     "playerActorSelectionDuplicatePolicy");
@@ -155,13 +172,9 @@ namespace Immersive.Framework.Editor.Editor.Authoring
                 RefreshSerializedBindings();
             }
 
-            EditorGUILayout.LabelField(
-                "Game Application",
-                EditorStyles.boldLabel);
-
             DrawApplication();
             DrawStartup();
-            DrawLocalPlayers();
+            DrawPlayerSession();
             DrawPerformance();
             DrawPersistentContent();
             DrawValidation();
@@ -282,9 +295,61 @@ namespace Immersive.Framework.Editor.Editor.Authoring
             }
         }
 
-        private void DrawLocalPlayers()
+        private void DrawPlayerSession()
         {
-            DrawSection("Local Players (Optional)");
+            DrawSection("Player Session");
+
+            EditorGUILayout.PropertyField(
+                _playerSessionEnabled,
+                PlayerSessionEnabledLabel);
+
+            if (_playerSessionEnabled == null ||
+                _playerSessionEnabled.hasMultipleDifferentValues ||
+                !_playerSessionEnabled.boolValue)
+            {
+                DrawStatusRow(
+                    "Configuration",
+                    "Disabled — no Player Session is created.");
+                return;
+            }
+
+            EditorGUILayout.PropertyField(
+                _defaultPlayerSessionProfile,
+                DefaultPlayerSessionProfileLabel);
+
+            PlayerSessionProfile profile =
+                _defaultPlayerSessionProfile.objectReferenceValue as
+                    PlayerSessionProfile;
+            if (profile == null)
+            {
+                EditorGUILayout.HelpBox(
+                    "Player Session is enabled and requires a Default Player Session Profile.",
+                    MessageType.Error);
+                return;
+            }
+
+            PlayerSessionInitializationResult resolution =
+                PlayerSessionConfigurationResolver.Resolve(profile);
+            if (!resolution.Succeeded)
+            {
+                EditorGUILayout.HelpBox(
+                    $"Player Session Profile is not resolvable ({resolution.Failure}). {resolution.Message}",
+                    MessageType.Error);
+                return;
+            }
+
+            DrawStatusRow(
+                "Configuration",
+                $"Ready — {resolution.Configuration.SupportedSlotCount} Slot(s), resolved once at Session creation.");
+        }
+
+        private void DrawLegacyLocalPlayers()
+        {
+            DrawSection("Legacy Local Player Configuration");
+
+            EditorGUILayout.HelpBox(
+                "These technical fields are retained for existing assets. An enabled Player Session uses the Default Player Session Profile instead.",
+                MessageType.Warning);
 
             EditorGUILayout.PropertyField(
                 _playerActorSelectionDuplicatePolicy,
@@ -537,6 +602,9 @@ namespace Immersive.Framework.Editor.Editor.Authoring
                     GetValidationStatus());
             }
 
+            DrawPlayerSessionAdvancedEvidence();
+            DrawLegacyLocalPlayers();
+
             EditorGUILayout.Space(4f);
             EditorGUILayout.LabelField(
                 "Validation Report",
@@ -550,6 +618,30 @@ namespace Immersive.Framework.Editor.Editor.Authoring
                 false);
 
             EditorGUI.indentLevel--;
+        }
+
+        private void DrawPlayerSessionAdvancedEvidence()
+        {
+            DrawSection("Player Session Resolution");
+
+            if (_playerSessionEnabled == null ||
+                !_playerSessionEnabled.boolValue)
+            {
+                EditorGUILayout.LabelField(
+                    "Status",
+                    "Disabled",
+                    EditorStyles.miniLabel);
+                return;
+            }
+
+            PlayerSessionProfile profile =
+                _defaultPlayerSessionProfile != null
+                    ? _defaultPlayerSessionProfile.objectReferenceValue as
+                        PlayerSessionProfile
+                    : null;
+            PlayerSessionInspectorGui.DrawResolution(
+                profile,
+                includeHeader: false);
         }
 
         private void RunAuthoringValidation()

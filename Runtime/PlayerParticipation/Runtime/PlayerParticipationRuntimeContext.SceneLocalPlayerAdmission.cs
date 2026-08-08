@@ -46,6 +46,19 @@ namespace Immersive.Framework.PlayerParticipation
                     default);
             }
 
+            if (requested.HostProvisioningMode != PlayerHostProvisioningMode.SceneProvided)
+            {
+                return CreateResult(
+                    PlayerParticipationOperationStatus.RejectedInvalidRequest,
+                    "ReserveSceneLocalPlayerSlot",
+                    resolvedSource,
+                    resolvedReason,
+                    $"Scene Local Player requested Slot '{requestedPlayerSlotId.StableText}', but its immutable Session configuration requires '{requested.HostProvisioningMode}' provisioning. No provisioning fallback was applied.",
+                    previousRevision,
+                    CreateSlotSnapshot(requested),
+                    default);
+            }
+
             if (requested.AllocationState != PlayerSlotAllocationState.Available)
             {
                 return CreateResult(

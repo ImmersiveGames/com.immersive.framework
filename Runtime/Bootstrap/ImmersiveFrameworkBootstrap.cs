@@ -49,9 +49,30 @@ namespace Immersive.Framework.Bootstrap
                 var runtimeHost = FrameworkRuntimeHost.Create(result.GameApplication);
                 if (ShouldComposePlayerParticipationRuntime(result.GameApplication))
                 {
+                    PlayerSessionInitializationResult playerSessionResolution =
+                        PlayerSessionConfigurationResolver.Resolve(
+                            result.GameApplication.DefaultPlayerSessionProfile);
+                    if (!playerSessionResolution.Succeeded)
+                    {
+                        logger.Error(
+                            "Player Session configuration resolution failed.",
+                            BuildPlayerSessionResolutionFields(
+                                result.GameApplication,
+                                playerSessionResolution));
+                        UnityEngine.Object.Destroy(runtimeHost.gameObject);
+                        return;
+                    }
+
+                    logger.Debug(
+                        "Player Session configuration resolved.",
+                        BuildPlayerSessionResolutionFields(
+                            result.GameApplication,
+                            playerSessionResolution));
+
                     PlayerParticipationRuntimeHostModule.Attach(
                         runtimeHost,
-                        result.GameApplication,
+                        playerSessionResolution.Configuration,
+                        result.GameApplication.PlayerActorSelectionDuplicatePolicy,
                         "ImmersiveFrameworkBootstrap",
                         "session-start",
                         out PlayerParticipationOperationResult playerParticipationInitialization);
@@ -78,7 +99,7 @@ namespace Immersive.Framework.Bootstrap
                             LogFields.Field("configuredSlots", 0),
                             LogFields.Field(
                                 "message",
-                                "The active Game Application has no Local Player Slots. Player participation runtime composition was skipped.")));
+                                "Player Session is disabled by the active Game Application. Player participation runtime composition was skipped.")));
                 }
 
                 var gameFlowResult = await runtimeHost.StartAsync();
@@ -88,7 +109,8 @@ namespace Immersive.Framework.Bootstrap
                     return;
                 }
 
-                if (!TryInitializeLocalPlayerProvisioning(runtimeHost, logger))
+                if (ShouldComposePlayerParticipationRuntime(result.GameApplication) &&
+                    !TryInitializeLocalPlayerProvisioning(runtimeHost, logger))
                 {
                     UnityEngine.Object.Destroy(runtimeHost.gameObject);
                     return;
@@ -115,7 +137,7 @@ namespace Immersive.Framework.Bootstrap
             GameApplicationAsset gameApplication)
         {
             return gameApplication != null &&
-                   gameApplication.LocalPlayerSlotCount > 0;
+                   gameApplication.PlayerSessionEnabled;
         }
 
         private static LogField[] BuildBootSummaryFields(
@@ -291,6 +313,40 @@ namespace Immersive.Framework.Bootstrap
                 LogFields.Field("joiningOpen", snapshot != null && snapshot.JoiningOpen),
                 LogFields.Field("revision", snapshot != null ? snapshot.Revision : 0),
                 LogFields.Field("message", initializationResult != null ? initializationResult.Message : "Initialization result is missing."));
+        }
+
+        private static LogField[] BuildPlayerSessionResolutionFields(
+            GameApplicationAsset gameApplication,
+            PlayerSessionInitializationResult resolution)
+        {
+            EffectivePlayerSessionConfiguration configuration = resolution?.Configuration;
+            return LogFields.Of(
+                LogFields.Field("playerSessionEnabled", gameApplication != null && gameApplication.PlayerSessionEnabled),
+                LogFields.Field(
+                    "profile",
+                    gameApplication != null && gameApplication.DefaultPlayerSessionProfile != null
+                        ? gameApplication.DefaultPlayerSessionProfile.name
+                        : string.Empty),
+                LogFields.Field(
+                    "failure",
+                    resolution != null ? resolution.Failure.ToString() : "Missing"),
+                LogFields.Field(
+                    "supportedSlots",
+                    configuration != null ? configuration.SupportedSlotCount : 0),
+                LogFields.Field(
+                    "initialCapacity",
+                    configuration != null ? configuration.InitialCapacity : 0),
+                LogFields.Field(
+                    "initialJoiningOpen",
+                    configuration != null && configuration.InitialJoiningOpen),
+                LogFields.Field(
+                    "actorResolutionPolicy",
+                    configuration != null
+                        ? configuration.ActorResolutionPolicy.ToString()
+                        : string.Empty),
+                LogFields.Field(
+                    "message",
+                    resolution != null ? resolution.Message : "Player Session resolution result is missing."));
         }
 
         private static string FormatDiagnosticValue(string value)

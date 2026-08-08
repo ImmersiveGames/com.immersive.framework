@@ -19,6 +19,7 @@ namespace Immersive.Framework.PlayerParticipation
         RejectedDuplicateActorSelection = 110,
         RejectedLogicalActorAlreadyPrepared = 120,
         RejectedPolicyMissing = 130,
-        RejectedPolicyInvalid = 140
+        RejectedPolicyInvalid = 140,
+        RejectedDefaultResolutionDisabled = 150
     }
 }

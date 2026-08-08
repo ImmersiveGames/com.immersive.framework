@@ -1,4 +1,6 @@
 using Immersive.Framework.ApplicationLifecycle;
+using Immersive.Framework.Actors;
+using Immersive.Framework.PlayerParticipation;
 using UnityEditor;
 using UnityEngine;
 
@@ -24,6 +26,7 @@ namespace Immersive.Framework.Editor.Diagnostics
             }
 
             FrameworkRuntimeHost host = (FrameworkRuntimeHost)target;
+            DrawPlayerSessionInitialization(host);
             var snapshot = host.SceneLocalPlayerAdmissionDiagnostics;
             EditorGUILayout.Space(5f);
             EditorGUILayout.LabelField("Scene-Provided Admissions", EditorStyles.boldLabel);
@@ -40,6 +43,87 @@ namespace Immersive.Framework.Editor.Diagnostics
             EditorGUILayout.LabelField("Host Evidence Present", snapshot.HostEvidencePresent ? "Yes" : "No");
             EditorGUILayout.HelpBox(snapshot.Message, snapshot.ReleaseRequested && !snapshot.ReleaseSucceeded && !snapshot.AlreadyReleased ? MessageType.Warning : MessageType.Info);
             EditorGUILayout.SelectableLabel(snapshot.ToDiagnosticString(), EditorStyles.textArea, GUILayout.MinHeight(56f));
+        }
+
+        private static void DrawPlayerSessionInitialization(
+            FrameworkRuntimeHost host)
+        {
+            EditorGUILayout.Space(5f);
+            EditorGUILayout.LabelField(
+                "Player Session Initialization",
+                EditorStyles.boldLabel);
+
+            PlayerParticipationRuntimeHostModule module =
+                host.GetComponent<PlayerParticipationRuntimeHostModule>();
+            if (module == null)
+            {
+                EditorGUILayout.HelpBox(
+                    "No Player Session runtime is attached to this host.",
+                    MessageType.Info);
+                return;
+            }
+
+            PlayerParticipationOperationResult initialization =
+                module.InitializationResult;
+            EditorGUILayout.LabelField(
+                "Runtime Status",
+                initialization != null ? initialization.Status.ToString() : "Unavailable");
+            EditorGUILayout.LabelField(
+                "Runtime Operation",
+                initialization != null ? initialization.Operation : "Unavailable");
+            EditorGUILayout.HelpBox(
+                initialization != null
+                    ? initialization.Message
+                    : "No runtime initialization result is available.",
+                initialization != null && initialization.Succeeded
+                    ? MessageType.Info
+                    : MessageType.Warning);
+
+            EffectivePlayerSessionConfiguration configuration =
+                module.EffectiveConfiguration;
+            if (configuration == null)
+            {
+                EditorGUILayout.HelpBox(
+                    "The host has no retained effective Player Session configuration.",
+                    MessageType.Warning);
+                return;
+            }
+
+            using (new EditorGUI.DisabledScope(true))
+            {
+                EditorGUILayout.IntField(
+                    "Initial Capacity",
+                    configuration.InitialCapacity);
+                EditorGUILayout.Toggle(
+                    "Initial Joining Open",
+                    configuration.InitialJoiningOpen);
+                EditorGUILayout.EnumPopup(
+                    "Actor Resolution Policy",
+                    configuration.ActorResolutionPolicy);
+            }
+
+            EditorGUILayout.LabelField(
+                "Frozen Effective Slot Order",
+                EditorStyles.miniBoldLabel);
+            for (int index = 0; index < configuration.Slots.Count; index++)
+            {
+                EffectivePlayerSlotProvisioning slot =
+                    configuration.Slots[index];
+                string slotName = slot.PlayerSlotProfile != null
+                    ? slot.PlayerSlotProfile.name
+                    : slot.PlayerSlotId.StableText;
+                EditorGUILayout.LabelField(
+                    $"{index + 1}. {slotName}",
+                    slot.HostProvisioningMode.ToString());
+                using (new EditorGUI.DisabledScope(true))
+                {
+                    EditorGUILayout.ObjectField(
+                        "    Default Actor (Captured)",
+                        slot.DefaultActorProfile,
+                        typeof(ActorProfile),
+                        false);
+                }
+            }
         }
     }
 }

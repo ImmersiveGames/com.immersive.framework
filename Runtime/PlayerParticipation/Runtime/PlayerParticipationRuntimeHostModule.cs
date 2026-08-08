@@ -1,7 +1,6 @@
 using System;
 using Immersive.Framework.ApiStatus;
 using Immersive.Framework.ApplicationLifecycle;
-using Immersive.Framework.Authoring;
 using Immersive.Framework.PlayerSlots;
 using UnityEngine;
 
@@ -19,6 +18,7 @@ namespace Immersive.Framework.PlayerParticipation
     internal sealed class PlayerParticipationRuntimeHostModule : MonoBehaviour
     {
         private PlayerParticipationRuntimeContext runtimeContext;
+        private EffectivePlayerSessionConfiguration effectiveConfiguration;
         private PlayerParticipationOperationResult initializationResult;
 
         internal bool IsInitialized => runtimeContext != null &&
@@ -27,6 +27,8 @@ namespace Immersive.Framework.PlayerParticipation
 
         internal PlayerParticipationOperationResult InitializationResult => initializationResult;
 
+        internal EffectivePlayerSessionConfiguration EffectiveConfiguration => effectiveConfiguration;
+
         internal PlayerActorSelectionDuplicatePolicy ActorSelectionDuplicatePolicy =>
             runtimeContext != null
                 ? runtimeContext.CreateSnapshot().ActorSelectionDuplicatePolicy
@@ -34,7 +36,8 @@ namespace Immersive.Framework.PlayerParticipation
 
         internal static PlayerParticipationRuntimeHostModule Attach(
             FrameworkRuntimeHost runtimeHost,
-            GameApplicationAsset gameApplication,
+            EffectivePlayerSessionConfiguration effectiveConfiguration,
+            PlayerActorSelectionDuplicatePolicy actorSelectionDuplicatePolicy,
             string source,
             string reason,
             out PlayerParticipationOperationResult result)
@@ -51,7 +54,11 @@ namespace Immersive.Framework.PlayerParticipation
                 module = runtimeHost.gameObject.AddComponent<PlayerParticipationRuntimeHostModule>();
             }
 
-            result = module.Initialize(gameApplication, source, reason);
+            result = module.Initialize(
+                effectiveConfiguration,
+                actorSelectionDuplicatePolicy,
+                source,
+                reason);
             if (result.Succeeded &&
                 !PlayerActorPreparationRuntimeHostModule.TryAttach(
                     runtimeHost,
@@ -81,7 +88,8 @@ namespace Immersive.Framework.PlayerParticipation
         }
 
         internal PlayerParticipationOperationResult Initialize(
-            GameApplicationAsset gameApplication,
+            EffectivePlayerSessionConfiguration targetEffectiveConfiguration,
+            PlayerActorSelectionDuplicatePolicy actorSelectionDuplicatePolicy,
             string source,
             string reason)
         {
@@ -90,28 +98,29 @@ namespace Immersive.Framework.PlayerParticipation
                 return initializationResult;
             }
 
-            if (gameApplication == null)
+            if (targetEffectiveConfiguration == null)
             {
                 runtimeContext = null;
-                initializationResult = PlayerParticipationRuntimeContext.TryCreateWithActorSelectionPolicy(
-                    orderedProfiles: null,
-                    initialDynamicCapacity: 0,
-                    initialJoiningOpen: false,
-                    actorSelectionDuplicatePolicy: PlayerActorSelectionDuplicatePolicy.Unspecified,
-                    source: source,
-                    reason: reason,
-                    context: out _);
+                initializationResult = PlayerParticipationRuntimeContext.TryCreateWithEffectiveConfiguration(
+                    null,
+                    actorSelectionDuplicatePolicy,
+                    source,
+                    reason,
+                    out _);
                 return initializationResult;
             }
 
-            initializationResult = PlayerParticipationRuntimeContext.TryCreateWithActorSelectionPolicy(
-                gameApplication.LocalPlayerSlots,
-                gameApplication.LocalPlayerSlotCount,
-                initialJoiningOpen: false,
-                gameApplication.PlayerActorSelectionDuplicatePolicy,
+            initializationResult = PlayerParticipationRuntimeContext.TryCreateWithEffectiveConfiguration(
+                targetEffectiveConfiguration,
+                actorSelectionDuplicatePolicy,
                 source,
                 reason,
                 out runtimeContext);
+            if (initializationResult.Succeeded)
+            {
+                effectiveConfiguration = targetEffectiveConfiguration;
+            }
+
             return initializationResult;
         }
 
@@ -234,6 +243,7 @@ namespace Immersive.Framework.PlayerParticipation
         private void OnDestroy()
         {
             runtimeContext = null;
+            effectiveConfiguration = null;
             initializationResult = null;
         }
     }

@@ -33,6 +33,14 @@ namespace Immersive.Framework.Authoring
         private PlayerSlotProfile[] localPlayerSlots = Array.Empty<PlayerSlotProfile>();
 
         [SerializeField]
+        [Tooltip("Enables the authored Player Session. When enabled, Default Player Session Profile is required and resolved once at Session creation.")]
+        private bool playerSessionEnabled;
+
+        [SerializeField]
+        [Tooltip("Authored default used to create the Player Session when Player Session is enabled. Runtime uses only its resolved immutable configuration.")]
+        private PlayerSessionProfile defaultPlayerSessionProfile;
+
+        [SerializeField]
         [Tooltip("Session duplicate-selection rule for ActorProfile selection across joined local Player Slots. Runtime selection state remains outside this asset.")]
         private PlayerActorSelectionDuplicatePolicy playerActorSelectionDuplicatePolicy =
             PlayerActorSelectionDuplicatePolicy.AllowDuplicates;
@@ -80,6 +88,16 @@ namespace Immersive.Framework.Authoring
             localPlayerSlots != null
                 ? localPlayerSlots.Length
                 : 0;
+
+        /// <summary>
+        /// Enables Player Session composition. Disabled is an explicit valid absence of a Player Session.
+        /// </summary>
+        public bool PlayerSessionEnabled => playerSessionEnabled;
+
+        /// <summary>
+        /// Default authored Player Session intent. It is required only when PlayerSessionEnabled is true.
+        /// </summary>
+        public PlayerSessionProfile DefaultPlayerSessionProfile => defaultPlayerSessionProfile;
 
         /// <summary>
         /// Session duplicate-selection policy composed into PlayerParticipationRuntimeContext.
