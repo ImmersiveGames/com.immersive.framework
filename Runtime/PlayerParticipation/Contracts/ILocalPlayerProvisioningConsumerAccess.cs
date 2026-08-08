@@ -14,6 +14,9 @@ namespace Immersive.Framework.PlayerParticipation
     {
         LocalPlayerProvisioningConsumerAccessSnapshot Snapshot { get; }
 
+        bool TryGetObservation(
+            out LocalPlayerProvisioningConsumerObservationSnapshot observation);
+
         PlayerParticipationOperationResult OpenJoining(
             string source,
             string reason);

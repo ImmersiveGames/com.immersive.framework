@@ -1,5 +1,6 @@
 using System;
 using Immersive.Framework.ApiStatus;
+using Immersive.Framework.RuntimeContent;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
@@ -148,6 +149,27 @@ namespace Immersive.Framework.PlayerParticipation
 
             snapshot =
                 ManagerProvisionedPlayerLifecycleSnapshot.Unavailable(
+                    RuntimeDiagnostic);
+            return false;
+        }
+
+        internal bool TryGetConsumerObservation(
+            LocalPlayerProvisioningConsumerScope scope,
+            RuntimeContentOwner scopeOwner,
+            out LocalPlayerProvisioningConsumerObservationSnapshot observation)
+        {
+            if (RuntimeReady && runtimeModule.TryGetObservation(
+                    scope,
+                    scopeOwner,
+                    out observation))
+            {
+                return true;
+            }
+
+            observation =
+                LocalPlayerProvisioningConsumerObservationSnapshot.Unavailable(
+                    scope,
+                    scopeOwner,
                     RuntimeDiagnostic);
             return false;
         }

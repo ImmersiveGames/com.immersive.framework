@@ -926,6 +926,30 @@ namespace Immersive.Framework.PlayerParticipation
             }
         }
 
+        public bool TryGetObservation(
+            out LocalPlayerProvisioningConsumerObservationSnapshot observation)
+        {
+            if (TryGetAuthoring(out string issue))
+            {
+                if (authoring.TryGetConsumerObservation(
+                        scope,
+                        owner,
+                        out observation))
+                {
+                    return true;
+                }
+
+                issue = authoring.RuntimeDiagnostic;
+            }
+
+            observation =
+                LocalPlayerProvisioningConsumerObservationSnapshot.Unavailable(
+                    scope,
+                    owner,
+                    issue);
+            return false;
+        }
+
         public PlayerParticipationOperationResult OpenJoining(
             string source,
             string reason)
