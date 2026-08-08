@@ -334,17 +334,62 @@ namespace Immersive.Framework.ApplicationLifecycle
             _resetProductBindingSceneLifecycleParticipant?.RefreshSubjectRegistrationsForCurrentOwners(source);
             return _objectEntryRuntimeContextSnapshot;
         }
-
-
-
-        internal static FrameworkRuntimeHost Create(GameApplicationAsset gameApplication)
+        /// <summary>
+        /// Creates the application runtime host and, when enabled, resolves
+        /// and composes Player Session configuration exactly once. An explicit
+        /// Player Session Profile replaces the Game Application default; it is
+        /// never merged with it.
+        /// </summary>
+        internal static bool TryCreate(
+            GameApplicationAsset gameApplication,
+            PlayerSessionProfile explicitPlayerSessionProfile,
+            out FrameworkRuntimeHost runtimeHost,
+            out PlayerSessionInitializationResult playerSessionResolution,
+            out PlayerParticipationOperationResult playerParticipationInitialization)
         {
+            if (gameApplication == null)
+            {
+                throw new ArgumentNullException(nameof(gameApplication));
+            }
+
+            runtimeHost = null;
+            playerParticipationInitialization = null;
+            bool playerSessionEnabled =
+                PlayerSessionCreationConfigurationResolver.TryResolve(
+                    gameApplication,
+                    explicitPlayerSessionProfile,
+                    out playerSessionResolution);
+            if (playerSessionEnabled && !playerSessionResolution.Succeeded)
+            {
+                return false;
+            }
+
             var runtimeObject = new GameObject(RuntimeHostName);
             DontDestroyOnLoad(runtimeObject);
 
             var host = runtimeObject.AddComponent<FrameworkRuntimeHost>();
             host.Initialize(gameApplication);
-            return host;
+            if (!playerSessionEnabled)
+            {
+                runtimeHost = host;
+                return true;
+            }
+
+            PlayerParticipationRuntimeHostModule.Attach(
+                host,
+                playerSessionResolution.Configuration,
+                gameApplication.PlayerActorSelectionDuplicatePolicy,
+                "ImmersiveFrameworkBootstrap",
+                "session-start",
+                out playerParticipationInitialization);
+            if (!playerParticipationInitialization.Succeeded)
+            {
+                UnityEngine.Object.Destroy(runtimeObject);
+                return false;
+            }
+
+            runtimeHost = host;
+            return true;
         }
 
 

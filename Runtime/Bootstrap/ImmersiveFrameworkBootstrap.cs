@@ -46,49 +46,46 @@ namespace Immersive.Framework.Bootstrap
                     return;
                 }
 
-                var runtimeHost = FrameworkRuntimeHost.Create(result.GameApplication);
-                if (ShouldComposePlayerParticipationRuntime(result.GameApplication))
+                if (!FrameworkRuntimeHost.TryCreate(
+                        result.GameApplication,
+                        explicitPlayerSessionProfile: null,
+                        out FrameworkRuntimeHost runtimeHost,
+                        out PlayerSessionInitializationResult playerSessionResolution,
+                        out PlayerParticipationOperationResult playerParticipationInitialization))
                 {
-                    PlayerSessionInitializationResult playerSessionResolution =
-                        PlayerSessionConfigurationResolver.Resolve(
-                            result.GameApplication.DefaultPlayerSessionProfile);
-                    if (!playerSessionResolution.Succeeded)
+                    if (playerSessionResolution != null &&
+                        playerSessionResolution.Failed)
                     {
                         logger.Error(
                             "Player Session configuration resolution failed.",
                             BuildPlayerSessionResolutionFields(
                                 result.GameApplication,
+                                null,
                                 playerSessionResolution));
-                        UnityEngine.Object.Destroy(runtimeHost.gameObject);
-                        return;
                     }
-
-                    logger.Debug(
-                        "Player Session configuration resolved.",
-                        BuildPlayerSessionResolutionFields(
-                            result.GameApplication,
-                            playerSessionResolution));
-
-                    PlayerParticipationRuntimeHostModule.Attach(
-                        runtimeHost,
-                        playerSessionResolution.Configuration,
-                        result.GameApplication.PlayerActorSelectionDuplicatePolicy,
-                        "ImmersiveFrameworkBootstrap",
-                        "session-start",
-                        out PlayerParticipationOperationResult playerParticipationInitialization);
-
-                    if (!playerParticipationInitialization.Succeeded)
+                    else
                     {
                         logger.Error(
                             "Player participation Session runtime initialization failed.",
                             BuildPlayerParticipationRuntimeFields(playerParticipationInitialization));
-                        UnityEngine.Object.Destroy(runtimeHost.gameObject);
-                        return;
                     }
+
+                    return;
+                }
+
+                if (ShouldComposePlayerParticipationRuntime(result.GameApplication))
+                {
+                    logger.Debug(
+                        "Player Session configuration resolved.",
+                        BuildPlayerSessionResolutionFields(
+                            result.GameApplication,
+                            null,
+                            playerSessionResolution));
 
                     logger.Debug(
                         "Player participation Session runtime initialized.",
-                        BuildPlayerParticipationRuntimeFields(playerParticipationInitialization));
+                        BuildPlayerParticipationRuntimeFields(
+                            playerParticipationInitialization));
                 }
                 else
                 {
@@ -317,16 +314,28 @@ namespace Immersive.Framework.Bootstrap
 
         private static LogField[] BuildPlayerSessionResolutionFields(
             GameApplicationAsset gameApplication,
+            PlayerSessionProfile explicitPlayerSessionProfile,
             PlayerSessionInitializationResult resolution)
         {
             EffectivePlayerSessionConfiguration configuration = resolution?.Configuration;
+            PlayerSessionProfile selectedProfile =
+                explicitPlayerSessionProfile != null
+                    ? explicitPlayerSessionProfile
+                    : gameApplication != null
+                        ? gameApplication.DefaultPlayerSessionProfile
+                        : null;
             return LogFields.Of(
                 LogFields.Field("playerSessionEnabled", gameApplication != null && gameApplication.PlayerSessionEnabled),
                 LogFields.Field(
                     "profile",
-                    gameApplication != null && gameApplication.DefaultPlayerSessionProfile != null
-                        ? gameApplication.DefaultPlayerSessionProfile.name
+                    selectedProfile != null
+                        ? selectedProfile.name
                         : string.Empty),
+                LogFields.Field(
+                    "profileSource",
+                    explicitPlayerSessionProfile != null
+                        ? "ExplicitOverride"
+                        : "GameApplicationDefault"),
                 LogFields.Field(
                     "failure",
                     resolution != null ? resolution.Failure.ToString() : "Missing"),
