@@ -1,11 +1,12 @@
 # Immersive Framework — IF-ADR-015 Player Provisioning Consumer Surface Closure Plan
 
-**Date:** 2026-08-07  
-**Status:** Proposed execution plan after IF-PLAYER-SURFACE-01A–01E1 audit  
+**Original plan date:** 2026-08-07  
+**Reconciled:** 2026-08-08  
+**Status:** Active execution plan — reconciled after IF-ADR-016 technical implementation  
 **Primary objective:** close the real remaining IF-ADR-015 gap without creating a second Player authority  
 **Repositories:** `com.immersive.framework`, `QAFramework`, `planet-devourer`
 
-## Verified Git baselines
+## Historical Git baselines from the original plan
 
 ```text
 com.immersive.framework
@@ -21,7 +22,98 @@ planet-devourer
   Demo03Etapa04
 ```
 
-Repositories remain read-only. Every implementation cut is delivered as a ZIP containing created, edited and removed files, `CHANGESET.md`, source SHAs, validation executed and known limitations.
+These SHAs are historical baselines from the original 2026-08-07 plan and must not be treated as current HEAD without re-verification. Repositories remain read-only. Implementation is performed against local files and validated manually in Unity; repository publication/packaging is a separate operation.
+
+---
+
+# 0. 2026-08-08 reconciliation after IF-ADR-016
+
+IF-ADR-016 advanced materially after this plan was first written. The following package/QA surface now exists and must be treated as canonical input to IF-ADR-015 rather than reimplemented here:
+
+```text
+PlayerSessionProfile
+  ordered Supported PlayerSlotProfile references
+  Initial Capacity
+  Initial Joining Open
+  PlayerProvisioningProfile
+
+PlayerProvisioningProfile
+  Default Host Provisioning
+  per-Slot Host Provisioning Overrides
+  Actor Resolution Policy
+
+EffectivePlayerSessionConfiguration
+  immutable creation-time effective evidence
+  per-Slot frozen Host provisioning
+
+GameApplicationAsset
+  Player Session Enabled
+  Default Player Session Profile
+
+Session creation
+  optional complete PlayerSessionProfile override
+  no field merge
+  invalid explicit override does not fall back
+```
+
+Technical certification already completed:
+
+```text
+IF-SESSION-CONFIG-05   PASS — 6/6
+IF-SESSION-CONFIG-05B  PASS — 4/4
+IF-SESSION-CONFIG-07   PASS — 17/17
+```
+
+Therefore IF-ADR-015 must **not** introduce another source of Player Session configuration, another provisioning Recipe containing Capacity/Joining, or another Slot/provisioning schema.
+
+The new responsibility split is:
+
+```text
+IF-ADR-016
+  owns authored Session initialization intent
+  owns Supported Slot order
+  owns initial Capacity / Joining
+  owns per-Slot Host provisioning intent
+  owns creation-time effective configuration evidence
+
+IF-ADR-015
+  owns runtime consumer reachability
+  owns supported public commands
+  owns immutable current observation
+  owns command authoring / status binding
+  owns consumer-facing diagnostics
+```
+
+The remaining IF-ADR-016 items — manual FIRSTGAME proof and direct Route/Activity non-reapply integration evidence — do not block P1–P4 or QA closure of the IF-ADR-015 runtime consumer boundary. They remain explicit integration/product evidence to collect later.
+
+### Current cut disposition
+
+```text
+A0  CLOSED
+    QA public-contract coverage audit completed
+
+P0  CLOSED
+    canonical consumer boundary frozen in IF-ADR-015
+
+IF-ADR-016 technical dependency
+    CLOSED for the contracts required by this plan
+    CONFIG-05 6/6
+    CONFIG-05B 4/4
+    CONFIG-07 17/17
+
+P1–P4
+    OPEN — next package implementation sequence
+
+Q1 / Q2
+    OPEN — public and negative certification after P1–P4
+
+FIRSTGAME
+    DEFERRED by current execution priority
+
+old P5 Recipe/Composer design
+    SUPERSEDED / REFRAMED
+    must reuse IF-ADR-016 Profiles and only add creation tooling if real consumer friction justifies it
+```
 
 ---
 
@@ -51,7 +143,9 @@ revision-aware operation evidence
 The remaining product gap is:
 
 ```text
-existing Player authorities
+IF-ADR-016 authored Session configuration
+        ↓
+existing Player runtime authorities
         ↓
 canonical public/scoped consumer access
         ↓
@@ -61,11 +155,13 @@ designer-facing command authoring
         ↓
 status / diagnostics presentation
         ↓
-public-only QA
+public-only + negative QA
         ↓
 FIRSTGAME real consumer proof
         ↓
-Recipe / Composer / documentation closure
+creation-workflow disposition using existing Profiles
+        ↓
+documentation / ADR closure
 ```
 
 The plan must not introduce:
@@ -164,12 +260,17 @@ framework compatibility facade
 
 # 3. Execution sequence
 
+The implementation order is revised to maximize package/QA closure before returning to FIRSTGAME:
+
 ```text
-A0  IF-PLAYER-SURFACE-01E2
+A0  IF-PLAYER-SURFACE-01E2                 CLOSED
     QA public-contract coverage audit
 
-P0  IF-PLAYER-SURFACE-02
+P0  IF-PLAYER-SURFACE-02                   CLOSED
     Canonical consumer boundary freeze
+
+S0  IF-ADR-016 dependency checkpoint        CLOSED (technical)
+    Session/Profile/provisioning initialization contracts available
 
 P1  IF-PLAYER-SURFACE-03
     Scoped Player provisioning consumer access
@@ -186,14 +287,14 @@ P4  IF-PLAYER-SURFACE-06
 Q1  QA-PLAYER-SURFACE-01
     Public-only positive contract proof
 
-F1  FIRSTGAME-PLAYER-SURFACE-01
-    Demo03 real command + status proof
-
-P5  IF-PLAYER-SURFACE-07
-    Recipe / Composer / creation workflow
-
 Q2  QA-PLAYER-SURFACE-02
     Negative, stale-scope and lifecycle hardening
+
+F1  FIRSTGAME-PLAYER-SURFACE-01             DEFERRED UNTIL REQUESTED
+    Manual real command + status consumer proof
+
+P5  IF-PLAYER-SURFACE-07                    REFRAMED
+    Creation workflow disposition over IF-ADR-016 Profiles
 
 F2  FIRSTGAME-PLAYER-SURFACE-02
     UX disposition + final consumer proof
@@ -202,13 +303,18 @@ D1  IF-DOC-PLAYER-SURFACE-01
     Canonical documentation and ADR closure
 ```
 
-`P1–P4` are deliberately separated. A single large “Player facade” cut would hide whether the real requirement is transport, observation, authoring or presentation.
+`P1–P4` remain deliberately separated. A single large “Player facade” cut would hide whether the real requirement is transport, observation, authoring or presentation.
+
+`Q2` no longer waits for P5. Negative/stale-scope certification concerns the runtime consumer surface and can be completed immediately after the public positive path.
+
+`P5` no longer means “invent a Manager-Provisioned Recipe”. It is a post-consumer-proof product disposition step: reuse `PlayerSessionProfile` / `PlayerProvisioningProfile` and add only the smallest Create/Wizard/Composer/template workflow that real usage proves necessary. “No additional Composer required” is a valid P5 outcome when supported by evidence.
 
 ---
 
 # 4. Cut A0 — IF-PLAYER-SURFACE-01E2
 ## QA public-contract coverage audit
 
+**Status:** CLOSED — audit completed on 2026-08-08 baseline evidence  
 **Type:** technical audit / no implementation
 
 ### Objective
@@ -285,6 +391,7 @@ Not applicable; audit artifact only.
 # 5. Cut P0 — IF-PLAYER-SURFACE-02
 ## Canonical consumer boundary freeze
 
+**Status:** CLOSED — normative consumer boundary is already frozen in IF-ADR-015  
 **Type:** architecture / package documentation
 
 ### Objective
@@ -384,6 +491,17 @@ LocalPlayerProvisioningHostRegistration
 LocalPlayerProvisioningBridge
 FrameworkRuntimeHost scoped infrastructure
 ```
+
+Also reuse the IF-ADR-016 creation/runtime boundary already shipped:
+
+```text
+PlayerSessionProfile / PlayerProvisioningProfile are configuration only
+EffectivePlayerSessionConfiguration is creation-time immutable evidence
+current Capacity / Joining / occupancy remain existing runtime authority
+per-Slot Host provisioning is already frozen for the Session lifetime
+```
+
+P1 must not expose Profile mutation as a runtime command and must not create another configuration source.
 
 The implementation must expose a typed consumer endpoint over existing authority.
 
@@ -509,11 +627,15 @@ PlayerActorCorrelationEvidence
 PlayerActorPreparationSummary
 ```
 
+The projection must explicitly distinguish **initialization evidence** from **current runtime truth**. IF-ADR-016 effective configuration may explain where the Session started; it must not be presented as live Capacity/Joining/occupancy state.
+
 Normal view should answer:
 
 ```text
-Is joining open?
-What is capacity?
+Was Player Session initialized and from which source?
+What Supported Slot order/provisioning was frozen at creation?
+Is joining open now?
+What is capacity now?
 Which Slots exist?
 What lifecycle state is each Slot in?
 Which Actor is selected?
@@ -641,7 +763,7 @@ Operations execute only through explicit invocation, for example a UI/Button Uni
 
 ### Out of scope
 
-No arbitrary Actor selector. No prepare/reconcile button. No automatic join.
+No arbitrary Actor selector. No prepare/reconcile button. No automatic join. No runtime Profile editing/reapply command. No command that changes Supported Slots or per-Slot Host provisioning frozen by IF-ADR-016.
 
 ### Files created
 
@@ -725,8 +847,10 @@ Provide a small binding/presenter layer over P2.
 Minimum designer-facing concepts:
 
 ```text
-Joining
-Capacity
+Session initialization status/source
+Supported Slot order + frozen Host provisioning (diagnostic context)
+Joining (current)
+Capacity (current)
 Slot lifecycle
 Selected Actor
 Prepared / Materialized / Gameplay Ready
@@ -805,6 +929,8 @@ Prove the happy path using only the same public surface available to a real cons
 
 ```text
 GameApplicationAsset
+PlayerSessionProfile
+PlayerProvisioningProfile
 RouteAsset
 ActivityAsset
 PlayerSlotProfile
@@ -875,14 +1001,69 @@ test(qa): prove public player provisioning surface
 
 ---
 
-# 11. Cut F1 — FIRSTGAME-PLAYER-SURFACE-01
-## Demo03 real command and status proof
+# 11. Cut Q2 — QA-PLAYER-SURFACE-02
+## Negative, stale-scope and lifecycle hardening
+
+**Type:** technical QA + smallest package fixes only when evidence requires them
+
+### Objective
+
+Certify the consumer surface under invalid and changing runtime conditions.
+
+### Required cases
+
+```text
+joining closed
+capacity exhausted
+duplicate/in-flight RequestJoin
+invalid capacity request
+authority unavailable
+scope disposed/replaced
+stale Session revision
+stale Activity occurrence
+late command result
+Host evidence divergence
+Actor selection/preparation failure
+materialization failure
+gameplay admission failure
+exit while WaitingForJoin
+exit during preparation
+reentry
+repeated observation/binding subscription
+```
+
+Provisioning callback expiry/late-divergent callback remains included only where the current runtime contract actually supports that path.
+
+### Technical acceptance
+
+```text
+no false success
+no silent fallback
+no stale mutation
+no second Actor
+no leaked subscription
+no stale observation presented as current
+failure reason typed and diagnosable
+```
+
+### Suggested commit
+
+```text
+test(qa): harden player provisioning consumer surface
+```
+
+Any package fix discovered here must be delivered as a separate smallest-possible ZIP, not folded invisibly into QA.
+
+---
+
+# 12. Cut F1 — FIRSTGAME-PLAYER-SURFACE-01
+## Manual real command and status consumer proof
 
 **Type:** real consumer integration / UX
 
 ### Objective
 
-Replace the current cenographic/incomplete Demo03 command and status panel with real package-owned Player command/observation surfaces.
+Manually wire a real FIRSTGAME Player Session using the existing IF-ADR-016 Profiles plus the package-owned IF-ADR-015 command/observation surfaces. This cut is deliberately manual: FIRSTGAME is used to expose product friction, not to auto-generate a demo.
 
 ### Scope
 
@@ -987,7 +1168,7 @@ no game-local framework bridge is needed.
 
 ### Usability gain
 
-The existing Demo03 becomes an actual consumer proof instead of a staged visual mock.
+The manually assembled FIRSTGAME flow becomes an actual consumer proof instead of a staged or framework-internal integration.
 
 ### Suggested commit
 
@@ -997,164 +1178,114 @@ feat(demo03): wire public player provisioning surface
 
 ---
 
-# 12. Cut P5 — IF-PLAYER-SURFACE-07
-## Recipe / Composer / creation workflow
+# 13. Cut P5 — IF-PLAYER-SURFACE-07
+## Creation workflow disposition over IF-ADR-016 Profiles
 
-**Type:** package UX/product
+**Status:** REFRAMED by IF-ADR-016; execute only after real consumer evidence  
+**Type:** package UX/product disposition
 
 ### Objective
 
-Turn the now-proven manual composition into a repeatable official product workflow.
+Decide whether the manual workflow proven in FIRSTGAME needs additional package-owned creation tooling, while **reusing** the canonical IF-ADR-016 authoring model.
 
-### Scope
-
-Candidate model:
+Canonical authored intent already exists:
 
 ```text
-ManagerProvisionedPlayerRecipe
-  host prefab
-  initial capacity
-  initial joining state
-  accepted default-selection policy
-
-ManagerProvisionedPlayerComposer
-  Recipe
-  materialized technical components
-  Apply / Rebuild
-  Validate
-  Advanced / Debug
+PlayerSessionProfile
+PlayerProvisioningProfile
+PlayerSlotProfile
+GameApplicationAsset Player Session configuration
 ```
 
-Composer materialization may include:
+P5 must not create a parallel `ManagerProvisionedPlayerRecipe` carrying Capacity, Joining or Slot/provisioning structure.
+
+### Possible outcomes
+
+```text
+A. No additional workflow required
+   Existing Profiles + Inspectors + normal scene components are sufficient.
+
+B. Create menu / wizard only
+   Creates or links the canonical Profiles and required scene composition without new intent schema.
+
+C. Composer justified
+   Composer references canonical Profiles and materializes only technical scene/prefab components that demonstrably benefit from Apply/Rebuild.
+```
+
+A Composer is not mandatory merely because IF-ADR-002 defines Composer as a recurring product pattern. It is justified only when there is concrete technical materialization to own.
+
+### If a Composer is justified
+
+It may materialize existing technical composition such as:
 
 ```text
 PlayerInputManager
 LocalPlayerProvisioningAuthoring
 LocalPlayerProvisioningHostRegistration
-command/status authoring only when explicitly part of the selected recipe/template
+command/status authoring when selected by the workflow
+```
+
+but it must reference, not duplicate:
+
+```text
+PlayerSessionProfile
+PlayerProvisioningProfile
+PlayerSlotProfile
+ActorProfile/default Actor ownership
 ```
 
 ### Out of scope
 
-No runtime gameplay authority in Composer. No hidden components without Advanced/Debug.
-
-### Files created
-
-Expected package area:
-
 ```text
-Runtime/PlayerParticipation/Authoring/
-  ManagerProvisionedPlayerRecipe.cs
-  ManagerProvisionedPlayerComposer.cs
-
-Editor/PlayerParticipation/
-  ManagerProvisionedPlayerComposerEditor.cs
-  ManagerProvisionedPlayerComposerUtility.cs
-  ManagerProvisionedPlayerCreationMenus.cs
-```
-
-### Files altered
-
-Canonical Player authoring documentation and existing creation menus.
-
-### Files removed
-
-```text
-none expected
+new Player Session schema
+new provisioning Recipe with Capacity/Joining
+parallel Slot definitions
+runtime gameplay authority in Composer
+live Profile synchronization
+hidden components without Advanced/Debug
 ```
 
 ### Product surface affected
 
-Create menu / Recipe / Composer / Inspector / Apply-Rebuild.
-
-### Expected flow
+Only the smallest creation workflow justified by FIRSTGAME findings:
 
 ```text
-Create Manager-Provisioned Player
-→ choose/create Recipe
-→ configure host/capacity/joining
-→ Apply/Rebuild
-→ validator reports result
-→ normal Inspector shows intent
-→ Advanced shows materialized contracts
+Create menu
+optional wizard
+optional Composer
+Inspector
+Apply/Rebuild only when materialization exists
 ```
 
 ### Technical acceptance
 
+When tooling is added:
+
 ```text
-Apply/Rebuild idempotent;
+uses canonical IF-ADR-016 Profiles;
+Apply/Rebuild is idempotent when applicable;
 Undo-safe;
 prefab-safe;
 non-destructive;
 no Play Mode authoring mutation;
 no duplicate provisioner/registration;
-no hidden fallback.
+no hidden fallback;
+no second configuration authority.
 ```
 
 ### Product acceptance
 
-A new user can create and configure the feature without manually assembling all technical contracts.
+A new user can create/configure the Player Session and provisioning feature without manually assembling unnecessary internal contracts. If the existing Profile workflow already satisfies this criterion, record `NO ADDITIONAL TOOLING REQUIRED` instead of creating speculative tooling.
 
 ### Suggested commit
 
-```text
-feat(player-authoring): add manager-provisioned player composer
-```
-
----
-
-# 13. Cut Q2 — QA-PLAYER-SURFACE-02
-## Negative, stale-scope and lifecycle hardening
-
-**Type:** technical QA + smallest package fixes only when evidence requires them
-
-### Objective
-
-Certify the consumer surface under invalid and changing runtime conditions.
-
-### Required cases
+If tooling is required:
 
 ```text
-joining closed
-capacity exhausted
-duplicate/in-flight RequestJoin
-invalid capacity request
-authority unavailable
-scope disposed/replaced
-stale Session revision
-stale Activity occurrence
-late command result
-Host evidence divergence
-Actor selection/preparation failure
-materialization failure
-gameplay admission failure
-exit while WaitingForJoin
-exit during preparation
-reentry
-repeated observation/binding subscription
+feat(player-authoring): streamline player session creation workflow
 ```
 
-Provisioning callback expiry/late-divergent callback remains included only where the current runtime contract actually supports that path.
-
-### Technical acceptance
-
-```text
-no false success
-no silent fallback
-no stale mutation
-no second Actor
-no leaked subscription
-no stale observation presented as current
-failure reason typed and diagnosable
-```
-
-### Suggested commit
-
-```text
-test(qa): harden player provisioning consumer surface
-```
-
-Any package fix discovered here must be delivered as a separate smallest-possible ZIP, not folded invisibly into QA.
+If no tooling is required, this is a disposition/documentation result rather than an implementation commit.
 
 ---
 
@@ -1174,7 +1305,7 @@ game-specific presentation
   → remains FIRSTGAME
 
 repeated creation/configuration friction
-  → package Recipe/Composer/authoring
+  → package creation workflow over canonical IF-ADR-016 Profiles
 
 missing public runtime contract
   → package runtime/public surface
@@ -1213,9 +1344,10 @@ Close IF-ADR-015 only after package, QA and FIRSTGAME evidence agree.
 ### Documentation must teach
 
 ```text
-what Manager-Provisioned means
+what Manager-Provisioned and Scene-Provided mean within one Player Session
 Host vs Slot vs Actor
-how to create/configure the feature
+how PlayerSessionProfile / PlayerProvisioningProfile configure creation-time intent
+how GameApplication default and explicit Session Profile override resolve
 how commands are authored
 how status is observed
 WaitingForJoin semantics
@@ -1247,8 +1379,9 @@ Do not create a parallel documentation taxonomy if equivalent canonical files al
 public command path certified
 public observation path certified
 scoped access certified
-Demo03 uses official surface
-Recipe/Composer usable
+FIRSTGAME uses official surface
+creation-workflow disposition is closed over canonical IF-ADR-016 Profiles
+any Composer/Wizard exists only when justified by real materialization/usability evidence
 negative matrix green
 Advanced/Debug explains correlation
 no FIRSTGAME compatibility facade
@@ -1268,8 +1401,9 @@ docs(player): close provisioning consumer surface
 ## Gate C — Consumer contract ready
 
 ```text
-A0
-+ P0
+A0 CLOSED
++ P0 CLOSED
++ IF-ADR-016 technical dependency available
 + P1
 + P2
 ```
@@ -1282,83 +1416,85 @@ Gate C
 + P4
 ```
 
-## Gate QP — Public contract certified
+## Gate QP — Consumer runtime surface certified
 
 ```text
 Gate CP
-+ Q1
++ Q1 public-only positive proof
++ Q2 negative / stale-scope / lifecycle hardening
 ```
+
+This gate can be completed before FIRSTGAME.
 
 ## Gate FG — Real consumer proof
 
 ```text
 Gate QP
-+ F1
++ F1 manual FIRSTGAME proof
 ```
 
-## Gate PRODUCT — Authoring workflow complete
+## Gate PRODUCT — Creation workflow disposition
 
 ```text
 Gate FG
 + P5
 ```
 
-## Gate HARDENED — Negative surface certified
+P5 closes when either:
 
 ```text
-Gate PRODUCT
-+ Q2
+required creation tooling is implemented and validated
+OR
+real consumer evidence supports NO ADDITIONAL TOOLING REQUIRED
 ```
 
 ## Gate ADR-015 — Closed
 
 ```text
-Gate HARDENED
+Gate PRODUCT
 + F2
 + D1
 + all package-owned UX findings resolved or explicitly deferred
 ```
 
-FIRSTGAME visual success alone does not close IF-ADR-015.
+FIRSTGAME visual success alone does not close IF-ADR-015. Conversely, speculative Recipe/Composer implementation is not required before FIRSTGAME merely to satisfy a pattern.
 
 ---
 
 # 17. Recommended immediate next action
 
-Do not implement the Composer first.
+A0 and P0 are already closed, and IF-ADR-016 now supplies the canonical Session/Profile initialization model required underneath the consumer surface.
 
-The next action should be:
-
-```text
-IF-PLAYER-SURFACE-01E2
-QA public-contract coverage audit
-```
-
-Immediately after that:
+The next implementation cut is therefore:
 
 ```text
-IF-PLAYER-SURFACE-02
-canonical consumer boundary freeze
+P1 — IF-PLAYER-SURFACE-03
+Scoped Player provisioning consumer access
 ```
 
-Then the first implementation ZIP should be the smallest package cut that establishes scoped public consumer access:
+Then continue without FIRSTGAME interruption through:
 
 ```text
-IF-PLAYER-SURFACE-03-scoped-provisioning-consumer-access.zip
+P1 → P2 → P3 → P4 → Q1 → Q2
 ```
 
-That ZIP must not include:
+Only after the package/public QA surface is stable do we return to the deferred manual consumer proof:
 
 ```text
-Composer
-FIRSTGAME
-new mutable Player state
-status UI
-QA
-hardening unrelated to the access boundary
+F1 → P5 disposition → F2 → D1
 ```
 
-This order prevents the product layer from being designed around Demo03 placeholders and prevents QA internals from becoming accidental public API.
+The P1 implementation must specifically avoid reopening IF-ADR-016:
+
+```text
+no new Session configuration source
+no runtime Profile reapply
+no Capacity/Joining Recipe
+no per-Slot provisioning mutation
+no second Slot schema
+```
+
+It should establish only typed scoped reachability to existing runtime capabilities.
 
 ---
 
@@ -1367,8 +1503,9 @@ This order prevents the product layer from being designed around Demo03 placehol
 The program is complete when this user flow is real:
 
 ```text
-Create/configure Manager-Provisioned Player
-→ author Open/Close/Capacity/Join command triggers
+Create/configure Player Session with canonical IF-ADR-016 Profiles
+→ choose Scene/Manager provisioning intent per Slot
+→ author Open/Close/Capacity/Join command triggers through IF-ADR-015
 → enter Activity
 → see WaitingForJoin
 → invoke Join through public scoped surface
@@ -1394,4 +1531,6 @@ global manager
 service locator
 silent fallback
 duplicate state authority
+parallel Player Session / provisioning Profile schema
+runtime Profile reapply
 ```

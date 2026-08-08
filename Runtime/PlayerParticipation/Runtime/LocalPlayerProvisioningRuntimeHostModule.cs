@@ -1,8 +1,13 @@
 using System;
+using System.Collections.Generic;
 using Immersive.Framework.ApiStatus;
 using Immersive.Framework.ApplicationLifecycle;
+using Immersive.Framework.Authoring;
 using Immersive.Framework.Common;
+using Immersive.Framework.Identity;
 using Immersive.Framework.PlayerSlots;
+using Immersive.Framework.RuntimeContent;
+using Immersive.Framework.SceneLifecycle;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
@@ -23,6 +28,9 @@ namespace Immersive.Framework.PlayerParticipation
         private PlayerParticipationRuntimeContext participationContext;
         private LocalPlayerProvisioningAuthoring authoring;
         private LocalPlayerProvisioningBridge bridge;
+        private readonly Dictionary<
+            LocalPlayerProvisioningConsumerAccessBinding,
+            LocalPlayerProvisioningConsumerAccess> consumerAccesses = new();
         private string diagnostic = "Local Player provisioning runtime is not initialized.";
         private int requestCount;
 
@@ -178,6 +186,184 @@ namespace Immersive.Framework.PlayerParticipation
             }
 
             return true;
+        }
+
+        private void Update()
+        {
+            if (IsReady)
+            {
+                RefreshConsumerAccessBindings();
+            }
+        }
+
+        private void RefreshConsumerAccessBindings()
+        {
+            var desired = new Dictionary<
+                LocalPlayerProvisioningConsumerAccessBinding,
+                RuntimeContentOwner>();
+            var flow = runtimeHost.CurrentGameFlowRuntime;
+            if (flow != null && flow.CurrentRoute != null)
+            {
+                RouteAsset route = flow.CurrentRoute;
+                RuntimeContentOwner routeOwner = RuntimeContentOwner.Route(
+                    route.RouteId.StableText,
+                    route.RouteName,
+                    RuntimeDefinitionToken.FromUnityObject(route));
+                AddBindings(
+                    SceneScopedComponentQuery.GetComponentsInRoutePrimaryScene<
+                        LocalPlayerProvisioningConsumerAccessBinding>(route),
+                    LocalPlayerProvisioningConsumerScope.Route,
+                    routeOwner,
+                    desired);
+            }
+
+            Immersive.Framework.ActivityFlow.ActivityFlowRuntime activityFlow =
+                flow?.CurrentRouteLifecycleRuntime?.CurrentActivityFlowRuntime;
+            ActivityAsset activity = flow?.CurrentActivity;
+            if (activityFlow != null && activity != null &&
+                activityFlow.TryCreateCurrentActivityContentDiscoveryScope(
+                    activity,
+                    out Immersive.Framework.ActivityFlow.ActivityContentDiscoveryScope activityScope))
+            {
+                RuntimeContentOwner activityOwner = RuntimeContentOwner.Activity(
+                    activity.ActivityId.StableText,
+                    activity.ActivityName,
+                    RuntimeDefinitionToken.FromUnityObject(activity));
+                AddBindings(
+                    SceneScopedComponentQuery.GetComponentsInActivityContentScope<
+                        LocalPlayerProvisioningConsumerAccessBinding>(
+                        activityScope,
+                        activity),
+                    LocalPlayerProvisioningConsumerScope.Activity,
+                    activityOwner,
+                    desired);
+            }
+
+            var staleBindings = new List<
+                LocalPlayerProvisioningConsumerAccessBinding>();
+            foreach (var pair in consumerAccesses)
+            {
+                if (pair.Key == null || !desired.TryGetValue(
+                        pair.Key,
+                        out RuntimeContentOwner desiredOwner) ||
+                    pair.Value.Snapshot.Owner != desiredOwner)
+                {
+                    staleBindings.Add(pair.Key);
+                }
+            }
+
+            for (int index = 0; index < staleBindings.Count; index++)
+            {
+                LocalPlayerProvisioningConsumerAccessBinding binding =
+                    staleBindings[index];
+                if (consumerAccesses.TryGetValue(binding, out var access))
+                {
+                    access.Dispose();
+                    if (binding != null)
+                    {
+                        binding.Release(
+                            "Local Player provisioning consumer binding was released because its Route or Activity scope changed.");
+                    }
+
+                    consumerAccesses.Remove(binding);
+                }
+            }
+
+            foreach (var pair in desired)
+            {
+                if (consumerAccesses.ContainsKey(pair.Key))
+                {
+                    continue;
+                }
+
+                LocalPlayerProvisioningConsumerScope actualScope =
+                    pair.Value.Scope == RuntimeContentScope.Route
+                        ? LocalPlayerProvisioningConsumerScope.Route
+                        : LocalPlayerProvisioningConsumerScope.Activity;
+                var access = new LocalPlayerProvisioningConsumerAccess(
+                    authoring,
+                    actualScope,
+                    pair.Value,
+                    pair.Key,
+                    IsCurrentConsumerScope);
+                if (!pair.Key.TryBind(access, actualScope, out string issue))
+                {
+                    access.Dispose();
+                    pair.Key.Release(issue);
+                    continue;
+                }
+
+                consumerAccesses.Add(pair.Key, access);
+            }
+        }
+
+        private bool IsCurrentConsumerScope(RuntimeContentOwner expectedOwner)
+        {
+            var flow = runtimeHost != null ? runtimeHost.CurrentGameFlowRuntime : null;
+            if (flow == null)
+            {
+                return false;
+            }
+
+            if (expectedOwner.Scope == RuntimeContentScope.Route)
+            {
+                RouteAsset currentRoute = flow.CurrentRoute;
+                return currentRoute != null && expectedOwner == RuntimeContentOwner.Route(
+                    currentRoute.RouteId.StableText,
+                    currentRoute.RouteName,
+                    RuntimeDefinitionToken.FromUnityObject(currentRoute));
+            }
+
+            if (expectedOwner.Scope == RuntimeContentScope.Activity)
+            {
+                ActivityAsset currentActivity = flow.CurrentActivity;
+                return currentActivity != null && expectedOwner == RuntimeContentOwner.Activity(
+                    currentActivity.ActivityId.StableText,
+                    currentActivity.ActivityName,
+                    RuntimeDefinitionToken.FromUnityObject(currentActivity));
+            }
+
+            return false;
+        }
+
+        private static void AddBindings(
+            IReadOnlyList<LocalPlayerProvisioningConsumerAccessBinding>
+                candidates,
+            LocalPlayerProvisioningConsumerScope scope,
+            RuntimeContentOwner owner,
+            Dictionary<LocalPlayerProvisioningConsumerAccessBinding,
+                RuntimeContentOwner> target)
+        {
+            if (candidates == null)
+            {
+                return;
+            }
+
+            for (int index = 0; index < candidates.Count; index++)
+            {
+                LocalPlayerProvisioningConsumerAccessBinding binding =
+                    candidates[index];
+                if (binding == null)
+                {
+                    continue;
+                }
+
+                if (!binding.Scope.IsDefinedScope())
+                {
+                    binding.Release(
+                        "Local Player provisioning consumer binding requires an explicit Route or Activity scope.");
+                    continue;
+                }
+
+                if (binding.Scope != scope)
+                {
+                    binding.Release(
+                        $"Local Player provisioning consumer binding scope '{binding.Scope}' is invalid for the active '{scope}' content scope.");
+                    continue;
+                }
+
+                target[binding] = owner;
+            }
         }
 
         private static bool TryValidateRuntimeConfiguration(
@@ -660,6 +846,17 @@ namespace Immersive.Framework.PlayerParticipation
 
         private void OnDestroy()
         {
+            foreach (var pair in consumerAccesses)
+            {
+                pair.Value.Dispose();
+                if (pair.Key != null)
+                {
+                    pair.Key.Release(
+                        "Local Player provisioning consumer binding was released because the Session provisioning runtime was disposed.");
+                }
+            }
+
+            consumerAccesses.Clear();
             if (authoring != null && authoring.PlayerInputManager != null)
             {
                 authoring.PlayerInputManager.DisableJoining();
@@ -677,6 +874,172 @@ namespace Immersive.Framework.PlayerParticipation
             participationContext = null;
             runtimeHost = null;
             diagnostic = "Session Local Player provisioning runtime was released.";
+        }
+    }
+
+    /// <summary>
+    /// Per-consumer, per-lifetime forwarding endpoint. Its only mutable state
+    /// is whether its Framework-owned binding is still current.
+    /// </summary>
+    internal sealed class LocalPlayerProvisioningConsumerAccess :
+        ILocalPlayerProvisioningConsumerAccess,
+        IDisposable
+    {
+        private readonly LocalPlayerProvisioningAuthoring authoring;
+        private readonly LocalPlayerProvisioningConsumerScope scope;
+        private readonly RuntimeContentOwner owner;
+        private readonly LocalPlayerProvisioningConsumerAccessBinding binding;
+        private readonly Func<RuntimeContentOwner, bool> isCurrentScope;
+        private string diagnostic;
+        private bool disposed;
+
+        internal LocalPlayerProvisioningConsumerAccess(
+            LocalPlayerProvisioningAuthoring authoring,
+            LocalPlayerProvisioningConsumerScope scope,
+            RuntimeContentOwner owner,
+            LocalPlayerProvisioningConsumerAccessBinding binding,
+            Func<RuntimeContentOwner, bool> isCurrentScope)
+        {
+            this.authoring = authoring ??
+                throw new ArgumentNullException(nameof(authoring));
+            this.scope = scope;
+            this.owner = owner;
+            this.binding = binding ??
+                throw new ArgumentNullException(nameof(binding));
+            this.isCurrentScope = isCurrentScope ??
+                throw new ArgumentNullException(nameof(isCurrentScope));
+            diagnostic = CreateReadyDiagnostic(owner);
+        }
+
+        public LocalPlayerProvisioningConsumerAccessSnapshot Snapshot
+        {
+            get
+            {
+                bool available = IsCurrent() && authoring != null &&
+                    authoring.RuntimeReady;
+                return new LocalPlayerProvisioningConsumerAccessSnapshot(
+                    scope,
+                    owner,
+                    available,
+                    disposed,
+                    available ? CreateReadyDiagnostic(owner) : CurrentIssue);
+            }
+        }
+
+        public PlayerParticipationOperationResult OpenJoining(
+            string source,
+            string reason)
+        {
+            return TryGetAuthoring(out string issue)
+                ? authoring.OpenJoining(source, reason)
+                : PlayerParticipationOperationResult.RuntimeUnavailable(
+                    "OpenJoining",
+                    source,
+                    reason,
+                    issue);
+        }
+
+        public PlayerParticipationOperationResult CloseJoining(
+            string source,
+            string reason)
+        {
+            return TryGetAuthoring(out string issue)
+                ? authoring.CloseJoining(source, reason)
+                : PlayerParticipationOperationResult.RuntimeUnavailable(
+                    "CloseJoining",
+                    source,
+                    reason,
+                    issue);
+        }
+
+        public PlayerParticipationOperationResult SetDynamicCapacity(
+            int requestedCapacity,
+            string source,
+            string reason)
+        {
+            return TryGetAuthoring(out string issue)
+                ? authoring.SetDynamicCapacity(requestedCapacity, source, reason)
+                : PlayerParticipationOperationResult.RuntimeUnavailable(
+                    "SetDynamicCapacity",
+                    source,
+                    reason,
+                    issue);
+        }
+
+        public LocalPlayerJoinResult RequestJoin(LocalPlayerJoinRequest request)
+        {
+            return TryGetAuthoring(out string issue)
+                ? authoring.RequestJoin(request)
+                : LocalPlayerJoinResult.RuntimeUnavailable(request, issue);
+        }
+
+        public void Dispose()
+        {
+            if (disposed)
+            {
+                return;
+            }
+
+            disposed = true;
+            diagnostic =
+                "Local Player provisioning consumer access was released because its framework scope was replaced or disposed.";
+        }
+
+        private bool TryGetAuthoring(out string issue)
+        {
+            if (!IsCurrent())
+            {
+                issue = CurrentIssue;
+                return false;
+            }
+
+            if (authoring == null || !authoring.RuntimeReady)
+            {
+                issue = authoring != null
+                    ? authoring.RuntimeDiagnostic
+                    : "Local Player provisioning authority is unavailable.";
+                diagnostic = issue;
+                return false;
+            }
+
+            issue = string.Empty;
+            return true;
+        }
+
+        private bool IsCurrent()
+        {
+            if (disposed)
+            {
+                return false;
+            }
+
+            if (binding == null)
+            {
+                disposed = true;
+                diagnostic =
+                    "Local Player provisioning consumer access was released because its scene-local binding was destroyed.";
+                return false;
+            }
+
+            if (!isCurrentScope(owner))
+            {
+                disposed = true;
+                diagnostic =
+                    "Local Player provisioning consumer access was released because its Route or Activity scope was replaced or disposed.";
+                return false;
+            }
+
+            return true;
+        }
+
+        private string CurrentIssue => string.IsNullOrWhiteSpace(diagnostic)
+            ? "Local Player provisioning consumer access is unavailable."
+            : diagnostic;
+
+        private static string CreateReadyDiagnostic(RuntimeContentOwner owner)
+        {
+            return
+                $"Local Player provisioning consumer access is bound to '{owner.StableText}'.";
         }
     }
 
