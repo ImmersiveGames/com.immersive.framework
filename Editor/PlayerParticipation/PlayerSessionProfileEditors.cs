@@ -163,12 +163,11 @@ namespace Immersive.Framework.Editor.Editor.PlayerParticipation
             serializedObject.UpdateIfRequiredOrScript();
 
             DrawSection("Host Provisioning");
-            defaultHostProvisioning.intValue = System.Convert.ToInt32(
-                EditorGUILayout.EnumPopup(
-                    new GUIContent(
-                        "Default Host Provisioning",
-                        "Used by every Slot without an explicit override."),
-                    (PlayerHostProvisioningMode)defaultHostProvisioning.intValue));
+            EditorGUILayout.PropertyField(
+                defaultHostProvisioning,
+                new GUIContent(
+                    "Default Host Provisioning",
+                    "Used by every Slot without an explicit override."));
 
             EditorGUILayout.LabelField(
                 "Overrides replace the default for their Slot; they never act as a fallback.",
@@ -176,12 +175,11 @@ namespace Immersive.Framework.Editor.Editor.PlayerParticipation
             slotOverridesList?.DoLayoutList();
 
             DrawSection("Actor Resolution");
-            actorResolutionPolicy.intValue = System.Convert.ToInt32(
-                EditorGUILayout.EnumPopup(
-                    new GUIContent(
-                        "Actor Resolution Policy",
-                        "Resolve the Slot Default Actor or leave the Actor explicitly unresolved."),
-                    (PlayerActorResolutionPolicy)actorResolutionPolicy.intValue));
+            EditorGUILayout.PropertyField(
+                actorResolutionPolicy,
+                new GUIContent(
+                    "Actor Resolution Policy",
+                    "Resolve the Slot Default Actor or leave the Actor explicitly unresolved."));
 
             serializedObject.ApplyModifiedProperties();
             PlayerSessionInspectorGui.DrawValidation(

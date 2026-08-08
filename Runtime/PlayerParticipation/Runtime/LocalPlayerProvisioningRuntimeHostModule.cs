@@ -262,7 +262,8 @@ namespace Immersive.Framework.PlayerParticipation
                     if (binding != null)
                     {
                         binding.Release(
-                            "Local Player provisioning consumer binding was released because its Route or Activity scope changed.");
+                            "Local Player provisioning consumer binding was released because its Route or Activity scope changed.",
+                            true);
                     }
 
                     consumerAccesses.Remove(binding);
