@@ -1373,6 +1373,18 @@ namespace Immersive.Framework.ApplicationLifecycle
 
         private ObjectEntryScopedCollectionContext CreateCurrentObjectEntryScopedCollectionContext()
         {
+            ActivityAsset activity = _state.CurrentActivity;
+            ActivityContentDiscoveryScope activityScope = default;
+            RouteLifecycleRuntime routeLifecycleRuntime =
+                _gameFlowRuntime?.CurrentRouteLifecycleRuntime;
+            ActivityFlowRuntime activityFlowRuntime =
+                routeLifecycleRuntime?.CurrentActivityFlowRuntime;
+            bool hasActivityScope = activity != null &&
+                activityFlowRuntime != null &&
+                activityFlowRuntime.TryCreateCurrentActivityContentDiscoveryScope(
+                    activity,
+                    out activityScope);
+
             return new ObjectEntryScopedCollectionContext(
                 _runtimeSessionScopeResult.HasOwner
                     ? _runtimeSessionScopeResult.Owner.OwnerIdentity
@@ -1380,8 +1392,10 @@ namespace Immersive.Framework.ApplicationLifecycle
                 _state.CurrentRoute,
                 _state.RouteState.RouteIdentity,
                 _state.RouteSceneCompositionResult,
-                _state.CurrentActivity,
-                _state.ActivityState.ActivityIdentity);
+                activity,
+                _state.ActivityState.ActivityIdentity,
+                activityScope,
+                hasActivityScope);
         }
 
         private void Initialize(GameApplicationAsset application)
@@ -2991,8 +3005,8 @@ namespace Immersive.Framework.ApplicationLifecycle
             }
 
             IReadOnlyList<ActivityReadinessEvents> observers =
-                SceneScopedComponentQuery
-                    .GetComponentsInActivityContentScope<ActivityReadinessEvents>(
+                SceneCompositionComponentQuery
+                    .GetComponents<ActivityReadinessEvents>(
                         discoveryScope,
                         activity);
             if (observers.Count == 0)

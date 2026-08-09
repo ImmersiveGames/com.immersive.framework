@@ -189,39 +189,18 @@ namespace Immersive.Framework.ObjectEntry
         private static IReadOnlyList<ObjectEntryDeclaration> CollectScopedSceneDeclarations(
             ObjectEntryScopedCollectionContext context)
         {
-            var declarations = new List<ObjectEntryDeclaration>();
-            var scannedScenes = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-            IReadOnlyList<RouteSceneCompositionResultEntry> entries = context.RouteSceneCompositionResult.Entries;
-            for (int i = 0; i < entries.Count; i++)
+            if (context.HasActiveActivity)
             {
-                var entry = entries[i];
-                if (!entry.Loaded)
-                {
-                    continue;
-                }
-
-                string sceneKey = !string.IsNullOrWhiteSpace(entry.ScenePath)
-                    ? entry.ScenePath.Trim()
-                    : entry.SceneName?.Trim() ?? string.Empty;
-                if (string.IsNullOrWhiteSpace(sceneKey) || !scannedScenes.Add(sceneKey))
-                {
-                    continue;
-                }
-
-                IReadOnlyList<ObjectEntryDeclaration> sceneDeclarations = SceneScopedComponentQuery.GetComponentsInLoadedScene<ObjectEntryDeclaration>(
-                    entry.ScenePath,
-                    entry.SceneName);
-                for (int declarationIndex = 0; declarationIndex < sceneDeclarations.Count; declarationIndex++)
-                {
-                    var declaration = sceneDeclarations[declarationIndex];
-                    if (declaration != null)
-                    {
-                        declarations.Add(declaration);
-                    }
-                }
+                return SceneCompositionComponentQuery.GetComponents<ObjectEntryDeclaration>(
+                    context.ActivityContentDiscoveryScope,
+                    context.Activity);
             }
 
-            return declarations;
+            RouteContentDiscoveryScope scope =
+                RouteContentDiscoveryScope.FromCompositionResult(
+                    context.RouteSceneCompositionResult);
+            return SceneCompositionComponentQuery.GetComponents<ObjectEntryDeclaration>(
+                scope);
         }
 
         private static string FormatDeclarationIssue(ObjectEntryDeclaration declaration, string issue)

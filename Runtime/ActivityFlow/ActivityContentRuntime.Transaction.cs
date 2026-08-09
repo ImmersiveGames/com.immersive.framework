@@ -85,7 +85,9 @@ namespace Immersive.Framework.ActivityFlow
             string resolvedSource = NormalizeSource(source);
             string resolvedReason = NormalizeReason(reason);
             IReadOnlyList<ActivityLocalVisibilityAdapter> bindings =
-                CollectActivityLocalVisibilityAdapters();
+                CollectActivityLocalVisibilityAdapters(
+                    previousActivity,
+                    activeActivity);
             var context = new ActivityContentTransitionContext(
                 previousActivity,
                 activeActivity,

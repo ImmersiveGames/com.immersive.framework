@@ -11,30 +11,19 @@ using Immersive.Framework.SceneLifecycle;
 namespace Immersive.Framework.LocalContribution
 {
     /// <summary>
-    /// API status: Internal. Loaded scene-authored contribution discovery for F5.
+    /// API status: Internal. Composition-scoped scene-authored contribution discovery for F5.
     /// This discovery requires explicit local ids and emits structured issues instead of falling back to GameObject names or paths.
     /// It does not materialize, release, load, unload, reset, snapshot or own lifecycle state.
     /// </summary>
-    [FrameworkApiStatus(FrameworkApiStatus.Internal, "Loaded scene-authored local contribution discovery introduced by F5D and extended with requiredness metadata in F5F.")]
+    [FrameworkApiStatus(FrameworkApiStatus.Internal, "Composition-scoped scene-authored local contribution discovery introduced by F5D and extended with requiredness metadata in F5F.")]
     internal static class LocalContributionDiscovery
     {
-        public static LocalContributionDiscoveryResult DiscoverLoadedSceneAuthored()
+        public static LocalContributionDiscoveryResult Discover(
+            RouteContentDiscoveryScope scope)
         {
             var handles = new List<LocalContributionHandle>();
             var issues = new List<LocalContributionDiscoveryIssue>();
-
-            CollectRouteBindings(null, handles, issues);
-            CollectActivityAdapters(null, null, handles, issues);
-            AddDuplicateIssues(handles, issues);
-
-            SortHandles(handles);
-            return new LocalContributionDiscoveryResult(LocalContributionSet.FromHandles(handles), issues);
-        }
-
-        public static LocalContributionDiscoveryResult DiscoverLoadedRoute(RouteAsset route)
-        {
-            var handles = new List<LocalContributionHandle>();
-            var issues = new List<LocalContributionDiscoveryIssue>();
+            RouteAsset route = scope.Route;
 
             if (route == null)
             {
@@ -44,19 +33,16 @@ namespace Immersive.Framework.LocalContribution
                 return new LocalContributionDiscoveryResult(LocalContributionSet.Empty(), issues);
             }
 
-            CollectRouteBindings(route, handles, issues);
+            CollectRouteBindings(scope, handles, issues);
             AddDuplicateIssues(handles, issues);
 
             SortHandles(handles);
             return new LocalContributionDiscoveryResult(LocalContributionSet.FromHandles(handles), issues);
         }
 
-        public static LocalContributionDiscoveryResult DiscoverLoadedActivity(ActivityAsset activity)
-        {
-            return DiscoverLoadedActivity(activity, null);
-        }
-
-        public static LocalContributionDiscoveryResult DiscoverLoadedActivity(ActivityAsset activity, RouteAsset routeScope)
+        public static LocalContributionDiscoveryResult Discover(
+            ActivityContentDiscoveryScope scope,
+            ActivityAsset activity)
         {
             var handles = new List<LocalContributionHandle>();
             var issues = new List<LocalContributionDiscoveryIssue>();
@@ -69,7 +55,7 @@ namespace Immersive.Framework.LocalContribution
                 return new LocalContributionDiscoveryResult(LocalContributionSet.Empty(), issues);
             }
 
-            CollectActivityAdapters(activity, routeScope, handles, issues);
+            CollectActivityAdapters(scope, activity, handles, issues);
             AddDuplicateIssues(handles, issues);
 
             SortHandles(handles);
@@ -77,13 +63,14 @@ namespace Immersive.Framework.LocalContribution
         }
 
         private static void CollectRouteBindings(
-            RouteAsset routeFilter,
+            RouteContentDiscoveryScope scope,
             List<LocalContributionHandle> handles,
             List<LocalContributionDiscoveryIssue> issues)
         {
-            IReadOnlyList<RouteContentBinding> bindings = routeFilter != null
-                ? SceneScopedComponentQuery.GetComponentsInRoutePrimaryScene<RouteContentBinding>(routeFilter)
-                : SceneScopedComponentQuery.GetComponentsInLoadedScenes<RouteContentBinding>();
+            RouteAsset route = scope.Route;
+            IReadOnlyList<RouteContentBinding> bindings =
+                SceneCompositionComponentQuery.GetComponents<RouteContentBinding>(
+                    scope);
             if (bindings == null || bindings.Count == 0)
             {
                 return;
@@ -97,19 +84,8 @@ namespace Immersive.Framework.LocalContribution
                     continue;
                 }
 
-                if (routeFilter != null && !binding.MatchesRoute(routeFilter))
+                if (!binding.MatchesRoute(route))
                 {
-                    continue;
-                }
-
-                var route = routeFilter != null ? routeFilter : binding.Route;
-                if (route == null)
-                {
-                    issues.Add(new LocalContributionDiscoveryIssue(
-                        LocalContributionDiscoveryIssueKind.MissingOwner,
-                        "RouteContentBinding requires an explicit Route owner before it can produce a LocalContentIdentity.",
-                        sceneName: binding.SceneName,
-                        objectName: binding.ObjectName));
                     continue;
                 }
 
@@ -139,14 +115,15 @@ namespace Immersive.Framework.LocalContribution
         }
 
         private static void CollectActivityAdapters(
+            ActivityContentDiscoveryScope scope,
             ActivityAsset activityFilter,
-            RouteAsset routeScope,
             List<LocalContributionHandle> handles,
             List<LocalContributionDiscoveryIssue> issues)
         {
-            IReadOnlyList<ActivityLocalVisibilityAdapter> adapters = routeScope != null
-                ? SceneScopedComponentQuery.GetComponentsInRoutePrimaryScene<ActivityLocalVisibilityAdapter>(routeScope)
-                : SceneScopedComponentQuery.GetComponentsInLoadedScenes<ActivityLocalVisibilityAdapter>();
+            IReadOnlyList<ActivityLocalVisibilityAdapter> adapters =
+                SceneCompositionComponentQuery.GetComponents<ActivityLocalVisibilityAdapter>(
+                    scope,
+                    activityFilter);
             if (adapters == null || adapters.Count == 0)
             {
                 return;

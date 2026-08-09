@@ -38,9 +38,8 @@ namespace Immersive.Framework.ActivityFlow
             }
 
             IReadOnlyList<ActivityReadinessParticipant> discovered =
-                SceneScopedComponentQuery
-                    .GetComponentsInActivityContentScope<
-                        ActivityReadinessParticipant>(
+                SceneCompositionComponentQuery
+                    .GetComponents<ActivityReadinessParticipant>(
                         scope,
                         activity);
             IReadOnlyList<ActivityReadinessParticipant> explicitParticipants =

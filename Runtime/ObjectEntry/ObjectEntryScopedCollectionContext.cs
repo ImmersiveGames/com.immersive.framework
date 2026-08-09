@@ -1,4 +1,5 @@
 using Immersive.Framework.ApiStatus;
+using Immersive.Framework.ActivityFlow;
 using Immersive.Framework.Authoring;
 using Immersive.Framework.Identity;
 using Immersive.Framework.RouteLifecycle;
@@ -7,9 +8,9 @@ namespace Immersive.Framework.ObjectEntry
 {
     /// <summary>
     /// Internal immutable context used to collect scene-authored Object Entry declarations for the active lifecycle only.
-    /// It carries explicit typed owners and Route scene composition evidence; it is not a registry or service locator.
+    /// It carries explicit typed owners and Route/Activity scene composition evidence; it is not a registry or service locator.
     /// </summary>
-    [FrameworkApiStatus(FrameworkApiStatus.Internal, "F13J scoped Object Entry collection context; no physical binding or reset authority.")]
+    [FrameworkApiStatus(FrameworkApiStatus.Internal, "Composition-scoped Object Entry collection context; no physical binding or reset authority.")]
     internal readonly struct ObjectEntryScopedCollectionContext
     {
         internal ObjectEntryScopedCollectionContext(
@@ -18,7 +19,9 @@ namespace Immersive.Framework.ObjectEntry
             FrameworkIdentityKey routeOwnerIdentity,
             RouteSceneCompositionResult routeSceneCompositionResult,
             ActivityAsset activity,
-            FrameworkIdentityKey activityOwnerIdentity)
+            FrameworkIdentityKey activityOwnerIdentity,
+            ActivityContentDiscoveryScope activityContentDiscoveryScope,
+            bool hasActivityContentDiscoveryScope)
         {
             SessionOwnerIdentity = sessionOwnerIdentity;
             Route = route;
@@ -26,6 +29,8 @@ namespace Immersive.Framework.ObjectEntry
             RouteSceneCompositionResult = routeSceneCompositionResult;
             Activity = activity;
             ActivityOwnerIdentity = activityOwnerIdentity;
+            ActivityContentDiscoveryScope = activityContentDiscoveryScope;
+            HasActivityContentDiscoveryScope = hasActivityContentDiscoveryScope;
         }
 
         internal FrameworkIdentityKey SessionOwnerIdentity { get; }
@@ -39,6 +44,10 @@ namespace Immersive.Framework.ObjectEntry
         internal ActivityAsset Activity { get; }
 
         internal FrameworkIdentityKey ActivityOwnerIdentity { get; }
+
+        internal ActivityContentDiscoveryScope ActivityContentDiscoveryScope { get; }
+
+        internal bool HasActivityContentDiscoveryScope { get; }
 
         internal bool HasActiveActivity => Activity != null
             && ActivityOwnerIdentity is { IsValid: true, Domain: FrameworkIdentityDomain.Activity };
@@ -73,6 +82,12 @@ namespace Immersive.Framework.ObjectEntry
                 && (!ActivityOwnerIdentity.IsValid || ActivityOwnerIdentity.Domain != FrameworkIdentityDomain.Activity))
             {
                 issue = "Scoped Object Entry collection received an active Activity without a valid Activity owner identity.";
+                return false;
+            }
+
+            if (Activity != null && !HasActivityContentDiscoveryScope)
+            {
+                issue = "Scoped Object Entry collection requires the active Activity scene composition scope.";
                 return false;
             }
 

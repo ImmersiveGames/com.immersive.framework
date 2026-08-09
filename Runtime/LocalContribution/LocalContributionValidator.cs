@@ -1,4 +1,3 @@
-using System;
 using System.Collections.Generic;
 using Immersive.Framework.ApiStatus;
 using Immersive.Framework.ContentFlow;
@@ -12,11 +11,6 @@ namespace Immersive.Framework.LocalContribution
     [FrameworkApiStatus(FrameworkApiStatus.Internal, "Local contribution validators introduced by F5G; expected contribution consumers come later.")]
     internal static class LocalContributionValidator
     {
-        public static LocalContributionValidationResult ValidateLoadedSceneAuthored()
-        {
-            return Validate(LocalContributionDiscovery.DiscoverLoadedSceneAuthored(), Array.Empty<LocalContributionRequirement>());
-        }
-
         public static LocalContributionValidationResult Validate(
             LocalContributionDiscoveryResult discoveryResult,
             IReadOnlyList<LocalContributionRequirement> expectedContributions)

@@ -34,7 +34,7 @@ namespace Immersive.Framework.RouteLifecycle
                     resolvedReason);
             }
 
-            IReadOnlyList<RouteContentBinding> bindings = SceneScopedComponentQuery.GetComponentsInRouteContentScope<RouteContentBinding>(scope);
+            IReadOnlyList<RouteContentBinding> bindings = SceneCompositionComponentQuery.GetComponents<RouteContentBinding>(scope);
             int bindingCount = 0;
             int receiverCount = 0;
             int failedReceiverCount = 0;
@@ -90,7 +90,7 @@ namespace Immersive.Framework.RouteLifecycle
                     resolvedReason);
             }
 
-            IReadOnlyList<RouteContentBinding> bindings = SceneScopedComponentQuery.GetComponentsInRouteContentScope<RouteContentBinding>(scope);
+            IReadOnlyList<RouteContentBinding> bindings = SceneCompositionComponentQuery.GetComponents<RouteContentBinding>(scope);
             int bindingCount = 0;
             int receiverCount = 0;
             int failedReceiverCount = 0;

@@ -7,7 +7,6 @@ using Immersive.Framework.SceneLifecycle;
 using UnityEngine;
 using Immersive.Framework.ApiStatus;
 using Immersive.Framework.Common;
-using Immersive.Framework.RouteLifecycle;
 
 namespace Immersive.Framework.ActivityFlow
 {
@@ -91,41 +90,27 @@ namespace Immersive.Framework.ActivityFlow
             return CompleteActivityContentTransition(context);
         }
 
-        private IReadOnlyList<ActivityLocalVisibilityAdapter> CollectActivityLocalVisibilityAdapters()
+        private IReadOnlyList<ActivityLocalVisibilityAdapter> CollectActivityLocalVisibilityAdapters(
+            ActivityAsset previousActivity,
+            ActivityAsset activeActivity)
         {
             var bindings = new List<ActivityLocalVisibilityAdapter>();
-            var scannedSceneKeys = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-            RouteContentDiscoveryScope routeScope = _discoveryScope.RouteScope;
-            IReadOnlyList<RouteContentDiscoveryScene> routeOwnedScenes = routeScope.RouteOwnedScenes;
-            for (int i = 0; i < routeOwnedScenes.Count; i++)
-            {
-                var scene = routeOwnedScenes[i];
-                if (!AddSceneKey(scannedSceneKeys, scene.ScenePath, scene.SceneName))
-                {
-                    continue;
-                }
+            var seen = new HashSet<ActivityLocalVisibilityAdapter>();
+            AddBindings(
+                bindings,
+                seen,
+                SceneCompositionComponentQuery.GetComponents<ActivityLocalVisibilityAdapter>(
+                    _discoveryScope,
+                    previousActivity));
 
+            if (previousActivity == null || !ReferenceEquals(previousActivity, activeActivity))
+            {
                 AddBindings(
                     bindings,
-                    SceneScopedComponentQuery.GetComponentsInLoadedScene<ActivityLocalVisibilityAdapter>(
-                        scene.ScenePath,
-                        scene.SceneName));
-            }
-
-            IReadOnlyList<ActivityContentDiscoveryScene> activityOwnedScenes = _discoveryScope.ActivityOwnedScenes;
-            for (int i = 0; i < activityOwnedScenes.Count; i++)
-            {
-                var scene = activityOwnedScenes[i];
-                if (!AddSceneKey(scannedSceneKeys, scene.ScenePath, scene.SceneName))
-                {
-                    continue;
-                }
-
-                AddBindings(
-                    bindings,
-                    SceneScopedComponentQuery.GetComponentsInLoadedScene<ActivityLocalVisibilityAdapter>(
-                        scene.ScenePath,
-                        scene.SceneName));
+                    seen,
+                    SceneCompositionComponentQuery.GetComponents<ActivityLocalVisibilityAdapter>(
+                        _discoveryScope,
+                        activeActivity));
             }
 
             return bindings;
@@ -133,33 +118,21 @@ namespace Immersive.Framework.ActivityFlow
 
         private static void AddBindings(
             List<ActivityLocalVisibilityAdapter> bindings,
+            HashSet<ActivityLocalVisibilityAdapter> seen,
             IReadOnlyList<ActivityLocalVisibilityAdapter> discovered)
         {
-            if (bindings == null || discovered == null || discovered.Count == 0)
+            if (bindings == null || seen == null || discovered == null || discovered.Count == 0)
             {
                 return;
             }
 
             for (int i = 0; i < discovered.Count; i++)
             {
-                if (discovered[i] != null)
+                if (discovered[i] != null && seen.Add(discovered[i]))
                 {
                     bindings.Add(discovered[i]);
                 }
             }
-        }
-
-        private static bool AddSceneKey(HashSet<string> sceneKeys, string scenePath, string sceneName)
-        {
-            if (sceneKeys == null)
-            {
-                return false;
-            }
-
-            string sceneKey = !string.IsNullOrWhiteSpace(scenePath)
-                ? $"path:{scenePath.Trim()}"
-                : !string.IsNullOrWhiteSpace(sceneName) ? $"name:{sceneName.Trim()}" : string.Empty;
-            return !string.IsNullOrWhiteSpace(sceneKey) && sceneKeys.Add(sceneKey);
         }
 
         private static ActivityContentEntry CreateActivityContentEntry(

@@ -94,6 +94,22 @@ namespace Immersive.Framework.RouteLifecycle
             return _hasCurrentRouteContext;
         }
 
+        internal bool TryCreateCurrentRouteContentDiscoveryScope(
+            RouteAsset route,
+            out RouteContentDiscoveryScope scope)
+        {
+            scope = default;
+            if (!_hasCurrentRouteContext ||
+                route == null ||
+                !ReferenceEquals(route, CurrentRoute))
+            {
+                return false;
+            }
+
+            scope = _currentRouteContentDiscoveryScope;
+            return true;
+        }
+
         internal bool HasActiveRoute => CurrentRoute != null;
 
         internal bool HasActiveActivity => _activityFlowRuntime.HasActiveActivity;

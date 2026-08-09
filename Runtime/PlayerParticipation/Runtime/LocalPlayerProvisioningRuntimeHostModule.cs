@@ -6,6 +6,7 @@ using Immersive.Framework.Authoring;
 using Immersive.Framework.Common;
 using Immersive.Framework.Identity;
 using Immersive.Framework.PlayerSlots;
+using Immersive.Framework.RouteLifecycle;
 using Immersive.Framework.RuntimeContent;
 using Immersive.Framework.SceneLifecycle;
 using UnityEngine;
@@ -205,16 +206,25 @@ namespace Immersive.Framework.PlayerParticipation
             if (flow != null && flow.CurrentRoute != null)
             {
                 RouteAsset route = flow.CurrentRoute;
-                RuntimeContentOwner routeOwner = RuntimeContentOwner.Route(
-                    route.RouteId.StableText,
-                    route.RouteName,
-                    RuntimeDefinitionToken.FromUnityObject(route));
-                AddBindings(
-                    SceneScopedComponentQuery.GetComponentsInRoutePrimaryScene<
-                        LocalPlayerProvisioningConsumerAccessBinding>(route),
-                    LocalPlayerProvisioningConsumerScope.Route,
-                    routeOwner,
-                    desired);
+                RouteLifecycleRuntime routeLifecycle =
+                    flow.CurrentRouteLifecycleRuntime;
+                if (routeLifecycle != null &&
+                    routeLifecycle.TryCreateCurrentRouteContentDiscoveryScope(
+                        route,
+                        out RouteContentDiscoveryScope routeScope))
+                {
+                    RuntimeContentOwner routeOwner = RuntimeContentOwner.Route(
+                        route.RouteId.StableText,
+                        route.RouteName,
+                        RuntimeDefinitionToken.FromUnityObject(route));
+                    AddBindings(
+                        SceneCompositionComponentQuery.GetComponents<
+                            LocalPlayerProvisioningConsumerAccessBinding>(
+                            routeScope),
+                        LocalPlayerProvisioningConsumerScope.Route,
+                        routeOwner,
+                        desired);
+                }
             }
 
             Immersive.Framework.ActivityFlow.ActivityFlowRuntime activityFlow =
@@ -230,7 +240,7 @@ namespace Immersive.Framework.PlayerParticipation
                     activity.ActivityName,
                     RuntimeDefinitionToken.FromUnityObject(activity));
                 AddBindings(
-                    SceneScopedComponentQuery.GetComponentsInActivityContentScope<
+                    SceneCompositionComponentQuery.GetComponents<
                         LocalPlayerProvisioningConsumerAccessBinding>(
                         activityScope,
                         activity),
@@ -358,8 +368,6 @@ namespace Immersive.Framework.PlayerParticipation
 
                 if (binding.Scope != scope)
                 {
-                    binding.Release(
-                        $"Local Player provisioning consumer binding scope '{binding.Scope}' is invalid for the active '{scope}' content scope.");
                     continue;
                 }
 
