@@ -10,6 +10,38 @@
 
 ---
 
+# 0. 2026-08-09 post-audit certification reconciliation
+
+This document remains the historical A0 audit of the 2026-08-07 baseline. Its gap classifications must not be read as the current shipped state. The subsequent Player Surface cuts closed the audited consumer-reachability gaps.
+
+```text
+P1 scoped consumer access                         SHIPPED
+P2 immutable consumer observation                 SHIPPED
+P3 PlayerProvisioningCommandTrigger               SHIPPED
+P4 PlayerProvisioningStatusBinding                SHIPPED
+
+QA-PLAYER-SURFACE-01                              PASS 29/29
+QA-PLAYER-SURFACE-02                              PASS 36/36
+PLAYER SURFACE QA CERTIFIED                       YES
+```
+
+The public certification now directly proves the important gaps identified by A0:
+
+- public scoped cross-scene provisioning access;
+- public scoped immutable observation;
+- Open/Close Joining, Set Dynamic Capacity and RequestJoin;
+- public default Actor selection through its separate public boundary;
+- Slot/Host/Actor lifecycle observation;
+- logical preparation, physical materialization and gameplay admission as downstream runtime evidence;
+- Manager-Provisioned `WaitingForJoin` + `WaitCovered` pending-then-terminal behavior;
+- Activity exit preserving Session-owned join/Host;
+- reentry with newer occurrence and no duplicate Slot/Actor;
+- invalid/no-change/capacity rejection semantics;
+- missing/wrong/destroyed/stale scope behavior;
+- stale Actor selection revision and repeated selection behavior.
+
+Deep reservation mutation, assignment token mutation, internal reconcile, preparation/materialization commands and runtime-host module access remain internal QA concerns. They were **not** exposed merely to make Q1/Q2 public.
+
 # 1. Objective
 
 Determine which Manager-Provisioned Player behaviors are already certified through package surfaces available to a real consumer, which are only certified through QA-private/internal access, and which consumer-facing cases still lack direct certification.

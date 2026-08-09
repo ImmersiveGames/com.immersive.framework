@@ -173,7 +173,7 @@ This does **not** mean only 62 items matter. It means the architecture should st
 | C04 | **GLOBAL** | Fold into X01/X03/X04: Commands request operations from authorities rather than directly setting internal truth. | Remove from Player-specific matrix |  |
 | C05 | **DOMAIN DECISION** | Defines Activity-contextual capability scope validation against Who Participates. | Keep: Public Capability Scope |  |
 | C06 | **DOMAIN DECISION** | Defines Session capabilities/observation as independent of current Activity participation scope. | Keep: Public Capability Scope |  |
-| C07 | **TECHNICAL REVIEW** | Concrete scoped consumer reachability must be reconciled with ADR-015 and current package APIs. | Review queue | ADR-015 / current consumer surface |
+| C07 | **TECHNICAL REVIEW — RESOLVED** | Concrete scoped consumer reachability is implemented by ADR-015 P1/P2 and certified by Q1/Q2; ADR-015 remains Proposed pending final product evidence. | Closed technical review | ADR-015 P1–P4 / Q1–Q2 |
 
 ---
 
@@ -811,8 +811,7 @@ C07
 Question:
 
 ```text
-How do official scoped Player commands and observation surfaces
-map onto ADR-015 and current provisioning host/bridge/runtime APIs?
+Resolved 2026-08-09: official scoped Player commands and observation map through the shipped P1/P2 consumer boundary, with P3/P4 authoring/diagnostics. Q1 29/29 and Q2 36/36 certify the public/lifecycle contract.
 ```
 
 ---

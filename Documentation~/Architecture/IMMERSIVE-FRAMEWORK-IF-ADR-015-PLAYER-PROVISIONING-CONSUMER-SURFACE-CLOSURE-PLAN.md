@@ -1,10 +1,42 @@
 # Immersive Framework — IF-ADR-015 Player Provisioning Consumer Surface Closure Plan
 
 **Original plan date:** 2026-08-07  
-**Reconciled:** 2026-08-08  
-**Status:** Active execution plan — reconciled after IF-ADR-016 technical implementation  
+**Reconciled:** 2026-08-09  
+**Status:** Package + QA closure achieved; FIRSTGAME product proof and post-FIRSTGAME P5 disposition remain  
 **Primary objective:** close the real remaining IF-ADR-015 gap without creating a second Player authority  
 **Repositories:** `com.immersive.framework`, `QAFramework`, `planet-devourer`
+
+## 2026-08-09 Player Surface certification reconciliation
+
+The package implementation and technical QA gates described by this plan are now complete.
+
+```text
+P1  IF-PLAYER-SURFACE-03  CLOSED — scoped consumer access shipped
+P2  IF-PLAYER-SURFACE-04  CLOSED — immutable consumer observation shipped
+P3  IF-PLAYER-SURFACE-05  CLOSED — designer command trigger shipped
+P4  IF-PLAYER-SURFACE-06  CLOSED — status / diagnostics binding shipped
+
+Q1  QA-PLAYER-SURFACE-01  CERTIFIED — Unity Play Mode PASS 29/29
+Q2  QA-PLAYER-SURFACE-02  CERTIFIED — Unity Play Mode PASS 36/36
+
+Joint verdict
+  PLAYER SURFACE QA CERTIFIED
+```
+
+Certification used the authored public Route/Activity navigation path and the official package consumer surfaces. No package runtime gap remained after the QA fixture/lifecycle corrections. Internal QA authorities were not promoted to public API for certification.
+
+The remaining closure sequence is now:
+
+```text
+D1a  reconcile package + QA documentation
+F1   FIRSTGAME manual real-consumer proof
+P5   post-FIRSTGAME creation-workflow disposition
+     NO ADDITIONAL TOOLING REQUIRED is an acceptable outcome
+F2   final consumer/UX disposition
+D1b  final ADR-015 acceptance/closure when product evidence is complete
+```
+
+P5 is **not** a mandatory Wizard/Composer cut. `PlayerSessionProfile`, `PlayerProvisioningProfile`, `PlayerSlotProfile`, the shipped consumer binding, command trigger and status binding are the canonical baseline to test manually first.
 
 ## Historical Git baselines from the original plan
 
@@ -102,17 +134,17 @@ IF-ADR-016 technical dependency
     CONFIG-07 17/17
 
 P1–P4
-    OPEN — next package implementation sequence
+    CLOSED — implemented in the official package
 
 Q1 / Q2
-    OPEN — public and negative certification after P1–P4
+    CLOSED / CERTIFIED — Q1 29/29; Q2 36/36; joint verdict PLAYER SURFACE QA CERTIFIED
 
 FIRSTGAME
-    DEFERRED by current execution priority
+    NEXT PRODUCT EVIDENCE — manual real-consumer proof after documentation reconciliation
 
-old P5 Recipe/Composer design
-    SUPERSEDED / REFRAMED
-    must reuse IF-ADR-016 Profiles and only add creation tooling if real consumer friction justifies it
+P5 Recipe/Composer/tooling disposition
+    POST-FIRSTGAME / REFRAMED
+    must reuse IF-ADR-016 Profiles; no additional tooling is a valid outcome when real usage does not justify it
 ```
 
 ---
@@ -272,25 +304,25 @@ P0  IF-PLAYER-SURFACE-02                   CLOSED
 S0  IF-ADR-016 dependency checkpoint        CLOSED (technical)
     Session/Profile/provisioning initialization contracts available
 
-P1  IF-PLAYER-SURFACE-03
+P1  IF-PLAYER-SURFACE-03                   CLOSED
     Scoped Player provisioning consumer access
 
-P2  IF-PLAYER-SURFACE-04
+P2  IF-PLAYER-SURFACE-04                   CLOSED
     Consumer observation projection
 
-P3  IF-PLAYER-SURFACE-05
+P3  IF-PLAYER-SURFACE-05                   CLOSED
     Designer command authoring + validation
 
-P4  IF-PLAYER-SURFACE-06
+P4  IF-PLAYER-SURFACE-06                   CLOSED
     Status / diagnostics binding surface
 
-Q1  QA-PLAYER-SURFACE-01
+Q1  QA-PLAYER-SURFACE-01                   CERTIFIED — 29/29
     Public-only positive contract proof
 
-Q2  QA-PLAYER-SURFACE-02
+Q2  QA-PLAYER-SURFACE-02                   CERTIFIED — 36/36
     Negative, stale-scope and lifecycle hardening
 
-F1  FIRSTGAME-PLAYER-SURFACE-01             DEFERRED UNTIL REQUESTED
+F1  FIRSTGAME-PLAYER-SURFACE-01            NEXT AFTER DOC RECONCILIATION
     Manual real command + status consumer proof
 
 P5  IF-PLAYER-SURFACE-07                    REFRAMED
@@ -476,6 +508,8 @@ docs(adr): freeze player provisioning consumer boundary
 # 6. Cut P1 — IF-PLAYER-SURFACE-03
 ## Scoped Player provisioning consumer access
 
+**Status:** CLOSED — implemented in `com.immersive.framework`  
+
 **Type:** package runtime/public contract
 
 ### Objective
@@ -608,6 +642,7 @@ feat(player): expose scoped provisioning consumer access
 # 7. Cut P2 — IF-PLAYER-SURFACE-04
 ## Consumer observation projection
 
+**Status:** CLOSED — implemented in `com.immersive.framework`  
 **Type:** package public contract / diagnostics
 
 ### Objective
@@ -728,6 +763,7 @@ feat(player): expose consumer provisioning observation
 # 8. Cut P3 — IF-PLAYER-SURFACE-05
 ## Designer command authoring and validation
 
+**Status:** CLOSED — implemented in `com.immersive.framework`  
 **Type:** package UX/product
 
 ### Objective
@@ -834,6 +870,7 @@ feat(player-authoring): add provisioning command trigger
 # 9. Cut P4 — IF-PLAYER-SURFACE-06
 ## Status and diagnostics binding surface
 
+**Status:** CLOSED — implemented in `com.immersive.framework`  
 **Type:** package UX/product + observation
 
 ### Objective
@@ -919,6 +956,8 @@ feat(player-authoring): add provisioning status binding
 # 10. Cut Q1 — QA-PLAYER-SURFACE-01
 ## Public-only positive contract proof
 
+**Status:** CLOSED / CERTIFIED — Unity Play Mode PASS 29/29 on 2026-08-09  
+
 **Type:** technical QA / public API certification
 
 ### Objective
@@ -1003,6 +1042,8 @@ test(qa): prove public player provisioning surface
 
 # 11. Cut Q2 — QA-PLAYER-SURFACE-02
 ## Negative, stale-scope and lifecycle hardening
+
+**Status:** CLOSED / CERTIFIED — Unity Play Mode PASS 36/36 on 2026-08-09  
 
 **Type:** technical QA + smallest package fixes only when evidence requires them
 
@@ -1398,33 +1439,34 @@ docs(player): close provisioning consumer surface
 
 # 16. Closure gates
 
-## Gate C — Consumer contract ready
+## Gate C — Consumer contract ready — CLOSED
 
 ```text
 A0 CLOSED
 + P0 CLOSED
 + IF-ADR-016 technical dependency available
-+ P1
-+ P2
++ P1 CLOSED
++ P2 CLOSED
 ```
 
-## Gate CP — Product-facing command/status surface ready
+## Gate CP — Product-facing command/status surface ready — CLOSED
 
 ```text
-Gate C
-+ P3
-+ P4
+Gate C CLOSED
++ P3 CLOSED
++ P4 CLOSED
 ```
 
-## Gate QP — Consumer runtime surface certified
+## Gate QP — Consumer runtime surface certified — CLOSED / CERTIFIED
 
 ```text
-Gate CP
-+ Q1 public-only positive proof
-+ Q2 negative / stale-scope / lifecycle hardening
+Gate CP CLOSED
++ Q1 PASS 29/29
++ Q2 PASS 36/36
++ joint verdict PLAYER SURFACE QA CERTIFIED
 ```
 
-This gate can be completed before FIRSTGAME.
+This technical gate is complete before FIRSTGAME.
 
 ## Gate FG — Real consumer proof
 
@@ -1463,28 +1505,21 @@ FIRSTGAME visual success alone does not close IF-ADR-015. Conversely, speculativ
 
 # 17. Recommended immediate next action
 
-A0 and P0 are already closed, and IF-ADR-016 now supplies the canonical Session/Profile initialization model required underneath the consumer surface.
+P1–P4 and Q1/Q2 are complete. The package/public QA surface is stable enough to leave technical certification and move to real-consumer evidence.
 
-The next implementation cut is therefore:
-
-```text
-P1 — IF-PLAYER-SURFACE-03
-Scoped Player provisioning consumer access
-```
-
-Then continue without FIRSTGAME interruption through:
+The immediate sequence is:
 
 ```text
-P1 → P2 → P3 → P4 → Q1 → Q2
+D1a — documentation reconciliation                 CURRENT
+→ F1 — FIRSTGAME manual real-consumer proof        NEXT
+→ P5 — creation-workflow/tooling disposition       AFTER FIRSTGAME
+→ F2 — final consumer UX disposition
+→ D1b — final ADR-015 acceptance/closure
 ```
 
-Only after the package/public QA surface is stable do we return to the deferred manual consumer proof:
+P5 must be evidence-driven. `NO ADDITIONAL TOOLING REQUIRED` is a valid closure if the manual FIRSTGAME workflow is understandable and sufficiently efficient.
 
-```text
-F1 → P5 disposition → F2 → D1
-```
-
-The P1 implementation must specifically avoid reopening IF-ADR-016:
+The shipped implementation must continue to avoid reopening IF-ADR-016:
 
 ```text
 no new Session configuration source

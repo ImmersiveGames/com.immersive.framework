@@ -1,42 +1,40 @@
 # IF-ADR-015 — Player Provisioning Commands and Consumer Observation Surface
 
 Status: Proposed  
-Last updated: 2026-08-07  
-Implementation completion: **30%**  
-Implementation classification: **runtime foundations and consumer prototype exist; one canonical package product surface is not yet shipped**  
-Related decisions: IF-ADR-002, IF-ADR-003, IF-ADR-006, IF-ADR-010, IF-ADR-012, IF-ADR-014
+Last updated: 2026-08-09  
+Implementation completion: **80%**  
+Implementation classification: **canonical package consumer surface P1–P4 shipped and QA-certified; FIRSTGAME proof, post-FIRSTGAME P5 disposition and final product closure remain**  
+Related decisions: IF-ADR-002, IF-ADR-003, IF-ADR-006, IF-ADR-010, IF-ADR-012, IF-ADR-014, IF-ADR-016
 
-## Current source baseline
+## Current source / certification baseline
 
 ```text
 com.immersive.framework
-  832cfb718cad7eb986523fc51c4cb96b1c9a2a8e
-  IF-TXN-03A Docs
+  cf0a37fbcbf72ad2a08556d6045c908521bfd2c1
+  P4 — IF-PLAYER-SURFACE-06 — Status / Diagnostics Binding
 
 QAFramework
-  c99df1e77a8408e6b48124a5d371f09e9af52019
-  IF-TXN-03A
+  Git baseline inspected: 52a31aa9cd237d934ed3241392b87b7990f11dc8
+  Unity Play Mode certification executed 2026-08-09
 
-FIRSTGAME / planet-devourer
-  ab1bfe65c09af8988c2fe21ce06db780fe12aa70
-  Demo03Etapa04
+Player Surface QA
+  QA-PLAYER-SURFACE-01  PASS — 29/29
+  QA-PLAYER-SURFACE-02  PASS — 36/36
+  joint verdict: PLAYER SURFACE QA CERTIFIED
 ```
 
-This ADR consolidates the two IF-ADR-015 documents that existed simultaneously in
-`Documentation~/Architecture/ADRs` at the package baseline above.
-
-The ADR decision and implementation status are intentionally separate:
+The normative ADR status and implementation status remain intentionally separate:
 
 ```text
 Normative status
   Proposed
 
 Implementation assessment
-  30%
+  80%
 
 Meaning
-  the architectural boundary is substantially defined,
-  but the official consumer-facing package surface is not complete.
+  the official package consumer boundary is shipped and technically certified;
+  real-consumer product proof and final creation-workflow/documentation disposition remain.
 ```
 
 ## Context
@@ -48,13 +46,12 @@ open joining
 close joining
 change dynamic capacity
 request a local Player join
-request Actor selection when explicitly required
+request default Actor selection when explicitly required
 ```
 
-Route- or Activity-owned UI also needs immutable evidence from Session-scoped Player
-authorities.
+Route- or Activity-owned consumers also require immutable evidence from Session-scoped Player authorities without becoming those authorities.
 
-The existing runtime already owns substantial Player behavior:
+The framework already owns the underlying runtime behavior:
 
 ```text
 Session Player participation
@@ -69,53 +66,25 @@ Activity occurrence / Session revision reconciliation
 contextual Activity release
 ```
 
-The product gap is not another Player authority.
-
-The gap is the absence of one canonical package boundary through which a normal
-consumer can:
-
-```text
-issue supported Player provisioning commands
-+
-observe immutable Player provisioning state
-+
-correlate Slot / Host / Logical Player / Actor / Activity evidence
-```
-
-without depending on internal runtime modules or inventing a permanent local
-integration framework.
-
-Without an official surface, consumers tend to create their own:
-
-```text
-ScriptableObject event channels
-command enums
-persistent receivers
-status bridges
-snapshot projections
-cross-scene lookup conventions
-```
-
-That duplicates framework-facing integration and can produce incompatible command
-semantics, stale diagnostics, hidden authority and accidental consumer dependency on
-internal implementation details.
+The purpose of this ADR is therefore **consumer reachability and observation**, not a second Player authority.
 
 ## Decision
 
-The Immersive Framework owns the canonical Player provisioning **command** and
-**observation** product boundary.
+The Immersive Framework owns the canonical Player provisioning **command** and **observation** product boundary.
 
-The package exposes typed, public and explicitly scoped commands for the supported
-Player provisioning operations, together with immutable read-only observations of
-the authorities that execute them.
+The package exposes:
 
-The command surface is not another runtime authority.
+```text
+typed scoped consumer access
+supported public Player provisioning commands
+immutable current observation
+explicit designer command authoring
+read-only status / diagnostics presentation
+```
 
-The observation surface is not mutable runtime state.
+The command surface requests operations from existing authorities. The observation surface projects immutable evidence from them. Neither surface owns duplicate mutable Player truth.
 
-Consumer UI presents state and requests operations. It does not reserve Slots,
-prepare Actors, materialize gameplay Actors, calculate Activity readiness or invoke
-Activity reconciliation directly.
+Consumer UI may request supported operations and present observations. It must not directly reserve Slots, prepare Actors, materialize gameplay Actors, calculate Activity readiness or invoke internal reconciliation.
 
 ## Authority boundary
 
@@ -138,37 +107,57 @@ Gameplay admission runtime
 Activity readiness runtime
   owns aggregate Activity readiness
 
-Package command surface
-  requests supported operations from those authorities
+Package Player Surface
+  exposes supported requests + immutable observations
 
-Package observation surface
-  projects immutable evidence from those authorities
-
-Consumer UI
-  invokes commands and presents observations
+Consumer UI / game code
+  invokes requests and presents observations
 ```
 
-No command or presentation component introduced by this ADR becomes an alternative
-authority for Player participation, Actor lifecycle or Activity readiness.
+## Canonical initialization boundary — IF-ADR-016
+
+IF-ADR-015 does not define a second Session configuration source.
+
+Session initialization intent is authored through IF-ADR-016:
+
+```text
+PlayerSlotProfile(s)
+  stable supported Slot definitions
+
+PlayerProvisioningProfile
+  default / per-Slot Host provisioning intent
+  Actor resolution policy
+
+PlayerSessionProfile
+  ordered Supported Slots
+  Initial Capacity
+  Initial Joining Open
+  PlayerProvisioningProfile
+
+GameApplicationAsset
+  Player Session Enabled
+  Default Player Session Profile
+```
+
+An explicit creation-time `PlayerSessionProfile` override replaces the application default completely. It is not field-merged, and an invalid explicit override does not silently fall back.
+
+Runtime commands in this ADR operate on the created Session. They do not mutate authored Profiles as an alternative runtime configuration authority.
 
 ## Canonical command vocabulary
 
-The package must expose operations equivalent to:
+The supported consumer vocabulary is:
 
 ```text
 Open Joining
 Close Joining
 Set Dynamic Capacity
 Request Join
-Request Actor Selection
+Request Default Actor Selection
 ```
 
-The exact public type names may follow existing package vocabulary during
-implementation.
+Default Actor selection remains a separate public Actor-selection boundary; it is not collapsed into the provisioning authority.
 
-Only commands supported by the accepted Player lifecycle may be exposed.
-
-The normal consumer surface must not expose commands equivalent to:
+The normal consumer surface does **not** expose commands equivalent to:
 
 ```text
 Reserve Slot
@@ -180,234 +169,261 @@ Reconcile Activity
 Mutate readiness
 ```
 
-Those remain internal authority operations or consequences of accepted public
-commands.
+Those remain internal authority operations or normal downstream consequences of accepted public requests.
 
-Every command result must be typed and diagnostic enough to distinguish at least:
+Public results remain typed and diagnostic. The certified surface distinguishes successful operations, no-change, invalid state/request, joining closed, capacity reached, stale revisions and unavailable runtime/scope conditions as applicable to the underlying operation.
 
-```text
-accepted / completed
-no change / already satisfied
-rejected by current state
-capacity or availability rejection
-invalid required configuration
-in-flight / conflicting request when applicable
-explicit runtime failure
-```
+## Canonical scoped access — P1
 
-Where an operation changes Session state, its result must preserve revision
-correlation appropriate to the underlying authority.
+P1 (`IF-PLAYER-SURFACE-03`) is shipped.
 
-## Canonical observation model
-
-The package must expose immutable consumer-safe observations sufficient for both
-normal presentation and public-only QA.
-
-### Player Provisioning Snapshot
-
-The aggregate provisioning projection must provide evidence equivalent to:
+Primary public types include:
 
 ```text
-configured Slot count
-dynamic capacity
-joining state
-current Session revision
-per-Slot provisioning / assignment evidence
-last relevant provisioning result when appropriate
+LocalPlayerProvisioningConsumerAccessBinding
+ILocalPlayerProvisioningConsumerAccess
+LocalPlayerProvisioningConsumerScope
+LocalPlayerProvisioningConsumerAccessSnapshot
 ```
 
-### Per-Slot assignment evidence
+The binding is authored in an explicit framework-owned Route or Activity scope. Runtime host integration injects the live endpoint for the matching current scope.
 
-The framework currently has useful partial evidence, but no single canonical
-projection answers the complete product question:
+Required properties:
 
 ```text
-Which Logical Player and Host occupy this Slot,
-which Actor is selected/prepared/materialized,
-and under which Session / Activity correlation?
+typed
+explicit scope
+explicit lifetime
+stale-scope rejection
+diagnostic unavailable state
+no cross-scene serialized authority reference
 ```
 
-The canonical observation surface must therefore provide enough immutable per-Slot
-evidence to correlate, when applicable:
+The implementation does not use a public static registry, service locator, reflection or name/hierarchy lookup.
+
+## Canonical observation model — P2
+
+P2 (`IF-PLAYER-SURFACE-04`) is shipped as a read-only projection through the scoped consumer surface.
+
+The public observation composes existing authoritative evidence rather than creating a second state store. It includes, as applicable:
+
+```text
+Participation snapshot
+immutable initialization configuration evidence
+Manager-Provisioned lifecycle snapshot
+Activity owner / occurrence
+Session revision / applied Session revision
+per-Slot observation
+```
+
+Per-Slot evidence can correlate:
 
 ```text
 PlayerSlotId
 Joined state
-Logical Player evidence
-Host evidence
-Player source / provisioning origin
 selected Actor
-Logical Actor preparation state
-physical Actor materialization state
-gameplay admission state
-Session revision
-contextual Activity owner / occurrence evidence
-Activity revision or equivalent correlation evidence
+Host evidence
+logical Actor preparation
+physical Actor materialization
+gameplay admission
+current Activity correlation
 ```
 
-Physical Unity object references and mutable runtime structures remain inside the
-runtime unless a narrow public reference is explicitly justified.
+Detailed owner/token/revision correlation belongs in Advanced / Debug. Mutable runtime structures remain internal.
 
-Normal presentation may expose a compact subset. Detailed owner, token, occurrence
-and revision evidence belongs in Advanced / Debug.
+Repeated observation is non-mutating.
 
-### Provisioning Operation Result
+## Designer command authoring — P3
 
-A command result should expose evidence equivalent to:
+P3 (`IF-PLAYER-SURFACE-05`) is shipped through:
 
 ```text
-operation
-status
-reason
-affected Slot when applicable
-requested revision when applicable
-committed revision when applicable
+PlayerProvisioningCommandTrigger
 ```
 
-### Activity Player Readiness Snapshot
+The component provides explicit authorable invocation for supported operations. It does not execute gameplay accidentally from `Awake`, `OnEnable`, `Start` or `OnValidate`.
 
-The consumer observation boundary must also be able to correlate Player progression
-with the active Activity readiness occurrence without becoming readiness authority.
+Default Actor selection delegates to the existing public Actor-selection authoring boundary rather than creating a second command authority.
 
-Evidence is equivalent to:
+The normal Inspector is designer-first; technical details remain Advanced / Debug.
+
+## Status / diagnostics binding — P4
+
+P4 (`IF-PLAYER-SURFACE-06`) is shipped through:
 
 ```text
-Activity identity
-readiness occurrence
-readiness state
-readiness reason
-projected Slots
-pending Player requirements
+PlayerProvisioningStatusBinding
 ```
 
-The exact public split between provisioning and Activity-readiness snapshots remains
-an implementation decision. The requirement is one coherent public observation
-model, not one monolithic DTO.
+The binding is read-only. It projects P2 observation and, when explicitly associated, the last P3 operation result. It does not create a global last-operation store, poll through hidden scene searches or become Player authority.
+
+Status distinguishes available, unavailable and stale conditions and exposes richer correlation only in Advanced / Debug.
 
 ## Cross-scene integration requirement
 
-The canonical surface must support the recurring topology:
+The canonical topology remains:
 
 ```text
 Persistent Application Content
   PlayerInputManager
-  provisioning authoring
-  Session Player authority
+  LocalPlayerProvisioningAuthoring
+  LocalPlayerProvisioningHostRegistration
+  LocalPlayerActorSelectionRequestAuthoring when used
 
 Route / Activity content
-  Join controls
-  Actor-selection controls when applicable
-  status presentation
+  LocalPlayerProvisioningConsumerAccessBinding
+  PlayerProvisioningCommandTrigger when useful
+  PlayerProvisioningStatusBinding when useful
+  game UI / presentation
 ```
 
-A Route- or Activity-owned consumer must not require a serialized scene-object
-reference to a persistent runtime object.
+A Route- or Activity-owned consumer does not require a serialized reference to a persistent runtime authority.
 
-The integration mechanism must be:
-
-```text
-typed
-explicitly scoped
-lifetime-explicit
-diagnostic
-compatible with additive Route / Activity content
-```
-
-It must not depend on:
+The package implementation intentionally rejects:
 
 ```text
 public static runtime registry
 service locator
 reflection
-FindObjectOfType / scene-wide search
+FindObjectOfType / scene-wide authority search
 hierarchy or object-name inference
 generic global event bus
-log parsing
-consumer access to internal preparation or reconciliation modules
+log parsing as state
+direct consumer access to internal prepare / materialize / reconcile modules
 ```
 
-This ADR intentionally does **not** mandate a universal ScriptableObject event
-channel.
+## WaitCovered and externally-driven Player progression
 
-The final implementation may use one or more specialized package surfaces such as:
+The public certification directly proves the important Manager-Provisioned case:
 
 ```text
-authorable command trigger
-request component
-typed scoped endpoint
-specialized command channel
-typed provider
-Composer-materialized binding
+Required Player participation
++ WaitCovered
++ no joined Player yet
+→ Activity entry remains pending / WaitingForJoin
+→ Loading remains covered and non-terminal
+
+public OpenJoining / SetDynamicCapacity / RequestJoin
++ default Actor selection
++ normal prepare / materialize / admit
+→ Player contribution reaches Ready
+→ WaitCovered loading becomes terminal
+→ transition/loading gate is released according to the normal readiness contract
 ```
 
-provided the authority and lifetime requirements above are preserved.
+The framework does not fake readiness, auto-join, force reveal or silently weaken a Required Player contribution.
 
-## Product authoring direction
+## QA boundary and certification
 
-The preferred product experience is:
+QAFramework must prove the same public surface expected from a normal consumer while retaining internal QA for authority invariants.
+
+Public certification must not use, as the Player consumer path:
 
 ```text
-Manager-Provisioned Player Recipe / Profile
-  reusable provisioning intent
-
-Manager-Provisioned Player Composer
-  persistent concrete composition
-
-Apply / Rebuild
-  idempotent technical materialization when justified
-
-Player Provisioning Command Trigger
-  designer-facing supported command selection
-
-Player Provisioning Status Binding / Presenter
-  read-only observation binding
-
-Advanced / Debug
-  Slot
-  Host
-  Logical Player
-  Actor selection
-  preparation / materialization
-  gameplay admission
-  Session revision
-  Activity occurrence
-  last operation result
+reflection
+internal preparation APIs
+internal reconciliation APIs
+manual runtime authority construction
+external Slot mutation
+consumer-side Actor materialization
+runtime module lookup
+global authority search
+log parsing as authority
 ```
 
-The normal Inspector presents product intent first:
+### Q1 — public-only positive contract proof
+
+Certified 2026-08-09:
 
 ```text
-Operation
-target Slot / Player when applicable
-required configuration
-current status
-last result
-validation
+QA-PLAYER-SURFACE-01
+  PASS — 29/29
 ```
 
-Internal ports, modules, registries, tokens and reconciliation internals remain
-internal or Advanced / Debug.
+It proves authored public navigation, scoped access, joining, capacity, join, Host/Slot evidence, public default Actor selection, normal downstream lifecycle, WaitCovered pending-then-terminal behavior, Activity exit, Session persistence and reentry without duplicate Slot/Actor.
 
-Apply / Rebuild must be idempotent, non-destructive, Undo-aware and safe for prefab
-workflows. It must not execute gameplay in Edit Mode or silently repair invalid
-runtime state.
+### Q2 — negative / stale-scope / lifecycle hardening
+
+Certified 2026-08-09:
+
+```text
+QA-PLAYER-SURFACE-02
+  PASS — 36/36
+```
+
+It proves closed-joining rejection, invalid/exhausted capacity, no-change behavior, missing/wrong/destroyed/stale scope handling, Activity exit/reentry lifetime behavior, stale Actor selection revision and deliberately unbound public navigation failure.
+
+### Joint verdict
+
+```text
+PLAYER SURFACE QA CERTIFIED
+```
+
+Internal reservation/assignment/reconcile/preparation/materialization tests remain valuable authority QA but are not public product APIs.
+
+## Product authoring direction and P5 disposition
+
+The previously suggested mandatory Manager-Provisioned Recipe/Composer workflow is **not a required precondition** for the current surface.
+
+The canonical manual baseline is intentionally explicit:
+
+```text
+PlayerSlotProfile
+PlayerProvisioningProfile
+PlayerSessionProfile
+GameApplicationAsset
+persistent provisioning composition
+scoped consumer binding
+optional command trigger
+optional status binding
+```
+
+P5 (`IF-PLAYER-SURFACE-07`) is a **post-FIRSTGAME product disposition** step.
+
+Possible outcomes include:
+
+```text
+NO ADDITIONAL TOOLING REQUIRED
+small Create-menu / Inspector assistance
+small template/sample
+focused Composer/Wizard only if real usage proves recurring friction
+```
+
+A Wizard or Composer must not be introduced merely because the architecture can support one.
+
+If tooling is justified, it must be idempotent, safe, non-destructive, Undo-aware, prefab-safe and must expose materialized technical components in Advanced / Debug rather than hiding authority.
+
+## FIRSTGAME boundary
+
+FIRSTGAME is now the next product evidence gate, not the source of technical Player authority.
+
+FIRSTGAME should manually prove that a real consumer can:
+
+```text
+create the Profiles
+configure the persistent provisioning composition
+add scoped command/status consumers
+enter a WaitCovered Activity
+join a Manager-Provisioned Player
+select/prepare/materialize/admit the Actor through normal runtime behavior
+understand status and diagnostics
+exit/reenter without duplicate Player state
+```
+
+FIRSTGAME may own layout, visuals, game-specific prefabs, movement and wording. Permanent framework-facing routing/projection solutions belong in the package.
 
 ## Validation requirements
 
-Authoring validation must identify actionable invalid configuration without
-introducing fallback.
-
-Validation should cover the configuration needed by the selected command or
-observation surface, including where applicable:
+Authoring/runtime validation must remain explicit and actionable for cases such as:
 
 ```text
 missing provisioning composition
-invalid Player prefab / host configuration
-invalid Slot target
-unsupported Actor-selection command
-incompatible command target
-missing observation binding
-ambiguous or invalid scope
+invalid Host prefab / PlayerInputManager configuration
+invalid Session Profile / Slot configuration
+unsupported command target
+missing consumer binding
+wrong/stale scope
+unavailable runtime
 ```
 
 The framework must not silently:
@@ -415,205 +431,104 @@ The framework must not silently:
 ```text
 open joining
 auto-join
-change participation policy
-change Activity readiness policy
+change capacity to satisfy a request
+change participation/readiness policy
 reserve another Slot
-select an Actor outside the accepted policy
-weaken a Required Player contribution
+select another Actor outside policy
+weaken Required readiness
+fall back from invalid explicit Session configuration
 ```
-
-to make an invalid composition appear functional.
-
-## FIRSTGAME Demo03 boundary
-
-FIRSTGAME Demo03 is the temporary real-consumer prototype for this product surface.
-
-Until the official package surface exists, Demo03 may contain consumer-local
-integration equivalent to:
-
-```text
-Demo03 command emitter
-Demo03-specific command channel
-Demo03 persistent receiver
-Demo03 read-only status projection
-Demo03 presenter
-```
-
-The prototype must:
-
-```text
-remain Demo03-specific
-use consumer namespaces
-call only public package APIs
-preserve package runtime authority
-publish only read-only presentation evidence
-record UX findings
-```
-
-It must not:
-
-```text
-become a shared consumer framework
-use Immersive.Framework.* namespaces for game code
-be documented as the canonical framework workflow
-become a generic reusable global event bus
-calculate Activity readiness locally
-mutate Slots directly
-prepare or materialize Actors directly
-invoke internal reconciliation
-parse logs as runtime state
-```
-
-When the official package surface is complete, Demo03 must migrate to it and its
-temporary compatibility bridge must be removed.
-
-## QA boundary
-
-QAFramework must prove the same public surface expected from a normal consumer.
-
-A canonical public-only suite must exercise the accepted command and observation
-contracts without using:
-
-```text
-reflection
-internal preparation APIs
-internal reconciliation APIs
-manual RuntimeScopeContext construction as the consumer path
-external Slot mutation
-consumer-side Actor materialization
-global object lookup
-log parsing as authority
-```
-
-At minimum, QA must prove:
-
-```text
-Open / Close Joining command semantics
-Request Join success
-explicit rejection / no-change semantics
-capacity behavior relevant to the public contract
-Actor-selection command behavior when supported
-Session revision correlation
-immutable per-Slot observation
-Activity occurrence correlation
-automatic downstream reconcile after accepted Session changes
-clean contextual Activity exit and reentry
-no duplicate Actor / Host / Slot assignment caused by repeated observation or command use
-```
-
-Negative provisioning hardening remains a package/QA responsibility, not a
-FIRSTGAME fault-injection responsibility.
 
 ## Current implementation coverage
 
-### Already present
+### Shipped and technically certified
 
 ```text
-Session-scoped Player participation authority
-Manager-Provisioned join flow
-Slot reservation and admission
-Actor selection / preparation contracts
-physical Actor materialization
-gameplay admission
-Activity Player readiness contribution
-cold-start and active-Activity reconciliation
-partial public provisioning operations
-partial runtime diagnostics and lifecycle snapshots
-FIRSTGAME Demo03 consumer prototype
+IF-ADR-016 Session/Profile initialization contracts
+P1 scoped provisioning consumer access
+P2 immutable consumer observation
+P3 PlayerProvisioningCommandTrigger
+P4 PlayerProvisioningStatusBinding
+public default Actor-selection request boundary
+Q1 public positive Player Surface proof — 29/29 PASS
+Q2 negative/stale/lifecycle Player Surface proof — 36/36 PASS
+WaitCovered WaitingForJoin pending-then-terminal public proof
 ```
 
-### Not yet complete as one canonical product surface
+### Remaining before final ADR product closure
 
 ```text
-final minimal command contracts
-one coherent immutable consumer observation model
-canonical Slot / Host / Logical Player / Actor assignment projection
-explicit cross-scene command / observation integration
-designer-facing command trigger
-status binding / presenter
-Manager-Provisioned Recipe / Composer workflow
-canonical public-only QA suite
-FIRSTGAME migration away from its temporary bridge
-short canonical usage documentation
+FIRSTGAME manual real-consumer proof
+post-FIRSTGAME P5 creation-workflow/tooling disposition
+final consumer UX disposition
+final canonical documentation reconciliation after real-consumer findings
+formal ADR acceptance when those product gates are satisfied
 ```
-
-The implementation assessment remains **30%** because substantial runtime capability
-already exists, while the package product boundary, public-only proof and final
-consumer workflow remain incomplete.
 
 ## Out of scope
 
-This ADR does not define:
+This ADR still does not define:
 
 ```text
 Session Player Leave
 device disconnect / reconnect
-Session-Persistent Player source
+Session-Persistent Player implementation
 generic multiplayer networking
 generic application event bus
-game-specific UI layout, colors or text
-game-specific input prompts
-game-specific command grouping
+game-specific UI layout/colors/text
+generic character-selection flow
 Player movement
-Activity readiness calculation
-internal Actor preparation or reconciliation APIs as public product commands
+internal Actor preparation/reconcile operations as public commands
 ```
-
-Those require separate decisions when a real product requirement justifies them.
 
 ## Rejected alternatives
 
-- Requiring every game to permanently create its own provisioning event channel.
-- Promoting the Demo03 compatibility bridge into a generic shared consumer layer.
-- Creating a generic global event bus inside the framework.
-- Letting Route / Activity UI find persistent authorities through hierarchy or scene search.
-- Exposing internal preparation or reconciliation modules to consumer UI.
+- Requiring every game to build a permanent provisioning event channel.
+- Promoting a consumer-local compatibility bridge into shared framework architecture.
+- Creating a generic global event bus.
+- Letting consumers find persistent authorities through hierarchy, scene search or object name.
+- Exposing internal preparation/reconciliation modules to consumer UI.
 - Treating Unity button callbacks as the provisioning contract.
-- Inferring Player state from instantiated GameObjects, hierarchy names or logs.
+- Inferring Player state from instantiated GameObjects or logs.
 - Creating a second mutable Player state store for presentation.
 - Making Loading or Activity UI the source of Player readiness truth.
+- Treating a Wizard/Composer as mandatory before real consumer evidence exists.
 
-## Required implementation order
+## Remaining implementation / product order
 
 ```text
-1. Consolidate and canonicalize IF-ADR-015.
-2. Use Demo03 findings to freeze the minimal public command vocabulary.
-3. Define the coherent immutable provisioning / per-Slot observation model.
-4. Implement the scoped cross-scene command and observation boundary in the package.
-5. Implement designer-facing command and status authoring surfaces.
-6. Validate the public-only contract in QAFramework.
-7. Add / finalize the Manager-Provisioned Recipe / Composer workflow.
-8. Migrate FIRSTGAME Demo03 to the package surfaces.
-9. Remove the temporary Demo03 bridge.
-10. Publish the canonical usage guide and close remaining package-owned UX findings.
+1. P1 scoped consumer access                         CLOSED
+2. P2 immutable observation                         CLOSED
+3. P3 command authoring                              CLOSED
+4. P4 status / diagnostics                           CLOSED
+5. Q1 public positive QA                             CERTIFIED 29/29
+6. Q2 negative/lifecycle QA                          CERTIFIED 36/36
+7. documentation reconciliation                      CURRENT
+8. FIRSTGAME manual real-consumer proof              NEXT
+9. P5 creation-workflow/tooling disposition          AFTER FIRSTGAME
+10. final FIRSTGAME UX disposition + ADR closure     PENDING
 ```
-
-Steps may be split into smaller implementation cuts. Runtime, product authoring and
-QA responsibilities must remain separated.
 
 ## Acceptance criteria
 
-This ADR may move to **Accepted** when:
+This ADR may move to **Accepted** when the already shipped technical surface and remaining product evidence jointly satisfy:
 
 ```text
 one canonical ADR-015 exists
-the ownership boundary is approved
-the public command vocabulary is explicit
+ownership boundary remains explicit
+public command vocabulary is bounded
 command results are typed and diagnostic
 consumer observations are immutable
-Slot / Host / Logical Player / Actor evidence is coherently correlated
-cross-scene integration has explicit scope and lifetime
-no global lookup, service locator or generic event bus is introduced
-consumer UI does not call internal prepare / materialize / reconcile authority
-designer-facing command and status authoring exist
-QA proves the supported flow through public APIs
-FIRSTGAME Demo03 uses the official package surface
-the temporary Demo03 compatibility bridge is removed
-canonical usage documentation matches the shipped product surface
+Slot / Host / Actor evidence is coherently correlated
+cross-scene access has explicit scope and lifetime
+no global lookup / service locator / generic event bus exists
+designer command/status surfaces exist
+QA proves supported positive and negative flows through public APIs
+FIRSTGAME proves the official package surface in a real game composition
+P5 creation-workflow disposition is explicitly recorded
+temporary consumer compatibility bridges are removed or clearly non-canonical
+canonical usage documentation matches the final product surface
 ```
-
-Package capability completion additionally requires disposition of provisioning
-hardening and product-authoring findings according to IF-ADR-002 and IF-ADR-010.
 
 ## Completion interpretation
 
@@ -622,27 +537,29 @@ Core Player runtime
   substantially implemented
 
 Manager-Provisioned consumer product surface
-  incomplete
+  shipped
 
-Canonical command boundary
-  pending final package implementation
+Canonical scoped command boundary
+  shipped / QA-certified
 
-Canonical observation / assignment projection
+Canonical immutable observation
+  shipped / QA-certified
+
+Designer command/status authoring
+  shipped
+
+Public-only technical QA
+  certified — Q1 29/29; Q2 36/36
+
+FIRSTGAME real-consumer proof
   pending
 
-Public-only QA
-  pending
-
-FIRSTGAME real-consumer prototype
-  present, temporary
+P5 creation workflow disposition
+  pending after FIRSTGAME; tooling is not mandatory
 
 ADR status
   Proposed
 
 Implementation completion
-  30%
+  80%
 ```
-
-The next implementation work should improve the public product boundary. It should
-not create another Player authority, expose internal reconcile operations or expand
-into Session-Persistent Player without a separate approved requirement.

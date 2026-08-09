@@ -632,7 +632,7 @@ This should not become an unbounded universal mini visual-scripting system.
 | C04 | Commands | Commands are requests to existing authorities, not setters for internal mutable state. | **Closed** |
 | C05 | Activity capabilities | Activity-contextual capabilities validate Who Participates. | **Closed** |
 | C06 | Session capabilities | RequestJoin, Capacity and general Session observation do not depend on current Activity Who Participates. | **Closed** |
-| C07 | Consumer boundary | Concrete scoped reachability for commands/observation must be reconciled against ADR-015 and current implementation. | **Open for technical review** |
+| C07 | Consumer boundary | Typed scoped command/observation reachability is implemented through the official ADR-015 Player Surface and certified by Q1/Q2; ADR-015 normative acceptance still waits for final product evidence. | **Closed technically / ADR-015 remains Proposed** |
 
 Canonical Activity observation direction:
 
@@ -928,11 +928,11 @@ The following must be resolved after gap analysis and source/ADR confrontation:
 5. How Route physical-presence intent relates to any existing Route/player preparation contracts.
 6. Exact transition/Entry Attempt semantics vs existing transition ADRs and runtime state machine.
 7. Whether Join blocking/inhibit semantics already exist under another contract and can be refined rather than duplicated.
-8. Exact scoped consumer reachability for Player commands and observation under ADR-015.
+8. **CLOSED technically:** scoped consumer reachability for Player commands and observation is implemented and QA-certified under ADR-015.
 9. Which reaction/failure contracts already exist and whether the proposed authoring is a compatible extension.
 10. Which `Inherit + Override` semantics can safely be generalized to other framework areas.
 11. Exact names, namespaces, assets and authoring components.
-12. QA and FIRSTGAME cuts only after the official contract shape is reconciled.
+12. **QA completed:** Q1/Q2 are certified. FIRSTGAME manual proof is the next real-consumer cut; creation tooling is evaluated only after that evidence.
 
 ---
 

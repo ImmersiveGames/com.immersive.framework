@@ -1,8 +1,8 @@
 # Player Usage
 
 Status: Current  
-Last updated: 2026-08-06  
-Validated reference: `PLAYER-DIAG-1`
+Last updated: 2026-08-09  
+Validated references: `PLAYER-DIAG-1`, `IF-SESSION-CONFIG-05/05B/07`, `QA-PLAYER-SURFACE-01/02`
 
 ## 1. Product model
 
@@ -12,11 +12,11 @@ The framework owns one Session-scoped Player participation authority:
 PlayerParticipationRuntimeContext
 ```
 
-A local Player composition is not one monolithic object. Keep these facts separate:
+Keep these concepts separate:
 
 ```text
 Player Slot
-  stable logical seat configured by the Game Application
+  stable logical seat identified by PlayerSlotId
 
 Local Player Host
   physical local input host, normally containing PlayerInput
@@ -30,8 +30,11 @@ Actor selection
 Logical Actor
   prepared, instantiated or adopted Actor identity
 
-Gameplay eligibility
-  input, Camera and gameplay-action evidence required by an Activity
+Physical Actor materialization
+  contextual runtime representation for the current Activity
+
+Gameplay admission
+  input, Camera and gameplay-action eligibility required by an Activity
 ```
 
 `PlayerInput.playerIndex`, join order, hierarchy order and object name are not `PlayerSlotId`.
@@ -40,27 +43,79 @@ Gameplay eligibility
 
 | Source | Use when | Product status |
 |---|---|---|
-| Manager-Provisioned | an explicit join creates a physical Host through `PlayerInputManager` via `LocalPlayerProvisioningAuthoring` | Package Experimental; runtime and authoring exist; FIRSTGAME consumer proof pending |
+| Manager-Provisioned | an explicit join creates a physical Host through `PlayerInputManager` | **Package surface implemented and QA-certified; FIRSTGAME manual product proof pending** |
 | Scene-Provided | a Route or Activity scene already contains the Host and Logical Actor | Stable product subset; FIRSTGAME-validated |
-| Session-Persistent | Logical Player identity must outlive Route and Activity scopes | Architecture accepted; **not usable** — runtime rejects this origin |
+| Session-Persistent | Logical Player identity must outlive Route and Activity scopes | Architecture accepted; runtime/product workflow not available |
 
-All implemented sources converge into the same Session `PlayerParticipationRuntimeContext` and typed `PlayerSlotId` authority.
+Implemented sources converge into the same Session Player authority and typed `PlayerSlotId` model.
 
-## 3. Configure shared participation
+## 3. Configure Session Player initialization
 
-1. Create stable `PlayerSlotProfile` assets.
-2. Add them to `GameApplicationAsset` in allocation order.
-3. Choose the duplicate Actor-selection policy explicitly.
-4. Configure each `ActivityAsset` (fields remain **inline** until IF-ADR-012 ships):
-   - participation projection;
-   - zero-participant policy;
-   - readiness requirement (`PlayerParticipationRequirementLevel` / Player Ready When).
-5. Use the lowest readiness level the Activity genuinely requires.
+For Session-enabled Player configuration, use the IF-ADR-016 Profile chain. Do **not** configure the canonical Slot roster by adding legacy Slot entries directly to `GameApplicationAsset`.
 
-There is no shipped `ActivityPlayerParticipationProfileAsset` yet. IF-ADR-012
-proposes extracting these fields into a dedicated profile asset.
+### 3.1 Create stable Slot Profiles
 
-Readiness is cumulative:
+Create one `PlayerSlotProfile` per supported logical seat.
+
+```text
+PlayerSlotProfile: player.1
+PlayerSlotProfile: player.2
+...
+```
+
+Slot identity is authored/stable. It is not derived from `PlayerInput.playerIndex`.
+
+### 3.2 Create the provisioning Profile
+
+Create a `PlayerProvisioningProfile` and configure:
+
+```text
+Default Host Provisioning
+per-Slot Host Provisioning Overrides when required
+Actor Resolution Policy
+```
+
+This is creation-time provisioning intent, not live Session state.
+
+### 3.3 Create the Player Session Profile
+
+Create a `PlayerSessionProfile` and configure:
+
+```text
+Supported Player Slots
+  ordered PlayerSlotProfile references
+
+Initial Capacity
+Initial Joining Open
+Player Provisioning Profile
+```
+
+The Supported Slot order is the canonical initialization order.
+
+### 3.4 Link the Game Application
+
+On `GameApplicationAsset`:
+
+```text
+Player Session Enabled = true
+Default Player Session Profile = <PlayerSessionProfile>
+```
+
+If Session creation supplies an explicit `PlayerSessionProfile` override, that override replaces the application default **completely**:
+
+```text
+no field merge
+no partial inheritance
+invalid explicit override does not fall back silently
+```
+
+The runtime freezes effective initialization evidence for the created Session. Later runtime capacity/joining changes do not mutate the authored Profile.
+
+## 4. Configure Activity participation
+
+Configure each `ActivityAsset` according to the participation/readiness contract it actually needs.
+
+Readiness progression is cumulative:
 
 ```text
 Joined Slots
@@ -69,30 +124,27 @@ Joined Slots
 → Gameplay Ready
 ```
 
-For a Scene-Provided Player that already contains its Actor, `Logical Actors Prepared` is usually the minimum useful gameplay baseline. Use `Gameplay Ready` only when the Activity must also wait for input, Camera and gameplay eligibility.
+Use the lowest readiness level the Activity genuinely requires.
 
----
-
-## 4. Scene-Provided Logical Player
-
-Use this source when the Route Primary Scene or an Activity content scene already owns the physical Host and its Actor.
-
-### 4.1 Canonical prefab boundaries
-
-Actor prefab:
+For externally driven Manager-Provisioned entry, `WaitCovered` is valid:
 
 ```text
-Actor_PlayerSceneProvided
-  PlayerActorDeclaration
-  CharacterController or other gameplay components
-  movement component
-  Camera targets
-  Visual
+Required Player not joined
+→ WaitingForJoin / NotReady
+→ loading remains covered and non-terminal
+
+public join + Actor progression completes
+→ readiness becomes Ready
+→ loading/reveal may complete
 ```
 
-The Actor prefab does not contain `PlayerInput`.
+Do not configure a gameplay-only control path that becomes unreachable because the destination is intentionally still covered.
 
-Outer Player prefab:
+## 5. Scene-Provided Logical Player
+
+Use Scene-Provided when the Route Primary Scene or an Activity content scene already owns the physical Host and Actor.
+
+Canonical shape:
 
 ```text
 Player_SceneProvided
@@ -102,288 +154,42 @@ Player_SceneProvided
 
   Actor Mount
     Actor_PlayerSceneProvided
+      PlayerActorDeclaration
+      gameplay components
 ```
 
-The component class remains `SceneLocalPlayerAdmissionAuthoring`. Its Inspector is displayed as **Scene-Provided Player Composer**.
+The Actor prefab does not own `PlayerInput`. The outer Host owns `PlayerInput` and an explicit Actor Mount.
 
-### 4.2 Actor Profile
+The Inspector surface is presented as the **Scene-Provided Player Composer**. Configure exact `PlayerSlotProfile`, `ActorProfile`, scene Actor declaration and admission timing. `Apply / Rebuild` is authoring/materialization support only; it does not reserve a runtime Slot or execute gameplay in Edit Mode.
 
-Configure the selected `ActorProfile` as:
+The current runtime supports Scene-Provided authoring in the active Route Primary Scene and active Activity content scenes. It consumes explicit Game Flow lifecycle context and does not infer authority from names/tags/first-found objects.
 
-```text
-Actor Kind
-  Player
-
-Actor Role
-  Protagonist
-
-Logical Actor Host Prefab
-  Actor_PlayerSceneProvided
-```
-
-Do not assign the outer `Player_SceneProvided` prefab as the Logical Actor Host prefab.
-
-### 4.3 Local Player Host
-
-On the outer Player root:
-
-```text
-Player Input
-  same-root PlayerInput
-
-Actor Mount
-  explicit Actor Mount child
-```
-
-A Scene-Provided Host may already contain one authored Actor under Actor Mount. The empty Actor Mount rule belongs to the Manager-Provisioned source.
-
-### 4.4 Scene-Provided Player Composer
-
-Configure:
-
-```text
-Participation
-  Player Slot Profile
-    exact Slot used by the Activity
-
-Logical Actor
-  Actor Profile
-    profile referencing Actor_PlayerSceneProvided
-
-  Scene Logical Player Actor
-    PlayerActorDeclaration from the nested Actor
-
-Admission
-  Admission Timing
-    On Activity Enter
-```
-
-`Local Player Host` is resolved from the same GameObject. It is not a free-form cross-scene reference.
-
-### 4.5 Apply and validate
-
-Run:
-
-```text
-Apply / Rebuild
-Validate
-```
-
-`Apply / Rebuild` may:
-
-- validate the same-root Host;
-- validate the Actor under the exact Actor Mount;
-- compare the nested prefab source with `ActorProfile.LogicalActorHostPrefab`;
-- store typed authoring evidence.
-
-It does not:
-
-- reserve a Slot;
-- assign a runtime Actor occurrence;
-- start gameplay;
-- create or destroy the Host;
-- create or destroy the Actor;
-- replace runtime admission.
-
-Expected authoring result:
-
-```text
-Scene-Provided Player authoring and internal profile evidence are valid.
-```
-
-### 4.6 Route and Activity coverage
-
-Current runtime supports Scene-Provided authoring in:
-
-```text
-active Route Primary Scene
-active Activity content scene set
-```
-
-The runtime consumes the explicit Route/Activity lifecycle context supplied by Game Flow. It does not infer authority from name, tag, first-found object or `Camera.main`.
-
-### 4.7 Runtime lifecycle
-
-Expected lifecycle:
-
-```text
-Activity enter
-→ resolve exact authored Host, Slot and Actor evidence
-→ admit the Scene-Provided Player
-→ join the configured Slot
-→ adopt the existing Logical Actor
-→ publish contextual input/Camera/gameplay evidence
-
-Activity exit or Route exit
-→ release Host evidence
-→ release canonical Slot assignment
-→ release the admission
-→ remove contextual Actor/gameplay evidence
-
-Activity Restart
-→ execute Activity exit
-→ execute reset policy
-→ reenter the Activity
-→ restore a valid active admission
-
-Runtime teardown
-→ perform safe best-effort release
-→ treat an already completed release as explicit idempotence
-```
-
-A release token never authorizes releasing a different Host or Slot.
-
----
-
-## 5. Persistent Scene-Provided diagnostics
-
-### 5.1 During Gameplay
-
-Inspect the **Scene-Provided Player Composer**:
-
-```text
-Runtime = Ready
-Admission = Admitted
-Host Joined = true
-Active Admission = true
-Player Slot ID = PlayerSlot:player.1
-Actor Ownership = ExternalSceneOwned
-Adoption Status = SucceededAdopted
-```
-
-This surface explains the active scene composition. It is not the runtime authority.
-
-### 5.2 After scene unload
-
-Select the persistent `FrameworkRuntimeHost` and open:
-
-```text
-Advanced / Debug
-  Scene-Provided Admissions
-```
-
-The projection is a Session-local immutable snapshot of the last real operation. It does not retain `GameObject`, `Component`, `Transform`, `PlayerInput` or other scene references.
-
-### 5.3 Field semantics
-
-| Field | Meaning |
-|---|---|
-| Active Count | active Scene-Provided admissions after the recorded operation |
-| Occupied Slot Count | joined/occupied Slots after the recorded operation |
-| Last Operation | last admit or release operation |
-| Last Status | typed result such as `SucceededAdmitted`, `SucceededReleased` or `SucceededAlreadyReleased` |
-| Last Slot | typed Slot involved in the operation, when valid |
-| Last Actor | stable authored `PlayerActorDeclaration.ActorId`; it is not necessarily the Activity-scoped runtime occurrence ID shown in detailed logs |
-| Last Source / Reason | caller and operation reason |
-| Release Succeeded | the recorded release completed normally |
-| Already Released | the release request was idempotent because the admission was already complete |
-| Host Evidence Present | Host evidence present after the operation; normally `Yes` after admit and `No` after release |
-
-Counts and Host-evidence presence describe the state **after** the recorded operation.
-
-### 5.4 Expected active snapshot
-
-```text
-Active Count = 1
-Occupied Slot Count = 1
-Last Operation = AdmitSceneLocalPlayer
-Last Status = SucceededAdmitted
-Last Slot = PlayerSlot:player.1
-Release Succeeded = No
-Already Released = No
-Host Evidence Present = Yes
-```
-
-### 5.5 Expected released snapshot
-
-```text
-Active Count = 0
-Occupied Slot Count = 0
-Last Operation = ReleaseSceneLocalPlayer
-Last Status = SucceededReleased
-Last Slot = PlayerSlot:player.1
-Release Succeeded = Yes
-Already Released = No
-Host Evidence Present = No
-```
-
-Expected duplicate-release result:
-
-```text
-Last Status = SucceededAlreadyReleased
-Release Succeeded = No
-Already Released = Yes
-```
-
-A missing Hierarchy object is not sufficient proof of release. Use the persistent snapshot.
-
-### 5.6 Validated manual matrix
-
-The FIRSTGAME Scene-Provided baseline is approved for:
-
-```text
-Menu → Gameplay → Menu → Stop
-
-Menu → Gameplay → Menu → Gameplay → Menu → Stop
-
-Menu → Gameplay → Activity Restart → Menu → Stop
-```
-
-The manual validation confirmed:
-
-- one active admission during Gameplay;
-- Slot `player.1`;
-- active Host evidence;
-- zero active admissions after release;
-- zero occupied Slots after release;
-- valid reentry/readmission after Activity Restart;
-- no `ArgumentException` during runtime teardown.
-
-The current QA formatting regression is an Editor menu smoke:
-
-```text
-Immersive Framework
-  QA
-    Regressions
-      Game Flow
-        Run Player Host Evidence Diagnostic Formatting Smoke
-```
-
-It is not expected to appear as an NUnit Test Runner test.
-
----
+On Activity/Route release, contextual admission/Host/Actor/gameplay evidence is released according to the Scene-Provided contract. Session/diagnostic snapshots should be used to verify release rather than assuming a missing Hierarchy object proves it.
 
 ## 6. Manager-Provisioned Logical Player
 
-Use this source when an explicit join request must create the physical Host.
+Use Manager-Provisioned when an explicit join must create the physical Host.
 
-### 6.1 Persistent Content composition
+### 6.1 Persistent Application Content
 
-Configure one explicit provisioning surface:
+Configure one explicit provisioning composition:
 
 ```text
 PlayerInputManager
 LocalPlayerProvisioningAuthoring
 LocalPlayerProvisioningHostRegistration
+LocalPlayerActorSelectionRequestAuthoring   # when public default selection is required
 ```
 
-`PlayerInputManager` must use the framework-authorized manual join path. Do not enable an independent automatic join lane that bypasses Slot reservation.
+`PlayerInputManager` must use the framework-authorized manual join path. Do not enable an independent automatic join lane that bypasses Slot reservation/admission.
 
-On **Local Player Provisioning**, configure:
+On `LocalPlayerProvisioningAuthoring`, configure the `PlayerInputManager` and Local Player Host Prefab.
 
-```text
-Provisioning
-  Player Input Manager
-  Local Player Host Prefab
-```
-
-The authored **Local Player Host Prefab** is the authority. Framework boot materializes it into
-`PlayerInputManager.playerPrefab` only when that technical field is empty. If the manager already
-contains a different prefab, boot fails with a blocking divergence diagnostic; it never overwrites
-the value silently. Existing scenes can use the Inspector action **Adopt Manager Player Prefab as
-Local Player Host Prefab** to perform that migration explicitly.
+The authored Local Player Host Prefab is the product authority. Framework boot may materialize it into `PlayerInputManager.playerPrefab` only under the package's explicit compatibility rule; divergent existing values fail diagnostically rather than being silently overwritten.
 
 ### 6.2 Local Player Host Prefab
+
+Use a Host prefab shaped like:
 
 ```text
 PlayerInput
@@ -391,50 +197,151 @@ LocalPlayerHostAuthoring
 empty Actor Mount
 ```
 
-Do not pre-author `PlayerSlotId` on the prefab. Runtime admission binds the official reserved Slot.
+Do not pre-author `PlayerSlotId` on the Host prefab. Runtime admission binds the reserved Slot.
 
-### 6.3 Join transaction
+### 6.3 Scoped consumer access in Route / Activity content
+
+Do not serialize a cross-scene reference from Route/Activity UI directly to the persistent provisioning authority.
+
+Author a:
 
 ```text
-authorized join request
-→ reserve first configured free Slot
-→ PlayerInputManager creates one Host
-→ validate Host
-→ admit Logical Player
-→ commit typed Slot assignment
-→ select/prepare Actor
-→ commit or explicit rollback
+LocalPlayerProvisioningConsumerAccessBinding
 ```
 
-Required negative proof:
+and choose the explicit scope:
 
-- missing provisioning registration blocks explicitly;
-- invalid prefab blocks explicitly;
-- failed physical join releases reservation;
-- failed committed join releases Host evidence and owned physical content;
-- `playerIndex` is never used as `PlayerSlotId`;
-- exit permits later Slot reuse.
+```text
+Route
+or
+Activity
+```
 
-FIRSTGAME should test this source in a separate Route and scene so the UX comparison does not change movement, Camera, Pause or reset composition at the same time.
+The Framework binds this component to the current live scope. Missing, wrong, stale, replaced or disposed scopes remain explicit unavailable states; there is no global lookup fallback.
 
----
+### 6.4 Public commands
+
+A consumer may use `ILocalPlayerProvisioningConsumerAccess` directly or author a `PlayerProvisioningCommandTrigger` for explicit designer invocation.
+
+Supported provisioning commands:
+
+```text
+Open Joining
+Close Joining
+Set Dynamic Capacity
+Request Join
+```
+
+Default Actor selection uses the separate public Actor-selection surface:
+
+```text
+LocalPlayerActorSelectionRequestAuthoring.RequestDefaultActorSelection(...)
+```
+
+`PlayerProvisioningCommandTrigger` can expose that operation as an explicit authoring option while still delegating to the correct public boundary.
+
+Do not expose or call internal operations equivalent to Slot reservation, Actor preparation/materialization, gameplay admission or Activity reconcile from game UI.
+
+### 6.5 Public observation
+
+The scoped consumer endpoint provides immutable current observation through `TryGetObservation`.
+
+Use it to inspect, as applicable:
+
+```text
+initialization configuration evidence
+current joining/capacity/participation state
+Session revision / applied revision
+Activity owner / occurrence
+per-Slot joined state
+Host correlation
+selected Actor
+logical preparation
+physical materialization
+gameplay admission
+```
+
+Observation is not authority and does not mutate state.
+
+### 6.6 Status / diagnostics binding
+
+For an authorable read-only status surface, use:
+
+```text
+PlayerProvisioningStatusBinding
+```
+
+It projects the public observation and can optionally correlate the last explicit `PlayerProvisioningCommandTrigger` result. It does not create a global result store.
+
+Use normal Inspector fields for product status and Advanced / Debug for technical correlation such as revisions, owner/occurrence evidence and detailed Slot lifecycle.
+
+### 6.7 Certified join lifecycle
+
+The public QA-certified flow is:
+
+```text
+Session initialized from PlayerSessionProfile
+→ Route/Activity consumer binding becomes available
+→ Activity enters and may wait for required Player
+→ Open Joining
+→ Set Dynamic Capacity when needed
+→ Request Join
+→ PlayerInputManager creates Host
+→ Slot/Host admission commits
+→ Request Default Actor Selection
+→ normal preparation/materialization/gameplay admission
+→ Player contribution reaches Ready
+→ WaitCovered loading terminates
+```
+
+Activity exit releases Activity-owned projection/materialization while preserving Session-owned join/Host state when that is the contract. Reentry creates a newer Activity occurrence without duplicating Slot/Actor state.
+
+### 6.8 Negative semantics
+
+Public QA also certifies:
+
+```text
+join while closed rejected
+invalid capacity rejected
+capacity exhausted rejected
+repeated Open/Close no-change
+missing/wrong/destroyed/stale scoped access unavailable
+stale Actor selection revision rejected
+repeated default selection stable
+unbound ActivityRequestTrigger fails explicitly
+```
+
+No silent fallback is part of the product contract.
+
+### 6.9 Current product status
+
+```text
+Package P1–P4
+  implemented
+
+QA-PLAYER-SURFACE-01
+  PASS 29/29
+
+QA-PLAYER-SURFACE-02
+  PASS 36/36
+
+Joint technical verdict
+  PLAYER SURFACE QA CERTIFIED
+
+FIRSTGAME manual consumer proof
+  pending
+
+P5 creation workflow / tooling disposition
+  pending after FIRSTGAME
+```
+
+Manual explicit composition is the canonical baseline for the upcoming FIRSTGAME proof. A Wizard/Composer is **not mandatory**. If real usage demonstrates recurring friction, P5 may add the smallest justified Create-menu, Inspector, template or Composer support. `NO ADDITIONAL TOOLING REQUIRED` is a valid outcome.
 
 ## 7. Session-Persistent Logical Player
 
 This source is not currently available as a product workflow.
 
-Do not simulate it by placing an arbitrary Player prefab in Persistent Content. A persistent GameObject alone does not establish:
-
-- Logical Player admission;
-- Slot assignment authority;
-- physical ownership;
-- Actor correlation;
-- contextual release;
-- materialization reconciliation.
-
-Wait for an official package authoring/runtime cut.
-
----
+Do not simulate it by placing an arbitrary Player prefab in Persistent Content. Persistence of a GameObject alone does not establish Session admission, Slot authority, Actor correlation, contextual lifecycle or reconciliation.
 
 ## 8. Pause integration
 
@@ -446,47 +353,34 @@ UnityPlayerInputGateAdapter
 PausePlayerInputBinding
 ```
 
-`Global` is an action map of that PlayerInput, not a second global Player.
+`Global` is an action map of that `PlayerInput`, not a second global Player.
 
-Application-only authored Pause controls may work without an admitted Player binding. See `Pause-Usage.md`.
-
----
+Application-only Pause controls may work without an admitted Player binding where the Pause contract allows it. See `Pause-Usage.md`.
 
 ## 9. Gameplay Camera integration
 
 A Player gameplay Camera request is separate from the persistent physical Camera Output.
 
-Inside the Actor hierarchy:
+Inside the Actor hierarchy, gameplay Camera authoring publishes contextual requests/eligibility. Persistent Application Content owns output/arbitration. Player/Activity release must release the contextual request according to scope.
 
-```text
-PlayerActorDeclaration
-PlayerGameplayCameraAuthoring
-Camera targets
-CameraRigComposer
-local Cinemachine Camera materialization
-```
-
-Persistent Content owns the physical output and request arbitration. The Player publishes contextual eligibility and releases it with its scope.
-
-See [Camera-Usage](Camera-Usage.md).
-
----
+See `Camera-Usage.md`.
 
 ## 10. Diagnose in the correct order
 
-Inspect these as separate evidence:
+Inspect separate evidence rather than collapsing all Player state into one boolean:
 
 ```text
-Slot configuration and current assignment
+Session initialization configuration
+current Slot roster/capacity/joining
 Logical Player admission
 physical Host identity
 Actor selection
-current Actor correlation
-Logical Actor preparation/adoption
+Logical Actor preparation
+physical materialization
 input eligibility
 Camera eligibility
-gameplay eligibility
-Activity readiness
+gameplay admission
+Activity occurrence/readiness
 ```
 
 Do not infer runtime success from authoring validity alone.
@@ -495,13 +389,15 @@ Do not infer runtime success from authoring validity alone.
 
 Do not add:
 
-- static host access;
+- static Host/provisioning access;
 - global service locators;
 - scene-wide name/tag lookup;
-- `FindObjectOfType` admission authority;
-- `playerIndex` to Slot conversion;
-- silent fallback to another Slot;
-- automatic Actor replacement;
-- a second physical Camera output;
+- `FindObjectOfType` authority discovery;
+- `playerIndex` → Slot conversion;
+- silent fallback to another Slot/Profile/scope;
+- automatic Actor replacement outside policy;
+- consumer-side prepare/materialize/reconcile calls;
 - hidden release repair;
-- diagnostic snapshots as a second authority.
+- mutable diagnostic snapshots as a second authority;
+- cross-scene serialized references to persistent Player authorities;
+- mandatory creation tooling before real consumer evidence demonstrates the need.
