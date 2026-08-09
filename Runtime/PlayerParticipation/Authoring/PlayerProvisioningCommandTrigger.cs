@@ -16,8 +16,9 @@ namespace Immersive.Framework.PlayerParticipation
     {
         OpenJoining = 10,
         CloseJoining = 20,
-        RequestJoin = 30,
-        RequestDefaultActorSelection = 40
+        // 30 is intentionally retired. Do not reuse it: serialized Unity content may still contain this value.
+        RequestJoin = 40,
+        RequestDefaultActorSelection = 50
     }
 
     /// <summary>
