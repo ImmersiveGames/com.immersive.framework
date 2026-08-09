@@ -2,25 +2,18 @@
 
 Status: Accepted  
 Last updated: 2026-08-09  
+Implementation status: **Implemented and technically QA-certified for the accepted current scope**  
 Supersedes: the prior ADR-016 provisioning-profile, Capacity and per-Slot override model  
 Superseded by: none  
 Related decisions: IF-ADR-001, IF-ADR-002, IF-ADR-003, IF-ADR-012, IF-ADR-015
 
 ## Context
 
-Player Session needs one authorable source for its initial intent without
-turning authored Profiles into live Session state. The former model split that
-intent between `PlayerSessionProfile` and a separate provisioning Profile, added a
-second Capacity limit, and allowed per-Slot Host Provisioning overrides. Those
-surfaces express technical decomposition rather than authoring intent and make
-one Session harder to understand and validate.
+Player Session needs one authorable source for its initial intent without turning authored Profiles into live Session state. The former model split that intent between `PlayerSessionProfile` and a separate provisioning Profile, added a second Capacity limit, and allowed per-Slot Host Provisioning overrides. Those surfaces express technical decomposition rather than authoring intent and make one Session harder to understand and validate.
 
 ## Decision
 
-`PlayerSessionProfile` is the only Profile required to configure the initial
-intent of a Player Session. Host Provisioning and Actor Resolution remain
-separate technical concepts, but are direct configuration of that Profile; they
-are not separate ScriptableObjects.
+`PlayerSessionProfile` is the only Profile required to configure the initial intent of a Player Session. Host Provisioning and Actor Resolution remain separate technical concepts, but are direct configuration of that Profile; they are not separate ScriptableObjects.
 
 ```text
 PlayerSessionProfile
@@ -34,19 +27,11 @@ PlayerSessionProfile
     └── Leave Unresolved
 ```
 
-An application may supply a default `PlayerSessionProfile`. An explicit
-creation-time profile replaces that default as one complete source; there is no
-field merge and no fallback from an invalid explicit source. A composition that
-does not enable Player Session is a valid absence. A composition that enables
-it but cannot resolve a valid profile fails explicitly.
+An application may supply a default `PlayerSessionProfile`. An explicit creation-time Profile replaces that default as one complete source; there is no field merge and no fallback from an invalid explicit source. A composition that does not enable Player Session is a valid absence. A composition that enables it but cannot resolve a valid Profile fails explicitly.
 
-## Accepted scope
+## Supported Slots and Joining
 
-### Supported Slots and Joining
-
-`Supported Slots` is the complete structural universe for the Session. It is
-an ordered collection of existing `PlayerSlotProfile` definitions and remains
-the source of stable `PlayerSlotId` identity and normal Join order.
+`Supported Slots` is the complete structural universe for the Session. It is an ordered collection of existing `PlayerSlotProfile` definitions and remains the source of stable `PlayerSlotId` identity and normal Join order.
 
 ```text
 Supported Slots
@@ -56,21 +41,20 @@ Supported Slots
 └── player.4 — vacant
 ```
 
-Vacant Slots remain structurally supported and can be occupied by a later
-runtime Join. The normal Join rule selects the first vacant Supported Slot in
-authored order. A Join is accepted only when both conditions are true:
+Vacant Slots remain structurally supported and can be occupied by a later runtime Join.
+
+The normal Join rule is:
 
 ```text
 Joining Open
-+ a vacant Supported Slot exists
++ first vacant Supported Slot in authored order
 ```
 
-There is no independent `Initial Capacity`, `Current Capacity`, or `Dynamic
-Capacity`. There is no runtime `SetCapacity`/`SetDynamicCapacity` operation.
-When no Supported Slot is vacant, the Session has no structural capacity for a
-new Player. This ADR does not introduce an allocation-strategy abstraction.
+When no Supported Slot is vacant, the request is rejected explicitly as no available Slot. There is no independent `Initial Capacity`, `Current Capacity` or `Dynamic Capacity`, and there is no runtime `SetCapacity`/`SetDynamicCapacity` operation.
 
-### Host Provisioning and Actor Resolution
+This ADR does not introduce an allocation-strategy abstraction.
+
+## Host Provisioning and Actor Resolution
 
 Host Provisioning is one initial Session decision:
 
@@ -80,12 +64,9 @@ or
 Manager Provisioned
 ```
 
-It applies uniformly to every Supported Slot. A per-Slot Host Provisioning
-override type and every equivalent override are rejected. A mixed
-Scene-Provided / Manager-Provisioned Session is outside this model and requires
-a future ADR based on a concrete game requirement.
+It applies uniformly to every Supported Slot. Per-Slot Host Provisioning overrides and mixed Scene-Provided/Manager-Provisioned Sessions are rejected by the current model. A heterogeneous Session requires a future ADR based on a concrete game requirement.
 
-Actor Resolution remains independent of Host Provisioning:
+Actor Resolution remains independent:
 
 ```text
 Resolve Configured Default
@@ -93,16 +74,11 @@ or
 Leave Unresolved
 ```
 
-Resolving the configured default reuses the referenced Slot/Actor definitions;
-it does not duplicate Actor data in a new Slot schema. `Leave Unresolved` is a
-valid initial state for a separately approved selection flow.
+Resolving the configured default reuses referenced Slot/Actor definitions; it does not duplicate Actor data in a new Slot schema. `Leave Unresolved` is a valid initial state for a separately approved selection flow.
 
-### Resolution and runtime authority
+## Resolution and runtime authority
 
-At Session creation the Profile resolves once into effective configuration
-evidence. The created Session then owns its mutable runtime state. Editing the
-Profile later does not mutate the current Session, and Route or Activity does
-not silently reapply it.
+At Session creation the Profile resolves once into immutable effective configuration evidence. The created Session then owns mutable runtime state.
 
 ```text
 PlayerSessionProfile
@@ -111,16 +87,32 @@ PlayerSessionProfile
   → Session runtime authority
 ```
 
-The following remain valid and are not reopened by this decision:
+Editing the source Profile later does not mutate the current Session. Route or Activity does not silently reapply or replace it.
+
+The following remain invariant:
 
 - Player belongs to Session.
 - `PlayerSlotId` is stable identity.
 - Host and Actor are distinct concepts.
-- Scene Provided and Manager Provisioned are distinct models.
+- Scene Provided and Manager Provisioned are distinct Session provisioning modes.
 - Actor may remain unresolved.
 - Joining is runtime state.
-- Route and Activity do not silently mutate Session.
+- Route and Activity do not silently mutate Session configuration.
 - Session runtime is authority after initialization.
+
+## Manager-Provisioned Input System bridge
+
+For Manager-Provisioned Player, `PlayerInputManager` has a serialized technical player limit. The package/authoring bridge derives that limit from the Session structure:
+
+```text
+serialized PlayerInputManager player limit
+=
+PlayerSessionProfile.SupportedSlotCount
+```
+
+This value is materialized technical configuration, not domain Capacity. Runtime must fail explicitly if the derived bridge diverges from the initialized Session's Supported Slots; it must not silently repair or reinterpret the Session.
+
+Scene-Provided Player does not use this bridge as part of its provisioning contract.
 
 ## Rejected scope
 
@@ -128,24 +120,69 @@ The following remain valid and are not reopened by this decision:
 - Capacity fields or runtime capacity commands.
 - Per-Slot Host Provisioning overrides and mixed provisioning modes.
 - Live synchronization from a Profile to an existing Session.
-- A parallel Slot schema, generic allocation strategy, generic character
-  selection flow, or Session-Persistent Player workflow.
+- A parallel Slot schema.
+- Generic allocation strategy.
+- Generic character-selection flow.
+- Session-Persistent Player workflow.
+
+## Technical certification — 2026-08-09
+
+The accepted Session model was exercised by the canonical QAFramework Player orchestrator and completed with:
+
+```text
+session='PASS'
+sceneProvided='PASS'
+managerProvisioned='PASS'
+actor='PASS'
+publicSurface='PASS'
+participation='PASS'
+verdict='PLAYER QA CERTIFIED'
+```
+
+Representative current evidence:
+
+```text
+Player Participation Authoring        PASS — 7 cases
+Scene-Provided route/negative matrix  PASS — 25 cases
+Manager public contract               PASS — 9 cases
+Manager waiting projection            PASS — 14 cases
+Actor selection runtime binding       PASS — 13 cases
+Player gameplay admission             PASS — 114 cases
+Public Surface Q1                     PASS — 28 cases
+Public Surface Q2                     PASS — 36 cases
+Activity Session Projection           PASS — 30 cases
+```
+
+The Manager-Provisioned fixture certified:
+
+```text
+supportedSlots='2'
+maxPlayers='2'
+```
+
+and the Scene-Provided fixture independently certified:
+
+```text
+hostProvisioning='SceneProvided'
+supportedSlots='2'
+```
+
+This is evidence that the canonical QA no longer depends on a mixed shared provisioning fixture or the removed Capacity model.
+
+See `../IMMERSIVE-FRAMEWORK-PLAYER-QA-CERTIFICATION-2026-08-09.md`.
 
 ## Consequences
 
-R1/R2 consolidate authoring, validation, resolution, Player Session Inspector,
-runtime admission and consumer surfaces without a compatibility rail. Supported
-Slots are the only Session limit. Required configuration remains fail-fast and
-no Host Provisioning fallback is allowed.
+The former documentation state `R1/R2 implemented; Unity validation pending; QA unchanged` is superseded. Technical QA is green for the tested accepted model.
 
-## Current implementation coverage
+Remaining work is product evidence rather than missing technical certification:
 
-R1/R2 implement the consolidated Profile, pure resolver, Player Session
-Inspector and Slot-based admission. Effective configuration, runtime snapshots,
-commands and diagnostics carry no separate Capacity. Unity compile/import
-validation is pending. QA and FIRSTGAME are unchanged.
+```text
+FIRSTGAME manual Scene-Provided proof
+FIRSTGAME manual Manager-Provisioned proof
+P5 authoring/tooling disposition from observed friction
+```
 
-## Pending decisions
+Whether a real game needs heterogeneous Host Provisioning remains deferred. It must not be inferred from the superseded per-Slot override capability.
 
-Whether a real game needs heterogeneous Host Provisioning is deferred. It must
-not be inferred from the superseded per-Slot override capability.
+Technical certification does not automatically promote Experimental/preview API stability metadata.

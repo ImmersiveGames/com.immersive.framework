@@ -8,19 +8,23 @@ Package version: `1.0.0-preview.17`
 
 ```text
 com.immersive.framework
-  cf0a37fbcbf72ad2a08556d6045c908521bfd2c1
-  P4 — IF-PLAYER-SURFACE-06 — Status / Diagnostics Binding
+  Git baseline inspected for this documentation:
+  4662fade4e27e2c06b6daf4485d2829e4fb24096
+  R1 — Consolidar Player Session Authoring
 
 QAFramework
-  Git baseline inspected: 52a31aa9cd237d934ed3241392b87b7990f11dc8
-  Player Surface Unity Play Mode certification executed 2026-08-09
+  certification record baseline:
+  219cc22e2267d8222da7665807f1175edb64042c
+  Player QA
+  canonical Unity Player QA executed 2026-08-09
 
 FIRSTGAME
-  last documented baseline: ab1bfe65c09af8988c2fe21ce06db780fe12aa70
+  last documented baseline:
+  ab1bfe65c09af8988c2fe21ce06db780fe12aa70
   Demo03Etapa04
 ```
 
-Git baselines identify the repository state inspected for documentation. The final Q1/Q2 behavioral verdict is manual/local Unity Play Mode evidence and must not be misrepresented as a Git commit result.
+Git baselines identify repository states inspected for documentation. The Player QA verdict is Unity execution evidence and certifies the package/runtime state exercised by that run. It must not be misrepresented as a claim that package Git commit `4662fade` alone contains every local R2–R4 implementation edit used during certification.
 
 ## Summary
 
@@ -28,21 +32,39 @@ The package has one internal application/session composition root and explicit t
 
 `FrameworkRuntimeHost` remains Internal. Required runtime dependencies are supplied through typed bindings and explicit scope/lifetime. There is no public static host registry or service-locator API.
 
-The major 2026-08-09 status change is the Player Surface:
+### Player status — 2026-08-09
+
+The canonical Player technical surface is now QA-certified against the accepted no-Capacity Session model:
 
 ```text
-P1 scoped Player provisioning consumer access       CLOSED
-P2 immutable consumer observation                    CLOSED
-P3 designer command authoring                        CLOSED
-P4 status / diagnostics binding                      CLOSED
-Q1 public positive QA                                PASS 29/29
-Q2 negative/lifecycle QA                             PASS 36/36
-joint Player Surface verdict                         QA CERTIFIED
+Player Session                         PASS
+Scene-Provided                        PASS
+Manager-Provisioned                   PASS
+Actor lifecycle                       PASS
+Public Player Surface                 PASS
+Activity Participation integration    PASS
+
+Final verdict
+  PLAYER QA CERTIFIED
 ```
 
-The P1–P4/Q1/Q2 evidence above applies to the superseded Profile/Capacity
-model. IF-ADR-016 is now Accepted with a simpler authored model, so that
-evidence does not close the migration or permit compatibility rails.
+Representative evidence:
+
+```text
+Player Participation Authoring        7 cases PASS
+Scene-Provided route/negative matrix  25 cases PASS
+Manager public contract               9 cases PASS
+Manager waiting projection            14 cases PASS
+Actor selection runtime binding       13 cases PASS
+Player gameplay admission             114 cases PASS
+Public Surface Q1                     28 cases PASS
+Public Surface Q2                     36 cases PASS
+Activity Session Projection           30 cases PASS
+```
+
+The previous `29/29` Q1 + Capacity-era certification is historical evidence only. The current Q1 result is `28/28` under Supported-Slots semantics.
+
+See `../IMMERSIVE-FRAMEWORK-PLAYER-QA-CERTIFICATION-2026-08-09.md`.
 
 ## Track board
 
@@ -50,174 +72,185 @@ evidence does not close the migration or permit compatibility rails.
 |---|---|---|---|---|
 | Runtime authority | Closed for current boundary | internal host composition; narrow typed ports | preserve boundary | reject static/global lookup |
 | Package hygiene | Closed for current boundary | package + QA import discipline | ongoing | do not restore compatibility facades |
-| Player — Scene-Provided | **Closed / approved** | authoring, Route/Activity admission, Slot, Host, Actor adoption, readiness, release/reentry/restart/teardown | broader automated matrix desirable | preserve baseline |
-| PLAYER-DIAG-1 | **Closed / approved** | safe diagnostic formatting and immutable last-operation evidence | optional expansion | preserve semantics |
-| Player — Manager-Provisioned | **R1/R2 implemented; Unity validation pending** | Profile, resolver, admission, commands and diagnostics use Supported Slots as the sole Session limit | revalidate before FIRSTGAME/P5 | Unity import, then public/real-consumer validation |
-| Player — Session-Persistent | **Blocked** | origin reserved in architecture | authoring, admission, lifetime contracts | separate approved cut required |
-| Activity readiness + reveal | **Implemented (Experimental); core QA certified** | WaitVisible/WaitCovered, terminal recovery, startup parity, Player public WaitingForJoin/WaitCovered path | focused ObserveOnly/product guidance | preserve semantics |
-| WaitCovered Loading progress | **Implemented (Experimental); core QA certified** | participant-aware progress/terminal plus Player public pending-then-terminal proof | presentation guidance / polish | preserve aggregate-only authority boundary |
+| Player — Session | **Technical QA certified** | Supported Slots, Initial Joining, uniform Host Provisioning, Actor Resolution, frozen effective config, first-available Slot admission | FIRSTGAME product proof | preserve accepted IF-ADR-016 model |
+| Player — Scene-Provided | **Technical QA certified** | independent Scene-Provided fixture; Route/Activity ownership; Slot/Host/Actor lifecycle; release/reentry negatives | FIRSTGAME/manual product walkthrough | keep PlayerInputManager out of this mode |
+| Player — Manager-Provisioned | **Technical QA certified** | derived PlayerInputManager bridge, public contract, waiting projection, Join/Host/Slot flow | FIRSTGAME manual product proof | prove manual real-consumer composition |
+| Player — Actor lifecycle | **Technical QA certified** | selection, preparation, materialization, gameplay admission and lifecycle separation | Leave/disconnect separate | preserve Host != Actor |
+| Player — Public Surface (IF-ADR-015) | **Implemented + technical QA certified** | scoped access, immutable observation, Open/Close, Request Join, default Actor selection, negative stale/unavailable scope | FIRSTGAME proof + P5 disposition | do not reopen Capacity-era commands |
+| Player — Activity Participation | **Technical QA certified for current integration** | Activity Session projection and canonical Player fixture integration | broader product consolidation | GameFlow consumes Player; does not own Session config |
+| Player — Session-Persistent | **Blocked / not productized** | origin reserved in architecture | authoring, admission, lifetime contracts | separate approved cut required |
+| PLAYER-DIAG-1 | Closed / approved | safe diagnostic formatting and immutable last-operation evidence | optional expansion | preserve semantics |
+| Activity readiness + reveal | Implemented (Experimental); core QA certified | WaitVisible/WaitCovered, terminal recovery, startup parity, Player waiting/join path | focused ObserveOnly/product guidance | preserve semantics |
+| WaitCovered Loading progress | Implemented (Experimental); core QA certified | participant-aware progress/terminal plus Player pending-then-terminal proof | presentation guidance | preserve aggregate-only authority boundary |
 | Camera | Closed for current single-output scope | persistent output and Player request/restoration | split-screen / multiple outputs | preserve one-output boundary |
 | Pause / Input / Gate | Closed for current single-player scope; hardening remains | Player-bound Pause, resume, gate semantics | broader negative matrix | preserve declared authority model |
 | Reset | Implemented (mostly Experimental) | Object/Group/Cycle Reset, Activity Restart | unload recomposition finding | separate Reset cut |
 | Activity transaction | **IF-TXN-01/02/03A CLOSED / CERTIFIED** | current approved transaction/gate boundaries | concrete exceptional paths only | no generic transaction manager |
 | Persistence / ProgressionSave | Foundation | contracts/store exist | product authoring + real consumer proof | product decision |
 | ObjectEntry / Local visibility | Implemented (Experimental) | adapters/declarations exist | product guides deferred | keep advanced/foundation |
-| Editor product surface (IF-ADR-010) | **Proposed** | Editor authoring standard + many Custom Editors | consistent product application | preserve designer-first direction |
-| ADR-012 participation profile | **Accepted / substantially implemented** | requirement levels, evidence, runtime compatibility | product consolidation | preserve contract |
-| Authored identity (IF-ADR-014) | **Closed / approved** | IF-ID package/tests/QA/FIRSTGAME proof | IF-ID-07 deferred by design | preserve exact-reference + token authority |
-| IF-ADR-015 provisioning command/observation surface | **Proposed / R2 implemented; Unity validation pending** | scoped consumer boundary has no Capacity command or observation | revalidate consumer API/observation | Unity import, then public validation |
-| IF-ADR-016 Session initialization Profiles | **Accepted / R1/R2 implemented; Unity validation pending** | consolidated Profile and Slot-based runtime limit; old Profile/override/Capacity types removed | import and behavior validation | validate import, then public flow |
+| Editor product surface (IF-ADR-010) | Proposed | Editor authoring standard + many Custom Editors | consistent product application | preserve designer-first direction |
+| ADR-012 participation profile | Accepted / substantially implemented | requirements, evidence, runtime compatibility; Player integration QA green | product consolidation | preserve contract |
+| Authored identity (IF-ADR-014) | Closed / approved | IF-ID package/tests/QA/FIRSTGAME proof | IF-ID-07 deferred | preserve exact-reference + token authority |
+| IF-ADR-015 provisioning command/observation surface | **Proposed; implementation technical QA certified** | current no-Capacity consumer vocabulary and scoped observation certified | FIRSTGAME + P5 + final ADR disposition | real-consumer proof |
+| IF-ADR-016 Session initialization | **Accepted; implementation technical QA certified** | consolidated Profile, Supported Slots, uniform provisioning, Actor Resolution, frozen effective config | FIRSTGAME product proof | preserve model; no compatibility rail |
 
-## Canonical Player Surface implementation
-
-### IF-ADR-016 initialization
+## Canonical Player Session contract
 
 ```text
-PlayerSlotProfile
-→ PlayerSessionProfile
-→ GameApplicationAsset.DefaultPlayerSessionProfile
-→ frozen effective Session configuration
+PlayerSessionProfile
+├── Supported Slots
+├── Initial Joining
+├── Host Provisioning
+│   ├── Scene Provided
+│   └── Manager Provisioned
+└── Actor Resolution
+    ├── Resolve Configured Default
+    └── Leave Unresolved
 ```
 
-This replaces legacy guidance that treated direct GameApplication Slot lists as the canonical Session-enabled authoring path.
+Rules:
 
-### IF-ADR-015 runtime consumer surface
+```text
+Supported Slots.Count = structural maximum
+Joined/Occupied         = current runtime players
+Joining Open/Closed     = admission intent
+Join                    = first vacant Supported Slot in authored order
+no vacant Slot          = explicit rejection
+```
+
+Removed and rejected from the canonical model:
+
+```text
+PlayerProvisioningProfile
+PlayerSlotProvisioningOverride
+Initial/Current/Dynamic Capacity
+SetCapacity / SetDynamicCapacity
+per-Slot Host Provisioning override
+```
+
+## Canonical provisioning modes
+
+### Scene-Provided
+
+```text
+Session Host Provisioning = Scene Provided
+Host already exists in the active composition
+framework discovers/adopts within explicit Route/Activity composition scope
+no PlayerInputManager bridge
+```
+
+### Manager-Provisioned
+
+```text
+Session Host Provisioning = Manager Provisioned
+explicit Join creates Host through PlayerInputManager
+serialized PlayerInputManager player limit = SupportedSlotCount
+```
+
+The `PlayerInputManager` limit is a derived materialized technical constraint, not Session Capacity and not runtime authority.
+
+## Canonical public Player surface
 
 ```text
 Persistent Application Content
   LocalPlayerProvisioningAuthoring
   LocalPlayerProvisioningHostRegistration
-  PlayerInputManager
-  optional public Actor-selection authoring
+  PlayerInputManager                  # Manager-Provisioned only
+  optional Actor-selection authoring
 
-Route / Activity
+Route / Activity content
   LocalPlayerProvisioningConsumerAccessBinding
   optional PlayerProvisioningCommandTrigger
   optional PlayerProvisioningStatusBinding
 ```
 
-P1/P2 provide scoped reachability and observation. P3/P4 provide explicit authoring/presentation. They do not create a second Player authority. Their previous Capacity command/observation contract is superseded and must migrate with IF-ADR-016.
-
-## Historical Player Surface QA baseline
-
-The following certification is retained only as evidence for the superseded
-model. Its Capacity-related cases do not certify the accepted IF-ADR-016 model.
+Accepted command vocabulary:
 
 ```text
-QA-PLAYER-SURFACE-01
-  PASS — 29/29
-  PublicNavigation
-  ScopedAccess
-  Joining / Capacity / Join
-  Host / Slot observation
-  Actor Selection
-  normal preparation/materialization/admission
-  WaitCovered pending → terminal
-  exit preserves Session
-  reentry no duplicate
-
-QA-PLAYER-SURFACE-02
-  PASS — 36/36
-  closed joining
-  invalid / exhausted capacity
-  no-change
-  missing / wrong / stale / destroyed scope
-  exit WaitingForJoin
-  stale Activity endpoint / occurrence
-  stale Actor selection revision
-  repeated selection stability
-  unbound public navigation negative
-
-Joint verdict
-  PLAYER SURFACE QA CERTIFIED
+Open Joining
+Close Joining
+Request Join
+Request Default Actor Selection
 ```
 
-Expected error logs emitted by deliberate negative cases are evidence, not certification failure, when the Q2 runner and joint orchestrator end Passed/Certified.
+Observation remains immutable and scoped. Internal reservation, Actor preparation/materialization, gameplay admission and Activity reconcile authorities are not public consumer commands.
 
-## Closed finding — public Slot/Host/Actor observation gap
+## Current QA certification
 
-The earlier tracker finding that no coherent public Slot–Host–Actor consumer projection existed is closed for the ADR-015 Player Surface boundary.
-
-P2 now exposes immutable per-Slot consumer observation that can correlate joined state, Host, selected Actor, logical preparation, physical materialization, gameplay admission, Activity occurrence and Session/applied revision evidence as applicable.
-
-Deep assignment token/owner/origin mutation remains internal QA authority and was not made public.
-
-## Closed finding — WaitCovered + Manager-Provisioned external progression
-
-Direct public QA now proves:
+Canonical entrypoint:
 
 ```text
-Required Player
-+ WaitCovered
-+ no joined Player
-→ WaitingForJoin / loading pending
-
-public Join + normal Actor lifecycle
-→ Ready
-→ loading/gate terminal
+Immersive Framework/QA/Player/Run Full Player QA
 ```
 
-The framework does not repair this with fake readiness, timeout, automatic Join or premature reveal. Games still need a reachable control path for external progression.
+Final evidence:
+
+```text
+[QA_PLAYER_FULL]
+status='Passed'
+verdict='PLAYER QA CERTIFIED'
+session='PASS'
+sceneProvided='PASS'
+managerProvisioned='PASS'
+actor='PASS'
+publicSurface='PASS'
+participation='PASS'
+```
+
+Expected error logs emitted by deliberate Q2 negative cases are evidence, not certification failure, when the Q2 runner and master orchestrator return PASS.
 
 ## Remaining Player findings
 
 ### FIRSTGAME real-consumer proof
 
-Technical QA is no longer the blocker. The next evidence is whether a game developer can manually compose the shipped Profiles and P1–P4 surfaces without framework-internal knowledge.
+Technical QA is no longer the blocker. The next evidence is whether a developer can manually create, configure, understand and use the Player feature without framework-internal knowledge.
+
+Recommended consumer proof order:
+
+```text
+Demo02 — Scene-Provided
+  Single / Route-Owned
+  Single / Activity-Owned
+  Multiplayer
+
+Demo03 — Manager-Provisioned
+  Single
+  Multiplayer / late Join
+```
 
 ### P5 creation-workflow disposition
 
-P5 is post-FIRSTGAME. It may conclude:
+P5 is post-FIRSTGAME and may validly conclude:
 
 ```text
 NO ADDITIONAL TOOLING REQUIRED
 ```
 
-or justify the smallest focused Create-menu/Inspector/template/Composer support. A Wizard/Composer is not mandatory by architecture alone.
-
-### Session-Persistent package gap
-
-Architecture exists but product/runtime workflow remains unavailable. Do not simulate it with an unscoped Persistent Content prefab.
+or justify the smallest focused Create-menu, Inspector, template or Composer support. A Wizard/Composer is not mandatory by architecture alone.
 
 ### Leave / disconnect
 
-Session Player Leave and device disconnect/reconnect remain outside the current ADR-015 scope and require their own approved contract work.
+Session Player Leave and device disconnect/reconnect remain outside current ADR-015 scope and require their own approved contract work.
 
-## Other closed programs
+### Session-Persistent
 
-### IF-TXN-01 / 02 / 03A
-
-Closed for the currently approved transaction and Transition Gate authority boundary. Reopen only with evidence that contradicts the certified semantics.
-
-### IF-ID
-
-Closed for the current authored-definition/stable-identity boundary. IF-ID-07 remains deferred until a real persistence/external resolver requirement appears.
+Architecture exists but no canonical product/runtime workflow is approved. Do not simulate it with arbitrary persistent GameObjects.
 
 ## Current execution priority
 
 ```text
-1. Unity import and public flow validation for R1/R2
-   NEXT
-
-2. FIRSTGAME-PLAYER-SURFACE-01
-   manual real-consumer proof after validation
-
-3. IF-PLAYER-SURFACE-07 (P5)
-   creation-workflow/tooling disposition based on real friction
-
-4. FIRSTGAME-PLAYER-SURFACE-01
-   manual real-consumer proof after migration
-
-5. IF-PLAYER-SURFACE-07 (P5)
-   creation-workflow/tooling disposition based on real friction
+1. FIRSTGAME Scene-Provided manual product proof
+2. FIRSTGAME Manager-Provisioned manual product proof
+3. IF-PLAYER-SURFACE-07 / P5 tooling disposition from observed friction
+4. Separate approved cuts for Leave/disconnect or Session-Persistent only when required
 ```
 
-Do not reopen P1–P4 or Q1/Q2 without new contradicting evidence.
+Do not reopen the removed Capacity / separate provisioning Profile model to satisfy old QA or historical documentation.
 
 ## API status note
 
-Manager-Provisioned runtime/product APIs remain subject to the package's Experimental/preview status policy even though the P1–P4 technical surface is implemented and QA-certified. Technical certification does not automatically promote API stability metadata.
+Technical certification does not automatically promote Experimental/preview API stability metadata.
 
 ## Historic programs
 
-Large readiness/M07/completeness plan documents remain historical planning context. Current mutable status belongs in this tracker; historic audits should retain their original baseline plus explicit later reconciliation notes rather than being silently rewritten as if they were produced after certification.
+Large readiness/M07/P3/completeness plan documents remain historical planning context. Current mutable status belongs in this tracker. Historical audits should retain their original baseline and must not be treated as current product truth when they reference superseded Player configuration contracts.

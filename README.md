@@ -16,8 +16,9 @@ There is no support or test matrix for earlier Unity versions.
 
 ```text
 GameApplicationAsset -> bootstrap -> scoped Framework runtime
-LocalPlayerProvisioningAuthoring -> manual local Player join
-SceneLocalPlayerAdmissionAuthoring -> scene-owned local Player admission
+PlayerSessionProfile -> Supported Slots / Joining / Host Provisioning / Actor Resolution
+LocalPlayerProvisioningAuthoring -> Manager-Provisioned local Player join
+SceneLocalPlayerAdmissionAuthoring -> Scene-Provided local Player admission
 CameraRigComposer -> Validate / Apply/Rebuild (Unity Preset optional)
 FrameworkBgmDirector -> Route/Activity BGM bindings -> Immersive Audio
 PausePlayerInputBinding -> InputMode transaction -> PlayerInput state writer
@@ -30,10 +31,33 @@ does not expose a static current-host registry or service-locator API. Required
 runtime dependencies are supplied through typed bindings and fail explicitly
 when unavailable.
 
+## Player technical QA status
+
+The current accepted Player model was technically certified by the canonical
+QAFramework Player orchestrator on 2026-08-09:
+
+```text
+Player Session                         PASS
+Scene-Provided                        PASS
+Manager-Provisioned                   PASS
+Actor lifecycle                       PASS
+Public Player Surface                 PASS
+Activity Participation integration    PASS
+
+PLAYER QA CERTIFIED
+```
+
+This certification covers the current `Supported Slots` Session model; it does
+not restore the removed Capacity, separate provisioning Profile or per-Slot
+Host Provisioning override model. FIRSTGAME remains the real-consumer/product
+usability proof.
+
 ## Documentation
 
 - [Documentation index](Documentation~/README.md)
 - [Current tracker](Documentation~/Architecture/Tracking/IF-TRACK-Framework.md)
+- [ADR completion summary](Documentation~/Architecture/IMMERSIVE-FRAMEWORK-ADR-COMPLETION-SUMMARY-2026-08-08.md)
+- [Player QA certification](Documentation~/Architecture/IMMERSIVE-FRAMEWORK-PLAYER-QA-CERTIFICATION-2026-08-09.md)
 - [Framework usage](Documentation~/Guides/Framework-Usage.md)
 - [Player usage](Documentation~/Guides/Player-Usage.md)
 - [Activity readiness](Documentation~/Guides/Activity-Readiness.md)

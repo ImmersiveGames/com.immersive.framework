@@ -1,71 +1,92 @@
 # IF-ADR-012 — Activity Player Participation Profile and Readiness Compatibility
 
 Status: Accepted  
-Last updated: 2026-08-06  
-Implementation completion: **90%**  
-Implementation classification: **Contract and runtime implemented; product/QA consolidation remains**  
-Related decisions: IF-ADR-003, IF-ADR-007, IF-ADR-010, IF-ADR-015  
-Audit baseline: package `9ed698e55b48077c54be5056c6951b7e52dac51b`, QA `0521d1f1804dff2806e06b1e095d47023a062b9e`, FIRSTGAME `e551643ce1b154fdb2744f97b039b4ce73bc6bf5`
-
-> This is a consolidated audit revision. The normative architectural decision is
-> preserved and the implementation assessment is explicitly separated from ADR
-> acceptance status. Percentages are planning estimates, not automated release
-> certification.
+Last updated: 2026-08-09  
+Implementation classification: **Contract/runtime substantially implemented; canonical Player participation integration QA certified; product consolidation remains**  
+Related decisions: IF-ADR-003, IF-ADR-007, IF-ADR-010, IF-ADR-015, IF-ADR-016
 
 ## Context
 
-Activities need reusable Player participation intent that can express projected Slots, controller modes, caps, Actor mapping, readiness requirements, and compatibility without duplicating runtime rules in each scene.
+Activities need reusable Player participation intent that can express projected Slots, readiness requirements and compatibility without duplicating Session/runtime rules in each scene.
 
 ## Decision
 
-Activity Player participation is authored through inline configuration or a reusable Profile resolved into one normalized effective policy with provenance. Runtime uses explicit Slot/Player/Actor evidence and publishes requested versus effective state and diagnostic reasons. Invalid or incompatible states fail explicitly.
+Activity Player participation is authored through the approved Activity/Route policy surface and resolves into one normalized effective policy with provenance. Runtime uses explicit Slot/Player/Actor evidence and publishes requested/effective state and diagnostic reasons. Invalid or incompatible states fail explicitly.
+
+Activity participation does not own or silently mutate Player Session configuration. It consumes the Session established through IF-ADR-016.
+
+## Session boundary
+
+```text
+PlayerSessionProfile
+  owns Supported Slots
+  owns Initial Joining
+  owns Session Host Provisioning
+  owns Actor Resolution
+
+Activity Player policy
+  projects/qualifies current Session Slots
+  defines participation/readiness intent
+  does not replace Session provisioning
+  does not create Capacity
+```
 
 ## Architectural constraints
 
-- Runtime authority must be scoped, typed, and lifetime-explicit.
-- Required invalid configuration must fail explicitly and diagnostically.
-- Consumer code must not depend on internal runtime modules, reflection, object-name inference, or implicit global lookup.
-- Editor tooling must be idempotent, non-destructive, and expose technical evidence through Advanced/Debug.
-- QA proves technical contracts; FIRSTGAME proves real consumer usability; permanent solutions belong in the package.
+- Runtime authority is scoped, typed and lifetime-explicit.
+- Required invalid configuration fails explicitly and diagnostically.
+- Consumer code does not depend on internal runtime modules, reflection, object-name inference or implicit global lookup.
+- Editor tooling is idempotent and non-destructive.
+- QA proves technical contracts; FIRSTGAME proves real consumer usability.
+- Activity/GameFlow tests may consume a stable Player fixture but must not become the owner of Player Session setup.
 
 ## Current implementation coverage
 
-Profiles, normalized resolution, controller modes, Slot caps, explicit Actor maps, requested/effective state, compatibility diagnostics, exact readiness evidence, and FIRSTGAME M07 integration exist. Manager-Provisioned lifecycle reconciliation now respects active Activity occurrences.
+The package provides normalized Player participation/readiness integration, explicit Slot projection, requested/effective evidence, compatibility diagnostics and occurrence-aware runtime behavior. Manager-Provisioned lifecycle reconciliation respects active Activity occurrences, and Scene-Provided/Manager-Provisioned both feed the same participation/readiness contract.
 
-## Current QA evidence
+## Current QA evidence — certified 2026-08-09
 
-Public-authoring QA existed historically, but the cleaned harness requires current canonical revalidation.
+The canonical Player QA run includes an explicit Participation phase and completed:
+
+```text
+Activity Session Projection
+  PASS — 30 cases
+
+Master Player QA
+  participation='PASS'
+  verdict='PLAYER QA CERTIFIED'
+```
+
+The surrounding Player lifecycle used by participation is also green:
+
+```text
+Scene-Provided                 PASS
+Manager-Provisioned            PASS
+Actor lifecycle                PASS
+Public Player Surface          PASS
+```
+
+This replaces the previous statement that the cleaned harness still required canonical Player participation revalidation.
+
+See `../IMMERSIVE-FRAMEWORK-PLAYER-QA-CERTIFICATION-2026-08-09.md`.
 
 ## Current FIRSTGAME evidence
 
-FIRSTGAME M07 and Demo03 provide direct consumer proof and expose the need for canonical commands/status presentation under IF-ADR-015.
+FIRSTGAME remains the product/usability proof. It should demonstrate participation only after the underlying Scene-Provided or Manager-Provisioned Player composition is understandable in isolation.
+
+Participation policies are not a Host provisioning mode and should not be mixed into the first manual proof of either provisioning model.
 
 ## What remains
 
-- Complete Create menu/template and designer-first Profile/Activity Inspector flow.
-- Expose provenance, effective policy, projected Slots, and readiness contribution in Advanced/Debug.
-- Rebuild QA for inline/profile precedence, invalid maps, caps, unsupported modes, zero Slots, and runtime changes.
-- Clarify which policy changes may apply to an active Activity and which require reentry/restart.
-- Integrate consumer observation through IF-ADR-015 without duplicating readiness calculation.
+- Product consolidation and designer-facing clarity for participation policy authoring.
+- Advanced/Debug provenance/effective-policy visibility where still incomplete.
+- FIRSTGAME proof that real Activity participation can be configured without framework-internal knowledge.
+- Additional focused QA only for uncovered policy variants or new regressions.
+- Clarification of any future policy changes that may apply to an active Activity versus requiring reentry/restart.
 
 ## Completion criteria
 
-- One normalized effective policy is the sole runtime input.
-- Provenance and requested/effective differences are visible.
+- One normalized effective participation policy is the runtime input.
+- Provenance and requested/effective differences are visible where needed.
 - Invalid compatibility never falls back silently.
-- Current QA and FIRSTGAME prove profile reuse and runtime outcomes.
-
-## Completion assessment
-
-```text
-Estimated completion: 90%
-Normative status: Accepted
-Package implementation: evaluated at 9ed698e
-QA evidence: evaluated at 0521d1f
-FIRSTGAME evidence: evaluated at e551643
-```
-
-The percentage includes architecture/contract, runtime behavior, product authoring,
-diagnostics/documentation, current QA evidence, and real-consumer evidence. A high
-runtime percentage may still be reduced when the canonical QA harness or product
-surface is incomplete.
+- Current QA and FIRSTGAME prove the same official package surface.
