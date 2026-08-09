@@ -61,6 +61,28 @@ Two gates are mandatory:
 1. Do not integrate with runtime before the resolver is stable.
 2. Do not invest in sophisticated tooling before the runtime integration is proven.
 
+## Implementation status — 2026-08-08
+
+| Cut | Status | Evidence / note |
+|---|---|---|
+| IF-SESSION-CONFIG-01 | **CLOSED** | canonical effective contracts added |
+| IF-SESSION-CONFIG-02 | **CLOSED** | `PlayerProvisioningProfile` authoring added |
+| IF-SESSION-CONFIG-03 | **CLOSED** | `PlayerSessionProfile` authoring added |
+| IF-SESSION-CONFIG-04 | **CLOSED** | pure deterministic resolver added |
+| IF-SESSION-CONFIG-05 | **CLOSED** | runtime integration; QA smoke **6/6 PASS** |
+| IF-SESSION-CONFIG-06 | **CLOSED for current UX cut** | designer-first Inspectors/diagnostics; fine UX polish deferred to FIRSTGAME |
+| IF-SESSION-CONFIG-07 | **CLOSED** | contract-closure smoke **17/17 PASS** |
+| IF-SESSION-CONFIG-08 | **DEFERRED** | manual FIRSTGAME proof intentionally postponed |
+| IF-SESSION-CONFIG-09 | **PARTIAL** | docs refreshed; ADR remains Proposed |
+
+### Open ADR-016 package gap discovered during closure
+
+The normative creation-time `PlayerSessionProfile` override is now **implemented and QA-certified** by IF-SESSION-CONFIG-05B. It replaces the GameApplication default as one complete source, performs no field merge, and an invalid explicit override fails without fallback to the default.
+
+### Evidence intentionally not overclaimed
+
+The current Edit Mode QA proves Session-vs-Activity contract separation but does not execute a full Route/Activity transition through `FrameworkRuntimeHost`; real non-reapplication through ActivityFlow remains integration evidence to collect later.
+
 ---
 
 # IF-SESSION-CONFIG-01 — Canonical Contracts and Reuse Boundary
@@ -1005,28 +1027,24 @@ Technical contracts, real consumer usability, and architectural documentation ar
 
 ---
 
-# Recommended Starting Point
+# Recommended Next Implementation Point
 
-The first implementation cut should be:
+Cuts 01–07 are complete. FIRSTGAME proof is intentionally deferred.
 
-```text
-IF-SESSION-CONFIG-01
-```
-
-Keep it intentionally small:
-
-1. audit existing canonical types;
-2. reuse existing contracts wherever possible;
-3. create only the missing contracts/value types required by `EffectivePlayerSessionConfiguration`;
-4. do not create a second runtime authority;
-5. do not let the shape of a future ScriptableObject dictate runtime architecture.
-
-The core dependency is:
+Before moving ADR-016 to acceptance, perform the smallest remaining package audit/cut:
 
 ```text
-first define what the Profile resolves into
-then define the Profile
-then integrate the resolved value with runtime
-```
+IF-SESSION-CONFIG-05B — Creation-Time Session Profile Override Closure
 
-This minimizes coupling between authoring, runtime authority, QA, and product tooling.
+Status: **CLOSED / QA CERTIFIED**
+
+Implemented:
+
+1. `FrameworkRuntimeHost.TryCreate(...)` accepts an optional typed `PlayerSessionProfile` explicit creation input;
+2. bootstrap automatic path passes `null`, preserving GameApplication default behavior;
+3. explicit Profile replaces the default as one complete source;
+4. invalid explicit Profile fails without fallback;
+5. no field-by-field merge occurs;
+6. CONFIG-05B QA smoke passes 4/4.
+
+Remaining closure work is FIRSTGAME manual consumer proof, appropriate Route/Activity integration evidence, and final ADR acceptance/documentation.
