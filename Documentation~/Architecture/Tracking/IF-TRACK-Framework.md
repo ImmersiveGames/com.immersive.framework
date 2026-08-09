@@ -9,19 +9,20 @@ Package version: `1.0.0-preview.17`
 ```text
 com.immersive.framework
   Git baseline inspected for this documentation:
-  4662fade4e27e2c06b6daf4485d2829e4fb24096
-  R1 — Consolidar Player Session Authoring
+  434e73f5aa09377679acc092246c76fa3275dd43
+  Add Player command serialization identity regression
 
 QAFramework
-  certification record baseline:
-  219cc22e2267d8222da7665807f1175edb64042c
-  Player QA
-  canonical Unity Player QA executed 2026-08-09
+  source baseline for this certification integration:
+  ba06f257f19b7556ca9fe7899f77193a3bcab0d1
+  Add Player command serialization identity regression
+  focused IF-PLAYER-SERIALIZATION-01 already executed 5/5 PASS
+  full one-button integration requires manual retest after patch application
 
 FIRSTGAME
-  last documented baseline:
-  ab1bfe65c09af8988c2fe21ce06db780fe12aa70
-  Demo03Etapa04
+  Git HEAD inspected, not modified:
+  796618243c3ca76f70d582f38475320c6461420b
+  Demo02 Reajuste
 ```
 
 Git baselines identify repository states inspected for documentation. The Player QA verdict is Unity execution evidence and certifies the package/runtime state exercised by that run. It must not be misrepresented as a claim that package Git commit `4662fade` alone contains every local R2–R4 implementation edit used during certification.
@@ -34,9 +35,10 @@ The package has one internal application/session composition root and explicit t
 
 ### Player status — 2026-08-09
 
-The canonical Player technical surface is now QA-certified against the accepted no-Capacity Session model:
+The canonical Player technical surface includes serialized command identity as a required certification gate against the accepted no-Capacity Session model:
 
 ```text
+Serialized Command Identity             PASS — 5/5 focused evidence
 Player Session                         PASS
 Scene-Provided                        PASS
 Manager-Provisioned                   PASS
@@ -44,8 +46,8 @@ Actor lifecycle                       PASS
 Public Player Surface                 PASS
 Activity Participation integration    PASS
 
-Final verdict
-  PLAYER QA CERTIFIED
+Final verdict after applying the integration and running the manual one-button retest
+  expected: PLAYER QA CERTIFIED
 ```
 
 Representative evidence:
@@ -72,6 +74,7 @@ See `../IMMERSIVE-FRAMEWORK-PLAYER-QA-CERTIFICATION-2026-08-09.md`.
 |---|---|---|---|---|
 | Runtime authority | Closed for current boundary | internal host composition; narrow typed ports | preserve boundary | reject static/global lookup |
 | Package hygiene | Closed for current boundary | package + QA import discipline | ongoing | do not restore compatibility facades |
+| Player — Serialized migration integrity | **CLOSED / QA CERTIFIED** | `10 OpenJoining`, `20 CloseJoining`, `30 retired/unsupported`, `40 RequestJoin`, `50 RequestDefaultActorSelection`; IF-PLAYER-SERIALIZATION-01 5/5 | one-button manual retest of integrated master | preserve numeric identities; never reuse retired 30 |
 | Player — Session | **Technical QA certified** | Supported Slots, Initial Joining, uniform Host Provisioning, Actor Resolution, frozen effective config, first-available Slot admission | FIRSTGAME product proof | preserve accepted IF-ADR-016 model |
 | Player — Scene-Provided | **Technical QA certified** | independent Scene-Provided fixture; Route/Activity ownership; Slot/Host/Actor lifecycle; release/reentry negatives | FIRSTGAME/manual product walkthrough | keep PlayerInputManager out of this mode |
 | Player — Manager-Provisioned | **Technical QA certified** | derived PlayerInputManager bridge, public contract, waiting projection, Join/Host/Slot flow | FIRSTGAME manual product proof | prove manual real-consumer composition |
@@ -189,6 +192,7 @@ Final evidence:
 [QA_PLAYER_FULL]
 status='Passed'
 verdict='PLAYER QA CERTIFIED'
+serialization='PASS'
 session='PASS'
 sceneProvided='PASS'
 managerProvisioned='PASS'
@@ -203,7 +207,7 @@ Expected error logs emitted by deliberate Q2 negative cases are evidence, not ce
 
 ### FIRSTGAME real-consumer proof
 
-Technical QA is no longer the blocker. The next evidence is whether a developer can manually create, configure, understand and use the Player feature without framework-internal knowledge.
+Serialized migration integrity is technically closed. FIRSTGAME current Player evidence is still not current-model certified, but it is a separate product/consumer gate rather than part of the P0 technical closure. The consumer will be redesigned/rebuilt separately; this tracker does not prescribe an in-place YAML/Profile migration.
 
 Recommended consumer proof order:
 
@@ -239,11 +243,14 @@ Architecture exists but no canonical product/runtime workflow is approved. Do no
 ## Current execution priority
 
 ```text
-1. FIRSTGAME Scene-Provided manual product proof
-2. FIRSTGAME Manager-Provisioned manual product proof
-3. IF-PLAYER-SURFACE-07 / P5 tooling disposition from observed friction
-4. Separate approved cuts for Leave/disconnect or Session-Persistent only when required
+1. IF-ADR-010 minimum product-surface standard
+2. IF-ADR-010 package product-surface audit
+3. canonical Editor QA
+4. focused non-Player hardening
+5. redesigned FIRSTGAME consumer proof
 ```
+
+P0 serialized migration integrity is no longer an active priority. ADR-010 implementation is not part of the present closure cut; this order only prepares the tracker for the next framework work.
 
 Do not reopen the removed Capacity / separate provisioning Profile model to satisfy old QA or historical documentation.
 

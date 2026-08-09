@@ -1,9 +1,9 @@
 # Immersive Framework — Player Serialization Migration Integrity
 
 **Date:** 2026-08-09  
-**Status:** **P0 CONFIRMED / OPEN**  
-**Type:** technical integrity / migration / real-consumer compatibility  
-**Mode:** Git read-only audit; no repository changes performed
+**Status:** **P0 TECHNICALLY CLOSED**  
+**Type:** technical integrity / serialized migration identity  
+**Mode:** closure reconciliation from package + QA evidence; FIRSTGAME remains a separate consumer gate
 
 ---
 
@@ -36,26 +36,24 @@ This P0 does **not** propose restoring those concepts.
 
 ---
 
-## 2. Git baselines inspected
+## 2. Git baselines inspected for closure
 
 ```text
 com.immersive.framework
-  documentation HEAD:
-    bc851304347df0b8460affaa2695fdba5a32fbe6
-    Docs
-
-  Player runtime migration baseline:
-    4662fade4e27e2c06b6daf4485d2829e4fb24096
-    R1 — Consolidar Player Session Authoring
+  current HEAD:
+    434e73f5aa09377679acc092246c76fa3275dd43
+    Add Player command serialization identity regression
 
   pre-R1 comparison baseline:
     cf0a37fbcbf72ad2a08556d6045c908521bfd2c1
 
 QAFramework
-  219cc22e2267d8222da7665807f1175edb64042c
-  Player QA
+  current HEAD before full-certification integration patch:
+  ba06f257f19b7556ca9fe7899f77193a3bcab0d1
+  Add Player command serialization identity regression
 
 FIRSTGAME / planet-devourer
+  current HEAD inspected, not modified:
   796618243c3ca76f70d582f38475320c6461420b
   Demo02 Reajuste
 ```
@@ -70,21 +68,26 @@ not pinned by the QA project itself.
 
 ---
 
-## 3. Verdict
+## 3. Closure verdict
 
 ```text
 P0 Serialized Player Migration Integrity
-  status = FAILED / DEFECT CONFIRMED
+  status = TECHNICALLY CLOSED
+
+Package serialization identity correction
+  CLOSED
+
+QA serialization regression
+  CERTIFIED — IF-PLAYER-SERIALIZATION-01 PASS 5/5
+
+Canonical Player QA serialization gate
+  INTEGRATED BY THIS PATCH — requires manual one-button retest
+
+FIRSTGAME current Player proof
+  OPEN / DEFERRED — separate redesign/rebuild
 ```
 
-A serialized `PlayerProvisioningCommandOperation` numeric value changed semantic
-meaning across R1.
-
-The current FIRSTGAME contains a concrete affected component.
-
-This is stronger than "FIRSTGAME has not been revalidated". The current consumer
-contains serialized content whose authored meaning can be reinterpreted by the
-new enum mapping.
+The audit found a real serialized identity reuse. The package correction restores the historical identities of still-supported commands and retires former Capacity value `30` instead of reusing it. The focused regression proves the five identities. FIRSTGAME was useful evidence for discovering the defect, but its current-model product proof is not a technical P0 closure condition.
 
 ---
 
@@ -113,17 +116,20 @@ requestedCapacity
 
 as the input for `SetCapacity`.
 
-### 4.2 R1/current runtime schema
+### 4.2 Corrected current runtime schema
 
-At R1/current runtime:
+At current package HEAD:
 
 ```csharp
 PlayerProvisioningCommandOperation
 {
     OpenJoining                  = 10,
     CloseJoining                 = 20,
-    RequestJoin                  = 30,
-    RequestDefaultActorSelection = 40
+
+    // 30 intentionally retired.
+
+    RequestJoin                  = 40,
+    RequestDefaultActorSelection = 50
 }
 ```
 
@@ -133,13 +139,13 @@ PlayerProvisioningCommandOperation
 
 Therefore:
 
-| Serialized integer | Pre-R1 meaning | R1 meaning | Migration result |
+| Serialized integer | Pre-R1 meaning | Corrected current meaning | Closure result |
 |---:|---|---|---|
 | `10` | Open Joining | Open Joining | stable |
 | `20` | Close Joining | Close Joining | stable |
-| `30` | Set Capacity | Request Join | **silent semantic remap** |
-| `40` | Request Join | Request Default Actor Selection | **silent semantic remap** |
-| `50` | Request Default Actor Selection | undefined | explicit/invalid if preserved as 50 |
+| `30` | Set Capacity | undefined / unsupported | retired explicitly; no semantic reuse |
+| `40` | Request Join | Request Join | stable |
+| `50` | Request Default Actor Selection | Request Default Actor Selection | stable |
 
 The critical problem is not that an old value becomes unsupported.
 
@@ -192,15 +198,14 @@ operation: 40
   = Request Join
 ```
 
-For the current schema:
+For the corrected current schema:
 
 ```text
 operation: 40
-  = Request Default Actor Selection
+  = Request Join
 ```
 
-Therefore the `operation: 40` component is a **confirmed semantic migration
-collision**.
+Therefore the previously confirmed collision is no longer present in the package enum. This does not certify the rest of FIRSTGAME Player authoring against the current model.
 
 The `operation: 10` component remains semantically stable.
 
@@ -263,7 +268,7 @@ No silent compatibility fallback should be added.
 
 ---
 
-## 7. Why this is a package integrity issue, not only a FIRSTGAME issue
+## 7. Why the technical fix belongs to the package
 
 FIRSTGAME exposes the defect, but the collision originates in a serialized
 package enum.
@@ -277,14 +282,11 @@ PlayerProvisioningCommandTrigger
 Changing the numeric identity of serialized enum members can reinterpret
 existing scene/prefab content without producing an unsupported enum.
 
-Therefore the permanent correction belongs in the package.
-
-FIRSTGAME should then reauthor/re-save its current Player assets as real-consumer
-proof.
+Therefore the permanent correction belongs in the package and is now present. FIRSTGAME product proof is handled separately and may be redesigned/rebuilt rather than treated as an in-place migration obligation.
 
 ---
 
-## 8. Recommended package disposition
+## 8. Applied package disposition
 
 Preserve the historical numeric identity of still-supported commands and retire
 the removed Capacity value without reusing it:
@@ -332,18 +334,16 @@ superseded Capacity model.
 
 ---
 
-## 9. Required QA cut
+## 9. QA certification
 
-After the package correction, QA should add one focused migration-integrity
-regression.
-
-Suggested cut:
+The focused migration-integrity regression exists and has produced:
 
 ```text
 IF-PLAYER-SERIALIZATION-01
+PASS — 5/5
 ```
 
-Cases:
+Certified cases:
 
 ```text
 legacy serialized 10
@@ -365,43 +365,29 @@ legacy serialized 30
   -> explicit diagnostic
 ```
 
-Also prove:
+The focused regression also owns the invariant:
 
 ```text
 unsupported numeric operation never executes another supported command
 ```
 
-This QA is about serialized product-contract stability. It complements, rather
-than duplicates, Q1/Q2 runtime command certification.
+This QA is about serialized product-contract stability. It complements, rather than duplicates, Q1/Q2 runtime command certification. The canonical `Run Full Player QA` now delegates to `QaPlayerSerializationIdentityRegression.Execute(...)` in Edit Mode before starting Play Mode-dependent phases; the master does not copy these assertions.
 
 ---
 
-## 10. Required FIRSTGAME cut
+## 10. Separate FIRSTGAME consumer gate
 
-After package + QA:
+FIRSTGAME is not modified by this P0 closure and is not claimed current-model certified.
 
 ```text
-1. Open FIRSTGAME against the corrected package.
-2. Reauthor Demo02_Session_SceneProvided.
-3. Reauthor Demo02_Session_ManagerProvided.
-4. Explicitly author:
-     Supported Slots
-     Initial Joining
-     Host Provisioning
-     Actor Resolution
-5. Re-save the assets in Unity.
-6. Verify command triggers in Inspector:
-     Open Joining
-     Request Join
-     Request Default Actor Selection where actually intended
-7. Validate Scene-Provided flow.
-8. Validate Manager-Provisioned flow.
-9. Validate command/status surface using only official package surfaces.
-10. Record the real-consumer evidence.
+FIRSTGAME current Player evidence
+  OPEN / DEFERRED
+
+next consumer action
+  redesign/rebuild separately
 ```
 
-Do not hand-edit YAML as the normal migration flow. The point of FIRSTGAME is to
-prove the current authoring experience a real user receives in Unity.
+Do not hand-edit YAML or add package compatibility behavior merely to preserve the current consumer state. When the separate consumer redesign begins, it must prove the current package model using official authoring/public surfaces.
 
 ---
 
@@ -414,7 +400,7 @@ Technical lifecycle
   remains strongly QA-certified.
 
 FIRSTGAME evidence
-  blocked until current Player authoring is reauthored and exercised.
+  current product evidence remains absent/deferred; this no longer means the technical P0 is open.
 ```
 
 ### IF-ADR-012
@@ -424,7 +410,7 @@ Technical participation integration
   remains QA-certified.
 
 FIRSTGAME participation proof
-  is not current until the underlying Session/Player composition is current.
+  remains absent/deferred until the redesigned consumer composition is proven.
 ```
 
 ### IF-ADR-015
@@ -434,7 +420,7 @@ Current command/observation runtime surface
   remains technically QA-certified.
 
 Product/consumer evidence
-  blocked by a real serialized command-authoring collision.
+  remains absent/deferred; serialized migration integrity itself is closed.
 ```
 
 ### IF-ADR-016
@@ -444,7 +430,7 @@ Accepted current Session model
   remains implemented and technically QA-certified.
 
 Current FIRSTGAME assets
-  do not encode the accepted model and must be reauthored.
+  are not current-model proof; consumer redesign/rebuild is separate.
 ```
 
 The P0 does **not** justify lowering package runtime maturity twice. Its main
@@ -453,9 +439,7 @@ specific package authoring-integrity fix.
 
 ---
 
-## 12. P0 closure criteria
-
-P0 closes only when all of the following are true:
+## 12. P0 closure criteria — satisfied
 
 ```text
 PACKAGE
@@ -464,60 +448,45 @@ PACKAGE
   unsupported legacy value fails explicitly
 
 QA
-  migration-integrity regression passes
+  IF-PLAYER-SERIALIZATION-01 passes 5/5
   no silent command remap is possible
-
-FIRSTGAME
-  Demo02 Scene-Provided Profile uses current fields
-  Demo02 Manager-Provisioned Profile uses current fields
-  command triggers are intentionally reauthored
-  Scene-Provided works
-  Manager-Provisioned works
-  current command/status surface works
+  canonical Player QA includes the serialization regression as a required gate
 
 DOCUMENTATION
-  completion summary records P0 closure
-  FIRSTGAME evidence is only promoted after the real Unity proof
+  P0 technical integrity is recorded CLOSED
+  FIRSTGAME consumer proof remains explicitly OPEN / DEFERRED
 ```
+
+FIRSTGAME current-model product evidence is a separate gate and is not required to keep the package serialization defect technically closed.
 
 ---
 
-## 13. Current status after Git audit
+## 13. Current status after technical closure
 
 ```text
 Package current technical model          GREEN
-Canonical Player QA                      GREEN
-Serialized migration integrity           RED / P0 OPEN
-FIRSTGAME current Player product proof   BLOCKED
+Focused serialization QA                 GREEN — 5/5
+Canonical Player QA serialization gate   INTEGRATED — manual one-button retest required
+Serialized migration integrity           CLOSED
+FIRSTGAME current Player product proof   OPEN / DEFERRED
 ```
 
-This P0 should be resolved before treating FIRSTGAME as evidence for
-IF-ADR-003, IF-ADR-012, IF-ADR-015 or IF-ADR-016.
+Do not treat FIRSTGAME as current evidence for IF-ADR-003, IF-ADR-012, IF-ADR-015 or IF-ADR-016 until the separate redesigned consumer proof exists. That evidence gap no longer reopens the serialized migration-integrity P0.
 
 ---
 
-## 14. Suggested future commit messages
-
-Package:
-
-```text
-Fix Player command serialized operation identities
-```
+## 14. Suggested commit messages for this closure cut
 
 QA:
 
 ```text
-Add Player command serialization migration regression
+Integrate Player serialization identity into full certification
 ```
 
-FIRSTGAME:
+Package documentation:
 
 ```text
-Migrate Demo02 Player authoring to current Session model
+Close Player serialized migration integrity P0
 ```
 
-Documentation:
-
-```text
-Reconcile ADR completion after Player serialization audit
-```
+No FIRSTGAME commit belongs to this cut.
