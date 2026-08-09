@@ -81,11 +81,6 @@ namespace Immersive.Framework.PlayerParticipation
             playerInputManager.playerPrefab !=
                 localPlayerHostPrefab;
 
-        public int TechnicalMaxPlayerCount =>
-            playerInputManager != null
-                ? playerInputManager.maxPlayerCount
-                : 0;
-
         public bool RuntimeReady =>
             runtimeModule != null &&
             runtimeModule.IsReadyFor(this);
@@ -205,28 +200,6 @@ namespace Immersive.Framework.PlayerParticipation
                 : PlayerParticipationOperationResult
                     .RuntimeUnavailable(
                         "CloseJoining",
-                        source,
-                        reason,
-                        RuntimeDiagnostic);
-        }
-
-        /// <summary>
-        /// Changes current Session join capacity without evicting existing
-        /// participation.
-        /// </summary>
-        public PlayerParticipationOperationResult SetDynamicCapacity(
-            int requestedCapacity,
-            string source,
-            string reason)
-        {
-            return RuntimeReady
-                ? runtimeModule.TrySetDynamicCapacity(
-                    requestedCapacity,
-                    source,
-                    reason)
-                : PlayerParticipationOperationResult
-                    .RuntimeUnavailable(
-                        "SetDynamicCapacity",
                         source,
                         reason,
                         RuntimeDiagnostic);

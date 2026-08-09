@@ -5,7 +5,6 @@ using Immersive.Framework.Editor.Editor.Validation;
 using Immersive.Framework.Performance;
 using Immersive.Framework.PlayerParticipation;
 using UnityEditor;
-using UnityEditorInternal;
 using UnityEngine;
 
 namespace Immersive.Framework.Editor.Editor.Authoring
@@ -22,11 +21,6 @@ namespace Immersive.Framework.Editor.Editor.Authoring
             new GUIContent(
                 "Startup Route",
                 "Route requested when this Game Application starts.");
-
-        private static readonly GUIContent DuplicateActorsLabel =
-            new GUIContent(
-                "Duplicate Actors",
-                "Controls whether more than one local Player Slot may select the same Actor.");
 
         private static readonly GUIContent PlayerSessionEnabledLabel =
             new GUIContent(
@@ -70,7 +64,6 @@ namespace Immersive.Framework.Editor.Editor.Authoring
 
         private SerializedProperty _applicationName;
         private SerializedProperty _startupRoute;
-        private SerializedProperty _localPlayerSlots;
         private SerializedProperty _playerSessionEnabled;
         private SerializedProperty _defaultPlayerSessionProfile;
         private SerializedProperty _playerActorSelectionDuplicatePolicy;
@@ -82,7 +75,6 @@ namespace Immersive.Framework.Editor.Editor.Authoring
         private SerializedProperty _containerScene;
         private SerializedProperty _validationMode;
 
-        private ReorderableList _localPlayerSlotsList;
         private FrameworkAuthoringValidationReport _lastValidationReport;
         private bool _serializedBindingsDirty = true;
         private bool _validationOutdated;
@@ -99,8 +91,6 @@ namespace Immersive.Framework.Editor.Editor.Authoring
                 serializedObject.FindProperty("applicationName");
             _startupRoute =
                 serializedObject.FindProperty("startupRoute");
-            _localPlayerSlots =
-                serializedObject.FindProperty("localPlayerSlots");
             _playerSessionEnabled =
                 serializedObject.FindProperty("playerSessionEnabled");
             _defaultPlayerSessionProfile =
@@ -124,41 +114,6 @@ namespace Immersive.Framework.Editor.Editor.Authoring
                     "containerScene");
             _validationMode =
                 serializedObject.FindProperty("validationMode");
-
-            _localPlayerSlotsList =
-                new ReorderableList(
-                    serializedObject,
-                    _localPlayerSlots,
-                    true,
-                    true,
-                    true,
-                    true);
-
-            _localPlayerSlotsList.drawHeaderCallback =
-                rect =>
-                    EditorGUI.LabelField(
-                        rect,
-                        $"Player Slots — {_localPlayerSlots.arraySize}");
-
-            _localPlayerSlotsList.elementHeight =
-                EditorGUIUtility.singleLineHeight + 4f;
-
-            _localPlayerSlotsList.drawElementCallback =
-                (rect, index, active, focused) =>
-                {
-                    SerializedProperty element =
-                        _localPlayerSlots
-                            .GetArrayElementAtIndex(index);
-
-                    rect.y += 2f;
-                    rect.height =
-                        EditorGUIUtility.singleLineHeight;
-
-                    EditorGUI.PropertyField(
-                        rect,
-                        element,
-                        new GUIContent($"{index + 1}."));
-                };
 
             _serializedBindingsDirty = false;
         }
@@ -214,7 +169,7 @@ namespace Immersive.Framework.Editor.Editor.Authoring
                     ? "Active"
                     : activeGameApplication == null
                         ? "No Active Application"
-                        : $"Inactive — {activeGameApplication.ApplicationName}");
+                        : $"Inactive â€” {activeGameApplication.ApplicationName}");
 
             using (new EditorGUILayout.HorizontalScope())
             {
@@ -309,7 +264,7 @@ namespace Immersive.Framework.Editor.Editor.Authoring
             {
                 DrawStatusRow(
                     "Configuration",
-                    "Disabled — no Player Session is created.");
+                    "Disabled â€” no Player Session is created.");
                 return;
             }
 
@@ -340,23 +295,19 @@ namespace Immersive.Framework.Editor.Editor.Authoring
 
             DrawStatusRow(
                 "Configuration",
-                $"Ready — {resolution.Configuration.SupportedSlotCount} Slot(s), resolved once at Session creation.");
+                $"Ready â€” {resolution.Configuration.SupportedSlotCount} Slot(s), resolved once at Session creation.");
         }
 
-        private void DrawLegacyLocalPlayers()
+        private void DrawActorSelectionPolicy()
         {
-            DrawSection("Legacy Local Player Configuration");
-
-            EditorGUILayout.HelpBox(
-                "These technical fields are retained for existing assets. An enabled Player Session uses the Default Player Session Profile instead.",
-                MessageType.Warning);
+            DrawSection("Actor Selection Policy");
 
             EditorGUILayout.PropertyField(
                 _playerActorSelectionDuplicatePolicy,
-                DuplicateActorsLabel);
+                new GUIContent(
+                    "Actor Selection Duplicates",
+                    "Session Actor-selection policy. This is distinct from Player Session initial Actor Resolution."));
 
-            EditorGUILayout.Space(3f);
-            _localPlayerSlotsList?.DoLayoutList();
         }
 
         private void DrawPerformance()
@@ -577,10 +528,6 @@ namespace Immersive.Framework.Editor.Editor.Authoring
                     typeof(SceneAsset),
                     false);
 
-                EditorGUILayout.IntField(
-                    "Configured Player Capacity",
-                    _localPlayerSlots?.arraySize ?? 0);
-
                 EditorGUILayout.EnumPopup(
                     "Frame Rate Mode",
                     _frameRateMode != null
@@ -603,7 +550,7 @@ namespace Immersive.Framework.Editor.Editor.Authoring
             }
 
             DrawPlayerSessionAdvancedEvidence();
-            DrawLegacyLocalPlayers();
+            DrawActorSelectionPolicy();
 
             EditorGUILayout.Space(4f);
             EditorGUILayout.LabelField(

@@ -91,9 +91,6 @@ namespace Immersive.Framework.Editor.Diagnostics
 
             using (new EditorGUI.DisabledScope(true))
             {
-                EditorGUILayout.IntField(
-                    "Initial Capacity",
-                    configuration.InitialCapacity);
                 EditorGUILayout.Toggle(
                     "Initial Joining Open",
                     configuration.InitialJoiningOpen);

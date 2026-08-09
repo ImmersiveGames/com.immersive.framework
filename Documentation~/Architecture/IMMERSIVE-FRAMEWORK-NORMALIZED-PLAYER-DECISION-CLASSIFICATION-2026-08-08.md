@@ -1,5 +1,9 @@
 # Immersive Framework — Normalized Player Decision Classification
 
+> Historical classification. `IF-ADR-016` dated 2026-08-09 supersedes its
+> Profile, Capacity and per-Slot provisioning decisions; this file is not
+> normative for implementation.
+
 **Date:** 2026-08-08  
 **Status:** Mechanical normalization completed; gap analysis not started  
 **Project:** Immersive Framework 1.1 / Unity 6.5

@@ -1,5 +1,8 @@
 # Immersive Framework — IF-ADR-015 Player Provisioning Consumer Surface Closure Plan
 
+**Status:** Historical / Superseded for Player Session configuration and Capacity commands by `IF-ADR-016` and `IF-ADR-015` dated 2026-08-09.  
+**Use:** Retain only as the execution record for the former model. It is not an active plan and must not guide a compatibility path.
+
 **Original plan date:** 2026-08-07  
 **Reconciled:** 2026-08-09  
 **Status:** Package + QA closure achieved; FIRSTGAME product proof and post-FIRSTGAME P5 disposition remain  

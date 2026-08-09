@@ -49,6 +49,7 @@ namespace Immersive.Framework.Editor.Editor.PlayerParticipation
             }
 
             DrawExplicitMigrationAction();
+            DrawDerivedPlayerInputManagerLimit(authoring);
             DrawActions(authoring);
             DrawValidationSummary();
             DrawAdvanced(authoring);
@@ -134,7 +135,7 @@ namespace Immersive.Framework.Editor.Editor.PlayerParticipation
                 if (GUILayout.Button(
                         new GUIContent(
                             "Validate Provisioning Setup",
-                            "Validate the authored manager, technical Host prefab and Game Application Slot capacity. This does not create or inspect a runtime Player.")))
+                            "Validate the authored manager, technical Host prefab and Game Application Supported Slots. This does not create or inspect a runtime Player.")))
                 {
                     serializedObject.ApplyModifiedProperties();
 
@@ -146,6 +147,113 @@ namespace Immersive.Framework.Editor.Editor.PlayerParticipation
                     validationOutdated = false;
                 }
             }
+        }
+
+        private void DrawDerivedPlayerInputManagerLimit(
+            LocalPlayerProvisioningAuthoring authoring)
+        {
+            PlayerInputManager manager = authoring.PlayerInputManager;
+            GameApplicationAsset gameApplication =
+                ResolveActiveGameApplication();
+            if (!TryGetConfiguredSlotCount(
+                    gameApplication,
+                    out int configuredSlotCount,
+                    out string issue))
+            {
+                return;
+            }
+
+            DrawSection("Derived PlayerInputManager Limit");
+            using (new EditorGUI.DisabledScope(true))
+            {
+                EditorGUILayout.IntField(
+                    "Supported Slots",
+                    configuredSlotCount);
+                EditorGUILayout.IntField(
+                    "Manager Limit",
+                    manager != null ? manager.maxPlayerCount : 0);
+            }
+
+            using (new EditorGUI.DisabledScope(
+                       Application.isPlaying || manager == null ||
+                       manager.maxPlayerCount == configuredSlotCount))
+            {
+                if (GUILayout.Button(
+                        new GUIContent(
+                            "Apply Derived Player Limit",
+                            "Writes PlayerInputManager's serialized limit from the active Game Application Player Session Profile Supported Slots.")))
+                {
+                    ApplyDerivedPlayerInputManagerLimit(
+                        manager,
+                        configuredSlotCount);
+                    MarkValidationOutdated();
+                }
+            }
+        }
+
+        private static bool TryGetConfiguredSlotCount(
+            GameApplicationAsset gameApplication,
+            out int configuredSlotCount,
+            out string issue)
+        {
+            configuredSlotCount = 0;
+            if (gameApplication == null)
+            {
+                issue = "No active Game Application is available.";
+                return false;
+            }
+
+            if (!gameApplication.PlayerSessionEnabled)
+            {
+                issue = "The active Game Application has Player Session disabled.";
+                return false;
+            }
+
+            PlayerSessionProfile profile =
+                gameApplication.DefaultPlayerSessionProfile;
+            if (profile == null)
+            {
+                issue = "The active Game Application has no Player Session Profile.";
+                return false;
+            }
+
+            if (!profile.TryValidate(out issue))
+            {
+                return false;
+            }
+
+            configuredSlotCount = profile.SupportedSlotCount;
+            if (configuredSlotCount <= 0)
+            {
+                issue =
+                    "The active Player Session Profile has no Supported Slots.";
+                return false;
+            }
+
+            issue = string.Empty;
+            return true;
+        }
+
+        private static void ApplyDerivedPlayerInputManagerLimit(
+            PlayerInputManager manager,
+            int configuredSlotCount)
+        {
+            var managerSerializedObject = new SerializedObject(manager);
+            SerializedProperty maxPlayerCount =
+                managerSerializedObject.FindProperty("m_MaxPlayerCount");
+            if (maxPlayerCount == null)
+            {
+                Debug.LogError(
+                    $"PlayerInputManager '{manager.name}' does not expose the serialized max player limit required by this installed Input System version.",
+                    manager);
+                return;
+            }
+
+            Undo.RecordObject(manager, "Apply Derived PlayerInputManager Limit");
+            maxPlayerCount.intValue = configuredSlotCount;
+            managerSerializedObject.ApplyModifiedProperties();
+            EditorUtility.SetDirty(manager);
+            PrefabUtility.RecordPrefabInstancePropertyModifications(manager);
         }
 
         private void DrawValidationSummary()
@@ -237,8 +345,10 @@ namespace Immersive.Framework.Editor.Editor.PlayerParticipation
                     authoring.UsesCSharpJoinNotifications);
 
                 EditorGUILayout.IntField(
-                    "Technical Max Players",
-                    authoring.TechnicalMaxPlayerCount);
+                    "PlayerInputManager Limit (Derived Bridge)",
+                    authoring.PlayerInputManager != null
+                        ? authoring.PlayerInputManager.maxPlayerCount
+                        : 0);
             }
         }
 
@@ -328,9 +438,6 @@ namespace Immersive.Framework.Editor.Editor.PlayerParticipation
                     "Configured Slots",
                     snapshot.ConfiguredSlotCount);
 
-                EditorGUILayout.IntField(
-                    "Dynamic Capacity",
-                    snapshot.DynamicCapacity);
 
                 EditorGUILayout.Toggle(
                     "Joining Open",

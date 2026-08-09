@@ -1,8 +1,8 @@
 # Player Usage
 
-Status: Current  
+Status: R1/R2 implemented; Unity validation pending  
 Last updated: 2026-08-09  
-Validated references: `PLAYER-DIAG-1`, `IF-SESSION-CONFIG-05/05B/07`, `QA-PLAYER-SURFACE-01/02`
+Decision source: `IF-ADR-015`, `IF-ADR-016`
 
 ## 1. Product model
 
@@ -65,34 +65,30 @@ PlayerSlotProfile: player.2
 
 Slot identity is authored/stable. It is not derived from `PlayerInput.playerIndex`.
 
-### 3.2 Create the provisioning Profile
-
-Create a `PlayerProvisioningProfile` and configure:
-
-```text
-Default Host Provisioning
-per-Slot Host Provisioning Overrides when required
-Actor Resolution Policy
-```
-
-This is creation-time provisioning intent, not live Session state.
-
-### 3.3 Create the Player Session Profile
+### 3.2 Create the Player Session Profile
 
 Create a `PlayerSessionProfile` and configure:
 
 ```text
-Supported Player Slots
+Supported Slots
   ordered PlayerSlotProfile references
 
-Initial Capacity
 Initial Joining Open
-Player Provisioning Profile
+Host Provisioning
+  Scene Provided
+  or Manager Provisioned
+
+Actor Resolution
+  Resolve Configured Default
+  or Leave Unresolved
 ```
 
-The Supported Slot order is the canonical initialization order.
+The Supported Slot order is the canonical initialization order and the complete
+structural Slot universe. A Slot may remain vacant and be occupied by a later
+Join. There is no Initial/Current/Dynamic Capacity and no per-Slot Host
+Provisioning override.
 
-### 3.4 Link the Game Application
+### 3.3 Link the Game Application
 
 On `GameApplicationAsset`:
 
@@ -109,7 +105,13 @@ no partial inheritance
 invalid explicit override does not fall back silently
 ```
 
-The runtime freezes effective initialization evidence for the created Session. Later runtime capacity/joining changes do not mutate the authored Profile.
+The runtime resolves effective initialization evidence once for the created
+Session. Later changes to the Profile do not mutate that Session. Joining is
+runtime state; a Join requires Joining Open and a vacant Supported Slot.
+
+R1/R2 implement this authoring shape and remove the separate runtime Capacity
+mechanics. Joining remains governed by Joining Open plus a vacant Supported
+Slot; do not add compatibility authoring around the removed model.
 
 ## 4. Configure Activity participation
 
@@ -228,9 +230,11 @@ Supported provisioning commands:
 ```text
 Open Joining
 Close Joining
-Set Dynamic Capacity
 Request Join
 ```
+
+`Request Join` succeeds only when Joining is open and one Supported Slot is
+vacant. Capacity commands are not part of the accepted model.
 
 Default Actor selection uses the separate public Actor-selection surface:
 
@@ -250,7 +254,7 @@ Use it to inspect, as applicable:
 
 ```text
 initialization configuration evidence
-current joining/capacity/participation state
+current joining/participation state and Supported Slot occupancy
 Session revision / applied revision
 Activity owner / occurrence
 per-Slot joined state
@@ -275,16 +279,15 @@ It projects the public observation and can optionally correlate the last explici
 
 Use normal Inspector fields for product status and Advanced / Debug for technical correlation such as revisions, owner/occurrence evidence and detailed Slot lifecycle.
 
-### 6.7 Certified join lifecycle
+### 6.7 Intended join lifecycle after the migration
 
-The public QA-certified flow is:
+The normative flow is:
 
 ```text
 Session initialized from PlayerSessionProfile
 → Route/Activity consumer binding becomes available
 → Activity enters and may wait for required Player
 → Open Joining
-→ Set Dynamic Capacity when needed
 → Request Join
 → PlayerInputManager creates Host
 → Slot/Host admission commits
@@ -298,12 +301,11 @@ Activity exit releases Activity-owned projection/materialization while preservin
 
 ### 6.8 Negative semantics
 
-Public QA also certifies:
+The migrated public surface must reject explicitly:
 
 ```text
 join while closed rejected
-invalid capacity rejected
-capacity exhausted rejected
+no vacant Supported Slot rejected
 repeated Open/Close no-change
 missing/wrong/destroyed/stale scoped access unavailable
 stale Actor selection revision rejected

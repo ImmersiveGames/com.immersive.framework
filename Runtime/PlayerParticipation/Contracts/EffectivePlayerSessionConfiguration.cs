@@ -19,28 +19,21 @@ namespace Immersive.Framework.PlayerParticipation
 
         public EffectivePlayerSessionConfiguration(
             IReadOnlyList<EffectivePlayerSlotProvisioning> orderedSlots,
-            int initialCapacity,
             bool initialJoiningOpen,
+            PlayerHostProvisioningMode hostProvisioning,
             PlayerActorResolutionPolicy actorResolutionPolicy)
         {
+            hostProvisioning.ThrowIfInvalid(nameof(hostProvisioning));
             actorResolutionPolicy.ThrowIfInvalid(
                 nameof(actorResolutionPolicy));
 
             EffectivePlayerSlotProvisioning[] copiedSlots =
                 FrameworkCollectionCopy.ToArrayOrEmpty(orderedSlots);
-            ValidateSlots(copiedSlots);
-
-            if (initialCapacity < 0 || initialCapacity > copiedSlots.Length)
-            {
-                throw new ArgumentOutOfRangeException(
-                    nameof(initialCapacity),
-                    initialCapacity,
-                    $"Initial capacity must be between 0 and configured Slot count '{copiedSlots.Length}'.");
-            }
+            ValidateSlots(copiedSlots, hostProvisioning);
 
             slots = Array.AsReadOnly(copiedSlots);
-            InitialCapacity = initialCapacity;
             InitialJoiningOpen = initialJoiningOpen;
+            HostProvisioning = hostProvisioning;
             ActorResolutionPolicy = actorResolutionPolicy;
         }
 
@@ -49,16 +42,22 @@ namespace Immersive.Framework.PlayerParticipation
         /// </summary>
         public IReadOnlyList<EffectivePlayerSlotProvisioning> Slots => slots;
 
-        public int InitialCapacity { get; }
-
         public bool InitialJoiningOpen { get; }
+
+        /// <summary>
+        /// Host provisioning selected for the whole initial Session. Each
+        /// resolved Slot carries the same value as execution evidence; it is
+        /// not an independent per-Slot authoring choice.
+        /// </summary>
+        public PlayerHostProvisioningMode HostProvisioning { get; }
 
         public PlayerActorResolutionPolicy ActorResolutionPolicy { get; }
 
         public int SupportedSlotCount => slots.Count;
 
         private static void ValidateSlots(
-            IReadOnlyList<EffectivePlayerSlotProvisioning> orderedSlots)
+            IReadOnlyList<EffectivePlayerSlotProvisioning> orderedSlots,
+            PlayerHostProvisioningMode hostProvisioning)
         {
             var configuredSlotIds = new HashSet<PlayerSlotId>();
             for (int index = 0; index < orderedSlots.Count; index++)
@@ -75,6 +74,13 @@ namespace Immersive.Framework.PlayerParticipation
                 {
                     throw new ArgumentException(
                         $"Player Slot '{slot.PlayerSlotId.StableText}' is configured more than once.",
+                        nameof(orderedSlots));
+                }
+
+                if (slot.HostProvisioningMode != hostProvisioning)
+                {
+                    throw new ArgumentException(
+                        $"Player Slot '{slot.PlayerSlotId.StableText}' does not match the Session Host Provisioning '{hostProvisioning}'.",
                         nameof(orderedSlots));
                 }
             }

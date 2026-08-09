@@ -12,9 +12,9 @@ namespace Immersive.Framework.Editor.Editor.PlayerParticipation
     internal sealed class PlayerSessionProfileEditor : UnityEditor.Editor
     {
         private SerializedProperty _supportedSlots;
-        private SerializedProperty _initialCapacity;
         private SerializedProperty _initialJoiningOpen;
-        private SerializedProperty _playerProvisioningProfile;
+        private SerializedProperty _hostProvisioning;
+        private SerializedProperty _actorResolutionPolicy;
         private ReorderableList _supportedSlotsList;
         private bool _showAdvanced;
         private InspectorValidationState _validationState;
@@ -24,10 +24,10 @@ namespace Immersive.Framework.Editor.Editor.PlayerParticipation
         private void OnEnable()
         {
             _supportedSlots = serializedObject.FindProperty("supportedSlots");
-            _initialCapacity = serializedObject.FindProperty("initialCapacity");
             _initialJoiningOpen = serializedObject.FindProperty("initialJoiningOpen");
-            _playerProvisioningProfile =
-                serializedObject.FindProperty("playerProvisioningProfile");
+            _hostProvisioning = serializedObject.FindProperty("hostProvisioning");
+            _actorResolutionPolicy =
+                serializedObject.FindProperty("actorResolutionPolicy");
 
             _supportedSlotsList = new ReorderableList(
                 serializedObject,
@@ -38,7 +38,7 @@ namespace Immersive.Framework.Editor.Editor.PlayerParticipation
                 true)
             {
                 drawHeaderCallback = rect =>
-                    EditorGUI.LabelField(rect, "Supported Player Slots"),
+                    EditorGUI.LabelField(rect, "Supported Slots"),
                 elementHeight = EditorGUIUtility.singleLineHeight + 4f,
                 drawElementCallback = (rect, index, active, focused) =>
                 {
@@ -63,18 +63,12 @@ namespace Immersive.Framework.Editor.Editor.PlayerParticipation
         public override void OnInspectorGUI()
         {
             serializedObject.Update();
-
             EditorGUI.BeginChangeCheck();
 
+            DrawSection("Primary Intent");
             _supportedSlotsList?.DoLayoutList();
 
-            DrawSection("Initial Session State");
-            EditorGUILayout.PropertyField(
-                _initialCapacity,
-                new GUIContent(
-                    "Initial Capacity",
-                    "Number of supported Player Slots available when the Session is created."));
-
+            DrawSection("Initial Joining");
             int joiningIndex = _initialJoiningOpen.boolValue ? 1 : 0;
             int nextJoiningIndex = EditorGUILayout.Popup(
                 new GUIContent(
@@ -84,13 +78,19 @@ namespace Immersive.Framework.Editor.Editor.PlayerParticipation
                 new[] { "Closed", "Open" });
             _initialJoiningOpen.boolValue = nextJoiningIndex == 1;
 
-            DrawSection("Player Provisioning");
+            DrawSection("Host Provisioning");
             EditorGUILayout.PropertyField(
-                _playerProvisioningProfile,
+                _hostProvisioning,
                 new GUIContent(
-                    "Profile",
-                    "Required Player Provisioning Profile used when the Session is created."));
-            DrawRequiredReferenceStatus(_playerProvisioningProfile);
+                    "Mode",
+                    "Host provisioning applied uniformly to every Supported Slot."));
+
+            DrawSection("Actor Resolution");
+            EditorGUILayout.PropertyField(
+                _actorResolutionPolicy,
+                new GUIContent(
+                    "Policy",
+                    "Initial Actor resolution intent used when the Session is created."));
 
             bool guiChanged = EditorGUI.EndChangeCheck();
             bool propertiesApplied = serializedObject.ApplyModifiedProperties();
@@ -99,7 +99,6 @@ namespace Immersive.Framework.Editor.Editor.PlayerParticipation
                 ClearValidation();
             }
 
-            DrawSection("Product Actions");
             if (GUILayout.Button("Validate"))
             {
                 RunValidation();
@@ -127,8 +126,7 @@ namespace Immersive.Framework.Editor.Editor.PlayerParticipation
             _lastResolution = resolution;
             if (!resolution.Succeeded)
             {
-                SetInvalid(
-                    $"{resolution.Failure}: {resolution.Message}");
+                SetInvalid($"{resolution.Failure}: {resolution.Message}");
                 return;
             }
 
@@ -143,24 +141,19 @@ namespace Immersive.Framework.Editor.Editor.PlayerParticipation
                 _showAdvanced,
                 "Advanced / Debug",
                 true);
-            if (!_showAdvanced)
+            if (_showAdvanced)
             {
-                return;
+                PlayerSessionInspectorGui.DrawSessionEvidence(
+                    (PlayerSessionProfile)target,
+                    _lastResolution);
             }
-
-            PlayerSessionInspectorGui.DrawSessionEvidence(
-                (PlayerSessionProfile)target,
-                _lastResolution);
         }
 
         private void SetInvalid(string message)
         {
             _validationState = InspectorValidationState.Invalid;
             _validationMessage = message ?? string.Empty;
-            if (_lastResolution != null && _lastResolution.Succeeded)
-            {
-                _lastResolution = null;
-            }
+            _lastResolution = null;
         }
 
         private void ClearValidation()
@@ -168,179 +161,6 @@ namespace Immersive.Framework.Editor.Editor.PlayerParticipation
             _validationState = InspectorValidationState.NotValidated;
             _validationMessage = string.Empty;
             _lastResolution = null;
-        }
-
-        private static void DrawRequiredReferenceStatus(
-            SerializedProperty property)
-        {
-            if (property.objectReferenceValue != null)
-            {
-                return;
-            }
-
-            EditorGUILayout.LabelField(
-                "Not Configured — assign a Player Provisioning Profile.",
-                EditorStyles.wordWrappedMiniLabel);
-        }
-
-        private static void DrawSection(string title)
-        {
-            EditorGUILayout.Space(6f);
-            EditorGUILayout.LabelField(title, EditorStyles.boldLabel);
-        }
-    }
-
-    [CustomEditor(typeof(PlayerProvisioningProfile))]
-    internal sealed class PlayerProvisioningProfileEditor : UnityEditor.Editor
-    {
-        private SerializedProperty _defaultHostProvisioning;
-        private SerializedProperty _slotOverrides;
-        private SerializedProperty _actorResolutionPolicy;
-        private ReorderableList _slotOverridesList;
-        private bool _showAdvanced;
-        private InspectorValidationState _validationState;
-        private string _validationMessage = string.Empty;
-
-        private void OnEnable()
-        {
-            _defaultHostProvisioning =
-                serializedObject.FindProperty("defaultHostProvisioning");
-            _slotOverrides = serializedObject.FindProperty("slotOverrides");
-            _actorResolutionPolicy =
-                serializedObject.FindProperty("actorResolutionPolicy");
-
-            _slotOverridesList = new ReorderableList(
-                serializedObject,
-                _slotOverrides,
-                true,
-                true,
-                true,
-                true)
-            {
-                drawHeaderCallback = rect =>
-                    EditorGUI.LabelField(rect, "Slot Overrides"),
-                elementHeight = EditorGUIUtility.singleLineHeight + 4f,
-                drawElementCallback = (rect, index, active, focused) =>
-                {
-                    SerializedProperty element =
-                        _slotOverrides.GetArrayElementAtIndex(index);
-                    SerializedProperty slot =
-                        element.FindPropertyRelative("playerSlotProfile");
-                    SerializedProperty mode =
-                        element.FindPropertyRelative("hostProvisioningMode");
-
-                    rect.y += 2f;
-                    rect.height = EditorGUIUtility.singleLineHeight;
-                    float slotWidth = rect.width * 0.58f;
-
-                    EditorGUI.PropertyField(
-                        new Rect(
-                            rect.x,
-                            rect.y,
-                            slotWidth - 3f,
-                            rect.height),
-                        slot,
-                        GUIContent.none);
-                    EditorGUI.PropertyField(
-                        new Rect(
-                            rect.x + slotWidth,
-                            rect.y,
-                            rect.width - slotWidth,
-                            rect.height),
-                        mode,
-                        GUIContent.none);
-                },
-                onAddCallback = list =>
-                {
-                    int index = _slotOverrides.arraySize;
-                    _slotOverrides.InsertArrayElementAtIndex(index);
-                    SerializedProperty element =
-                        _slotOverrides.GetArrayElementAtIndex(index);
-                    element.FindPropertyRelative("playerSlotProfile")
-                        .objectReferenceValue = null;
-                    element.FindPropertyRelative("hostProvisioningMode")
-                        .enumValueIndex = 0;
-                }
-            };
-        }
-
-        public override void OnInspectorGUI()
-        {
-            serializedObject.Update();
-
-            EditorGUI.BeginChangeCheck();
-
-            DrawSection("Host Provisioning");
-            EditorGUILayout.PropertyField(
-                _defaultHostProvisioning,
-                new GUIContent(
-                    "Default",
-                    "Host provisioning used by supported Player Slots that do not have an explicit override."));
-            _slotOverridesList?.DoLayoutList();
-
-            DrawSection("Actor Resolution");
-            EditorGUILayout.PropertyField(
-                _actorResolutionPolicy,
-                new GUIContent(
-                    "Policy",
-                    "Initial Actor resolution intent used when the Session is created."));
-
-            bool guiChanged = EditorGUI.EndChangeCheck();
-            bool propertiesApplied = serializedObject.ApplyModifiedProperties();
-            if (guiChanged || propertiesApplied)
-            {
-                ClearValidation();
-            }
-
-            DrawSection("Product Actions");
-            if (GUILayout.Button("Validate"))
-            {
-                RunValidation();
-            }
-
-            DrawSection("Validation Summary");
-            PlayerSessionInspectorGui.DrawValidationSummary(
-                _validationState,
-                _validationMessage);
-
-            DrawAdvanced();
-        }
-
-        private void RunValidation()
-        {
-            PlayerProvisioningProfile profile =
-                (PlayerProvisioningProfile)target;
-            if (!profile.TryValidate(out string issue))
-            {
-                _validationState = InspectorValidationState.Invalid;
-                _validationMessage = issue ?? string.Empty;
-                return;
-            }
-
-            _validationState = InspectorValidationState.Valid;
-            _validationMessage = string.Empty;
-        }
-
-        private void DrawAdvanced()
-        {
-            EditorGUILayout.Space(6f);
-            _showAdvanced = EditorGUILayout.Foldout(
-                _showAdvanced,
-                "Advanced / Debug",
-                true);
-            if (!_showAdvanced)
-            {
-                return;
-            }
-
-            PlayerSessionInspectorGui.DrawProvisioningEvidence(
-                (PlayerProvisioningProfile)target);
-        }
-
-        private void ClearValidation()
-        {
-            _validationState = InspectorValidationState.NotValidated;
-            _validationMessage = string.Empty;
         }
 
         private static void DrawSection(string title)
@@ -364,13 +184,11 @@ namespace Immersive.Framework.Editor.Editor.PlayerParticipation
             string message)
         {
             EditorGUILayout.LabelField("Scope", "Selected Definition");
-
             switch (state)
             {
                 case InspectorValidationState.Valid:
                     EditorGUILayout.LabelField("Status", "Valid");
                     break;
-
                 case InspectorValidationState.Invalid:
                     EditorGUILayout.LabelField("Status", "Invalid");
                     if (!string.IsNullOrWhiteSpace(message))
@@ -381,7 +199,6 @@ namespace Immersive.Framework.Editor.Editor.PlayerParticipation
                     }
 
                     break;
-
                 default:
                     EditorGUILayout.LabelField("Status", "Not Validated");
                     break;
@@ -402,9 +219,7 @@ namespace Immersive.Framework.Editor.Editor.PlayerParticipation
 
             if (profile == null)
             {
-                EditorGUILayout.LabelField(
-                    "Status",
-                    "No Player Session Profile");
+                EditorGUILayout.LabelField("Status", "No Player Session Profile");
                 return;
             }
 
@@ -425,45 +240,7 @@ namespace Immersive.Framework.Editor.Editor.PlayerParticipation
                 return;
             }
 
-            EffectivePlayerSessionConfiguration configuration =
-                resolution.Configuration;
-
-            using (new EditorGUI.DisabledScope(true))
-            {
-                EditorGUILayout.IntField(
-                    "Initial Capacity",
-                    configuration.InitialCapacity);
-                EditorGUILayout.TextField(
-                    "Initial Joining",
-                    configuration.InitialJoiningOpen ? "Open" : "Closed");
-                EditorGUILayout.EnumPopup(
-                    "Actor Resolution",
-                    configuration.ActorResolutionPolicy);
-            }
-
-            IReadOnlyList<EffectivePlayerSlotProvisioning> slots =
-                configuration.Slots;
-            for (int index = 0; index < slots.Count; index++)
-            {
-                EffectivePlayerSlotProvisioning slot = slots[index];
-                string provenance = IsOverride(
-                    profile.PlayerProvisioningProfile,
-                    slot.PlayerSlotId)
-                    ? "Slot Override"
-                    : "Profile Default";
-
-                EditorGUILayout.LabelField(
-                    $"{index + 1}. {GetSlotName(slot)}",
-                    $"{slot.HostProvisioningMode} — {provenance}");
-                using (new EditorGUI.DisabledScope(true))
-                {
-                    EditorGUILayout.ObjectField(
-                        "    Default Actor",
-                        slot.DefaultActorProfile,
-                        typeof(ActorProfile),
-                        false);
-                }
-            }
+            DrawConfiguration(resolution.Configuration);
         }
 
         internal static void DrawSessionEvidence(
@@ -472,9 +249,7 @@ namespace Immersive.Framework.Editor.Editor.PlayerParticipation
         {
             using (new EditorGUI.DisabledScope(true))
             {
-                EditorGUILayout.TextField(
-                    "Asset Path",
-                    AssetDatabase.GetAssetPath(profile));
+                EditorGUILayout.TextField("Asset Path", AssetDatabase.GetAssetPath(profile));
             }
 
             if (resolution == null)
@@ -485,18 +260,19 @@ namespace Immersive.Framework.Editor.Editor.PlayerParticipation
 
             if (!resolution.Succeeded)
             {
-                EditorGUILayout.LabelField(
-                    "Resolution",
-                    resolution.Failure.ToString());
+                EditorGUILayout.LabelField("Resolution", resolution.Failure.ToString());
                 EditorGUILayout.LabelField(
                     resolution.Message,
                     EditorStyles.wordWrappedMiniLabel);
                 return;
             }
 
-            EffectivePlayerSessionConfiguration configuration =
-                resolution.Configuration;
+            DrawConfiguration(resolution.Configuration);
+        }
 
+        private static void DrawConfiguration(
+            EffectivePlayerSessionConfiguration configuration)
+        {
             EditorGUILayout.Space(4f);
             EditorGUILayout.LabelField(
                 "Effective Initial Configuration",
@@ -504,39 +280,26 @@ namespace Immersive.Framework.Editor.Editor.PlayerParticipation
 
             using (new EditorGUI.DisabledScope(true))
             {
-                EditorGUILayout.IntField(
-                    "Capacity",
-                    configuration.InitialCapacity);
                 EditorGUILayout.TextField(
-                    "Joining",
+                    "Initial Joining",
                     configuration.InitialJoiningOpen ? "Open" : "Closed");
+                EditorGUILayout.EnumPopup(
+                    "Host Provisioning",
+                    configuration.HostProvisioning);
                 EditorGUILayout.EnumPopup(
                     "Actor Resolution",
                     configuration.ActorResolutionPolicy);
             }
 
             EditorGUILayout.Space(4f);
-            EditorGUILayout.LabelField(
-                "Resolved Player Slots",
-                EditorStyles.miniBoldLabel);
-
-            for (int index = 0; index < configuration.Slots.Count; index++)
+            EditorGUILayout.LabelField("Resolved Player Slots", EditorStyles.miniBoldLabel);
+            IReadOnlyList<EffectivePlayerSlotProvisioning> slots = configuration.Slots;
+            for (int index = 0; index < slots.Count; index++)
             {
-                EffectivePlayerSlotProvisioning slot =
-                    configuration.Slots[index];
-                string provenance = IsOverride(
-                    profile.PlayerProvisioningProfile,
-                    slot.PlayerSlotId)
-                    ? "Slot Override"
-                    : "Profile Default";
-
+                EffectivePlayerSlotProvisioning slot = slots[index];
                 EditorGUILayout.LabelField(
                     $"{index + 1}. {GetSlotName(slot)}",
                     slot.PlayerSlotId.StableText);
-                EditorGUILayout.LabelField(
-                    "    Host Provisioning",
-                    $"{slot.HostProvisioningMode} — {provenance}");
-
                 using (new EditorGUI.DisabledScope(true))
                 {
                     EditorGUILayout.ObjectField(
@@ -548,104 +311,11 @@ namespace Immersive.Framework.Editor.Editor.PlayerParticipation
             }
         }
 
-        internal static void DrawProvisioningEvidence(
-            PlayerProvisioningProfile profile)
-        {
-            using (new EditorGUI.DisabledScope(true))
-            {
-                EditorGUILayout.TextField(
-                    "Asset Path",
-                    AssetDatabase.GetAssetPath(profile));
-                EditorGUILayout.EnumPopup(
-                    "Default Host Provisioning",
-                    profile.DefaultHostProvisioning);
-                EditorGUILayout.EnumPopup(
-                    "Actor Resolution Policy",
-                    profile.ActorResolutionPolicy);
-            }
-
-            EditorGUILayout.Space(4f);
-            EditorGUILayout.LabelField(
-                "Resolved Override Identity",
-                EditorStyles.miniBoldLabel);
-
-            IReadOnlyList<PlayerSlotProvisioningOverride> overrides =
-                profile.SlotOverrides;
-            if (overrides.Count == 0)
-            {
-                EditorGUILayout.LabelField("None", EditorStyles.miniLabel);
-                return;
-            }
-
-            for (int index = 0; index < overrides.Count; index++)
-            {
-                PlayerSlotProvisioningOverride slotOverride = overrides[index];
-                if (slotOverride == null)
-                {
-                    EditorGUILayout.LabelField(
-                        $"{index + 1}. <null override>",
-                        EditorStyles.miniLabel);
-                    continue;
-                }
-
-                PlayerSlotProfile slotProfile =
-                    slotOverride.PlayerSlotProfile;
-                if (slotProfile == null)
-                {
-                    EditorGUILayout.LabelField(
-                        $"{index + 1}. <missing Player Slot>",
-                        slotOverride.HostProvisioningMode.ToString());
-                    continue;
-                }
-
-                string identity = slotProfile.TryGetPlayerSlotId(
-                    out PlayerSlotId playerSlotId,
-                    out string issue)
-                    ? playerSlotId.StableText
-                    : $"Invalid: {issue}";
-
-                EditorGUILayout.LabelField(
-                    $"{index + 1}. {slotProfile.name}",
-                    identity);
-                EditorGUILayout.LabelField(
-                    "    Host Provisioning",
-                    slotOverride.HostProvisioningMode.ToString());
-            }
-        }
-
         private static string GetSlotName(EffectivePlayerSlotProvisioning slot)
         {
             return slot.PlayerSlotProfile != null
                 ? slot.PlayerSlotProfile.name
                 : slot.PlayerSlotId.StableText;
-        }
-
-        private static bool IsOverride(
-            PlayerProvisioningProfile provisioningProfile,
-            PlayerSlotId playerSlotId)
-        {
-            if (provisioningProfile == null)
-            {
-                return false;
-            }
-
-            IReadOnlyList<PlayerSlotProvisioningOverride> overrides =
-                provisioningProfile.SlotOverrides;
-            for (int index = 0; index < overrides.Count; index++)
-            {
-                PlayerSlotProvisioningOverride slotOverride = overrides[index];
-                if (slotOverride != null &&
-                    slotOverride.PlayerSlotProfile != null &&
-                    slotOverride.PlayerSlotProfile.TryGetPlayerSlotId(
-                        out PlayerSlotId overrideSlotId,
-                        out _) &&
-                    overrideSlotId == playerSlotId)
-                {
-                    return true;
-                }
-            }
-
-            return false;
         }
     }
 }

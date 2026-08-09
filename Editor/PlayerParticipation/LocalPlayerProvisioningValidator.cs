@@ -121,37 +121,63 @@ namespace Immersive.Framework.Editor.Editor.PlayerParticipation
             if (gameApplication == null)
             {
                 report.AddWarning(
-                    "Game Application is unavailable, so configured Player Slot count cannot be compared with the PlayerInputManager technical ceiling.",
+                    "Game Application is unavailable, so the derived PlayerInputManager limit cannot be inspected.",
                     authoring);
+            }
+            else if (!gameApplication.PlayerSessionEnabled)
+            {
+                report.AddError(
+                    "Game Application has Player Session disabled. Local Player provisioning requires an enabled Player Session.",
+                    gameApplication);
             }
             else
             {
-                int configuredSlots = gameApplication.LocalPlayerSlotCount;
-                int technicalCeiling = manager.maxPlayerCount;
+                PlayerSessionProfile playerSessionProfile =
+                    gameApplication.DefaultPlayerSessionProfile;
+                if (playerSessionProfile == null)
+                {
+                    report.AddError(
+                        "Game Application has no Player Session Profile, so the derived PlayerInputManager limit cannot be resolved.",
+                        gameApplication);
+                    return report;
+                }
+
+                if (!playerSessionProfile.TryValidate(
+                        out string profileIssue))
+                {
+                    report.AddError(
+                        $"Player Session Profile '{playerSessionProfile.name}' is invalid. {profileIssue}",
+                        playerSessionProfile);
+                    return report;
+                }
+
+                int configuredSlots =
+                    playerSessionProfile.SupportedSlotCount;
                 if (configuredSlots <= 0)
                 {
                     report.AddError(
-                        "Game Application has no configured Local Player Slots. Provisioning cannot allocate a product Slot.",
-                        gameApplication);
-                }
-                else if (technicalCeiling > 0 && configuredSlots > technicalCeiling)
-                {
-                    report.AddError(
-                        $"Game Application configures {configuredSlots} Local Player Slots, but PlayerInputManager maxPlayerCount is {technicalCeiling}. The Session product capacity cannot exceed the authored Unity technical ceiling.",
-                        manager);
+                        "Player Session Profile has no Supported Slots. Provisioning cannot allocate a product Slot.",
+                        playerSessionProfile);
                 }
                 else
                 {
                     report.AddInfo(
-                        $"Player Slot capacity is compatible. configuredSlots='{configuredSlots}' technicalMaxPlayers='{technicalCeiling}'.",
+                        $"PlayerInputManager limit is derived from Player Session Profile Supported Slots. configuredSlots='{configuredSlots}' managerLimit='{manager.maxPlayerCount}'.",
                         manager);
+
+                    if (manager.maxPlayerCount != configuredSlots)
+                    {
+                        report.AddError(
+                            $"PlayerInputManager '{manager.name}' has derived bridge limit '{manager.maxPlayerCount}', but Player Session Profile '{playerSessionProfile.name}' configures '{configuredSlots}' Supported Slots. Apply the derived PlayerInputManager limit before boot.",
+                            manager);
+                    }
                 }
             }
 
             if (report.IsValid)
             {
                 report.AddInfo(
-                    $"Local Player Provisioning authoring is valid. manager='{manager.name}' joinBehavior='{manager.joinBehavior}' notificationBehavior='{manager.notificationBehavior}' localPlayerHostPrefab='{(localPlayerHostPrefab != null ? localPlayerHostPrefab.name : string.Empty)}' materialized='{authoring.IsManagerPrefabMaterialized}' maxPlayerCount='{manager.maxPlayerCount}'.",
+                    $"Local Player Provisioning authoring is valid. manager='{manager.name}' joinBehavior='{manager.joinBehavior}' notificationBehavior='{manager.notificationBehavior}' localPlayerHostPrefab='{(localPlayerHostPrefab != null ? localPlayerHostPrefab.name : string.Empty)}' materialized='{authoring.IsManagerPrefabMaterialized}'.",
                     authoring);
             }
 

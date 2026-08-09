@@ -155,14 +155,14 @@ namespace Immersive.Framework.PlayerParticipation
         public RuntimeContentOwner ScopeOwner { get; }
 
         /// <summary>
-        /// Current Session participation truth, including joining, capacity,
+        /// Current Session participation truth, including joining,
         /// Slot allocation and Session revision.
         /// </summary>
         public PlayerParticipationSnapshot Participation { get; }
 
         /// <summary>
         /// Immutable creation-time Session evidence. It is never interpreted as
-        /// current capacity, joining or Slot occupancy.
+        /// current Joining state or Slot occupancy.
         /// </summary>
         public EffectivePlayerSessionConfiguration InitializationConfiguration { get; }
 

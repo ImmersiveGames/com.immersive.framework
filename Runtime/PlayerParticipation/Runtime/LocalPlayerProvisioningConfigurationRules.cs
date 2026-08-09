@@ -48,8 +48,6 @@ namespace Immersive.Framework.PlayerParticipation
                     Add(issues, LocalPlayerProvisioningIssueKind.InvalidPlayerHost, resolvedSource, "The Local Player Host Prefab must contain LocalPlayerHostAuthoring on its root.");
                 if (authoring.HasManagerPrefabDivergence)
                     Add(issues, LocalPlayerProvisioningIssueKind.DivergentManagerPrefab, resolvedSource, "PlayerInputManager Player Prefab diverges from the authored Local Player Host Prefab. Resolve the conflict explicitly before boot.");
-                if (authoring.TechnicalMaxPlayerCount <= 0)
-                    Add(issues, LocalPlayerProvisioningIssueKind.InvalidCapacity, resolvedSource, "Provisioning capacity must be greater than zero.");
                 if (!authoring.UsesManualJoin)
                     Add(issues, LocalPlayerProvisioningIssueKind.ManualJoinRequired, resolvedSource, "PlayerInputManager must use manual join.");
                 if (!authoring.UsesCSharpJoinNotifications)

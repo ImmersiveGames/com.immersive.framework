@@ -1,5 +1,8 @@
 # Immersive Framework — Transversal Architecture Invariants and Decision Classification
 
+> Historical conceptual baseline. Any Current Capacity invariant in this record
+> is superseded by `IF-ADR-016` dated 2026-08-09 and is not normative.
+
 **Date:** 2026-08-08  
 **Status:** Conceptual baseline for normalization of the Player / Session / Activity decision matrix  
 **Project:** Immersive Framework 1.1 / Unity 6.5

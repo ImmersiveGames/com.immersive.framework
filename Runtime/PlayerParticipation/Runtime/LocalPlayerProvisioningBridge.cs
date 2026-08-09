@@ -175,15 +175,6 @@ namespace Immersive.Framework.PlayerParticipation
             }
 
             PlayerParticipationSnapshot initialSnapshot = participationContext.CreateSnapshot();
-            int technicalMax = backend.TechnicalMaxPlayerCount;
-            if (technicalMax > 0 && initialSnapshot.DynamicCapacity > technicalMax)
-            {
-                return Complete(CreateRejected(
-                    LocalPlayerJoinStatus.RejectedManagerConfiguration,
-                    default,
-                    request,
-                    $"Session dynamic capacity '{initialSnapshot.DynamicCapacity}' exceeds PlayerInputManager technical max player count '{technicalMax}'."));
-            }
 
             operationSequence++;
             if (!LocalPlayerJoinOperationId.TryCreate(
@@ -661,14 +652,6 @@ namespace Immersive.Framework.PlayerParticipation
                 return false;
             }
 
-            int technicalMax = backend.TechnicalMaxPlayerCount;
-            if (technicalMax > 0 && backend.CurrentPlayerCount >= technicalMax)
-            {
-                status = LocalPlayerJoinStatus.RejectedCapacityReached;
-                issue = $"PlayerInputManager technical max player count '{technicalMax}' is reached.";
-                return false;
-            }
-
             status = LocalPlayerJoinStatus.None;
             issue = string.Empty;
             return true;
@@ -968,8 +951,6 @@ namespace Immersive.Framework.PlayerParticipation
                     LocalPlayerJoinStatus.RejectedRuntimeUnavailable,
                 PlayerParticipationOperationStatus.RejectedJoiningClosed =>
                     LocalPlayerJoinStatus.RejectedJoiningClosed,
-                PlayerParticipationOperationStatus.RejectedCapacityReached =>
-                    LocalPlayerJoinStatus.RejectedCapacityReached,
                 PlayerParticipationOperationStatus.RejectedNoAvailableSlot =>
                     LocalPlayerJoinStatus.RejectedNoAvailableSlot,
                 PlayerParticipationOperationStatus.RejectedForeignOrStaleReservation =>

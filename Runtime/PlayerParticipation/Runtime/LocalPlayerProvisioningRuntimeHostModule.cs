@@ -402,6 +402,16 @@ namespace Immersive.Framework.PlayerParticipation
                 return false;
             }
 
+            int configuredSlotCount = targetParticipationContext
+                .CreateSnapshot()
+                .ConfiguredSlotCount;
+            if (manager.maxPlayerCount != configuredSlotCount)
+            {
+                issue =
+                    $"PlayerInputManager '{manager.name}' has derived bridge limit '{manager.maxPlayerCount}', but the initialized Player Session has '{configuredSlotCount}' Supported Slots. Update the serialized PlayerInputManager bridge configuration before boot.";
+                return false;
+            }
+
             GameObject localPlayerHostPrefab = targetAuthoring.LocalPlayerHostPrefab;
             if (localPlayerHostPrefab == null)
             {
@@ -441,15 +451,6 @@ namespace Immersive.Framework.PlayerParticipation
             if (!prefabHost.TryValidateConfiguration(out string hostIssue))
             {
                 issue = $"Local Player Host Prefab '{localPlayerHostPrefab.name}' is invalid. {hostIssue}";
-                return false;
-            }
-
-            PlayerParticipationSnapshot snapshot = targetParticipationContext.CreateSnapshot();
-            int technicalMax = targetAuthoring.TechnicalMaxPlayerCount;
-            if (technicalMax > 0 && snapshot.ConfiguredSlotCount > technicalMax)
-            {
-                issue =
-                    $"Session configures '{snapshot.ConfiguredSlotCount}' Player Slots, but PlayerInputManager technical max is '{technicalMax}'.";
                 return false;
             }
 
@@ -795,50 +796,6 @@ namespace Immersive.Framework.PlayerParticipation
             return result;
         }
 
-        internal PlayerParticipationOperationResult TrySetDynamicCapacity(
-            int requestedCapacity,
-            string source,
-            string reason)
-        {
-            if (participationContext == null)
-            {
-                return PlayerParticipationOperationResult.RuntimeUnavailable(
-                    "SetDynamicCapacity",
-                    source,
-                    reason,
-                    diagnostic);
-            }
-
-            if (authoring != null &&
-                authoring.TechnicalMaxPlayerCount > 0 &&
-                requestedCapacity > authoring.TechnicalMaxPlayerCount)
-            {
-                PlayerParticipationSnapshot snapshot = participationContext.CreateSnapshot();
-                string message =
-                    $"Requested capacity '{requestedCapacity}' exceeds PlayerInputManager technical max player count '{authoring.TechnicalMaxPlayerCount}'.";
-                var rejected = new PlayerParticipationOperationResult(
-                    PlayerParticipationOperationStatus.RejectedInvalidRequest,
-                    "SetDynamicCapacity",
-                    source.NormalizeTextOrFallback(nameof(LocalPlayerProvisioningRuntimeHostModule)),
-                    reason.NormalizeTextOrFallback("technical-capacity-exceeded"),
-                    message,
-                    snapshot.Revision,
-                    snapshot.Revision,
-                    default,
-                    default,
-                    snapshot);
-                diagnostic = rejected.ToDiagnosticString();
-                return rejected;
-            }
-
-            PlayerParticipationOperationResult result = participationContext.TrySetDynamicCapacity(
-                requestedCapacity,
-                source,
-                reason);
-            diagnostic = result.ToDiagnosticString();
-            return result;
-        }
-
         internal bool TryGetSnapshot(out PlayerParticipationSnapshot snapshot)
         {
             if (participationContext == null)
@@ -980,20 +937,6 @@ namespace Immersive.Framework.PlayerParticipation
                 ? authoring.CloseJoining(source, reason)
                 : PlayerParticipationOperationResult.RuntimeUnavailable(
                     "CloseJoining",
-                    source,
-                    reason,
-                    issue);
-        }
-
-        public PlayerParticipationOperationResult SetDynamicCapacity(
-            int requestedCapacity,
-            string source,
-            string reason)
-        {
-            return TryGetAuthoring(out string issue)
-                ? authoring.SetDynamicCapacity(requestedCapacity, source, reason)
-                : PlayerParticipationOperationResult.RuntimeUnavailable(
-                    "SetDynamicCapacity",
                     source,
                     reason,
                     issue);

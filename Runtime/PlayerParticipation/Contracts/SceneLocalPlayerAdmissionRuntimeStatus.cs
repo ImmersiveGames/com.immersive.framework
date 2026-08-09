@@ -23,9 +23,8 @@ namespace Immersive.Framework.PlayerParticipation
         RejectedSlotOrderMismatch = 120,
         RejectedConflict = 130,
         RejectedForeignOrStaleToken = 140,
-        RejectedCapacityReached = 150,
-        RejectedSlotUnavailable = 160,
-        RejectedDependentState = 170,
+        RejectedSlotUnavailable = 150,
+        RejectedDependentState = 160,
 
         FailedReservation = 300,
         FailedReservationRollback = 310,

@@ -25,11 +25,6 @@ namespace Immersive.Framework.PlayerParticipation
             string source,
             string reason);
 
-        PlayerParticipationOperationResult SetDynamicCapacity(
-            int requestedCapacity,
-            string source,
-            string reason);
-
         LocalPlayerJoinResult RequestJoin(LocalPlayerJoinRequest request);
     }
 }

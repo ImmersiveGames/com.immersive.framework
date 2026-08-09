@@ -196,7 +196,6 @@ namespace Immersive.Framework.Bootstrap
                 LogFields.Field("playerParticipationContext", hasPlayerParticipation ? playerParticipation.ContextId : string.Empty),
                 LogFields.Field("playerParticipationRevision", hasPlayerParticipation ? playerParticipation.Revision : 0),
                 LogFields.Field("playerParticipationSlots", hasPlayerParticipation ? playerParticipation.ConfiguredSlotCount : 0),
-                LogFields.Field("playerParticipationCapacity", hasPlayerParticipation ? playerParticipation.DynamicCapacity : 0),
                 LogFields.Field("playerParticipationJoiningOpen", hasPlayerParticipation && playerParticipation.JoiningOpen),
                 LogFields.Field("localPlayerProvisioningReady", hasLocalPlayerProvisioning),
                 LogFields.Field("localPlayerProvisioningAuthoring", hasLocalPlayerProvisioning ? localPlayerProvisioning.Authoring.name : string.Empty),
@@ -292,7 +291,6 @@ namespace Immersive.Framework.Bootstrap
                     LogFields.Field("manager", authoring.PlayerInputManager.name),
                     LogFields.Field("context", snapshot != null ? snapshot.ContextId : string.Empty),
                     LogFields.Field("slots", snapshot != null ? snapshot.ConfiguredSlotCount : 0),
-                    LogFields.Field("capacity", snapshot != null ? snapshot.DynamicCapacity : 0),
                     LogFields.Field("joiningOpen", snapshot != null && snapshot.JoiningOpen),
                     LogFields.Field("message", module.Diagnostic)));
             return true;
@@ -306,7 +304,6 @@ namespace Immersive.Framework.Bootstrap
                 LogFields.Field("operation", initializationResult != null ? initializationResult.Operation : string.Empty),
                 LogFields.Field("status", initializationResult != null ? initializationResult.Status.ToString() : "Missing"),
                 LogFields.Field("configuredSlots", snapshot != null ? snapshot.ConfiguredSlotCount : 0),
-                LogFields.Field("dynamicCapacity", snapshot != null ? snapshot.DynamicCapacity : 0),
                 LogFields.Field("joiningOpen", snapshot != null && snapshot.JoiningOpen),
                 LogFields.Field("revision", snapshot != null ? snapshot.Revision : 0),
                 LogFields.Field("message", initializationResult != null ? initializationResult.Message : "Initialization result is missing."));
@@ -343,11 +340,13 @@ namespace Immersive.Framework.Bootstrap
                     "supportedSlots",
                     configuration != null ? configuration.SupportedSlotCount : 0),
                 LogFields.Field(
-                    "initialCapacity",
-                    configuration != null ? configuration.InitialCapacity : 0),
-                LogFields.Field(
                     "initialJoiningOpen",
                     configuration != null && configuration.InitialJoiningOpen),
+                LogFields.Field(
+                    "hostProvisioning",
+                    configuration != null
+                        ? configuration.HostProvisioning.ToString()
+                        : string.Empty),
                 LogFields.Field(
                     "actorResolutionPolicy",
                     configuration != null

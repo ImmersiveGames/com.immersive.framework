@@ -45,6 +45,8 @@ Architecture/Plans/        no closed execution records; open work belongs on the
 | [012](Architecture/ADRs/IF-ADR-012-Activity-Player-Participation-Profile-and-Readiness-Compatibility.md) | Activity Player participation profile and readiness compatibility | Proposed (not shipped) |
 | [013](Architecture/ADRs/IF-ADR-013-Optional-Audio-BGM-Adapter.md) | Optional Audio BGM adapter | Accepted |
 | [014](Architecture/ADRs/IF-ADR-014-Authored-Definition-and-Stable-Identity-Authority.md) | Authored definition and stable identity authority | **Accepted (IF-ID closed; IF-ID-07 deferred)** |
+| [015](Architecture/ADRs/IF-ADR-015-Player-Provisioning-Commands-and-Consumer-Observation-Surface.md) | Player provisioning commands and consumer observation surface | Proposed / migration required |
+| [016](Architecture/ADRs/IF-ADR-016-Player-Session-Initial-Configuration-and-Provisioning-Profiles.md) | Player Session initial configuration | Accepted / R1-R2 implemented; Unity validation pending |
 
 ## IF-ID closure
 

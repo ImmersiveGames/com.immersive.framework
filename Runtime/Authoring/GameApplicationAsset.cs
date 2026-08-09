@@ -1,5 +1,3 @@
-using System;
-using System.Collections.Generic;
 using Immersive.Framework.ApiStatus;
 using Immersive.Framework.Performance;
 using Immersive.Framework.PlayerParticipation;
@@ -27,10 +25,6 @@ namespace Immersive.Framework.Authoring
         [SerializeField]
         [Tooltip("First Route requested by Game Flow after framework boot. The Route declares the first Primary Scene.")]
         private RouteAsset startupRoute;
-
-        [SerializeField]
-        [Tooltip("Ordered local Player participation seats. Array order is the canonical default allocation order; Profile Display Order is presentation metadata only.")]
-        private PlayerSlotProfile[] localPlayerSlots = Array.Empty<PlayerSlotProfile>();
 
         [SerializeField]
         [Tooltip("Enables the authored Player Session. When enabled, Default Player Session Profile is required and resolved once at Session creation.")]
@@ -78,18 +72,6 @@ namespace Immersive.Framework.Authoring
         public RouteAsset StartupRoute => startupRoute;
 
         /// <summary>
-        /// Ordered immutable Slot Profile references used by the default
-        /// First Available By Configured Order allocation policy.
-        /// </summary>
-        public IReadOnlyList<PlayerSlotProfile> LocalPlayerSlots =>
-            localPlayerSlots ?? Array.Empty<PlayerSlotProfile>();
-
-        public int LocalPlayerSlotCount =>
-            localPlayerSlots != null
-                ? localPlayerSlots.Length
-                : 0;
-
-        /// <summary>
         /// Enables Player Session composition. Disabled is an explicit valid absence of a Player Session.
         /// </summary>
         public bool PlayerSessionEnabled => playerSessionEnabled;
@@ -125,20 +107,5 @@ namespace Immersive.Framework.Authoring
         public FrameworkValidationMode ValidationMode =>
             validationMode;
 
-        public bool TryGetLocalPlayerSlot(
-            int configuredIndex,
-            out PlayerSlotProfile playerSlotProfile)
-        {
-            if (localPlayerSlots == null ||
-                configuredIndex < 0 ||
-                configuredIndex >= localPlayerSlots.Length)
-            {
-                playerSlotProfile = null;
-                return false;
-            }
-
-            playerSlotProfile = localPlayerSlots[configuredIndex];
-            return playerSlotProfile != null;
-        }
     }
 }

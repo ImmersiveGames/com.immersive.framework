@@ -1,5 +1,9 @@
 # Immersive Framework — Player / Session / Activity Decision Matrix
 
+> Historical conceptual baseline. Decision S08 and the Profile/provisioning
+> decisions are superseded by `IF-ADR-016` dated 2026-08-09 and must not be
+> treated as current implementation direction.
+
 **Date:** 2026-08-08  
 **Status:** Conceptual baseline frozen for gap analysis  
 **Project:** Immersive Framework 1.1 / Unity 6.5

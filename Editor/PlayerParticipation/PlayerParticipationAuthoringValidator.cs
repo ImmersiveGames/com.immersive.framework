@@ -44,14 +44,34 @@ namespace Immersive.Framework.Editor.Editor.PlayerParticipation
                     gameApplication);
             }
 
-            IReadOnlyList<PlayerSlotProfile> configuredSlots = gameApplication.LocalPlayerSlots;
-            if (configuredSlots == null || configuredSlots.Count == 0)
+            if (!gameApplication.PlayerSessionEnabled)
             {
                 report.AddOptionalSkip(
-                    "No Local Player Slots are configured. Player participation is explicitly unavailable for this Game Application; Activities using Projection = No Slots remain valid.",
+                    "Player Session is disabled, so Player participation configuration is not required for this Game Application.",
                     gameApplication);
                 return report;
             }
+
+            PlayerSessionProfile playerSessionProfile =
+                gameApplication.DefaultPlayerSessionProfile;
+            if (playerSessionProfile == null)
+            {
+                report.AddError(
+                    "Player Session is enabled but has no Default Player Session Profile.",
+                    gameApplication);
+                return report;
+            }
+
+            if (!playerSessionProfile.TryValidate(out string profileIssue))
+            {
+                report.AddError(
+                    $"Player Session Profile '{playerSessionProfile.name}' is invalid. {profileIssue}",
+                    playerSessionProfile);
+                return report;
+            }
+
+            IReadOnlyList<PlayerSlotProfile> configuredSlots =
+                playerSessionProfile.SupportedSlots;
 
             var configuredProfileIndices = new Dictionary<PlayerSlotProfile, int>();
             var configuredIdentityIndices = new Dictionary<PlayerSlotId, int>();
@@ -62,16 +82,16 @@ namespace Immersive.Framework.Editor.Editor.PlayerParticipation
                 if (profile == null)
                 {
                     report.AddError(
-                        $"Local Player Slots[{index}] is missing. Every configured allocation position must reference a PlayerSlotProfile.",
-                        gameApplication);
+                        $"Player Session Profile Supported Slots[{index}] is missing. Every configured allocation position must reference a PlayerSlotProfile.",
+                        playerSessionProfile);
                     continue;
                 }
 
                 if (configuredProfileIndices.TryGetValue(profile, out int firstProfileIndex))
                 {
                     report.AddError(
-                        $"Local Player Slots[{index}] repeats PlayerSlotProfile '{profile.name}' already configured at index {firstProfileIndex}. Each configured seat requires one distinct Profile reference.",
-                        gameApplication);
+                        $"Player Session Profile Supported Slots[{index}] repeats PlayerSlotProfile '{profile.name}' already configured at index {firstProfileIndex}. Each configured Slot requires one distinct Profile reference.",
+                        playerSessionProfile);
                     continue;
                 }
 
@@ -97,8 +117,8 @@ namespace Immersive.Framework.Editor.Editor.PlayerParticipation
                 {
                     PlayerSlotProfile firstProfile = configuredSlots[firstIdentityIndex];
                     report.AddError(
-                        $"Local Player Slots[{index}] Profile '{profile.name}' duplicates PlayerSlotId '{playerSlotId}' already owned by Profile '{firstProfile.name}' at index {firstIdentityIndex}.",
-                        gameApplication);
+                        $"Player Session Profile Supported Slots[{index}] Profile '{profile.name}' duplicates PlayerSlotId '{playerSlotId}' already owned by Profile '{firstProfile.name}' at index {firstIdentityIndex}.",
+                        playerSessionProfile);
                     continue;
                 }
 
@@ -108,7 +128,7 @@ namespace Immersive.Framework.Editor.Editor.PlayerParticipation
             if (report.IsValid)
             {
                 report.AddInfo(
-                    $"Local Player participation configuration is valid. configuredSlots='{configuredSlots.Count}' allocationPolicy='FirstAvailableByConfiguredOrder' actorSelectionPolicy='{actorSelectionPolicy}'.",
+                    $"Player Session participation configuration is valid. supportedSlots='{configuredSlots.Count}' allocationPolicy='FirstAvailableByConfiguredOrder' actorSelectionPolicy='{actorSelectionPolicy}'.",
                     gameApplication);
             }
 

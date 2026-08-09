@@ -886,8 +886,6 @@ namespace Immersive.Framework.PlayerParticipation
             {
                 PlayerParticipationOperationStatus.RejectedInvalidRequest =>
                     SceneLocalPlayerAdmissionRuntimeStatus.RejectedInvalidRequest,
-                PlayerParticipationOperationStatus.RejectedCapacityReached =>
-                    SceneLocalPlayerAdmissionRuntimeStatus.RejectedCapacityReached,
                 PlayerParticipationOperationStatus.RejectedNoAvailableSlot =>
                     SceneLocalPlayerAdmissionRuntimeStatus.RejectedSlotUnavailable,
                 _ => SceneLocalPlayerAdmissionRuntimeStatus.FailedReservation

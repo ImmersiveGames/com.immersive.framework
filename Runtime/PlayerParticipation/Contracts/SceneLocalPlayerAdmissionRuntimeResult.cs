@@ -75,7 +75,6 @@ namespace Immersive.Framework.PlayerParticipation
             SceneLocalPlayerAdmissionRuntimeStatus.RejectedSlotOrderMismatch or
             SceneLocalPlayerAdmissionRuntimeStatus.RejectedConflict or
             SceneLocalPlayerAdmissionRuntimeStatus.RejectedForeignOrStaleToken or
-            SceneLocalPlayerAdmissionRuntimeStatus.RejectedCapacityReached or
             SceneLocalPlayerAdmissionRuntimeStatus.RejectedSlotUnavailable or
             SceneLocalPlayerAdmissionRuntimeStatus.RejectedDependentState;
 

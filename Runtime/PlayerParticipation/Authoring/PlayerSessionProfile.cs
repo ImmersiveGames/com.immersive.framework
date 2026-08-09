@@ -28,17 +28,20 @@ namespace Immersive.Framework.PlayerParticipation
 
         [Header("Initial Session State")]
         [SerializeField]
-        [Tooltip("Initial Session capacity. Runtime Capacity changes remain outside this Profile.")]
-        private int initialCapacity;
-
-        [SerializeField]
         [Tooltip("Whether Session Joining begins open. Runtime Joining changes remain outside this Profile.")]
         private bool initialJoiningOpen;
 
-        [Header("Provisioning")]
+        [Header("Host Provisioning")]
         [SerializeField]
-        [Tooltip("Reusable initial Player Host provisioning and Actor resolution intent.")]
-        private PlayerProvisioningProfile playerProvisioningProfile;
+        [Tooltip("Host provisioning applied to every Supported Slot when the Session is created.")]
+        private PlayerHostProvisioningMode hostProvisioning =
+            PlayerHostProvisioningMode.ManagerProvisioned;
+
+        [Header("Actor Resolution")]
+        [SerializeField]
+        [Tooltip("Initial Actor resolution intent. Actor lifecycle remains outside this Profile.")]
+        private PlayerActorResolutionPolicy actorResolutionPolicy =
+            PlayerActorResolutionPolicy.ResolveConfiguredDefault;
 
         /// <summary>
         /// Supported Slots in canonical allocation order. Presentation order
@@ -51,19 +54,17 @@ namespace Immersive.Framework.PlayerParticipation
         public int SupportedSlotCount =>
             supportedSlots != null ? supportedSlots.Length : 0;
 
-        public int InitialCapacity => initialCapacity;
-
         public bool InitialJoiningOpen => initialJoiningOpen;
 
-        public PlayerProvisioningProfile PlayerProvisioningProfile =>
-            playerProvisioningProfile;
+        public PlayerHostProvisioningMode HostProvisioning => hostProvisioning;
+
+        public PlayerActorResolutionPolicy ActorResolutionPolicy =>
+            actorResolutionPolicy;
 
         public bool IsValid => TryValidate(out _);
 
         /// <summary>
-        /// Validates only authored structural contradictions. Resolving Slot
-        /// provisioning overrides against this Session's Supported Slots is
-        /// intentionally deferred to the effective configuration resolver.
+        /// Validates only authored structural contradictions.
         /// </summary>
         public bool TryValidate(out string issue)
         {
@@ -98,25 +99,17 @@ namespace Immersive.Framework.PlayerParticipation
                 }
             }
 
-            if (initialCapacity < 0 || initialCapacity > slots.Length)
+            if (!hostProvisioning.IsDefinedMode())
             {
                 issue =
-                    $"Player Session Profile '{name}' Initial Capacity '{initialCapacity}' must be between 0 and Supported Slot count '{slots.Length}'.";
+                    $"Player Session Profile '{name}' has invalid Host Provisioning '{hostProvisioning}'.";
                 return false;
             }
 
-            if (playerProvisioningProfile == null)
+            if (!actorResolutionPolicy.IsDefinedPolicy())
             {
                 issue =
-                    $"Player Session Profile '{name}' requires a Player Provisioning Profile.";
-                return false;
-            }
-
-            if (!playerProvisioningProfile.TryValidate(
-                    out string provisioningIssue))
-            {
-                issue =
-                    $"Player Session Profile '{name}' references an invalid Player Provisioning Profile. {provisioningIssue}";
+                    $"Player Session Profile '{name}' has invalid Actor Resolution '{actorResolutionPolicy}'.";
                 return false;
             }
 

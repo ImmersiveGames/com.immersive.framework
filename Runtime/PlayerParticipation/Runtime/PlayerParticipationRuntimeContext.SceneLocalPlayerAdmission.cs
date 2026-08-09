@@ -72,19 +72,6 @@ namespace Immersive.Framework.PlayerParticipation
                     default);
             }
 
-            if (CountConsumedCapacity() >= dynamicCapacity)
-            {
-                return CreateResult(
-                    PlayerParticipationOperationStatus.RejectedCapacityReached,
-                    "ReserveSceneLocalPlayerSlot",
-                    resolvedSource,
-                    resolvedReason,
-                    $"Scene Local Player reservation rejected because dynamic capacity '{dynamicCapacity}' is reached.",
-                    previousRevision,
-                    default,
-                    default);
-            }
-
             SlotRecord firstAvailable = null;
             for (int index = 0; index < slots.Count; index++)
             {

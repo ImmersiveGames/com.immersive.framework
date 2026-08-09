@@ -86,9 +86,5 @@ namespace Immersive.Framework.PlayerParticipation
 
         public bool IsJoined => AllocationState == PlayerSlotAllocationState.Joined;
 
-        public bool ConsumesCapacity =>
-            AllocationState == PlayerSlotAllocationState.Reserved ||
-            AllocationState == PlayerSlotAllocationState.Joined ||
-            AllocationState == PlayerSlotAllocationState.Leaving;
     }
 }

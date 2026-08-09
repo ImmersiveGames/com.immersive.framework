@@ -1,5 +1,9 @@
 # Immersive Framework — FIRSTGAME Demo01 Consumer Revalidation
 
+> Historical consumer evidence. It predates the accepted 2026-08-09 IF-ADR-016
+> simplification and must be repeated after the migration; it is not evidence
+> for the new Profile model.
+
 Date: 2026-08-09  
 Consumer: `ImmersiveGames/planet-devourer` — Demo01  
 Classification: **real-consumer revalidation / post-Player non-regression evidence**  

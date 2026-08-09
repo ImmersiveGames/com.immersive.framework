@@ -1,5 +1,9 @@
 # Immersive Framework — ADR Completion Summary
 
+> Historical execution summary. Its ADR-015/016 coverage and certification text
+> concerns the superseded Profile/Capacity model; use the current ADRs and
+> tracker for normative status.
+
 Date: 2026-08-09  
 Package Git baseline: `cf0a37fbcbf72ad2a08556d6045c908521bfd2c1` (`P4 — IF-PLAYER-SURFACE-06`)  
 QA Git baseline inspected: `52a31aa9cd237d934ed3241392b87b7990f11dc8` (`fix2`); certification evidence: local Unity Play Mode run on 2026-08-09  

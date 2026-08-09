@@ -11,9 +11,8 @@ namespace Immersive.Framework.PlayerParticipation
         RejectedInvalidRequest = 30,
         RejectedInvalidState = 40,
         RejectedJoiningClosed = 50,
-        RejectedCapacityReached = 60,
-        RejectedNoAvailableSlot = 70,
-        RejectedForeignOrStaleReservation = 80,
-        FailedInvalidConfiguration = 90
+        RejectedNoAvailableSlot = 60,
+        RejectedForeignOrStaleReservation = 70,
+        FailedInvalidConfiguration = 80
     }
 }

@@ -22,10 +22,6 @@ namespace Immersive.Framework.PlayerParticipation
 
         GameObject PlayerPrefab { get; }
 
-        int CurrentPlayerCount { get; }
-
-        int TechnicalMaxPlayerCount { get; }
-
         event Action<PlayerInput> PlayerJoined;
 
         PlayerInput JoinPlayer(LocalPlayerJoinRequest request);

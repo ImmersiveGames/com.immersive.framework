@@ -1,5 +1,8 @@
 # Immersive Framework — ADR-016 Incremental Implementation Plan
 
+**Status:** Historical / Superseded by the accepted `IF-ADR-016` revision dated 2026-08-09.  
+**Use:** Retain only as the implementation record for the former separate provisioning Profile, Capacity and per-Slot override model. It is not an active plan and must not guide the next cut.
+
 **Date:** 2026-08-08  
 **Scope:** Player Session Initial Configuration and Provisioning Profiles  
 **Reference:** IF-ADR-016 — Player Session Initial Configuration and Provisioning Profiles

@@ -273,7 +273,7 @@ namespace Immersive.Framework.PlayerParticipation
 
             EffectivePlayerSessionConfiguration configuration =
                 observation.InitializationConfiguration;
-            return $"Resolved at Session creation: supportedSlots='{configuration.SupportedSlotCount}' initialCapacity='{configuration.InitialCapacity}' initialJoiningOpen='{configuration.InitialJoiningOpen}'.";
+            return $"Resolved at Session creation: supportedSlots='{configuration.SupportedSlotCount}' initialJoiningOpen='{configuration.InitialJoiningOpen}' hostProvisioning='{configuration.HostProvisioning}' actorResolution='{configuration.ActorResolutionPolicy}'.";
         }
 
         private static string DescribeActivity(

@@ -1,6 +1,10 @@
 # Immersive Framework — IF-PLAYER-SURFACE-01E2
 ## QA Public Contract Coverage Audit
 
+> Historical QA audit. Any Profile or Capacity coverage in this record applies
+> to the superseded model and is not certification of the accepted IF-ADR-016
+> configuration model.
+
 **Date:** 2026-08-07  
 **Status:** A0 CLOSED  
 **Type:** Technical audit / QA contract reachability  

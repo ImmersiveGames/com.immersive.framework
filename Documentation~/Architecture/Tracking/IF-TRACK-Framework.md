@@ -40,7 +40,9 @@ Q2 negative/lifecycle QA                             PASS 36/36
 joint Player Surface verdict                         QA CERTIFIED
 ```
 
-IF-ADR-015 remains Proposed because product closure still requires FIRSTGAME real-consumer proof, post-FIRSTGAME P5 creation-workflow disposition and final ADR/documentation acceptance.
+The P1–P4/Q1/Q2 evidence above applies to the superseded Profile/Capacity
+model. IF-ADR-016 is now Accepted with a simpler authored model, so that
+evidence does not close the migration or permit compatibility rails.
 
 ## Track board
 
@@ -50,7 +52,7 @@ IF-ADR-015 remains Proposed because product closure still requires FIRSTGAME rea
 | Package hygiene | Closed for current boundary | package + QA import discipline | ongoing | do not restore compatibility facades |
 | Player — Scene-Provided | **Closed / approved** | authoring, Route/Activity admission, Slot, Host, Actor adoption, readiness, release/reentry/restart/teardown | broader automated matrix desirable | preserve baseline |
 | PLAYER-DIAG-1 | **Closed / approved** | safe diagnostic formatting and immutable last-operation evidence | optional expansion | preserve semantics |
-| Player — Manager-Provisioned | **Implemented / technical QA certified** | IF-ADR-016 initialization + P1–P4 consumer surface + Q1 29/29 + Q2 36/36 | FIRSTGAME manual proof; P5 UX/tooling disposition; final ADR closure | document → FIRSTGAME → P5 |
+| Player — Manager-Provisioned | **R1/R2 implemented; Unity validation pending** | Profile, resolver, admission, commands and diagnostics use Supported Slots as the sole Session limit | revalidate before FIRSTGAME/P5 | Unity import, then public/real-consumer validation |
 | Player — Session-Persistent | **Blocked** | origin reserved in architecture | authoring, admission, lifetime contracts | separate approved cut required |
 | Activity readiness + reveal | **Implemented (Experimental); core QA certified** | WaitVisible/WaitCovered, terminal recovery, startup parity, Player public WaitingForJoin/WaitCovered path | focused ObserveOnly/product guidance | preserve semantics |
 | WaitCovered Loading progress | **Implemented (Experimental); core QA certified** | participant-aware progress/terminal plus Player public pending-then-terminal proof | presentation guidance / polish | preserve aggregate-only authority boundary |
@@ -63,8 +65,8 @@ IF-ADR-015 remains Proposed because product closure still requires FIRSTGAME rea
 | Editor product surface (IF-ADR-010) | **Proposed** | Editor authoring standard + many Custom Editors | consistent product application | preserve designer-first direction |
 | ADR-012 participation profile | **Accepted / substantially implemented** | requirement levels, evidence, runtime compatibility | product consolidation | preserve contract |
 | Authored identity (IF-ADR-014) | **Closed / approved** | IF-ID package/tests/QA/FIRSTGAME proof | IF-ID-07 deferred by design | preserve exact-reference + token authority |
-| IF-ADR-015 provisioning command/observation surface | **Proposed / 80%** | P1–P4 shipped; Q1/Q2 certified | FIRSTGAME real-consumer proof; P5 disposition; final docs/acceptance | next Player product phase |
-| IF-ADR-016 Session initialization Profiles | **Proposed / 90%** | Profiles/resolver/runtime + 05/05B/07 QA green | FIRSTGAME proof; full Route/Activity non-reapply integration evidence | preserve configuration authority |
+| IF-ADR-015 provisioning command/observation surface | **Proposed / R2 implemented; Unity validation pending** | scoped consumer boundary has no Capacity command or observation | revalidate consumer API/observation | Unity import, then public validation |
+| IF-ADR-016 Session initialization Profiles | **Accepted / R1/R2 implemented; Unity validation pending** | consolidated Profile and Slot-based runtime limit; old Profile/override/Capacity types removed | import and behavior validation | validate import, then public flow |
 
 ## Canonical Player Surface implementation
 
@@ -72,7 +74,6 @@ IF-ADR-015 remains Proposed because product closure still requires FIRSTGAME rea
 
 ```text
 PlayerSlotProfile
-→ PlayerProvisioningProfile
 → PlayerSessionProfile
 → GameApplicationAsset.DefaultPlayerSessionProfile
 → frozen effective Session configuration
@@ -95,9 +96,12 @@ Route / Activity
   optional PlayerProvisioningStatusBinding
 ```
 
-P1/P2 provide scoped reachability and observation. P3/P4 provide explicit authoring/presentation. They do not create a second Player authority.
+P1/P2 provide scoped reachability and observation. P3/P4 provide explicit authoring/presentation. They do not create a second Player authority. Their previous Capacity command/observation contract is superseded and must migrate with IF-ADR-016.
 
-## Player Surface QA certification
+## Historical Player Surface QA baseline
+
+The following certification is retained only as evidence for the superseded
+model. Its Capacity-related cases do not certify the accepted IF-ADR-016 model.
 
 ```text
 QA-PLAYER-SURFACE-01
@@ -192,20 +196,20 @@ Closed for the current authored-definition/stable-identity boundary. IF-ID-07 re
 ## Current execution priority
 
 ```text
-1. Documentation reconciliation for shipped Player Surface
-   CURRENT
+1. Unity import and public flow validation for R1/R2
+   NEXT
 
 2. FIRSTGAME-PLAYER-SURFACE-01
-   manual real-consumer command/status/lifecycle proof
+   manual real-consumer proof after validation
 
 3. IF-PLAYER-SURFACE-07 (P5)
    creation-workflow/tooling disposition based on real friction
 
-4. FIRSTGAME-PLAYER-SURFACE-02
-   final UX disposition
+4. FIRSTGAME-PLAYER-SURFACE-01
+   manual real-consumer proof after migration
 
-5. IF-ADR-015 final documentation / acceptance
-   after product evidence is complete
+5. IF-PLAYER-SURFACE-07 (P5)
+   creation-workflow/tooling disposition based on real friction
 ```
 
 Do not reopen P1–P4 or Q1/Q2 without new contradicting evidence.

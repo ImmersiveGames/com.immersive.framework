@@ -61,7 +61,6 @@ namespace Immersive.Framework.PlayerParticipation
             PlayerParticipationOperationStatus.RejectedInvalidRequest or
             PlayerParticipationOperationStatus.RejectedInvalidState or
             PlayerParticipationOperationStatus.RejectedJoiningClosed or
-            PlayerParticipationOperationStatus.RejectedCapacityReached or
             PlayerParticipationOperationStatus.RejectedNoAvailableSlot or
             PlayerParticipationOperationStatus.RejectedForeignOrStaleReservation;
 

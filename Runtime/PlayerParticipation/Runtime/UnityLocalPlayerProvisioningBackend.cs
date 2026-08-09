@@ -177,14 +177,6 @@ namespace Immersive.Framework.PlayerParticipation
             ? manager.playerPrefab
             : null;
 
-        public int CurrentPlayerCount => manager != null
-            ? manager.playerCount
-            : 0;
-
-        public int TechnicalMaxPlayerCount => manager != null
-            ? manager.maxPlayerCount
-            : 0;
-
         public event Action<PlayerInput> PlayerJoined
         {
             add

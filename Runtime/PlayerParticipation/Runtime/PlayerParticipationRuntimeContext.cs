@@ -60,21 +60,18 @@ namespace Immersive.Framework.PlayerParticipation
         private readonly PlayerActorResolutionPolicy actorResolutionPolicy;
         private int revision;
         private int reservationSequence;
-        private int dynamicCapacity;
         private bool joiningOpen;
         private PlayerParticipationOperationStatus lastOperationStatus;
         private string lastOperationMessage;
 
         private PlayerParticipationRuntimeContext(
             List<SlotRecord> slots,
-            int initialDynamicCapacity,
             bool initialJoiningOpen,
             PlayerActorSelectionDuplicatePolicy actorSelectionDuplicatePolicy,
             PlayerActorResolutionPolicy actorResolutionPolicy)
         {
             contextId = Guid.NewGuid().ToString("N");
             this.slots = slots ?? throw new ArgumentNullException(nameof(slots));
-            dynamicCapacity = initialDynamicCapacity;
             joiningOpen = initialJoiningOpen;
             this.actorSelectionDuplicatePolicy = actorSelectionDuplicatePolicy;
             this.actorResolutionPolicy = actorResolutionPolicy;
@@ -85,14 +82,13 @@ namespace Immersive.Framework.PlayerParticipation
 
         internal static PlayerParticipationOperationResult TryCreate(
             IReadOnlyList<PlayerSlotProfile> orderedProfiles,
-            int initialDynamicCapacity,
             bool initialJoiningOpen,
             string source,
             string reason,
             out PlayerParticipationRuntimeContext context)
         {
             return TryCreateCore(
-                orderedProfiles, initialDynamicCapacity, initialJoiningOpen,
+                orderedProfiles, initialJoiningOpen,
                 PlayerActorSelectionDuplicatePolicy.Unspecified,
                 PlayerActorResolutionPolicy.ResolveConfiguredDefault,
                 "Initialize", "Player participation runtime context initialized.",
@@ -101,7 +97,6 @@ namespace Immersive.Framework.PlayerParticipation
 
         internal static PlayerParticipationOperationResult TryCreateWithActorSelectionPolicy(
             IReadOnlyList<PlayerSlotProfile> orderedProfiles,
-            int initialDynamicCapacity,
             bool initialJoiningOpen,
             PlayerActorSelectionDuplicatePolicy actorSelectionDuplicatePolicy,
             string source,
@@ -130,7 +125,7 @@ namespace Immersive.Framework.PlayerParticipation
             }
 
             return TryCreateCore(
-                orderedProfiles, initialDynamicCapacity, initialJoiningOpen,
+                orderedProfiles, initialJoiningOpen,
                 actorSelectionDuplicatePolicy,
                 PlayerActorResolutionPolicy.ResolveConfiguredDefault,
                 "InitializeWithActorSelectionPolicy",
@@ -176,6 +171,15 @@ namespace Immersive.Framework.PlayerParticipation
                     $"Effective Actor resolution policy '{effectiveConfiguration.ActorResolutionPolicy}' is invalid.");
             }
 
+            if (!effectiveConfiguration.HostProvisioning.IsDefinedMode())
+            {
+                context = null;
+                return CreateInitializationFailure(
+                    resolvedSource,
+                    resolvedReason,
+                    $"Effective Host provisioning '{effectiveConfiguration.HostProvisioning}' is invalid.");
+            }
+
             if (!TryCreateEffectiveSlotRecords(
                     effectiveConfiguration.Slots,
                     out List<SlotRecord> records,
@@ -187,7 +191,6 @@ namespace Immersive.Framework.PlayerParticipation
 
             context = new PlayerParticipationRuntimeContext(
                 records,
-                effectiveConfiguration.InitialCapacity,
                 effectiveConfiguration.InitialJoiningOpen,
                 actorSelectionDuplicatePolicy,
                 effectiveConfiguration.ActorResolutionPolicy);
@@ -204,7 +207,6 @@ namespace Immersive.Framework.PlayerParticipation
 
         private static PlayerParticipationOperationResult TryCreateCore(
             IReadOnlyList<PlayerSlotProfile> orderedProfiles,
-            int initialDynamicCapacity,
             bool initialJoiningOpen,
             PlayerActorSelectionDuplicatePolicy actorSelectionDuplicatePolicy,
             PlayerActorResolutionPolicy actorResolutionPolicy,
@@ -222,70 +224,14 @@ namespace Immersive.Framework.PlayerParticipation
                 return CreateInitializationFailure(resolvedSource, resolvedReason, issue);
             }
 
-            if (initialDynamicCapacity < 0 || initialDynamicCapacity > records.Count)
-            {
-                context = null;
-                return CreateInitializationFailure(resolvedSource, resolvedReason,
-                    $"Initial dynamic capacity '{initialDynamicCapacity}' must be between 0 and configured Slot count '{records.Count}'.");
-            }
-
             context = new PlayerParticipationRuntimeContext(
                 records,
-                initialDynamicCapacity,
                 initialJoiningOpen,
                 actorSelectionDuplicatePolicy,
                 actorResolutionPolicy);
             return context.CreateResult(
                 PlayerParticipationOperationStatus.Succeeded, operation,
                 resolvedSource, resolvedReason, successMessage, 0, default, default);
-        }
-
-        internal PlayerParticipationOperationResult TrySetDynamicCapacity(
-            int requestedCapacity,
-            string source,
-            string reason)
-        {
-            string resolvedSource = source.NormalizeTextOrFallback("Unknown");
-            string resolvedReason = reason.NormalizeTextOrFallback("capacity-change");
-            int previousRevision = revision;
-
-            if (requestedCapacity < 0 || requestedCapacity > slots.Count)
-            {
-                return CreateResult(
-                    PlayerParticipationOperationStatus.RejectedInvalidRequest,
-                    "SetDynamicCapacity",
-                    resolvedSource,
-                    resolvedReason,
-                    $"Dynamic capacity '{requestedCapacity}' must be between 0 and configured Slot count '{slots.Count}'.",
-                    previousRevision,
-                    default,
-                    default);
-            }
-
-            if (requestedCapacity == dynamicCapacity)
-            {
-                return CreateResult(
-                    PlayerParticipationOperationStatus.IgnoredNoChange,
-                    "SetDynamicCapacity",
-                    resolvedSource,
-                    resolvedReason,
-                    "Dynamic capacity already matches the requested value.",
-                    previousRevision,
-                    default,
-                    default);
-            }
-
-            dynamicCapacity = requestedCapacity;
-            revision++;
-            return CreateResult(
-                PlayerParticipationOperationStatus.Succeeded,
-                "SetDynamicCapacity",
-                resolvedSource,
-                resolvedReason,
-                "Dynamic capacity changed without evicting existing participation.",
-                previousRevision,
-                default,
-                default);
         }
 
         internal PlayerParticipationOperationResult TryOpenJoining(string source, string reason)
@@ -325,19 +271,6 @@ namespace Immersive.Framework.PlayerParticipation
                     resolvedSource,
                     resolvedReason,
                     "Slot reservation rejected because joining is closed.",
-                    previousRevision,
-                    default,
-                    default);
-            }
-
-            if (CountConsumedCapacity() >= dynamicCapacity)
-            {
-                return CreateResult(
-                    PlayerParticipationOperationStatus.RejectedCapacityReached,
-                    "ReserveNextAvailableSlot",
-                    resolvedSource,
-                    resolvedReason,
-                    $"Slot reservation rejected because dynamic capacity '{dynamicCapacity}' is reached.",
                     previousRevision,
                     default,
                     default);
@@ -536,7 +469,6 @@ namespace Immersive.Framework.PlayerParticipation
                 contextId,
                 revision,
                 true,
-                dynamicCapacity,
                 joiningOpen,
                 actorSelectionDuplicatePolicy,
                 snapshots,
@@ -1118,22 +1050,6 @@ namespace Immersive.Framework.PlayerParticipation
                 snapshot);
         }
 
-        private int CountConsumedCapacity()
-        {
-            int count = 0;
-            for (int index = 0; index < slots.Count; index++)
-            {
-                PlayerSlotAllocationState state = slots[index].AllocationState;
-                if (state == PlayerSlotAllocationState.Reserved ||
-                    state == PlayerSlotAllocationState.Joined ||
-                    state == PlayerSlotAllocationState.Leaving)
-                {
-                    count++;
-                }
-            }
-
-            return count;
-        }
 
         private SlotRecord FindSlot(PlayerSlotId playerSlotId)
         {

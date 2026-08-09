@@ -14,8 +14,6 @@ namespace Immersive.Framework.PlayerParticipation
         None = 0,
         MissingRequiredConfiguration = 10,
         InvalidPlayerSessionProfile = 20,
-        InvalidPlayerProvisioningProfile = 30,
-        UnsupportedProvisioningOverrideSlot = 40,
-        InvalidEffectiveConfiguration = 50
+        InvalidEffectiveConfiguration = 30
     }
 }

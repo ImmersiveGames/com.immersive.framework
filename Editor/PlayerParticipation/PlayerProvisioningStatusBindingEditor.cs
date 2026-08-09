@@ -130,14 +130,14 @@ namespace Immersive.Framework.Editor.Editor.PlayerParticipation
                     "Joining Open",
                     observation.Participation.JoiningOpen);
                 EditorGUILayout.IntField(
-                    "Current Capacity",
-                    observation.Participation.DynamicCapacity);
-                EditorGUILayout.IntField(
                     "Joined Slots",
                     observation.Participation.JoinedCount);
                 EditorGUILayout.IntField(
                     "Configured Slots",
                     observation.Participation.ConfiguredSlotCount);
+                EditorGUILayout.IntField(
+                    "Available Slots",
+                    observation.Participation.AvailableCount);
             }
 
             FrameworkAuthoringInspectorGui.Section("Activity");
@@ -275,12 +275,12 @@ namespace Immersive.Framework.Editor.Editor.PlayerParticipation
                 observation.InitializationConfiguration;
             using (new EditorGUI.DisabledScope(true))
             {
-                EditorGUILayout.IntField(
-                    "Initial Capacity",
-                    configuration.InitialCapacity);
                 EditorGUILayout.Toggle(
                     "Initial Joining Open",
                     configuration.InitialJoiningOpen);
+                EditorGUILayout.EnumPopup(
+                    "Host Provisioning",
+                    configuration.HostProvisioning);
                 EditorGUILayout.EnumPopup(
                     "Actor Resolution Policy",
                     configuration.ActorResolutionPolicy);
@@ -291,8 +291,7 @@ namespace Immersive.Framework.Editor.Editor.PlayerParticipation
                 EffectivePlayerSlotProvisioning slot =
                     configuration.Slots[index];
                 EditorGUILayout.LabelField(
-                    $"{index + 1}. {slot.PlayerSlotId.StableText}",
-                    slot.HostProvisioningMode.ToString());
+                    $"{index + 1}. {slot.PlayerSlotId.StableText}");
             }
         }
 

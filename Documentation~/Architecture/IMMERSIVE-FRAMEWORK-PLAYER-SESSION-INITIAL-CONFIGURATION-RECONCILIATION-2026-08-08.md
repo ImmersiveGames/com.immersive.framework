@@ -1,5 +1,9 @@
 # Immersive Framework — Player Session Initial Configuration Reconciliation
 
+> Historical reconciliation. The accepted `IF-ADR-016` revision dated
+> 2026-08-09 supersedes PR01, PR02, PR06 and every corresponding legacy
+> Profile/Capacity decision in this record.
+
 **Date:** 2026-08-08  
 **Project:** Immersive Framework 1.1 / Unity 6.5  
 **Status:** Reconciliation record — Session initial configuration and Player provisioning  

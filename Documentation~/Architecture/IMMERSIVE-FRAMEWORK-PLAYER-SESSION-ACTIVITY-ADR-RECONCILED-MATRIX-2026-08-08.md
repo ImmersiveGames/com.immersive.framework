@@ -1,5 +1,9 @@
 # Immersive Framework — Player / Session / Activity ADR-Reconciled Matrix
 
+> Historical ADR reconciliation. Its S08/Profile/Capacity interpretation is
+> superseded by the accepted `IF-ADR-016` revision dated 2026-08-09; this file
+> does not define the current Player Session model.
+
 **Date:** 2026-08-08  
 **Status:** ADR reconciliation baseline complete; runtime/source confrontation not started  
 **Project:** Immersive Framework 1.1 / Unity 6.5

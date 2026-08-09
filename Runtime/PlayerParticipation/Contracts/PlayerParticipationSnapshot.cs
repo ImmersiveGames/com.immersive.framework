@@ -16,7 +16,6 @@ namespace Immersive.Framework.PlayerParticipation
             string contextId,
             int revision,
             bool initialized,
-            int dynamicCapacity,
             bool joiningOpen,
             PlayerActorSelectionDuplicatePolicy actorSelectionDuplicatePolicy,
             PlayerSlotRuntimeSnapshot[] slots,
@@ -26,7 +25,6 @@ namespace Immersive.Framework.PlayerParticipation
             ContextId = contextId ?? string.Empty;
             Revision = revision;
             IsInitialized = initialized;
-            DynamicCapacity = dynamicCapacity;
             JoiningOpen = joiningOpen;
             ActorSelectionDuplicatePolicy = actorSelectionDuplicatePolicy;
             this.slots = slots != null
@@ -74,8 +72,6 @@ namespace Immersive.Framework.PlayerParticipation
 
         public bool IsInitialized { get; }
 
-        public int DynamicCapacity { get; }
-
         public bool JoiningOpen { get; }
 
         public bool HasActorSelectionPolicy =>
@@ -104,10 +100,6 @@ namespace Immersive.Framework.PlayerParticipation
         public bool AllJoinedSlotsHaveSelectedActors =>
             JoinedCount > 0 && JoinedWithoutSelectedActorCount == 0;
 
-        public int ConsumedCapacityCount => ReservedCount + JoinedCount + LeavingCount;
-
-        public bool IsOverCapacity => ConsumedCapacityCount > DynamicCapacity;
-
         public PlayerParticipationOperationStatus LastOperationStatus { get; }
 
         public string LastOperationMessage { get; }
@@ -120,7 +112,6 @@ namespace Immersive.Framework.PlayerParticipation
                 string.Empty,
                 0,
                 false,
-                0,
                 false,
                 PlayerActorSelectionDuplicatePolicy.Unspecified,
                 Array.Empty<PlayerSlotRuntimeSnapshot>(),

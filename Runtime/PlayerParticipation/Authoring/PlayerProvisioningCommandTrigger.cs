@@ -16,9 +16,8 @@ namespace Immersive.Framework.PlayerParticipation
     {
         OpenJoining = 10,
         CloseJoining = 20,
-        SetCapacity = 30,
-        RequestJoin = 40,
-        RequestDefaultActorSelection = 50
+        RequestJoin = 30,
+        RequestDefaultActorSelection = 40
     }
 
     /// <summary>
@@ -58,11 +57,6 @@ namespace Immersive.Framework.PlayerParticipation
         [SerializeField]
         [Tooltip("Explicit Route or Activity scoped access binding supplied by Framework Core.")]
         private LocalPlayerProvisioningConsumerAccessBinding consumerAccessBinding;
-
-        [Header("Set Capacity")]
-        [SerializeField]
-        [Min(0)]
-        private int requestedCapacity = 1;
 
         [Header("Request Join")]
         [SerializeField]
@@ -111,7 +105,6 @@ namespace Immersive.Framework.PlayerParticipation
         public PlayerProvisioningCommandOperation Operation => operation;
         public LocalPlayerProvisioningConsumerAccessBinding ConsumerAccessBinding =>
             consumerAccessBinding;
-        public int RequestedCapacity => requestedCapacity;
         public string ControlScheme => controlScheme ?? string.Empty;
         public LocalPlayerActorSelectionRequestAuthoring DefaultActorSelectionRequest =>
             defaultActorSelectionRequest;
@@ -165,16 +158,6 @@ namespace Immersive.Framework.PlayerParticipation
                         access => access.CloseJoining(Source, resolvedReason));
                     return;
 
-                case PlayerProvisioningCommandOperation.SetCapacity:
-                    InvokeParticipationOperation(
-                        "SetDynamicCapacity",
-                        resolvedReason,
-                        access => access.SetDynamicCapacity(
-                            requestedCapacity,
-                            Source,
-                            resolvedReason));
-                    return;
-
                 case PlayerProvisioningCommandOperation.RequestJoin:
                     InvokeJoin(resolvedReason);
                     return;
@@ -217,13 +200,6 @@ namespace Immersive.Framework.PlayerParticipation
             {
                 issue =
                     "Player Provisioning Command Trigger binding requires an explicit Route or Activity scope.";
-                return false;
-            }
-
-            if (operation == PlayerProvisioningCommandOperation.SetCapacity &&
-                requestedCapacity < 0)
-            {
-                issue = "Requested Capacity cannot be negative.";
                 return false;
             }
 
@@ -412,7 +388,6 @@ namespace Immersive.Framework.PlayerParticipation
         {
             return value == PlayerProvisioningCommandOperation.OpenJoining ||
                 value == PlayerProvisioningCommandOperation.CloseJoining ||
-                value == PlayerProvisioningCommandOperation.SetCapacity ||
                 value == PlayerProvisioningCommandOperation.RequestJoin ||
                 value == PlayerProvisioningCommandOperation
                     .RequestDefaultActorSelection;

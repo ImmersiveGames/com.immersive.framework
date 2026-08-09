@@ -10,7 +10,6 @@ namespace Immersive.Framework.Editor.Editor.PlayerParticipation
     {
         private SerializedProperty operation;
         private SerializedProperty consumerAccessBinding;
-        private SerializedProperty requestedCapacity;
         private SerializedProperty controlScheme;
         private SerializedProperty defaultActorSelectionRequest;
         private SerializedProperty selectedPlayerSlot;
@@ -26,7 +25,6 @@ namespace Immersive.Framework.Editor.Editor.PlayerParticipation
             operation = serializedObject.FindProperty("operation");
             consumerAccessBinding = serializedObject.FindProperty(
                 "consumerAccessBinding");
-            requestedCapacity = serializedObject.FindProperty("requestedCapacity");
             controlScheme = serializedObject.FindProperty("controlScheme");
             defaultActorSelectionRequest = serializedObject.FindProperty(
                 "defaultActorSelectionRequest");
@@ -100,15 +98,6 @@ namespace Immersive.Framework.Editor.Editor.PlayerParticipation
                 (PlayerProvisioningCommandOperation)operation.intValue;
             switch (selected)
             {
-                case PlayerProvisioningCommandOperation.SetCapacity:
-                    FrameworkAuthoringInspectorGui.Section("Set Capacity");
-                    EditorGUILayout.PropertyField(
-                        requestedCapacity,
-                        new GUIContent(
-                            "Requested Capacity",
-                            "Current runtime capacity request. It does not change Supported Slots."));
-                    break;
-
                 case PlayerProvisioningCommandOperation.RequestJoin:
                     FrameworkAuthoringInspectorGui.Section("Request Join");
                     EditorGUILayout.PropertyField(
