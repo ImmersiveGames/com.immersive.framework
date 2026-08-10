@@ -1,14 +1,22 @@
 # Plans
 
-Open work and implementation confirmation live on the mutable tracker:
+Current work and next actions live on the mutable tracker:
 
 - [IF-TRACK-Framework](../Tracking/IF-TRACK-Framework.md)
 
-## Active execution plans
+There is no active standalone execution plan that overrides the Tracker or the
+accepted ADRs.
 
-- [IF-ID Identity Authority execution plan (2026-08-06)](./IF-ID-IDENTITY-AUTHORITY-EXECUTION-PLAN-2026-08-06.md)
-- [IF-ID-01 Identity Authority audit package](./IMMERSIVE-FRAMEWORK-IF-ID-01-IDENTITY-AUTHORITY-AUDIT-2026-08-06/)
+Files in this directory that explicitly identify themselves as
+`Historical / Superseded` are retained only as execution history and must not
+guide current implementation. Closed/superseded planning records should migrate
+to `Architecture/Archive/Plans` when touched for repository topology cleanup.
 
-Historic program plans are preserved under:
+Canonical current authority remains:
 
-- [Architecture/Archive/Plans](../Archive/Plans/)
+```text
+ADRs      -> decisions
+Tracker   -> current status and next work
+Guides    -> current usage
+Archive   -> historical records
+```

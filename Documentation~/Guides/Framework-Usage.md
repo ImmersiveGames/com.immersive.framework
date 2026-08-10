@@ -1,59 +1,71 @@
 # Framework Usage
 
 Status: Current  
-Last updated: 2026-08-06
+Last updated: 2026-08-09
 
 ## 1. Product workflow
 
+A typical manual workflow is:
+
 1. Create a `GameApplicationAsset`.
-2. Configure ordered Player Slots and explicit application policies.
-3. Create `RouteAsset` and `ActivityAsset` assets.
-4. Configure Route and Activity content, participation, transition and Gate policies.
-5. Create and assign one Persistent Content Scene.
-6. Author gameplay features through their official Composer/Authoring surfaces.
-7. Use explicit Apply/Rebuild only where derived materialization exists.
-8. Validate through the owning Inspector.
+2. Configure the official application policies required by the game.
+3. Create `RouteAsset` and `ActivityAsset` definitions.
+4. Configure Route/Activity content, participation, transition and readiness policies.
+5. Create one Persistent Content Scene from the official Scene Template and assign it.
+6. Author gameplay features through their official package surface: component,
+   asset, Project Settings, Template or Composer as appropriate.
+7. Use explicit Apply/Rebuild only for features that actually materialize derived
+   technical state.
+8. Validate through the owning product surface.
 9. Enter Play Mode and inspect runtime evidence separately from authoring evidence.
 
-Missing required contracts block explicitly. The framework does not repair configuration through hidden lookup.
+Missing required contracts fail explicitly. The framework does not repair invalid
+configuration through hidden lookup.
 
-## 2. Authority model
+## 2. Authoring principle
+
+Manual explicit authoring is the default.
+
+A feature does **not** need a Wizard, Composer or Apply/Rebuild merely because it
+belongs to the framework.
+
+```text
+Simple feature
+  Add Component / Create Asset
+  -> configure
+  -> validate
+  -> use
+
+Reusable intent
+  Profile / Recipe / Template when reuse is real
+
+Materialized composition
+  Composer + explicit Apply/Rebuild only when authored intent derives technical state
+```
+
+See `Editor-Authoring-Standard.md` and IF-ADR-002/010.
+
+## 3. Authority model
 
 ```text
 GameApplicationAsset
-→ bootstrap
-→ Persistent Content load and retention
-→ internal FrameworkRuntimeHost
-→ Session
-→ Route lifecycle
-→ Activity lifecycle
-→ scoped feature contexts and modules
+-> bootstrap
+-> Persistent Content load and retention
+-> internal FrameworkRuntimeHost
+-> Session
+-> Route lifecycle
+-> Activity lifecycle
+-> scoped feature contexts/modules
 ```
 
-`FrameworkRuntimeHost` is an internal composition root. It is not a public service locator and should not be found through static/global lookup.
+`FrameworkRuntimeHost` is internal. It is not a public service locator and must
+not be resolved through static/global lookup.
 
-## 3. Persistent Content
+## 4. Persistent Content
 
-The Game Application declares one Content Scene.
+The Game Application references one concrete Persistent Content `.unity` scene.
 
-Example:
-
-```text
-PersistentContent.unity
-  physical Camera Output
-  Presentation Canvas
-  Transition surface
-  Loading surface
-  Pause presentation
-  optional Player provisioning
-  optional Audio composition
-```
-
-The scene is the concrete visual composition authority. Prefabs may be used inside it, but the Game Application does not separately declare those prefabs.
-
-### 3.1 Create the scene
-
-Preferred flow:
+Preferred creation path:
 
 ```text
 File
@@ -61,162 +73,109 @@ File
     Immersive Persistent Content
 ```
 
-Assign the resulting `.unity` scene to the Game Application and enable it in the active Build Profile.
-
-### 3.2 Minimal contract
-
-Exactly one physical Camera Output is required:
+The official product model is:
 
 ```text
-CameraOutputSessionBinding
+package source scene
+  -> Scene Template
+  -> consumer-created .unity scene
+  -> GameApplicationAsset reference
 ```
 
-It requires an explicit Output ID and explicit Camera/Brain references.
+The Scene Template pipeline validates the instantiated scene but does not create,
+repair, save or assign consumer assets.
 
-`SessionCameraOverrideBinding` is optional. Player, Route and Activity Camera requests use the physical output without creating an implicit Session request.
-
-Transition, Loading and Pause presentation are optional. Missing optional adapters resolve to explicit NoOp behavior; no fallback object is created.
-
-### 3.3 Validation
-
-Run:
+Typical persistent composition may contain:
 
 ```text
-Validate Configuration
+physical Camera Output
+Presentation Canvas
+Transition surface
+Loading surface
+Pause presentation
+optional Player provisioning
+optional Audio integration
 ```
 
-Validation is explicit and non-mutating. Inspector repaint does not open scenes, create objects or repair configuration.
+Exactly one physical Camera Output is required for the current single-output
+Camera product boundary. Optional presentation adapters remain explicitly
+optional; the framework does not fabricate missing scene objects.
 
-## 4. Authoring and materialization
+## 5. Authoring and materialization
 
-Use the product layers intentionally:
+Available layers are chosen by need:
 
 ```text
 Recipe / Profile / Template
   reusable intent
 
 Composer / Authoring Component
-  concrete scene or prefab configuration
+  concrete authoring surface when useful
 
-Materialization
-  explicit technical components and bindings
+Technical materialization
+  deterministic derived components/bindings
 
 Runtime Context / Session / Service
   scoped runtime authority
 
 Diagnostics
-  validators, snapshots, reports and smokes
+  validation/reports/logs/Advanced evidence
 ```
 
-Apply/Rebuild must be:
-
-- explicit;
-- idempotent;
-- Undo-aware;
-- non-destructive;
-- diagnostic;
-- limited to derived technical materialization.
+When Apply/Rebuild exists it must be explicit, deterministic, idempotent,
+Undo-aware, non-destructive and limited to technical materialization.
 
 Authoring components do not execute gameplay by accident.
 
-## 5. Runtime diagnostics
+## 6. Runtime diagnostics
 
-The normal Inspector remains designer-first. Technical evidence belongs in:
+Normal Inspectors remain intent-first. Technical evidence belongs under
+`Advanced / Debug` where appropriate.
 
-```text
-Advanced / Debug
-```
+Diagnostics project authority; they do not create a second authority or a hidden
+command path.
 
-Persistent runtime diagnostics may project immutable values from the internal host. They must not:
+## 7. Validation and evidence order
 
-- retain scene object references;
-- create a second authority;
-- mutate runtime state;
-- survive across Play Sessions;
-- require polling or scene search.
-
-### 5.1 Scene-Provided Player release diagnostics
-
-After a Scene-Provided Player scene unloads, inspect:
-
-```text
-FrameworkRuntimeHost
-  Advanced / Debug
-    Scene-Provided Admissions
-```
-
-The projection shows:
-
-- active admission count;
-- occupied Slot count;
-- last operation/status;
-- typed Slot and authored Actor identity;
-- source/reason;
-- release success or idempotence;
-- post-operation Host-evidence presence.
-
-This is direct diagnostic evidence that a release completed. It is not an admission/release command surface.
-
-See `Player-Usage.md`.
-
-## 6. Logging
-
-Use `FrameworkLogger` only.
-
-Recommended development profile:
-
-```text
-Default Minimum Level = Info
-```
-
-Operational milestones remain visible at Info. Detailed technical snapshots belong at Debug/Trace and in Inspector diagnostics.
-
-Do not use the Console as the primary authoring surface.
-
-## 7. Manual validation order
-
-For a package technical cut:
+For a technical package change:
 
 ```text
 1. package compiles
-2. QA consumer imports and compiles
-3. focused QA smoke/negative proof
-4. FIRSTGAME real integration
-5. documentation freeze
+2. QAFramework imports/compiles
+3. focused technical QA proves the contract
+4. FIRSTGAME proves real-product integration when the feature boundary requires it
+5. documentation records the accepted/current state
 ```
 
-For a UX/product cut:
+For a product-surface change discovered through real use:
 
 ```text
-1. define the user-facing surface
-2. prove assembly and comprehension in FIRSTGAME
-3. confirm technical contracts
-4. formalize in the package
-5. add QA after the contract stabilizes
+1. observe concrete friction
+2. identify whether the issue is functional or UX-only
+3. if functional, fix package contract and prove through QA + FIRSTGAME
+4. if UX-only, make the smallest justified product improvement
+5. do not change completion arithmetic merely because the UX became nicer
 ```
 
-A smoke pass alone does not close product usability.
+A smoke pass alone does not prove real integration. Conversely, an Inspector that
+could be improved later does not make a technically and integrationally proven
+feature incomplete.
 
-## 8. Current Player checkpoint
+## 8. FIRSTGAME role
 
-The Scene-Provided Player comparison baseline is approved in FIRSTGAME for:
+FIRSTGAME is the real consumer of the official package.
 
-- admission;
-- Slot `player.1`;
-- Host join;
-- Logical Actor adoption;
-- Activity readiness;
-- movement;
-- gameplay Camera;
-- Player-bound Pause;
-- Object/Group Reset;
-- Activity Restart;
-- Route release;
-- same-session reentry;
-- persistent release diagnostics;
-- teardown without the previous identity exception.
+It proves:
 
-The next consumer comparison is Manager-Provisioned Player assembly. Session-Persistent Player remains blocked by an official package gap.
+```text
+real scene/asset composition
+real lifecycle ordering
+cross-system integration
+real product behavior using public package contracts
+```
+
+It may also reveal UX friction. UX findings are qualitative and should be tracked
+as product improvements, not as a separate functional completion percentage.
 
 ## 9. Do not introduce
 
@@ -226,5 +185,6 @@ The next consumer comparison is Manager-Provisioned Player assembly. Session-Per
 - name/tag scene lookup;
 - fallback Slot or Actor selection;
 - hidden materialization;
+- automatic gameplay configuration;
 - runtime reflection without an explicit decision;
 - consumer-owned substitutes for official package authority.

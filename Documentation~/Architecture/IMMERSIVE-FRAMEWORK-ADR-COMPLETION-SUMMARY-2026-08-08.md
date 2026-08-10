@@ -1,129 +1,116 @@
 # Immersive Framework — ADR Completion Summary
 
-> Current reconciliation of the historical completion summary, the independent
-> 2026-08-09 rebaseline and the Player serialized-migration integrity audit.
+> Current operational reconciliation after Player serialization closure,
+> IF-ADR-010 acceptance, the 010B package product-surface audit and the
+> 2026-08-09 ADR-002/005/008/009 package reclassification.
 >
-> Historical percentages are preserved for traceability. The current stricter
-> portfolio number is reported as **evidence-backed maturity**, not as proof that
-> implementation regressed.
+> Historical percentages remain useful only as historical planning evidence.
+> They are no longer the current completion model.
 
 **Date:** 2026-08-09  
-**Status:** current reconciliation / planning baseline  
-**Mode:** read-only evidence review; no implementation contained in this document
-
----
+**Status:** current operational planning baseline  
+**Mode:** read-only evidence review; no runtime implementation contained in this document
 
 ## 1. Current Git baselines
 
 ```text
 com.immersive.framework
-  current HEAD:
-    434e73f5aa09377679acc092246c76fa3275dd43
-    Add Player command serialization identity regression
+  43b96a4b100b8273da1190520536007ba82dc081
+  ADR-010B
 
 QAFramework
-  current HEAD before the local full-certification integration patch:
-    ba06f257f19b7556ca9fe7899f77193a3bcab0d1
-    Add Player command serialization identity regression
+  b6a45728285ddb2ce08269fc1f88ae3f1a4235e4
+  P0 — Serialized Player Migration Integrity
 
 FIRSTGAME / planet-devourer
-  current HEAD inspected only:
-    796618243c3ca76f70d582f38475320c6461420b
-    Demo02 Reajuste
+  796618243c3ca76f70d582f38475320c6461420b
+  Demo02 Reajuste
 ```
 
-The package HEAD contains the serialized command identity correction. The QA HEAD contains the focused serialization regression; the full-certification integration is delivered as a local patch on top of that HEAD and therefore has no invented post-patch commit SHA.
+The repositories are treated as read-only evidence sources.
 
-The QA project consumes the framework through a local `file:` package path.
-Therefore:
+Package changes from this review are documentation-only and are delivered as an
+external ZIP.
+
+## 2. Completion model correction
+
+The previous portfolio rebaseline used:
 
 ```text
-Player QA execution verdict
-  valid current technical evidence for the state exercised
-
-exact package Git SHA exercised by Unity
-  not independently pinned by the QA manifest
+architecture
+runtime
+product/authoring
+QA
+FIRSTGAME
 ```
 
-Do not convert the documentation inspection SHA into stronger provenance than
-the captured evidence supports.
+inside one percentage.
 
----
+That model is retired for current progression because FIRSTGAME is not a
+technical dependency of framework correctness.
 
-## 2. Metric terminology
-
-The former summary reported:
+The current status model is:
 
 ```text
-Historical planning completion average
+Technical Status
+  architecture/contracts
+  runtime
+  relevant technical QA
+
+Product Surface Status
+  official package authoring surface
+  configuration/validation/diagnostics
+  technical inspectability
+
+Consumer UX Evidence
+  separate real-game observation in FIRSTGAME
+```
+
+Rules:
+
+```text
+FIRSTGAME does not reduce Technical Status.
+FIRSTGAME is not a technical acceptance blocker.
+Missing FIRSTGAME evidence does not make framework functionality incomplete.
+
+QA proves deterministic technical contracts.
+QA does not synthetically certify Inspector UX.
+
+Product friction found in FIRSTGAME may justify future package improvement,
+but that improvement is a new product finding, not retroactive proof that the
+framework was technically non-functional.
+```
+
+## 3. Historical percentages
+
+Historical planning values are preserved for traceability only.
+
+```text
+Historical planning average
   84.6%
-```
 
-The independent rebaseline applied the same nominal weights more strictly to
-**current evidence**:
-
-```text
-Normative contract and architectural clarity   20%
-Runtime implementation                         30%
-Authoring, diagnostics and documentation        20%
-Current QA evidence                             15%
-Current FIRSTGAME consumer evidence             15%
-```
-
-Its result is:
-
-```text
-Current evidence-backed maturity
+Former five-dimension evidence-backed maturity
   72.1%
 ```
 
-These numbers should not be narrated as:
+The 72.1% value included FIRSTGAME as 15% of completion and therefore must not be
+used as the current framework completion percentage.
 
-```text
-"the framework regressed from 84.6% to 72.1%"
-```
+Do not compare new technical/package progress directly against that number.
 
-The correct interpretation is:
+No replacement global percentage is introduced by this document.
 
-```text
-84.6%
-  historical planning estimate using the evidence accepted at that time
+Use explicit ADR status/disposition instead.
 
-72.1%
-  stricter rebaseline of how much maturity is currently backed by
-  architecture + runtime + product + QA + real-consumer evidence
-```
+## 4. Player serialization integrity
 
-The current rebaseline is especially stricter where historical QA or FIRSTGAME
-evidence refers to a superseded contract.
-
-Percentages remain planning/evidence estimates, not release certification.
-
----
-
-## 3. Serialized Player migration integrity — technical closure
-
-### P0 — Serialized Player Migration Integrity
-
-Status:
+P0 status:
 
 ```text
 TECHNICALLY CLOSED
 ```
 
-The reconciliation discovered that the ADR-016 consolidation had reused serialized enum identities. The package correction and focused QA now close that technical defect without restoring Capacity or adding a compatibility rail.
-
-Pre-R1:
-
-```text
-OpenJoining                   = 10
-CloseJoining                  = 20
-SetCapacity                   = 30
-RequestJoin                   = 40
-RequestDefaultActorSelection  = 50
-```
-
-Corrected current runtime:
+Accepted serialized command identities:
 
 ```text
 OpenJoining                   = 10
@@ -133,49 +120,16 @@ RequestJoin                   = 40
 RequestDefaultActorSelection  = 50
 ```
 
-The former R1 mapping created two silent semantic collisions. The corrected mapping no longer reuses those identities:
+Do not:
 
 ```text
-30
-  old = SetCapacity
-  new = RequestJoin
-
-40
-  old = RequestJoin
-  new = RequestDefaultActorSelection
+restore SetCapacity
+map retired 30 to a new command
+restore separate PlayerProvisioningProfile
+restore per-Slot Host Provisioning override
 ```
 
-FIRSTGAME contains historical evidence of the defect in pre-redesign Player authoring:
-
-```yaml
-operation: 40
-requestedCapacity: 1
-```
-
-The obsolete `requestedCapacity` field proves the component payload was authored
-under the old schema, where `40` meant `RequestJoin`.
-
-The corrected package again interprets `40` as `RequestJoin`; `30` is unsupported. FIRSTGAME is not promoted by this fix: its current Player product evidence remains absent/deferred and will be redesigned separately.
-
-Closure evidence:
-
-```text
-package serialized identities corrected
-IF-PLAYER-SERIALIZATION-01 PASS — 5/5
-canonical Player QA includes the serialization gate
-```
-
-See:
-
-```text
-IMMERSIVE-FRAMEWORK-PLAYER-SERIALIZATION-MIGRATION-INTEGRITY-2026-08-09.md
-```
-
----
-
-## 4. Current Player Session model
-
-The accepted IF-ADR-016 model remains:
+The current Player Session model remains:
 
 ```text
 PlayerSessionProfile
@@ -185,438 +139,335 @@ PlayerSessionProfile
 │   ├── Scene Provided
 │   └── Manager Provisioned
 └── Actor Resolution
-    ├── Resolve Configured Default
-    └── Leave Unresolved
 ```
 
-There is no:
-
-```text
-Initial Capacity
-Current Capacity
-Dynamic Capacity
-SetCapacity
-SetDynamicCapacity
-separate PlayerProvisioningProfile
-per-Slot Host Provisioning override
-```
-
-The public IF-ADR-015 vocabulary remains:
-
-```text
-Open Joining
-Close Joining
-Request Join
-Request Default Actor Selection
-```
-
-The P0 does not reopen Capacity. It identifies serialized identity reuse during
-the migration away from Capacity.
-
----
-
-## 5. Current Player technical certification
-
-The canonical full-certification contract after this integration is expected to emit:
-
-```text
-[QA_PLAYER_FULL]
-status='Passed'
-verdict='PLAYER QA CERTIFIED'
-serialization='PASS'
-session='PASS'
-sceneProvided='PASS'
-managerProvisioned='PASS'
-actor='PASS'
-publicSurface='PASS'
-participation='PASS'
-```
-
-The focused serialization regression already has 5/5 Unity evidence. The exact combined one-button summary requires the manual retest after applying the QA patch; it is not claimed as executed by this documentation update.
-
-Representative evidence:
-
-```text
-Serialized Command Identity             PASS — 5 cases
-Player Participation Authoring        PASS — 7 cases
-Scene-Provided route/negative matrix  PASS — 25 cases
-Manager public contract               PASS — 9 cases
-Manager waiting projection            PASS — 14 cases
-Actor selection runtime binding       PASS — 13 cases
-Player gameplay admission             PASS — 114 cases
-Public Surface Q1                     PASS — 28 cases
-Public Surface Q2                     PASS — 36 cases
-Activity Session Projection           PASS — 30 cases
-```
-
-This is strong technical evidence for the current no-Capacity model. Serialized migration integrity is now closed by the corrected numeric identities plus `IF-PLAYER-SERIALIZATION-01`; the one-button integration makes that focused proof a required gate of future canonical Player certifications.
-
----
-
-## 6. FIRSTGAME current state
-
-Current FIRSTGAME is no longer treated as merely "proof pending".
-
-For the Player authoring cut, current Git contains superseded serialized fields:
-
-```text
-Demo02_Session_ManagerProvided.asset
-Demo02_Session_SceneProvided.asset
-
-  initialCapacity
-  playerProvisioningProfile
-```
-
-while the current package Profile owns:
-
-```text
-supportedSlots
-initialJoiningOpen
-hostProvisioning
-actorResolutionPolicy
-```
-
-Current FIRSTGAME also contains the confirmed `operation: 40` command collision.
-
-Therefore:
-
-```text
-FIRSTGAME historical Player evidence
-  useful as historical integration evidence
-
-FIRSTGAME current accepted Player-model evidence
-  NOT CERTIFIED
-
-FIRSTGAME current Player authoring integrity
-  OPEN / DEFERRED — separate consumer redesign/rebuild
-```
-
-This directly affects the real-consumer dimension of:
-
-```text
-IF-ADR-003
-IF-ADR-012
-IF-ADR-015
-IF-ADR-016
-```
-
-It does not invalidate their current package/QA technical evidence.
-
----
-
-## 7. Reconciled ADR matrix
-
-The historical column preserves the previous completion summary.
-
-The rebaseline column preserves the independent audit as the current
-**evidence-backed maturity** estimate. The technical P0 is closed. The evidence-backed percentages are intentionally left unchanged in this reconciliation so the still-absent FIRSTGAME consumer evidence is not silently promoted and no ad-hoc rebaseline is introduced.
-
-| ADR | Normative status | Historical planning | Evidence-backed maturity | Delta | Current interpretation |
-|---|---|---:|---:|---:|---|
-| IF-ADR-001 | Accepted | 92% | **87%** | -5 | Core lifecycle strong; exceptional/session-persistent boundaries remain |
-| IF-ADR-002 | Accepted | 65% | **55%** | -10 | Product authoring model is real but inconsistent across portfolio |
-| IF-ADR-003 | Accepted | 84% | **77%** | -7 | Runtime + canonical QA strong; serialized migration integrity closed; current FIRSTGAME product evidence absent/deferred |
-| IF-ADR-004 | Accepted | 78% | **66%** | -12 | Camera runtime exists; isolated negative QA/product proof incomplete |
-| IF-ADR-005 | Accepted | 78% | **72%** | -6 | Gate/readiness authority strong; product/negative matrix incomplete |
-| IF-ADR-006 | Accepted | 94% | **86%** | -8 | Transition/loading technically mature; focused product/exception gaps remain |
-| IF-ADR-007 | Accepted | 96% | **85%** | -11 | Readiness contract mature; focused control-plane/product regressions remain |
-| IF-ADR-008 | Accepted | 90% | **73%** | -17 | Strong product example; current idempotency/product QA evidence needs renewal |
-| IF-ADR-009 | Accepted | 88% | **75%** | -13 | Runtime integrated; post-discovery negative QA/product polish remains |
-| IF-ADR-010 | Proposed | 70% | **55%** | -15 | Broad Editor foundation; mandatory product-surface standard not closed |
-| IF-ADR-011 | Accepted | 94% | **82%** | -12 | Runtime/QA strong; presentation and real consumer waiting/join proof remain |
-| IF-ADR-012 | Accepted | 90% | **70%** | -20 | Participation technically certified; serialized migration integrity closed; current FIRSTGAME product evidence absent/deferred |
-| IF-ADR-013 | Accepted / Experimental | 65% | **46%** | -19 | Narrow optional adapter; promotion/consumer evidence intentionally incomplete |
-| IF-ADR-014 | Accepted | 100%* | **97%** | -3 | Essentially complete for current accepted scope |
-| IF-ADR-015 | Proposed | 80% | **64%** | -16 | Current surface technically certified; serialized migration integrity closed; current FIRSTGAME product evidence absent/deferred |
-| IF-ADR-016 | Accepted | 90% | **64%** | -26 | Current model implemented + QA-certified; serialized migration integrity closed; current FIRSTGAME product evidence absent/deferred |
-
-`*` Historical 100% for IF-ADR-014 means `Complete for current accepted scope`.
-
-Portfolio arithmetic from the independent rebaseline:
-
-```text
-(87+55+77+66+72+86+85+73+75+55+82+70+46+97+64+64) / 16
-= 72.1%
-```
-
-Historical arithmetic:
-
-```text
-(92+65+84+78+78+94+96+90+88+70+94+90+65+100+80+90) / 16
-= 84.6%
-```
-
-For context only, excluding the optional/experimental IF-ADR-013:
-
-```text
-evidence-backed maturity excluding ADR-013
-  = 73.9%
-```
-
-Do not use the experimental exclusion to hide the ADR. It is only a second
-portfolio view showing how the optional promotion program affects the aggregate.
-
----
-
-## 8. Classification
-
-### Essentially complete — >= 95%
-
-```text
-IF-ADR-014  97
-```
-
-### Mature / focused remaining gaps — 85–94%
-
-```text
-IF-ADR-001  87
-IF-ADR-006  86
-IF-ADR-007  85
-```
-
-### Material gaps remain — 70–84%
-
-```text
-IF-ADR-003  77  [FIRSTGAME evidence deferred]
-IF-ADR-005  72
-IF-ADR-008  73
-IF-ADR-009  75
-IF-ADR-011  82
-IF-ADR-012  70  [FIRSTGAME evidence deferred]
-```
-
-### Incomplete evidence/product program — < 70%
-
-```text
-IF-ADR-002  55
-IF-ADR-004  66
-IF-ADR-010  55
-IF-ADR-013  46
-IF-ADR-015  64  [FIRSTGAME evidence deferred]
-IF-ADR-016  64  [FIRSTGAME evidence deferred]
-```
-
-`< 70` does not mean the runtime is necessarily incomplete. ADR-015/016 are the
-clearest examples: their package/runtime + QA state is substantially stronger
-than their current real-consumer evidence.
-
----
-
-## 9. How to read the Player scores
-
-The P0 must not be used to double-penalize the same defect.
+## 5. Player technical status vs consumer UX
 
 Current interpretation:
 
 ```text
-IF-ADR-003
-  architecture/runtime/QA = strong
-  serialized integrity     = closed
-  real-consumer proof      = absent/deferred
+Player technical contracts
+  STRONG / QA-CERTIFIED FOR THE RECORDED PHASE EVIDENCE
 
-IF-ADR-012
-  participation runtime/QA = strong
-  serialized integrity     = closed
-  real-consumer proof      = absent/deferred
+serialized migration integrity
+  CLOSED
 
-IF-ADR-015
-  public surface runtime   = implemented
-  Q1/Q2                    = green
-  serialized integrity     = closed
-  final product proof      = absent/deferred
-  normative status         = Proposed
+package public surface
+  IMPLEMENTED
 
-IF-ADR-016
-  normative status         = Accepted
-  runtime                  = implemented
-  technical QA             = green
-  serialized integrity     = closed
-  current FIRSTGAME assets = not valid current-model proof
+FIRSTGAME current Player authoring
+  separate redesign / consumer UX evaluation
+
+FIRSTGAME technical gate
+  NO
 ```
 
-Therefore the independent 72.1% portfolio number remains a useful conservative
-evidence baseline, but it should not be renamed "implementation percentage".
+The Player QA certification record remains careful not to invent an unexecuted
+post-patch one-button Unity result.
 
----
+Existing phase evidence and focused serialization evidence remain the documented
+technical basis.
 
-## 10. Current priority order
-
-The technical P0 is closed and is removed from the active priority queue. No ADR-010 implementation is part of this cut.
+## 6. ADR-010 disposition
 
 ```text
-1. IF-ADR-010 minimum product-surface standard
-2. IF-ADR-010 package product-surface audit
-3. canonical Editor QA
-4. focused non-Player hardening
-5. redesigned FIRSTGAME consumer proof
+IF-ADR-010 — Editor and Inspector Product Surface Authority
+  ACCEPTED
+
+IF-ADR-010A — Product Surface Standard
+  CLOSED
+
+IF-ADR-010B — Current Package Surface Audit
+  CLOSED
+
+IF-ADR-010C — Canonical Editor Product-Surface QA
+  CANCELLED / NOT REQUIRED
 ```
 
-Focused non-Player hardening candidates remain:
+Current rule:
 
 ```text
-IF-ADR-004 Camera negative matrix
-IF-ADR-008 Apply/Rebuild idempotency/preservation
-IF-ADR-009 post-discovery negative regression
-IF-ADR-005 reset/restart/pause negative matrix
+Manual explicit authoring is the default.
+
+The framework should:
+  present
+  organize
+  explain
+  validate
+  diagnose
+
+Additional authoring layers are conditional.
+
+Synthetic UX QA is not required.
 ```
 
-### P5 — optional/experimental promotion
+## 7. 2026-08-09 package reclassification
+
+The latest package audit revisited ADR-002, ADR-005, ADR-008 and ADR-009.
+
+Camera/ADR-004 is intentionally outside this cut.
+
+| ADR | Current package assessment | Current package interpretation | Disposition |
+|---|---:|---|---|
+| IF-ADR-002 | **29/30** | Product authoring model is already represented by several valid lifecycle shapes; no generic tooling gap | No cross-cutting implementation |
+| IF-ADR-005 | **29/30** | Pause/Input Gate/Reset/Restart package solution and primary product surfaces exist | Package complete for current accepted scope; technical hardening only if justified |
+| IF-ADR-008 | **30/30** | Official product is Source Scene + Scene Template + non-mutating verification, not Composer/Apply | Package complete for current accepted model |
+| IF-ADR-009 | **26/30** | Runtime exists; authoring/target/occurrence/release diagnostics need a narrow audit before closure | Next focused package audit |
+| IF-ADR-004 | — | Camera redesign is a separate future program | DEFERRED |
+
+The local `/30` values are audit planning assessments.
+
+They are not a new portfolio completion formula.
+
+## 8. ADR-002 correction
+
+Former interpretation:
 
 ```text
-IF-ADR-013 BGM
+recurrent feature
+  -> Recipe/Profile
+  -> Composer
+  -> Apply/Rebuild
+  -> Wizard/creation flow
 ```
 
-Do not prioritize solely because its numeric score is lowest. Promote only when
-a real game needs the Route/Activity BGM behavior.
+Current accepted interpretation:
 
----
+```text
+manual explicit authoring
+  = valid default
 
-## 11. ADRs below 85% — current limiting dimension
+Recipe/Profile/Template
+  = conditional
 
-| ADR | Primary limiter | Smallest legitimate next step |
-|---|---|---|
-| IF-ADR-002 | product consistency + QA | reassess after Player real-use and ADR-010 standard; do not pre-commit to Composer |
-| IF-ADR-003 | FIRSTGAME | redesigned current Scene/Manager consumer proof when that separate consumer cut begins |
-| IF-ADR-004 | QA + product proof | focused Camera negative matrix / isolated product proof |
-| IF-ADR-005 | product + negative QA | one focused Pause/Restart/Reset product cut |
-| IF-ADR-008 | current QA evidence | certify Apply/Rebuild idempotency and user-content preservation |
-| IF-ADR-009 | current QA evidence | negative QA after scene-discovery unification |
-| IF-ADR-010 | normative + product QA | freeze canonical product Inspector standard + editor QA |
-| IF-ADR-011 | consumer/presentation | current waiting/joining real-consumer proof |
-| IF-ADR-012 | FIRSTGAME + product | redesigned current participation authoring proof |
-| IF-ADR-013 | experimental consumer proof | defer until real BGM demand |
-| IF-ADR-015 | FIRSTGAME + final product disposition | redesigned consumer proof, then P5 disposition from real usage |
-| IF-ADR-016 | FIRSTGAME | redesigned/rebuilt current Session consumer proof |
+Composer
+  = conditional
 
----
+Apply/Rebuild
+  = only for real deterministic technical materialization
 
-## 12. What should NOT be done to improve the numbers
+Wizard
+  = exceptional
+```
+
+ADR-002 is not waiting for a generic authoring implementation.
+
+## 9. ADR-005 correction
+
+Package audit conclusion:
+
+```text
+Pause primary surface           COMPLIANT
+Activity Restart                COMPLIANT
+Object Reset Group Trigger      COMPLIANT
+Unity Input Gate                COMPLIANT SEMANTICALLY
+```
+
+No generic product extraction is required.
+
+Future QA may strengthen real technical invariants, but that is system-specific
+hardening rather than missing product implementation.
+
+## 10. ADR-008 correction
+
+The former ADR described a Recipe/Composer/Apply model.
+
+The current official lifecycle is:
+
+```text
+Physical Source Scene
+        ↓
+Scene Template
+        ↓
+consumer-created scene
+        ↓
+Game Application reference
+        ↓
+non-mutating verification
+```
+
+Therefore the old remaining items around Apply/Rebuild idempotency and managed
+materialization are retired.
+
+Persistent Content is package-complete for the current accepted composition
+model.
+
+## 11. ADR-009 next audit
+
+ADR-009 is the next focused package question.
+
+Inspect:
+
+```text
+ActivityLocalVisibilityAdapter authoring
+target validity
+required vs optional target handling
+Activity binding
+occurrence/revision evidence
+last application result
+release/restoration evidence
+replacement/disposal behavior
+```
+
+Do not implement a new authoring layer before this audit proves a real gap.
+
+Expected outcomes:
+
+```text
+no concrete gap
+  -> reclassify package upward without code
+
+small concrete gap
+  -> fix only that gap
+```
+
+## 12. Current operational ADR matrix
+
+This matrix is intentionally qualitative.
+
+Consumer UX Evidence is tracked separately and does not demote technical/package
+status.
+
+| ADR | Normative status | Technical / package interpretation | Current action |
+|---|---|---|---|
+| IF-ADR-001 | Accepted | Mature core lifecycle/runtime authority | Focused hardening only if a concrete gap exists |
+| IF-ADR-002 | Accepted | Mature product authoring model; 29/30 package audit | No cross-cutting implementation |
+| IF-ADR-003 | Accepted | Strong Player participation/Actor technical state | Consumer UX separate |
+| IF-ADR-004 | Accepted | Camera outside current cut | DEFERRED — larger Camera redesign |
+| IF-ADR-005 | Accepted | Package complete for current accepted scope; 29/30 | Only justified technical hardening |
+| IF-ADR-006 | Accepted | Mature Transition/Loading runtime | Focused hardening only |
+| IF-ADR-007 | Accepted | Mature readiness/reveal contract | Focused hardening only |
+| IF-ADR-008 | Accepted | Package complete for current Scene Template model; 30/30 | No package implementation |
+| IF-ADR-009 | Accepted | Runtime mature; 26/30 package audit | NEXT focused package audit |
+| IF-ADR-010 | Accepted | Standard accepted; package audit closed | 010C cancelled |
+| IF-ADR-011 | Accepted | Strong technical readiness/loading progress | Consumer presentation can evolve separately |
+| IF-ADR-012 | Accepted | Player participation compatibility technically strong | Consumer UX separate |
+| IF-ADR-013 | Accepted / Experimental | Optional narrow adapter | Demand-driven only |
+| IF-ADR-014 | Accepted | Complete for current accepted identity scope | No active work |
+| IF-ADR-015 | Proposed | Public Player command/observation surface technically implemented/certified for recorded evidence | Normative disposition may evolve separately; not blocked by FIRSTGAME technical proof |
+| IF-ADR-016 | Accepted | Current no-Capacity Player Session model implemented | Consumer UX separate |
+
+## 13. Current priority order
+
+```text
+1. IF-ADR-009 focused package audit
+2. implement only a concrete ADR-009 gap if one is found
+3. independent non-Player technical hardening only where a real contract gap exists
+4. keep IF-ADR-004 / Camera deferred until its larger redesign begins
+5. use FIRSTGAME as a separate consumer UX evaluation when desired
+6. turn confirmed FIRSTGAME friction into the smallest justified package improvement
+7. promote IF-ADR-013 only from real product demand
+```
+
+There is no active ADR-010C program.
+
+There is no generic Composer/Wizard program.
+
+There is no Persistent Content Apply/Rebuild program.
+
+## 14. FIRSTGAME governance
+
+FIRSTGAME is not a framework progression gate.
+
+Use it to answer:
+
+```text
+Can a real consumer find the feature?
+Can they understand the fields?
+Can they configure it without hidden internal knowledge?
+Is the manual sequence reasonable?
+Are errors and diagnostics understandable?
+Is there repetitive friction worth productizing?
+```
+
+Possible Consumer UX Evidence states:
+
+```text
+NOT EVALUATED
+EVALUATED
+FRICTION FOUND
+```
+
+These states do not replace technical QA.
+
+A feature can be technically certified while Consumer UX Evidence is
+`NOT EVALUATED`.
+
+## 15. QA governance
+
+QAFramework remains responsible for:
+
+```text
+technical contracts
+negative cases
+regressions
+deterministic Editor-write behavior
+runtime lifecycle invariants
+serialization integrity
+```
+
+Do not add tests solely to prove:
+
+```text
+Inspector looks consistent
+ProductHeader renders
+IntentSummary renders
+OnInspectorGUI executes in a synthetic GUILayout context
+a direct authoring component has a Wizard/Composer
+```
+
+If Camera, Input Gate, Reset or another system later needs Editor QA, the test
+must be justified by that system's real technical contract.
+
+## 16. What should NOT be done to improve status
 
 Do not:
 
 ```text
 reintroduce Capacity
-restore a separate PlayerProvisioningProfile
+restore separate PlayerProvisioningProfile
 create per-Slot Host Provisioning overrides
-map legacy SetCapacity=30 to RequestJoin
-silently migrate invalid content into a convenient supported operation
-create a global Player manager/service locator
-add reflection-based runtime migration
-create Wizard/Composer before real friction is observed
-add validators/smokes as substitutes for missing product/runtime behavior
-promote BGM only to improve the portfolio average
-implement Session-Persistent Player without a real requirement/ADR
+silently map retired serialized identities
+create global managers/service locators
+add runtime reflection as migration glue
+create Wizard/Composer before real need is proven
+add synthetic UX smokes
+add validators merely to raise a score
+promote experimental systems only to improve a matrix
+treat FIRSTGAME absence as technical incompleteness
 ```
 
-The objective is not to maximize the percentage.
-
-The objective is to make the percentage reflect the current product honestly.
-
----
-
-## 13. Current portfolio interpretation
+## 17. Current portfolio interpretation
 
 ```text
 ARCHITECTURE
   strong
-  authority/lifetime boundaries mostly coherent
-  Player Session consolidation is a real simplification
 
 RUNTIME
   strong
-  Player, transition, readiness/loading and identity are the strongest areas
 
-QA
-  Player canonical QA is strong and green
-  several non-Player product/negative matrices remain uneven
+PLAYER TECHNICAL QA
+  strong; serialization integrity closed
 
 PRODUCT / AUTHORING
-  weakest transversal dimension
-  good examples exist, but the standard is not portfolio-wide
+  substantially stronger than older documents described
+  ADR-010A/010B closed
+  valid authoring shapes are intentionally heterogeneous
+
+QA
+  remains system-specific
+  no UX certification program
 
 FIRSTGAME
-  valuable historical integration evidence
-  current Player evidence is not current-model certified and is deferred to a separate redesign/rebuild
+  consumer UX laboratory
+  separate from technical completion
 
-SERIALIZATION / MIGRATION
-  technical integrity closed
-  package identities corrected; focused QA 5/5; canonical Player QA now gates on serialization
+CAMERA
+  deliberately deferred from the current package progression cut
 ```
 
----
-
-## 14. Score governance from this point
-
-After technical P0 closure and before any later rebaseline:
+## 18. Suggested next commit message
 
 ```text
-historical planning average
-  84.6% — preserved for traceability
-
-current evidence-backed maturity
-  72.1% — provisional current baseline
-
-P0 technical migration integrity
-  CLOSED
-
-FIRSTGAME current Player evidence
-  OPEN / DEFERRED — not current-model certified
+Rebaseline ADR documentation after product-surface audit
 ```
-
-At a later evidence rebaseline:
-
-```text
-re-score only the dimensions for which new evidence exists
-do not mechanically restore historical percentages
-do not change runtime points because a consumer proof was added
-do not change FIRSTGAME points because QA passed
-```
-
-This preserves independence between the five dimensions.
-
----
-
-## 15. Completion-summary consequence
-
-```text
-P0 — Serialized Player Migration Integrity
-  TECHNICALLY CLOSED
-
-FIRSTGAME product/consumer proof
-  OPEN / DEFERRED
-  separate redesigned consumer cut
-```
-
-Closing the technical P0 does not promote FIRSTGAME evidence and does not change the evidence-backed maturity percentages in this reconciliation.
-
----
-
-## 16. Suggested next implementation sequence
-
-```text
-1. IF-ADR-010 minimum product-surface standard
-2. IF-ADR-010 package product-surface audit
-3. canonical Editor QA
-4. focused non-Player hardening
-5. redesigned FIRSTGAME consumer proof
-```
-
-ADR-010 implementation is not started by this documentation cut. FIRSTGAME remains a later, separate consumer redesign/rebuild effort.
-
----
-
-## 17. Suggested commit messages for this closure cut
-
-QA:
-
-```text
-Integrate Player serialization identity into full certification
-```
-
-Package documentation:
-
-```text
-Close Player serialized migration integrity P0
-```
-
-No FIRSTGAME commit belongs to this cut.

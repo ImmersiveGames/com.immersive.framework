@@ -1,58 +1,106 @@
 # IF-ADR-005 — Input, Pause, Gate and Reset
 
-Status: Accepted  
-Last updated: 2026-08-07  
-Implementation completion: **78%**  
-Implementation classification: **Integrated runtime exists; IF-TXN-03A clarifies and certifies Transition Gate state semantics; product extraction and broader negative coverage remain incomplete**  
+Status: **Accepted**  
+Last updated: 2026-08-09  
+Package implementation: **COMPLETE FOR CURRENT ACCEPTED PACKAGE SCOPE**  
+Current package assessment: **29/30** — local planning assessment; not release certification  
+Product surface status: **AVAILABLE / direct authoring surfaces are sufficient for the current lifecycle**  
 Related decisions: IF-ADR-001, IF-ADR-003, IF-ADR-006, IF-ADR-007, IF-ADR-010, IF-ADR-011  
-Current package baseline: `c457e8cd7a11b8f2ce816734b4d97a3a820b4eec` (`IF-TXN-03A`)  
-Current QA baseline: `c99df1e77a8408e6b48124a5d371f09e9af52019` (`IF-TXN-03A`)  
-FIRSTGAME baseline: `ab1bfe65c09af8988c2fe21ce06db780fe12aa70` (`Demo03Etapa04`)
+Current package baseline: `43b96a4b100b8273da1190520536007ba82dc081` (`ADR-010B`)  
+Current QA baseline inspected: `b6a45728285ddb2ce08269fc1f88ae3f1a4235e4` (`P0 — Serialized Player Migration Integrity`)
 
-> The normative architectural decision is preserved. Completion percentages are planning estimates, not automated release certification.
+> This revision separates package/product completeness from optional future
+> technical hardening. Missing Composer/Wizard/Apply flows are not considered
+> gaps for Pause, Reset, Restart or Input Gate under the accepted ADR-010 model.
 
 ## Context
 
-Input eligibility, pause, capability gates, the GameFlow Transition Gate, readiness recovery, object/group reset, and Activity Restart intersect but are not the same authority. They require explicit ownership or scope, deterministic cleanup, and failure evidence appropriate to each gate model.
+Input eligibility, Pause, capability gates, GameFlow Transition Gate, readiness
+recovery, object/group Reset and Activity Restart intersect but do not share one
+authority model.
+
+They require explicit ownership or scope, deterministic cleanup and failure
+evidence appropriate to the specific contract.
 
 ## Decision
 
-Input admission is derived from valid Player/gameplay state. Pause has a scoped runtime and presentation binding. Reset operates through registered subjects/participants with explicit scope and results. Activity Restart reconfigures the active Activity; it is not Session Player leave or Route replacement.
+Input admission is derived from valid Player/gameplay state.
 
-Gate semantics are intentionally split:
+Pause has scoped runtime authority and explicit presentation/input integration.
+
+Reset operates through registered subjects/participants with explicit scope and
+typed results.
+
+Activity Restart reconfigures the active Activity. It is not Session Player
+leave and is not Route replacement.
+
+Gate semantics remain intentionally distinct:
 
 ```text
 Reusable capability / pause gates
-  -> explicit scoped ownership/handles where that gate contract models ownership
+  -> explicit scoped ownership/handles where the contract models ownership
   -> deterministic release
   -> invalid ownership/release is explicit
 
 GameFlow Transition Gate
   -> internal operation-scoped GameFlow state
   -> not an externally acquired resource
-  -> no external lease/release refusal contract
-  -> cleanup is deterministic internal state replacement
+  -> no invented external lease/release contract
+  -> deterministic internal terminal cleanup
 
 Activity Entry Readiness Recovery Gate
-  -> separate recovery authority after committed-target readiness failure
-  -> may remain active after the Transition Gate is released
+  -> separate recovery authority
+  -> may remain active after Transition Gate release
 ```
 
-Do not infer that every type named “gate” must use the same ownership/lease abstraction.
+Do not infer that every type named "gate" must use the same ownership abstraction.
 
 ## Architectural constraints
 
-- Runtime authority must be scoped, typed, and lifetime-explicit.
-- Required invalid configuration must fail explicitly and diagnostically.
-- Consumer code must not depend on internal runtime modules, reflection, object-name inference, or implicit global lookup.
-- Editor tooling must be idempotent, non-destructive, and expose technical evidence through Advanced/Debug.
-- QA proves technical contracts; FIRSTGAME proves real consumer usability; permanent solutions belong in the package.
+- Runtime authority is scoped, typed and lifetime-explicit.
+- Required invalid state fails explicitly and diagnostically.
+- Consumer code does not depend on internal runtime modules, object-name inference
+  or implicit global lookup.
+- Editor surfaces present authored intent and runtime evidence without becoming
+  runtime authority.
+- Direct authoring is valid when no real technical materialization exists.
 
-## Current implementation coverage
+## Current package coverage
 
-The runtime host composes pause, time scale, pause surfaces, combined gates, reset registry, reset subjects/participants, cycle reset, object/group reset, Activity restart and GameFlow transition/readiness gate projections.
+The package already contains the required official runtime/product pieces for the
+accepted scope, including the current families around:
 
-IF-TXN-03A makes the Transition Gate diagnostic/current-state surface precise:
+```text
+PauseRuntime
+PausePlayerInputBinding
+UnityPlayerInputGateAdapter
+PauseRequestTrigger
+
+ResetRegistry
+Reset subjects / participants
+ResetSelectionConfig
+ResetExecutor
+object/group reset triggers
+
+Activity Restart integration
+GameFlow transition/readiness gate projections
+```
+
+The package audit also found the representative product surfaces semantically
+sufficient:
+
+```text
+Pause Request              COMPLIANT
+Activity Restart           COMPLIANT
+Object Reset Group Trigger COMPLIANT
+Unity Input Gate           COMPLIANT SEMANTICALLY
+```
+
+No new Composer or Wizard is justified by the current lifecycle.
+
+## Transition Gate diagnostic semantics
+
+The IF-TXN-03A distinction remains:
 
 ```text
 TransitionGateSnapshot
@@ -68,20 +116,18 @@ CurrentGateSnapshot
   = broader operational composition used by host/input admission
 ```
 
-Critical valid state:
+A valid state can therefore be:
 
 ```text
 Transition Gate released
 Readiness Recovery Gate active
-
-TransitionGateSnapshot.HasBlockers == false
-CurrentTransitionGateMode == None
-ActivityEntryReadinessGateSnapshot.HasBlockers == true
 ```
 
-This state is recovery protection, not gate leakage.
+This is recovery protection, not Transition Gate leakage.
 
-## Current QA evidence
+## Existing technical QA evidence
+
+Existing certification cited by the previous revision remains relevant:
 
 ```text
 IF-TXN-03A Transition Gate Terminal Integrity
@@ -100,37 +146,121 @@ Participant-Aware Readiness Loading Progress
   PASS — 32/32
 ```
 
-The readiness suites were updated so recovery assertions use the readiness-composite surface while pure Transition Gate assertions use `TransitionGateSnapshot` and `CurrentTransitionGateMode`.
+These prove technical behavior. They are not UX certification.
 
-## Current FIRSTGAME evidence
+## Product-surface disposition
 
-FIRSTGAME integration proves parts of Input/Pause/Reset and real readiness/loading composition. IF-TXN-03A itself does not require a new consumer demonstration because it certifies internal GameFlow state semantics and diagnostics.
+The former plan contained work such as:
 
-## What remains
+```text
+publish isolated product flows
+create authoring surfaces
+add Composer-like extraction
+normalize every Inspector
+```
 
-- Publish isolated product flows for Input Gate, Object Reset, Activity Restart, and Pause.
-- Expand negative QA for reusable/owned gates: double acquire where modeled, invalid owner/release, owner destruction, pause during transition and residual leakage.
-- Keep Transition Gate tests focused on operation-scoped terminal cleanup rather than inventing an external lease/release contract.
-- Add negative QA for restart while paused, stale reset subjects, required/optional reset failure, and repeated restart.
-- Create authoring surfaces that expose intent without hiding technical ownership.
-- Provide runtime status and exact-handle/state evidence in Advanced/Debug.
-- Clarify cleanup order during Activity exit, Route replacement, and Session disposal.
+The current package audit does not justify that as a missing package
+implementation.
+
+Current disposition:
+
+```text
+Package runtime/contracts  COMPLETE FOR CURRENT SCOPE
+Product surfaces           AVAILABLE / COMPLIANT FOR INSPECTED PRIMARY FLOWS
+Generic product extraction NOT REQUIRED
+Composer/Wizard            NOT REQUIRED
+```
+
+Presentation normalization may happen during ordinary maintenance when a concrete
+problem exists.
+
+It is not an ADR completion blocker.
+
+## Technical hardening
+
+Additional QA is legitimate only when it proves a real technical invariant or a
+known regression risk.
+
+Possible future examples include:
+
+```text
+restart while paused
+stale reset subjects
+required vs optional reset failure
+repeated restart
+owner-destruction cleanup where ownership exists
+residual gate leakage where the declared contract requires cleanup
+```
+
+These are independent system-specific hardening candidates.
+
+They do not mean the package is missing a product surface.
+
+## FIRSTGAME
+
+FIRSTGAME may later reveal that a real consumer finds one of these flows confusing
+or unnecessarily repetitive.
+
+That observation can justify a small package improvement.
+
+FIRSTGAME is not part of the technical closure gate and does not reduce the
+current package implementation status.
+
+## Current assessment
+
+The previous 78% estimate mixed:
+
+```text
+package implementation
+QA breadth
+product extraction
+consumer evidence
+```
+
+into one number.
+
+That model is no longer used for closure.
+
+Current local package assessment:
+
+```text
+29 / 30
+```
+
+Interpretation:
+
+```text
+package solution exists
+runtime authority is explicit
+primary product surfaces exist
+no cross-cutting authoring gap identified
+only focused technical hardening may remain
+```
 
 ## Completion criteria
 
-- Every gate follows its declared authority model; ownership handles are required only for gates whose contract actually models them.
-- Transition Gate terminal cleanup leaves the pure Transition Gate projection clean while allowing explicit readiness recovery to remain active when required.
-- Pause and restart interactions are deterministic.
-- Invalid operations fail explicitly with actionable diagnostics.
-- Product flows are independently demonstrable where consumer proof is required and covered by canonical QA.
-
-## Completion assessment
+For the accepted scope:
 
 ```text
-Estimated completion: 78%
-Normative status: Accepted
-IF-TXN-03A Transition Gate integrity: CLOSED / CERTIFIED — 16/16
-Direct readiness gate integration: PASS — 42/42
-Participant-aware terminal recovery: PASS — 34/34
-Remaining: broader gate/pause/reset negative matrix, product extraction, Advanced/Debug polish
+each gate follows its declared authority model
+Transition Gate terminal cleanup is explicit
+readiness recovery remains separately observable
+Pause and Restart interactions are deterministic
+Reset scope/results are explicit
+invalid operations fail diagnostically
+consumer authoring does not require hidden runtime contracts
+```
+
+Current package implementation satisfies the package/product portion of these
+criteria.
+
+Future technical QA may strengthen evidence without reopening the product model.
+
+## Normative summary
+
+```text
+Do not unify unrelated gates under one lease model.
+Do not create generic authoring layers where direct authoring is sufficient.
+Do not treat synthetic Inspector QA as product certification.
+Keep future hardening contract-specific.
 ```

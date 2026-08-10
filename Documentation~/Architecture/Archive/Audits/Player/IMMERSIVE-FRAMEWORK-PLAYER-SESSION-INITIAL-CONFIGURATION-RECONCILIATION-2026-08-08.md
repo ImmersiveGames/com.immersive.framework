@@ -1,3 +1,7 @@
+> **Archived historical snapshot.**
+> This file is preserved for traceability and is not current product/status authority.
+> Use `Architecture/ADRs/` for decisions and `Architecture/Tracking/IF-TRACK-Framework.md` for current status.
+
 # Immersive Framework — Player Session Initial Configuration Reconciliation
 
 > Historical reconciliation. The accepted `IF-ADR-016` revision dated

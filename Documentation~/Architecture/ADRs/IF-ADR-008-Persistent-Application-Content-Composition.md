@@ -1,71 +1,251 @@
 # IF-ADR-008 — Persistent Application Content Composition
 
-Status: Accepted  
-Last updated: 2026-08-06  
-Implementation completion: **90%**  
-Implementation classification: **Product model implemented; portfolio expansion and QA remain**  
+Status: **Accepted**  
+Last updated: 2026-08-09  
+Package implementation: **COMPLETE FOR CURRENT ACCEPTED PRODUCT MODEL**  
+Current package assessment: **30/30** — local package/product assessment; not release certification  
+Product lifecycle: **Class B — reusable Scene Template with source-scene-owned composition**  
 Related decisions: IF-ADR-002, IF-ADR-006, IF-ADR-010, IF-ADR-015  
-Audit baseline: package `9ed698e55b48077c54be5056c6951b7e52dac51b`, QA `0521d1f1804dff2806e06b1e095d47023a062b9e`, FIRSTGAME `e551643ce1b154fdb2744f97b039b4ce73bc6bf5`
+Current package baseline: `43b96a4b100b8273da1190520536007ba82dc081` (`ADR-010B`)
 
-> This is a consolidated audit revision. The normative architectural decision is
-> preserved and the implementation assessment is explicitly separated from ADR
-> acceptance status. Percentages are planning estimates, not automated release
-> certification.
+> This revision supersedes the former Recipe/Composer + Apply/Rebuild description.
+>
+> The current official product is a Scene Template whose physical source scene
+> owns the composition. The package pipeline verifies the instantiated result and
+> does not silently materialize or repair consumer content.
 
 ## Context
 
-Persistent application content hosts cross-Route/session presentation and integration components. Manual assembly of internal bindings is error-prone, but opaque magic generation would make ownership and diagnostics difficult.
+Application-persistent content hosts cross-Route/session presentation and
+integration components such as persistent Camera, Transition and Loading
+composition.
+
+The framework needs a reusable, discoverable product surface without making the
+persistent container a global runtime authority and without silently rewriting
+consumer scenes.
 
 ## Decision
 
-Persistent content uses an explicit Recipe/Composer workflow with managed technical slots, idempotent Apply/Rebuild, preservation of user-owned content, validation, receipts, and Advanced/Debug visibility. The Composer is an authoring authority, not gameplay runtime authority.
+Persistent Application Content uses the following authoring model:
 
-## Architectural constraints
+```text
+Physical Source Scene
+        ↓
+SceneTemplateAsset
+        ↓
+consumer explicitly creates a .unity scene
+        ↓
+Game Application references that scene
+        ↓
+package pipeline performs non-mutating verification
+```
 
-- Runtime authority must be scoped, typed, and lifetime-explicit.
-- Required invalid configuration must fail explicitly and diagnostically.
-- Consumer code must not depend on internal runtime modules, reflection, object-name inference, or implicit global lookup.
-- Editor tooling must be idempotent, non-destructive, and expose technical evidence through Advanced/Debug.
-- QA proves technical contracts; FIRSTGAME proves real consumer usability; permanent solutions belong in the package.
+The source scene owns the authored composition.
 
-## Current implementation coverage
+The pipeline does **not** own a generated technical graph.
 
-The package contains persistent content recipes/composers, materialization, managed ownership, non-destructive rebuild behavior, validation, and product-oriented Inspector surfaces. This is one of the clearest completed examples of IF-ADR-002.
+The pipeline must not silently:
 
-## Current QA evidence
+```text
+create consumer objects
+repair consumer objects
+assign consumer references
+save consumer scenes
+choose gameplay intent
+```
 
-Authoring QA existed but must be reindexed against the cleaned harness. Idempotency and preservation need current executable proof.
+Validation reports problems. It does not turn invalid authored state into another
+configuration.
 
-## Current FIRSTGAME evidence
+## Product authority
 
-FIRSTGAME uses persistent content for loading/UI/camera/player integration and continues to expose which bindings should be productized.
+The Scene Template is reusable authored product intent.
+
+The instantiated consumer scene is user-owned authored content.
+
+The runtime authority remains in the appropriate runtime systems referenced by
+that scene.
+
+Neither the scene name nor a technical container name creates runtime authority.
+
+## Current package implementation
+
+Current package evidence:
+
+```text
+Editor/SceneTemplates/PersistentContent/
+  ImmersivePersistentContent.scenetemplate
+  PersistentContentTemplateSource.unity
+  PersistentContentSceneTemplatePipeline.cs
+```
+
+The official template describes application-persistent Camera, Transition and
+Loading composition.
+
+The pipeline explicitly follows:
+
+```text
+source scene owns the composition
+pipeline performs non-mutating verification
+pipeline never creates, repairs, saves or assigns consumer assets
+```
+
+After instantiation, the package validates the instantiated scene and reports the
+result.
+
+## Why there is no Composer / Apply flow
+
+The former ADR revision described:
+
+```text
+Recipe
+Composer
+managed technical slots
+Apply / Rebuild
+materialization receipts
+```
+
+That description no longer matches the official lifecycle.
+
+Under IF-ADR-002 and IF-ADR-010, a Composer/Apply flow is justified only when
+authored intent deterministically produces framework-owned technical
+materialization.
+
+Persistent Content currently does not use that lifecycle.
+
+Therefore:
+
+```text
+missing Composer      NOT A GAP
+missing Apply/Rebuild NOT A GAP
+missing managed slots NOT A GAP
+```
+
+Adding them solely to match the historical ADR would be over-authoring.
+
+## Validation contract
+
+Verification must remain:
+
+```text
+explicit
+non-mutating
+diagnostic
+safe for user-owned scene content
+```
+
+Required invalid state should be reported before Play Mode where feasible.
+
+No silent fallback is allowed.
+
+## Product surface status
+
+Current package classification:
+
+```text
+Lifecycle                 Class B — reusable Template
+Official product surface  COMPLIANT AT PACKAGE LEVEL
+Source composition owner  physical template source scene
+Consumer scene owner      consumer
+Automatic repair          NO
+Automatic save            NO
+Automatic assignment      NO
+Runtime global authority  NO
+```
+
+## QA
+
+The obsolete QA target was:
+
+```text
+prove Apply/Rebuild idempotency and preservation
+```
+
+That is not the current product contract because there is no Persistent Content
+Apply/Rebuild materializer to certify.
+
+Future QA should only be added for actual deterministic technical contracts of
+the Scene Template pipeline, for example if a concrete regression risk is
+identified in:
+
+```text
+template verification
+required reference validation
+non-mutating behavior
+explicit failure reporting
+```
+
+Do not invent materialization QA for a lifecycle that does not materialize.
+
+## FIRSTGAME
+
+FIRSTGAME can evaluate:
+
+```text
+is the template discoverable?
+is the source/consumer ownership understandable?
+is the required scene-reference flow clear?
+are validation messages sufficient?
+```
+
+Those are consumer UX observations.
+
+They are not technical completion gates.
+
+A real usability finding may justify a small documentation or product-surface
+improvement without changing this composition authority model.
+
+## Current assessment
+
+The prior 90% estimate and later low evidence score were distorted by the stale
+assumption that Persistent Content should be a Class C Composer/materialization
+workflow.
+
+Current package audit result:
+
+```text
+Package assessment 30 / 30
+Product model       COMPLETE FOR CURRENT ACCEPTED SCOPE
+```
+
+No package implementation is justified by ADR-008 at this time.
 
 ## What remains
 
-- Revalidate Apply/Rebuild idempotency, user-owned preservation, missing-slot remediation, and destructive-change diagnostics.
-- Add official templates for common persistent configurations.
-- Integrate the future Player provisioning command/observation bindings without turning the container into a global authority.
-- Publish clear ownership receipts and migration notes for recipe changes.
-- Ensure every managed technical component remains visible in Advanced/Debug.
+Only evidence or usability work driven by a real need:
+
+```text
+short usage documentation when useful
+sample/reference scene when it materially improves discovery
+technical QA only for real Scene Template pipeline invariants
+consumer UX observation in FIRSTGAME when that cut is active
+```
+
+None of these reopens the package composition model by default.
 
 ## Completion criteria
 
-- Rebuild produces the same technical composition when intent is unchanged.
-- User-owned objects and fields are preserved unless an explicit destructive action is confirmed.
-- Missing required persistent bindings fail before Play Mode where possible.
-- QA and FIRSTGAME prove the canonical workflow.
-
-## Completion assessment
+The accepted model is complete when:
 
 ```text
-Estimated completion: 90%
-Normative status: Accepted
-Package implementation: evaluated at 9ed698e
-QA evidence: evaluated at 0521d1f
-FIRSTGAME evidence: evaluated at e551643
+the official template is discoverable
+the source scene owns authored composition
+consumer-created scenes remain user-owned
+verification is non-mutating
+required invalid state is explicit
+runtime authority remains scoped and typed
+no silent repair or gameplay-intent invention occurs
 ```
 
-The percentage includes architecture/contract, runtime behavior, product authoring,
-diagnostics/documentation, current QA evidence, and real-consumer evidence. A high
-runtime percentage may still be reduced when the canonical QA harness or product
-surface is incomplete.
+## Normative summary
+
+```text
+Persistent Content is a reusable Scene Template.
+
+Source scene owns composition.
+Consumer owns the instantiated scene.
+Pipeline verifies; it does not materialize or repair.
+Runtime systems keep runtime authority.
+
+Composer / Apply / Rebuild is not part of the current accepted model.
+```

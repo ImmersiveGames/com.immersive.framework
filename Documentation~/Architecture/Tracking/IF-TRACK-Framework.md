@@ -1,103 +1,158 @@
 # IF-TRACK — Immersive Framework
 
-Status: Active  
+Status: **Active**  
 Last updated: 2026-08-09  
 Package version: `1.0.0-preview.17`
 
-## Source baseline
+## Current source baselines
 
 ```text
 com.immersive.framework
-  Git baseline inspected for this documentation:
-  434e73f5aa09377679acc092246c76fa3275dd43
-  Add Player command serialization identity regression
+  43b96a4b100b8273da1190520536007ba82dc081
+  ADR-010B
 
 QAFramework
-  source baseline for this certification integration:
-  ba06f257f19b7556ca9fe7899f77193a3bcab0d1
-  Add Player command serialization identity regression
-  focused IF-PLAYER-SERIALIZATION-01 already executed 5/5 PASS
-  full one-button integration requires manual retest after patch application
+  b6a45728285ddb2ce08269fc1f88ae3f1a4235e4
+  P0 — Serialized Player Migration Integrity
 
-FIRSTGAME
-  Git HEAD inspected, not modified:
+FIRSTGAME / planet-devourer
   796618243c3ca76f70d582f38475320c6461420b
   Demo02 Reajuste
 ```
 
-Git baselines identify repository states inspected for documentation. The Player QA verdict is Unity execution evidence and certifies the package/runtime state exercised by that run. It must not be misrepresented as a claim that package Git commit `4662fade` alone contains every local R2–R4 implementation edit used during certification.
+The QA project consumes the framework through a local `file:` package path.
+Captured Unity verdicts are valid execution evidence for the exercised workspace,
+but the QA manifest does not independently pin an exact package Git SHA.
 
-## Summary
+## Status model
 
-The package has one internal application/session composition root and explicit typed feature boundaries. Product areas include lifecycle, Player, Camera, Pause/Input/Gate, Reset, Activity readiness, Loading/Transition, persistence foundations and diagnostics.
-
-`FrameworkRuntimeHost` remains Internal. Required runtime dependencies are supplied through typed bindings and explicit scope/lifetime. There is no public static host registry or service-locator API.
-
-### Player status — 2026-08-09
-
-The canonical Player technical surface includes serialized command identity as a required certification gate against the accepted no-Capacity Session model:
+This tracker separates four dimensions:
 
 ```text
-Serialized Command Identity             PASS — 5/5 focused evidence
-Player Session                         PASS
-Scene-Provided                        PASS
-Manager-Provisioned                   PASS
-Actor lifecycle                       PASS
-Public Player Surface                 PASS
-Activity Participation integration    PASS
+Architecture
+  Proposed / Accepted / Superseded
 
-Final verdict after applying the integration and running the manual one-button retest
-  expected: PLAYER QA CERTIFIED
+Package
+  Absent / Partial / Implemented
+
+QA
+  Not Proven / Partial / Certified
+
+FIRSTGAME integration
+  Not Proven / Partial / Proven / Not Applicable
 ```
 
-Representative evidence:
+UX is recorded separately when useful:
 
 ```text
-Player Participation Authoring        7 cases PASS
-Scene-Provided route/negative matrix  25 cases PASS
-Manager public contract               9 cases PASS
-Manager waiting projection            14 cases PASS
-Actor selection runtime binding       13 cases PASS
-Player gameplay admission             114 cases PASS
-Public Surface Q1                     28 cases PASS
-Public Surface Q2                     36 cases PASS
-Activity Session Projection           30 cases PASS
+Not Evaluated / Acceptable / Friction Observed / Improvement Proposed
 ```
 
-The previous `29/29` Q1 + Capacity-era certification is historical evidence only. The current Q1 result is `28/28` under Supported-Slots semantics.
+UX does not enter functional completion arithmetic.
 
-See `../IMMERSIVE-FRAMEWORK-PLAYER-QA-CERTIFICATION-2026-08-09.md`.
+## Progress estimate
 
-## Track board
+The tracker keeps a percentage view as a **planning and attention tool**. It is
+not release certification and it does not replace the explicit status of each
+evidence dimension.
 
-| Track | Real status | Proven coverage | Pending work | Next action |
-|---|---|---|---|---|
-| Runtime authority | Closed for current boundary | internal host composition; narrow typed ports | preserve boundary | reject static/global lookup |
-| Package hygiene | Closed for current boundary | package + QA import discipline | ongoing | do not restore compatibility facades |
-| Player — Serialized migration integrity | **CLOSED / QA CERTIFIED** | `10 OpenJoining`, `20 CloseJoining`, `30 retired/unsupported`, `40 RequestJoin`, `50 RequestDefaultActorSelection`; IF-PLAYER-SERIALIZATION-01 5/5 | one-button manual retest of integrated master | preserve numeric identities; never reuse retired 30 |
-| Player — Session | **Technical QA certified** | Supported Slots, Initial Joining, uniform Host Provisioning, Actor Resolution, frozen effective config, first-available Slot admission | FIRSTGAME product proof | preserve accepted IF-ADR-016 model |
-| Player — Scene-Provided | **Technical QA certified** | independent Scene-Provided fixture; Route/Activity ownership; Slot/Host/Actor lifecycle; release/reentry negatives | FIRSTGAME/manual product walkthrough | keep PlayerInputManager out of this mode |
-| Player — Manager-Provisioned | **Technical QA certified** | derived PlayerInputManager bridge, public contract, waiting projection, Join/Host/Slot flow | FIRSTGAME manual product proof | prove manual real-consumer composition |
-| Player — Actor lifecycle | **Technical QA certified** | selection, preparation, materialization, gameplay admission and lifecycle separation | Leave/disconnect separate | preserve Host != Actor |
-| Player — Public Surface (IF-ADR-015) | **Implemented + technical QA certified** | scoped access, immutable observation, Open/Close, Request Join, default Actor selection, negative stale/unavailable scope | FIRSTGAME proof + P5 disposition | do not reopen Capacity-era commands |
-| Player — Activity Participation | **Technical QA certified for current integration** | Activity Session projection and canonical Player fixture integration | broader product consolidation | GameFlow consumes Player; does not own Session config |
-| Player — Session-Persistent | **Blocked / not productized** | origin reserved in architecture | authoring, admission, lifetime contracts | separate approved cut required |
-| PLAYER-DIAG-1 | Closed / approved | safe diagnostic formatting and immutable last-operation evidence | optional expansion | preserve semantics |
-| Activity readiness + reveal | Implemented (Experimental); core QA certified | WaitVisible/WaitCovered, terminal recovery, startup parity, Player waiting/join path | focused ObserveOnly/product guidance | preserve semantics |
-| WaitCovered Loading progress | Implemented (Experimental); core QA certified | participant-aware progress/terminal plus Player pending-then-terminal proof | presentation guidance | preserve aggregate-only authority boundary |
-| Camera | Closed for current single-output scope | persistent output and Player request/restoration | split-screen / multiple outputs | preserve one-output boundary |
-| Pause / Input / Gate | Closed for current single-player scope; hardening remains | Player-bound Pause, resume, gate semantics | broader negative matrix | preserve declared authority model |
-| Reset | Implemented (mostly Experimental) | Object/Group/Cycle Reset, Activity Restart | unload recomposition finding | separate Reset cut |
-| Activity transaction | **IF-TXN-01/02/03A CLOSED / CERTIFIED** | current approved transaction/gate boundaries | concrete exceptional paths only | no generic transaction manager |
-| Persistence / ProgressionSave | Foundation | contracts/store exist | product authoring + real consumer proof | product decision |
-| ObjectEntry / Local visibility | Implemented (Experimental) | adapters/declarations exist | product guides deferred | keep advanced/foundation |
-| Editor product surface (IF-ADR-010) | Proposed | Editor authoring standard + many Custom Editors | consistent product application | preserve designer-first direction |
-| ADR-012 participation profile | Accepted / substantially implemented | requirements, evidence, runtime compatibility; Player integration QA green | product consolidation | preserve contract |
-| Authored identity (IF-ADR-014) | Closed / approved | IF-ID package/tests/QA/FIRSTGAME proof | IF-ID-07 deferred | preserve exact-reference + token authority |
-| IF-ADR-015 provisioning command/observation surface | **Proposed; implementation technical QA certified** | current no-Capacity consumer vocabulary and scoped observation certified | FIRSTGAME + P5 + final ADR disposition | real-consumer proof |
-| IF-ADR-016 Session initialization | **Accepted; implementation technical QA certified** | consolidated Profile, Supported Slots, uniform provisioning, Actor Resolution, frozen effective config | FIRSTGAME product proof | preserve model; no compatibility rail |
+Scoring dimensions:
 
-## Canonical Player Session contract
+| Dimension | Weight | Meaning |
+|---|---:|---|
+| Architecture / Contract | 20 | normative decision, authority and supported boundary are clear |
+| Package Implementation | 30 | official package implementation exists and operates for the accepted boundary |
+| Product Surface / Diagnostics | 20 | the feature can be configured and diagnosed through official surfaces; required documentation exists |
+| Technical QA | 15 | objective technical contracts are proven in QAFramework |
+| FIRSTGAME Integration | 15 | the accepted package boundary is proven in a real product composition |
+
+`Product Surface / Diagnostics` is **not a UX score**. It measures whether the
+feature is functionally authorable and diagnosable. Inspector polish, number of
+clicks, discoverability preference and other ergonomic observations belong to the
+separate UX state and never add or remove completion points.
+
+When a dimension is genuinely not applicable to an ADR, the percentage is
+normalized over the applicable dimensions instead of assigning artificial
+missing points.
+
+Current evidence-based planning estimate:
+
+| ADR | Arch. | Package | Surface | QA | FIRSTGAME | Estimate | Primary limiter |
+|---|---:|---:|---:|---:|---:|---:|---|
+| IF-ADR-001 | 20/20 | 28/30 | 17/20 | 15/15 | 13/15 | **93%** | exceptional lifecycle cleanup / future Session-Persistent contract |
+| IF-ADR-002 | 20/20 | 23/30 | 16/20 | 10/15 | 10/15 | **79%** | portfolio-wide consistency of official authoring surfaces |
+| IF-ADR-003 | 20/20 | 29/30 | 18/20 | 15/15 | 5/15 | **87%** | current-model Player integration in FIRSTGAME |
+| IF-ADR-004 | 20/20 | 26/30 | 18/20 | 10/15 | 8/15 | **82%** | Camera negative QA + broader real integration |
+| IF-ADR-005 | 20/20 | 27/30 | 18/20 | 11/15 | 9/15 | **85%** | focused Pause/Input/Reset negative contracts |
+| IF-ADR-006 | 20/20 | 29/30 | 18/20 | 15/15 | 13/15 | **95%** | exceptional post-commit paths only |
+| IF-ADR-007 | 20/20 | 29/30 | 18/20 | 15/15 | 13/15 | **95%** | focused uncovered readiness variants |
+| IF-ADR-008 | 20/20 | 27/30 | 18/20 | 10/15 | 10/15 | **85%** | current Scene Template integration/technical hardening evidence |
+| IF-ADR-009 | 20/20 | 26/30 | 17/20 | 9/15 | 10/15 | **82%** | visibility negative regression coverage |
+| IF-ADR-010 | 20/20 | 28/30 | 20/20 | N/A | N/A | **97%*** | per-feature adoption only; no generic UX QA |
+| IF-ADR-011 | 20/20 | 29/30 | 18/20 | 15/15 | 13/15 | **95%** | focused public waiting/joining integration evidence |
+| IF-ADR-012 | 20/20 | 28/30 | 18/20 | 15/15 | 4/15 | **85%** | current-model Player participation in FIRSTGAME |
+| IF-ADR-013 | 20/20 | 18/30 | 12/20 | 7/15 | 0/15 | **57%** | optional BGM promotion requires technical + real-game evidence |
+| IF-ADR-014 | 20/20 | 30/30 | 20/20 | 15/15 | 15/15 | **100%** | closed for current accepted boundary |
+| IF-ADR-015 | 20/20 | 29/30 | 18/20 | 15/15 | 4/15 | **86%** | current public command/status integration in FIRSTGAME |
+| IF-ADR-016 | 20/20 | 30/30 | 19/20 | 15/15 | 4/15 | **88%** | current Scene-/Manager-Provisioned FIRSTGAME integration |
+
+`* IF-ADR-010` is normalized over the 70 applicable points because a generic QA
+or FIRSTGAME program for Inspector UX is intentionally not part of that ADR.
+Objective Editor contracts continue to be scored under the feature that owns
+them.
+
+Portfolio planning view:
+
+```text
+Current mean estimate across ADRs: 86.9%
+
+Lowest current estimates:
+  IF-ADR-013  57%  Optional BGM / Experimental
+  IF-ADR-002  79%  Product Authoring Model portfolio consistency
+  IF-ADR-004  82%  Camera
+  IF-ADR-009  82%  Activity Local Visibility
+  IF-ADR-005  85%  Input / Pause / Gate / Reset
+  IF-ADR-008  85%  Persistent Content
+  IF-ADR-012  85%  Activity Player Participation
+```
+
+Interpretation rules:
+
+```text
+low Package score
+  -> implementation is the main problem
+
+low QA score
+  -> implementation exists but technical proof/hardening is weak
+
+low FIRSTGAME score
+  -> package/QA may be strong, but real-product integration is not yet proven
+
+UX friction
+  -> record separately; do not subtract completion points
+```
+
+A high percentage never overrides a missing required gate. Example: a feature can
+reach 85% with `FIRSTGAME = 0/15`, but its functional status remains
+`INTEGRATION PROOF PENDING` whenever real-product integration is applicable.
+
+## Functional completion rule
+
+A feature boundary that requires real-game application is closed by evidence from:
+
+```text
+Package implementation
+  +
+QA technical proof
+  +
+FIRSTGAME real-product integration
+```
+
+FIRSTGAME is therefore part of functional proof when applicable. Ease of use,
+Inspector polish and other UX observations discovered during the same work are
+qualitative and do not independently open/close the technical feature.
+
+## Canonical Player model
 
 ```text
 PlayerSessionProfile
@@ -111,63 +166,17 @@ PlayerSessionProfile
     └── Leave Unresolved
 ```
 
-Rules:
-
-```text
-Supported Slots.Count = structural maximum
-Joined/Occupied         = current runtime players
-Joining Open/Closed     = admission intent
-Join                    = first vacant Supported Slot in authored order
-no vacant Slot          = explicit rejection
-```
-
-Removed and rejected from the canonical model:
+Removed/rejected from the current model:
 
 ```text
 PlayerProvisioningProfile
 PlayerSlotProvisioningOverride
-Initial/Current/Dynamic Capacity
+Initial / Current / Dynamic Capacity
 SetCapacity / SetDynamicCapacity
 per-Slot Host Provisioning override
 ```
 
-## Canonical provisioning modes
-
-### Scene-Provided
-
-```text
-Session Host Provisioning = Scene Provided
-Host already exists in the active composition
-framework discovers/adopts within explicit Route/Activity composition scope
-no PlayerInputManager bridge
-```
-
-### Manager-Provisioned
-
-```text
-Session Host Provisioning = Manager Provisioned
-explicit Join creates Host through PlayerInputManager
-serialized PlayerInputManager player limit = SupportedSlotCount
-```
-
-The `PlayerInputManager` limit is a derived materialized technical constraint, not Session Capacity and not runtime authority.
-
-## Canonical public Player surface
-
-```text
-Persistent Application Content
-  LocalPlayerProvisioningAuthoring
-  LocalPlayerProvisioningHostRegistration
-  PlayerInputManager                  # Manager-Provisioned only
-  optional Actor-selection authoring
-
-Route / Activity content
-  LocalPlayerProvisioningConsumerAccessBinding
-  optional PlayerProvisioningCommandTrigger
-  optional PlayerProvisioningStatusBinding
-```
-
-Accepted command vocabulary:
+Accepted public commands:
 
 ```text
 Open Joining
@@ -176,17 +185,25 @@ Request Join
 Request Default Actor Selection
 ```
 
-Observation remains immutable and scoped. Internal reservation, Actor preparation/materialization, gameplay admission and Activity reconcile authorities are not public consumer commands.
+Serialized command identity:
 
-## Current QA certification
+```text
+10 OpenJoining
+20 CloseJoining
+30 retired / unsupported
+40 RequestJoin
+50 RequestDefaultActorSelection
+```
 
-Canonical entrypoint:
+## Current Player technical certification
+
+Canonical QA entrypoint:
 
 ```text
 Immersive Framework/QA/Player/Run Full Player QA
 ```
 
-Final evidence:
+Executed verdict:
 
 ```text
 [QA_PLAYER_FULL]
@@ -201,63 +218,87 @@ publicSurface='PASS'
 participation='PASS'
 ```
 
-Expected error logs emitted by deliberate Q2 negative cases are evidence, not certification failure, when the Q2 runner and master orchestrator return PASS.
+Technical Player certification is therefore closed for the current accepted
+boundary.
 
-## Remaining Player findings
+## Current Player real integration
 
-### FIRSTGAME real-consumer proof
+The committed FIRSTGAME Player content still contains superseded authoring data
+from the former Capacity/separate-provisioning-Profile shape and is not current
+accepted-model proof.
 
-Serialized migration integrity is technically closed. FIRSTGAME current Player evidence is still not current-model certified, but it is a separate product/consumer gate rather than part of the P0 technical closure. The consumer will be redesigned/rebuilt separately; this tracker does not prescribe an in-place YAML/Profile migration.
-
-Recommended consumer proof order:
-
-```text
-Demo02 — Scene-Provided
-  Single / Route-Owned
-  Single / Activity-Owned
-  Multiplayer
-
-Demo03 — Manager-Provisioned
-  Single
-  Multiplayer / late Join
-```
-
-### P5 creation-workflow disposition
-
-P5 is post-FIRSTGAME and may validly conclude:
+Current status:
 
 ```text
-NO ADDITIONAL TOOLING REQUIRED
+Scene-Provided current-model integration       NOT PROVEN
+Manager-Provisioned current-model integration  NOT PROVEN
+Player Participation current-model integration NOT PROVEN
 ```
 
-or justify the smallest focused Create-menu, Inspector, template or Composer support. A Wizard/Composer is not mandatory by architecture alone.
+The next FIRSTGAME Player work should rebuild/reauthor against the official
+current package model rather than add compatibility behavior for the historical
+serialized shape.
 
-### Leave / disconnect
+UX observations collected during that rebuild may drive optional package
+improvements, but are not a separate completion score.
 
-Session Player Leave and device disconnect/reconnect remain outside current ADR-015 scope and require their own approved contract work.
+## Track board
 
-### Session-Persistent
+| Track | Package | QA | FIRSTGAME integration | Current disposition |
+|---|---|---|---|---|
+| Runtime authority / lifecycle | Implemented | Certified for current transaction/readiness boundary | Proven for core Route/Activity flows | preserve scoped typed authority; future Session-Persistent work is separate |
+| Player serialized migration integrity | Implemented | **Certified** | Not applicable to technical P0 | closed; retired value 30 must never be reused |
+| Player Session | Implemented | **Certified** | **Not Proven on current model** | rebuild real consumer integration using accepted ADR-016 model |
+| Player Scene-Provided | Implemented | **Certified** | **Not Proven on current model** | FIRSTGAME real integration required |
+| Player Manager-Provisioned | Implemented | **Certified** | **Not Proven on current model** | FIRSTGAME real integration required |
+| Player Actor lifecycle | Implemented | **Certified** | Partial/historical only | prove current model through real Player consumer flow |
+| Player public surface / ADR-015 | Implemented | **Certified** | **Not Proven on current model** | real command/status integration required; extra tooling optional |
+| Player Activity participation / ADR-012 | Implemented | **Certified** | **Not Proven on current model** | layer after underlying Player mode integration |
+| Activity readiness + reveal | Implemented | Certified for core supported policies | Proven in existing real readiness/loading scenario | preserve readiness authority; add QA only for concrete gaps |
+| Participant-aware Loading progress | Implemented | Certified for core supported boundary | Proven in existing readiness/loading scenario | preserve monotonic/terminal semantics |
+| Loading / Transition | Implemented | Certified for current transaction/readiness boundary | Proven for core flows | exceptional paths only when concrete evidence requires them |
+| Camera — current single output | Implemented | Partial/current regressions | Partial real integration | focused technical hardening only for demonstrated gaps |
+| Pause / Input / Gate | Implemented | Partial/current regressions | Partial real integration | harden concrete negatives; no generic gate manager |
+| Reset / Activity Restart | Implemented | Partial/current regressions | Partial real integration | harden concrete lifecycle negatives |
+| Persistent Content Scene Template | Implemented | Validation exists; broader QA partial | Partial real integration | Scene Template is canonical product model; no Composer requirement |
+| Activity local visibility | Implemented | Partial | Partial real integration | preserve explicit occurrence-scoped visibility |
+| Authored identity / ADR-014 | Implemented | **Certified** | **Proven** | closed for current accepted boundary; IF-ID-07 deferred by design |
+| Optional BGM / ADR-013 | Experimental implementation | Partial | Not Proven | defer promotion until a real game requires and proves it |
+| Application frame rate | Implemented / Experimental surface | focused proof required per feature | Not Proven | validate in real consumer when promoted |
+| Editor product surface / ADR-010 | Implemented across package | **No generic UX QA required** | integration evaluated per feature | ADR-010 accepted; package audit closed |
 
-Architecture exists but no canonical product/runtime workflow is approved. Do not simulate it with arbitrary persistent GameObjects.
-
-## Current execution priority
+## ADR-010 closure
 
 ```text
-1. IF-ADR-010 minimum product-surface standard
-2. IF-ADR-010 package product-surface audit
-3. canonical Editor QA
-4. focused non-Player hardening
-5. redesigned FIRSTGAME consumer proof
+IF-ADR-010  Accepted
+010A        Product-surface standard absorbed into ADR-010
+010B        Package surface audit closed and archived
+010C        Not required / cancelled
 ```
 
-P0 serialized migration integrity is no longer an active priority. ADR-010 implementation is not part of the present closure cut; this order only prepares the tracker for the next framework work.
+Objective technical Editor contracts continue to belong to their owning feature's
+QA backlog. There is no generic UX smoke program.
 
-Do not reopen the removed Capacity / separate provisioning Profile model to satisfy old QA or historical documentation.
+## Active priority
 
-## API status note
+```text
+1. keep documentation aligned with current contracts
+2. focused non-Player hardening only for concrete technical gaps
+3. rebuild FIRSTGAME Player integration against the accepted current model
+4. record UX friction separately and improve only where real use justifies it
+```
 
-Technical certification does not automatically promote Experimental/preview API stability metadata.
+Do not reopen removed Capacity/provisioning-Profile semantics or add tooling only
+to improve a documentation score.
 
-## Historic programs
+## Future contracts kept separate
 
-Large readiness/M07/P3/completeness plan documents remain historical planning context. Current mutable status belongs in this tracker. Historical audits should retain their original baseline and must not be treated as current product truth when they reference superseded Player configuration contracts.
+```text
+Session-Persistent Player
+Player Leave / disconnect / reconnect
+heterogeneous per-Slot Host Provisioning
+split-screen / multiple Camera outputs
+application-scoped stable-ID resolver (IF-ID-07)
+```
+
+These require separate approved cuts when a concrete product need exists.

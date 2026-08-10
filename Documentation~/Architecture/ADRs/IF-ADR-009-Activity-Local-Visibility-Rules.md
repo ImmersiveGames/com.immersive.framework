@@ -1,70 +1,193 @@
 # IF-ADR-009 — Activity Local Visibility Rules
 
-Status: Accepted  
-Last updated: 2026-08-06  
-Implementation completion: **88%**  
-Implementation classification: **Runtime integrated; authoring and regression polish remain**  
+Status: **Accepted**  
+Last updated: 2026-08-09  
+Package implementation: **MATURE — focused package audit remains before final package closure**  
+Current package assessment: **26/30** — local planning assessment; not release certification  
 Related decisions: IF-ADR-006, IF-ADR-007, IF-ADR-010  
-Audit baseline: package `9ed698e55b48077c54be5056c6951b7e52dac51b`, QA `0521d1f1804dff2806e06b1e095d47023a062b9e`, FIRSTGAME `e551643ce1b154fdb2744f97b039b4ce73bc6bf5`
+Current package baseline: `43b96a4b100b8273da1190520536007ba82dc081` (`ADR-010B`)
 
-> This is a consolidated audit revision. The normative architectural decision is
-> preserved and the implementation assessment is explicitly separated from ADR
-> acceptance status. Percentages are planning estimates, not automated release
-> certification.
+> No implementation is authorized by this revision.
+>
+> The current runtime exists. The next step is a narrow inspection of the real
+> authoring, target validity, occurrence evidence and release/restoration
+> diagnostics before deciding whether any package change is necessary.
 
 ## Context
 
-Activity-owned content may need to remain hidden, disabled, or presentation-gated until lifecycle and readiness conditions are satisfied. Visibility must be explicit and scoped rather than inferred from scene load or object hierarchy.
+Activity-owned content may need to remain hidden, disabled or
+presentation-gated until lifecycle/readiness conditions are satisfied.
+
+Visibility must be explicit and scoped rather than inferred from scene load,
+hierarchy position or object naming.
 
 ## Decision
 
-Activity local visibility is expressed through explicit authoring/adapters bound to Activity lifecycle and readiness. Visibility authority is contextual and occurrence-aware. Required visibility failures are blocking and diagnostic; optional presentation behavior does not silently weaken required readiness.
+Activity local visibility is expressed through explicit authored/adapted
+configuration bound to Activity lifecycle/readiness.
+
+Visibility authority is contextual and occurrence-aware.
+
+Required visibility failures are blocking and diagnostic.
+
+Optional presentation behavior must not silently weaken required readiness.
 
 ## Architectural constraints
 
-- Runtime authority must be scoped, typed, and lifetime-explicit.
-- Required invalid configuration must fail explicitly and diagnostically.
-- Consumer code must not depend on internal runtime modules, reflection, object-name inference, or implicit global lookup.
-- Editor tooling must be idempotent, non-destructive, and expose technical evidence through Advanced/Debug.
-- QA proves technical contracts; FIRSTGAME proves real consumer usability; permanent solutions belong in the package.
+- Runtime authority is scoped, typed and lifetime-explicit.
+- Required invalid configuration fails explicitly.
+- Visibility is not inferred from scene load.
+- Object names and hierarchy paths are not fallback identity.
+- Lifecycle occurrence/replacement semantics remain explicit.
+- Editor authoring does not become gameplay authority.
 
-## Current implementation coverage
+## Current package coverage
 
-Local visibility adapters and lifecycle integration exist. FIRSTGAME readiness/loading demonstrations exercise hidden/covered content and reveal ordering.
+The current package contains `ActivityLocalVisibilityAdapter` integration with
+Activity lifecycle and framework-owned discovery scoped to the supplied framework
+roots.
 
-## Current QA evidence
+The existing implementation already establishes the core runtime model:
 
-Current canonical negative coverage for stale occurrences, missing targets, owner destruction, and repeated enter/exit must be re-established.
+```text
+authored/local visibility intent
+        ↓
+Activity occurrence/lifecycle
+        ↓
+scoped visibility application
+        ↓
+release/restoration/disposal evidence
+```
 
-## Current FIRSTGAME evidence
+No global scene search is part of the intended authority model.
 
-FIRSTGAME provides real evidence that local visibility and loading cover must remain separate but coordinated product concerns.
+## Why this ADR remains the next focused audit
+
+The current evidence is strong enough that a large implementation cut would be
+premature.
+
+The remaining package question is narrower:
+
+```text
+does the current authoring/diagnostic surface completely expose
+the states that the runtime already models?
+```
+
+The focused audit must inspect:
+
+```text
+authoring validation
+target validity
+required vs optional target semantics
+current Activity binding
+occurrence/revision evidence
+last application result
+release/restoration evidence
+stale occurrence behavior
+replacement/disposal behavior
+```
+
+## Product surface
+
+Do not assume a new Profile, Composer or Apply/Rebuild flow is needed.
+
+The current lifecycle appears compatible with direct authoring.
+
+Only introduce another layer if the focused audit proves that normal consumers
+must manually reconstruct internal contracts or repeatedly perform deterministic
+technical setup.
+
+## QA
+
+Technical QA is justified for real lifecycle invariants such as:
+
+```text
+missing required target
+stale occurrence
+repeated enter/exit
+Route replacement
+owner/context disposal
+release/restoration ownership
+```
+
+Only add tests that prove actual runtime contracts.
+
+Do not create synthetic Inspector UX tests.
+
+## FIRSTGAME
+
+FIRSTGAME can later reveal whether:
+
+```text
+the visibility intent is understandable
+the target configuration is discoverable
+the relation to loading cover is clear
+the runtime evidence is useful during debugging
+```
+
+Those observations are separate Consumer UX Evidence.
+
+They are not required to establish technical package correctness.
+
+## Current assessment
+
+Current local package assessment:
+
+```text
+26 / 30
+```
+
+Disposition:
+
+```text
+runtime model          EXISTS
+large package gap      NOT CONFIRMED
+new authoring layer    NOT JUSTIFIED
+focused package audit  REQUIRED
+```
+
+If the narrow audit confirms that current validation and diagnostic evidence are
+already sufficient, the expected package reclassification is approximately:
+
+```text
+29 / 30
+```
+
+without implementation.
+
+If a real gap is found, fix only that gap.
 
 ## What remains
 
-- Complete designer-first authoring for common visibility intents.
-- Add QA for missing target, stale occurrence, repeated apply/release, owner destruction, and Route replacement.
-- Expose resolved visibility rule, owner, occurrence, and last application result in Advanced/Debug.
-- Publish examples for scene objects, additive content, and Actor-related visibility.
+```text
+1. inspect the current ActivityLocalVisibilityAdapter authoring surface
+2. inspect target validity and occurrence/runtime evidence
+3. inspect release/restoration diagnostics
+4. classify concrete gaps, if any
+5. implement only a proven gap
+6. add technical QA only when the corrected/declared contract warrants it
+```
 
 ## Completion criteria
 
-- Visibility never becomes implicit scene-load authority.
-- Required failures block with explicit diagnostics.
-- Release restores or disposes only context-owned state.
-- QA and FIRSTGAME prove enter, reentry, exit, replacement, and failure.
-
-## Completion assessment
+Package closure requires evidence that:
 
 ```text
-Estimated completion: 88%
-Normative status: Accepted
-Package implementation: evaluated at 9ed698e
-QA evidence: evaluated at 0521d1f
-FIRSTGAME evidence: evaluated at e551643
+visibility never becomes implicit scene-load authority
+required invalid targets fail explicitly
+occurrence ownership is diagnosable
+release/restoration affects only context-owned state
+replacement/disposal does not leak visibility authority
+normal authoring does not require hidden internal contracts
 ```
 
-The percentage includes architecture/contract, runtime behavior, product authoring,
-diagnostics/documentation, current QA evidence, and real-consumer evidence. A high
-runtime percentage may still be reduced when the canonical QA harness or product
-surface is incomplete.
+Consumer UX evidence remains separate.
+
+## Normative summary
+
+```text
+Keep visibility explicit, scoped and occurrence-aware.
+Audit the existing product before adding tooling.
+Do not infer package incompleteness from missing Composer/Wizard/Apply.
+Do not use FIRSTGAME or UX smokes as technical closure gates.
+```

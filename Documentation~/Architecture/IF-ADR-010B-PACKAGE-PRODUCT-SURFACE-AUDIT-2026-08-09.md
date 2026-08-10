@@ -5,14 +5,15 @@ Type: UX/Product audit / documentation
 Status: **CLOSED — current package surface rebaselined**  
 Implementation changes: **none**  
 FIRSTGAME changes: **none**  
-QAFramework changes: **none**
+QAFramework changes: **none**  
+Post-audit correction: **IF-ADR-010C cancelled; synthetic UX/Inspector QA is not required**
 
 ## 1. Baseline
 
 ```text
 com.immersive.framework
-  eb39c574e9ca04db0f88c4eb8e0eb704a1902194
-  P0 — Serialized Player Migration Integrity
+  43b96a4b100b8273da1190520536007ba82dc081
+  ADR-010B
 
 QAFramework
   b6a45728285ddb2ce08269fc1f88ae3f1a4235e4
@@ -28,29 +29,26 @@ Rule: manual explicit authoring is the default
 Rule: ADR-010 compliance is not measured by tooling/automation quantity
 ```
 
-This audit evaluates the package against the accepted ADR-010 standard. It does
-not treat historical gap lists as current truth when the current Git state shows
-a different product surface.
+This audit evaluates the package against the accepted ADR-010 standard.
 
----
+Historical gap lists are not treated as current authority when the current
+package exposes a different legitimate product lifecycle.
 
-## 2. Executive verdict
+## 2. Corrected executive verdict
 
 The package does **not** have a generalized lack of Editor tooling.
 
-The dominant current state is:
+The dominant state is:
 
 ```text
 broad product-surface implementation
 +
-inconsistent historical documentation
+stale historical documentation in some ADRs
 +
-uneven Editor QA evidence
-+
-a few presentation-normalization opportunities
+a few optional presentation-normalization opportunities
 ```
 
-The audit found no evidence that the framework currently needs a new generic:
+The audit found no evidence that the framework needs a new generic:
 
 ```text
 Wizard system
@@ -62,31 +60,28 @@ global authoring manager
 second validation architecture
 ```
 
-The accepted ADR-010 rule is therefore validated by the package:
+Manual explicit authoring remains a canonical product path.
+
+Important post-audit correction:
+
+The original 010B draft interpreted uneven Editor QA as the largest cross-cutting
+gap and proposed an IF-ADR-010C synthetic/canonical product-surface QA program.
+
+That recommendation is **superseded**.
+
+The corrected rule is:
 
 ```text
-manual explicit authoring remains a first-class canonical path
+UX/product conformity
+  = package/manual review
+  + real consumer observation in FIRSTGAME when useful
+
+technical/editor contract QA
+  = system-specific
+  + only when a deterministic technical invariant exists
 ```
 
-The strongest current Class C / materialized-composition reference is Camera Rig
-Authoring.
-
-Player, Pause, Activity Restart, Reset and Readiness already demonstrate strong
-Class A/B direct authoring surfaces.
-
-Persistent Content is no longer classified as "missing". Its current lifecycle
-was rebaselined as an official Scene Template whose source scene owns the
-composition and whose pipeline performs non-mutating verification.
-
-The previously suspected Unity Input Gate "missing product surface" is also not
-confirmed. Its current Inspector is semantically substantial. Its differences
-from the shared Inspector helper are normalization opportunities, not sufficient
-evidence of ADR-010 non-compliance.
-
-The largest cross-cutting gap exposed by this audit is **current Editor QA
-evidence**, not missing automation.
-
----
+There is no ADR-010-wide UX QA program.
 
 ## 3. Audit method
 
@@ -102,10 +97,10 @@ Safe Explicit Remediation
 Advanced / Debug
 Editor Write Safety
 Runtime Discipline
-Risk-Appropriate QA
+Risk-Appropriate Technical QA
 ```
 
-Conditional capabilities were evaluated only where they already exist:
+Conditional capabilities were evaluated only where they actually exist:
 
 ```text
 Profile / Recipe / Template
@@ -116,10 +111,9 @@ Wizard
 materialization receipt
 ```
 
-No feature was penalized merely for not having one of those conditional
-capabilities.
+No feature was penalized for lacking a conditional capability.
 
-### Product-surface classification
+Product-surface classification:
 
 ```text
 COMPLIANT
@@ -129,21 +123,9 @@ REBASELINE REQUIRED
 NOT APPLICABLE
 ```
 
-QA evidence is recorded separately so a good product surface is not
-misrepresented as missing merely because its Editor regression suite has not yet
-been indexed or certified.
-
----
-
 ## 4. Shared Editor foundations
 
-### 4.1 FrameworkAuthoringInspectorGui
-
-Evidence:
-
-```text
-Editor/Common/FrameworkAuthoringInspectorGui.cs
-```
+### FrameworkAuthoringInspectorGui
 
 Current shared vocabulary includes:
 
@@ -156,42 +138,21 @@ AdvancedFoldout
 ApplySuggestion
 ```
 
-`ApplySuggestion` records Undo, applies serialized properties, marks targets dirty
-and records prefab-instance modifications.
-
 Classification:
 
 ```text
-Product surface: NOT APPLICABLE
 Role: FOUNDATION
 State: STRONG
 ```
 
-Interpretation:
+The helper is not normative by itself.
 
-The framework already has a reusable Inspector grammar and a safe deterministic
-suggestion helper.
+Consistency is semantic; not every Custom Editor must use the same helper or
+identical visual layout.
 
-ADR-010 does not require every Custom Editor to call this helper literally.
-Consistency is semantic, not identical UI implementation.
+### Authoring validation
 
-A Custom Editor should reuse the helper when it improves consistency without
-forcing a lifecycle into an artificial presentation shape.
-
----
-
-### 4.2 Authoring validation infrastructure
-
-Evidence:
-
-```text
-Editor/Validation/FrameworkAuthoringValidationIssue.cs
-Editor/Validation/FrameworkAuthoringValidationReport.cs
-Editor/Validation/FrameworkAuthoringValidationGui.cs
-Editor/Validation/FrameworkAuthoringModelReadinessAggregator.cs
-```
-
-Current typed issue contract actually contains:
+Current `FrameworkAuthoringValidationIssue` contract:
 
 ```text
 Severity
@@ -200,505 +161,112 @@ Context
 IsOptionalSkip
 ```
 
-The GUI additionally provides:
+Current GUI behavior includes summary counts, issue HelpBoxes, context
+selection/ping and report logging.
+
+The audit does not justify adding typed `Category`, `Hint`, `Asset` or
+`ContextLabel` fields preemptively.
+
+## 5. Corrected product-surface matrix
+
+| Area / Surface | Lifecycle | Package surface | Current disposition |
+|---|---|---|---|
+| Shared Inspector GUI | Support | N/A — foundation | KEEP |
+| Shared Authoring Validation | Support | N/A — foundation | KEEP |
+| Player Participation / Provisioning | A + B | COMPLIANT | KEEP |
+| Activity asset/profile authoring | B | COMPLIANT | KEEP |
+| Activity Request Trigger | A | COMPLIANT | KEEP; normalization optional |
+| Route asset/profile authoring | B | COMPLIANT | KEEP |
+| Route Request Trigger | A | COMPLIANT | KEEP; normalization optional |
+| Game Application / Project Settings | B / Settings | COMPLIANT | KEEP |
+| Camera Rig Composer | C | COMPLIANT / reference | KEEP; Camera work separate |
+| Pause Request | A | COMPLIANT | KEEP |
+| Unity Input Gate | A | COMPLIANT SEMANTICALLY | KEEP; normalization optional |
+| Activity Restart | A | COMPLIANT | KEEP |
+| Object Reset Group Trigger | A | COMPLIANT | KEEP |
+| Activity Readiness Participant | A | COMPLIANT | KEEP |
+| Persistent Content Scene Template | B / Template | COMPLIANT AT PACKAGE LEVEL | REBASELINE RESOLVED |
+| Loading / Transition standalone authoring | unresolved | inspect only if a real product question arises | NO TOOLING ASSUMPTION |
+| Diagnostics-only surfaces | Support | NOT APPLICABLE | KEEP |
+| Camera technical bindings | Support | NOT APPLICABLE | KEEP |
+
+The matrix separates:
 
 ```text
-summary counts
-issue HelpBoxes
-Select/Ping context
-structured report logging
+product-surface conformity
+technical QA needs
+consumer UX evidence
 ```
 
-Classification:
+These are not one score.
 
-```text
-Product surface: NOT APPLICABLE
-Role: FOUNDATION
-State: SUBSTANTIAL
-```
+## 6. Key subsystem conclusions
 
-Important correction to earlier audit language:
+### Player
 
-The current Git contract does **not** prove structured fields for:
+Current command/profile surfaces are legitimate Class A/B product surfaces.
 
-```text
-Category
-Hint
-Asset
-Context Label
-```
-
-as independent members of `FrameworkAuthoringValidationIssue`.
-
-Corrective guidance can still be expressed in `Message`, and `Context` provides
-selection/ping support.
-
-No new validation architecture is justified by this audit.
-
-A future typed remediation/hint field should be introduced only if repeated
-concrete product cases prove that the current `Message + Context` contract is
-insufficient.
-
----
-
-## 5. Product-surface matrix
-
-| Area / Surface | Lifecycle | Package surface | QA evidence | 010B disposition |
-|---|---|---|---|---|
-| Shared Inspector GUI | Support | N/A — foundation | N/A | STRONG FOUNDATION |
-| Shared Authoring Validation | Support | N/A — foundation | partial/current use | SUBSTANTIAL FOUNDATION |
-| Player Participation / Provisioning | A + B | COMPLIANT | strong Player QA | KEEP |
-| Activity asset/profile authoring | B | COMPLIANT | technical QA exists; Editor QA uneven | KEEP |
-| Activity Request Trigger | A | COMPLIANT | not separately certified as Editor surface | KEEP; optional presentation normalization |
-| Route asset/profile authoring | B | COMPLIANT | technical QA exists; Editor QA uneven | KEEP |
-| Route Request Trigger | A | COMPLIANT | not separately certified as Editor surface | KEEP; optional presentation normalization |
-| Game Application / Project Settings | B / Settings | COMPLIANT | product QA not yet canonical | KEEP |
-| Camera Rig Composer | C | COMPLIANT / REFERENCE | dedicated Editor contract not found in current QA search | PRIORITY FOR 010C |
-| Pause Request | A | COMPLIANT | broader technical evidence exists | KEEP |
-| Unity Input Gate | A | COMPLIANT SEMANTICALLY | dedicated current QA not found | 010C candidate; normalization optional |
-| Activity Restart | A | COMPLIANT | broader technical evidence exists | KEEP |
-| Object Reset Group Trigger | A | COMPLIANT | broader Reset evidence incomplete | KEEP / 010C candidate |
-| Activity Readiness Participant | A | COMPLIANT | readiness runtime QA strong; Editor QA not canonical | KEEP |
-| Persistent Content Scene Template | B / Template | COMPLIANT PACKAGE SURFACE | consumer proof deferred | REBASELINE RESOLVED |
-| Loading / Transition standalone authoring | unresolved | REBASELINE REQUIRED | runtime evidence strong | map actual consumer lifecycle before tooling |
-| Diagnostics-only technical surfaces | Support | NOT APPLICABLE | diagnostic evidence | KEEP AS SUPPORT |
-| Camera technical bindings | Support | NOT APPLICABLE | technical evidence | KEEP AS SUPPORT |
-
-The matrix deliberately distinguishes a product-surface gap from a QA-evidence
-gap.
-
----
-
-## 6. Player Participation / Provisioning
-
-Representative evidence:
-
-```text
-Editor/PlayerParticipation/PlayerProvisioningCommandTriggerEditor.cs
-```
-
-Observed product grammar:
-
-```text
-Product Header
-Intent Summary
-Command
-Scoped Consumer Access
-operation-specific authored parameters
-Request Metadata
-Actions
-Configuration Status
-Play Mode Runtime Binding
-Last Typed Result
-Advanced / Debug
-```
-
-Runtime execution is explicit and disabled outside Play Mode.
-
-The Inspector explicitly states that there is no automatic:
-
-```text
-Awake
-OnEnable
-Start
-OnValidate
-```
-
-command path.
-
-Classification:
-
-```text
-Lifecycle: A for command/status components
-           B where reusable Player Profiles are used
-
-Product surface: COMPLIANT
-```
-
-Conclusion:
-
-Historical statements saying Player needs a Composer/Wizard merely to become a
-valid ADR-010 product surface are stale.
+Historical statements that Player requires a Composer/Wizard to satisfy
+ADR-010 are stale.
 
 No Player Composer, Wizard or auto-setup cut is justified by ADR-010B.
 
----
+### Pause
 
-## 7. Pause
+Direct authoring is sufficient.
 
-Representative evidence:
+A Pause Composer or Wizard would be over-authoring under current evidence.
 
-```text
-Editor/Pause/PauseRequestTriggerEditor.cs
-```
+### Activity Restart
 
-Observed:
-
-```text
-Product Header
-Intent Summary
-Request Metadata
-safe suggested diagnostic reason
-Configuration Status
-Play Mode Runtime Binding
-Effective Pause Evidence
-explicit Pause / Resume / Toggle actions
-Advanced / Debug
-```
-
-The suggested reason is a deterministic diagnostic convenience, not gameplay
-intent.
-
-Classification:
-
-```text
-Lifecycle: A — Simple / Direct Authoring
-Product surface: COMPLIANT
-```
-
-Conclusion:
-
-A Pause Composer or Wizard would be over-authoring under the current evidence.
-
----
-
-## 8. Activity Restart
-
-Representative evidence:
-
-```text
-Editor/ActivityRestart/ActivityRestartTriggerEditor.cs
-```
-
-Observed:
-
-```text
-Product Header
-Intent Summary
-Activity Target
-Reset Selection
-Request Metadata
-specific Configuration Status
-Play Mode Runtime Binding
-Runtime Request Evidence
-explicit runtime request
-Advanced / Debug raw results
-```
-
-Classification:
-
-```text
-Lifecycle: A
-Product surface: COMPLIANT
-```
+Direct authoring is sufficient.
 
 No additional authoring layer is justified.
 
----
+### Reset
 
-## 9. Reset
+The inspected primary surface is compliant.
 
-Representative evidence:
+The broader Reset family may receive future technical hardening only for real
+runtime/editor invariants.
 
-```text
-Editor/Reset/ObjectResetGroupTriggerEditor.cs
-```
+No generic Reset Composer is justified.
 
-Observed:
+### Activity and Route
 
-```text
-Product Header
-Intent Summary
-stable Group ID
-explicit Generate ID suggestion
-Reset Selection
-Request Metadata
-specific Configuration Status
-Play Mode Runtime Binding
-Runtime Request Evidence
-explicit Group Reset request
-Advanced / Debug
-```
+Current authored assets, profiles and request triggers are semantically compliant.
 
-The ID suggestion uses the shared safe suggestion path.
+Identical header/layout grammar is not required.
 
-Classification of the inspected primary surface:
+### Activity Readiness
 
-```text
-Lifecycle: A
-Product surface: COMPLIANT
-```
+Direct authoring is sufficient.
 
-The broader Reset editor family is substantial. ADR-010C should choose only
-applicable risks for regression coverage rather than create a generic Reset
-Composer.
+No Recipe/Composer/Apply flow is required by ADR-010.
 
----
+### Game Application / Project Settings
 
-## 10. Activity and Route
+The official Project Settings path is a legitimate Class B/settings product
+surface.
 
-Current package contains large authoring families for:
+Deterministic asset creation is valid convenience tooling because it does not
+invent gameplay intent.
 
-```text
-ActivityAsset
-ActivityContentProfile
-RouteAsset
-RouteContentProfile
-RouteContentBinding
-Activity/Route reset triggers
-Activity/Route request triggers
-validators and scene-reference utilities
-```
+### Camera Rig
 
-Representative request surfaces:
+Camera is a valid Class C materialized-composition reference.
 
-```text
-Editor/GameFlow/ActivityRequestTriggerEditor.cs
-Editor/GameFlow/RouteRequestTriggerEditor.cs
-```
+The previous 010B recommendation that ADR-010C must certify Camera Editor behavior
+is retired.
 
-Both provide:
+Future Camera technical QA may still be valid if independently required by
+Camera's own materialization contract.
 
-```text
-authored target
-request reason
-safe suggested reason
-Validate
-specific validation result
-Advanced / Debug
-Play Mode Runtime Binding
-Runtime Request Evidence
-explicit supported runtime commands
-```
+That work belongs to Camera, not ADR-010 UX certification.
 
-They do not currently use the exact same `ProductHeader + IntentSummary` header
-shape as Player/Pause/Restart.
+Camera redesign remains separate/deferred.
 
-Under accepted ADR-010 this is **not by itself non-compliance** because:
-
-```text
-consistency is semantic, not identical visual structure
-```
-
-Their normal fields are authored product intent, not internal technical details.
-
-Classification:
-
-```text
-Activity authoring: COMPLIANT
-Route authoring: COMPLIANT
-```
-
-Disposition:
-
-Optional presentation normalization may be done during future maintenance, but it
-is not a product blocker and should not outrank missing QA evidence or an actual
-consumer problem.
-
----
-
-## 11. Activity Readiness / Loading contribution
-
-Representative evidence:
-
-```text
-Editor/Authoring/ActivityReadinessParticipantEditor.cs
-```
-
-The Inspector exposes:
-
-```text
-Participant Id
-Requiredness
-Order
-Preparation callbacks
-explicit configuration errors
-Advanced / Debug read-only:
-  State
-  Occurrence
-  Last Reason
-```
-
-Tooltips explicitly state that object names and hierarchy paths are not fallback
-identity.
-
-Classification:
-
-```text
-Lifecycle: A
-Product surface: COMPLIANT
-```
-
-This is a direct authoring component. No Recipe, Composer or Apply/Rebuild is
-needed to satisfy ADR-010.
-
-The broader standalone Loading/Transition authoring lifecycle was not fully
-resolved by this audit and remains a targeted rebaseline item before any new
-product tooling is proposed.
-
----
-
-## 12. Game Application / Project Settings
-
-Evidence:
-
-```text
-Editor/Settings/ImmersiveFrameworkSettingsProvider.cs
-```
-
-Official path:
-
-```text
-Project > Immersive Framework
-```
-
-Observed:
-
-```text
-Editor Play Mode configuration
-Active Game Application
-project status
-Logging configuration
-Create/Open/Replace asset actions
-Validate Configuration
-Advanced / Diagnostics
-Model Readiness
-configuration file locations
-explicit ownership explanation
-```
-
-The create actions are legitimate convenience actions because they create
-deterministic framework configuration assets. They do not invent gameplay state.
-
-Classification:
-
-```text
-Lifecycle: B / Project Settings
-Product surface: COMPLIANT
-```
-
-No additional Wizard is justified.
-
----
-
-## 13. Camera Rig Authoring
-
-Evidence:
-
-```text
-Editor/CameraAuthoring/CameraRigComposerEditor.cs
-Editor/CameraAuthoring/CameraRigComposerApplyRebuildResult.cs
-```
-
-Camera explicitly separates:
-
-```text
-Camera Behavior
-        ↓
-Materialization
-        ↓
-Apply / Rebuild Rig
-        ↓
-Validation
-        ↓
-Advanced / Diagnostics
-```
-
-The Inspector states that the Composer is authority only for one concrete local
-Camera rig and explicitly does not create:
-
-```text
-Unity Camera
-Cinemachine Brain
-Audio Listener
-persistent Camera Output
-```
-
-Materialization result evidence includes:
-
-```text
-Succeeded
-Status
-BlockingIssue
-TargetResolutionSummary
-MaterializationSummary
-CreatedCount
-RepairedCount
-AlreadyValidCount
-SkippedCount
-BlockedCount
-```
-
-Classification:
-
-```text
-Lifecycle: C — Materialized Composition
-Product surface: COMPLIANT
-Role: CURRENT CLASS C REFERENCE
-```
-
-This is the correct reference for systems that truly require technical
-materialization.
-
-It is **not** a template that every framework feature must imitate.
-
-### Open evidence gap
-
-The current QA repository search did not locate a dedicated regression identified
-by `CameraRigComposer` / `Apply Rebuild`.
-
-Therefore the product surface can be retained as the reference, while ADR-010C
-should explicitly prove its high-risk Editor contracts:
-
-```text
-idempotent Apply/Rebuild
-Undo/Redo
-Prefab Stage
-framework-owned content preservation
-user-owned content preservation
-repeated Apply convergence
-diagnostic result
-```
-
-This is a QA gap, not a reason to add more Camera tooling.
-
----
-
-## 14. Unity Input Gate
-
-Evidence:
-
-```text
-Editor/UnityInput/UnityPlayerInputGateAdapterEditor.cs
-```
-
-Observed current capabilities include:
-
-```text
-target PlayerInput / action-map configuration
-Gate Policy
-authoring status
-Runtime Binding status
-Advanced / Debug
-physical application evidence
-runtime diagnostics
-explicit technical runtime commands
-```
-
-The Inspector does not use the exact shared `FrameworkAuthoringInspectorGui`
-presentation grammar used by Player/Pause/Restart.
-
-The preliminary audit treated that difference as `PARTIAL`.
-
-After applying the accepted ADR-010, that conclusion is too strong.
-
-ADR-010 explicitly says:
-
-```text
-consistency is semantic rather than identical visual structure
-```
-
-and compliance is not measured by tooling quantity or helper usage.
+### Unity Input Gate
 
 Current classification:
 
@@ -708,95 +276,39 @@ Product surface: COMPLIANT SEMANTICALLY
 Presentation normalization: OPTIONAL
 ```
 
-### Actual open gap
+No Input Gate UX smoke is required.
 
-No dedicated current QA evidence was found in QAFramework for:
+If a deterministic Editor/runtime contract later proves risky, add technical QA
+for that contract only.
 
-```text
-UnityPlayerInputGateAdapter
-Input Gate
-```
-
-Therefore the meaningful next question is not:
-
-```text
-"Should we build a new Input Gate product surface?"
-```
-
-It is:
-
-```text
-"Which existing Input Gate Editor risks need canonical regression coverage?"
-```
-
-Possible presentation normalization can be bundled only if a concrete UX problem
-is demonstrated. It is not currently a blocker.
-
----
-
-## 15. Persistent Content
-
-Evidence:
-
-```text
-Editor/SceneTemplates/PersistentContent/
-  ImmersivePersistentContent.scenetemplate
-  PersistentContentTemplateSource.unity
-  PersistentContentSceneTemplatePipeline.cs
-```
-
-The official template identifies itself as:
-
-```text
-Immersive Persistent Content
-Application-persistent Camera, Transition and Loading composition
-for the Immersive Framework.
-```
-
-The pipeline explicitly states:
-
-```text
-source scene owns the composition
-pipeline performs non-mutating verification
-pipeline never creates, repairs, saves or assigns consumer assets
-```
-
-After instantiation it validates the instantiated scene and logs the report.
-
-This resolves the earlier `REBASELINE REQUIRED` finding.
+### Persistent Content
 
 Current lifecycle:
 
 ```text
-Class B — reusable Template
+Physical Source Scene
+        ↓
+Scene Template
+        ↓
+consumer-created .unity scene
+        ↓
+non-mutating package verification
 ```
 
-Current classification:
+Classification:
 
 ```text
+Class B — reusable Template
 Product surface: COMPLIANT AT PACKAGE LEVEL
-Consumer usability evidence: DEFERRED
 ```
 
-Important consequence:
+The earlier `REBASELINE REQUIRED` state is resolved.
 
-Persistent Content does **not** need a Composer/Apply flow merely because a
-historical document once described one.
+Persistent Content does not need a Composer/Apply flow.
 
-The current scene-template lifecycle is a legitimate ADR-010 product model.
+## 7. Validation contract correction
 
-FIRSTGAME can later prove whether the template is discoverable and understandable
-in real usage, but that product proof is separate from the package-surface
-classification.
-
----
-
-## 16. Validation contract correction
-
-The earlier preliminary audit overstated the current typed validation issue
-shape.
-
-Correct current contract:
+Current validation contract is intentionally small:
 
 ```text
 FrameworkAuthoringValidationIssue
@@ -806,29 +318,13 @@ FrameworkAuthoringValidationIssue
   IsOptionalSkip
 ```
 
-Current GUI supports selecting/pinging Context and logging issue/report evidence.
+Actionable diagnostics are a semantic requirement, not a requirement for a
+larger issue DTO.
 
-Therefore:
+Do not add fields unless a concrete product case proves the current contract
+insufficient.
 
-```text
-typed corrective Hint field      NOT CURRENTLY PRESENT
-typed Category field             NOT CURRENTLY PRESENT
-typed Asset field                NOT CURRENTLY PRESENT
-typed Context Label field        NOT CURRENTLY PRESENT
-```
-
-This is not automatically a defect.
-
-ADR-010 requires actionable diagnostics, not a particular data structure.
-
-If existing messages repeatedly become ambiguous or remediation cannot be
-represented safely, a future small contract cut may be justified.
-
-Do not add those fields preemptively.
-
----
-
-## 17. What this audit did NOT find
+## 8. What this audit did NOT find
 
 No current evidence justifies:
 
@@ -843,205 +339,122 @@ automatic gameplay remediation
 generic Apply/Rebuild for direct components
 new runtime authority
 second authoring-validation system
+synthetic Inspector UX certification
 ```
 
-No current feature should be marked incomplete simply because one of these layers
-does not exist.
+No feature is incomplete merely because one of those layers does not exist.
 
----
+## 9. Corrected remaining items
 
-## 18. Current concrete gaps
+### System-specific technical hardening
 
-### Gap A — Canonical Editor QA evidence
-
-Priority: **HIGH**
-
-The product package is ahead of the current canonical Editor QA story.
-
-Highest-value lifecycle risks to certify:
-
-```text
-Class C / Camera:
-  Apply/Rebuild idempotency
-  non-destructive rebuild
-  Undo/Redo
-  Prefab Stage
-  ownership preservation
-  repeated Apply convergence
-
-Class A direct triggers/adapters:
-  Play Mode-only commands
-  read-only runtime evidence
-  multi-object behavior where supported
-  explicit rejection where unsupported
-
-Project Settings / asset creation:
-  deterministic creation
-  no duplicate/conflicting settings authority
-```
-
-This becomes the primary ADR-010C program.
-
----
-
-### Gap B — Loading / Transition standalone product lifecycle
-
-Priority: **MEDIUM**
-
-Persistent Content proves one application-persistent composition path, but the
-audit did not resolve whether Loading/Transition has another recurrent standalone
-consumer authoring lifecycle that needs independent classification.
-
-Required next action:
-
-```text
-map existing consumer-facing Loading/Transition contracts
-identify whether they are:
-  already owned by Activity/Route/Persistent composition
-  simple direct authoring
-  internal/support only
-```
-
-Do this before proposing tooling.
-
----
-
-### Gap C — Presentation normalization
-
-Priority: **LOW**
+Technical QA remains legitimate when a real invariant exists.
 
 Examples:
 
 ```text
-Unity Input Gate
-Activity Request Trigger
-Route Request Trigger
-some older Custom Editors
+materialization idempotency
+ownership preservation
+Undo/Prefab safety for a writer
+deterministic asset creation
+runtime command gating
+known negative runtime cases
 ```
 
-These surfaces do not all use identical shared-header vocabulary.
+These tests belong to the corresponding system.
 
-Current evidence does not show that this prevents use or exposes internal
-authority.
+They are not an ADR-010C program.
 
-Treat as normal maintenance, not ADR-010 product failure.
+### Loading / Transition lifecycle
 
----
+The audit did not fully classify a standalone Loading/Transition authoring
+lifecycle outside Activity/Route/Persistent composition.
 
-## 19. First implementation cut disposition
+Do not create tooling from that uncertainty.
 
-The preliminary audit suggested:
+Map it only when a real product question or consumer workflow requires it.
 
-```text
-Unity Input Gate Product-Surface Normalization
-```
+### Presentation normalization
 
-as the first code cut.
+Differences in section headers/layout may be normalized during maintenance.
 
-The accepted ADR-010 changes that conclusion.
+They are low priority unless a real user problem is demonstrated.
 
-Because semantic compliance does not require identical helper usage, ADR-010B
-does **not** establish enough evidence to justify an Input Gate code modification
-before QA.
-
-Current disposition:
-
-```text
-NO PRODUCT TOOLING IMPLEMENTATION REQUIRED FROM ADR-010B
-```
-
-The next justified cut is evidence-focused:
+## 10. IF-ADR-010C disposition
 
 ```text
 IF-ADR-010C — Canonical Editor Product-Surface QA
+  CANCELLED / NOT REQUIRED
 ```
 
-This is deliberately not a new smoke-menu architecture.
-
-It should define one canonical QA pattern and add only the smallest regressions
-needed to prove the applicable Editor invariants.
-
----
-
-## 20. Recommended ADR-010C order
+Reason:
 
 ```text
-010C-1
-Camera Rig Apply/Rebuild Editor Contract
-  idempotency
-  ownership preservation
-  Undo
-  prefab safety
-
-010C-2
-Direct Runtime Command Inspector Contract
-  explicit Play Mode gating
-  runtime evidence read-only
-  multi-object behavior explicit
-
-010C-3
-Settings / deterministic asset creation
-  only if current evidence shows a meaningful regression risk
+synthetic Inspector rendering is not useful UX certification
+manual package review already establishes product-surface conformity
+FIRSTGAME is the real consumer UX observation surface
+technical Editor behavior belongs to system-specific QA when justified
 ```
 
-Input Gate can be one representative Class A surface in 010C-2.
-
-Do not build a QA matrix for every Inspector just to increase test count.
-
----
-
-## 21. FIRSTGAME
-
-FIRSTGAME remains deferred.
-
-This audit does not claim current real-consumer usability evidence for the
-redesigned product.
-
-When FIRSTGAME is redesigned, it should consume these already accepted rules:
+Do not revive 010C as:
 
 ```text
-manual explicit authoring is valid
-surface must be understandable
-invalid configuration must be explicit
-technical evidence belongs in Advanced/Debug
-automation must be justified by real friction
+ProductHeader smoke
+IntentSummary smoke
+Input Gate UX smoke
+generic OnInspectorGUI smoke
+Inspector screenshot-equivalence test
 ```
 
-Observed real friction may later justify the smallest additional package
-assistance.
+## 11. FIRSTGAME
 
----
+FIRSTGAME is separate Consumer UX Evidence.
 
-## 22. ADR-010B acceptance
+It may reveal:
 
-ADR-010B is closed when:
+```text
+unclear fields
+unclear asset creation order
+confusing ownership
+intent/debug mixing
+repetitive manual setup
+insufficient diagnostics
+```
+
+A confirmed friction may justify the smallest package improvement.
+
+FIRSTGAME is not required for technical/package closure and does not own official
+framework contracts.
+
+## 12. ADR-010B acceptance
+
+ADR-010B is closed because:
 
 ```text
 current package surfaces are mapped
 historical missing-tooling assumptions are rejected where stale
 conditional tooling is not treated as mandatory
-Camera is established as Class C reference
+Camera is identified as a Class C reference, not a universal template
 Persistent Content lifecycle is rebaselined
 validation contract is described accurately
-current concrete gaps are separated from cosmetic normalization
-next QA cut is identified
+semantic compliance is distinguished from cosmetic normalization
+synthetic UX QA is explicitly rejected as a closure requirement
 ```
 
 Result:
 
 ```text
-ADR-010 normative standard             ACCEPTED
-ADR-010B package audit                 CLOSED
-general missing tooling finding        NOT CONFIRMED
-new automation required                NO
-FIRSTGAME required for this closure    NO
-next cut                               IF-ADR-010C
+ADR-010 normative standard          ACCEPTED
+ADR-010A product-surface standard   CLOSED
+ADR-010B package audit              CLOSED
+ADR-010C                            CANCELLED / NOT REQUIRED
+general missing tooling finding     NOT CONFIRMED
+new automation required             NO
+FIRSTGAME required for closure      NO
 ```
 
----
-
-## 23. Suggested commit message
+## 13. Suggested commit message
 
 ```text
-Audit package product surfaces against ADR-010
+Rebaseline ADR product-surface documentation
 ```
