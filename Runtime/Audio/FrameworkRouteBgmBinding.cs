@@ -21,6 +21,8 @@ namespace Immersive.Framework.Audio
         [SerializeField] private FrameworkActivityBgmBinding startupActivityBgmBinding;
         private FrameworkLogger logger;
 
+        public FrameworkBgmOperationResult LastOperationResult { get; private set; }
+
         public AudioBgmCueAsset RouteBgm => routeBgm;
 
         public FrameworkBgmDirector Director => director;
@@ -40,7 +42,7 @@ namespace Immersive.Framework.Audio
                 : null;
 
             bool hasStartupActivity = startupActivity != null;
-            director.SetRouteBgm(routeBgm, hasStartupActivity);
+            LastOperationResult = director.SetRouteBgm(routeBgm, hasStartupActivity);
 
             if (!hasStartupActivity)
             {
@@ -58,7 +60,7 @@ namespace Immersive.Framework.Audio
                 LogFields.Of(
                     LogFields.Field("route", context.RouteName),
                     LogFields.Field("startupActivity", FormatActivity(startupActivity))));
-            director.Refresh();
+            LastOperationResult = director.Refresh();
         }
 
         protected override void OnRouteContentExited(RouteContentLifecycleContext context)
@@ -69,7 +71,7 @@ namespace Immersive.Framework.Audio
                 return;
             }
 
-            director.ClearRouteBgm(routeBgm);
+            LastOperationResult = director.ClearRouteBgm(routeBgm);
         }
 
         private static string FormatActivity(ActivityAsset activity)

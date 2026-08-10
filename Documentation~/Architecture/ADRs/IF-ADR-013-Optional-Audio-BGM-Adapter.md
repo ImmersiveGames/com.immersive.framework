@@ -1,10 +1,10 @@
 # IF-ADR-013 — Optional Audio BGM Adapter
 
-Status: **Accepted / Experimental implementation**  
+Status: **Accepted / Experimental — technical boundary certified**  
 Last updated: 2026-08-10  
-Package implementation: **Partial — typed execution evidence gap confirmed**  
-Technical QA: **Partial — negative boundary certification required**  
-FIRSTGAME: **Not Proven**  
+Package implementation: **Implemented — IF-ADR-013A complete for the accepted technical boundary**  
+Technical QA: **Certified — Audio QA 26/26, including ADR-013A 11/11**  
+FIRSTGAME: **Not Proven — real consumer integration remains the promotion gate**  
 Related decisions: IF-ADR-001, IF-ADR-002, IF-ADR-006, IF-ADR-010, IF-ADR-014  
 External provider currently audited: `com.immersive.audio`
 
@@ -82,10 +82,29 @@ The concrete provider may expose its own result type. The framework bridge
 translates that provider-specific result into framework-owned evidence rather
 than leaking provider contracts into Framework Core or consumers.
 
+## Identity authority compatibility — IF-ADR-014
+
+This adapter does not introduce a parallel identity model for Route or Activity.
+Authored Route/Activity authority remains the exact typed `RouteAsset` /
+`ActivityAsset` definition governed by IF-ADR-014; `RouteId` / `ActivityId` remain
+stable boundary projections only.
+
+Audio cue identity, desired BGM state, confirmed BGM state and retained BGM
+evidence are audio-integration concerns. They must not become Route/Activity
+definition equality, lifecycle ownership, release authority or occurrence
+identity.
+
+The certified IF-ADR-013A QA evidence is conformant with this boundary: Route /
+Activity precedence and Route-exit retained-state cleanup execute through the
+existing scoped Route/Activity lifecycle, while provider-confirmed BGM state
+remains execution evidence owned by the optional audio bridge.
+
 ## Second implementation audit — 2026-08-10
 
 A focused audit of the framework package and `com.immersive.audio` confirmed that
-the overall architecture is viable and that a narrow technical gap remains.
+the overall architecture is viable and identified the narrow technical gaps later
+closed by IF-ADR-013A. The gap descriptions below are retained as implementation
+rationale; their current disposition is recorded in the closure section.
 
 ### Already correct
 
@@ -379,19 +398,120 @@ used by later restoration decisions.
 feat(audio): add typed BGM execution evidence and confirmed-state semantics
 ```
 
-## Experimental promotion
 
-ADR-013 remains Experimental after the audit because the accepted runtime
-boundary still requires implementation and technical certification of the
-confirmed-evidence semantics above.
+## IF-ADR-013A technical closure — 2026-08-10
 
-Promotion from Experimental requires, in order:
+IF-ADR-013A is complete for the accepted technical boundary.
+
+Package behavior now preserves provider-confirmed execution semantics:
 
 ```text
-1. IF-ADR-013A implemented in the package
-2. focused QAFramework certification of the supported execution matrix
-3. real-game integration in FIRSTGAME proving the supported optional boundary
+Applied
+  provider confirmed apply
+
+Released
+  provider confirmed release
+
+Rejected
+  provider rejected the operation; previous confirmed state is preserved
+
+NoChange
+  requested effective state already matches confirmed state; no unnecessary mutation
+
+OptionalAuthorityUnavailable
+  optional authority is absent; core lifecycle remains valid and confirmed state is not corrupted
 ```
+
+QAFramework was consolidated into one canonical Audio QA surface:
+
+```text
+Setup
+  Immersive Framework/QA/Setup/Audio/Configure Audio QA
+
+Hub
+  Audio QA
+
+Primary scene
+  QA_Audio.unity
+
+Auxiliary fixture
+  QA_AudioRouteB.unity
+
+Execution
+  Run All Audio QA
+```
+
+Executed Unity Play Mode verdict:
+
+```text
+Core Audio       7/7 PASS
+Framework BGM    8/8 PASS
+ADR-013A        11/11 PASS
+
+TOTAL           26/26 PASS
+FAILED           0
+```
+
+The ADR-013A regression evidence includes:
+
+- provider-confirmed apply success;
+- apply rejection preserving previous confirmed state;
+- retry of the same desired Activity cue after rejection;
+- apply `NoChange` after confirmation;
+- rejected Activity cue excluded from retained state;
+- confirmed Activity cue retained correctly;
+- provider-confirmed release success;
+- release rejection preserving previous confirmed state;
+- retry of the same release after rejection;
+- release `NoChange` after confirmed silence;
+- optional authority unavailable with explicit non-corrupting evidence;
+- Route/Activity precedence and Route-scoped retained-state cleanup.
+
+The canonical setup was also executed twice consecutively with the same successful
+result. Generated clip repair ran once per setup, the primary/auxiliary scene
+shape remained stable and the Framework BGM fixture remained `Applied`. This is
+accepted evidence of setup idempotency for the exercised fixture.
+
+An integrated QA smoke additionally proved the real Framework route transition:
+
+```text
+QA Hub
+  -> QA Framework BGM Route / QA_Audio
+  -> startup Activity Active + Ready
+  -> QA Framework BGM Route B / QA_AudioRouteB
+  -> transition/loading succeeded
+  -> blockingIssues=0
+```
+
+The synthetic Listener negative case restores the temporary duplicate-listener
+condition before subsequent tests, preventing invalid test state from leaking
+through the Audio suite.
+
+Technical disposition:
+
+```text
+IF-ADR-013A
+  Package: Implemented
+  QA: Certified
+  Status: COMPLETE
+```
+
+No additional BGM technical QA, provider injection seam or audio authority is
+required by the current accepted boundary. Further technical work requires a new
+concrete defect or contract gap.
+
+## Experimental promotion
+
+The technical promotion gates are complete:
+
+```text
+1. IF-ADR-013A implemented in the package                         DONE
+2. focused QAFramework certification of the execution matrix     DONE
+3. real-game integration in FIRSTGAME                            PENDING
+```
+
+ADR-013 therefore remains Experimental only because the supported optional BGM
+boundary has not yet been proven in a real consumer composition.
 
 FIRSTGAME is evidence of real integration and usability; it must not be used to
 invent permanent framework contracts that belong in the package.
@@ -404,11 +524,11 @@ not aesthetic Inspector maturity.
 
 ```text
 Architecture: Accepted
-Package: Partial — IF-ADR-013A required
-QA: Partial — negative execution certification required
+Package: Implemented — accepted technical boundary
+QA: Certified — Audio QA 26/26; ADR-013A 11/11
 FIRSTGAME: Not Proven
-Status: Accepted / Experimental implementation
-Next: implement IF-ADR-013A, certify technically, then prove real-game integration
+Status: Accepted / Experimental — technical boundary certified
+Next: prove real-game integration and consumer usability in FIRSTGAME
 ```
 
 ## Normative summary
@@ -422,5 +542,5 @@ Commit confirmed state only after successful provider operations.
 Preserve confirmed state after rejected apply/release so retry remains possible.
 Restore only state that was actually confirmed.
 Do not add a global audio authority or new authoring architecture to close this gap.
-Close the technical boundary in the package and QA before using FIRSTGAME as real integration proof.
+The technical boundary is closed in the package and QA; use FIRSTGAME next as real integration and consumer proof.
 ```

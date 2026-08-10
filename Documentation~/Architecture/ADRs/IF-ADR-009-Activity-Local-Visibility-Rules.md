@@ -5,7 +5,7 @@ Last updated: 2026-08-10
 Package implementation: **Implemented**  
 Technical QA: **Certified**  
 FIRSTGAME: **Not required for current accepted boundary**  
-Related decisions: IF-ADR-006, IF-ADR-007, IF-ADR-010, IF-ADR-014  
+Related decisions: IF-ADR-001, IF-ADR-002, IF-ADR-006, IF-ADR-007, IF-ADR-010, IF-ADR-014  
 QA evidence: `IMMERSIVE-FRAMEWORK-ADR-009-QA-CERTIFICATION-2026-08-10.md`
 
 ## Context
@@ -93,6 +93,39 @@ rejected.
 
 The package now treats this collision as invalid. Stable ID remains authored
 identity and does not become runtime occurrence or ownership authority.
+
+## Cross-ADR relationship
+
+The accepted boundary is intentionally split across existing authorities rather
+than creating a visibility-specific manager or authoring system.
+
+```text
+IF-ADR-001
+  owns scoped runtime/lifecycle authority; visibility cannot become global scene authority
+
+IF-ADR-002
+  permits the accepted direct component authoring shape and rejects unnecessary
+  Recipe/Composer/Wizard/Apply-Rebuild layers
+
+IF-ADR-006
+  owns transition/persistence/diagnostic discipline; required visibility failure
+  rejects before commit and remains diagnosable
+
+IF-ADR-007
+  owns Activity entry/readiness/reveal gating; local visibility can consume lifecycle
+  facts but does not replace readiness authority
+
+IF-ADR-010
+  owns the minimum product-surface contract used by the visibility adapter Inspector
+
+IF-ADR-014
+  owns authored definition/stable identity authority; the ADR-009 collision fix
+  explicitly preserves exact-definition and occurrence-scoped ownership
+```
+
+ADR-003, ADR-011 and ADR-012 are adjacent through Activity/readiness composition,
+but they do not own the current ADR-009 visibility contract and are therefore not
+listed as direct related decisions.
 
 ## Product surface
 

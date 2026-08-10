@@ -1,19 +1,19 @@
 # IF-TRACK — Immersive Framework
 
 Status: **Active**  
-Last updated: 2026-08-09  
+Last updated: 2026-08-10  
 Package version: `1.0.0-preview.17`
 
 ## Current source baselines
 
 ```text
 com.immersive.framework
-  43b96a4b100b8273da1190520536007ba82dc081
-  ADR-010B
+  60e40cf9ac245d4aa89487efb82a211c3572a3f4
+  Adr13A-Audio
 
 QAFramework
-  b6a45728285ddb2ce08269fc1f88ae3f1a4235e4
-  P0 — Serialized Player Migration Integrity
+  f4ce36335878113e4b64e79d337c0645f6499707
+  Fix
 
 FIRSTGAME / planet-devourer
   796618243c3ca76f70d582f38475320c6461420b
@@ -79,10 +79,10 @@ Current evidence-based planning estimate:
 
 | ADR | Arch. | Package | Surface | QA | FIRSTGAME | Estimate | Primary limiter |
 |---|---:|---:|---:|---:|---:|---:|---|
-| IF-ADR-001 | 20/20 | 28/30 | 17/20 | 15/15 | 13/15 | **93%** | exceptional lifecycle cleanup / future Session-Persistent contract |
+| IF-ADR-001 | 20/20 | 30/30 | 20/20 | 15/15 | 15/15 | **100%** | closed for current accepted boundary; deferred extensions are separate contracts |
 | IF-ADR-002 | 20/20 | 23/30 | 16/20 | 10/15 | 10/15 | **79%** | portfolio-wide consistency of official authoring surfaces |
 | IF-ADR-003 | 20/20 | 29/30 | 18/20 | 15/15 | 5/15 | **87%** | current-model Player integration in FIRSTGAME |
-| IF-ADR-004 | 20/20 | 26/30 | 18/20 | 10/15 | 8/15 | **82%** | Camera negative QA + broader real integration |
+| IF-ADR-004 | 20/20 | 26/30 | 18/20 | 10/15 | 8/15 | **82%** | IF-ADR-004B negative integrity certification + broader FIRSTGAME Camera proof |
 | IF-ADR-005 | 20/20 | 27/30 | 18/20 | 11/15 | 9/15 | **85%** | focused Pause/Input/Reset negative contracts |
 | IF-ADR-006 | 20/20 | 29/30 | 18/20 | 15/15 | 13/15 | **95%** | exceptional post-commit paths only |
 | IF-ADR-007 | 20/20 | 29/30 | 18/20 | 15/15 | 13/15 | **95%** | focused uncovered readiness variants |
@@ -104,7 +104,7 @@ them.
 Portfolio planning view:
 
 ```text
-Current mean estimate across ADRs: 86.9%
+Current mean estimate across ADRs: 87.3%
 
 Lowest current estimates:
   IF-ADR-013  57%  Optional BGM / Experimental
@@ -151,6 +151,39 @@ FIRSTGAME real-product integration
 FIRSTGAME is therefore part of functional proof when applicable. Ease of use,
 Inspector polish and other UX observations discovered during the same work are
 qualitative and do not independently open/close the technical feature.
+
+## ADR-001 reconciliation
+
+```text
+IF-ADR-001 — Core Lifecycle and Runtime Authority
+
+Normative status
+  ACCEPTED
+
+Current accepted boundary
+  CLOSED / RECONCILED
+
+Package implementation
+  IMPLEMENTED
+
+Technical QA
+  CERTIFIED for the current transaction/readiness boundary
+
+FIRSTGAME
+  PROVEN for core Route/Activity lifecycle flows
+
+Current-scope blockers
+  NONE IDENTIFIED
+
+Deferred — not blockers
+  Session-Persistent Player
+  exceptional post-commit compensation
+```
+
+The ADR-001 score no longer reserves missing points for deferred contracts. A
+future Session-Persistent Player contract or exceptional post-commit compensation
+must be opened as a separate approved cut and must not be used to reinterpret the
+current lifecycle authority as incomplete.
 
 ## Canonical Player model
 
@@ -246,7 +279,7 @@ improvements, but are not a separate completion score.
 
 | Track | Package | QA | FIRSTGAME integration | Current disposition |
 |---|---|---|---|---|
-| Runtime authority / lifecycle | Implemented | Certified for current transaction/readiness boundary | Proven for core Route/Activity flows | preserve scoped typed authority; future Session-Persistent work is separate |
+| Runtime authority / lifecycle | Implemented | Certified for current transaction/readiness boundary | Proven for core Route/Activity flows | **closed for current accepted ADR-001 boundary**; Session-Persistent Player and exceptional post-commit compensation remain separate future contracts |
 | Player serialized migration integrity | Implemented | **Certified** | Not applicable to technical P0 | closed; retired value 30 must never be reused |
 | Player Session | Implemented | **Certified** | **Not Proven on current model** | rebuild real consumer integration using accepted ADR-016 model |
 | Player Scene-Provided | Implemented | **Certified** | **Not Proven on current model** | FIRSTGAME real integration required |
@@ -257,7 +290,7 @@ improvements, but are not a separate completion score.
 | Activity readiness + reveal | Implemented | Certified for core supported policies | Proven in existing real readiness/loading scenario | preserve readiness authority; add QA only for concrete gaps |
 | Participant-aware Loading progress | Implemented | Certified for core supported boundary | Proven in existing readiness/loading scenario | preserve monotonic/terminal semantics |
 | Loading / Transition | Implemented | Certified for current transaction/readiness boundary | Proven for core flows | exceptional paths only when concrete evidence requires them |
-| Camera — current single output | Implemented | Partial/current regressions | Partial real integration | focused technical hardening only for demonstrated gaps |
+| Camera — current single output | Implemented; ADR-004 normatively reconciled by IF-ADR-004A | Partial/current regressions; IF-ADR-004B pending | Partial real integration | execute 004B before package changes; open 004C only if abnormal owner-lifetime orphan is proven |
 | Pause / Input / Gate | Implemented | Partial/current regressions | Partial real integration | harden concrete negatives; no generic gate manager |
 | Reset / Activity Restart | Implemented | Partial/current regressions | Partial real integration | harden concrete lifecycle negatives |
 | Persistent Content Scene Template | Implemented | Validation exists; broader QA partial | Partial real integration | Scene Template is canonical product model; no Composer requirement |
@@ -283,9 +316,10 @@ QA backlog. There is no generic UX smoke program.
 
 ```text
 1. keep documentation aligned with current contracts
-2. focused non-Player hardening only for concrete technical gaps
-3. rebuild FIRSTGAME Player integration against the accepted current model
-4. record UX friction separately and improve only where real use justifies it
+2. Camera — execute IF-ADR-004B negative integrity certification; open IF-ADR-004C only if QA proves an abnormal owner-lifetime package defect
+3. focused non-Player hardening only for concrete technical gaps proven by QA
+4. rebuild FIRSTGAME Player integration against the accepted current model
+5. record UX friction separately and improve only where real use justifies it
 ```
 
 Do not reopen removed Capacity/provisioning-Profile semantics or add tooling only
@@ -295,6 +329,7 @@ to improve a documentation score.
 
 ```text
 Session-Persistent Player
+exceptional post-commit compensation
 Player Leave / disconnect / reconnect
 heterogeneous per-Slot Host Provisioning
 split-screen / multiple Camera outputs

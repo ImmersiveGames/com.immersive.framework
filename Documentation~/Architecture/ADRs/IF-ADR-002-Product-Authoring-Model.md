@@ -1,11 +1,11 @@
 # IF-ADR-002 — Product Authoring Model
 
 Status: **Accepted**  
-Last updated: 2026-08-09  
-Implementation classification: **Mature package model; no cross-cutting authoring implementation gap currently identified**  
+Last updated: 2026-08-10  
+Implementation classification: **Mature cross-cutting authoring model; current feature evidence confirms multiple valid authoring shapes with no generic tooling gap**  
 Current package assessment: **29/30** — local planning assessment from the 2026-08-09 package audit; not release certification  
-Related decisions: IF-ADR-008, IF-ADR-010, IF-ADR-012, IF-ADR-015, IF-ADR-016  
-Current package baseline: `43b96a4b100b8273da1190520536007ba82dc081` (`ADR-010B`)
+Related decisions: IF-ADR-001, IF-ADR-003–IF-ADR-016  
+Current evidence source: `IF-TRACK-Framework.md` plus feature-specific QA/closure records; this normative ADR intentionally does not pin a mutable package SHA.
 
 > This revision supersedes the older interpretation that recurrent framework
 > features are expected to acquire Recipe/Profile + Composer + Apply/Rebuild +
@@ -244,9 +244,71 @@ must imitate.
 Persistent Content proves that a Scene Template with non-mutating verification is
 also a valid product model.
 
+Activity Local Visibility now provides a closed example of focused direct
+authoring: one explicit adapter surface, required/optional semantics, actionable
+diagnostics and occurrence-scoped runtime behavior, with no Recipe, Composer,
+Wizard or Apply/Rebuild layer required.
+
+Optional BGM provides another direct-authoring example: Route/Activity authored
+intent is configured directly while provider execution evidence remains a
+technical/runtime concern. The accepted Audio QA certification does not justify
+adding a generic BGM authoring layer.
+
+## Cross-ADR relationship map — 2026-08-10
+
+ADR-002 is a cross-cutting authoring decision. It does not own the runtime
+contract of every feature, but it constrains how those contracts should be
+exposed to consumers.
+
+```text
+IF-ADR-001
+  runtime authority remains scoped; authoring convenience cannot create global authority
+
+IF-ADR-003 / 012 / 015 / 016
+  Player participation, provisioning and session profiles demonstrate direct authoring
+  plus reusable Profile intent where reuse is real
+
+IF-ADR-004
+  Camera demonstrates justified technical materialization rather than a universal pattern
+
+IF-ADR-005
+  Pause / Input / Reset demonstrates small direct trigger/component authoring
+
+IF-ADR-006 / 007 / 011
+  lifecycle, diagnostics and readiness behavior remain runtime contracts; authoring
+  surfaces expose intent without becoming transition/readiness authority
+
+IF-ADR-008
+  Persistent Content demonstrates Template-based reusable composition
+
+IF-ADR-009
+  Activity Local Visibility demonstrates direct component authoring with explicit
+  required/optional semantics and no additional authoring layer
+
+IF-ADR-010
+  owns the minimum Editor/Inspector product-surface contract used to judge every
+  authoring shape selected by ADR-002
+
+IF-ADR-013
+  Optional BGM demonstrates direct Route/Activity intent plus technical execution evidence
+
+IF-ADR-014
+  authored identity remains exact typed-definition authority; authoring convenience
+  cannot replace definition/occurrence ownership with display names or stable IDs alone
+```
+
+These relationships are intentionally not a requirement for reciprocal links in
+every feature ADR. ADR-002 is the governing authoring model; feature ADRs remain
+authoritative for their own runtime behavior.
+
 ## QA and FIRSTGAME
 
 QA proves deterministic technical/editor contracts when a real contract exists.
+
+ADR-002 itself does not require a separate generic QA suite. Objective QA evidence
+belongs to the feature ADR that owns the contract. The tracker therefore treats
+generic Technical QA for ADR-002 as not applicable rather than subtracting points
+for the deliberate absence of synthetic UX tests.
 
 QA does **not** synthetically certify that an Inspector is understandable.
 
@@ -264,8 +326,9 @@ observe repetitive manual work
 observe missing explanation or diagnostics
 ```
 
-FIRSTGAME is not required for technical framework completion and is not part of
-the technical completion score.
+FIRSTGAME is not a generic completion gate for ADR-002 and is not scored as a
+separate cross-cutting requirement. Consumer observations remain valuable
+feature-specific evidence and can justify a later authoring improvement.
 
 A future FIRSTGAME observation may justify the smallest product-surface
 improvement, but absence of that observation does not make a technically correct
@@ -289,7 +352,10 @@ Generic Wizard gap           NO
 Generic Apply/Rebuild gap    NO
 ADR-010 standard             ACCEPTED
 ADR-010 package audit        CLOSED
+ADR-009 direct authoring     CLOSED / QA CERTIFIED
+ADR-013 direct BGM authoring IMPLEMENTED / QA CERTIFIED
 Synthetic UX QA requirement CANCELLED
+Generic FIRSTGAME gate       NOT APPLICABLE
 ```
 
 Local planning assessment from the current package audit:

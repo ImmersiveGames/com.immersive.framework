@@ -22,6 +22,8 @@ namespace Immersive.Framework.Audio
         [SerializeField] private FrameworkBgmDirector director;
         private FrameworkLogger logger;
 
+        public FrameworkBgmOperationResult LastOperationResult { get; private set; }
+
         public ActivityAsset AssignedActivity => assignedActivity;
 
         public AudioBgmCueAsset ActivityBgm => activityBgm;
@@ -73,14 +75,15 @@ namespace Immersive.Framework.Audio
                         LogFields.Field("activityBgm", FormatCue(activityBgm))));
             }
 
+            LastOperationResult = director.SetActivityBgm(activityBgm, policy);
             Debug(
-                "Startup Activity BGM pre-applied from explicit Route binding.",
+                "Startup Activity BGM intent dispatched from explicit Route binding.",
                 LogFields.Of(
                     LogFields.Field("route", routeName),
                     LogFields.Field("activity", FormatActivity(expectedActivity)),
                     LogFields.Field("activityBgm", FormatCue(activityBgm)),
-                    LogFields.Field("policy", policy)));
-            director.SetActivityBgm(activityBgm, policy);
+                    LogFields.Field("policy", policy),
+                    LogFields.Field("operationOutcome", LastOperationResult.Outcome)));
             return true;
         }
 
@@ -92,7 +95,7 @@ namespace Immersive.Framework.Audio
                 return;
             }
 
-            director.SetActivityBgm(activityBgm, policy);
+            LastOperationResult = director.SetActivityBgm(activityBgm, policy);
         }
 
         protected override void OnActivityContentExited(ActivityContentLifecycleContext context)
@@ -106,7 +109,7 @@ namespace Immersive.Framework.Audio
             bool deferRefreshForActivityTransition = context.NextActivity != null
                 && (context.Activity == null || !ReferenceEquals(context.NextActivity, context.Activity));
 
-            director.ClearActivityBgm(activityBgm, deferRefreshForActivityTransition);
+            LastOperationResult = director.ClearActivityBgm(activityBgm, deferRefreshForActivityTransition);
         }
 
         private bool MatchesExpectedActivity(

@@ -90,6 +90,20 @@ Combined with the focused implementation audit, the accepted authority model
 remains occurrence-scoped. Stable authored identity is not used as a substitute
 for runtime occurrence, release or restoration ownership.
 
+## Cross-ADR conformance
+
+The executed evidence also confirms compatibility with the related decisions:
+
+- **IF-ADR-001:** visibility authority remains scoped to the active lifecycle occurrence;
+- **IF-ADR-002:** direct adapter authoring is sufficient for the accepted boundary;
+- **IF-ADR-006:** invalid Required configuration rejects before transition commit and is diagnostic;
+- **IF-ADR-007:** visibility behavior remains downstream of Activity lifecycle/readiness rather than replacing readiness authority;
+- **IF-ADR-010:** no additional authoring layer is required for a valid official surface;
+- **IF-ADR-014:** stable `ActivityId` collision is rejected and does not become occurrence/ownership authority.
+
+These observations do not expand the certified case count; they record which
+normative boundaries the 46 executed cases preserve.
+
 ## Scope note
 
 FIRSTGAME was not used as a technical closure gate for this ADR. Real-game

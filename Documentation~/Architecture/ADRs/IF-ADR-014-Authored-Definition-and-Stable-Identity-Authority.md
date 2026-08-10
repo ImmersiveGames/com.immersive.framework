@@ -1,8 +1,8 @@
 # IF-ADR-014 — Authored Definition and Stable Identity Authority
 
 Status: **Accepted**  
-Last updated: 2026-08-09  
-Related decisions: IF-ADR-001, IF-ADR-003, IF-ADR-006, IF-ADR-010, IF-ADR-015  
+Last updated: 2026-08-10  
+Related decisions: IF-ADR-001, IF-ADR-002, IF-ADR-003, IF-ADR-006, IF-ADR-009, IF-ADR-010, IF-ADR-013, IF-ADR-015  
 Closed execution record: [IF-ID Identity Authority](../Archive/Plans/IF-ID-IDENTITY-AUTHORITY-EXECUTION-PLAN-2026-08-06.md)
 
 > Current implementation, QA and FIRSTGAME integration status is tracked in
@@ -50,6 +50,31 @@ Stable ID is not lifecycle, readiness, release, supersession or cleanup authorit
 - Definition-local cleanup/release uses exact definition/token authority, never
   stable ID alone.
 - Project-wide collision diagnostics do not turn stable ID into runtime equality.
+
+## Conformance evidence — IF-ADR-013 Optional Audio BGM Adapter
+
+IF-ADR-013 is a concrete consumer of this identity authority and does not change
+its accepted boundary. The optional BGM integration preserves exact
+Route/Activity authored-definition authority and does not use audio cue identity,
+desired BGM state or confirmed BGM state as Route/Activity equality, lifecycle
+ownership, release authority or occurrence identity.
+
+The 2026-08-10 IF-ADR-013A technical certification provides supporting
+conformance evidence: Route/Activity BGM precedence, Route-scoped retained-state
+cleanup and optional-authority failure behavior passed inside the existing scoped
+Route/Activity lifecycle. This evidence does not reopen IF-ADR-014 and does not
+change its completion/status; it demonstrates that the newer optional audio
+feature respects the accepted identity model.
+
+### IF-ADR-009 conformance evidence — 2026-08-10
+
+The ADR-009 closure adds direct evidence for this identity boundary. Activity
+Local Visibility now rejects distinct authored Activity definitions that collide
+on the same stable `ActivityId`, while occurrence/release/restoration ownership
+continues to use definition-aware runtime authority.
+
+This is conformance evidence only. It does not change ADR-014 status or reopen
+its accepted boundary.
 
 ## Deferred boundary
 

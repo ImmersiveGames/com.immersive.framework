@@ -45,10 +45,13 @@ fallback.
 
 ## Diagnose
 
-Inspect the director's Route, Activity, retained and effective cues, current
-policy and last `AudioPlaybackResult`. Logs use `[FRAMEWORK_BGM]`. A missing
-`AudioRuntimeHost` is an explicit error; do not add scene search or a global
-audio manager.
+Inspect the director's Route, Activity, retained and desired-effective cues,
+the provider-confirmed cue, current policy and last `FrameworkBgmOperationResult`.
+`Applied` and `Released` mean the provider confirmed the transition. A rejected
+operation preserves the previously confirmed cue and can be retried; only
+confirmed Activity cues can be retained for restoration. Logs use
+`[FRAMEWORK_BGM]`. A missing `AudioRuntimeHost` reports
+`OptionalAuthorityUnavailable`; do not add scene search or a global audio manager.
 
 ## Manual validation
 
@@ -57,5 +60,5 @@ audio manager.
 2. Prove Route cue, Activity cue, Route fallback, retention and Silence.
 3. Prove Startup Activity pre-application.
 4. Switch Routes and confirm retained Activity BGM does not leak.
-5. Validate playback results and current real-game behavior before promotion
-   from Experimental.
+5. Validate `Applied`, `Released`, `NoChange`, rejected apply/release, retry and
+   confirmed-only restoration before promotion from Experimental.
