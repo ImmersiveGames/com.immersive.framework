@@ -12,12 +12,13 @@ com.immersive.framework
   Adr13A-Audio
 
 QAFramework
-  f4ce36335878113e4b64e79d337c0645f6499707
-  Fix
+  dcabd982fee949a571ced53394066ecee9cd313f
+  clear
 
 FIRSTGAME / planet-devourer
   796618243c3ca76f70d582f38475320c6461420b
   Demo02 Reajuste
+  consumer-stage baseline only; not consulted for ADR-003/012 technical reconciliation
 ```
 
 The QA project consumes the framework through a local `file:` package path.
@@ -48,13 +49,41 @@ UX is recorded separately when useful:
 Not Evaluated / Acceptable / Friction Observed / Improvement Proposed
 ```
 
-UX does not enter functional completion arithmetic.
+UX does not enter technical reconciliation arithmetic.
+
+## Reconciliation sequence
+
+ADR reconciliation and real-consumer validation are deliberately separate stages:
+
+```text
+Stage A — technical reconciliation
+  normative ADR
+    -> current package code / official product surface
+    -> QAFramework technical proof
+    -> classify IMPLEMENTED / DIVERGENT / ABSENT / QA GAP / DOC-TRACKING GAP / DEFERRED
+
+Stage B — real consumer proof
+  FIRSTGAME
+    -> integration in a real game
+    -> usability / authoring observations
+    -> route any proven package defect back to a new package cut
+```
+
+FIRSTGAME is therefore **not an input to the Stage A conformance verdict**. A
+missing FIRSTGAME proof can keep the later consumer stage open, but it cannot turn
+an ADR-aligned and QA-certified package contract into a technical gap.
+
+`Product Surface / Diagnostics` remains part of Stage A only when the owning ADR
+or the accepted product-authoring standards require an official authoring or
+diagnostic surface. Ergonomic preference is still recorded separately as UX.
 
 ## Progress estimate
 
-The tracker keeps a percentage view as a **planning and attention tool**. It is
-not release certification and it does not replace the explicit status of each
-evidence dimension.
+The tracker keeps a percentage view as a **delivery-planning and attention tool**.
+It spans both Stage A technical work and Stage B consumer work. It is not a
+conformance score, release certification, or a substitute for the explicit
+technical reconciliation status. In particular, FIRSTGAME points must never be
+used to lower or reopen a Stage A ADR/package/QA verdict.
 
 Scoring dimensions:
 
@@ -80,8 +109,8 @@ Current evidence-based planning estimate:
 | ADR | Arch. | Package | Surface | QA | FIRSTGAME | Estimate | Primary limiter |
 |---|---:|---:|---:|---:|---:|---:|---|
 | IF-ADR-001 | 20/20 | 30/30 | 20/20 | 15/15 | 15/15 | **100%** | closed for current accepted boundary; deferred extensions are separate contracts |
-| IF-ADR-002 | 20/20 | 30/30 | 20/20 | N/A | N/A | **100%** | closed for current accepted cross-cutting boundary; feature-specific evidence remains with owning ADRs |
-| IF-ADR-003 | 20/20 | 29/30 | 18/20 | 15/15 | 5/15 | **87%** | current-model Player integration in FIRSTGAME |
+| IF-ADR-002 | 20/20 | 23/30 | 16/20 | 10/15 | 10/15 | **79%** | portfolio-wide consistency of official authoring surfaces |
+| IF-ADR-003 | 20/20 | 29/30 | 18/20 | 15/15 | 5/15 | **87%** | Stage A CLOSED; current-model Player integration is Stage B work |
 | IF-ADR-004 | 20/20 | 26/30 | 18/20 | 10/15 | 8/15 | **82%** | IF-ADR-004B negative integrity certification + broader FIRSTGAME Camera proof |
 | IF-ADR-005 | 20/20 | 27/30 | 18/20 | 11/15 | 9/15 | **85%** | focused Pause/Input/Reset negative contracts |
 | IF-ADR-006 | 20/20 | 29/30 | 18/20 | 15/15 | 13/15 | **95%** | exceptional post-commit paths only |
@@ -90,16 +119,11 @@ Current evidence-based planning estimate:
 | IF-ADR-009 | 20/20 | 26/30 | 17/20 | 9/15 | 10/15 | **82%** | visibility negative regression coverage |
 | IF-ADR-010 | 20/20 | 28/30 | 20/20 | N/A | N/A | **97%*** | per-feature adoption only; no generic UX QA |
 | IF-ADR-011 | 20/20 | 29/30 | 18/20 | 15/15 | 13/15 | **95%** | focused public waiting/joining integration evidence |
-| IF-ADR-012 | 20/20 | 28/30 | 18/20 | 15/15 | 4/15 | **85%** | current-model Player participation in FIRSTGAME |
+| IF-ADR-012 | 20/20 | 28/30 | 18/20 | 15/15 | 4/15 | **85%** | Stage A CLOSED; current-model participation integration is Stage B work |
 | IF-ADR-013 | 20/20 | 18/30 | 12/20 | 7/15 | 0/15 | **57%** | typed execution evidence + negative QA, then real-game proof |
 | IF-ADR-014 | 20/20 | 30/30 | 20/20 | 15/15 | 15/15 | **100%** | closed for current accepted boundary |
 | IF-ADR-015 | 20/20 | 29/30 | 18/20 | 15/15 | 4/15 | **86%** | current public command/status integration in FIRSTGAME |
 | IF-ADR-016 | 20/20 | 30/30 | 19/20 | 15/15 | 4/15 | **88%** | current Scene-/Manager-Provisioned FIRSTGAME integration |
-
-`IF-ADR-002` is normalized over the 70 applicable Architecture, Package and
-Product Surface points. Generic Technical QA and generic FIRSTGAME are
-intentionally not applicable; objective evidence stays with the feature ADR that
-owns each concrete contract.
 
 `* IF-ADR-010` is normalized over the 70 applicable points because a generic QA
 or FIRSTGAME program for Inspector UX is intentionally not part of that ADR.
@@ -109,10 +133,11 @@ them.
 Portfolio planning view:
 
 ```text
-Current mean estimate across ADRs: 88.7%
+Current mean estimate across ADRs: 87.3%
 
 Lowest current estimates:
   IF-ADR-013  57%  Optional BGM / Experimental
+  IF-ADR-002  79%  Product Authoring Model portfolio consistency
   IF-ADR-004  82%  Camera
   IF-ADR-009  82%  Activity Local Visibility
   IF-ADR-005  85%  Input / Pause / Gate / Reset
@@ -130,31 +155,42 @@ low QA score
   -> implementation exists but technical proof/hardening is weak
 
 low FIRSTGAME score
-  -> package/QA may be strong, but real-product integration is not yet proven
+  -> Stage B real-product integration is not yet proven; this is not a Stage A technical gap
 
 UX friction
   -> record separately; do not subtract completion points
 ```
 
-A high percentage never overrides a missing required gate. Example: a feature can
-reach 85% with `FIRSTGAME = 0/15`, but its functional status remains
-`INTEGRATION PROOF PENDING` whenever real-product integration is applicable.
+A delivery-planning percentage never overrides the explicit stage status. A feature
+may have low FIRSTGAME delivery points while its accepted technical boundary is
+already `CLOSED / QA CERTIFIED`.
 
-## Functional completion rule
+## Closure rules
 
-A feature boundary that requires real-game application is closed by evidence from:
+Technical reconciliation closes when the accepted boundary is aligned and proven:
 
 ```text
-Package implementation
+ADR normative contract
+  +
+official package implementation / required product surface
   +
 QA technical proof
-  +
-FIRSTGAME real-product integration
+=
+Stage A CLOSED / RECONCILED
 ```
 
-FIRSTGAME is therefore part of functional proof when applicable. Ease of use,
-Inspector polish and other UX observations discovered during the same work are
-qualitative and do not independently open/close the technical feature.
+Only after Stage A does FIRSTGAME prove real-product integration:
+
+```text
+Stage A CLOSED
+  -> FIRSTGAME real-product composition
+  -> UX/integration findings
+  -> Stage B PROVEN
+```
+
+A FIRSTGAME failure may expose a new package or QA defect. When that happens, the
+defect is classified explicitly and routed back to Stage A; FIRSTGAME itself does
+not become technical authority.
 
 ## ADR-001 reconciliation
 
@@ -189,42 +225,44 @@ future Session-Persistent Player contract or exceptional post-commit compensatio
 must be opened as a separate approved cut and must not be used to reinterpret the
 current lifecycle authority as incomplete.
 
-## ADR-002 reconciliation
+## ADR-003 + ADR-012 technical reconciliation — 2026-08-10
+
+This reconciliation compares the accepted Player lifecycle/participation decisions
+with the current official package line and the canonical Player QA certification.
+FIRSTGAME is intentionally outside this Stage A verdict.
+
+| ADR | Normative | Package | QA | Stage A verdict | Stage B |
+|---|---|---|---|---|---|
+| IF-ADR-003 | Accepted | Implemented for current accepted Player lifecycle boundary | Player QA Certified | **CLOSED / RECONCILED** | FIRSTGAME current-model proof pending |
+| IF-ADR-012 | Accepted | Implemented for current accepted Activity participation boundary | Participation PASS / 30-case Activity Session Projection | **CLOSED / RECONCILED** | FIRSTGAME current-model proof pending |
+
+Current Stage A gap classification:
 
 ```text
-IF-ADR-002 — Product Authoring Model
+IF-ADR-003
+  DIVERGENT         none identified
+  ABSENT            none identified
+  QA GAP            none identified for the current accepted boundary
+  DOC/TRACKING GAP  previous FIRSTGAME-based limiter incorrectly represented Stage B as Stage A debt
+  DEFERRED          Player Leave; disconnect/reconnect; Session-Persistent Player
 
-Normative status
-  ACCEPTED
-
-Current accepted cross-cutting boundary
-  CLOSED / RECONCILED
-
-Package authoring model
-  IMPLEMENTED
-
-Product Surface / Diagnostics
-  IMPLEMENTED
-
-Generic Technical QA
-  NOT APPLICABLE
-
-Generic FIRSTGAME gate
-  NOT APPLICABLE
-
-Current-scope blockers
-  NONE IDENTIFIED
+IF-ADR-012
+  DIVERGENT         none identified
+  ABSENT            none identified
+  QA GAP            none identified for the current accepted boundary
+  DOC/TRACKING GAP  previous FIRSTGAME-based limiter incorrectly represented Stage B as Stage A debt
+  DEFERRED          broader future participation UX/dynamic extensions only when separately opened
 ```
 
-The former `29/30` package-audit value and the former `79%` Tracker value are not
-current completion deficits. ADR-002 explicitly accepts heterogeneous authoring
-shapes and identifies no missing generic Composer, Wizard or Apply/Rebuild
-program. Technical Editor QA and real-consumer evidence remain attached to the
-feature ADR that owns each concrete contract.
+The Player certification baseline is older than the repository HEADs, but the
+repository comparisons from that baseline to the current HEADs contain no Player
+runtime or Player QA file changes. Subsequent package changes are documentation,
+Activity/Content and Audio work; subsequent QA changes are Audio, Camera, Activity
+Local Visibility and shared scene/hub work. No Player regression is inferred from
+those later commits.
 
-Future product-surface improvements are feature-specific work opened from a
-concrete lifecycle need or observed consumer friction; they do not reopen the
-cross-cutting ADR-002 boundary by default.
+FIRSTGAME remains the next consumer proof for these Player boundaries, not a
+missing implementation contract.
 
 ## Canonical Player model
 
@@ -295,7 +333,7 @@ participation='PASS'
 Technical Player certification is therefore closed for the current accepted
 boundary.
 
-## Current Player real integration
+## Current Player real integration — Stage B
 
 The committed FIRSTGAME Player content still contains superseded authoring data
 from the former Capacity/separate-provisioning-Profile shape and is not current
@@ -309,9 +347,10 @@ Manager-Provisioned current-model integration  NOT PROVEN
 Player Participation current-model integration NOT PROVEN
 ```
 
-The next FIRSTGAME Player work should rebuild/reauthor against the official
-current package model rather than add compatibility behavior for the historical
-serialized shape.
+When Stage B is opened, FIRSTGAME Player work should rebuild/reauthor against the
+official current package model rather than add compatibility behavior for the
+historical serialized shape. Its absence does not reopen the closed Stage A
+technical verdict.
 
 UX observations collected during that rebuild may drive optional package
 improvements, but are not a separate completion score.
@@ -322,12 +361,12 @@ improvements, but are not a separate completion score.
 |---|---|---|---|---|
 | Runtime authority / lifecycle | Implemented | Certified for current transaction/readiness boundary | Proven for core Route/Activity flows | **closed for current accepted ADR-001 boundary**; Session-Persistent Player and exceptional post-commit compensation remain separate future contracts |
 | Player serialized migration integrity | Implemented | **Certified** | Not applicable to technical P0 | closed; retired value 30 must never be reused |
-| Player Session | Implemented | **Certified** | **Not Proven on current model** | rebuild real consumer integration using accepted ADR-016 model |
-| Player Scene-Provided | Implemented | **Certified** | **Not Proven on current model** | FIRSTGAME real integration required |
-| Player Manager-Provisioned | Implemented | **Certified** | **Not Proven on current model** | FIRSTGAME real integration required |
-| Player Actor lifecycle | Implemented | **Certified** | Partial/historical only | prove current model through real Player consumer flow |
-| Player public surface / ADR-015 | Implemented | **Certified** | **Not Proven on current model** | real command/status integration required; extra tooling optional |
-| Player Activity participation / ADR-012 | Implemented | **Certified** | **Not Proven on current model** | layer after underlying Player mode integration |
+| Player Session | Implemented | **Certified** | **Not Proven on current model** | technical boundary certified; FIRSTGAME is later Stage B proof |
+| Player Scene-Provided | Implemented | **Certified** | **Not Proven on current model** | technical boundary certified; FIRSTGAME is later Stage B proof |
+| Player Manager-Provisioned | Implemented | **Certified** | **Not Proven on current model** | technical boundary certified; FIRSTGAME is later Stage B proof |
+| Player Actor lifecycle | Implemented | **Certified** | Partial/historical only | ADR-003 Stage A closed; real consumer proof belongs to Stage B |
+| Player public surface / ADR-015 | Implemented | **Certified** | **Not Proven on current model** | preserve technical certification; consumer command/status proof is Stage B |
+| Player Activity participation / ADR-012 | Implemented | **Certified** | **Not Proven on current model** | ADR-012 Stage A closed; layer real participation proof in Stage B |
 | Activity readiness + reveal | Implemented | Certified for core supported policies | Proven in existing real readiness/loading scenario | preserve readiness authority; add QA only for concrete gaps |
 | Participant-aware Loading progress | Implemented | Certified for core supported boundary | Proven in existing readiness/loading scenario | preserve monotonic/terminal semantics |
 | Loading / Transition | Implemented | Certified for current transaction/readiness boundary | Proven for core flows | exceptional paths only when concrete evidence requires them |
@@ -357,10 +396,10 @@ QA backlog. There is no generic UX smoke program.
 
 ```text
 1. keep documentation aligned with current contracts
-2. Camera — execute IF-ADR-004B negative integrity certification; open IF-ADR-004C only if QA proves an abnormal owner-lifetime package defect
-3. focused non-Player hardening only for concrete technical gaps proven by QA
-4. rebuild FIRSTGAME Player integration against the accepted current model
-5. record UX friction separately and improve only where real use justifies it
+2. continue ADR -> package -> QA reconciliation and close only concrete technical gaps
+3. do not create FIRSTGAME work to compensate for an unresolved package/QA contract
+4. after the selected technical boundaries are reconciled, run FIRSTGAME as the final real-consumer stage
+5. route any real UX/integration defect back to the smallest owning package/QA cut
 ```
 
 Do not reopen removed Capacity/provisioning-Profile semantics or add tooling only
