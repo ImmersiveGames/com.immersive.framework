@@ -1,12 +1,13 @@
 # IF-ADR-008 — Persistent Application Content Composition
 
 Status: **Accepted**  
-Last updated: 2026-08-09  
+Last updated: 2026-08-10  
 Package implementation: **COMPLETE FOR CURRENT ACCEPTED PRODUCT MODEL**  
 Current package assessment: **30/30** — local package/product assessment; not release certification  
 Product lifecycle: **Class B — reusable Scene Template with source-scene-owned composition**  
 Related decisions: IF-ADR-002, IF-ADR-006, IF-ADR-010, IF-ADR-015  
-Current package baseline: `43b96a4b100b8273da1190520536007ba82dc081` (`ADR-010B`)
+Current package baseline: `baa5b00a004e81aec6f0080395cc2b8621d3d22c`  
+Reconciliation record: [ADR-008 Reconciliation — 2026-08-10](../Reconciliation/IMMERSIVE-FRAMEWORK-ADR-008-RECONCILIATION-2026-08-10.md)
 
 > This revision supersedes the former Recipe/Composer + Apply/Rebuild description.
 >

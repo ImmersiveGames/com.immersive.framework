@@ -46,7 +46,7 @@ a later reconciliation. It can identify a separate consumer or product issue.
 | [005](../ADRs/IF-ADR-005-Input-Pause-Gate-and-Reset.md) | ACCEPTED / RECONCILED | IMPLEMENTED | QA GAP: focused Pause and Pause plus Activity Restart | Stage B separate | Only focused Pause QA remains open in Stage A |
 | [006](../ADRs/IF-ADR-006-Loading-Transition-Persistence-and-Diagnostics.md) | ACCEPTED | Partial current tracking | Certified for current boundary | Partial | Exceptional paths remain tracked separately |
 | [007](../ADRs/IF-ADR-007-Activity-Entry-Readiness-and-Reveal-Gating.md) | ACCEPTED | Partial current tracking | Certified for current boundary | Partial | Focused readiness variants remain |
-| [008](../ADRs/IF-ADR-008-Persistent-Application-Content-Composition.md) | ACCEPTED | Partial current tracking | Partial | Partial | Current Scene Template integration/hardening evidence remains |
+| [008](../ADRs/IF-ADR-008-Persistent-Application-Content-Composition.md) | ACCEPTED / RECONCILED | IMPLEMENTED for current accepted product model | Not applicable by default | Not applicable as a technical closure gate | Stage A closed; reopen only on concrete contract failure |
 | [009](../ADRs/IF-ADR-009-Activity-Local-Visibility-Rules.md) | ACCEPTED / RECONCILED | IMPLEMENTED | CERTIFIED | Not required for current boundary | Stage A closed |
 | [010](../ADRs/IF-ADR-010-Editor-and-Inspector-Product-Surface-Authority.md) | ACCEPTED | IMPLEMENTED | Not applicable as generic UX QA | Per feature | Current audit is historical; adoption remains feature-owned |
 | [011](../ADRs/IF-ADR-011-Participant-Aware-Activity-Readiness-Loading-Progress.md) | ACCEPTED | Partial current tracking | Certified for current boundary | Partial | Focused public waiting/joining evidence remains |
@@ -73,7 +73,7 @@ unproven Stage B consumer evidence where that evidence is still required.
 | 005 | 92% | 8% | 92% | High | Certify focused Pause authority and Pause plus Activity Restart QA. |
 | 006 | 95% | 5% | 95% | Medium | Close only the tracked exceptional-path evidence. |
 | 007 | 95% | 5% | 95% | Medium | Close only the tracked readiness variants. |
-| 008 | 85% | 15% | 85% | Highest | Finish Scene Template integration and hardening evidence. |
+| 008 | 100% | 0% | 100% | None | No active package work; reopen only on concrete contract failure. |
 | 009 | 100% | 0% | 100% | None | Closed for the current boundary. |
 | 010 | 97% | 3% | 97% | Low | Complete feature-owned adoption evidence; no generic UX QA gate exists. |
 | 011 | 95% | 5% | 95% | Medium | Close focused public waiting/joining evidence. |
@@ -85,10 +85,12 @@ unproven Stage B consumer evidence where that evidence is still required.
 
 ### Attention summary
 
-1. **ADR-008** has the largest current technical remainder: **15%**.
-2. **ADR-005** is the next technical priority: **8%**, limited to focused QA.
-3. **ADR-006, ADR-007 and ADR-011** each retain **5%** of focused technical
+1. **ADR-005** is the current highest technical priority: **8%**, limited to
+   focused QA.
+2. **ADR-006, ADR-007 and ADR-011** each retain **5%** of focused technical
    evidence.
+3. **ADR-008** is reconciled at **100% Stage A** with **0% technical remainder**;
+   reopen it only when a concrete contract failure or regression is demonstrated.
 4. **ADR-003, ADR-004, ADR-012, ADR-013, ADR-015 and ADR-016** are not
    technical regressions: their lower portfolio estimate represents Stage B
    real-consumer proof, to be scheduled separately from Stage A closure.
@@ -98,6 +100,9 @@ unproven Stage B consumer evidence where that evidence is still required.
 - Close ADR-005 Stage A only with focused Pause and Pause plus Activity Restart
   QA. No missing Composer, Wizard, Apply/Rebuild flow or generic manager is
   documented.
+- Keep ADR-008 out of the active technical queue while its accepted Scene
+  Template + consumer-owned Scene + non-mutating verification boundary remains
+  valid. Reopen only against a documented reopen condition or reproduced defect.
 - Keep technical documentation aligned with current reconciliation records and
   preserve the Stage A / Stage B distinction.
 
@@ -107,8 +112,10 @@ unproven Stage B consumer evidence where that evidence is still required.
   Restart.
 - Camera: a QA-only teardown clean-log retest remains nonblocking and does not
   reopen the ADR-004 technical certification.
-- ADR-006, ADR-007, ADR-008 and ADR-011: only the focused gaps recorded in
-  their current tracking rows; do not infer a broader missing architecture.
+- ADR-006, ADR-007 and ADR-011: only the focused gaps recorded in their current
+  tracking rows; do not infer a broader missing architecture.
+- ADR-008 has no active QA gap by default. Add QA only when a concrete,
+  deterministic Scene Template pipeline invariant or regression requires proof.
 
 ## Documentation maintenance
 
@@ -144,3 +151,4 @@ The following are future contracts, not gaps in current ADR closure:
 - [ADR-003 and ADR-012](../Reconciliation/IMMERSIVE-FRAMEWORK-ADR-003-012-RECONCILIATION-2026-08-10.md)
 - [ADR-004 Camera](../Reconciliation/IF-ADR-004A-Camera-Authority-Normative-Reconciliation-2026-08-10.md)
 - [ADR-005](../Reconciliation/IMMERSIVE-FRAMEWORK-ADR-005-RECONCILIATION-2026-08-10.md)
+- [ADR-008](../Reconciliation/IMMERSIVE-FRAMEWORK-ADR-008-RECONCILIATION-2026-08-10.md)
