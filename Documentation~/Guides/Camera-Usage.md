@@ -1,10 +1,10 @@
 # Camera Usage
 
-Status: Current  
-Last updated: 2026-08-06
+Status: **Current**  
+Last updated: **2026-08-10**
 
-Single-output product scope. Split-screen and multiple simultaneous outputs are
-out of scope for the current Stable Camera product API.
+The current Stable Camera product is **single-output**. Split-screen and multiple
+simultaneous physical outputs are out of scope.
 
 ## Product model
 
@@ -13,33 +13,31 @@ Unity Preset
   optional reusable values for CameraRigComposer
 
 CameraRigComposer
-  concrete rig authority
-  targets
-  requirements
-  framing
+  local rig intent
+  targets / requirements / framing
   Cinemachine materialization
 
 PlayerGameplayCameraAuthoring
-  Player camera participation
+  Player Camera participation
   requiredness
   Camera Rig reference
   arbitration precedence
 
-PlayerGameplayCameraEligibilityRuntimeContext
-  validates the prepared Actor and resolved Composer evidence
+Session / Route / Activity Camera Override bindings
+  explicit scoped Camera publication
 
 CameraOutputSessionBinding
-  persistent physical Camera + Brain composition
+  persistent physical Unity Camera + CinemachineBrain
+
+CameraOutputSession
+  transactional logical/physical mutation
 
 CameraOutputContext
-  selects the active Camera request (Internal output authority)
+  internal admitted-request set + deterministic winner
 ```
 
-`CameraRigRecipe` is removed. Unity Presets already provide reusable component
-configuration without a second framework-owned defaults asset.
-
-Bindings publish requests. Output authority arbitrates them. Apply / Rebuild
-never creates a Unity Camera, Cinemachine Brain, AudioListener or Camera Output.
+`CameraRigRecipe` is removed. Unity Presets provide reusable component values
+without another framework-owned defaults asset.
 
 ## Author one Player Camera
 
@@ -58,87 +56,128 @@ Actor
     CameraRigComposer
 ```
 
-Configure the `CameraRigComposer`:
-
-```text
-Target Mode
-  Explicit Transforms or Target Source Component
-
-Follow Transform
-Look At Transform
-Follow Requirement
-Look At Requirement
-Follow Offset
-```
-
-Run:
+Configure `CameraRigComposer` with explicit target source, Follow/Look At
+requirements and local framing, then run:
 
 ```text
 Validate Configuration
 Apply / Rebuild Rig
 ```
 
-A missing local Cinemachine Camera is always created. Existing local Cinemachine
-components are reused and repaired idempotently.
-
-This materialization behavior is fixed: the local Camera uses the technical name
-`Cinemachine Camera`. Neither creation nor naming is a designer-editable Composer
-policy.
-
-Apply / Rebuild never creates:
+Apply/Rebuild materializes or repairs only the local Cinemachine rig. It never
+creates:
 
 ```text
-Unity Camera
+persistent Unity Camera
 CinemachineBrain
 AudioListener
 CameraOutputSessionBinding
 ```
 
-Configure `PlayerGameplayCameraAuthoring`:
+Configure `PlayerGameplayCameraAuthoring` with Requiredness, Camera Rig and
+precedence. Follow/Look At are resolved from the assigned Composer rather than
+authored twice.
+
+## Persistent Camera output
+
+`CameraOutputSessionBinding` is the explicit persistent physical output authoring
+surface. It references one Unity Camera and one CinemachineBrain on the same
+GameObject and owns a stable Output ID.
+
+`Validate Configuration` checks those references and never discovers or repairs
+them through fallback lookup.
+
+The current application composition must contain exactly one persistent Camera
+output.
+
+## Scoped Camera overrides
+
+Supported scoped publishers include:
 
 ```text
-Requiredness
-Camera Rig
-Precedence
+Session Camera Override
+Route Camera Override
+Activity Camera Override
+eligible Local Player Camera publication
 ```
 
-Follow and Look At are not authored again. They are resolved exclusively from
-the assigned `CameraRigComposer`.
+Current precedence convention:
 
-## Persistent Camera Output Inspector
+```text
+Local Player   50
+Activity      100
+Route         200
+Session       300
+```
 
-`CameraOutputSessionBinding` exposes Unity Camera and Cinemachine Brain as the
-primary authoring fields. A new component receives a stable Output ID without
-replacing IDs already authored.
+Higher precedence wins. Equal precedence requires distinct deterministic
+Tie-Breaker IDs; timing is never used as hidden priority.
 
-`Advanced / Diagnostics` contains the stable identity, initialization and logging
-settings, read-only runtime evidence and the last explicit validation report.
+## Lifecycle and abnormal component loss
 
-`Validate Configuration` checks the Output ID, both explicit component references
-and the requirement that Unity Camera and Cinemachine Brain share the same
-GameObject. Validation never creates, discovers or repairs components.
+Route and Activity have **logical owner lifetime** controlled by their canonical
+Game Flow lifecycle. Their Camera binding component has a separate publication
+lifetime.
+
+If a Route/Activity Camera binding is disabled or destroyed unexpectedly while
+its request is published, the binding releases that publication so no orphaned
+request remains. A temporary component disable does not synthesize a Route or
+Activity exit.
+
+Re-enabling a binding does **not** silently publish another request. Publication
+remains explicit while the logical owner is valid.
+
+Session differs because `SessionCameraOverrideBinding` itself owns Session
+availability; disable/destroy ends that owner scope and releases its request.
+
+Repeated release/cleanup is idempotent.
 
 ## Failure behavior
 
-Authoring fails explicitly when:
+Authoring/runtime blocks explicitly when mandatory Camera evidence is invalid,
+including:
 
 ```text
-PlayerGameplayCameraAuthoring is outside a Player Actor
-Camera Rig is missing
-Camera Rig belongs to another Actor
-target source is invalid
-required Follow or Look At is missing
-resolved target belongs to another hierarchy
-Camera Rig configuration is invalid
+Camera Rig missing or owned by another Actor
+invalid target source
+required Follow/Look At missing
+invalid Camera Rig configuration
+wrong OutputId
+duplicate RequestId
+ambiguous equal-precedence tie-break evidence
+missing Unity Camera / CinemachineBrain
+invalid persistent single-output composition
 ```
 
-There is no target fallback, `Camera.main` lookup, singleton or service locator.
+Physical apply failure does not silently commit logical winner state. The output
+session rolls back the mutation; rollback failure is reported explicitly.
+
+There is no target fallback, `Camera.main` authority, singleton, service locator,
+name lookup or hierarchy guessing.
+
+## Diagnostics
+
+Advanced / Diagnostics may expose:
+
+```text
+Output ID
+Request ID
+Owner / Lifetime
+Precedence / Tie-Breaker
+Admitted request set
+Current winner
+Physical apply result
+Rollback attempt/result
+Blocking issue code/message
+```
+
+Use these diagnostics to inspect the explicit authority chain rather than adding
+local Camera-selection logic in a consumer project.
 
 ## Migration
 
-Remove all `CameraRigRecipe` assets from consumer projects. Existing serialized
-`recipe` properties on `CameraRigComposer` are obsolete data and disappear when
-the prefab or scene is saved with the new component shape.
+Remove legacy `CameraRigRecipe` assets. Obsolete serialized recipe data disappears
+when prefabs/scenes are saved with the current component shape.
 
 For reusable Composer values, create a Unity Preset from a configured
 `CameraRigComposer`.

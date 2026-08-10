@@ -1,30 +1,24 @@
 # IF-ADR-004 — Camera Requests and Output Authority
 
-Status: **Accepted**  
-Last updated: 2026-08-10  
-Package implementation: **Substantially implemented for the accepted single-output boundary**  
-Technical QA: **Partial — IF-ADR-004B negative integrity certification pending**  
-FIRSTGAME integration: **Partial — broader real-consumer proof pending**  
-Related decisions: IF-ADR-001, IF-ADR-002, IF-ADR-003, IF-ADR-005, IF-ADR-006, IF-ADR-008, IF-ADR-010, IF-ADR-014
+Status: **Accepted — current single-output boundary implemented and technically certified**  
+Last updated: **2026-08-10**  
+Package implementation: **Implemented**  
+Technical QA: **Certified**  
+FIRSTGAME integration: **Partial — broader real-consumer proof remains separate**  
+Related decisions: IF-ADR-001, IF-ADR-002, IF-ADR-003, IF-ADR-004A, IF-ADR-004B, IF-ADR-004C, IF-ADR-005, IF-ADR-006, IF-ADR-008, IF-ADR-010, IF-ADR-014
 
-> Current implementation, QA and FIRSTGAME integration status is tracked in
-> `../Tracking/IF-TRACK-Framework.md`. This ADR is normative and intentionally
-> does not carry a mutable completion percentage. UX observations are qualitative
-> product feedback and are not part of functional completion arithmetic.
->
-> The 2026-08-10 normative reconciliation is recorded by IF-ADR-004A. It aligns
-> this ADR with the already-existing package architecture; it does not claim that
-> IF-ADR-004B negative integrity QA or broader FIRSTGAME proof has been completed.
+> This ADR is the normative Camera authority. Mutable portfolio status lives in
+> `../Tracking/IF-TRACK-Framework.md`. The 2026-08-10 certification sequence is
+> preserved by IF-ADR-004B, IF-ADR-004C and the Camera QA certification record.
 
-## Context
+## 1. Context
 
 Camera presentation requires one explicit physical output authority while
-allowing Session, Route, Activity and eligible Local Player scopes to request
-presentation without directly mutating shared output or discovering authority
-through scene hierarchy, global registries or timing.
+Session, Route, Activity and eligible Local Player scopes may request Camera
+presentation without directly mutating the shared output or discovering an
+implicit current Camera.
 
-The accepted implementation has matured beyond the earlier shorthand of
-"request -> camera output". The framework now separates:
+The accepted pipeline is:
 
 ```text
 product authoring
@@ -34,16 +28,11 @@ product authoring
   -> physical Unity/Cinemachine projection
 ```
 
-Those boundaries are normative because they prevent logical winner state from
-silently diverging from the physical Camera presentation.
+The current accepted product supports **one persistent Camera output per
+Session**. Multi-output, split-screen and concurrent per-player physical outputs
+are separate future contracts.
 
-The current accepted product supports one persistent Camera output per Session.
-Multi-output, split-screen and concurrent per-player outputs require a separate
-accepted architectural extension.
-
-## Decision
-
-The canonical Camera authority chain is:
+## 2. Decision — authority chain
 
 ```text
 Camera request source
@@ -56,7 +45,7 @@ ScopedCameraRequestPublisher
 CameraOutputSession
         ↓
 CameraOutputContext
-  logical admission + deterministic winner selection
+  admission + deterministic winner
         ↓
 CameraOutputRigApplicator
   physical projection
@@ -66,502 +55,319 @@ CameraOutputSessionBinding
 explicit Unity Camera + CinemachineBrain
 ```
 
-The responsibilities are intentionally separate:
+Responsibilities:
 
-- `CameraOutputContext` owns logical request admission, release, deterministic
-  arbitration, winner state and restoration of the next valid request;
+- `CameraOutputContext` owns admitted requests, deterministic arbitration,
+  logical winner and next-winner restoration for one `CameraOutputId`;
 - `CameraOutputRigApplicator` owns projection of the logical winner to the
-  concrete Camera/Cinemachine output;
-- `CameraOutputSession` owns transactional synchronization between those two
-  states and is the mutation boundary used by publishers;
-- `CameraOutputSessionBinding` owns one scene-authored scoped output session and
-  the explicit physical Unity Camera/CinemachineBrain references;
-- request publishers translate one already-owned scope into explicit
-  publish/release operations and do not discover Camera authority;
-- `CameraRigComposer` owns local rig intent and local Cinemachine materialization,
-  not the persistent physical output.
+  concrete output;
+- `CameraOutputSession` is the transactional mutation boundary between logical
+  state and physical projection;
+- `CameraOutputSessionBinding` owns the scene-authored physical output and its
+  explicit Unity Camera/CinemachineBrain references;
+- request publishers translate one already-owned scope into publish/release;
+- `CameraRigComposer` owns local rig intent/materialization, never persistent
+  application output authority.
 
-Normal consumers should use the product-facing authoring and integration
-surfaces. `CameraOutputContext`, `CameraOutputSession`, the applicator and
-publisher implementation types are technical runtime machinery rather than the
-normal game-facing configuration path.
+No global Camera manager, service locator, static request registry, `Camera.main`
+authority or hierarchy/name/tag discovery is accepted.
 
-## 1. Physical Output Authority
+## 3. Physical output authority
 
-For the current single-output boundary:
+For the single-output product boundary:
 
-- exactly one persistent `CameraOutputSessionBinding` is authored for the
-  application Session composition;
-- the binding references one explicit Unity `Camera` and one explicit
-  `CinemachineBrain`;
-- the Unity Camera and CinemachineBrain belong to the same physical output
-  GameObject;
-- the output has one explicit `CameraOutputId`;
-- one scoped `CameraOutputContext` arbitrates requests for that output;
-- consumers receive the output/session through explicit typed composition or
-  injection;
-- no static/global Camera registry is authoritative;
-- no singleton or service locator is authoritative;
-- no `Camera.main` lookup is authoritative;
-- no hierarchy/name/tag search is authoritative for Camera output ownership.
+- exactly one persistent `CameraOutputSessionBinding` is authored in the Session
+  composition;
+- it references exactly one explicit Unity `Camera` and one explicit
+  `CinemachineBrain` on the same physical output GameObject;
+- it exposes one explicit `CameraOutputId`;
+- consumers receive that output through explicit typed composition/injection;
+- duplicate persistent outputs are invalid composition and must block
+  validation.
 
-Persistent Content composition validation is the correct boundary for proving
-that the accepted application composition contains exactly one physical Camera
-output. The individual binding is responsible for validating its own references;
-it is not responsible for globally discovering competing outputs.
+## 4. Camera rig authoring
 
-## 2. Camera Rig Authoring Boundary
+`CameraRigComposer` is the designer-facing authority for one local Camera rig.
+It owns presentation intent, typed target source, Follow/Look At requirements,
+local framing and local Cinemachine materialization.
 
-`CameraRigComposer` is the official designer-facing surface for one concrete
-local Camera rig.
+Apply/Rebuild may create or repair the local `CinemachineCamera`. It must never
+create or claim:
 
-It owns authored intent such as:
+```text
+persistent Unity Camera
+CinemachineBrain
+CameraOutputSessionBinding
+AudioListener
+global Camera authority
+```
 
-- current presentation intent;
-- target source mode;
-- Follow and Look At target requirements;
-- explicit targets or a typed `ICameraTargetSource`;
-- local framing values;
-- local Cinemachine technical materialization.
+The currently accepted presentation capability is **Follow**. Other Cinemachine
+presentation models require separate product work.
 
-Its Editor surface may validate and idempotently Apply/Rebuild the local rig.
-Apply/Rebuild may create or repair the local `CinemachineCamera` and required
-local Cinemachine technical state.
+## 5. Typed request contract
 
-It must not create or claim:
+Every Camera request must carry explicit, valid evidence for:
 
-- the persistent Unity Camera;
-- the persistent CinemachineBrain;
-- the persistent `CameraOutputSessionBinding`;
-- a global Camera authority;
-- AudioListener ownership.
+- request identity;
+- output identity;
+- owner kind and owner scope;
+- lifetime kind and lifetime scope;
+- rig reference;
+- target source;
+- arbitration policy;
+- release semantics;
+- diagnostic source/description where applicable.
 
-The current official presentation capability is **Follow**. The existence of a
-Composer does not imply support for arbitrary Cinemachine presentation models.
-Orbit, rail, fixed cinematic modes or other presentation models are future
-product extensions unless separately implemented and accepted.
+Missing or invalid mandatory evidence blocks explicitly. Runtime does not guess
+identity, ownership, target or output state.
 
-Reusable CameraRigComposer values may use Unity Presets where appropriate. A
-separate Recipe/Profile layer is not required by this ADR.
+## 6. Deterministic arbitration
 
-## 3. Typed Request Contract
-
-A Camera request must carry enough explicit evidence to be validated and
-arbitrated without hidden discovery. The accepted contract includes:
-
-- valid request identity;
-- matching output identity;
-- owner kind and owner scope evidence;
-- lifetime kind and lifetime scope evidence;
-- valid rig reference;
-- explicit target-source evidence;
-- explicit arbitration policy;
-- explicit release semantics;
-- diagnostic source/description evidence where applicable.
-
-Invalid requests block explicitly. The output authority must not silently repair
-or guess mandatory runtime request identity, ownership, target or output data.
-
-## 4. Deterministic Arbitration
-
-Arbitration is deterministic and does not use publication timing as an implicit
-policy.
-
-The accepted model is:
+Publication timing is not policy.
 
 ```text
 higher precedence
   -> wins
 
 equal precedence
-  -> both requests must carry deterministic tie-break evidence
-  -> deterministic tie-break ordering selects the winner
+  -> both requests require distinct deterministic tie-break evidence
+  -> deterministic ordinal tie-break ordering selects the winner
 ```
 
-For equal-precedence requests:
+Missing or duplicate equal-precedence tie-break evidence blocks the conflicting
+admission. Duplicate `CameraRequestId` also blocks.
 
-- missing deterministic tie-break evidence blocks the conflicting admission;
-- colliding deterministic tie-break evidence blocks the conflicting admission;
-- distinct deterministic tie-break evidence allows deterministic ordering.
-
-A duplicate admitted `CameraRequestId` also blocks explicitly.
-
-The older interpretation "equal priority -> newest request wins" is not part of
-the accepted contract. Runtime timing, dictionary enumeration or callback order
-must not become hidden Camera policy.
-
-The currently demonstrated product-level precedence convention is:
+Current product convention:
 
 ```text
-Local Player  50
-Activity     100
-Route        200
-Session      300
+Local Player   50
+Activity      100
+Route         200
+Session       300
 ```
 
-These values describe the current supported producer convention. The normative
-rule is explicit deterministic precedence and tie-break evidence, not magical
-knowledge of those four numbers inside the output context.
+The normative contract is explicit precedence + deterministic tie-break evidence,
+not those four values hard-coded into output authority.
 
-## 5. Transactional Logical / Physical Integrity
+## 7. Transactional logical / physical integrity
 
-Logical Camera state must not be reported as successfully changed when physical
-output application failed.
+Logical mutation is not successful until physical application succeeds.
 
-For admission:
+Admission:
 
 ```text
-CameraOutputContext.Admit(request)
-        ↓
-CameraOutputRigApplicator.Apply(context)
-        ↓
-physical apply succeeds
-  -> admission succeeds
-
-physical apply fails
-  -> remove the admitted request
-  -> re-apply the previous logical state
-  -> report RolledBack when restoration succeeds
-  -> report RollbackFailed when consistency cannot be restored
+context.Admit(request)
+  -> applicator.Apply(context)
+     success       -> commit
+     failure       -> remove admitted request
+                   -> re-apply previous state
+                   -> RolledBack or RollbackFailed
 ```
 
-Release follows the same principle:
+Release:
 
 ```text
-CameraOutputContext.Release(request)
-        ↓
-apply replacement / cleared winner
-        ↓
-physical apply succeeds
-  -> release succeeds
-
-physical apply fails
-  -> re-admit the released request
-  -> re-apply the previous state
-  -> report RolledBack or RollbackFailed explicitly
+context.Release(request)
+  -> apply replacement/cleared state
+     success       -> commit
+     failure       -> re-admit released request
+                   -> re-apply previous state
+                   -> RolledBack or RollbackFailed
 ```
 
-Therefore:
+Rollback failure is terminal diagnostic evidence and is never reported as normal
+success.
 
-- logical request admission is not equivalent to confirmed physical presentation;
-- a failed physical apply cannot silently commit a new winner;
-- a failed replacement after release cannot silently discard the previous winner;
-- rollback failure is terminal diagnostic evidence and must never be hidden as a
-  normal success.
+## 8. Scope ownership and component lifetime
 
-## 6. Scope Ownership and Lifecycle
+Camera ownership has two distinct lifetime layers.
 
-Camera request ownership must remain aligned with the scope that published the
-request.
+### 8.1 Logical owner lifetime
 
-Current producer boundaries include:
+```text
+Route
+  -> canonical Route enter/exit lifecycle
 
-- Session-owned override;
-- Route-owned override;
-- Activity-owned override;
-- eligible Local Player-owned request.
+Activity
+  -> canonical Activity enter/exit lifecycle
 
-Route and Activity bindings use the exact authored `RouteAsset` or
-`ActivityAsset` reference as lifecycle owner identity. Stable/textual identities
-remain technical evidence and must not silently replace authored-definition
-reference authority. This follows IF-ADR-014.
+Session
+  -> SessionCameraOverrideBinding component availability
 
-Normal lifecycle cleanup is explicit:
+Local Player
+  -> explicit Player eligibility/publication boundary
+```
 
-- Activity exit releases the Activity-owned request;
-- Route exit releases the Route-owned request;
-- output detachment ends the attached owner scope and releases its active request;
-- explicit release is idempotent at the publisher/binding surface.
+Route/Activity binding owner identity follows the exact authored `RouteAsset` or
+`ActivityAsset` reference. Stable IDs remain persistence/diagnostic evidence and
+do not replace authored-definition identity authority.
 
-### Abnormal owner-loss boundary
+### 8.2 Publication/component lifetime
 
-The package currently proves normal lifecycle-driven release, but the 2026-08-10
-audit did **not** certify every abnormal Unity lifetime path such as an owner
-component/GameObject being disabled or destroyed before its expected lifecycle
-exit/detach callback.
+`ScopedCameraOverrideBinding` owns the publication object and active publication
+state. Abnormal Unity component lifetime must not leave an admitted request
+orphaned.
 
-This is an unproven hardening boundary, not a confirmed package defect.
+Accepted behavior:
 
-IF-ADR-004B must determine whether:
+```text
+ScopedCameraOverrideBinding.OnDisable
+  -> release owned publication only
 
-1. a higher-level lifecycle invariant guarantees release/detach before such owner
-   loss and QA can prove that invariant; or
-2. an admitted orphan request can survive its valid owner lifetime.
+ScopedCameraOverrideBinding.OnDestroy
+  -> final idempotent publication release
+```
 
-Only the second result justifies opening the conditional package cut
-`IF-ADR-004C — Camera Owner Lifetime Integrity`.
+For Route and Activity this **does not** synthesize a Route/Activity exit and does
+not clear their logical-owner state. Re-enable does not silently re-publish;
+publication remains explicit while the already-entered logical owner is still
+valid.
 
-No global Camera cleanup manager, static liveness registry or service locator is
-authorized as a speculative solution.
+`SessionCameraOverrideBinding` is intentionally different: the component itself
+owns Session availability, so disable/destroy ends that owner scope through
+`EndOwnerScope(...)`.
 
-## 7. Target Resolution
+Normal lifecycle exit, abnormal component loss, repeated cleanup and re-enable
+without silent republish are certified by IF-ADR-004C.
 
-Camera target resolution is explicit and typed.
+## 9. Target resolution
 
-Accepted sources may include:
+Target resolution is explicit and typed. Required target failures block.
+Runtime target resolution must not use GameObject-name lookup, tags as authority,
+hierarchy guessing, `Camera.main` or global service lookup.
 
-- explicit Transform references;
-- typed framework target-source bindings;
-- typed Local Player Camera target sources;
-- future dedicated providers accepted by a later product cut.
+## 10. Runtime / Editor boundary
 
-Required target failures block explicitly.
+Editor tooling may validate and materialize local rig state and validate
+persistent Camera composition. It never becomes runtime output authority.
 
-Runtime target resolution must not rely on:
+Runtime Camera code must not depend on Editor assemblies or Editor-only state.
 
-- GameObject name search;
-- tags as ownership authority;
-- hierarchy guessing;
-- `Camera.main`;
-- global singleton/service-locator lookups.
+## 11. Product surface and diagnostics
 
-## 8. Runtime / Editor Boundary
+Supported product-facing surfaces include:
 
-Editor tooling may:
-
-- create or repair local Cinemachine rig structure owned by
-  `CameraRigComposer`;
-- validate Camera authoring;
-- expose explicit Apply/Rebuild;
-- record materialization evidence;
-- validate Persistent Content Camera composition.
-
-Editor tooling must not become runtime Camera authority.
-
-Runtime code must not depend on Editor assemblies or use Editor-only state to
-resolve active Camera ownership.
-
-Authoring components must not execute gameplay merely because they exist in a
-prefab or scene. Runtime override behavior remains in explicit lifecycle/runtime
-bindings and publishers.
-
-## 9. Product Surface and Diagnostics
-
-The supported product-facing surface includes:
-
-- `CameraRigComposer` for local rig intent and materialization;
-- `CameraOutputSessionBinding` for persistent physical output authoring;
-- Session, Route and Activity Camera override bindings;
+- `CameraRigComposer`;
+- `CameraOutputSessionBinding`;
+- Session / Route / Activity Camera override bindings;
 - typed Local Player Camera publication through Player integration;
-- feature validation through the appropriate Editor/composition surface;
-- Advanced / Diagnostics for technical evidence.
+- authoring/composition validation;
+- Advanced / Diagnostics evidence.
 
-Designer-facing configuration should lead with intent and operational state.
-Technical evidence may expose, as applicable:
+Diagnostics may expose output/request IDs, owner/lifetime evidence, precedence,
+tie-break ID, admitted request set, winner, physical apply, rollback and explicit
+blocking issues.
 
-- output identity;
-- request identity;
-- owner/lifetime evidence;
-- precedence and deterministic tie-break identity;
-- admitted request count/identities;
-- current logical winner;
-- requested and resulting output state;
-- physical apply result;
-- rollback attempt/result;
-- explicit blocking issue codes/messages;
-- last operation status.
+## 12. Technical certification
 
-Diagnostics must make invalid mandatory state actionable. Failures must not be
-relabelled as a normal fallback.
+The current accepted boundary is backed by three complementary proofs.
 
-## 10. Relationship to Other ADRs
+### C9R — positive authority lifecycle
 
-### IF-ADR-001 — Core Lifecycle and Runtime Authority
+```text
+[CAMERA_RUNTIME_HOST_INTEGRATION_REGRESSION]
+status='Passed'
+cases='11'
+```
 
-Defines the scoped-authority model. Camera uses explicit scoped runtime objects
-rather than a global manager or discoverable current Camera authority.
+C9R preserves the supported positive lifecycle ladder, restoration, duplicate
+request/release behavior and normal Activity/Route cleanup.
 
-### IF-ADR-002 — Product Authoring Model
+### IF-ADR-004C — owner lifetime integrity
 
-`CameraRigComposer` is a justified materializing Composer because authored rig
-intent deterministically produces local Cinemachine technical state. This does
-not create a generic requirement for Recipes/Composers in other systems.
+```text
+[QA_CAMERA_ADR004C]
+status='Passed'
+cases='10/10'
+failed='0'
+verdict='ADR-004C CAMERA OWNER LIFETIME INTEGRITY CERTIFIED'
+```
 
-### IF-ADR-003 — Player Participation and Actor Lifecycle
+This certifies normal exit, Session disable, Route/Activity abnormal disable,
+Activity destruction, winner/non-winner cleanup, idempotence and explicit-only
+re-enable behavior.
 
-Defines the eligibility/ownership context from which Local Player Camera
-publication may occur. Camera does not discover Players on its own.
+### IF-ADR-004B — negative integrity
 
-### IF-ADR-005 — Input, Pause, Gate and Reset
+```text
+[QA_CAMERA_ADR004B]
+status='Passed'
+cases='18/18'
+failed='0'
+blocked='0'
+verdict='ADR-004B CAMERA NEGATIVE INTEGRITY CERTIFIED'
+```
 
-Contextual interaction may affect when Camera requests are useful or available,
-but ADR-005 does not become Camera output authority.
+The 18-case matrix covers deterministic arbitration, identity/output validation,
+publish/release idempotence, restoration ordering, transactional rollback,
+normal lifecycle cleanup, abnormal owner loss and persistent-output authoring
+integrity.
 
-### IF-ADR-006 — Loading, Transition, Persistence and Diagnostics
+## 13. Certification history
 
-Defines lifecycle/diagnostic expectations around transitions and persistent
-presentation. Camera must preserve explicit failure and restoration evidence
-through those flows.
+The certification was intentionally evidence-driven:
 
-### IF-ADR-008 — Persistent Application Content Composition
+```text
+004A
+  reconcile normative architecture
+      ↓
+004B first execution
+  17/18
+  case 16 reproduced Route-owner orphan
+      ↓
+004C
+  narrow owner-lifetime package correction
+  10/10 certified
+      ↓
+004B re-certification
+  18/18 certified
+```
 
-Persistent Content owns the application-persistent physical Camera composition.
-The local rig Composer does not replace that ownership boundary.
+The initial failure is preserved as evidence that 004C was justified by a real
+package defect rather than speculative architecture.
 
-### IF-ADR-010 — Editor and Inspector Product Surface Authority
-
-Defines designer-first authoring, explicit validation/materialization where
-justified and Advanced/Diagnostics separation. CameraRigComposer is a Class C
-materialized-composition example.
-
-### IF-ADR-014 — Authored Definition and Stable Identity Authority
-
-Route/Activity Camera ownership follows exact authored definition references.
-Stable IDs remain persistence/diagnostic evidence rather than definition
-identity authority.
-
-## 11. Non-Goals
+## 14. Non-goals
 
 This ADR does not authorize:
 
-- a global `CameraManager`;
-- a Camera service locator;
-- static request registries;
-- `Camera.main` as runtime authority;
-- scene/name/tag discovery as output ownership authority;
-- hidden timing-based request priority;
+- global `CameraManager` / service locator / static request registry;
+- timing-based priority;
 - multiple simultaneous physical outputs;
 - split-screen;
-- concurrent per-player output ownership;
-- a generic Camera request broker outside the scoped output model;
-- a new Recipe/Profile layer solely for symmetry with other features;
-- a second Composer around the same local rig intent;
-- automatic creation of the persistent physical output from a local rig;
+- concurrent per-player physical output ownership;
+- generic cross-feature request broker;
+- new Recipe/Profile layer solely for symmetry;
+- second Composer around the same local rig intent;
+- automatic creation of persistent output from a local rig;
 - Camera ownership of AudioListener behavior;
-- broad automatic Camera gameplay authored by the framework;
-- speculative lifetime managers before IF-ADR-004B demonstrates a concrete gap.
+- arbitrary Cinemachine presentation modes beyond accepted product support.
 
-## 12. Validation Requirements
-
-Technical validation for the accepted boundary must cover both positive behavior
-and negative integrity.
-
-### Existing positive/current evidence
-
-The current QA surface already exercises the main authority ladder and normal
-release/restoration behavior, including:
-
-- Local Player, Activity, Route and Session precedence flow;
-- explicit request/release;
-- restoration of the next valid request;
-- repeated request/release behavior;
-- Activity/Route lifecycle cleanup;
-- persistent output authoring/composition validation.
-
-### Required IF-ADR-004B negative certification
-
-The next technical gate must explicitly certify:
-
-1. higher precedence wins;
-2. equal precedence with distinct deterministic tie-breakers is deterministic;
-3. equal precedence with missing tie-break evidence blocks;
-4. equal precedence with colliding tie-break evidence blocks;
-5. duplicate RequestId blocks;
-6. wrong OutputId blocks;
-7. repeated Publish preserves state without duplicate mutation;
-8. repeated Release preserves released state without mutation;
-9. releasing the current winner restores the next valid request;
-10. out-of-order release preserves the correct winner;
-11. physical apply failure during admission rolls logical admission back;
-12. physical apply failure during release restores the previous request/state;
-13. rollback failure produces explicit `RollbackFailed` evidence;
-14. Activity exit cleans only its owned request;
-15. Route exit cleans only its owned request;
-16. abnormal owner disable/destruction proves the accepted lifetime invariant or
-    exposes an orphan request;
-17. duplicate Persistent Camera Output authoring blocks in composition
-    validation;
-18. missing/invalid output binding references fail explicitly.
-
-Package changes are not a prerequisite for this QA cut. QA should first test the
-current official package and identify whether a package defect actually exists.
-
-## 13. Current Certification State
-
-As of 2026-08-10:
+## 15. Current disposition
 
 ```text
 Architecture
   ACCEPTED
-  IF-ADR-004A normative reconciliation recorded
 
-Package
-  SUBSTANTIALLY IMPLEMENTED
-  current single-output architecture is coherent
-  no broad Camera redesign identified
+Package — current single-output boundary
+  IMPLEMENTED
 
-Product Surface
-  STRONG / CONFORMANT
-  CameraRigComposer + output binding + scoped override surfaces are established
+Product Surface / Diagnostics
+  IMPLEMENTED / CONFORMANT
 
 Technical QA
-  PARTIAL
-  positive/current regressions exist
-  IF-ADR-004B negative integrity certification is pending
+  CERTIFIED
+  C9R 11/11
+  IF-ADR-004C 10/10
+  IF-ADR-004B 18/18
 
 FIRSTGAME
   PARTIAL
-  broader real-consumer Camera proof is still required
+  broader real-consumer Camera proof remains separate
 
-Confirmed package defect requiring IF-ADR-004C
-  NO — not currently proven
+Current technical blocker
+  NONE for the accepted single-output boundary
 ```
 
-The planning score remains tracked separately in IF-TRACK and must not be
-changed merely because the normative documentation was reconciled.
-
-## 14. Follow-on Cuts
-
-### IF-ADR-004A — Camera Authority Normative Reconciliation
-
-Status: **Closed by this documentation revision**.
-
-Purpose: align the normative ADR with the already-existing scoped output,
-deterministic arbitration, transactional application and product-authoring
-architecture.
-
-No runtime, Editor, QA or FIRSTGAME code change is implied by closing 004A.
-
-### IF-ADR-004B — Camera Negative Integrity Certification
-
-Status: **Next technical gate**.
-
-Purpose: attempt to break the current implementation across arbitration,
-transactional rollback, invalid authoring and owner-lifetime boundaries before
-changing package architecture.
-
-### IF-ADR-004C — Camera Owner Lifetime Integrity
-
-Status: **Conditional / not opened**.
-
-Open only if IF-ADR-004B proves that an admitted request can outlive its valid
-owner because the accepted lifecycle cannot guarantee cleanup.
-
-If 004B instead proves a sufficient higher-level lifecycle invariant, document
-that invariant and do not create 004C.
-
-## 15. Exit Criteria
-
-The current ADR-004 boundary is functionally complete when:
-
-- the package continues to expose the accepted authoring/runtime surface;
-- technical QA certifies the positive and negative request/arbitration/output
-  integrity matrix;
-- persistent output authoring validation remains enforced;
-- mandatory failure and rollback evidence remain explicit and diagnostic;
-- no hidden Camera authority/discovery path is introduced;
-- FIRSTGAME demonstrates the same official package surfaces in real gameplay,
-  including request replacement/restoration, without local duplicate Camera
-  authority.
-
-## 16. Reopen / Extension Triggers
-
-Reopen or extend this ADR if the framework needs:
-
-- multi-output;
-- split-screen;
-- concurrent local-player Camera outputs;
-- a different arbitration model;
-- a different physical output ownership model;
-- a new runtime target-discovery authority;
-- a package lifetime fix proven necessary by IF-ADR-004B.
+Future multi-output/split-screen work is a new contract and does not reopen this
+certified single-output boundary by default.

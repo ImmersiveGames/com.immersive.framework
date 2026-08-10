@@ -5,25 +5,16 @@ This package uses one documentation authority model:
 ```text
 Guides/                    current product usage
 Architecture/ADRs/         normative architecture decisions
-Architecture/Tracking/     the only mutable cross-framework status board
+Architecture/Tracking/     mutable cross-framework status board
 Architecture/Archive/      historic plans, audits and fix notes
 Architecture/Plans/        index only; active work belongs on the tracker
 ```
 
 ## Evidence model
 
-Functional feature completion is supported by:
-
-```text
-Package implementation
-  +
-QA technical proof
-  +
-FIRSTGAME real-product integration proof when applicable
-```
-
-UX observations found while building FIRSTGAME are qualitative product feedback.
-They may justify improvements but are not a completion percentage or a QA gate.
+Functional technical claims are grounded in package implementation and objective
+QA evidence. FIRSTGAME remains the real-consumer integration/UX surface when
+applicable and is tracked separately from deterministic QA contracts.
 
 ## Start here
 
@@ -49,7 +40,7 @@ They may justify improvements but are not a completion percentage or a QA gate.
 | [001](Architecture/ADRs/IF-ADR-001-Core-Lifecycle-and-Runtime-Authority.md) | Core lifecycle and runtime authority | Accepted |
 | [002](Architecture/ADRs/IF-ADR-002-Product-Authoring-Model.md) | Product authoring model | Accepted |
 | [003](Architecture/ADRs/IF-ADR-003-Player-Participation-and-Actor-Lifecycle.md) | Player participation and Actor lifecycle | Accepted |
-| [004](Architecture/ADRs/IF-ADR-004-Camera-Requests-and-Output-Authority.md) | Camera requests and output authority | Accepted |
+| [004](Architecture/ADRs/IF-ADR-004-Camera-Requests-and-Output-Authority.md) | Camera requests and output authority | **Accepted / technically certified current single-output boundary** |
 | [005](Architecture/ADRs/IF-ADR-005-Input-Pause-Gate-and-Reset.md) | Input, Pause, Gate and Reset | Accepted |
 | [006](Architecture/ADRs/IF-ADR-006-Loading-Transition-Persistence-and-Diagnostics.md) | Loading, transition, persistence and diagnostics | Accepted |
 | [007](Architecture/ADRs/IF-ADR-007-Activity-Entry-Readiness-and-Reveal-Gating.md) | Activity entry readiness and reveal gating | Accepted |
@@ -63,12 +54,20 @@ They may justify improvements but are not a completion percentage or a QA gate.
 | [015](Architecture/ADRs/IF-ADR-015-Player-Provisioning-Commands-and-Consumer-Observation-Surface.md) | Player provisioning commands and observation surface | Accepted |
 | [016](Architecture/ADRs/IF-ADR-016-Player-Session-Initial-Configuration-and-Provisioning-Profiles.md) | Player Session initial configuration | Accepted |
 
+### Camera sub-decisions
+
+- [IF-ADR-004A — Camera Authority Normative Reconciliation](Architecture/ADRs/IF-ADR-004A-Camera-Authority-Normative-Reconciliation-2026-08-10.md) — **Closed**
+- [IF-ADR-004B — Camera Negative Integrity Certification](Architecture/ADRs/IF-ADR-004B-Camera-Negative-Integrity-Certification-2026-08-10.md) — **Certified 18/18**
+- [IF-ADR-004C — Camera Owner Lifetime Integrity](Architecture/ADRs/IF-ADR-004C-Camera-Owner-Lifetime-Integrity-2026-08-10.md) — **Accepted / Implemented / Certified 10/10**
+
 ## Current evidence records
 
+- [Camera QA certification — 2026-08-10](Architecture/IMMERSIVE-FRAMEWORK-CAMERA-QA-CERTIFICATION-2026-08-10.md)
+- [Camera audit and post-audit closure — 2026-08-10](Architecture/IMMERSIVE-FRAMEWORK-ADR-004-CAMERA-AUDIT-2026-08-10.md)
 - [Player QA certification — 2026-08-09](Architecture/IMMERSIVE-FRAMEWORK-PLAYER-QA-CERTIFICATION-2026-08-09.md)
 - [Player serialization migration integrity — 2026-08-09](Architecture/IMMERSIVE-FRAMEWORK-PLAYER-SERIALIZATION-MIGRATION-INTEGRITY-2026-08-09.md)
 
-ADRs decide. The Tracker records current implementation/integration status.
+ADRs decide. The Tracker records mutable implementation/integration status.
 Evidence records preserve point-in-time technical proof. Guides teach current
 usage. Archive content is historical and must not be treated as current product
 truth.
