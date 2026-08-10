@@ -6,7 +6,8 @@ Package implementation: **Implemented**
 Technical QA: **Certified**  
 FIRSTGAME: **Not required for current accepted boundary**  
 Related decisions: IF-ADR-001, IF-ADR-002, IF-ADR-006, IF-ADR-007, IF-ADR-010, IF-ADR-014  
-QA evidence: `IMMERSIVE-FRAMEWORK-ADR-009-QA-CERTIFICATION-2026-08-10.md`
+Current reconciliation: [ADR-002 / ADR-009 reconciliation](../Reconciliation/IMMERSIVE-FRAMEWORK-ADR-002-009-RECONCILIATION-2026-08-10.md)
+Historical QA evidence: [ADR-009 QA certification](../Archive/IMMERSIVE-FRAMEWORK-ADR-009-QA-CERTIFICATION-2026-08-10.md)
 
 ## Context
 

@@ -4,9 +4,11 @@ Status: **Accepted**
 Last updated: 2026-08-10  
 Package implementation: **COMPLETE FOR CURRENT ACCEPTED PACKAGE SCOPE**  
 Current technical conformity: **OPEN ONLY FOR FOCUSED PAUSE QA**  
+Any numeric planning assessment below is a planning estimate only; it is not certification or a conformance score.
 Current planning assessment: **30/30 Package · 20/20 Surface · 13/15 QA**  
 Product surface status: **AVAILABLE / direct authoring surfaces are sufficient for the current lifecycle**  
 Related decisions: IF-ADR-001, IF-ADR-003, IF-ADR-006, IF-ADR-007, IF-ADR-010, IF-ADR-011  
+Current reconciliation: [ADR-005 reconciliation](../Reconciliation/IMMERSIVE-FRAMEWORK-ADR-005-RECONCILIATION-2026-08-10.md)
 Current package baseline: `7b53b47814ddf59159972f56db171d60d421b14f` (`Camera-Docs`)  
 Current QA baseline inspected: `d000303c6409338888c8abe21e83c70759171df6` (`Cam-Pass`)  
 Current FIRSTGAME baseline observed: `796618243c3ca76f70d582f38475320c6461420b` (`Demo02 Reajuste`)

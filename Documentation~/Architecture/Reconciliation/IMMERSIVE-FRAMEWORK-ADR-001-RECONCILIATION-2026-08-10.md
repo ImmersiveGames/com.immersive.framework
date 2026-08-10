@@ -100,7 +100,7 @@ future lifecycle extension has been implemented.
 
 ### Created
 
-- `Documentation~/Architecture/IMMERSIVE-FRAMEWORK-ADR-001-RECONCILIATION-2026-08-10.md`
+- `Documentation~/Architecture/Reconciliation/IMMERSIVE-FRAMEWORK-ADR-001-RECONCILIATION-2026-08-10.md`
 
 ### Removed
 

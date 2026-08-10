@@ -12,5 +12,7 @@ Do not use this folder as current usage guidance. For product status, read
 Archive/
   Plans/   completed or superseded implementation programs
   Audits/  point-in-time diagnostic reports
+  Completion/ completed delivery summaries
+  Rebaseline/ superseded package/product status baselines
   Fixes/   defect-closeout notes absorbed into product docs
 ```

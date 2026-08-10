@@ -214,11 +214,11 @@ error or internal knowledge requirements.
 
 - `Documentation~/Architecture/ADRs/IF-ADR-002-Product-Authoring-Model.md`
 - `Documentation~/Architecture/Tracking/IF-TRACK-Framework.md`
-- `Documentation~/Architecture/IMMERSIVE-FRAMEWORK-ADR-002-009-RECONCILIATION-2026-08-10.md`
+- `Documentation~/Architecture/Reconciliation/IMMERSIVE-FRAMEWORK-ADR-002-009-RECONCILIATION-2026-08-10.md`
 
 ### Created
 
-- `Documentation~/Architecture/IMMERSIVE-FRAMEWORK-ADR-002-RECONCILIATION-2026-08-10.md`
+- `Documentation~/Architecture/Reconciliation/IMMERSIVE-FRAMEWORK-ADR-002-RECONCILIATION-2026-08-10.md`
 
 ### Removed
 

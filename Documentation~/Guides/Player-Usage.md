@@ -272,7 +272,7 @@ Serialized command identity is part of the certification:
 50 RequestDefaultActorSelection
 ```
 
-See `../Architecture/IMMERSIVE-FRAMEWORK-PLAYER-QA-CERTIFICATION-2026-08-09.md`.
+See `../Architecture/Reconciliation/IMMERSIVE-FRAMEWORK-PLAYER-QA-CERTIFICATION-2026-08-09.md`.
 
 ## 11. FIRSTGAME real integration
 

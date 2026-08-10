@@ -6,6 +6,7 @@ Implementation classification: **Mature cross-cutting authoring model; current f
 Current accepted boundary: **Reconciled — no cross-cutting implementation or product-surface blocker identified**  
 Related decisions: IF-ADR-001, IF-ADR-003–IF-ADR-016  
 Current evidence source: `IF-TRACK-Framework.md` plus feature-specific QA/closure records; this normative ADR intentionally does not pin a mutable package SHA.
+Current reconciliation: [ADR-002 reconciliation](../Reconciliation/IMMERSIVE-FRAMEWORK-ADR-002-RECONCILIATION-2026-08-10.md) and [ADR-002 / ADR-009 reconciliation](../Reconciliation/IMMERSIVE-FRAMEWORK-ADR-002-009-RECONCILIATION-2026-08-10.md).
 
 > This revision supersedes the older interpretation that recurrent framework
 > features are expected to acquire Recipe/Profile + Composer + Apply/Rebuild +

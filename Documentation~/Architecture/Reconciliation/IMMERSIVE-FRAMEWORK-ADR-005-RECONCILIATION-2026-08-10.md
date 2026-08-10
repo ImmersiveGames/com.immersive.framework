@@ -365,7 +365,7 @@ EDIT
 Documentation~/Architecture/Tracking/IF-TRACK-Framework.md
 
 CREATE
-Documentation~/Architecture/IMMERSIVE-FRAMEWORK-ADR-005-RECONCILIATION-2026-08-10.md
+Documentation~/Architecture/Reconciliation/IMMERSIVE-FRAMEWORK-ADR-005-RECONCILIATION-2026-08-10.md
 ```
 
 ## Suggested commit message

@@ -1,5 +1,11 @@
 # IF-ADR-010B — Package Product Surface Audit
 
+> Historical record.
+>
+> This rebaseline captures the framework state at the time it was written. It
+> is not current tracking or normative authority. For current status, see the
+> Tracker.
+
 Date: 2026-08-09  
 Type: UX/Product audit / documentation  
 Status: **CLOSED — current package surface rebaselined**  

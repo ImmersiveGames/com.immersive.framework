@@ -1,5 +1,11 @@
 # Immersive Framework — IF-ADR-004 Camera Audit
 
+> Historical record.
+>
+> This audit captures the framework state at the time it was written and is not
+> current tracking or normative authority. For current Camera status, see the
+> Tracker and the Architecture/Reconciliation records.
+
 Date: **2026-08-10**  
 Scope: **IF-ADR-004 + package Camera implementation + QA Camera evidence**  
 Purpose: **Historical audit record with post-audit closure**

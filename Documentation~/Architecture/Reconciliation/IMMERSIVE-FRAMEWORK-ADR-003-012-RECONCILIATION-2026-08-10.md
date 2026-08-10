@@ -39,7 +39,7 @@ QAFramework
 Canonical Player certification record:
 
 ```text
-Documentation~/Architecture/IMMERSIVE-FRAMEWORK-PLAYER-QA-CERTIFICATION-2026-08-09.md
+Documentation~/Architecture/Reconciliation/IMMERSIVE-FRAMEWORK-PLAYER-QA-CERTIFICATION-2026-08-09.md
 
 certification documentation/package baseline
   43b96a4b100b8273da1190520536007ba82dc081
@@ -359,7 +359,7 @@ Documentation~/Architecture/Tracking/IF-TRACK-Framework.md
 Created:
 
 ```text
-Documentation~/Architecture/IMMERSIVE-FRAMEWORK-ADR-003-012-RECONCILIATION-2026-08-10.md
+Documentation~/Architecture/Reconciliation/IMMERSIVE-FRAMEWORK-ADR-003-012-RECONCILIATION-2026-08-10.md
 ```
 
 Removed:

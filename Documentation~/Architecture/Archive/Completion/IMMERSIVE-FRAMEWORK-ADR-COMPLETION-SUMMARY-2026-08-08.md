@@ -1,5 +1,11 @@
 # Immersive Framework — ADR Completion Summary
 
+> Historical record.
+>
+> This completion summary captures the framework state at the time it was
+> written. It is not current tracking or normative authority. For current
+> status, see the Tracker.
+
 > Historical planning document updated with the **2026-08-10 Camera closure**.
 > Older percentage snapshots remain historical planning evidence; current mutable
 > status authority is `Tracking/IF-TRACK-Framework.md`.

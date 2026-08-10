@@ -6,6 +6,7 @@ Package implementation: **Implemented**
 Technical QA: **Certified**  
 FIRSTGAME integration: **Partial — broader real-consumer proof remains separate**  
 Related decisions: IF-ADR-001, IF-ADR-002, IF-ADR-003, IF-ADR-004A, IF-ADR-004B, IF-ADR-004C, IF-ADR-005, IF-ADR-006, IF-ADR-008, IF-ADR-010, IF-ADR-014
+Current reconciliation: [IF-ADR-004A](../Reconciliation/IF-ADR-004A-Camera-Authority-Normative-Reconciliation-2026-08-10.md) and [IF-ADR-004B](../Reconciliation/IF-ADR-004B-Camera-Negative-Integrity-Certification-2026-08-10.md).
 
 > This ADR is the normative Camera authority. Mutable portfolio status lives in
 > `../Tracking/IF-TRACK-Framework.md`. The 2026-08-10 certification sequence is
