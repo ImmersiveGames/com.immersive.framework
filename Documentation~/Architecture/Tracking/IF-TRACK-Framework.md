@@ -8,11 +8,11 @@ Package version: `1.0.0-preview.17`
 
 ```text
 com.immersive.framework
-  baecd612c79fe4dabfde5be8d7cf17f3b6b4a3ea
-  Adr004
+  7b53b47814ddf59159972f56db171d60d421b14f
+  Camera-Docs
 
 QAFramework
-  c7f3443df9a95011220db5d584de7afb94e331ec
+  d000303c6409338888c8abe21e83c70759171df6
   Cam-Pass
 
 FIRSTGAME / planet-devourer
@@ -42,6 +42,9 @@ FIRSTGAME integration
 
 UX remains separate from technical completion.
 
+FIRSTGAME is Stage B consumer evidence. It does not reopen Stage A technical
+conformity after package/contracts/QA for an ADR boundary are certified.
+
 ## Progress estimate
 
 The percentage view is a planning aid, not release certification.
@@ -52,7 +55,7 @@ The percentage view is a planning aid, not release certification.
 | IF-ADR-002 | 20/20 | 30/30 | 20/20 | N/A | N/A | **100%** | closed for current cross-cutting boundary |
 | IF-ADR-003 | 20/20 | 29/30 | 18/20 | 15/15 | 5/15 | **87%** | current-model Player integration in FIRSTGAME |
 | IF-ADR-004 | 20/20 | 30/30 | 18/20 | 15/15 | 8/15 | **91%** | broader FIRSTGAME Camera consumer proof / product UX only |
-| IF-ADR-005 | 20/20 | 27/30 | 18/20 | 11/15 | 9/15 | **85%** | focused Pause/Input/Reset negative contracts |
+| IF-ADR-005 | 20/20 | 30/30 | 20/20 | 13/15 | 9/15 | **92%** | focused Pause QA; FIRSTGAME is Stage B only |
 | IF-ADR-006 | 20/20 | 29/30 | 18/20 | 15/15 | 13/15 | **95%** | exceptional post-commit paths only |
 | IF-ADR-007 | 20/20 | 29/30 | 18/20 | 15/15 | 13/15 | **95%** | focused uncovered readiness variants |
 | IF-ADR-008 | 20/20 | 27/30 | 18/20 | 10/15 | 10/15 | **85%** | current Scene Template integration/hardening evidence |
@@ -68,9 +71,65 @@ The percentage view is a planning aid, not release certification.
 `IF-ADR-002` and `IF-ADR-010` remain normalized over their applicable
 Architecture/Package/Product Surface dimensions.
 
-With only the Camera row changed from the previous Tracker snapshot, the planning
-mean moves from **88.7%** to approximately **89.3%**. The explicit ADR/evidence
+With the current Camera reconciliation and the ADR-005 documentation correction,
+the portfolio planning mean is approximately **89.7%**. The explicit ADR/evidence
 status remains more important than this planning average.
+
+## ADR-005 technical reconciliation — 2026-08-10
+
+The current ADR-005 package boundary is implemented and its direct product
+surfaces are sufficient under ADR-010. No missing Composer, Wizard, Recipe or
+generic Gate Manager is identified.
+
+Current evidence disposition:
+
+```text
+Architecture
+  ACCEPTED / RECONCILED
+
+Package
+  IMPLEMENTED
+
+Product Surface / Diagnostics
+  IMPLEMENTED
+
+Input Gate
+  QA PROVEN for current focused regression
+
+Reset
+  QA PROVEN for current focused regression
+
+Activity Restart
+  QA PROVEN for current focused regression
+
+Transition / Readiness gates
+  existing focused certifications remain valid
+
+Pause
+  IMPLEMENTED
+  direct focused QA proof pending
+
+Pause + Activity Restart
+  direct focused QA proof pending
+
+Divergent package behavior
+  NONE IDENTIFIED
+
+Missing package contract
+  NONE IDENTIFIED
+
+FIRSTGAME
+  STAGE B / separate consumer evidence
+```
+
+The remaining Stage A cut is QA-only unless the focused Pause regression reveals
+a real package defect. It should prove `PauseRuntime`, `PausePlayerInputBinding`,
+`PauseRequestTrigger`, cleanup/restoration semantics and deterministic behavior
+when Activity Restart occurs while Pause is active.
+
+Do not alter package behavior simply to satisfy the synthetic test. Any real
+contract defect discovered by that QA cut must become a separate minimal package
+cut with explicit evidence.
 
 ## Camera technical closure — 2026-08-10
 
@@ -171,8 +230,8 @@ Accepted serialized command identity remains:
 | Participant-aware Loading progress | Implemented | Certified | Proven in existing scenario | preserve semantics |
 | Loading / Transition | Implemented | Certified for current boundary | Proven for core flows | exceptional paths only |
 | **Camera — current single output** | **Implemented; 004C owner-lifetime fix present** | **Certified: C9R 11/11 + 004C 10/10 + 004B 18/18** | **Partial** | **technical boundary closed; broader real-consumer Camera proof remains separate** |
-| Pause / Input / Gate | Implemented | Partial/current regressions | Partial | concrete hardening only |
-| Reset / Activity Restart | Implemented | Partial/current regressions | Partial | concrete lifecycle negatives only |
+| Pause / Input / Gate | Implemented | Partial — Input/Transition/Readiness proven; direct Pause proof pending | Partial | focused Pause QA is the only current Stage A gap |
+| Reset / Activity Restart | Implemented | Proven for current focused boundary | Partial | technical regressions present; FIRSTGAME remains separate Stage B evidence |
 | Persistent Content Scene Template | Implemented | Validation exists; broader QA partial | Partial | Scene Template remains canonical |
 | Activity local visibility | Implemented | Partial | Partial | preserve occurrence-scoped visibility |
 | Authored identity / ADR-014 | Implemented | Certified | Proven | closed current boundary |
@@ -186,10 +245,11 @@ Accepted serialized command identity remains:
 1. keep documentation aligned with current contracts and certification evidence
 2. preserve Camera C9R / 004B / 004C certification; do not reopen it for unrelated UX work
 3. apply/retest the QA-only Camera teardown hygiene patch for a clean console when convenient
-4. continue focused non-Camera hardening only for concrete technical gaps
-5. rebuild FIRSTGAME Player integration against the accepted current model
-6. use FIRSTGAME Camera as separate consumer integration/UX evidence when desired
-7. promote experimental systems only from real product demand
+4. close ADR-005 Stage A with focused Pause and Pause + Activity Restart QA
+5. continue other non-Camera hardening only for concrete technical gaps
+6. rebuild FIRSTGAME Player integration against the accepted current model
+7. use FIRSTGAME as separate consumer integration/UX evidence where desired
+8. promote experimental systems only from real product demand
 ```
 
 ## Future contracts kept separate
@@ -204,4 +264,4 @@ application-scoped stable-ID resolver (IF-ID-07)
 ```
 
 These require separate approved cuts and must not be treated as missing pieces of
-the certified current Camera single-output boundary.
+a certified current boundary.
