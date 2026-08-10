@@ -161,6 +161,29 @@ namespace Immersive.Framework.ContentFlow
             string reason,
             string message)
         {
+            return ActivitySceneAuthoredBinding(
+                ownerId,
+                ownerName,
+                objectName,
+                sceneName,
+                FrameworkContentRequiredness.Optional,
+                active,
+                source,
+                reason,
+                message);
+        }
+
+        public static FrameworkContentHandle ActivitySceneAuthoredBinding(
+            string ownerId,
+            string ownerName,
+            string objectName,
+            string sceneName,
+            FrameworkContentRequiredness requiredness,
+            bool active,
+            string source,
+            string reason,
+            string message)
+        {
             string normalizedObjectName = Normalize(objectName);
             string normalizedSceneName = Normalize(sceneName);
             if (string.IsNullOrWhiteSpace(normalizedObjectName))
@@ -180,7 +203,7 @@ namespace Immersive.Framework.ContentFlow
 
             return new FrameworkContentHandle(
                 identity,
-                FrameworkContentRequiredness.Optional,
+                requiredness,
                 ownerName,
                 objectName,
                 sceneSegment,

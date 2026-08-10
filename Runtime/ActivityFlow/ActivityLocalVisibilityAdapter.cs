@@ -38,7 +38,7 @@ namespace Immersive.Framework.ActivityFlow
         private string localContentId = string.Empty;
 
         [SerializeField]
-        [Tooltip("Declares whether this local Activity contribution should be treated as required by future contribution consumers. F5F records this policy but does not validate absence yet.")]
+        [Tooltip("Declares whether this local Activity contribution blocks Activity entry when its visibility configuration is invalid. Optional invalid contributions remain diagnostic and do not block entry.")]
         private FrameworkContentRequiredness requiredness = FrameworkContentRequiredness.Required;
 
         public IReadOnlyList<ActivityAsset> Activities => activities ?? Array.Empty<ActivityAsset>();
@@ -126,6 +126,11 @@ namespace Immersive.Framework.ActivityFlow
                 return Invalid(activeActivity, "UnsupportedNoActiveActivityPolicy");
             }
 
+            if (!IsSupported(requiredness))
+            {
+                return Invalid(activeActivity, "UnsupportedRequiredness");
+            }
+
             ActivityAsset matchedActivity = null;
             for (int index = 0; index < activities.Length; index++)
             {
@@ -146,6 +151,12 @@ namespace Immersive.Framework.ActivityFlow
                         ReferenceEquals(listedActivity, activities[priorIndex]))
                     {
                         return Invalid(activeActivity, $"CurrentActivityDuplicateAtIndex{index}");
+                    }
+
+                    if (activities[priorIndex] != null &&
+                        listedActivity.ActivityId == activities[priorIndex].ActivityId)
+                    {
+                        return Invalid(activeActivity, $"CurrentActivityStableIdCollisionAtIndex{index}");
                     }
                 }
 
@@ -185,6 +196,12 @@ namespace Immersive.Framework.ActivityFlow
         {
             return value == ActivityVisibilityNoActivePolicy.Hidden ||
                    value == ActivityVisibilityNoActivePolicy.Visible;
+        }
+
+        internal static bool IsSupported(FrameworkContentRequiredness value)
+        {
+            return value == FrameworkContentRequiredness.Required ||
+                   value == FrameworkContentRequiredness.Optional;
         }
 
         private ActivityVisibilityEvaluation Invalid(ActivityAsset activeActivity, string reason)

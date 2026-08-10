@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using Immersive.Framework.Authoring;
+using Immersive.Framework.ContentFlow;
 
 namespace Immersive.Framework.ActivityFlow
 {
@@ -26,6 +27,7 @@ namespace Immersive.Framework.ActivityFlow
                 Reason = reason;
                 ObservedBindings = new List<string>(MaxObservedBindingsInMessage);
                 WarningBindings = new List<string>();
+                RequiredInvalidBindingDiagnostics = new List<string>();
                 ActiveContentEntries = new List<ActivityContentEntry>();
             }
 
@@ -43,6 +45,8 @@ namespace Immersive.Framework.ActivityFlow
 
             internal List<string> WarningBindings { get; }
 
+            internal List<string> RequiredInvalidBindingDiagnostics { get; }
+
             internal List<ActivityContentEntry> ActiveContentEntries { get; }
 
             internal int BindingCount { get; set; }
@@ -56,6 +60,10 @@ namespace Immersive.Framework.ActivityFlow
             internal int MissingActivityCount { get; set; }
 
             internal int InvalidBindingCount { get; set; }
+
+            internal int RequiredInvalidBindingCount { get; set; }
+
+            internal int OptionalInvalidBindingCount { get; set; }
 
             internal int EnterBindingCount { get; set; }
 
@@ -116,6 +124,18 @@ namespace Immersive.Framework.ActivityFlow
                     context.WarningBindings,
                     binding,
                     evaluation.DiagnosticReason);
+                if (binding.Requiredness == FrameworkContentRequiredness.Optional)
+                {
+                    context.OptionalInvalidBindingCount++;
+                }
+                else
+                {
+                    context.RequiredInvalidBindingCount++;
+                    AddWarning(
+                        context.RequiredInvalidBindingDiagnostics,
+                        binding,
+                        evaluation.DiagnosticReason);
+                }
                 AddObservation(
                     context.ObservedBindings,
                     ref context.OmittedObservationCount,
@@ -321,6 +341,8 @@ namespace Immersive.Framework.ActivityFlow
                 context.UnchangedCount,
                 context.MissingActivityCount,
                 context.InvalidBindingCount,
+                context.RequiredInvalidBindingCount,
+                context.OptionalInvalidBindingCount,
                 contentSet,
                 lifecycleResult,
                 BuildDetailMessage(
@@ -330,6 +352,18 @@ namespace Immersive.Framework.ActivityFlow
                 BuildWarningMessage(context.WarningBindings));
             StoreLastApplyResult(result);
             return result;
+        }
+
+        internal string BuildRequiredInvalidBindingDiagnostic(
+            ActivityContentTransitionContext context)
+        {
+            if (context == null || context.RequiredInvalidBindingCount <= 0)
+            {
+                return string.Empty;
+            }
+
+            return
+                $"Required Activity Local Visibility Adapter configuration is invalid. requiredInvalidBinding='{context.RequiredInvalidBindingCount}' diagnostics=[{string.Join("; ", context.RequiredInvalidBindingDiagnostics)}].";
         }
 
         private static void RecordVisibilityChange(

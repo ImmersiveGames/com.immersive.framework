@@ -12,6 +12,8 @@ namespace Immersive.Framework.ActivityFlow
         private ActivityContentApplyResult(int bindingCount,
             int missingActivityCount,
             int invalidBindingCount,
+            int requiredInvalidBindingCount,
+            int optionalInvalidBindingCount,
             ActivityContentSet activityContentSet,
             ActivityContentLifecycleResult lifecycleResult,
             string message,
@@ -21,6 +23,8 @@ namespace Immersive.Framework.ActivityFlow
             BindingCount = bindingCount;
             MissingActivityCount = missingActivityCount;
             InvalidBindingCount = invalidBindingCount;
+            RequiredInvalidBindingCount = requiredInvalidBindingCount;
+            OptionalInvalidBindingCount = optionalInvalidBindingCount;
             ActivityContentSet = activityContentSet;
             LifecycleResult = lifecycleResult;
             Message = message ?? string.Empty;
@@ -33,6 +37,10 @@ namespace Immersive.Framework.ActivityFlow
         public int MissingActivityCount { get; }
 
         public int InvalidBindingCount { get; }
+
+        public int RequiredInvalidBindingCount { get; }
+
+        public int OptionalInvalidBindingCount { get; }
 
         public ActivityContentSet ActivityContentSet { get; }
 
@@ -54,9 +62,13 @@ namespace Immersive.Framework.ActivityFlow
 
         public bool HasWarningMessage => !string.IsNullOrWhiteSpace(WarningMessage);
 
+        public bool HasRequiredInvalidBindings => RequiredInvalidBindingCount > 0;
+
         public static ActivityContentApplyResult Empty(ActivityAsset activeActivity = null)
         {
             return new ActivityContentApplyResult(0,
+                0,
+                0,
                 0,
                 0,
                 ActivityContentSet.Empty(activeActivity),
@@ -74,6 +86,8 @@ namespace Immersive.Framework.ActivityFlow
             int unchangedCount,
             int missingActivityCount,
             int invalidBindingCount,
+            int requiredInvalidBindingCount,
+            int optionalInvalidBindingCount,
             ActivityContentSet activityContentSet,
             ActivityContentLifecycleResult lifecycleResult,
             string detailMessage,
@@ -101,12 +115,14 @@ namespace Immersive.Framework.ActivityFlow
 
             if (invalidBindingCount > 0)
             {
-                message += $" invalidBinding='{invalidBindingCount}'.";
+                message += $" invalidBinding='{invalidBindingCount}' requiredInvalidBinding='{requiredInvalidBindingCount}' optionalInvalidBinding='{optionalInvalidBindingCount}'.";
             }
 
             return new ActivityContentApplyResult(bindingCount,
                 missingActivityCount,
                 invalidBindingCount,
+                requiredInvalidBindingCount,
+                optionalInvalidBindingCount,
                 activityContentSet,
                 lifecycleResult,
                 message,

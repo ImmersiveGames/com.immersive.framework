@@ -147,6 +147,9 @@ namespace Immersive.Framework.ActivityFlow
                 activity != null ? activity.ActivityName : string.Empty,
                 binding != null ? binding.ObjectName : string.Empty,
                 binding != null ? binding.SceneName : string.Empty,
+                binding != null
+                    ? binding.Requiredness
+                    : FrameworkContentRequiredness.Required,
                 true,
                 source,
                 reason,
@@ -306,7 +309,7 @@ namespace Immersive.Framework.ActivityFlow
         private static void AddWarning(List<string> warningBindings, ActivityLocalVisibilityAdapter binding, string reason)
         {
             warningBindings.Add(
-                $"object='{FormatValue(binding.ObjectName)}' scene='{FormatValue(binding.SceneName)}' reason='{FormatValue(reason)}'");
+                $"object='{FormatValue(binding.ObjectName)}' scene='{FormatValue(binding.SceneName)}' localContentId='{FormatValue(binding.LocalContentIdText)}' requiredness='{binding.Requiredness}' listedActivities='{FormatValue(FormatListedActivities(binding))}' reason='{FormatValue(reason)}'");
         }
 
         private static string FormatListedActivities(ActivityLocalVisibilityAdapter binding)

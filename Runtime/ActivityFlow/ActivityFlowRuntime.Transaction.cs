@@ -277,6 +277,28 @@ namespace Immersive.Framework.ActivityFlow
                         activityOperationResult);
                 }
 
+                ConfigureActivityContentTransitionScope(
+                    previousActivity,
+                    nextActivity);
+                contentTransition =
+                    _activityContentRuntime.PrepareActivityContentTransition(
+                        previousActivity,
+                        nextActivity,
+                        resolvedSource,
+                        resolvedReason);
+                if (contentTransition.RequiredInvalidBindingCount > 0)
+                {
+                    return await FailBeforeCommitAsync(
+                        transaction,
+                        nextActivity,
+                        previousActivity,
+                        resolvedSource,
+                        resolvedReason,
+                        _activityContentRuntime
+                            .BuildRequiredInvalidBindingDiagnostic(contentTransition),
+                        activityOperationResult);
+                }
+
                 transaction.MarkReadyToCommit(
                     "Target Activity scenes, runtime scope and activation requirements are prepared.");
                 _currentActivityState = ActivityRuntimeState.ActiveWith(
@@ -287,15 +309,6 @@ namespace Immersive.Framework.ActivityFlow
                 transaction.Commit(
                     "Target Activity became the current Activity authority.");
 
-                ConfigureActivityContentTransitionScope(
-                    previousActivity,
-                    nextActivity);
-                contentTransition =
-                    _activityContentRuntime.PrepareActivityContentTransition(
-                        previousActivity,
-                        nextActivity,
-                        resolvedSource,
-                        resolvedReason);
                 participantTransition = PrepareActivityParticipantTransition(
                     previousActivity,
                     nextActivity,
