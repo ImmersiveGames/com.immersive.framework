@@ -91,7 +91,7 @@ Current evidence-based planning estimate:
 | IF-ADR-010 | 20/20 | 28/30 | 20/20 | N/A | N/A | **97%*** | per-feature adoption only; no generic UX QA |
 | IF-ADR-011 | 20/20 | 29/30 | 18/20 | 15/15 | 13/15 | **95%** | focused public waiting/joining integration evidence |
 | IF-ADR-012 | 20/20 | 28/30 | 18/20 | 15/15 | 4/15 | **85%** | current-model Player participation in FIRSTGAME |
-| IF-ADR-013 | 20/20 | 18/30 | 12/20 | 7/15 | 0/15 | **57%** | optional BGM promotion requires technical + real-game evidence |
+| IF-ADR-013 | 20/20 | 18/30 | 12/20 | 7/15 | 0/15 | **57%** | typed execution evidence + negative QA, then real-game proof |
 | IF-ADR-014 | 20/20 | 30/30 | 20/20 | 15/15 | 15/15 | **100%** | closed for current accepted boundary |
 | IF-ADR-015 | 20/20 | 29/30 | 18/20 | 15/15 | 4/15 | **86%** | current public command/status integration in FIRSTGAME |
 | IF-ADR-016 | 20/20 | 30/30 | 19/20 | 15/15 | 4/15 | **88%** | current Scene-/Manager-Provisioned FIRSTGAME integration |
@@ -263,7 +263,7 @@ improvements, but are not a separate completion score.
 | Persistent Content Scene Template | Implemented | Validation exists; broader QA partial | Partial real integration | Scene Template is canonical product model; no Composer requirement |
 | Activity local visibility | Implemented | Partial | Partial real integration | preserve explicit occurrence-scoped visibility |
 | Authored identity / ADR-014 | Implemented | **Certified** | **Proven** | closed for current accepted boundary; IF-ID-07 deferred by design |
-| Optional BGM / ADR-013 | Experimental implementation | Partial | Not Proven | defer promotion until a real game requires and proves it |
+| Optional BGM / ADR-013 | Experimental implementation | Partial | Not Proven | close typed execution evidence + negative QA before FIRSTGAME promotion proof |
 | Application frame rate | Implemented / Experimental surface | focused proof required per feature | Not Proven | validate in real consumer when promoted |
 | Editor product surface / ADR-010 | Implemented across package | **No generic UX QA required** | integration evaluated per feature | ADR-010 accepted; package audit closed |
 

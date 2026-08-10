@@ -1,17 +1,12 @@
 # IF-ADR-009 — Activity Local Visibility Rules
 
-Status: **Accepted**  
-Last updated: 2026-08-09  
-Package implementation: **MATURE — focused package audit remains before final package closure**  
-Current package assessment: **26/30** — local planning assessment; not release certification  
-Related decisions: IF-ADR-006, IF-ADR-007, IF-ADR-010  
-Current package baseline: `43b96a4b100b8273da1190520536007ba82dc081` (`ADR-010B`)
-
-> No implementation is authorized by this revision.
->
-> The current runtime exists. The next step is a narrow inspection of the real
-> authoring, target validity, occurrence evidence and release/restoration
-> diagnostics before deciding whether any package change is necessary.
+Status: **Accepted — CLOSED for current accepted boundary**  
+Last updated: 2026-08-10  
+Package implementation: **Implemented**  
+Technical QA: **Certified**  
+FIRSTGAME: **Not required for current accepted boundary**  
+Related decisions: IF-ADR-006, IF-ADR-007, IF-ADR-010, IF-ADR-014  
+QA evidence: `IMMERSIVE-FRAMEWORK-ADR-009-QA-CERTIFICATION-2026-08-10.md`
 
 ## Context
 
@@ -32,22 +27,28 @@ Required visibility failures are blocking and diagnostic.
 
 Optional presentation behavior must not silently weaken required readiness.
 
+Stable authored identity identifies authored definitions; it is not by itself
+runtime occurrence, ownership, release or restoration authority.
+
 ## Architectural constraints
 
 - Runtime authority is scoped, typed and lifetime-explicit.
-- Required invalid configuration fails explicitly.
+- Required invalid configuration fails explicitly before commit.
+- Optional invalid visibility configuration remains non-mutating and diagnostic.
 - Visibility is not inferred from scene load.
 - Object names and hierarchy paths are not fallback identity.
 - Lifecycle occurrence/replacement semantics remain explicit.
+- Stale occurrences cannot apply, release or restore state owned by the current occurrence.
+- Release/restoration affects only context-owned state.
 - Editor authoring does not become gameplay authority.
+- Distinct authored definitions colliding on the same stable `ActivityId` are invalid.
 
-## Current package coverage
+## Accepted runtime model
 
-The current package contains `ActivityLocalVisibilityAdapter` integration with
-Activity lifecycle and framework-owned discovery scoped to the supplied framework
-roots.
+The package uses `ActivityLocalVisibilityAdapter` with Activity lifecycle and
+framework-owned discovery scoped to supplied framework roots.
 
-The existing implementation already establishes the core runtime model:
+The accepted model is:
 
 ```text
 authored/local visibility intent
@@ -59,135 +60,136 @@ scoped visibility application
 release/restoration/disposal evidence
 ```
 
-No global scene search is part of the intended authority model.
+Occurrence/revision, replacement and disposal are governed by the existing
+serialized transaction model and `RuntimeDefinitionToken`. Events are
+post-transition facts and do not independently apply visibility.
 
-## Why this ADR remains the next focused audit
+No global scene search is part of the authority model.
 
-The current evidence is strong enough that a large implementation cut would be
-premature.
+## Closure audit — 2026-08-10
 
-The remaining package question is narrower:
+The focused audit identified two concrete gaps.
 
-```text
-does the current authoring/diagnostic surface completely expose
-the states that the runtime already models?
-```
+### Gap 1 — invalid Required binding could proceed
 
-The focused audit must inspect:
+Previously, an invalid `Required` visibility binding could be diagnosed as a
+warning and still continue toward commit.
 
-```text
-authoring validation
-target validity
-required vs optional target semantics
-current Activity binding
-occurrence/revision evidence
-last application result
-release/restoration evidence
-stale occurrence behavior
-replacement/disposal behavior
-```
+The package now rejects the transition before commit. The previous Activity
+retains authority when the incoming Activity contains an invalid required
+visibility binding.
+
+Invalid `Optional` bindings remain non-mutating and diagnostic and do not weaken
+required behavior.
+
+Application results distinguish invalid required and optional bindings, with
+diagnostics that include the target, `LocalContentId`, requiredness, configured
+list and failure reason.
+
+### Gap 2 — stable ActivityId collision
+
+Two distinct authored definitions using the same stable `ActivityId` were not
+rejected.
+
+The package now treats this collision as invalid. Stable ID remains authored
+identity and does not become runtime occurrence or ownership authority.
 
 ## Product surface
 
-Do not assume a new Profile, Composer or Apply/Rebuild flow is needed.
+No new Profile, Composer, Wizard or Apply/Rebuild layer is required for the
+current accepted boundary.
 
-The current lifecycle appears compatible with direct authoring.
+Direct component authoring remains valid because consumers do not need to
+reconstruct hidden runtime authority manually.
 
-Only introduce another layer if the focused audit proves that normal consumers
-must manually reconstruct internal contracts or repeatedly perform deterministic
-technical setup.
-
-## QA
-
-Technical QA is justified for real lifecycle invariants such as:
+The product requirement is therefore:
 
 ```text
-missing required target
-stale occurrence
-repeated enter/exit
-Route replacement
-owner/context disposal
-release/restoration ownership
+Add Component
+    ↓
+clear target configuration
+    ↓
+explicit required/optional semantics
+    ↓
+validation and actionable diagnostics
+    ↓
+runtime occurrence-owned behavior
 ```
 
-Only add tests that prove actual runtime contracts.
+Additional authoring layers remain conditional on future demonstrated consumer
+friction, not on ADR-009 technical closure.
 
-Do not create synthetic Inspector UX tests.
+## Technical QA certification
+
+The corrected boundary was executed in Unity and certified by QAFramework.
+
+```text
+QA_ACTIVITY_LOCAL_VISIBILITY_RULE
+status='Passed'
+cases='28'
+completed='positive,negative,no-active,invalid,idempotent,single-owner'
+
+QA_ACTIVITY_LOCAL_VISIBILITY_LIFECYCLE
+status='Passed'
+cases='18'
+completed='positive-single,positive-multiple,negative-single,negative-multiple,no-active-visible,required-invalid-blocks,optional-invalid-diagnostic,clear,idempotence'
+```
+
+The certification proves the current accepted boundary for:
+
+```text
+positive and negative rule evaluation
+no-active behavior
+invalid configuration handling
+idempotence
+single-owner authority
+required-invalid pre-commit blocking
+optional-invalid non-mutating diagnostics
+clear/release lifecycle
+single and multiple target lifecycle behavior
+```
 
 ## FIRSTGAME
 
-FIRSTGAME can later reveal whether:
+FIRSTGAME is not required to close the technical ADR-009 boundary.
 
-```text
-the visibility intent is understandable
-the target configuration is discoverable
-the relation to loading cover is clear
-the runtime evidence is useful during debugging
-```
-
-Those observations are separate Consumer UX Evidence.
-
-They are not required to establish technical package correctness.
-
-## Current assessment
-
-Current local package assessment:
-
-```text
-26 / 30
-```
-
-Disposition:
-
-```text
-runtime model          EXISTS
-large package gap      NOT CONFIRMED
-new authoring layer    NOT JUSTIFIED
-focused package audit  REQUIRED
-```
-
-If the narrow audit confirms that current validation and diagnostic evidence are
-already sufficient, the expected package reclassification is approximately:
-
-```text
-29 / 30
-```
-
-without implementation.
-
-If a real gap is found, fix only that gap.
-
-## What remains
-
-```text
-1. inspect the current ActivityLocalVisibilityAdapter authoring surface
-2. inspect target validity and occurrence/runtime evidence
-3. inspect release/restoration diagnostics
-4. classify concrete gaps, if any
-5. implement only a proven gap
-6. add technical QA only when the corrected/declared contract warrants it
-```
+Future real-game use may still reveal UX friction around discoverability,
+terminology or debugging. Such findings are Consumer UX Evidence and may justify
+a separate product improvement without reopening the current technical contract.
 
 ## Completion criteria
 
-Package closure requires evidence that:
+The current accepted boundary is closed because evidence now confirms:
 
 ```text
 visibility never becomes implicit scene-load authority
-required invalid targets fail explicitly
-occurrence ownership is diagnosable
+required invalid targets fail explicitly before commit
+optional invalid targets remain non-mutating and diagnostic
+stable-ID collisions between distinct definitions are rejected
+occurrence ownership remains runtime-scoped and diagnosable
 release/restoration affects only context-owned state
 replacement/disposal does not leak visibility authority
 normal authoring does not require hidden internal contracts
+negative lifecycle regressions are covered in QAFramework
 ```
 
-Consumer UX evidence remains separate.
+## Current disposition
+
+```text
+Architecture: Accepted
+Package: Implemented
+QA: Certified
+FIRSTGAME: Not Applicable for current accepted boundary
+Status: CLOSED — current accepted boundary
+```
 
 ## Normative summary
 
 ```text
 Keep visibility explicit, scoped and occurrence-aware.
-Audit the existing product before adding tooling.
-Do not infer package incompleteness from missing Composer/Wizard/Apply.
-Do not use FIRSTGAME or UX smokes as technical closure gates.
+Required invalid configuration blocks before commit.
+Optional invalid configuration is non-mutating and diagnostic.
+Stable authored identity is not runtime ownership authority.
+Do not add authoring layers without demonstrated product need.
+Technical closure is established by package behavior plus QA evidence.
 ```
