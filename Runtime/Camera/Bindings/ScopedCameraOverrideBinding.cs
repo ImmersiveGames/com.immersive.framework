@@ -150,6 +150,32 @@ namespace Immersive.Framework.Camera
             return ReleaseInternal(CameraOverrideOperationKind.CleanedUp, reason, false);
         }
 
+        /// <summary>
+        /// Unity component lifetime ends publication ownership even when the
+        /// logical Route/Activity owner remains active. Derived lifecycle owners
+        /// may keep their logical owner state and explicitly publish again after
+        /// re-enable; this hook never republishes automatically.
+        /// </summary>
+        protected virtual void OnDisable()
+        {
+            ReleaseInternal(
+                CameraOverrideOperationKind.CleanedUp,
+                "BindingDisabled",
+                false);
+        }
+
+        /// <summary>
+        /// Final idempotent safety net for abnormal component destruction.
+        /// Normal lifecycle exits may already have released the request.
+        /// </summary>
+        protected virtual void OnDestroy()
+        {
+            ReleaseInternal(
+                CameraOverrideOperationKind.CleanedUp,
+                "BindingDestroyed",
+                false);
+        }
+
         void ICameraOutputSessionConsumer.AttachOutputSession(CameraOutputSessionBinding binding)
         {
             SetOutputSession(binding);

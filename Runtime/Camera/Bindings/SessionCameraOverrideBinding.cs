@@ -48,9 +48,14 @@ namespace Immersive.Framework.Camera
                 $"scope='{OwnerDiagnosticName}'.");
         }
 
-        private void OnDisable()
+        protected override void OnDisable()
         {
             EndOwnerScope("SessionBindingDisabled");
+        }
+
+        protected override void OnDestroy()
+        {
+            EndOwnerScope("SessionBindingDestroyed");
         }
 
         protected override bool TryValidateOwner(

@@ -8,7 +8,7 @@ Package version: `1.0.0-preview.17`
 
 ```text
 com.immersive.framework
-  60e40cf9ac245d4aa89487efb82a211c3572a3f4
+  18a6c5079f7436cd86ffa1158cabfe12278855da
   Adr13A-Audio
 
 QAFramework
@@ -80,7 +80,7 @@ Current evidence-based planning estimate:
 | ADR | Arch. | Package | Surface | QA | FIRSTGAME | Estimate | Primary limiter |
 |---|---:|---:|---:|---:|---:|---:|---|
 | IF-ADR-001 | 20/20 | 30/30 | 20/20 | 15/15 | 15/15 | **100%** | closed for current accepted boundary; deferred extensions are separate contracts |
-| IF-ADR-002 | 20/20 | 23/30 | 16/20 | 10/15 | 10/15 | **79%** | portfolio-wide consistency of official authoring surfaces |
+| IF-ADR-002 | 20/20 | 30/30 | 20/20 | N/A | N/A | **100%** | closed for current accepted cross-cutting boundary; feature-specific evidence remains with owning ADRs |
 | IF-ADR-003 | 20/20 | 29/30 | 18/20 | 15/15 | 5/15 | **87%** | current-model Player integration in FIRSTGAME |
 | IF-ADR-004 | 20/20 | 26/30 | 18/20 | 10/15 | 8/15 | **82%** | IF-ADR-004B negative integrity certification + broader FIRSTGAME Camera proof |
 | IF-ADR-005 | 20/20 | 27/30 | 18/20 | 11/15 | 9/15 | **85%** | focused Pause/Input/Reset negative contracts |
@@ -96,6 +96,11 @@ Current evidence-based planning estimate:
 | IF-ADR-015 | 20/20 | 29/30 | 18/20 | 15/15 | 4/15 | **86%** | current public command/status integration in FIRSTGAME |
 | IF-ADR-016 | 20/20 | 30/30 | 19/20 | 15/15 | 4/15 | **88%** | current Scene-/Manager-Provisioned FIRSTGAME integration |
 
+`IF-ADR-002` is normalized over the 70 applicable Architecture, Package and
+Product Surface points. Generic Technical QA and generic FIRSTGAME are
+intentionally not applicable; objective evidence stays with the feature ADR that
+owns each concrete contract.
+
 `* IF-ADR-010` is normalized over the 70 applicable points because a generic QA
 or FIRSTGAME program for Inspector UX is intentionally not part of that ADR.
 Objective Editor contracts continue to be scored under the feature that owns
@@ -104,11 +109,10 @@ them.
 Portfolio planning view:
 
 ```text
-Current mean estimate across ADRs: 87.3%
+Current mean estimate across ADRs: 88.7%
 
 Lowest current estimates:
   IF-ADR-013  57%  Optional BGM / Experimental
-  IF-ADR-002  79%  Product Authoring Model portfolio consistency
   IF-ADR-004  82%  Camera
   IF-ADR-009  82%  Activity Local Visibility
   IF-ADR-005  85%  Input / Pause / Gate / Reset
@@ -184,6 +188,43 @@ The ADR-001 score no longer reserves missing points for deferred contracts. A
 future Session-Persistent Player contract or exceptional post-commit compensation
 must be opened as a separate approved cut and must not be used to reinterpret the
 current lifecycle authority as incomplete.
+
+## ADR-002 reconciliation
+
+```text
+IF-ADR-002 — Product Authoring Model
+
+Normative status
+  ACCEPTED
+
+Current accepted cross-cutting boundary
+  CLOSED / RECONCILED
+
+Package authoring model
+  IMPLEMENTED
+
+Product Surface / Diagnostics
+  IMPLEMENTED
+
+Generic Technical QA
+  NOT APPLICABLE
+
+Generic FIRSTGAME gate
+  NOT APPLICABLE
+
+Current-scope blockers
+  NONE IDENTIFIED
+```
+
+The former `29/30` package-audit value and the former `79%` Tracker value are not
+current completion deficits. ADR-002 explicitly accepts heterogeneous authoring
+shapes and identifies no missing generic Composer, Wizard or Apply/Rebuild
+program. Technical Editor QA and real-consumer evidence remain attached to the
+feature ADR that owns each concrete contract.
+
+Future product-surface improvements are feature-specific work opened from a
+concrete lifecycle need or observed consumer friction; they do not reopen the
+cross-cutting ADR-002 boundary by default.
 
 ## Canonical Player model
 

@@ -3,7 +3,7 @@
 Status: **Accepted**  
 Last updated: 2026-08-10  
 Implementation classification: **Mature cross-cutting authoring model; current feature evidence confirms multiple valid authoring shapes with no generic tooling gap**  
-Current package assessment: **29/30** — local planning assessment from the 2026-08-09 package audit; not release certification  
+Current accepted boundary: **Reconciled — no cross-cutting implementation or product-surface blocker identified**  
 Related decisions: IF-ADR-001, IF-ADR-003–IF-ADR-016  
 Current evidence source: `IF-TRACK-Framework.md` plus feature-specific QA/closure records; this normative ADR intentionally does not pin a mutable package SHA.
 
@@ -358,14 +358,25 @@ Synthetic UX QA requirement CANCELLED
 Generic FIRSTGAME gate       NOT APPLICABLE
 ```
 
-Local planning assessment from the current package audit:
+The former `29 / 30` package-audit value is retained only as historical planning
+evidence from the 2026-08-09 audit. It is not a current missing requirement: no
+remaining point maps to an accepted cross-cutting contract, implementation task,
+product-surface obligation, generic QA gate or generic FIRSTGAME gate.
+
+Current accepted-boundary disposition:
 
 ```text
-29 / 30
+Architecture / Contract       ACCEPTED
+Package authoring model       IMPLEMENTED
+Product Surface / Diagnostics IMPLEMENTED
+Generic Technical QA          NOT APPLICABLE
+Generic FIRSTGAME gate        NOT APPLICABLE
+Cross-cutting blocker         NONE IDENTIFIED
+Current boundary              CLOSED / RECONCILED
 ```
 
-The remaining point is not a mandate for more tooling. Future improvement must be
-driven by a concrete system need or real consumer friction.
+Future improvement must be driven by a concrete feature need or observed consumer
+friction and remains owned by the feature ADR that establishes that contract.
 
 ## What remains
 

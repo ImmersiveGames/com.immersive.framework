@@ -42,10 +42,18 @@ contract.
 ## Tracker correction
 
 ```text
-IF-ADR-002  99% normalized — mature cross-cutting model
+IF-ADR-002 100% normalized — CLOSED for current accepted cross-cutting boundary
 IF-ADR-009 100% normalized — CLOSED, QA 46/46
-Portfolio mean 90.9%
 ```
+
+The former ADR-002 `99% normalized` value treated the historical `29/30` package
+audit score as an active missing point even though the accepted ADR identifies no
+corresponding current-scope requirement. The dedicated ADR-002 reconciliation
+therefore supersedes that percentage interpretation.
+
+The former `Portfolio mean 90.9%` in this dated combined reconciliation is
+historical and is not current Tracker authority. Current portfolio planning
+values live only in `Tracking/IF-TRACK-Framework.md`.
 
 The percentage remains a planning aid, not release certification.
 
