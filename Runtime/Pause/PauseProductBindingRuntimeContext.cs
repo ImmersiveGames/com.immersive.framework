@@ -27,6 +27,8 @@ namespace Immersive.Framework.Pause
         private InputAction _pauseAction;
         private InputModeRuntimeContext _inputMode;
         private PausePlayerInputPostureReceipt _bindingPosture;
+        private UnityPlayerInputActionMapSetWriteReceipt
+            _pauseActionMapSetReceipt;
         private bool _requestInFlight;
         private PauseProductRequestResult _lastResult;
         private string _lastDiagnostic =
@@ -96,6 +98,7 @@ namespace Immersive.Framework.Pause
                 return false;
             }
 
+            _pauseActionMapSetReceipt = default;
             _state = PauseProductBindingState.Binding;
             if (!binding.TryGetRuntimeConfiguration(
                     out PlayerInput input,
@@ -307,6 +310,34 @@ namespace Immersive.Framework.Pause
                     begin.Message);
             }
 
+            bool paused =
+                targetPause == PauseState.Paused;
+            if (paused && _pauseActionMapSetReceipt.IsValid)
+            {
+                _inputMode.Rollback(
+                    transaction,
+                    nameof(PauseProductBindingRuntimeContext),
+                    "pause-baseline-already-retained");
+                return Record(
+                    PauseProductRequestStatus.Failed,
+                    default,
+                    begin,
+                    "Pause product request rejected because retained Pause-time PlayerInput baseline evidence is inconsistent.");
+            }
+
+            if (!paused && !_pauseActionMapSetReceipt.IsValid)
+            {
+                _inputMode.Rollback(
+                    transaction,
+                    nameof(PauseProductBindingRuntimeContext),
+                    "resume-baseline-missing");
+                return Record(
+                    PauseProductRequestStatus.Failed,
+                    default,
+                    begin,
+                    "Resume rejected because exact Pause-time PlayerInput baseline evidence is unavailable.");
+            }
+
             _requestInFlight = true;
             try
             {
@@ -326,45 +357,63 @@ namespace Immersive.Framework.Pause
                         pauseDiagnostic);
                 }
 
-                bool paused =
-                    targetPause == PauseState.Paused;
-                string primary =
-                    paused
-                        ? _binding.GlobalActionMapName
-                        : _binding.GameplayActionMapName;
-                string[] maps =
-                    paused
-                        ? new[]
-                        {
-                            _binding.GlobalActionMapName
-                        }
-                        : new[]
-                        {
-                            _binding.GlobalActionMapName,
-                            _binding.GameplayActionMapName
-                        };
-
-                if (!_adapter.TryApplyActionMapSet(
-                        primary,
-                        maps,
-                        nameof(PauseProductBindingRuntimeContext),
-                        request.Reason,
-                        out UnityPlayerInputActionMapSetWriteReceipt physicalReceipt,
-                        out string physicalDiagnostic))
+                UnityPlayerInputActionMapSetWriteReceipt
+                    physicalReceipt = default;
+                string physicalDiagnostic;
+                if (paused)
                 {
+                    if (!_adapter.TryApplyActionMapSet(
+                            _binding.GlobalActionMapName,
+                            new[]
+                            {
+                                _binding.GlobalActionMapName
+                            },
+                            nameof(PauseProductBindingRuntimeContext),
+                            request.Reason,
+                            out physicalReceipt,
+                            out physicalDiagnostic))
+                    {
+                        _inputMode.Rollback(
+                            transaction,
+                            nameof(PauseProductBindingRuntimeContext),
+                            "physical-apply-failed");
+                        _application.TryRestorePauseSnapshot(
+                            previousPause,
+                            "pause-product-physical-rollback",
+                            out string rollbackDiagnostic);
+                        return Record(
+                            PauseProductRequestStatus.Failed,
+                            pauseResult,
+                            begin,
+                            $"Physical Pause posture failed. physical='{physicalDiagnostic}' compensation='{rollbackDiagnostic}'.");
+                    }
+                }
+                else if (!_adapter.TryRestoreActionMapSet(
+                             _pauseActionMapSetReceipt,
+                             nameof(PauseProductBindingRuntimeContext),
+                             request.Reason,
+                             out physicalDiagnostic))
+                {
+                    _adapter.TryApplyActionMapSet(
+                        _pauseActionMapSetReceipt.AppliedPrimaryActionMapName,
+                        _pauseActionMapSetReceipt.AppliedEnabledActionMapNames,
+                        nameof(PauseProductBindingRuntimeContext),
+                        "resume-physical-restore-failed",
+                        out _,
+                        out string physicalRollbackDiagnostic);
                     _inputMode.Rollback(
                         transaction,
                         nameof(PauseProductBindingRuntimeContext),
-                        "physical-apply-failed");
+                        "physical-restore-failed");
                     _application.TryRestorePauseSnapshot(
                         previousPause,
-                        "pause-product-physical-rollback",
+                        "resume-product-physical-rollback",
                         out string rollbackDiagnostic);
                     return Record(
                         PauseProductRequestStatus.Failed,
                         pauseResult,
                         begin,
-                        $"Physical Pause posture failed. physical='{physicalDiagnostic}' compensation='{rollbackDiagnostic}'.");
+                        $"Physical Resume posture restore failed. physical='{physicalDiagnostic}' physicalCompensation='{physicalRollbackDiagnostic}' compensation='{rollbackDiagnostic}'.");
                 }
 
                 InputModeRuntimeOperationResult commit =
@@ -374,11 +423,25 @@ namespace Immersive.Framework.Pause
                         request.Reason);
                 if (!commit.Committed)
                 {
-                    _adapter.TryRestoreActionMapSet(
-                        physicalReceipt,
-                        nameof(PauseProductBindingRuntimeContext),
-                        "inputmode-commit-failed",
-                        out _);
+                    string physicalRollbackDiagnostic;
+                    if (paused)
+                    {
+                        _adapter.TryRestoreActionMapSet(
+                            physicalReceipt,
+                            nameof(PauseProductBindingRuntimeContext),
+                            "inputmode-commit-failed",
+                            out physicalRollbackDiagnostic);
+                    }
+                    else
+                    {
+                        _adapter.TryApplyActionMapSet(
+                            _pauseActionMapSetReceipt.AppliedPrimaryActionMapName,
+                            _pauseActionMapSetReceipt.AppliedEnabledActionMapNames,
+                            nameof(PauseProductBindingRuntimeContext),
+                            "inputmode-commit-failed",
+                            out _,
+                            out physicalRollbackDiagnostic);
+                    }
                     _application.TryRestorePauseSnapshot(
                         previousPause,
                         "inputmode-commit-failed",
@@ -387,8 +450,13 @@ namespace Immersive.Framework.Pause
                         PauseProductRequestStatus.Failed,
                         pauseResult,
                         commit,
-                        $"InputMode commit failed. compensation='{rollbackDiagnostic}'.");
+                        $"InputMode commit failed. physicalCompensation='{physicalRollbackDiagnostic}' compensation='{rollbackDiagnostic}'.");
                 }
+
+                _pauseActionMapSetReceipt =
+                    paused
+                        ? physicalReceipt
+                        : default;
 
                 return Record(
                     PauseProductRequestStatus.Applied,
@@ -540,7 +608,8 @@ namespace Immersive.Framework.Pause
                 _playerInput == null &&
                 _adapter == null &&
                 _pauseAction == null &&
-                _inputMode == null;
+                _inputMode == null &&
+                !_pauseActionMapSetReceipt.IsValid;
         }
 
         private void ClearBinding()
@@ -552,6 +621,7 @@ namespace Immersive.Framework.Pause
             _pauseAction = null;
             _inputMode = null;
             _bindingPosture = default;
+            _pauseActionMapSetReceipt = default;
         }
     }
 }
