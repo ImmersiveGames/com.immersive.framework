@@ -48,7 +48,7 @@ a later reconciliation. It can identify a separate consumer or product issue.
 | [008](../ADRs/IF-ADR-008-Persistent-Application-Content-Composition.md) | ACCEPTED / RECONCILED | IMPLEMENTED for current accepted product model | Not applicable by default | Not applicable as a technical closure gate | Stage A closed; reopen only on concrete contract failure |
 | [009](../ADRs/IF-ADR-009-Activity-Local-Visibility-Rules.md) | ACCEPTED / RECONCILED | IMPLEMENTED | CERTIFIED | Not required for current boundary | Stage A closed |
 | [010](../ADRs/IF-ADR-010-Editor-and-Inspector-Product-Surface-Authority.md) | ACCEPTED | IMPLEMENTED | Not applicable as generic UX QA | Per feature | Current audit is historical; adoption remains feature-owned |
-| [011](../ADRs/IF-ADR-011-Participant-Aware-Activity-Readiness-Loading-Progress.md) | ACCEPTED | Partial current tracking | Certified for current boundary | Partial | Focused public waiting/joining evidence remains |
+| [011](../ADRs/IF-ADR-011-Participant-Aware-Activity-Readiness-Loading-Progress.md) | ACCEPTED / RECONCILED | IMPLEMENTED for participant-aware WaitCovered Loading progress | CERTIFIED: Progress 32/32; Terminal 34/34; Startup Route 25/25; Game Application 20/20 | Partial | Stage A closed; remaining work is Stage B consumer/product proof |
 | [012](../ADRs/IF-ADR-012-Activity-Player-Participation-Profile-and-Readiness-Compatibility.md) | ACCEPTED / RECONCILED | IMPLEMENTED | CERTIFIED | Not proven on current model | Stage A closed; consumer proof is separate |
 | [013](../ADRs/IF-ADR-013-Optional-Audio-BGM-Adapter.md) | ACCEPTED / Experimental | IMPLEMENTED for accepted technical boundary | CERTIFIED: Audio QA 26/26; ADR-013A 11/11 | Not proven | Stage A closed; FIRSTGAME real-consumer proof is the promotion gate |
 | [014](../ADRs/IF-ADR-014-Authored-Definition-and-Stable-Identity-Authority.md) | ACCEPTED | IMPLEMENTED | CERTIFIED | Proven | Closed for current boundary |
@@ -73,7 +73,7 @@ reconciliation status. `Stage A` measures the accepted technical boundary.
 | 008 | 100% | 0% | 100% | None | No active package work; reopen only on concrete contract failure. |
 | 009 | 100% | 0% | 100% | None | Closed for the current boundary. |
 | 010 | 97% | 3% | 97% | Low | Complete feature-owned adoption evidence; no generic UX QA gate exists. |
-| 011 | 95% | 5% | 95% | Medium | Close focused public waiting/joining evidence. |
+| 011 | 100% | 0% | 95% | Stage B | Stage A closed; prove real participant-aware Loading progress and diagnostics in FIRSTGAME when useful. |
 | 012 | 100% | 0% | 85% | Stage B | Prove the accepted participation model in a real consumer. |
 | 013 | 100% | 0% | 85% | Stage B | Prove optional BGM integration and usability in FIRSTGAME. |
 | 014 | 100% | 0% | 100% | None | Closed for the current boundary. |
@@ -94,12 +94,16 @@ reconciliation status. `Stage A` measures the accepted technical boundary.
    **42/42** with `WaitVisible` and `WaitCovered` both PASS. The initial Direct
    Policies blocker was a QA fixture collision, corrected by isolating the Player
    Surface content scene without weakening assertions. No package runtime
-   divergence was reproduced. **ADR-011** retains its separate **5%** focused
-   technical evidence. **ADR-010** retains **3%** of feature-owned adoption
-   evidence and has no generic UX QA gate.
-4. **ADR-003, ADR-004, ADR-005, ADR-006, ADR-007, ADR-012, ADR-013, ADR-015 and ADR-016**
-   may still have Stage B portfolio work; that is not a Stage A technical
-   regression.
+   divergence was reproduced.
+4. **ADR-011 Stage A is closed.** Direct Progress is **32/32**, Terminal is
+   **34/34**, Route Startup parity is **25/25** and Game Application Startup parity
+   is **20/20**. Both startup parity sessions restored the canonical QA Hub and
+   removed generated fixtures. The older public waiting/joining wording belongs to
+   historical Player audit scope, not the ADR-011 Loading-progress contract.
+5. **ADR-010** retains **3%** of feature-owned adoption evidence and has no generic
+   UX QA gate. ADR-003, ADR-004, ADR-005, ADR-006, ADR-007, ADR-011, ADR-012,
+   ADR-013, ADR-015 and ADR-016 may still have Stage B portfolio work; that is not a
+   Stage A technical regression.
 
 ## ADR-006 closure evidence
 
@@ -206,6 +210,57 @@ ADR007 Stage A
   Stage A: CLOSED
 ```
 
+## ADR-011 closure evidence
+
+The accepted participant-aware Loading-progress boundary is technically certified
+across direct positive progression, terminal non-success semantics and both startup
+paths.
+
+```text
+Participant-Aware Readiness Loading Progress
+  PASS — 32/32
+  Required=4
+  Optional=1
+  Optional failure non-blocking
+  Technical<100 -> 0/4 -> 1/4 -> 2/4 -> 3/4 -> 4/4=100 -> Hide -> Reveal -> GateRelease
+
+Participant-Aware Readiness Loading Terminal
+  PASS — 34/34
+  RequiredFailed
+  RequiredReleased
+  ReplacementRejected
+  LateOldOccurrenceRejected
+  DuplicateTerminal
+  OwnedCancellation
+
+Startup Loading Parity — Route Startup Activity
+  PASS — 25/25
+  required='4'
+  optional='1'
+  optionalOutcome='FailedNonBlocking'
+  terminal='100BeforeHide'
+
+Startup Loading Parity — Game Application Startup Activity
+  PASS — 20/20
+  required='4'
+  optional='1'
+  optionalOutcome='FailedNonBlocking'
+  terminal='100BeforeHide'
+```
+
+Both startup-parity sessions restored the canonical QA Hub automatically and removed
+the generated fixture after Play Mode. No package divergence was reproduced and no
+runtime, Editor or QA implementation change was required for closure.
+
+```text
+ADR011 Stage A
+  Architecture: ACCEPTED / RECONCILED
+  Package / Product Surface: IMPLEMENTED
+  Technical QA: CERTIFIED
+  technical remaining: 0%
+  Stage A: CLOSED
+```
+
 ## ADR-005 closure evidence
 
 The focused Pause cut followed the intended QA boundary:
@@ -247,7 +302,7 @@ disabled Gameplay Action Map baselines across Pause -> Resume.
   across two passes and Direct Policies passed 42/42 after isolating a QA-owned
   fixture collision. Reopen only on a reproduced contract regression, documented
   contract change or newly accepted scope. Do not invent timeout/retry runtime.
-- Continue ADR-011 only against its own focused tracked gap.
+- ADR-011 requires no further Stage A work for the current accepted boundary. Direct Progress passed 32/32, Terminal passed 34/34, Route Startup parity passed 25/25 and Game Application Startup parity passed 20/20. Reopen only on a reproduced contract regression, documented contract change or newly accepted scope; do not add Player-specific runtime scope to this ADR.
 - Keep technical documentation aligned with current reconciliation records and
   preserve the Stage A / Stage B distinction.
 
@@ -265,8 +320,7 @@ disabled Gameplay Action Map baselines across Pause -> Resume.
   34/34 evidence remains valid. The earlier Direct Policies blocker was a
   QAFramework fixture-ownership defect and was corrected without weakening the
   regression.
-- ADR-011: only the focused gap recorded in its current tracking row; do not infer
-  broader missing architecture.
+- ADR-011: **none remaining in the current accepted Stage A boundary**. Direct Progress is 32/32, Terminal is 34/34, Route Startup parity is 25/25 and Game Application Startup parity is 20/20. Public waiting/joining remains supporting Player-domain evidence, not an ADR-011 completion gate.
 - ADR-008 has no active QA gap by default. Add QA only when a concrete,
   deterministic Scene Template pipeline invariant or regression requires proof.
 
@@ -285,6 +339,10 @@ disabled Gameplay Action Map baselines across Pause -> Resume.
 - ADR-006 FIRSTGAME work is now Stage B consumer proof only: validate real
   Loading/Transition authoring, understandable cover/wait/reveal behavior and
   useful diagnostics without reconstructing internal contracts.
+- ADR-011 FIRSTGAME work is Stage B consumer/product proof only: validate that real
+  participant-aware Loading progress is understandable and diagnostic when a game
+  uses `WaitCovered + FadeWithLoading`, without exposing internal denominator or
+  occurrence mechanics as primary authoring UX.
 - ADR-005 Stage B can focus on consumer authoring/usability rather than technical
   Pause correctness.
 - Reauthor current Player consumer integration against the accepted current model
@@ -314,3 +372,4 @@ The following are future contracts, not gaps in current ADR closure:
 - [ADR-006](../Reconciliation/IMMERSIVE-FRAMEWORK-ADR-006-RECONCILIATION-2026-08-10.md)
 - [ADR-007](../Reconciliation/IMMERSIVE-FRAMEWORK-ADR-007-RECONCILIATION-2026-08-11.md)
 - [ADR-008](../Reconciliation/IMMERSIVE-FRAMEWORK-ADR-008-RECONCILIATION-2026-08-10.md)
+- [ADR-011](../Reconciliation/IMMERSIVE-FRAMEWORK-ADR-011-RECONCILIATION-2026-08-11.md)
