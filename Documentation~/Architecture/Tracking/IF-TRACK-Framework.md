@@ -43,7 +43,7 @@ a later reconciliation. It can identify a separate consumer or product issue.
 | [003](../ADRs/IF-ADR-003-Player-Participation-and-Actor-Lifecycle.md) | ACCEPTED / RECONCILED | IMPLEMENTED | CERTIFIED | Not proven on current model | Stage A closed; consumer proof is separate |
 | [004](../ADRs/IF-ADR-004-Camera-Requests-and-Output-Authority.md) | ACCEPTED / RECONCILED | IMPLEMENTED for current single-output boundary | CERTIFIED | Partial | Stage A closed; multi-output is future work |
 | [005](../ADRs/IF-ADR-005-Input-Pause-Gate-and-Reset.md) | ACCEPTED / RECONCILED | IMPLEMENTED; focused Pause baseline defect corrected | CERTIFIED: Input Gate 9/9; Activity Restart 8/8; Pause 27/27 | Stage B separate | Stage A closed |
-| [006](../ADRs/IF-ADR-006-Loading-Transition-Persistence-and-Diagnostics.md) | ACCEPTED | Partial current tracking | Certified for current boundary | Partial | Exceptional paths remain tracked separately |
+| [006](../ADRs/IF-ADR-006-Loading-Transition-Persistence-and-Diagnostics.md) | ACCEPTED | IMPLEMENTED for current accepted boundary | Partial: focused exceptional-path QA remains | Partial | Source-aligned; Stage A remains open only for focused QA evidence |
 | [007](../ADRs/IF-ADR-007-Activity-Entry-Readiness-and-Reveal-Gating.md) | ACCEPTED | Partial current tracking | Certified for current boundary | Partial | Focused readiness variants remain |
 | [008](../ADRs/IF-ADR-008-Persistent-Application-Content-Composition.md) | ACCEPTED / RECONCILED | IMPLEMENTED for current accepted product model | Not applicable by default | Not applicable as a technical closure gate | Stage A closed; reopen only on concrete contract failure |
 | [009](../ADRs/IF-ADR-009-Activity-Local-Visibility-Rules.md) | ACCEPTED / RECONCILED | IMPLEMENTED | CERTIFIED | Not required for current boundary | Stage A closed |
@@ -68,7 +68,7 @@ reconciliation status. `Stage A` measures the accepted technical boundary.
 | 003 | 100% | 0% | 87% | Stage B | Prove the accepted Player model in a real consumer. |
 | 004 | 100% | 0% | 91% | Stage B | Complete real-consumer Camera proof; multi-output is future scope. |
 | 005 | 100% | 0% | 94% | Stage B | Stage A closed; remaining portfolio attention is real-consumer evidence only. |
-| 006 | 95% | 5% | 95% | Medium | Close only the tracked exceptional-path evidence. |
+| 006 | 95% | 5% | 95% | Medium | Execute the focused exceptional-path matrix in the current ADR-006 reconciliation. |
 | 007 | 95% | 5% | 95% | Medium | Close only the tracked readiness variants. |
 | 008 | 100% | 0% | 100% | None | No active package work; reopen only on concrete contract failure. |
 | 009 | 100% | 0% | 100% | None | Closed for the current boundary. |
@@ -85,8 +85,10 @@ reconciliation status. `Stage A` measures the accepted technical boundary.
 1. **ADR-005 Stage A is closed.** Focused evidence is Input Gate **9/9**,
    Activity Restart **8/8** and Pause Contract **27/27** across two passes in
    one Play Mode session, including terminal no-residual state.
-2. **ADR-006, ADR-007 and ADR-011** each retain **5%** of focused technical
-   evidence.
+2. **ADR-006** retains **5%** as focused exceptional-path QA evidence only; the
+   2026-08-10 source reconciliation did not identify a broader package or
+   architecture gap. **ADR-007 and ADR-011** each retain **5%** of their own
+   focused technical evidence.
 3. **ADR-010** retains **3%** of feature-owned adoption evidence and has no
    generic UX QA gate.
 4. **ADR-003, ADR-004, ADR-005, ADR-012, ADR-013, ADR-015 and ADR-016** may
@@ -125,7 +127,10 @@ disabled Gameplay Action Map baselines across Pause -> Resume.
 - Keep ADR-008 out of the active technical queue while its accepted Scene
   Template + consumer-owned Scene + non-mutating verification boundary remains
   valid.
-- Continue ADR-006, ADR-007 and ADR-011 only against their focused tracked gaps.
+- Continue ADR-006 only against the focused QA matrix recorded in its 2026-08-10
+  reconciliation. Do not add runtime solely for closure; change the package only
+  if unchanged QA reproduces an accepted-contract failure.
+- Continue ADR-007 and ADR-011 only against their focused tracked gaps.
 - Keep technical documentation aligned with current reconciliation records and
   preserve the Stage A / Stage B distinction.
 
@@ -134,8 +139,12 @@ disabled Gameplay Action Map baselines across Pause -> Resume.
 - ADR-005: **none remaining in the current accepted Stage A boundary**.
 - Camera: a QA-only teardown clean-log retest remains nonblocking and does not
   reopen ADR-004 technical certification.
-- ADR-006, ADR-007 and ADR-011: only the focused gaps recorded in their current
-  tracking rows; do not infer broader missing architecture.
+- ADR-006: the remaining gap is the focused exceptional-path matrix recorded in
+  [ADR-006 reconciliation](../Reconciliation/IMMERSIVE-FRAMEWORK-ADR-006-RECONCILIATION-2026-08-10.md).
+  Package source is aligned for the current accepted boundary; do not infer a
+  broader missing architecture unless QA reproduces one.
+- ADR-007 and ADR-011: only the focused gaps recorded in their current tracking
+  rows; do not infer broader missing architecture.
 - ADR-008 has no active QA gap by default. Add QA only when a concrete,
   deterministic Scene Template pipeline invariant or regression requires proof.
 
@@ -175,4 +184,5 @@ The following are future contracts, not gaps in current ADR closure:
 - [ADR-003 and ADR-012](../Reconciliation/IMMERSIVE-FRAMEWORK-ADR-003-012-RECONCILIATION-2026-08-10.md)
 - [ADR-004 Camera](../Reconciliation/IF-ADR-004A-Camera-Authority-Normative-Reconciliation-2026-08-10.md)
 - [ADR-005](../Reconciliation/IMMERSIVE-FRAMEWORK-ADR-005-RECONCILIATION-2026-08-10.md)
+- [ADR-006](../Reconciliation/IMMERSIVE-FRAMEWORK-ADR-006-RECONCILIATION-2026-08-10.md)
 - [ADR-008](../Reconciliation/IMMERSIVE-FRAMEWORK-ADR-008-RECONCILIATION-2026-08-10.md)

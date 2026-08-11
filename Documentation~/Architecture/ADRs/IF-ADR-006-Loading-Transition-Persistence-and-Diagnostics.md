@@ -1,8 +1,9 @@
 # IF-ADR-006 — Loading, Transition, Persistence and Diagnostics
 
 Status: **Accepted**  
-Last updated: 2026-08-09  
-Related decisions: IF-ADR-001, IF-ADR-005, IF-ADR-007, IF-ADR-011, IF-ADR-015
+Last updated: 2026-08-10  
+Related decisions: IF-ADR-001, IF-ADR-005, IF-ADR-007, IF-ADR-011, IF-ADR-015  
+Current reconciliation: [ADR-006 reconciliation](../Reconciliation/IMMERSIVE-FRAMEWORK-ADR-006-RECONCILIATION-2026-08-10.md)
 
 > Current implementation, QA and FIRSTGAME integration status is tracked in
 > `../Tracking/IF-TRACK-Framework.md`. This ADR is normative and intentionally
@@ -33,6 +34,11 @@ cover
 Presentation reports state; it does not calculate readiness or own destination
 authority.
 
+Technical loading completion and terminal Loading presentation completion are
+separate boundaries when a governing readiness wait applies. Technical loading
+may complete while presentation remains covered and non-terminal; terminal
+completion is permitted only when the governing readiness boundary accepts it.
+
 ## Transaction continuation
 
 For startup, Route, Activity, Clear and Restart:
@@ -56,6 +62,9 @@ ActivityEntryReadinessGateSnapshot
 A committed-target readiness failure may retain Loading/Transition presentation
 and a readiness recovery blocker after the ordinary Transition Gate is released.
 Diagnostics must not report that state as a Transition Gate leak.
+
+The pure Transition Gate state and readiness/reveal recovery protection are
+separate diagnostic concerns even when both can keep presentation covered.
 
 ## Logging and diagnostics
 
