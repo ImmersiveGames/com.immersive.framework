@@ -385,6 +385,12 @@ disabled Gameplay Action Map baselines across Pause -> Resume.
   selection isolation and selected-backend runtime request proof. The active gate is
   ADR018-D FIRSTGAME real-consumer usability; do not add a global runtime accessor
   before that proof.
+- Reverse-audit RA-03 Object Entry ownership is reconciled. Object Entry is a
+  passive stable-identity/scoped-metadata layer under ADR-014 whose runtime context
+  is derived from ADR-001 lifecycle authority. It is not a lifecycle owner, Reset
+  authority, service registry or physical binding authority. No runtime change or
+  focused QA is required for this reconciliation. Experimental Object Entry
+  request/result API hygiene is deferred to RA-04.
 - ADR-017 requires no further Stage A work for the accepted project-baseline
   boundary. Edit validation passed 13/13 and the TargetFrameRate, VerticalSync and
   UseUnityDefaults E2E paths each passed 13/13. Session-scoped override and
@@ -411,11 +417,47 @@ disabled Gameplay Action Map baselines across Pause -> Resume.
   Composition are closed/certified. C passed 12/12 including 7/7 negative cases,
   no-fallback, selection isolation and runtime request proof. No technical QA gap
   remains for the accepted Stage A Progression Save boundary.
+- RA-03 Object Entry ownership reconciliation has **no focused QA gap** because
+  it changes no runtime behavior or technical contract. Existing Object Entry
+  runtime context remains subordinate to lifecycle authority; any future code-surface
+  reduction requires a separate reference/API hygiene audit.
 - ADR-017: **none remaining in the current accepted Stage A boundary**.
   Edit 13/13, Target 13/13, VSync 13/13 and Defaults 13/13 are PASS; Project
   Settings authority and absence of GameApplication Frame Rate authority are proven.
 - ADR-008 has no active QA gap by default. Add QA only when a concrete,
   deterministic Scene Template pipeline invariant or regression requires proof.
+
+## Package reverse-audit loose ends
+
+```text
+RA-CUT-01  Application Frame Rate / ADR017        CLOSED / CERTIFIED
+RA-CUT-02  Persistence / ADR018                   CLOSED FOR STAGE A
+RA-CUT-03  ObjectEntry Ownership Reconciliation  CLOSED / DOC RECONCILIATION
+RA-CUT-04  Architecture Governance Hygiene       NEXT
+```
+
+RA-03 disposition:
+
+```text
+ObjectEntryId / declaration metadata
+  -> ADR-014 stable identity / passive metadata
+
+ObjectEntryRuntimeContextSnapshot
+  -> derivative projection of ADR-001 lifecycle authority
+
+Reset consumption
+  -> ADR-005 downstream consumer only
+
+new ObjectEntry lifecycle authority
+  -> NONE
+
+new ADR
+  -> NOT REQUIRED
+```
+
+`ObjectEntryRequest` / `ObjectEntryResult` remain Experimental and are not promoted
+or removed by RA-03. Their necessity belongs to RA-04 API/governance hygiene after a
+reliable code-reference audit.
 
 ## Documentation maintenance
 
@@ -481,3 +523,4 @@ The following are future contracts, not gaps in current ADR closure:
 - [ADR-018](../Reconciliation/IMMERSIVE-FRAMEWORK-ADR-018-RECONCILIATION-2026-08-11.md)
 - [ADR-018-A Certification](../Reconciliation/IMMERSIVE-FRAMEWORK-ADR-018-A-CERTIFICATION-2026-08-11.md)
 - [ADR-018-C Certification](../Reconciliation/IMMERSIVE-FRAMEWORK-ADR-018-C-CERTIFICATION-2026-08-11.md)
+- [RA-03 Object Entry Ownership](../Reconciliation/IMMERSIVE-FRAMEWORK-RA-03-OBJECT-ENTRY-OWNERSHIP-RECONCILIATION-2026-08-11.md)

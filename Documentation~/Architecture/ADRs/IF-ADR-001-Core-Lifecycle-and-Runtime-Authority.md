@@ -1,7 +1,7 @@
 # IF-ADR-001 — Core Lifecycle and Runtime Authority
 
 Status: **Accepted**  
-Last updated: 2026-08-09  
+Last updated: 2026-08-11  
 Related decisions: IF-ADR-003, IF-ADR-005, IF-ADR-006, IF-ADR-007, IF-ADR-011, IF-ADR-014
 Current reconciliation: [ADR-001 reconciliation](../Reconciliation/IMMERSIVE-FRAMEWORK-ADR-001-RECONCILIATION-2026-08-10.md)
 
@@ -93,6 +93,46 @@ Canonical Transition Gate release is unconditional internal state replacement.
 Do not introduce a generic lease/release manager or transaction manager to model
 a failure mode that the current authority does not have.
 
+## Object Entry runtime-context projection
+
+Object Entry does not introduce another lifecycle authority.
+
+The accepted ownership relationship is:
+
+```text
+Game Application / Session / Route / Activity lifecycle
+        ↓ authoritative current scope and occurrence
+FrameworkRuntimeHost
+        ↓ derives
+ObjectEntryRuntimeContextSnapshot
+        ↓ read-only scoped semantic projection
+Object Entry consumers
+```
+
+`ObjectEntryRuntimeContextSnapshot` is a derivative view of already-authoritative
+lifecycle state. It may expose the currently valid Session/Route/Activity scope,
+typed owner evidence and object-entry descriptors, but it cannot create, replace
+or override Route/Activity authority or runtime occurrence identity.
+
+Object Entry declarations and descriptors therefore cannot:
+
+```text
+keep a Route or Activity alive
+select an arbitrary active owner
+replace the current Activity occurrence
+register a global runtime service
+become a service locator
+turn authored metadata into lifecycle authority
+```
+
+When Object Entry metadata is consumed by Reset or diagnostics, the authoritative
+lifetime and occurrence remain the current scoped lifecycle authorities defined by
+this ADR.
+
+The historical F13 Object Entry Foundation is absorbed by this rule together with
+IF-ADR-014 stable-identity semantics. It does not require a new independent
+lifecycle ADR.
+
 ## Architectural constraints
 
 - Runtime authority is scoped, typed and lifetime-explicit.
@@ -102,6 +142,8 @@ a failure mode that the current authority does not have.
 - No silent fallback may change authority or policy.
 - Runtime contexts/services remain scoped rather than globally discoverable.
 - Editor authoring never becomes runtime authority.
+- Object Entry runtime context remains a derivative projection and never becomes
+  an independent lifecycle owner.
 
 ## Deferred extensions
 
@@ -112,5 +154,6 @@ simulated through arbitrary persistent GameObjects or a generic rollback manager
 ## Reopen criteria
 
 Reopen this ADR only when a concrete requirement changes lifecycle ownership,
-composition-root authority, transition continuation semantics or scoped runtime
-access.
+composition-root authority, transition continuation semantics, scoped runtime
+access, or attempts to make Object Entry metadata an independent lifecycle
+authority.

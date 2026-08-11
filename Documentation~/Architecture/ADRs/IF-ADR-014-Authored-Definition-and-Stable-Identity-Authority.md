@@ -1,8 +1,8 @@
 # IF-ADR-014 — Authored Definition and Stable Identity Authority
 
 Status: **Accepted**  
-Last updated: 2026-08-10  
-Related decisions: IF-ADR-001, IF-ADR-002, IF-ADR-003, IF-ADR-006, IF-ADR-009, IF-ADR-010, IF-ADR-013, IF-ADR-015  
+Last updated: 2026-08-11  
+Related decisions: IF-ADR-001, IF-ADR-002, IF-ADR-003, IF-ADR-005, IF-ADR-006, IF-ADR-009, IF-ADR-010, IF-ADR-013, IF-ADR-015  
 Closed execution record: [IF-ID Identity Authority](../Archive/Plans/IF-ID-IDENTITY-AUTHORITY-EXECUTION-PLAN-2026-08-06.md)
 
 > Current implementation, QA and FIRSTGAME integration status is tracked in
@@ -51,6 +51,63 @@ Stable ID is not lifecycle, readiness, release, supersession or cleanup authorit
   stable ID alone.
 - Project-wide collision diagnostics do not turn stable ID into runtime equality.
 
+## Object Entry identity and metadata ownership
+
+`ObjectEntryId` is the stable semantic identity of a logical Object Entry within
+the Object Entry identity domain.
+
+Object Entry is a passive metadata/addressing layer, not a new authored-definition
+or lifecycle authority.
+
+The accepted relationship is:
+
+```text
+ObjectEntryDeclaration
+  authored passive metadata
+        ↓
+ObjectEntryDescriptor / ObjectEntrySet
+  stable object identity + scope/owner/requiredness/source metadata
+        ↓
+ObjectEntryRuntimeContextSnapshot
+  scoped read-only projection
+```
+
+Rules:
+
+```text
+ObjectEntryId
+  = stable logical object identity
+
+Display name / GameObject name / hierarchy / scene path
+  = diagnostics only
+  != functional object identity
+
+Route/Activity owner metadata
+  = scoped correlation to an existing lifecycle owner
+  != authority to create or replace that owner
+
+ObjectEntryRuntimeContextSnapshot
+  = projection of current lifecycle context
+  != runtime occurrence authority
+```
+
+Duplicate `ObjectEntryId` values in one accepted set are a collision and must be
+rejected explicitly rather than merged silently.
+
+An `ObjectEntryDeclaration` does not make its `GameObject`, `Transform` or
+`Component` a physical runtime binding merely by declaring metadata.
+
+Physical binding, Reset execution, spawn/materialization, Player/Actor lifecycle
+and service registration remain outside Object Entry identity semantics.
+
+Lifecycle ownership and occurrence authority remain governed by IF-ADR-001.
+Reset may consume Object Entry scope/owner metadata under IF-ADR-005 without
+transferring Reset or lifecycle authority to Object Entry.
+
+The historical F13 Object Entry Foundation is therefore reconciled into the
+current architecture through IF-ADR-014 identity semantics plus IF-ADR-001
+runtime authority, rather than being revived as a separate current feature ADR.
+
 ## Conformance evidence — IF-ADR-013 Optional Audio BGM Adapter
 
 IF-ADR-013 is a concrete consumer of this identity authority and does not change
@@ -83,8 +140,15 @@ persistence/external workflow requires it. When opened it must preserve explicit
 typed resolution, collision diagnostics and the distinction between stable
 boundary identity and runtime occurrence/ownership.
 
+Object Entry request/result envelopes that remain Experimental are not promoted
+by this reconciliation. Their public API necessity should be evaluated separately
+as API/governance hygiene; stable identity ownership does not require a generic
+Object Entry dispatcher.
+
 ## Reopen criteria
 
 Reopen only if evidence shows distinct definitions collapsing through stable ID,
-release authority crossing definition tokens, wrong-occurrence correlation,
-implicit stable-ID mutation or a concrete external-resolution requirement.
+Object Entry identities being silently merged, release authority crossing
+definition tokens, wrong-occurrence correlation, Object Entry metadata acquiring
+lifecycle authority, implicit stable-ID mutation or a concrete external-resolution
+requirement.
