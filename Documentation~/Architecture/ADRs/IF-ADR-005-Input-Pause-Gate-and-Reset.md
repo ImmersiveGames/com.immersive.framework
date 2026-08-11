@@ -3,21 +3,22 @@
 Status: **Accepted**  
 Last updated: 2026-08-10  
 Package implementation: **COMPLETE FOR CURRENT ACCEPTED PACKAGE SCOPE**  
-Current technical conformity: **OPEN ONLY FOR FOCUSED PAUSE QA**  
-Any numeric planning assessment below is a planning estimate only; it is not certification or a conformance score.
-Current planning assessment: **30/30 Package · 20/20 Surface · 13/15 QA**  
+Current technical conformity: **CLOSED FOR CURRENT ACCEPTED STAGE A BOUNDARY**  
+Any numeric planning assessment below is a planning estimate only; it is not certification or a conformance score.  
+Current planning assessment: **30/30 Package · 20/20 Surface · 15/15 QA**  
 Product surface status: **AVAILABLE / direct authoring surfaces are sufficient for the current lifecycle**  
 Related decisions: IF-ADR-001, IF-ADR-003, IF-ADR-006, IF-ADR-007, IF-ADR-010, IF-ADR-011  
-Current reconciliation: [ADR-005 reconciliation](../Reconciliation/IMMERSIVE-FRAMEWORK-ADR-005-RECONCILIATION-2026-08-10.md)
-Current package baseline: `7b53b47814ddf59159972f56db171d60d421b14f` (`Camera-Docs`)  
-Current QA baseline inspected: `d000303c6409338888c8abe21e83c70759171df6` (`Cam-Pass`)  
-Current FIRSTGAME baseline observed: `796618243c3ca76f70d582f38475320c6461420b` (`Demo02 Reajuste`)
+Current reconciliation: [ADR-005 reconciliation](../Reconciliation/IMMERSIVE-FRAMEWORK-ADR-005-RECONCILIATION-2026-08-10.md)  
+Git package baseline originally reconciled: `7b53b47814ddf59159972f56db171d60d421b14f` (`Camera-Docs`)  
+Git QA baseline originally reconciled: `d000303c6409338888c8abe21e83c70759171df6` (`Cam-Pass`)  
+FIRSTGAME baseline observed: `796618243c3ca76f70d582f38475320c6461420b` (`Demo02 Reajuste`)
 
-> Package implementation and product-surface completeness are closed for the
-> current accepted scope. Stage A remains open only because direct QA evidence
-> for Pause authority and Pause + Activity Restart interaction is still missing.
-> FIRSTGAME remains Stage B consumer evidence and does not reopen technical
-> conformity.
+> Package implementation, product-surface completeness and Stage A technical QA
+> are closed for the current accepted scope. Focused Pause QA exposed one real
+> package defect in pre-Pause PlayerInput posture restoration; the package was
+> corrected in the existing Pause product owner and the same regression then
+> passed 27/27 across two passes in one Play Mode session. FIRSTGAME remains
+> Stage B consumer evidence and does not reopen technical conformity.
 
 ## Context
 
@@ -73,14 +74,16 @@ Do not infer that every type named "gate" must use the same ownership abstractio
 
 ## Current package coverage
 
-The package already contains the required official runtime/product pieces for the
-accepted scope, including the current families around:
+The package contains the official runtime/product pieces for the accepted scope,
+including:
 
 ```text
 PauseRuntime
+PauseProductBindingRuntimeContext
 PausePlayerInputBinding
-UnityPlayerInputGateAdapter
 PauseRequestTrigger
+UnityPlayerInputGateAdapter
+UnityPlayerInputStateWriter
 
 ResetRegistry
 Reset subjects / participants
@@ -92,17 +95,69 @@ Activity Restart integration
 GameFlow transition/readiness gate projections
 ```
 
-The representative product surfaces remain semantically sufficient:
+The representative product surfaces are semantically sufficient:
 
 ```text
 Pause Request              COMPLIANT
 Activity Restart           COMPLIANT
 Object Reset Group Trigger COMPLIANT
-Unity Input Gate           COMPLIANT SEMANTICALLY
+Unity Input Gate           COMPLIANT
 ```
 
 No new Composer, Recipe, Wizard or generic Gate Manager is justified by the
 current lifecycle.
+
+## Pause physical baseline correction
+
+Focused ADR-005 QA reproduced one package defect after the initial Pause contract
+cases were composed canonically.
+
+The failing boundary was:
+
+```text
+Gameplay disabled immediately before Pause
+  -> Pause
+  -> Resume
+  -> Gameplay incorrectly enabled
+```
+
+The first causal divergence was in `PauseProductBindingRuntimeContext`:
+
+```text
+Pause
+  -> TryApplyActionMapSet(Global only)
+  -> writer returned exact previous Action Map posture receipt
+  -> receipt was discarded after commit
+
+Resume
+  -> applied Global + Gameplay unconditionally
+  -> previous disabled Gameplay posture was lost
+```
+
+The correction remained in the existing product owner. The Pause-time
+`UnityPlayerInputActionMapSetWriteReceipt` is retained only for the active
+Running -> Paused transaction boundary, restored on Resume through the existing
+adapter/writer restore path, cleared on successful Resume and binding cleanup,
+and never reused across binding lifetimes.
+
+This receipt is intentionally distinct from the binding-time posture captured by
+`PausePlayerInputBinding` registration and later restored by `ReleaseBinding`.
+
+No Pause Gate policy, Activity Restart semantic, public API or QA assertion was
+changed to accommodate the defect.
+
+## Pause Gate semantics
+
+Logical Pause capability blockers remain:
+
+```text
+Input / InputAcceptance
+Interaction / InteractionAcceptance
+```
+
+Gameplay Action Map suppression is a separate physical PlayerInput integration.
+Pause does not require or publish a synthetic `Gameplay / GameplayAction` Pause
+blocker.
 
 ## Transition Gate diagnostic semantics
 
@@ -133,51 +188,78 @@ This is recovery protection, not Transition Gate leakage.
 
 ## Current technical QA evidence
 
-The current QA source contains focused technical regressions for the surrounding
-ADR-005 contracts.
-
 ### Input Gate
 
-`QaInputGateRuntimeBindingSmoke` verifies the runtime port, explicit binding,
-blocking/release behavior, preservation of a previously disabled Action Map,
-non-blocking unrelated domains, explicit missing-map failure and cleanup. It also
-proves that an unbound adapter does not fall back to a current host implicitly.
+`QaInputGateRuntimeBindingSmoke` verifies explicit runtime binding, no implicit
+host fallback, Gameplay/InputAcceptance blocking and release, unrelated-domain
+non-blocking behavior, preservation of a previously disabled Action Map,
+explicit missing-map resolution failure and cleanup.
 
-Disposition:
+Executed result:
 
 ```text
-Input Gate
-  IMPLEMENTED
-  QA PROVEN for the inspected current regression boundary
+INPUT_GATE_RUNTIME_BINDING_SMOKE
+  PASS — 9/9
 ```
+
+The negative missing-map case now expects the current explicit diagnostic status
+`FailedGameplayActionMapResolution`, rather than the superseded generic
+`FailedActionMapBlock` expectation.
 
 ### Reset and Activity Restart
 
-`QaObjectResetGroupVerticalSmoke` exercises explicit multi-subject selection,
-invalid selection, missing registered subjects, empty-selection policy,
-required/optional participant failure semantics, execution continuation policy,
-single-flight behavior and cleanup.
+`QaObjectResetGroupVerticalSmoke` remains the focused proof for Reset selection,
+participant semantics, single-flight behavior and cleanup.
 
 `QaActivityRestartVerticalSmoke` exercises no-active-Activity failure, target
-mismatch, invalid Reset selection before GameFlow mutation, nominal
-Reset -> Clear -> Reenter ordering, single-flight behavior, warning completion,
-blocking Reset failure and terminal request cleanup.
+mismatch, invalid Reset before flow mutation, nominal Reset -> Clear -> Reenter,
+single-flight, warning completion, blocking Reset failure and terminal cleanup.
 
-Disposition:
+Executed Activity Restart result:
 
 ```text
-Reset
-  IMPLEMENTED
-  QA PROVEN for the inspected current regression boundary
+ACTIVITY_RESTART_VERTICAL_SMOKE
+  PASS — 8/8
+```
 
-Activity Restart
-  IMPLEMENTED
-  QA PROVEN for the inspected current regression boundary
+### Pause authority and Pause + Activity Restart
+
+`QaPauseRuntimeBindingSmoke` is the focused ADR-005 closure regression.
+
+It proves, per pass:
+
+```text
+unbound trigger does not fall back to the host
+missing binding authoring fails explicitly
+runtime and bindings are available
+baseline is captured before Pause
+Pause applies logical state, physical input and capability Gate effects
+repeated Pause is explicit no-change
+Resume restores an enabled Gameplay baseline
+Pause + Activity Restart completes while preserving Pause
+Resume after restart restores Running input
+scene release cleans binding, Pause and physical posture
+destroy teardown leaves no stale binding or Gate state
+Resume preserves a Gameplay map disabled immediately before Pause
+disabled-baseline release is clean
+```
+
+The full runner executes the contract twice in the same Play Mode session and
+then checks the terminal residual state.
+
+Final executed result after the package correction:
+
+```text
+QA_PAUSE_CONTRACT
+  PASS — 27/27
+  failed='0'
+  two complete passes in one Play Mode session
+  terminal-no-residual-pause-or-gate
 ```
 
 ### Transition and readiness gates
 
-Existing certification from the previous revision remains relevant:
+Previously captured focused certifications remain relevant:
 
 ```text
 IF-TXN-03A Transition Gate Terminal Integrity
@@ -198,66 +280,37 @@ Participant-Aware Readiness Loading Progress
 
 These prove technical behavior. They are not UX certification.
 
-## Remaining Stage A QA gap
+## Stage A closure
 
-The current QA source does not expose a focused regression that directly proves
-`PauseRuntime`, `PausePlayerInputBinding` or `PauseRequestTrigger`, and it does
-not directly prove Activity Restart while Pause is active.
+The previously identified focused Pause QA gap is closed.
 
-This is the only current ADR-005 technical closure gap identified by the
-2026-08-10 reconciliation.
-
-Required focused proof:
+Current ADR-005 Stage A evidence is:
 
 ```text
-Pause authority
-  -> request/state/result behavior is explicit
-  -> invalid request/state fails diagnostically
-
-PausePlayerInputBinding
-  -> explicit runtime binding
-  -> no hidden host/name fallback
-  -> Pause blocks the intended gameplay input
-  -> release restores the previous input state
-  -> disable/destroy cleanup leaves no stale block
-
-Pause + Activity Restart
-  -> interaction is deterministic
-  -> no stale Pause/Input/Gate state survives terminal restart behavior
-  -> failure path is explicit if the current contract rejects an interaction
+Input Gate        PASS — 9/9
+Activity Restart  PASS — 8/8
+Pause Contract    PASS — 27/27
+                  two complete passes
+                  terminal residual check PASS
 ```
 
-The QA cut must certify the contract that already exists. It must not change the
-package merely to make the test pass. If the test reveals a real package defect,
-a separate minimal package cut is required.
+The focused Pause regression did exactly what the ADR required: it first exposed
+a real package divergence under canonical composition, the package was corrected
+in the owning runtime context, and the same QA then passed without weakening the
+assertions.
 
 ## Product-surface disposition
-
-The former plan contained work such as:
-
-```text
-publish isolated product flows
-create authoring surfaces
-add Composer-like extraction
-normalize every Inspector
-```
-
-The current package audit does not justify that as a missing package
-implementation.
-
-Current disposition:
 
 ```text
 Package runtime/contracts  COMPLETE FOR CURRENT SCOPE
 Product surfaces           AVAILABLE / COMPLIANT FOR INSPECTED PRIMARY FLOWS
+Technical QA               CERTIFIED FOR CURRENT ADR-005 STAGE A BOUNDARY
 Generic product extraction NOT REQUIRED
 Composer/Wizard            NOT REQUIRED
 ```
 
 Presentation normalization may happen during ordinary maintenance when a concrete
-problem exists.
-
-It is not an ADR completion blocker.
+problem exists. It is not an ADR completion blocker.
 
 ## FIRSTGAME
 
@@ -268,15 +321,9 @@ flows, or reveal a concrete product UX problem that deserves a later package
 improvement.
 
 FIRSTGAME is not part of the Stage A technical closure gate. A missing or partial
-consumer demonstration therefore does not reduce the current package
-implementation status and does not manufacture a QA defect.
+consumer demonstration therefore does not reduce current Stage A conformity.
 
 ## Current assessment
-
-The former percentage mixed package implementation, QA breadth, product
-extraction and consumer evidence.
-
-The current interpretation separates them:
 
 ```text
 Architecture
@@ -289,11 +336,10 @@ Product Surface / Diagnostics
   IMPLEMENTED FOR CURRENT ACCEPTED BOUNDARY
 
 Technical QA
-  PARTIAL
-  focused Pause certification remains
+  CERTIFIED
 
 Divergent package behavior
-  NONE IDENTIFIED
+  NONE REMAINING IN THE CERTIFIED ADR-005 BOUNDARY
 
 Missing package contract
   NONE IDENTIFIED
@@ -302,19 +348,19 @@ FIRSTGAME
   STAGE B / separate consumer evidence
 ```
 
-For the Tracker planning row, the current local estimate is:
+For Tracker planning, the closed technical dimensions are:
 
 ```text
 Architecture 20/20
 Package      30/30
 Surface      20/20
-QA           13/15
+QA           15/15
 FIRSTGAME     9/15
-Total         92%
+Total         94%
 ```
 
 The FIRSTGAME dimension is retained only as portfolio planning evidence. It does
-not reopen Stage A. The technical blocker is the focused Pause QA gap.
+not reopen Stage A.
 
 ## Completion criteria
 
@@ -325,18 +371,13 @@ each gate follows its declared authority model
 Transition Gate terminal cleanup is explicit
 readiness recovery remains separately observable
 Pause and Restart interactions are deterministic
+Pause restores the exact pre-Pause physical input posture
 Reset scope/results are explicit
 invalid operations fail diagnostically
 consumer authoring does not require hidden runtime contracts
 ```
 
-Current package implementation satisfies the package/product portion of these
-criteria.
-
-Current QA evidence satisfies Input Gate, Reset, Activity Restart and the cited
-Transition/readiness boundaries. ADR-005 becomes technically closed when the
-focused Pause and Pause + Restart proof is added and passes without requiring an
-unapproved change of contract.
+The current package and executed QA evidence satisfy these Stage A criteria.
 
 ## Normative summary
 
@@ -345,5 +386,6 @@ Do not unify unrelated gates under one lease model.
 Do not create generic authoring layers where direct authoring is sufficient.
 Do not treat synthetic Inspector QA as product certification.
 Keep FIRSTGAME as separate consumer evidence.
-Close the remaining Stage A gap with focused Pause QA, not new package architecture.
+Preserve exact pre-Pause PlayerInput posture across Pause -> Resume.
+ADR-005 Stage A is closed for the current accepted boundary.
 ```
