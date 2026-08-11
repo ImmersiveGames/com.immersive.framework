@@ -10,26 +10,48 @@ using UnityEngine;
 namespace Immersive.Framework.ProgressionSave
 {
     /// <summary>
-    /// API status: Experimental pending ADR018-B hardening.
-    /// Built-in minimum local Progression Save backend.
-    /// JSON and file paths are adapter details; framework consumers depend on
-    /// IProgressionSaveStore. Read-only catalog projection is exposed separately
-    /// through IProgressionSaveCatalog.
+    /// API status: Experimental concrete adapter API.
+    /// ADR018-B certifies this implementation as the official built-in minimum local
+    /// Progression Save backend. Its concrete construction/catalog surface remains
+    /// Experimental until ADR018-C defines the product composition boundary.
+    ///
+    /// Core slot persistence and the optional manifest catalog are maintained through
+    /// a recoverable single-process transaction intent. The backend does not promise
+    /// database-grade transactions or multi-process coordination.
     /// </summary>
     [FrameworkApiStatus(
         FrameworkApiStatus.Experimental,
-        "ADR018 built-in minimum JSON Progression Save backend; core store plus optional catalog capability.")]
+        "ADR018-B CERTIFIED built-in minimum JSON backend; concrete construction/catalog API remains Experimental pending ADR018-C product composition.")]
     public sealed class JsonProgressionSaveStore : IProgressionSaveStore, IProgressionSaveCatalog
     {
         internal const int StorageFormatVersion = 1;
+        internal const int TransactionFormatVersion = 1;
+
         internal const string DefaultBackendValue = "json.local";
         internal const string ManifestFileName = "manifest.json";
         internal const string SlotDirectoryName = "slots";
+
+        internal const string TransactionDirectoryName = ".transaction";
+        internal const string TransactionIntentFileName = "intent.json";
+        internal const string TransactionIntentPendingFileName = "intent.pending.json";
+        internal const string TransactionSlotStageFileName = "slot.stage.json";
+        internal const string TransactionManifestStageFileName = "manifest.stage.json";
+
+        private const int TransactionOperationWrite = 10;
+        private const int TransactionOperationDelete = 20;
+
+        private static readonly object GlobalIoGate = new object();
 
         private readonly ProgressionSaveBackendId _backendId;
         private readonly string _rootDirectory;
         private readonly string _slotDirectory;
         private readonly string _manifestPath;
+
+        private readonly string _transactionDirectory;
+        private readonly string _transactionIntentPath;
+        private readonly string _transactionIntentPendingPath;
+        private readonly string _transactionSlotStagePath;
+        private readonly string _transactionManifestStagePath;
 
         public JsonProgressionSaveStore(string rootDirectory)
             : this(rootDirectory, ProgressionSaveBackendId.From(DefaultBackendValue))
@@ -54,9 +76,44 @@ namespace Immersive.Framework.ProgressionSave
                     nameof(backendId));
             }
 
-            _rootDirectory = Path.GetFullPath(rootDirectory.Trim());
-            _slotDirectory = Path.Combine(_rootDirectory, SlotDirectoryName);
-            _manifestPath = Path.Combine(_rootDirectory, ManifestFileName);
+            _rootDirectory =
+                Path.GetFullPath(rootDirectory.Trim());
+
+            _slotDirectory =
+                Path.Combine(
+                    _rootDirectory,
+                    SlotDirectoryName);
+
+            _manifestPath =
+                Path.Combine(
+                    _rootDirectory,
+                    ManifestFileName);
+
+            _transactionDirectory =
+                Path.Combine(
+                    _rootDirectory,
+                    TransactionDirectoryName);
+
+            _transactionIntentPath =
+                Path.Combine(
+                    _transactionDirectory,
+                    TransactionIntentFileName);
+
+            _transactionIntentPendingPath =
+                Path.Combine(
+                    _transactionDirectory,
+                    TransactionIntentPendingFileName);
+
+            _transactionSlotStagePath =
+                Path.Combine(
+                    _transactionDirectory,
+                    TransactionSlotStageFileName);
+
+            _transactionManifestStagePath =
+                Path.Combine(
+                    _transactionDirectory,
+                    TransactionManifestStageFileName);
+
             _backendId = backendId;
         }
 
@@ -67,6 +124,10 @@ namespace Immersive.Framework.ProgressionSave
         internal string SlotDirectory => _slotDirectory;
 
         internal string ManifestPath => _manifestPath;
+
+        internal string TransactionDirectory => _transactionDirectory;
+
+        internal string TransactionIntentPath => _transactionIntentPath;
 
         public static JsonProgressionSaveStore CreateDefault(string productName)
         {
@@ -83,50 +144,29 @@ namespace Immersive.Framework.ProgressionSave
 
         public ProgressionSaveManifestReadResult ReadManifest()
         {
-            try
+            lock (GlobalIoGate)
             {
-                if (!File.Exists(_manifestPath))
+                if (!TryRecoverPendingTransaction(
+                        out bool recovered,
+                        out string recoveryDiagnostic))
                 {
-                    return ProgressionSaveManifestReadResult.Missing(
-                        "Progression Save manifest file is missing.");
+                    return ProgressionSaveManifestReadResult.FailedResult(
+                        $"Progression Save JSON recovery blocked manifest read. {recoveryDiagnostic}");
                 }
 
-                string json =
-                    File.ReadAllText(_manifestPath, Encoding.UTF8);
+                ProgressionSaveManifestReadResult result =
+                    ReadManifestCore();
 
-                if (string.IsNullOrWhiteSpace(json))
-                {
-                    return ProgressionSaveManifestReadResult.Corrupt(
-                        "Progression Save manifest file is empty.");
-                }
-
-                var dto = JsonUtility.FromJson<ManifestDto>(json);
-                if (dto == null || dto.version != StorageFormatVersion)
-                {
-                    return ProgressionSaveManifestReadResult.Corrupt(
-                        "Progression Save manifest has unsupported or missing storage version.");
-                }
-
-                var manifest = ToManifest(dto);
-                if (!manifest.IsValid)
-                {
-                    return ProgressionSaveManifestReadResult.Corrupt(
-                        "Progression Save manifest payload is invalid.");
-                }
-
-                return ProgressionSaveManifestReadResult.Found(
-                    manifest,
-                    "Progression Save manifest read from JSON backend.");
-            }
-            catch (Exception exception)
-            {
-                return ProgressionSaveManifestReadResult.Corrupt(
-                    $"Progression Save manifest JSON could not be read. " +
-                    $"{exception.GetType().Name}: {exception.Message}");
+                return recovered
+                    ? AppendRecoveryDiagnostic(
+                        result,
+                        recoveryDiagnostic)
+                    : result;
             }
         }
 
-        public ProgressionSaveReadResult ReadSlot(ProgressionSaveSlotId slotId)
+        public ProgressionSaveReadResult ReadSlot(
+            ProgressionSaveSlotId slotId)
         {
             if (!slotId.IsValid)
             {
@@ -135,51 +175,25 @@ namespace Immersive.Framework.ProgressionSave
                     nameof(slotId));
             }
 
-            string path = ToPhysicalSlotPath(slotId);
-
-            try
+            lock (GlobalIoGate)
             {
-                if (!File.Exists(path))
+                if (!TryRecoverPendingTransaction(
+                        out bool recovered,
+                        out string recoveryDiagnostic))
                 {
-                    return ProgressionSaveReadResult.Missing(
+                    return ProgressionSaveReadResult.FailedResult(
                         slotId,
-                        "Progression Save slot file is missing.");
+                        $"Progression Save JSON recovery blocked slot read. {recoveryDiagnostic}");
                 }
 
-                string json = File.ReadAllText(path, Encoding.UTF8);
-                if (string.IsNullOrWhiteSpace(json))
-                {
-                    return ProgressionSaveReadResult.Corrupt(
-                        slotId,
-                        "Progression Save slot file is empty.");
-                }
+                ProgressionSaveReadResult result =
+                    ReadSlotCore(slotId);
 
-                var dto = JsonUtility.FromJson<SlotRecordDto>(json);
-                if (dto == null || dto.version != StorageFormatVersion)
-                {
-                    return ProgressionSaveReadResult.Corrupt(
-                        slotId,
-                        "Progression Save slot has unsupported or missing storage version.");
-                }
-
-                var record = ToRecord(dto);
-                if (!record.IsValid || record.SlotId != slotId)
-                {
-                    return ProgressionSaveReadResult.Corrupt(
-                        slotId,
-                        "Progression Save slot payload is invalid or belongs to a different slot.");
-                }
-
-                return ProgressionSaveReadResult.Found(
-                    record,
-                    "Progression Save slot read from JSON backend.");
-            }
-            catch (Exception exception)
-            {
-                return ProgressionSaveReadResult.Corrupt(
-                    slotId,
-                    $"Progression Save slot JSON could not be read. " +
-                    $"{exception.GetType().Name}: {exception.Message}");
+                return recovered
+                    ? AppendRecoveryDiagnostic(
+                        result,
+                        recoveryDiagnostic)
+                    : result;
             }
         }
 
@@ -193,63 +207,92 @@ namespace Immersive.Framework.ProgressionSave
                     nameof(record));
             }
 
-            try
+            lock (GlobalIoGate)
             {
-                EnsureDirectories();
+                if (!TryRecoverPendingTransaction(
+                        out bool recoveredBeforeWrite,
+                        out string recoveryDiagnostic))
+                {
+                    return ProgressionSaveWriteResult.FailedResult(
+                        record.SlotId,
+                        $"Progression Save JSON recovery blocked slot write. {recoveryDiagnostic}");
+                }
 
-                var dto = FromRecord(record);
-                string json = JsonUtility.ToJson(dto, prettyPrint: true);
+                ProgressionSaveManifestReadResult manifestRead =
+                    ReadManifestCore();
 
-                File.WriteAllText(
-                    ToPhysicalSlotPath(record.SlotId),
-                    json,
-                    Encoding.UTF8);
-
-                var manifestRead = ReadManifest();
                 ProgressionSaveManifest manifest;
 
                 if (manifestRead.HasManifest)
                 {
-                    manifest = manifestRead.Manifest;
+                    manifest =
+                        manifestRead.Manifest;
                 }
-                else if (manifestRead.Status == ProgressionSaveReadStatus.Missing)
+                else if (manifestRead.Status ==
+                    ProgressionSaveReadStatus.Missing)
                 {
-                    manifest = ProgressionSaveManifest.Empty(
-                        record.UpdatedUtcTicks,
-                        nameof(JsonProgressionSaveStore));
+                    manifest =
+                        ProgressionSaveManifest.Empty(
+                            record.UpdatedUtcTicks,
+                            nameof(JsonProgressionSaveStore));
                 }
                 else
                 {
                     return ProgressionSaveWriteResult.FailedResult(
                         record.SlotId,
-                        $"Progression Save slot was written, but manifest could not " +
-                        $"be updated because manifest status is '{manifestRead.Status}'.");
+                        $"Progression Save JSON slot write was rejected before mutation because " +
+                        $"manifest status is '{manifestRead.Status}'.");
                 }
 
-                var updatedManifest = manifest.WithEntry(
-                    record.ToManifestEntry(),
-                    record.UpdatedUtcTicks,
-                    nameof(JsonProgressionSaveStore));
+                ProgressionSaveManifest updatedManifest =
+                    manifest.WithEntry(
+                        record.ToManifestEntry(),
+                        record.UpdatedUtcTicks,
+                        nameof(JsonProgressionSaveStore));
 
-                var manifestWrite = WriteManifestInternal(updatedManifest);
-                if (!manifestWrite.Written)
+                if (!TryPrepareWriteTransaction(
+                        record,
+                        updatedManifest,
+                        out string preparationIssue))
                 {
                     return ProgressionSaveWriteResult.FailedResult(
                         record.SlotId,
-                        $"Progression Save slot was written, but internal manifest " +
-                        $"write failed with status '{manifestWrite.Status}'.");
+                        $"Progression Save JSON slot write could not prepare a recoverable transaction. " +
+                        preparationIssue);
+                }
+
+                if (!TryRecoverPendingTransaction(
+                        out bool committed,
+                        out string commitDiagnostic))
+                {
+                    return ProgressionSaveWriteResult.FailedResult(
+                        record.SlotId,
+                        $"Progression Save JSON slot write did not complete. " +
+                        $"A committed transaction was retained for recovery. {commitDiagnostic}");
+                }
+
+                string message =
+                    "Progression Save slot written through recoverable JSON backend.";
+
+                if (recoveredBeforeWrite)
+                {
+                    message =
+                        CombineMessages(
+                            message,
+                            $"Previous transaction recovery: {recoveryDiagnostic}");
+                }
+
+                if (committed)
+                {
+                    message =
+                        CombineMessages(
+                            message,
+                            commitDiagnostic);
                 }
 
                 return ProgressionSaveWriteResult.SlotWritten(
                     record,
-                    "Progression Save slot written through JSON backend.");
-            }
-            catch (Exception exception)
-            {
-                return ProgressionSaveWriteResult.FailedResult(
-                    record.SlotId,
-                    $"Progression Save slot JSON could not be written. " +
-                    $"{exception.GetType().Name}: {exception.Message}");
+                    message);
             }
         }
 
@@ -263,18 +306,29 @@ namespace Immersive.Framework.ProgressionSave
                     nameof(slotId));
             }
 
-            try
+            lock (GlobalIoGate)
             {
-                string path = ToPhysicalSlotPath(slotId);
-                bool hadSlotFile = File.Exists(path);
-
-                if (hadSlotFile)
+                if (!TryRecoverPendingTransaction(
+                        out bool recoveredBeforeDelete,
+                        out string recoveryDiagnostic))
                 {
-                    File.Delete(path);
+                    return ProgressionSaveDeleteResult.FailedResult(
+                        slotId,
+                        $"Progression Save JSON recovery blocked slot delete. {recoveryDiagnostic}");
                 }
 
+                string slotPath =
+                    ToPhysicalSlotPath(slotId);
+
+                bool hadSlotFile =
+                    File.Exists(slotPath);
+
+                ProgressionSaveManifestReadResult manifestRead =
+                    ReadManifestCore();
+
                 bool manifestHadSlot = false;
-                var manifestRead = ReadManifest();
+                bool hasManifestStage = false;
+                ProgressionSaveManifest updatedManifest = default;
 
                 if (manifestRead.HasManifest)
                 {
@@ -283,30 +337,22 @@ namespace Immersive.Framework.ProgressionSave
 
                     if (manifestHadSlot)
                     {
-                        var updatedManifest =
+                        updatedManifest =
                             manifestRead.Manifest.WithoutSlot(
                                 slotId,
                                 DateTime.UtcNow.Ticks,
                                 nameof(JsonProgressionSaveStore));
 
-                        var manifestWrite =
-                            WriteManifestInternal(updatedManifest);
-
-                        if (!manifestWrite.Written)
-                        {
-                            return ProgressionSaveDeleteResult.FailedResult(
-                                slotId,
-                                $"Progression Save slot file was deleted, but internal " +
-                                $"manifest update failed with status '{manifestWrite.Status}'.");
-                        }
+                        hasManifestStage = true;
                     }
                 }
-                else if (manifestRead.Status != ProgressionSaveReadStatus.Missing)
+                else if (manifestRead.Status !=
+                    ProgressionSaveReadStatus.Missing)
                 {
                     return ProgressionSaveDeleteResult.FailedResult(
                         slotId,
-                        $"Progression Save slot delete could not validate manifest " +
-                        $"because manifest status is '{manifestRead.Status}'.");
+                        $"Progression Save JSON slot delete was rejected before mutation because " +
+                        $"manifest status is '{manifestRead.Status}'.");
                 }
 
                 if (!hadSlotFile && !manifestHadSlot)
@@ -316,20 +362,55 @@ namespace Immersive.Framework.ProgressionSave
                         "Progression Save slot was already missing.");
                 }
 
+                if (!TryPrepareDeleteTransaction(
+                        slotId,
+                        hasManifestStage,
+                        updatedManifest,
+                        out string preparationIssue))
+                {
+                    return ProgressionSaveDeleteResult.FailedResult(
+                        slotId,
+                        $"Progression Save JSON slot delete could not prepare a recoverable transaction. " +
+                        preparationIssue);
+                }
+
+                if (!TryRecoverPendingTransaction(
+                        out bool committed,
+                        out string commitDiagnostic))
+                {
+                    return ProgressionSaveDeleteResult.FailedResult(
+                        slotId,
+                        $"Progression Save JSON slot delete did not complete. " +
+                        $"A committed transaction was retained for recovery. {commitDiagnostic}");
+                }
+
+                string message =
+                    "Progression Save slot deleted through recoverable JSON backend.";
+
+                if (recoveredBeforeDelete)
+                {
+                    message =
+                        CombineMessages(
+                            message,
+                            $"Previous transaction recovery: {recoveryDiagnostic}");
+                }
+
+                if (committed)
+                {
+                    message =
+                        CombineMessages(
+                            message,
+                            commitDiagnostic);
+                }
+
                 return ProgressionSaveDeleteResult.Deleted(
                     slotId,
-                    "Progression Save slot deleted from JSON backend.");
-            }
-            catch (Exception exception)
-            {
-                return ProgressionSaveDeleteResult.FailedResult(
-                    slotId,
-                    $"Progression Save slot JSON could not be deleted. " +
-                    $"{exception.GetType().Name}: {exception.Message}");
+                    message);
             }
         }
 
-        internal string ToPhysicalSlotPath(ProgressionSaveSlotId slotId)
+        internal string ToPhysicalSlotPath(
+            ProgressionSaveSlotId slotId)
         {
             if (!slotId.IsValid)
             {
@@ -345,54 +426,833 @@ namespace Immersive.Framework.ProgressionSave
 
         internal void DeleteStoreData()
         {
-            if (Directory.Exists(_rootDirectory))
+            lock (GlobalIoGate)
             {
-                Directory.Delete(
-                    _rootDirectory,
-                    recursive: true);
+                if (Directory.Exists(_rootDirectory))
+                {
+                    Directory.Delete(
+                        _rootDirectory,
+                        recursive: true);
+                }
             }
         }
 
-        private ProgressionSaveManifestWriteResult WriteManifestInternal(
-            ProgressionSaveManifest manifest)
+        private ProgressionSaveManifestReadResult ReadManifestCore()
         {
-            if (!manifest.IsValid)
-            {
-                return ProgressionSaveManifestWriteResult.Rejected(
-                    "Progression Save internal manifest write rejected because the manifest is invalid.");
-            }
+            return ReadManifestFile(
+                _manifestPath,
+                "manifest");
+        }
 
+        private ProgressionSaveReadResult ReadSlotCore(
+            ProgressionSaveSlotId slotId)
+        {
+            return ReadSlotFile(
+                ToPhysicalSlotPath(slotId),
+                slotId,
+                "slot");
+        }
+
+        private ProgressionSaveManifestReadResult ReadManifestFile(
+            string path,
+            string diagnosticName)
+        {
+            try
+            {
+                if (!File.Exists(path))
+                {
+                    return ProgressionSaveManifestReadResult.Missing(
+                        $"Progression Save JSON {diagnosticName} file is missing.");
+                }
+
+                string json =
+                    File.ReadAllText(
+                        path,
+                        Encoding.UTF8);
+
+                if (string.IsNullOrWhiteSpace(json))
+                {
+                    return ProgressionSaveManifestReadResult.Corrupt(
+                        $"Progression Save JSON {diagnosticName} file is empty.");
+                }
+
+                ManifestDto dto =
+                    JsonUtility.FromJson<ManifestDto>(json);
+
+                if (dto == null ||
+                    dto.version != StorageFormatVersion)
+                {
+                    return ProgressionSaveManifestReadResult.Corrupt(
+                        $"Progression Save JSON {diagnosticName} has unsupported or missing storage version.");
+                }
+
+                ProgressionSaveManifest manifest =
+                    ToManifest(dto);
+
+                if (!manifest.IsValid)
+                {
+                    return ProgressionSaveManifestReadResult.Corrupt(
+                        $"Progression Save JSON {diagnosticName} payload is invalid.");
+                }
+
+                return ProgressionSaveManifestReadResult.Found(
+                    manifest,
+                    $"Progression Save JSON {diagnosticName} read successfully.");
+            }
+            catch (Exception exception)
+            {
+                return ProgressionSaveManifestReadResult.Corrupt(
+                    $"Progression Save JSON {diagnosticName} could not be read. " +
+                    $"{exception.GetType().Name}: {exception.Message}");
+            }
+        }
+
+        private ProgressionSaveReadResult ReadSlotFile(
+            string path,
+            ProgressionSaveSlotId slotId,
+            string diagnosticName)
+        {
+            try
+            {
+                if (!File.Exists(path))
+                {
+                    return ProgressionSaveReadResult.Missing(
+                        slotId,
+                        $"Progression Save JSON {diagnosticName} file is missing.");
+                }
+
+                string json =
+                    File.ReadAllText(
+                        path,
+                        Encoding.UTF8);
+
+                if (string.IsNullOrWhiteSpace(json))
+                {
+                    return ProgressionSaveReadResult.Corrupt(
+                        slotId,
+                        $"Progression Save JSON {diagnosticName} file is empty.");
+                }
+
+                SlotRecordDto dto =
+                    JsonUtility.FromJson<SlotRecordDto>(json);
+
+                if (dto == null ||
+                    dto.version != StorageFormatVersion)
+                {
+                    return ProgressionSaveReadResult.Corrupt(
+                        slotId,
+                        $"Progression Save JSON {diagnosticName} has unsupported or missing storage version.");
+                }
+
+                ProgressionSaveSlotRecord record =
+                    ToRecord(dto);
+
+                if (!record.IsValid ||
+                    record.SlotId != slotId)
+                {
+                    return ProgressionSaveReadResult.Corrupt(
+                        slotId,
+                        $"Progression Save JSON {diagnosticName} payload is invalid or belongs to a different slot.");
+                }
+
+                return ProgressionSaveReadResult.Found(
+                    record,
+                    $"Progression Save JSON {diagnosticName} read successfully.");
+            }
+            catch (Exception exception)
+            {
+                return ProgressionSaveReadResult.Corrupt(
+                    slotId,
+                    $"Progression Save JSON {diagnosticName} could not be read. " +
+                    $"{exception.GetType().Name}: {exception.Message}");
+            }
+        }
+
+        private bool TryPrepareWriteTransaction(
+            ProgressionSaveSlotRecord record,
+            ProgressionSaveManifest manifest,
+            out string issue)
+        {
             try
             {
                 EnsureDirectories();
 
-                var dto = FromManifest(manifest);
-                string json =
-                    JsonUtility.ToJson(dto, prettyPrint: true);
+                if (Directory.Exists(_transactionDirectory))
+                {
+                    issue =
+                        "A previous JSON transaction directory still exists after recovery.";
+                    return false;
+                }
+
+                Directory.CreateDirectory(
+                    _transactionDirectory);
 
                 File.WriteAllText(
-                    _manifestPath,
-                    json,
+                    _transactionSlotStagePath,
+                    SerializeRecord(record),
                     Encoding.UTF8);
 
-                return ProgressionSaveManifestWriteResult.WrittenResult(
-                    "Progression Save manifest written through JSON backend.");
+                File.WriteAllText(
+                    _transactionManifestStagePath,
+                    SerializeManifest(manifest),
+                    Encoding.UTF8);
+
+                WriteIntentAtomically(
+                    new TransactionIntentDto
+                    {
+                        version = TransactionFormatVersion,
+                        operation = TransactionOperationWrite,
+                        slotId = record.SlotId.Value.Value,
+                        hasSlotStage = true,
+                        hasManifestStage = true
+                    });
+
+                issue = string.Empty;
+                return true;
             }
             catch (Exception exception)
             {
-                return ProgressionSaveManifestWriteResult.FailedResult(
-                    $"Progression Save manifest JSON could not be written. " +
-                    $"{exception.GetType().Name}: {exception.Message}");
+                bool committedIntent =
+                    File.Exists(_transactionIntentPath);
+
+                if (!committedIntent)
+                {
+                    TryDiscardUncommittedTransaction(
+                        out _);
+                }
+
+                issue =
+                    $"Transaction preparation failed. committedIntent='{committedIntent}'. " +
+                    $"{exception.GetType().Name}: {exception.Message}";
+                return false;
+            }
+        }
+
+        private bool TryPrepareDeleteTransaction(
+            ProgressionSaveSlotId slotId,
+            bool hasManifestStage,
+            ProgressionSaveManifest manifest,
+            out string issue)
+        {
+            try
+            {
+                EnsureDirectories();
+
+                if (Directory.Exists(_transactionDirectory))
+                {
+                    issue =
+                        "A previous JSON transaction directory still exists after recovery.";
+                    return false;
+                }
+
+                Directory.CreateDirectory(
+                    _transactionDirectory);
+
+                if (hasManifestStage)
+                {
+                    if (!manifest.IsValid ||
+                        manifest.ContainsSlot(slotId))
+                    {
+                        issue =
+                            "Delete transaction requires a valid staged manifest without the deleted slot.";
+                        TryDiscardUncommittedTransaction(
+                            out _);
+                        return false;
+                    }
+
+                    File.WriteAllText(
+                        _transactionManifestStagePath,
+                        SerializeManifest(manifest),
+                        Encoding.UTF8);
+                }
+
+                WriteIntentAtomically(
+                    new TransactionIntentDto
+                    {
+                        version = TransactionFormatVersion,
+                        operation = TransactionOperationDelete,
+                        slotId = slotId.Value.Value,
+                        hasSlotStage = false,
+                        hasManifestStage = hasManifestStage
+                    });
+
+                issue = string.Empty;
+                return true;
+            }
+            catch (Exception exception)
+            {
+                bool committedIntent =
+                    File.Exists(_transactionIntentPath);
+
+                if (!committedIntent)
+                {
+                    TryDiscardUncommittedTransaction(
+                        out _);
+                }
+
+                issue =
+                    $"Delete transaction preparation failed. committedIntent='{committedIntent}'. " +
+                    $"{exception.GetType().Name}: {exception.Message}";
+                return false;
+            }
+        }
+
+        private bool TryRecoverPendingTransaction(
+            out bool recovered,
+            out string diagnostic)
+        {
+            recovered = false;
+            diagnostic = string.Empty;
+
+            if (!Directory.Exists(_transactionDirectory))
+            {
+                return true;
+            }
+
+            if (!File.Exists(_transactionIntentPath))
+            {
+                recovered = true;
+
+                bool discarded =
+                    TryDiscardUncommittedTransaction(
+                        out string cleanupIssue);
+
+                diagnostic = discarded
+                    ? "Discarded uncommitted JSON transaction staging because no commit intent existed."
+                    : $"Uncommitted JSON transaction staging has no commit intent; cleanup remains pending. {cleanupIssue}";
+
+                return true;
+            }
+
+            if (!TryReadTransactionIntent(
+                    out TransactionIntentDto intent,
+                    out ProgressionSaveSlotId slotId,
+                    out string intentIssue))
+            {
+                diagnostic =
+                    $"Committed JSON transaction intent is invalid. Recovery stopped without applying staged data. {intentIssue}";
+                return false;
+            }
+
+            try
+            {
+                if (intent.operation ==
+                    TransactionOperationWrite)
+                {
+                    if (!TryValidateWriteTransaction(
+                            intent,
+                            slotId,
+                            out string validationIssue))
+                    {
+                        diagnostic =
+                            $"Committed JSON write transaction is invalid. Recovery stopped before canonical mutation. {validationIssue}";
+                        return false;
+                    }
+
+                    ApplyStagedFile(
+                        _transactionSlotStagePath,
+                        ToPhysicalSlotPath(slotId));
+
+                    ApplyStagedFile(
+                        _transactionManifestStagePath,
+                        _manifestPath);
+                }
+                else if (intent.operation ==
+                    TransactionOperationDelete)
+                {
+                    if (!TryValidateDeleteTransaction(
+                            intent,
+                            slotId,
+                            out string validationIssue))
+                    {
+                        diagnostic =
+                            $"Committed JSON delete transaction is invalid. Recovery stopped before canonical mutation. {validationIssue}";
+                        return false;
+                    }
+
+                    string slotPath =
+                        ToPhysicalSlotPath(slotId);
+
+                    if (File.Exists(slotPath))
+                    {
+                        File.Delete(slotPath);
+                    }
+
+                    if (intent.hasManifestStage)
+                    {
+                        ApplyStagedFile(
+                            _transactionManifestStagePath,
+                            _manifestPath);
+                    }
+                }
+                else
+                {
+                    diagnostic =
+                        $"Committed JSON transaction has unsupported operation '{intent.operation}'.";
+                    return false;
+                }
+
+                recovered = true;
+
+                bool cleaned =
+                    TryDiscardCommittedTransaction(
+                        out string cleanupIssue);
+
+                diagnostic =
+                    cleaned
+                        ? $"Recovered committed JSON transaction operation='{ToOperationText(intent.operation)}' slot='{slotId.StableText}'."
+                        : $"Recovered committed JSON transaction operation='{ToOperationText(intent.operation)}' slot='{slotId.StableText}', but transaction cleanup remains pending. {cleanupIssue}";
+
+                return true;
+            }
+            catch (Exception exception)
+            {
+                diagnostic =
+                    $"Committed JSON transaction recovery failed and remains pending. " +
+                    $"{exception.GetType().Name}: {exception.Message}";
+                return false;
+            }
+        }
+
+        private bool TryValidateWriteTransaction(
+            TransactionIntentDto intent,
+            ProgressionSaveSlotId slotId,
+            out string issue)
+        {
+            if (!intent.hasSlotStage ||
+                !intent.hasManifestStage)
+            {
+                issue =
+                    "Write transaction intent must declare both slot and manifest staging.";
+                return false;
+            }
+
+            ProgressionSaveReadResult slotRead =
+                ReadSlotFile(
+                    _transactionSlotStagePath,
+                    slotId,
+                    "transaction slot stage");
+
+            if (slotRead.Status !=
+                    ProgressionSaveReadStatus.Found ||
+                !slotRead.HasRecord)
+            {
+                issue =
+                    $"Staged slot status is '{slotRead.Status}'. {slotRead.Message}";
+                return false;
+            }
+
+            ProgressionSaveManifestReadResult manifestRead =
+                ReadManifestFile(
+                    _transactionManifestStagePath,
+                    "transaction manifest stage");
+
+            if (manifestRead.Status !=
+                    ProgressionSaveReadStatus.Found ||
+                !manifestRead.HasManifest)
+            {
+                issue =
+                    $"Staged manifest status is '{manifestRead.Status}'. {manifestRead.Message}";
+                return false;
+            }
+
+            if (!manifestRead.Manifest.TryGetEntry(
+                    slotId,
+                    out ProgressionSaveManifestEntry entry))
+            {
+                issue =
+                    "Staged manifest does not contain the staged slot.";
+                return false;
+            }
+
+            ProgressionSaveManifestEntry expectedEntry =
+                slotRead.Record.ToManifestEntry();
+
+            if (entry != expectedEntry)
+            {
+                issue =
+                    "Staged manifest entry does not match the staged slot record.";
+                return false;
+            }
+
+            issue = string.Empty;
+            return true;
+        }
+
+        private bool TryValidateDeleteTransaction(
+            TransactionIntentDto intent,
+            ProgressionSaveSlotId slotId,
+            out string issue)
+        {
+            if (intent.hasSlotStage)
+            {
+                issue =
+                    "Delete transaction intent cannot declare a staged slot write.";
+                return false;
+            }
+
+            if (!intent.hasManifestStage)
+            {
+                issue = string.Empty;
+                return true;
+            }
+
+            ProgressionSaveManifestReadResult manifestRead =
+                ReadManifestFile(
+                    _transactionManifestStagePath,
+                    "transaction delete manifest stage");
+
+            if (manifestRead.Status !=
+                    ProgressionSaveReadStatus.Found ||
+                !manifestRead.HasManifest)
+            {
+                issue =
+                    $"Staged delete manifest status is '{manifestRead.Status}'. {manifestRead.Message}";
+                return false;
+            }
+
+            if (manifestRead.Manifest.ContainsSlot(slotId))
+            {
+                issue =
+                    "Staged delete manifest still contains the slot selected for deletion.";
+                return false;
+            }
+
+            issue = string.Empty;
+            return true;
+        }
+
+        private bool TryReadTransactionIntent(
+            out TransactionIntentDto intent,
+            out ProgressionSaveSlotId slotId,
+            out string issue)
+        {
+            intent = null;
+            slotId = default;
+
+            try
+            {
+                string json =
+                    File.ReadAllText(
+                        _transactionIntentPath,
+                        Encoding.UTF8);
+
+                if (string.IsNullOrWhiteSpace(json))
+                {
+                    issue =
+                        "Transaction intent file is empty.";
+                    return false;
+                }
+
+                intent =
+                    JsonUtility.FromJson<TransactionIntentDto>(json);
+
+                if (intent == null)
+                {
+                    issue =
+                        "Transaction intent JSON did not produce a payload.";
+                    return false;
+                }
+
+                if (intent.version !=
+                    TransactionFormatVersion)
+                {
+                    issue =
+                        $"Transaction intent version '{intent.version}' is unsupported.";
+                    return false;
+                }
+
+                if (intent.operation !=
+                        TransactionOperationWrite &&
+                    intent.operation !=
+                        TransactionOperationDelete)
+                {
+                    issue =
+                        $"Transaction intent operation '{intent.operation}' is unsupported.";
+                    return false;
+                }
+
+                slotId =
+                    ProgressionSaveSlotId.From(
+                        intent.slotId);
+
+                issue = string.Empty;
+                return true;
+            }
+            catch (Exception exception)
+            {
+                issue =
+                    $"Transaction intent could not be read. " +
+                    $"{exception.GetType().Name}: {exception.Message}";
+                return false;
+            }
+        }
+
+        private void WriteIntentAtomically(
+            TransactionIntentDto intent)
+        {
+            if (intent == null)
+            {
+                throw new ArgumentNullException(
+                    nameof(intent));
+            }
+
+            string json =
+                JsonUtility.ToJson(
+                    intent,
+                    prettyPrint: true);
+
+            File.WriteAllText(
+                _transactionIntentPendingPath,
+                json,
+                Encoding.UTF8);
+
+            if (File.Exists(_transactionIntentPath))
+            {
+                File.Delete(
+                    _transactionIntentPath);
+            }
+
+            File.Move(
+                _transactionIntentPendingPath,
+                _transactionIntentPath);
+        }
+
+        private static void ApplyStagedFile(
+            string stagedPath,
+            string targetPath)
+        {
+            if (!File.Exists(stagedPath))
+            {
+                throw new FileNotFoundException(
+                    "Progression Save transaction stage is missing.",
+                    stagedPath);
+            }
+
+            string targetDirectory =
+                Path.GetDirectoryName(targetPath);
+
+            if (!string.IsNullOrWhiteSpace(targetDirectory))
+            {
+                Directory.CreateDirectory(
+                    targetDirectory);
+            }
+
+            string commitPath =
+                targetPath + ".commit";
+
+            File.Copy(
+                stagedPath,
+                commitPath,
+                overwrite: true);
+
+            if (File.Exists(targetPath))
+            {
+                File.Delete(targetPath);
+            }
+
+            File.Move(
+                commitPath,
+                targetPath);
+        }
+
+        private bool TryDiscardUncommittedTransaction(
+            out string issue)
+        {
+            try
+            {
+                if (Directory.Exists(_transactionDirectory))
+                {
+                    Directory.Delete(
+                        _transactionDirectory,
+                        recursive: true);
+                }
+
+                issue = string.Empty;
+                return true;
+            }
+            catch (Exception exception)
+            {
+                issue =
+                    $"Uncommitted transaction cleanup failed. " +
+                    $"{exception.GetType().Name}: {exception.Message}";
+                return false;
+            }
+        }
+
+        private bool TryDiscardCommittedTransaction(
+            out string issue)
+        {
+            try
+            {
+                if (Directory.Exists(_transactionDirectory))
+                {
+                    Directory.Delete(
+                        _transactionDirectory,
+                        recursive: true);
+                }
+
+                issue = string.Empty;
+                return true;
+            }
+            catch (Exception exception)
+            {
+                issue =
+                    $"Committed transaction cleanup failed. " +
+                    $"{exception.GetType().Name}: {exception.Message}";
+                return false;
             }
         }
 
         private void EnsureDirectories()
         {
-            Directory.CreateDirectory(_rootDirectory);
-            Directory.CreateDirectory(_slotDirectory);
+            Directory.CreateDirectory(
+                _rootDirectory);
+
+            Directory.CreateDirectory(
+                _slotDirectory);
         }
 
-        private static ProgressionSaveManifest ToManifest(ManifestDto dto)
+        private static string SerializeManifest(
+            ProgressionSaveManifest manifest)
+        {
+            return JsonUtility.ToJson(
+                FromManifest(manifest),
+                prettyPrint: true);
+        }
+
+        private static string SerializeRecord(
+            ProgressionSaveSlotRecord record)
+        {
+            return JsonUtility.ToJson(
+                FromRecord(record),
+                prettyPrint: true);
+        }
+
+        private static ProgressionSaveManifestReadResult AppendRecoveryDiagnostic(
+            ProgressionSaveManifestReadResult result,
+            string recoveryDiagnostic)
+        {
+            string message =
+                CombineMessages(
+                    result.Message,
+                    recoveryDiagnostic);
+
+            switch (result.Status)
+            {
+                case ProgressionSaveReadStatus.Found:
+                    return ProgressionSaveManifestReadResult.Found(
+                        result.Manifest,
+                        message);
+
+                case ProgressionSaveReadStatus.Missing:
+                    return ProgressionSaveManifestReadResult.Missing(
+                        message);
+
+                case ProgressionSaveReadStatus.Rejected:
+                    return ProgressionSaveManifestReadResult.Rejected(
+                        message);
+
+                case ProgressionSaveReadStatus.Corrupt:
+                    return ProgressionSaveManifestReadResult.Corrupt(
+                        message);
+
+                case ProgressionSaveReadStatus.BackendUnavailable:
+                    return ProgressionSaveManifestReadResult.BackendUnavailable(
+                        message);
+
+                case ProgressionSaveReadStatus.Failed:
+                    return ProgressionSaveManifestReadResult.FailedResult(
+                        message);
+
+                default:
+                    throw new InvalidOperationException(
+                        $"Progression Save manifest result has unsupported status '{result.Status}'.");
+            }
+        }
+
+        private static ProgressionSaveReadResult AppendRecoveryDiagnostic(
+            ProgressionSaveReadResult result,
+            string recoveryDiagnostic)
+        {
+            string message =
+                CombineMessages(
+                    result.Message,
+                    recoveryDiagnostic);
+
+            switch (result.Status)
+            {
+                case ProgressionSaveReadStatus.Found:
+                    return ProgressionSaveReadResult.Found(
+                        result.Record,
+                        message);
+
+                case ProgressionSaveReadStatus.Missing:
+                    return ProgressionSaveReadResult.Missing(
+                        result.SlotId,
+                        message);
+
+                case ProgressionSaveReadStatus.Rejected:
+                    return ProgressionSaveReadResult.Rejected(
+                        result.SlotId,
+                        message);
+
+                case ProgressionSaveReadStatus.Corrupt:
+                    return ProgressionSaveReadResult.Corrupt(
+                        result.SlotId,
+                        message);
+
+                case ProgressionSaveReadStatus.BackendUnavailable:
+                    return ProgressionSaveReadResult.BackendUnavailable(
+                        result.SlotId,
+                        message);
+
+                case ProgressionSaveReadStatus.Failed:
+                    return ProgressionSaveReadResult.FailedResult(
+                        result.SlotId,
+                        message);
+
+                default:
+                    throw new InvalidOperationException(
+                        $"Progression Save read result has unsupported status '{result.Status}'.");
+            }
+        }
+
+        private static string CombineMessages(
+            string first,
+            string second)
+        {
+            string left =
+                first.NormalizeText();
+
+            string right =
+                second.NormalizeText();
+
+            if (string.IsNullOrWhiteSpace(left))
+            {
+                return right;
+            }
+
+            if (string.IsNullOrWhiteSpace(right))
+            {
+                return left;
+            }
+
+            return $"{left} {right}";
+        }
+
+        private static string ToOperationText(
+            int operation)
+        {
+            return operation == TransactionOperationWrite
+                ? "Write"
+                : operation == TransactionOperationDelete
+                    ? "Delete"
+                    : $"Unknown({operation})";
+        }
+
+        private static ProgressionSaveManifest ToManifest(
+            ManifestDto dto)
         {
             ManifestEntryDto[] dtoEntries =
                 dto.entries ?? Array.Empty<ManifestEntryDto>();
@@ -402,7 +1262,9 @@ namespace Immersive.Framework.ProgressionSave
 
             for (int i = 0; i < dtoEntries.Length; i++)
             {
-                entries[i] = ToManifestEntry(dtoEntries[i]);
+                entries[i] =
+                    ToManifestEntry(
+                        dtoEntries[i]);
             }
 
             return new ProgressionSaveManifest(
@@ -422,7 +1284,9 @@ namespace Immersive.Framework.ProgressionSave
 
             for (int i = 0; i < entries.Count; i++)
             {
-                dtoEntries[i] = FromManifestEntry(entries[i]);
+                dtoEntries[i] =
+                    FromManifestEntry(
+                        entries[i]);
             }
 
             return new ManifestDto
@@ -523,9 +1387,12 @@ namespace Immersive.Framework.ProgressionSave
             string payloadBase64,
             string mediaType)
         {
-            var format = ToPayloadFormat(payloadFormat);
+            ProgressionSavePayloadFormat format =
+                ToPayloadFormat(
+                    payloadFormat);
 
-            if (format == ProgressionSavePayloadFormat.Empty)
+            if (format ==
+                ProgressionSavePayloadFormat.Empty)
             {
                 return ProgressionSavePayload.Empty();
             }
@@ -539,20 +1406,22 @@ namespace Immersive.Framework.ProgressionSave
 
             return ProgressionSavePayload.FromBytes(
                 format,
-                Convert.FromBase64String(payloadBase64),
+                Convert.FromBase64String(
+                    payloadBase64),
                 mediaType);
         }
 
         private static ProgressionSavePayloadFormat ToPayloadFormat(
             int payloadFormat)
         {
-            var format =
+            ProgressionSavePayloadFormat format =
                 (ProgressionSavePayloadFormat)payloadFormat;
 
             if (!Enum.IsDefined(
                     typeof(ProgressionSavePayloadFormat),
-                    format)
-                || format == ProgressionSavePayloadFormat.Unknown)
+                    format) ||
+                format ==
+                    ProgressionSavePayloadFormat.Unknown)
             {
                 throw new ArgumentOutOfRangeException(
                     nameof(payloadFormat),
@@ -566,32 +1435,45 @@ namespace Immersive.Framework.ProgressionSave
         private static string ToSlotFileName(
             ProgressionSaveSlotId slotId)
         {
-            string stableText = slotId.StableText;
+            string stableText =
+                slotId.StableText;
+
             return
                 $"{MakeSafePathSegment(stableText)}-" +
                 $"{ComputeSha256Hex(stableText).Substring(0, 12)}.json";
         }
 
-        private static string MakeSafePathSegment(string value)
+        private static string MakeSafePathSegment(
+            string value)
         {
             string normalized =
                 value.NormalizeTextOrFallback("empty");
 
-            char[] invalid = Path.GetInvalidFileNameChars();
-            var builder = new StringBuilder(normalized.Length);
+            char[] invalid =
+                Path.GetInvalidFileNameChars();
+
+            var builder =
+                new StringBuilder(
+                    normalized.Length);
 
             for (int i = 0; i < normalized.Length; i++)
             {
-                char current = normalized[i];
-                bool valid =
-                    char.IsLetterOrDigit(current)
-                    || current == '-'
-                    || current == '_'
-                    || current == '.';
+                char current =
+                    normalized[i];
 
-                if (valid && Array.IndexOf(invalid, current) < 0)
+                bool valid =
+                    char.IsLetterOrDigit(current) ||
+                    current == '-' ||
+                    current == '_' ||
+                    current == '.';
+
+                if (valid &&
+                    Array.IndexOf(
+                        invalid,
+                        current) < 0)
                 {
-                    builder.Append(current);
+                    builder.Append(
+                        current);
                 }
                 else
                 {
@@ -604,16 +1486,22 @@ namespace Immersive.Framework.ProgressionSave
                 : builder.ToString();
         }
 
-        private static string ComputeSha256Hex(string value)
+        private static string ComputeSha256Hex(
+            string value)
         {
-            using (var sha = SHA256.Create())
+            using (SHA256 sha =
+                SHA256.Create())
             {
                 byte[] bytes =
-                    Encoding.UTF8.GetBytes(value ?? string.Empty);
+                    Encoding.UTF8.GetBytes(
+                        value ?? string.Empty);
 
-                byte[] hash = sha.ComputeHash(bytes);
+                byte[] hash =
+                    sha.ComputeHash(bytes);
+
                 var builder =
-                    new StringBuilder(hash.Length * 2);
+                    new StringBuilder(
+                        hash.Length * 2);
 
                 for (int i = 0; i < hash.Length; i++)
                 {
@@ -623,6 +1511,16 @@ namespace Immersive.Framework.ProgressionSave
 
                 return builder.ToString();
             }
+        }
+
+        [Serializable]
+        private sealed class TransactionIntentDto
+        {
+            public int version;
+            public int operation;
+            public string slotId;
+            public bool hasSlotStage;
+            public bool hasManifestStage;
         }
 
         [Serializable]

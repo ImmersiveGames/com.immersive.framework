@@ -510,21 +510,100 @@ consumer semantics are backend-independent.
 
 ### ADR018-B — Built-in JSON minimum backend
 
-Harden and certify the built-in JSON implementation.
-
-Prove:
+Implementation model:
 
 ```text
-save
-load
-delete
-missing
-corrupt
-manifest/catalog consistency
-interrupted/failed write behavior
-no silent partial-success state
-explicit diagnostics
+B1 transaction/recovery model defined         IMPLEMENTED
+B2 recoverable WriteSlot                      IMPLEMENTED
+B3 recoverable DeleteSlot                     IMPLEMENTED
+B4 fail-closed pending transaction recovery   IMPLEMENTED
+B5 focused interruption/recovery QA           CERTIFIED — 18/18
+B6 backend certification/promotion decision   CLOSED
 ```
+
+The built-in backend now uses:
+
+```text
+transaction staging
+intent written last
+full staged-data validation before canonical mutation
+idempotent replay
+recovery before every public JSON backend operation
+single-process I/O serialization
+```
+
+`intent.json` is the commit boundary.
+
+Staging without an intent is uncommitted and may be discarded.
+
+A committed invalid/corrupt transaction fails closed and prevents normal access until
+the condition is corrected. The backend does not silently expose potentially
+inconsistent canonical slot/manifest state.
+
+This is a minimum recoverability guarantee, not a database transaction or
+multi-process coordination guarantee.
+
+Focused QA must still prove:
+
+```text
+normal save/load/delete
+write interruption before canonical apply
+write interruption after slot apply
+write interruption after manifest apply
+delete interruption before canonical apply
+delete interruption after slot delete
+delete interruption after manifest apply
+uncommitted staging cleanup
+corrupt intent fail-closed
+corrupt staged slot fail-closed
+corrupt staged manifest fail-closed
+no bypass through Read/Write/Delete
+```
+
+ADR018-B5 evidence:
+
+```text
+ADR018_QA_JSON_RECOVERY
+  cases                  18/18
+  write recovery          3/3
+  delete recovery         3/3
+  uncommitted staging     Discarded
+  fail closed             6/6
+  idempotent replay       Passed
+  normal write/delete     Passed
+  transaction residue     None
+```
+
+ADR018-B6 decision:
+
+```text
+JsonProgressionSaveStore implementation
+  OFFICIAL BUILT-IN MINIMUM BACKEND
+  TECHNICALLY CERTIFIED
+
+JsonProgressionSaveStore concrete public API
+  EXPERIMENTAL
+
+IProgressionSaveCatalog + manifest model
+  EXPERIMENTAL
+```
+
+The concrete class is intentionally not promoted to Stable in ADR018-B.
+
+Reason:
+
+```text
+the Stable product contract is IProgressionSaveStore
+the concrete JSON constructor/default-path surface is not yet the intended main
+authoring/composition surface
+JsonProgressionSaveStore also publicly exposes the still-Experimental catalog model
+ADR018-C must define explicit backend selection/materialization before that surface is frozen
+```
+
+Certification therefore establishes product legitimacy and technical reliability
+without prematurely freezing the wrong UX/API boundary.
+
+ADR018-B is CLOSED / 100%.
 
 ### ADR018-C — Product composition
 

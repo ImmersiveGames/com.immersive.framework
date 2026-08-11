@@ -268,3 +268,97 @@ The Stable compatibility promise is limited to the core backend port and the
 transitive semantic types required to implement it.
 
 The catalog capability and built-in JSON backend remain outside that promise.
+
+
+## ADR018-B implementation state — 2026-08-11
+
+Package baseline:
+
+```text
+bc6159efc95c46fc1f34a706d24dfd9fda243222
+feat(progression-save): stabilize certified backend contract
+```
+
+Built-in JSON hardening now implements:
+
+```text
+recover-before-use
+single-process I/O serialization
+transaction staging
+intent-written-last commit boundary
+write replay
+delete replay
+staged-data validation
+fail-closed committed-corrupt transaction
+explicit recovery diagnostics
+```
+
+The Stable `IProgressionSaveStore` contract is unchanged.
+
+Current gate:
+
+```text
+ADR018-B1..B4   IMPLEMENTED
+ADR018-B5       QA PENDING
+ADR018-B6       CERTIFICATION PENDING
+```
+
+`JsonProgressionSaveStore` remains Experimental until focused interruption/recovery QA
+passes.
+
+The selected guarantee is intentionally narrower than a database transaction:
+
+```text
+same-process operations are serialized
+committed interrupted operations are replayable
+multi-process concurrent writers are not certified
+```
+
+
+## ADR018-B certification — 2026-08-11
+
+QA evidence:
+
+```text
+Backend conformance:
+  contract               9/9
+  JSON core             13/13
+  alternate core        13/13
+  catalog                5/5
+  negative               7/7
+  semantic parity        PASS
+
+JSON recovery:
+  cases                 18/18
+  write recovery         3/3
+  delete recovery        3/3
+  uncommitted staging    Discarded
+  fail closed            6/6
+  idempotent replay      PASS
+  normal write/delete    PASS
+  transaction residue    None
+```
+
+Disposition:
+
+```text
+ADR018-A                               CLOSED / CERTIFIED
+Stable backend port                    CERTIFIED
+Backend replacement                    CERTIFIED
+
+ADR018-B                               CLOSED / CERTIFIED
+JsonProgressionSaveStore implementation OFFICIAL BUILT-IN MINIMUM / CERTIFIED
+Recovery/consistency semantics          CERTIFIED
+Concrete JSON API status                EXPERIMENTAL
+Catalog/manifest API status             EXPERIMENTAL
+
+Next                                    ADR018-C Product Composition
+```
+
+No contradiction exists between "official/certified implementation" and
+"Experimental concrete API".
+
+The first statement describes product ownership and verified behavior.
+
+The second describes compatibility guarantees for the concrete public construction and
+catalog surface, which is intentionally deferred until product composition is defined.

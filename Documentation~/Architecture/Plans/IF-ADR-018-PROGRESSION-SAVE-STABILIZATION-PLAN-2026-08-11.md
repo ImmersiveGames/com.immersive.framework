@@ -147,25 +147,59 @@ cross-device sync
 
 ### Consistency hardening
 
-The current multi-artifact write/delete sequence must receive explicit commit/recovery
-semantics.
-
-The implementation may use, for example:
+Selected model:
 
 ```text
-temporary staging files
-replace/rename commit
-backup/rollback
-recoverable transaction marker
-manifest rebuild strategy
+transaction staging
+intent written last
+committed transaction replay before every public JSON operation
+validate staged transaction before canonical mutation
+idempotent canonical convergence
+fail closed on committed-invalid staging
 ```
 
-The exact choice should optimize for clarity and deterministic diagnostics rather than
-simulate a database.
+State:
+
+```text
+B1 model defined              DONE
+B2 WriteSlot hardening        DONE
+B3 DeleteSlot hardening       DONE
+B4 recovery/fail-closed path  DONE
+B5 focused QA                 CERTIFIED — 18/18
+B6 certification             CLOSED
+```
+
+Certification decision:
+
+```text
+implementation role          OFFICIAL BUILT-IN / CERTIFIED
+core dependency              IProgressionSaveStore (Stable)
+concrete JSON API            Experimental
+catalog capability/model     Experimental
+next cut                     ADR018-C Product Composition
+```
+
+Physical layout:
+
+```text
+<root>/.transaction/
+  slot.stage.json
+  manifest.stage.json
+  intent.json
+```
+
+`intent.json` is the commit boundary.
+
+The model intentionally does not claim database-grade atomicity or safe concurrent
+writers from multiple processes.
 
 ### Negative QA
 
-Prove failure at each physical stage does not become silent partial success.
+Focused QA must simulate interrupted committed transactions at each canonical apply
+boundary and prove replay.
+
+It must also prove that corrupt committed intent/staging blocks Read/Write/Delete
+rather than bypassing recovery or silently substituting canonical state.
 
 ## ADR018-C — Product composition
 

@@ -55,7 +55,7 @@ a later reconciliation. It can identify a separate consumer or product issue.
 | [015](../ADRs/IF-ADR-015-Player-Provisioning-Commands-and-Consumer-Observation-Surface.md) | ACCEPTED | IMPLEMENTED for current boundary | CERTIFIED | Not proven on current model | Stage B consumer integration remains |
 | [016](../ADRs/IF-ADR-016-Player-Session-Initial-Configuration-and-Provisioning-Profiles.md) | ACCEPTED | IMPLEMENTED | CERTIFIED | Not proven on current model | Stage B Scene-/Manager-Provisioned integration remains |
 | [017](../ADRs/IF-ADR-017-Application-Frame-Rate-Project-Authority.md) | ACCEPTED / RECONCILED | IMPLEMENTED: Project Settings baseline, boot validation and explicit runtime application | CERTIFIED: Edit 13/13; Target 13/13; VSync 13/13; Defaults 13/13 | Not applicable for current project-baseline boundary | Stage A closed; Session override and Preferences integration remain future scope |
-| [018](../ADRs/IF-ADR-018-Progression-Save-Backend-Independence-and-Persistence-Domain-Boundaries.md) | ACCEPTED / RECONCILED | ADR018-A core backend port + transitive adapter primitives STABLE; JSON/catalog/runtime remain Experimental | CERTIFIED: contract 9; JSON core 13; alternate core 13; catalog 5; negative 7 | Planned after product composition | ADR018-A CLOSED; ADR018-B JSON consistency hardening is next |
+| [018](../ADRs/IF-ADR-018-Progression-Save-Backend-Independence-and-Persistence-Domain-Boundaries.md) | ACCEPTED / RECONCILED | ADR018-A core STABLE; ADR018-B built-in JSON implementation CERTIFIED; concrete JSON/catalog API remains Experimental | CERTIFIED: A conformance + B recovery 18/18 | Planned after product composition | ADR018-A/B CLOSED; ADR018-C backend authoring/product composition is next |
 
 ## Planning estimates and attention order
 
@@ -82,7 +82,7 @@ reconciliation status. `Stage A` measures the accepted technical boundary.
 | 015 | 100% | 0% | 85% | Stage B | Integrate the current provisioning commands in a real consumer. |
 | 016 | 100% | 0% | 88% | Stage B | Prove Scene-/Manager-Provisioned integration in a real consumer. |
 | 017 | 100% | 0% | 100% | None | Stage A closed for project-level Frame Rate authority; Session override and Preferences integration are future scope. |
-| 018 | 65% | 35% | 35% | ADR018-B JSON hardening | ADR018-A is closed/certified. Harden built-in JSON consistency/recovery before product authoring. |
+| 018 | 90% | 10% | 50% | ADR018-C Product Composition | A/B technical foundation is closed/certified. Define explicit backend authoring, materialization, scoped runtime composition and Advanced/Debug evidence. |
 
 ### Attention summary
 
@@ -379,9 +379,11 @@ disabled Gameplay Action Map baselines across Pause -> Resume.
   fixture collision. Reopen only on a reproduced contract regression, documented
   contract change or newly accepted scope. Do not invent timeout/retry runtime.
 - ADR-011 requires no further Stage A work for the current accepted boundary. Direct Progress passed 32/32, Terminal passed 34/34, Route Startup parity passed 25/25 and Game Application Startup parity passed 20/20. Reopen only on a reproduced contract regression, documented contract change or newly accepted scope; do not add Player-specific runtime scope to this ADR.
-- ADR-018-A is closed/certified. The next technical cut is ADR018-B: harden the
-  built-in JSON backend's multi-artifact write/delete consistency and recovery
-  semantics while preserving the Stable `IProgressionSaveStore` contract.
+- ADR-018-A and ADR018-B are closed/certified. The Stable backend port is proven
+  replaceable and the built-in JSON implementation passed 18/18 recovery cases.
+  ADR018-C is now active: define explicit backend authoring/materialization, scoped
+  runtime composition and Advanced/Debug evidence without making the concrete JSON
+  constructor the primary user workflow.
 - ADR-017 requires no further Stage A work for the accepted project-baseline
   boundary. Edit validation passed 13/13 and the TargetFrameRate, VerticalSync and
   UseUnityDefaults E2E paths each passed 13/13. Session-scoped override and
@@ -404,10 +406,9 @@ disabled Gameplay Action Map baselines across Pause -> Resume.
   QAFramework fixture-ownership defect and was corrected without weakening the
   regression.
 - ADR-011: **none remaining in the current accepted Stage A boundary**. Direct Progress is 32/32, Terminal is 34/34, Route Startup parity is 25/25 and Game Application Startup parity is 20/20. Public waiting/joining remains supporting Player-domain evidence, not an ADR-011 completion gate.
-- ADR-018: focused conformance QA is required before Stable promotion. At minimum,
-  run identical Save/Load/Delete/Missing/Unavailable semantics against Built-in JSON
-  and an alternate non-JSON QA backend, then add negative JSON consistency/recovery
-  cases.
+- ADR-018-A backend conformance and ADR018-B JSON recovery are closed/certified.
+  No technical QA gap remains for the accepted backend-contract/recovery boundary.
+  New QA should follow ADR018-C only after the product composition contract exists.
 - ADR-017: **none remaining in the current accepted Stage A boundary**.
   Edit 13/13, Target 13/13, VSync 13/13 and Defaults 13/13 are PASS; Project
   Settings authority and absence of GameApplication Frame Rate authority are proven.
