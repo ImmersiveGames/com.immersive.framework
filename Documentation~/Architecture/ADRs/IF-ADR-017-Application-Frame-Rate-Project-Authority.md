@@ -4,7 +4,7 @@ Status: **Accepted**
 Date: 2026-08-11  
 Related decisions: IF-ADR-001, IF-ADR-002, IF-ADR-010  
 Current implementation cut: ADR017-A1..A4  
-QA certification: pending ADR017-A5
+QA certification: **CERTIFIED — ADR017-A5**
 
 ## Context
 
@@ -214,5 +214,25 @@ runtime applies only the supplied project baseline
 invalid policy fails before partial mutation
 Project Settings exposes designer-first validation
 Guide describes the canonical flow
-focused QA remains to certify the implementation
+focused QA certifies the current implementation
 ```
+
+
+## Stage A certification
+
+ADR017-A5 technical QA completed on 2026-08-11.
+
+```text
+Edit validation       PASS — 13/13
+TargetFrameRate       PASS — 13/13
+VerticalSync          PASS — 13/13
+UseUnityDefaults      PASS — 13/13
+
+Package divergence    NONE
+Technical remaining   0%
+Stage A               CLOSED / 100%
+```
+
+This certification records implementation evidence only. It does not expand the
+normative boundary. Session-scoped override and Preferences persistence remain future
+scope.

@@ -54,6 +54,7 @@ a later reconciliation. It can identify a separate consumer or product issue.
 | [014](../ADRs/IF-ADR-014-Authored-Definition-and-Stable-Identity-Authority.md) | ACCEPTED | IMPLEMENTED | CERTIFIED | Proven | Closed for current boundary |
 | [015](../ADRs/IF-ADR-015-Player-Provisioning-Commands-and-Consumer-Observation-Surface.md) | ACCEPTED | IMPLEMENTED for current boundary | CERTIFIED | Not proven on current model | Stage B consumer integration remains |
 | [016](../ADRs/IF-ADR-016-Player-Session-Initial-Configuration-and-Provisioning-Profiles.md) | ACCEPTED | IMPLEMENTED | CERTIFIED | Not proven on current model | Stage B Scene-/Manager-Provisioned integration remains |
+| [017](../ADRs/IF-ADR-017-Application-Frame-Rate-Project-Authority.md) | ACCEPTED / RECONCILED | IMPLEMENTED: Project Settings baseline, boot validation and explicit runtime application | CERTIFIED: Edit 13/13; Target 13/13; VSync 13/13; Defaults 13/13 | Not applicable for current project-baseline boundary | Stage A closed; Session override and Preferences integration remain future scope |
 
 ## Planning estimates and attention order
 
@@ -79,6 +80,7 @@ reconciliation status. `Stage A` measures the accepted technical boundary.
 | 014 | 100% | 0% | 100% | None | Closed for the current boundary. |
 | 015 | 100% | 0% | 85% | Stage B | Integrate the current provisioning commands in a real consumer. |
 | 016 | 100% | 0% | 88% | Stage B | Prove Scene-/Manager-Provisioned integration in a real consumer. |
+| 017 | 100% | 0% | 100% | None | Stage A closed for project-level Frame Rate authority; Session override and Preferences integration are future scope. |
 
 ### Attention summary
 
@@ -100,7 +102,12 @@ reconciliation status. `Stage A` measures the accepted technical boundary.
    is **20/20**. Both startup parity sessions restored the canonical QA Hub and
    removed generated fixtures. The older public waiting/joining wording belongs to
    historical Player audit scope, not the ADR-011 Loading-progress contract.
-5. **ADR-010** retains **3%** of feature-owned adoption evidence and has no generic
+5. **ADR-017 Stage A is closed.** Project Settings is the sole authored Frame Rate
+   authority; Edit validation passed **13/13**, TargetFrameRate **13/13**,
+   VerticalSync **13/13** and UseUnityDefaults **13/13**. The E2E runs proved the
+   preboot sentinel `47/2` was observed by the official runtime and then either
+   transformed by the selected policy or preserved by `UseUnityDefaults`.
+6. **ADR-010** retains **3%** of feature-owned adoption evidence and has no generic
    UX QA gate. ADR-003, ADR-004, ADR-005, ADR-006, ADR-007, ADR-011, ADR-012,
    ADR-013, ADR-015 and ADR-016 may still have Stage B portfolio work; that is not a
    Stage A technical regression.
@@ -261,6 +268,68 @@ ADR011 Stage A
   Stage A: CLOSED
 ```
 
+## ADR-017 closure evidence
+
+The accepted project-level Frame Rate boundary is technically certified across
+authoring ownership, boot validation, runtime application and explicit no-override
+behavior.
+
+```text
+Edit Validation
+  PASS — 13/13
+  invalidProjectPolicy='RejectedBeforeMutation'
+  invalidApplier='RejectedWithoutPartialMutation'
+  projectSettingsAuthority='Present'
+  gameApplicationSerializedAuthority='Absent'
+  gameApplicationApiAuthority='Absent'
+  restored='True'
+
+TargetFrameRate
+  PASS — 13/13
+  source='ProjectSettings'
+  previous='47 / 2'
+  applied='73 / 0'
+  runtimeStatus='Applied'
+  gameApplicationFrameRateAuthority='Absent'
+
+VerticalSync
+  PASS — 13/13
+  source='ProjectSettings'
+  previous='47 / 2'
+  applied='-1 / 3'
+  runtimeStatus='Applied'
+  platform='WindowsEditor'
+  gameApplicationFrameRateAuthority='Absent'
+
+UseUnityDefaults
+  PASS — 13/13
+  source='ProjectSettings'
+  previous='47 / 2'
+  applied='47 / 2'
+  runtimeStatus='SkippedUnityDefaults'
+  gameApplicationFrameRateAuthority='Absent'
+```
+
+The focused harness seeds `Application.targetFrameRate=47` and
+`QualitySettings.vSyncCount=2` before the framework bootstrap. The official
+`FrameworkRuntimeHost` reported those values as its previous state in all three
+positive E2E runs.
+
+Each prepared Play Mode run restored the original Project Settings policy and Editor
+frame pacing values after exit. The earlier manual restore was an explicit QA
+recovery action before the successful VerticalSync run and is not a package failure.
+
+No package divergence was reproduced.
+
+```text
+ADR017 Stage A
+  Architecture: ACCEPTED / RECONCILED
+  Package / Product Surface: IMPLEMENTED
+  Technical QA: CERTIFIED
+  technical remaining: 0%
+  Stage A: CLOSED
+```
+
 ## ADR-005 closure evidence
 
 The focused Pause cut followed the intended QA boundary:
@@ -303,6 +372,10 @@ disabled Gameplay Action Map baselines across Pause -> Resume.
   fixture collision. Reopen only on a reproduced contract regression, documented
   contract change or newly accepted scope. Do not invent timeout/retry runtime.
 - ADR-011 requires no further Stage A work for the current accepted boundary. Direct Progress passed 32/32, Terminal passed 34/34, Route Startup parity passed 25/25 and Game Application Startup parity passed 20/20. Reopen only on a reproduced contract regression, documented contract change or newly accepted scope; do not add Player-specific runtime scope to this ADR.
+- ADR-017 requires no further Stage A work for the accepted project-baseline
+  boundary. Edit validation passed 13/13 and the TargetFrameRate, VerticalSync and
+  UseUnityDefaults E2E paths each passed 13/13. Session-scoped override and
+  Preferences persistence are future contracts and do not reopen Stage A.
 - Keep technical documentation aligned with current reconciliation records and
   preserve the Stage A / Stage B distinction.
 
@@ -321,6 +394,9 @@ disabled Gameplay Action Map baselines across Pause -> Resume.
   QAFramework fixture-ownership defect and was corrected without weakening the
   regression.
 - ADR-011: **none remaining in the current accepted Stage A boundary**. Direct Progress is 32/32, Terminal is 34/34, Route Startup parity is 25/25 and Game Application Startup parity is 20/20. Public waiting/joining remains supporting Player-domain evidence, not an ADR-011 completion gate.
+- ADR-017: **none remaining in the current accepted Stage A boundary**.
+  Edit 13/13, Target 13/13, VSync 13/13 and Defaults 13/13 are PASS; Project
+  Settings authority and absence of GameApplication Frame Rate authority are proven.
 - ADR-008 has no active QA gap by default. Add QA only when a concrete,
   deterministic Scene Template pipeline invariant or regression requires proof.
 
@@ -349,6 +425,10 @@ disabled Gameplay Action Map baselines across Pause -> Resume.
   for ADR-003, ADR-012, ADR-015 and ADR-016.
 - Treat Camera consumer proof as separate from the certified single-output
   technical boundary.
+- ADR-017 has no required FIRSTGAME gate for the current project-baseline
+  boundary. A future Session override/player-facing preference surface should be
+  proven in FIRSTGAME when that future scope is accepted.
+
 
 ## Future contracts
 
@@ -359,7 +439,10 @@ The following are future contracts, not gaps in current ADR closure:
 - heterogeneous per-Slot Host Provisioning;
 - split-screen and multiple Camera outputs;
 - exceptional post-commit compensation beyond the current accepted boundary;
-- application-scoped stable-ID resolver.
+- application-scoped stable-ID resolver;
+- Session-scoped Frame Rate override;
+- persisted Frame Rate preference integration after the Persistence/Preferences
+  architecture is accepted.
 
 ## Current reconciliation records
 
@@ -373,3 +456,4 @@ The following are future contracts, not gaps in current ADR closure:
 - [ADR-007](../Reconciliation/IMMERSIVE-FRAMEWORK-ADR-007-RECONCILIATION-2026-08-11.md)
 - [ADR-008](../Reconciliation/IMMERSIVE-FRAMEWORK-ADR-008-RECONCILIATION-2026-08-10.md)
 - [ADR-011](../Reconciliation/IMMERSIVE-FRAMEWORK-ADR-011-RECONCILIATION-2026-08-11.md)
+- [ADR-017](../Reconciliation/IMMERSIVE-FRAMEWORK-ADR-017-RECONCILIATION-2026-08-11.md)
