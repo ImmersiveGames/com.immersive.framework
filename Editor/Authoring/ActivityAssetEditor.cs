@@ -317,12 +317,12 @@ namespace Immersive.Framework.Editor.Editor.Authoring
                     break;
                 case ActivityEntryReadinessPolicy.WaitCovered:
                     EditorGUILayout.HelpBox(
-                        "The intended entry flow keeps visual cover and the gameplay capability gate until the initial readiness occurrence reaches Ready.",
+                        "The entry flow keeps visual cover and the gameplay capability gate until the initial readiness occurrence reaches Ready.",
                         MessageType.Info);
                     break;
                 case ActivityEntryReadinessPolicy.WaitVisible:
                     EditorGUILayout.HelpBox(
-                        "The intended entry flow reveals preparation after materialization but keeps input, interaction and gameplay blocked until Ready.",
+                        "The entry flow reveals preparation after materialization but keeps input, interaction and gameplay blocked until Ready.",
                         MessageType.Info);
                     break;
             }
@@ -354,10 +354,6 @@ namespace Immersive.Framework.Editor.Editor.Authoring
                     "Waiting policies require Block During Transition = Input Interaction And Gameplay. The framework will not strengthen the authored gate silently.",
                     MessageType.Error);
             }
-
-            EditorGUILayout.HelpBox(
-                "Runtime entry waiting is not active yet. This field currently records and validates intent only.",
-                MessageType.Warning);
         }
 
         private void DrawTransition()

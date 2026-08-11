@@ -1,22 +1,25 @@
 # Immersive Framework — ADR-006 Reconciliation
 
 **Date:** 2026-08-10  
-**Type:** technical source reconciliation and focused Stage A QA gap record  
-**ADR:** IF-ADR-006 — Loading, Transition, Persistence and Diagnostics  
-**Package baseline inspected:** `f34eb059254287e13a0ab48f9ecab8bda072744c` (`master`, read-only)
+**QA evidence update:** 2026-08-11  
+**Type:** technical reconciliation and Stage A closure record  
+**ADR:** IF-ADR-006 — Loading, Transition, Persistence and Diagnostics
 
 ## Objective
 
-Reconcile IF-ADR-006 against the current `com.immersive.framework` package,
-separate implementation gaps from evidence gaps, and define the focused QA work
-required before Stage A closure.
+Reconcile IF-ADR-006 against the official package, separate implementation gaps
+from evidence gaps, and record the focused QA evidence required for Stage A
+closure.
 
-This record does **not** certify the pending exceptional-path cases. It records
-that the package source is aligned with the current accepted ADR-006 boundary and
-that the remaining Stage A work is focused technical evidence unless QA exposes
-a concrete package divergence.
+The 2026-08-11 update records the completed focused technical evidence for the
+exceptional transaction, presentation-policy, supersession, loading/readiness,
+gate/recovery and cleanup cases. All eight Stage A QA cases now have deterministic
+executed evidence against the current package/QA line, so the accepted ADR-006
+technical boundary is certified.
 
-## Source baseline
+## Source baselines
+
+Original source reconciliation:
 
 ```text
 com.immersive.framework
@@ -25,11 +28,25 @@ com.immersive.framework
   access: read-only inspection
 ```
 
-`QAFramework` is intentionally not used as certification evidence in this
-source-reconciliation record. The focused QA execution is the next technical cut.
+Current documentation / package line inspected for this update:
 
-`FIRSTGAME` remains Stage B consumer evidence and does not determine whether the
-package source is aligned with this Stage A architectural boundary.
+```text
+com.immersive.framework
+  branch: master
+  commit: c0003445a95baecf54ada1d76a718d1118617c29
+  message: docs(architecture): reconcile ADR-006 loading transition boundary
+  access: read-only inspection
+
+QAFramework
+  branch: main
+  commit: ba1529e653b25c1215d4f741cd3611b7f280bc49
+  message: qa: add ADR-006 transaction behavioral closure regression
+  access: read-only inspection
+```
+
+The package source remains the official implementation authority. QAFramework
+owns synthetic and negative technical proof. FIRSTGAME remains Stage B consumer
+evidence and is not the Stage A exceptional-path laboratory.
 
 ## Scope
 
@@ -55,35 +72,46 @@ This reconciliation does not introduce or require:
 - broad Transition/Loading UX redesign;
 - FIRSTGAME implementation or Stage B closure.
 
-## Executive disposition
+## Current executive disposition
 
 ```text
 Architecture
-  ACCEPTED
+  ACCEPTED / RECONCILED
 
 Package
   IMPLEMENTED for the current accepted ADR-006 boundary
 
 Technical QA
-  PARTIAL
-  focused exceptional-path evidence remains
+  CERTIFIED — focused Stage A matrix 8/8 PASS
+
+Executed closure evidence
+  ADR006-QA-01 PASS
+  ADR006-QA-02 PASS
+  ADR006-QA-03 PASS
+  ADR006-QA-04 PASS — 32/32
+  ADR006-QA-05 PASS — 34/34
+  ADR006-QA-06 PASS
+  ADR006-QA-07 PASS
+  ADR006-QA-08 PASS
+
+Package divergence reproduced by focused matrix
+  NONE
 
 Stage A
-  OPEN only for the focused QA evidence listed below
+  CLOSED for the current accepted ADR-006 technical boundary
 
 FIRSTGAME / Stage B
   PARTIAL and tracked separately
 ```
 
-No runtime change should be added only to make documentation appear complete.
-The next cut must first exercise the accepted contracts in `QAFramework`. If an
-unchanged focused QA case reproduces a contract failure, the permanent fix belongs
-in `com.immersive.framework`, followed by the same QA case again.
+No runtime change should be added only to make documentation appear complete. If
+an unchanged focal QA case reproduces an accepted-contract failure, the permanent
+fix belongs in `com.immersive.framework`, followed by the same QA case again.
 
 ## Canonical package owners
 
-The current package already separates the relevant responsibilities across
-canonical runtime areas:
+The current package separates the relevant responsibilities across canonical
+runtime areas:
 
 ```text
 Runtime/Transition
@@ -111,120 +139,223 @@ Runtime/Loading
   FrameworkLoadingProgressReporter.cs
 ```
 
-These owners are evidence of the current package shape; they are not a mandate to
-keep every internal filename forever. The architectural contracts remain defined
-by the ADR.
+These owners describe the current package shape; the architectural contracts are
+defined by the ADR rather than by permanent filename identity.
 
 ## Contract-to-source reconciliation
 
-| ADR-006 contract | Current package owner/evidence | Source disposition | QA disposition |
+| ADR-006 contract | Current package owner/evidence | Source disposition | Current QA disposition |
 |---|---|---|---|
-| Transition is presentation/orchestration and does not own Route or Activity authority | `Runtime/Transition/ITransitionOrchestrator.cs`, `TransitionEffectOrchestrator.cs` | Aligned | Preserve with focused negative evidence where applicable |
-| Optional presentation absence is explicit NoOp behavior | `Runtime/Transition/NoOpTransitionOrchestrator.cs` | Aligned | Prove optional path remains accepted and non-magical |
-| Non-accepted `Before` prevents governing mutation | `Runtime/GameFlow/GameFlowRuntime.TransitionFailureAuthority.cs` | Aligned | Focused exceptional-path proof required |
-| Non-accepted `After` after commit cannot produce false success or blind rollback | `Runtime/GameFlow/GameFlowRuntime.TransitionFailureAuthority.cs`, request result/diagnostic paths | Aligned | Focused post-commit proof required |
-| Intentional supersession is distinct from ordinary failure | `Runtime/GameFlow/ActivityEntryReadinessExecutionStatus.cs`, readiness orchestration | Aligned | Focused typed-result proof required |
-| Technical loading completion is not equivalent to readiness-governed terminal completion | `Runtime/GameFlow/GameFlowRuntime.ActivityEntryLoadingProgress.cs`, readiness orchestration, `Runtime/Loading/*` progress contracts | Aligned in source | Highest-priority focused QA proof required |
-| Pure Transition Gate is distinct from readiness/reveal recovery protection | `Runtime/GameFlow/TransitionGateDiagnostics.cs`, `ActivityEntryReadinessRecoveryGatePolicy.cs`, `CommittedTargetRevealRecoveryGatePolicy.cs` | Aligned | Focused diagnostic/gate proof required |
-| Required presentation contract failures are explicit and diagnosable | `Runtime/Transition/TransitionEffectOrchestrator.cs`, transition diagnostics | Aligned | Focused negative proof required |
-| Accepted terminal paths clean up pure Transition Gate state | Transition gate blocker policy + GameFlow cleanup/diagnostics | Aligned in current source shape | Focused residual-state proof required |
+| Transition does not own Route or Activity authority | `Runtime/Transition/ITransitionOrchestrator.cs`, `TransitionEffectOrchestrator.cs` | Aligned | Preserved by focused transaction evidence |
+| Optional presentation absence is explicit NoOp behavior | `Runtime/Transition/NoOpTransitionOrchestrator.cs` | Aligned | **PASS — ADR006-QA-07** |
+| Non-accepted `Before` prevents governing mutation | `Runtime/GameFlow/GameFlowRuntime.TransitionFailureAuthority.cs` | Aligned | **PASS — ADR006-QA-01, two passes** |
+| Non-accepted `After` after commit cannot produce false success or blind rollback | `Runtime/GameFlow/GameFlowRuntime.TransitionFailureAuthority.cs` | Aligned | **PASS — ADR006-QA-02, two passes** |
+| Intentional supersession is distinct from ordinary failure | readiness/identity authority orchestration | Aligned | **PASS — ADR006-QA-03, identity regression executed twice** |
+| Technical loading completion is not readiness-governed terminal completion | `GameFlowRuntime.ActivityEntryLoadingProgress.cs`, `Runtime/Loading/*` | Aligned in source | **PASS — ADR006-QA-04, 32/32** |
+| Pure Transition Gate is distinct from readiness/reveal recovery protection | `TransitionGateDiagnostics.cs`, readiness/reveal recovery policies | Aligned | **PASS — ADR006-QA-05, 34/34** |
+| Required presentation failures are explicit | `TransitionEffectOrchestrator.cs`, transition diagnostics | Aligned | **PASS — ADR006-QA-06** |
+| Terminal paths clean pure Transition Gate state | blocker policy + GameFlow cleanup/diagnostics | Aligned | **PASS — ADR006-QA-08, two passes** |
 
 ## Focused Stage A QA matrix
 
-The following cases are the remaining ADR-006 technical evidence boundary. They
-should become canonical QA scenarios without broadening the architecture.
+### ADR006-QA-01 — Before failure blocks mutation — PASS
 
-### ADR006-QA-01 — Before failure blocks mutation
+Executed through `QaAdr006TransactionBehavioralClosureRegression`.
 
-Given a governing lifecycle request whose Transition `Before` returns a
-non-accepted terminal result:
+Observed contract:
 
-- no governing Route/Activity mutation is committed;
-- the request returns a typed non-success terminal result;
-- diagnostics identify the failing transition phase/cause;
-- no pure Transition Gate residue remains after terminal cleanup.
+```text
+Transition Before fault
+  -> typed terminal failure
+  -> no target commit
+  -> original authority retained
+  -> no lifecycle request residue
+  -> terminal cleanup clean
+```
 
-### ADR006-QA-02 — After failure preserves committed authority
+The regression executed this path in both pass 1 and pass 2 of the same Play Mode
+session.
 
-Given a lifecycle mutation that commits successfully and whose Transition `After`
-then returns a non-accepted result:
+### ADR006-QA-02 — After failure preserves committed authority — PASS
 
-- the committed destination remains authoritative;
-- the overall operation does not report success;
-- no blind rollback to the previous authority occurs;
-- any retained recovery protection is explicit and diagnosable.
+Executed through `QaAdr006TransactionBehavioralClosureRegression`.
 
-### ADR006-QA-03 — Superseded is not Failed
+Observed contract:
 
-Given an older readiness/entry operation intentionally replaced by a newer
-authoritative operation:
+```text
+Transition Before accepted
+  -> target lifecycle commits
+  -> Transition After fault
+  -> overall operation non-success
+  -> committed target remains authoritative
+  -> no blind rollback
+  -> terminal cleanup clean
+```
 
-- the older operation terminates as `Superseded` (or its current canonical typed
-  equivalent), not ordinary `Failed`;
-- the newer operation remains authoritative;
-- diagnostics do not misclassify intentional supersession as a failure leak.
+The regression executed this path in both pass 1 and pass 2 of the same Play Mode
+session.
 
-### ADR006-QA-04 — Technical loading complete while readiness waits
+### ADR006-QA-03 — Superseded is not Failed — PASS
 
-Given technical loading that reaches its technical completion boundary while the
-governing readiness condition is still pending:
+Executed through the canonical `QaRouteActivityIdentityRegression` case:
 
-- Loading presentation does not reach successful terminal 100%;
-- reveal is not permitted prematurely;
-- the wait is attributable to readiness rather than a fabricated loading task;
-- when readiness succeeds, terminal completion/reveal can proceed normally.
+```text
+legitimate-supersession-preservation
+```
 
-This is the highest-priority case because it proves the Loading/readiness authority
-boundary directly.
+The identity regression was executed twice. The evidence records:
 
-### ADR006-QA-05 — Recovery protection is not a Transition Gate leak
+```text
+waitStatus='Superseded'
+executionStatus='Superseded'
+routeKind='SupersededCommittedTargetByRouteReplacement'
+interruption='RouteAuthorityReplaced'
+executionFailure='<none>'
+cleanupFailure='<none>'
+```
 
-Given a committed target whose readiness/reveal path fails and retains protective
-presentation:
+This proves the older occurrence is non-authoritative after replacement and is not
+collapsed into an ordinary failure result.
 
-- the pure Transition Gate can be released/clean;
-- readiness/reveal recovery protection can remain active;
-- diagnostics distinguish those two states explicitly;
-- the retained cover is not reported as a pure Transition Gate leak.
+### ADR006-QA-04 — Technical loading complete while readiness waits — PASS
 
-### ADR006-QA-06 — Missing required presentation contract fails explicitly
+Executed through the canonical
+`QaParticipantAwareReadinessLoadingProgressRegression`.
 
-Given a Transition configuration that requires a presentation contract/adapter
-which is absent or invalid:
+Final result:
 
-- the operation fails explicitly at the appropriate boundary;
-- the failure is typed/diagnosable;
-- there is no silent fallback that converts the invalid required configuration
-  into success.
+```text
+[QA_READY_PROGRESS_01]
+status='Passed'
+cases='32'
+required='4'
+optional='1'
+optionalOutcome='FailedNonBlocking'
+ordering='Technical<100,0/4,1/4,2/4,3/4,4/4=100,Hide,Reveal,GateRelease'
+```
 
-### ADR006-QA-07 — Optional presentation uses explicit NoOp
+The executed path proves that technical loading remains below terminal completion
+while required readiness is incomplete, optional failure is non-blocking and
+excluded from the required denominator, successful terminal 100% occurs only at
+4/4 required participants ready, and ordering remains terminal progress -> hide ->
+reveal -> gate release.
 
-Given a valid flow where Transition presentation is optional and intentionally
-not configured:
+### ADR006-QA-05 — Recovery protection is not a Transition Gate leak — PASS
 
-- the canonical optional/NoOp path is used;
-- no hidden presentation object is created to mask the absence;
-- the governing lifecycle can continue according to its own authority;
-- diagnostics/results remain coherent.
+Executed through the canonical
+`QaParticipantAwareReadinessLoadingTerminalRegression`.
 
-### ADR006-QA-08 — Terminal cleanup leaves no pure Transition Gate residue
+Final result:
 
-For accepted terminal flows and the focused failure paths above where cleanup is
-expected:
+```text
+[QA_READY_PROGRESS_02A]
+status='Passed'
+cases='34'
+runtimePath='DirectActivityRequiredFailure'
+contractPaths='DirectActivity,RouteStartupActivity,GameApplicationStartupActivity'
+terminals='RequiredFailed,RequiredReleased,ReplacementRejected,LateOldOccurrenceRejected,DuplicateTerminal,OwnedCancellation'
+```
 
-- no residual pure Transition Gate blocker survives terminal cleanup;
-- any intentionally retained readiness/reveal recovery protection is reported
-  separately and with a causal reason;
-- repeated execution does not accumulate blockers or stale operation state.
+The required-failure path intentionally emits an error-level lifecycle result while
+the regression itself passes. The executed evidence records committed destination
+authority with the ordinary Transition Gate released, Loading/Transition
+presentation retained, readiness/reveal recovery protection retained, last progress
+below terminal 100%, and no terminal progress update. Cleanup then releases
+participants, restores presentation, releases the recovery gate and restores the
+initial authority. This proves that legitimate recovery protection is distinct from
+a pure Transition Gate leak and that the recovery residue clears causally.
+
+### ADR006-QA-06 — Missing required presentation contract fails explicitly — PASS
+
+Executed through `QaAdr006PresentationPolicyRegression`.
+
+Observed contract:
+
+```text
+required presentation missing
+  -> explicit failed result
+  -> MissingAdapter evidence
+  -> blocking issue present
+  -> GameFlow does not accept the failed transition phase
+  -> no silent conversion to optional/Skipped success
+```
+
+### ADR006-QA-07 — Optional presentation uses explicit NoOp — PASS
+
+Executed through `QaAdr006PresentationPolicyRegression`.
+
+Observed contract:
+
+```text
+explicit NoOpTransitionOrchestrator
+  -> valid success
+  -> effect status Skipped
+  -> zero effect adapters
+  -> no blocking issue
+  -> accepted transition phase
+  -> no false lifecycle authority
+```
+
+### ADR006-QA-08 — Terminal cleanup leaves no pure Transition Gate residue — PASS
+
+`QaAdr006TransactionBehavioralClosureRegression` executed two full passes in one
+Play Mode session and completed:
+
+```text
+pass-1-terminal-clean
+pass-2-terminal-clean
+isolation-scene-cleaned
+official-authority-preserved
+```
+
+The final regression report was:
+
+```text
+[ADR006_TRANSACTION_BEHAVIORAL_CLOSURE]
+status='Passed'
+passes='2/2'
+cases='15'
+```
+
+The repeated pass is intentional evidence that terminal state does not accumulate
+between executions.
+
+## Current execution summary
+
+```text
+ADR006 Presentation Policy
+  PASS — 5 cases
+  proves QA-06 and QA-07
+
+ADR006 Transaction Behavioral Closure
+  PASS — 15 cases
+  passes='2/2'
+  proves QA-01, QA-02 and QA-08
+
+Identity Authority Regression
+  PASS — 6/6
+  run 1 PASS
+  run 2 PASS
+  proves QA-03 through legitimate-supersession-preservation
+
+Participant-Aware Readiness Loading Progress
+  PASS — 32/32
+  proves QA-04
+  ordering='Technical<100,0/4,1/4,2/4,3/4,4/4=100,Hide,Reveal,GateRelease'
+
+Participant-Aware Readiness Loading Terminal
+  PASS — 34/34
+  proves QA-05
+  required failure retains recovery protection after pure Transition Gate release
+  cleanup restores presentation, releases recovery gate and restores authority
+```
 
 ## QA ownership rule
 
-`QAFramework` owns the synthetic and negative proof for the matrix above.
-
-QA should test public/canonical package behavior and diagnostics rather than
-replicating package internals as a second implementation. Test-only adapters or
-fault injectors are acceptable when needed to produce deterministic exceptional
-paths, but they must remain QA infrastructure.
+`QAFramework` owns synthetic and negative proof for this matrix. QA should test
+canonical package behavior and diagnostics rather than replicate package internals
+as a second implementation. Test-only adapters and deterministic fault injectors
+are acceptable QA infrastructure.
 
 If a case fails:
 
@@ -235,92 +366,101 @@ focused QA reproduces contract divergence
   -> rerun the same QA without weakening assertions
 ```
 
-Do not resolve a failed QA case by adding a consumer-side workaround in
-FIRSTGAME or by introducing a silent fallback.
+Do not resolve a failed QA case through a FIRSTGAME workaround or silent fallback.
 
-## Stage A closure rule
+## Stage A closure result
 
-ADR-006 can move from the current 95% planning estimate to Stage A closure only
-when the focused matrix has sufficient deterministic evidence for the accepted
-boundary.
+The complete focused matrix now has deterministic executed evidence for the
+accepted ADR-006 technical boundary:
 
-If the matrix passes against the current package without package changes:
+```text
+QA-01 PASS
+QA-02 PASS
+QA-03 PASS
+QA-04 PASS — 32/32
+QA-05 PASS — 34/34
+QA-06 PASS
+QA-07 PASS
+QA-08 PASS
 
-- mark Technical QA as `CERTIFIED` for the accepted ADR-006 boundary;
-- mark Architecture as `ACCEPTED / RECONCILED` in tracking;
-- move Stage A estimate to 100% and technical remaining to 0%;
-- keep any remaining FIRSTGAME work as Stage B only.
+Technical QA: CERTIFIED
+Architecture: ACCEPTED / RECONCILED
+Package: IMPLEMENTED for current accepted boundary
+Stage A: CLOSED
+Stage A estimate: 100%
+Technical remaining: 0%
+Package defect reproduced by closure matrix: NONE
+```
 
-If one or more cases expose a package defect, Stage A remains open until the
-package fix is validated by the unchanged focused QA.
+No package change was required by the focused ADR-006 closure. Any remaining
+FIRSTGAME work is Stage B consumer/product evidence only and does not reopen this
+technical certification unless a concrete accepted-contract regression is
+reproduced.
 
 ## Stage B / FIRSTGAME boundary
 
-FIRSTGAME should prove the real consumer experience, not become the permanent
-exception-path laboratory.
-
-Useful Stage B evidence includes:
-
-- a real Loading + Transition flow configured in a game scene/application flow;
-- understandable cover/wait/reveal behavior during real activity entry;
-- useful Advanced / Debug evidence when presentation remains covered;
-- no requirement for the consumer to manually reconstruct internal framework
-  contracts just to use the feature.
+FIRSTGAME should prove real consumer experience, not become the permanent
+exception-path laboratory. Stage B evidence may cover real Loading + Transition
+authoring, understandable cover/wait/reveal behavior, useful Advanced / Debug
+evidence, and consumer usability without reconstructing internal contracts.
 
 Synthetic `Before`/`After` failures, forced missing adapters and gate-leak probes
-belong in QA unless a real consumer bug independently reproduces them.
+remain QA responsibilities unless an independent consumer bug reproduces them.
 
-## Documentation changes in this cut
+## Documentation changes in the 2026-08-11 update
 
 Edited:
 
-- `Documentation~/Architecture/ADRs/IF-ADR-006-Loading-Transition-Persistence-and-Diagnostics.md`
+- `Documentation~/Architecture/Reconciliation/IMMERSIVE-FRAMEWORK-ADR-006-RECONCILIATION-2026-08-10.md`
 - `Documentation~/Architecture/Tracking/IF-TRACK-Framework.md`
 
 Created:
 
-- `Documentation~/Architecture/Reconciliation/IMMERSIVE-FRAMEWORK-ADR-006-RECONCILIATION-2026-08-10.md`
+- none.
 
 Removed:
 
 - none.
 
-## Acceptance criteria for this documentation cut
+The normative ADR is intentionally unchanged because no ADR contract changed and
+mutable certification counts belong in reconciliation/tracking.
 
-Technical/documentation:
+## Stage A acceptance result
 
-- ADR-006 remains normative and does not contain mutable certification counts;
-- tracking identifies the package as implemented for the current accepted
-  boundary rather than broadly partial;
-- tracking does not falsely certify the still-unexecuted focused QA matrix;
-- the remaining 5% Stage A estimate is explicitly an evidence gap;
-- reconciliation maps the accepted contracts to current canonical package owners;
-- no runtime implementation changes are introduced by this cut.
+```text
+QA-01 pre-commit failure authority preservation       PASS
+QA-02 post-commit committed authority preservation    PASS
+QA-03 typed supersession preservation                 PASS
+QA-04 readiness-governed loading terminal ordering    PASS — 32/32
+QA-05 recovery/gate separation and cleanup            PASS — 34/34
+QA-06 required presentation failure                   PASS
+QA-07 explicit optional NoOp                          PASS
+QA-08 repeated terminal cleanup                       PASS
+package divergence                                    NONE
+runtime implementation change                         NONE
+Stage A                                                CLOSED / CERTIFIED
+```
 
-Product/process:
-
-- FIRSTGAME remains a real-consumer Stage B proof rather than synthetic QA;
-- QA has a bounded next cut instead of an open-ended instruction to add more
-  validators or smokes;
-- any future permanent fix revealed by QA is routed back to the package.
+QA remains the technical exceptional-path authority. FIRSTGAME remains Stage B
+consumer proof, and no duplicate smoke was introduced for QA-04/05.
 
 ## Architectural gain
 
-This reconciliation prevents two opposite errors:
-
-1. reimplementing already-aligned Loading/Transition architecture merely because
-   technical evidence is incomplete;
-2. declaring ADR-006 fully certified from source inspection without exercising
-   the exceptional paths that define its transaction and recovery guarantees.
+The evidence now proves the full focused ADR-006 technical boundary directly
+in runtime: pre-commit failure preserves old authority, post-commit failure
+preserves committed authority, supersession is typed, readiness governs terminal
+loading completion, recovery protection remains distinct from the pure Transition
+Gate, required/optional presentation policies are explicit, and repeated terminal
+cleanup does not leak state.
 
 ## Usability gain
 
-The framework can continue evolving Loading/Transition as a coherent product
-surface while technical exceptional cases stay in QA. Consumers are not asked to
-assemble recovery, gate or readiness internals manually as part of normal use.
+Consumers remain insulated from exceptional-path machinery. Loading/Transition
+can remain an authorable product surface while deterministic fault injection and
+residual-state certification stay in QA.
 
-## Suggested commit
+## Suggested documentation commit
 
 ```text
-docs(architecture): reconcile ADR-006 loading transition boundary
+docs(architecture): certify ADR-006 stage A exceptional paths
 ```

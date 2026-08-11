@@ -1,8 +1,9 @@
 # IF-ADR-007 — Activity Entry Readiness and Reveal Gating
 
 Status: **Accepted**  
-Last updated: 2026-08-09  
-Related decisions: IF-ADR-003, IF-ADR-005, IF-ADR-006, IF-ADR-009, IF-ADR-011, IF-ADR-012
+Last updated: 2026-08-11  
+Related decisions: IF-ADR-003, IF-ADR-005, IF-ADR-006, IF-ADR-009, IF-ADR-011, IF-ADR-012  
+Current reconciliation: [ADR-007 reconciliation](../Reconciliation/IMMERSIVE-FRAMEWORK-ADR-007-RECONCILIATION-2026-08-11.md)
 
 > Current implementation, QA and FIRSTGAME integration status is tracked in
 > `../Tracking/IF-TRACK-Framework.md`. This ADR is normative and intentionally
@@ -30,6 +31,13 @@ evidence. Preparing, Ready, terminal failure, invalidation, cancellation and
 supersession are distinct states.
 
 Loading/Transition may wait on readiness but does not own it.
+
+The current accepted boundary does not impose an elapsed-time timeout on Activity
+entry readiness. A waiting operation remains pending until its captured occurrence
+reaches Ready or terminal failure, or until the owning operation is causally
+cancelled, invalidated or superseded. Timeout/retry authoring, if introduced in a
+future scope, must be an explicit contract rather than a hidden timer or silent
+policy weakening.
 
 ## WaitCovered
 
