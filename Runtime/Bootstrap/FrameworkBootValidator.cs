@@ -1,6 +1,7 @@
 using Immersive.Framework.Authoring;
 using Immersive.Framework.ApiStatus;
 using Immersive.Framework.Performance;
+using Immersive.Framework.ProgressionSave;
 
 namespace Immersive.Framework.Bootstrap
 {
@@ -38,6 +39,25 @@ namespace Immersive.Framework.Bootstrap
             {
                 return FrameworkBootResult.Failed(
                     "Active Game Application is missing. Assign one in Project Settings > Immersive Framework.");
+            }
+
+            if (gameApplication.ProgressionSaveEnabled)
+            {
+                ProgressionSaveProfile progressionSaveProfile =
+                    gameApplication.DefaultProgressionSaveProfile;
+
+                if (progressionSaveProfile == null)
+                {
+                    return FrameworkBootResult.Failed(
+                        "Progression Save is enabled but Default Progression Save Profile is missing. Assign one in the active Game Application asset.");
+                }
+
+                if (!progressionSaveProfile.TryValidate(
+                        out string progressionSaveIssue))
+                {
+                    return FrameworkBootResult.Failed(
+                        $"Default Progression Save Profile '{progressionSaveProfile.name}' is invalid. {progressionSaveIssue}");
+                }
             }
 
             var startupRoute = gameApplication.StartupRoute;

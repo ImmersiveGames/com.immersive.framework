@@ -55,7 +55,7 @@ a later reconciliation. It can identify a separate consumer or product issue.
 | [015](../ADRs/IF-ADR-015-Player-Provisioning-Commands-and-Consumer-Observation-Surface.md) | ACCEPTED | IMPLEMENTED for current boundary | CERTIFIED | Not proven on current model | Stage B consumer integration remains |
 | [016](../ADRs/IF-ADR-016-Player-Session-Initial-Configuration-and-Provisioning-Profiles.md) | ACCEPTED | IMPLEMENTED | CERTIFIED | Not proven on current model | Stage B Scene-/Manager-Provisioned integration remains |
 | [017](../ADRs/IF-ADR-017-Application-Frame-Rate-Project-Authority.md) | ACCEPTED / RECONCILED | IMPLEMENTED: Project Settings baseline, boot validation and explicit runtime application | CERTIFIED: Edit 13/13; Target 13/13; VSync 13/13; Defaults 13/13 | Not applicable for current project-baseline boundary | Stage A closed; Session override and Preferences integration remain future scope |
-| [018](../ADRs/IF-ADR-018-Progression-Save-Backend-Independence-and-Persistence-Domain-Boundaries.md) | ACCEPTED / RECONCILED | ADR018-A core STABLE; ADR018-B built-in JSON implementation CERTIFIED; concrete JSON/catalog API remains Experimental | CERTIFIED: A conformance + B recovery 18/18 | Planned after product composition | ADR018-A/B CLOSED; ADR018-C backend authoring/product composition is next |
+| [018](../ADRs/IF-ADR-018-Progression-Save-Backend-Independence-and-Persistence-Domain-Boundaries.md) | ACCEPTED / RECONCILED | A core STABLE; B JSON CERTIFIED; C1-C3 Profile/provider/application composition implemented | A/B certified; C4 composition QA pending | D follows C certification | Explicit Built-in JSON vs Custom Provider; no fallback; host application-scope ownership |
 
 ## Planning estimates and attention order
 
@@ -82,7 +82,7 @@ reconciliation status. `Stage A` measures the accepted technical boundary.
 | 015 | 100% | 0% | 85% | Stage B | Integrate the current provisioning commands in a real consumer. |
 | 016 | 100% | 0% | 88% | Stage B | Prove Scene-/Manager-Provisioned integration in a real consumer. |
 | 017 | 100% | 0% | 100% | None | Stage A closed for project-level Frame Rate authority; Session override and Preferences integration are future scope. |
-| 018 | 90% | 10% | 50% | ADR018-C Product Composition | A/B technical foundation is closed/certified. Define explicit backend authoring, materialization, scoped runtime composition and Advanced/Debug evidence. |
+| 018 | 95% | 5% | 65% | ADR018-C QA | C1-C3 product composition implemented. Prove Disabled/Built-in/Custom/negative no-fallback composition, then FIRSTGAME. |
 
 ### Attention summary
 
@@ -379,11 +379,10 @@ disabled Gameplay Action Map baselines across Pause -> Resume.
   fixture collision. Reopen only on a reproduced contract regression, documented
   contract change or newly accepted scope. Do not invent timeout/retry runtime.
 - ADR-011 requires no further Stage A work for the current accepted boundary. Direct Progress passed 32/32, Terminal passed 34/34, Route Startup parity passed 25/25 and Game Application Startup parity passed 20/20. Reopen only on a reproduced contract regression, documented contract change or newly accepted scope; do not add Player-specific runtime scope to this ADR.
-- ADR-018-A and ADR018-B are closed/certified. The Stable backend port is proven
-  replaceable and the built-in JSON implementation passed 18/18 recovery cases.
-  ADR018-C is now active: define explicit backend authoring/materialization, scoped
-  runtime composition and Advanced/Debug evidence without making the concrete JSON
-  constructor the primary user workflow.
+- ADR-018-A/B are closed/certified. ADR018-C1-C3 now provide Game Application
+  enablement, ProgressionSaveProfile, explicit Built-in JSON vs Custom Provider,
+  canonical application composition, FrameworkRuntimeHost ownership and designer-first
+  Inspectors. The active gate is C4 composition QA; FIRSTGAME follows certification.
 - ADR-017 requires no further Stage A work for the accepted project-baseline
   boundary. Edit validation passed 13/13 and the TargetFrameRate, VerticalSync and
   UseUnityDefaults E2E paths each passed 13/13. Session-scoped override and

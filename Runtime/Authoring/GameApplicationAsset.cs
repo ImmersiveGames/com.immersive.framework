@@ -1,5 +1,6 @@
 using Immersive.Framework.ApiStatus;
 using Immersive.Framework.PlayerParticipation;
+using Immersive.Framework.ProgressionSave;
 using UnityEngine;
 
 namespace Immersive.Framework.Authoring
@@ -8,7 +9,7 @@ namespace Immersive.Framework.Authoring
     /// API status: Stable. Public authoring root for one Immersive game/application.
     ///
     /// The asset owns application-level intent only. Mutable Session, Player, Route, Activity,
-    /// Camera and scene runtime state remain outside this asset.
+    /// Camera, Progression Save and scene runtime state remain outside this asset.
     /// Project-level frame pacing is owned by Project Settings > Immersive Framework.
     /// </summary>
     [CreateAssetMenu(
@@ -40,6 +41,14 @@ namespace Immersive.Framework.Authoring
             PlayerActorSelectionDuplicatePolicy.AllowDuplicates;
 
         [SerializeField]
+        [Tooltip("Enables application-scoped Progression Save composition. When enabled, Default Progression Save Profile is required and materialized once during framework boot.")]
+        private bool progressionSaveEnabled;
+
+        [SerializeField]
+        [Tooltip("Authored backend intent used to materialize the application-scoped Progression Save Runtime. Runtime store state remains outside this asset.")]
+        private ProgressionSaveProfile defaultProgressionSaveProfile;
+
+        [SerializeField]
         [Tooltip("Concrete scene composition retained for the application lifetime. The scene is authored manually; the framework validates and consumes it without creating or repairing content.")]
         private PersistentContentComposition persistentContent =
             new PersistentContentComposition();
@@ -66,25 +75,29 @@ namespace Immersive.Framework.Authoring
 
         public RouteAsset StartupRoute => startupRoute;
 
-        /// <summary>
-        /// Enables Player Session composition. Disabled is an explicit valid absence of a Player Session.
-        /// </summary>
         public bool PlayerSessionEnabled => playerSessionEnabled;
 
-        /// <summary>
-        /// Default authored Player Session intent. It is required only when PlayerSessionEnabled is true.
-        /// </summary>
-        public PlayerSessionProfile DefaultPlayerSessionProfile => defaultPlayerSessionProfile;
+        public PlayerSessionProfile DefaultPlayerSessionProfile =>
+            defaultPlayerSessionProfile;
 
-        /// <summary>
-        /// Session duplicate-selection policy composed into PlayerParticipationRuntimeContext.
-        /// This asset is the single authoring authority and never stores current Slot selections.
-        /// </summary>
         public PlayerActorSelectionDuplicatePolicy PlayerActorSelectionDuplicatePolicy =>
             playerActorSelectionDuplicatePolicy;
 
         public bool HasDefinedPlayerActorSelectionDuplicatePolicy =>
             playerActorSelectionDuplicatePolicy.IsDefinedPolicy();
+
+        /// <summary>
+        /// Enables Progression Save application composition. Disabled is an explicit
+        /// valid absence of a Progression Save runtime.
+        /// </summary>
+        public bool ProgressionSaveEnabled => progressionSaveEnabled;
+
+        /// <summary>
+        /// Reusable authored backend intent. Required only when
+        /// ProgressionSaveEnabled is true.
+        /// </summary>
+        public ProgressionSaveProfile DefaultProgressionSaveProfile =>
+            defaultProgressionSaveProfile;
 
         public PersistentContentComposition PersistentContent =>
             persistentContent;

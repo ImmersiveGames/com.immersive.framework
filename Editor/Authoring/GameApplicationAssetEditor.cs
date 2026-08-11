@@ -1,8 +1,10 @@
 using Immersive.Framework.Authoring;
 using Immersive.Framework.Editor.Editor.PlayerParticipation;
+using Immersive.Framework.Editor.Editor.ProgressionSave;
 using Immersive.Framework.Editor.Editor.Settings;
 using Immersive.Framework.Editor.Editor.Validation;
 using Immersive.Framework.PlayerParticipation;
+using Immersive.Framework.ProgressionSave;
 using UnityEditor;
 using UnityEngine;
 
@@ -31,6 +33,16 @@ namespace Immersive.Framework.Editor.Editor.Authoring
                 "Default Player Session Profile (Required)",
                 "Reusable authored initial configuration resolved once when Player Session starts.");
 
+        private static readonly GUIContent ProgressionSaveEnabledLabel =
+            new GUIContent(
+                "Enabled",
+                "Creates one application-scoped Progression Save Runtime during framework boot.");
+
+        private static readonly GUIContent DefaultProgressionSaveProfileLabel =
+            new GUIContent(
+                "Default Progression Save Profile (Required)",
+                "Reusable authored backend intent materialized once during application boot.");
+
         private static readonly GUIContent ContentSceneLabel =
             new GUIContent(
                 "Content Scene",
@@ -51,6 +63,8 @@ namespace Immersive.Framework.Editor.Editor.Authoring
         private SerializedProperty _playerSessionEnabled;
         private SerializedProperty _defaultPlayerSessionProfile;
         private SerializedProperty _playerActorSelectionDuplicatePolicy;
+        private SerializedProperty _progressionSaveEnabled;
+        private SerializedProperty _defaultProgressionSaveProfile;
         private SerializedProperty _persistentContent;
         private SerializedProperty _containerScene;
         private SerializedProperty _validationMode;
@@ -78,6 +92,10 @@ namespace Immersive.Framework.Editor.Editor.Authoring
             _playerActorSelectionDuplicatePolicy =
                 serializedObject.FindProperty(
                     "playerActorSelectionDuplicatePolicy");
+            _progressionSaveEnabled =
+                serializedObject.FindProperty("progressionSaveEnabled");
+            _defaultProgressionSaveProfile =
+                serializedObject.FindProperty("defaultProgressionSaveProfile");
             _persistentContent =
                 serializedObject.FindProperty("persistentContent");
             _containerScene =
@@ -101,6 +119,7 @@ namespace Immersive.Framework.Editor.Editor.Authoring
             DrawApplication();
             DrawStartup();
             DrawPlayerSession();
+            DrawProgressionSave();
             DrawPersistentContent();
             DrawValidation();
             DrawAdvancedDebug();
@@ -266,6 +285,133 @@ namespace Immersive.Framework.Editor.Editor.Authoring
             DrawStatusRow(
                 "Configuration",
                 $"Ready — {resolution.Configuration.SupportedSlotCount} Slot(s), resolved once at Session creation.");
+        }
+
+        private void DrawProgressionSave()
+        {
+            DrawSection("Progression Save");
+
+            EditorGUILayout.PropertyField(
+                _progressionSaveEnabled,
+                ProgressionSaveEnabledLabel);
+
+            if (_progressionSaveEnabled == null ||
+                _progressionSaveEnabled.hasMultipleDifferentValues ||
+                !_progressionSaveEnabled.boolValue)
+            {
+                DrawStatusRow(
+                    "Configuration",
+                    "Disabled — no Progression Save Runtime is created.");
+                return;
+            }
+
+            EditorGUILayout.PropertyField(
+                _defaultProgressionSaveProfile,
+                DefaultProgressionSaveProfileLabel);
+
+            ProgressionSaveProfile profile =
+                _defaultProgressionSaveProfile.objectReferenceValue as
+                    ProgressionSaveProfile;
+
+            if (profile == null)
+            {
+                EditorGUILayout.HelpBox(
+                    "Progression Save is enabled and requires a Default Progression Save Profile.",
+                    MessageType.Error);
+
+                if (GUILayout.Button(
+                        new GUIContent(
+                            "Create Progression Save Profile",
+                            "Creates a Profile asset and assigns it as the application default.")))
+                {
+                    CreateAndAssignProgressionSaveProfile();
+                }
+
+                return;
+            }
+
+            if (!profile.TryValidate(
+                    out string issue))
+            {
+                EditorGUILayout.HelpBox(
+                    issue,
+                    MessageType.Error);
+                return;
+            }
+
+            string status =
+                profile.Backend ==
+                    ProgressionSaveBackendSelection.BuiltInJson
+                    ? "Ready — Built-in JSON"
+                    : $"Ready — Custom Provider: {profile.CustomProvider.name}";
+
+            DrawStatusRow(
+                "Configuration",
+                status);
+
+            using (new EditorGUILayout.HorizontalScope())
+            {
+                if (GUILayout.Button(
+                        new GUIContent(
+                            "Open Profile",
+                            "Selects and pings the assigned Progression Save Profile.")))
+                {
+                    Selection.activeObject = profile;
+                    EditorGUIUtility.PingObject(profile);
+                }
+
+                if (GUILayout.Button(
+                        new GUIContent(
+                            "Replace",
+                            "Clears the current Profile reference so another Profile can be assigned.")))
+                {
+                    _defaultProgressionSaveProfile.objectReferenceValue =
+                        null;
+                    GUI.FocusControl(null);
+                }
+            }
+        }
+
+        private void CreateAndAssignProgressionSaveProfile()
+        {
+            GameApplicationAsset gameApplication =
+                (GameApplicationAsset)target;
+
+            string suggestedName =
+                $"{gameApplication.name}-ProgressionSaveProfile.asset";
+
+            string path =
+                EditorUtility.SaveFilePanelInProject(
+                    "Create Progression Save Profile",
+                    suggestedName,
+                    "asset",
+                    "Choose where to save the Progression Save Profile.");
+
+            if (string.IsNullOrWhiteSpace(path))
+            {
+                return;
+            }
+
+            var created =
+                ScriptableObject.CreateInstance<ProgressionSaveProfile>();
+
+            AssetDatabase.CreateAsset(
+                created,
+                path);
+
+            Undo.RegisterCreatedObjectUndo(
+                created,
+                "Create Progression Save Profile");
+
+            AssetDatabase.SaveAssets();
+
+            _defaultProgressionSaveProfile.objectReferenceValue =
+                created;
+
+            serializedObject.ApplyModifiedProperties();
+
+            Selection.activeObject = created;
+            EditorGUIUtility.PingObject(created);
         }
 
         private void DrawActorSelectionPolicy()
@@ -445,6 +591,7 @@ namespace Immersive.Framework.Editor.Editor.Authoring
             }
 
             DrawPlayerSessionAdvancedEvidence();
+            DrawProgressionSaveAdvancedEvidence();
             DrawActorSelectionPolicy();
 
             EditorGUILayout.Space(4f);
@@ -481,9 +628,65 @@ namespace Immersive.Framework.Editor.Editor.Authoring
                     ? _defaultPlayerSessionProfile.objectReferenceValue as
                         PlayerSessionProfile
                     : null;
+
             PlayerSessionInspectorGui.DrawResolution(
                 profile,
                 includeHeader: false);
+        }
+
+        private void DrawProgressionSaveAdvancedEvidence()
+        {
+            DrawSection("Progression Save Resolution");
+
+            if (_progressionSaveEnabled == null ||
+                !_progressionSaveEnabled.boolValue)
+            {
+                EditorGUILayout.LabelField(
+                    "Status",
+                    "Disabled",
+                    EditorStyles.miniLabel);
+                return;
+            }
+
+            ProgressionSaveProfile profile =
+                _defaultProgressionSaveProfile != null
+                    ? _defaultProgressionSaveProfile.objectReferenceValue as
+                        ProgressionSaveProfile
+                    : null;
+
+            using (new EditorGUI.DisabledScope(true))
+            {
+                EditorGUILayout.ObjectField(
+                    "Profile",
+                    profile,
+                    typeof(ProgressionSaveProfile),
+                    false);
+
+                EditorGUILayout.TextField(
+                    "Backend Selection",
+                    profile != null
+                        ? profile.Backend.ToString()
+                        : "<missing>");
+
+                EditorGUILayout.TextField(
+                    "Runtime Owner",
+                    "FrameworkRuntimeHost — Application Scope");
+
+                EditorGUILayout.TextField(
+                    "Fallback",
+                    "None");
+
+                if (profile != null &&
+                    profile.Backend ==
+                        ProgressionSaveBackendSelection.CustomProvider)
+                {
+                    EditorGUILayout.ObjectField(
+                        "Custom Provider",
+                        profile.CustomProvider,
+                        typeof(ProgressionSaveStoreProviderAsset),
+                        false);
+                }
+            }
         }
 
         private void RunAuthoringValidation()
@@ -499,6 +702,11 @@ namespace Immersive.Framework.Editor.Editor.Authoring
 
             _lastValidationReport.AddRange(
                 PlayerParticipationAuthoringValidator
+                    .ValidateGameApplication(
+                        gameApplication));
+
+            _lastValidationReport.AddRange(
+                ProgressionSaveAuthoringValidator
                     .ValidateGameApplication(
                         gameApplication));
 

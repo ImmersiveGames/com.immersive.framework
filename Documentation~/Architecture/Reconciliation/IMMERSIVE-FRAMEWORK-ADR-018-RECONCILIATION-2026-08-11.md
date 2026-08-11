@@ -362,3 +362,55 @@ The first statement describes product ownership and verified behavior.
 
 The second describes compatibility guarantees for the concrete public construction and
 catalog surface, which is intentionally deferred until product composition is defined.
+
+
+## ADR018-C implementation state — 2026-08-11
+
+Product composition now has an explicit canonical path:
+
+```text
+GameApplicationAsset
+  -> ProgressionSaveProfile
+  -> ProgressionSaveApplicationComposition
+  -> IProgressionSaveStore
+  -> ProgressionSaveRuntime
+  -> FrameworkRuntimeHost application scope
+```
+
+Backend selection:
+
+```text
+BuiltInJson
+CustomProvider
+```
+
+A Custom Provider derives from `ProgressionSaveStoreProviderAsset`.
+
+Invalid/failing selected providers reject composition and never trigger a JSON
+fallback.
+
+ADR-010 alignment:
+
+```text
+Official Path                 PASS
+Intent First                  PASS
+Configuration Status          PASS
+Actionable Diagnostics        PASS
+Advanced / Debug              PASS
+Runtime Discipline            PASS
+Apply/Rebuild                 NOT APPLICABLE
+Composer                      NOT REQUIRED
+```
+
+Current state:
+
+```text
+ADR018-A     CLOSED / CERTIFIED
+ADR018-B     CLOSED / CERTIFIED
+ADR018-C1    IMPLEMENTED
+ADR018-C2    IMPLEMENTED
+ADR018-C3    IMPLEMENTED
+ADR018-C4    QA PENDING
+ADR018-C5    PENDING
+FIRSTGAME    PENDING
+```

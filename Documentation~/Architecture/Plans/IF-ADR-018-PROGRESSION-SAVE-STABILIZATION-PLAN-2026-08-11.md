@@ -296,3 +296,84 @@ No runtime code changes are included in this architecture cut.
 ```text
 docs(architecture): define progression save backend independence
 ```
+
+
+## ADR018-C implementation cut
+
+### Objective
+
+Turn the certified persistence foundation into an explicit application product
+composition without freezing a global gameplay access pattern prematurely.
+
+### C1 — Authoring intent
+
+```text
+GameApplicationAsset
+  ProgressionSaveEnabled
+  DefaultProgressionSaveProfile
+
+ProgressionSaveProfile
+  BuiltInJson
+  CustomProvider
+```
+
+Status: IMPLEMENTED.
+
+### C2 — Runtime materialization
+
+```text
+ProgressionSaveApplicationComposition.Resolve(GameApplicationAsset)
+  -> explicit Disabled / Ready / Rejected result
+  -> selected Profile creates IProgressionSaveStore
+  -> ProgressionSaveRuntime
+  -> FrameworkRuntimeHost application lifetime
+```
+
+Status: IMPLEMENTED.
+
+### C3 — Product surface
+
+```text
+Game Application Inspector Progression Save section
+Create/Open/Replace Profile
+Profile Inspector
+Configuration Status
+Advanced / Debug
+no Apply/Rebuild
+no fallback
+```
+
+Status: IMPLEMENTED.
+
+### C4 — QA gate
+
+Required:
+
+```text
+disabled application produces Disabled/no runtime
+Built-in JSON Profile produces JsonProgressionSaveStore
+Custom Provider produces alternate IProgressionSaveStore
+missing custom provider rejected
+invalid custom provider rejected
+provider create failure rejected
+provider null store rejected
+invalid BackendId rejected
+Custom Provider failure never produces JSON
+same public application composition path used by QA and bootstrap
+```
+
+Status: PENDING.
+
+### FIRSTGAME handoff
+
+After C4 certification, FIRSTGAME must prove:
+
+```text
+a developer can find/create/configure the Profile
+Built-in JSON configuration is understandable
+Custom Provider intent is understandable
+gameplay code can receive/use the scoped runtime without global lookup
+```
+
+If gameplay injection needs a new package binding surface, prove the shape there first
+and migrate the mature solution back into the package.

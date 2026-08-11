@@ -2,6 +2,7 @@ using System;
 using Immersive.Framework.Authoring;
 using Immersive.Framework.Performance;
 using Immersive.Framework.PlayerParticipation;
+using Immersive.Framework.ProgressionSave;
 using Immersive.Logging.Records;
 
 namespace Immersive.Framework.ApplicationLifecycle
@@ -21,6 +22,10 @@ namespace Immersive.Framework.ApplicationLifecycle
         /// Canonical bootstrap path for a runtime host with an explicit project-level
         /// frame-rate baseline. The policy is resolved before host creation and is not
         /// discovered again from Resources or GameApplicationAsset.
+        ///
+        /// ADR018-C also resolves application-authored Progression Save composition
+        /// exactly once after host creation. Failed selected backend composition aborts
+        /// boot explicitly; it never substitutes another backend.
         /// </summary>
         internal static bool TryCreateWithProjectFrameRate(
             GameApplicationAsset gameApplication,
@@ -58,6 +63,29 @@ namespace Immersive.Framework.ApplicationLifecycle
 
             runtimeHost._projectFrameRatePolicy =
                 projectFrameRatePolicy;
+
+            ProgressionSaveApplicationCompositionResult
+                progressionSaveComposition =
+                    ProgressionSaveApplicationComposition.Resolve(
+                        gameApplication);
+
+            if (!progressionSaveComposition.Succeeded)
+            {
+                string issue =
+                    progressionSaveComposition.Message;
+
+                UnityEngine.Object.Destroy(
+                    runtimeHost.gameObject);
+
+                runtimeHost = null;
+
+                throw new InvalidOperationException(
+                    $"Progression Save application composition failed. {issue}");
+            }
+
+            runtimeHost.ApplyProgressionSaveComposition(
+                progressionSaveComposition);
+
             return true;
         }
 

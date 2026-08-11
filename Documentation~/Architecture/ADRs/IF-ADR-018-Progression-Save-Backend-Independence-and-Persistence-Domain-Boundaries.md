@@ -672,3 +672,143 @@ refactor(progression-save): stabilize backend contract
 fix(progression-save): harden built-in json backend
 feat(progression-save): add explicit backend authoring
 ```
+
+
+## ADR018-C — Product Composition / Backend Authoring
+
+### Product decision
+
+Progression Save is authored at the Game Application level.
+
+```text
+GameApplicationAsset
+  Progression Save Enabled
+  Default Progression Save Profile
+        ↓
+ProgressionSaveProfile
+  Backend
+    Built-in JSON
+    Custom Provider
+        ↓
+ProgressionSaveApplicationComposition
+        ↓
+IProgressionSaveStore
+        ↓
+ProgressionSaveRuntime
+        ↓
+FrameworkRuntimeHost — application scope
+```
+
+This is application intent, not project-wide engine policy, so it does not belong in
+Project Settings.
+
+### Authoring surface
+
+Official paths:
+
+```text
+Game Application Inspector
+  Progression Save
+    Enabled
+    Default Progression Save Profile
+    Create/Open/Replace Profile
+    Configuration Status
+
+Assets > Create
+  Immersive Framework
+    Progression Save
+      Profile
+
+Progression Save Profile Inspector
+  Backend
+  Custom Provider when selected
+  Configuration Status
+  Advanced / Debug
+```
+
+No Composer, Wizard or Apply/Rebuild is introduced in this cut.
+
+There is no Editor materialization graph to rebuild; runtime materialization occurs
+once at application boot.
+
+This follows ADR-010's manual/explicit/default authoring rule rather than introducing
+tooling only to satisfy a checklist.
+
+### Custom provider contract
+
+Third-party/custom adapters derive from:
+
+```text
+ProgressionSaveStoreProviderAsset
+```
+
+and explicitly return:
+
+```text
+IProgressionSaveStore
+```
+
+The provider owns vendor-specific authoring.
+
+The Framework owns only:
+
+```text
+typed provider boundary
+application creation context
+result validation
+runtime composition
+diagnostics
+```
+
+No reflection, Resources lookup or provider discovery is used.
+
+### No fallback
+
+```text
+Profile = Custom Provider
+provider invalid/unavailable
+        ↓
+composition REJECTED
+        ↓
+framework boot fails explicitly
+```
+
+The Framework never switches to Built-in JSON.
+
+### Runtime ownership
+
+The default bootstrap resolves exactly one
+`ProgressionSaveApplicationCompositionResult` for the active Game Application.
+
+When configured, `FrameworkRuntimeHost` owns the resulting
+`ProgressionSaveRuntime` for the application lifetime.
+
+The host remains internal and is not a global service locator.
+
+### Game-facing access
+
+ADR018-C deliberately does not introduce:
+
+```text
+ProgressionSaveRuntime.Current
+ProgressionSaveManager.Instance
+static service locator
+FindObjectOfType-based access
+```
+
+The public `ProgressionSaveApplicationComposition.Resolve(GameApplicationAsset)`
+surface provides a typed explicit composition path for custom bootstraps and QA.
+
+The preferred gameplay binding/injection surface will be proven in FIRSTGAME before
+being frozen as package API.
+
+### Stage
+
+```text
+C1 authored Profile/backend selection          IMPLEMENTED
+C2 provider materialization + host ownership   IMPLEMENTED
+C3 Inspector/validation/Advanced Debug         IMPLEMENTED
+C4 technical composition QA                    PENDING
+C5 package certification                       PENDING
+D  FIRSTGAME game-facing usability proof       PENDING
+```
