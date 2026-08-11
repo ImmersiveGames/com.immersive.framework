@@ -1,10 +1,15 @@
+using System;
+using Immersive.Framework.Authoring;
 using Immersive.Framework.Performance;
+using Immersive.Framework.PlayerParticipation;
 using Immersive.Logging.Records;
 
 namespace Immersive.Framework.ApplicationLifecycle
 {
     internal sealed partial class FrameworkRuntimeHost
     {
+        private ApplicationFrameRatePolicy _projectFrameRatePolicy;
+
         private ApplicationFrameRateApplicationResult
             _lastFrameRateApplicationResult;
 
@@ -12,16 +17,56 @@ namespace Immersive.Framework.ApplicationLifecycle
             LastFrameRateApplicationResult =>
                 _lastFrameRateApplicationResult;
 
+        /// <summary>
+        /// Canonical bootstrap path for a runtime host with an explicit project-level
+        /// frame-rate baseline. The policy is resolved before host creation and is not
+        /// discovered again from Resources or GameApplicationAsset.
+        /// </summary>
+        internal static bool TryCreateWithProjectFrameRate(
+            GameApplicationAsset gameApplication,
+            ApplicationFrameRatePolicy projectFrameRatePolicy,
+            PlayerSessionProfile explicitPlayerSessionProfile,
+            out FrameworkRuntimeHost runtimeHost,
+            out PlayerSessionInitializationResult playerSessionResolution,
+            out PlayerParticipationOperationResult playerParticipationInitialization)
+        {
+            if (projectFrameRatePolicy == null)
+            {
+                throw new ArgumentNullException(
+                    nameof(projectFrameRatePolicy));
+            }
+
+            if (!projectFrameRatePolicy.TryValidate(
+                    out string frameRateIssue))
+            {
+                throw new ArgumentException(
+                    $"Project Frame Rate policy is invalid. {frameRateIssue}",
+                    nameof(projectFrameRatePolicy));
+            }
+
+            bool created = TryCreate(
+                gameApplication,
+                explicitPlayerSessionProfile,
+                out runtimeHost,
+                out playerSessionResolution,
+                out playerParticipationInitialization);
+
+            if (!created)
+            {
+                return false;
+            }
+
+            runtimeHost._projectFrameRatePolicy =
+                projectFrameRatePolicy;
+            return true;
+        }
+
         private bool TryApplyApplicationFrameRatePolicy(
             out string failureMessage)
         {
-            ApplicationFrameRatePolicy policy =
-                _gameApplication != null
-                    ? _gameApplication.FrameRatePolicy
-                    : null;
-
             _lastFrameRateApplicationResult =
-                ApplicationFrameRatePolicyApplier.Apply(policy);
+                ApplicationFrameRatePolicyApplier.Apply(
+                    _projectFrameRatePolicy);
 
             LogFrameRateApplicationResult(
                 _lastFrameRateApplicationResult);
@@ -42,6 +87,7 @@ namespace Immersive.Framework.ApplicationLifecycle
         {
             LogField[] summaryFields =
                 LogFields.Of(
+                    LogFields.Field("source", "ProjectSettings"),
                     LogFields.Field("status", result.Status),
                     LogFields.Field("mode", result.RequestedMode),
                     LogFields.Field(
@@ -74,6 +120,7 @@ namespace Immersive.Framework.ApplicationLifecycle
             _logger?.Debug(
                 "Application frame-rate policy diagnostics.",
                 LogFields.Of(
+                    LogFields.Field("source", "ProjectSettings"),
                     LogFields.Field("status", result.Status),
                     LogFields.Field("mode", result.RequestedMode),
                     LogFields.Field(

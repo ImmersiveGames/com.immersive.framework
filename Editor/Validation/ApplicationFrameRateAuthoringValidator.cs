@@ -6,34 +6,39 @@ namespace Immersive.Framework.Editor.Editor.Validation
 {
     internal static class ApplicationFrameRateAuthoringValidator
     {
+        /// <summary>
+        /// Project-level frame-rate validation. Project Settings is the only authored
+        /// authority for the current ADR-017 Stage A boundary.
+        /// </summary>
         internal static FrameworkAuthoringValidationReport Validate(
-            GameApplicationAsset gameApplication)
+            ImmersiveFrameworkSettingsAsset settings)
         {
             FrameworkValidationMode validationMode =
-                gameApplication != null
-                    ? gameApplication.ValidationMode
+                settings != null &&
+                settings.ActiveGameApplication != null
+                    ? settings.ActiveGameApplication.ValidationMode
                     : FrameworkValidationMode.Standard;
 
             var report =
                 new FrameworkAuthoringValidationReport(
                     validationMode);
 
-            if (gameApplication == null)
+            if (settings == null)
             {
                 report.AddError(
-                    "Game Application is missing for frame-rate validation.",
+                    "Framework Settings asset is missing for frame-rate validation.",
                     null);
                 return report;
             }
 
             ApplicationFrameRatePolicy policy =
-                gameApplication.FrameRatePolicy;
+                settings.FrameRatePolicy;
 
             if (policy == null)
             {
                 report.AddError(
-                    "Application Frame Rate policy is missing.",
-                    gameApplication);
+                    "Project Frame Rate policy is missing.",
+                    settings);
                 return report;
             }
 
@@ -41,7 +46,7 @@ namespace Immersive.Framework.Editor.Editor.Validation
             {
                 report.AddError(
                     issue,
-                    gameApplication);
+                    settings);
                 return report;
             }
 
@@ -49,14 +54,14 @@ namespace Immersive.Framework.Editor.Editor.Validation
             {
                 case ApplicationFrameRateMode.UseUnityDefaults:
                     report.AddInfo(
-                        "Application Frame Rate uses Unity defaults and will not override VSync or target frame rate.",
-                        gameApplication);
+                        "Project Frame Rate uses Unity defaults and will not override VSync or target frame rate.",
+                        settings);
                     break;
 
                 case ApplicationFrameRateMode.TargetFrameRate:
                     report.AddInfo(
-                        $"Application Frame Rate will disable VSync and request {policy.TargetFrameRate} FPS during framework boot.",
-                        gameApplication);
+                        $"Project Frame Rate will disable VSync and request {policy.TargetFrameRate} FPS during framework boot.",
+                        settings);
                     break;
 
                 case ApplicationFrameRateMode.VerticalSync:
@@ -65,19 +70,35 @@ namespace Immersive.Framework.Editor.Editor.Validation
                     {
                         report.AddWarning(
                             "Vertical Sync is selected for a mobile build target. Mobile platforms use Application.targetFrameRate for frame pacing and may ignore QualitySettings.vSyncCount.",
-                            gameApplication);
+                            settings);
                     }
                     else
                     {
                         report.AddInfo(
-                            $"Application Frame Rate will restore target frame rate to -1 and request VSync Count {policy.VSyncCount} during framework boot.",
-                            gameApplication);
+                            $"Project Frame Rate will restore target frame rate to -1 and request VSync Count {policy.VSyncCount} during framework boot.",
+                            settings);
                     }
 
                     break;
             }
 
             return report;
+        }
+
+        /// <summary>
+        /// GameApplicationAsset no longer owns frame-rate authoring. This overload
+        /// intentionally contributes no frame-rate findings to Game Application validation.
+        /// </summary>
+        internal static FrameworkAuthoringValidationReport Validate(
+            GameApplicationAsset gameApplication)
+        {
+            FrameworkValidationMode validationMode =
+                gameApplication != null
+                    ? gameApplication.ValidationMode
+                    : FrameworkValidationMode.Standard;
+
+            return new FrameworkAuthoringValidationReport(
+                validationMode);
         }
 
         private static bool IsMobileBuildTarget(

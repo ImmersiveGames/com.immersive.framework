@@ -1,25 +1,62 @@
 # Application Frame Rate
 
-Status: Experimental product surface  
-Cut: `IF-APPLICATION-FRAME-RATE-01`
+Status: Current Stage A product surface; ADR-017 QA certification pending  
+Architecture: `IF-ADR-017 — Application Frame Rate Project Authority`
 
 ## Purpose
 
-Application Frame Rate defines one application-level frame pacing policy on the active `GameApplicationAsset`.
-The framework applies that policy at the beginning of `FrameworkRuntimeHost.StartAsync`, before startup scene composition.
+Application Frame Rate defines one required project-level frame pacing baseline.
 
-The feature replaces scene-local frame limiter components. A game does not need a `MonoBehaviour` in every scene and does not need a second persistent manager.
+The canonical authoring surface is:
+
+```text
+Edit
+  Project Settings
+    Immersive Framework
+      Performance
+        Frame Rate
+```
+
+The backing asset is `ImmersiveFrameworkSettingsAsset`.
+
+`GameApplicationAsset` does not own frame-rate policy.
+
+The framework applies the validated project policy at the beginning of
+`FrameworkRuntimeHost.StartAsync`, before startup scene composition.
+
+The feature replaces scene-local frame limiter components. A game does not need a
+`MonoBehaviour` in every scene and does not need a second persistent manager.
+
+## Required does not mean forced FPS
+
+Every Framework project has an explicit frame-rate policy.
+
+The default is:
+
+```text
+Mode = Use Unity Defaults
+```
+
+This is a valid authored decision:
+
+```text
+framework owns the decision not to override Unity frame pacing
+```
+
+It is not missing configuration.
 
 ## Authoring
 
-Open the active `GameApplicationAsset` and configure:
+Open:
 
 ```text
-Performance
-└── Frame Rate
-    ├── Mode
-    ├── Target Frame Rate
-    └── VSync Count
+Project Settings
+  Immersive Framework
+    Performance
+      Frame Rate
+        Mode
+        Target Frame Rate
+        VSync Count
 ```
 
 ### Use Unity Defaults
@@ -31,8 +68,6 @@ QualitySettings.vSyncCount
 
 remain unchanged.
 
-This is the compatibility default for existing Game Application assets.
-
 ### Target Frame Rate
 
 The framework applies:
@@ -41,8 +76,6 @@ The framework applies:
 QualitySettings.vSyncCount = 0
 Application.targetFrameRate = configured target
 ```
-
-Use this mode when an explicit FPS target is the intended authority.
 
 ### Vertical Sync
 
@@ -55,31 +88,44 @@ QualitySettings.vSyncCount = configured interval
 
 Supported authored VSync Count values are `1` through `4`.
 
-Mobile platforms may ignore `QualitySettings.vSyncCount`. The Inspector validation reports this as a warning rather than silently changing the selected policy.
-XR providers may control refresh rate through platform-specific APIs; this cut does not replace those APIs.
+Mobile platforms may ignore `QualitySettings.vSyncCount`. Project Settings validation
+reports this as a warning rather than silently changing the selected policy.
 
-## Runtime behavior
+XR providers may control refresh rate through platform-specific APIs; this cut does
+not replace those APIs.
 
-The policy is:
+## Boot and runtime authority
+
+The canonical path is:
 
 ```text
-validated completely
-→ previous Unity values captured
-→ both effective values applied
-→ typed result stored on the FrameworkRuntimeHost
-→ summary and Advanced diagnostics logged
-→ normal framework startup continues
+ImmersiveFrameworkSettingsAsset
+  project authored baseline
+        ↓
+FrameworkBootValidator
+  validates complete policy
+        ↓
+ImmersiveFrameworkBootstrap
+  passes the validated policy explicitly
+        ↓
+FrameworkRuntimeHost
+  retains the project baseline for this application lifetime
+        ↓
+ApplicationFrameRatePolicyApplier
+  mutates Unity frame pacing
 ```
 
-Invalid policy does not partially mutate Unity values. Framework startup returns an explicit failed result.
+`FrameworkRuntimeHost` does not rediscover Frame Rate from Resources and does not read
+it from `GameApplicationAsset`.
 
-Repeated startup application is idempotent. When the current Unity values already match the policy, the result is `AppliedNoChange` or `AppliedNoChangePlatformLimited` when the selected platform limitation also applies.
+Invalid policy does not partially mutate Unity values.
 
 ## Diagnostics
 
 Runtime evidence includes:
 
 ```text
+source = ProjectSettings
 status
 requested mode
 requested target frame rate
@@ -92,11 +138,12 @@ runtime platform
 message
 ```
 
-Summary diagnostics use Info or Warning. Invalid policy uses Error. Detailed evidence is emitted at Debug level.
+Summary diagnostics use Info or Warning. Invalid policy uses Error. Detailed evidence
+is emitted at Debug level.
 
 ## Validation
 
-The Game Application validation flow checks:
+Project Settings validation checks:
 
 ```text
 policy exists
@@ -106,14 +153,39 @@ VSync Count is between 1 and 4
 mobile Vertical Sync limitation is visible
 ```
 
+Boot performs the blocking validation independently of the Inspector.
+
 No invalid value is normalized to a different policy.
+
+## Future Session / Preferences direction
+
+The current Stage A cut does **not** implement mutable Session override or preference
+persistence.
+
+The intended later relationship is:
+
+```text
+Project Settings
+  baseline
+     ↓
+Frame Rate runtime authority
+     ↑
+Session override request
+     ↑
+future Preferences resolution
+```
+
+Preferences may persist user intent in a later cut, but must not directly mutate
+`Application.targetFrameRate` or `QualitySettings.vSyncCount`.
 
 ## Scope exclusions
 
 This cut does not implement:
 
 ```text
-dynamic FPS changes
+Session frame-rate override
+Preferences persistence
+dynamic adaptive FPS
 Route- or Activity-specific FPS policies
 Adaptive Performance
 thermal management

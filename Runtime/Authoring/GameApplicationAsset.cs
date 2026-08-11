@@ -1,5 +1,4 @@
 using Immersive.Framework.ApiStatus;
-using Immersive.Framework.Performance;
 using Immersive.Framework.PlayerParticipation;
 using UnityEngine;
 
@@ -10,6 +9,7 @@ namespace Immersive.Framework.Authoring
     ///
     /// The asset owns application-level intent only. Mutable Session, Player, Route, Activity,
     /// Camera and scene runtime state remain outside this asset.
+    /// Project-level frame pacing is owned by Project Settings > Immersive Framework.
     /// </summary>
     [CreateAssetMenu(
         fileName = "GameApplication",
@@ -38,11 +38,6 @@ namespace Immersive.Framework.Authoring
         [Tooltip("Session duplicate-selection rule for ActorProfile selection across joined local Player Slots. Runtime selection state remains outside this asset.")]
         private PlayerActorSelectionDuplicatePolicy playerActorSelectionDuplicatePolicy =
             PlayerActorSelectionDuplicatePolicy.AllowDuplicates;
-
-        [SerializeField]
-        [Tooltip("Application-level frame pacing intent applied once during framework boot. Use Unity Defaults preserves current project and platform behavior.")]
-        private ApplicationFrameRatePolicy frameRatePolicy =
-            new ApplicationFrameRatePolicy();
 
         [SerializeField]
         [Tooltip("Concrete scene composition retained for the application lifetime. The scene is authored manually; the framework validates and consumes it without creating or repairing content.")]
@@ -91,12 +86,6 @@ namespace Immersive.Framework.Authoring
         public bool HasDefinedPlayerActorSelectionDuplicatePolicy =>
             playerActorSelectionDuplicatePolicy.IsDefinedPolicy();
 
-        /// <summary>
-        /// Application-level frame pacing intent. Runtime values are applied by FrameworkRuntimeHost.
-        /// </summary>
-        public ApplicationFrameRatePolicy FrameRatePolicy =>
-            frameRatePolicy;
-
         public PersistentContentComposition PersistentContent =>
             persistentContent;
 
@@ -106,6 +95,5 @@ namespace Immersive.Framework.Authoring
 
         public FrameworkValidationMode ValidationMode =>
             validationMode;
-
     }
 }

@@ -1,5 +1,6 @@
 using Immersive.Framework.Authoring;
 using Immersive.Framework.ApiStatus;
+using Immersive.Framework.Performance;
 
 namespace Immersive.Framework.Bootstrap
 {
@@ -15,7 +16,21 @@ namespace Immersive.Framework.Bootstrap
             if (settings == null)
             {
                 return FrameworkBootResult.Failed(
-                    "No framework settings asset was found. Open Project Settings > Immersive Framework and assign a Game Application.");
+                    "No framework settings asset was found. Open Project Settings > Immersive Framework and configure the project.");
+            }
+
+            ApplicationFrameRatePolicy frameRatePolicy =
+                settings.FrameRatePolicy;
+            if (frameRatePolicy == null)
+            {
+                return FrameworkBootResult.Failed(
+                    "Project Frame Rate policy is missing. Configure Performance > Frame Rate in Project Settings > Immersive Framework.");
+            }
+
+            if (!frameRatePolicy.TryValidate(out string frameRateIssue))
+            {
+                return FrameworkBootResult.Failed(
+                    $"Project Frame Rate policy is invalid. {frameRateIssue}");
             }
 
             var gameApplication = settings.ActiveGameApplication;

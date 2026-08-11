@@ -2,7 +2,6 @@ using Immersive.Framework.Authoring;
 using Immersive.Framework.Editor.Editor.PlayerParticipation;
 using Immersive.Framework.Editor.Editor.Settings;
 using Immersive.Framework.Editor.Editor.Validation;
-using Immersive.Framework.Performance;
 using Immersive.Framework.PlayerParticipation;
 using UnityEditor;
 using UnityEngine;
@@ -32,21 +31,6 @@ namespace Immersive.Framework.Editor.Editor.Authoring
                 "Default Player Session Profile (Required)",
                 "Reusable authored initial configuration resolved once when Player Session starts.");
 
-        private static readonly GUIContent FrameRateModeLabel =
-            new GUIContent(
-                "Mode",
-                "Use Unity Defaults preserves current values. Target Frame Rate disables VSync. Vertical Sync restores target frame rate to -1 and applies VSync Count.");
-
-        private static readonly GUIContent TargetFrameRateLabel =
-            new GUIContent(
-                "Target Frame Rate",
-                "Application.targetFrameRate requested during framework boot. Must be greater than zero.");
-
-        private static readonly GUIContent VSyncCountLabel =
-            new GUIContent(
-                "VSync Count",
-                "QualitySettings.vSyncCount requested during framework boot. Supported values are 1 through 4.");
-
         private static readonly GUIContent ContentSceneLabel =
             new GUIContent(
                 "Content Scene",
@@ -67,10 +51,6 @@ namespace Immersive.Framework.Editor.Editor.Authoring
         private SerializedProperty _playerSessionEnabled;
         private SerializedProperty _defaultPlayerSessionProfile;
         private SerializedProperty _playerActorSelectionDuplicatePolicy;
-        private SerializedProperty _frameRatePolicy;
-        private SerializedProperty _frameRateMode;
-        private SerializedProperty _targetFrameRate;
-        private SerializedProperty _vSyncCount;
         private SerializedProperty _persistentContent;
         private SerializedProperty _containerScene;
         private SerializedProperty _validationMode;
@@ -98,15 +78,6 @@ namespace Immersive.Framework.Editor.Editor.Authoring
             _playerActorSelectionDuplicatePolicy =
                 serializedObject.FindProperty(
                     "playerActorSelectionDuplicatePolicy");
-            _frameRatePolicy =
-                serializedObject.FindProperty("frameRatePolicy");
-            _frameRateMode =
-                _frameRatePolicy?.FindPropertyRelative("mode");
-            _targetFrameRate =
-                _frameRatePolicy?.FindPropertyRelative(
-                    "targetFrameRate");
-            _vSyncCount =
-                _frameRatePolicy?.FindPropertyRelative("vSyncCount");
             _persistentContent =
                 serializedObject.FindProperty("persistentContent");
             _containerScene =
@@ -130,7 +101,6 @@ namespace Immersive.Framework.Editor.Editor.Authoring
             DrawApplication();
             DrawStartup();
             DrawPlayerSession();
-            DrawPerformance();
             DrawPersistentContent();
             DrawValidation();
             DrawAdvancedDebug();
@@ -169,7 +139,7 @@ namespace Immersive.Framework.Editor.Editor.Authoring
                     ? "Active"
                     : activeGameApplication == null
                         ? "No Active Application"
-                        : $"Inactive â€” {activeGameApplication.ApplicationName}");
+                        : $"Inactive — {activeGameApplication.ApplicationName}");
 
             using (new EditorGUILayout.HorizontalScope())
             {
@@ -187,7 +157,7 @@ namespace Immersive.Framework.Editor.Editor.Authoring
                 if (GUILayout.Button(
                         new GUIContent(
                             "Open Framework Settings",
-                            "Opens the project-level Immersive Framework settings.")))
+                            "Opens the project-level Immersive Framework settings, including Performance / Frame Rate.")))
                 {
                     SettingsService.OpenProjectSettings(
                         "Project/Immersive Framework");
@@ -264,7 +234,7 @@ namespace Immersive.Framework.Editor.Editor.Authoring
             {
                 DrawStatusRow(
                     "Configuration",
-                    "Disabled â€” no Player Session is created.");
+                    "Disabled — no Player Session is created.");
                 return;
             }
 
@@ -295,7 +265,7 @@ namespace Immersive.Framework.Editor.Editor.Authoring
 
             DrawStatusRow(
                 "Configuration",
-                $"Ready â€” {resolution.Configuration.SupportedSlotCount} Slot(s), resolved once at Session creation.");
+                $"Ready — {resolution.Configuration.SupportedSlotCount} Slot(s), resolved once at Session creation.");
         }
 
         private void DrawActorSelectionPolicy()
@@ -307,69 +277,6 @@ namespace Immersive.Framework.Editor.Editor.Authoring
                 new GUIContent(
                     "Actor Selection Duplicates",
                     "Session Actor-selection policy. This is distinct from Player Session initial Actor Resolution."));
-
-        }
-
-        private void DrawPerformance()
-        {
-            DrawSection("Performance");
-            EditorGUILayout.LabelField(
-                "Frame Rate",
-                EditorStyles.miniBoldLabel);
-
-            if (_frameRateMode == null)
-            {
-                EditorGUILayout.HelpBox(
-                    "Application Frame Rate policy is unavailable. Reimport the Game Application asset and validate the package version.",
-                    MessageType.Error);
-                return;
-            }
-
-            EditorGUILayout.PropertyField(
-                _frameRateMode,
-                FrameRateModeLabel);
-
-            if (_frameRateMode.hasMultipleDifferentValues)
-            {
-                return;
-            }
-
-            ApplicationFrameRateMode mode =
-                (ApplicationFrameRateMode)
-                _frameRateMode.intValue;
-
-            switch (mode)
-            {
-                case ApplicationFrameRateMode.UseUnityDefaults:
-                    EditorGUILayout.HelpBox(
-                        "The framework will preserve the current Unity VSync and target frame-rate values.",
-                        MessageType.Info);
-                    break;
-
-                case ApplicationFrameRateMode.TargetFrameRate:
-                    EditorGUILayout.PropertyField(
-                        _targetFrameRate,
-                        TargetFrameRateLabel);
-                    EditorGUILayout.HelpBox(
-                        "Target Frame Rate mode applies VSync Count 0 before requesting the configured FPS.",
-                        MessageType.Info);
-                    break;
-
-                case ApplicationFrameRateMode.VerticalSync:
-                    EditorGUILayout.PropertyField(
-                        _vSyncCount,
-                        VSyncCountLabel);
-                    EditorGUILayout.HelpBox(
-                        "Vertical Sync mode restores Application.targetFrameRate to -1. Mobile platforms may ignore VSync Count.",
-                        MessageType.Info);
-                    break;
-
-                default:
-                    EditorGUILayout.HelpBox(
-                        $"Frame Rate Mode value '{_frameRateMode.intValue}' is invalid.",
-                        MessageType.Error);
-                    break;
-            }
         }
 
         private void DrawPersistentContent()
@@ -528,21 +435,9 @@ namespace Immersive.Framework.Editor.Editor.Authoring
                     typeof(SceneAsset),
                     false);
 
-                EditorGUILayout.EnumPopup(
-                    "Frame Rate Mode",
-                    _frameRateMode != null
-                        ? (ApplicationFrameRateMode)
-                            _frameRateMode.intValue
-                        : ApplicationFrameRateMode
-                            .UseUnityDefaults);
-
-                EditorGUILayout.IntField(
-                    "Target Frame Rate",
-                    _targetFrameRate?.intValue ?? 0);
-
-                EditorGUILayout.IntField(
-                    "VSync Count",
-                    _vSyncCount?.intValue ?? 0);
+                EditorGUILayout.TextField(
+                    "Frame Rate Authority",
+                    "Project Settings > Immersive Framework");
 
                 EditorGUILayout.TextField(
                     "Validation Status",

@@ -15,7 +15,8 @@ namespace Immersive.Framework.Bootstrap
 {
     /// <summary>
     /// Internal runtime bootstrap for the Immersive Framework.
-    /// It resolves and validates the active Game Application, then hands off to the first lifecycle owner.
+    /// It resolves and validates the active Game Application and project configuration,
+    /// then hands off to the first lifecycle owner.
     /// Activity, Actor, Input, Camera, Save and Pooling lifecycles are not owned here.
     /// </summary>
     [FrameworkApiStatus(FrameworkApiStatus.Internal, "Runtime implementation detail; not game-facing API.")]
@@ -46,8 +47,9 @@ namespace Immersive.Framework.Bootstrap
                     return;
                 }
 
-                if (!FrameworkRuntimeHost.TryCreate(
+                if (!FrameworkRuntimeHost.TryCreateWithProjectFrameRate(
                         result.GameApplication,
+                        settings.FrameRatePolicy,
                         explicitPlayerSessionProfile: null,
                         out FrameworkRuntimeHost runtimeHost,
                         out PlayerSessionInitializationResult playerSessionResolution,
