@@ -808,7 +808,67 @@ being frozen as package API.
 C1 authored Profile/backend selection          IMPLEMENTED
 C2 provider materialization + host ownership   IMPLEMENTED
 C3 Inspector/validation/Advanced Debug         IMPLEMENTED
-C4 technical composition QA                    PENDING
-C5 package certification                       PENDING
-D  FIRSTGAME game-facing usability proof       PENDING
+C4 technical composition QA                    CERTIFIED — 12/12
+C5 package certification                       CLOSED
+ADR018-C                                        CLOSED / CERTIFIED
+D  FIRSTGAME game-facing usability proof       NEXT
 ```
+
+
+### ADR018-C certification — 2026-08-11
+
+Technical composition QA passed against the canonical public composition path:
+
+```text
+[ADR018_QA_PRODUCT_COMPOSITION]
+status='Passed'
+cases='12'
+disabled='Passed'
+builtIn='Passed'
+custom='Passed'
+negative='7/7'
+noFallback='Passed'
+selectionIsolation='Passed'
+runtimeRequest='Passed'
+composition='ProgressionSaveApplicationComposition'
+```
+
+The certified boundary proves:
+
+```text
+Disabled Game Application -> explicit Disabled / no runtime
+Built-in JSON Profile -> JsonProgressionSaveStore
+Custom Provider Profile -> alternate IProgressionSaveStore
+selected custom backend executes real ProgressionSaveRuntime Save/Load
+missing/invalid/failing custom provider -> Rejected
+provider null store -> Rejected
+provider invalid BackendId -> Rejected
+provider exception -> Rejected
+Built-in selection does not consult an unselected Custom Provider
+Custom Provider failure never becomes Built-in JSON
+```
+
+Disposition:
+
+```text
+ADR018-C product composition behavior     CERTIFIED
+Game Application authoring surface        IMPLEMENTED
+ProgressionSaveProfile                    IMPLEMENTED
+Custom Provider materialization boundary  CERTIFIED
+application-scoped runtime ownership      CERTIFIED
+no-fallback rule                          CERTIFIED
+
+ProgressionSave authoring/composition API EXPERIMENTAL
+ProgressionSaveRuntime API                EXPERIMENTAL
+JsonProgressionSaveStore concrete API     EXPERIMENTAL
+```
+
+The Experimental API status is intentional.
+
+ADR018-C certifies that the implemented composition behaves correctly. It does not
+yet prove that the game-facing access/binding shape is the correct public product API.
+
+That promotion gate belongs to ADR018-D / FIRSTGAME real-consumer proof.
+
+ADR018-C is CLOSED / CERTIFIED for its accepted technical/product-composition
+boundary.

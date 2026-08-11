@@ -362,11 +362,39 @@ Custom Provider failure never produces JSON
 same public application composition path used by QA and bootstrap
 ```
 
-Status: PENDING.
+Status: CERTIFIED — 12/12.
+
+Terminal evidence:
+
+```text
+[ADR018_QA_PRODUCT_COMPOSITION]
+status='Passed'
+cases='12'
+disabled='Passed'
+builtIn='Passed'
+custom='Passed'
+negative='7/7'
+noFallback='Passed'
+selectionIsolation='Passed'
+runtimeRequest='Passed'
+composition='ProgressionSaveApplicationComposition'
+```
+
+### C5 — Certification
+
+```text
+product composition behavior      CERTIFIED
+technical QA                      CERTIFIED — 12/12
+no-fallback behavior              CERTIFIED
+application-scoped ownership      CERTIFIED
+runtime/code changes in C5        NONE
+API Stable promotion              DEFERRED TO FIRSTGAME
+ADR018-C                          CLOSED
+```
 
 ### FIRSTGAME handoff
 
-After C4 certification, FIRSTGAME must prove:
+ADR018-D is now the active gate. FIRSTGAME must prove:
 
 ```text
 a developer can find/create/configure the Profile
@@ -377,3 +405,32 @@ gameplay code can receive/use the scoped runtime without global lookup
 
 If gameplay injection needs a new package binding surface, prove the shape there first
 and migrate the mature solution back into the package.
+
+
+## ADR018-C closure decision
+
+ADR018-C is complete without introducing a global gameplay runtime accessor.
+
+This is intentional:
+
+```text
+technical composition correctness  proven in QA
+game-facing usability              not yet proven
+```
+
+The next step is therefore not another package abstraction.
+
+The next step is a real consumer:
+
+```text
+FIRSTGAME
+  create/configure Profile
+  run Built-in JSON
+  persist/load real game progression
+  replace backend
+  keep game-facing Progression Save request semantics unchanged
+  evaluate how gameplay receives the scoped ProgressionSaveRuntime
+```
+
+Only after that proof should the package freeze or extend a game-facing binding/
+injection surface.

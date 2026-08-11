@@ -55,7 +55,7 @@ a later reconciliation. It can identify a separate consumer or product issue.
 | [015](../ADRs/IF-ADR-015-Player-Provisioning-Commands-and-Consumer-Observation-Surface.md) | ACCEPTED | IMPLEMENTED for current boundary | CERTIFIED | Not proven on current model | Stage B consumer integration remains |
 | [016](../ADRs/IF-ADR-016-Player-Session-Initial-Configuration-and-Provisioning-Profiles.md) | ACCEPTED | IMPLEMENTED | CERTIFIED | Not proven on current model | Stage B Scene-/Manager-Provisioned integration remains |
 | [017](../ADRs/IF-ADR-017-Application-Frame-Rate-Project-Authority.md) | ACCEPTED / RECONCILED | IMPLEMENTED: Project Settings baseline, boot validation and explicit runtime application | CERTIFIED: Edit 13/13; Target 13/13; VSync 13/13; Defaults 13/13 | Not applicable for current project-baseline boundary | Stage A closed; Session override and Preferences integration remain future scope |
-| [018](../ADRs/IF-ADR-018-Progression-Save-Backend-Independence-and-Persistence-Domain-Boundaries.md) | ACCEPTED / RECONCILED | A core STABLE; B JSON CERTIFIED; C1-C3 Profile/provider/application composition implemented | A/B certified; C4 composition QA pending | D follows C certification | Explicit Built-in JSON vs Custom Provider; no fallback; host application-scope ownership |
+| [018](../ADRs/IF-ADR-018-Progression-Save-Backend-Independence-and-Persistence-Domain-Boundaries.md) | ACCEPTED / RECONCILED | A core STABLE; B JSON CERTIFIED; C product composition IMPLEMENTED | CERTIFIED: A backend conformance; B JSON recovery 18/18; C composition 12/12 | Not proven — ADR018-D next | Stage A closed; Built-in JSON vs Custom Provider and no-fallback composition certified |
 
 ## Planning estimates and attention order
 
@@ -82,7 +82,7 @@ reconciliation status. `Stage A` measures the accepted technical boundary.
 | 015 | 100% | 0% | 85% | Stage B | Integrate the current provisioning commands in a real consumer. |
 | 016 | 100% | 0% | 88% | Stage B | Prove Scene-/Manager-Provisioned integration in a real consumer. |
 | 017 | 100% | 0% | 100% | None | Stage A closed for project-level Frame Rate authority; Session override and Preferences integration are future scope. |
-| 018 | 95% | 5% | 65% | ADR018-C QA | C1-C3 product composition implemented. Prove Disabled/Built-in/Custom/negative no-fallback composition, then FIRSTGAME. |
+| 018 | 100% | 0% | 75% | ADR018-D FIRSTGAME | Stage A closed. Prove real Built-in JSON persistence, backend replacement and game-facing scoped-runtime usability in FIRSTGAME. |
 
 ### Attention summary
 
@@ -109,11 +109,12 @@ reconciliation status. `Stage A` measures the accepted technical boundary.
    VerticalSync **13/13** and UseUnityDefaults **13/13**. The E2E runs proved the
    preboot sentinel `47/2` was observed by the official runtime and then either
    transformed by the selected policy or preserved by `UseUnityDefaults`.
-6. **ADR-018 defines the Progression Save product direction.** Progression Save is
-   the canonical Framework persistence contract; Built-in JSON is the minimum
-   first-party backend; third-party/custom systems replace the backend through an
-   adapter without changing Framework consumers. Current APIs remain Experimental
-   until backend-contract conformance and JSON consistency hardening are certified.
+6. **ADR-018 Stage A is closed.** Backend conformance is certified, the built-in
+   JSON minimum backend passed recovery QA **18/18**, and Product Composition passed
+   **12/12** including **7/7** negative cases, no-fallback, selection isolation and
+   real runtime requests through the selected custom backend. Authoring/composition
+   APIs remain Experimental pending ADR018-D FIRSTGAME usability proof; this is a
+   Stage B promotion gate, not a Stage A technical gap.
 7. **ADR-010** retains **3%** of feature-owned adoption evidence and has no generic
    UX QA gate. ADR-003, ADR-004, ADR-005, ADR-006, ADR-007, ADR-011, ADR-012,
    ADR-013, ADR-015 and ADR-016 may still have Stage B portfolio work; that is not a
@@ -379,10 +380,11 @@ disabled Gameplay Action Map baselines across Pause -> Resume.
   fixture collision. Reopen only on a reproduced contract regression, documented
   contract change or newly accepted scope. Do not invent timeout/retry runtime.
 - ADR-011 requires no further Stage A work for the current accepted boundary. Direct Progress passed 32/32, Terminal passed 34/34, Route Startup parity passed 25/25 and Game Application Startup parity passed 20/20. Reopen only on a reproduced contract regression, documented contract change or newly accepted scope; do not add Player-specific runtime scope to this ADR.
-- ADR-018-A/B are closed/certified. ADR018-C1-C3 now provide Game Application
-  enablement, ProgressionSaveProfile, explicit Built-in JSON vs Custom Provider,
-  canonical application composition, FrameworkRuntimeHost ownership and designer-first
-  Inspectors. The active gate is C4 composition QA; FIRSTGAME follows certification.
+- ADR-018-A/B/C are closed/certified for the accepted Stage A boundary.
+  Product Composition passed 12/12 with 7/7 negative cases, no-fallback,
+  selection isolation and selected-backend runtime request proof. The active gate is
+  ADR018-D FIRSTGAME real-consumer usability; do not add a global runtime accessor
+  before that proof.
 - ADR-017 requires no further Stage A work for the accepted project-baseline
   boundary. Edit validation passed 13/13 and the TargetFrameRate, VerticalSync and
   UseUnityDefaults E2E paths each passed 13/13. Session-scoped override and
@@ -405,9 +407,10 @@ disabled Gameplay Action Map baselines across Pause -> Resume.
   QAFramework fixture-ownership defect and was corrected without weakening the
   regression.
 - ADR-011: **none remaining in the current accepted Stage A boundary**. Direct Progress is 32/32, Terminal is 34/34, Route Startup parity is 25/25 and Game Application Startup parity is 20/20. Public waiting/joining remains supporting Player-domain evidence, not an ADR-011 completion gate.
-- ADR-018-A backend conformance and ADR018-B JSON recovery are closed/certified.
-  No technical QA gap remains for the accepted backend-contract/recovery boundary.
-  New QA should follow ADR018-C only after the product composition contract exists.
+- ADR-018-A backend conformance, ADR018-B JSON recovery and ADR018-C Product
+  Composition are closed/certified. C passed 12/12 including 7/7 negative cases,
+  no-fallback, selection isolation and runtime request proof. No technical QA gap
+  remains for the accepted Stage A Progression Save boundary.
 - ADR-017: **none remaining in the current accepted Stage A boundary**.
   Edit 13/13, Target 13/13, VSync 13/13 and Defaults 13/13 are PASS; Project
   Settings authority and absence of GameApplication Frame Rate authority are proven.
@@ -439,9 +442,10 @@ disabled Gameplay Action Map baselines across Pause -> Resume.
   for ADR-003, ADR-012, ADR-015 and ADR-016.
 - Treat Camera consumer proof as separate from the certified single-output
   technical boundary.
-- ADR-018 FIRSTGAME proof begins only after explicit backend authoring/composition
-  exists. It must prove basic Built-in JSON persistence and backend replacement
-  without changing game-facing Progression Save request code.
+- ADR-018 is ready for FIRSTGAME Stage B. Prove real Built-in JSON persistence,
+  close/reopen/load behavior, backend replacement without changing game-facing
+  Progression Save request semantics, and the usability of explicit scoped runtime
+  delivery before freezing a game-facing access/binding API.
 - ADR-017 has no required FIRSTGAME gate for the current project-baseline
   boundary. A future Session override/player-facing preference surface should be
   proven in FIRSTGAME when that future scope is accepted.
@@ -476,3 +480,4 @@ The following are future contracts, not gaps in current ADR closure:
 - [ADR-017](../Reconciliation/IMMERSIVE-FRAMEWORK-ADR-017-RECONCILIATION-2026-08-11.md)
 - [ADR-018](../Reconciliation/IMMERSIVE-FRAMEWORK-ADR-018-RECONCILIATION-2026-08-11.md)
 - [ADR-018-A Certification](../Reconciliation/IMMERSIVE-FRAMEWORK-ADR-018-A-CERTIFICATION-2026-08-11.md)
+- [ADR-018-C Certification](../Reconciliation/IMMERSIVE-FRAMEWORK-ADR-018-C-CERTIFICATION-2026-08-11.md)

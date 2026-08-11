@@ -410,7 +410,109 @@ ADR018-B     CLOSED / CERTIFIED
 ADR018-C1    IMPLEMENTED
 ADR018-C2    IMPLEMENTED
 ADR018-C3    IMPLEMENTED
-ADR018-C4    QA PENDING
-ADR018-C5    PENDING
-FIRSTGAME    PENDING
+ADR018-C4    CERTIFIED — 12/12
+ADR018-C5    CLOSED
+ADR018-C     CLOSED / CERTIFIED
+FIRSTGAME    NEXT — ADR018-D
 ```
+
+
+## ADR018-C certification — 2026-08-11
+
+Package baseline:
+
+```text
+79ff6ce6820263fb6a101dc0fed2f3958bf22780
+feat(progression-save): add application backend authoring
+```
+
+Focused product-composition QA evidence supplied from Unity:
+
+```text
+[ADR018_QA_PRODUCT_COMPOSITION]
+status='Passed'
+cases='12'
+disabled='Passed'
+builtIn='Passed'
+custom='Passed'
+negative='7/7'
+noFallback='Passed'
+selectionIsolation='Passed'
+runtimeRequest='Passed'
+composition='ProgressionSaveApplicationComposition'
+```
+
+Certified product-composition chain:
+
+```text
+GameApplicationAsset
+  -> ProgressionSaveProfile
+  -> ProgressionSaveApplicationComposition
+  -> selected IProgressionSaveStore
+  -> ProgressionSaveRuntime
+  -> FrameworkRuntimeHost application scope
+```
+
+Certified backend selection:
+
+```text
+BuiltInJson       PASS
+CustomProvider    PASS
+```
+
+Certified negative semantics:
+
+```text
+missing Profile              Rejected
+missing custom Provider      Rejected
+invalid Provider             Rejected
+Provider create failure      Rejected
+Provider null Store          Rejected
+invalid BackendId            Rejected
+Provider exception           Rejected
+```
+
+No-fallback result:
+
+```text
+Custom Provider failure
+  -> no ProgressionSaveRuntime
+  -> no JsonProgressionSaveStore substitution
+  -> explicit Rejected composition
+```
+
+Disposition:
+
+```text
+ADR018-A backend contract                CLOSED / CERTIFIED
+ADR018-B built-in JSON                   CLOSED / CERTIFIED
+ADR018-C product composition             CLOSED / CERTIFIED
+
+Progression Save product surface         IMPLEMENTED
+technical composition QA                 CERTIFIED
+application-scoped ownership             CERTIFIED
+backend replacement through Provider     CERTIFIED
+silent fallback                          ABSENT / PROHIBITED
+
+game-facing runtime access UX            NOT YET PROVEN
+FIRSTGAME                                NEXT — ADR018-D
+```
+
+API maturity decision:
+
+```text
+Stable backend compatibility port        remains STABLE
+ProgressionSaveProfile                   remains Experimental
+ProgressionSaveStoreProviderAsset        remains Experimental
+ProgressionSaveApplicationComposition    remains Experimental
+ProgressionSaveRuntime                   remains Experimental
+JsonProgressionSaveStore concrete API    remains Experimental
+```
+
+This is not a technical QA gap.
+
+It preserves freedom to adjust the product-facing composition/access shape if the
+FIRSTGAME real-consumer proof reveals unnecessary ceremony, missing injection
+surface or an ergonomically wrong boundary.
+
+No package runtime change is required for ADR018-C certification.
