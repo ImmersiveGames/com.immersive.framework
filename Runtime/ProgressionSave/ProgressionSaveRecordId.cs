@@ -5,11 +5,15 @@ using Immersive.Framework.Identity;
 namespace Immersive.Framework.ProgressionSave
 {
     /// <summary>
-    /// API status: Experimental. Stable identity for one stored Progression Save record.
+    /// API status: Stable. Stable identity for one stored Progression Save record.
     /// This distinguishes the stored record from the logical slot that points to it.
     /// </summary>
-    [FrameworkApiStatus(FrameworkApiStatus.Experimental, "F21E Progression Save record identity primitive; backend-agnostic.")]
-    public readonly struct ProgressionSaveRecordId : IFrameworkIdentity, IEquatable<ProgressionSaveRecordId>
+    [FrameworkApiStatus(
+        FrameworkApiStatus.Stable,
+        "ADR018-A certified Progression Save record identity primitive.")]
+    public readonly struct ProgressionSaveRecordId :
+        IFrameworkIdentity,
+        IEquatable<ProgressionSaveRecordId>
     {
         private readonly FrameworkIdentityValue _value;
 
@@ -22,19 +26,25 @@ namespace Immersive.Framework.ProgressionSave
         {
             if (!value.IsValid)
             {
-                throw new ArgumentException("Progression Save record id must be valid.", nameof(value));
+                throw new ArgumentException(
+                    "Progression Save record id must be valid.",
+                    nameof(value));
             }
 
             _value = value;
         }
 
-        public FrameworkIdentityDomain Domain => FrameworkIdentityDomain.ProgressionSave;
+        public FrameworkIdentityDomain Domain =>
+            FrameworkIdentityDomain.ProgressionSave;
 
         public FrameworkIdentityValue Value => _value;
 
         public bool IsValid => _value.IsValid;
 
-        public FrameworkIdentityKey Key => new FrameworkIdentityKey(Domain, _value);
+        public FrameworkIdentityKey Key =>
+            new FrameworkIdentityKey(
+                Domain,
+                _value);
 
         public string StableText => Key.StableText;
 
@@ -45,7 +55,8 @@ namespace Immersive.Framework.ProgressionSave
 
         public override bool Equals(object obj)
         {
-            return obj is ProgressionSaveRecordId other && Equals(other);
+            return obj is ProgressionSaveRecordId other
+                && Equals(other);
         }
 
         public override int GetHashCode()
@@ -63,12 +74,16 @@ namespace Immersive.Framework.ProgressionSave
             return new ProgressionSaveRecordId(value);
         }
 
-        public static bool operator ==(ProgressionSaveRecordId left, ProgressionSaveRecordId right)
+        public static bool operator ==(
+            ProgressionSaveRecordId left,
+            ProgressionSaveRecordId right)
         {
             return left.Equals(right);
         }
 
-        public static bool operator !=(ProgressionSaveRecordId left, ProgressionSaveRecordId right)
+        public static bool operator !=(
+            ProgressionSaveRecordId left,
+            ProgressionSaveRecordId right)
         {
             return !left.Equals(right);
         }

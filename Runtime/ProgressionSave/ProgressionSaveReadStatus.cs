@@ -3,9 +3,13 @@ using Immersive.Framework.ApiStatus;
 namespace Immersive.Framework.ProgressionSave
 {
     /// <summary>
-    /// API status: Experimental. Result status for reading Progression Save slots or manifest data through the store port.
+    /// API status: Stable. Result status for backend-neutral Progression Save
+    /// read operations. The core store uses it for slot reads; optional catalog
+    /// capabilities may reuse the same explicit status vocabulary.
     /// </summary>
-    [FrameworkApiStatus(FrameworkApiStatus.Experimental, "F21E Progression Save read status primitive.")]
+    [FrameworkApiStatus(
+        FrameworkApiStatus.Stable,
+        "ADR018-A certified Progression Save read status primitive.")]
     public enum ProgressionSaveReadStatus
     {
         Unknown = 0,

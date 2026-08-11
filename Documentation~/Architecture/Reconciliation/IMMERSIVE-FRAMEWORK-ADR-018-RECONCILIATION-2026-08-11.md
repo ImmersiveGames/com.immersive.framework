@@ -234,3 +234,37 @@ The former public `ProgressionSaveManifestWriteResult` surface is reduced to an
 Internal implementation detail.
 
 API maturity remains Experimental until focused alternate-backend conformance passes.
+
+
+## ADR018-A certification — 2026-08-11
+
+Focused backend conformance passed:
+
+```text
+contractCases=9
+jsonCoreCases=13
+alternateCoreCases=13
+catalogCases=5
+negativeCases=7
+alternateCatalog=False
+consumerRuntime=ProgressionSaveRuntime
+semanticFingerprint=Missing>Saved>Loaded>Saved>Loaded>Deleted>Missing>Missing
+```
+
+Disposition:
+
+```text
+ADR018-A architecture             ACCEPTED
+core backend contract             STABLE
+backend independence              CERTIFIED
+optional catalog split            CERTIFIED
+JSON backend implementation       EXPERIMENTAL — ADR018-B
+ProgressionSaveRuntime            EXPERIMENTAL
+product authoring                 PENDING — ADR018-C
+FIRSTGAME                         PENDING — ADR018-D
+```
+
+The Stable compatibility promise is limited to the core backend port and the
+transitive semantic types required to implement it.
+
+The catalog capability and built-in JSON backend remain outside that promise.

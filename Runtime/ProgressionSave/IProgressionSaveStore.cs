@@ -3,14 +3,15 @@ using Immersive.Framework.ApiStatus;
 namespace Immersive.Framework.ProgressionSave
 {
     /// <summary>
-    /// API status: Experimental pending ADR018-A certification.
+    /// API status: Stable.
     /// Canonical backend-neutral persistence port required by ProgressionSaveRuntime.
-    /// Third-party and custom save-system adapters implement this core contract without
-    /// inheriting catalog/manifest authoring responsibilities.
+    ///
+    /// Third-party and custom save-system adapters implement this core contract
+    /// without inheriting catalog/manifest maintenance responsibilities.
     /// </summary>
     [FrameworkApiStatus(
-        FrameworkApiStatus.Experimental,
-        "ADR018-A core Progression Save backend contract; candidate for Stable after backend-conformance certification.")]
+        FrameworkApiStatus.Stable,
+        "ADR018-A certified core Progression Save backend contract. Breaking changes require ADR/migration.")]
     public interface IProgressionSaveStore
     {
         ProgressionSaveBackendId BackendId { get; }

@@ -5,10 +5,10 @@ using Immersive.Framework.Common;
 namespace Immersive.Framework.ProgressionSave
 {
     /// <summary>
-    /// API status: Experimental. Backend-agnostic result for writing one
+    /// API status: Stable. Backend-agnostic result for writing one
     /// Progression Save slot record.
     /// </summary>
-    [FrameworkApiStatus(FrameworkApiStatus.Experimental, "F21E Progression Save slot write result primitive.")]
+    [FrameworkApiStatus(FrameworkApiStatus.Stable, "ADR018-A certified Progression Save slot write result primitive.")]
     public readonly struct ProgressionSaveWriteResult : IEquatable<ProgressionSaveWriteResult>
     {
         public ProgressionSaveWriteResult(

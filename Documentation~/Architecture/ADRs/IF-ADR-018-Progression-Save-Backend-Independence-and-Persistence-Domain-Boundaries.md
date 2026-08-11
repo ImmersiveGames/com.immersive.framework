@@ -223,8 +223,39 @@ The built-in JSON backend implements both the core store and the optional read-o
 catalog capability. Its physical manifest mutation remains private implementation
 detail.
 
-The current API remains Experimental until ADR018-A focused backend-conformance QA
-passes. Stable promotion is a separate certification step after that evidence.
+ADR018-A backend-conformance QA passed on 2026-08-11 and the certified core
+backend contract is promoted to Stable.
+
+The Stable set is intentionally limited to:
+
+```text
+IProgressionSaveStore
+ProgressionSaveBackendId
+ProgressionSaveSlotId
+ProgressionSaveRecordId
+ProgressionSavePayloadFormat
+ProgressionSavePayload
+ProgressionSaveSlotRecord
+ProgressionSaveReadStatus
+ProgressionSaveReadResult
+ProgressionSaveWriteStatus
+ProgressionSaveWriteResult
+ProgressionSaveDeleteStatus
+ProgressionSaveDeleteResult
+```
+
+The following remain Experimental:
+
+```text
+ProgressionSaveRuntime
+IProgressionSaveCatalog
+manifest/catalog model
+JsonProgressionSaveStore
+request orchestration model
+```
+
+`ProgressionSaveSlotRecord.ToManifestEntry()` is internalized so the Stable core
+record does not leak the Experimental catalog model.
 
 ### 7. Built-in JSON backend is official minimum functionality
 
@@ -447,20 +478,35 @@ Current state:
 A1 core contract reduced                 IMPLEMENTED
 A2 optional catalog capability split     IMPLEMENTED
 A3 built-in JSON aligned                 IMPLEMENTED
-A4 focused alternate-backend QA          PENDING
-A5 Stable promotion/certification         PENDING
+A4 focused alternate-backend QA          CERTIFIED
+A5 Stable core promotion/certification   IMPLEMENTED
+ADR018-A                                 CLOSED / 100%
 ```
 
-Focused QA must run the same `ProgressionSaveRuntime` request suite against:
+Focused QA ran the same `ProgressionSaveRuntime` request suite against:
 
 ```text
 JsonProgressionSaveStore
 QA in-memory store implementing only IProgressionSaveStore
 ```
 
-The alternate QA backend exists only to prove backend independence.
+Certified terminal evidence:
 
-Stable promotion is allowed only after A4 passes.
+```text
+[ADR018_QA_BACKEND_CONFORMANCE]
+status='Passed'
+contractCases='9'
+jsonCoreCases='13'
+alternateCoreCases='13'
+catalogCases='5'
+negativeCases='7'
+alternateCatalog='False'
+consumerRuntime='ProgressionSaveRuntime'
+semanticFingerprint='Missing>Saved>Loaded>Saved>Loaded>Deleted>Missing>Missing'
+```
+
+The alternate QA backend proved catalog support is optional and that the core
+consumer semantics are backend-independent.
 
 ### ADR018-B — Built-in JSON minimum backend
 

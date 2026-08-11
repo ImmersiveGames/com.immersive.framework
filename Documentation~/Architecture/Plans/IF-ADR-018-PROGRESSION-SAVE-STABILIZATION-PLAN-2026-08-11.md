@@ -55,14 +55,14 @@ IProgressionSaveCatalog
 Manifest mutation is backend-internal and `ContainsSlot` is not part of the core
 compatibility promise.
 
-Remaining Stable gate:
+ADR018-A Stable gate is complete.
 
-```text
-prove identical ProgressionSaveRuntime consumer behavior against JSON and a backend
-that implements only IProgressionSaveStore
-```
+The identical `ProgressionSaveRuntime` consumer suite passed against both built-in
+JSON and a core-only in-memory backend. The core port and its transitive public
+adapter primitives are now Stable.
 
-Result/status semantics remain under focused conformance QA before promotion.
+Catalog, JSON implementation and runtime orchestration remain Experimental and are
+not part of the ADR018-A compatibility promise.
 
 ## ADR018-A — Backend contract stabilization
 
@@ -79,9 +79,9 @@ DONE  separate optional IProgressionSaveCatalog.ReadManifest
 DONE  make built-in JSON manifest writes private backend responsibility
 DONE  remove public ContainsSlot requirement
 DONE  document adapter contract
-TODO  create QA alternate in-memory backend
-TODO  run identical request suite against JSON and in-memory backend
-TODO  certify/promote the transitive core contract after QA
+DONE  create QA alternate in-memory backend
+DONE  run identical request suite against JSON and in-memory backend
+DONE  certify/promote the transitive core contract after QA
 ```
 
 ### Out of scope

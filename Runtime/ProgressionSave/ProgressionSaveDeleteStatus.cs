@@ -3,9 +3,12 @@ using Immersive.Framework.ApiStatus;
 namespace Immersive.Framework.ProgressionSave
 {
     /// <summary>
-    /// API status: Experimental. Result status for deleting Progression Save slot data through the store port.
+    /// API status: Stable. Result status for deleting Progression Save slot data
+    /// through the backend-neutral store port.
     /// </summary>
-    [FrameworkApiStatus(FrameworkApiStatus.Experimental, "F21E Progression Save delete status primitive.")]
+    [FrameworkApiStatus(
+        FrameworkApiStatus.Stable,
+        "ADR018-A certified Progression Save delete status primitive.")]
     public enum ProgressionSaveDeleteStatus
     {
         Unknown = 0,
