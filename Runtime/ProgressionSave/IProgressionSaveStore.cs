@@ -3,19 +3,17 @@ using Immersive.Framework.ApiStatus;
 namespace Immersive.Framework.ProgressionSave
 {
     /// <summary>
-    /// API status: Experimental. Replaceable storage port for Progression Save.
-    /// Concrete JSON, cloud, encrypted or premium plugin backends must implement this port without changing framework consumers.
+    /// API status: Experimental pending ADR018-A certification.
+    /// Canonical backend-neutral persistence port required by ProgressionSaveRuntime.
+    /// Third-party and custom save-system adapters implement this core contract without
+    /// inheriting catalog/manifest authoring responsibilities.
     /// </summary>
-    [FrameworkApiStatus(FrameworkApiStatus.Experimental, "F21E Progression Save backend port; no concrete backend.")]
+    [FrameworkApiStatus(
+        FrameworkApiStatus.Experimental,
+        "ADR018-A core Progression Save backend contract; candidate for Stable after backend-conformance certification.")]
     public interface IProgressionSaveStore
     {
         ProgressionSaveBackendId BackendId { get; }
-
-        ProgressionSaveManifestReadResult ReadManifest();
-
-        ProgressionSaveManifestWriteResult WriteManifest(ProgressionSaveManifest manifest);
-
-        bool ContainsSlot(ProgressionSaveSlotId slotId);
 
         ProgressionSaveReadResult ReadSlot(ProgressionSaveSlotId slotId);
 

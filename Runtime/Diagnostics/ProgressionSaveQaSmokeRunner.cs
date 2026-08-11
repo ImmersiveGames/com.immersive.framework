@@ -12,42 +12,124 @@ using UnityEngine;
 namespace Immersive.Framework.Diagnostics
 {
     /// <summary>
-    /// API status: Development Tooling. Synthetic smoke for F21F JSON Progression Save backend.
-    /// It writes only under Unity temporary cache QA storage and removes that storage before completion.
+    /// API status: Development Tooling. Synthetic smoke for the built-in minimum
+    /// JSON Progression Save backend.
+    ///
+    /// Core persistence is exercised through IProgressionSaveStore. Manifest
+    /// projection is exercised separately through IProgressionSaveCatalog.
+    /// Physical manifest mutation remains an internal backend responsibility.
     /// </summary>
-    [FrameworkApiStatus(FrameworkApiStatus.DevelopmentTooling, "F21F JSON Progression Save backend diagnostics smoke.")]
+    [FrameworkApiStatus(
+        FrameworkApiStatus.DevelopmentTooling,
+        "ADR018-A built-in JSON Progression Save diagnostics smoke aligned with core store plus optional catalog capability.")]
     internal static class ProgressionSaveQaSmokeRunner
     {
-        internal const string SmokeName = "Progression Save JSON Backend Diagnostics Smoke";
-        private const string QaRootName = "ProgressionSaveJsonBackendSmoke";
+        internal const string SmokeName =
+            "Progression Save JSON Backend Diagnostics Smoke";
 
-        internal static Task<bool> RunDiagnosticsSmokeAsync(FrameworkLogger logger, string source)
+        private const string QaRootName =
+            "ProgressionSaveJsonBackendSmoke";
+
+        internal static Task<bool> RunDiagnosticsSmokeAsync(
+            FrameworkLogger logger,
+            string source)
         {
             if (logger == null)
             {
                 return Task.FromResult(false);
             }
 
-            string normalizedSource = source.NormalizeTextOrFallback(nameof(ProgressionSaveQaSmokeRunner));
-            string rootDirectory = Path.Combine(Application.temporaryCachePath, "ImmersiveFramework", "Qa", QaRootName);
-            var store = new JsonProgressionSaveStore(rootDirectory, ProgressionSaveBackendId.From("json.qa"));
-            var primarySlot = ProgressionSaveSlotId.From("qa.slot.primary");
-            var missingSlot = ProgressionSaveSlotId.From("qa.slot.missing");
-            var corruptSlot = ProgressionSaveSlotId.From("qa.slot.corrupt");
+            string normalizedSource =
+                source.NormalizeTextOrFallback(
+                    nameof(ProgressionSaveQaSmokeRunner));
+
+            string rootDirectory =
+                Path.Combine(
+                    Application.temporaryCachePath,
+                    "ImmersiveFramework",
+                    "Qa",
+                    QaRootName);
+
+            var store =
+                new JsonProgressionSaveStore(
+                    rootDirectory,
+                    ProgressionSaveBackendId.From(
+                        "json.qa"));
+
+            IProgressionSaveStore coreStore =
+                store;
+
+            IProgressionSaveCatalog catalog =
+                store;
+
+            var primarySlot =
+                ProgressionSaveSlotId.From(
+                    "qa.slot.primary");
+
+            var missingSlot =
+                ProgressionSaveSlotId.From(
+                    "qa.slot.missing");
+
+            var corruptSlot =
+                ProgressionSaveSlotId.From(
+                    "qa.slot.corrupt");
 
             Cleanup(store);
 
             try
             {
-                bool contractsPassed = ValidateContracts(logger, normalizedSource, store, primarySlot);
-                bool missingPassed = ValidateMissing(logger, store, missingSlot);
-                bool writeReadPassed = ValidateWriteRead(logger, store, primarySlot, out var record);
-                bool manifestPassed = ValidateManifest(logger, store, primarySlot, record);
-                bool corruptPassed = ValidateCorruptSlot(logger, store, corruptSlot);
-                bool deletePassed = ValidateDelete(logger, store, primarySlot, corruptSlot);
-                bool boundaryPassed = ValidateBoundary(logger, store);
+                bool contractsPassed =
+                    ValidateContracts(
+                        logger,
+                        normalizedSource,
+                        store,
+                        coreStore,
+                        catalog,
+                        primarySlot);
 
-                return Task.FromResult(contractsPassed
+                bool missingPassed =
+                    ValidateMissing(
+                        logger,
+                        coreStore,
+                        catalog,
+                        missingSlot);
+
+                bool writeReadPassed =
+                    ValidateWriteRead(
+                        logger,
+                        coreStore,
+                        primarySlot,
+                        out ProgressionSaveSlotRecord record);
+
+                bool manifestPassed =
+                    ValidateManifest(
+                        logger,
+                        catalog,
+                        primarySlot,
+                        record);
+
+                bool corruptPassed =
+                    ValidateCorruptSlot(
+                        logger,
+                        store,
+                        corruptSlot);
+
+                bool deletePassed =
+                    ValidateDelete(
+                        logger,
+                        store,
+                        coreStore,
+                        catalog,
+                        primarySlot,
+                        corruptSlot);
+
+                bool boundaryPassed =
+                    ValidateBoundary(
+                        logger,
+                        store);
+
+                return Task.FromResult(
+                    contractsPassed
                     && missingPassed
                     && writeReadPassed
                     && manifestPassed
@@ -60,9 +142,16 @@ namespace Immersive.Framework.Diagnostics
                 logger.Warning(
                     "QA Progression Save JSON Backend Diagnostics Smoke failed with exception.",
                     LogFields.Of(
-                        LogFields.Field("source", normalizedSource),
-                        LogFields.Field("exception", exception.GetType().Name),
-                        LogFields.Field("message", exception.Message)));
+                        LogFields.Field(
+                            "source",
+                            normalizedSource),
+                        LogFields.Field(
+                            "exception",
+                            exception.GetType().Name),
+                        LogFields.Field(
+                            "message",
+                            exception.Message)));
+
                 return Task.FromResult(false);
             }
             finally
@@ -75,28 +164,61 @@ namespace Immersive.Framework.Diagnostics
             FrameworkLogger logger,
             string source,
             JsonProgressionSaveStore store,
+            IProgressionSaveStore coreStore,
+            IProgressionSaveCatalog catalog,
             ProgressionSaveSlotId primarySlot)
         {
-            string physicalPath = store.ToPhysicalSlotPath(primarySlot);
-            bool passed = store.BackendId is { IsValid: true, StableText: "ProgressionSave:json.qa" }
-                && !string.IsNullOrWhiteSpace(store.RootDirectory)
-                && !string.IsNullOrWhiteSpace(store.SlotDirectory)
-                && !string.IsNullOrWhiteSpace(store.ManifestPath)
-                && primarySlot.StableText == "ProgressionSave:qa.slot.primary"
-                && !physicalPath.Contains(primarySlot.StableText)
-                && physicalPath.EndsWith(".json", StringComparison.OrdinalIgnoreCase);
+            string physicalPath =
+                store.ToPhysicalSlotPath(
+                    primarySlot);
+
+            bool passed =
+                store.BackendId.IsValid
+                && store.BackendId.StableText ==
+                    "ProgressionSave:json.qa"
+                && ReferenceEquals(
+                    store,
+                    coreStore)
+                && ReferenceEquals(
+                    store,
+                    catalog)
+                && !string.IsNullOrWhiteSpace(
+                    store.RootDirectory)
+                && !string.IsNullOrWhiteSpace(
+                    store.SlotDirectory)
+                && !string.IsNullOrWhiteSpace(
+                    store.ManifestPath)
+                && primarySlot.StableText ==
+                    "ProgressionSave:qa.slot.primary"
+                && !physicalPath.Contains(
+                    primarySlot.StableText)
+                && physicalPath.EndsWith(
+                    ".json",
+                    StringComparison.OrdinalIgnoreCase);
 
             LogStep(
                 logger,
                 "contracts",
                 passed,
                 LogFields.Of(
-                    LogFields.Field("source", source),
-                    LogFields.Field("backend", nameof(JsonProgressionSaveStore)),
-                    LogFields.Field("backendId", store.BackendId.StableText),
-                    LogFields.Field("slot", primarySlot.StableText),
-                    LogFields.Field("physicalPathIsAdapterDetail", !physicalPath.Contains(primarySlot.StableText)),
-                    LogFields.Field("storageFormatVersion", JsonProgressionSaveStore.StorageFormatVersion)));
+                    LogFields.Field(
+                        "source",
+                        source),
+                    LogFields.Field(
+                        "backend",
+                        nameof(JsonProgressionSaveStore)),
+                    LogFields.Field(
+                        "storePort",
+                        nameof(IProgressionSaveStore)),
+                    LogFields.Field(
+                        "catalogPort",
+                        nameof(IProgressionSaveCatalog)),
+                    LogFields.Field(
+                        "backendId",
+                        store.BackendId.StableText),
+                    LogFields.Field(
+                        "storageFormatVersion",
+                        JsonProgressionSaveStore.StorageFormatVersion)));
 
             return passed;
         }
@@ -104,26 +226,42 @@ namespace Immersive.Framework.Diagnostics
         private static bool ValidateMissing(
             FrameworkLogger logger,
             IProgressionSaveStore store,
+            IProgressionSaveCatalog catalog,
             ProgressionSaveSlotId missingSlot)
         {
-            var manifestRead = store.ReadManifest();
-            var slotRead = store.ReadSlot(missingSlot);
-            var delete = store.DeleteSlot(missingSlot);
+            ProgressionSaveManifestReadResult manifestRead =
+                catalog.ReadManifest();
 
-            bool passed = manifestRead is { Status: ProgressionSaveReadStatus.Missing, HasManifest: false }
-                && slotRead is { Status: ProgressionSaveReadStatus.Missing, HasRecord: false }
-                && delete.Status == ProgressionSaveDeleteStatus.Missing
-                && !store.ContainsSlot(missingSlot);
+            ProgressionSaveReadResult slotRead =
+                store.ReadSlot(missingSlot);
+
+            ProgressionSaveDeleteResult delete =
+                store.DeleteSlot(missingSlot);
+
+            bool passed =
+                manifestRead.Status ==
+                    ProgressionSaveReadStatus.Missing
+                && !manifestRead.HasManifest
+                && slotRead.Status ==
+                    ProgressionSaveReadStatus.Missing
+                && !slotRead.HasRecord
+                && delete.Status ==
+                    ProgressionSaveDeleteStatus.Missing;
 
             LogStep(
                 logger,
                 "missing",
                 passed,
                 LogFields.Of(
-                    LogFields.Field("manifestStatus", manifestRead.Status.ToString()),
-                    LogFields.Field("slotStatus", slotRead.Status.ToString()),
-                    LogFields.Field("deleteStatus", delete.Status.ToString()),
-                    LogFields.Field("contains", store.ContainsSlot(missingSlot))));
+                    LogFields.Field(
+                        "manifestStatus",
+                        manifestRead.Status.ToString()),
+                    LogFields.Field(
+                        "slotStatus",
+                        slotRead.Status.ToString()),
+                    LogFields.Field(
+                        "deleteStatus",
+                        delete.Status.ToString())));
 
             return passed;
         }
@@ -134,66 +272,116 @@ namespace Immersive.Framework.Diagnostics
             ProgressionSaveSlotId primarySlot,
             out ProgressionSaveSlotRecord record)
         {
-            record = CreateRecord(primarySlot, "qa.record.primary", "QA Primary Slot", "write-read");
-            var write = store.WriteSlot(record);
-            var read = store.ReadSlot(primarySlot);
-            bool contains = store.ContainsSlot(primarySlot);
+            record =
+                CreateRecord(
+                    primarySlot,
+                    "qa.record.primary",
+                    "QA Primary Slot",
+                    "write-read");
 
-            bool passed = write.Written
-                && read is { Status: ProgressionSaveReadStatus.Found, HasRecord: true }
-                && read.Record == record
-                && contains;
+            ProgressionSaveWriteResult write =
+                store.WriteSlot(record);
+
+            ProgressionSaveReadResult read =
+                store.ReadSlot(primarySlot);
+
+            bool stored =
+                read.Status ==
+                    ProgressionSaveReadStatus.Found
+                && read.HasRecord;
+
+            bool passed =
+                write.Written
+                && stored
+                && read.Record == record;
 
             LogStep(
                 logger,
                 "write-read",
                 passed,
                 LogFields.Of(
-                    LogFields.Field("writeStatus", write.Status.ToString()),
-                    LogFields.Field("readStatus", read.Status.ToString()),
-                    LogFields.Field("contains", contains),
-                    LogFields.Field("slot", primarySlot.StableText),
-                    LogFields.Field("record", record.RecordId.StableText),
-                    LogFields.Field("payloadFormat", record.Payload.Format.ToString()),
-                    LogFields.Field("payloadBytes", record.Payload.ByteCount)));
+                    LogFields.Field(
+                        "writeStatus",
+                        write.Status.ToString()),
+                    LogFields.Field(
+                        "readStatus",
+                        read.Status.ToString()),
+                    LogFields.Field(
+                        "stored",
+                        stored),
+                    LogFields.Field(
+                        "slot",
+                        primarySlot.StableText),
+                    LogFields.Field(
+                        "record",
+                        record.RecordId.StableText),
+                    LogFields.Field(
+                        "payloadBytes",
+                        record.Payload.ByteCount)));
 
             return passed;
         }
 
         private static bool ValidateManifest(
             FrameworkLogger logger,
-            IProgressionSaveStore store,
+            IProgressionSaveCatalog catalog,
             ProgressionSaveSlotId primarySlot,
             ProgressionSaveSlotRecord record)
         {
-            var manifestRead = store.ReadManifest();
-            var entry = default(ProgressionSaveManifestEntry);
-            bool hasEntry = manifestRead.HasManifest && manifestRead.Manifest.TryGetEntry(primarySlot, out entry);
-            bool entryMatchesRecord = hasEntry
-                && entry.RecordId == record.RecordId
-                && entry.PayloadFormat == record.Payload.Format
-                && entry.PayloadByteCount == record.Payload.ByteCount;
+            ProgressionSaveManifestReadResult manifestRead =
+                catalog.ReadManifest();
 
-            var rewrite = manifestRead.HasManifest
-                ? store.WriteManifest(manifestRead.Manifest)
-                : ProgressionSaveManifestWriteResult.FailedResult("Manifest was not available for rewrite.");
+            ProgressionSaveManifestEntry entry =
+                default;
 
-            bool passed = manifestRead is { Status: ProgressionSaveReadStatus.Found, HasManifest: true, Manifest: { Count: 1 } }
+            bool hasEntry =
+                manifestRead.HasManifest
+                && manifestRead.Manifest.TryGetEntry(
+                    primarySlot,
+                    out entry);
+
+            bool entryMatchesRecord =
+                hasEntry
+                && entry.RecordId ==
+                    record.RecordId
+                && entry.PayloadFormat ==
+                    record.Payload.Format
+                && entry.PayloadByteCount ==
+                    record.Payload.ByteCount;
+
+            bool passed =
+                manifestRead.Status ==
+                    ProgressionSaveReadStatus.Found
+                && manifestRead.HasManifest
+                && manifestRead.Manifest.Count == 1
                 && hasEntry
-                && entryMatchesRecord
-                && rewrite.Written;
+                && entryMatchesRecord;
 
             LogStep(
                 logger,
-                "manifest",
+                "catalog-projection",
                 passed,
                 LogFields.Of(
-                    LogFields.Field("manifestStatus", manifestRead.Status.ToString()),
-                    LogFields.Field("hasManifest", manifestRead.HasManifest),
-                    LogFields.Field("entries", manifestRead.HasManifest ? manifestRead.Manifest.Count : 0),
-                    LogFields.Field("hasEntry", hasEntry),
-                    LogFields.Field("entryMatchesRecord", entryMatchesRecord),
-                    LogFields.Field("rewriteStatus", rewrite.Status.ToString())));
+                    LogFields.Field(
+                        "catalogPort",
+                        nameof(IProgressionSaveCatalog)),
+                    LogFields.Field(
+                        "manifestStatus",
+                        manifestRead.Status.ToString()),
+                    LogFields.Field(
+                        "entries",
+                        manifestRead.HasManifest
+                            ? manifestRead.Manifest.Count
+                            : 0),
+                    LogFields.Field(
+                        "hasEntry",
+                        hasEntry),
+                    LogFields.Field(
+                        "entryMatchesRecord",
+                        entryMatchesRecord),
+                    LogFields.Field(
+                        "manifestMutation",
+                        "backend-internal")));
 
             return passed;
         }
@@ -203,80 +391,178 @@ namespace Immersive.Framework.Diagnostics
             JsonProgressionSaveStore store,
             ProgressionSaveSlotId corruptSlot)
         {
-            Directory.CreateDirectory(store.SlotDirectory);
-            File.WriteAllText(store.ToPhysicalSlotPath(corruptSlot), "{ not-valid-json", Encoding.UTF8);
+            Directory.CreateDirectory(
+                store.SlotDirectory);
 
-            var read = store.ReadSlot(corruptSlot);
-            bool passed = read is { Status: ProgressionSaveReadStatus.Corrupt, Failed: true, HasRecord: false }
-                && store.ContainsSlot(corruptSlot);
+            string corruptPath =
+                store.ToPhysicalSlotPath(
+                    corruptSlot);
+
+            File.WriteAllText(
+                corruptPath,
+                "{ not-valid-json",
+                Encoding.UTF8);
+
+            ProgressionSaveReadResult read =
+                store.ReadSlot(corruptSlot);
+
+            bool physicalArtifactExists =
+                File.Exists(corruptPath);
+
+            bool passed =
+                read.Status ==
+                    ProgressionSaveReadStatus.Corrupt
+                && read.Failed
+                && !read.HasRecord
+                && physicalArtifactExists;
 
             LogStep(
                 logger,
                 "corrupt-slot",
                 passed,
                 LogFields.Of(
-                    LogFields.Field("readStatus", read.Status.ToString()),
-                    LogFields.Field("failed", read.Failed),
-                    LogFields.Field("hasRecord", read.HasRecord),
-                    LogFields.Field("contains", store.ContainsSlot(corruptSlot))));
+                    LogFields.Field(
+                        "readStatus",
+                        read.Status.ToString()),
+                    LogFields.Field(
+                        "failed",
+                        read.Failed),
+                    LogFields.Field(
+                        "hasRecord",
+                        read.HasRecord),
+                    LogFields.Field(
+                        "physicalArtifactExists",
+                        physicalArtifactExists)));
 
             return passed;
         }
 
         private static bool ValidateDelete(
             FrameworkLogger logger,
+            JsonProgressionSaveStore jsonStore,
             IProgressionSaveStore store,
+            IProgressionSaveCatalog catalog,
             ProgressionSaveSlotId primarySlot,
             ProgressionSaveSlotId corruptSlot)
         {
-            var primaryDelete = store.DeleteSlot(primarySlot);
-            var corruptDelete = store.DeleteSlot(corruptSlot);
-            var primaryRead = store.ReadSlot(primarySlot);
-            var manifestRead = store.ReadManifest();
-            bool manifestHasPrimary = manifestRead.HasManifest && manifestRead.Manifest.ContainsSlot(primarySlot);
+            ProgressionSaveDeleteResult primaryDelete =
+                store.DeleteSlot(primarySlot);
 
-            bool passed = primaryDelete.Status == ProgressionSaveDeleteStatus.Deleted
-                && corruptDelete.Status == ProgressionSaveDeleteStatus.Deleted
-                && primaryRead.Status == ProgressionSaveReadStatus.Missing
-                && !store.ContainsSlot(primarySlot)
-                && !store.ContainsSlot(corruptSlot)
-                && manifestRead is { Status: ProgressionSaveReadStatus.Found, HasManifest: true }
-                && !manifestHasPrimary;
+            ProgressionSaveDeleteResult corruptDelete =
+                store.DeleteSlot(corruptSlot);
+
+            ProgressionSaveReadResult primaryRead =
+                store.ReadSlot(primarySlot);
+
+            ProgressionSaveReadResult corruptRead =
+                store.ReadSlot(corruptSlot);
+
+            ProgressionSaveManifestReadResult manifestRead =
+                catalog.ReadManifest();
+
+            bool manifestHasPrimary =
+                manifestRead.HasManifest
+                && manifestRead.Manifest.ContainsSlot(
+                    primarySlot);
+
+            bool primaryPhysicalMissing =
+                !File.Exists(
+                    jsonStore.ToPhysicalSlotPath(
+                        primarySlot));
+
+            bool corruptPhysicalMissing =
+                !File.Exists(
+                    jsonStore.ToPhysicalSlotPath(
+                        corruptSlot));
+
+            bool passed =
+                primaryDelete.Status ==
+                    ProgressionSaveDeleteStatus.Deleted
+                && corruptDelete.Status ==
+                    ProgressionSaveDeleteStatus.Deleted
+                && primaryRead.Status ==
+                    ProgressionSaveReadStatus.Missing
+                && corruptRead.Status ==
+                    ProgressionSaveReadStatus.Missing
+                && manifestRead.Status ==
+                    ProgressionSaveReadStatus.Found
+                && manifestRead.HasManifest
+                && !manifestHasPrimary
+                && primaryPhysicalMissing
+                && corruptPhysicalMissing;
 
             LogStep(
                 logger,
                 "delete-cleanup",
                 passed,
                 LogFields.Of(
-                    LogFields.Field("primaryDelete", primaryDelete.Status.ToString()),
-                    LogFields.Field("corruptDelete", corruptDelete.Status.ToString()),
-                    LogFields.Field("primaryRead", primaryRead.Status.ToString()),
-                    LogFields.Field("manifestStatus", manifestRead.Status.ToString()),
-                    LogFields.Field("manifestEntries", manifestRead.HasManifest ? manifestRead.Manifest.Count : 0),
-                    LogFields.Field("manifestHasPrimary", manifestHasPrimary),
-                    LogFields.Field("containsPrimary", store.ContainsSlot(primarySlot)),
-                    LogFields.Field("containsCorrupt", store.ContainsSlot(corruptSlot))));
+                    LogFields.Field(
+                        "primaryDelete",
+                        primaryDelete.Status.ToString()),
+                    LogFields.Field(
+                        "corruptDelete",
+                        corruptDelete.Status.ToString()),
+                    LogFields.Field(
+                        "primaryRead",
+                        primaryRead.Status.ToString()),
+                    LogFields.Field(
+                        "corruptRead",
+                        corruptRead.Status.ToString()),
+                    LogFields.Field(
+                        "manifestStatus",
+                        manifestRead.Status.ToString()),
+                    LogFields.Field(
+                        "manifestHasPrimary",
+                        manifestHasPrimary),
+                    LogFields.Field(
+                        "primaryPhysicalMissing",
+                        primaryPhysicalMissing),
+                    LogFields.Field(
+                        "corruptPhysicalMissing",
+                        corruptPhysicalMissing)));
 
             return passed;
         }
 
-        private static bool ValidateBoundary(FrameworkLogger logger, JsonProgressionSaveStore store)
+        private static bool ValidateBoundary(
+            FrameworkLogger logger,
+            JsonProgressionSaveStore store)
         {
-            bool passed = store.BackendId.StableText == "ProgressionSave:json.qa";
+            bool passed =
+                store.BackendId.StableText ==
+                    "ProgressionSave:json.qa"
+                && store is IProgressionSaveStore
+                && store is IProgressionSaveCatalog;
 
             LogStep(
                 logger,
                 "canonical-boundary",
                 passed,
                 LogFields.Of(
-                    LogFields.Field("namespace", "Immersive.Framework.ProgressionSave"),
-                    LogFields.Field("backend", nameof(JsonProgressionSaveStore)),
-                    LogFields.Field("storePort", nameof(IProgressionSaveStore)),
-                    LogFields.Field("snapshot", "none"),
-                    LogFields.Field("preferences", "none"),
-                    LogFields.Field("playerPrefs", "none"),
-                    LogFields.Field("runtimeRequestPath", "none"),
-                    LogFields.Field("ui", "none")));
+                    LogFields.Field(
+                        "namespace",
+                        "Immersive.Framework.ProgressionSave"),
+                    LogFields.Field(
+                        "backend",
+                        nameof(JsonProgressionSaveStore)),
+                    LogFields.Field(
+                        "storePort",
+                        nameof(IProgressionSaveStore)),
+                    LogFields.Field(
+                        "catalogPort",
+                        nameof(IProgressionSaveCatalog)),
+                    LogFields.Field(
+                        "manifestMutation",
+                        "backend-internal"),
+                    LogFields.Field(
+                        "snapshot",
+                        "none"),
+                    LogFields.Field(
+                        "preferences",
+                        "none"),
+                    LogFields.Field(
+                        "ui",
+                        "none")));
 
             return passed;
         }
@@ -287,16 +573,23 @@ namespace Immersive.Framework.Diagnostics
             string displayName,
             string reason)
         {
-            long now = DateTime.UtcNow.Ticks;
-            string payloadJson = "{\"level\":2,\"checkpoint\":\"qa\"}";
-            var payload = ProgressionSavePayload.FromBytes(
-                ProgressionSavePayloadFormat.Structured,
-                Encoding.UTF8.GetBytes(payloadJson),
-                "application/json");
+            long now =
+                DateTime.UtcNow.Ticks;
+
+            string payloadJson =
+                "{\"level\":2,\"checkpoint\":\"qa\"}";
+
+            var payload =
+                ProgressionSavePayload.FromBytes(
+                    ProgressionSavePayloadFormat.Structured,
+                    Encoding.UTF8.GetBytes(
+                        payloadJson),
+                    "application/json");
 
             return new ProgressionSaveSlotRecord(
                 slotId,
-                ProgressionSaveRecordId.From(recordValue),
+                ProgressionSaveRecordId.From(
+                    recordValue),
                 payload,
                 now,
                 now,
@@ -305,7 +598,8 @@ namespace Immersive.Framework.Diagnostics
                 reason);
         }
 
-        private static void Cleanup(JsonProgressionSaveStore store)
+        private static void Cleanup(
+            JsonProgressionSaveStore store)
         {
             if (store == null)
             {
@@ -318,37 +612,68 @@ namespace Immersive.Framework.Diagnostics
             }
             catch
             {
-                // QA cleanup must not mask the actual smoke result.
+                // QA cleanup must not mask the smoke result.
             }
         }
 
-        private static void LogStep(FrameworkLogger logger, string step, bool passed, LogField[] fields)
+        private static void LogStep(
+            FrameworkLogger logger,
+            string step,
+            bool passed,
+            LogField[] fields)
         {
-            LogField[] allFields = AppendFields(
-                LogFields.Of(
-                    LogFields.Field("step", step),
-                    LogFields.Field("passed", passed)),
-                fields);
+            LogField[] allFields =
+                AppendFields(
+                    LogFields.Of(
+                        LogFields.Field(
+                            "step",
+                            step),
+                        LogFields.Field(
+                            "passed",
+                            passed)),
+                    fields);
 
             if (passed)
             {
-                logger.Info("QA Progression Save JSON Backend Diagnostics Smoke step completed.", allFields);
+                logger.Info(
+                    "QA Progression Save JSON Backend Diagnostics Smoke step completed.",
+                    allFields);
+
                 return;
             }
 
-            logger.Warning("QA Progression Save JSON Backend Diagnostics Smoke step failed.", allFields);
+            logger.Warning(
+                "QA Progression Save JSON Backend Diagnostics Smoke step failed.",
+                allFields);
         }
 
-        private static LogField[] AppendFields(LogField[] baseFields, LogField[] additionalFields)
+        private static LogField[] AppendFields(
+            LogField[] baseFields,
+            LogField[] additionalFields)
         {
-            if (additionalFields == null || additionalFields.Length == 0)
+            if (additionalFields == null
+                || additionalFields.Length == 0)
             {
                 return baseFields;
             }
 
-            var combined = new LogField[baseFields.Length + additionalFields.Length];
-            Array.Copy(baseFields, combined, baseFields.Length);
-            Array.Copy(additionalFields, 0, combined, baseFields.Length, additionalFields.Length);
+            var combined =
+                new LogField[
+                    baseFields.Length
+                    + additionalFields.Length];
+
+            Array.Copy(
+                baseFields,
+                combined,
+                baseFields.Length);
+
+            Array.Copy(
+                additionalFields,
+                0,
+                combined,
+                baseFields.Length,
+                additionalFields.Length);
+
             return combined;
         }
     }

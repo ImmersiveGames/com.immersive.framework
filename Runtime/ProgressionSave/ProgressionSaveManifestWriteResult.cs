@@ -5,12 +5,16 @@ using Immersive.Framework.Common;
 namespace Immersive.Framework.ProgressionSave
 {
     /// <summary>
-    /// API status: Experimental. Backend-agnostic result for writing a Progression Save manifest.
+    /// API status: Internal. Result used by the built-in backend while maintaining
+    /// its physical manifest. Manifest mutation is not part of the public backend
+    /// contract.
     /// </summary>
-    [FrameworkApiStatus(FrameworkApiStatus.Experimental, "F21E Progression Save manifest write result primitive.")]
-    public readonly struct ProgressionSaveManifestWriteResult : IEquatable<ProgressionSaveManifestWriteResult>
+    [FrameworkApiStatus(
+        FrameworkApiStatus.Internal,
+        "ADR018-A internal built-in-backend manifest write result.")]
+    internal readonly struct ProgressionSaveManifestWriteResult : IEquatable<ProgressionSaveManifestWriteResult>
     {
-        public ProgressionSaveManifestWriteResult(ProgressionSaveWriteStatus status, string message)
+        internal ProgressionSaveManifestWriteResult(ProgressionSaveWriteStatus status, string message)
         {
             ValidateStatus(status);
 
@@ -18,15 +22,17 @@ namespace Immersive.Framework.ProgressionSave
             Message = Normalize(message);
         }
 
-        public ProgressionSaveWriteStatus Status { get; }
+        internal ProgressionSaveWriteStatus Status { get; }
 
-        public string Message { get; }
+        internal string Message { get; }
 
-        public bool Written => Status == ProgressionSaveWriteStatus.Written;
+        internal bool Written => Status == ProgressionSaveWriteStatus.Written;
 
-        public bool Failed => Status is ProgressionSaveWriteStatus.BackendUnavailable or ProgressionSaveWriteStatus.Failed or ProgressionSaveWriteStatus.Rejected;
+        internal bool Failed => Status is ProgressionSaveWriteStatus.BackendUnavailable
+            or ProgressionSaveWriteStatus.Failed
+            or ProgressionSaveWriteStatus.Rejected;
 
-        public bool HasMessage => !string.IsNullOrWhiteSpace(Message);
+        internal bool HasMessage => !string.IsNullOrWhiteSpace(Message);
 
         public bool Equals(ProgressionSaveManifestWriteResult other)
         {
@@ -55,31 +61,35 @@ namespace Immersive.Framework.ProgressionSave
             return $"status='{Status}' message='{messageText}'";
         }
 
-        public static ProgressionSaveManifestWriteResult WrittenResult(string message)
+        internal static ProgressionSaveManifestWriteResult WrittenResult(string message)
         {
             return new ProgressionSaveManifestWriteResult(ProgressionSaveWriteStatus.Written, message);
         }
 
-        public static ProgressionSaveManifestWriteResult Rejected(string message)
+        internal static ProgressionSaveManifestWriteResult Rejected(string message)
         {
             return new ProgressionSaveManifestWriteResult(ProgressionSaveWriteStatus.Rejected, message);
         }
 
-        public static ProgressionSaveManifestWriteResult BackendUnavailable(string message)
+        internal static ProgressionSaveManifestWriteResult BackendUnavailable(string message)
         {
             return new ProgressionSaveManifestWriteResult(ProgressionSaveWriteStatus.BackendUnavailable, message);
         }
 
-        public static ProgressionSaveManifestWriteResult FailedResult(string message)
+        internal static ProgressionSaveManifestWriteResult FailedResult(string message)
         {
             return new ProgressionSaveManifestWriteResult(ProgressionSaveWriteStatus.Failed, message);
         }
 
         private static void ValidateStatus(ProgressionSaveWriteStatus status)
         {
-            if (!Enum.IsDefined(typeof(ProgressionSaveWriteStatus), status) || status == ProgressionSaveWriteStatus.Unknown)
+            if (!Enum.IsDefined(typeof(ProgressionSaveWriteStatus), status)
+                || status == ProgressionSaveWriteStatus.Unknown)
             {
-                throw new ArgumentOutOfRangeException(nameof(status), status, "Progression Save manifest write status must be explicit.");
+                throw new ArgumentOutOfRangeException(
+                    nameof(status),
+                    status,
+                    "Progression Save internal manifest write status must be explicit.");
             }
         }
 

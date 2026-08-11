@@ -5,12 +5,17 @@ using Immersive.Framework.Common;
 namespace Immersive.Framework.ProgressionSave
 {
     /// <summary>
-    /// API status: Experimental. Backend-agnostic result for writing a Progression Save slot record or manifest.
+    /// API status: Experimental. Backend-agnostic result for writing one
+    /// Progression Save slot record.
     /// </summary>
-    [FrameworkApiStatus(FrameworkApiStatus.Experimental, "F21E Progression Save write result primitive.")]
+    [FrameworkApiStatus(FrameworkApiStatus.Experimental, "F21E Progression Save slot write result primitive.")]
     public readonly struct ProgressionSaveWriteResult : IEquatable<ProgressionSaveWriteResult>
     {
-        public ProgressionSaveWriteResult(ProgressionSaveWriteStatus status, ProgressionSaveSlotId slotId, ProgressionSaveRecordId recordId, string message)
+        public ProgressionSaveWriteResult(
+            ProgressionSaveWriteStatus status,
+            ProgressionSaveSlotId slotId,
+            ProgressionSaveRecordId recordId,
+            string message)
         {
             ValidateStatus(status);
             ValidateSlotForStatus(status, slotId);
@@ -32,7 +37,9 @@ namespace Immersive.Framework.ProgressionSave
 
         public bool Written => Status == ProgressionSaveWriteStatus.Written;
 
-        public bool Failed => Status is ProgressionSaveWriteStatus.BackendUnavailable or ProgressionSaveWriteStatus.Failed or ProgressionSaveWriteStatus.Rejected;
+        public bool Failed => Status is ProgressionSaveWriteStatus.BackendUnavailable
+            or ProgressionSaveWriteStatus.Failed
+            or ProgressionSaveWriteStatus.Rejected;
 
         public bool HasSlot => SlotId.IsValid;
 
@@ -73,58 +80,97 @@ namespace Immersive.Framework.ProgressionSave
             return $"status='{Status}' slot='{slotText}' record='{recordText}' message='{messageText}'";
         }
 
-        public static ProgressionSaveWriteResult SlotWritten(ProgressionSaveSlotRecord record, string message)
+        public static ProgressionSaveWriteResult SlotWritten(
+            ProgressionSaveSlotRecord record,
+            string message)
         {
             if (!record.IsValid)
             {
-                throw new ArgumentException("Progression Save slot write result requires a valid record.", nameof(record));
+                throw new ArgumentException(
+                    "Progression Save slot write result requires a valid record.",
+                    nameof(record));
             }
 
-            return new ProgressionSaveWriteResult(ProgressionSaveWriteStatus.Written, record.SlotId, record.RecordId, message);
+            return new ProgressionSaveWriteResult(
+                ProgressionSaveWriteStatus.Written,
+                record.SlotId,
+                record.RecordId,
+                message);
         }
 
-
-        public static ProgressionSaveWriteResult Rejected(ProgressionSaveSlotId slotId, string message)
+        public static ProgressionSaveWriteResult Rejected(
+            ProgressionSaveSlotId slotId,
+            string message)
         {
-            return new ProgressionSaveWriteResult(ProgressionSaveWriteStatus.Rejected, slotId, default, message);
+            return new ProgressionSaveWriteResult(
+                ProgressionSaveWriteStatus.Rejected,
+                slotId,
+                default,
+                message);
         }
 
-        public static ProgressionSaveWriteResult BackendUnavailable(ProgressionSaveSlotId slotId, string message)
+        public static ProgressionSaveWriteResult BackendUnavailable(
+            ProgressionSaveSlotId slotId,
+            string message)
         {
-            return new ProgressionSaveWriteResult(ProgressionSaveWriteStatus.BackendUnavailable, slotId, default, message);
+            return new ProgressionSaveWriteResult(
+                ProgressionSaveWriteStatus.BackendUnavailable,
+                slotId,
+                default,
+                message);
         }
 
-        public static ProgressionSaveWriteResult FailedResult(ProgressionSaveSlotId slotId, string message)
+        public static ProgressionSaveWriteResult FailedResult(
+            ProgressionSaveSlotId slotId,
+            string message)
         {
-            return new ProgressionSaveWriteResult(ProgressionSaveWriteStatus.Failed, slotId, default, message);
+            return new ProgressionSaveWriteResult(
+                ProgressionSaveWriteStatus.Failed,
+                slotId,
+                default,
+                message);
         }
 
         private static void ValidateStatus(ProgressionSaveWriteStatus status)
         {
-            if (!Enum.IsDefined(typeof(ProgressionSaveWriteStatus), status) || status == ProgressionSaveWriteStatus.Unknown)
+            if (!Enum.IsDefined(typeof(ProgressionSaveWriteStatus), status)
+                || status == ProgressionSaveWriteStatus.Unknown)
             {
-                throw new ArgumentOutOfRangeException(nameof(status), status, "Progression Save write status must be explicit.");
+                throw new ArgumentOutOfRangeException(
+                    nameof(status),
+                    status,
+                    "Progression Save write status must be explicit.");
             }
         }
 
-        private static void ValidateSlotForStatus(ProgressionSaveWriteStatus status, ProgressionSaveSlotId slotId)
+        private static void ValidateSlotForStatus(
+            ProgressionSaveWriteStatus status,
+            ProgressionSaveSlotId slotId)
         {
             if (!slotId.IsValid)
             {
-                throw new ArgumentException("Progression Save slot write result requires a valid slot id.", nameof(slotId));
+                throw new ArgumentException(
+                    "Progression Save slot write result requires a valid slot id.",
+                    nameof(slotId));
             }
         }
 
-        private static void ValidateRecordForStatus(ProgressionSaveWriteStatus status, ProgressionSaveRecordId recordId)
+        private static void ValidateRecordForStatus(
+            ProgressionSaveWriteStatus status,
+            ProgressionSaveRecordId recordId)
         {
             if (status == ProgressionSaveWriteStatus.Written && !recordId.IsValid)
             {
-                throw new ArgumentException("Progression Save written slot result requires a valid record id.", nameof(recordId));
+                throw new ArgumentException(
+                    "Progression Save written slot result requires a valid record id.",
+                    nameof(recordId));
             }
 
             if (status != ProgressionSaveWriteStatus.Written && recordId.IsValid)
             {
-                throw new ArgumentException("Progression Save non-written slot result cannot carry a record id.", nameof(recordId));
+                throw new ArgumentException(
+                    "Progression Save non-written slot result cannot carry a record id.",
+                    nameof(recordId));
             }
         }
 

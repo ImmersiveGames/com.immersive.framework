@@ -55,6 +55,7 @@ a later reconciliation. It can identify a separate consumer or product issue.
 | [015](../ADRs/IF-ADR-015-Player-Provisioning-Commands-and-Consumer-Observation-Surface.md) | ACCEPTED | IMPLEMENTED for current boundary | CERTIFIED | Not proven on current model | Stage B consumer integration remains |
 | [016](../ADRs/IF-ADR-016-Player-Session-Initial-Configuration-and-Provisioning-Profiles.md) | ACCEPTED | IMPLEMENTED | CERTIFIED | Not proven on current model | Stage B Scene-/Manager-Provisioned integration remains |
 | [017](../ADRs/IF-ADR-017-Application-Frame-Rate-Project-Authority.md) | ACCEPTED / RECONCILED | IMPLEMENTED: Project Settings baseline, boot validation and explicit runtime application | CERTIFIED: Edit 13/13; Target 13/13; VSync 13/13; Defaults 13/13 | Not applicable for current project-baseline boundary | Stage A closed; Session override and Preferences integration remain future scope |
+| [018](../ADRs/IF-ADR-018-Progression-Save-Backend-Independence-and-Persistence-Domain-Boundaries.md) | ACCEPTED / RECONCILED | ADR018-A core store/catalog split implemented; current API remains Experimental | A4 pending: JSON + core-only in-memory backend conformance; ADR018-B JSON hardening follows | Planned after product composition | Core backend shape resolved; Stable promotion waits for A4 certification |
 
 ## Planning estimates and attention order
 
@@ -81,6 +82,7 @@ reconciliation status. `Stage A` measures the accepted technical boundary.
 | 015 | 100% | 0% | 85% | Stage B | Integrate the current provisioning commands in a real consumer. |
 | 016 | 100% | 0% | 88% | Stage B | Prove Scene-/Manager-Provisioned integration in a real consumer. |
 | 017 | 100% | 0% | 100% | None | Stage A closed for project-level Frame Rate authority; Session override and Preferences integration are future scope. |
+| 018 | 55% | 45% | 35% | ADR018-A QA | Core backend shape implemented; prove alternate backend, then promote/certify core contract before ADR018-B JSON hardening. |
 
 ### Attention summary
 
@@ -107,7 +109,12 @@ reconciliation status. `Stage A` measures the accepted technical boundary.
    VerticalSync **13/13** and UseUnityDefaults **13/13**. The E2E runs proved the
    preboot sentinel `47/2` was observed by the official runtime and then either
    transformed by the selected policy or preserved by `UseUnityDefaults`.
-6. **ADR-010** retains **3%** of feature-owned adoption evidence and has no generic
+6. **ADR-018 defines the Progression Save product direction.** Progression Save is
+   the canonical Framework persistence contract; Built-in JSON is the minimum
+   first-party backend; third-party/custom systems replace the backend through an
+   adapter without changing Framework consumers. Current APIs remain Experimental
+   until backend-contract conformance and JSON consistency hardening are certified.
+7. **ADR-010** retains **3%** of feature-owned adoption evidence and has no generic
    UX QA gate. ADR-003, ADR-004, ADR-005, ADR-006, ADR-007, ADR-011, ADR-012,
    ADR-013, ADR-015 and ADR-016 may still have Stage B portfolio work; that is not a
    Stage A technical regression.
@@ -372,6 +379,11 @@ disabled Gameplay Action Map baselines across Pause -> Resume.
   fixture collision. Reopen only on a reproduced contract regression, documented
   contract change or newly accepted scope. Do not invent timeout/retry runtime.
 - ADR-011 requires no further Stage A work for the current accepted boundary. Direct Progress passed 32/32, Terminal passed 34/34, Route Startup parity passed 25/25 and Game Application Startup parity passed 20/20. Reopen only on a reproduced contract regression, documented contract change or newly accepted scope; do not add Player-specific runtime scope to this ADR.
+- ADR-018 next technical cut is backend-contract stabilization: review
+  `IProgressionSaveStore` as an external adapter compatibility promise, prove the same
+  `ProgressionSaveRuntime` request suite against JSON and a non-JSON QA backend, then
+  harden the built-in JSON multi-artifact write/delete consistency before Stable
+  promotion.
 - ADR-017 requires no further Stage A work for the accepted project-baseline
   boundary. Edit validation passed 13/13 and the TargetFrameRate, VerticalSync and
   UseUnityDefaults E2E paths each passed 13/13. Session-scoped override and
@@ -394,6 +406,10 @@ disabled Gameplay Action Map baselines across Pause -> Resume.
   QAFramework fixture-ownership defect and was corrected without weakening the
   regression.
 - ADR-011: **none remaining in the current accepted Stage A boundary**. Direct Progress is 32/32, Terminal is 34/34, Route Startup parity is 25/25 and Game Application Startup parity is 20/20. Public waiting/joining remains supporting Player-domain evidence, not an ADR-011 completion gate.
+- ADR-018: focused conformance QA is required before Stable promotion. At minimum,
+  run identical Save/Load/Delete/Missing/Unavailable semantics against Built-in JSON
+  and an alternate non-JSON QA backend, then add negative JSON consistency/recovery
+  cases.
 - ADR-017: **none remaining in the current accepted Stage A boundary**.
   Edit 13/13, Target 13/13, VSync 13/13 and Defaults 13/13 are PASS; Project
   Settings authority and absence of GameApplication Frame Rate authority are proven.
@@ -425,6 +441,9 @@ disabled Gameplay Action Map baselines across Pause -> Resume.
   for ADR-003, ADR-012, ADR-015 and ADR-016.
 - Treat Camera consumer proof as separate from the certified single-output
   technical boundary.
+- ADR-018 FIRSTGAME proof begins only after explicit backend authoring/composition
+  exists. It must prove basic Built-in JSON persistence and backend replacement
+  without changing game-facing Progression Save request code.
 - ADR-017 has no required FIRSTGAME gate for the current project-baseline
   boundary. A future Session override/player-facing preference surface should be
   proven in FIRSTGAME when that future scope is accepted.
@@ -457,3 +476,4 @@ The following are future contracts, not gaps in current ADR closure:
 - [ADR-008](../Reconciliation/IMMERSIVE-FRAMEWORK-ADR-008-RECONCILIATION-2026-08-10.md)
 - [ADR-011](../Reconciliation/IMMERSIVE-FRAMEWORK-ADR-011-RECONCILIATION-2026-08-11.md)
 - [ADR-017](../Reconciliation/IMMERSIVE-FRAMEWORK-ADR-017-RECONCILIATION-2026-08-11.md)
+- [ADR-018](../Reconciliation/IMMERSIVE-FRAMEWORK-ADR-018-RECONCILIATION-2026-08-11.md)

@@ -3,9 +3,10 @@ using Immersive.Framework.ApiStatus;
 namespace Immersive.Framework.ProgressionSave
 {
     /// <summary>
-    /// API status: Experimental. Result status for writing Progression Save slots or manifest data through the store port.
+    /// API status: Experimental. Result status for writing one Progression Save slot
+    /// through the backend-neutral store port.
     /// </summary>
-    [FrameworkApiStatus(FrameworkApiStatus.Experimental, "F21E Progression Save write status primitive.")]
+    [FrameworkApiStatus(FrameworkApiStatus.Experimental, "F21E Progression Save slot write status primitive.")]
     public enum ProgressionSaveWriteStatus
     {
         Unknown = 0,
