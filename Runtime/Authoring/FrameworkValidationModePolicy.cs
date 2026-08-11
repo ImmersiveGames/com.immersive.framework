@@ -5,6 +5,7 @@ namespace Immersive.Framework.Authoring
     /// <summary>
     /// API status: Stable. Minimal F1 policy for how ValidationMode affects framework diagnostics.
     /// Required configuration still fails in every mode; this policy only controls diagnostic strictness/noise.
+    /// Unknown values are invalid and use Strict diagnostic semantics until the authored asset is corrected.
     /// </summary>
     [FrameworkApiStatus(FrameworkApiStatus.Stable, "Stable product authoring surface for application/route/activity configuration. Breaking changes require ADR/migration.")]
     public static class FrameworkValidationModePolicy
@@ -16,7 +17,7 @@ namespace Immersive.Framework.Authoring
 
         public static bool TreatWarningsAsErrors(FrameworkValidationMode mode)
         {
-            return mode == FrameworkValidationMode.Strict;
+            return mode == FrameworkValidationMode.Strict || !IsKnown(mode);
         }
 
         public static bool IncludeInfoDiagnostics(FrameworkValidationMode mode)
