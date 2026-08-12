@@ -357,26 +357,40 @@ namespace Immersive.Framework.PlayerParticipation
 
                 if (slot.IsJoined)
                 {
-                    if (!preparationModule.TryGetRegisteredHost(
-                            slot.PlayerSlotId,
-                            out LocalPlayerHostAuthoring host,
-                            out string hostIssue))
+                    if (RequiresActivityActorRepresentation(requirementLevel))
                     {
-                        return FailEnterAndRollback(
-                            request,
-                            activity,
-                            owner,
-                            requirementLevel,
-                            projectedSlots.Count,
-                            prepared,
-                            appliedSelections,
-                            slotEvidence,
-                            ActivityPlayerActorLifecycleStatus
-                                .FailedRequirement,
-                            hostIssue);
-                    }
+                        if (!preparationModule.TryGetRegisteredHost(
+                                slot.PlayerSlotId,
+                                out LocalPlayerHostAuthoring host,
+                                out string hostIssue))
+                        {
+                            return FailEnterAndRollback(
+                                request,
+                                activity,
+                                owner,
+                                requirementLevel,
+                                projectedSlots.Count,
+                                prepared,
+                                appliedSelections,
+                                slotEvidence,
+                                ActivityPlayerActorLifecycleStatus
+                                    .FailedRequirement,
+                                "Activity Actor representation is required but its " +
+                                "Host evidence is unavailable. " + hostIssue);
+                        }
 
-                    admittedHosts.Add(host);
+                        admittedHosts.Add(host);
+                    }
+                    else if (preparationModule.TryGetRegisteredHost(
+                                 slot.PlayerSlotId,
+                                 out LocalPlayerHostAuthoring optionalHost,
+                                 out _))
+                    {
+                        // Session membership and selected Actor intent do not require
+                        // a physical Activity representation. Preserve any real Host
+                        // evidence that already exists without turning it into a gate.
+                        admittedHosts.Add(optionalHost);
+                    }
                 }
 
                 bool selectionApplied = false;
@@ -444,7 +458,9 @@ namespace Immersive.Framework.PlayerParticipation
                 PlayerActorPreparationStatus preparationStatus =
                     PlayerActorPreparationStatus.None;
                 string message =
-                    "Requirement satisfied without Logical Actor preparation.";
+                    RequiresActivityActorRepresentation(requirementLevel)
+                        ? "Activity Actor representation is required and will be prepared for this Activity occurrence."
+                        : "Session Player requirement is satisfied without requiring a physical Activity Actor representation.";
 
                 if ((int)requirementLevel >=
                     (int)PlayerParticipationRequirementLevel

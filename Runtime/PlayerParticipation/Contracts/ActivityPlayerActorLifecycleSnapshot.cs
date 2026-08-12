@@ -74,6 +74,10 @@ namespace Immersive.Framework.PlayerParticipation
 
         public bool HasOwner => Owner.IsValid;
 
+        public bool RequiresActivityActorRepresentation =>
+            (int)RequirementLevel >=
+            (int)PlayerParticipationRequirementLevel.LogicalActorsPrepared;
+
         internal static ActivityPlayerActorLifecycleSnapshot Empty(string message)
         {
             return new ActivityPlayerActorLifecycleSnapshot(
@@ -95,7 +99,9 @@ namespace Immersive.Framework.PlayerParticipation
             return
                 $"status='{Status}' activity='{ActivityName}' " +
                 $"owner='{(Owner.IsValid ? Owner.StableText : string.Empty)}' " +
-                $"requirement='{RequirementLevel}' projected='{ProjectedSlotCount}' " +
+                $"requirement='{RequirementLevel}' " +
+                $"requiresActivityActorRepresentation='{RequiresActivityActorRepresentation}' " +
+                $"projected='{ProjectedSlotCount}' " +
                 $"selected='{SelectedCount}' prepared='{PreparedCount}' " +
                 $"released='{ReleasedCount}' failed='{FailedCount}' " +
                 $"message='{Message}'";

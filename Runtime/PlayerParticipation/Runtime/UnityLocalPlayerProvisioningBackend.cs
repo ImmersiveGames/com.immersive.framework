@@ -15,7 +15,8 @@ namespace Immersive.Framework.PlayerParticipation
         FrameworkApiStatus.Internal,
         "P3G.3/P3M5B Unity PlayerInputManager provisioning adapter with scene-load callback normalization.")]
     internal sealed class UnityLocalPlayerProvisioningBackend :
-        ILocalPlayerProvisioningBackend
+        ILocalPlayerProvisioningBackend,
+        IAdmittedLocalPlayerReleaseBackend
     {
         private readonly struct PendingJoinedPlayer
         {
@@ -239,7 +240,24 @@ namespace Immersive.Framework.PlayerParticipation
             string source,
             string reason)
         {
-            if (playerInput == null)
+            _ = source;
+            _ = reason;
+            DestroyProvisionedPlayer(playerInput);
+        }
+
+        public void ReleaseAdmittedPlayer(
+            PlayerInput playerInput,
+            string source,
+            string reason)
+        {
+            _ = source;
+            _ = reason;
+            DestroyProvisionedPlayer(playerInput);
+        }
+
+        private static void DestroyProvisionedPlayer(PlayerInput playerInput)
+        {
+            if (ReferenceEquals(playerInput, null) || playerInput == null)
             {
                 return;
             }

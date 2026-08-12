@@ -28,4 +28,23 @@ namespace Immersive.Framework.PlayerParticipation
 
         void RejectPlayer(PlayerInput playerInput, string source, string reason);
     }
+
+    /// <summary>
+    /// Narrow technical capability used to release a local PlayerInput that has already
+    /// completed Manager-Provisioned admission and is owned by the current Session.
+    /// </summary>
+    /// <remarks>
+    /// This contract is deliberately separate from <see cref="ILocalPlayerProvisioningBackend.RejectPlayer"/>.
+    /// Rejection is admission compensation; releasing an admitted Player ends Framework ownership
+    /// of an already accepted physical provisioning resource. This is not the public Player Leave API.
+    /// The interface is public only so synthetic QA backends can validate orchestration without
+    /// driving PlayerInputManager through the Input System.
+    /// </remarks>
+    public interface IAdmittedLocalPlayerReleaseBackend
+    {
+        void ReleaseAdmittedPlayer(
+            PlayerInput playerInput,
+            string source,
+            string reason);
+    }
 }

@@ -124,28 +124,41 @@ namespace Immersive.Framework.PlayerParticipation
                 PlayerSlotRuntimeSnapshot slot = projectedSlots[index];
                 if (slot.IsJoined)
                 {
-                    if (!preparationModule.TryGetRegisteredHost(
-                            slot.PlayerSlotId,
-                            out LocalPlayerHostAuthoring host,
-                            out string hostIssue))
+                    if (RequiresActivityActorRepresentation(requirementLevel))
                     {
-                        playerReadinessRecord = null;
-                        lastSnapshot = FailureSnapshot(
-                            ActivityPlayerActorLifecycleStatus
-                                .FailedRequirement,
-                            activity,
-                            owner,
-                            requirementLevel,
-                            new List<PlayerSlotRuntimeSnapshot>(
-                                projectedSlots),
-                            hostIssue);
-                        return Blocking(
-                            request,
-                            "activity-player-actor-deferred-host-evidence-missing",
-                            hostIssue);
-                    }
+                        if (!preparationModule.TryGetRegisteredHost(
+                                slot.PlayerSlotId,
+                                out LocalPlayerHostAuthoring host,
+                                out string hostIssue))
+                        {
+                            string representationIssue =
+                                "Activity Actor representation is required but its " +
+                                "Host evidence is unavailable. " + hostIssue;
+                            playerReadinessRecord = null;
+                            lastSnapshot = FailureSnapshot(
+                                ActivityPlayerActorLifecycleStatus
+                                    .FailedRequirement,
+                                activity,
+                                owner,
+                                requirementLevel,
+                                new List<PlayerSlotRuntimeSnapshot>(
+                                    projectedSlots),
+                                representationIssue);
+                            return Blocking(
+                                request,
+                                "activity-player-actor-deferred-representation-evidence-missing",
+                                representationIssue);
+                        }
 
-                    admittedHosts.Add(host);
+                        admittedHosts.Add(host);
+                    }
+                    else if (preparationModule.TryGetRegisteredHost(
+                                 slot.PlayerSlotId,
+                                 out LocalPlayerHostAuthoring optionalHost,
+                                 out _))
+                    {
+                        admittedHosts.Add(optionalHost);
+                    }
                 }
 
                 if (slot.HasSelectedActor)
@@ -168,7 +181,9 @@ namespace Immersive.Framework.PlayerParticipation
                     GameplayReady = false,
                     ReadinessReason = slotReason,
                     Message = slot.IsJoined
-                        ? "Player lifecycle will continue through explicit delta reconcile."
+                        ? RequiresActivityActorRepresentation(requirementLevel)
+                            ? "Player lifecycle will continue through explicit delta reconcile; this Activity requires an Actor representation."
+                            : "Player lifecycle will continue through explicit delta reconcile; Session membership does not require an Activity Actor representation at this requirement level."
                         : "Projected Player Slot is waiting for Join."
                 });
                 evidence[index] = new ActivityPlayerActorSlotLifecycleSnapshot(
@@ -277,7 +292,9 @@ namespace Immersive.Framework.PlayerParticipation
                     GameplayAdmissionToken = admissionToken,
                     ReadinessReason =
                         ActivityPlayerActorReadinessReason.RequirementSatisfied,
-                    Message = "Player requirement was satisfied during Activity enter."
+                    Message = RequiresActivityActorRepresentation(requirementLevel)
+                        ? "Player requirement was satisfied with an Activity Actor representation prepared for this occurrence."
+                        : "Session Player requirement was satisfied without requiring an Activity Actor representation."
                 });
             }
 
@@ -449,9 +466,11 @@ namespace Immersive.Framework.PlayerParticipation
                     continue;
                 }
 
-                if (!preparationModule.TryGetRegisteredHost(
+                if (RequiresActivityActorRepresentation(
+                        playerReadinessRecord.RequirementLevel) &&
+                    !preparationModule.TryGetRegisteredHost(
                         slot.PlayerSlotId,
-                        out LocalPlayerHostAuthoring host,
+                        out _,
                         out string hostIssue))
                 {
                     return FailAndRollbackReconcile(
@@ -461,7 +480,8 @@ namespace Immersive.Framework.PlayerParticipation
                         gameplayRuntime,
                         resolvedSource,
                         resolvedReason,
-                        hostIssue);
+                        "Activity Actor representation is required but its " +
+                        "Host evidence is unavailable. " + hostIssue);
                 }
 
                 if ((int)playerReadinessRecord.RequirementLevel >=
@@ -639,8 +659,10 @@ namespace Immersive.Framework.PlayerParticipation
 
                 slotRecord.ReadinessReason =
                     ActivityPlayerActorReadinessReason.RequirementSatisfied;
-                slotRecord.Message =
-                    "Player lifecycle delta is satisfied for this Slot.";
+                slotRecord.Message = RequiresActivityActorRepresentation(
+                        playerReadinessRecord.RequirementLevel)
+                    ? "Player lifecycle delta is satisfied with an Activity Actor representation prepared for this occurrence."
+                    : "Session Player requirement is satisfied; no physical Activity Actor representation is required at this level.";
             }
 
             PlayerParticipationSnapshot appliedSession =
@@ -1435,6 +1457,14 @@ namespace Immersive.Framework.PlayerParticipation
             }
 
             return null;
+        }
+
+        private static bool RequiresActivityActorRepresentation(
+            PlayerParticipationRequirementLevel requirementLevel)
+        {
+            return (int)requirementLevel >=
+                (int)PlayerParticipationRequirementLevel
+                    .LogicalActorsPrepared;
         }
 
         private static ActivityPlayerActorReadinessReason

@@ -531,7 +531,7 @@ namespace Immersive.Framework.PlayerParticipation
 
             awaitingCallbackConfirmations.Clear();
             callbackConfirmations.Clear();
-            admittedPlayers.Clear();
+            ReleaseAdmittedPlayers("session-provisioning-runtime-disposed");
         }
 
         internal bool TryAttachHostToSessionLifetime(
@@ -893,6 +893,40 @@ namespace Immersive.Framework.PlayerParticipation
             }
 
             return false;
+        }
+
+        private void ReleaseAdmittedPlayers(string reason)
+        {
+            if (admittedPlayers.Count == 0)
+            {
+                return;
+            }
+
+            if (!(backend is IAdmittedLocalPlayerReleaseBackend releaseBackend))
+            {
+                throw new InvalidOperationException(
+                    $"{nameof(LocalPlayerProvisioningBridge)} cannot release admitted Manager-Provisioned " +
+                    $"players because backend '{backend.GetType().FullName}' does not implement " +
+                    $"{nameof(IAdmittedLocalPlayerReleaseBackend)}. RejectPlayer is not a teardown fallback.");
+            }
+
+            PlayerInput[] players = new PlayerInput[admittedPlayers.Count];
+            admittedPlayers.CopyTo(players);
+            admittedPlayers.Clear();
+
+            for (int index = 0; index < players.Length; index++)
+            {
+                PlayerInput playerInput = players[index];
+                if (ReferenceEquals(playerInput, null) || playerInput == null)
+                {
+                    continue;
+                }
+
+                releaseBackend.ReleaseAdmittedPlayer(
+                    playerInput,
+                    nameof(LocalPlayerProvisioningBridge),
+                    reason);
+            }
         }
 
         private void RejectDistinctPlayers(

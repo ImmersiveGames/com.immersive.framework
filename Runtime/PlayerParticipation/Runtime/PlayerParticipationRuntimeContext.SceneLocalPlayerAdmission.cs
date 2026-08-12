@@ -132,6 +132,31 @@ namespace Immersive.Framework.PlayerParticipation
                 requested.ReservationToken);
         }
 
+        /// <summary>
+        /// Returns the immutable effective Host provisioning mode retained by the Session Slot.
+        /// ADR-019 uses this query to keep Scene-Provided reprojection from crossing a
+        /// Manager-Provisioned Slot without an explicit provisioning mutation contract.
+        /// </summary>
+        internal bool TryGetEffectiveHostProvisioningMode(
+            PlayerSlotId playerSlotId,
+            out PlayerHostProvisioningMode hostProvisioningMode)
+        {
+            hostProvisioningMode = default;
+            if (!playerSlotId.IsValid)
+            {
+                return false;
+            }
+
+            SlotRecord record = FindSlot(playerSlotId);
+            if (record == null)
+            {
+                return false;
+            }
+
+            hostProvisioningMode = record.HostProvisioningMode;
+            return true;
+        }
+
         internal PlayerParticipationOperationResult TryBeginSceneLocalPlayerRelease(
             SceneLocalPlayerAdmissionToken admissionToken,
             string source,
@@ -377,7 +402,10 @@ namespace Immersive.Framework.PlayerParticipation
         {
             record = null;
             if (!releaseToken.IsValid ||
-                !string.Equals(releaseToken.AdmissionToken.ContextId, contextId, StringComparison.Ordinal))
+                !string.Equals(
+                    releaseToken.AdmissionToken.ContextId,
+                    contextId,
+                    StringComparison.Ordinal))
             {
                 issue = "Scene Local Player release token is invalid or belongs to another Session context.";
                 return false;

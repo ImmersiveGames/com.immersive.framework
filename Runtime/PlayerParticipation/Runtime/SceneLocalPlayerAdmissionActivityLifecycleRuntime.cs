@@ -9,12 +9,13 @@ using Immersive.Framework.PlayerSlots;
 namespace Immersive.Framework.PlayerParticipation
 {
     /// <summary>
-    /// Activity-scoped transaction coordinator for Scene Local Player admission and Actor selection.
-    /// It owns contextual admission/selection only; physical Host and Actor objects remain scene-owned.
+    /// Activity-scoped transaction coordinator for Scene Local Player contextual representation
+    /// and external Actor adoption. Logical Player membership and Actor selection intent are
+    /// Session-scoped; physical Host and Actor objects remain scene-owned.
     /// </summary>
     [FrameworkApiStatus(
         FrameworkApiStatus.Internal,
-        "P3M4B2A/P3M4B2B Activity lifecycle coordination for Scene Local Player admission, selection and external Actor adoption.")]
+        "ADR-019 Activity lifecycle coordination for Scene Local Player contextual representation and external Actor adoption.")]
     internal sealed class SceneLocalPlayerAdmissionActivityLifecycleRuntime
     {
         private sealed class Entry
@@ -91,8 +92,12 @@ namespace Immersive.Framework.PlayerParticipation
             string source,
             string reason)
         {
-            string resolvedSource = Normalize(source, nameof(SceneLocalPlayerAdmissionActivityLifecycleRuntime));
-            string resolvedReason = Normalize(reason, "scene-local-player-activity-enter");
+            string resolvedSource = Normalize(
+                source,
+                nameof(SceneLocalPlayerAdmissionActivityLifecycleRuntime));
+            string resolvedReason = Normalize(
+                reason,
+                "scene-local-player-activity-enter");
 
             if (activity == null || !owner.IsValid)
             {
@@ -210,9 +215,16 @@ namespace Immersive.Framework.PlayerParticipation
                 if (!surface.TryGetPlayerSlotId(
                         out PlayerSlotId playerSlotId,
                         out string slotIssue) ||
-                    !module.TryGetSlotSnapshot(playerSlotId, out PlayerSlotRuntimeSnapshot slot))
+                    !module.TryGetSlotSnapshot(
+                        playerSlotId,
+                        out PlayerSlotRuntimeSnapshot slot))
                 {
-                    TryReleaseAdmissionOnly(surface, admission.Token, resolvedSource, resolvedReason, out _);
+                    TryReleaseAdmissionOnly(
+                        surface,
+                        admission.Token,
+                        resolvedSource,
+                        resolvedReason,
+                        out _);
                     return FailEnterAndRollback(
                         activity,
                         owner,
@@ -225,19 +237,9 @@ namespace Immersive.Framework.PlayerParticipation
                             : slotIssue);
                 }
 
-                if (slot.HasSelectedActor)
-                {
-                    TryReleaseAdmissionOnly(surface, admission.Token, resolvedSource, resolvedReason, out _);
-                    return FailEnterAndRollback(
-                        activity,
-                        owner,
-                        entries,
-                        resolvedSource,
-                        resolvedReason,
-                        SceneLocalPlayerAdmissionActivityLifecycleStatus.RejectedSelectionConflict,
-                        $"Scene Local Player Slot '{playerSlotId.StableText}' already has an Actor selection before Activity-owned admission. Ownership is ambiguous and no fallback was applied.");
-                }
-
+                // ADR-019: Actor selection is Session-scoped intent. Select is intentionally
+                // idempotent for the same stable ActorProfile identity and rejects a different
+                // existing selection without replacement or fallback.
                 var selectionRequest = new PlayerActorSelectionRequest(
                     playerSlotId,
                     surface.ActorProfile,
@@ -260,16 +262,20 @@ namespace Immersive.Framework.PlayerParticipation
                         : $"Actor selection returned no result for Slot '{playerSlotId.StableText}'.";
                     if (!string.IsNullOrEmpty(releaseIssue))
                     {
-                        issue = $"{issue} Admission rollback failed. {releaseIssue}";
+                        issue = $"{issue} Contextual admission rollback failed. {releaseIssue}";
                     }
 
+                    SceneLocalPlayerAdmissionActivityLifecycleStatus status =
+                        slot.HasSelectedActor
+                            ? SceneLocalPlayerAdmissionActivityLifecycleStatus.RejectedSelectionConflict
+                            : SceneLocalPlayerAdmissionActivityLifecycleStatus.FailedSelection;
                     return FailEnterAndRollback(
                         activity,
                         owner,
                         entries,
                         resolvedSource,
                         resolvedReason,
-                        SceneLocalPlayerAdmissionActivityLifecycleStatus.FailedSelection,
+                        status,
                         issue);
                 }
 
@@ -340,8 +346,8 @@ namespace Immersive.Framework.PlayerParticipation
                 resolvedReason,
                 entries.Count,
                 requiresActorAdoption
-                    ? $"Admitted, selected and adopted required Scene Local Players before canonical Activity Player lifecycle execution. count='{entries.Count}'."
-                    : $"Admitted and selected Scene Local Players before canonical Activity Player lifecycle execution. count='{entries.Count}'.");
+                    ? $"Admitted or reprojected, resolved Session Actor selection and adopted required Scene Local Players before canonical Activity Player lifecycle execution. count='{entries.Count}'."
+                    : $"Admitted or reprojected Scene Local Players and resolved Session Actor selection before canonical Activity Player lifecycle execution. count='{entries.Count}'.");
         }
 
         internal SceneLocalPlayerAdmissionActivityLifecycleResult TryExit(
@@ -350,8 +356,12 @@ namespace Immersive.Framework.PlayerParticipation
             string source,
             string reason)
         {
-            string resolvedSource = Normalize(source, nameof(SceneLocalPlayerAdmissionActivityLifecycleRuntime));
-            string resolvedReason = Normalize(reason, "scene-local-player-activity-exit");
+            string resolvedSource = Normalize(
+                source,
+                nameof(SceneLocalPlayerAdmissionActivityLifecycleRuntime));
+            string resolvedReason = Normalize(
+                reason,
+                "scene-local-player-activity-exit");
 
             if (activity == null || !owner.IsValid)
             {
@@ -415,7 +425,7 @@ namespace Immersive.Framework.PlayerParticipation
                 resolvedSource,
                 resolvedReason,
                 releasedCount,
-                $"Cleared Actor selection and released '{releasedCount}' Scene Local Player admissions after canonical Activity Player lifecycle exit.");
+                $"Released '{releasedCount}' Scene Local Player contextual representations after canonical Activity Player lifecycle exit while preserving Session membership and Actor selection intent.");
         }
 
         internal SceneLocalPlayerAdmissionActivityLifecycleResult TryRollbackEnter(
@@ -424,8 +434,12 @@ namespace Immersive.Framework.PlayerParticipation
             string source,
             string reason)
         {
-            string resolvedSource = Normalize(source, nameof(SceneLocalPlayerAdmissionActivityLifecycleRuntime));
-            string resolvedReason = Normalize(reason, "scene-local-player-activity-enter-rollback");
+            string resolvedSource = Normalize(
+                source,
+                nameof(SceneLocalPlayerAdmissionActivityLifecycleRuntime));
+            string resolvedReason = Normalize(
+                reason,
+                "scene-local-player-activity-enter-rollback");
             if (activeRecord == null)
             {
                 return Success(
@@ -477,7 +491,7 @@ namespace Immersive.Framework.PlayerParticipation
                 resolvedSource,
                 resolvedReason,
                 rolledBackCount,
-                $"Rolled back '{rolledBackCount}' Scene Local Player Activity enter entries.");
+                $"Rolled back '{rolledBackCount}' Scene Local Player Activity contextual entries while retaining Session Player state.");
         }
 
         private SceneLocalPlayerAdmissionActivityLifecycleResult FailEnterAndRollback(
@@ -574,46 +588,7 @@ namespace Immersive.Framework.PlayerParticipation
                     adoptionReleased = true;
                 }
 
-                bool selectionCleared = false;
-                if (entry.SelectionApplied)
-                {
-                    var clearRequest = new PlayerActorSelectionRequest(
-                        entry.PlayerSlotId,
-                        null,
-                        source,
-                        $"{reason}:clear-selection:{index}",
-                        entry.SelectionRevision);
-                    PlayerActorSelectionResult clear =
-                        module.TryClearActorSelection(clearRequest);
-                    if (clear == null || !clear.Succeeded)
-                    {
-                        string clearIssue = clear != null
-                            ? clear.ToDiagnosticString()
-                            : $"Actor selection clear returned no result for Slot '{entry.PlayerSlotId.StableText}'.";
-                        if (adoptionReleased &&
-                            !TryRestoreAdoption(entry, owner, source, reason, out string adoptionRestoreIssue))
-                        {
-                            clearIssue = $"{clearIssue} Adoption compensation failed. {adoptionRestoreIssue}";
-                        }
-
-                        failures.Add(clearIssue);
-                        break;
-                    }
-
-                    entry.SelectionRevision = clear.SelectionRevision;
-                    entry.SelectionApplied = false;
-                    selectionCleared = clear.StateChanged;
-                }
-                else if (module.TryGetSlotSnapshot(
-                             entry.PlayerSlotId,
-                             out PlayerSlotRuntimeSnapshot currentSlot) &&
-                         currentSlot.HasSelectedActor)
-                {
-                    failures.Add(
-                        $"Scene Local Player Slot '{entry.PlayerSlotId.StableText}' has a selection not owned by this Activity lifecycle; release was blocked.");
-                    break;
-                }
-
+                // ADR-019: Activity exit never clears the Session-scoped Actor selection.
                 SceneLocalPlayerAdmissionRuntimeResult release = module.TryRelease(
                     entry.Authoring,
                     entry.AdmissionToken,
@@ -623,14 +598,14 @@ namespace Immersive.Framework.PlayerParticipation
                 {
                     string releaseIssue = release != null
                         ? release.ToDiagnosticString()
-                        : $"Scene Local Player release returned no result for '{entry.Authoring.name}'.";
-                    if (selectionCleared &&
-                        !TryRestoreSelection(entry, source, reason, out string selectionRestoreIssue))
-                    {
-                        releaseIssue = $"{releaseIssue} Selection compensation failed. {selectionRestoreIssue}";
-                    }
-                    else if (adoptionReleased &&
-                             !TryRestoreAdoption(entry, owner, source, reason, out string adoptionRestoreIssue))
+                        : $"Scene Local Player contextual release returned no result for '{entry.Authoring.name}'.";
+                    if (adoptionReleased &&
+                        !TryRestoreAdoption(
+                            entry,
+                            owner,
+                            source,
+                            reason,
+                            out string adoptionRestoreIssue))
                     {
                         releaseIssue = $"{releaseIssue} Adoption compensation failed. {adoptionRestoreIssue}";
                     }
@@ -651,7 +626,12 @@ namespace Immersive.Framework.PlayerParticipation
 
             if (compensateReleasedEntries && released.Count > 0)
             {
-                if (!TryRestoreReleasedEntries(released, owner, source, reason, out string compensationIssue))
+                if (!TryRestoreReleasedEntries(
+                        released,
+                        owner,
+                        source,
+                        reason,
+                        out string compensationIssue))
                 {
                     failures.Add($"Released-entry compensation failed. {compensationIssue}");
                 }
@@ -687,14 +667,23 @@ namespace Immersive.Framework.PlayerParticipation
 
                 entry.AdmissionToken = admission.Token;
                 entry.AdmissionActive = true;
-                if (!TryRestoreSelection(entry, source, reason, out string selectionIssue))
+                if (!TryConfirmSessionSelection(
+                        entry,
+                        source,
+                        reason,
+                        out string selectionIssue))
                 {
                     failures.Add(selectionIssue);
                     continue;
                 }
 
                 if (entry.AdoptionToken.IsValid &&
-                    !TryRestoreAdoption(entry, owner, source, reason, out string adoptionIssue))
+                    !TryRestoreAdoption(
+                        entry,
+                        owner,
+                        source,
+                        reason,
+                        out string adoptionIssue))
                 {
                     failures.Add(adoptionIssue);
                 }
@@ -704,7 +693,7 @@ namespace Immersive.Framework.PlayerParticipation
             return failures.Count == 0;
         }
 
-        private bool TryRestoreSelection(
+        private bool TryConfirmSessionSelection(
             Entry entry,
             string source,
             string reason,
@@ -719,16 +708,9 @@ namespace Immersive.Framework.PlayerParticipation
                 return false;
             }
 
-            if (slot.HasSelectedActor)
+            if (!slot.HasSelectedActor)
             {
-                if (slot.SelectedActorProfile == entry.ActorProfile)
-                {
-                    entry.SelectionRevision = slot.SelectionRevision;
-                    entry.SelectionApplied = true;
-                    return true;
-                }
-
-                issue = $"Selection compensation found a different ActorProfile on Slot '{entry.PlayerSlotId.StableText}'.";
+                issue = $"Session Actor selection disappeared while compensating Scene representation for Slot '{entry.PlayerSlotId.StableText}'. Activity compensation will not recreate Session intent implicitly.";
                 return false;
             }
 
@@ -736,19 +718,19 @@ namespace Immersive.Framework.PlayerParticipation
                 entry.PlayerSlotId,
                 entry.ActorProfile,
                 source,
-                $"{reason}:compensate-selection",
+                $"{reason}:confirm-session-selection",
                 slot.SelectionRevision);
             PlayerActorSelectionResult selection = module.TrySelectActorProfile(request);
             if (selection == null || !selection.Succeeded)
             {
                 issue = selection != null
                     ? selection.ToDiagnosticString()
-                    : $"Selection compensation returned no result for Slot '{entry.PlayerSlotId.StableText}'.";
+                    : $"Session Actor selection confirmation returned no result for Slot '{entry.PlayerSlotId.StableText}'.";
                 return false;
             }
 
             entry.SelectionRevision = selection.SelectionRevision;
-            entry.SelectionApplied = true;
+            entry.SelectionApplied = false;
             return true;
         }
 
@@ -761,35 +743,20 @@ namespace Immersive.Framework.PlayerParticipation
             string source,
             string reason)
         {
-            var failures = new List<string>();
-            if (selectionApplied)
-            {
-                PlayerActorSelectionResult clear = module.TryClearActorSelection(
-                    new PlayerActorSelectionRequest(
-                        playerSlotId,
-                        null,
-                        source,
-                        $"{reason}:current-entry-selection-rollback",
-                        selectionRevision));
-                if (clear == null || !clear.Succeeded)
-                {
-                    failures.Add(clear != null
-                        ? clear.ToDiagnosticString()
-                        : $"Current-entry Actor selection rollback returned no result for Slot '{playerSlotId.StableText}'.");
-                }
-            }
+            // ADR-019: once Join/selection succeeds it belongs to the Session Player lifetime.
+            // Activity preparation failure retires only the contextual representation.
+            _ = playerSlotId;
+            _ = selectionRevision;
+            _ = selectionApplied;
 
-            if (!TryReleaseAdmissionOnly(
-                    surface,
-                    admissionToken,
-                    source,
-                    reason,
-                    out string admissionIssue))
-            {
-                failures.Add(admissionIssue);
-            }
-
-            return string.Join(" | ", failures);
+            return TryReleaseAdmissionOnly(
+                surface,
+                admissionToken,
+                source,
+                reason,
+                out string admissionIssue)
+                    ? string.Empty
+                    : admissionIssue;
         }
 
         private bool TryRestoreAdoption(

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Immersive.Framework.Actors;
 using Immersive.Framework.ApiStatus;
 using Immersive.Framework.Common;
 using Immersive.Framework.PlayerSlots;
@@ -18,12 +19,13 @@ namespace Immersive.Framework.PlayerParticipation
 
     /// <summary>
     /// Session-scoped plain C# authority for admitting and releasing externally owned scene
-    /// Local Player Hosts. Physical object creation/destruction, Actor selection and gameplay
+    /// Local Player Hosts. Session membership is retained independently from Activity/Route
+    /// representation. Physical object creation/destruction, Actor selection and gameplay
     /// readiness remain outside this transaction.
     /// </summary>
     [FrameworkApiStatus(
         FrameworkApiStatus.Internal,
-        "P3M4B1 Session-scoped Scene Local Player host and Slot admission transaction authority.")]
+        "ADR-019 Session-scoped Scene Local Player host admission and contextual representation authority.")]
     internal sealed class SceneLocalPlayerAdmissionRuntime
     {
         private sealed class AdmissionRecord
@@ -140,6 +142,7 @@ namespace Immersive.Framework.PlayerParticipation
                     existing.Host.IsJoined &&
                     existing.Host.JoinedPlayerSlotId == existing.Token.PlayerSlotId &&
                     currentSlotMatches &&
+                    assignmentConfirmation != null &&
                     assignmentConfirmation.Succeeded &&
                     assignmentConfirmation.CurrentAssignment.AssignmentOrigin ==
                         PlayerSlotAssignmentOrigin.SceneProvided &&
@@ -159,7 +162,7 @@ namespace Immersive.Framework.PlayerParticipation
                         existing.JoinedSlot,
                         resolvedSource,
                         resolvedReason,
-                        "Scene Local Player is already admitted by the same authoring surface.",
+                        "Scene Local Player contextual representation is already admitted by the same authoring surface.",
                         assignmentResult: assignmentConfirmation);
                 }
 
@@ -180,7 +183,6 @@ namespace Immersive.Framework.PlayerParticipation
 
             if (!authoring.TryValidateRuntimeEvidence(out string authoringIssue))
             {
-                string issue = authoringIssue;
                 return Result(
                     SceneLocalPlayerAdmissionRuntimeStatus.RejectedInvalidRequest,
                     operation,
@@ -193,7 +195,7 @@ namespace Immersive.Framework.PlayerParticipation
                     default,
                     resolvedSource,
                     resolvedReason,
-                    issue);
+                    authoringIssue);
             }
 
             if (!authoring.TryGetPlayerSlotId(out PlayerSlotId playerSlotId, out string slotIssue))
@@ -258,6 +260,154 @@ namespace Immersive.Framework.PlayerParticipation
                     "Scene Local Player Host already carries admission state owned by another operation.");
             }
 
+            // ADR-019: a Joined Slot is Session membership. A new Activity/Route scene surface
+            // reprojects that Session Player instead of reserving or joining the Slot again.
+            if (participationContext.TryGetSlotSnapshot(
+                    playerSlotId,
+                    out PlayerSlotRuntimeSnapshot currentSessionSlot) &&
+                currentSessionSlot.IsJoined)
+            {
+                if (!participationContext.TryGetEffectiveHostProvisioningMode(
+                        playerSlotId,
+                        out PlayerHostProvisioningMode hostProvisioningMode) ||
+                    hostProvisioningMode != PlayerHostProvisioningMode.SceneProvided)
+                {
+                    return Result(
+                        SceneLocalPlayerAdmissionRuntimeStatus.RejectedConflict,
+                        operation,
+                        authoring,
+                        default,
+                        null,
+                        null,
+                        null,
+                        currentSessionSlot,
+                        currentSessionSlot,
+                        resolvedSource,
+                        resolvedReason,
+                        $"Scene Local Player reprojection requires SceneProvided provisioning for Joined Slot '{playerSlotId.StableText}'. No provisioning fallback was applied.");
+                }
+
+                if (currentSessionSlot.HasSelectedActor &&
+                    !AreSameActorProfileIdentity(
+                        currentSessionSlot.SelectedActorProfile,
+                        authoring.ActorProfile))
+                {
+                    return Result(
+                        SceneLocalPlayerAdmissionRuntimeStatus.RejectedConflict,
+                        operation,
+                        authoring,
+                        default,
+                        null,
+                        null,
+                        null,
+                        currentSessionSlot,
+                        currentSessionSlot,
+                        resolvedSource,
+                        resolvedReason,
+                        $"Scene Local Player reprojection conflicts with the Session Actor selection for Slot '{playerSlotId.StableText}'. No Actor replacement or fallback was applied.");
+                }
+
+                PlayerHostBindingIdentity hostBindingIdentity =
+                    participationContext.CreateHostBindingIdentity();
+                PlayerSlotAssignmentResult assignment =
+                    participationContext.BeginAssignment(
+                        playerSlotId,
+                        PlayerSlotAssignmentOrigin.SceneProvided,
+                        assignmentOwner,
+                        hostBindingIdentity,
+                        resolvedSource,
+                        $"{resolvedReason}:reproject");
+                if (assignment == null || !assignment.Succeeded)
+                {
+                    return Result(
+                        SceneLocalPlayerAdmissionRuntimeStatus.RejectedConflict,
+                        operation,
+                        authoring,
+                        default,
+                        null,
+                        null,
+                        null,
+                        currentSessionSlot,
+                        currentSessionSlot,
+                        resolvedSource,
+                        resolvedReason,
+                        assignment != null
+                            ? "Scene Local Player reprojection could not acquire the contextual current Slot assignment. " + assignment.Message
+                            : "Scene Local Player reprojection current Slot assignment returned no result.",
+                        assignmentResult: assignment);
+                }
+
+                if (!host.TryRestoreCommittedAdmission(
+                        currentSessionSlot,
+                        resolvedSource,
+                        $"{resolvedReason}:reproject",
+                        allowExistingLogicalActor: true,
+                        expectedSceneActor: authoring.SceneLogicalPlayerActor,
+                        out string hostIssue))
+                {
+                    PlayerSlotAssignmentResult assignmentCompensation =
+                        participationContext.ReleaseAssignment(
+                            playerSlotId,
+                            assignment.CurrentAssignment.AssignmentToken,
+                            resolvedSource,
+                            "scene-reprojection-host-bind-failed");
+                    bool assignmentRestored =
+                        assignmentCompensation != null && assignmentCompensation.Succeeded;
+                    return Result(
+                        assignmentRestored
+                            ? SceneLocalPlayerAdmissionRuntimeStatus.FailedHostCommit
+                            : SceneLocalPlayerAdmissionRuntimeStatus.FailedCompensation,
+                        operation,
+                        authoring,
+                        default,
+                        null,
+                        null,
+                        null,
+                        currentSessionSlot,
+                        currentSessionSlot,
+                        resolvedSource,
+                        resolvedReason,
+                        assignmentRestored
+                            ? hostIssue
+                            : $"{hostIssue} Contextual assignment compensation failed. {(assignmentCompensation != null ? assignmentCompensation.Message : "No assignment compensation result.")}",
+                        SceneLocalPlayerAdmissionRuntimeStatus.FailedHostCommit,
+                        assignment,
+                        assignmentCompensation);
+                }
+
+                operationSequence++;
+                var token = new SceneLocalPlayerAdmissionToken(
+                    participationContext.CreateSnapshot().ContextId,
+                    operationSequence,
+                    playerSlotId,
+                    currentSessionSlot.Revision,
+                    assignment.CurrentAssignment.AssignmentToken);
+                var record = new AdmissionRecord(
+                    authoring,
+                    host,
+                    currentSessionSlot,
+                    token,
+                    assignment.CurrentAssignment);
+                records.Add(record);
+                recordsBySlot.Add(playerSlotId, record);
+
+                return Result(
+                    SceneLocalPlayerAdmissionRuntimeStatus.SucceededAdmitted,
+                    operation,
+                    authoring,
+                    token,
+                    null,
+                    null,
+                    null,
+                    currentSessionSlot,
+                    currentSessionSlot,
+                    resolvedSource,
+                    resolvedReason,
+                    "Scene Local Player representation reprojected onto the existing Joined Session Player without reserve, vacate or re-Join.",
+                    assignmentResult: assignment);
+            }
+
+            // First Scene-Provided occurrence still performs the one Session Join.
             PlayerParticipationOperationResult reservation =
                 participationContext.TryReserveSceneLocalPlayerSlot(
                     playerSlotId,
@@ -363,17 +513,17 @@ namespace Immersive.Framework.PlayerParticipation
                 commit.Slot.PlayerSlotId,
                 commit.Slot.Revision);
 
-            PlayerHostBindingIdentity hostBindingIdentity =
+            PlayerHostBindingIdentity initialHostBindingIdentity =
                 participationContext.CreateHostBindingIdentity();
-            PlayerSlotAssignmentResult assignment =
+            PlayerSlotAssignmentResult initialAssignment =
                 participationContext.BeginAssignment(
                     commit.Slot.PlayerSlotId,
                     PlayerSlotAssignmentOrigin.SceneProvided,
                     assignmentOwner,
-                    hostBindingIdentity,
+                    initialHostBindingIdentity,
                     resolvedSource,
                     resolvedReason);
-            if (assignment == null || !assignment.Succeeded)
+            if (initialAssignment == null || !initialAssignment.Succeeded)
             {
                 host.RollbackStagedAdmission(
                     resolvedSource,
@@ -399,20 +549,19 @@ namespace Immersive.Framework.PlayerParticipation
                     compensation != null ? compensation.Slot : commit.Slot,
                     resolvedSource,
                     resolvedReason,
-                    assignment != null
-                        ? "Canonical current Slot assignment failed. " +
-                          assignment.Message
+                    initialAssignment != null
+                        ? "Canonical current Slot assignment failed. " + initialAssignment.Message
                         : "Canonical current Slot assignment returned no result.",
                     SceneLocalPlayerAdmissionRuntimeStatus.FailedSlotCommit,
-                    assignment);
+                    initialAssignment);
             }
 
-            var token = new SceneLocalPlayerAdmissionToken(
+            var initialToken = new SceneLocalPlayerAdmissionToken(
                 commit.Snapshot.ContextId,
                 operationSequence,
                 commit.Slot.PlayerSlotId,
                 commit.Slot.Revision,
-                assignment.CurrentAssignment.AssignmentToken);
+                initialAssignment.CurrentAssignment.AssignmentToken);
 
             try
             {
@@ -429,7 +578,7 @@ namespace Immersive.Framework.PlayerParticipation
                 PlayerSlotAssignmentResult assignmentCompensation =
                     participationContext.ReleaseAssignment(
                         commit.Slot.PlayerSlotId,
-                        token.AssignmentToken,
+                        initialToken.AssignmentToken,
                         resolvedSource,
                         "scene-host-commit-failed");
                 PlayerParticipationOperationResult compensation =
@@ -437,48 +586,47 @@ namespace Immersive.Framework.PlayerParticipation
                         slotAdmissionToken,
                         resolvedSource,
                         "scene-host-commit-failed");
+                bool assignmentReleased =
+                    assignmentCompensation != null && assignmentCompensation.Succeeded;
+                bool slotReleased = compensation != null && compensation.Succeeded;
                 SceneLocalPlayerAdmissionRuntimeStatus status =
-                    assignmentCompensation.Succeeded &&
-                    compensation != null &&
-                    compensation.Succeeded
+                    assignmentReleased && slotReleased
                         ? SceneLocalPlayerAdmissionRuntimeStatus.FailedHostCommit
                         : SceneLocalPlayerAdmissionRuntimeStatus.FailedCompensation;
                 return Result(
                     status,
                     operation,
                     authoring,
-                    token,
+                    initialToken,
                     reservation,
                     commit,
                     compensation,
                     reservation.Slot,
-                    compensation != null ? compensation.Slot : commit.Slot,
+                    slotReleased ? compensation.Slot : commit.Slot,
                     resolvedSource,
                     resolvedReason,
-                    assignmentCompensation.Succeeded &&
-                    compensation != null &&
-                    compensation.Succeeded
+                    assignmentReleased && slotReleased
                         ? $"Local Player Host commit failed. {exception.Message}"
-                        : $"Local Player Host commit failed and explicit compensation failed. assignmentReleased='{assignmentCompensation.Succeeded}' slotReleased='{(compensation != null && compensation.Succeeded)}'. {exception.Message} {(compensation != null ? compensation.Message : "No compensation result.")}",
+                        : $"Local Player Host commit failed and explicit compensation failed. assignmentReleased='{assignmentReleased}' slotReleased='{slotReleased}'. {exception.Message} {(compensation != null ? compensation.Message : "No compensation result.")}",
                     SceneLocalPlayerAdmissionRuntimeStatus.FailedHostCommit,
-                    assignment,
+                    initialAssignment,
                     assignmentCompensation);
             }
 
-            var record = new AdmissionRecord(
+            var initialRecord = new AdmissionRecord(
                 authoring,
                 host,
                 commit.Slot,
-                token,
-                assignment.CurrentAssignment);
-            records.Add(record);
-            recordsBySlot.Add(playerSlotId, record);
+                initialToken,
+                initialAssignment.CurrentAssignment);
+            records.Add(initialRecord);
+            recordsBySlot.Add(playerSlotId, initialRecord);
 
             return Result(
                 SceneLocalPlayerAdmissionRuntimeStatus.SucceededAdmitted,
                 operation,
                 authoring,
-                token,
+                initialToken,
                 reservation,
                 commit,
                 null,
@@ -487,7 +635,7 @@ namespace Immersive.Framework.PlayerParticipation
                 resolvedSource,
                 resolvedReason,
                 "Scene Local Player Host admitted to the exact ordered Session Slot. Physical Host and Logical Actor remain externally owned.",
-                assignmentResult: assignment);
+                assignmentResult: initialAssignment);
         }
 
         internal SceneLocalPlayerAdmissionRuntimeResult TryRelease(
@@ -535,7 +683,7 @@ namespace Immersive.Framework.PlayerParticipation
                         default,
                         resolvedSource,
                         resolvedReason,
-                        "Scene Local Player is already released.")
+                        "Scene Local Player contextual representation is already released.")
                     : Result(
                         SceneLocalPlayerAdmissionRuntimeStatus.RejectedForeignOrStaleToken,
                         operation,
@@ -548,7 +696,7 @@ namespace Immersive.Framework.PlayerParticipation
                         default,
                         resolvedSource,
                         resolvedReason,
-                        "Expected Scene Local Player admission token is stale because no active record exists.");
+                        "Expected Scene Local Player admission token is stale because no active contextual record exists.");
             }
 
             if (!expectedToken.IsValid || expectedToken != record.Token)
@@ -565,7 +713,7 @@ namespace Immersive.Framework.PlayerParticipation
                     record.JoinedSlot,
                     resolvedSource,
                     resolvedReason,
-                    "Scene Local Player release rejected a foreign or stale admission token.");
+                    "Scene Local Player contextual release rejected a foreign or stale admission token.");
             }
 
             PlayerSlotAssignmentResult assignmentConfirmation =
@@ -594,10 +742,29 @@ namespace Immersive.Framework.PlayerParticipation
                     resolvedSource,
                     resolvedReason,
                     assignmentConfirmation != null
-                        ? "Scene admission release rejected current assignment evidence. " +
-                          assignmentConfirmation.Message
-                        : "Scene admission release assignment confirmation returned no result.",
+                        ? "Scene contextual release rejected current assignment evidence. " + assignmentConfirmation.Message
+                        : "Scene contextual release assignment confirmation returned no result.",
                     assignmentResult: assignmentConfirmation);
+            }
+
+            if (!participationContext.TryGetSlotSnapshot(
+                    record.Token.PlayerSlotId,
+                    out PlayerSlotRuntimeSnapshot currentSessionSlot) ||
+                !currentSessionSlot.IsJoined)
+            {
+                return Result(
+                    SceneLocalPlayerAdmissionRuntimeStatus.FailedInvariant,
+                    operation,
+                    authoring,
+                    record.Token,
+                    null,
+                    null,
+                    null,
+                    record.JoinedSlot,
+                    record.JoinedSlot,
+                    resolvedSource,
+                    resolvedReason,
+                    "Scene contextual release requires the represented Session Player Slot to remain Joined.");
             }
 
             if (record.Host == null ||
@@ -613,11 +780,11 @@ namespace Immersive.Framework.PlayerParticipation
                     null,
                     null,
                     null,
-                    record.JoinedSlot,
-                    record.JoinedSlot,
+                    currentSessionSlot,
+                    currentSessionSlot,
                     resolvedSource,
                     resolvedReason,
-                    "Active Scene Local Player admission record has no matching committed Host evidence.");
+                    "Active Scene Local Player contextual record has no matching committed Host evidence.");
             }
 
             if (!record.Host.TryValidateCommittedAdmissionRelease(
@@ -632,119 +799,35 @@ namespace Immersive.Framework.PlayerParticipation
                     null,
                     null,
                     null,
-                    record.JoinedSlot,
-                    record.JoinedSlot,
+                    currentSessionSlot,
+                    currentSessionSlot,
                     resolvedSource,
                     resolvedReason,
                     hostValidationIssue);
             }
 
-            PlayerParticipationOperationResult begin =
-                participationContext.TryBeginSceneLocalPlayerRelease(
-                    record.Token,
-                    resolvedSource,
-                    resolvedReason,
-                    out SceneLocalPlayerAdmissionReleaseToken releaseToken);
-            if (begin == null || !begin.Succeeded || !releaseToken.IsValid)
-            {
-                return Result(
-                    MapReleaseBeginFailure(begin),
-                    operation,
-                    authoring,
-                    record.Token,
-                    null,
-                    begin,
-                    null,
-                    record.JoinedSlot,
-                    begin != null ? begin.Slot : record.JoinedSlot,
-                    resolvedSource,
-                    resolvedReason,
-                    begin != null ? begin.Message : "Scene Local Player release begin returned no result.");
-            }
-
+            // ADR-019: Activity/Route release retires contextual Host evidence and the current
+            // SceneProvided assignment only. It does not transition the Session Slot to Leaving
+            // or Available and it does not clear Session Actor selection intent.
             if (!record.Host.TryReleaseCommittedAdmission(
                     record.Token.PlayerSlotId,
                     resolvedSource,
                     resolvedReason,
                     out string hostReleaseIssue))
             {
-                PlayerParticipationOperationResult rollback =
-                    participationContext.TryRollbackSceneLocalPlayerRelease(
-                        releaseToken,
-                        resolvedSource,
-                        "scene-host-release-failed");
-                UpdateRecordAfterReleaseRollback(record, rollback);
-                SceneLocalPlayerAdmissionRuntimeStatus status = rollback != null && rollback.Succeeded
-                    ? SceneLocalPlayerAdmissionRuntimeStatus.FailedHostRelease
-                    : SceneLocalPlayerAdmissionRuntimeStatus.FailedCompensation;
                 return Result(
-                    status,
+                    SceneLocalPlayerAdmissionRuntimeStatus.FailedHostRelease,
                     operation,
                     authoring,
                     record.Token,
                     null,
-                    begin,
-                    rollback,
-                    record.JoinedSlot,
-                    rollback != null ? rollback.Slot : begin.Slot,
-                    resolvedSource,
-                    resolvedReason,
-                    rollback != null && rollback.Succeeded
-                        ? hostReleaseIssue
-                        : $"{hostReleaseIssue} Slot rollback failed. {(rollback != null ? rollback.Message : "No rollback result.")}",
-                    SceneLocalPlayerAdmissionRuntimeStatus.FailedHostRelease);
-            }
-
-            PlayerParticipationOperationResult commit =
-                participationContext.TryCommitSceneLocalPlayerRelease(
-                    releaseToken,
-                    resolvedSource,
-                    resolvedReason);
-            if (commit == null || !commit.Succeeded)
-            {
-                PlayerParticipationOperationResult rollback =
-                    participationContext.TryRollbackSceneLocalPlayerRelease(
-                        releaseToken,
-                        resolvedSource,
-                        "scene-slot-release-commit-failed");
-                bool slotRestored = rollback != null && rollback.Succeeded;
-                PlayerSlotRuntimeSnapshot restoreSlot = slotRestored
-                    ? rollback.Slot
-                    : record.JoinedSlot;
-                bool hostRestored = record.Host.TryRestoreCommittedAdmission(
-                    restoreSlot,
-                    resolvedSource,
-                    "scene-slot-release-commit-failed",
-                    allowExistingLogicalActor: true,
-                    expectedSceneActor: authoring.SceneLogicalPlayerActor,
-                    out string hostRestoreIssue);
-                if (slotRestored && hostRestored)
-                {
-                    UpdateRecordAfterReleaseRollback(record, rollback);
-                }
-
-                SceneLocalPlayerAdmissionRuntimeStatus status = slotRestored && hostRestored
-                    ? SceneLocalPlayerAdmissionRuntimeStatus.FailedReleaseCommit
-                    : SceneLocalPlayerAdmissionRuntimeStatus.FailedCompensation;
-                string commitIssue = commit != null
-                    ? commit.Message
-                    : "Scene Local Player Slot release commit returned no result.";
-                return Result(
-                    status,
-                    operation,
-                    authoring,
-                    record.Token,
                     null,
-                    commit,
-                    rollback,
-                    record.JoinedSlot,
-                    slotRestored ? rollback.Slot : begin.Slot,
+                    null,
+                    currentSessionSlot,
+                    currentSessionSlot,
                     resolvedSource,
                     resolvedReason,
-                    status == SceneLocalPlayerAdmissionRuntimeStatus.FailedReleaseCommit
-                        ? commitIssue
-                        : $"{commitIssue} Compensation failed. slotRestored='{slotRestored}' hostRestored='{hostRestored}' hostIssue='{hostRestoreIssue}'.",
-                    SceneLocalPlayerAdmissionRuntimeStatus.FailedReleaseCommit);
+                    hostReleaseIssue);
             }
 
             PlayerSlotAssignmentResult assignmentRelease =
@@ -755,55 +838,32 @@ namespace Immersive.Framework.PlayerParticipation
                     resolvedReason);
             if (assignmentRelease == null || !assignmentRelease.Succeeded)
             {
-                PlayerParticipationOperationResult slotRestore =
-                    participationContext.TryRestoreJoinedSlotAfterAssignmentReleaseFailure(
-                        record.Token.PlayerSlotId,
-                        expectedToken.AssignmentToken,
-                        resolvedSource,
-                        "scene-assignment-release-failed");
-                bool slotRestored =
-                    slotRestore != null &&
-                    slotRestore.Succeeded &&
-                    slotRestore.Slot.IsJoined;
-                string hostRestoreIssue = string.Empty;
-                bool hostRestored = slotRestored &&
-                    record.Host.TryRestoreCommittedAdmission(
-                        slotRestore.Slot,
-                        resolvedSource,
-                        "scene-assignment-release-failed",
-                        allowExistingLogicalActor: true,
-                        expectedSceneActor: authoring.SceneLogicalPlayerActor,
-                        out hostRestoreIssue);
-                if (slotRestored && hostRestored)
-                {
-                    record.JoinedSlot = slotRestore.Slot;
-                    record.Token = new SceneLocalPlayerAdmissionToken(
-                        record.Token.ContextId,
-                        record.Token.OperationSequence,
-                        record.Token.PlayerSlotId,
-                        slotRestore.Slot.Revision,
-                        record.Token.AssignmentToken);
-                }
+                bool hostRestored = record.Host.TryRestoreCommittedAdmission(
+                    currentSessionSlot,
+                    resolvedSource,
+                    "scene-assignment-release-failed",
+                    allowExistingLogicalActor: true,
+                    expectedSceneActor: authoring.SceneLogicalPlayerActor,
+                    out string hostRestoreIssue);
 
                 return Result(
-                    slotRestored && hostRestored
+                    hostRestored
                         ? SceneLocalPlayerAdmissionRuntimeStatus.FailedReleaseCommit
                         : SceneLocalPlayerAdmissionRuntimeStatus.FailedCompensation,
                     operation,
                     authoring,
                     record.Token,
                     null,
-                    commit,
-                    slotRestore,
-                    record.JoinedSlot,
-                    slotRestored ? slotRestore.Slot : commit.Slot,
+                    null,
+                    null,
+                    currentSessionSlot,
+                    currentSessionSlot,
                     resolvedSource,
                     resolvedReason,
                     assignmentRelease != null
-                        ? "Canonical assignment release failed. " +
-                          assignmentRelease.Message +
-                          $" slotRestored='{slotRestored}' hostRestored='{hostRestored}' hostIssue='{hostRestoreIssue}'."
-                        : "Canonical assignment release returned no result.",
+                        ? "Canonical contextual assignment release failed. " + assignmentRelease.Message +
+                          $" hostRestored='{hostRestored}' hostIssue='{hostRestoreIssue}'."
+                        : $"Canonical contextual assignment release returned no result. hostRestored='{hostRestored}' hostIssue='{hostRestoreIssue}'.",
                     SceneLocalPlayerAdmissionRuntimeStatus.FailedReleaseCommit,
                     assignmentRelease);
             }
@@ -817,13 +877,13 @@ namespace Immersive.Framework.PlayerParticipation
                 authoring,
                 record.Token,
                 null,
-                commit,
+                null,
                 null,
                 record.JoinedSlot,
-                commit.Slot,
+                currentSessionSlot,
                 resolvedSource,
                 resolvedReason,
-                "Scene Local Player admission and canonical current Slot assignment released. Slot returned to Available; physical Host and Logical Actor were preserved.",
+                "Scene Local Player contextual representation and current Slot assignment released. Session Player Slot remains Joined; Scene Host and Logical Actor remain externally owned.",
                 assignmentResult: assignmentRelease);
         }
 
@@ -873,6 +933,25 @@ namespace Immersive.Framework.PlayerParticipation
             return null;
         }
 
+        private static bool AreSameActorProfileIdentity(
+            ActorProfile left,
+            ActorProfile right)
+        {
+            if (ReferenceEquals(left, right))
+            {
+                return true;
+            }
+
+            if (left == null || right == null)
+            {
+                return false;
+            }
+
+            return left.TryGetActorProfileId(out ActorProfileId leftId, out _) &&
+                   right.TryGetActorProfileId(out ActorProfileId rightId, out _) &&
+                   leftId == rightId;
+        }
+
         private static SceneLocalPlayerAdmissionRuntimeStatus MapReservationFailure(
             PlayerParticipationOperationResult reservation,
             bool orderedSlotMismatch)
@@ -890,37 +969,6 @@ namespace Immersive.Framework.PlayerParticipation
                     SceneLocalPlayerAdmissionRuntimeStatus.RejectedSlotUnavailable,
                 _ => SceneLocalPlayerAdmissionRuntimeStatus.FailedReservation
             };
-        }
-
-        private static SceneLocalPlayerAdmissionRuntimeStatus MapReleaseBeginFailure(
-            PlayerParticipationOperationResult begin)
-        {
-            return begin?.Status switch
-            {
-                PlayerParticipationOperationStatus.RejectedForeignOrStaleReservation =>
-                    SceneLocalPlayerAdmissionRuntimeStatus.RejectedForeignOrStaleToken,
-                PlayerParticipationOperationStatus.RejectedInvalidState =>
-                    SceneLocalPlayerAdmissionRuntimeStatus.RejectedDependentState,
-                _ => SceneLocalPlayerAdmissionRuntimeStatus.FailedReleaseBegin
-            };
-        }
-
-        private static void UpdateRecordAfterReleaseRollback(
-            AdmissionRecord record,
-            PlayerParticipationOperationResult rollback)
-        {
-            if (record == null || rollback == null || !rollback.Succeeded || !rollback.Slot.IsJoined)
-            {
-                return;
-            }
-
-            record.JoinedSlot = rollback.Slot;
-            record.Token = new SceneLocalPlayerAdmissionToken(
-                record.Token.ContextId,
-                record.Token.OperationSequence,
-                record.Token.PlayerSlotId,
-                rollback.Slot.Revision,
-                record.Token.AssignmentToken);
         }
 
         private static SceneLocalPlayerAdmissionRuntimeResult Result(
