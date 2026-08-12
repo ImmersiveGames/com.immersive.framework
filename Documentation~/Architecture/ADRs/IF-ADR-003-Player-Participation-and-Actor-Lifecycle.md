@@ -2,8 +2,14 @@
 
 Status: **Accepted**  
 Last updated: 2026-08-09  
-Related decisions: IF-ADR-001, IF-ADR-007, IF-ADR-012, IF-ADR-015, IF-ADR-016
+Proposed reconciliation draft: **2026-08-11 — R6 / R7 / R8**  
+Related decisions: IF-ADR-001, IF-ADR-007, IF-ADR-012, IF-ADR-015, IF-ADR-016  
 Current reconciliation: [ADR-003 / ADR-012 technical reconciliation](../Reconciliation/IMMERSIVE-FRAMEWORK-ADR-003-012-RECONCILIATION-2026-08-10.md)
+
+> **Draft note:** this file is a proposed reconciliation of the accepted ADR after
+> the R6/R7/R8 architecture review. It has not been applied to the repository yet.
+> The reconciliation preserves current Player authority and records explicit Actor
+> selection and targeted Slot Join without opening per-Slot Host Provisioning.
 
 > Current implementation, QA and FIRSTGAME integration status is tracked in
 > `../Tracking/IF-TRACK-Framework.md`. This ADR is normative and intentionally
@@ -16,6 +22,21 @@ A Logical Player is a Session participant while an Actor is contextual gameplay
 content. Joining, Host provisioning/adoption, Actor selection, logical
 preparation, physical materialization, gameplay admission, readiness contribution
 and contextual release must remain distinct and diagnosable.
+
+The R6/R7/R8 review additionally clarifies three independent decisions:
+
+```text
+Host Provisioning
+  how the technical Player Host is provided for the Session
+
+Slot Assignment
+  which configured Player Slot a joining Player occupies
+
+Actor Selection
+  which ActorProfile is selected for one Joined Player Slot
+```
+
+These dimensions must not be collapsed into one per-Slot provisioning schema.
 
 ## Decision
 
@@ -58,6 +79,168 @@ PlayerSessionProfile
 There is no independent Session Capacity and no per-Slot Host Provisioning
 override in the current model.
 
+Host Provisioning remains one Session-wide decision even when:
+
+```text
+different Players intentionally occupy different Slots
+different Slots select different ActorProfiles
+```
+
+Choosing an Actor or targeting a Slot does not imply heterogeneous Host
+Provisioning.
+
+## Slot Join and assignment
+
+The Session remains the authority over Slot allocation and assignment.
+
+Two bounded Join intents are accepted:
+
+```text
+Untargeted Join
+  -> first eligible vacant Supported Slot in authored order
+
+Targeted Join
+  -> exact requested Supported Slot when that Slot is eligible
+```
+
+For Targeted Join, the consumer expresses desired Slot identity but does not
+reserve or mutate Slot state directly.
+
+The Session validates at least:
+
+```text
+Joining is open
+requested Slot identity is valid
+requested Slot is configured/supported
+requested Slot is vacant/eligible
+Host Provisioning is compatible
+request scope is current
+```
+
+Targeted Join has no fallback.
+
+```text
+request Player2
+Player2 unavailable
+
+-> explicit rejection
+-> never Player1
+-> never Player3
+```
+
+Untargeted Join retains current first-vacant-Supported-Slot semantics.
+
+Targeted Join does not carry `ActorProfile`. Actor choice remains the separate
+Actor Selection transaction.
+
+Framework `PlayerSlotId` is domain identity and must not be collapsed into Unity
+Input System `PlayerInput.playerIndex`.
+
+Scene-Provided admission may continue to author an exact Slot directly. The
+Manager-Provisioned consumer surface gains equivalent exact-Slot intent without
+creating a second Slot authority.
+
+## Actor selection
+
+Actor selection is Session-scoped mutable intent for one exact Joined Player
+Slot.
+
+The consumer may request:
+
+```text
+Select ActorProfile
+Select configured default ActorProfile
+```
+
+while Session authority validates and commits the selection.
+
+The consumer does not directly mutate `SelectedActorProfile`, prepare a Logical
+Actor or materialize physical content.
+
+### Selection precondition
+
+Actor selection changes require the target Slot to be Joined.
+
+```text
+Available / Reserved
+  -> selection rejected
+
+Joined
+  -> selection may be evaluated
+```
+
+### Select semantics
+
+If no Actor is selected:
+
+```text
+Select ActorProfile A
+  -> A becomes selected
+```
+
+Selecting the same current ActorProfile is idempotent.
+
+If another ActorProfile is already selected, a plain Select does not silently
+replace it.
+
+Replacement/clear remain explicit runtime semantics and must remain
+revision-correlated.
+
+### Prepared Actor boundary
+
+Direct Actor selection mutation is not a physical Actor swap.
+
+When one current Logical Actor is already prepared, direct:
+
+```text
+Select Actor
+Replace Actor Selection
+Clear Actor Selection
+Select Default Actor
+```
+
+must reject rather than create divergence between Session selection and the
+prepared physical Actor.
+
+A physical hot-swap flow is a separate product operation and is not granted to
+ordinary consumers by this reconciliation.
+
+Consumers therefore still do not own Actor preparation/materialization authority.
+
+### Actor selection revision
+
+Selection mutation remains revision-aware. A request carrying an expected
+selection revision must reject when that revision is stale.
+
+This prevents old UI/control-plane intent from overwriting newer Session state.
+
+### Duplicate Actor policy
+
+Existing Session Actor-selection duplicate policy remains authoritative.
+
+The framework may allow duplicate ActorProfile selection or require uniqueness
+across Joined Slots according to the configured runtime policy.
+
+No separate duplicate policy is introduced by targeted Join.
+
+## Actor Resolution dependency
+
+IF-ADR-016 `Actor Resolution` remains independent from Host Provisioning and
+Slot Join.
+
+```text
+Resolve Configured Default
+  permits the configured Slot default to be selected through the canonical
+  selection operation
+
+Leave Unresolved
+  permits the Joined Slot to remain without Actor selection until an explicit
+  consumer selection occurs
+```
+
+This bounded explicit selection contract is not a generic character-selection
+system.
+
 ## Readiness and control-plane boundary
 
 An Activity may project a required Slot before that Slot has Joined. When the
@@ -71,19 +254,37 @@ This is not failure and must not be silently converted to Ready, optional
 participation or timeout success.
 
 For `WaitCovered`, any operation required to advance readiness must remain
-reachable through an external/control-plane path. `RequestJoin` may be such an
-operation and is distinct from normal gameplay input.
+reachable through an external/control-plane path.
+
+Depending on the authored composition, that may include:
+
+```text
+Request Join
+Request Join To Slot
+Request Actor Selection
+Request Default Actor Selection
+```
+
+These operations are distinct from normal gameplay input.
 
 Validation may warn about unreachable compositions but must not auto-change
-readiness policy, participation requirement, Slot projection or Joining state.
+readiness policy, participation requirement, Slot projection, Joining state,
+target Slot or Actor selection.
 
 ## Rejected behavior
 
 - Capacity as a second Session admission limit.
 - Separate Player provisioning Profile.
 - Per-Slot Host Provisioning overrides in the current Session model.
-- Consumer Slot reservation.
+- Treating different ActorProfile per Slot as a reason for per-Slot Host Provisioning.
+- Consumer direct Slot reservation/mutation.
+- Consumer direct Actor selection state mutation.
+- Targeted Join falling back to another Slot.
+- Targeted Join carrying ActorProfile as an implicit combined transaction.
+- Using Unity `playerIndex` as the Framework Slot identity.
 - Consumer Actor preparation/materialization authority.
+- Direct Actor selection replacing a currently prepared Actor.
+- Generic character roster/unlock/store/selection-flow authority in the Framework.
 - Fake readiness, automatic Join or silent fallback.
 - Global Player manager/service locator.
 
@@ -91,3 +292,9 @@ readiness policy, participation requirement, Slot projection or Joining state.
 
 Session Player Leave, device disconnect/reconnect and Session-Persistent Player
 require separate explicit contracts when opened.
+
+Mixed/per-Slot Host Provisioning remains deferred until a concrete game
+requirement demonstrates different provisioning ownership for different Slots.
+
+A consumer-facing physical Actor hot-swap operation remains separate from bounded
+Actor Selection.
