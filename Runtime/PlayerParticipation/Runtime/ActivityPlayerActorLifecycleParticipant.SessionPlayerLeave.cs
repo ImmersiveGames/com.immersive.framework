@@ -1,0 +1,734 @@
+using System;
+using System.Collections.Generic;
+using Immersive.Framework.Authoring;
+using Immersive.Framework.PlayerSlots;
+using Immersive.Framework.RuntimeContent;
+
+namespace Immersive.Framework.PlayerParticipation
+{
+    internal sealed partial class ActivityPlayerActorLifecycleParticipant
+    {
+        private sealed class SessionPlayerActivityRepresentationReleaseProgress
+        {
+            internal SessionPlayerLeaveToken LeaveToken;
+            internal string ActivityName;
+            internal RuntimeContentOwner ActivityOwner;
+            internal PlayerActorPreparationToken PreparationToken;
+            internal bool HadActivityRepresentation;
+            internal bool HadPreparedActor;
+            internal bool HadGameplayChain;
+            internal bool GameplayAdmissionReleased;
+            internal bool CameraReleased;
+            internal bool InputReleased;
+            internal bool OccupancyReleased;
+            internal bool PreparedActorReleased;
+            internal bool ActorRetainedCleanupPending;
+            internal PlayerActorPreparationResult LastActorRelease;
+            internal bool ActivityLedgerRetired;
+            internal bool ReadinessContributionRetired;
+            internal bool Completed;
+        }
+
+        private readonly Dictionary<SessionPlayerLeaveToken,
+            SessionPlayerActivityRepresentationReleaseProgress>
+            sessionPlayerActivityRepresentationReleaseProgress = new();
+
+        /// <summary>
+        /// Retires the exact current Activity representation for a staged Session Player Leave.
+        /// The Player is first removed from the Activity/readiness ledger so a Leaving occurrence
+        /// stops contributing immediately. Resource release then proceeds monotonically and is
+        /// retried by the same Leave token without compensation or representation recreation.
+        /// Session Actor selection, provisioning resources and terminal Slot vacancy remain later
+        /// ADR-020 stages.
+        /// </summary>
+        internal SessionPlayerActivityRepresentationReleaseResult
+            TryReleaseActivityRepresentationForSessionPlayerLeave(
+                SessionPlayerLeaveToken leaveToken,
+                string source,
+                string reason)
+        {
+            string resolvedSource = string.IsNullOrWhiteSpace(source)
+                ? nameof(ActivityPlayerActorLifecycleParticipant)
+                : source.Trim();
+            string resolvedReason = string.IsNullOrWhiteSpace(reason)
+                ? "session-player-leave-release-activity-representation"
+                : reason.Trim();
+
+            if (!leaveToken.IsValid)
+            {
+                return Result(
+                    SessionPlayerActivityRepresentationReleaseStatus.RejectedInvalidRequest,
+                    leaveToken,
+                    null,
+                    null,
+                    resolvedSource,
+                    resolvedReason,
+                    "Activity representation release requires a valid Session Player Leave token.");
+            }
+
+            SessionPlayerLeaveRuntimeResult leaveConfirmation =
+                participationContext.TryConfirmSessionPlayerLeave(
+                    leaveToken,
+                    resolvedSource,
+                    resolvedReason);
+            if (leaveConfirmation == null || !leaveConfirmation.Succeeded)
+            {
+                return Result(
+                    SessionPlayerActivityRepresentationReleaseStatus.RejectedLeaveCorrelation,
+                    leaveToken,
+                    leaveConfirmation,
+                    null,
+                    resolvedSource,
+                    resolvedReason,
+                    leaveConfirmation != null
+                        ? leaveConfirmation.ToDiagnosticString()
+                        : "Session Player Leave confirmation returned no result.");
+            }
+
+            if (sessionPlayerActivityRepresentationReleaseProgress.TryGetValue(
+                    leaveToken,
+                    out SessionPlayerActivityRepresentationReleaseProgress progress) &&
+                progress.Completed)
+            {
+                return Result(
+                    SessionPlayerActivityRepresentationReleaseStatus.SucceededAlreadyReleased,
+                    leaveToken,
+                    leaveConfirmation,
+                    progress,
+                    resolvedSource,
+                    resolvedReason,
+                    "The exact Leave occurrence already retired its Activity representation.");
+            }
+
+            if (gameplayLifecycleRuntime is
+                    ActivityPlayerLifecycleAdmissionRuntimeContext admissionRuntime &&
+                admissionRuntime.HasActiveTransaction)
+            {
+                return Result(
+                    SessionPlayerActivityRepresentationReleaseStatus.RejectedTransitionInFlight,
+                    leaveToken,
+                    leaveConfirmation,
+                    progress,
+                    resolvedSource,
+                    resolvedReason,
+                    "Session Player Leave is staged while an Activity Player handoff transaction is still active. The same Leave occurrence remains retriable after that transaction reaches a stable boundary.");
+            }
+
+            if (!preparationModule.TryGetPlayerGameplayRuntime(
+                    out PlayerGameplayRuntimeHostModule gameplayRuntime,
+                    out string gameplayRuntimeIssue))
+            {
+                return Result(
+                    SessionPlayerActivityRepresentationReleaseStatus.RejectedRuntimeUnavailable,
+                    leaveToken,
+                    leaveConfirmation,
+                    progress,
+                    resolvedSource,
+                    resolvedReason,
+                    gameplayRuntimeIssue);
+            }
+
+            if (progress == null)
+            {
+                SessionPlayerActivityRepresentationReleaseResult captureFailure =
+                    TryCaptureSessionPlayerActivityRepresentationRelease(
+                        leaveToken,
+                        leaveConfirmation,
+                        gameplayRuntime,
+                        resolvedSource,
+                        resolvedReason,
+                        out progress);
+                if (captureFailure != null)
+                {
+                    return captureFailure;
+                }
+
+                sessionPlayerActivityRepresentationReleaseProgress.Add(
+                    leaveToken,
+                    progress);
+
+                if (!progress.HadActivityRepresentation)
+                {
+                    progress.Completed = true;
+                    return Result(
+                        SessionPlayerActivityRepresentationReleaseStatus.SucceededNoCurrentRepresentation,
+                        leaveToken,
+                        leaveConfirmation,
+                        progress,
+                        resolvedSource,
+                        resolvedReason,
+                        "The exact Leaving Session Player has no current Activity representation; contextual release was skipped without creating one.");
+                }
+            }
+
+            if (!progress.ActivityLedgerRetired)
+            {
+                RetirePlayerSlotFromActivityLifecycle(
+                    leaveToken.PlayerSlotId,
+                    out bool activityLedgerRetired,
+                    out bool readinessContributionRetired);
+                progress.ActivityLedgerRetired = activityLedgerRetired;
+                progress.ReadinessContributionRetired |= readinessContributionRetired;
+                if (!progress.ActivityLedgerRetired)
+                {
+                    return Result(
+                        SessionPlayerActivityRepresentationReleaseStatus.FailedInvariant,
+                        leaveToken,
+                        leaveConfirmation,
+                        progress,
+                        resolvedSource,
+                        resolvedReason,
+                        "The Leaving Session Player could not be retired from the current Activity lifecycle ledger before contextual resource release.");
+                }
+            }
+
+            PlayerGameplayRuntimeHostModule.SessionPlayerLeaveGameplayReleaseResult
+                gameplay = gameplayRuntime.TryReleaseActivityGameplayForSessionPlayerLeave(
+                    leaveToken,
+                    progress.PreparationToken,
+                    resolvedSource,
+                    resolvedReason);
+            if (gameplay != null)
+            {
+                progress.HadGameplayChain |= gameplay.HadGameplayChain;
+                progress.GameplayAdmissionReleased = gameplay.AdmissionReleased;
+                progress.CameraReleased = gameplay.CameraReleased;
+                progress.InputReleased = gameplay.InputReleased;
+                progress.OccupancyReleased = gameplay.OccupancyReleased;
+            }
+
+            if (gameplay == null || !gameplay.Succeeded)
+            {
+                SessionPlayerActivityRepresentationReleaseStatus status =
+                    gameplay != null &&
+                    gameplay.Status == PlayerGameplayRuntimeHostModule
+                        .SessionPlayerLeaveGameplayReleaseStatus
+                        .RejectedPreparationCorrelation
+                        ? SessionPlayerActivityRepresentationReleaseStatus
+                            .RejectedRepresentationCorrelation
+                        : gameplay != null &&
+                          gameplay.Status == PlayerGameplayRuntimeHostModule
+                            .SessionPlayerLeaveGameplayReleaseStatus.FailedInvariant
+                            ? SessionPlayerActivityRepresentationReleaseStatus
+                                .FailedInvariant
+                            : SessionPlayerActivityRepresentationReleaseStatus
+                                .FailedGameplayRelease;
+                return Result(
+                    status,
+                    leaveToken,
+                    leaveConfirmation,
+                    progress,
+                    resolvedSource,
+                    resolvedReason,
+                    gameplay != null
+                        ? gameplay.Message
+                        : "Activity gameplay release returned no result.");
+            }
+
+            if (progress.HadPreparedActor && !progress.PreparedActorReleased)
+            {
+                PlayerActorPreparationResult actorRelease =
+                    preparationModule.TryReleasePreparedActor(
+                        leaveToken.PlayerSlotId,
+                        progress.PreparationToken,
+                        resolvedSource,
+                        resolvedReason);
+                progress.LastActorRelease = actorRelease;
+                if (actorRelease != null && actorRelease.Succeeded)
+                {
+                    progress.PreparedActorReleased = true;
+                }
+                else if (actorRelease != null &&
+                         actorRelease.Status ==
+                            PlayerActorPreparationStatus.FailedPreviousRelease &&
+                         actorRelease.StateChanged)
+                {
+                    // The current Actor occurrence was released, but retained RuntimeContent
+                    // cleanup still failed. Do not recreate it; retry retained cleanup with the
+                    // same Leave occurrence on the next call.
+                    progress.PreparedActorReleased = true;
+                    progress.ActorRetainedCleanupPending = true;
+                    return Result(
+                        SessionPlayerActivityRepresentationReleaseStatus.FailedActorRelease,
+                        leaveToken,
+                        leaveConfirmation,
+                        progress,
+                        resolvedSource,
+                        resolvedReason,
+                        actorRelease.ToDiagnosticString());
+                }
+                else
+                {
+                    return Result(
+                        SessionPlayerActivityRepresentationReleaseStatus.FailedActorRelease,
+                        leaveToken,
+                        leaveConfirmation,
+                        progress,
+                        resolvedSource,
+                        resolvedReason,
+                        actorRelease != null
+                            ? actorRelease.ToDiagnosticString()
+                            : "Prepared Actor release returned no result.");
+                }
+            }
+
+            if (progress.ActorRetainedCleanupPending)
+            {
+                PlayerActorPreparationResult retainedCleanup =
+                    preparationModule.TryReleasePreparedActor(
+                        leaveToken.PlayerSlotId,
+                        default,
+                        resolvedSource,
+                        resolvedReason + "; retry-retained-actor-cleanup");
+                progress.LastActorRelease = retainedCleanup;
+                if (retainedCleanup == null || !retainedCleanup.Succeeded)
+                {
+                    return Result(
+                        SessionPlayerActivityRepresentationReleaseStatus.FailedActorRelease,
+                        leaveToken,
+                        leaveConfirmation,
+                        progress,
+                        resolvedSource,
+                        resolvedReason,
+                        retainedCleanup != null
+                            ? retainedCleanup.ToDiagnosticString()
+                            : "Retained Actor cleanup retry returned no result.");
+                }
+
+                progress.ActorRetainedCleanupPending = false;
+            }
+
+            progress.Completed = true;
+            return Result(
+                SessionPlayerActivityRepresentationReleaseStatus.SucceededReleased,
+                leaveToken,
+                leaveConfirmation,
+                progress,
+                resolvedSource,
+                resolvedReason,
+                "Current Activity representation retired for the exact Leaving Session Player. Session-scoped Actor selection, provisioning resources and Slot vacancy remain unchanged.");
+        }
+
+        private SessionPlayerActivityRepresentationReleaseResult
+            TryCaptureSessionPlayerActivityRepresentationRelease(
+                SessionPlayerLeaveToken leaveToken,
+                SessionPlayerLeaveRuntimeResult leaveConfirmation,
+                PlayerGameplayRuntimeHostModule gameplayRuntime,
+                string source,
+                string reason,
+                out SessionPlayerActivityRepresentationReleaseProgress progress)
+        {
+            progress = null;
+            PlayerSlotId playerSlotId = leaveToken.PlayerSlotId;
+            PlayerReadinessSlotRecord readinessSlot = FindReadinessSlot(playerSlotId);
+            PlayerActorPreparationToken preparationToken = FindPreparedToken(playerSlotId);
+            bool hasPreparedActor = preparationToken.IsValid;
+            bool snapshotContainsSlot = activeRecord != null &&
+                LastSnapshotContainsSlot(playerSlotId);
+            bool activeHostRecorded = ActiveRecordContainsHostForSlot(playerSlotId);
+            bool hasActivityRepresentation = activeRecord != null &&
+                (readinessSlot != null ||
+                 hasPreparedActor ||
+                 activeHostRecorded ||
+                 snapshotContainsSlot);
+
+            if (activeRecord == null && readinessSlot != null)
+            {
+                return Result(
+                    SessionPlayerActivityRepresentationReleaseStatus.FailedInvariant,
+                    leaveToken,
+                    leaveConfirmation,
+                    null,
+                    source,
+                    reason,
+                    "Activity readiness retains the Leaving Player without a current active Activity lifecycle record.");
+            }
+
+            if (hasPreparedActor)
+            {
+                if (!preparationModule.TryGetRetainedActorEvidence(
+                        playerSlotId,
+                        out PlayerActorCorrelationEvidence actorEvidence) ||
+                    !actorEvidence.IsValid ||
+                    actorEvidence.PreparationToken != preparationToken ||
+                    (activeRecord != null &&
+                     activeRecord.Owner.IsValid &&
+                     actorEvidence.Owner != activeRecord.Owner))
+                {
+                    return Result(
+                        SessionPlayerActivityRepresentationReleaseStatus.RejectedRepresentationCorrelation,
+                        leaveToken,
+                        leaveConfirmation,
+                        null,
+                        source,
+                        reason,
+                        "Activity lifecycle preparation token does not match the retained current Actor representation evidence.");
+                }
+
+                PlayerSlotAssignmentResult assignment =
+                    participationContext.TryConfirmCurrentAssignment(
+                        playerSlotId,
+                        actorEvidence.AssignmentToken,
+                        source,
+                        reason);
+                if (assignment == null ||
+                    !assignment.Succeeded ||
+                    assignment.CurrentAssignment.HostBindingIdentity !=
+                        actorEvidence.HostBindingIdentity)
+                {
+                    return Result(
+                        SessionPlayerActivityRepresentationReleaseStatus.RejectedRepresentationCorrelation,
+                        leaveToken,
+                        leaveConfirmation,
+                        null,
+                        source,
+                        reason,
+                        assignment != null
+                            ? assignment.ToDiagnosticString()
+                            : "Current Slot assignment confirmation returned no result for retained Actor evidence.");
+                }
+
+                if (!preparationModule.TryGetRetainedHostEvidence(
+                        playerSlotId,
+                        out PlayerHostEvidenceSnapshot hostEvidence) ||
+                    !hostEvidence.IsRecorded ||
+                    hostEvidence.AssignmentToken != actorEvidence.AssignmentToken ||
+                    hostEvidence.HostBindingIdentity != actorEvidence.HostBindingIdentity)
+                {
+                    return Result(
+                        SessionPlayerActivityRepresentationReleaseStatus.RejectedRepresentationCorrelation,
+                        leaveToken,
+                        leaveConfirmation,
+                        null,
+                        source,
+                        reason,
+                        "Prepared Activity Actor representation does not resolve to the exact retained Host evidence for the same assignment occurrence.");
+                }
+            }
+            else if (preparationModule.TryGetRetainedActorEvidence(
+                         playerSlotId,
+                         out PlayerActorCorrelationEvidence divergentActor) &&
+                     divergentActor.IsValid)
+            {
+                return Result(
+                    SessionPlayerActivityRepresentationReleaseStatus.FailedInvariant,
+                    leaveToken,
+                    leaveConfirmation,
+                    null,
+                    source,
+                    reason,
+                    "Retained Actor representation exists without a matching preparation token in the Activity lifecycle ledger.");
+            }
+
+            if (!gameplayRuntime.TryInspectActivityGameplayForSessionPlayerLeave(
+                    leaveToken,
+                    preparationToken,
+                    source,
+                    reason,
+                    out bool hadGameplayChain,
+                    out PlayerGameplayRuntimeHostModule.SessionPlayerLeaveGameplayReleaseStatus
+                        gameplayInspectionFailure,
+                    out string gameplayInspectionIssue))
+            {
+                SessionPlayerActivityRepresentationReleaseStatus status =
+                    gameplayInspectionFailure == PlayerGameplayRuntimeHostModule
+                        .SessionPlayerLeaveGameplayReleaseStatus
+                        .RejectedPreparationCorrelation
+                        ? SessionPlayerActivityRepresentationReleaseStatus
+                            .RejectedRepresentationCorrelation
+                        : gameplayInspectionFailure == PlayerGameplayRuntimeHostModule
+                            .SessionPlayerLeaveGameplayReleaseStatus.FailedInvariant
+                            ? SessionPlayerActivityRepresentationReleaseStatus
+                                .FailedInvariant
+                            : SessionPlayerActivityRepresentationReleaseStatus
+                                .FailedGameplayRelease;
+                return Result(
+                    status,
+                    leaveToken,
+                    leaveConfirmation,
+                    null,
+                    source,
+                    reason,
+                    gameplayInspectionIssue);
+            }
+
+            if (!hasActivityRepresentation && hadGameplayChain)
+            {
+                return Result(
+                    SessionPlayerActivityRepresentationReleaseStatus.FailedInvariant,
+                    leaveToken,
+                    leaveConfirmation,
+                    null,
+                    source,
+                    reason,
+                    "Activity gameplay capability evidence exists without a matching current Activity lifecycle representation ledger entry.");
+            }
+
+            progress = new SessionPlayerActivityRepresentationReleaseProgress
+            {
+                LeaveToken = leaveToken,
+                ActivityName = activeRecord != null && activeRecord.Activity != null
+                    ? activeRecord.Activity.ActivityName
+                    : lastSnapshot != null
+                        ? lastSnapshot.ActivityName
+                        : string.Empty,
+                ActivityOwner = activeRecord != null
+                    ? activeRecord.Owner
+                    : lastSnapshot != null
+                        ? lastSnapshot.Owner
+                        : default,
+                PreparationToken = preparationToken,
+                HadActivityRepresentation = hasActivityRepresentation,
+                HadPreparedActor = hasPreparedActor,
+                HadGameplayChain = hadGameplayChain,
+                GameplayAdmissionReleased = !hadGameplayChain,
+                CameraReleased = !hadGameplayChain,
+                InputReleased = !hadGameplayChain,
+                OccupancyReleased = !hadGameplayChain,
+                PreparedActorReleased = !hasPreparedActor,
+                ActorRetainedCleanupPending = false,
+                LastActorRelease = null,
+                ActivityLedgerRetired = !hasActivityRepresentation,
+                ReadinessContributionRetired = false,
+                Completed = false
+            };
+            return null;
+        }
+
+        private void RetirePlayerSlotFromActivityLifecycle(
+            PlayerSlotId playerSlotId,
+            out bool activityLedgerRetired,
+            out bool readinessContributionRetired)
+        {
+            readinessContributionRetired = false;
+            if (playerReadinessRecord != null)
+            {
+                for (int index = playerReadinessRecord.ProjectedSlots.Count - 1;
+                     index >= 0;
+                     index--)
+                {
+                    if (playerReadinessRecord.ProjectedSlots[index].PlayerSlotId ==
+                        playerSlotId)
+                    {
+                        playerReadinessRecord.ProjectedSlots.RemoveAt(index);
+                        readinessContributionRetired = true;
+                    }
+                }
+
+                PlayerParticipationSnapshot session =
+                    participationContext.CreateSnapshot();
+                if (session != null && session.IsInitialized)
+                {
+                    playerReadinessRecord.AppliedSessionRevision = session.Revision;
+                }
+
+                if (!playerReadinessRecord.Failed)
+                {
+                    playerReadinessRecord.ReadinessReason =
+                        ResolveAggregateReadinessReason(
+                            playerReadinessRecord.ProjectedSlots);
+                    if (CountPendingSlots() == 0 && CountFailedSlots() == 0)
+                    {
+                        CompletePlayerReadinessContribution(
+                            "Activity Player readiness remains satisfied after the Leaving Session Player contribution was retired.");
+                    }
+                    else
+                    {
+                        playerReadinessRecord.Completed = false;
+                        playerReadinessRecord.Message =
+                            "Leaving Session Player contribution retired; remaining projected Players continue under the existing Activity readiness occurrence.";
+                    }
+                }
+
+                RebuildActiveRecordFromReadiness(session);
+                UpdateLifecycleSnapshot(
+                    playerReadinessRecord.Completed
+                        ? ActivityPlayerActorLifecycleStatus.SucceededEntered
+                        : ActivityPlayerActorLifecycleStatus.SucceededEnteredPreparing,
+                    session,
+                    null,
+                    "Leaving Session Player retired from the current Activity lifecycle projection.");
+            }
+            else if (activeRecord != null)
+            {
+                var prepared = new List<PreparedSlotRecord>();
+                for (int index = 0; index < activeRecord.PreparedSlots.Count; index++)
+                {
+                    PreparedSlotRecord item = activeRecord.PreparedSlots[index];
+                    if (item.PlayerSlotId != playerSlotId)
+                    {
+                        prepared.Add(item);
+                    }
+                }
+
+                var hosts = new List<LocalPlayerHostAuthoring>();
+                for (int index = 0; index < activeRecord.AdmittedHosts.Count; index++)
+                {
+                    LocalPlayerHostAuthoring host = activeRecord.AdmittedHosts[index];
+                    if (host == null ||
+                        (host.HasJoinedSlot &&
+                         host.JoinedPlayerSlotId == playerSlotId))
+                    {
+                        continue;
+                    }
+
+                    hosts.Add(host);
+                }
+
+                bool hadSlot = LastSnapshotContainsSlot(playerSlotId) ||
+                    activeRecord.PreparedSlots.Count != prepared.Count ||
+                    activeRecord.AdmittedHosts.Count != hosts.Count;
+                int projectedCount = hadSlot
+                    ? Math.Max(0, activeRecord.ProjectedSlotCount - 1)
+                    : activeRecord.ProjectedSlotCount;
+                int selectedCount = activeRecord.SelectedCount;
+                if (hadSlot &&
+                    participationContext.TryGetSlotSnapshot(
+                        playerSlotId,
+                        out PlayerSlotRuntimeSnapshot slot) &&
+                    slot.HasSelectedActor)
+                {
+                    selectedCount = Math.Max(0, selectedCount - 1);
+                }
+
+                activeRecord = new ActiveActivityRecord(
+                    activeRecord.Activity,
+                    activeRecord.Owner,
+                    activeRecord.RequirementLevel,
+                    projectedCount,
+                    selectedCount,
+                    prepared,
+                    hosts);
+                lastSnapshot = FilterLifecycleSnapshotForLeave(
+                    lastSnapshot,
+                    playerSlotId,
+                    projectedCount,
+                    selectedCount,
+                    prepared.Count);
+            }
+
+            activityLedgerRetired = !ActivityLedgerContainsSlot(playerSlotId);
+        }
+
+        private bool ActivityLedgerContainsSlot(PlayerSlotId playerSlotId)
+        {
+            if (FindReadinessSlot(playerSlotId) != null ||
+                FindPreparedToken(playerSlotId).IsValid ||
+                ActiveRecordContainsHostForSlot(playerSlotId))
+            {
+                return true;
+            }
+
+            return activeRecord != null && LastSnapshotContainsSlot(playerSlotId);
+        }
+
+        private bool ActiveRecordContainsHostForSlot(PlayerSlotId playerSlotId)
+        {
+            if (activeRecord == null)
+            {
+                return false;
+            }
+
+            for (int index = 0; index < activeRecord.AdmittedHosts.Count; index++)
+            {
+                LocalPlayerHostAuthoring host = activeRecord.AdmittedHosts[index];
+                if (host != null &&
+                    host.HasJoinedSlot &&
+                    host.JoinedPlayerSlotId == playerSlotId)
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        private bool LastSnapshotContainsSlot(PlayerSlotId playerSlotId)
+        {
+            if (lastSnapshot == null)
+            {
+                return false;
+            }
+
+            for (int index = 0; index < lastSnapshot.Slots.Count; index++)
+            {
+                if (lastSnapshot.Slots[index].PlayerSlotId == playerSlotId)
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        private static ActivityPlayerActorLifecycleSnapshot
+            FilterLifecycleSnapshotForLeave(
+                ActivityPlayerActorLifecycleSnapshot snapshot,
+                PlayerSlotId playerSlotId,
+                int projectedCount,
+                int selectedCount,
+                int preparedCount)
+        {
+            if (snapshot == null)
+            {
+                return ActivityPlayerActorLifecycleSnapshot.Empty(
+                    "Leaving Session Player retired from Activity lifecycle.");
+            }
+
+            var slots = new List<ActivityPlayerActorSlotLifecycleSnapshot>();
+            for (int index = 0; index < snapshot.Slots.Count; index++)
+            {
+                ActivityPlayerActorSlotLifecycleSnapshot slot = snapshot.Slots[index];
+                if (slot.PlayerSlotId != playerSlotId)
+                {
+                    slots.Add(slot);
+                }
+            }
+
+            return new ActivityPlayerActorLifecycleSnapshot(
+                snapshot.Status,
+                snapshot.ActivityName,
+                snapshot.Owner,
+                snapshot.RequirementLevel,
+                projectedCount,
+                selectedCount,
+                preparedCount,
+                snapshot.ReleasedCount,
+                snapshot.FailedCount,
+                slots.ToArray(),
+                "Leaving Session Player retired from the current Activity lifecycle projection.");
+        }
+
+        private SessionPlayerActivityRepresentationReleaseResult Result(
+            SessionPlayerActivityRepresentationReleaseStatus status,
+            SessionPlayerLeaveToken leaveToken,
+            SessionPlayerLeaveRuntimeResult leaveConfirmation,
+            SessionPlayerActivityRepresentationReleaseProgress progress,
+            string source,
+            string reason,
+            string message)
+        {
+            return new SessionPlayerActivityRepresentationReleaseResult(
+                status,
+                leaveToken,
+                leaveConfirmation,
+                progress != null ? progress.ActivityName : string.Empty,
+                progress != null ? progress.ActivityOwner : default,
+                progress != null ? progress.PreparationToken : default,
+                progress != null ? progress.LastActorRelease : null,
+                progress != null && progress.HadActivityRepresentation,
+                progress != null && progress.HadPreparedActor,
+                progress != null && progress.GameplayAdmissionReleased,
+                progress != null && progress.CameraReleased,
+                progress != null && progress.InputReleased,
+                progress != null && progress.OccupancyReleased,
+                progress != null && progress.PreparedActorReleased,
+                progress != null && progress.ActorRetainedCleanupPending,
+                progress != null && progress.ActivityLedgerRetired,
+                progress != null && progress.ReadinessContributionRetired,
+                source,
+                reason,
+                message);
+        }
+    }
+}
