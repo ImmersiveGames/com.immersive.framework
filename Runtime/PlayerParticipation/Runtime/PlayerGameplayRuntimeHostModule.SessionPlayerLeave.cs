@@ -214,15 +214,15 @@ namespace Immersive.Framework.PlayerParticipation
                     progress.AdmissionToken,
                     source,
                     reason);
-                if (result == null || !result.Succeeded)
+                // PlayerGameplayAdmissionResult is a value type (struct) and cannot be compared to null.
+                // Check the Succeeded flag to determine success and use the diagnostic string from the result.
+                if (!result.Succeeded)
                 {
                     return GameplayLeaveResult(
                         SessionPlayerLeaveGameplayReleaseStatus.FailedAdmissionRelease,
                         leaveToken,
                         progress,
-                        result != null
-                            ? result.ToDiagnosticString()
-                            : "Gameplay Admission release returned no result.");
+                        result.ToDiagnosticString());
                 }
 
                 progress.AdmissionReleased = true;

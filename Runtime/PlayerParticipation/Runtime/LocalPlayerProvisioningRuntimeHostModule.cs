@@ -23,7 +23,7 @@ namespace Immersive.Framework.PlayerParticipation
     [FrameworkApiStatus(
         FrameworkApiStatus.Internal,
         "P3G/P3J host-scoped local Player technical-host provisioning composition adapter.")]
-    internal sealed class LocalPlayerProvisioningRuntimeHostModule : MonoBehaviour
+    internal sealed partial class LocalPlayerProvisioningRuntimeHostModule : MonoBehaviour
     {
         private FrameworkRuntimeHost runtimeHost;
         private PlayerParticipationRuntimeContext participationContext;
