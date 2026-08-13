@@ -507,10 +507,26 @@ namespace Immersive.Framework.PlayerParticipation
                      index >= 0;
                      index--)
                 {
-                    if (playerReadinessRecord.ProjectedSlots[index].PlayerSlotId ==
-                        playerSlotId)
+                    PlayerReadinessSlotRecord slot =
+                        playerReadinessRecord.ProjectedSlots[index];
+                    if (slot.PlayerSlotId == playerSlotId)
                     {
-                        playerReadinessRecord.ProjectedSlots.RemoveAt(index);
+                        // A projeção configurada permanece na Activity atual, mas nenhuma
+                        // evidência da ocorrência que saiu pode continuar autoritativa.
+                        slot.Joined = false;
+                        slot.Selected = false;
+                        slot.Prepared = false;
+                        slot.GameplayAdmitted = false;
+                        slot.GameplayReady = false;
+                        slot.SelectionCreatedByLifecycle = false;
+                        slot.PreparationCreatedByLifecycle = false;
+                        slot.GameplayCreatedByLifecycle = false;
+                        slot.PreparationToken = default;
+                        slot.GameplayAdmissionToken = default;
+                        slot.ReadinessReason =
+                            ActivityPlayerActorReadinessReason.WaitingForJoin;
+                        slot.Message =
+                            "Projected Player Slot is waiting for Join after the prior Session Player left.";
                         readinessContributionRetired = true;
                     }
                 }
@@ -612,14 +628,22 @@ namespace Immersive.Framework.PlayerParticipation
 
         private bool ActivityLedgerContainsSlot(PlayerSlotId playerSlotId)
         {
-            if (FindReadinessSlot(playerSlotId) != null ||
+            PlayerReadinessSlotRecord readinessSlot =
+                FindReadinessSlot(playerSlotId);
+            if ((readinessSlot != null &&
+                 (readinessSlot.Joined ||
+                  readinessSlot.Prepared ||
+                  readinessSlot.GameplayAdmitted ||
+                  readinessSlot.GameplayReady ||
+                  readinessSlot.PreparationToken.IsValid ||
+                  readinessSlot.GameplayAdmissionToken.IsValid)) ||
                 FindPreparedToken(playerSlotId).IsValid ||
                 ActiveRecordContainsHostForSlot(playerSlotId))
             {
                 return true;
             }
 
-            return activeRecord != null && LastSnapshotContainsSlot(playerSlotId);
+            return false;
         }
 
         private bool ActiveRecordContainsHostForSlot(PlayerSlotId playerSlotId)

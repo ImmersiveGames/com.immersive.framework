@@ -319,7 +319,8 @@ namespace Immersive.Framework.PlayerParticipation
             bool hasCamera =
                 cameraContext.CreateSnapshot().TryGetSummary(
                     leaveToken.PlayerSlotId,
-                    out PlayerGameplayCameraEligibilitySummary camera);
+                    out PlayerGameplayCameraEligibilitySummary camera) &&
+                camera.HasCurrentDecision;
             bool hasInput =
                 inputContext.TryGetRetainedInputBinding(
                     leaveToken.PlayerSlotId,
@@ -327,7 +328,8 @@ namespace Immersive.Framework.PlayerParticipation
             bool hasOccupancy =
                 occupancyContext.TryGetSummary(
                     leaveToken.PlayerSlotId,
-                    out PlayerGameplayOccupancySummary occupancy);
+                    out PlayerGameplayOccupancySummary occupancy) &&
+                occupancy.IsOccupied;
             bool hadGameplayChain =
                 hasAdmission || hasCamera || hasInput || hasOccupancy;
 
