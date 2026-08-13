@@ -17,7 +17,7 @@ namespace Immersive.Framework.PlayerParticipation
     [FrameworkApiStatus(
         FrameworkApiStatus.Internal,
         "P3G/P3J manual local Player reservation, technical-host provisioning, correlation and admission bridge.")]
-    internal sealed class LocalPlayerProvisioningBridge : IDisposable
+    internal sealed partial class LocalPlayerProvisioningBridge : IDisposable
     {
         private sealed class PlayerInputReferenceComparer : IEqualityComparer<PlayerInput>
         {
