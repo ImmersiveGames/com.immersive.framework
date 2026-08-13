@@ -71,7 +71,8 @@ Normative consequences:
 - Actor selection may persist while the physical Actor occurrence changes.
 - Session termination releases Session-owned Manager-Provisioned physical resources.
 - Initial Placement remains owned by IF-ADR-021.
-- Explicit Session Player Leave remains owned by IF-ADR-020.
+- At the time of this 2026-08-12 closure, explicit Session Player Leave remained owned by
+  proposed IF-ADR-020 and was not part of ADR-019 certification.
 
 ## Package implementation reconciliation
 
@@ -167,17 +168,14 @@ Session persistence is canonical runtime behavior, not a `PlayerSessionProfile` 
 Manager-Provisioned and Scene-Provided retain different physical ownership semantics.
 Per-Slot Host Provisioning remains deferred.
 
-### IF-ADR-020
+### IF-ADR-020 — historical status at this record date
 
-ADR-020 remains Proposed, but now depends on the accepted ADR-019 lifetime boundary.
-Its future Leave operation terminates one Session Player occurrence; it is not required
-to establish ordinary Activity exit semantics.
+On 2026-08-12 ADR-020 remained Proposed and depended on the accepted ADR-019 lifetime
+boundary. Its planned Leave operation was explicitly outside ADR-019 certification.
 
 ## QA evidence
 
 ### Full Player QA
-
-The complete Player orchestrator passed:
 
 ```text
 [QA_PLAYER_FULL]
@@ -214,8 +212,6 @@ status='Passed'
 authority='PlayerParticipationSnapshot'
 ```
 
-The canonical Session participation snapshot remains the Join truth.
-
 ### Readiness representation boundary
 
 ```text
@@ -239,8 +235,6 @@ gameplayReady='0'
 inputBound='0'
 ```
 
-Session membership remains valid without current gameplay occupancy.
-
 ### Joined Slot reuse safety
 
 ```text
@@ -249,9 +243,6 @@ status='Passed'
 joined='2'
 occupied='0'
 ```
-
-A second Join consumed a distinct vacant Slot rather than reusing the already Joined
-Slot.
 
 ### Activity exit preserves Session-owned Host
 
@@ -264,8 +255,8 @@ hostAlive='True'
 currentActivity='<none>'
 ```
 
-This is the direct runtime proof that Activity exit is not Leave and does not tear down
-the Manager-Provisioned Session Host.
+This is direct proof that Activity exit is not Leave and does not tear down the
+Manager-Provisioned Session Host.
 
 ### Session termination releases Session-owned Host
 
@@ -277,9 +268,6 @@ participationAuthoritiesAfter='0'
 playerInputAlive='False'
 hostAlive='False'
 ```
-
-This proves that the same resource intentionally preserved across Activity exit is
-released at the Session boundary.
 
 ### Focused ADR-019 matrix
 
@@ -294,10 +282,7 @@ sessionTerminated='True'
 ## Expected negative diagnostics
 
 The Full Player QA contains deliberate negative scenarios that log framework errors while
-the owning QA case still passes. Examples include cancelled `WaitCovered` readiness and a
-deliberately unbound `ActivityRequestTrigger`.
-
-These are not ADR-019 failures. The negative public-surface regression completed:
+the owning QA case still passes. These are not ADR-019 failures.
 
 ```text
 [QA_PLAYER_SURFACE_02]
@@ -305,9 +290,9 @@ status='Passed'
 cases='36'
 ```
 
-## Deferred boundaries
+## Deferred boundaries — historical 2026-08-12 disposition
 
-This reconciliation does not close:
+This reconciliation did not close:
 
 - IF-ADR-020 explicit Session Player Leave;
 - IF-ADR-021 Activity Player Actor Initial Placement;
@@ -318,7 +303,7 @@ This reconciliation does not close:
 - FIRSTGAME real-consumer usability/proof;
 - API maturity promotion.
 
-## Final disposition
+## Final disposition — 2026-08-12
 
 ADR-019 is technically closed.
 
@@ -332,3 +317,36 @@ future explicit Leave terminates one Session Player occurrence
 
 No additional package or QA cut is required for the accepted ADR-019 boundary unless a
 new regression or contradiction is found.
+
+## Follow-up — 2026-08-13: IF-ADR-020 closure
+
+This historical record is intentionally not rewritten to pretend that Session Player
+Leave was already closed on 2026-08-12.
+
+The boundary deferred above was subsequently accepted, implemented and reconciled by:
+
+- [IF-ADR-020 — Session Player Leave and Resource Release Authority](../ADRs/IF-ADR-020-Session-Player-Leave-and-Resource-Release-Authority.md)
+- [ADR-020 reconciliation — 2026-08-13](IMMERSIVE-FRAMEWORK-ADR-020-RECONCILIATION-2026-08-13.md)
+
+The later decision preserves every ADR-019 lifetime invariant:
+
+```text
+Activity exit != Player Leave
+Activity contextual release != Player Leave
+Manager-Provisioned Host survives normal Activity exit
+explicit Manager-Provisioned Leave releases Session-owned Host/input endpoint
+Scene-Provided physical ownership remains external
+Session termination remains separate aggregate lifecycle
+```
+
+Focused public Manager-Provisioned Session Leave proof completed on 2026-08-13:
+
+```text
+[QA_ADR020_H_LEAVE]
+status='Passed'
+verdict='ADR020_H_PASS'
+cases='26'
+```
+
+This follow-up does not retroactively change the ADR-019 QA scope. It records that the
+separate individual terminal operation is no longer architecturally deferred.

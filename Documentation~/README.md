@@ -1,5 +1,7 @@
 # Immersive Framework Documentation
 
+Last updated: **2026-08-13**
+
 ## Start here
 
 - [Stage A canonical package baseline](Architecture/Reconciliation/IMMERSIVE-FRAMEWORK-STAGE-A-CANONICAL-BASELINE-CLOSURE-2026-08-11.md)
@@ -22,26 +24,34 @@
 
 ## Current program state
 
-The current package is approved as the Stage A technical baseline for the next
-FIRSTGAME real-consumer task.
+The historical Stage A package baseline remains the approved baseline for already-closed
+boundaries. Subsequent Player architecture cuts ADR-019 and ADR-020 were reconciled as
+separate scoped technical extensions and do not invent a replacement baseline commit.
 
 ```text
-Package baseline
+Historical Stage A package baseline
   ImmersiveGames/com.immersive.framework
   7a20ec748e4e5f5f3764bdc34ee249c1fe1c1da6
 
 Reverse audit
   RA-01 through RA-04 CLOSED
 
-RA-04 focused QA
-  PASSED — 17/17
+ADR-019
+  Accepted / Reconciled / Implemented / QA Certified
 
-Active phase
-  FIRSTGAME / Stage B real-consumer product validation
+ADR-020
+  Accepted / Reconciled / Implemented
+  Focused Manager-Provisioned public Leave QA: 26/26
+
+ADR-021 / ADR-022
+  Proposed
+
+Active product phase
+  FIRSTGAME / Stage B real-consumer validation on accepted boundaries
 ```
 
-The canonical details and reopen rules are recorded in the
-[Stage A Baseline Closure](Architecture/Reconciliation/IMMERSIVE-FRAMEWORK-STAGE-A-CANONICAL-BASELINE-CLOSURE-2026-08-11.md).
+The canonical mutable status and certification scope are recorded in the
+[Framework Tracker](Architecture/Tracking/IF-TRACK-Framework.md).
 
 ## Documentation authority
 
@@ -54,10 +64,10 @@ Guides/                        current product usage
 Architecture/Archive/          historical records; not current authority
 ```
 
-ADRs decide. Governance records define cross-cutting policy without creating
-feature authority. Reconciliation records describe current alignment and
-certification. The Tracker summarizes current delivery state. Archive records
-preserve history without acting as current product truth.
+ADRs decide. Governance records define cross-cutting policy without creating feature
+authority. Reconciliation records describe current alignment and certification. The
+Tracker summarizes current delivery state. Archive records preserve history without
+acting as current product truth.
 
 ## Canonical decisions
 
@@ -81,6 +91,10 @@ preserve history without acting as current product truth.
 | [016](Architecture/ADRs/IF-ADR-016-Player-Session-Initial-Configuration-and-Provisioning-Profiles.md) | Player session initial configuration and provisioning profiles | Accepted |
 | [017](Architecture/ADRs/IF-ADR-017-Application-Frame-Rate-Project-Authority.md) | Application frame-rate project authority | Accepted |
 | [018](Architecture/ADRs/IF-ADR-018-Progression-Save-Backend-Independence-and-Persistence-Domain-Boundaries.md) | Progression Save backend independence and persistence boundaries | Accepted |
+| [019](Architecture/ADRs/IF-ADR-019-Session-Player-Lifetime-and-Activity-Representation-Authority.md) | Session Player lifetime and Activity representation authority | Accepted |
+| [020](Architecture/ADRs/IF-ADR-020-Session-Player-Leave-and-Resource-Release-Authority.md) | Session Player Leave and resource release authority | Accepted |
+| [021](Architecture/ADRs/IF-ADR-021-Activity-Player-Actor-Initial-Placement-Authority.md) | Activity Player Actor initial placement authority | Proposed |
+| [022](Architecture/ADRs/IF-ADR-022-Camera-Rig-Presentation-Models-and-Materialization-Authority.md) | Camera Rig presentation models and materialization authority | Proposed |
 
 ## Current reconciliation / closure records
 
@@ -95,6 +109,15 @@ preserve history without acting as current product truth.
 - [ADR-011 reconciliation](Architecture/Reconciliation/IMMERSIVE-FRAMEWORK-ADR-011-RECONCILIATION-2026-08-11.md)
 - [ADR-017 reconciliation](Architecture/Reconciliation/IMMERSIVE-FRAMEWORK-ADR-017-RECONCILIATION-2026-08-11.md)
 - [ADR-018 reconciliation](Architecture/Reconciliation/IMMERSIVE-FRAMEWORK-ADR-018-RECONCILIATION-2026-08-11.md)
+- [ADR-019 reconciliation](Architecture/Reconciliation/IMMERSIVE-FRAMEWORK-ADR-019-RECONCILIATION-2026-08-12.md)
+- [ADR-020 reconciliation](Architecture/Reconciliation/IMMERSIVE-FRAMEWORK-ADR-020-RECONCILIATION-2026-08-13.md)
 - [RA-03 Object Entry ownership](Architecture/Reconciliation/IMMERSIVE-FRAMEWORK-RA-03-OBJECT-ENTRY-OWNERSHIP-RECONCILIATION-2026-08-11.md)
 - [RA-04 Architecture Governance Hygiene](Architecture/Reconciliation/IMMERSIVE-FRAMEWORK-RA-04-ARCHITECTURE-GOVERNANCE-HYGIENE-2026-08-11.md)
 - [Stage A Canonical Package Baseline Closure](Architecture/Reconciliation/IMMERSIVE-FRAMEWORK-STAGE-A-CANONICAL-BASELINE-CLOSURE-2026-08-11.md)
+
+## Certification-scope note for ADR-020
+
+ADR-020 architecture and package implementation are closed. Focused public
+Manager-Provisioned Leave is technically certified at 26/26. This documentation set does
+not claim a dedicated Scene-Provided **Session Leave** regression terminal that has not
+been separately evidenced. See the ADR-020 reconciliation and tracker for the exact scope.

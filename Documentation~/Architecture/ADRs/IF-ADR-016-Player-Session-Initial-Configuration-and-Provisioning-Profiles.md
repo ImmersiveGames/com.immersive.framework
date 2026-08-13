@@ -1,16 +1,15 @@
 # IF-ADR-016 — Player Session Initial Configuration
 
 Status: **Accepted**  
-Last updated: 2026-08-12  
+Last updated: 2026-08-13  
 Proposed reconciliation draft: **2026-08-11 — R6 / R7 / R8**  
 Supersedes: former separate provisioning-Profile, Capacity and per-Slot override model  
-Related decisions: IF-ADR-001, IF-ADR-002, IF-ADR-003, IF-ADR-012, IF-ADR-015, IF-ADR-019
+Related decisions: IF-ADR-001, IF-ADR-002, IF-ADR-003, IF-ADR-012, IF-ADR-015, IF-ADR-019, IF-ADR-020
 
-> **Draft note:** this file is a proposed reconciliation of the accepted ADR after
-> the R6/R7/R8 architecture review. It has not been applied to the repository yet.
-> It preserves Session-wide Host Provisioning and clarifies that targeted Slot
-> Join and explicit Actor Selection are orthogonal runtime operations.
-
+> **Draft note:** the R6/R7/R8 targeted-Join and explicit Actor Selection portions remain
+> a proposed reconciliation of the accepted ADR. The IF-ADR-020 Leave consequences below
+> are separately accepted/reconciled and do not promote unrelated draft scope.
+>
 > Current implementation, QA and FIRSTGAME integration status is tracked in
 > `../Tracking/IF-TRACK-Framework.md`. This ADR is normative and intentionally
 > does not carry a mutable completion percentage. UX observations are qualitative
@@ -34,6 +33,15 @@ Slot allocation / assignment
 
 Actor selection
   runtime intent selecting ActorProfile for one Joined Slot
+```
+
+IF-ADR-020 adds a fourth runtime concern that must also remain separate from initial
+configuration:
+
+```text
+Session Player Leave
+  terminate one exact current joined occurrence
+  without changing the authored Session profile
 ```
 
 Different Slot or Actor choices do not require per-Slot Host Provisioning.
@@ -82,7 +90,7 @@ Joining Open
 
 No available Slot produces explicit rejection.
 
-### Targeted Join
+### Targeted Join — R6/R7/R8 draft
 
 The consumer may explicitly request one exact Supported Slot.
 
@@ -94,19 +102,9 @@ Joining Open
   -> reserve/admit that exact Slot
 ```
 
-Failure of the requested Slot is explicit.
+Failure of the requested Slot is explicit. There is no fallback to another Slot.
 
-```text
-requested Player2 unavailable
-
--> reject
--> do not allocate Player1
--> do not allocate Player3
-```
-
-Targeted Join is not a generic allocation strategy.
-
-The Framework therefore supports exactly two bounded intents:
+The Framework therefore keeps two bounded admission intents:
 
 ```text
 untargeted
@@ -117,12 +115,41 @@ targeted
 ```
 
 No weighted/random/priority/role-based/custom allocation policy is introduced.
-
 The consumer expresses Slot intent but the created Session remains the only Slot
 reservation/assignment authority.
 
 There is no independent Initial/Current/Dynamic Capacity and no runtime
 SetCapacity/SetDynamicCapacity command.
+
+### Joining policy versus Leave
+
+`Initial Joining` establishes the Session's initial admission state. Runtime
+Open/Closed Joining continues to govern **entry only**.
+
+IF-ADR-020 establishes:
+
+```text
+Joining Closed
++ currently Joined Player
+  -> explicit Leave is still allowed
+```
+
+A successful Leave:
+
+```text
+ends the exact Session Player occurrence
+returns its Slot to Vacant / Available
+does not reopen Joining
+does not auto-Join a replacement
+does not reapply PlayerSessionProfile
+```
+
+A later Join may reuse that vacant Supported Slot only when the then-current Joining
+policy permits admission.
+
+`DefaultPopulation` or equivalent initial population intent, where present in the current
+Session creation flow, is initial configuration. It is not a standing post-Leave
+replacement policy.
 
 ## Host Provisioning
 
@@ -135,26 +162,31 @@ Manager Provisioned
 ```
 
 It applies uniformly to all Supported Slots.
-
 Mixed/per-Slot provisioning is not part of the current model.
 
-The R6 review explicitly confirms:
-
-```text
-Player1 -> Actor A
-Player2 -> Actor B
-
-does not imply
-
-Player1 -> Host Provisioning A
-Player2 -> Host Provisioning B
-```
-
-Likewise, Targeted Join does not make Host Provisioning a per-Slot decision.
+Different ActorProfile or Slot choices do not imply different Host Provisioning.
+Targeted Join does not make Host Provisioning a per-Slot decision.
 
 Mixed/per-Slot Host Provisioning remains deferred until a concrete game
 requirement demonstrates truly different Host ownership/provisioning semantics
 between Slots.
+
+### Leave ownership consequence
+
+Host Provisioning determines physical ownership during IF-ADR-020 Leave:
+
+```text
+Manager Provisioned
+  admitted technical Host / PlayerInput is Session-owned
+  explicit Leave releases it through provisioning authority
+
+Scene Provided
+  physical Host / Actor remains consumer-scene-owned
+  explicit Leave removes Framework participation authority
+  external physical destruction is not taken over by the Framework
+```
+
+This ownership consequence does not add a second provisioning Profile or runtime fallback.
 
 ## Actor Resolution
 
@@ -172,10 +204,7 @@ duplicate Actor data into another schema.
 ### Resolve Configured Default
 
 The configured default is Actor-selection intent for that Slot.
-
-It is applied through the canonical Actor-selection operation after the Slot is
-Joined.
-
+It is applied through the canonical Actor-selection operation after the Slot is Joined.
 It is not encoded into Host Provisioning or Join.
 
 ### Leave Unresolved
@@ -193,14 +222,10 @@ consumer later requests explicit Actor selection
 This supports games that choose an Actor after admission without requiring the
 Framework to own a character-selection UI or roster system.
 
-### Explicit Actor Selection
+### Explicit Actor Selection — R6/R7/R8 draft
 
 A bounded explicit selection command may target one exact Joined Slot with one
-`ActorProfile`.
-
-That operation changes live Session state, not this Profile.
-
-Therefore:
+`ActorProfile`. That operation changes live Session state, not this Profile.
 
 ```text
 PlayerSessionProfile
@@ -208,9 +233,16 @@ PlayerSessionProfile
 ```
 
 Actor selection remains separate from physical Actor preparation/materialization.
-
 A currently prepared Actor cannot be silently changed by direct selection.
 Physical Actor hot-swap requires a separate accepted product operation.
+
+### Leave clears occurrence-scoped runtime state, not the Profile
+
+When IF-ADR-020 Leave succeeds, mutable Session Player state owned by that occurrence,
+including current Actor-selection intent/revision where applicable, is no longer current.
+The immutable initial Profile is not rewritten. A later occurrence in the same Slot does
+not inherit the departed occurrence's mutable state merely because it reuses the same
+`PlayerSlotId`.
 
 ## Runtime authority
 
@@ -229,22 +261,24 @@ Mutable runtime decisions include:
 ```text
 Joining state
 Slot occupancy/assignment
+current Session Player occurrence/revision
 selected Actor per Joined Slot
 selection revisions
+Leave state/result
 ```
 
 Later Profile edits, Route changes or Activity changes do not silently reapply
 initial configuration.
 
-Targeted Join and explicit Actor Selection operate on the live Session and never
+Targeted Join, explicit Actor Selection and Leave operate on the live Session and never
 mutate/reapply `PlayerSessionProfile`.
 
-IF-ADR-019 also makes Session persistence runtime semantics rather than initial authored
+IF-ADR-019 makes Session persistence runtime semantics rather than initial authored
 policy:
 
 ```text
 Joined Logical Player
-  persists for the Session
+  persists for the Session until explicit Leave or Session termination
 
 Activity participation/representation
   may appear, disappear and reproject without reapplying PlayerSessionProfile
@@ -254,16 +288,7 @@ No `Persistent Player` field or per-Player persistence mode is added to
 `PlayerSessionProfile`.
 
 Provisioning-specific physical lifetime remains derived from the accepted Host
-Provisioning mode:
-
-```text
-Manager Provisioned
-  admitted technical Host/PlayerInput becomes Session-owned
-
-Scene Provided
-  physical Host/Actor remains consumer-scene-owned
-  Session association is contextual and may be reprojected in a later Activity
-```
+Provisioning mode.
 
 ## Manager-Provisioned Input System bridge
 
@@ -301,6 +326,9 @@ continue to author exact Slot identity directly.
 - generic character-selection flow, roster, unlock or store system;
 - consumer Actor preparation/materialization authority;
 - direct selection hot-swapping a prepared Actor;
+- using Joining Closed to forbid Session Player Leave;
+- automatically reapplying initial population after Leave;
+- mutating `PlayerSessionProfile` when a Player Leaves;
 - per-Player or per-Profile physical persistence mode; canonical Joined Player Session lifetime is defined by IF-ADR-019.
 
 ## Integration boundary
@@ -308,18 +336,10 @@ continue to author exact Slot identity directly.
 Package/QA/FIRSTGAME integration state is tracked outside the ADR. Real
 FIRSTGAME integration is part of proving the supported feature in a real product.
 
-R6 requires no implementation while per-Slot Host Provisioning remains deferred.
+IF-ADR-020 focused QA proves that a Manager-Provisioned Player can Leave while Joining is
+Closed, the Slot becomes available only after required release, the same Slot may later be
+reused after Joining reopens, and that reuse creates a new occurrence protected from
+stale Leave.
 
-R7/R8 implementation should prove:
-
-```text
-untargeted Join remains compatible
-targeted exact-Slot Join works without fallback
-explicit Actor selection works for a Joined unresolved Slot
-configured default selection remains available
-Actor selection and Host Provisioning remain independent
-prepared Actor blocks direct selection mutation
-```
-
-UX friction discovered there is qualitative and may justify optional authoring
-improvements; it is not a separate completion score.
+R6/R7/R8 implementation/certification status remains separately tracked and must not be
+inferred from the ADR-020 closure.

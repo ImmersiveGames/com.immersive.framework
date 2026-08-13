@@ -1,16 +1,16 @@
 # IF-ADR-003 — Player Participation and Actor Lifecycle
 
 Status: **Accepted**  
-Last updated: 2026-08-12  
+Last updated: 2026-08-13  
 Proposed reconciliation draft: **2026-08-11 — R6 / R7 / R8**  
-Related decisions: IF-ADR-001, IF-ADR-007, IF-ADR-012, IF-ADR-015, IF-ADR-016, IF-ADR-019  
-Current reconciliation: [ADR-003 / ADR-012 technical reconciliation](../Reconciliation/IMMERSIVE-FRAMEWORK-ADR-003-012-RECONCILIATION-2026-08-10.md)
+Related decisions: IF-ADR-001, IF-ADR-007, IF-ADR-012, IF-ADR-015, IF-ADR-016, IF-ADR-019, IF-ADR-020  
+Current reconciliation: [ADR-003 / ADR-012 technical reconciliation](../Reconciliation/IMMERSIVE-FRAMEWORK-ADR-003-012-RECONCILIATION-2026-08-10.md)  
+ADR-020 follow-up: [ADR-020 reconciliation](../Reconciliation/IMMERSIVE-FRAMEWORK-ADR-020-RECONCILIATION-2026-08-13.md)
 
-> **Draft note:** this file is a proposed reconciliation of the accepted ADR after
-> the R6/R7/R8 architecture review. It has not been applied to the repository yet.
-> The reconciliation preserves current Player authority and records explicit Actor
-> selection and targeted Slot Join without opening per-Slot Host Provisioning.
-
+> **Draft note:** the R6/R7/R8 portions remain a proposed reconciliation of the accepted
+> ADR. The accepted IF-ADR-020 Session Player Leave boundary below is a separate completed
+> reconciliation and does not promote the remaining R6/R7/R8 draft deltas by association.
+>
 > Current implementation, QA and FIRSTGAME integration status is tracked in
 > `../Tracking/IF-TRACK-Framework.md`. This ADR is normative and intentionally
 > does not carry a mutable completion percentage. UX observations are qualitative
@@ -20,8 +20,8 @@ Current reconciliation: [ADR-003 / ADR-012 technical reconciliation](../Reconcil
 
 A Logical Player is a Session participant while an Actor is contextual gameplay
 content. Joining, Host provisioning/adoption, Actor selection, logical
-preparation, physical materialization, gameplay admission, readiness contribution
-and contextual release must remain distinct and diagnosable.
+preparation, physical materialization, gameplay admission, readiness contribution,
+contextual release and Session Leave must remain distinct and diagnosable.
 
 The R6/R7/R8 review additionally clarifies three independent decisions:
 
@@ -55,6 +55,7 @@ physical Actor materialization
 input / camera / gameplay admission
 Activity readiness contribution
 contextual release / reconcile
+Session Player Leave
 ```
 
 Scene-Provided and Manager-Provisioned are peer provisioning modes. They converge
@@ -67,7 +68,8 @@ Consumers do not invoke internal preparation or reconcile authority.
 ## Session Player lifetime boundary
 
 IF-ADR-019 is authoritative for the lifetime split between Session participation and
-Activity representation.
+Activity representation. IF-ADR-020 is authoritative for explicit termination of one
+exact joined Session Player occurrence.
 
 ```text
 Session
@@ -89,10 +91,26 @@ contextual occurrence state but does not implicitly Leave the Session, vacate th
 clear valid Session Actor selection. Activity entry for an already Joined Player is a
 projection/reprojection operation, not a second Join.
 
+Explicit Session Player Leave is different:
+
+```text
+exact joined Slot + current occurrence correlation
+  -> IF-ADR-020 Leave transaction
+  -> current Activity representation released when present
+  -> provisioning-specific Session resources released
+  -> Session Player occurrence ends
+  -> Slot becomes Vacant / Available
+```
+
+The fact that contextual representation release is a stage of Leave does not merge the
+Activity and Session lifecycles. Contextual release alone is still not Leave.
+
 For Scene-Provided provisioning, a later Activity may bind a distinct scene-owned
 Host/Actor occurrence to the same Joined Session Player. For Manager-Provisioned
 provisioning, the Session-owned technical Host/`PlayerInput` survives normal Activity
-transitions while the contextual Actor occurrence may be released and recreated.
+transitions while the contextual Actor occurrence may be released and recreated. When
+that Manager-Provisioned Session Player explicitly Leaves, IF-ADR-020 authorizes release
+of the Session-owned Host/input endpoint through provisioning authority.
 
 ## Player Session dependency
 
@@ -123,7 +141,7 @@ Provisioning.
 
 The Session remains the authority over Slot allocation and assignment.
 
-Two bounded Join intents are accepted:
+Two bounded Join intents are accepted by the R6/R7/R8 reconciliation draft:
 
 ```text
 Untargeted Join
@@ -283,6 +301,13 @@ Preparing / WaitingForJoin
 This is not failure and must not be silently converted to Ready, optional
 participation or timeout success.
 
+IF-ADR-020 adds the symmetric runtime case: a required Player may Leave an active
+Activity because Session Leave authority is not owned by the Activity. The Activity must
+then reconcile from current Session truth. Under the certified
+`ExplicitSlots + GameplayReady + zero-participant Rejected` composition, the authored
+Slot remains projected and returns to `WaitingForJoin`; stale `Ready` evidence from the
+departed occurrence is invalid.
+
 For `WaitCovered`, any operation required to advance readiness must remain
 reachable through an external/control-plane path.
 
@@ -293,6 +318,7 @@ Request Join
 Request Join To Slot
 Request Actor Selection
 Request Default Actor Selection
+Request Leave
 ```
 
 These operations are distinct from normal gameplay input.
@@ -314,16 +340,19 @@ target Slot or Actor selection.
 - Using Unity `playerIndex` as the Framework Slot identity.
 - Consumer Actor preparation/materialization authority.
 - Direct Actor selection replacing a currently prepared Actor.
+- Treating Activity representation release as Session Player Leave.
+- Destroying a Player GameObject or clearing a Slot directly to simulate Leave.
 - Generic character roster/unlock/store/selection-flow authority in the Framework.
 - Fake readiness, automatic Join or silent fallback.
 - Global Player manager/service locator.
 
-## Future contracts
+## Separate / future contracts
 
 Session Player lifetime is resolved by IF-ADR-019.
 
-Explicit Session Player Leave remains a separate contract owned by IF-ADR-020 until that
-ADR is accepted. Device disconnect/reconnect also remains separate.
+Explicit Session Player Leave and the terminal lifetime operation for one joined Player
+are resolved by accepted IF-ADR-020. Device disconnect/reconnect remains a separate
+contract and must not be inferred from Leave.
 
 Mixed/per-Slot Host Provisioning remains deferred until a concrete game
 requirement demonstrates different provisioning ownership for different Slots.

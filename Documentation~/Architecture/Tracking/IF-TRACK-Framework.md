@@ -1,13 +1,13 @@
 # IF-TRACK — Immersive Framework
 
-Status: **Active — Stage B baseline + ADR-019 certified + proposed architecture expansion**  
-Last updated: **2026-08-12**
+Status: **Active — Stage B baseline + ADR-019/ADR-020 closed + ADR-021/ADR-022 proposed**  
+Last updated: **2026-08-13**
 
 ## Authority and status model
 
-This is the single mutable summary of current delivery state. Its authority is
-below accepted ADRs, governance records and current reconciliation/certification
-records, and above historical audits, completion summaries and plans.
+This is the single mutable summary of current delivery state. Its authority is below
+accepted ADRs, governance records and current reconciliation/certification records, and
+above historical audits, completion summaries and plans.
 
 ```text
 Accepted ADRs   -> normative architecture
@@ -19,13 +19,14 @@ FIRSTGAME       -> Stage B real-consumer evidence
 Archive         -> historical, non-authoritative
 ```
 
-A proposed ADR or proposed reconciliation draft may define the intended next boundary,
-but it must not be reported as implemented, certified or consumer-proven until the
-corresponding package, QA and integration evidence exists.
+A proposed ADR or draft reconciliation must not be reported as implemented/certified.
+Conversely, once an accepted boundary has package implementation and evidence, the tracker
+must not keep calling it Proposed merely because the last public repository documentation
+predates the validated local cut.
 
 ## Current canonical baseline
 
-Repository HEAD reviewed for this tracker update:
+Repository HEAD previously reviewed for the architecture expansion:
 
 ```text
 ImmersiveGames/com.immersive.framework
@@ -33,16 +34,12 @@ ImmersiveGames/com.immersive.framework
 New ADrs
 ```
 
-That HEAD adds the architecture records used as the baseline for the ADR-019 work. The
-ADR-019 package cuts A-D and focused QA cut E were applied and validated after that Git
-HEAD as complete-file local cuts; this tracker does not invent a later repository commit
-for those validated changes.
+That HEAD added the architecture records used as the baseline for ADR-019 through ADR-022.
+ADR-019 and ADR-020 package/QA work was subsequently validated as complete-file local
+cuts. This tracker does not invent a later Git commit for those local validated changes.
 
-The previously approved executable Stage A package baseline below remains the historical
-baseline for unrelated already-closed boundaries.
-
-The current package baseline approved for FIRSTGAME Stage B work on accepted boundaries
-remains:
+The previously approved executable Stage A package baseline remains the historical
+baseline for unrelated already-closed boundaries:
 
 ```text
 ImmersiveGames/com.immersive.framework
@@ -50,7 +47,7 @@ ImmersiveGames/com.immersive.framework
 fix(authoring): enforce validation governance semantics
 ```
 
-Companion QA baseline:
+Companion historical QA baseline:
 
 ```text
 rinnocenti/QAFramework
@@ -58,27 +55,23 @@ d65c5a7a637d4545e8b52b031614f879595335a3
 qa: prove validation governance policy
 ```
 
-Canonical closure record:
+Canonical baseline closure:
 
 [Stage A Canonical Package Baseline Closure](../Reconciliation/IMMERSIVE-FRAMEWORK-STAGE-A-CANONICAL-BASELINE-CLOSURE-2026-08-11.md)
 
 ## Reconciliation sequence
 
 ```text
-Stage A — technical reconciliation
+Stage A / scoped technical reconciliation
   accepted ADR -> package -> technical QA -> reconciliation/certification
 
-Stage B — real consumer proof
+Stage B
   accepted package boundary -> FIRSTGAME -> real integration -> usability/product proof
 ```
 
-Stage B evidence does not reopen a closed Stage A technical boundary by default.
-It can identify a product/UX issue, a real-integration gap, future scope, or a
-reproducible technical regression.
-
-A newly proposed ADR is tracked separately from the closed accepted baseline. Acceptance
-of new architecture creates a new technical implementation/reconciliation cut without
-retroactively invalidating the already certified baseline.
+Stage B evidence does not reopen a closed technical boundary by default. It may identify a
+product/UX finding, real-integration gap, future scope or reproducible technical
+regression.
 
 ## Current ADR status
 
@@ -86,7 +79,7 @@ retroactively invalidating the already certified baseline.
 |---|---|---|---|
 | [001](../ADRs/IF-ADR-001-Core-Lifecycle-and-Runtime-Authority.md) | ACCEPTED / RECONCILED / IMPLEMENTED | CERTIFIED | Core lifecycle proven; current Stage A boundary closed. |
 | [002](../ADRs/IF-ADR-002-Product-Authoring-Model.md) | ACCEPTED / RECONCILED / IMPLEMENTED | No generic cross-cutting QA gate | Stage A closed; product proof remains feature-owned. |
-| [003](../ADRs/IF-ADR-003-Player-Participation-and-Actor-Lifecycle.md) | ACCEPTED baseline / RECONCILED / IMPLEMENTED; R6/R7/R8 reconciliation DRAFT pending | CERTIFIED baseline; draft delta not certified | Existing Player proof remains required. Targeted Slot Join and explicit Actor Selection are proposed extensions, not delivered baseline behavior. |
+| [003](../ADRs/IF-ADR-003-Player-Participation-and-Actor-Lifecycle.md) | ACCEPTED baseline / RECONCILED / IMPLEMENTED; R6/R7/R8 draft portions remain separately tracked | CERTIFIED baseline; draft delta not implied by ADR-020 | IF-ADR-020 Leave reconciliation applied without promoting unrelated R6/R7/R8 draft scope. |
 | [004](../ADRs/IF-ADR-004-Camera-Requests-and-Output-Authority.md) | ACCEPTED / RECONCILED / IMPLEMENTED for single-output boundary | CERTIFIED | Complete real-consumer Camera proof; multi-output remains future scope. |
 | [005](../ADRs/IF-ADR-005-Input-Pause-Gate-and-Reset.md) | ACCEPTED / RECONCILED / IMPLEMENTED | CERTIFIED: Input Gate 9/9; Restart 8/8; Pause 27/27 | Stage A closed; Stage B may test authoring/usability. |
 | [006](../ADRs/IF-ADR-006-Loading-Transition-Persistence-and-Diagnostics.md) | ACCEPTED / RECONCILED / IMPLEMENTED | CERTIFIED: focused matrix 8/8; Progress 32/32; Terminal 34/34 | Prove real Loading/Transition authoring and diagnostics. |
@@ -95,29 +88,41 @@ retroactively invalidating the already certified baseline.
 | [009](../ADRs/IF-ADR-009-Activity-Local-Visibility-Rules.md) | ACCEPTED / RECONCILED / IMPLEMENTED | CERTIFIED | Current boundary closed. |
 | [010](../ADRs/IF-ADR-010-Editor-and-Inspector-Product-Surface-Authority.md) | ACCEPTED / IMPLEMENTED | No generic synthetic UX QA gate | Feature-owned adoption evidence continues in real product flows. |
 | [011](../ADRs/IF-ADR-011-Participant-Aware-Activity-Readiness-Loading-Progress.md) | ACCEPTED / RECONCILED / IMPLEMENTED | CERTIFIED: Progress 32/32; Terminal 34/34; Route 25/25; App 20/20 | Prove real participant-aware Loading progress/usability where used. |
-| [012](../ADRs/IF-ADR-012-Activity-Player-Participation-Profile-and-Readiness-Compatibility.md) | ACCEPTED / RECONCILED / IMPLEMENTED | CERTIFIED | FIRSTGAME participation proof required. |
-| [013](../ADRs/IF-ADR-013-Optional-Audio-BGM-Adapter.md) | ACCEPTED / Experimental / IMPLEMENTED | CERTIFIED: Audio 26/26; ADR-013A 11/11 | FIRSTGAME real-consumer proof is the promotion gate. |
+| [012](../ADRs/IF-ADR-012-Activity-Player-Participation-Profile-and-Readiness-Compatibility.md) | ACCEPTED / RECONCILED / IMPLEMENTED | CERTIFIED baseline + ADR-020 readiness follow-up | Explicit Slot Leave reconciliation preserves projection and invalidates stale Ready. FIRSTGAME participation proof pending. |
+| [013](../ADRs/IF-ADR-013-Optional-Audio-BGM-Adapter.md) | ACCEPTED / Experimental / IMPLEMENTED | CERTIFIED: Audio 26/26; ADR-013A 11/11 | FIRSTGAME real-consumer proof is promotion gate. |
 | [014](../ADRs/IF-ADR-014-Authored-Definition-and-Stable-Identity-Authority.md) | ACCEPTED / IMPLEMENTED | CERTIFIED | Current boundary closed and already consumer-proven. |
-| [015](../ADRs/IF-ADR-015-Player-Provisioning-Commands-and-Consumer-Observation-Surface.md) | ACCEPTED baseline / IMPLEMENTED; R6/R7/R8 reconciliation DRAFT pending | CERTIFIED baseline; draft delta not certified | Existing command surface is consumer-usable; targeted Join and explicit Actor Selection remain proposed until implemented and proved. |
-| [016](../ADRs/IF-ADR-016-Player-Session-Initial-Configuration-and-Provisioning-Profiles.md) | ACCEPTED baseline / IMPLEMENTED; R6/R7/R8 reconciliation DRAFT pending | CERTIFIED baseline; draft delta not certified | Scene-/Manager-Provisioned baseline remains valid; Host Provisioning, Slot Assignment and Actor Selection stay separate decisions. |
-| [017](../ADRs/IF-ADR-017-Application-Frame-Rate-Project-Authority.md) | ACCEPTED / RECONCILED / IMPLEMENTED | CERTIFIED: Edit 13/13; Target 13/13; VSync 13/13; Defaults 13/13 | Stage A closed; no mandatory FIRSTGAME gate for current project-level boundary. |
+| [015](../ADRs/IF-ADR-015-Player-Provisioning-Commands-and-Consumer-Observation-Surface.md) | ACCEPTED baseline / IMPLEMENTED; IF-ADR-020 Leave command reconciled; R6/R7/R8 draft portions separately tracked | Existing baseline certified; ADR020-H public Leave 26/26 | `Request Leave` is accepted scoped consumer intent; no direct Slot mutation/global control plane. |
+| [016](../ADRs/IF-ADR-016-Player-Session-Initial-Configuration-and-Provisioning-Profiles.md) | ACCEPTED / IMPLEMENTED; IF-ADR-020 Joining/Leave reconciliation applied | Existing baseline certified; ADR020-H covers Joining Closed + rejoin semantics | Joining controls admission only; Leave does not reapply initial population. |
+| [017](../ADRs/IF-ADR-017-Application-Frame-Rate-Project-Authority.md) | ACCEPTED / RECONCILED / IMPLEMENTED | CERTIFIED: Edit 13/13; Target 13/13; VSync 13/13; Defaults 13/13 | Stage A closed. |
 | [018](../ADRs/IF-ADR-018-Progression-Save-Backend-Independence-and-Persistence-Domain-Boundaries.md) | ACCEPTED / RECONCILED; A Stable, B JSON certified, C composition implemented | CERTIFIED: backend conformance; JSON 18/18; composition 12/12 | ADR018-D FIRSTGAME real-consumer persistence/backend usability proof. |
-| [019](../ADRs/IF-ADR-019-Session-Player-Lifetime-and-Activity-Representation-Authority.md) | ACCEPTED / RECONCILED / IMPLEMENTED | CERTIFIED: ADR19 matrix 5/5; Scene-Provided transition 28/28; Full Player QA certified | Session-scoped Logical Player lifetime and Activity-scoped representation boundary are closed technically. FIRSTGAME real-consumer proof remains Stage B. |
-| [020](../ADRs/IF-ADR-020-Session-Player-Leave-and-Resource-Release-Authority.md) | PROPOSED / NOT IMPLEMENTED | NOT STARTED | Defines explicit occurrence-aware Session Player Leave and staged resource release. Depends on the accepted lifetime boundary in ADR-019. |
-| [021](../ADRs/IF-ADR-021-Activity-Player-Actor-Initial-Placement-Authority.md) | PROPOSED / NOT IMPLEMENTED | NOT STARTED | Defines Activity-scoped Initial Placement, explicit Slot-to-Anchor intent and no-fallback placement before readiness. |
-| [022](../ADRs/IF-ADR-022-Camera-Rig-Presentation-Models-and-Materialization-Authority.md) | PROPOSED / NOT IMPLEMENTED | NOT STARTED | Extends CameraRigComposer presentation authoring/materialization while preserving ADR-004 single-output request/output authority. |
+| [019](../ADRs/IF-ADR-019-Session-Player-Lifetime-and-Activity-Representation-Authority.md) | ACCEPTED / RECONCILED / IMPLEMENTED | CERTIFIED: ADR19 matrix 5/5; Scene-Provided transition 28/28; Full Player QA | Session-scoped lifetime / Activity representation boundary technically closed. FIRSTGAME proof pending. |
+| [020](../ADRs/IF-ADR-020-Session-Player-Leave-and-Resource-Release-Authority.md) | ACCEPTED / RECONCILED / IMPLEMENTED | CERTIFIED — focused Manager-Provisioned public Leave: ADR020-H 26/26 | Architecture/package closed. Dedicated Scene-Provided **Session Leave** regression is not separately evidenced in the ADR-020 record. FIRSTGAME proof pending. |
+| [021](../ADRs/IF-ADR-021-Activity-Player-Actor-Initial-Placement-Authority.md) | PROPOSED / NOT IMPLEMENTED | NOT STARTED | Defines Activity-scoped Initial Placement. Related ADR-019/020 references are accepted facts; ADR-021 itself remains proposed. |
+| [022](../ADRs/IF-ADR-022-Camera-Rig-Presentation-Models-and-Materialization-Authority.md) | PROPOSED / NOT IMPLEMENTED | NOT STARTED | Extends CameraRigComposer presentation authoring/materialization while preserving ADR-004 single-output authority. |
 
-## Architecture expansion — ADR-019 accepted; ADR-020 through ADR-022 proposed
+## Architecture expansion — ADR-019 and ADR-020 accepted; ADR-021/ADR-022 proposed
 
 Repository HEAD `7bfe77f8371338f1abbc4a1c2d9dd3fa42ce7e04` records the architecture
-expansion discovered before continuing normal FIRSTGAME proof. ADR-019 has since been
-implemented and QA-certified through local complete-file cuts based on that HEAD.
-ADR-020 through ADR-022 remain proposed.
+expansion discovered before continuing normal FIRSTGAME proof.
+
+```text
+ADR-019
+  accepted / implemented / QA certified on 2026-08-12
+
+ADR-020
+  accepted / implemented / reconciled on 2026-08-13
+  focused Manager-Provisioned public QA certified 26/26
+
+ADR-021
+  proposed
+
+ADR-022
+  proposed
+```
 
 ### Player R6 / R7 / R8 reconciliation draft
 
-ADR-003, ADR-015 and ADR-016 now carry a proposed reconciliation draft with these
-separations:
+ADR-003, ADR-015 and ADR-016 retain separately tracked draft portions for:
 
 ```text
 Host Provisioning
@@ -130,26 +135,7 @@ Actor Selection
   which ActorProfile is selected for one Joined Player Slot
 ```
 
-The draft accepts explicit intent for:
-
-```text
-Request Join
-  first eligible vacant Supported Slot
-
-Request Join To Slot
-  exact requested Supported Slot
-  no fallback to another Slot
-
-Request Default Actor Selection
-Request Actor Selection
-  exact Joined Slot + ActorProfile
-```
-
-The draft explicitly does **not** open heterogeneous/per-Slot Host Provisioning and does
-not combine Slot targeting with Actor selection into one implicit Join transaction.
-
-These deltas are not part of the currently certified baseline until implementation and
-focused QA exist.
+IF-ADR-020 closure does not automatically certify or promote those unrelated draft deltas.
 
 ### ADR-019 — Session Player lifetime — accepted / implemented / certified
 
@@ -162,120 +148,115 @@ Session
 
 Activity
   Player/Actor representation         -> contextual occurrence
-  readiness / camera / bindings       -> Activity-local
+  readiness / Camera / bindings       -> Activity-local
 
 Scene-Provided Host + Actor
   physical ownership                  -> consumer scene
   Session association                 -> contextual bind/adopt/reprojection
 ```
 
-A joined Logical Player persists across Activity changes. Activity exit is not Player
-Leave, and a later Activity representation for the same Session Player is not a second
-Join. No authored `Session Persistent` switch is introduced.
+Technical certification on 2026-08-12 proves Session-only readiness separation, occupied
+Slot preservation, Manager-Provisioned Host survival across Activity exit, Session
+termination release and Scene-Provided reprojection without re-Join.
 
-
-Technical certification on 2026-08-12 proves:
-
-```text
-Session-only readiness levels do not require physical Activity representation
-Joined Slot remains occupied without gameplay occupancy
-occupied Joined Slot is not silently reused
-Manager-Provisioned Host/PlayerInput survives Activity exit
-Session termination releases Session-owned Host/PlayerInput
-Scene-Provided Route A -> B reprojects the same Session Player without re-Join
-Scene-Provided contextual cleanup preserves the Session Player
-```
-
-Detailed evidence is recorded in
+Detailed evidence:
 `../Reconciliation/IMMERSIVE-FRAMEWORK-ADR-019-RECONCILIATION-2026-08-12.md`.
 
-### ADR-020 — Session Player Leave
+### ADR-020 — Session Player Leave — accepted / implemented / reconciled
 
-Proposed Leave is one explicit Session mutation targeting an exact current Player
-occurrence. The release transaction is staged:
+Canonical individual terminal transaction:
 
 ```text
-validate target + occurrence
+validate exact Slot + current occurrence
   -> stage Leaving
-  -> release current Activity representation, if present
+  -> release current Activity representation if present
   -> release provisioning-specific Session resources
-  -> clear Session Player associations
-  -> commit Slot Vacant
+  -> clear occurrence-owned Session associations
+  -> terminal commit
+  -> Slot Vacant / Available
 ```
 
-Manager-Provisioned Hosts are released through provisioning authority. Scene-Provided
-physical objects remain consumer-owned. A stale Leave must never remove a later Player
-occurrence that reused the same Slot.
+Focused public Manager-Provisioned QA proves:
+
+```text
+ADR020-H
+status Passed
+cases 26/26
+```
+
+Certified proof categories:
+
+```text
+PublicLeave
+ManagerProvisioned
+JoiningClosed
+TerminalAvailable
+ResourceRelease
+ReadinessInvalidation
+Rejoin
+StaleOccurrence
+NoActivityLeave
+```
+
+Key reconciliation outcomes:
+
+- Unity physical Host destruction is asserted after canonical settle, not weakened.
+- `ExplicitSlots + GameplayReady + Rejected` returns to `WaitingForJoin` after Leave.
+- retained baseline summaries are not treated as current authority.
+- Leave with no current Activity representation creates no fake representation.
+- stale Leave cannot affect a new occurrence that reused the Slot.
+
+Detailed evidence:
+`../Reconciliation/IMMERSIVE-FRAMEWORK-ADR-020-RECONCILIATION-2026-08-13.md`.
+
+### ADR-020 certification scope
+
+The architecture includes Scene-Provided ownership semantics. ADR-019 already certifies
+Scene-Provided contextual reprojection/ownership, but contextual release is intentionally
+not Session Leave. No dedicated Scene-Provided **Session Leave** terminal regression is
+recorded in the ADR-020 closure.
+
+Therefore the current certification label remains:
+
+```text
+Focused Manager-Provisioned public Leave — Certified
+Dedicated Scene-Provided Session Leave — Not separately evidenced
+```
+
+This does not reopen the accepted architecture/package implementation boundary.
 
 ### ADR-021 — Activity Initial Placement
 
-Proposed placement authority is Activity-scoped and explicitly Slot-addressed:
-
-```text
-Activity
-  Player1 -> Placement Anchor A
-  Player2 -> Placement Anchor B
-```
-
-Manager-Provisioned contextual Actors require Activity placement when configured for
-that flow. Scene-Provided representations explicitly choose between:
-
-```text
-Preserve Authored Pose
-Apply Activity Placement
-```
-
-Missing required placement is a preparation/readiness failure. There is no fallback to
-world origin, Host pose, previous Activity pose, prefab pose or another Slot's anchor.
+ADR-021 remains Proposed. It defines Activity-scoped Slot-to-Anchor placement intent and
+no-fallback placement before readiness. IF-ADR-019 and IF-ADR-020 are now accepted related
+decisions; their accepted status does not promote ADR-021.
 
 ### ADR-022 — Camera presentation models
 
-ADR-004 Camera request/output authority remains unchanged. The proposed extension keeps
-one canonical `CameraRigComposer` and expands its local Presentation Model family to:
+ADR-022 remains Proposed. ADR-004 Camera request/output authority remains unchanged.
+
+## Stage A / scoped technical summary
+
+For accepted/certified boundaries:
 
 ```text
-Fixed
-Follow
-Mounted
-Third Person
+Historical Stage A baseline       APPROVED
+Reverse audit                     CLOSED
+ADR-019 scoped extension          CLOSED / CERTIFIED
+ADR-020 scoped extension          CLOSED for architecture/implementation
+ADR-020 Manager public QA         CERTIFIED 26/26
+Open generic reverse-audit cuts   NONE
 ```
 
-Apply/Rebuild remains Editor-owned, explicit, idempotent and ownership-aware. One
-Composer continues to materialize one local `CinemachineCamera`; unknown incompatible
-external Cinemachine components block materialization instead of being destroyed.
-
-Multi-output/split-screen remains outside this proposal.
-
-## Stage A summary
-
-For the currently accepted and certified technical boundaries:
+This closure does not claim implementation/certification of:
 
 ```text
-Package implementation:       APPROVED BASELINE
-Technical reconciliation:     CLOSED for current accepted boundaries
-Reverse audit:                CLOSED
-Open reverse-audit cuts:      NONE
-Current generic Stage A task: NONE
-```
-
-The closure above does not claim implementation or certification of:
-
-```text
-R6/R7/R8 proposed reconciliation deltas
-ADR-020
+unproven R6/R7/R8 draft deltas
 ADR-021
 ADR-022
+dedicated Scene-Provided Session Leave QA
+FIRSTGAME Stage B proof for ADR-019/020
 ```
-
-ADR-019 is now a separately closed accepted boundary: implemented and technically
-certified, with FIRSTGAME real-consumer proof still pending.
-
-If those proposed decisions are accepted, each becomes a new scoped technical/product
-cut with its own package implementation and QA evidence. Their existence does not reopen
-unrelated already-certified Stage A boundaries.
-
-ADR-010 feature-owned adoption evidence and all listed FIRSTGAME work are not a reason
-to keep the generic Stage A audit open.
 
 ## Reverse-audit disposition
 
@@ -296,7 +277,7 @@ unknownKnown='False'
 unknownWarningsAsErrors='True'
 ```
 
-RA-03 Object Entry handoff disposition:
+RA-03 Object Entry handoff remains:
 
 ```text
 ObjectEntryId / declaration metadata
@@ -313,37 +294,26 @@ ObjectEntryRequest / ObjectEntryResult
 
 new Object Entry lifecycle authority
   -> NONE
-
-new ADR
-  -> NOT REQUIRED
 ```
-
-Experimental status is governed maturity, not an unresolved Stage A gap.
 
 ## Active work — Stage B / FIRSTGAME
 
-Stage B remains the real-consumer proof lane for the **currently accepted package
-baseline**. Proposed ADRs and proposed reconciliation deltas must not be treated as
-already available FIRSTGAME capabilities.
+Stage B remains the real-consumer proof lane for **accepted package boundaries**.
+Proposed ADRs must not be treated as already available product capability.
 
-Primary areas already identified for Stage B proof on the accepted baseline:
+Primary areas:
 
-1. **Player** — ADR-003, ADR-012, ADR-015 and ADR-016: participation,
-   Scene-/Manager-Provisioned flows, current provisioning commands and session profiles.
-   Proposed targeted Join, explicit Actor Selection, cross-Activity Session lifetime,
-   Leave and Initial Placement belong to the proposed expansion until accepted and
-   implemented.
-2. **Loading / Readiness** — ADR-006, ADR-007 and ADR-011: authoring sequence,
+1. **Player** — ADR-003, ADR-012, ADR-015, ADR-016, ADR-019 and ADR-020: current
+   provisioning/participation, Session lifetime, normal consumer Leave, diagnostics and
+   real rejoin behavior. ADR-021 Initial Placement remains proposed.
+2. **Loading / Readiness** — ADR-006, ADR-007, ADR-011: authoring sequence,
    cover/wait/reveal behavior, participant-aware progress and diagnostics.
-3. **Camera** — ADR-004: real single-output consumer integration and usability. Proposed
-   ADR-022 presentation models are not part of the certified baseline yet.
-4. **Pause** — ADR-005: consumer authoring/usability rather than re-proving the already
-   certified runtime contract.
-5. **Audio** — ADR-013: real optional BGM integration and promotion evidence.
-6. **Progression Save** — ADR-018: Built-in JSON persistence, close/reopen/load,
-   Custom Provider replacement and explicit scoped runtime delivery usability.
-7. **Editor/Product Surface** — ADR-010: feature-owned Inspector/discovery/workflow
-   evidence gathered through the actual systems above.
+3. **Camera** — ADR-004 accepted single-output integration. ADR-022 remains proposed.
+4. **Pause** — ADR-005 consumer authoring/usability.
+5. **Audio** — ADR-013 real optional BGM integration/promotion evidence.
+6. **Progression Save** — ADR-018 Built-in JSON persistence, close/reopen/load, Custom
+   Provider replacement and scoped delivery usability.
+7. **Editor/Product Surface** — ADR-010 feature-owned Inspector/discovery/workflow evidence.
 
 ## Classification of FIRSTGAME findings
 
@@ -352,57 +322,64 @@ Product / UX finding
   -> authoring/discovery/Inspector/template/diagnostic problem
 
 Real integration finding
-  -> technical parts work, but an official product surface is missing or awkward
+  -> technical pieces work but official product surface is missing/awkward
 
 Technical regression
   -> accepted package contract is reproducibly broken
 
 Future scope
-  -> desired capability is outside the current accepted boundary
+  -> desired capability is outside current accepted boundary
 ```
 
 Only a reproducible technical regression or accepted contract change automatically
-reopens a closed Stage A technical boundary.
+reopens a closed technical boundary.
 
-## Reopen conditions for Stage A
+## Reopen conditions
 
 Reopen a closed boundary only when at least one occurs:
 
-- reproducible regression against an accepted contract;
+- reproducible regression against accepted contract;
 - documented contradiction between current package behavior and normative docs;
 - accepted contract/architecture change;
-- newly accepted scope that extends the boundary.
+- newly accepted scope extending the boundary.
 
-Do not reopen Stage A solely because a real consumer exposes weak UX, because an
-Experimental API still exists, or because a proposed ADR has not yet been accepted.
+Do not reopen solely because Stage B exposes UX friction or because an Experimental API
+has not been promoted.
 
-## Future contracts
+## Future / separate contracts
 
-The following remain future/deferred contracts, not gaps in the current accepted
-baseline:
+Still future/deferred:
 
 - device disconnect/reconnect, reassignment and network reconnection semantics;
 - heterogeneous per-Slot Host Provisioning;
 - consumer-facing physical Actor hot-swap/replacement while represented;
-- generic respawn, checkpoint and dynamic Spawn policy beyond ADR-021 Initial Placement;
+- ADR-021 Initial Placement plus generic respawn/checkpoint/dynamic Spawn beyond it;
 - Orbital / Free Look input ownership and Spline/Dolly camera product models;
-- split-screen and multiple Camera outputs;
-- exceptional post-commit compensation beyond the current accepted boundary;
+- split-screen / multiple Camera outputs;
+- exceptional post-commit compensation beyond accepted Leave boundary;
 - application-scoped stable-ID resolver;
 - Session-scoped Frame Rate override;
-- persisted Frame Rate preference integration after the relevant
-  Persistence/Preferences architecture is accepted.
+- persisted Frame Rate preference integration after relevant persistence/preferences architecture.
 
-Session Player lifetime is resolved by accepted ADR-019.
+Resolved:
 
-Session Player Leave, Activity Initial Placement and expanded Camera presentation models
-remain explicit proposed contracts tracked as ADR-020 through ADR-022 above.
+```text
+Session Player lifetime   -> accepted IF-ADR-019
+Session Player Leave      -> accepted IF-ADR-020
+```
+
+Proposed:
+
+```text
+Activity Initial Placement          -> IF-ADR-021
+expanded Camera presentation models -> IF-ADR-022
+```
 
 ## Current architecture / governance records
 
 - [IF-GOV-001 — API Maturity and Validation Governance](../Governance/IF-GOV-001-API-MATURITY-AND-VALIDATION-GOVERNANCE.md)
 - [IF-ADR-019 — Session Player Lifetime and Activity Representation Authority](../ADRs/IF-ADR-019-Session-Player-Lifetime-and-Activity-Representation-Authority.md) — Accepted / Reconciled / Implemented / QA Certified
-- [IF-ADR-020 — Session Player Leave and Resource Release Authority](../ADRs/IF-ADR-020-Session-Player-Leave-and-Resource-Release-Authority.md) — Proposed
+- [IF-ADR-020 — Session Player Leave and Resource Release Authority](../ADRs/IF-ADR-020-Session-Player-Leave-and-Resource-Release-Authority.md) — Accepted / Reconciled / Implemented; focused Manager QA 26/26
 - [IF-ADR-021 — Activity Player Actor Initial Placement Authority](../ADRs/IF-ADR-021-Activity-Player-Actor-Initial-Placement-Authority.md) — Proposed
 - [IF-ADR-022 — Camera Rig Presentation Models and Materialization Authority](../ADRs/IF-ADR-022-Camera-Rig-Presentation-Models-and-Materialization-Authority.md) — Proposed
 - [RA-03 — Object Entry Ownership Reconciliation](../Reconciliation/IMMERSIVE-FRAMEWORK-RA-03-OBJECT-ENTRY-OWNERSHIP-RECONCILIATION-2026-08-11.md)
@@ -426,17 +403,18 @@ remain explicit proposed contracts tracked as ADR-020 through ADR-022 above.
 - [ADR-018-A Certification](../Reconciliation/IMMERSIVE-FRAMEWORK-ADR-018-A-CERTIFICATION-2026-08-11.md)
 - [ADR-018-C Certification](../Reconciliation/IMMERSIVE-FRAMEWORK-ADR-018-C-CERTIFICATION-2026-08-11.md)
 - [ADR-019](../Reconciliation/IMMERSIVE-FRAMEWORK-ADR-019-RECONCILIATION-2026-08-12.md)
+- [ADR-020](../Reconciliation/IMMERSIVE-FRAMEWORK-ADR-020-RECONCILIATION-2026-08-13.md)
 
-There is no reconciliation/certification record yet for ADR-020 through ADR-022.
+There is no reconciliation/certification record yet for ADR-021 or ADR-022.
 
 ## Documentation maintenance
 
 - Accepted ADRs remain normative and concise.
-- Proposed ADRs remain explicitly marked Proposed until acceptance; the tracker must not
-  promote them through wording alone.
+- Proposed ADRs remain explicitly Proposed until acceptance.
 - Governance records hold cross-cutting compatibility/product policy.
-- Reconciliation records hold technical alignment and certification evidence.
-- This tracker stays concise and current; detailed execution history belongs in
-  reconciliation or archive records.
-- FIRSTGAME evidence must be recorded as Stage B product/consumer evidence rather than
-  merged back into historical Stage A audit prose.
+- Reconciliation records hold technical alignment/certification evidence.
+- Tracker stays current; detailed execution history belongs in reconciliation/archive.
+- Historical records are not silently rewritten; later closures are appended as dated
+  follow-ups where necessary.
+- FIRSTGAME evidence remains Stage B product/consumer evidence rather than historical
+  Stage A audit prose.
