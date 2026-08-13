@@ -26,5 +26,7 @@ namespace Immersive.Framework.PlayerParticipation
             string reason);
 
         LocalPlayerJoinResult RequestJoin(LocalPlayerJoinRequest request);
+
+        SessionPlayerLeaveResult RequestLeave(SessionPlayerLeaveRequest request);
     }
 }

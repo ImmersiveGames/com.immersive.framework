@@ -235,6 +235,21 @@ namespace Immersive.Framework.PlayerParticipation
                 new LocalPlayerJoinRequest(source, reason));
         }
 
+        /// <summary>
+        /// Executes one exact Session Player Leave request through the canonical
+        /// host-scoped ADR-020 orchestration authority. The request must already
+        /// carry the target Slot and joined occurrence revision.
+        /// </summary>
+        public SessionPlayerLeaveResult RequestLeave(
+            SessionPlayerLeaveRequest request)
+        {
+            return RuntimeReady
+                ? runtimeModule.TryLeave(request)
+                : SessionPlayerLeaveResult.RuntimeUnavailable(
+                    request,
+                    RuntimeDiagnostic);
+        }
+
         internal void BindRuntime(
             LocalPlayerProvisioningRuntimeHostModule module)
         {

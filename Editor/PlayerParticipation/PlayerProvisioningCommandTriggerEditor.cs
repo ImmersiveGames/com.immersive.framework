@@ -14,6 +14,8 @@ namespace Immersive.Framework.Editor.Editor.PlayerParticipation
         private SerializedProperty defaultActorSelectionRequest;
         private SerializedProperty selectedPlayerSlot;
         private SerializedProperty expectedSelectionRevision;
+        private SerializedProperty leavePlayerSlot;
+        private SerializedProperty expectedLeaveOccurrenceRevision;
         private SerializedProperty reason;
         private bool showAdvanced;
         private bool hasValidation;
@@ -31,6 +33,9 @@ namespace Immersive.Framework.Editor.Editor.PlayerParticipation
             selectedPlayerSlot = serializedObject.FindProperty("selectedPlayerSlot");
             expectedSelectionRevision = serializedObject.FindProperty(
                 "expectedSelectionRevision");
+            leavePlayerSlot = serializedObject.FindProperty("leavePlayerSlot");
+            expectedLeaveOccurrenceRevision = serializedObject.FindProperty(
+                "expectedLeaveOccurrenceRevision");
             reason = serializedObject.FindProperty("reason");
         }
 
@@ -127,6 +132,18 @@ namespace Immersive.Framework.Editor.Editor.PlayerParticipation
                             "Expected Selection Revision",
                             "Use -1 when no optimistic revision check is required."));
                     break;
+
+                case PlayerProvisioningCommandOperation.RequestLeave:
+                    FrameworkAuthoringInspectorGui.Section("Request Leave");
+                    EditorGUILayout.PropertyField(
+                        leavePlayerSlot,
+                        new GUIContent(
+                            "Player Slot Profile",
+                            "Exact Player target. The current joined occurrence revision is resolved from the same scoped observation when invoked."));
+                    EditorGUILayout.HelpBox(
+                        "Leave always targets an explicit Player Slot. With the Advanced occurrence override at -1, the trigger captures the current joined occurrence and reuses that exact correlation if the same Leave must be retried.",
+                        MessageType.None);
+                    break;
             }
         }
 
@@ -204,7 +221,7 @@ namespace Immersive.Framework.Editor.Editor.PlayerParticipation
                 trigger.HasLastTypedResult ? MessageType.Info : MessageType.Warning);
         }
 
-        private static void DrawAdvanced(PlayerProvisioningCommandTrigger trigger)
+        private void DrawAdvanced(PlayerProvisioningCommandTrigger trigger)
         {
             using (new EditorGUI.DisabledScope(true))
             {
@@ -214,12 +231,37 @@ namespace Immersive.Framework.Editor.Editor.PlayerParticipation
                 EditorGUILayout.EnumPopup("Last Result Contract", trigger.LastResultKind);
             }
 
+            if ((PlayerProvisioningCommandOperation)operation.intValue ==
+                PlayerProvisioningCommandOperation.RequestLeave)
+            {
+                FrameworkAuthoringInspectorGui.Section("Leave Correlation Override");
+                EditorGUILayout.PropertyField(
+                    expectedLeaveOccurrenceRevision,
+                    new GUIContent(
+                        "Expected Occurrence Revision",
+                        "Advanced/debug only. -1 resolves the current joined occurrence from scoped observation; a non-negative value sends that exact revision."));
+            }
+
             if (!Application.isPlaying || !trigger)
             {
                 EditorGUILayout.HelpBox(
                     "Runtime result and scope correlation are available in Play Mode for one selected trigger.",
                     MessageType.None);
                 return;
+            }
+
+            if (trigger.LastLeaveRequest.IsValid)
+            {
+                FrameworkAuthoringInspectorGui.Section("Last Leave Correlation");
+                using (new EditorGUI.DisabledScope(true))
+                {
+                    EditorGUILayout.TextField(
+                        "Player Slot",
+                        trigger.LastLeaveRequest.PlayerSlotId.StableText);
+                    EditorGUILayout.IntField(
+                        "Expected Occurrence Revision",
+                        trigger.LastLeaveRequest.ExpectedOccurrenceRevision);
+                }
             }
 
             if (trigger.LastParticipationResult != null)
@@ -239,6 +281,12 @@ namespace Immersive.Framework.Editor.Editor.PlayerParticipation
                 EditorGUILayout.TextArea(
                     trigger.LastActorSelectionResult.ToDiagnosticString(),
                     GUILayout.MinHeight(48f));
+            }
+            else if (trigger.LastLeaveResult != null)
+            {
+                EditorGUILayout.TextArea(
+                    trigger.LastLeaveResult.ToDiagnosticString(),
+                    GUILayout.MinHeight(64f));
             }
         }
     }

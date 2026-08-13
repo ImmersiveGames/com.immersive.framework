@@ -389,6 +389,9 @@ namespace Immersive.Framework.PlayerParticipation
 
                 if (handle.LogicalActorHost != null)
                 {
+                    // Activity-scoped hierarchy authority must end synchronously before
+                    // Unity's deferred Destroy so Session Host release sees current ownership truth.
+                    handle.LogicalActorHost.transform.SetParent(null, true);
                     DestroyObject(handle.LogicalActorHost);
                 }
 

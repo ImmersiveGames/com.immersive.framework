@@ -133,6 +133,9 @@ namespace Immersive.Framework.Editor.Editor.PlayerParticipation
                     "Joined Slots",
                     observation.Participation.JoinedCount);
                 EditorGUILayout.IntField(
+                    "Leaving Slots",
+                    observation.Participation.LeavingCount);
+                EditorGUILayout.IntField(
                     "Configured Slots",
                     observation.Participation.ConfiguredSlotCount);
                 EditorGUILayout.IntField(
@@ -360,6 +363,12 @@ namespace Immersive.Framework.Editor.Editor.PlayerParticipation
                 EditorGUILayout.TextArea(
                     binding.LastActorSelectionOperation.ToDiagnosticString(),
                     GUILayout.MinHeight(48f));
+            }
+            else if (binding.LastLeaveOperation != null)
+            {
+                EditorGUILayout.TextArea(
+                    binding.LastLeaveOperation.ToDiagnosticString(),
+                    GUILayout.MinHeight(64f));
             }
             else
             {

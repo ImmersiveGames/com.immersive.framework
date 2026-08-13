@@ -1,5 +1,6 @@
 using System;
 using Immersive.Framework.ApiStatus;
+using Immersive.Framework.PlayerSlots;
 using UnityEngine;
 
 namespace Immersive.Framework.PlayerParticipation
@@ -111,6 +112,11 @@ namespace Immersive.Framework.PlayerParticipation
                 ? commandTrigger.LastActorSelectionResult
                 : null;
 
+        public SessionPlayerLeaveResult LastLeaveOperation =>
+            commandTrigger != null
+                ? commandTrigger.LastLeaveResult
+                : null;
+
         public string InitializationSummary =>
             DescribeInitialization(CurrentObservation);
 
@@ -182,6 +188,11 @@ namespace Immersive.Framework.PlayerParticipation
             if (!slot.Slot.PlayerSlotId.IsValid)
             {
                 return "Unavailable";
+            }
+
+            if (slot.Slot.AllocationState == PlayerSlotAllocationState.Leaving)
+            {
+                return "Leaving Session";
             }
 
             if (!slot.IsJoined)

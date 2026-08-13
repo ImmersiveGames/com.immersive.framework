@@ -18,7 +18,8 @@ namespace Immersive.Framework.PlayerParticipation
         CloseJoining = 20,
         // 30 is intentionally retired. Do not reuse it: serialized Unity content may still contain this value.
         RequestJoin = 40,
-        RequestDefaultActorSelection = 50
+        RequestDefaultActorSelection = 50,
+        RequestLeave = 60
     }
 
     /// <summary>
@@ -33,7 +34,8 @@ namespace Immersive.Framework.PlayerParticipation
         None = 0,
         ParticipationOperation = 10,
         LocalPlayerJoin = 20,
-        ActorSelection = 30
+        ActorSelection = 30,
+        SessionPlayerLeave = 40
     }
 
     /// <summary>
@@ -78,6 +80,15 @@ namespace Immersive.Framework.PlayerParticipation
         private int expectedSelectionRevision =
             PlayerActorSelectionRequest.NoExpectedRevision;
 
+        [Header("Request Leave")]
+        [SerializeField]
+        [Tooltip("Exact Player Slot whose current joined Session occurrence will Leave. A target is always required, including single-player products.")]
+        private PlayerSlotProfile leavePlayerSlot;
+
+        [SerializeField]
+        [Tooltip("Advanced/debug override for the exact joined occurrence revision. Use -1 to resolve the current occurrence from the scoped observation.")]
+        private int expectedLeaveOccurrenceRevision = -1;
+
         [Header("Request Metadata")]
         [SerializeField]
         [TextArea(2, 4)]
@@ -92,6 +103,12 @@ namespace Immersive.Framework.PlayerParticipation
 
         [NonSerialized]
         private PlayerActorSelectionResult lastActorSelectionResult;
+
+        [NonSerialized]
+        private SessionPlayerLeaveResult lastLeaveResult;
+
+        [NonSerialized]
+        private SessionPlayerLeaveRequest lastLeaveRequest;
 
         [NonSerialized]
         private PlayerProvisioningCommandResultKind lastResultKind;
@@ -111,6 +128,9 @@ namespace Immersive.Framework.PlayerParticipation
             defaultActorSelectionRequest;
         public PlayerSlotProfile SelectedPlayerSlot => selectedPlayerSlot;
         public int ExpectedSelectionRevision => expectedSelectionRevision;
+        public PlayerSlotProfile LeavePlayerSlot => leavePlayerSlot;
+        public int ExpectedLeaveOccurrenceRevision => expectedLeaveOccurrenceRevision;
+        public SessionPlayerLeaveRequest LastLeaveRequest => lastLeaveRequest;
         public string Reason => reason ?? string.Empty;
         public int InvocationCount => invocationCount;
         public PlayerProvisioningCommandResultKind LastResultKind => lastResultKind;
@@ -119,6 +139,7 @@ namespace Immersive.Framework.PlayerParticipation
         public LocalPlayerJoinResult LastJoinResult => lastJoinResult;
         public PlayerActorSelectionResult LastActorSelectionResult =>
             lastActorSelectionResult;
+        public SessionPlayerLeaveResult LastLeaveResult => lastLeaveResult;
         public bool HasLastTypedResult => lastResultKind !=
             PlayerProvisioningCommandResultKind.None;
         public string LastDiagnostic => lastDiagnostic;
@@ -167,6 +188,10 @@ namespace Immersive.Framework.PlayerParticipation
                     InvokeDefaultActorSelection(resolvedReason);
                     return;
 
+                case PlayerProvisioningCommandOperation.RequestLeave:
+                    InvokeLeave(resolvedReason);
+                    return;
+
                 default:
                     lastDiagnostic =
                         $"Player Provisioning Command Trigger operation '{operation}' is not supported.";
@@ -202,6 +227,25 @@ namespace Immersive.Framework.PlayerParticipation
                 issue =
                     "Player Provisioning Command Trigger binding requires an explicit Route or Activity scope.";
                 return false;
+            }
+
+            if (operation == PlayerProvisioningCommandOperation.RequestLeave)
+            {
+                if (leavePlayerSlot == null)
+                {
+                    issue =
+                        "Request Leave requires an explicit Player Slot Profile target, including single-player products.";
+                    return false;
+                }
+
+                if (expectedLeaveOccurrenceRevision < -1)
+                {
+                    issue =
+                        "Expected Leave Occurrence Revision must be -1 or a non-negative revision.";
+                    return false;
+                }
+
+                return leavePlayerSlot.TryGetPlayerSlotId(out _, out issue);
             }
 
             if (operation != PlayerProvisioningCommandOperation
@@ -317,6 +361,75 @@ namespace Immersive.Framework.PlayerParticipation
                 resolvedReason));
         }
 
+        private void InvokeLeave(string resolvedReason)
+        {
+            PlayerSlotId playerSlotId = default;
+            if (leavePlayerSlot != null)
+            {
+                leavePlayerSlot.TryGetPlayerSlotId(out playerSlotId, out _);
+            }
+
+            if (lastLeaveRequest.IsValid &&
+                lastLeaveRequest.PlayerSlotId != playerSlotId)
+            {
+                lastLeaveRequest = default;
+            }
+
+            if (!TryGetScopedAccess(out ILocalPlayerProvisioningConsumerAccess access,
+                    out string scopeIssue))
+            {
+                Complete(SessionPlayerLeaveResult.RuntimeUnavailable(
+                    default,
+                    scopeIssue));
+                return;
+            }
+
+            if (!access.TryGetObservation(
+                    out LocalPlayerProvisioningConsumerObservationSnapshot observation) ||
+                observation == null || !observation.IsAvailable)
+            {
+                Complete(SessionPlayerLeaveResult.RuntimeUnavailable(
+                    default,
+                    "Request Leave could not read the current scoped Player observation required to correlate the target occurrence."));
+                return;
+            }
+
+            LocalPlayerProvisioningConsumerSlotObservation target = default;
+            bool found = false;
+            for (int index = 0; index < observation.Slots.Count; index++)
+            {
+                LocalPlayerProvisioningConsumerSlotObservation candidate =
+                    observation.Slots[index];
+                if (candidate.Slot.PlayerSlotId != playerSlotId)
+                {
+                    continue;
+                }
+
+                target = candidate;
+                found = true;
+                break;
+            }
+
+            int occurrenceRevision = expectedLeaveOccurrenceRevision >= 0
+                ? expectedLeaveOccurrenceRevision
+                : found ? target.Slot.Revision : 0;
+            if (expectedLeaveOccurrenceRevision < 0 &&
+                found &&
+                target.Slot.AllocationState == PlayerSlotAllocationState.Leaving &&
+                lastLeaveRequest.IsValid &&
+                lastLeaveRequest.PlayerSlotId == playerSlotId)
+            {
+                occurrenceRevision = lastLeaveRequest.ExpectedOccurrenceRevision;
+            }
+
+            var request = new SessionPlayerLeaveRequest(
+                playerSlotId,
+                occurrenceRevision,
+                Source,
+                resolvedReason);
+            Complete(access.RequestLeave(request));
+        }
+
         private bool TryGetScopedAccess(
             out ILocalPlayerProvisioningConsumerAccess access,
             out string issue)
@@ -360,11 +473,26 @@ namespace Immersive.Framework.PlayerParticipation
                 : "Default Actor selection returned no typed result.";
         }
 
+        private void Complete(SessionPlayerLeaveResult result)
+        {
+            lastLeaveResult = result;
+            if (result != null && result.Request.IsValid)
+            {
+                lastLeaveRequest = result.Request;
+            }
+
+            lastResultKind = PlayerProvisioningCommandResultKind.SessionPlayerLeave;
+            lastDiagnostic = result != null
+                ? result.ToDiagnosticString()
+                : "Session Player Leave returned no typed result.";
+        }
+
         private void ClearLastResult()
         {
             lastParticipationResult = null;
             lastJoinResult = null;
             lastActorSelectionResult = null;
+            lastLeaveResult = null;
             lastResultKind = PlayerProvisioningCommandResultKind.None;
         }
 
@@ -391,7 +519,8 @@ namespace Immersive.Framework.PlayerParticipation
                 value == PlayerProvisioningCommandOperation.CloseJoining ||
                 value == PlayerProvisioningCommandOperation.RequestJoin ||
                 value == PlayerProvisioningCommandOperation
-                    .RequestDefaultActorSelection;
+                    .RequestDefaultActorSelection ||
+                value == PlayerProvisioningCommandOperation.RequestLeave;
         }
     }
 }

@@ -479,6 +479,39 @@ namespace Immersive.Framework.PlayerParticipation
                 "Local Player provisioning bridge returned no result.");
         }
 
+        internal SessionPlayerLeaveResult TryLeave(
+            SessionPlayerLeaveRequest request)
+        {
+            if (!IsReady || runtimeHost == null)
+            {
+                return SessionPlayerLeaveResult.RuntimeUnavailable(
+                    request,
+                    diagnostic);
+            }
+
+            if (!SessionPlayerLeaveRuntimeHostModule.TryAttach(
+                    runtimeHost,
+                    out SessionPlayerLeaveRuntimeHostModule leaveRuntime,
+                    out string issue))
+            {
+                diagnostic =
+                    "Session Player Leave runtime could not be composed for the explicit request. " +
+                    issue;
+                return SessionPlayerLeaveResult.RuntimeUnavailable(
+                    request,
+                    diagnostic);
+            }
+
+            requestCount++;
+            SessionPlayerLeaveResult result = leaveRuntime.TryLeave(request);
+            diagnostic = result != null
+                ? result.ToDiagnosticString()
+                : "Session Player Leave returned no result.";
+            return result ?? SessionPlayerLeaveResult.RuntimeUnavailable(
+                request,
+                "Session Player Leave orchestration returned no result.");
+        }
+
         internal LocalPlayerJoinResult RollbackCommittedJoin(
             LocalPlayerJoinResult joinResult,
             string reason)
@@ -947,6 +980,14 @@ namespace Immersive.Framework.PlayerParticipation
             return TryGetAuthoring(out string issue)
                 ? authoring.RequestJoin(request)
                 : LocalPlayerJoinResult.RuntimeUnavailable(request, issue);
+        }
+
+        public SessionPlayerLeaveResult RequestLeave(
+            SessionPlayerLeaveRequest request)
+        {
+            return TryGetAuthoring(out string issue)
+                ? authoring.RequestLeave(request)
+                : SessionPlayerLeaveResult.RuntimeUnavailable(request, issue);
         }
 
         public void Dispose()
