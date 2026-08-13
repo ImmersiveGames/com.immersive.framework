@@ -26,7 +26,7 @@ namespace Immersive.Framework.PlayerParticipation
     [FrameworkApiStatus(
         FrameworkApiStatus.Internal,
         "ADR-019 Session-scoped Scene Local Player host admission and contextual representation authority.")]
-    internal sealed class SceneLocalPlayerAdmissionRuntime
+    internal sealed partial class SceneLocalPlayerAdmissionRuntime
     {
         private sealed class AdmissionRecord
         {

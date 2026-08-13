@@ -20,7 +20,7 @@ namespace Immersive.Framework.PlayerParticipation
     [FrameworkApiStatus(
         FrameworkApiStatus.Internal,
         "P3M4B1/P3M4B2A/P3M5A host-scoped Scene Local Player admission, Activity lifecycle composition and deterministic loaded-scene reconciliation.")]
-    internal sealed class SceneLocalPlayerAdmissionRuntimeHostModule : MonoBehaviour
+    internal sealed partial class SceneLocalPlayerAdmissionRuntimeHostModule : MonoBehaviour
     {
         private sealed class ResolvedAutomaticAuthoring
         {
