@@ -1,10 +1,10 @@
 # IF-ADR-016 — Player Session Initial Configuration
 
 Status: **Accepted**  
-Last updated: 2026-08-09  
+Last updated: 2026-08-12  
 Proposed reconciliation draft: **2026-08-11 — R6 / R7 / R8**  
 Supersedes: former separate provisioning-Profile, Capacity and per-Slot override model  
-Related decisions: IF-ADR-001, IF-ADR-002, IF-ADR-003, IF-ADR-012, IF-ADR-015
+Related decisions: IF-ADR-001, IF-ADR-002, IF-ADR-003, IF-ADR-012, IF-ADR-015, IF-ADR-019
 
 > **Draft note:** this file is a proposed reconciliation of the accepted ADR after
 > the R6/R7/R8 architecture review. It has not been applied to the repository yet.
@@ -239,6 +239,32 @@ initial configuration.
 Targeted Join and explicit Actor Selection operate on the live Session and never
 mutate/reapply `PlayerSessionProfile`.
 
+IF-ADR-019 also makes Session persistence runtime semantics rather than initial authored
+policy:
+
+```text
+Joined Logical Player
+  persists for the Session
+
+Activity participation/representation
+  may appear, disappear and reproject without reapplying PlayerSessionProfile
+```
+
+No `Persistent Player` field or per-Player persistence mode is added to
+`PlayerSessionProfile`.
+
+Provisioning-specific physical lifetime remains derived from the accepted Host
+Provisioning mode:
+
+```text
+Manager Provisioned
+  admitted technical Host/PlayerInput becomes Session-owned
+
+Scene Provided
+  physical Host/Actor remains consumer-scene-owned
+  Session association is contextual and may be reprojected in a later Activity
+```
+
 ## Manager-Provisioned Input System bridge
 
 For Manager-Provisioned Player:
@@ -275,7 +301,7 @@ continue to author exact Slot identity directly.
 - generic character-selection flow, roster, unlock or store system;
 - consumer Actor preparation/materialization authority;
 - direct selection hot-swapping a prepared Actor;
-- Session-Persistent Player workflow until its separate architecture decision is accepted/reconciled.
+- per-Player or per-Profile physical persistence mode; canonical Joined Player Session lifetime is defined by IF-ADR-019.
 
 ## Integration boundary
 

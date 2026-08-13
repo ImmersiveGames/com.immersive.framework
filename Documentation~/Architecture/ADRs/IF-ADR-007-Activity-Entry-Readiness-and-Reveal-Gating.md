@@ -1,8 +1,8 @@
 # IF-ADR-007 — Activity Entry Readiness and Reveal Gating
 
 Status: **Accepted**  
-Last updated: 2026-08-11  
-Related decisions: IF-ADR-003, IF-ADR-005, IF-ADR-006, IF-ADR-009, IF-ADR-011, IF-ADR-012  
+Last updated: 2026-08-12  
+Related decisions: IF-ADR-003, IF-ADR-005, IF-ADR-006, IF-ADR-009, IF-ADR-011, IF-ADR-012, IF-ADR-019  
 Current reconciliation: [ADR-007 reconciliation](../Reconciliation/IMMERSIVE-FRAMEWORK-ADR-007-RECONCILIATION-2026-08-11.md)
 
 > Current implementation, QA and FIRSTGAME integration status is tracked in
@@ -31,6 +31,30 @@ evidence. Preparing, Ready, terminal failure, invalidation, cancellation and
 supersession are distinct states.
 
 Loading/Transition may wait on readiness but does not own it.
+
+For Player readiness, IF-ADR-019 requires the gate to distinguish Session truth from
+physical Activity representation. A Joined Session Player can be validly represented as
+`Absent` in the current Activity when the effective requirement does not require a
+physical representation.
+
+The canonical Player requirement boundary is:
+
+```text
+None
+JoinedSlots
+SelectedActors
+  -> Session evidence only
+  -> physical Activity Actor representation is not a prerequisite
+
+LogicalActorsPrepared
+GameplayReady
+  -> current Activity representation is required
+  -> missing required representation remains explicit NotReady/failure evidence
+```
+
+Readiness must therefore never infer a missing Host/Actor requirement for
+`JoinedSlots`/`SelectedActors`, and it must never fake representation evidence for
+`LogicalActorsPrepared`/`GameplayReady`.
 
 The current accepted boundary does not impose an elapsed-time timeout on Activity
 entry readiness. A waiting operation remains pending until its captured occurrence

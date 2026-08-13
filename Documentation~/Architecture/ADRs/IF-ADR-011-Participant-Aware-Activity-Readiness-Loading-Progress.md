@@ -1,8 +1,8 @@
 # IF-ADR-011 — Participant-Aware Activity Readiness Loading Progress
 
 Status: **Accepted**  
-Last updated: 2026-08-09  
-Related decisions: IF-ADR-005, IF-ADR-006, IF-ADR-007, IF-ADR-012
+Last updated: 2026-08-12  
+Related decisions: IF-ADR-005, IF-ADR-006, IF-ADR-007, IF-ADR-012, IF-ADR-019
 
 > Current implementation, QA and FIRSTGAME integration status is tracked in
 > `../Tracking/IF-TRACK-Framework.md`. This ADR is normative and intentionally
@@ -32,6 +32,21 @@ participants remain diagnostic and cannot block Ready.
 
 The exact global percentages depend on the technical operation envelope; the
 framework does not promise fixed global fractions per participant.
+
+For Player contributions, progress follows the effective requirement rather than the
+mere existence of a physical Host/Actor. Per IF-ADR-019:
+
+```text
+JoinedSlots / SelectedActors
+  Session evidence may satisfy the requirement with Activity representation Absent
+
+LogicalActorsPrepared / GameplayReady
+  current Activity representation is part of the required evidence
+```
+
+Progress must not remain blocked solely because a Session-only requirement has no
+physical Activity representation, and it must not publish successful completion when a
+representation-required level lacks current occurrence evidence.
 
 ## Covered waits
 

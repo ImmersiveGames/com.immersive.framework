@@ -1,8 +1,8 @@
 # IF-ADR-001 — Core Lifecycle and Runtime Authority
 
 Status: **Accepted**  
-Last updated: 2026-08-11  
-Related decisions: IF-ADR-003, IF-ADR-005, IF-ADR-006, IF-ADR-007, IF-ADR-011, IF-ADR-014
+Last updated: 2026-08-12  
+Related decisions: IF-ADR-003, IF-ADR-005, IF-ADR-006, IF-ADR-007, IF-ADR-011, IF-ADR-014, IF-ADR-019
 Current reconciliation: [ADR-001 reconciliation](../Reconciliation/IMMERSIVE-FRAMEWORK-ADR-001-RECONCILIATION-2026-08-10.md)
 
 > Current implementation, QA and FIRSTGAME integration status is tracked in
@@ -145,11 +145,34 @@ lifecycle ADR.
 - Object Entry runtime context remains a derivative projection and never becomes
   an independent lifecycle owner.
 
+## Session Player lifetime boundary
+
+IF-ADR-019 resolves the former `Session-Persistent Player` future direction.
+
+A Joined Logical Player is Session-scoped while Route/Activity owns contextual
+Player/Actor representation, readiness, bindings and materialization. Activity exit
+does not end Session participation, and Activity entry does not re-Join an already
+Joined Logical Player.
+
+Provisioning-specific physical lifetime remains explicit:
+
+```text
+Manager-Provisioned Host
+  Session-owned after successful Join
+
+Scene-Provided Host/Actor
+  consumer-scene-owned contextual occurrence
+```
+
+Neither case weakens this ADR's composition-root rule: Session persistence must not be
+implemented through arbitrary persistent GameObjects, global discovery or a Player
+service locator.
+
 ## Deferred extensions
 
-Session-Persistent Player and exceptional post-commit compensation are separate
-future contracts. They do not weaken the current authority model and must not be
-simulated through arbitrary persistent GameObjects or a generic rollback manager.
+Explicit Session Player Leave is owned by IF-ADR-020 and remains a separate contract
+until that ADR is accepted. Exceptional post-commit compensation also remains separate
+and must not be simulated through a generic rollback manager.
 
 ## Reopen criteria
 

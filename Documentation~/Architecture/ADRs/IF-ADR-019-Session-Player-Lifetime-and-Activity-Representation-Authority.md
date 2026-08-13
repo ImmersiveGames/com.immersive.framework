@@ -1,14 +1,19 @@
 # IF-ADR-019 — Session Player Lifetime and Activity Representation Authority
 
-Status: **Proposed**  
+Status: **Accepted / Reconciled / Implemented / QA Certified**  
 Date: 2026-08-11  
+Last updated: 2026-08-12  
 Type: architecture / runtime authority / player product direction  
-Related decisions: IF-ADR-001, IF-ADR-003, IF-ADR-007, IF-ADR-012, IF-ADR-015, IF-ADR-016  
+Related decisions: IF-ADR-001, IF-ADR-003, IF-ADR-007, IF-ADR-011, IF-ADR-012, IF-ADR-015, IF-ADR-016, IF-ADR-020, IF-ADR-021  
 Source finding: pre-FIRSTGAME architecture review — R2 Session-Persistent Player
 
-> This ADR is a proposed architectural decision. It defines the intended authority and
-> lifetime model but does not promote current Experimental APIs to Stable and does not
-> claim that the package already implements the complete decision.
+> This ADR is the accepted authority for Session Player lifetime versus Activity
+> representation lifetime. The package implementation and focused QA were completed on
+> 2026-08-12. Acceptance/certification of this boundary does not promote Experimental
+> APIs to Stable and does not claim FIRSTGAME real-consumer proof.
+>
+> Current reconciliation and certification evidence:
+> [ADR-019 reconciliation](../Reconciliation/IMMERSIVE-FRAMEWORK-ADR-019-RECONCILIATION-2026-08-12.md)
 
 ## Context
 
@@ -26,8 +31,8 @@ IF-ADR-001 and IF-ADR-003 intentionally place Logical Player identity at Session
 while Route/Activity owns contextual projection, Actor preparation/materialization,
 readiness and gameplay participation.
 
-However, the current architecture still leaves `Session-Persistent Player` as a future
-contract. That omission becomes material as soon as a joined Player crosses an Activity
+Before this decision, the architecture still left `Session-Persistent Player` as a future
+contract. That omission became material as soon as a joined Player crossed an Activity
 boundary.
 
 Without an explicit lifetime decision, several incompatible interpretations are possible:
@@ -59,8 +64,8 @@ Player Leave
 Session termination
 ```
 
-The Framework needs one canonical model before FIRSTGAME treats cross-Activity Player
-continuity as a normal product capability.
+This ADR establishes the canonical model required before FIRSTGAME treats cross-Activity
+Player continuity as a normal product capability.
 
 ## Decision
 
@@ -898,52 +903,54 @@ what to destroy from scene objects.
 
 ### Cost
 
-Current runtime paths that equate physical Host admission/release with Session Player
-creation/destruction may require reconciliation.
+The implementation required reconciliation of runtime paths that previously coupled
+physical Host admission/release too closely to Session Player creation/destruction.
 
-Scene-Provided Player needs an explicit reprojection/bind path for an already occupied
-Session Slot.
+Scene-Provided Player now requires and uses an explicit contextual reprojection/bind path
+for an already occupied Session Slot.
 
-Manager-Provisioned Host ownership must become explicitly Session-scoped rather than
-accidentally tied to the Activity scene.
+Manager-Provisioned Host ownership is explicitly Session-scoped after successful Join,
+which requires a semantic admitted-resource release path at Session termination.
 
-Diagnostics and observation surfaces must distinguish Session Player state from current
-Activity representation state.
+Diagnostics and observation surfaces must continue to distinguish Session Player state
+from current Activity representation state.
 
-## Required reconciliation after acceptance
+## Reconciliation applied
 
-This draft intentionally does not edit existing ADRs yet.
-
-When IF-ADR-019 is accepted, the architecture documentation should be reconciled as
-follows:
+The 2026-08-12 reconciliation updates the directly affected architecture records:
 
 ```text
 IF-ADR-001
-  replace Session-Persistent Player as unresolved future direction
-  with a reference to IF-ADR-019
+  former Session-Persistent Player future direction resolved by IF-ADR-019
 
 IF-ADR-003
-  reference IF-ADR-019 for Session Player vs Activity representation lifetime
-  retain Player Leave as separate contract until R3 closes it
+  Session Player vs Activity representation lifetime made explicit
+  Player Leave remains separate under IF-ADR-020
 
-IF-ADR-012
-  clarify/reference that Activity exclusion does not end Session Player lifetime
+IF-ADR-007 / IF-ADR-011 / IF-ADR-012
+  Player readiness now distinguishes Session-only evidence from
+  representation-required evidence
 
 IF-ADR-015
-  no automatic command expansion from this ADR
-  future Leave/selection/targeted-Join work remains separate
+  no automatic command expansion from IF-ADR-019
+  observation distinguishes Session state from current Activity occurrence
+  Leave remains separate under IF-ADR-020
 
 IF-ADR-016
-  remove Session-Persistent Player workflow from rejected/unresolved scope
-  reference IF-ADR-019
-  keep per-Slot Host Provisioning deferred
+  no authored Persistent Player mode
+  Session persistence is canonical runtime semantics
+  per-Slot Host Provisioning remains deferred
+
+IF-ADR-020
+  dependency updated from proposed IF-ADR-019 to accepted IF-ADR-019
 ```
 
-No reconciliation should be committed until this ADR's decision is reviewed and accepted.
+The detailed compatibility and certification record lives in
+`../Reconciliation/IMMERSIVE-FRAMEWORK-ADR-019-RECONCILIATION-2026-08-12.md`.
 
-## Validation requirements
+## Validation evidence
 
-Acceptance of the architecture requires later package/QA cuts to prove at least:
+The implementation/QA cuts completed on 2026-08-12 prove the required boundary:
 
 ### Session lifetime
 
@@ -986,9 +993,9 @@ release failure does not report clean success
 occupied persistent Slot is not silently reassigned
 ```
 
-### Real consumer
+### Real consumer — pending Stage B
 
-FIRSTGAME should eventually prove:
+FIRSTGAME still needs to prove:
 
 ```text
 a joined Player crosses at least two Activities
@@ -998,7 +1005,7 @@ Advanced/Debug evidence makes Session vs Activity state visible
 no manual reconstruction of internal contracts is required
 ```
 
-## Acceptance of this architecture cut
+## Accepted architecture boundary
 
 ```text
 joined Logical Player lifetime is Session-scoped
@@ -1016,13 +1023,16 @@ no silent fallback or fake readiness is introduced
 Player Leave, disconnect/reconnect and physical Actor persistence remain separate contracts
 ```
 
-## Suggested commits
-
-Architecture:
+## Current disposition
 
 ```text
-docs(architecture): define session player lifetime authority
+Architecture decision           Accepted
+Package implementation          Implemented
+Focused technical QA            Certified
+Full Player QA                  Certified
+FIRSTGAME real-consumer proof   Pending Stage B
+API maturity promotion          Not implied
 ```
 
-Future runtime/QA cuts should use their own scoped commit messages after the accepted ADR
-defines the implementation plan.
+IF-ADR-020 remains the separate proposed contract for explicit Session Player Leave.
+IF-ADR-021 remains the separate proposed contract for Activity Player initial placement.

@@ -1,9 +1,9 @@
 # IF-ADR-015 — Player Provisioning Commands and Consumer Observation Surface
 
 Status: **Accepted**  
-Last updated: 2026-08-09  
+Last updated: 2026-08-12  
 Proposed reconciliation draft: **2026-08-11 — R6 / R7 / R8**  
-Related decisions: IF-ADR-002, IF-ADR-003, IF-ADR-006, IF-ADR-010, IF-ADR-012, IF-ADR-014, IF-ADR-016
+Related decisions: IF-ADR-002, IF-ADR-003, IF-ADR-006, IF-ADR-010, IF-ADR-012, IF-ADR-014, IF-ADR-016, IF-ADR-019, IF-ADR-020
 
 > **Draft note:** this file is a proposed reconciliation of the accepted ADR after
 > the R6/R7/R8 architecture review. It has not been applied to the repository yet.
@@ -145,6 +145,37 @@ explicitly instead of hot-swapping the physical representation.
 
 A future physical Actor-switch operation is outside this consumer vocabulary
 until explicitly accepted.
+
+## Session lifetime boundary
+
+IF-ADR-019 does not add a new consumer command. It changes how existing Join and
+observation semantics are interpreted across Activity boundaries.
+
+A successful Join establishes Session membership once. Activity projection/reprojection
+for that same Joined Player is not another consumer Join operation, and contextual
+Activity release is not a Leave command.
+
+Observation should distinguish, where the product surface exposes the evidence:
+
+```text
+Session
+  Slot Joined
+  Actor selection/revision
+  Session-owned Manager-Provisioned Host evidence
+
+Current Activity
+  participating / excluded
+  representation state
+  current Actor occurrence
+  readiness / gameplay / camera bindings
+```
+
+For Scene-Provided Players, contextual release may leave the Slot Joined while the
+scene-owned Host/Actor occurrence is removed. For Manager-Provisioned Players, normal
+Activity exit must not imply release of the admitted Session-owned Host/`PlayerInput`.
+
+Session Player Leave remains outside this ADR's accepted command vocabulary until
+IF-ADR-020 is accepted and reconciled.
 
 ## Initialization boundary
 

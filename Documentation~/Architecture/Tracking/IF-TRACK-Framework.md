@@ -1,6 +1,6 @@
 # IF-TRACK — Immersive Framework
 
-Status: **Active — Stage B baseline + proposed architecture expansion**  
+Status: **Active — Stage B baseline + ADR-019 certified + proposed architecture expansion**  
 Last updated: **2026-08-12**
 
 ## Authority and status model
@@ -33,8 +33,13 @@ ImmersiveGames/com.immersive.framework
 New ADrs
 ```
 
-That HEAD adds proposed architecture records and proposed reconciliation deltas. It does
-not supersede the currently approved executable Stage A package baseline below.
+That HEAD adds the architecture records used as the baseline for the ADR-019 work. The
+ADR-019 package cuts A-D and focused QA cut E were applied and validated after that Git
+HEAD as complete-file local cuts; this tracker does not invent a later repository commit
+for those validated changes.
+
+The previously approved executable Stage A package baseline below remains the historical
+baseline for unrelated already-closed boundaries.
 
 The current package baseline approved for FIRSTGAME Stage B work on accepted boundaries
 remains:
@@ -97,15 +102,17 @@ retroactively invalidating the already certified baseline.
 | [016](../ADRs/IF-ADR-016-Player-Session-Initial-Configuration-and-Provisioning-Profiles.md) | ACCEPTED baseline / IMPLEMENTED; R6/R7/R8 reconciliation DRAFT pending | CERTIFIED baseline; draft delta not certified | Scene-/Manager-Provisioned baseline remains valid; Host Provisioning, Slot Assignment and Actor Selection stay separate decisions. |
 | [017](../ADRs/IF-ADR-017-Application-Frame-Rate-Project-Authority.md) | ACCEPTED / RECONCILED / IMPLEMENTED | CERTIFIED: Edit 13/13; Target 13/13; VSync 13/13; Defaults 13/13 | Stage A closed; no mandatory FIRSTGAME gate for current project-level boundary. |
 | [018](../ADRs/IF-ADR-018-Progression-Save-Backend-Independence-and-Persistence-Domain-Boundaries.md) | ACCEPTED / RECONCILED; A Stable, B JSON certified, C composition implemented | CERTIFIED: backend conformance; JSON 18/18; composition 12/12 | ADR018-D FIRSTGAME real-consumer persistence/backend usability proof. |
-| [019](../ADRs/IF-ADR-019-Session-Player-Lifetime-and-Activity-Representation-Authority.md) | PROPOSED / NOT IMPLEMENTED as complete decision | NOT STARTED for proposed boundary | Defines Session-scoped Logical Player lifetime, Activity-scoped representation and provisioning-specific physical lifetimes. Must be accepted before implementation/certification is reported. |
-| [020](../ADRs/IF-ADR-020-Session-Player-Leave-and-Resource-Release-Authority.md) | PROPOSED / NOT IMPLEMENTED | NOT STARTED | Defines explicit occurrence-aware Session Player Leave and staged resource release. Depends on the lifetime boundary introduced by proposed ADR-019. |
+| [019](../ADRs/IF-ADR-019-Session-Player-Lifetime-and-Activity-Representation-Authority.md) | ACCEPTED / RECONCILED / IMPLEMENTED | CERTIFIED: ADR19 matrix 5/5; Scene-Provided transition 28/28; Full Player QA certified | Session-scoped Logical Player lifetime and Activity-scoped representation boundary are closed technically. FIRSTGAME real-consumer proof remains Stage B. |
+| [020](../ADRs/IF-ADR-020-Session-Player-Leave-and-Resource-Release-Authority.md) | PROPOSED / NOT IMPLEMENTED | NOT STARTED | Defines explicit occurrence-aware Session Player Leave and staged resource release. Depends on the accepted lifetime boundary in ADR-019. |
 | [021](../ADRs/IF-ADR-021-Activity-Player-Actor-Initial-Placement-Authority.md) | PROPOSED / NOT IMPLEMENTED | NOT STARTED | Defines Activity-scoped Initial Placement, explicit Slot-to-Anchor intent and no-fallback placement before readiness. |
 | [022](../ADRs/IF-ADR-022-Camera-Rig-Presentation-Models-and-Materialization-Authority.md) | PROPOSED / NOT IMPLEMENTED | NOT STARTED | Extends CameraRigComposer presentation authoring/materialization while preserving ADR-004 single-output request/output authority. |
 
-## Proposed architecture expansion — pre-FIRSTGAME review
+## Architecture expansion — ADR-019 accepted; ADR-020 through ADR-022 proposed
 
-Repository HEAD `7bfe77f8371338f1abbc4a1c2d9dd3fa42ce7e04` records the current proposed
-architecture expansion discovered before continuing normal FIRSTGAME proof.
+Repository HEAD `7bfe77f8371338f1abbc4a1c2d9dd3fa42ce7e04` records the architecture
+expansion discovered before continuing normal FIRSTGAME proof. ADR-019 has since been
+implemented and QA-certified through local complete-file cuts based on that HEAD.
+ADR-020 through ADR-022 remain proposed.
 
 ### Player R6 / R7 / R8 reconciliation draft
 
@@ -144,9 +151,9 @@ not combine Slot targeting with Actor selection into one implicit Join transacti
 These deltas are not part of the currently certified baseline until implementation and
 focused QA exist.
 
-### ADR-019 — Session Player lifetime
+### ADR-019 — Session Player lifetime — accepted / implemented / certified
 
-Proposed canonical lifetime:
+Canonical lifetime:
 
 ```text
 Session
@@ -165,6 +172,22 @@ Scene-Provided Host + Actor
 A joined Logical Player persists across Activity changes. Activity exit is not Player
 Leave, and a later Activity representation for the same Session Player is not a second
 Join. No authored `Session Persistent` switch is introduced.
+
+
+Technical certification on 2026-08-12 proves:
+
+```text
+Session-only readiness levels do not require physical Activity representation
+Joined Slot remains occupied without gameplay occupancy
+occupied Joined Slot is not silently reused
+Manager-Provisioned Host/PlayerInput survives Activity exit
+Session termination releases Session-owned Host/PlayerInput
+Scene-Provided Route A -> B reprojects the same Session Player without re-Join
+Scene-Provided contextual cleanup preserves the Session Player
+```
+
+Detailed evidence is recorded in
+`../Reconciliation/IMMERSIVE-FRAMEWORK-ADR-019-RECONCILIATION-2026-08-12.md`.
 
 ### ADR-020 — Session Player Leave
 
@@ -239,11 +262,13 @@ The closure above does not claim implementation or certification of:
 
 ```text
 R6/R7/R8 proposed reconciliation deltas
-ADR-019
 ADR-020
 ADR-021
 ADR-022
 ```
+
+ADR-019 is now a separately closed accepted boundary: implemented and technically
+certified, with FIRSTGAME real-consumer proof still pending.
 
 If those proposed decisions are accepted, each becomes a new scoped technical/product
 cut with its own package implementation and QA evidence. Their existence does not reopen
@@ -368,14 +393,15 @@ baseline:
 - persisted Frame Rate preference integration after the relevant
   Persistence/Preferences architecture is accepted.
 
-Session Player lifetime, Session Player Leave, Activity Initial Placement and expanded
-Camera presentation models are no longer unnamed future bullets; they are explicitly
-tracked as proposed ADR-019 through ADR-022 above.
+Session Player lifetime is resolved by accepted ADR-019.
+
+Session Player Leave, Activity Initial Placement and expanded Camera presentation models
+remain explicit proposed contracts tracked as ADR-020 through ADR-022 above.
 
 ## Current architecture / governance records
 
 - [IF-GOV-001 — API Maturity and Validation Governance](../Governance/IF-GOV-001-API-MATURITY-AND-VALIDATION-GOVERNANCE.md)
-- [IF-ADR-019 — Session Player Lifetime and Activity Representation Authority](../ADRs/IF-ADR-019-Session-Player-Lifetime-and-Activity-Representation-Authority.md) — Proposed
+- [IF-ADR-019 — Session Player Lifetime and Activity Representation Authority](../ADRs/IF-ADR-019-Session-Player-Lifetime-and-Activity-Representation-Authority.md) — Accepted / Reconciled / Implemented / QA Certified
 - [IF-ADR-020 — Session Player Leave and Resource Release Authority](../ADRs/IF-ADR-020-Session-Player-Leave-and-Resource-Release-Authority.md) — Proposed
 - [IF-ADR-021 — Activity Player Actor Initial Placement Authority](../ADRs/IF-ADR-021-Activity-Player-Actor-Initial-Placement-Authority.md) — Proposed
 - [IF-ADR-022 — Camera Rig Presentation Models and Materialization Authority](../ADRs/IF-ADR-022-Camera-Rig-Presentation-Models-and-Materialization-Authority.md) — Proposed
@@ -399,8 +425,9 @@ tracked as proposed ADR-019 through ADR-022 above.
 - [ADR-018](../Reconciliation/IMMERSIVE-FRAMEWORK-ADR-018-RECONCILIATION-2026-08-11.md)
 - [ADR-018-A Certification](../Reconciliation/IMMERSIVE-FRAMEWORK-ADR-018-A-CERTIFICATION-2026-08-11.md)
 - [ADR-018-C Certification](../Reconciliation/IMMERSIVE-FRAMEWORK-ADR-018-C-CERTIFICATION-2026-08-11.md)
+- [ADR-019](../Reconciliation/IMMERSIVE-FRAMEWORK-ADR-019-RECONCILIATION-2026-08-12.md)
 
-There is no reconciliation/certification record yet for ADR-019 through ADR-022.
+There is no reconciliation/certification record yet for ADR-020 through ADR-022.
 
 ## Documentation maintenance
 

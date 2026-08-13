@@ -1,9 +1,9 @@
 # IF-ADR-003 — Player Participation and Actor Lifecycle
 
 Status: **Accepted**  
-Last updated: 2026-08-09  
+Last updated: 2026-08-12  
 Proposed reconciliation draft: **2026-08-11 — R6 / R7 / R8**  
-Related decisions: IF-ADR-001, IF-ADR-007, IF-ADR-012, IF-ADR-015, IF-ADR-016  
+Related decisions: IF-ADR-001, IF-ADR-007, IF-ADR-012, IF-ADR-015, IF-ADR-016, IF-ADR-019  
 Current reconciliation: [ADR-003 / ADR-012 technical reconciliation](../Reconciliation/IMMERSIVE-FRAMEWORK-ADR-003-012-RECONCILIATION-2026-08-10.md)
 
 > **Draft note:** this file is a proposed reconciliation of the accepted ADR after
@@ -63,6 +63,36 @@ identity.
 
 Reconciliation is idempotent, occurrence-aware and revision-correlated.
 Consumers do not invoke internal preparation or reconcile authority.
+
+## Session Player lifetime boundary
+
+IF-ADR-019 is authoritative for the lifetime split between Session participation and
+Activity representation.
+
+```text
+Session
+  Joined Logical Player
+  Slot occupancy
+  valid Actor selection intent
+  Manager-Provisioned Host after successful Join
+
+Activity
+  participation projection
+  physical Actor occurrence
+  readiness contribution
+  gameplay/input/camera bindings
+  contextual release
+```
+
+A Joined Slot may validly have no current Activity representation. Activity exit releases
+contextual occurrence state but does not implicitly Leave the Session, vacate the Slot or
+clear valid Session Actor selection. Activity entry for an already Joined Player is a
+projection/reprojection operation, not a second Join.
+
+For Scene-Provided provisioning, a later Activity may bind a distinct scene-owned
+Host/Actor occurrence to the same Joined Session Player. For Manager-Provisioned
+provisioning, the Session-owned technical Host/`PlayerInput` survives normal Activity
+transitions while the contextual Actor occurrence may be released and recreated.
 
 ## Player Session dependency
 
@@ -290,8 +320,10 @@ target Slot or Actor selection.
 
 ## Future contracts
 
-Session Player Leave, device disconnect/reconnect and Session-Persistent Player
-require separate explicit contracts when opened.
+Session Player lifetime is resolved by IF-ADR-019.
+
+Explicit Session Player Leave remains a separate contract owned by IF-ADR-020 until that
+ADR is accepted. Device disconnect/reconnect also remains separate.
 
 Mixed/per-Slot Host Provisioning remains deferred until a concrete game
 requirement demonstrates different provisioning ownership for different Slots.

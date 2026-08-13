@@ -2,14 +2,18 @@
 
 Status: **Proposed**  
 Date: 2026-08-11  
+Last updated: 2026-08-12  
 Type: architecture / runtime authority / player product direction  
-Related decisions: IF-ADR-003, IF-ADR-007, IF-ADR-012, IF-ADR-015, IF-ADR-016, proposed IF-ADR-019  
+Related decisions: IF-ADR-003, IF-ADR-007, IF-ADR-012, IF-ADR-015, IF-ADR-016, IF-ADR-019  
 Source finding: pre-FIRSTGAME architecture review — R3 Player Leave
 
 > This ADR is a proposed architectural decision. It defines the intended Session Player
 > Leave contract and resource-release boundary. It does not promote current Experimental
 > APIs to Stable and does not claim that the package already implements Session Player
 > Leave.
+>
+> IF-ADR-019 is now accepted, implemented and QA-certified. This ADR therefore depends
+> on an established Session Player lifetime boundary rather than a proposed one.
 
 ## Context
 
@@ -54,7 +58,7 @@ end one joined Logical Player's Session lifetime
 
 The distinction becomes mandatory once the Session Player lifetime is explicit.
 
-Proposed IF-ADR-019 establishes the intended model:
+IF-ADR-019 establishes the accepted model:
 
 ```text
 Joined Logical Player
@@ -383,7 +387,7 @@ Only the later Session terminal commit does that.
 
 ### 11. A Player without a current Activity representation may still Leave
 
-Proposed IF-ADR-019 allows:
+IF-ADR-019 allows:
 
 ```text
 Session Player

@@ -1,8 +1,8 @@
 # IF-ADR-012 — Activity Player Participation Profile and Readiness Compatibility
 
 Status: **Accepted**  
-Last updated: 2026-08-09  
-Related decisions: IF-ADR-003, IF-ADR-007, IF-ADR-010, IF-ADR-015, IF-ADR-016
+Last updated: 2026-08-12  
+Related decisions: IF-ADR-003, IF-ADR-007, IF-ADR-010, IF-ADR-015, IF-ADR-016, IF-ADR-019
 Current reconciliation: [ADR-003 / ADR-012 technical reconciliation](../Reconciliation/IMMERSIVE-FRAMEWORK-ADR-003-012-RECONCILIATION-2026-08-10.md)
 
 > Current implementation, QA and FIRSTGAME integration status is tracked in
@@ -43,6 +43,50 @@ Activity Player policy
   does not replace Session provisioning
   does not create Capacity
 ```
+
+## Session lifetime and Activity representation boundary
+
+IF-ADR-019 is authoritative for the lifetime consequence of Activity participation.
+
+Activity policy projects/qualifies the current Session; it does not create or destroy
+Session membership. Therefore:
+
+```text
+Joined Session Player
++ excluded by current Activity policy
+  -> Slot remains Joined
+  -> valid Session Actor selection remains current
+  -> Activity representation may be Absent
+
+Joined Session Player
++ included by current Activity policy
+  -> current Activity evaluates the required representation/readiness evidence
+```
+
+Activity exit is contextual release, not Session Player Leave. A later Activity can
+project the same Joined Logical Player into a new physical occurrence without performing
+another Join.
+
+### Readiness requirement compatibility
+
+The effective Player requirement determines whether a physical Activity representation
+is required:
+
+```text
+None
+JoinedSlots
+SelectedActors
+  -> Session-level evidence
+  -> no physical Activity representation prerequisite
+
+LogicalActorsPrepared
+GameplayReady
+  -> current Activity representation required
+  -> absence cannot be converted to Ready
+```
+
+This boundary applies equally to immediate entry and deferred/reconciled readiness after
+a required Slot joins later.
 
 ## Constraints
 
