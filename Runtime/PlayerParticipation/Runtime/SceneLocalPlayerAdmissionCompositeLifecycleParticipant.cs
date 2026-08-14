@@ -46,6 +46,29 @@ namespace Immersive.Framework.PlayerParticipation
         internal string Diagnostic => sceneLifecycle.Diagnostic;
         internal int ActiveEntryCount => sceneLifecycle.ActiveEntryCount;
 
+        internal SceneLocalPlayerAdmissionActivityLifecycleResult
+            TryRetireContextForSessionPlayerLeave(
+                SessionPlayerLeaveToken leaveToken,
+                string source,
+                string reason)
+        {
+            return sceneLifecycle.TryRetireContextForSessionPlayerLeave(
+                leaveToken,
+                source,
+                reason);
+        }
+
+        internal bool TryRetireAllContextForSessionTermination(
+            string source,
+            string reason,
+            out string issue)
+        {
+            return sceneLifecycle.TryRetireAllContextForSessionTermination(
+                source,
+                reason,
+                out issue);
+        }
+
         public ActivityContentExecutionParticipantSourceResult
             ResolveActivityContentExecutionParticipants(
                 ActivityContentExecutionParticipantSourceRequest request)

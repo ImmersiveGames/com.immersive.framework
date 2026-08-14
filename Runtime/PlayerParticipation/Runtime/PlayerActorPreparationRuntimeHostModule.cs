@@ -6,6 +6,7 @@ using Immersive.Framework.ApplicationLifecycle;
 using Immersive.Framework.PlayerSlots;
 using Immersive.Framework.RuntimeContent;
 using UnityEngine;
+using UnityEngine.InputSystem;
 
 namespace Immersive.Framework.PlayerParticipation
 {
@@ -919,6 +920,7 @@ namespace Immersive.Framework.PlayerParticipation
             shuttingDown = true;
             if (preparationContext != null)
             {
+                RetireSceneLocalPlayerContextForSessionTermination();
                 TryReleaseAllPreparedActors(
                     nameof(PlayerActorPreparationRuntimeHostModule),
                     "runtime-host-shutdown",

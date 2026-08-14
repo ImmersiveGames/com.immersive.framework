@@ -1,18 +1,10 @@
 using Immersive.Framework.Actors;
-using Immersive.Framework.ApiStatus;
 using Immersive.Framework.Camera;
 using Immersive.Framework.UnityInput;
 
 namespace Immersive.Framework.PlayerParticipation
 {
-    /// <summary>
-    /// Narrow explicit endpoint source used only while rebuilding one current gameplay
-    /// chain during a synchronous P3K.7D cutover.
-    /// </summary>
-    [FrameworkApiStatus(
-        FrameworkApiStatus.Experimental,
-        "P3K.7D narrow physical endpoint source for reversible gameplay handoff.")]
-    public interface IPlayerGameplayChainHandoffEndpointSource
+    internal interface IPlayerGameplayCurrentContextEndpointSource
     {
         bool TryResolveGameplayEndpoints(
             PlayerActorPreparationSummary preparation,

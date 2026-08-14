@@ -39,6 +39,7 @@ namespace Immersive.Framework.PlayerParticipation
             internal SessionPlayerLeaveRuntimeResult BeginResult { get; set; }
             internal SessionPlayerActivityRepresentationReleaseResult ActivityRelease { get; set; }
             internal PlayerActorPreparationResult PhysicalActorRelease { get; set; }
+            internal LocalPlayerHostAuthoring SessionPhysicalHost { get; set; }
             internal PlayerHostEvidenceResult ManagerHostEvidenceRelease { get; set; }
             internal ManagerProvisionedSessionPlayerLeaveReleaseResult ManagerRelease { get; set; }
             internal SceneProvidedSessionPlayerLeaveReleaseResult SceneRelease { get; set; }
@@ -371,14 +372,55 @@ namespace Immersive.Framework.PlayerParticipation
                 }
             }
 
+            if (record.ProvisioningMode == PlayerHostProvisioningMode.SceneProvided)
+            {
+                if (ReferenceEquals(record.SessionPhysicalHost, null))
+                {
+                    if (!preparationModule.TryGetCurrentSessionPhysicalHost(
+                            record.LeaveToken.PlayerSlotId,
+                            out LocalPlayerHostAuthoring sessionPhysicalHost,
+                            out string sessionPhysicalHostIssue))
+                    {
+                        return Publish(FromRecord(
+                            SessionPlayerLeaveStatus.FailedActivityRepresentationRelease,
+                            record,
+                            "SceneProvided contextual release could not capture the exact Session physical Host. " +
+                            sessionPhysicalHostIssue));
+                    }
+
+                    record.SessionPhysicalHost = sessionPhysicalHost;
+                }
+
+                if (!preparationModule.TryRetireSceneLocalPlayerContextForSessionPlayerLeave(
+                        record.LeaveToken,
+                        request.Source,
+                        request.Reason + "; release-scene-provided-context",
+                        out _,
+                        out string sceneContextIssue))
+                {
+                    return Publish(FromRecord(
+                        SessionPlayerLeaveStatus.FailedActivityRepresentationRelease,
+                        record,
+                        sceneContextIssue));
+                }
+            }
+
             // Stage D: only the Session Leave authority may release the physical Actor.
             // Stage C above deliberately retires gameplay/readiness/context without touching it.
-            if (record.ActivityRelease.HadPreparedActor &&
-                (record.PhysicalActorRelease == null || !record.PhysicalActorRelease.Succeeded))
+            if (record.PhysicalActorRelease == null || !record.PhysicalActorRelease.Succeeded)
             {
+                PlayerActorPreparationToken sessionPhysicalPreparation = default;
+                if (preparationModule.TryGetCurrentPreparation(
+                        record.LeaveToken.PlayerSlotId,
+                        out PlayerActorPreparationSummary currentPreparation,
+                        out _))
+                {
+                    sessionPhysicalPreparation = currentPreparation.Token;
+                }
+
                 record.PhysicalActorRelease = preparationModule.TryReleasePreparedActor(
                     record.LeaveToken.PlayerSlotId,
-                    record.ActivityRelease.PreparationToken,
+                    sessionPhysicalPreparation,
                     request.Source,
                     request.Reason + "; release-session-physical-actor");
                 if (record.PhysicalActorRelease != null &&
@@ -434,6 +476,7 @@ namespace Immersive.Framework.PlayerParticipation
                     record.SceneRelease = sceneProvisioning
                         .TryReleaseSceneProvidedPlayerForSessionLeave(
                             record.LeaveToken,
+                            record.SessionPhysicalHost,
                             request.Source,
                             request.Reason + "; release-scene-provided-authority");
                     if (record.SceneRelease == null || !record.SceneRelease.Succeeded)

@@ -15,6 +15,7 @@ namespace Immersive.Framework.PlayerParticipation
                 SessionPlayerLeaveToken leaveToken,
                 SceneLocalPlayerAdmissionAuthoring authoring,
                 LocalPlayerHostAuthoring host,
+                LocalPlayerHostAuthoring sessionPhysicalHost,
                 PlayerActorDeclaration sceneLogicalPlayerActor,
                 SceneLocalPlayerAdmissionToken sceneAdmissionToken,
                 PlayerSlotAssignmentSnapshot assignment,
@@ -24,6 +25,7 @@ namespace Immersive.Framework.PlayerParticipation
                 LeaveToken = leaveToken;
                 Authoring = authoring;
                 Host = host;
+                SessionPhysicalHost = sessionPhysicalHost;
                 SceneLogicalPlayerActor = sceneLogicalPlayerActor;
                 SceneAdmissionToken = sceneAdmissionToken;
                 Assignment = assignment;
@@ -34,6 +36,7 @@ namespace Immersive.Framework.PlayerParticipation
             internal SessionPlayerLeaveToken LeaveToken { get; }
             internal SceneLocalPlayerAdmissionAuthoring Authoring { get; }
             internal LocalPlayerHostAuthoring Host { get; }
+            internal LocalPlayerHostAuthoring SessionPhysicalHost { get; }
             internal PlayerActorDeclaration SceneLogicalPlayerActor { get; }
             internal SceneLocalPlayerAdmissionToken SceneAdmissionToken { get; }
             internal PlayerSlotAssignmentSnapshot Assignment { get; }
@@ -69,6 +72,7 @@ namespace Immersive.Framework.PlayerParticipation
         internal SceneProvidedSessionPlayerLeaveReleaseResult
             TryReleaseSceneProvidedPlayerForSessionLeave(
                 SessionPlayerLeaveToken leaveToken,
+                LocalPlayerHostAuthoring sessionPhysicalHost,
                 string source,
                 string reason)
         {
@@ -117,6 +121,27 @@ namespace Immersive.Framework.PlayerParticipation
                     resolvedSource,
                     resolvedReason,
                     "Scene-Provided Session Player Leave release requires a valid Session Player Leave token.");
+            }
+
+            if (ReferenceEquals(sessionPhysicalHost, null))
+            {
+                return Result(
+                    SceneProvidedSessionPlayerLeaveReleaseStatus.RejectedInvalidRequest,
+                    leaveToken,
+                    default,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    false,
+                    false,
+                    false,
+                    false,
+                    resolvedSource,
+                    resolvedReason,
+                    "Scene-Provided terminal release requires the Session-captured physical Host reference.");
             }
 
             SessionPlayerLeaveRuntimeResult leaveConfirmation =
@@ -186,31 +211,6 @@ namespace Immersive.Framework.PlayerParticipation
                     "The exact Scene-Provided Framework authority was already released for this active Session Player Leave occurrence.");
             }
 
-            if (hostEvidenceOwner.TryGetRetainedActorEvidence(
-                    leaveToken.PlayerSlotId,
-                    out PlayerActorCorrelationEvidence actorEvidence))
-            {
-                return Result(
-                    SceneProvidedSessionPlayerLeaveReleaseStatus.RejectedActivityRepresentationActive,
-                    leaveToken,
-                    existingProgress != null
-                        ? existingProgress.SceneAdmissionToken
-                        : default,
-                    leaveConfirmation,
-                    existingProgress?.HostEvidenceRelease,
-                    existingProgress?.AssignmentResult,
-                    existingProgress?.Authoring,
-                    existingProgress?.Host,
-                    existingProgress?.SceneLogicalPlayerActor,
-                    existingProgress != null && existingProgress.HostEvidenceReleased,
-                    existingProgress != null && existingProgress.HostAdmissionReleased,
-                    existingProgress != null && existingProgress.AssignmentReleased,
-                    existingProgress != null && existingProgress.ContextualRecordReleased,
-                    resolvedSource,
-                    resolvedReason,
-                    "Scene-Provided Session Player resources cannot release while retained Activity Actor evidence remains. " + actorEvidence.ToDiagnosticString());
-            }
-
             SceneProvidedSessionPlayerLeaveProgress progress = existingProgress;
             if (progress == null)
             {
@@ -239,6 +239,7 @@ namespace Immersive.Framework.PlayerParticipation
                             leaveToken,
                             null,
                             residualHostEvidence.Host,
+                            sessionPhysicalHost,
                             null,
                             default,
                             default,
@@ -246,9 +247,10 @@ namespace Immersive.Framework.PlayerParticipation
                             residualHostEvidence.HostBindingIdentity)
                         {
                             // The prior Activity exit already retired the contextual projection
-                            // and assignment. Terminal Leave must now release only the retained
-                            // Session physical Host and any remaining admission state.
+                            // and assignment. Stage C is therefore a no-op: terminal Leave must
+                            // release only the retained Session physical Host in Stage D.
                             HostEvidenceReleased = true,
+                            HostAdmissionReleased = true,
                             AssignmentReleased = true,
                             ContextualRecordReleased = true
                         };
@@ -328,6 +330,7 @@ namespace Immersive.Framework.PlayerParticipation
                         leaveToken,
                         authoring,
                         host,
+                        sessionPhysicalHost,
                         authoring.SceneLogicalPlayerActor,
                         sceneAdmissionToken,
                         assignment,
@@ -340,19 +343,19 @@ namespace Immersive.Framework.PlayerParticipation
             if (!progress.HostEvidenceReleased)
             {
                 PlayerHostEvidenceResult evidenceRelease =
-                    !progress.Assignment.IsAssigned || progress.Host == null
+                    !progress.Assignment.IsAssigned || progress.SessionPhysicalHost == null
                     ? hostEvidenceOwner.ClearDivergentHostEvidence(
                         leaveToken.PlayerSlotId,
                         progress.EvidenceAssignmentToken,
                         progress.EvidenceHostBindingIdentity,
-                        progress.Host,
+                        progress.SessionPhysicalHost,
                         resolvedSource,
                         resolvedReason + "; physical-host-already-terminally-released")
                     : hostEvidenceOwner.ReleaseHostEvidence(
                         leaveToken.PlayerSlotId,
                         progress.EvidenceAssignmentToken,
                         progress.EvidenceHostBindingIdentity,
-                        progress.Host,
+                        progress.SessionPhysicalHost,
                         resolvedSource,
                         resolvedReason);
                 progress.HostEvidenceRelease = evidenceRelease;
@@ -425,7 +428,7 @@ namespace Immersive.Framework.PlayerParticipation
                 PlayerHostEvidenceResult physicalRelease =
                     hostEvidenceOwner.ReleaseSessionPhysicalHost(
                         leaveToken.PlayerSlotId,
-                        progress.Host,
+                        progress.SessionPhysicalHost,
                         resolvedSource,
                         resolvedReason + "; release-session-physical-host");
                 if (physicalRelease == null ||
@@ -532,7 +535,7 @@ namespace Immersive.Framework.PlayerParticipation
                 leaveConfirmation,
                 resolvedSource,
                 resolvedReason,
-                "Scene-Provided contextual authority released for the exact Leaving occurrence after canonical Session-owned physical Player release; canonical Slot assignment is released and Session membership remains Leaving for downstream cleanup.");
+                "Scene-Provided terminal physical Host evidence released after the exact contextual authority was retired; Session membership remains Leaving for terminal cleanup.");
         }
 
         private static SceneProvidedSessionPlayerLeaveReleaseResult FromProgress(

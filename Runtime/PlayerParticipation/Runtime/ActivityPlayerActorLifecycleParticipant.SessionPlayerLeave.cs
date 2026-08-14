@@ -100,20 +100,6 @@ namespace Immersive.Framework.PlayerParticipation
                     "The exact Leave occurrence already retired its Activity representation.");
             }
 
-            if (gameplayLifecycleRuntime is
-                    ActivityPlayerLifecycleAdmissionRuntimeContext admissionRuntime &&
-                admissionRuntime.HasActiveTransaction)
-            {
-                return Result(
-                    SessionPlayerActivityRepresentationReleaseStatus.RejectedTransitionInFlight,
-                    leaveToken,
-                    leaveConfirmation,
-                    progress,
-                    resolvedSource,
-                    resolvedReason,
-                    "Session Player Leave is staged while an Activity Player handoff transaction is still active. The same Leave occurrence remains retriable after that transaction reaches a stable boundary.");
-            }
-
             if (!preparationModule.TryGetPlayerGameplayRuntime(
                     out PlayerGameplayRuntimeHostModule gameplayRuntime,
                     out string gameplayRuntimeIssue))

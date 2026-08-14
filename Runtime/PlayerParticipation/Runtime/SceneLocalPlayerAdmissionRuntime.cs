@@ -27,6 +27,13 @@ namespace Immersive.Framework.PlayerParticipation
         "ADR-019 Session-scoped Scene Local Player host admission and contextual representation authority.")]
     internal sealed partial class SceneLocalPlayerAdmissionRuntime
     {
+        private enum ContextualReleaseAuthorization
+        {
+            ActivityExit = 10,
+            SessionPlayerLeave = 20,
+            SessionTermination = 30
+        }
+
         private sealed class AdmissionRecord
         {
             internal AdmissionRecord(
@@ -643,7 +650,62 @@ namespace Immersive.Framework.PlayerParticipation
             string source,
             string reason)
         {
-            const string operation = "ReleaseSceneLocalPlayer";
+            return TryReleaseCore(
+                authoring,
+                expectedToken,
+                ContextualReleaseAuthorization.ActivityExit,
+                default,
+                source,
+                reason);
+        }
+
+        internal SceneLocalPlayerAdmissionRuntimeResult TryReleaseForSessionPlayerLeave(
+            SceneLocalPlayerAdmissionAuthoring authoring,
+            SceneLocalPlayerAdmissionToken expectedToken,
+            SessionPlayerLeaveToken leaveToken,
+            string source,
+            string reason)
+        {
+            return TryReleaseCore(
+                authoring,
+                expectedToken,
+                ContextualReleaseAuthorization.SessionPlayerLeave,
+                leaveToken,
+                source,
+                reason);
+        }
+
+        internal SceneLocalPlayerAdmissionRuntimeResult TryReleaseForSessionTermination(
+            SceneLocalPlayerAdmissionAuthoring authoring,
+            SceneLocalPlayerAdmissionToken expectedToken,
+            string source,
+            string reason)
+        {
+            return TryReleaseCore(
+                authoring,
+                expectedToken,
+                ContextualReleaseAuthorization.SessionTermination,
+                default,
+                source,
+                reason);
+        }
+
+        private SceneLocalPlayerAdmissionRuntimeResult TryReleaseCore(
+            SceneLocalPlayerAdmissionAuthoring authoring,
+            SceneLocalPlayerAdmissionToken expectedToken,
+            ContextualReleaseAuthorization authorization,
+            SessionPlayerLeaveToken leaveToken,
+            string source,
+            string reason)
+        {
+            string operation = authorization switch
+            {
+                ContextualReleaseAuthorization.SessionPlayerLeave =>
+                    "RetireSceneLocalPlayerForSessionLeave",
+                ContextualReleaseAuthorization.SessionTermination =>
+                    "RetireSceneLocalPlayerForSessionTermination",
+                _ => "ReleaseSceneLocalPlayer"
+            };
             string resolvedSource = source.NormalizeTextOrFallback(
                 nameof(SceneLocalPlayerAdmissionRuntime));
             string resolvedReason = reason.NormalizeTextOrFallback(
@@ -746,13 +808,18 @@ namespace Immersive.Framework.PlayerParticipation
                     assignmentResult: assignmentConfirmation);
             }
 
-            if (!participationContext.TryGetSlotSnapshot(
-                    record.Token.PlayerSlotId,
-                    out PlayerSlotRuntimeSnapshot currentSessionSlot) ||
-                !currentSessionSlot.IsJoined)
+            if (!TryResolveContextualReleaseSlot(
+                    record,
+                    authorization,
+                    leaveToken,
+                    resolvedSource,
+                    resolvedReason,
+                    out PlayerSlotRuntimeSnapshot currentSessionSlot,
+                    out SceneLocalPlayerAdmissionRuntimeStatus slotStatus,
+                    out string slotIssue))
             {
                 return Result(
-                    SceneLocalPlayerAdmissionRuntimeStatus.FailedInvariant,
+                    slotStatus,
                     operation,
                     authoring,
                     record.Token,
@@ -760,16 +827,22 @@ namespace Immersive.Framework.PlayerParticipation
                     null,
                     null,
                     record.JoinedSlot,
-                    record.JoinedSlot,
+                    currentSessionSlot,
                     resolvedSource,
                     resolvedReason,
-                    "Scene contextual release requires the represented Session Player Slot to remain Joined.");
+                    slotIssue);
             }
 
+            bool hostAdmissionAlreadyRetired =
+                (authorization is ContextualReleaseAuthorization.SessionPlayerLeave or
+                    ContextualReleaseAuthorization.SessionTermination) &&
+                record.Host != null &&
+                record.Host.IsAdmissionReleased;
             if (record.Host == null ||
-                !record.Host.IsJoined ||
-                !record.Host.HasJoinedSlot ||
-                record.Host.JoinedPlayerSlotId != record.Token.PlayerSlotId)
+                (!hostAdmissionAlreadyRetired &&
+                 (!record.Host.IsJoined ||
+                  !record.Host.HasJoinedSlot ||
+                  record.Host.JoinedPlayerSlotId != record.Token.PlayerSlotId)))
             {
                 return Result(
                     SceneLocalPlayerAdmissionRuntimeStatus.FailedInvariant,
@@ -786,7 +859,8 @@ namespace Immersive.Framework.PlayerParticipation
                     "Active Scene Local Player contextual record has no matching committed Host evidence.");
             }
 
-            if (!record.Host.TryValidateCommittedAdmissionRelease(
+            if (!hostAdmissionAlreadyRetired &&
+                !record.Host.TryValidateCommittedAdmissionRelease(
                     record.Token.PlayerSlotId,
                     out string hostValidationIssue))
             {
@@ -808,7 +882,8 @@ namespace Immersive.Framework.PlayerParticipation
             // ADR-019: Activity/Route release retires contextual Host evidence and the current
             // SceneProvided assignment only. It does not transition the Session Slot to Leaving
             // or Available and it does not clear Session Actor selection intent.
-            if (!record.Host.TryReleaseCommittedAdmission(
+            if (!hostAdmissionAlreadyRetired &&
+                !record.Host.TryReleaseCommittedAdmission(
                     record.Token.PlayerSlotId,
                     resolvedSource,
                     resolvedReason,
@@ -837,6 +912,31 @@ namespace Immersive.Framework.PlayerParticipation
                     resolvedReason);
             if (assignmentRelease == null || !assignmentRelease.Succeeded)
             {
+                if (authorization != ContextualReleaseAuthorization.ActivityExit)
+                {
+                    return Result(
+                        SceneLocalPlayerAdmissionRuntimeStatus.FailedReleaseCommit,
+                        operation,
+                        authoring,
+                        record.Token,
+                        null,
+                        null,
+                        null,
+                        currentSessionSlot,
+                        currentSessionSlot,
+                        resolvedSource,
+                        resolvedReason,
+                        assignmentRelease != null
+                            ? authorization == ContextualReleaseAuthorization.SessionPlayerLeave
+                                ? "Session Leave contextual assignment release failed after local admission retirement. The exact Leaving occurrence retains only residual assignment cleanup for retry. " + assignmentRelease.Message
+                                : "Session termination contextual assignment release failed after local admission retirement. Only residual shutdown cleanup remains. " + assignmentRelease.Message
+                            : authorization == ContextualReleaseAuthorization.SessionPlayerLeave
+                                ? "Session Leave contextual assignment release returned no result after local admission retirement. The exact Leaving occurrence retains only residual assignment cleanup for retry."
+                                : "Session termination contextual assignment release returned no result after local admission retirement. Only residual shutdown cleanup remains.",
+                        SceneLocalPlayerAdmissionRuntimeStatus.FailedReleaseCommit,
+                        assignmentRelease);
+                }
+
                 bool hostRestored = record.Host.TryRestoreCommittedAdmission(
                     currentSessionSlot,
                     resolvedSource,
@@ -882,7 +982,11 @@ namespace Immersive.Framework.PlayerParticipation
                 currentSessionSlot,
                 resolvedSource,
                 resolvedReason,
-                "Non-adopted Scene Local Player contextual representation and current Slot assignment released. Session Player Slot remains Joined.",
+                authorization == ContextualReleaseAuthorization.SessionPlayerLeave
+                    ? "Non-adopted Scene Local Player contextual representation and current Slot assignment retired for the exact Leaving Session Player occurrence. Session physical release remains downstream."
+                    : authorization == ContextualReleaseAuthorization.SessionTermination
+                        ? "Non-adopted Scene Local Player contextual representation and current Slot assignment retired by Session termination authority."
+                        : "Non-adopted Scene Local Player contextual representation and current Slot assignment released. Session Player Slot remains Joined.",
                 assignmentResult: assignmentRelease);
         }
 
@@ -897,7 +1001,64 @@ namespace Immersive.Framework.PlayerParticipation
             string source,
             string reason)
         {
-            const string operation = "RetireSceneLocalPlayerContext";
+            return TryRetireContextualRepresentationCore(
+                authoring,
+                expectedToken,
+                ContextualReleaseAuthorization.ActivityExit,
+                default,
+                source,
+                reason);
+        }
+
+        internal SceneLocalPlayerAdmissionRuntimeResult
+            TryRetireContextualRepresentationForSessionPlayerLeave(
+                SceneLocalPlayerAdmissionAuthoring authoring,
+                SceneLocalPlayerAdmissionToken expectedToken,
+                SessionPlayerLeaveToken leaveToken,
+                string source,
+                string reason)
+        {
+            return TryRetireContextualRepresentationCore(
+                authoring,
+                expectedToken,
+                ContextualReleaseAuthorization.SessionPlayerLeave,
+                leaveToken,
+                source,
+                reason);
+        }
+
+        internal SceneLocalPlayerAdmissionRuntimeResult
+            TryRetireContextualRepresentationForSessionTermination(
+                SceneLocalPlayerAdmissionAuthoring authoring,
+                SceneLocalPlayerAdmissionToken expectedToken,
+                string source,
+                string reason)
+        {
+            return TryRetireContextualRepresentationCore(
+                authoring,
+                expectedToken,
+                ContextualReleaseAuthorization.SessionTermination,
+                default,
+                source,
+                reason);
+        }
+
+        private SceneLocalPlayerAdmissionRuntimeResult TryRetireContextualRepresentationCore(
+            SceneLocalPlayerAdmissionAuthoring authoring,
+            SceneLocalPlayerAdmissionToken expectedToken,
+            ContextualReleaseAuthorization authorization,
+            SessionPlayerLeaveToken leaveToken,
+            string source,
+            string reason)
+        {
+            string operation = authorization switch
+            {
+                ContextualReleaseAuthorization.SessionPlayerLeave =>
+                    "RetireSceneLocalPlayerContextForSessionLeave",
+                ContextualReleaseAuthorization.SessionTermination =>
+                    "RetireSceneLocalPlayerContextForSessionTermination",
+                _ => "RetireSceneLocalPlayerContext"
+            };
             string resolvedSource = source.NormalizeTextOrFallback(nameof(SceneLocalPlayerAdmissionRuntime));
             string resolvedReason = reason.NormalizeTextOrFallback("retire-scene-local-player-context");
             AdmissionRecord record = authoring != null ? FindRecordByAuthoring(authoring) : null;
@@ -938,6 +1099,32 @@ namespace Immersive.Framework.PlayerParticipation
                     assignmentResult: assignmentConfirmation);
             }
 
+            if (!TryResolveContextualReleaseSlot(
+                    record,
+                    authorization,
+                    leaveToken,
+                    resolvedSource,
+                    resolvedReason,
+                    out PlayerSlotRuntimeSnapshot currentSessionSlot,
+                    out SceneLocalPlayerAdmissionRuntimeStatus slotStatus,
+                    out string slotIssue))
+            {
+                return Result(
+                    slotStatus,
+                    operation,
+                    authoring,
+                    record.Token,
+                    null,
+                    null,
+                    null,
+                    record.JoinedSlot,
+                    currentSessionSlot,
+                    resolvedSource,
+                    resolvedReason,
+                    slotIssue,
+                    assignmentResult: assignmentConfirmation);
+            }
+
             PlayerSlotAssignmentResult assignmentRelease =
                 assignmentReleasePort.ReleaseAssignment(
                     record.Token.PlayerSlotId,
@@ -949,7 +1136,7 @@ namespace Immersive.Framework.PlayerParticipation
                 return Result(
                     SceneLocalPlayerAdmissionRuntimeStatus.FailedReleaseCommit,
                     operation, authoring, record.Token, null, null, null,
-                    record.JoinedSlot, record.JoinedSlot, resolvedSource, resolvedReason,
+                    record.JoinedSlot, currentSessionSlot, resolvedSource, resolvedReason,
                     assignmentRelease != null
                         ? "Contextual retirement could not release its exact current Slot assignment. " +
                           assignmentRelease.Message
@@ -963,9 +1150,79 @@ namespace Immersive.Framework.PlayerParticipation
             return Result(
                 SceneLocalPlayerAdmissionRuntimeStatus.SucceededReleased,
                 operation, authoring, record.Token, null, null, null,
-                record.JoinedSlot, record.JoinedSlot, resolvedSource, resolvedReason,
-                "Scene Local Player Activity admission and contextual Slot assignment retired; Session physical preparation and Host evidence remain retained.",
+                record.JoinedSlot, currentSessionSlot, resolvedSource, resolvedReason,
+                authorization == ContextualReleaseAuthorization.SessionPlayerLeave
+                    ? "Scene Local Player Activity admission and contextual Slot assignment retired for the exact Leaving Session Player occurrence; Session physical preparation and Host evidence remain retained until terminal release."
+                    : authorization == ContextualReleaseAuthorization.SessionTermination
+                        ? "Scene Local Player Activity admission and contextual Slot assignment retired by Session termination authority."
+                        : "Scene Local Player Activity admission and contextual Slot assignment retired; Session physical preparation and Host evidence remain retained.",
                 assignmentResult: assignmentRelease);
+        }
+
+        private bool TryResolveContextualReleaseSlot(
+            AdmissionRecord record,
+            ContextualReleaseAuthorization authorization,
+            SessionPlayerLeaveToken leaveToken,
+            string source,
+            string reason,
+            out PlayerSlotRuntimeSnapshot currentSlot,
+            out SceneLocalPlayerAdmissionRuntimeStatus status,
+            out string issue)
+        {
+            currentSlot = default;
+            status = SceneLocalPlayerAdmissionRuntimeStatus.FailedInvariant;
+            issue = string.Empty;
+            if (!participationContext.TryGetSlotSnapshot(
+                    record.Token.PlayerSlotId,
+                    out currentSlot))
+            {
+                issue = "Scene contextual release could not resolve the represented Session Player Slot.";
+                return false;
+            }
+
+            if (authorization == ContextualReleaseAuthorization.ActivityExit)
+            {
+                if (currentSlot.IsJoined)
+                {
+                    return true;
+                }
+
+                issue = "Scene contextual release requires the represented Session Player Slot to remain Joined.";
+                return false;
+            }
+
+            if (authorization == ContextualReleaseAuthorization.SessionTermination)
+            {
+                return true;
+            }
+
+            SessionPlayerLeaveRuntimeResult leaveConfirmation =
+                participationContext.TryConfirmSessionPlayerLeave(
+                    leaveToken,
+                    source,
+                    reason + "; confirm-session-player-leave-contextual-retirement");
+            if (leaveConfirmation == null || !leaveConfirmation.Succeeded)
+            {
+                status = SceneLocalPlayerAdmissionRuntimeStatus.RejectedForeignOrStaleToken;
+                issue = leaveConfirmation != null
+                    ? "Scene contextual retirement rejected a foreign or stale Session Player Leave correlation. " +
+                      leaveConfirmation.Message
+                    : "Scene contextual retirement received no Session Player Leave confirmation result.";
+                return false;
+            }
+
+            if (leaveToken.PlayerSlotId != record.Token.PlayerSlotId ||
+                leaveToken.ExpectedOccurrenceRevision != record.Token.JoinedSlotRevision ||
+                record.JoinedSlot.Revision != leaveToken.ExpectedOccurrenceRevision ||
+                currentSlot.AllocationState != PlayerSlotAllocationState.Leaving ||
+                currentSlot.Revision != leaveToken.LeavingSlotRevision)
+            {
+                status = SceneLocalPlayerAdmissionRuntimeStatus.RejectedForeignOrStaleToken;
+                issue = "Scene contextual retirement Leave correlation does not match the exact admitted Session Player occurrence.";
+                return false;
+            }
+
+            return true;
         }
 
         internal bool TryGetActiveToken(

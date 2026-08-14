@@ -19,6 +19,13 @@ namespace Immersive.Framework.PlayerParticipation
         "ADR-019 Activity lifecycle coordination for Scene Local Player contextual representation and external Actor adoption.")]
     internal sealed class SceneLocalPlayerAdmissionActivityLifecycleRuntime
     {
+        private enum ContextualRetirementCause
+        {
+            ActivityExit = 10,
+            SessionPlayerLeave = 20,
+            SessionTermination = 30
+        }
+
         private sealed class Entry
         {
             internal Entry(
@@ -510,6 +517,132 @@ namespace Immersive.Framework.PlayerParticipation
                 $"Rolled back '{rolledBackCount}' Scene Local Player Activity contextual entries while retaining Session Player state.");
         }
 
+        internal SceneLocalPlayerAdmissionActivityLifecycleResult
+            TryRetireContextForSessionPlayerLeave(
+                SessionPlayerLeaveToken leaveToken,
+                string source,
+                string reason)
+        {
+            string resolvedSource = Normalize(
+                source,
+                nameof(SceneLocalPlayerAdmissionActivityLifecycleRuntime));
+            string resolvedReason = Normalize(
+                reason,
+                "scene-local-player-session-leave-context-retirement");
+
+            if (!leaveToken.IsValid)
+            {
+                return Failure(
+                    SceneLocalPlayerAdmissionActivityLifecycleStatus.RejectedInvalidRequest,
+                    activeRecord?.Activity,
+                    activeRecord != null ? activeRecord.Owner : default,
+                    resolvedSource,
+                    resolvedReason,
+                    "Scene Local Player Session Leave contextual retirement requires a valid Leave correlation token.");
+            }
+
+            if (activeRecord == null)
+            {
+                return Success(
+                    SceneLocalPlayerAdmissionActivityLifecycleStatus.SucceededAlreadyExited,
+                    null,
+                    default,
+                    resolvedSource,
+                    resolvedReason,
+                    0,
+                    "Scene Local Player contextual lifecycle has no active Activity owner for the Leaving Slot.");
+            }
+
+            var entries = new List<Entry>();
+            for (int index = 0; index < activeRecord.Entries.Count; index++)
+            {
+                Entry entry = activeRecord.Entries[index];
+                if (entry.AdmissionActive && entry.PlayerSlotId == leaveToken.PlayerSlotId)
+                {
+                    entries.Add(entry);
+                }
+            }
+
+            if (entries.Count == 0)
+            {
+                return Success(
+                    SceneLocalPlayerAdmissionActivityLifecycleStatus.SucceededAlreadyExited,
+                    activeRecord.Activity,
+                    activeRecord.Owner,
+                    resolvedSource,
+                    resolvedReason,
+                    0,
+                    "The current Scene Local Player Activity owner has no active contextual admission for the Leaving Slot.");
+            }
+
+            if (!TryReleaseEntriesForSessionPlayerLeave(
+                    entries,
+                    activeRecord.Owner,
+                    leaveToken,
+                    resolvedSource,
+                    resolvedReason,
+                    out string issue))
+            {
+                return Failure(
+                    SceneLocalPlayerAdmissionActivityLifecycleStatus.FailedExit,
+                    activeRecord.Activity,
+                    activeRecord.Owner,
+                    resolvedSource,
+                    resolvedReason,
+                    issue,
+                    entries.Count);
+            }
+
+            for (int index = activeRecord.Entries.Count - 1; index >= 0; index--)
+            {
+                if (!activeRecord.Entries[index].AdmissionActive)
+                {
+                    activeRecord.Entries.RemoveAt(index);
+                }
+            }
+
+            ActivityAsset retiredActivity = activeRecord.Activity;
+            RuntimeContentOwner retiredOwner = activeRecord.Owner;
+            if (activeRecord.Entries.Count == 0)
+            {
+                activeRecord = null;
+            }
+
+            return Success(
+                SceneLocalPlayerAdmissionActivityLifecycleStatus.SucceededExited,
+                retiredActivity,
+                retiredOwner,
+                resolvedSource,
+                resolvedReason,
+                entries.Count,
+                "Scene Local Player Session Leave retired the exact current contextual admission and cleared its retained Activity owner when no entries remained.");
+        }
+
+        internal bool TryRetireAllContextForSessionTermination(
+            string source,
+            string reason,
+            out string issue)
+        {
+            issue = string.Empty;
+            if (activeRecord == null)
+            {
+                return true;
+            }
+
+            if (!TryReleaseEntriesForSessionTermination(
+                    activeRecord.Entries,
+                    activeRecord.Owner,
+                    Normalize(source, nameof(SceneLocalPlayerAdmissionActivityLifecycleRuntime)),
+                    Normalize(reason, "scene-local-player-session-termination-context-retirement"),
+                    out issue))
+            {
+                return false;
+            }
+
+            activeRecord = null;
+            return true;
+        }
+
         private SceneLocalPlayerAdmissionActivityLifecycleResult FailEnterAndRollback(
             ActivityAsset activity,
             RuntimeContentOwner owner,
@@ -569,6 +702,64 @@ namespace Immersive.Framework.PlayerParticipation
             string reason,
             out string issue)
         {
+            return TryReleaseEntriesCore(
+                entries,
+                owner,
+                ContextualRetirementCause.ActivityExit,
+                default,
+                compensateReleasedEntries,
+                source,
+                reason,
+                out issue);
+        }
+
+        private bool TryReleaseEntriesForSessionPlayerLeave(
+            List<Entry> entries,
+            RuntimeContentOwner owner,
+            SessionPlayerLeaveToken leaveToken,
+            string source,
+            string reason,
+            out string issue)
+        {
+            return TryReleaseEntriesCore(
+                entries,
+                owner,
+                ContextualRetirementCause.SessionPlayerLeave,
+                leaveToken,
+                compensateReleasedEntries: false,
+                source,
+                reason,
+                out issue);
+        }
+
+        private bool TryReleaseEntriesForSessionTermination(
+            List<Entry> entries,
+            RuntimeContentOwner owner,
+            string source,
+            string reason,
+            out string issue)
+        {
+            return TryReleaseEntriesCore(
+                entries,
+                owner,
+                ContextualRetirementCause.SessionTermination,
+                default,
+                compensateReleasedEntries: false,
+                source,
+                reason,
+                out issue);
+        }
+
+        private bool TryReleaseEntriesCore(
+            List<Entry> entries,
+            RuntimeContentOwner owner,
+            ContextualRetirementCause cause,
+            SessionPlayerLeaveToken leaveToken,
+            bool compensateReleasedEntries,
+            string source,
+            string reason,
+            out string issue)
+        {
             var released = new List<Entry>();
             var failures = new List<string>();
 
@@ -581,13 +772,12 @@ namespace Immersive.Framework.PlayerParticipation
                 }
 
                 SceneLocalPlayerAdmissionRuntimeResult retirement =
-                    entry.AdoptionApplied
-                        ? module.TryRetireContextualRepresentation(
-                            entry.Authoring, entry.AdmissionToken, source,
-                            $"{reason}:retire-contextual-admission")
-                        : module.TryRelease(
-                            entry.Authoring, entry.AdmissionToken, source,
-                            $"{reason}:release-non-adopted-admission");
+                    ResolveEntryRetirement(
+                        entry,
+                        cause,
+                        leaveToken,
+                        source,
+                        reason);
                 if (retirement == null || !retirement.Succeeded)
                 {
                     failures.Add(retirement != null
@@ -621,6 +811,61 @@ namespace Immersive.Framework.PlayerParticipation
 
             issue = string.Join(" | ", failures);
             return false;
+        }
+
+        private SceneLocalPlayerAdmissionRuntimeResult ResolveEntryRetirement(
+            Entry entry,
+            ContextualRetirementCause cause,
+            SessionPlayerLeaveToken leaveToken,
+            string source,
+            string reason)
+        {
+            if (entry.AdoptionApplied)
+            {
+                return cause switch
+                {
+                    ContextualRetirementCause.SessionPlayerLeave =>
+                        module.TryRetireContextualRepresentationForSessionPlayerLeave(
+                            entry.Authoring,
+                            entry.AdmissionToken,
+                            leaveToken,
+                            source,
+                            $"{reason}:retire-contextual-admission"),
+                    ContextualRetirementCause.SessionTermination =>
+                        module.TryRetireContextualRepresentationForSessionTermination(
+                            entry.Authoring,
+                            entry.AdmissionToken,
+                            source,
+                            $"{reason}:retire-contextual-admission"),
+                    _ => module.TryRetireContextualRepresentation(
+                        entry.Authoring,
+                        entry.AdmissionToken,
+                        source,
+                        $"{reason}:retire-contextual-admission")
+                };
+            }
+
+            return cause switch
+            {
+                ContextualRetirementCause.SessionPlayerLeave =>
+                    module.TryReleaseForSessionPlayerLeave(
+                        entry.Authoring,
+                        entry.AdmissionToken,
+                        leaveToken,
+                        source,
+                        $"{reason}:release-non-adopted-admission"),
+                ContextualRetirementCause.SessionTermination =>
+                    module.TryReleaseForSessionTermination(
+                        entry.Authoring,
+                        entry.AdmissionToken,
+                        source,
+                        $"{reason}:release-non-adopted-admission"),
+                _ => module.TryRelease(
+                    entry.Authoring,
+                    entry.AdmissionToken,
+                    source,
+                    $"{reason}:release-non-adopted-admission")
+            };
         }
 
         private bool TryRestoreReleasedEntries(

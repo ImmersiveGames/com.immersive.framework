@@ -668,10 +668,7 @@ namespace Immersive.Framework.PlayerParticipation
                     slotId,
                     out PlayerGameplayCameraEligibilitySummary camera) &&
                 camera.IsEligible;
-            return admitted || occupied || inputBound || cameraEligible ||
-                   (snapshot?.CandidateCount ?? 0) != 0 ||
-                   (snapshot?.ActivePerSlotHandoffCount ?? 0) != 0 ||
-                   snapshot?.HasActiveHandoffGroup == true;
+            return admitted || occupied || inputBound || cameraEligible;
         }
 
         private static LocalPlayerJoinResult CreateRollbackFailure(

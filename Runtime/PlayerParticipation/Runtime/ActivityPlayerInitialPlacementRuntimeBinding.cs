@@ -23,33 +23,6 @@ namespace Immersive.Framework.PlayerParticipation
         internal bool MatchesOwner(RuntimeContentOwner owner) =>
             context.IsValid && context.Owner == owner;
 
-        internal bool TryApplyCandidateBeforePromotion(
-            PlayerActorCandidateStageToken candidateToken,
-            Transform target,
-            out string issue)
-        {
-            issue = string.Empty;
-            if (!candidateToken.IsValid ||
-                target == null ||
-                !context.IsValid ||
-                candidateToken.Owner != context.Owner)
-            {
-                issue =
-                    "Candidate initial placement requires an exact staged token, target Transform and matching Activity occurrence owner.";
-                return false;
-            }
-
-            return ActivityPlayerInitialPlacementRuntime
-                .TryApplyRequiredPlacement(
-                    context,
-                    candidateToken.PlayerSlotId,
-                    candidateToken.ActorId,
-                    candidateToken.RuntimeContentIdentity.StableText,
-                    target,
-                    out lastEvidence,
-                    out issue);
-        }
-
         internal bool TryApplyBeforeActivation(
             PlayerActorMaterializationHandle handle,
             out string issue)

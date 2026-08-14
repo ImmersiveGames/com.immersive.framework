@@ -22,6 +22,13 @@ namespace Immersive.Framework.PlayerParticipation
         "P3M4B1/P3M4B2A/P3M5A host-scoped Scene Local Player admission, Activity lifecycle composition and deterministic loaded-scene reconciliation.")]
     internal sealed partial class SceneLocalPlayerAdmissionRuntimeHostModule : MonoBehaviour
     {
+        private enum ContextualReleaseAuthority
+        {
+            ActivityExit = 10,
+            SessionPlayerLeave = 20,
+            SessionTermination = 30
+        }
+
         private sealed class ResolvedAutomaticAuthoring
         {
             internal ResolvedAutomaticAuthoring(
@@ -266,6 +273,8 @@ namespace Immersive.Framework.PlayerParticipation
             SceneLocalPlayerAdmissionRuntimeResult result = TryReleaseWithHostEvidence(
                 authoring,
                 token,
+                ContextualReleaseAuthority.ActivityExit,
+                default,
                 source,
                 reason);
             RecordOperation(result, token.IsValid, true);
@@ -280,14 +289,175 @@ namespace Immersive.Framework.PlayerParticipation
             string source,
             string reason)
         {
+            return TryRetireContextualRepresentationWithHostEvidence(
+                authoring,
+                expectedToken,
+                ContextualReleaseAuthority.ActivityExit,
+                default,
+                source,
+                reason);
+        }
+
+        internal SceneLocalPlayerAdmissionRuntimeResult
+            TryRetireContextualRepresentationForSessionPlayerLeave(
+                SceneLocalPlayerAdmissionAuthoring authoring,
+                SceneLocalPlayerAdmissionToken expectedToken,
+                SessionPlayerLeaveToken leaveToken,
+                string source,
+                string reason)
+        {
+            return TryRetireContextualRepresentationWithHostEvidence(
+                authoring,
+                expectedToken,
+                ContextualReleaseAuthority.SessionPlayerLeave,
+                leaveToken,
+                source,
+                reason);
+        }
+
+        internal SceneLocalPlayerAdmissionRuntimeResult
+            TryRetireContextualRepresentationForSessionTermination(
+                SceneLocalPlayerAdmissionAuthoring authoring,
+                SceneLocalPlayerAdmissionToken expectedToken,
+                string source,
+                string reason)
+        {
+            return TryRetireContextualRepresentationWithHostEvidence(
+                authoring,
+                expectedToken,
+                ContextualReleaseAuthority.SessionTermination,
+                default,
+                source,
+                reason);
+        }
+
+        private SceneLocalPlayerAdmissionRuntimeResult
+            TryRetireContextualRepresentationWithHostEvidence(
+                SceneLocalPlayerAdmissionAuthoring authoring,
+                SceneLocalPlayerAdmissionToken expectedToken,
+                ContextualReleaseAuthority authority,
+                SessionPlayerLeaveToken leaveToken,
+                string source,
+                string reason)
+        {
             if (!IsReadyFor(authoring))
             {
                 return SceneLocalPlayerAdmissionRuntimeResult.RuntimeUnavailable(
                     "RetireSceneLocalPlayerContext", authoring, source, reason, diagnostic);
             }
 
-            SceneLocalPlayerAdmissionRuntimeResult result = runtime.TryRetireContextualRepresentation(
-                authoring, expectedToken, source, reason);
+            if (authority == ContextualReleaseAuthority.SessionPlayerLeave &&
+                !TryConfirmSessionPlayerLeaveContextualRelease(
+                    authoring,
+                    expectedToken,
+                    leaveToken,
+                    source,
+                    reason,
+                    out SceneLocalPlayerAdmissionRuntimeResult leaveRejection))
+            {
+                return leaveRejection;
+            }
+
+            LocalPlayerHostAuthoring expectedEvidenceHost = authoring != null
+                ? authoring.LocalPlayerHost
+                : null;
+            PlayerHostEvidenceSnapshot retainedEvidence = default;
+            bool hasRetainedEvidence = expectedToken.IsValid &&
+                hostEvidenceOwner.TryGetRetainedHostEvidence(
+                    expectedToken.PlayerSlotId,
+                    out retainedEvidence);
+            if (hasRetainedEvidence)
+            {
+                expectedEvidenceHost = retainedEvidence.Host;
+            }
+
+            if (authority != ContextualReleaseAuthority.ActivityExit &&
+                (!hasRetainedEvidence || !retainedEvidence.HasContextualProjection))
+            {
+                SceneLocalPlayerAdmissionRuntimeResult residual =
+                    authority == ContextualReleaseAuthority.SessionPlayerLeave
+                    ? runtime.TryRetireContextualRepresentationForSessionPlayerLeave(
+                        authoring, expectedToken, leaveToken, source, reason)
+                    : runtime.TryRetireContextualRepresentationForSessionTermination(
+                        authoring, expectedToken, source, reason);
+                RecordOperation(residual, expectedToken.IsValid, true);
+                diagnostic = residual != null
+                    ? residual.ToDiagnosticString()
+                    : "Scene Local Player contextual retirement returned no residual result.";
+                authoring.SetRuntimeResult(residual, diagnostic);
+                return residual;
+            }
+
+            PlayerHostEvidenceResult evidenceRelease = expectedToken.IsValid
+                ? hostEvidenceOwner.ReleaseHostEvidence(
+                    expectedToken.PlayerSlotId,
+                    expectedToken.AssignmentToken,
+                    expectedToken.AssignmentToken.HostBindingIdentity,
+                    expectedEvidenceHost,
+                    source,
+                    reason + "; release-contextual-host-evidence")
+                : null;
+            if (expectedToken.IsValid &&
+                (evidenceRelease == null || !evidenceRelease.Succeeded))
+            {
+                return HostEvidenceFailure(
+                    "RetireSceneLocalPlayerContext",
+                    null,
+                    null,
+                    evidenceRelease,
+                    SceneLocalPlayerAdmissionRuntimeStatus.RejectedForeignOrStaleToken,
+                    source,
+                    reason,
+                    authoring,
+                    expectedToken);
+            }
+
+            SceneLocalPlayerAdmissionRuntimeResult result = authority switch
+            {
+                ContextualReleaseAuthority.SessionPlayerLeave =>
+                    runtime.TryRetireContextualRepresentationForSessionPlayerLeave(
+                        authoring, expectedToken, leaveToken, source, reason),
+                ContextualReleaseAuthority.SessionTermination =>
+                    runtime.TryRetireContextualRepresentationForSessionTermination(
+                        authoring, expectedToken, source, reason),
+                _ => runtime.TryRetireContextualRepresentation(
+                    authoring, expectedToken, source, reason)
+            };
+            if (result != null && result.Succeeded)
+            {
+                RecordOperation(result, expectedToken.IsValid, true);
+                diagnostic = result.ToDiagnosticString();
+                authoring.SetRuntimeResult(result, diagnostic);
+                return result;
+            }
+
+            if (authority != ContextualReleaseAuthority.ActivityExit)
+            {
+                return result;
+            }
+
+            PlayerHostEvidenceResult restoration = expectedToken.IsValid
+                ? hostEvidenceOwner.RegisterHostEvidence(
+                    expectedToken.PlayerSlotId,
+                    PlayerSlotAssignmentOrigin.SceneProvided,
+                    expectedToken.AssignmentToken,
+                    expectedToken.AssignmentToken.HostBindingIdentity,
+                    expectedEvidenceHost,
+                    source,
+                    "restore-contextual-host-evidence-after-retirement-failure")
+                : null;
+            result = result != null && restoration != null && restoration.Succeeded
+                ? result
+                : HostEvidenceFailure(
+                    "RetireSceneLocalPlayerContext",
+                    result,
+                    null,
+                    restoration,
+                    SceneLocalPlayerAdmissionRuntimeStatus.FailedCompensation,
+                    source,
+                    reason,
+                    authoring,
+                    expectedToken);
             RecordOperation(result, expectedToken.IsValid, true);
             diagnostic = result.ToDiagnosticString();
             authoring.SetRuntimeResult(result, diagnostic);
@@ -315,6 +485,123 @@ namespace Immersive.Framework.PlayerParticipation
             SceneLocalPlayerAdmissionRuntimeResult result = TryReleaseWithHostEvidence(
                 authoring,
                 expectedToken,
+                ContextualReleaseAuthority.ActivityExit,
+                default,
+                source,
+                reason);
+            RecordOperation(result, expectedToken.IsValid, true);
+            diagnostic = result.ToDiagnosticString();
+            authoring.SetRuntimeResult(result, diagnostic);
+            return result;
+        }
+
+        internal SceneLocalPlayerAdmissionRuntimeResult TryReleaseForSessionPlayerLeave(
+            SceneLocalPlayerAdmissionAuthoring authoring,
+            SceneLocalPlayerAdmissionToken expectedToken,
+            SessionPlayerLeaveToken leaveToken,
+            string source,
+            string reason)
+        {
+            if (!IsReadyFor(authoring))
+            {
+                return SceneLocalPlayerAdmissionRuntimeResult.RuntimeUnavailable(
+                    "RetireSceneLocalPlayerForSessionLeave",
+                    authoring,
+                    source,
+                    reason,
+                    IsReady
+                        ? "Scene Local Player authoring surface is not bound to this Session runtime."
+                        : diagnostic);
+            }
+
+            if (!TryConfirmSessionPlayerLeaveContextualRelease(
+                    authoring,
+                    expectedToken,
+                    leaveToken,
+                    source,
+                    reason,
+                    out SceneLocalPlayerAdmissionRuntimeResult leaveRejection))
+            {
+                return leaveRejection;
+            }
+
+            SceneLocalPlayerAdmissionRuntimeResult result = TryReleaseWithHostEvidence(
+                authoring,
+                expectedToken,
+                ContextualReleaseAuthority.SessionPlayerLeave,
+                leaveToken,
+                source,
+                reason);
+            RecordOperation(result, expectedToken.IsValid, true);
+            diagnostic = result.ToDiagnosticString();
+            authoring.SetRuntimeResult(result, diagnostic);
+            return result;
+        }
+
+        private bool TryConfirmSessionPlayerLeaveContextualRelease(
+            SceneLocalPlayerAdmissionAuthoring authoring,
+            SceneLocalPlayerAdmissionToken expectedToken,
+            SessionPlayerLeaveToken leaveToken,
+            string source,
+            string reason,
+            out SceneLocalPlayerAdmissionRuntimeResult rejection)
+        {
+            rejection = null;
+            SessionPlayerLeaveRuntimeResult confirmation =
+                participationContext.TryConfirmSessionPlayerLeave(
+                    leaveToken,
+                    source,
+                    reason + "; confirm-session-player-leave-before-contextual-retirement");
+            if (confirmation != null && confirmation.Succeeded)
+            {
+                return true;
+            }
+
+            PlayerSlotRuntimeSnapshot slot = confirmation != null
+                ? confirmation.CurrentSlot
+                : default;
+            rejection = new SceneLocalPlayerAdmissionRuntimeResult(
+                SceneLocalPlayerAdmissionRuntimeStatus.RejectedForeignOrStaleToken,
+                SceneLocalPlayerAdmissionRuntimeStatus.RejectedForeignOrStaleToken,
+                "RetireSceneLocalPlayerForSessionLeave",
+                authoring,
+                expectedToken,
+                null,
+                null,
+                null,
+                slot,
+                slot,
+                source,
+                reason,
+                confirmation != null
+                    ? "Scene contextual retirement rejected a foreign or stale Session Player Leave correlation. " + confirmation.Message
+                    : "Scene contextual retirement received no Session Player Leave confirmation result.");
+            return false;
+        }
+
+        internal SceneLocalPlayerAdmissionRuntimeResult TryReleaseForSessionTermination(
+            SceneLocalPlayerAdmissionAuthoring authoring,
+            SceneLocalPlayerAdmissionToken expectedToken,
+            string source,
+            string reason)
+        {
+            if (!IsReadyFor(authoring))
+            {
+                return SceneLocalPlayerAdmissionRuntimeResult.RuntimeUnavailable(
+                    "RetireSceneLocalPlayerForSessionTermination",
+                    authoring,
+                    source,
+                    reason,
+                    IsReady
+                        ? "Scene Local Player authoring surface is not bound to this Session runtime."
+                        : diagnostic);
+            }
+
+            SceneLocalPlayerAdmissionRuntimeResult result = TryReleaseWithHostEvidence(
+                authoring,
+                expectedToken,
+                ContextualReleaseAuthority.SessionTermination,
+                default,
                 source,
                 reason);
             RecordOperation(result, expectedToken.IsValid, true);
@@ -326,14 +613,18 @@ namespace Immersive.Framework.PlayerParticipation
         private SceneLocalPlayerAdmissionRuntimeResult TryReleaseWithHostEvidence(
             SceneLocalPlayerAdmissionAuthoring authoring,
             SceneLocalPlayerAdmissionToken expectedToken,
+            ContextualReleaseAuthority authority,
+            SessionPlayerLeaveToken leaveToken,
             string source,
             string reason)
         {
             if (!expectedToken.IsValid)
             {
-                return runtime.TryRelease(
+                return ReleaseRuntimeContextualRepresentation(
                     authoring,
                     expectedToken,
+                    authority,
+                    leaveToken,
                     source,
                     reason);
             }
@@ -343,26 +634,36 @@ namespace Immersive.Framework.PlayerParticipation
                     out SceneLocalPlayerAdmissionToken activeToken) ||
                 activeToken != expectedToken)
             {
-                return runtime.TryRelease(
+                return ReleaseRuntimeContextualRepresentation(
                     authoring,
                     expectedToken,
+                    authority,
+                    leaveToken,
                     source,
                     reason);
             }
 
-            // A reprojected Activity owns its local admission and assignment, but the retained
-            // evidence points to the Session physical Host from the original adoption. Releasing
-            // that Activity must not delete the physical evidence merely because its local Host
-            // is a different contextual object.
-            if (hostEvidenceOwner.TryGetRetainedHostEvidence(
-                    expectedToken.PlayerSlotId,
-                    out PlayerHostEvidenceSnapshot retainedEvidence) &&
-                (retainedEvidence.AssignmentToken != expectedToken.AssignmentToken ||
-                 !ReferenceEquals(retainedEvidence.Host, authoring.LocalPlayerHost)))
+            // A reprojected Activity owns its local admission, while the retained evidence
+            // always references the Session physical Host. Retire the contextual projection
+            // using that retained reference; never use the Activity Host as physical identity.
+            LocalPlayerHostAuthoring expectedEvidenceHost = authoring.LocalPlayerHost;
+            PlayerHostEvidenceSnapshot retainedEvidence = default;
+            bool hasRetainedEvidence = hostEvidenceOwner.TryGetRetainedHostEvidence(
+                expectedToken.PlayerSlotId,
+                out retainedEvidence);
+            if (hasRetainedEvidence)
             {
-                return runtime.TryRelease(
+                expectedEvidenceHost = retainedEvidence.Host;
+            }
+
+            if (authority != ContextualReleaseAuthority.ActivityExit &&
+                (!hasRetainedEvidence || !retainedEvidence.HasContextualProjection))
+            {
+                return ReleaseRuntimeContextualRepresentation(
                     authoring,
                     expectedToken,
+                    authority,
+                    leaveToken,
                     source,
                     reason);
             }
@@ -372,7 +673,7 @@ namespace Immersive.Framework.PlayerParticipation
                     expectedToken.PlayerSlotId,
                     expectedToken.AssignmentToken,
                     expectedToken.AssignmentToken.HostBindingIdentity,
-                    authoring.LocalPlayerHost,
+                    expectedEvidenceHost,
                     source,
                     reason);
             if (!evidenceRelease.Succeeded)
@@ -389,12 +690,19 @@ namespace Immersive.Framework.PlayerParticipation
                     expectedToken);
             }
 
-            SceneLocalPlayerAdmissionRuntimeResult result = runtime.TryRelease(
+            SceneLocalPlayerAdmissionRuntimeResult result = ReleaseRuntimeContextualRepresentation(
                 authoring,
                 expectedToken,
+                authority,
+                leaveToken,
                 source,
                 reason);
             if (result != null && result.Succeeded)
+            {
+                return result;
+            }
+
+            if (authority != ContextualReleaseAuthority.ActivityExit)
             {
                 return result;
             }
@@ -405,7 +713,7 @@ namespace Immersive.Framework.PlayerParticipation
                     PlayerSlotAssignmentOrigin.SceneProvided,
                     expectedToken.AssignmentToken,
                     expectedToken.AssignmentToken.HostBindingIdentity,
-                    authoring.LocalPlayerHost,
+                    expectedEvidenceHost,
                     source,
                     "restore-scene-host-evidence-after-release-failure");
             return result != null && restoration.Succeeded
@@ -420,6 +728,26 @@ namespace Immersive.Framework.PlayerParticipation
                     reason,
                     authoring,
                     expectedToken);
+        }
+
+        private SceneLocalPlayerAdmissionRuntimeResult ReleaseRuntimeContextualRepresentation(
+            SceneLocalPlayerAdmissionAuthoring authoring,
+            SceneLocalPlayerAdmissionToken expectedToken,
+            ContextualReleaseAuthority authority,
+            SessionPlayerLeaveToken leaveToken,
+            string source,
+            string reason)
+        {
+            return authority switch
+            {
+                ContextualReleaseAuthority.SessionPlayerLeave =>
+                    runtime.TryReleaseForSessionPlayerLeave(
+                        authoring, expectedToken, leaveToken, source, reason),
+                ContextualReleaseAuthority.SessionTermination =>
+                    runtime.TryReleaseForSessionTermination(
+                        authoring, expectedToken, source, reason),
+                _ => runtime.TryRelease(authoring, expectedToken, source, reason)
+            };
         }
 
         private static SceneLocalPlayerAdmissionRuntimeResult HostEvidenceFailure(
@@ -455,7 +783,7 @@ namespace Immersive.Framework.PlayerParticipation
                         : default,
                 source,
                 reason,
-                $"Physical Host evidence operation failed. {evidence.ToDiagnosticString()} " +
+                $"Physical Host evidence operation failed. {(evidence != null ? evidence.ToDiagnosticString() : "<no-result>")} " +
                 $"compensationSucceeded='{(compensation != null && compensation.Succeeded)}'.",
                 basis?.AssignmentResult,
                 compensation?.AssignmentCompensationResult);
@@ -631,6 +959,8 @@ namespace Immersive.Framework.PlayerParticipation
                 SceneLocalPlayerAdmissionRuntimeResult result = TryReleaseWithHostEvidence(
                     authoring,
                     token,
+                    ContextualReleaseAuthority.ActivityExit,
+                    default,
                     nameof(SceneLocalPlayerAdmissionRuntimeHostModule),
                     "authoring-destroyed-best-effort-release");
                 RecordOperation(result, true, true);
@@ -920,6 +1250,8 @@ namespace Immersive.Framework.PlayerParticipation
                     SceneLocalPlayerAdmissionRuntimeResult result = TryReleaseWithHostEvidence(
                         authoring,
                         token,
+                        ContextualReleaseAuthority.SessionTermination,
+                        default,
                         nameof(SceneLocalPlayerAdmissionRuntimeHostModule),
                         "runtime-host-shutdown-best-effort-release");
                     RecordOperation(result, true, true);

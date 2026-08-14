@@ -52,6 +52,7 @@ namespace Immersive.Framework.PlayerParticipation
         public bool IsJoined => admissionState == AdmissionState.Joined;
         public bool IsReleaseStaged => admissionState == AdmissionState.ReleaseStaged;
         public bool IsReleaseFailed => admissionState == AdmissionState.ReleaseFailed;
+        internal bool IsAdmissionReleased => admissionState == AdmissionState.None;
         public bool HasJoinedSlot => IsJoined && joinedPlayerSlotId.IsValid;
         public PlayerSlotId JoinedPlayerSlotId => HasJoinedSlot ? joinedPlayerSlotId : default;
         public int JoinedConfiguredIndex => IsJoined ? joinedConfiguredIndex : -1;

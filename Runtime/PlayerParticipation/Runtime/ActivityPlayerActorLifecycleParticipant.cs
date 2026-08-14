@@ -11,9 +11,9 @@ using Immersive.Framework.RuntimeContent;
 namespace Immersive.Framework.PlayerParticipation
 {
     /// <summary>
-    /// Required Activity Content Execution participant that projects Session Slots and
-    /// coordinates Activity-owned Logical Player Actor selection, preparation, gameplay
-    /// admission and release.
+    /// Required Activity Content Execution participant that projects Session Slots into
+    /// Activity-owned contextual admission while retaining the prepared physical Player
+    /// under its Session authority.
     /// </summary>
     [FrameworkApiStatus(
         FrameworkApiStatus.Internal,
@@ -309,7 +309,7 @@ namespace Immersive.Framework.PlayerParticipation
                 PlayerParticipationRequirementLevel.GameplayReady)
             {
                 ActivityContentExecutionResult gameplayResult =
-                    ExecuteGameplayReadyAdoptionEnter(
+                    ExecuteGameplayReadyEnter(
                         request,
                         activity,
                         owner,
@@ -556,20 +556,6 @@ namespace Immersive.Framework.PlayerParticipation
         private ActivityContentExecutionResult ExecuteExit(
             ActivityContentExecutionRequest request)
         {
-            if (activeRecord == null &&
-                TryExecuteCommittedGameplayHandoffExit(
-                    request,
-                    out ActivityContentExecutionResult
-                        handoffExitWithoutRetainedRecord))
-            {
-                if (handoffExitWithoutRetainedRecord.Succeeded)
-                {
-                    ReleasePlayerReadinessRecord("ActivityExit");
-                }
-
-                return handoffExitWithoutRetainedRecord;
-            }
-
             if (activeRecord == null)
             {
                 lastSnapshot = new ActivityPlayerActorLifecycleSnapshot(
@@ -584,7 +570,7 @@ namespace Immersive.Framework.PlayerParticipation
                     0,
                     0,
                     Array.Empty<ActivityPlayerActorSlotLifecycleSnapshot>(),
-                    "Activity exit had no Activity-owned Player Actors to release.");
+                    "Activity exit had no contextual Player representation to release.");
                 ReleasePlayerReadinessRecord("ActivityExit");
                 return ActivityContentExecutionResult.SucceededNoOp(
                     request,
@@ -619,18 +605,6 @@ namespace Immersive.Framework.PlayerParticipation
                     issue);
             }
 
-            if (TryExecuteCommittedGameplayHandoffExit(
-                    request,
-                    out ActivityContentExecutionResult handoffExitResult))
-            {
-                if (handoffExitResult.Succeeded)
-                {
-                    ReleasePlayerReadinessRecord("ActivityExit");
-                }
-
-                return handoffExitResult;
-            }
-
             var evidence =
                 new List<ActivityPlayerActorSlotLifecycleSnapshot>();
             var failures = new List<string>();
@@ -659,34 +633,6 @@ namespace Immersive.Framework.PlayerParticipation
                             false,
                             PlayerActorPreparationStatus.FailedRelease,
                             gameplayReleaseIssue));
-                    continue;
-                }
-
-                bool retainedForIncomingActivity =
-                    preparationModule
-                        .ShouldRetainPhysicalActorPresentationForIncomingActivity(
-                            activeRecord.Owner,
-                            prepared.PlayerSlotId);
-                if (!retainedForIncomingActivity &&
-                    !preparationModule.TryDeactivatePreparedActorPresentation(
-                        prepared.PlayerSlotId,
-                        prepared.Token,
-                        nameof(ActivityPlayerActorLifecycleParticipant),
-                        "activity-exit-deactivate-session-owned-actor",
-                        out string deactivationIssue))
-                {
-                    failures.Add(deactivationIssue);
-                    evidence.Add(
-                        new ActivityPlayerActorSlotLifecycleSnapshot(
-                            prepared.PlayerSlotId,
-                            true,
-                            default,
-                            false,
-                            prepared.Token,
-                            prepared.CreatedByEnter,
-                            false,
-                            PlayerActorPreparationStatus.FailedActivation,
-                            deactivationIssue));
                     continue;
                 }
 
@@ -722,9 +668,7 @@ namespace Immersive.Framework.PlayerParticipation
                         prepared.CreatedByEnter,
                         false,
                         PlayerActorPreparationStatus.SucceededAlreadyPrepared,
-                        retainedForIncomingActivity
-                            ? "Activity contextual authority released; the Session-owned Actor remains active for the incoming Activity projection."
-                            : "Activity contextual authority released; the Session-owned Actor remains retained but presentation is inactive."));
+                        "Activity contextual authority released; the Session-owned physical Actor remains unchanged."));
             }
 
             if (failures.Count > 0)

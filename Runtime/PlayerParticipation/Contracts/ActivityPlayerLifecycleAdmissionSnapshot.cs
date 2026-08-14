@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 using Immersive.Framework.ApiStatus;
 using Immersive.Framework.Authoring;
 using Immersive.Framework.Common;
@@ -12,8 +11,6 @@ namespace Immersive.Framework.PlayerParticipation
         "Immutable Activity Player lifecycle admission evidence for same-Route and Route Startup flows.")]
     public sealed class ActivityPlayerLifecycleAdmissionSnapshot
     {
-        private readonly ActivityPlayerLifecycleAdmissionSlotSnapshot[] slots;
-
         internal ActivityPlayerLifecycleAdmissionSnapshot(
             ActivityPlayerLifecycleAdmissionToken token,
             ActivityPlayerLifecycleAdmissionState state,
@@ -26,8 +23,6 @@ namespace Immersive.Framework.PlayerParticipation
             RuntimeContentOwner previousOwner,
             RuntimeContentOwner targetOwner,
             PlayerParticipationRequirementLevel requirementLevel,
-            ActivityPlayerHandoffGroupSnapshot handoffGroup,
-            ActivityPlayerLifecycleAdmissionSlotSnapshot[] slots,
             bool transitionAuthorized,
             bool previousExitAcknowledged,
             ActivityPlayerPreviousExitDisposition previousExitDisposition,
@@ -48,10 +43,6 @@ namespace Immersive.Framework.PlayerParticipation
             PreviousOwner = previousOwner;
             TargetOwner = targetOwner;
             RequirementLevel = requirementLevel;
-            HandoffGroup = handoffGroup;
-            this.slots = slots != null
-                ? (ActivityPlayerLifecycleAdmissionSlotSnapshot[])slots.Clone()
-                : Array.Empty<ActivityPlayerLifecycleAdmissionSlotSnapshot>();
             TransitionAuthorized = transitionAuthorized;
             PreviousExitAcknowledged = previousExitAcknowledged;
             PreviousExitDisposition = previousExitDisposition;
@@ -73,8 +64,6 @@ namespace Immersive.Framework.PlayerParticipation
         public RuntimeContentOwner PreviousOwner { get; }
         public RuntimeContentOwner TargetOwner { get; }
         public PlayerParticipationRequirementLevel RequirementLevel { get; }
-        public ActivityPlayerHandoffGroupSnapshot HandoffGroup { get; }
-        public IReadOnlyList<ActivityPlayerLifecycleAdmissionSlotSnapshot> Slots => slots;
         public bool TransitionAuthorized { get; }
         public bool PreviousExitAcknowledged { get; }
         public ActivityPlayerPreviousExitDisposition PreviousExitDisposition { get; }
@@ -84,7 +73,6 @@ namespace Immersive.Framework.PlayerParticipation
         public string Reason { get; }
         public string Message { get; }
 
-        public int SlotCount => slots.Length;
         public bool IsRouteStartupFlow =>
             FlowKind == ActivityPlayerLifecycleAdmissionFlowKind.RouteStartupActivitySwitch;
         public bool IsNotRequired => State == ActivityPlayerLifecycleAdmissionState.NotRequired;
@@ -107,7 +95,7 @@ namespace Immersive.Framework.PlayerParticipation
             $"previousRoute='{PreviousRouteName}' targetRoute='{TargetRouteName}' " +
             $"previousActivity='{PreviousActivityName}' targetActivity='{TargetActivityName}' " +
             $"previousOwner='{PreviousOwner.StableText}' targetOwner='{TargetOwner.StableText}' " +
-            $"requirement='{RequirementLevel}' slots='{SlotCount}' " +
+            $"requirement='{RequirementLevel}' " +
             $"transitionAuthorized='{TransitionAuthorized}' previousExit='{PreviousExitAcknowledged}' " +
             $"previousExitDisposition='{PreviousExitDisposition}' " +
             $"targetAdopted='{TargetEnterAdopted}' cleanupPending='{CommitCleanupPending}' " +
@@ -129,8 +117,6 @@ namespace Immersive.Framework.PlayerParticipation
                 default,
                 default,
                 PlayerParticipationRequirementLevel.None,
-                null,
-                Array.Empty<ActivityPlayerLifecycleAdmissionSlotSnapshot>(),
                 false,
                 false,
                 ActivityPlayerPreviousExitDisposition.None,
@@ -157,8 +143,6 @@ namespace Immersive.Framework.PlayerParticipation
                 default,
                 default,
                 PlayerParticipationRequirementLevel.None,
-                null,
-                Array.Empty<ActivityPlayerLifecycleAdmissionSlotSnapshot>(),
                 false,
                 false,
                 ActivityPlayerPreviousExitDisposition.None,

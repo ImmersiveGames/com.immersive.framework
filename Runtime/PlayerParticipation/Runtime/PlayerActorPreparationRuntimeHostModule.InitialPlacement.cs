@@ -55,56 +55,6 @@ namespace Immersive.Framework.PlayerParticipation
             return true;
         }
 
-        internal bool TryApplyStagedCandidateInitialPlacement(
-            PlayerActorCandidateRuntimeHostModule candidateModule,
-            PlayerActorCandidateStageToken candidateToken,
-            out string issue)
-        {
-            issue = string.Empty;
-            if (!currentActivityInitialPlacementContext.IsValid ||
-                candidateModule == null ||
-                !candidateToken.IsValid ||
-                candidateToken.Owner !=
-                    currentActivityInitialPlacementContext.Owner)
-            {
-                issue =
-                    "Candidate initial placement requires the exact current target Activity occurrence and staged candidate token.";
-                return false;
-            }
-
-            if (!candidateModule.TryGetCandidatePhysicalEvidence(
-                    candidateToken,
-                    out LocalPlayerHostAuthoring host,
-                    out _,
-                    out _,
-                    out var logicalActorHost,
-                    out issue) ||
-                host == null || logicalActorHost == null)
-            {
-                return false;
-            }
-
-            ActivityPlayerInitialPlacementRuntimeBinding binding =
-                host.GetComponent<ActivityPlayerInitialPlacementRuntimeBinding>();
-            if (binding == null)
-            {
-                binding = host.gameObject
-                    .AddComponent<ActivityPlayerInitialPlacementRuntimeBinding>();
-                binding.Configure(currentActivityInitialPlacementContext);
-            }
-
-            bool applied = binding.TryApplyCandidateBeforePromotion(
-                candidateToken,
-                logicalActorHost.transform,
-                out issue);
-            if (applied)
-            {
-                lastActivityInitialPlacementEvidence =
-                    binding.LastEvidence;
-            }
-            return applied;
-        }
-
         internal bool TryApplySceneProvidedInitialPlacement(
             SceneLocalPlayerAdmissionAuthoring authoring,
             out string issue)

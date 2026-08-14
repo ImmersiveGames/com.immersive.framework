@@ -53,6 +53,59 @@ namespace Immersive.Framework.PlayerParticipation
             return true;
         }
 
+        internal bool TryRetireSceneLocalPlayerContextForSessionPlayerLeave(
+            SessionPlayerLeaveToken leaveToken,
+            string source,
+            string reason,
+            out SceneLocalPlayerAdmissionActivityLifecycleResult result,
+            out string issue)
+        {
+            result = null;
+            issue = string.Empty;
+            if (!IsReady)
+            {
+                issue = diagnostic;
+                return false;
+            }
+
+            if (sceneLocalPlayerCompositeLifecycleParticipant == null)
+            {
+                return true;
+            }
+
+            result = sceneLocalPlayerCompositeLifecycleParticipant
+                .TryRetireContextForSessionPlayerLeave(
+                    leaveToken,
+                    source,
+                    reason);
+            if (result == null || !result.Succeeded)
+            {
+                issue = result != null
+                    ? result.ToDiagnosticString()
+                    : "Scene Local Player contextual lifecycle retirement returned no result.";
+                return false;
+            }
+
+            return true;
+        }
+
+        private void RetireSceneLocalPlayerContextForSessionTermination()
+        {
+            if (sceneLocalPlayerCompositeLifecycleParticipant == null)
+            {
+                return;
+            }
+
+            if (!sceneLocalPlayerCompositeLifecycleParticipant
+                    .TryRetireAllContextForSessionTermination(
+                        nameof(PlayerActorPreparationRuntimeHostModule),
+                        "runtime-host-shutdown",
+                        out string issue))
+            {
+                diagnostic = "Scene Local Player contextual termination retirement failed. " + issue;
+            }
+        }
+
         internal ScenePlayerActorAdoptionResult TryAdoptSceneLocalPlayerActor(
             RuntimeScopeContext scopeContext,
             SceneLocalPlayerAdmissionAuthoring authoring,

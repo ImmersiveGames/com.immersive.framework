@@ -21,13 +21,12 @@ namespace Immersive.Framework.PlayerParticipation
         private FrameworkRuntimeHost runtimeHost;
         private PlayerParticipationRuntimeContext participationContext;
         private PlayerActorPreparationRuntimeHostModule preparationModule;
-        private PlayerActorCandidateRuntimeHostModule candidateModule;
         private PlayerGameplayOccupancyRuntimeContext occupancyContext;
         private PlayerGameplayInputBindingRuntimeContext inputContext;
         private PlayerGameplayCameraEligibilityRuntimeContext cameraContext;
         private PlayerGameplayAdmissionRuntimeContext admissionContext;
-        private PlayerGameplayChainHandoffRuntimeContext handoffContext;
-        private ActivityPlayerHandoffGroupRuntimeContext groupContext;
+        private PlayerGameplayCurrentContextRuntime currentGameplayContext;
+        private IActivityPlayerLifecycleAdmissionRuntime initialPlacementContext;
         private PlayerGameplayRuntimeOperationStatus lastOperationStatus;
         private string diagnostic =
             "Player gameplay runtime is not initialized.";
@@ -37,14 +36,11 @@ namespace Immersive.Framework.PlayerParticipation
             runtimeHost != null &&
             participationContext != null &&
             preparationModule != null &&
-            candidateModule != null &&
             occupancyContext != null &&
             inputContext != null &&
             cameraContext != null &&
             admissionContext != null &&
-            handoffContext != null &&
-            groupContext != null &&
-            activityLifecycleAdmissionContext != null;
+            currentGameplayContext != null;
 
         internal string Diagnostic => diagnostic;
 
@@ -116,18 +112,6 @@ namespace Immersive.Framework.PlayerParticipation
                 return false;
             }
 
-            if (!PlayerActorCandidateRuntimeHostModule.TryAttach(
-                    targetRuntimeHost,
-                    out PlayerActorCandidateRuntimeHostModule targetCandidate,
-                    out issue))
-            {
-                diagnostic =
-                    "Player gameplay runtime could not compose P3K.7C candidate staging. " +
-                    issue;
-                issue = diagnostic;
-                return false;
-            }
-
             if (!targetPreparation.TryGetSnapshot(
                     out PlayerActorPreparationRuntimeHostSnapshot preparationHost) ||
                 preparationHost == null ||
@@ -190,34 +174,17 @@ namespace Immersive.Framework.PlayerParticipation
                     targetRuntimeHost,
                     targetPreparation);
 
-            if (!PlayerGameplayChainHandoffRuntimeContext.TryCreate(
+            if (!PlayerGameplayCurrentContextRuntime.TryCreate(
                     targetPreparation,
-                    targetCandidate,
                     endpointSource,
                     targetOccupancy,
                     targetInput,
                     targetCamera,
                     targetAdmission,
-                    out PlayerGameplayChainHandoffRuntimeContext targetHandoff,
+                    out PlayerGameplayCurrentContextRuntime targetCurrentGameplay,
                     out issue))
             {
-                diagnostic = "P3K.7D composition failed. " + issue;
-                issue = diagnostic;
-                return false;
-            }
-
-            var evidenceSource =
-                new ExplicitActivityPlayerHandoffEvidenceSource(
-                    targetParticipation,
-                    targetPreparation,
-                    targetAdmission);
-            if (!ActivityPlayerHandoffGroupRuntimeContext.TryCreate(
-                    targetHandoff,
-                    evidenceSource,
-                    out ActivityPlayerHandoffGroupRuntimeContext targetGroup,
-                    out issue))
-            {
-                diagnostic = "P3K.7E composition failed. " + issue;
+                diagnostic = "Current gameplay context composition failed. " + issue;
                 issue = diagnostic;
                 return false;
             }
@@ -225,32 +192,15 @@ namespace Immersive.Framework.PlayerParticipation
             runtimeHost = targetRuntimeHost;
             participationContext = targetParticipation;
             preparationModule = targetPreparation;
-            candidateModule = targetCandidate;
             occupancyContext = targetOccupancy;
             inputContext = targetInput;
             cameraContext = targetCamera;
             admissionContext = targetAdmission;
-            handoffContext = targetHandoff;
-            groupContext = targetGroup;
-            if (!TryInitializeActivityLifecycleAdmission(out issue))
-            {
-                diagnostic =
-                    "Player Gameplay Admission lifecycle composition failed. " +
-                    issue;
-                ReleaseActivityLifecycleAdmission();
-                groupContext = null;
-                handoffContext = null;
-                admissionContext = null;
-                cameraContext = null;
-                inputContext = null;
-                occupancyContext = null;
-                candidateModule = null;
-                preparationModule = null;
-                participationContext = null;
-                runtimeHost = null;
-                issue = diagnostic;
-                return false;
-            }
+            currentGameplayContext = targetCurrentGameplay;
+            initialPlacementContext =
+                new ActivityPlayerInitialPlacementContextRuntime(targetPreparation);
+            targetRuntimeHost.SetActivityPlayerLifecycleAdmissionRuntime(
+                initialPlacementContext);
 
             lastOperationStatus =
                 PlayerGameplayRuntimeOperationStatus.None;
@@ -317,7 +267,7 @@ namespace Immersive.Framework.PlayerParticipation
                     preparationIssue);
             }
 
-            bool succeeded = handoffContext.TryEnsureCurrentGameplayChain(
+            bool succeeded = currentGameplayContext.TryEnsureCurrentGameplay(
                 preparation,
                 contextualOwner,
                 source,
@@ -433,7 +383,7 @@ namespace Immersive.Framework.PlayerParticipation
             }
 
             PlayerGameplayAdmissionResult release =
-                handoffContext.TryReleaseCurrentGameplayChain(
+                currentGameplayContext.TryReleaseCurrentGameplay(
                     playerSlotId,
                     expectedAdmission,
                     source,
@@ -470,7 +420,7 @@ namespace Immersive.Framework.PlayerParticipation
         {
             admission = default;
             return IsReady &&
-                handoffContext.TryGetCurrentAdmission(
+                currentGameplayContext.TryGetCurrentAdmission(
                     playerSlotId,
                 out admission);
         }
@@ -563,87 +513,6 @@ namespace Immersive.Framework.PlayerParticipation
                 : null;
         }
 
-        internal PlayerActorCandidateStageResult TryStageCandidate(
-            RuntimeScopeContext targetActivityContext,
-            PlayerSlotId playerSlotId,
-            string source,
-            string reason)
-        {
-            return candidateModule != null
-                ? candidateModule.TryStageCandidate(
-                    targetActivityContext,
-                    playerSlotId,
-                    source,
-                    reason)
-                : null;
-        }
-
-
-        internal PlayerActorCandidateStageResult TryRollbackCandidate(
-            PlayerActorCandidateStageToken expectedCandidate,
-            string source,
-            string reason)
-        {
-            return candidateModule != null
-                ? candidateModule.TryRollbackCandidate(
-                    expectedCandidate,
-                    source,
-                    reason)
-                : null;
-        }
-
-        internal ActivityPlayerHandoffGroupResult TryBeginActivityHandoffGroup(
-            Immersive.Framework.Authoring.ActivityAsset activity,
-            RuntimeContentOwner targetOwner,
-            System.Collections.Generic.IReadOnlyList<
-                ActivityPlayerHandoffSlotRequest> orderedSlots,
-            string source,
-            string reason)
-        {
-            return groupContext != null
-                ? groupContext.TryBegin(
-                    activity,
-                    targetOwner,
-                    orderedSlots,
-                    source,
-                    reason)
-                : null;
-        }
-
-        internal ActivityPlayerHandoffGroupResult TryCommitActivityHandoffGroup(
-            ActivityPlayerHandoffGroupToken expectedGroup,
-            string source,
-            string reason)
-        {
-            return groupContext != null
-                ? groupContext.TryCommit(expectedGroup, source, reason)
-                : null;
-        }
-
-        internal ActivityPlayerHandoffGroupResult TryRollbackActivityHandoffGroup(
-            ActivityPlayerHandoffGroupToken expectedGroup,
-            string source,
-            string reason)
-        {
-            return groupContext != null
-                ? groupContext.TryRollback(expectedGroup, source, reason)
-                : null;
-        }
-
-        internal ActivityPlayerHandoffGroupResult
-            TryRetryActivityHandoffCommitCleanup(
-                ActivityPlayerHandoffGroupToken expectedGroup,
-                string source,
-                string reason)
-        {
-            return groupContext != null
-                ? groupContext.TryRetryCommitCleanup(
-                    expectedGroup,
-                    source,
-                    reason)
-                : null;
-        }
-
         internal bool TryGetSnapshot(
             out PlayerGameplayRuntimeHostSnapshot snapshot)
         {
@@ -659,8 +528,6 @@ namespace Immersive.Framework.PlayerParticipation
                     diagnostic);
             }
 
-            candidateModule.TryGetSnapshot(
-                out PlayerActorCandidateRuntimeHostSnapshot candidates);
             return new PlayerGameplayRuntimeHostSnapshot(
                 true,
                 occupancyContext.SessionContextId,
@@ -668,10 +535,6 @@ namespace Immersive.Framework.PlayerParticipation
                 inputContext.CreateSnapshot(),
                 cameraContext.CreateSnapshot(),
                 admissionContext.CreateSnapshot(),
-                candidates,
-                groupContext.CreateSnapshot(),
-                activityLifecycleAdmissionContext.CreateSnapshot(),
-                handoffContext.ActiveHandoffCount,
                 lastOperationStatus,
                 diagnostic);
         }
@@ -730,7 +593,7 @@ namespace Immersive.Framework.PlayerParticipation
 
             shuttingDown = true;
             if (admissionContext != null &&
-                handoffContext != null)
+                currentGameplayContext != null)
             {
                 PlayerGameplayAdmissionSnapshot snapshot =
                     admissionContext.CreateSnapshot();
@@ -746,7 +609,7 @@ namespace Immersive.Framework.PlayerParticipation
                         continue;
                     }
 
-                    handoffContext.TryReleaseCurrentGameplayChain(
+                    currentGameplayContext.TryReleaseCurrentGameplay(
                         admission.PlayerSlotId,
                         admission.Token,
                         nameof(PlayerGameplayRuntimeHostModule),
@@ -754,14 +617,16 @@ namespace Immersive.Framework.PlayerParticipation
                 }
             }
 
-            ReleaseActivityLifecycleAdmission();
-            groupContext = null;
-            handoffContext = null;
+            currentGameplayContext = null;
+            if (runtimeHost != null)
+            {
+                runtimeHost.SetActivityPlayerLifecycleAdmissionRuntime(null);
+            }
+            initialPlacementContext = null;
             admissionContext = null;
             cameraContext = null;
             inputContext = null;
             occupancyContext = null;
-            candidateModule = null;
             preparationModule = null;
             participationContext = null;
             runtimeHost = null;

@@ -16,7 +16,7 @@ namespace Immersive.Framework.PlayerParticipation
         FrameworkApiStatus.Internal,
         "P3K.7F host-scoped multi-Slot Player gameplay endpoint source.")]
     internal sealed class HostScopedPlayerGameplayChainEndpointSource :
-        IPlayerGameplayChainHandoffEndpointSource
+        IPlayerGameplayCurrentContextEndpointSource
     {
         private readonly FrameworkRuntimeHost runtimeHost;
         private readonly PlayerActorPreparationRuntimeHostModule preparationModule;

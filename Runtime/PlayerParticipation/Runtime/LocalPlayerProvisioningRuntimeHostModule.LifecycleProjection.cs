@@ -893,7 +893,7 @@ namespace Immersive.Framework.PlayerParticipation
 
             if (TryGetPreparation(preparationSnapshot?.Preparation, slot.PlayerSlotId,
                     out PlayerActorPreparationSummary candidatePreparation) &&
-                IsCurrentPreparation(candidatePreparation, currentActivityOwner))
+                IsCurrentPreparation(candidatePreparation))
             {
                 preparationSummary = candidatePreparation;
                 hasPreparationEvidence = true;
@@ -901,7 +901,7 @@ namespace Immersive.Framework.PlayerParticipation
 
             if (preparation != null && preparation.TryGetCurrentSlotActorSnapshot(
                     slot.PlayerSlotId, out CurrentPlayerSlotActorSnapshot candidateActor) &&
-                IsCurrentActor(candidateActor, currentActivityOwner))
+                IsCurrentActor(candidateActor))
             {
                 currentActor = candidateActor;
                 hasCurrentActorEvidence = true;
@@ -945,8 +945,7 @@ namespace Immersive.Framework.PlayerParticipation
         }
 
         private static bool IsCurrentPreparation(
-            PlayerActorPreparationSummary summary,
-            RuntimeContentOwner currentActivityOwner)
+            PlayerActorPreparationSummary summary)
         {
             return summary.IsValid && (summary.IsUnprepared ||
                 (summary.HasActorEvidence &&
@@ -954,10 +953,9 @@ namespace Immersive.Framework.PlayerParticipation
         }
 
         private static bool IsCurrentActor(
-            CurrentPlayerSlotActorSnapshot snapshot,
-            RuntimeContentOwner currentActivityOwner)
+            CurrentPlayerSlotActorSnapshot snapshot)
         {
-            return currentActivityOwner.IsValid && snapshot.HasCurrentActor &&
+            return snapshot.HasCurrentActor &&
                 snapshot.ActorEvidence.Owner.Scope == RuntimeContentScope.Session;
         }
 
