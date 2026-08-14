@@ -662,41 +662,47 @@ namespace Immersive.Framework.PlayerParticipation
                     continue;
                 }
 
-                PlayerActorPreparationResult release =
-                    preparationModule.TryReleasePreparedActor(
+                bool retainedForIncomingActivity =
+                    preparationModule
+                        .ShouldRetainPhysicalActorPresentationForIncomingActivity(
+                            activeRecord.Owner,
+                            prepared.PlayerSlotId);
+                if (!retainedForIncomingActivity &&
+                    !preparationModule.TryDeactivatePreparedActorPresentation(
                         prepared.PlayerSlotId,
                         prepared.Token,
                         nameof(ActivityPlayerActorLifecycleParticipant),
-                        "activity-exit-release-prepared-actor");
-                bool succeeded = release != null && release.Succeeded;
-                if (succeeded)
+                        "activity-exit-deactivate-session-owned-actor",
+                        out string deactivationIssue))
                 {
-                    releasedCount++;
-                }
-                else
-                {
-                    failures.Add(release != null
-                        ? release.ToDiagnosticString()
-                        : $"Release returned no result for Slot '{prepared.PlayerSlotId.StableText}'.");
+                    failures.Add(deactivationIssue);
+                    evidence.Add(
+                        new ActivityPlayerActorSlotLifecycleSnapshot(
+                            prepared.PlayerSlotId,
+                            true,
+                            default,
+                            false,
+                            prepared.Token,
+                            prepared.CreatedByEnter,
+                            false,
+                            PlayerActorPreparationStatus.FailedActivation,
+                            deactivationIssue));
+                    continue;
                 }
 
                 evidence.Add(
                     new ActivityPlayerActorSlotLifecycleSnapshot(
                         prepared.PlayerSlotId,
                         true,
-                        release != null
-                            ? release.PreviousSummary.SelectedActorProfileId
-                            : default,
+                        default,
                         false,
                         prepared.Token,
                         prepared.CreatedByEnter,
-                        succeeded,
-                        release != null
-                            ? release.Status
-                            : PlayerActorPreparationStatus.FailedRelease,
-                        release != null
-                            ? release.Message
-                            : "Prepared Actor release returned no result."));
+                        false,
+                        PlayerActorPreparationStatus.SucceededAlreadyPrepared,
+                        retainedForIncomingActivity
+                            ? "Activity contextual authority released; the Session-owned Actor remains active for the incoming Activity projection."
+                            : "Activity contextual authority released; the Session-owned Actor remains retained but presentation is inactive."));
             }
 
             if (failures.Count > 0)
@@ -741,7 +747,7 @@ namespace Immersive.Framework.PlayerParticipation
                 0,
                 evidence.ToArray(),
                 preparedCount > 0
-                    ? "Activity-owned Player Actors released before Activity scope exit."
+                    ? "Activity contextual authority released while Session-owned Player Actors remain retained."
                     : "Activity exit completed with no prepared Player Actors.");
             ReleasePlayerReadinessRecord("ActivityExit");
             return preparedCount > 0

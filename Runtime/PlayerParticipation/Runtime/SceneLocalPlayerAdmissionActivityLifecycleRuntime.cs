@@ -10,8 +10,9 @@ namespace Immersive.Framework.PlayerParticipation
 {
     /// <summary>
     /// Activity-scoped transaction coordinator for Scene Local Player contextual representation
-    /// and external Actor adoption. Logical Player membership and Actor selection intent are
-    /// Session-scoped; physical Host and Actor objects remain scene-owned.
+    /// and initial Scene-Provided Actor adoption. Logical Player membership, successful
+    /// physical adoption and Actor selection are Session-scoped; this runtime owns only
+    /// Activity contextual admission.
     /// </summary>
     [FrameworkApiStatus(
         FrameworkApiStatus.Internal,
@@ -564,56 +565,10 @@ namespace Immersive.Framework.PlayerParticipation
                     continue;
                 }
 
-                bool adoptionReleased = false;
-                if (entry.AdoptionApplied)
-                {
-                    ScenePlayerActorAdoptionResult adoptionRelease =
-                        preparationModule != null
-                            ? preparationModule.TryReleaseSceneLocalPlayerActor(
-                                entry.Authoring,
-                                entry.AdoptionToken,
-                                source,
-                                $"{reason}:release-adoption:{index}")
-                            : null;
-                    entry.Authoring.SetActorAdoptionResult(adoptionRelease);
-                    if (adoptionRelease == null || !adoptionRelease.Succeeded)
-                    {
-                        failures.Add(adoptionRelease != null
-                            ? adoptionRelease.ToDiagnosticString()
-                            : $"Scene Actor adoption release returned no result for Slot '{entry.PlayerSlotId.StableText}'.");
-                        break;
-                    }
-
-                    entry.AdoptionApplied = false;
-                    adoptionReleased = true;
-                }
-
-                // ADR-019: Activity exit never clears the Session-scoped Actor selection.
-                SceneLocalPlayerAdmissionRuntimeResult release = module.TryRelease(
-                    entry.Authoring,
-                    entry.AdmissionToken,
-                    source,
-                    $"{reason}:release-admission:{index}");
-                if (release == null || !release.Succeeded)
-                {
-                    string releaseIssue = release != null
-                        ? release.ToDiagnosticString()
-                        : $"Scene Local Player contextual release returned no result for '{entry.Authoring.name}'.";
-                    if (adoptionReleased &&
-                        !TryRestoreAdoption(
-                            entry,
-                            owner,
-                            source,
-                            reason,
-                            out string adoptionRestoreIssue))
-                    {
-                        releaseIssue = $"{releaseIssue} Adoption compensation failed. {adoptionRestoreIssue}";
-                    }
-
-                    failures.Add(releaseIssue);
-                    break;
-                }
-
+                // Successful adoption promotes the original Host/Actor composition to
+                // Session lifetime. Activity exit retires only this contextual ledger;
+                // the admission/assignment and physical handle remain available for
+                // Leave or Session termination.
                 entry.AdmissionActive = false;
                 released.Add(entry);
             }

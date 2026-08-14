@@ -89,7 +89,12 @@ namespace Immersive.Framework.PlayerParticipation
             initialPlacementPolicy;
 
         public PlayerActorPhysicalOwnership ActorPhysicalOwnership =>
-            PlayerActorPhysicalOwnership.ExternalSceneOwned;
+            lastActorAdoptionResult != null &&
+            lastActorAdoptionResult.Succeeded &&
+            lastActorAdoptionResult.Status !=
+                ScenePlayerActorAdoptionStatus.SucceededReleased
+                ? PlayerActorPhysicalOwnership.FrameworkOwned
+                : PlayerActorPhysicalOwnership.ExternalSceneOwned;
 
         public SceneLocalPlayerAdmissionAuthoringStatus LastAuthoringStatus =>
             lastAuthoringStatus;

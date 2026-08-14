@@ -949,8 +949,8 @@ namespace Immersive.Framework.PlayerParticipation
             RuntimeContentOwner currentActivityOwner)
         {
             return summary.IsValid && (summary.IsUnprepared ||
-                (currentActivityOwner.IsValid && summary.HasActorEvidence &&
-                 summary.ActorEvidence.Owner == currentActivityOwner));
+                (summary.HasActorEvidence &&
+                 summary.ActorEvidence.Owner.Scope == RuntimeContentScope.Session));
         }
 
         private static bool IsCurrentActor(
@@ -958,7 +958,7 @@ namespace Immersive.Framework.PlayerParticipation
             RuntimeContentOwner currentActivityOwner)
         {
             return currentActivityOwner.IsValid && snapshot.HasCurrentActor &&
-                snapshot.ActorEvidence.Owner == currentActivityOwner;
+                snapshot.ActorEvidence.Owner.Scope == RuntimeContentScope.Session;
         }
 
         private static bool IsCurrentGameplayAdmission(

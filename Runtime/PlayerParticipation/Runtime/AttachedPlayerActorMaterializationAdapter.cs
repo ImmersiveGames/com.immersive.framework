@@ -377,6 +377,15 @@ namespace Immersive.Framework.PlayerParticipation
             handle.MarkReleaseRequested(resolvedSource, resolvedReason);
             try
             {
+                bool adoptedScenePhysicalComposition =
+                    handle.PlayerActorDeclaration != null &&
+                    handle.LogicalActorHost != null &&
+                    !ReferenceEquals(
+                        handle.PlayerActorDeclaration.transform,
+                        handle.LogicalActorHost.transform) &&
+                    !handle.PlayerActorDeclaration.transform.IsChildOf(
+                        handle.LogicalActorHost.transform);
+
                 if (handle.LogicalActorHost != null)
                 {
                     handle.LogicalActorHost.SetActive(false);
@@ -393,6 +402,15 @@ namespace Immersive.Framework.PlayerParticipation
                     // Unity's deferred Destroy so Session Host release sees current ownership truth.
                     handle.LogicalActorHost.transform.SetParent(null, true);
                     DestroyObject(handle.LogicalActorHost);
+                }
+
+                if (adoptedScenePhysicalComposition &&
+                    handle.LocalPlayerHost != null)
+                {
+                    // A Scene-Provided composition becomes Session-owned only after
+                    // adoption. Terminal release therefore destroys the promoted
+                    // original Host/Actor composition, never an unadopted candidate.
+                    DestroyObject(handle.LocalPlayerHost.gameObject);
                 }
 
                 RuntimeReleaseResult releaseResult =

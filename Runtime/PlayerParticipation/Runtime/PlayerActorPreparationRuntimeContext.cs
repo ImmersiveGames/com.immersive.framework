@@ -154,7 +154,8 @@ namespace Immersive.Framework.PlayerParticipation
         }
 
         internal PlayerActorPreparationResult TryPrepareSelectedActor(
-            RuntimeScopeContext scopeContext,
+            RuntimeScopeContext activityScopeContext,
+            RuntimeScopeContext physicalScopeContext,
             PlayerSlotId playerSlotId,
             string source,
             string reason)
@@ -165,7 +166,10 @@ namespace Immersive.Framework.PlayerParticipation
             string resolvedReason = reason.NormalizeTextOrFallback(
                 "prepare-selected-player-actor");
 
-            if (!scopeContext.IsValid || !playerSlotId.IsValid)
+            if (!activityScopeContext.IsValid ||
+                !physicalScopeContext.IsValid ||
+                physicalScopeContext.Scope != RuntimeContentScope.Session ||
+                !playerSlotId.IsValid)
             {
                 return CreateResult(
                     PlayerActorPreparationStatus.RejectedInvalidRequest,
@@ -181,7 +185,7 @@ namespace Immersive.Framework.PlayerParticipation
                     false,
                     false,
                     string.Empty,
-                    "Prepare Selected Actor requires a valid Runtime Scope Context and Player Slot identity.");
+                "Prepare Selected Actor requires valid Activity contextual and Session physical scope contexts plus a Player Slot identity.");
             }
 
             if (!participationContext.TryGetActorSelection(
@@ -273,7 +277,7 @@ namespace Immersive.Framework.PlayerParticipation
                 }
 
                 if (!TryResolveCurrentActorCorrelation(
-                        scopeContext,
+                        activityScopeContext,
                         playerSlotId,
                         actorEvidence.AssignmentOrigin,
                         existing.Host,
@@ -300,11 +304,34 @@ namespace Immersive.Framework.PlayerParticipation
 
                 if (IsCurrentIdempotentPreparation(
                         existing,
-                        scopeContext,
                         slot,
                         existingAssignment,
                         existingHostEvidence))
                 {
+                    if (existing.Handle.State ==
+                        PlayerActorMaterializationState.StagedInactive &&
+                        !existing.Handle.TryActivate(
+                            resolvedSource,
+                            resolvedReason,
+                            out string reactivationIssue))
+                    {
+                        return CreateResult(
+                            PlayerActorPreparationStatus.FailedActivation,
+                            operation,
+                            playerSlotId,
+                            existing.Summary,
+                            existing.Summary,
+                            null,
+                            null,
+                            false,
+                            false,
+                            string.Empty,
+                            false,
+                            false,
+                            string.Empty,
+                            reactivationIssue);
+                    }
+
                     return CreateResult(
                         PlayerActorPreparationStatus.SucceededAlreadyPrepared,
                         operation,
@@ -319,7 +346,7 @@ namespace Immersive.Framework.PlayerParticipation
                         false,
                         false,
                         string.Empty,
-                        "Selected Logical Player Actor is already prepared with the same owner, Profile, host and functional identities.");
+                        "Selected Session-owned Logical Player Actor is already prepared with the same Profile, Host and Session correlation and was reused for the current Activity representation.");
                 }
 
                 return CreateResult(
@@ -340,7 +367,7 @@ namespace Immersive.Framework.PlayerParticipation
             }
 
             if (!TryResolveCurrentActorCorrelation(
-                    scopeContext,
+                    activityScopeContext,
                     playerSlotId,
                     PlayerSlotAssignmentOrigin.ManagerProvisioned,
                     null,
@@ -369,7 +396,7 @@ namespace Immersive.Framework.PlayerParticipation
 
             PlayerActorMaterializationResult materializationResult =
                 materializationAdapter.TryMaterialize(
-                    scopeContext,
+                    physicalScopeContext,
                     slot,
                     slot.SelectedActorProfile,
                     localPlayerHost,
@@ -657,6 +684,25 @@ namespace Immersive.Framework.PlayerParticipation
                 retainedReleased
                     ? "Logical Player Actor released and RuntimeContent evidence unregistered."
                     : $"Current Logical Player Actor released, but retained previous cleanup failed. {retainedIssue}");
+        }
+
+        internal bool TryDeactivatePreparedActorPresentation(
+            PlayerSlotId playerSlotId,
+            PlayerActorPreparationToken expectedPreparation,
+            string source,
+            string reason,
+            out string issue)
+        {
+            issue = string.Empty;
+            if (!playerSlotId.IsValid ||
+                !records.TryGetValue(playerSlotId, out PreparationRecord record) ||
+                !MatchesExpectedPreparation(record, expectedPreparation))
+            {
+                issue = "Player Actor presentation deactivation rejected a foreign or stale preparation token.";
+                return false;
+            }
+
+            return record.Handle.TryDeactivate(source, reason, out issue);
         }
 
         internal PlayerActorPreparationResult TryReplacePreparedActor(
@@ -1218,15 +1264,15 @@ namespace Immersive.Framework.PlayerParticipation
 
         private bool IsCurrentIdempotentPreparation(
             PreparationRecord record,
-            RuntimeScopeContext scopeContext,
             PlayerSlotRuntimeSnapshot slot,
             PlayerSlotAssignmentSnapshot assignment,
             PlayerHostEvidenceSnapshot hostEvidence)
         {
             return record != null &&
                 record.Summary.IsPrepared &&
-                record.Handle.State == PlayerActorMaterializationState.Active &&
-                record.Handle.Request.Owner == scopeContext.Owner &&
+                (record.Handle.State is PlayerActorMaterializationState.Active or
+                    PlayerActorMaterializationState.StagedInactive) &&
+                record.Handle.Request.Owner.Scope == RuntimeContentScope.Session &&
                 record.Handle.Request.ActorProfileId == slot.SelectedActorProfileId &&
                 record.Summary.SelectionRevision == slot.SelectionRevision &&
                 record.Summary.ActorEvidence.AssignmentOrigin ==
@@ -1347,12 +1393,9 @@ namespace Immersive.Framework.PlayerParticipation
                     return false;
                 }
             }
-            else if (assignment.AssignmentOwner != scopeContext.Owner)
-            {
-                issue =
-                    "Scene-Provided Actor adoption owner must match the explicit assignment owner.";
-                return false;
-            }
+            // A successful Scene-Provided adoption is Session-owned. Its original
+            // Activity assignment remains provenance evidence, not an ownership
+            // requirement for later contextual projections.
 
             PlayerHostEvidenceResult confirmation =
                 hostEvidenceProjection.ConfirmHostEvidence(

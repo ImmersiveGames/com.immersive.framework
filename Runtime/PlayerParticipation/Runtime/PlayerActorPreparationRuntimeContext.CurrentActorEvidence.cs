@@ -244,7 +244,7 @@ namespace Immersive.Framework.PlayerParticipation
                 (retained.AssignmentOrigin ==
                     PlayerSlotAssignmentOrigin.SceneProvided &&
                  retained.PhysicalOwnership !=
-                    PlayerActorPhysicalOwnership.ExternalSceneOwned))
+                    PlayerActorPhysicalOwnership.FrameworkOwned))
             {
                 return ActorEvidenceResult(
                     PlayerCurrentActorEvidenceStatus.RejectedPhysicalEvidenceMismatch,
@@ -253,7 +253,7 @@ namespace Immersive.Framework.PlayerParticipation
                     summary,
                     resolvedSource,
                     resolvedReason,
-                    "Prepared Actor physical ownership is incompatible with assignment origin.");
+                    "Prepared Actor physical ownership is incompatible with the post-admission Session ownership contract.");
             }
 
             if (record.Handle.Request.RuntimeContentIdentity !=

@@ -7,8 +7,8 @@ using Immersive.Framework.RuntimeContent;
 namespace Immersive.Framework.PlayerParticipation
 {
     /// <summary>
-    /// Immutable authority token for one externally owned Scene Logical Player Actor adoption.
-    /// It identifies runtime preparation only and never transfers physical ownership to the framework.
+    /// Immutable authority token for one Scene Logical Player Actor adoption. A valid
+    /// token identifies an object already promoted to the current Session Player.
     /// </summary>
     [FrameworkApiStatus(
         FrameworkApiStatus.Experimental,
@@ -38,7 +38,7 @@ namespace Immersive.Framework.PlayerParticipation
         public PlayerActorPreparationToken PreparationToken { get; }
         public int AdoptionRevision { get; }
         public PlayerActorPhysicalOwnership PhysicalOwnership =>
-            PlayerActorPhysicalOwnership.ExternalSceneOwned;
+            PlayerActorPhysicalOwnership.FrameworkOwned;
 
         public bool IsValid =>
             !string.IsNullOrEmpty(SessionContextId) &&

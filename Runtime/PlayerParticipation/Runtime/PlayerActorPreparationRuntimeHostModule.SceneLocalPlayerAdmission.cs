@@ -144,6 +144,7 @@ namespace Immersive.Framework.PlayerParticipation
                 preparationContext.TryAdoptScenePlayerActor(
                     runtimeHost.RuntimeContentRuntime,
                     scopeContext,
+                    sessionPhysicalScopeContext,
                     authoring,
                     source,
                     reason);

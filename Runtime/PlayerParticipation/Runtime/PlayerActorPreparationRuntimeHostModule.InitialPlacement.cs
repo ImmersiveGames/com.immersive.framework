@@ -140,5 +140,27 @@ namespace Immersive.Framework.PlayerParticipation
         internal ActivityPlayerInitialPlacementEvidence
             LastActivityInitialPlacementEvidence =>
                 lastActivityInitialPlacementEvidence;
+
+        internal bool ShouldRetainPhysicalActorPresentationForIncomingActivity(
+            RuntimeContentOwner exitingOwner,
+            PlayerSlotId playerSlotId)
+        {
+            if (!currentActivityInitialPlacementContext.IsValid ||
+                !exitingOwner.IsValid ||
+                currentActivityInitialPlacementContext.Owner == exitingOwner ||
+                !playerSlotId.IsValid ||
+                participationContext == null)
+            {
+                return false;
+            }
+
+            return ActivityPlayerParticipationProjectionResolver.TryResolve(
+                       currentActivityInitialPlacementContext.Activity,
+                       participationContext,
+                       out _,
+                       out var projectedSlots,
+                       out _) &&
+                   projectedSlots.Exists(slot => slot.PlayerSlotId == playerSlotId);
+        }
     }
 }

@@ -124,15 +124,11 @@ namespace Immersive.Framework.PlayerParticipation
                      LogicalActorHost.transform) ||
                  PlayerActorDeclaration.transform
                      .IsChildOf(LogicalActorHost.transform));
-            bool requiresActivityPlacement =
-                Request.Owner.Scope == RuntimeContentScope.Activity &&
-                declarationBelongsToLogicalActor;
-            if (requiresActivityPlacement)
+            bool requiresInitialPlacement =
+                declarationBelongsToLogicalActor && !hasEverActivated;
+            if (requiresInitialPlacement)
             {
-                bool bindingMatchesOwner =
-                    placementBinding != null &&
-                    placementBinding.MatchesOwner(Request.Owner);
-                if (bindingMatchesOwner)
+                if (placementBinding != null)
                 {
                     if (!placementBinding.TryApplyBeforeActivation(
                             this,
@@ -144,7 +140,7 @@ namespace Immersive.Framework.PlayerParticipation
                 else if (!hasEverActivated)
                 {
                     issue =
-                        "Activity-scoped framework-owned Logical Player Actor cannot perform its first activation without the IF-ADR-021 initial-placement gate for the same Activity owner.";
+                        "Session-owned framework Logical Player Actor cannot perform its first gameplay activation without the current Activity IF-ADR-021 initial-placement gate.";
                     return false;
                 }
             }

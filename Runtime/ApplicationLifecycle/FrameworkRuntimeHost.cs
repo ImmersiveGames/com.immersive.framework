@@ -145,6 +145,39 @@ namespace Immersive.Framework.ApplicationLifecycle
 
         internal RuntimeContentRuntime RuntimeContentRuntime => _runtimeContentRuntime;
 
+        /// <summary>
+        /// Creates the explicit Session scope used by Session-owned Player physical
+        /// representations. The caller still owns Activity contextual authority; this
+        /// method exposes no global lookup or mutable Player registry.
+        /// </summary>
+        internal bool TryCreateSessionRuntimeScopeContext(
+            string source,
+            string reason,
+            out RuntimeScopeContext context,
+            out string issue)
+        {
+            context = default;
+            issue = string.Empty;
+            if (_runtimeContentRuntime == null ||
+                !_runtimeSessionScopeResult.HasOwner)
+            {
+                issue = "FrameworkRuntimeHost has no initialized Session Runtime Content scope.";
+                return false;
+            }
+
+            if (!_runtimeContentRuntime.TryCreateScopeContext(
+                    _runtimeSessionScopeResult.Owner,
+                    source,
+                    reason,
+                    out context))
+            {
+                issue = "FrameworkRuntimeHost could not create the current Session Runtime Content context.";
+                return false;
+            }
+
+            return true;
+        }
+
         internal ResetRegistry ResetRegistry => _resetRegistry ??= new ResetRegistry();
 
         internal int ResetRegistrySubjectCount => _resetRegistry?.SubjectCount ?? 0;

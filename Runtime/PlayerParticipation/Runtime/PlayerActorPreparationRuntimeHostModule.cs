@@ -24,6 +24,7 @@ namespace Immersive.Framework.PlayerParticipation
         private PlayerParticipationRuntimeContext participationContext;
         private PlayerHostEvidenceProjection hostEvidenceProjection;
         private PlayerActorPreparationRuntimeContext preparationContext;
+        private RuntimeScopeContext sessionPhysicalScopeContext;
         private ActivityPlayerActorLifecycleParticipant activityLifecycleParticipant;
         private LocalPlayerJoinResult lastJoinResult;
         private string diagnostic = "Player Actor preparation runtime is not initialized.";
@@ -107,6 +108,16 @@ namespace Immersive.Framework.PlayerParticipation
                 return false;
             }
 
+            if (!targetRuntimeHost.TryCreateSessionRuntimeScopeContext(
+                    nameof(PlayerActorPreparationRuntimeHostModule),
+                    "player-physical-lifetime-initialization",
+                    out RuntimeScopeContext targetSessionPhysicalScopeContext,
+                    out issue))
+            {
+                diagnostic = issue;
+                return false;
+            }
+
             PlayerParticipationSnapshot participationSnapshot =
                 targetParticipationContext.CreateSnapshot();
             if (participationSnapshot == null ||
@@ -138,6 +149,7 @@ namespace Immersive.Framework.PlayerParticipation
             participationContext = targetParticipationContext;
             hostEvidenceProjection = targetHostEvidenceProjection;
             preparationContext = targetPreparationContext;
+            sessionPhysicalScopeContext = targetSessionPhysicalScopeContext;
             activityLifecycleParticipant = new ActivityPlayerActorLifecycleParticipant(
                 this,
                 targetParticipationContext);
@@ -154,6 +166,7 @@ namespace Immersive.Framework.PlayerParticipation
                 targetRuntimeHost.SetPauseActivityBindingPlayerEvidence(null);
                 activityLifecycleParticipant = null;
                 preparationContext = null;
+                sessionPhysicalScopeContext = default;
                 hostEvidenceProjection = null;
                 participationContext = null;
                 runtimeHost = null;
@@ -482,6 +495,7 @@ namespace Immersive.Framework.PlayerParticipation
             PlayerActorPreparationResult result =
                 preparationContext.TryPrepareSelectedActor(
                     scopeContext,
+                    sessionPhysicalScopeContext,
                     playerSlotId,
                     source,
                     reason);
@@ -512,6 +526,34 @@ namespace Immersive.Framework.PlayerParticipation
                     reason);
             diagnostic = result.ToDiagnosticString();
             return result;
+        }
+
+        internal bool TryDeactivatePreparedActorPresentation(
+            PlayerSlotId playerSlotId,
+            PlayerActorPreparationToken expectedPreparation,
+            string source,
+            string reason,
+            out string issue)
+        {
+            issue = string.Empty;
+            if (preparationContext == null)
+            {
+                issue = diagnostic;
+                return false;
+            }
+
+            bool deactivated = preparationContext.TryDeactivatePreparedActorPresentation(
+                playerSlotId,
+                expectedPreparation,
+                source,
+                reason,
+                out issue);
+            if (!deactivated)
+            {
+                diagnostic = issue;
+            }
+
+            return deactivated;
         }
 
         internal bool TryGetCurrentActorEvidence(
@@ -787,6 +829,7 @@ namespace Immersive.Framework.PlayerParticipation
             hostEvidenceProjection = null;
             activityLifecycleParticipant = null;
             preparationContext = null;
+            sessionPhysicalScopeContext = default;
             participationContext = null;
             runtimeHost = null;
             diagnostic = "Player Actor preparation runtime was released.";

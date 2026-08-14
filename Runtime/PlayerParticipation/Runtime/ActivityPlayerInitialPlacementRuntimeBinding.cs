@@ -72,17 +72,15 @@ namespace Immersive.Framework.PlayerParticipation
             bool frameworkOwnedPhysicalActor =
                 ReferenceEquals(declarationTransform, logicalRoot) ||
                 declarationTransform.IsChildOf(logicalRoot);
-            if (!frameworkOwnedPhysicalActor ||
-                handle.Request.Owner.Scope != RuntimeContentScope.Activity)
+            if (!frameworkOwnedPhysicalActor)
             {
                 return true;
             }
 
-            if (!context.IsValid ||
-                context.Owner != handle.Request.Owner)
+            if (!context.IsValid)
             {
                 issue =
-                    "Activity-scoped Manager-Provisioned Actor cannot activate without current Activity initial-placement occurrence evidence.";
+                    "Session-owned Manager-Provisioned Actor cannot activate without current Activity initial-placement occurrence evidence.";
                 return false;
             }
 

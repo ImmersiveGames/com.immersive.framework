@@ -50,7 +50,10 @@ namespace Immersive.Framework.PlayerParticipation
         public PlayerActorDeclaration SceneActor { get; }
         public ScenePlayerActorAdoptionToken Token { get; }
         public PlayerActorPhysicalOwnership PhysicalOwnership =>
-            PlayerActorPhysicalOwnership.ExternalSceneOwned;
+            Status is ScenePlayerActorAdoptionStatus.SucceededAdopted or
+                ScenePlayerActorAdoptionStatus.SucceededAlreadyAdopted
+                ? PlayerActorPhysicalOwnership.FrameworkOwned
+                : PlayerActorPhysicalOwnership.ExternalSceneOwned;
         public bool StateChanged { get; }
         public string Source { get; }
         public string Reason { get; }

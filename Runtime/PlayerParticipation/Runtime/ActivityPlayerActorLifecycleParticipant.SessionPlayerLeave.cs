@@ -351,9 +351,7 @@ namespace Immersive.Framework.PlayerParticipation
                         out PlayerActorCorrelationEvidence actorEvidence) ||
                     !actorEvidence.IsValid ||
                     actorEvidence.PreparationToken != preparationToken ||
-                    (activeRecord != null &&
-                     activeRecord.Owner.IsValid &&
-                     actorEvidence.Owner != activeRecord.Owner))
+                    actorEvidence.Owner.Scope != RuntimeContentScope.Session)
                 {
                     return Result(
                         SessionPlayerActivityRepresentationReleaseStatus.RejectedRepresentationCorrelation,

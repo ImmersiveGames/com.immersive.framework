@@ -18,10 +18,9 @@ namespace Immersive.Framework.PlayerParticipation
     }
 
     /// <summary>
-    /// Session-scoped plain C# authority for admitting and releasing externally owned scene
-    /// Local Player Hosts. Session membership is retained independently from Activity/Route
-    /// representation. Physical object creation/destruction, Actor selection and gameplay
-    /// readiness remain outside this transaction.
+    /// Session-scoped plain C# authority for admitting original Scene-Provided Player
+    /// candidates. Successful Actor adoption promotes the same composition to Session
+    /// lifetime; Activity records remain contextual only.
     /// </summary>
     [FrameworkApiStatus(
         FrameworkApiStatus.Internal,
@@ -634,7 +633,7 @@ namespace Immersive.Framework.PlayerParticipation
                 commit.Slot,
                 resolvedSource,
                 resolvedReason,
-                "Scene Local Player Host admitted to the exact ordered Session Slot. Physical Host and Logical Actor remain externally owned.",
+                "Scene Local Player Host admitted to the exact ordered Session Slot. The original composition remains candidate-owned until successful Actor adoption.",
                 assignmentResult: initialAssignment);
         }
 
@@ -883,7 +882,7 @@ namespace Immersive.Framework.PlayerParticipation
                 currentSessionSlot,
                 resolvedSource,
                 resolvedReason,
-                "Scene Local Player contextual representation and current Slot assignment released. Session Player Slot remains Joined; Scene Host and Logical Actor remain externally owned.",
+                "Non-adopted Scene Local Player contextual representation and current Slot assignment released. Session Player Slot remains Joined.",
                 assignmentResult: assignmentRelease);
         }
 

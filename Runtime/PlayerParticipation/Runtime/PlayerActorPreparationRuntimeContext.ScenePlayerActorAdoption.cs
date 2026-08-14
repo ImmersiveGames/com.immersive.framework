@@ -56,7 +56,8 @@ namespace Immersive.Framework.PlayerParticipation
 
         internal ScenePlayerActorAdoptionResult TryAdoptScenePlayerActor(
             RuntimeContentRuntime runtimeContentRuntime,
-            RuntimeScopeContext scopeContext,
+            RuntimeScopeContext activityScopeContext,
+            RuntimeScopeContext physicalScopeContext,
             SceneLocalPlayerAdmissionAuthoring authoring,
             string source,
             string reason)
@@ -70,7 +71,9 @@ namespace Immersive.Framework.PlayerParticipation
             string issue = string.Empty;
             PlayerSlotId playerSlotId = default;
             if (runtimeContentRuntime == null ||
-                !scopeContext.IsValid ||
+                !activityScopeContext.IsValid ||
+                !physicalScopeContext.IsValid ||
+                physicalScopeContext.Scope != RuntimeContentScope.Session ||
                 authoring == null ||
                 !authoring.TryGetPlayerSlotId(out playerSlotId, out issue))
             {
@@ -84,7 +87,7 @@ namespace Immersive.Framework.PlayerParticipation
                     resolvedSource,
                     resolvedReason,
                     string.IsNullOrWhiteSpace(issue)
-                        ? "Scene Player Actor adoption requires runtime content, a valid Activity scope and complete authoring."
+                        ? "Scene Player Actor adoption requires runtime content, valid Activity contextual and Session physical scopes and complete authoring."
                         : issue);
             }
 
@@ -156,8 +159,22 @@ namespace Immersive.Framework.PlayerParticipation
                     "Scene Player Actor adoption requires matching committed Host and Slot evidence.");
             }
 
+            if (host.transform.parent != null)
+            {
+                return SceneAdoptionResult(
+                    ScenePlayerActorAdoptionStatus.RejectedHostMismatch,
+                    operation,
+                    playerSlotId,
+                    authoring,
+                    default,
+                    false,
+                    resolvedSource,
+                    resolvedReason,
+                    "Scene Player Actor adoption requires the declared Local Player Host to be a composition root so its whole physical Player hierarchy can be promoted atomically.");
+            }
+
             if (!TryResolveCurrentActorCorrelation(
-                    scopeContext,
+                    activityScopeContext,
                     playerSlotId,
                     PlayerSlotAssignmentOrigin.SceneProvided,
                     host,
@@ -198,7 +215,7 @@ namespace Immersive.Framework.PlayerParticipation
             {
                 if (IsCurrentSceneAdoption(
                         existingAdoption,
-                        scopeContext.Owner,
+                        physicalScopeContext.Owner,
                         host,
                         sceneActor) &&
                     records.TryGetValue(playerSlotId, out PreparationRecord existingPreparation) &&
@@ -263,7 +280,7 @@ namespace Immersive.Framework.PlayerParticipation
             int adoptionRevision = sceneAdoptionSequence;
             if (!PlayerActorMaterializationOperationId.TryCreate(
                     sessionContextId,
-                    scopeContext.Owner,
+                    physicalScopeContext.Owner,
                     playerSlotId,
                     adoptionRevision,
                     out PlayerActorMaterializationOperationId operationId,
@@ -286,8 +303,8 @@ namespace Immersive.Framework.PlayerParticipation
             try
             {
                 string suffix =
-                    $"{sessionContextId}:{scopeContext.Owner.Scope}:" +
-                    $"{scopeContext.Owner.OwnerIdentity.Value.Value}:" +
+                    $"{sessionContextId}:{physicalScopeContext.Owner.Scope}:" +
+                    $"{physicalScopeContext.Owner.OwnerIdentity.Value.Value}:" +
                     $"{playerSlotId.Value.Value}:{adoptionRevision}";
                 actorId = ActorId.From($"scene-player-actor:{suffix}");
                 runtimeContentId = RuntimeContentId.From(
@@ -310,7 +327,7 @@ namespace Immersive.Framework.PlayerParticipation
             var request = new PlayerActorMaterializationRequest(
                 operationId,
                 sessionContextId,
-                scopeContext,
+                physicalScopeContext,
                 slot,
                 authoring.ActorProfile,
                 host,
@@ -323,10 +340,10 @@ namespace Immersive.Framework.PlayerParticipation
                 SceneAdoptionResourceType,
                 actorProfileId.Value.Value,
                 authoring.ActorProfile.DisplayName,
-                "ExternalSceneOwned");
+                "SceneProvidedOriginalPromotedToSession");
 
             if (!runtimeContentRuntime.TryCreateMaterializationRequest(
-                    scopeContext,
+                    physicalScopeContext,
                     runtimeContentId,
                     resource,
                     resolvedSource,
@@ -358,8 +375,8 @@ namespace Immersive.Framework.PlayerParticipation
                     actorId.Value.Value,
                     authoring.ActorProfile.DisplayName,
                     host.PlayerInput,
-                    $"{resolvedReason}; ownership='ExternalSceneOwned'; profile='{actorProfileId.StableText}'; " +
-                    $"slot='{playerSlotId.StableText}'; owner='{scopeContext.Owner.StableText}'.");
+                    $"{resolvedReason}; ownership='SessionOwned'; origin='SceneProvided'; profile='{actorProfileId.StableText}'; " +
+                    $"slot='{playerSlotId.StableText}'; owner='{physicalScopeContext.Owner.StableText}'.");
 
                 if (!sceneActor.HasPlayerInputEvidence ||
                     !ReferenceEquals(sceneActor.PlayerInput, host.PlayerInput) ||
@@ -479,16 +496,21 @@ namespace Immersive.Framework.PlayerParticipation
                             : $"{activationIssue} Rollback failed. {rollbackIssue}");
                 }
 
+                // The Session record below remains the authority. This Unity scene
+                // migration only prevents the adopted original object from being
+                // unloaded with the supplying Activity scene.
+                UnityEngine.Object.DontDestroyOnLoad(host.gameObject);
+
                 PlayerActorPreparationSummary prepared = CreatePreparedSummary(
                     slot,
                     handle,
                     assignment,
                     hostEvidence,
-                    PlayerActorPhysicalOwnership.ExternalSceneOwned,
+                    PlayerActorPhysicalOwnership.FrameworkOwned,
                     PlayerActorPreparationState.Prepared,
                     resolvedSource,
                     resolvedReason,
-                    "External Scene Logical Player Actor adopted and prepared without physical ownership transfer.");
+                    "Original Scene Logical Player Actor adopted into Session physical lifetime.");
                 records.Add(
                     playerSlotId,
                     new PreparationRecord(handle, host, prepared));
@@ -505,7 +527,7 @@ namespace Immersive.Framework.PlayerParticipation
                     playerSlotId,
                     new SceneAdoptionRecord(
                         token,
-                        scopeContext.Owner,
+                        physicalScopeContext.Owner,
                         host,
                         sceneActor,
                         releaseProxy,
@@ -515,7 +537,7 @@ namespace Immersive.Framework.PlayerParticipation
                         previousPlayerInput));
                 lastOperationStatus = PlayerActorPreparationStatus.SucceededPrepared;
                 lastOperationMessage =
-                    "External Scene Logical Player Actor adopted by the preparation authority.";
+                    "Original Scene Logical Player Actor adopted by the Session physical representation authority.";
 
                 return SceneAdoptionResult(
                     ScenePlayerActorAdoptionStatus.SucceededAdopted,

@@ -5,8 +5,9 @@ using UnityEngine;
 namespace Immersive.Framework.PlayerParticipation
 {
     /// <summary>
-    /// Internal evidence for releasing Framework authority from one Scene-Provided Player while
-    /// preserving the externally scene-owned Host, PlayerInput and Logical Actor objects.
+    /// Internal evidence for releasing contextual authority from one Scene-Provided Player
+    /// after successful adoption made its physical Host, PlayerInput and Logical Actor
+    /// Session-owned.
     /// This result never means that logical Session membership is Available; terminal membership
     /// commit remains owned by the Session Player Leave authority.
     /// </summary>

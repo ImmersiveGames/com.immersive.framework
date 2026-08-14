@@ -53,9 +53,9 @@ namespace Immersive.Framework.PlayerParticipation
 
         /// <summary>
         /// Releases Framework authority associated with the exact Scene-Provided occurrence owned
-        /// by one active Session Player Leave. Physical Scene-owned Host, PlayerInput and Actor
-        /// objects are deliberately preserved. Slot vacancy and Session Actor-selection cleanup
-        /// remain downstream ADR-020 responsibilities.
+        /// by one active Session Player Leave. For a successfully adopted occurrence, the
+        /// canonical preparation release has already released the Session-owned physical
+        /// composition before this contextual-record cleanup.
         /// </summary>
         internal SceneProvidedSessionPlayerLeaveReleaseResult
             TryReleaseSceneProvidedPlayerForSessionLeave(
@@ -334,7 +334,7 @@ namespace Immersive.Framework.PlayerParticipation
                         leaveConfirmation,
                         resolvedSource,
                         resolvedReason,
-                        "Scene-owned Local Player Host became unavailable before Framework Host admission authority was released. The Framework did not destroy it.");
+                        "Adopted Scene-Provided Local Player Host became unavailable before contextual admission cleanup completed.");
                 }
 
                 if (!progress.Host.TryValidateCommittedAdmissionRelease(
@@ -450,7 +450,7 @@ namespace Immersive.Framework.PlayerParticipation
                 leaveConfirmation,
                 resolvedSource,
                 resolvedReason,
-                "Scene-Provided Framework authority released for the exact Leaving occurrence. Scene-owned Host, PlayerInput and Logical Actor were not destroyed; canonical Slot assignment is released and Session membership remains Leaving for downstream cleanup.");
+                "Scene-Provided contextual authority released for the exact Leaving occurrence after canonical Session-owned physical Player release; canonical Slot assignment is released and Session membership remains Leaving for downstream cleanup.");
         }
 
         private static SceneProvidedSessionPlayerLeaveReleaseResult FromProgress(
