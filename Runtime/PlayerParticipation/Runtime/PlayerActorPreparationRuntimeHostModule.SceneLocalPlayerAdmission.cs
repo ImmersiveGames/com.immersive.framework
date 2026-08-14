@@ -118,6 +118,28 @@ namespace Immersive.Framework.PlayerParticipation
                     issue);
             }
 
+            if (!TryApplySceneProvidedInitialPlacement(
+                    authoring,
+                    out issue))
+            {
+                var placementFailure =
+                    new ScenePlayerActorAdoptionResult(
+                        ScenePlayerActorAdoptionStatus.RejectedInvalidRequest,
+                        "AdoptScenePlayerActor",
+                        playerSlotId,
+                        authoring.ActorProfile,
+                        authoring.SceneLogicalPlayerActor,
+                        default,
+                        false,
+                        source,
+                        reason,
+                        "Scene Player Actor initial placement gate failed. " +
+                        issue);
+                authoring.SetActorAdoptionResult(placementFailure);
+                diagnostic = placementFailure.ToDiagnosticString();
+                return placementFailure;
+            }
+
             ScenePlayerActorAdoptionResult result =
                 preparationContext.TryAdoptScenePlayerActor(
                     runtimeHost.RuntimeContentRuntime,

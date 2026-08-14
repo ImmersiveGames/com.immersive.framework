@@ -193,10 +193,19 @@ namespace Immersive.Framework.GameFlow
                 startupRoute.StartupActivity.EntryReadinessPolicy ==
                 ActivityEntryReadinessPolicy.ObserveOnly)
             {
-                var observedRouteLifecycleResult = await StartRouteCoreAsync(
-                    startupRoute,
-                    "GameApplication",
-                    "startup");
+                var observedRouteLifecycleResult = startupRoute.HasStartupActivity
+                    ? await StartRouteCoreAsync(
+                        startupRoute,
+                        "GameApplication",
+                        "startup",
+                        NoOpFrameworkLoadingProgressReporter.Instance,
+                        () => ConfigureActivityPlayerInitialPlacement(
+                            "GameApplication",
+                            "startup"))
+                    : await StartRouteCoreAsync(
+                        startupRoute,
+                        "GameApplication",
+                        "startup");
                 if (!observedRouteLifecycleResult.Started)
                 {
                     return FrameworkGameFlowStartResult.Failed(observedRouteLifecycleResult.Message);
@@ -246,7 +255,11 @@ namespace Immersive.Framework.GameFlow
                 var routeLifecycleResult = await StartRouteCoreAsync(
                     startupRoute,
                     "GameApplication",
-                    "startup");
+                    "startup",
+                    NoOpFrameworkLoadingProgressReporter.Instance,
+                    () => ConfigureActivityPlayerInitialPlacement(
+                        "GameApplication",
+                        "startup"));
                 if (!routeLifecycleResult.Started)
                 {
                     await ExecuteTransitionAsync(
@@ -584,8 +597,7 @@ namespace Immersive.Framework.GameFlow
                 }
 
                 var routeLifecycleResult =
-                    routeStartupPlayerAdmissionAuthorization != null &&
-                    !routeStartupPlayerAdmissionAuthorization.NotRequired
+                    routeStartupPlayerAdmissionAuthorization != null
                         ? await StartRouteCoreAsync(
                             targetRoute,
                             resolvedSource,

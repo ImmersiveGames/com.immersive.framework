@@ -18,6 +18,7 @@ namespace Immersive.Framework.PlayerParticipation
     internal sealed class PlayerActorMaterializationHandle
     {
         private PlayerActorMaterializationState state;
+        private bool hasEverActivated;
         private string source;
         private string reason;
         private string message;
@@ -110,7 +111,46 @@ namespace Immersive.Framework.PlayerParticipation
                 return false;
             }
 
+            ActivityPlayerInitialPlacementRuntimeBinding placementBinding =
+                LocalPlayerHost != null
+                    ? LocalPlayerHost.GetComponent<
+                        ActivityPlayerInitialPlacementRuntimeBinding>()
+                    : null;
+
+            bool declarationBelongsToLogicalActor =
+                PlayerActorDeclaration != null &&
+                (ReferenceEquals(
+                     PlayerActorDeclaration.transform,
+                     LogicalActorHost.transform) ||
+                 PlayerActorDeclaration.transform
+                     .IsChildOf(LogicalActorHost.transform));
+            bool requiresActivityPlacement =
+                Request.Owner.Scope == RuntimeContentScope.Activity &&
+                declarationBelongsToLogicalActor;
+            if (requiresActivityPlacement)
+            {
+                bool bindingMatchesOwner =
+                    placementBinding != null &&
+                    placementBinding.MatchesOwner(Request.Owner);
+                if (bindingMatchesOwner)
+                {
+                    if (!placementBinding.TryApplyBeforeActivation(
+                            this,
+                            out issue))
+                    {
+                        return false;
+                    }
+                }
+                else if (!hasEverActivated)
+                {
+                    issue =
+                        "Activity-scoped framework-owned Logical Player Actor cannot perform its first activation without the IF-ADR-021 initial-placement gate for the same Activity owner.";
+                    return false;
+                }
+            }
+
             LogicalActorHost.SetActive(true);
+            hasEverActivated = true;
             state = PlayerActorMaterializationState.Active;
             source = operationSource.NormalizeTextOrFallback(Source);
             reason = operationReason.NormalizeTextOrFallback(Reason);

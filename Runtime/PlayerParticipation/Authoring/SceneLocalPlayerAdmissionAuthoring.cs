@@ -35,6 +35,11 @@ namespace Immersive.Framework.PlayerParticipation
         private SceneLocalPlayerAdmissionTiming admissionTiming =
             SceneLocalPlayerAdmissionTiming.OnActivityEnter;
 
+        [SerializeField]
+        [Tooltip("Initial pose policy for the Scene-Provided Actor. Preserve Authored Pose is the safe default; Apply Activity Placement requires one exact Activity-local Slot binding.")]
+        private SceneProvidedPlayerInitialPlacementPolicy initialPlacementPolicy =
+            SceneProvidedPlayerInitialPlacementPolicy.PreserveAuthoredPose;
+
         [SerializeField, HideInInspector]
         private ActorProfile evidenceActorProfile;
 
@@ -79,6 +84,9 @@ namespace Immersive.Framework.PlayerParticipation
 
         public SceneLocalPlayerAdmissionTiming AdmissionTiming =>
             admissionTiming;
+
+        public SceneProvidedPlayerInitialPlacementPolicy InitialPlacementPolicy =>
+            initialPlacementPolicy;
 
         public PlayerActorPhysicalOwnership ActorPhysicalOwnership =>
             PlayerActorPhysicalOwnership.ExternalSceneOwned;
@@ -177,6 +185,15 @@ namespace Immersive.Framework.PlayerParticipation
 
             if (!TryGetPlayerSlotId(out _, out issue))
             {
+                return false;
+            }
+
+            if (!Enum.IsDefined(
+                    typeof(SceneProvidedPlayerInitialPlacementPolicy),
+                    initialPlacementPolicy))
+            {
+                issue =
+                    $"Scene-Provided Player has invalid Initial Placement Policy '{initialPlacementPolicy}'.";
                 return false;
             }
 

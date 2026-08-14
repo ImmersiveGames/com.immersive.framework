@@ -1,18 +1,19 @@
 # IF-ADR-021 — Activity Player Actor Initial Placement Authority
 
-Status: **Proposed**  
+Status: **Accepted / Implemented / QA Certified**  
 Date: 2026-08-11  
-Last updated: 2026-08-13  
+Technical closure: **2026-08-14**  
 Type: architecture / product authoring / runtime integration  
 Related decisions: IF-ADR-003, IF-ADR-007, IF-ADR-010, IF-ADR-012, IF-ADR-016, IF-ADR-019, IF-ADR-020  
 Source finding: pre-FIRSTGAME architecture review — R1 Spawn / Initial Placement
 
+> IF-ADR-019 is **Accepted / Reconciled / Implemented / QA Certified**.  
+> IF-ADR-020 is **Accepted / Reconciled / Implemented**, with focused Manager-Provisioned public Leave QA **26/26**.  
+> This ADR-021 closure extends those accepted Player boundaries; it does not reopen or downgrade them.
+
 > This ADR defines Initial Placement for contextual Player/Actor representations.
 > It deliberately does not define a generic Spawn system, respawn, checkpoints,
 > enemy spawning, pooling or network spawning.
->
-> IF-ADR-019 and IF-ADR-020 are accepted related decisions. IF-ADR-021 itself remains
-> Proposed and must not be treated as implemented or certified until its own cuts close.
 
 ## Context
 
@@ -119,9 +120,6 @@ readiness may complete
 It also rejects carrying an outgoing Activity world position silently into the incoming
 Activity.
 
-IF-ADR-020 separately owns termination of one exact Session Player occurrence and does
-not make Initial Placement a Leave or cleanup authority.
-
 R1 must now define the spatial authority at that boundary.
 
 ## Problem
@@ -192,8 +190,11 @@ Activity
 The Activity owns the spatial intent.
 
 It does not own the Session Player.
+
 It does not own Player Join.
+
 It does not own Actor selection.
+
 It does not own Player Leave.
 
 ### 3. Placement Anchor is evidence, not authority
@@ -238,6 +239,7 @@ Initial Placement does not apply authored anchor scale to the Player/Actor
 representation.
 
 Actor scale remains owned by the Actor representation/prefab/consumer composition.
+
 This avoids using marker hierarchy scale as hidden gameplay configuration.
 
 ### 5. Placement does not reparent the Actor
@@ -245,12 +247,12 @@ This avoids using marker hierarchy scale as hidden gameplay configuration.
 Applying an Activity Placement Anchor must not move the contextual Actor under the
 Anchor in the Transform hierarchy.
 
+This is invalid:
+
 ```text
 PlacementAnchor
   becomes runtime parent of Player Actor
 ```
-
-is invalid.
 
 The existing ownership hierarchy remains authoritative.
 
@@ -285,15 +287,18 @@ Bindings
   Player2         P2 Start
 ```
 
-A likely implementation name is:
+The accepted implementation surface is:
 
 ```text
 ActivityPlayerInitialPlacementAuthoring
 ```
 
-The exact class name is not frozen by this ADR.
+This class name is frozen for the ADR-021 implementation boundary. Its serialized
+bindings map one exact `PlayerSlotProfile` / `PlayerSlotId` to one exact `Transform`.
+No separate runtime `SpawnPoint` registry or mandatory Placement Anchor component is
+introduced.
 
-Product requirements are frozen:
+The product requirements are frozen:
 
 ```text
 Activity-local
@@ -306,7 +311,7 @@ no scene-wide runtime lookup
 ### 7. Slot-to-Anchor binding is explicit
 
 Each authored binding identifies an exact configured `PlayerSlotId` and one exact
-Placement Anchor.
+`Transform` used as the Placement Anchor.
 
 The Framework must not infer a binding from:
 
@@ -321,22 +326,32 @@ distance
 first available anchor
 ```
 
-R1 does not require targeted Join. Once a Player is Joined, its actual Slot identity is
-known and Initial Placement resolves the binding for that Slot.
+This means R1 does not require R8 Slot-Targeted Join.
+
+Join may continue to allocate the first vacant supported Slot according to the accepted
+Session contract.
+
+Once a Player is Joined, its actual Slot identity is known and Initial Placement resolves
+the binding for that Slot.
 
 ### 8. At most one authoritative Initial Placement binding per Slot per Activity
+
+For one Activity placement scope:
 
 ```text
 Player1 -> Anchor A
 Player1 -> Anchor B
 ```
 
-is invalid in one Activity placement scope. There is no priority/order fallback.
+is invalid.
+
+There is no priority/order fallback.
+
 Duplicate bindings fail authoring validation.
 
 ### 9. No implicit shared/default anchor in the first contract
 
-The first contract does not define:
+The first accepted contract does not define:
 
 ```text
 Default Anchor
@@ -347,15 +362,21 @@ fallback anchor
 nearest anchor
 ```
 
-If a later game demonstrates a real need, that policy may be added explicitly. The
-minimal contract remains deterministic and Slot-addressed.
+If a later game demonstrates a real need for shared or dynamic placement policy, that
+policy may be added explicitly.
+
+The minimal contract remains deterministic and Slot-addressed.
 
 ## Placement policies
 
-### 10. Manager-Provisioned contextual Actors use Activity Placement when required
+### 10. Manager-Provisioned contextual Actors use Activity Placement when placement is required
 
 For a Manager-Provisioned Player, the technical Host is not the authored Activity
 placement decision.
+
+The contextual Actor representation is prepared under the explicit Actor Mount.
+
+When the Activity requires Initial Placement for that representation:
 
 ```text
 Joined Player
@@ -373,12 +394,23 @@ placement evidence committed
 later gameplay/readiness may continue
 ```
 
-Outgoing Activity position, prefab Transform and world origin are not accepted incoming
-placement fallbacks.
+The outgoing Activity position of a persistent technical Host is not an accepted incoming
+placement source.
 
-### 11. Manager-Provisioned placement targets contextual Actor world pose
+The prefab Transform is not an accepted fallback.
 
-The semantic target is the root of the contextual Logical Actor representation.
+World origin is not an accepted fallback.
+
+### 11. Manager-Provisioned placement targets the contextual Actor world pose
+
+The semantic placement target is the root of the contextual Logical Actor
+representation. In the accepted Manager-Provisioned implementation, the physical target
+is `PlayerActorMaterializationHandle.LogicalActorHost` while that handle is still staged
+and inactive.
+
+The Session-owned technical Local Player Host is not the authored world-placement entity.
+
+Therefore the contract is:
 
 ```text
 Placement Anchor
@@ -394,13 +426,17 @@ Placement Anchor
 technical PlayerInput Host becomes gameplay spatial authority
 ```
 
-The implementation preserves the Actor parent relationship to
+The implementation must preserve the Actor's required parent relationship to
 `LocalPlayerHostAuthoring.ActorMount`.
 
-This allows the Session-owned Host lifetime defined by IF-ADR-019 to remain technical and
-avoids turning Host persistence into world-position persistence.
+This allows the Session-owned Host lifetime defined by IF-ADR-019 to remain
+technical and avoids turning Host persistence into world-position persistence.
 
 ### 12. Scene-Provided has two explicit policies
+
+Scene-Provided Player authoring owns an already existing scene Actor.
+
+Its Initial Placement behavior must therefore be explicit.
 
 Accepted policies:
 
@@ -413,9 +449,15 @@ No third implicit behavior is allowed.
 
 #### Preserve Authored Pose
 
-The scene-authored Actor Transform remains the initial Activity pose. Framework validates
-and adopts the representation without changing world position/rotation through Initial
-Placement. The authored pose remains diagnosable placement evidence.
+```text
+scene-authored Actor Transform
+  remains the initial Activity pose
+```
+
+The Framework validates/adopts the representation without changing its world
+position/rotation through Initial Placement.
+
+The authored pose is still observable as placement evidence for diagnostics.
 
 #### Apply Activity Placement
 
@@ -429,25 +471,41 @@ Actor world position/rotation explicitly replaced
 admission/preparation continues
 ```
 
-This is explicit opt-in mutation of externally scene-owned physical state. Framework must
-not silently change Preserve to Apply.
+This is an explicit opt-in mutation of externally scene-owned physical state.
+
+The Framework must not silently change a Scene-Provided Actor from Preserve to Apply.
 
 ### 13. Scene-Provided defaults to preserving authored intent
 
-For new Scene-Provided authoring, safe product default is:
+For new Scene-Provided Player authoring, the safe product default is:
 
 ```text
 Preserve Authored Pose
 ```
 
-A consumer that wants separate Activity placement explicitly selects
-`Apply Activity Placement`.
+because the consumer deliberately authored the physical Actor in the scene.
 
-### 14. Scene-Provided policy belongs with representation intent
+A consumer that wants a separate Activity Placement Anchor selects:
 
-The user must be able to see why the Actor moved from the Scene-Provided Player product
-surface or a clearly linked Initial Placement section. Exact serialized field location
-remains an implementation detail reconciled with ADR-010.
+```text
+Apply Activity Placement
+```
+
+explicitly.
+
+This prevents adding the feature from unexpectedly moving existing scene-owned Actors.
+
+### 14. The Scene-Provided policy belongs with the Scene-Provided representation intent
+
+The policy that decides whether a Scene-Provided Actor preserves or replaces its authored
+pose must be visible from the Scene-Provided Player product surface or from a clearly
+linked Initial Placement section.
+
+The user should not need to inspect an internal runtime component to discover why the
+Actor moved.
+
+The exact serialized field location is an implementation detail to reconcile with
+ADR-010 Inspector requirements.
 
 ## Required versus unused placement
 
@@ -455,23 +513,30 @@ remains an implementation detail reconciled with ADR-010.
 
 An Activity does not need an anchor merely because a Player Slot exists.
 
+Examples:
+
 ```text
-Player Joined + Activity does not project Player
+Player is Joined
+Activity does not project that Player
   -> no placement required
 
-Scene-Provided + Preserve Authored Pose
+Scene-Provided
+Policy = Preserve Authored Pose
   -> no Activity anchor required
 
-Manager-Provisioned contextual Actor prepared for gameplay
+Manager-Provisioned contextual Actor is prepared for gameplay
   -> Activity placement required
 
-Scene-Provided + Apply Activity Placement
+Scene-Provided
+Policy = Apply Activity Placement
   -> Activity placement required
 ```
 
+This avoids making menus or non-player Activities configure meaningless Spawn Points.
+
 ### 16. Missing required placement is a preparation failure
 
-If Activity Placement is required and exact Slot has no valid binding:
+If Activity Placement is required and the exact Slot has no valid binding:
 
 ```text
 placement fails
@@ -479,20 +544,43 @@ Actor preparation does not become Ready
 diagnostic identifies Activity + Slot + missing placement
 ```
 
-No fallback to world origin, prefab pose, Host pose, previous Activity pose, first anchor,
-another Slot's anchor or scene search is allowed.
+The Framework must not fallback to:
 
-### 17. Unused extra bindings are authoring evidence, not runtime allocation
+```text
+(0,0,0)
+prefab pose
+Host pose
+previous Activity pose
+first anchor
+another Slot's anchor
+scene search
+```
 
-An Activity may author an anchor for a supported Slot that is not currently Joined. The
-anchor must not create Player, reserve Slot, force Join or make Player Required.
+This is a mandatory no-fallback invariant.
 
-Unsupported Slot references may be validation errors; supported-yet-vacant bindings are
-valid reusable composition.
+### 17. Unused extra bindings are diagnosable authoring evidence, not runtime allocation
+
+An Activity may author an anchor for a supported Slot that is not currently Joined.
+
+That is valid reusable Activity composition.
+
+The existence of the anchor must not:
+
+```text
+create the Player
+reserve the Slot
+force Join
+make the Player Required
+```
+
+Validation may report unsupported Slot references as errors, but a supported-yet-vacant
+Slot binding is valid.
 
 ## Runtime ordering
 
-### 18. Placement occurs after representation exists and before gameplay readiness
+### 18. Placement occurs after physical representation exists and before gameplay readiness
+
+The required lifecycle order is:
 
 ```text
 Session Player truth
@@ -505,18 +593,35 @@ physical representation materialized/adopted
         ↓
 Initial Placement resolved/applied
         ↓
-gameplay admission / Camera publication as applicable
+gameplay admission / camera publication as applicable
         ↓
 Player readiness contribution may become Ready
         ↓
-Activity reveal
+Activity reveal according to loading policy
 ```
 
-The ordering is architectural; exact runtime classes are not frozen.
+This ordering is architectural.
+
+The accepted implementation applies the same placement gate to:
+
+```text
+Manager-Provisioned staged materialization
+candidate / handoff before promotion
+Scene-Provided representation before adoption
+```
+
+Candidate placement runs only after canonical Activity scene composition has produced
+the target `ActivityOwnedScenes` scope. A candidate is not promoted/activated when
+required placement fails.
+
+The accepted runtime implementation transports the Activity transition occurrence and
+discovery scope through `ActivityTransitionPreparationContext` and resolves/applies the
+pose through `ActivityPlayerInitialPlacementRuntime`.
 
 ### 19. Placement success is typed runtime evidence
 
-Required placement evidence must diagnose at least:
+A required placement operation must produce explicit evidence containing enough
+information to diagnose at least:
 
 ```text
 Activity/runtime scope
@@ -530,18 +635,43 @@ status
 diagnostic
 ```
 
-Scene-Provided Preserve also produces explicit evidence that no Framework pose mutation
-was required.
+Scene-Provided Preserve Authored Pose also produces explicit evidence that no
+Framework pose mutation was required.
+
+Readiness must depend on the evidence for the current occurrence, not on a stale prior
+Activity/Actor placement result.
 
 ### 20. Placement evidence is occurrence-scoped
 
-Evidence from Activity A/Actor occurrence 10 cannot satisfy Activity B/occurrence 11.
-Released Actor occurrence placement evidence cannot make a new occurrence Ready.
+This sequence must not reuse stale placement evidence:
+
+```text
+Activity A
+  Player1 Actor occurrence 10
+  Placement A succeeds
+
+Activity B
+  Player1 Actor occurrence 11
+```
+
+Occurrence 11 requires its own Initial Placement decision/evidence.
+
+Likewise:
+
+```text
+same Slot
+old Actor occurrence released
+new Actor occurrence prepared
+```
+
+must not become Ready merely because the old occurrence was placed successfully.
 
 ### 21. Placement failure blocks the relevant readiness level
 
-When Player requirement needs a prepared Logical Actor, required placement is part of
-that preparation boundary.
+When the Activity's Player requirement needs a prepared Logical Actor, required Initial
+Placement is part of that preparation boundary.
+
+Therefore:
 
 ```text
 Actor materialized
@@ -550,19 +680,51 @@ Placement missing/invalid
 
 does not satisfy `LogicalActorsPrepared`.
 
+The Framework must not publish fake Ready evidence and later teleport the Actor after
+reveal.
+
 ### 22. Placement is applied before contextual gameplay starts
 
-The Actor must not receive normal gameplay admission at an unintended pose and then move.
-Placement precedes normal contextual gameplay/input/Camera readiness.
+The Actor must not briefly receive normal gameplay admission at an unintended pose and
+then be moved.
+
+The placement operation occurs before normal contextual gameplay/input/camera authority
+is considered ready for the new representation.
+
+Control-plane operations remain separate from gameplay input according to the existing
+Player architecture.
 
 ## Activity transitions
 
 ### 23. Outgoing world position does not become incoming Initial Placement
 
-Activity B begins at its authored Initial Placement, not Activity A's outgoing gameplay
-position, unless a separate future system explicitly defines continuity.
+For a Session Player moving between Activities:
+
+```text
+Activity A
+  Actor ends at X=184
+
+transition
+
+Activity B
+  Anchor for Player1 = X=10
+```
+
+Activity B begins at its authored Initial Placement.
+
+It does not inherit X=184 unless a separate future system explicitly defines that
+behavior.
+
+This is especially important for a persistent Manager-Provisioned technical Host.
+
+Host lifetime continuity is not spatial continuity.
 
 ### 24. Covered transition supports deterministic placement before reveal
+
+A covered transition may prepare an incoming contextual Actor while the visual transition
+surface is covered.
+
+The intended ordering is:
 
 ```text
 Cover
@@ -573,68 +735,113 @@ readiness completes
 Reveal
 ```
 
-Initial Placement does not own Cover/Reveal.
+This allows the first visible frame of gameplay to use the correct authored pose.
 
-### 25. Re-entry creates a new placement decision when representation is rebuilt
+The placement system itself does not own Cover/Reveal.
 
-If Activity lifecycle exit/re-entry creates a new Actor occurrence, Initial Placement is
-evaluated again. If Reset preserves the same representation, this ADR does not implicitly
-reposition it.
+### 25. Re-entry creates a new contextual placement decision when representation is rebuilt
+
+If Activity lifecycle exit/re-entry releases and prepares a new contextual Actor
+occurrence, Initial Placement is evaluated again.
+
+If a Reset operation does not rebuild the Activity Player representation, this ADR does
+not automatically reposition the Actor.
+
+This contract must not be used as a hidden Player Reset/Respawn mechanism.
 
 ## Reset, restart and respawn boundary
 
 ### 26. Initial Placement is not Reset
+
+The following are separate concepts:
 
 ```text
 Initial Placement
   where a contextual representation begins an Activity occurrence
 
 Reset
-  accepted runtime-state restoration
+  restore accepted runtime state according to Reset contracts
 
 Respawn
   future gameplay lifecycle after death/failure/checkpoint
 ```
 
-Initial Placement is not a repeated respawn operation.
+A consumer must not call Initial Placement repeatedly as a substitute for a respawn
+system.
 
 ### 27. Activity restart follows Activity lifecycle semantics
 
-New contextual occurrence -> Initial Placement applies. Preserved occurrence + Reset-only
-semantics -> this ADR does not mandate repositioning.
+If an accepted Activity restart path tears down and reconstructs the Player Actor
+representation:
+
+```text
+new contextual occurrence
+  -> Initial Placement applies
+```
+
+If the restart path preserves the same representation and only invokes Reset semantics:
+
+```text
+same contextual occurrence
+  -> this ADR does not mandate repositioning
+```
+
+The Reset architecture remains authoritative.
 
 ## Product authoring UX
 
 ### 28. Designer edits Activity intent, not runtime contracts
 
-Intended workflow:
+The intended workflow is:
 
 ```text
-1. Open Activity scene/composition.
-2. Add/locate Player Initial Placement authoring.
-3. Add binding for each Slot using Activity Placement.
-4. Position/rotate Anchors visually.
-5. Scene-Provided: choose Preserve or Apply.
+1. Open an Activity scene/composition.
+2. Add or locate Player Initial Placement authoring.
+3. Add one binding for each Player Slot that uses Activity Placement.
+4. Position/rotate each Anchor visually in the scene.
+5. For Scene-Provided Players choose:
+     Preserve Authored Pose
+     or
+     Apply Activity Placement
 6. Validate.
 7. Enter Play Mode and inspect resolved placement evidence.
 ```
 
-Designer must not wire internal runtime services/materialization requests.
+The designer must not manually wire internal runtime services or materialization
+requests.
 
-### 29. Placement Anchors should be scene-visible authoring markers
+### 29. Placement Anchors are explicit scene `Transform` references
 
-Implementation should provide appropriate label/icon/gizmo, Slot identity and forward
-orientation indication without turning the marker into a gameplay component.
+The canonical runtime anchor is the `Transform` referenced directly by
+`ActivityPlayerInitialPlacementAuthoring`. No extra gameplay marker component is required.
+
+The product surface should make anchor location understandable in the Scene view. Optional
+Editor-only affordances may provide:
+
+```text
+label/icon/gizmo
+Slot identity
+forward/orientation indication
+```
+
+without changing runtime authority or turning the anchor into a gameplay lifecycle
+component. The exact editor visualization remains a product UX detail outside the
+technical certification gate.
 
 ### 30. Apply/Rebuild is required only if real materialization exists
 
-If authoring stores runtime bindings directly with no derived technical graph, artificial
-Apply/Rebuild is not required. If implementation materializes derived technical
-structures, idempotent ownership-aware Apply/Rebuild follows ADR-010.
+If the chosen authoring implementation stores the runtime bindings directly and has no
+derived technical graph, an artificial Apply/Rebuild button is not required.
+
+If the product implementation materializes technical bindings/evidence into separate
+components or serialized structures, it must expose idempotent, non-destructive
+Apply/Rebuild according to ADR-010.
+
+The architecture does not require ceremony without materialization.
 
 ### 31. Inspector is designer-first
 
-Default Inspector prioritizes:
+The default Inspector should prioritize:
 
 ```text
 Placement Mode / Policy
@@ -644,8 +851,21 @@ Configuration Status
 Last Validation
 ```
 
-Advanced/Debug may expose Activity owner, runtime scope, Actor occurrence/materialization,
-technical Host, Actor Mount, resolved pose, result and readiness correlation.
+Advanced/Debug may expose:
+
+```text
+Activity owner
+Runtime scope
+Actor occurrence/materialization id
+technical Local Player Host
+Actor Mount
+resolved world pose
+placement result
+readiness correlation
+```
+
+Technical components must remain inspectable in Advanced/Debug rather than hidden
+irreversibly.
 
 ## Validation
 
@@ -654,159 +874,321 @@ technical Host, Actor Mount, resolved pose, result and readiness correlation.
 At minimum validate:
 
 ```text
-valid Activity context
-explicit valid Player Slot
-Slot belongs to accepted Session configuration when available
-Anchor exists
-no duplicate Slot binding
-Anchor belongs to intended Activity scope
-Scene-Provided placement policy valid
-Apply Activity Placement has exact binding
+Activity placement surface is in a valid Activity context
+Player Slot reference is explicit and valid
+Player Slot belongs to accepted Session configuration when that information is available
+Anchor reference exists
+duplicate Slot binding does not exist
+Anchor belongs to the intended Activity scene/scope
+Scene-Provided placement policy is valid
+Apply Activity Placement has an exact binding
 ```
 
-Validation does not silently repair invalid bindings.
+Validation must not repair invalid bindings silently.
 
 ### 33. Anchor scope is Activity-local
 
-A Placement Anchor belongs to the Activity's physical scene composition. No arbitrary
-Transform from another Activity, `DontDestroyOnLoad`, global registry, utility scene or
-unrelated loaded scene may be used without a future explicit contract.
+A Placement Anchor used by one Activity must belong to that Activity's physical scene
+composition.
+
+Initial Placement must not resolve an arbitrary Transform from:
+
+```text
+another Activity
+DontDestroyOnLoad
+global registry
+persistent utility scene
+unrelated loaded additive scene
+```
+
+unless a future explicit contract broadens the boundary.
+
+This keeps spatial intent owned by the Activity that consumes it.
 
 ### 34. Duplicate or ambiguous evidence is a failure
 
-More than one authoritative candidate for one Activity scope + Slot + Actor occurrence
-fails explicitly. No hierarchy/list/registration-order winner is allowed.
+If runtime receives more than one authoritative placement candidate for one:
+
+```text
+Activity scope
+Player Slot
+Actor occurrence
+```
+
+the operation fails explicitly.
+
+It does not choose by hierarchy order or registration timing.
 
 ## Physical ownership
 
 ### 35. Placement does not change physical ownership
 
-```text
-Manager-Provisioned
-  technical Host -> Session-owned according to IF-ADR-019
-  contextual Actor -> Framework Player Actor lifecycle
+For Manager-Provisioned:
 
-Scene-Provided
-  Host + Actor -> externally scene-owned
+```text
+technical Host
+  Session-owned according to IF-ADR-019
+
+contextual Actor representation
+  framework materialized/released through Player Actor lifecycle
 ```
 
-Applying pose does not transfer ownership. Scene-Provided Apply is authorized pose
-mutation, not Framework destruction/lifetime ownership.
+For Scene-Provided:
+
+```text
+Host + Actor
+  externally scene-owned physical objects
+```
+
+Applying a pose does not transfer ownership.
+
+Scene-Provided `Apply Activity Placement` is authorized pose mutation, not Framework
+ownership of destruction or lifetime.
 
 ### 36. Anchor lifetime does not become Player lifetime
 
-Activity Anchor unload does not mean Session Player Leave. IF-ADR-020 Leave does not
-require destruction of Placement Anchor authoring.
+Destroying/unloading the Activity Anchor as part of Activity exit does not mean the
+Session Player left.
+
+The Anchor is contextual Activity evidence only.
+
+Likewise, Session Player Leave does not need to destroy Placement Anchor authoring.
 
 ## Runtime implementation boundary
 
 ### 37. Use a scoped Initial Placement runtime boundary
 
+The implementation should use a typed Activity-scoped placement resolver/application
+boundary.
+
+Conceptually:
+
 ```text
-Activity Initial Placement authoring
-  -> scoped placement configuration
-  -> Player Actor preparation
-  -> exact Slot binding
-  -> apply/observe pose
-  -> placement result/evidence
+Activity Player Initial Placement authoring
+        ↓
+scoped placement configuration
+        ↓
+Player Actor preparation
+        ↓
+resolve exact Slot binding
+        ↓
+apply/observe pose
+        ↓
+placement result/evidence
 ```
 
-No `SpawnManager.Instance`, `FindObjectOfType`, `GameObject.Find`, static anchor dictionary
-or global service locator.
+It must not use:
+
+```text
+SpawnManager.Instance
+FindObjectOfType<SpawnPoint>()
+GameObject.Find("Spawn")
+static dictionary of scene anchors
+global service locator
+```
+
+The accepted implementation uses `ActivityTransitionPreparationContext`,
+`ActivityPlayerInitialPlacementRuntime`, `ActivityPlayerInitialPlacementRuntimeBinding`
+and typed `ActivityPlayerInitialPlacementEvidence`. These names describe the current
+implementation boundary; the normative authority remains the Activity-scoped placement
+contract above.
 
 ### 38. RuntimeContent remains lower-level materialization infrastructure
 
-RuntimeContent stays responsible for explicit physical materialization. Initial Placement
-composes with Player Actor materialization; it does not expand runtime materialization
-adapters into spawn registry, Slot allocation or Activity authoring.
+The existing RuntimeContent materialization boundary remains responsible for explicit
+physical materialization requests/results/handles and does not become an Initial
+Placement product surface.
+
+Initial Placement composes with Player Actor materialization.
+
+It does not expand `IRuntimeMaterializationAdapter` into:
+
+```text
+spawn point registry
+player placement policy
+Player Slot allocation
+Activity authoring
+```
 
 ### 39. No runtime reflection is required
 
-Placement applies to the explicitly known contextual Actor Transform. Reflection, tag
-lookup and opportunistic scene scanning are not required.
+Placement can be applied to the explicitly known contextual Actor Transform supplied by
+Player Actor preparation/materialization/adoption.
+
+No reflection, tag lookup or component scanning beyond existing explicit evidence is
+required by this architecture.
 
 ## Interaction with other Player decisions
 
 ### 40. Relationship to Session Player lifetime
 
-IF-ADR-019 owns:
+Accepted IF-ADR-019 owns:
 
 ```text
-whether Logical Player persists across Activities
-whether an Activity has current contextual representation
+whether the Logical Player persists across Activities
+whether an Activity has a current contextual representation
 technical Host lifetime
 ```
 
-IF-ADR-021 owns only initial spatial pose of that contextual representation.
+IF-ADR-021 owns only:
+
+```text
+initial spatial pose of that contextual representation
+```
 
 ### 41. Relationship to Player Leave
 
-IF-ADR-020 owns termination of one Session Player occurrence and resource release.
+Accepted IF-ADR-020 owns termination of one Session Player occurrence and resource
+release.
 
-Initial Placement does not Leave, vacate Slot, destroy Session-owned Host or reposition a
-departing Player as cleanup.
+Initial Placement does not:
+
+```text
+Leave
+vacate Slot
+destroy Session-owned Host
+reposition departing Player as cleanup
+```
 
 ### 42. Relationship to Actor Selection
 
-Actor Selection answers which Actor Profile should represent the Player. Initial
-Placement answers where the resulting contextual Actor begins this Activity. Placement
-Anchor does not encode Actor Profile.
+Actor Selection answers:
+
+```text
+which Actor Profile should represent this Player?
+```
+
+Initial Placement answers:
+
+```text
+where should the resulting contextual Actor begin this Activity?
+```
+
+These decisions remain separate.
+
+A Placement Anchor must not encode an Actor Profile.
 
 ### 43. Relationship to per-Slot provisioning and targeted Join
 
-Per-Slot provisioning and targeted Join remain separate decisions. R1 consumes the Slot
-identity that exists after accepted Session admission; it does not own admission policy.
+Per-Slot provisioning and targeted Join remain separate future candidates.
+
+R1 only uses the Slot identity that already exists after accepted Session admission.
+
+Therefore this is valid with the current allocation policy:
+
+```text
+RequestJoin
+  -> current Session policy assigns Player1
+
+Activity placement
+  -> exact Player1 binding resolves Anchor A
+```
+
+No change to Join allocation is required.
 
 ### 44. Relationship to Camera
 
-Camera may consume prepared Actor as target only after the correct occurrence exists.
-Initial Placement does not choose Camera rigs or publish Camera priority/output authority.
+Camera authority may consume the prepared Actor as Follow/LookAt target only after the
+correct contextual Actor occurrence is available.
+
+Initial Placement does not choose Camera rigs or publish winner priority.
+
+A camera may observe the Actor after placement; it does not provide Player spawn
+authority.
 
 ## Diagnostics
 
-### 45. Runtime diagnostics identify spatial intent and outcome
+### 45. Runtime diagnostics must identify spatial intent and outcome
 
-Success evidence should identify Activity, Slot, Actor occurrence, provisioning, policy,
-Anchor, position/rotation, status and readiness eligibility.
+Example success:
 
-Scene-Provided Preserve evidence should make explicit that Framework did not move the
-Actor. Failure evidence should identify exact missing/invalid Slot-to-Anchor binding and
-readiness consequence.
+```text
+PLAYER INITIAL PLACEMENT
+
+Activity             Gameplay_A
+Player Slot          Player1
+Actor Occurrence     14
+Provisioning         Manager-Provisioned
+Policy               Apply Activity Placement
+Anchor               P1 Start
+Position             (12.0, 0.0, -4.0)
+Rotation             (0.0, 90.0, 0.0)
+Status               Applied
+Readiness Eligible   Yes
+```
+
+Scene-Provided preserve example:
+
+```text
+PLAYER INITIAL PLACEMENT
+
+Activity             Gameplay_B
+Player Slot          Player1
+Provisioning         Scene-Provided
+Policy               Preserve Authored Pose
+Actor                PlayerSceneActor
+Position             authored scene pose
+Status               Preserved
+Framework Moved Actor No
+```
+
+Failure example:
+
+```text
+PLAYER INITIAL PLACEMENT
+
+Activity             Gameplay_C
+Player Slot          Player2
+Policy               Apply Activity Placement
+Anchor               Missing
+Status               Failed
+Readiness Eligible   No
+Diagnostic           No exact Activity placement binding exists for Player2.
+```
 
 ### 46. Diagnostics distinguish Actor Mount from Placement Anchor
 
-Advanced diagnostics must never label `ActorMount` as Spawn Point. Useful evidence shows:
+Advanced diagnostics must not label `ActorMount` as Spawn Point.
+
+Useful evidence should make the hierarchy explicit:
 
 ```text
-Technical Host
-Actor Mount
-Contextual Actor
-Placement Anchor
+Technical Host       LocalPlayerHost(Clone)
+Actor Mount          ActorMount
+Contextual Actor     Hero(Clone)
+Placement Anchor     Player1_Start
 ```
+
+This prevents users from editing the technical attachment point when they intend to
+author Activity world placement.
 
 ## Rejected behavior
 
-- Generic `SpawnManager` as Player lifecycle/world-placement authority.
-- Using `ActorMount` as Activity Spawn Point.
+- Generic `SpawnManager` as the owner of Player lifecycle or world placement.
+- Using `ActorMount` as the Activity Spawn Point.
 - Using `PlayerInputManager` creation pose as canonical Initial Placement.
-- World-origin/prefab/previous-position fallback.
-- Name/tag scene lookup for spawn point.
-- First/nearest/random-anchor fallback.
-- Duplicate Slot bindings resolved by order.
-- Reparenting Actor under Placement Anchor.
-- Applying Anchor scale to Actor.
-- Placement Anchor allocating/reserving Slot, selecting Actor or forcing Join.
-- Moving Scene-Provided Actor without explicit Apply policy.
-- Transferring Scene-Provided physical ownership through placement.
-- Marking prepared readiness before required placement succeeds.
-- Reusing placement evidence across Actor occurrences.
+- Falling back to world origin.
+- Falling back to prefab Transform.
+- Carrying outgoing Activity world position into the incoming Activity implicitly.
+- Searching scene objects by name/tag to find a spawn point.
+- First-anchor / nearest-anchor / random-anchor fallback.
+- Duplicate Slot bindings with priority decided by list/hierarchy order.
+- Reparenting the Player Actor below the Placement Anchor.
+- Applying Placement Anchor scale to the Actor.
+- Placement Anchor allocating or reserving a Player Slot.
+- Placement Anchor selecting an Actor Profile.
+- Placement Anchor forcing Join.
+- Scene-Provided Actor being moved without explicit Apply Activity Placement policy.
+- Scene-Provided physical ownership being transferred to the Framework by placement.
+- Marking `LogicalActorsPrepared` before required placement succeeds.
+- Reusing placement evidence from a previous Actor occurrence.
 - Using Initial Placement as hidden respawn/reset/checkpoint behavior.
-- Global anchor registry/singleton/service locator.
-- Silent repair of invalid placement configuration.
+- Global registry/singleton/service locator for anchors.
+- Silent repair of missing or invalid placement configuration.
 
 ## Deferred / separate contracts
 
-Outside this ADR:
+The following are outside this ADR:
 
 ```text
 death / respawn
@@ -831,86 +1213,166 @@ teleport gameplay ability
 Reset-to-spawn command
 ```
 
+A demonstrated game requirement may open one of those contracts later.
+
 ## Consequences
 
 ### Positive
 
-The user gets one deterministic answer to "Where does Player1 start this Activity?".
-Manager-Provisioned no longer depends on prefab/Host pose accidents. Scene-Provided keeps
-authored pose by default and can opt into Activity placement. Placement composes with Slot
-identity and readiness without becoming Join/Leave/Actor/Camera authority.
+The user gets one understandable answer to:
+
+```text
+Where does Player1 start this Activity?
+```
+
+Manager-Provisioned no longer depends on Unity prefab/Host placement accidents.
+
+Scene-Provided keeps consumer-authored pose by default and may opt into the same Activity
+placement model explicitly.
+
+Player placement composes with the existing Slot identity without requiring targeted Join
+or per-Slot provisioning.
+
+Initial Placement becomes part of Player Actor preparation/readiness, so the Activity
+cannot reveal a required Actor at an undefined pose.
+
+The architecture avoids a global Spawn manager and preserves the separation:
+
+```text
+Player lifecycle
+Actor selection
+physical materialization
+initial spatial placement
+camera
+readiness
+```
 
 ### Cost
 
-The package needs Activity-local product authoring, scoped placement evidence and a
-pre-readiness integration stage. Scene-Provided needs an explicit placement policy.
-Editor validation/diagnostics must distinguish Placement Anchor from Actor Mount. QA must
-cover both provisioning modes and negative/no-fallback cases after acceptance.
+The package needs a new Activity-local product authoring surface and scoped runtime
+placement evidence.
 
-## Required reconciliation after acceptance
+Player Actor preparation must integrate one additional required stage before readiness.
 
-This ADR remains Proposed; no acceptance reconciliation is applied by the ADR-020 closure.
-When IF-ADR-021 itself is accepted, affected architecture should be reconciled approximately
-as follows:
+Scene-Provided authoring needs an explicit placement policy.
+
+Editor validation/diagnostics must distinguish Placement Anchor from Actor Mount.
+
+QA must cover both provisioning modes and negative/no-fallback cases.
+
+## Reconciliation disposition
+
+ADR-021 is accepted and technically closed by the implementation and QA evidence recorded
+below. The implementation preserves the authority boundaries of the related ADRs:
 
 ```text
 IF-ADR-003
-  Initial Placement remains separate spatial authority
+  Player/Actor lifecycle ownership remains unchanged
 
 IF-ADR-007
-  required prepared readiness waits for required current-occurrence placement
+  required placement failure remains a preparation/readiness blocker
 
 IF-ADR-010
-  designer-first Activity Initial Placement surface + validation/debug expectations
+  Activity Initial Placement remains an explicit designer-facing product surface
 
 IF-ADR-012
-  placement participates in prepared contextual Actor boundary when required
+  placement is part of prepared contextual Actor evidence when Activity Placement is required
 
 IF-ADR-016
-  Slot allocation remains unchanged; placement consumes resulting Slot identity
+  Slot allocation is unchanged; placement consumes the already-resolved Slot identity
 
 IF-ADR-019
-  incoming representation integration point becomes the accepted placement boundary
+  Session Player lifetime remains separate from Activity representation pose
 
 IF-ADR-020
-  Placement Anchor gains no ownership transfer; Leave remains Session membership/resource authority
+  placement transfers no ownership and does not alter Leave/release authority
 ```
 
-No existing ADR should be changed merely because IF-ADR-021 is Proposed.
+No change to IF-ADR-022 is part of ADR-021. Cross-reference wording in related ADRs may
+be updated in a separate documentation hygiene pass; it is not required to reinterpret
+or extend ADR-021's certified runtime authority.
 
-## Expected implementation cuts after acceptance
+## Implementation cuts and disposition
 
-### Cut P1 — Contracts and Activity authoring
+The architecture should be implemented in small cuts rather than one large Spawn system.
 
-Define explicit Activity Slot -> Placement Anchor intent and Scene-Provided placement
-policy, with designer-first Inspector/validation.
+### Cut P1 — Contracts and Activity authoring — COMPLETE
 
-### Cut P2 — Scoped runtime placement
+Objective:
 
-Resolve exact current Activity + Slot placement, apply/observe pose against current Actor
-occurrence and produce typed placement evidence after materialization/adoption and before
-readiness.
+```text
+define explicit Activity Slot -> Placement Anchor intent
+and Scene-Provided placement policy
+```
 
-### Cut P3 — QA
+Implemented product surface:
 
-Prove Manager-Provisioned placement, Scene-Provided Preserve/Apply, missing anchor,
-duplicate binding, wrong scope, stale occurrence, no fallback and readiness ordering.
+```text
+ActivityPlayerInitialPlacementAuthoring
+PlayerSlotProfile / PlayerSlotId -> Transform binding
+SceneProvidedPlayerInitialPlacementPolicy
+explicit validation / diagnostics
+```
 
-### Cut P4 — FIRSTGAME product proof
+The anchor is a direct `Transform` reference. No separate Spawn/Anchor registry was added.
 
-Prove real developer workflow: create/see anchors, map Slots, position/orient, configure
-both provisioning modes, understand Preserve vs Apply, run correct pose and diagnose a
-broken binding.
+### Cut P2 — Scoped runtime placement — COMPLETE
+
+Objective:
+
+```text
+resolve exact current Activity + Slot placement
+apply/observe pose against current Actor occurrence
+produce typed placement evidence
+```
+
+Integrate after materialization/adoption and before readiness.
+
+### Cut P3 — QA — COMPLETE / CERTIFIED
+
+Prove:
+
+```text
+Manager-Provisioned placement
+Scene-Provided Preserve
+Scene-Provided Apply
+missing required anchor
+duplicate binding
+wrong scope
+stale occurrence
+no fallback
+readiness ordering
+```
+
+### Cut P4 — FIRSTGAME product proof — DEFERRED / NON-BLOCKING
+
+Prove a developer can:
+
+```text
+create anchors
+see Slot mapping
+position them in Scene view
+configure both provisioning modes
+understand Preserve vs Apply
+run the game
+observe correct initial pose
+diagnose a broken binding
+```
+
+FIRSTGAME remains optional Stage B real-consumer/product evidence for this boundary. It
+does not block the completed ADR-021 technical certification. Permanent defects discovered
+there still migrate back to the package through a new scoped correction cut.
 
 ## Validation requirements
 
 ### Contract
 
 ```text
-exact Activity Slot -> exact Anchor
-duplicate Slot rejected
+Activity placement binds exact Slot -> exact Anchor
+duplicate Slot binding rejected
 unsupported/invalid Slot rejected
-invalid/cross-Activity Anchor rejected
+invalid Anchor rejected
+cross-Activity Anchor rejected
 Anchor scale not applied
 Actor not reparented to Anchor
 ```
@@ -919,11 +1381,12 @@ Actor not reparented to Anchor
 
 ```text
 Player joins
-Actor selected/materialized under Actor Mount
+Actor selected
+Actor materialized under Actor Mount
 Activity anchor resolved from joined Slot
 Actor world position/rotation applied
 Actor remains under Actor Mount
-readiness only completes after placement
+required readiness completes only after placement
 missing anchor blocks preparation
 no prefab/origin/previous-position fallback
 ```
@@ -931,10 +1394,10 @@ no prefab/origin/previous-position fallback
 ### Scene-Provided Preserve
 
 ```text
-scene-owned Actor exists
+scene-owned Actor exists under exact Actor Mount
 Policy = Preserve Authored Pose
-Framework does not alter pose through Initial Placement
-Preserve evidence recorded
+Framework does not alter position/rotation through Initial Placement
+placement evidence records Preserve
 no Activity Anchor required
 physical ownership remains external
 ```
@@ -945,56 +1408,138 @@ physical ownership remains external
 scene-owned Actor exists
 Policy = Apply Activity Placement
 exact Slot anchor required
-pose applied before readiness
-Actor remains scene-owned/in authored hierarchy
+world position/rotation applied before readiness
+Actor remains scene-owned
+Actor stays in authored ownership hierarchy
 missing anchor blocks preparation
 ```
 
 ### Occurrence safety
 
-Placement evidence from one Activity/Actor occurrence does not satisfy another.
+```text
+Activity A occurrence 1 placement evidence
+does not satisfy Activity B occurrence 2
+
+released Actor occurrence
+does not leave reusable Ready placement evidence
+```
 
 ### Transition
 
-Outgoing gameplay position is not used implicitly; incoming Activity anchor wins and
-placement occurs before reveal when readiness waits for prepared Actor.
+```text
+outgoing gameplay position is not used implicitly
+incoming Activity anchor wins
+placement occurs before reveal when readiness waits for prepared Actor
+```
 
 ### Negative
 
-No global lookup, first-anchor fallback, world-origin fallback, silent duplicate
-resolution, Scene-Provided movement under Preserve, or Ready before required placement.
+```text
+no global lookup
+no first-anchor fallback
+no world-origin fallback
+no silent duplicate resolution
+no Scene-Provided movement under Preserve policy
+no readiness before required placement
+```
 
 ### Product
 
-Designer can identify placement surface, Slot mapping, anchor orientation, Actor Mount vs
-Placement Anchor, Preserve vs Apply and the runtime placement diagnostic.
+```text
+designer can identify the placement surface
+designer can identify Player Slot mapping
+designer can visually identify anchor orientation
+designer understands Actor Mount != Placement Anchor
+designer understands Scene-Provided Preserve vs Apply
+runtime diagnostic explains resolved pose or exact failure
+```
 
 ## Acceptance of this architecture cut
 
 ```text
 Initial Placement is Activity-scoped spatial intent
-not generic Spawn lifecycle authority
+it is not generic Spawn lifecycle authority
 Placement Anchor is position/rotation evidence only
-Slot -> Anchor mapping explicit
+Slot -> Anchor mapping is explicit
 one authoritative binding per Slot per Activity
-no implicit fallback in initial contract
+no default/random/first-anchor fallback in the initial contract
 Manager-Provisioned contextual Actor uses Activity placement when required
-Scene-Provided supports Preserve or Apply and defaults to Preserve
+semantic placement target is contextual Actor world pose, not technical Host authority
+Scene-Provided explicitly supports Preserve Authored Pose or Apply Activity Placement
+Scene-Provided defaults to Preserve Authored Pose
 placement occurs after representation exists and before gameplay readiness
 required placement failure blocks prepared readiness
-placement evidence is occurrence-scoped
-Actor is not reparented; Anchor scale not applied
-outgoing world position is not incoming placement policy
-Initial Placement != Reset/Respawn/Checkpoint
-no global SpawnManager/registry/service locator
+placement evidence is Actor-occurrence scoped
+Actor is not reparented to the Anchor
+Anchor scale is not applied
+outgoing Activity world position is not incoming placement policy
+Initial Placement is not Reset/Respawn/Checkpoint
+no global SpawnManager/registry/service locator is introduced
+```
+
+## Technical closure evidence
+
+ADR-021 technical closure is based on the package implementation compiled successfully in
+Unity and the focused Unity QA execution reported on 2026-08-14.
+
+Implementation base used for the cut:
+
+```text
+ImmersiveGames/com.immersive.framework
+9a4c27f4427f88d75d07723f60e6fb3905f4c8de
+ADR20Complete
+```
+
+The ADR-021 package cut was applied on top of that base and compiled successfully before
+QA execution. No resulting repository commit SHA is asserted by this ADR.
+
+QA base used for the focused regression:
+
+```text
+rinnocenti/QAFramework
+bbcb865dc71d839cec33a7aa20a921debba04705
+Complete ADR 20
+```
+
+Executed Unity terminal evidence:
+
+```text
+[QA_ADR021_INITIAL_PLACEMENT] status='Passed' verdict='ADR-021 INITIAL PLACEMENT VERIFIED' cases='10/10'.
+```
+
+Certified cases:
+
+```text
+AuthoringAndDefaultPolicy
+ManagerLogicalActorTarget
+MissingBindingNoFallback
+DuplicateExactSlotRejected
+ForeignSceneIgnored
+AnchorOutsideOwnedSceneRejected
+SceneProvidedPreserveAuthoredPose
+SceneProvidedApplyActivityPlacement
+CandidatePrePromotionAndFreshOccurrence
+FailedPlacementEvidence
+```
+
+Technical disposition:
+
+```text
+Architecture:       ACCEPTED
+Package:            IMPLEMENTED / COMPILED
+Focused Unity QA:   CERTIFIED 10/10
+Stage A boundary:   CLOSED
+FIRSTGAME:          OPTIONAL STAGE B PRODUCT PROOF
+ADR-022 impact:     NONE
 ```
 
 ## Suggested commits
 
-Architecture after acceptance:
+Documentation closure:
 
 ```text
-docs(architecture): define activity player initial placement authority
+docs(architecture): close ADR-021 initial placement certification
 ```
 
-Runtime/editor/QA cuts remain separate after the ADR is accepted.
+Future changes to this boundary require a new scoped implementation/QA cut rather than
+silently extending ADR-021.

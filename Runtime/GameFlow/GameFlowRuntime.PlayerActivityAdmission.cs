@@ -132,6 +132,32 @@ namespace Immersive.Framework.GameFlow
                     "Activity Player lifecycle admission authorization is missing.");
             }
 
+            if (!_routeLifecycleRuntime
+                    .TryCreatePendingActivityTransitionPreparationContext(
+                        out ActivityTransitionPreparationContext
+                            placementContext))
+            {
+                return ActivityActivationGateResult.Blocked(
+                    source,
+                    reason,
+                    "Target Activity scene composition completed without a valid pre-commit Activity occurrence/discovery context.");
+            }
+
+            if (activityPlayerLifecycleAdmissionRuntime != null &&
+                !activityPlayerLifecycleAdmissionRuntime
+                    .TryConfigureInitialPlacementContext(
+                        placementContext,
+                        source,
+                        reason,
+                        out string placementIssue))
+            {
+                return ActivityActivationGateResult.Blocked(
+                    source,
+                    reason,
+                    "Activity Player initial placement context was rejected. " +
+                    placementIssue);
+            }
+
             if (authorization.NotRequired)
             {
                 return ActivityActivationGateResult.Allowed(
@@ -154,6 +180,7 @@ namespace Immersive.Framework.GameFlow
             ActivityPlayerLifecycleAdmissionResult commit =
                 activityPlayerLifecycleAdmissionRuntime.TryCommit(
                     authorization.CurrentSnapshot.Token,
+                    placementContext,
                     source,
                     reason);
             return commit != null && commit.CanActivate
@@ -167,6 +194,45 @@ namespace Immersive.Framework.GameFlow
                     commit != null
                         ? commit.ToDiagnosticString()
                         : "Activity Player lifecycle admission Commit returned no result.");
+        }
+
+        private ActivityActivationGateResult
+            ConfigureActivityPlayerInitialPlacement(
+                string source,
+                string reason)
+        {
+            if (!_routeLifecycleRuntime
+                    .TryCreatePendingActivityTransitionPreparationContext(
+                        out ActivityTransitionPreparationContext context))
+            {
+                return ActivityActivationGateResult.Blocked(
+                    source,
+                    reason,
+                    "Target Activity has no valid pre-commit occurrence/discovery context for initial placement.");
+            }
+
+            if (activityPlayerLifecycleAdmissionRuntime == null)
+            {
+                return ActivityActivationGateResult.Allowed(
+                    source,
+                    reason,
+                    "Player lifecycle runtime is absent; no Player initial-placement authority is composed.");
+            }
+
+            return activityPlayerLifecycleAdmissionRuntime
+                .TryConfigureInitialPlacementContext(
+                    context,
+                    source,
+                    reason,
+                    out string issue)
+                ? ActivityActivationGateResult.Allowed(
+                    source,
+                    reason,
+                    "Activity Player initial-placement context configured for target occurrence.")
+                : ActivityActivationGateResult.Blocked(
+                    source,
+                    reason,
+                    "Activity Player initial-placement context configuration failed. " + issue);
         }
 
         private void RollbackPendingActivityPlayerLifecycleAdmission(

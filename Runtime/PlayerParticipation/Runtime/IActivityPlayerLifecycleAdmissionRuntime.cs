@@ -1,3 +1,4 @@
+using Immersive.Framework.ActivityFlow;
 using Immersive.Framework.Authoring;
 
 namespace Immersive.Framework.PlayerParticipation
@@ -23,8 +24,15 @@ namespace Immersive.Framework.PlayerParticipation
             string source,
             string reason);
 
+        bool TryConfigureInitialPlacementContext(
+            ActivityTransitionPreparationContext context,
+            string source,
+            string reason,
+            out string issue);
+
         ActivityPlayerLifecycleAdmissionResult TryCommit(
             ActivityPlayerLifecycleAdmissionToken expectedTransaction,
+            ActivityTransitionPreparationContext context,
             string source,
             string reason);
 

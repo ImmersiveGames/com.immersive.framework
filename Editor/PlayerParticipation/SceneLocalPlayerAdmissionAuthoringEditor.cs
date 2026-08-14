@@ -13,6 +13,7 @@ namespace Immersive.Framework.Editor.PlayerParticipation
         private SerializedProperty actorProfile;
         private SerializedProperty sceneLogicalPlayerActor;
         private SerializedProperty admissionTiming;
+        private SerializedProperty initialPlacementPolicy;
 
         private bool showDebug;
 
@@ -30,6 +31,9 @@ namespace Immersive.Framework.Editor.PlayerParticipation
             admissionTiming =
                 serializedObject.FindProperty(
                     "admissionTiming");
+            initialPlacementPolicy =
+                serializedObject.FindProperty(
+                    "initialPlacementPolicy");
         }
 
         public override void OnInspectorGUI()
@@ -98,6 +102,12 @@ namespace Immersive.Framework.Editor.PlayerParticipation
                 new GUIContent(
                     "Timing",
                     "Activity lifecycle moment in which this existing scene Player requests admission."));
+
+            EditorGUILayout.PropertyField(
+                initialPlacementPolicy,
+                new GUIContent(
+                    "Initial Placement",
+                    "Preserve the authored Scene Actor pose, or apply the exact Activity-local Player Slot placement before adoption."));
         }
 
         private static void DrawActions(

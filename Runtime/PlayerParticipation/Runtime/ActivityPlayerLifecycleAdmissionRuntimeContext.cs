@@ -555,64 +555,13 @@ namespace Immersive.Framework.PlayerParticipation
                 slot.Message = stage.Message;
             }
 
-            var requests =
-                new ActivityPlayerHandoffSlotRequest[record.Slots.Count];
-            for (int index = 0; index < record.Slots.Count; index++)
-            {
-                SlotRecord slot = record.Slots[index];
-                requests[index] = new ActivityPlayerHandoffSlotRequest(
-                    slot.CandidateToken,
-                    slot.PreviousAdmissionToken);
-            }
-
-            ActivityPlayerHandoffGroupResult group =
-                groupContext.TryBegin(
-                    targetActivity,
-                    targetOwner,
-                    requests,
-                    resolvedSource,
-                    resolvedReason);
-            if (group == null ||
-                !group.ReadyToCommit ||
-                group.CurrentSnapshot == null ||
-                !group.CurrentSnapshot.IsReadyToCommit ||
-                !group.CurrentSnapshot.Token.IsValid)
-            {
-                string issue = group != null
-                    ? group.ToDiagnosticString()
-                    : "Activity Player handoff group Begin returned no result.";
-                return FailAndCleanup(
-                    record,
-                    ActivityPlayerLifecycleAdmissionStatus.FailedGroupBegin,
-                    Operation,
-                    issue,
-                    true);
-            }
-
-            record.GroupToken = group.CurrentSnapshot.Token;
-            record.GroupSnapshot = group.CurrentSnapshot;
-            for (int index = 0; index < record.Slots.Count; index++)
-            {
-                SlotRecord slot = record.Slots[index];
-                slot.GroupBegan = true;
-                if (!TryCaptureTargetEvidence(record, slot, out string evidenceIssue))
-                {
-                    return FailAndCleanup(
-                        record,
-                        ActivityPlayerLifecycleAdmissionStatus.FailedGroupBegin,
-                        Operation,
-                        evidenceIssue,
-                        true);
-                }
-            }
-
             record.State =
                 ActivityPlayerLifecycleAdmissionState.ReadyToCommit;
             record.LastStatus =
                 ActivityPlayerLifecycleAdmissionStatus
                     .SucceededReadyToCommit;
             record.Message =
-                "Target Activity Player handoff group is ReadyToCommit before transition presentation.";
+                "Target Activity Player candidates are staged inactive and ready for the post-composition placement/promotion gate.";
             lastSnapshot = Snapshot(record);
             return Result(
                 record.LastStatus,
@@ -857,8 +806,7 @@ namespace Immersive.Framework.PlayerParticipation
 
             if (record.State !=
                     ActivityPlayerLifecycleAdmissionState.ReadyToCommit ||
-                record.GroupSnapshot == null ||
-                !record.GroupSnapshot.IsReadyToCommit)
+                !AllCandidatesStaged(record))
             {
                 return Result(
                     ActivityPlayerLifecycleAdmissionStatus
@@ -866,7 +814,7 @@ namespace Immersive.Framework.PlayerParticipation
                     Operation,
                     previous,
                     previous,
-                    "Transition authorization requires exact P3K.7E ReadyToCommit evidence.");
+                    "Transition authorization requires every target Player candidate to remain staged inactive and rollbackable.");
             }
 
             record.State =
@@ -886,8 +834,38 @@ namespace Immersive.Framework.PlayerParticipation
                 record.Message);
         }
 
+        public bool TryConfigureInitialPlacementContext(
+            ActivityTransitionPreparationContext context,
+            string source,
+            string reason,
+            out string issue)
+        {
+            issue = string.Empty;
+            if (!context.IsValid)
+            {
+                issue =
+                    "Activity Player initial placement requires a valid ActivityFlow pre-commit context.";
+                return false;
+            }
+
+            if (active != null &&
+                (!ReferenceEquals(active.TargetActivity, context.Activity) ||
+                 active.TargetOwner != context.Owner))
+            {
+                issue =
+                    "Activity Player initial placement context belongs to a different target Activity transaction.";
+                return false;
+            }
+
+            return preparationModule
+                .TryConfigureActivityInitialPlacementContext(
+                    context,
+                    out issue);
+        }
+
         public ActivityPlayerLifecycleAdmissionResult TryCommit(
             ActivityPlayerLifecycleAdmissionToken expectedTransaction,
+            ActivityTransitionPreparationContext context,
             string source,
             string reason)
         {
@@ -951,6 +929,113 @@ namespace Immersive.Framework.PlayerParticipation
                     previous,
                     previous,
                     "Commit requires transition authorization from the exact ReadyToCommit transaction.");
+            }
+
+            string placementContextIssue = string.Empty;
+            if (!context.IsValid ||
+                !ReferenceEquals(record.TargetActivity, context.Activity) ||
+                record.TargetOwner != context.Owner ||
+                !TryConfigureInitialPlacementContext(
+                    context,
+                    source,
+                    reason,
+                    out placementContextIssue))
+            {
+                return Result(
+                    ActivityPlayerLifecycleAdmissionStatus.FailedCommit,
+                    Operation,
+                    previous,
+                    previous,
+                    "Commit rejected invalid target Activity initial-placement context. " +
+                    placementContextIssue);
+            }
+
+            for (int index = 0; index < record.Slots.Count; index++)
+            {
+                SlotRecord slot = record.Slots[index];
+                if (!preparationModule.TryApplyStagedCandidateInitialPlacement(
+                        candidateModule,
+                        slot.CandidateToken,
+                        out string placementIssue))
+                {
+                    bool rolledBack = TryRollbackRecord(
+                        record,
+                        source,
+                        "candidate-initial-placement-failure",
+                        out string rollbackIssue);
+                    record.LastStatus = rolledBack
+                        ? ActivityPlayerLifecycleAdmissionStatus.FailedCommit
+                        : ActivityPlayerLifecycleAdmissionStatus.FailedRollback;
+                    record.Message = Join(placementIssue, rollbackIssue);
+                    lastSnapshot = Snapshot(record);
+                    if (rolledBack)
+                    {
+                        active = null;
+                    }
+
+                    return Result(
+                        record.LastStatus,
+                        Operation,
+                        previous,
+                        lastSnapshot,
+                        record.Message);
+                }
+            }
+
+            var requests =
+                new ActivityPlayerHandoffSlotRequest[record.Slots.Count];
+            for (int index = 0; index < record.Slots.Count; index++)
+            {
+                SlotRecord slot = record.Slots[index];
+                requests[index] = new ActivityPlayerHandoffSlotRequest(
+                    slot.CandidateToken,
+                    slot.PreviousAdmissionToken);
+            }
+
+            ActivityPlayerHandoffGroupResult begin =
+                groupContext.TryBegin(
+                    record.TargetActivity,
+                    record.TargetOwner,
+                    requests,
+                    source,
+                    reason);
+            if (begin == null ||
+                !begin.ReadyToCommit ||
+                begin.CurrentSnapshot == null ||
+                !begin.CurrentSnapshot.IsReadyToCommit ||
+                !begin.CurrentSnapshot.Token.IsValid)
+            {
+                string beginIssue = begin != null
+                    ? begin.ToDiagnosticString()
+                    : "Activity Player handoff group Begin returned no result at the post-composition placement gate.";
+                bool rolledBack = TryRollbackRecord(
+                    record,
+                    source,
+                    "post-placement-group-begin-failure",
+                    out string rollbackIssue);
+                record.LastStatus = rolledBack
+                    ? ActivityPlayerLifecycleAdmissionStatus.FailedGroupBegin
+                    : ActivityPlayerLifecycleAdmissionStatus.FailedRollback;
+                record.Message = Join(beginIssue, rollbackIssue);
+                lastSnapshot = Snapshot(record);
+                if (rolledBack)
+                {
+                    active = null;
+                }
+
+                return Result(
+                    record.LastStatus,
+                    Operation,
+                    previous,
+                    lastSnapshot,
+                    record.Message);
+            }
+
+            record.GroupToken = begin.CurrentSnapshot.Token;
+            record.GroupSnapshot = begin.CurrentSnapshot;
+            for (int index = 0; index < record.Slots.Count; index++)
+            {
+                record.Slots[index].GroupBegan = true;
             }
 
             record.State =
@@ -2029,6 +2114,31 @@ namespace Immersive.Framework.PlayerParticipation
                 record.Message);
         }
 
+
+        private static bool AllCandidatesStaged(
+            TransactionRecord record)
+        {
+            if (record == null ||
+                record.Slots == null ||
+                record.Slots.Count == 0)
+            {
+                return false;
+            }
+
+            for (int index = 0; index < record.Slots.Count; index++)
+            {
+                SlotRecord slot = record.Slots[index];
+                if (!slot.Staged ||
+                    !slot.CandidateToken.IsValid ||
+                    slot.GroupBegan ||
+                    slot.Committed)
+                {
+                    return false;
+                }
+            }
+
+            return true;
+        }
 
         private static bool HasCommittedGroupSlot(
             ActivityPlayerHandoffGroupSnapshot snapshot)
