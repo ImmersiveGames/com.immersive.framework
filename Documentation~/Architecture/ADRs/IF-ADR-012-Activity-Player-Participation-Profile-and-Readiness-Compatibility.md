@@ -1,33 +1,25 @@
 # IF-ADR-012 — Activity Player Participation Profile and Readiness Compatibility
 
-Status: **Accepted**  
-Last updated: 2026-08-13  
-Related decisions: IF-ADR-003, IF-ADR-007, IF-ADR-010, IF-ADR-015, IF-ADR-016, IF-ADR-019, IF-ADR-020  
-Current reconciliation: [ADR-003 / ADR-012 technical reconciliation](../Reconciliation/IMMERSIVE-FRAMEWORK-ADR-003-012-RECONCILIATION-2026-08-10.md)  
-ADR-020 follow-up: [ADR-020 reconciliation](../Reconciliation/IMMERSIVE-FRAMEWORK-ADR-020-RECONCILIATION-2026-08-13.md)
-
-> Current implementation, QA and FIRSTGAME integration status is tracked in
-> `../Tracking/IF-TRACK-Framework.md`. This ADR is normative and intentionally
-> does not carry a mutable completion percentage. UX observations are qualitative
-> product feedback and are not part of functional completion arithmetic.
+Status: **Accepted / Reconciled**  
+Last updated: **2026-08-14**  
+Related decisions: IF-ADR-003, IF-ADR-007, IF-ADR-010, IF-ADR-015, IF-ADR-016, IF-ADR-019, IF-ADR-020, IF-ADR-021  
+Current Player lifetime reconciliation: [2026-08-14 Player Physical Lifetime Reopen](../Reconciliation/IMMERSIVE-FRAMEWORK-PLAYER-PHYSICAL-LIFETIME-REOPEN-2026-08-14.md)
 
 ## Context
 
-Activities need reusable Player participation intent that can express projected
-Slots, readiness requirements and compatibility without duplicating Session rules
+Activities need reusable Player participation intent without duplicating Session rules
 inside each scene.
 
 ## Decision
 
-Activity Player participation is authored through the approved Activity/Route
-policy surface and resolves into one normalized effective policy with provenance.
+Activity Player participation resolves into one normalized effective policy with
+provenance.
 
-Runtime consumes explicit Slot/Player/Actor evidence and publishes requested and
-effective state plus diagnostic reasons. Invalid or incompatible states fail
-explicitly.
+Runtime consumes explicit Slot/Player/Actor evidence and publishes requested/effective
+state plus diagnostic reasons.
 
-Activity participation does not own or silently mutate Player Session
-configuration.
+Activity participation does not own or silently mutate Player Session configuration or
+the terminal lifetime of an admitted physical Player.
 
 ## Session boundary
 
@@ -35,131 +27,81 @@ configuration.
 PlayerSessionProfile
   owns Supported Slots
   owns Initial Joining
-  owns Session Host Provisioning
-  owns Actor Resolution
+  owns Host Provisioning origin policy
+  owns Actor Resolution initial intent
+
+Session runtime
+  owns joined occurrence
+  owns admitted physical Player after successful admission
 
 Activity Player policy
   projects/qualifies current Session Slots
   defines participation/readiness intent
-  does not replace Session provisioning
-  does not create Capacity
+  controls contextual representation activation
+  does not create/destroy Session membership
 ```
 
-## Session lifetime and Activity representation boundary
-
-IF-ADR-019 is authoritative for the lifetime consequence of Activity participation.
-IF-ADR-020 is authoritative when one exact joined Session Player occurrence explicitly
-Leaves.
-
-Activity policy projects/qualifies the current Session; it does not create or destroy
-Session membership. Therefore:
+## Exclusion
 
 ```text
 Joined Session Player
-+ excluded by current Activity policy
++ excluded by Activity policy
   -> Slot remains Joined
-  -> valid Session Actor selection remains current
-  -> Activity representation may be Absent
-
-Joined Session Player
-+ included by current Activity policy
-  -> current Activity evaluates the required representation/readiness evidence
+  -> valid Actor selection remains current
+  -> physical Player remains Session-owned
+  -> Activity representation is Absent / Inactive
 ```
 
-Activity exit is contextual release, not Session Player Leave. A later Activity can
-project the same Joined Logical Player into a new physical occurrence without performing
-another Join.
+Exclusion is not Actor destruction.
 
-Successful IF-ADR-020 Leave is different: the Session occurrence ends and current
-Activity evidence for that occurrence is retired. The Activity then reconciles from the
-new Session truth instead of preserving stale readiness.
+## Inclusion
 
-### Readiness requirement compatibility
+```text
+Joined Session Player
++ included by Activity policy
+  -> Activity acquires a new contextual representation occurrence
+  -> existing admitted physical Player is activated/bound as required
+  -> readiness is evaluated for this Activity occurrence
+```
 
-The effective Player requirement determines whether a physical Activity representation
-is required:
+A later Activity does not require a new physical Player occurrence merely because its
+Activity representation occurrence is new.
+
+## Readiness requirement compatibility
 
 ```text
 None
 JoinedSlots
 SelectedActors
   -> Session-level evidence
-  -> no physical Activity representation prerequisite
 
 LogicalActorsPrepared
 GameplayReady
-  -> current Activity representation required
-  -> absence cannot be converted to Ready
+  -> Activity representation required
+  -> existing physical Player may satisfy the physical existence prerequisite
+  -> new contextual evidence is still required
 ```
 
-This boundary applies equally to immediate entry and deferred/reconciled readiness after
-a required Slot joins later.
+## Leave-driven reconciliation
 
-### Leave-driven readiness reconciliation
+Successful IF-ADR-020 Leave invalidates the departed occurrence's readiness.
 
-A successful Session Leave invalidates readiness contribution tied to the departed
-occurrence. Activity requirement never grants authority to keep that Player joined or to
-fabricate Ready evidence after Leave.
-
-For the explicitly certified boundary:
+For an explicit required Slot:
 
 ```text
-Participation selection  ExplicitSlots
-Requirement              GameplayReady
-Zero-participant policy  Rejected
-Required Player leaves   successfully
+authored Slot projection remains
+current Player occurrence absent
+contribution -> WaitingForJoin / Preparing
+Activity Ready -> false
 ```
 
-reconciliation is:
-
-```text
-authored Slot projection remains present
-current Player occurrence is absent
-contribution becomes WaitingForJoin / Preparing
-Activity Ready = false
-```
-
-The Slot is not removed from the Activity projection merely because Session occupancy
-became vacant. This rule is scoped to the declared explicit-slot policy above; other
-participation policies continue to follow their own accepted projection semantics.
-
-The Framework must not respond to Leave by:
-
-```text
-keeping stale Ready evidence
-weakening Required to Optional
-automatically joining a replacement Player
-silently selecting another Slot
-removing an authored Explicit Slot projection to make readiness pass
-```
-
-## Observation boundary
-
-Readiness and participation observations may retain baseline or historical summaries for
-diagnostics. Presence of a summary object is not by itself proof of current Activity
-authority.
-
-Current readiness decisions must use the operational state/correlation for the current
-Session Player and Activity occurrence. Released, `NotAdmitted`, `NotEvaluated`, vacant or
-otherwise baseline evidence must not be reinterpreted as live gameplay/readiness
-authority.
+No stale Ready, auto-Join, Slot substitution or policy weakening is allowed.
 
 ## Constraints
 
 - One normalized effective participation policy is runtime input.
-- Provenance and requested/effective differences remain diagnosable.
-- Invalid compatibility never falls back silently.
-- Activity/GameFlow tests may consume a stable Player fixture but cannot become
-  Player Session configuration authority.
-- Participation policy does not become a Host provisioning mode.
-- Session Leave remains Session authority; Activity readiness only reconciles its
-  consequences.
-- Readiness evidence is occurrence/revision-correlated and cannot survive as current
-  authority after its Player occurrence leaves.
-
-## FIRSTGAME boundary
-
-Real-product integration should prove participation against the same official
-package contracts after the underlying Player provisioning mode is integrated.
-Any UX friction observed during that proof is qualitative and does not change the
-participation contract's functional completion arithmetic.
+- Provenance remains diagnosable.
+- Invalid compatibility fails explicitly.
+- Activity policy is not a provisioning mode.
+- Activity participation is not physical lifetime authority.
+- Session Leave remains Session authority.

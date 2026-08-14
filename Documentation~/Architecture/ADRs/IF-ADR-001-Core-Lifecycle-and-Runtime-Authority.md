@@ -1,50 +1,130 @@
 # IF-ADR-001 — Core Lifecycle and Runtime Authority
 
-Status: **Accepted**  
-Last updated: 2026-08-12  
-Related decisions: IF-ADR-003, IF-ADR-005, IF-ADR-006, IF-ADR-007, IF-ADR-011, IF-ADR-014, IF-ADR-019
-Current reconciliation: [ADR-001 reconciliation](../Reconciliation/IMMERSIVE-FRAMEWORK-ADR-001-RECONCILIATION-2026-08-10.md)
+Status: **Accepted / Reconciled**  
+Last updated: **2026-08-14**  
+Related decisions: IF-ADR-003, IF-ADR-005, IF-ADR-006, IF-ADR-007, IF-ADR-011, IF-ADR-014, IF-ADR-019, IF-ADR-020, IF-ADR-021  
+Current Player lifetime reconciliation: [2026-08-14 Player Physical Lifetime Reopen](../Reconciliation/IMMERSIVE-FRAMEWORK-PLAYER-PHYSICAL-LIFETIME-REOPEN-2026-08-14.md)
 
-> Current implementation, QA and FIRSTGAME integration status is tracked in
-> `../Tracking/IF-TRACK-Framework.md`. This ADR is normative and intentionally
-> does not carry a mutable completion percentage. UX observations are qualitative
-> product feedback and are not part of functional completion arithmetic.
+> Current implementation and certification state is tracked in
+> `../Tracking/IF-TRACK-Framework.md`. This ADR is normative. The 2026-08-14
+> reconciliation corrects the former interpretation that Activity representation
+> ownership implied Activity ownership of the Player's physical lifetime.
 
 ## Context
 
-The framework requires one explicit owner for application/session composition,
-Route and Activity lifecycle, scene/content ownership and feature runtime bindings
-without globally discoverable mutable state. Session-scoped participation may
-outlive Route and Activity changes, so contextual gameplay ownership must not be
-confused with Session authority.
+The framework requires explicit owners for application/session composition, Route
+and Activity lifecycle, scene/content ownership and feature runtime bindings without
+globally discoverable mutable state.
+
+Session-scoped participation may outlive Route and Activity changes. Therefore
+contextual gameplay ownership must not be confused with Session participant or physical
+Player lifetime.
 
 ## Decision
 
 `com.immersive.framework` owns framework-specific lifecycle and product modules.
-`FrameworkRuntimeHost` is the internal application/session composition root. It
-must not expose a static current-host registry, service locator, hierarchy lookup
-or implicit singleton access path.
+`FrameworkRuntimeHost` is the internal application/session composition root. It must not
+expose a static current-host registry, service locator, hierarchy lookup or implicit
+singleton access path.
 
-Runtime dependencies are supplied through narrow typed ports and explicit
-composition.
+Runtime dependencies are supplied through narrow typed ports and explicit composition.
 
 ```text
 Game Application / Session
   -> Session-scoped authorities and participants
-     -> Logical Players
+     -> Joined Logical Players
+     -> admitted physical Player representations
   -> Route
      -> Activity
-        -> contextual projection, readiness and materialization
+        -> contextual projection / activation
+        -> readiness
+        -> gameplay / camera / interaction bindings
 ```
 
-Route and Activity own contextual lifecycle, not Session participant identity.
-Missing required bindings fail explicitly. Functional identity is typed and
-domain-specific; names and hierarchy paths are diagnostic data, not authority.
+Route and Activity do not own Session participant identity.
+
+After successful Player admission, Route and Activity also do not own the terminal
+lifetime of the admitted physical Player representation.
+
+## Session Player physical lifetime boundary
+
+IF-ADR-019 is authoritative.
+
+A successful admitted Player has two distinct layers:
+
+```text
+Session layer
+  Joined Logical Player
+  Slot occupancy
+  current Player occurrence/revision
+  selected Actor intent
+  admitted physical Player representation
+
+Activity layer
+  participation projection
+  active/inactive representation state
+  readiness contribution
+  gameplay admission
+  Camera requests
+  interaction/contextual bindings
+  Activity-local references
+```
+
+The key invariant is:
+
+```text
+Activity controls whether/how the Player is represented now.
+Activity does not own whether the admitted physical Player continues to exist.
+```
+
+Therefore:
+
+```text
+Activity A -> Activity B
+  same admitted physical Player may continue
+  contextual occurrence A retires
+  contextual occurrence B begins
+  no implicit physical destroy/recreate
+```
+
+A joined Player may validly have no current Activity representation:
+
+```text
+Session Player = Joined
+Physical Player = Exists
+Current Activity representation = Absent / Inactive
+```
+
+Absence of Activity representation does not mean physical destruction.
+
+## Provisioning ownership
+
+Host Provisioning describes how the physical Player is supplied before admission:
+
+```text
+Manager-Provisioned
+  Framework creates/provides candidate
+  -> successful admission
+  -> Session owns admitted physical Player
+
+Scene-Provided
+  consumer scene provides candidate
+  -> Framework validates/adopts
+  -> successful admission
+  -> Session owns admitted physical Player
+```
+
+Scene-Provided authored origin remains diagnosable, but successful adoption transfers
+runtime lifetime ownership into the Session Player occurrence.
+
+This does not authorize global persistence or arbitrary `DontDestroyOnLoad` objects.
+Persistence is derived from explicit Session ownership and must be implemented by a
+scoped runtime container/mechanism.
 
 ## Transition outcome authority
 
-Transition results govern continuation for Game Application startup, Route,
-Activity, Activity Clear and Activity Restart.
+Transition results govern continuation for Game Application startup, Route, Activity,
+Activity Clear and Activity Restart.
 
 ```text
 accepted Transition phase
@@ -52,52 +132,43 @@ accepted Transition phase
   -> or intentional policy/no-visual Skipped
 
 non-accepted Before
-  -> do not advance the governing lifecycle mutation
-  -> preserve the previous committed authority
+  -> do not advance governing lifecycle mutation
+  -> preserve previous committed authority
   -> typed pre-commit failure
 
 non-accepted After after commit
   -> never report ordinary success
-  -> preserve the authority that actually committed
+  -> preserve authority that actually committed
   -> no blind rollback
   -> typed committed-target reveal failure/recovery
 ```
 
-Clear post-commit authority remains `CurrentActivity=None`. Restart post-commit
-authority remains the re-entered Activity/new occurrence.
+Physical Player lifetime is not inferred from Transition presentation mode.
+`Seamless`, fade, covered and other presentation policies do not become Player lifetime
+authorities.
 
 ## Transition Gate terminal integrity
 
-The GameFlow Transition Gate is internal operation state, not an externally
-acquired resource with a fallible release protocol.
+Transition Gate is internal operation state, not an externally acquired resource with a
+fallible release protocol.
 
 ```text
 TransitionGateSnapshot
   -> pure Transition Gate state
 
-CurrentTransitionGateMode
-  -> pure Transition Gate mode
-
 ActivityEntryReadinessGateSnapshot
   -> Transition Gate + Activity Entry Readiness Recovery Gate
 
 CurrentGateSnapshot
-  -> broader operational composition, including Pause/readiness
+  -> broader operational composition
 ```
 
-A committed readiness failure may validly have a released Transition Gate while
-a readiness recovery blocker remains active. This is recovery protection, not a
-Transition Gate leak.
-
-Canonical Transition Gate release is unconditional internal state replacement.
-Do not introduce a generic lease/release manager or transaction manager to model
-a failure mode that the current authority does not have.
+A committed readiness failure may validly leave readiness recovery active after the pure
+Transition Gate is clean.
 
 ## Object Entry runtime-context projection
 
 Object Entry does not introduce another lifecycle authority.
-
-The accepted ownership relationship is:
 
 ```text
 Game Application / Session / Route / Activity lifecycle
@@ -109,74 +180,18 @@ ObjectEntryRuntimeContextSnapshot
 Object Entry consumers
 ```
 
-`ObjectEntryRuntimeContextSnapshot` is a derivative view of already-authoritative
-lifecycle state. It may expose the currently valid Session/Route/Activity scope,
-typed owner evidence and object-entry descriptors, but it cannot create, replace
-or override Route/Activity authority or runtime occurrence identity.
-
-Object Entry declarations and descriptors therefore cannot:
-
-```text
-keep a Route or Activity alive
-select an arbitrary active owner
-replace the current Activity occurrence
-register a global runtime service
-become a service locator
-turn authored metadata into lifecycle authority
-```
-
-When Object Entry metadata is consumed by Reset or diagnostics, the authoritative
-lifetime and occurrence remain the current scoped lifecycle authorities defined by
-this ADR.
-
-The historical F13 Object Entry Foundation is absorbed by this rule together with
-IF-ADR-014 stable-identity semantics. It does not require a new independent
-lifecycle ADR.
+Object Entry declarations/descriptors cannot keep a Route/Activity alive, select an
+arbitrary owner, replace occurrence identity, register global services or turn authored
+metadata into lifecycle authority.
 
 ## Architectural constraints
 
 - Runtime authority is scoped, typed and lifetime-explicit.
 - Required invalid configuration fails explicitly and diagnostically.
-- Consumer code does not depend on internal runtime modules, reflection,
-  object-name inference or implicit global lookup.
+- Consumer code does not depend on reflection, object-name inference or implicit global lookup.
 - No silent fallback may change authority or policy.
 - Runtime contexts/services remain scoped rather than globally discoverable.
 - Editor authoring never becomes runtime authority.
-- Object Entry runtime context remains a derivative projection and never becomes
-  an independent lifecycle owner.
-
-## Session Player lifetime boundary
-
-IF-ADR-019 resolves the former `Session-Persistent Player` future direction.
-
-A Joined Logical Player is Session-scoped while Route/Activity owns contextual
-Player/Actor representation, readiness, bindings and materialization. Activity exit
-does not end Session participation, and Activity entry does not re-Join an already
-Joined Logical Player.
-
-Provisioning-specific physical lifetime remains explicit:
-
-```text
-Manager-Provisioned Host
-  Session-owned after successful Join
-
-Scene-Provided Host/Actor
-  consumer-scene-owned contextual occurrence
-```
-
-Neither case weakens this ADR's composition-root rule: Session persistence must not be
-implemented through arbitrary persistent GameObjects, global discovery or a Player
-service locator.
-
-## Deferred extensions
-
-Explicit Session Player Leave is owned by IF-ADR-020 and remains a separate contract
-until that ADR is accepted. Exceptional post-commit compensation also remains separate
-and must not be simulated through a generic rollback manager.
-
-## Reopen criteria
-
-Reopen this ADR only when a concrete requirement changes lifecycle ownership,
-composition-root authority, transition continuation semantics, scoped runtime
-access, or attempts to make Object Entry metadata an independent lifecycle
-authority.
+- Activity representation authority is not physical Player lifetime authority.
+- Physical Player persistence is not implemented by arbitrary persistent GameObjects.
+- Session Player Leave remains the explicit individual terminal operation under IF-ADR-020.

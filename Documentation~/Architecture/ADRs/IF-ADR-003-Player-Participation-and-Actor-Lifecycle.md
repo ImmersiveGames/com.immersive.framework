@@ -1,361 +1,181 @@
 # IF-ADR-003 — Player Participation and Actor Lifecycle
 
-Status: **Accepted**  
-Last updated: 2026-08-13  
-Proposed reconciliation draft: **2026-08-11 — R6 / R7 / R8**  
-Related decisions: IF-ADR-001, IF-ADR-007, IF-ADR-012, IF-ADR-015, IF-ADR-016, IF-ADR-019, IF-ADR-020  
-Current reconciliation: [ADR-003 / ADR-012 technical reconciliation](../Reconciliation/IMMERSIVE-FRAMEWORK-ADR-003-012-RECONCILIATION-2026-08-10.md)  
-ADR-020 follow-up: [ADR-020 reconciliation](../Reconciliation/IMMERSIVE-FRAMEWORK-ADR-020-RECONCILIATION-2026-08-13.md)
-
-> **Draft note:** the R6/R7/R8 portions remain a proposed reconciliation of the accepted
-> ADR. The accepted IF-ADR-020 Session Player Leave boundary below is a separate completed
-> reconciliation and does not promote the remaining R6/R7/R8 draft deltas by association.
->
-> Current implementation, QA and FIRSTGAME integration status is tracked in
-> `../Tracking/IF-TRACK-Framework.md`. This ADR is normative and intentionally
-> does not carry a mutable completion percentage. UX observations are qualitative
-> product feedback and are not part of functional completion arithmetic.
+Status: **Accepted / Reconciled**  
+Last updated: **2026-08-14**  
+Related decisions: IF-ADR-001, IF-ADR-007, IF-ADR-012, IF-ADR-015, IF-ADR-016, IF-ADR-019, IF-ADR-020, IF-ADR-021  
+Current Player lifetime reconciliation: [2026-08-14 Player Physical Lifetime Reopen](../Reconciliation/IMMERSIVE-FRAMEWORK-PLAYER-PHYSICAL-LIFETIME-REOPEN-2026-08-14.md)
 
 ## Context
 
-A Logical Player is a Session participant while an Actor is contextual gameplay
-content. Joining, Host provisioning/adoption, Actor selection, logical
-preparation, physical materialization, gameplay admission, readiness contribution,
-contextual release and Session Leave must remain distinct and diagnosable.
+A Logical Player is a Session participant while Activity participation is contextual
+gameplay authority.
 
-The R6/R7/R8 review additionally clarifies three independent decisions:
+The framework must keep these decisions distinct:
 
 ```text
 Host Provisioning
-  how the technical Player Host is provided for the Session
-
 Slot Assignment
-  which configured Player Slot a joining Player occupies
-
+Session Join
 Actor Selection
-  which ActorProfile is selected for one Joined Player Slot
+physical Player acquisition/adoption
+Activity projection / activation
+readiness
+gameplay admission
+Session Player Leave
 ```
 
-These dimensions must not be collapsed into one per-Slot provisioning schema.
+The former interpretation incorrectly treated Activity ownership of presentation as
+ownership of the physical Actor lifetime.
 
 ## Decision
 
 Player participation is Session-scoped and keyed by typed Slot identity.
-Route/Activity may project eligible Players and own contextual Actor
-materialization, but they do not own Session participant identity.
-
-```text
-Session Slot configuration
-Joining / admission
-Local Player Host provisioning or adoption
-Logical Player participation
-Actor selection
-Logical Actor preparation
-physical Actor materialization
-input / camera / gameplay admission
-Activity readiness contribution
-contextual release / reconcile
-Session Player Leave
-```
-
-Scene-Provided and Manager-Provisioned are peer provisioning modes. They converge
-on the same Session/Slot/Actor authority without collapsing Host and Actor
-identity.
-
-Reconciliation is idempotent, occurrence-aware and revision-correlated.
-Consumers do not invoke internal preparation or reconcile authority.
-
-## Session Player lifetime boundary
-
-IF-ADR-019 is authoritative for the lifetime split between Session participation and
-Activity representation. IF-ADR-020 is authoritative for explicit termination of one
-exact joined Session Player occurrence.
 
 ```text
 Session
-  Joined Logical Player
-  Slot occupancy
-  valid Actor selection intent
-  Manager-Provisioned Host after successful Join
+  Slot configuration
+  Joining / admission
+  Logical Player occurrence
+  Actor selection
+  admitted physical Player representation
 
 Activity
   participation projection
-  physical Actor occurrence
+  representation activation
   readiness contribution
-  gameplay/input/camera bindings
-  contextual release
+  gameplay / input / camera authority
+  contextual bindings
 ```
 
-A Joined Slot may validly have no current Activity representation. Activity exit releases
-contextual occurrence state but does not implicitly Leave the Session, vacate the Slot or
-clear valid Session Actor selection. Activity entry for an already Joined Player is a
-projection/reprojection operation, not a second Join.
+Scene-Provided and Manager-Provisioned remain peer provisioning modes. They converge on
+the same Session/Slot/Actor authority after successful admission.
 
-Explicit Session Player Leave is different:
+## Physical Player versus Activity representation
+
+The admitted physical Player occurrence and an Activity representation occurrence are
+different lifetimes.
 
 ```text
-exact joined Slot + current occurrence correlation
-  -> IF-ADR-020 Leave transaction
-  -> current Activity representation released when present
-  -> provisioning-specific Session resources released
-  -> Session Player occurrence ends
-  -> Slot becomes Vacant / Available
+Physical Player occurrence
+  Session-owned after successful admission
+
+Activity representation occurrence
+  Activity-scoped
 ```
 
-The fact that contextual representation release is a stage of Leave does not merge the
-Activity and Session lifecycles. Contextual release alone is still not Leave.
-
-For Scene-Provided provisioning, a later Activity may bind a distinct scene-owned
-Host/Actor occurrence to the same Joined Session Player. For Manager-Provisioned
-provisioning, the Session-owned technical Host/`PlayerInput` survives normal Activity
-transitions while the contextual Actor occurrence may be released and recreated. When
-that Manager-Provisioned Session Player explicitly Leaves, IF-ADR-020 authorizes release
-of the Session-owned Host/input endpoint through provisioning authority.
-
-## Player Session dependency
-
-IF-ADR-016 owns initial Session intent:
+Therefore:
 
 ```text
-PlayerSessionProfile
-  Supported Slots
-  Initial Joining
-  Host Provisioning
-  Actor Resolution
+Activity A exits
+  -> release A readiness/gameplay/camera/context
+  -> do not implicitly destroy admitted physical Player
+
+Activity B enters
+  -> bind/project the existing admitted physical Player
+  -> begin new Activity representation occurrence
+  -> do not re-Join
+  -> do not implicitly recreate physical Player
 ```
 
-There is no independent Session Capacity and no per-Slot Host Provisioning
-override in the current model.
-
-Host Provisioning remains one Session-wide decision even when:
+An Activity may exclude a Joined Player. In that case:
 
 ```text
-different Players intentionally occupy different Slots
-different Slots select different ActorProfiles
+Logical Player = Joined
+Physical Player = Exists
+Activity representation = Absent / Inactive
 ```
 
-Choosing an Actor or targeting a Slot does not imply heterogeneous Host
-Provisioning.
+## Provisioning
+
+### Manager-Provisioned
+
+```text
+Framework creates candidate Host / PlayerInput / Actor composition
+        ↓
+successful admission
+        ↓
+Session owns admitted physical Player representation
+```
+
+### Scene-Provided
+
+```text
+consumer scene authors candidate Host / PlayerInput / Actor composition
+        ↓
+Framework validates/adopts exact candidate
+        ↓
+successful admission
+        ↓
+runtime ownership transfers to Session Player occurrence
+```
+
+A failed Scene-Provided admission does not transfer ownership.
+
+After successful adoption, unloading the supplying Activity scene must not implicitly
+destroy the admitted Player. The implementation must move/attach the admitted composition
+to the canonical Session-owned runtime scope before the supplying scene can invalidate it.
 
 ## Slot Join and assignment
 
 The Session remains the authority over Slot allocation and assignment.
-
-Two bounded Join intents are accepted by the R6/R7/R8 reconciliation draft:
 
 ```text
 Untargeted Join
   -> first eligible vacant Supported Slot in authored order
 
 Targeted Join
-  -> exact requested Supported Slot when that Slot is eligible
+  -> exact requested Supported Slot when eligible
 ```
 
-For Targeted Join, the consumer expresses desired Slot identity but does not
-reserve or mutate Slot state directly.
-
-The Session validates at least:
-
-```text
-Joining is open
-requested Slot identity is valid
-requested Slot is configured/supported
-requested Slot is vacant/eligible
-Host Provisioning is compatible
-request scope is current
-```
-
-Targeted Join has no fallback.
-
-```text
-request Player2
-Player2 unavailable
-
--> explicit rejection
--> never Player1
--> never Player3
-```
-
-Untargeted Join retains current first-vacant-Supported-Slot semantics.
-
-Targeted Join does not carry `ActorProfile`. Actor choice remains the separate
-Actor Selection transaction.
-
-Framework `PlayerSlotId` is domain identity and must not be collapsed into Unity
-Input System `PlayerInput.playerIndex`.
-
-Scene-Provided admission may continue to author an exact Slot directly. The
-Manager-Provisioned consumer surface gains equivalent exact-Slot intent without
-creating a second Slot authority.
+Targeted Join has no fallback to another Slot. `PlayerSlotId` is domain identity and is
+not `PlayerInput.playerIndex`.
 
 ## Actor selection
 
-Actor selection is Session-scoped mutable intent for one exact Joined Player
-Slot.
+Actor selection is Session-scoped mutable intent for one exact Joined Slot.
 
-The consumer may request:
+Direct Actor selection mutation is not an implicit physical hot-swap. Replacing a
+currently prepared/admitted physical Actor requires a separate explicit operation.
 
-```text
-Select ActorProfile
-Select configured default ActorProfile
-```
+Selection remains revision-aware and stale mutation rejects.
 
-while Session authority validates and commits the selection.
+## Activity readiness boundary
 
-The consumer does not directly mutate `SelectedActorProfile`, prepare a Logical
-Actor or materialize physical content.
-
-### Selection precondition
-
-Actor selection changes require the target Slot to be Joined.
+An Activity may project a required Slot before it joins.
 
 ```text
-Available / Reserved
-  -> selection rejected
-
-Joined
-  -> selection may be evaluated
+WaitingForJoin / Preparing
 ```
 
-### Select semantics
+is valid current evidence.
 
-If no Actor is selected:
+Activity readiness never becomes Session membership or physical lifetime authority.
+
+## Session Player Leave
+
+IF-ADR-020 owns the explicit terminal operation.
 
 ```text
-Select ActorProfile A
-  -> A becomes selected
+Activity release
+  !=
+Session Player Leave
+
+Session Player Leave
+  -> retires current Activity context when present
+  -> releases admitted physical Player resources owned by occurrence
+  -> ends Session Player occurrence
+  -> Slot becomes Vacant / Available
 ```
-
-Selecting the same current ActorProfile is idempotent.
-
-If another ActorProfile is already selected, a plain Select does not silently
-replace it.
-
-Replacement/clear remain explicit runtime semantics and must remain
-revision-correlated.
-
-### Prepared Actor boundary
-
-Direct Actor selection mutation is not a physical Actor swap.
-
-When one current Logical Actor is already prepared, direct:
-
-```text
-Select Actor
-Replace Actor Selection
-Clear Actor Selection
-Select Default Actor
-```
-
-must reject rather than create divergence between Session selection and the
-prepared physical Actor.
-
-A physical hot-swap flow is a separate product operation and is not granted to
-ordinary consumers by this reconciliation.
-
-Consumers therefore still do not own Actor preparation/materialization authority.
-
-### Actor selection revision
-
-Selection mutation remains revision-aware. A request carrying an expected
-selection revision must reject when that revision is stale.
-
-This prevents old UI/control-plane intent from overwriting newer Session state.
-
-### Duplicate Actor policy
-
-Existing Session Actor-selection duplicate policy remains authoritative.
-
-The framework may allow duplicate ActorProfile selection or require uniqueness
-across Joined Slots according to the configured runtime policy.
-
-No separate duplicate policy is introduced by targeted Join.
-
-## Actor Resolution dependency
-
-IF-ADR-016 `Actor Resolution` remains independent from Host Provisioning and
-Slot Join.
-
-```text
-Resolve Configured Default
-  permits the configured Slot default to be selected through the canonical
-  selection operation
-
-Leave Unresolved
-  permits the Joined Slot to remain without Actor selection until an explicit
-  consumer selection occurs
-```
-
-This bounded explicit selection contract is not a generic character-selection
-system.
-
-## Readiness and control-plane boundary
-
-An Activity may project a required Slot before that Slot has Joined. When the
-requirement is `JoinedSlots` or stronger, the Player contribution may remain:
-
-```text
-Preparing / WaitingForJoin
-```
-
-This is not failure and must not be silently converted to Ready, optional
-participation or timeout success.
-
-IF-ADR-020 adds the symmetric runtime case: a required Player may Leave an active
-Activity because Session Leave authority is not owned by the Activity. The Activity must
-then reconcile from current Session truth. Under the certified
-`ExplicitSlots + GameplayReady + zero-participant Rejected` composition, the authored
-Slot remains projected and returns to `WaitingForJoin`; stale `Ready` evidence from the
-departed occurrence is invalid.
-
-For `WaitCovered`, any operation required to advance readiness must remain
-reachable through an external/control-plane path.
-
-Depending on the authored composition, that may include:
-
-```text
-Request Join
-Request Join To Slot
-Request Actor Selection
-Request Default Actor Selection
-Request Leave
-```
-
-These operations are distinct from normal gameplay input.
-
-Validation may warn about unreachable compositions but must not auto-change
-readiness policy, participation requirement, Slot projection, Joining state,
-target Slot or Actor selection.
 
 ## Rejected behavior
 
-- Capacity as a second Session admission limit.
-- Separate Player provisioning Profile.
-- Per-Slot Host Provisioning overrides in the current Session model.
-- Treating different ActorProfile per Slot as a reason for per-Slot Host Provisioning.
-- Consumer direct Slot reservation/mutation.
-- Consumer direct Actor selection state mutation.
-- Targeted Join falling back to another Slot.
-- Targeted Join carrying ActorProfile as an implicit combined transaction.
-- Using Unity `playerIndex` as the Framework Slot identity.
-- Consumer Actor preparation/materialization authority.
-- Direct Actor selection replacing a currently prepared Actor.
-- Treating Activity representation release as Session Player Leave.
-- Destroying a Player GameObject or clearing a Slot directly to simulate Leave.
-- Generic character roster/unlock/store/selection-flow authority in the Framework.
-- Fake readiness, automatic Join or silent fallback.
+- Activity exit destroying/recreating the admitted physical Player by default.
+- Treating Activity representation absence as physical Player absence.
+- Re-Join when moving an already Joined Player between Activities.
+- Scene unload silently ending an adopted Scene-Provided Player.
+- Manager/Scene provisioning modes having divergent post-admission lifetime semantics.
+- Consumer direct Slot mutation.
+- Consumer direct materialization/reconcile authority.
+- `playerIndex` as Slot identity.
+- Silent fallback.
 - Global Player manager/service locator.
-
-## Separate / future contracts
-
-Session Player lifetime is resolved by IF-ADR-019.
-
-Explicit Session Player Leave and the terminal lifetime operation for one joined Player
-are resolved by accepted IF-ADR-020. Device disconnect/reconnect remains a separate
-contract and must not be inferred from Leave.
-
-Mixed/per-Slot Host Provisioning remains deferred until a concrete game
-requirement demonstrates different provisioning ownership for different Slots.
-
-A consumer-facing physical Actor hot-swap operation remains separate from bounded
-Actor Selection.
