@@ -97,7 +97,7 @@ namespace Immersive.Framework.PlayerParticipation
             if (!TryResolveCurrentActorCorrelation(
                     candidate.MaterializationHandle.Request.ScopeContext,
                     slotId,
-                    previous.Summary.ActorEvidence.AssignmentOrigin,
+                    ToAssignmentOrigin(previous.Summary.ActorEvidence.ProvisioningOrigin),
                     previous.Host,
                     out PlayerSlotAssignmentSnapshot assignment,
                     out PlayerHostEvidenceSnapshot hostEvidence,

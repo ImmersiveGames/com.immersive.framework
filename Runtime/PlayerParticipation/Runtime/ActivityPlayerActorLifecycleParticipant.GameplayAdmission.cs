@@ -341,7 +341,7 @@ namespace Immersive.Framework.PlayerParticipation
                 }
 
                 PlayerActorPreparationResult preparation =
-                    preparationModule.TryPrepareSelectedActor(
+                    preparationModule.TryEnsureSessionPhysicalActor(
                         request.RuntimeScopeContext,
                         slot.PlayerSlotId,
                         nameof(
@@ -380,6 +380,7 @@ namespace Immersive.Framework.PlayerParticipation
                 PlayerGameplayRuntimeOperationResult gameplay =
                     gameplayRuntime.TryEnsureCurrentGameplay(
                         slot.PlayerSlotId,
+                        owner,
                         nameof(
                             ActivityPlayerActorLifecycleParticipant),
                         "activity-enter-gameplay-ready-cold-start-ensure-current-gameplay");
@@ -389,7 +390,8 @@ namespace Immersive.Framework.PlayerParticipation
                     !gameplay.CurrentAdmission.Token.IsValid ||
                     gameplay.CurrentAdmission.PreparationToken !=
                         preparationToken ||
-                    gameplay.CurrentAdmission.Owner != owner)
+                    gameplay.CurrentAdmission.Owner != owner ||
+                    gameplay.CurrentAdmission.InputBindingToken.Owner != owner)
                 {
                     return FailGameplayReadyColdStartAndRollback(
                         request,
@@ -531,38 +533,31 @@ namespace Immersive.Framework.PlayerParticipation
                 }
             }
 
-            for (int index = prepared.Count - 1;
-                 index >= 0;
-                 index--)
-            {
-                PreparedSlotRecord record = prepared[index];
-                if (!record.CreatedByEnter)
-                {
-                    continue;
-                }
-
-                PlayerActorPreparationResult release =
-                    preparationModule.TryReleasePreparedActor(
-                        record.PlayerSlotId,
-                        record.Token,
-                        nameof(
-                            ActivityPlayerActorLifecycleParticipant),
-                        "activity-enter-gameplay-ready-cold-start-rollback-preparation");
-                if (release == null || !release.Succeeded)
-                {
-                    failures.Add(
-                        release != null
-                            ? release.ToDiagnosticString()
-                            : $"Preparation rollback returned no result for Slot '{record.PlayerSlotId.StableText}'.");
-                }
-            }
-
             for (int index = appliedSelections.Count - 1;
                  index >= 0;
                  index--)
             {
                 AppliedSelectionRecord record =
                     appliedSelections[index];
+                bool physicalCommitted = false;
+                for (int preparedIndex = 0;
+                     preparedIndex < prepared.Count;
+                     preparedIndex++)
+                {
+                    PreparedSlotRecord preparedSlot = prepared[preparedIndex];
+                    if (preparedSlot.PlayerSlotId == record.PlayerSlotId &&
+                        preparedSlot.CreatedByEnter)
+                    {
+                        physicalCommitted = true;
+                        break;
+                    }
+                }
+
+                if (physicalCommitted)
+                {
+                    continue;
+                }
+
                 PlayerActorSelectionResult clear =
                     preparationModule.TryClearActorSelection(
                         new PlayerActorSelectionRequest(
@@ -756,6 +751,7 @@ namespace Immersive.Framework.PlayerParticipation
                 .TryReleaseGameplayBeforeActor(
                     prepared.PlayerSlotId,
                     prepared.Token,
+                    activeRecord != null ? activeRecord.Owner : default,
                     source,
                     reason,
                     out _,

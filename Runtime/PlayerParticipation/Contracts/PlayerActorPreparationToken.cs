@@ -8,8 +8,8 @@ using Immersive.Framework.RuntimeContent;
 namespace Immersive.Framework.PlayerParticipation
 {
     /// <summary>
-    /// Immutable functional token for one current prepared Logical Player Actor.
-    /// It is returned by Session preparation summaries and used to reject foreign or stale operations.
+    /// Immutable Session-physical token for one prepared Logical Player Actor.
+    /// Contextual assignment and binding identities deliberately do not participate in this token.
     /// </summary>
     [FrameworkApiStatus(
         FrameworkApiStatus.Experimental,
@@ -19,8 +19,6 @@ namespace Immersive.Framework.PlayerParticipation
         internal PlayerActorPreparationToken(
             string sessionContextId,
             PlayerSlotId playerSlotId,
-            PlayerSlotAssignmentToken assignmentToken,
-            PlayerHostBindingIdentity hostBindingIdentity,
             ActorProfileId actorProfileId,
             int selectionRevision,
             ActorId actorId,
@@ -30,8 +28,6 @@ namespace Immersive.Framework.PlayerParticipation
         {
             SessionContextId = sessionContextId.NormalizeText();
             PlayerSlotId = playerSlotId;
-            AssignmentToken = assignmentToken;
-            HostBindingIdentity = hostBindingIdentity;
             ActorProfileId = actorProfileId;
             SelectionRevision = selectionRevision;
             ActorId = actorId;
@@ -42,8 +38,6 @@ namespace Immersive.Framework.PlayerParticipation
 
         public string SessionContextId { get; }
         public PlayerSlotId PlayerSlotId { get; }
-        public PlayerSlotAssignmentToken AssignmentToken { get; }
-        public PlayerHostBindingIdentity HostBindingIdentity { get; }
         public ActorProfileId ActorProfileId { get; }
         public int SelectionRevision { get; }
         public ActorId ActorId { get; }
@@ -54,14 +48,6 @@ namespace Immersive.Framework.PlayerParticipation
         public bool IsValid =>
             !string.IsNullOrEmpty(SessionContextId) &&
             PlayerSlotId.IsValid &&
-            AssignmentToken.IsValid &&
-            string.Equals(
-                SessionContextId,
-                AssignmentToken.SessionContextId,
-                StringComparison.Ordinal) &&
-            AssignmentToken.PlayerSlotId == PlayerSlotId &&
-            HostBindingIdentity.IsValid &&
-            AssignmentToken.HostBindingIdentity == HostBindingIdentity &&
             ActorProfileId.IsValid &&
             SelectionRevision > 0 &&
             ActorId.IsValid &&
@@ -78,8 +64,6 @@ namespace Immersive.Framework.PlayerParticipation
         {
             return string.Equals(SessionContextId, other.SessionContextId, StringComparison.Ordinal) &&
                 PlayerSlotId == other.PlayerSlotId &&
-                AssignmentToken == other.AssignmentToken &&
-                HostBindingIdentity == other.HostBindingIdentity &&
                 ActorProfileId == other.ActorProfileId &&
                 SelectionRevision == other.SelectionRevision &&
                 ActorId == other.ActorId &&
@@ -99,8 +83,6 @@ namespace Immersive.Framework.PlayerParticipation
             {
                 int hashCode = StringComparer.Ordinal.GetHashCode(SessionContextId ?? string.Empty);
                 hashCode = hashCode * 397 ^ PlayerSlotId.GetHashCode();
-                hashCode = hashCode * 397 ^ AssignmentToken.GetHashCode();
-                hashCode = hashCode * 397 ^ HostBindingIdentity.GetHashCode();
                 hashCode = hashCode * 397 ^ ActorProfileId.GetHashCode();
                 hashCode = hashCode * 397 ^ SelectionRevision;
                 hashCode = hashCode * 397 ^ ActorId.GetHashCode();

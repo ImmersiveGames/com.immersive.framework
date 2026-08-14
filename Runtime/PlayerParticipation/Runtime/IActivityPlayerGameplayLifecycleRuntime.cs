@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using Immersive.Framework.ActivityFlow;
 using Immersive.Framework.PlayerSlots;
+using Immersive.Framework.RuntimeContent;
 
 namespace Immersive.Framework.PlayerParticipation
 {
@@ -21,6 +22,7 @@ namespace Immersive.Framework.PlayerParticipation
         bool TryReleaseGameplayBeforeActor(
             PlayerSlotId playerSlotId,
             PlayerActorPreparationToken expectedPreparation,
+            RuntimeContentOwner contextualOwner,
             string source,
             string reason,
             out bool released,

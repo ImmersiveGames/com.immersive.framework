@@ -467,7 +467,7 @@ namespace Immersive.Framework.PlayerParticipation
                         .LogicalActorsPrepared)
                 {
                     PlayerActorPreparationResult preparation =
-                        preparationModule.TryPrepareSelectedActor(
+                        preparationModule.TryEnsureSessionPhysicalActor(
                             request.RuntimeScopeContext,
                             slot.PlayerSlotId,
                             nameof(ActivityPlayerActorLifecycleParticipant),
@@ -690,6 +690,28 @@ namespace Immersive.Framework.PlayerParticipation
                     continue;
                 }
 
+                if (!preparationModule.TryReleaseManagerContextualProjection(
+                        activeRecord.Owner,
+                        prepared.PlayerSlotId,
+                        nameof(ActivityPlayerActorLifecycleParticipant),
+                        "activity-exit-release-manager-context",
+                        out string contextualReleaseIssue))
+                {
+                    failures.Add(contextualReleaseIssue);
+                    evidence.Add(
+                        new ActivityPlayerActorSlotLifecycleSnapshot(
+                            prepared.PlayerSlotId,
+                            true,
+                            default,
+                            false,
+                            prepared.Token,
+                            prepared.CreatedByEnter,
+                            false,
+                            PlayerActorPreparationStatus.FailedRelease,
+                            contextualReleaseIssue));
+                    continue;
+                }
+
                 evidence.Add(
                     new ActivityPlayerActorSlotLifecycleSnapshot(
                         prepared.PlayerSlotId,
@@ -790,33 +812,32 @@ namespace Immersive.Framework.PlayerParticipation
             string issue)
         {
             var rollbackIssues = new List<string>();
-            for (int index = prepared.Count - 1; index >= 0; index--)
-            {
-                PreparedSlotRecord item = prepared[index];
-                if (!item.CreatedByEnter)
-                {
-                    continue;
-                }
-
-                PlayerActorPreparationResult release =
-                    preparationModule.TryReleasePreparedActor(
-                        item.PlayerSlotId,
-                        item.Token,
-                        nameof(ActivityPlayerActorLifecycleParticipant),
-                        "activity-enter-rollback-release");
-                if (release == null || !release.Succeeded)
-                {
-                    rollbackIssues.Add(release != null
-                        ? release.ToDiagnosticString()
-                        : $"Rollback release returned no result for Slot '{item.PlayerSlotId.StableText}'.");
-                }
-            }
-
             for (int index = appliedSelections.Count - 1;
                  index >= 0;
                  index--)
             {
                 AppliedSelectionRecord selection = appliedSelections[index];
+                bool physicalCommitted = false;
+                for (int preparedIndex = 0;
+                     preparedIndex < prepared.Count;
+                     preparedIndex++)
+                {
+                    PreparedSlotRecord preparedSlot = prepared[preparedIndex];
+                    if (preparedSlot.PlayerSlotId == selection.PlayerSlotId &&
+                        preparedSlot.CreatedByEnter)
+                    {
+                        physicalCommitted = true;
+                        break;
+                    }
+                }
+
+                if (physicalCommitted)
+                {
+                    // First physical acquisition has committed to the Session. This
+                    // failure is Activity-contextual and must not undo Session intent.
+                    continue;
+                }
+
                 PlayerActorSelectionResult clear =
                     preparationModule.TryClearActorSelection(
                         new PlayerActorSelectionRequest(

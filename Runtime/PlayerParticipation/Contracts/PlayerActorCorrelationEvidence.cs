@@ -7,8 +7,8 @@ using Immersive.Framework.RuntimeContent;
 namespace Immersive.Framework.PlayerParticipation
 {
     /// <summary>
-    /// Immutable non-physical correlation for one prepared Logical Player Actor.
-    /// Assignment and Host identities are evidence only; their authorities remain external.
+    /// Immutable Session-physical evidence for one prepared Logical Player Actor.
+    /// Activity assignment, admission and binding identities remain contextual evidence elsewhere.
     /// </summary>
     [FrameworkApiStatus(
         FrameworkApiStatus.Experimental,
@@ -16,9 +16,9 @@ namespace Immersive.Framework.PlayerParticipation
     public readonly struct PlayerActorCorrelationEvidence
     {
         internal PlayerActorCorrelationEvidence(
-            PlayerSlotAssignmentOrigin assignmentOrigin,
-            PlayerSlotAssignmentToken assignmentToken,
-            PlayerHostBindingIdentity hostBindingIdentity,
+            string sessionContextId,
+            PlayerSlotId playerSlotId,
+            PlayerHostProvisioningMode provisioningOrigin,
             ActorProfileId actorProfileId,
             int selectionRevision,
             ActorId actorId,
@@ -29,9 +29,9 @@ namespace Immersive.Framework.PlayerParticipation
             string source,
             string reason)
         {
-            AssignmentOrigin = assignmentOrigin;
-            AssignmentToken = assignmentToken;
-            HostBindingIdentity = hostBindingIdentity;
+            SessionContextId = sessionContextId.NormalizeText();
+            PlayerSlotId = playerSlotId;
+            ProvisioningOrigin = provisioningOrigin;
             ActorProfileId = actorProfileId;
             SelectionRevision = selectionRevision;
             ActorId = actorId;
@@ -43,10 +43,9 @@ namespace Immersive.Framework.PlayerParticipation
             Reason = reason.NormalizeText();
         }
 
-        public PlayerSlotId PlayerSlotId => AssignmentToken.PlayerSlotId;
-        public PlayerSlotAssignmentOrigin AssignmentOrigin { get; }
-        public PlayerSlotAssignmentToken AssignmentToken { get; }
-        public PlayerHostBindingIdentity HostBindingIdentity { get; }
+        public string SessionContextId { get; }
+        public PlayerSlotId PlayerSlotId { get; }
+        public PlayerHostProvisioningMode ProvisioningOrigin { get; }
         public ActorProfileId ActorProfileId { get; }
         public int SelectionRevision { get; }
         public ActorId ActorId { get; }
@@ -61,10 +60,8 @@ namespace Immersive.Framework.PlayerParticipation
         public PlayerActorPreparationToken PreparationToken =>
             IsValid
                 ? new PlayerActorPreparationToken(
-                    AssignmentToken.SessionContextId,
+                    SessionContextId,
                     PlayerSlotId,
-                    AssignmentToken,
-                    HostBindingIdentity,
                     ActorProfileId,
                     SelectionRevision,
                     ActorId,
@@ -74,12 +71,9 @@ namespace Immersive.Framework.PlayerParticipation
                 : default;
 
         public bool IsValid =>
-            (AssignmentOrigin is
-                PlayerSlotAssignmentOrigin.ManagerProvisioned or
-                PlayerSlotAssignmentOrigin.SceneProvided) &&
-            AssignmentToken.IsValid &&
-            HostBindingIdentity.IsValid &&
-            AssignmentToken.HostBindingIdentity == HostBindingIdentity &&
+            !string.IsNullOrEmpty(SessionContextId) &&
+            PlayerSlotId.IsValid &&
+            ProvisioningOrigin.IsDefinedMode() &&
             ActorProfileId.IsValid &&
             SelectionRevision > 0 &&
             ActorId.IsValid &&
@@ -95,8 +89,7 @@ namespace Immersive.Framework.PlayerParticipation
         public string ToDiagnosticString()
         {
             return
-                $"slot='{PlayerSlotId.StableText}' origin='{AssignmentOrigin}' " +
-                $"assignment='{AssignmentToken.StableText}' binding='{HostBindingIdentity.StableText}' " +
+                $"session='{SessionContextId}' slot='{PlayerSlotId.StableText}' provisioning='{ProvisioningOrigin}' " +
                 $"actorProfile='{ActorProfileId.StableText}' selectionRevision='{SelectionRevision}' " +
                 $"actor='{ActorId.StableText}' runtimeContent='{RuntimeContentIdentity.StableText}' " +
                 $"materializationRevision='{MaterializationRevision}' " +

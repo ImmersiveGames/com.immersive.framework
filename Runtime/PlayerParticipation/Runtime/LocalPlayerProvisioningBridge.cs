@@ -334,34 +334,6 @@ namespace Immersive.Framework.PlayerParticipation
                     commitResult);
             }
 
-            PlayerHostBindingIdentity hostBindingIdentity =
-                participationContext.CreateHostBindingIdentity();
-            RuntimeContentOwner assignmentOwner =
-                participationContext.CreateSessionAssignmentOwner();
-            PlayerSlotAssignmentResult assignmentResult =
-                participationContext.BeginAssignment(
-                    commitResult.Slot.PlayerSlotId,
-                    PlayerSlotAssignmentOrigin.ManagerProvisioned,
-                    assignmentOwner,
-                    hostBindingIdentity,
-                    request.Source,
-                    request.Reason);
-            if (assignmentResult == null || !assignmentResult.Succeeded)
-            {
-                return FailCommittedJoinAndRollback(
-                    LocalPlayerJoinStatus.FailedAdmission,
-                    pendingJoin,
-                    provisionedPlayerInput,
-                    pendingJoin.CallbackPlayerInput,
-                    localPlayerHost,
-                    commitResult,
-                    assignmentResult,
-                    assignmentResult != null
-                        ? "Canonical current Slot assignment failed. " +
-                          assignmentResult.Message
-                        : "Canonical current Slot assignment returned no result.");
-            }
-
             try
             {
                 localPlayerHost.CommitStagedAdmission(
@@ -378,7 +350,6 @@ namespace Immersive.Framework.PlayerParticipation
                     pendingJoin.CallbackPlayerInput,
                     localPlayerHost,
                     commitResult,
-                    assignmentResult,
                     $"Local Player Host commit threw '{exception.GetType().Name}': {exception.Message}");
             }
 
@@ -400,8 +371,8 @@ namespace Immersive.Framework.PlayerParticipation
                 provisionedPlayerInput,
                 localPlayerHost,
                 callbackConfirmation,
-                assignmentResult,
-                "Local Player technical host transferred to the persistent FrameworkRuntimeHost and admitted to the reserved Session Slot. Logical Actor remains unprepared.");
+                null,
+                "Local Player technical host transferred to the persistent FrameworkRuntimeHost and admitted to the reserved Session Slot without an Activity contextual assignment. Logical Actor remains unprepared.");
             pendingJoin = null;
             return Complete(succeeded);
         }
@@ -429,7 +400,6 @@ namespace Immersive.Framework.PlayerParticipation
                 "committed-join-rollback");
             if (joinResult == null ||
                 !joinResult.Succeeded ||
-                !joinResult.AssignmentToken.IsValid ||
                 !joinResult.Slot.PlayerSlotId.IsValid)
             {
                 return Complete(CreateRejected(
@@ -439,12 +409,6 @@ namespace Immersive.Framework.PlayerParticipation
                     "Committed Local Player join rollback requires complete successful join evidence."));
             }
 
-            PlayerSlotAssignmentResult assignmentRollback =
-                participationContext.ReleaseAssignment(
-                    joinResult.Slot.PlayerSlotId,
-                    joinResult.AssignmentToken,
-                    source,
-                    resolvedReason);
             string hostIssue = string.Empty;
             bool hostRestored =
                 joinResult.LocalPlayerHost != null &&
@@ -465,21 +429,18 @@ namespace Immersive.Framework.PlayerParticipation
                 resolvedReason);
             callbackConfirmations.Remove(joinResult.OperationId);
 
-            bool assignmentRestored =
-                assignmentRollback != null &&
-                assignmentRollback.Succeeded;
             bool slotRestored =
                 slotRollback != null &&
                 slotRollback.Succeeded;
             LocalPlayerJoinStatus status =
-                assignmentRestored && hostRestored && slotRestored
+                hostRestored && slotRestored
                     ? LocalPlayerJoinStatus.FailedAdmission
                     : LocalPlayerJoinStatus.FailedRollback;
             string message =
                 (explicitCallerRollback
                     ? "Committed Local Player join was rolled back explicitly. "
                     : "Committed Local Player join rolled back because physical Host registration failed. ") +
-                $"assignmentReleased='{assignmentRestored}' hostReleased='{hostRestored}' " +
+                $"hostReleased='{hostRestored}' " +
                 $"slotReleased='{slotRestored}' hostIssue='{hostIssue}'.";
             return Complete(CreateRollbackResult(
                 status,
@@ -495,9 +456,7 @@ namespace Immersive.Framework.PlayerParticipation
                 joinResult.LocalPlayerHost,
                 joinResult.CallbackConfirmation,
                 message,
-                LocalPlayerJoinStatus.FailedAdmission,
-                joinResult.AssignmentResult,
-                assignmentRollback));
+                LocalPlayerJoinStatus.FailedAdmission));
         }
 
         public void Dispose()
@@ -719,21 +678,8 @@ namespace Immersive.Framework.PlayerParticipation
             PlayerInput callbackPlayerInput,
             LocalPlayerHostAuthoring host,
             PlayerParticipationOperationResult commitResult,
-            PlayerSlotAssignmentResult assignmentResult,
             string message)
         {
-            PlayerSlotAssignmentResult assignmentRollback = null;
-            if (assignmentResult != null &&
-                assignmentResult.Status ==
-                    PlayerSlotAssignmentStatus.SucceededAssigned)
-            {
-                assignmentRollback = participationContext.ReleaseAssignment(
-                    commitResult.Slot.PlayerSlotId,
-                    assignmentResult.CurrentAssignment.AssignmentToken,
-                    pending.Request.Source,
-                    "manager-assignment-rollback");
-            }
-
             host?.RollbackStagedAdmission(
                 pending.Request.Source,
                 "manager-assignment-rollback");
@@ -749,17 +695,14 @@ namespace Immersive.Framework.PlayerParticipation
                 callbackPlayerInput,
                 "local-player-join-rejected");
 
-            bool assignmentRestored =
-                assignmentRollback == null ||
-                assignmentRollback.Succeeded;
             bool slotRestored = slotRollback != null && slotRollback.Succeeded;
             LocalPlayerJoinStatus finalStatus =
-                assignmentRestored && slotRestored
+                slotRestored
                     ? originalStatus
                     : LocalPlayerJoinStatus.FailedRollback;
             string finalMessage = finalStatus == LocalPlayerJoinStatus.FailedRollback
                 ? message +
-                  $" Explicit rollback failed. assignmentRestored='{assignmentRestored}' slotRestored='{slotRestored}'."
+                  $" Explicit rollback failed. slotRestored='{slotRestored}'."
                 : message;
 
             LocalPlayerJoinResult result = CreateRollbackResult(
@@ -776,9 +719,7 @@ namespace Immersive.Framework.PlayerParticipation
                 host,
                 pending.CallbackConfirmation,
                 finalMessage,
-                originalStatus,
-                assignmentResult,
-                assignmentRollback);
+                originalStatus);
             pendingJoin = null;
             return Complete(result);
         }

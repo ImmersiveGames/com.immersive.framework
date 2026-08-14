@@ -284,11 +284,8 @@ namespace Immersive.Framework.PlayerParticipation
                 return false;
             }
 
-            PlayerHostEvidenceResult registration = RegisterHostEvidence(
+            PlayerHostEvidenceResult registration = RegisterSessionPhysicalHost(
                 slot.PlayerSlotId,
-                PlayerSlotAssignmentOrigin.ManagerProvisioned,
-                joinResult.AssignmentToken,
-                joinResult.HostBindingIdentity,
                 host,
                 nameof(PlayerActorPreparationRuntimeHostModule),
                 "register-manager-provisioned-host");
@@ -318,7 +315,7 @@ namespace Immersive.Framework.PlayerParticipation
                 return false;
             }
 
-            bool found = hostEvidenceProjection.TryGetHostEvidence(
+            bool found = hostEvidenceProjection.TryGetSessionPhysicalHost(
                 playerSlotId,
                 out host,
                 out PlayerHostEvidenceResult result);
@@ -346,6 +343,46 @@ namespace Immersive.Framework.PlayerParticipation
                     reason)
                 : UnavailableHostEvidenceResult(
                     "RegisterHostEvidence",
+                    source,
+                    reason);
+        }
+
+        internal PlayerHostEvidenceResult RegisterSessionPhysicalHost(
+            PlayerSlotId playerSlotId,
+            LocalPlayerHostAuthoring host,
+            string source,
+            string reason)
+        {
+            return hostEvidenceProjection != null
+                ? hostEvidenceProjection.RegisterSessionPhysicalHost(
+                    playerSlotId,
+                    host,
+                    source,
+                    reason)
+                : UnavailableHostEvidenceResult(
+                    "RegisterSessionPhysicalHost",
+                    source,
+                    reason);
+        }
+
+        internal PlayerHostEvidenceResult ReprojectHostEvidence(
+            PlayerSlotId playerSlotId,
+            PlayerSlotAssignmentOrigin assignmentOrigin,
+            PlayerSlotAssignmentToken assignmentToken,
+            PlayerHostBindingIdentity hostBindingIdentity,
+            string source,
+            string reason)
+        {
+            return hostEvidenceProjection != null
+                ? hostEvidenceProjection.ReprojectHostEvidence(
+                    playerSlotId,
+                    assignmentOrigin,
+                    assignmentToken,
+                    hostBindingIdentity,
+                    source,
+                    reason)
+                : UnavailableHostEvidenceResult(
+                    "ReprojectHostEvidence",
                     source,
                     reason);
         }
@@ -384,6 +421,24 @@ namespace Immersive.Framework.PlayerParticipation
                     reason)
                 : UnavailableHostEvidenceResult(
                     "ReleaseHostEvidence",
+                    source,
+                    reason);
+        }
+
+        internal PlayerHostEvidenceResult ReleaseSessionPhysicalHost(
+            PlayerSlotId playerSlotId,
+            LocalPlayerHostAuthoring expectedHost,
+            string source,
+            string reason)
+        {
+            return hostEvidenceProjection != null
+                ? hostEvidenceProjection.ReleaseSessionPhysicalHost(
+                    playerSlotId,
+                    expectedHost,
+                    source,
+                    reason)
+                : UnavailableHostEvidenceResult(
+                    "ReleaseSessionPhysicalHost",
                     source,
                     reason);
         }
@@ -526,6 +581,53 @@ namespace Immersive.Framework.PlayerParticipation
                     reason);
             diagnostic = result.ToDiagnosticString();
             return result;
+        }
+
+        internal PlayerActorPreparationResult TryEnsureSessionPhysicalActor(
+            RuntimeScopeContext scopeContext,
+            PlayerSlotId playerSlotId,
+            string source,
+            string reason)
+        {
+            preparationRequestCount++;
+            if (preparationContext == null)
+            {
+                return PlayerActorPreparationResult.RuntimeUnavailable(
+                    "EnsureSessionPhysicalActor",
+                    playerSlotId,
+                    diagnostic);
+            }
+
+            PlayerActorPreparationResult result =
+                preparationContext.TryEnsureSessionPhysicalActor(
+                    scopeContext,
+                    sessionPhysicalScopeContext,
+                    playerSlotId,
+                    source,
+                    reason);
+            diagnostic = result.ToDiagnosticString();
+            return result;
+        }
+
+        internal bool TryReleaseManagerContextualProjection(
+            RuntimeContentOwner activityOwner,
+            PlayerSlotId playerSlotId,
+            string source,
+            string reason,
+            out string issue)
+        {
+            if (preparationContext == null)
+            {
+                issue = diagnostic;
+                return false;
+            }
+
+            return preparationContext.TryReleaseManagerContextualProjection(
+                activityOwner,
+                playerSlotId,
+                source,
+                reason,
+                out issue);
         }
 
         internal bool TryDeactivatePreparedActorPresentation(

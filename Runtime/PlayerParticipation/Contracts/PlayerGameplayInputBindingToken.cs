@@ -18,6 +18,7 @@ namespace Immersive.Framework.PlayerParticipation
     {
         internal PlayerGameplayInputBindingToken(
             string sessionContextId,
+            RuntimeContentOwner owner,
             PlayerSlotId playerSlotId,
             PlayerSlotAssignmentToken assignmentToken,
             PlayerHostBindingIdentity hostBindingIdentity,
@@ -25,6 +26,7 @@ namespace Immersive.Framework.PlayerParticipation
             int bindingRevision)
         {
             SessionContextId = sessionContextId.NormalizeText();
+            Owner = owner;
             PlayerSlotId = playerSlotId;
             AssignmentToken = assignmentToken;
             HostBindingIdentity = hostBindingIdentity;
@@ -33,12 +35,13 @@ namespace Immersive.Framework.PlayerParticipation
         }
 
         public string SessionContextId { get; }
+        /// <summary>Activity occurrence that owns this contextual input binding.</summary>
+        public RuntimeContentOwner Owner { get; }
         public PlayerSlotId PlayerSlotId { get; }
         public PlayerSlotAssignmentToken AssignmentToken { get; }
         public PlayerHostBindingIdentity HostBindingIdentity { get; }
         public PlayerActorPreparationToken PreparationToken { get; }
         public int BindingRevision { get; }
-        public RuntimeContentOwner Owner => PreparationToken.RuntimeContentIdentity.Owner;
         public ActorProfileId ActorProfileId => PreparationToken.ActorProfileId;
         public ActorId ActorId => PreparationToken.ActorId;
         public RuntimeContentIdentity RuntimeContentIdentity =>
@@ -48,6 +51,7 @@ namespace Immersive.Framework.PlayerParticipation
 
         public bool IsValid =>
             !string.IsNullOrEmpty(SessionContextId) &&
+            Owner.IsValid &&
             PlayerSlotId.IsValid &&
             AssignmentToken.IsValid &&
             HostBindingIdentity.IsValid &&
@@ -63,12 +67,11 @@ namespace Immersive.Framework.PlayerParticipation
                 PreparationToken.SessionContextId,
                 SessionContextId,
                 StringComparison.Ordinal) &&
-            PreparationToken.PlayerSlotId == PlayerSlotId &&
-            PreparationToken.AssignmentToken == AssignmentToken &&
-            PreparationToken.HostBindingIdentity == HostBindingIdentity;
+            PreparationToken.PlayerSlotId == PlayerSlotId;
 
         public string StableText => IsValid
             ? $"player-gameplay-input:{SessionContextId}:" +
+              $"{Owner.Scope}:{Owner.OwnerIdentity.Value.Value}:" +
               $"{PlayerSlotId.Value.Value}:" +
               $"{AssignmentToken.AssignmentSequence}:" +
               $"{AssignmentToken.AssignmentRevision}:" +
@@ -80,6 +83,7 @@ namespace Immersive.Framework.PlayerParticipation
         public bool Equals(PlayerGameplayInputBindingToken other)
         {
             return string.Equals(SessionContextId, other.SessionContextId, StringComparison.Ordinal) &&
+                Owner == other.Owner &&
                 PlayerSlotId == other.PlayerSlotId &&
                 AssignmentToken == other.AssignmentToken &&
                 HostBindingIdentity == other.HostBindingIdentity &&
@@ -95,6 +99,7 @@ namespace Immersive.Framework.PlayerParticipation
             unchecked
             {
                 int hash = StringComparer.Ordinal.GetHashCode(SessionContextId ?? string.Empty);
+                hash = hash * 397 ^ Owner.GetHashCode();
                 hash = hash * 397 ^ PlayerSlotId.GetHashCode();
                 hash = hash * 397 ^ AssignmentToken.GetHashCode();
                 hash = hash * 397 ^ HostBindingIdentity.GetHashCode();

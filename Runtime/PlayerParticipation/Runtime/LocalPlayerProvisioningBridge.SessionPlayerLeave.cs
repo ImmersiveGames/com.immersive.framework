@@ -16,8 +16,8 @@ namespace Immersive.Framework.PlayerParticipation
         /// Releases the exact Manager-Provisioned technical Host owned by one active Session
         /// Player Leave occurrence. The caller must first release the retained Host evidence and
         /// pass that exact release result as the handoff proving the projection no longer owns the
-        /// physical Host reference. Canonical assignment and logical Slot membership intentionally
-        /// remain current for later ADR-020 cleanup stages.
+            /// physical Host reference. Logical Slot membership intentionally remains current for
+            /// later terminal cleanup; an Activity contextual assignment may already be absent.
         /// </summary>
         internal ManagerProvisionedSessionPlayerLeaveReleaseResult
             TryReleaseAdmittedPlayerForSessionLeave(
@@ -111,7 +111,7 @@ namespace Immersive.Framework.PlayerParticipation
 
             if (hostEvidenceRelease == null ||
                 hostEvidenceRelease.Status != PlayerHostEvidenceStatus.SucceededReleased ||
-                !hostEvidenceRelease.PreviousEvidence.IsRecorded ||
+                !hostEvidenceRelease.PreviousEvidence.HasRetainedHostReference ||
                 hostEvidenceRelease.CurrentEvidence.IsRecorded)
             {
                 return Result(
@@ -131,17 +131,10 @@ namespace Immersive.Framework.PlayerParticipation
 
             PlayerHostEvidenceSnapshot releasedEvidence =
                 hostEvidenceRelease.PreviousEvidence;
-            if (releasedEvidence.PlayerSlotId != leaveToken.PlayerSlotId ||
-                releasedEvidence.AssignmentOrigin !=
-                    PlayerSlotAssignmentOrigin.ManagerProvisioned ||
-                !releasedEvidence.AssignmentToken.IsValid ||
-                !releasedEvidence.HostBindingIdentity.IsValid)
+            if (releasedEvidence.PlayerSlotId != leaveToken.PlayerSlotId)
             {
                 return Result(
-                    releasedEvidence.AssignmentOrigin !=
-                        PlayerSlotAssignmentOrigin.ManagerProvisioned
-                        ? ManagerProvisionedSessionPlayerLeaveReleaseStatus.RejectedAssignmentOrigin
-                        : ManagerProvisionedSessionPlayerLeaveReleaseStatus.RejectedHostCorrelation,
+                    ManagerProvisionedSessionPlayerLeaveReleaseStatus.RejectedHostCorrelation,
                     leaveToken,
                     leaveConfirmation,
                     hostEvidenceRelease,
@@ -154,81 +147,10 @@ namespace Immersive.Framework.PlayerParticipation
                     physicalPlayerReleased: false,
                     resolvedSource,
                     resolvedReason,
-                    "Released Host evidence does not identify the exact Manager-Provisioned assignment owned by this Leaving Slot occurrence.");
+                    "Released physical Host evidence belongs to another Slot occurrence.");
             }
 
-            PlayerSlotAssignmentResult assignmentConfirmation =
-                participationContext.TryConfirmCurrentAssignment(
-                    leaveToken.PlayerSlotId,
-                    releasedEvidence.AssignmentToken,
-                    resolvedSource,
-                    resolvedReason);
-            if (assignmentConfirmation == null ||
-                !assignmentConfirmation.Succeeded ||
-                !assignmentConfirmation.HasCurrentAssignment)
-            {
-                return Result(
-                    ManagerProvisionedSessionPlayerLeaveReleaseStatus.RejectedAssignmentCorrelation,
-                    leaveToken,
-                    leaveConfirmation,
-                    hostEvidenceRelease,
-                    assignmentConfirmation,
-                    releasedEvidence.Host,
-                    releasedEvidence.Host != null
-                        ? releasedEvidence.Host.PlayerInput
-                        : null,
-                    hostAdmissionReleased: false,
-                    physicalPlayerReleased: false,
-                    resolvedSource,
-                    resolvedReason,
-                    assignmentConfirmation != null
-                        ? "Manager-Provisioned resource release rejected stale or foreign canonical assignment evidence. " +
-                          assignmentConfirmation.ToDiagnosticString()
-                        : "Canonical assignment confirmation returned no result.");
-            }
-
-            PlayerSlotAssignmentSnapshot currentAssignment =
-                assignmentConfirmation.CurrentAssignment;
-            if (currentAssignment.AssignmentOrigin !=
-                PlayerSlotAssignmentOrigin.ManagerProvisioned)
-            {
-                return Result(
-                    ManagerProvisionedSessionPlayerLeaveReleaseStatus.RejectedAssignmentOrigin,
-                    leaveToken,
-                    leaveConfirmation,
-                    hostEvidenceRelease,
-                    assignmentConfirmation,
-                    releasedEvidence.Host,
-                    releasedEvidence.Host != null
-                        ? releasedEvidence.Host.PlayerInput
-                        : null,
-                    hostAdmissionReleased: false,
-                    physicalPlayerReleased: false,
-                    resolvedSource,
-                    resolvedReason,
-                    $"Current Slot assignment origin is '{currentAssignment.AssignmentOrigin}', not ManagerProvisioned.");
-            }
-
-            if (currentAssignment.AssignmentToken != releasedEvidence.AssignmentToken ||
-                currentAssignment.HostBindingIdentity !=
-                    releasedEvidence.HostBindingIdentity)
-            {
-                return Result(
-                    ManagerProvisionedSessionPlayerLeaveReleaseStatus.RejectedAssignmentCorrelation,
-                    leaveToken,
-                    leaveConfirmation,
-                    hostEvidenceRelease,
-                    assignmentConfirmation,
-                    releasedEvidence.Host,
-                    releasedEvidence.Host != null
-                        ? releasedEvidence.Host.PlayerInput
-                        : null,
-                    hostAdmissionReleased: false,
-                    physicalPlayerReleased: false,
-                    resolvedSource,
-                    resolvedReason,
-                    "Released Host evidence and current canonical assignment do not carry the same assignment token and Host binding identity.");
-            }
+            PlayerSlotAssignmentResult assignmentConfirmation = null;
 
             LocalPlayerHostAuthoring host = releasedEvidence.Host;
             if (ReferenceEquals(host, null) || host == null)
@@ -401,7 +323,7 @@ namespace Immersive.Framework.PlayerParticipation
                 physicalPlayerReleased: true,
                 resolvedSource,
                 resolvedReason,
-                "Exact Manager-Provisioned Local Player Host admission and physical PlayerInput were released. Canonical assignment and logical Leaving membership remain for downstream Leave cleanup.");
+                "Exact Manager-Provisioned Local Player Host admission and physical PlayerInput were released. Logical Leaving membership remains for downstream terminal cleanup.");
             completedSessionPlayerLeaveReleases.Add(leaveToken, released);
             return released;
         }

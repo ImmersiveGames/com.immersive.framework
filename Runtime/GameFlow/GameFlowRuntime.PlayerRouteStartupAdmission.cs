@@ -13,46 +13,11 @@ namespace Immersive.Framework.GameFlow
                 string source,
                 string reason)
         {
-            ActivityAsset targetActivity = targetRoute != null &&
-                targetRoute.HasStartupActivity
-                    ? targetRoute.StartupActivity
-                    : null;
-            if (!RequiresGameplayReady(targetActivity))
-            {
-                return ActivityPlayerLifecycleAdmissionResult
-                    .NotRequiredResult(
-                        "PrepareRouteStartupActivityPlayerAdmission",
-                        source,
-                        reason,
-                        "Target Route Startup Activity does not require GameplayReady.");
-            }
-
-            if (TryConsumeDiagnosticFault(
-                    Diagnostics.GameFlowDiagnosticFaultCheckpoint.LifecycleRuntimeAvailability,
-                    "PrepareRouteStartupActivityPlayerAdmission", string.Empty, string.Empty,
-                    out string diagnostic))
-            {
-                return ActivityPlayerLifecycleAdmissionResult.RejectedRuntimeUnavailable(
-                    "PrepareRouteStartupActivityPlayerAdmission", source, reason, diagnostic);
-            }
-
-            if (activityPlayerLifecycleAdmissionRuntime == null)
-            {
-                return ActivityPlayerLifecycleAdmissionResult.RejectedRuntimeUnavailable(
-                    "PrepareRouteStartupActivityPlayerAdmission",
-                    source,
-                    reason,
-                    "Player lifecycle admission runtime is unavailable for a GameplayReady Route Startup Activity.");
-            }
-
-            return activityPlayerLifecycleAdmissionRuntime
-                .TryPrepareRouteStartupSwitch(
-                    previousRoute,
-                    targetRoute,
-                    previousActivity,
-                    targetActivity,
-                    source,
-                    reason);
+            return ActivityPlayerLifecycleAdmissionResult.NotRequiredResult(
+                "PrepareRouteStartupActivityPlayerAdmission",
+                source,
+                reason,
+                "Route startup uses contextual reprojection; no physical candidate is staged.");
         }
 
         private bool IsRouteStartupPlayerLifecycleCompleted(

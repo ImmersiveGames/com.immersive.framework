@@ -4,6 +4,7 @@ using Immersive.Framework.Actors;
 using Immersive.Framework.ApiStatus;
 using Immersive.Framework.Common;
 using Immersive.Framework.PlayerSlots;
+using Immersive.Framework.RuntimeContent;
 using Immersive.Framework.UnityInput;
 using UnityEngine.InputSystem;
 
@@ -157,6 +158,7 @@ namespace Immersive.Framework.PlayerParticipation
         internal PlayerGameplayInputBindingResult TryBind(
             PlayerActorPreparationSummary preparation,
             PlayerGameplayOccupancySummary occupancy,
+            RuntimeContentOwner contextualOwner,
             LocalPlayerHostAuthoring host,
             PlayerActorDeclaration actorDeclaration,
             UnityPlayerInputGateAdapter gateAdapter,
@@ -172,7 +174,8 @@ namespace Immersive.Framework.PlayerParticipation
                 ? occupancy.PlayerSlotId
                 : preparation.PlayerSlotId;
 
-            if (!requestedSlot.IsValid ||
+            if (!requestedSlot.IsValid || !contextualOwner.IsValid ||
+                contextualOwner.Scope != RuntimeContentScope.Activity ||
                 !preparation.IsValid ||
                 !occupancy.IsValid)
             {
@@ -181,7 +184,7 @@ namespace Immersive.Framework.PlayerParticipation
                     Operation,
                     requestedSlot,
                     GetSummaryOrDefault(requestedSlot),
-                    "Gameplay input binding requires valid preparation and occupancy evidence.");
+                    "Gameplay input binding requires a valid Activity owner, preparation and occupancy evidence.");
             }
 
             if (!string.Equals(
@@ -285,6 +288,20 @@ namespace Immersive.Framework.PlayerParticipation
             PlayerActorCorrelationEvidence actorEvidence =
                 actorConfirmation.RetainedEvidence;
             preparation = actorConfirmation.Preparation;
+            if (!TryGetCurrentContextualHostEvidence(
+                    requestedSlot,
+                    resolvedSource,
+                    resolvedReason,
+                    out PlayerHostEvidenceSnapshot contextualHostEvidence,
+                    out string contextualHostIssue))
+            {
+                return Reject(
+                    PlayerGameplayInputBindingStatus.RejectedHostMismatch,
+                    Operation,
+                    requestedSlot,
+                    previous,
+                    contextualHostIssue);
+            }
             if (!preparationModule.TryGetPreparedPhysicalEvidence(
                     requestedSlot,
                     preparation.Token,
@@ -406,9 +423,10 @@ namespace Immersive.Framework.PlayerParticipation
             {
                 BindingRecord existing = null;
                 bool sameStructuralEvidence =
-                    previous.AssignmentToken == actorEvidence.AssignmentToken &&
+                    previous.Owner == contextualOwner &&
+                    previous.AssignmentToken == contextualHostEvidence.AssignmentToken &&
                     previous.HostBindingIdentity ==
-                        actorEvidence.HostBindingIdentity &&
+                        contextualHostEvidence.HostBindingIdentity &&
                     previous.PreparationToken == preparation.Token &&
                     previous.ActorId == occupancy.ActorId &&
                     records.TryGetValue(
@@ -465,6 +483,7 @@ namespace Immersive.Framework.PlayerParticipation
                         actorEvidence,
                         preparation,
                         occupancy,
+                        contextualOwner,
                         actionMapName,
                         resolvedSource,
                         resolvedReason);
@@ -540,9 +559,10 @@ namespace Immersive.Framework.PlayerParticipation
             revision++;
             var token = new PlayerGameplayInputBindingToken(
                 sessionContextId,
+                contextualOwner,
                 requestedSlot,
-                actorEvidence.AssignmentToken,
-                actorEvidence.HostBindingIdentity,
+                contextualHostEvidence.AssignmentToken,
+                contextualHostEvidence.HostBindingIdentity,
                 preparation.Token,
                 bindingSequence);
             PlayerGameplayInputAvailability availability =
@@ -555,11 +575,11 @@ namespace Immersive.Framework.PlayerParticipation
                 requestedSlot,
                 PlayerGameplayInputBindingState.Bound,
                 availability,
-                actorEvidence.AssignmentToken,
-                actorEvidence.HostBindingIdentity,
+                contextualHostEvidence.AssignmentToken,
+                contextualHostEvidence.HostBindingIdentity,
                 occupancy.ActorProfileId,
                 occupancy.ActorId,
-                occupancy.Owner,
+                contextualOwner,
                 occupancy.RuntimeContentIdentity,
                 preparation.Token,
                 occupancy.Token,
@@ -605,14 +625,30 @@ namespace Immersive.Framework.PlayerParticipation
                 PlayerSlotId playerSlotId,
                 PlayerGameplayInputBindingSummary previous,
                 BindingRecord record,
-                PlayerActorCorrelationEvidence actorEvidence,
-                PlayerActorPreparationSummary preparation,
-                PlayerGameplayOccupancySummary occupancy,
-                string desiredActionMapName,
+            PlayerActorCorrelationEvidence actorEvidence,
+            PlayerActorPreparationSummary preparation,
+            PlayerGameplayOccupancySummary occupancy,
+            RuntimeContentOwner contextualOwner,
+            string desiredActionMapName,
                 string source,
                 string reason)
         {
             const string Operation = "ReconfigureGameplayInputActionMap";
+            if (!TryGetCurrentContextualHostEvidence(
+                    playerSlotId,
+                    source,
+                    reason,
+                    out PlayerHostEvidenceSnapshot contextualHostEvidence,
+                    out string contextualHostIssue))
+            {
+                return Reject(
+                    PlayerGameplayInputBindingStatus.RejectedHostMismatch,
+                    Operation,
+                    playerSlotId,
+                    previous,
+                    contextualHostIssue);
+            }
+
             if (record.GateAdapter == null ||
                 record.GateAdapter.IsBlockedByAdapter)
             {
@@ -712,9 +748,10 @@ namespace Immersive.Framework.PlayerParticipation
             revision++;
             var token = new PlayerGameplayInputBindingToken(
                 sessionContextId,
+                contextualOwner,
                 playerSlotId,
-                actorEvidence.AssignmentToken,
-                actorEvidence.HostBindingIdentity,
+                contextualHostEvidence.AssignmentToken,
+                contextualHostEvidence.HostBindingIdentity,
                 preparation.Token,
                 bindingSequence);
             var current = new PlayerGameplayInputBindingSummary(
@@ -725,11 +762,11 @@ namespace Immersive.Framework.PlayerParticipation
                     record.PlayerInput,
                     record.GateAdapter,
                     desiredActionMapName),
-                actorEvidence.AssignmentToken,
-                actorEvidence.HostBindingIdentity,
+                contextualHostEvidence.AssignmentToken,
+                contextualHostEvidence.HostBindingIdentity,
                 actorEvidence.ActorProfileId,
                 actorEvidence.ActorId,
-                actorEvidence.Owner,
+                contextualOwner,
                 actorEvidence.RuntimeContentIdentity,
                 preparation.Token,
                 occupancy.Token,
@@ -865,9 +902,23 @@ namespace Immersive.Framework.PlayerParticipation
                         : "Current Actor evidence confirmation returned no result.");
             }
 
-            PlayerActorCorrelationEvidence evidence =
-                actorConfirmation.RetainedEvidence;
-            if (evidence.AssignmentToken != previous.AssignmentToken)
+            if (!TryGetCurrentContextualHostEvidence(
+                    playerSlotId,
+                    resolvedSource,
+                    resolvedReason,
+                    out PlayerHostEvidenceSnapshot contextualHostEvidence,
+                    out string contextualHostIssue))
+            {
+                return MarkDivergent(
+                    PlayerGameplayInputBindingStatus.RejectedHostDivergence,
+                    Operation,
+                    previous,
+                    resolvedSource,
+                    resolvedReason,
+                    contextualHostIssue);
+            }
+
+            if (contextualHostEvidence.AssignmentToken != previous.AssignmentToken)
             {
                 return MarkDivergent(
                     PlayerGameplayInputBindingStatus
@@ -879,7 +930,7 @@ namespace Immersive.Framework.PlayerParticipation
                     "Current assignment differs from the retained Input binding.");
             }
 
-            if (evidence.HostBindingIdentity != previous.HostBindingIdentity)
+            if (contextualHostEvidence.HostBindingIdentity != previous.HostBindingIdentity)
             {
                 return MarkDivergent(
                     PlayerGameplayInputBindingStatus.RejectedHostDivergence,
@@ -890,10 +941,11 @@ namespace Immersive.Framework.PlayerParticipation
                     "Current Host binding identity differs from retained Input evidence.");
             }
 
+            PlayerActorCorrelationEvidence evidence = actorConfirmation.RetainedEvidence;
             if (evidence.PreparationToken != previous.PreparationToken ||
                 evidence.ActorProfileId != previous.ActorProfileId ||
                 evidence.ActorId != previous.ActorId ||
-                evidence.Owner != previous.Owner)
+                evidence.RuntimeContentIdentity != previous.RuntimeContentIdentity)
             {
                 return MarkDivergent(
                     PlayerGameplayInputBindingStatus.RejectedActorDivergence,
@@ -1610,6 +1662,32 @@ namespace Immersive.Framework.PlayerParticipation
                     out PlayerGameplayInputBindingSummary summary)
                 ? summary
                 : default;
+        }
+
+        private bool TryGetCurrentContextualHostEvidence(
+            PlayerSlotId playerSlotId,
+            string source,
+            string reason,
+            out PlayerHostEvidenceSnapshot evidence,
+            out string issue)
+        {
+            evidence = default;
+            issue = string.Empty;
+            PlayerHostEvidenceResult confirmation = preparationModule.ConfirmHostEvidence(
+                playerSlotId,
+                source,
+                reason + "; confirm-contextual-host-evidence");
+            if (confirmation == null || !confirmation.Succeeded ||
+                !confirmation.CurrentEvidence.IsRecorded)
+            {
+                issue = confirmation != null
+                    ? confirmation.ToDiagnosticString()
+                    : "Current contextual Host evidence confirmation returned no result.";
+                return false;
+            }
+
+            evidence = confirmation.CurrentEvidence;
+            return true;
         }
 
         private PlayerGameplayInputBindingResult Reject(

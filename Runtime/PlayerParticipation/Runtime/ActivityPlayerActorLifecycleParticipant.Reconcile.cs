@@ -551,7 +551,7 @@ namespace Immersive.Framework.PlayerParticipation
                         ActivityPlayerActorReadinessReason
                             .PreparingLogicalActor;
                     PlayerActorPreparationResult preparation =
-                        preparationModule.TryPrepareSelectedActor(
+                        preparationModule.TryEnsureSessionPhysicalActor(
                             playerReadinessRecord.ScopeContext,
                             slot.PlayerSlotId,
                             resolvedSource,
@@ -617,6 +617,7 @@ namespace Immersive.Framework.PlayerParticipation
                     PlayerGameplayRuntimeOperationResult gameplay =
                         gameplayRuntime.TryEnsureCurrentGameplay(
                             slot.PlayerSlotId,
+                            playerReadinessRecord.Owner,
                             resolvedSource,
                             resolvedReason + "; ensure-current-gameplay");
                     if (gameplay == null || !gameplay.Succeeded)
@@ -1092,36 +1093,28 @@ namespace Immersive.Framework.PlayerParticipation
                     }
                 }
 
-                if (delta.PreparationApplied &&
-                    delta.PreparationToken.IsValid)
-                {
-                    PlayerActorPreparationResult release =
-                        preparationModule.TryReleasePreparedActor(
-                            delta.PlayerSlotId,
-                            delta.PreparationToken,
-                            source,
-                            reason + "; rollback-preparation");
-                    if (release == null || !release.Succeeded)
-                    {
-                        issues.Add(release != null
-                            ? release.ToDiagnosticString()
-                            : $"Preparation rollback returned no result for Slot '{delta.PlayerSlotId.StableText}'.");
-                    }
-                    else
-                    {
-                        PlayerReadinessSlotRecord record =
-                            FindReadinessSlot(delta.PlayerSlotId);
-                        if (record != null)
-                        {
-                            record.Prepared = false;
-                            record.PreparationToken = default;
-                            record.PreparationCreatedByLifecycle = false;
-                        }
-                    }
-                }
-
                 if (delta.SelectionApplied)
                 {
+                    bool physicalCommitted = false;
+                    for (int deltaIndex = 0;
+                         deltaIndex < deltas.Count;
+                         deltaIndex++)
+                    {
+                        ReconcilePassDelta preparedDelta = deltas[deltaIndex];
+                        if (preparedDelta.PlayerSlotId == delta.PlayerSlotId &&
+                            preparedDelta.PreparationApplied &&
+                            preparedDelta.PreparationToken.IsValid)
+                        {
+                            physicalCommitted = true;
+                            break;
+                        }
+                    }
+
+                    if (physicalCommitted)
+                    {
+                        continue;
+                    }
+
                     PlayerActorSelectionResult clear =
                         preparationModule.TryClearActorSelection(
                             new PlayerActorSelectionRequest(

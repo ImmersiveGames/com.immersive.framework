@@ -534,14 +534,12 @@ namespace Immersive.Framework.PlayerParticipation
 
             if (joinResult == null || !joinResult.Succeeded ||
                 !joinResult.Slot.PlayerSlotId.IsValid ||
-                !joinResult.AssignmentToken.IsValid ||
-                !joinResult.HostBindingIdentity.IsValid ||
                 joinResult.LocalPlayerHost == null ||
                 joinResult.PlayerInput == null)
             {
                 return CreateRollbackFailure(
                     joinResult,
-                    "Committed Local Player join rollback requires complete successful join, assignment, Host binding and physical Host evidence.");
+                    "Committed Local Player join rollback requires complete successful join and physical Host evidence.");
             }
 
             if (!runtimeHost.TryGetPlayerActorPreparationRuntime(
@@ -578,10 +576,8 @@ namespace Immersive.Framework.PlayerParticipation
                 joinResult.Slot.PlayerSlotId,
                 out _);
             PlayerHostEvidenceResult hostEvidenceRelease = retainedEvidence
-                ? preparation.ReleaseHostEvidence(
+                ? preparation.ReleaseSessionPhysicalHost(
                     joinResult.Slot.PlayerSlotId,
-                    joinResult.AssignmentToken,
-                    joinResult.HostBindingIdentity,
                     joinResult.LocalPlayerHost,
                     source,
                     reason)
@@ -610,11 +606,8 @@ namespace Immersive.Framework.PlayerParticipation
             }
 
             PlayerHostEvidenceResult compensation = hostEvidenceRelease != null
-                ? preparation.RegisterHostEvidence(
+                ? preparation.RegisterSessionPhysicalHost(
                     joinResult.Slot.PlayerSlotId,
-                    PlayerSlotAssignmentOrigin.ManagerProvisioned,
-                    joinResult.AssignmentToken,
-                    joinResult.HostBindingIdentity,
                     joinResult.LocalPlayerHost,
                     source,
                     "rollback-bridge-failed-compensation")

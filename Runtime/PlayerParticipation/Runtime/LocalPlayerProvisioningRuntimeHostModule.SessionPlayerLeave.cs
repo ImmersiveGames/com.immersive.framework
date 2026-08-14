@@ -57,36 +57,28 @@ namespace Immersive.Framework.PlayerParticipation
                     return false;
                 }
 
-                if (!retained.IsRecorded ||
+                if (!retained.HasSessionPhysicalHost ||
                     retained.PlayerSlotId != leaveToken.PlayerSlotId ||
-                    retained.AssignmentOrigin !=
-                        PlayerSlotAssignmentOrigin.ManagerProvisioned ||
-                    !retained.AssignmentToken.IsValid ||
-                    !retained.HostBindingIdentity.IsValid ||
                     !retained.HasRetainedHostReference)
                 {
                     issue =
-                        "Retained Host evidence does not identify the exact Manager-Provisioned assignment required by Session Player Leave.";
+                        "Retained Host evidence does not identify the exact Session physical Host required by Session Player Leave.";
                     return false;
                 }
 
-                hostEvidenceRelease = preparation.ReleaseHostEvidence(
+                hostEvidenceRelease = preparation.ReleaseSessionPhysicalHost(
                     retained.PlayerSlotId,
-                    retained.AssignmentToken,
-                    retained.HostBindingIdentity,
                     retained.Host,
                     resolvedSource,
-                    resolvedReason + "; release-host-evidence");
+                    resolvedReason + "; release-session-physical-host");
             }
 
             if (hostEvidenceRelease == null ||
                 hostEvidenceRelease.Status != PlayerHostEvidenceStatus.SucceededReleased ||
-                !hostEvidenceRelease.PreviousEvidence.IsRecorded ||
+                !hostEvidenceRelease.PreviousEvidence.HasRetainedHostReference ||
                 hostEvidenceRelease.CurrentEvidence.IsRecorded ||
                 hostEvidenceRelease.PreviousEvidence.PlayerSlotId !=
-                    leaveToken.PlayerSlotId ||
-                hostEvidenceRelease.PreviousEvidence.AssignmentOrigin !=
-                    PlayerSlotAssignmentOrigin.ManagerProvisioned)
+                    leaveToken.PlayerSlotId)
             {
                 issue = hostEvidenceRelease != null
                     ? "Manager-Provisioned Host evidence release is not exact successful release evidence. " +

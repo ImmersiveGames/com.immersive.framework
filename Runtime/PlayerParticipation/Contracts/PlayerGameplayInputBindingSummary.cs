@@ -112,7 +112,7 @@ namespace Immersive.Framework.PlayerParticipation
                 : AssignmentToken.IsValid && HostBindingIdentity.IsValid &&
                   AssignmentToken.HostBindingIdentity == HostBindingIdentity &&
                   ActorProfileId.IsValid && ActorId.IsValid && Owner.IsValid &&
-                  RuntimeContentIdentity.IsValid && RuntimeContentIdentity.Owner == Owner &&
+                  RuntimeContentIdentity.IsValid &&
                   PreparationToken.IsValid && OccupancyToken.IsValid && Token.IsValid &&
                   !string.IsNullOrEmpty(ActionMapName) && !string.IsNullOrEmpty(PlayerInputName) &&
                   Token.SessionContextId == SessionContextId &&

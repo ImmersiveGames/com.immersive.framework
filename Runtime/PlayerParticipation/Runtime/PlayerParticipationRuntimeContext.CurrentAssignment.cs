@@ -296,61 +296,6 @@ namespace Immersive.Framework.PlayerParticipation
                 release: false);
         }
 
-        /// <summary>
-        /// Promotes an already-correlated Scene-provided assignment from its contextual
-        /// Activity/Route owner to this Session. The opaque assignment token is intentionally
-        /// retained: it is the physical Host/Actor correlation, not Activity ownership.
-        /// </summary>
-        internal PlayerSlotAssignmentResult TryPromoteSceneProvidedAssignmentToSession(
-            PlayerSlotId playerSlotId,
-            PlayerSlotAssignmentToken expectedToken,
-            string source,
-            string reason)
-        {
-            const string operation = "PromoteSceneProvidedAssignmentToSession";
-            PlayerSlotAssignmentResult confirmation = ResolveExpectedAssignment(
-                operation,
-                playerSlotId,
-                expectedToken,
-                source,
-                reason,
-                release: false);
-            if (confirmation == null || !confirmation.Succeeded ||
-                confirmation.CurrentAssignment.AssignmentOrigin !=
-                    PlayerSlotAssignmentOrigin.SceneProvided)
-            {
-                return confirmation;
-            }
-
-            CurrentAssignmentRecord record = currentAssignments[playerSlotId];
-            RuntimeContentOwner sessionOwner = CreateSessionAssignmentOwner();
-            if (record.Owner == sessionOwner)
-            {
-                return confirmation;
-            }
-
-            currentAssignments[playerSlotId] = new CurrentAssignmentRecord(
-                record.Slot,
-                record.Origin,
-                sessionOwner,
-                record.Sequence,
-                record.AssignmentRevision,
-                record.Token,
-                record.HostBindingIdentity,
-                source.NormalizeTextOrFallback(nameof(PlayerParticipationRuntimeContext)),
-                reason.NormalizeTextOrFallback("promote-scene-provided-assignment"));
-            CurrentAssignmentRecord promoted = currentAssignments[playerSlotId];
-            return AssignmentResult(
-                PlayerSlotAssignmentStatus.SucceededConfirmed,
-                operation,
-                confirmation.PreviousAssignment,
-                CreateAssignmentSnapshot(promoted),
-                expectedToken,
-                source.NormalizeText(),
-                reason.NormalizeText(),
-                "Scene-provided physical assignment ownership promoted from contextual Activity/Route to the Session.");
-        }
-
         internal PlayerSlotAssignmentResult ReleaseAssignment(
             PlayerSlotId playerSlotId,
             PlayerSlotAssignmentToken expectedToken,
@@ -621,11 +566,8 @@ namespace Immersive.Framework.PlayerParticipation
             return origin switch
             {
                 PlayerSlotAssignmentOrigin.ManagerProvisioned =>
-                    owner.Scope == RuntimeContentScope.Session &&
-                    string.Equals(
-                        owner.OwnerId,
-                        contextId,
-                        StringComparison.Ordinal),
+                    owner.Scope is RuntimeContentScope.Activity or
+                        RuntimeContentScope.Route,
                 PlayerSlotAssignmentOrigin.SceneProvided =>
                     owner.Scope is RuntimeContentScope.Activity or
                         RuntimeContentScope.Route,

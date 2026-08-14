@@ -262,6 +262,7 @@ namespace Immersive.Framework.PlayerParticipation
 
         internal PlayerGameplayRuntimeOperationResult TryEnsureCurrentGameplay(
             PlayerSlotId playerSlotId,
+            RuntimeContentOwner contextualOwner,
             string source,
             string reason)
         {
@@ -283,7 +284,8 @@ namespace Immersive.Framework.PlayerParticipation
                     diagnostic);
             }
 
-            if (!playerSlotId.IsValid)
+            if (!playerSlotId.IsValid || !contextualOwner.IsValid ||
+                contextualOwner.Scope != RuntimeContentScope.Activity)
             {
                 return Result(
                     PlayerGameplayRuntimeOperationStatus.RejectedInvalidRequest,
@@ -294,7 +296,7 @@ namespace Immersive.Framework.PlayerParticipation
                     false,
                     false,
                     string.Empty,
-                    "Current gameplay creation requires a valid Player Slot identity.");
+                    "Current gameplay creation requires a valid Player Slot and Activity contextual owner.");
             }
 
             if (!preparationModule.TryGetCurrentPreparation(
@@ -317,6 +319,7 @@ namespace Immersive.Framework.PlayerParticipation
 
             bool succeeded = handoffContext.TryEnsureCurrentGameplayChain(
                 preparation,
+                contextualOwner,
                 source,
                 reason,
                 out PlayerGameplayAdmissionSummary current,
@@ -343,7 +346,8 @@ namespace Immersive.Framework.PlayerParticipation
                     issue);
             }
 
-            bool alreadyAdmitted = previous.IsAdmitted;
+            bool alreadyAdmitted = previous.IsAdmitted &&
+                previous.Owner == contextualOwner;
             PlayerGameplayRuntimeOperationStatus successStatus =
                 current.GameplayReady
                     ? alreadyAdmitted

@@ -225,6 +225,23 @@ namespace Immersive.Framework.PlayerParticipation
                         : "Activity gameplay release returned no result.");
             }
 
+            if (!preparationModule.TryReleaseManagerContextualProjection(
+                    progress.ActivityOwner,
+                    leaveToken.PlayerSlotId,
+                    resolvedSource,
+                    resolvedReason + "; release-manager-contextual-projection",
+                    out string contextualReleaseIssue))
+            {
+                return Result(
+                    SessionPlayerActivityRepresentationReleaseStatus.FailedInvariant,
+                    leaveToken,
+                    leaveConfirmation,
+                    progress,
+                    resolvedSource,
+                    resolvedReason,
+                    contextualReleaseIssue);
+            }
+
             // Stage C deliberately ends at contextual retirement. The prepared Actor and its
             // RuntimeContent handle remain Session physical resources until stage D in the
             // Session Leave coordinator; Activity release must never destroy them.
@@ -294,16 +311,10 @@ namespace Immersive.Framework.PlayerParticipation
                         "Activity lifecycle preparation token does not match the retained current Actor representation evidence.");
                 }
 
-                PlayerSlotAssignmentResult assignment =
-                    participationContext.TryConfirmCurrentAssignment(
+                if (!participationContext.TryGetCurrentAssignment(
                         playerSlotId,
-                        actorEvidence.AssignmentToken,
-                        source,
-                        reason);
-                if (assignment == null ||
-                    !assignment.Succeeded ||
-                    assignment.CurrentAssignment.HostBindingIdentity !=
-                        actorEvidence.HostBindingIdentity)
+                        out PlayerSlotAssignmentSnapshot assignment) ||
+                    !assignment.IsAssigned)
                 {
                     return Result(
                         SessionPlayerActivityRepresentationReleaseStatus.RejectedRepresentationCorrelation,
@@ -312,17 +323,15 @@ namespace Immersive.Framework.PlayerParticipation
                         null,
                         source,
                         reason,
-                        assignment != null
-                            ? assignment.ToDiagnosticString()
-                            : "Current Slot assignment confirmation returned no result for retained Actor evidence.");
+                        "Current Slot assignment is unavailable for the active contextual representation.");
                 }
 
                 if (!preparationModule.TryGetRetainedHostEvidence(
                         playerSlotId,
                         out PlayerHostEvidenceSnapshot hostEvidence) ||
                     !hostEvidence.IsRecorded ||
-                    hostEvidence.AssignmentToken != actorEvidence.AssignmentToken ||
-                    hostEvidence.HostBindingIdentity != actorEvidence.HostBindingIdentity)
+                    hostEvidence.AssignmentToken != assignment.AssignmentToken ||
+                    hostEvidence.HostBindingIdentity != assignment.HostBindingIdentity)
                 {
                     return Result(
                         SessionPlayerActivityRepresentationReleaseStatus.RejectedRepresentationCorrelation,

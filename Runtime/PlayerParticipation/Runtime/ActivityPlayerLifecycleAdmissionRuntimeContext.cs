@@ -341,7 +341,8 @@ namespace Immersive.Framework.PlayerParticipation
                     continue;
                 }
 
-                if (!admission.Token.IsValid || admission.Owner != previousOwner)
+                if (!admission.Token.IsValid || admission.Owner != previousOwner ||
+                    admission.InputBindingToken.Owner != previousOwner)
                 {
                     return Reject(
                         ActivityPlayerLifecycleAdmissionStatus.RejectedCurrentGameplayNotReady,
@@ -360,8 +361,8 @@ namespace Immersive.Framework.PlayerParticipation
                 }
 
                 if (preparation.Token != admission.PreparationToken ||
-                    preparation.Materialization.Owner != admission.Owner ||
-                    preparation.Materialization.Owner != previousOwner)
+                    preparation.Materialization.Owner.Scope !=
+                        RuntimeContentScope.Session)
                 {
                     return Reject(
                         ActivityPlayerLifecycleAdmissionStatus.RejectedCurrentGameplayNotReady,
@@ -428,7 +429,8 @@ namespace Immersive.Framework.PlayerParticipation
                         out PlayerGameplayAdmissionSummary admission) ||
                     !admission.GameplayReady ||
                     !admission.Token.IsValid ||
-                    admission.Owner != previousOwner)
+                    admission.Owner != previousOwner ||
+                    admission.InputBindingToken.Owner != previousOwner)
                 {
                     return FailAndCleanup(
                         record,
@@ -445,7 +447,8 @@ namespace Immersive.Framework.PlayerParticipation
                         out string preparationIssue) ||
                     !preparation.IsPrepared ||
                     preparation.Token != admission.PreparationToken ||
-                    preparation.Materialization.Owner != previousOwner)
+                    preparation.Materialization.Owner.Scope !=
+                        RuntimeContentScope.Session)
                 {
                     return FailAndCleanup(
                         record,
@@ -1497,7 +1500,8 @@ namespace Immersive.Framework.PlayerParticipation
                         out PlayerGameplayAdmissionSummary admission) ||
                     !admission.GameplayReady ||
                     admission.Token != slot.TargetAdmissionToken ||
-                    admission.Owner != active.TargetOwner)
+                    admission.Owner != active.TargetOwner ||
+                    admission.InputBindingToken.Owner != active.TargetOwner)
                 {
                     issue =
                         $"Target Slot '{slot.Slot.PlayerSlotId.StableText}' lost GameplayReady admission before lifecycle adoption.";
@@ -1537,6 +1541,7 @@ namespace Immersive.Framework.PlayerParticipation
         public bool TryReleaseGameplayBeforeActor(
             PlayerSlotId playerSlotId,
             PlayerActorPreparationToken expectedPreparation,
+            RuntimeContentOwner contextualOwner,
             string source,
             string reason,
             out bool released,
@@ -1545,10 +1550,11 @@ namespace Immersive.Framework.PlayerParticipation
             released = false;
             issue = string.Empty;
             if (!playerSlotId.IsValid ||
-                !expectedPreparation.IsValid)
+                !expectedPreparation.IsValid ||
+                !contextualOwner.IsValid)
             {
                 issue =
-                    "Gameplay-before-Actor release requires a valid Slot and exact preparation token.";
+                    "Gameplay-before-Actor release requires a valid Slot, exact preparation token and Activity owner.";
                 return false;
             }
 
@@ -1578,8 +1584,8 @@ namespace Immersive.Framework.PlayerParticipation
             if (admission.PreparationToken != expectedPreparation ||
                 admission.ActorId !=
                     preparation.Materialization.ActorId ||
-                admission.Owner !=
-                    preparation.Materialization.Owner)
+                admission.Owner != contextualOwner ||
+                admission.InputBindingToken.Owner != contextualOwner)
             {
                 issue =
                     "Current P3K.5 admission does not match the Actor being released.";
@@ -1630,8 +1636,8 @@ namespace Immersive.Framework.PlayerParticipation
                     out PlayerActorPreparationSummary preparation,
                     out issue) ||
                 !preparation.IsPrepared ||
-                preparation.Materialization.Owner !=
-                    record.TargetOwner ||
+                preparation.Materialization.Owner.Scope !=
+                    RuntimeContentScope.Session ||
                 preparation.Materialization.ActorId !=
                     slot.CandidateToken.ActorId)
             {
@@ -1648,7 +1654,8 @@ namespace Immersive.Framework.PlayerParticipation
                     out PlayerGameplayAdmissionSummary admission) ||
                 !admission.GameplayReady ||
                 admission.PreparationToken != preparation.Token ||
-                admission.Owner != record.TargetOwner)
+                admission.Owner != record.TargetOwner ||
+                admission.InputBindingToken.Owner != record.TargetOwner)
             {
                 issue =
                     $"Target P3K.5 GameplayReady admission is invalid for Slot '{slot.Slot.PlayerSlotId.StableText}'.";

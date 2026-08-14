@@ -302,9 +302,7 @@ namespace Immersive.Framework.PlayerParticipation
                     expectedManagerAssignmentToken);
                 sessionPlayerLeaveTerminalProgress.Add(leaveToken, progress);
             }
-            else if (progress.ProvisioningMode != expectedProvisioningMode ||
-                     (expectedProvisioningMode == PlayerHostProvisioningMode.ManagerProvisioned &&
-                      progress.ExpectedManagerAssignmentToken != expectedManagerAssignmentToken))
+            else if (progress.ProvisioningMode != expectedProvisioningMode)
             {
                 return TerminalResult(
                     SessionPlayerLeaveTerminalStatus.RejectedAssignmentCorrelation,
@@ -328,15 +326,10 @@ namespace Immersive.Framework.PlayerParticipation
             {
                 if (expectedProvisioningMode == PlayerHostProvisioningMode.ManagerProvisioned)
                 {
-                    if (!TryGetCurrentAssignment(
+                    if (TryGetCurrentAssignment(
                             leaveToken.PlayerSlotId,
-                            out PlayerSlotAssignmentSnapshot currentAssignment) ||
-                        !currentAssignment.IsAssigned ||
-                        currentAssignment.AssignmentOrigin !=
-                            PlayerSlotAssignmentOrigin.ManagerProvisioned ||
-                        currentAssignment.AssignmentToken != expectedManagerAssignmentToken ||
-                        currentAssignment.HostBindingIdentity !=
-                            expectedManagerAssignmentToken.HostBindingIdentity)
+                            out PlayerSlotAssignmentSnapshot currentAssignment) &&
+                        currentAssignment.IsAssigned)
                     {
                         return TerminalResult(
                             SessionPlayerLeaveTerminalStatus.RejectedAssignmentCorrelation,
@@ -353,35 +346,7 @@ namespace Immersive.Framework.PlayerParticipation
                             false,
                             resolvedSource,
                             resolvedReason,
-                            "Manager-Provisioned terminal cleanup could not confirm the exact still-current canonical assignment captured before physical resource release.");
-                    }
-
-                    PlayerSlotAssignmentResult assignmentRelease = ReleaseAssignment(
-                        leaveToken.PlayerSlotId,
-                        expectedManagerAssignmentToken,
-                        resolvedSource,
-                        resolvedReason + "; release-session-assignment");
-                    progress.AssignmentRelease = assignmentRelease;
-                    if (assignmentRelease == null || !assignmentRelease.Succeeded)
-                    {
-                        return TerminalResult(
-                            SessionPlayerLeaveTerminalStatus.FailedAssignmentRelease,
-                            leaveToken,
-                            expectedProvisioningMode,
-                            activityRelease,
-                            managerProvisioningRelease,
-                            null,
-                            assignmentRelease,
-                            progress.ActorSelectionCleanup,
-                            progress.Commit,
-                            false,
-                            progress.ActorSelectionCleared,
-                            false,
-                            resolvedSource,
-                            resolvedReason,
-                            assignmentRelease != null
-                                ? assignmentRelease.ToDiagnosticString()
-                                : "Manager-Provisioned canonical assignment release returned no result.");
+                            "Manager-Provisioned terminal cleanup found a residual contextual assignment after Stage C; it must be retired before physical terminal release.");
                     }
 
                     progress.AssignmentReleased = true;
@@ -537,32 +502,13 @@ namespace Immersive.Framework.PlayerParticipation
                 release.LeaveToken != leaveToken ||
                 !release.HostAdmissionReleased ||
                 !release.PhysicalPlayerReleased ||
-                release.AssignmentConfirmation == null ||
-                !release.AssignmentConfirmation.Succeeded ||
-                !release.AssignmentConfirmation.HasCurrentAssignment)
+                release.LocalPlayerHost == null ||
+                release.PlayerInput == null)
             {
                 issue =
-                    "Terminal Manager-Provisioned Leave requires successful physical/Host release evidence and the exact canonical assignment confirmation captured for the same Leave token.";
+                    "Terminal Manager-Provisioned Leave requires successful Session physical Host/Input release evidence for the same Leave token.";
                 return false;
             }
-
-            PlayerSlotAssignmentSnapshot assignment =
-                release.AssignmentConfirmation.CurrentAssignment;
-            if (!assignment.IsAssigned ||
-                assignment.PlayerSlotId != leaveToken.PlayerSlotId ||
-                assignment.AssignmentOrigin !=
-                    PlayerSlotAssignmentOrigin.ManagerProvisioned ||
-                !assignment.AssignmentToken.IsValid ||
-                !assignment.HostBindingIdentity.IsValid ||
-                assignment.AssignmentToken.HostBindingIdentity !=
-                    assignment.HostBindingIdentity)
-            {
-                issue =
-                    "Manager-Provisioned release evidence does not carry one exact valid Manager assignment/Host binding correlation for the Leaving Slot occurrence.";
-                return false;
-            }
-
-            assignmentToken = assignment.AssignmentToken;
             issue = string.Empty;
             return true;
         }

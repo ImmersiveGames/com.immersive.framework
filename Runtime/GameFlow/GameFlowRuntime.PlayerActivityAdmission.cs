@@ -43,38 +43,14 @@ namespace Immersive.Framework.GameFlow
                 string source,
                 string reason)
         {
-            if (TryConsumeDiagnosticFault(
-                    GameFlowDiagnosticFaultCheckpoint.LifecycleRuntimeAvailability,
-                    "PrepareSameRouteActivityPlayerAdmission", string.Empty, string.Empty,
-                    out string diagnostic))
-            {
-                return ActivityPlayerLifecycleAdmissionResult.RejectedRuntimeUnavailable(
-                    "PrepareSameRouteActivityPlayerAdmission", source, reason, diagnostic);
-            }
-            if (activityPlayerLifecycleAdmissionRuntime == null)
-            {
-                if (!RequiresGameplayReady(targetActivity))
-                {
-                    return ActivityPlayerLifecycleAdmissionResult.NotRequiredResult(
-                        "PrepareSameRouteActivityPlayerAdmission",
-                        source,
-                        reason,
-                        "Target Activity does not require GameplayReady and Player lifecycle admission runtime is unavailable.");
-                }
-
-                return ActivityPlayerLifecycleAdmissionResult.RejectedRuntimeUnavailable(
-                    "PrepareSameRouteActivityPlayerAdmission",
-                    source,
-                    reason,
-                    "Player lifecycle admission runtime is unavailable; target Activity requires GameplayReady.");
-            }
-
-            return activityPlayerLifecycleAdmissionRuntime
-                .TryPrepareSameRouteSwitch(
-                    previousActivity,
-                    targetActivity,
-                    source,
-                    reason);
+            // Physical candidate staging/handoff is not part of the canonical Activity
+            // transition. Activity readiness is established after its contextual admission
+            // using the Session-owned physical Player, when one is required.
+            return ActivityPlayerLifecycleAdmissionResult.NotRequiredResult(
+                "PrepareSameRouteActivityPlayerAdmission",
+                source,
+                reason,
+                "Normal Activity transition uses contextual reprojection; no physical candidate is staged.");
         }
 
         private ActivityPlayerLifecycleAdmissionResult

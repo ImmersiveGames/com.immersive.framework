@@ -63,7 +63,6 @@ namespace Immersive.Framework.PlayerParticipation
             ActorProfileId.IsValid &&
             ActorId.IsValid &&
             RuntimeContentIdentity.IsValid &&
-            RuntimeContentIdentity.Owner == Owner &&
             MaterializationRevision > 0 &&
             OccupancyRevision > 0 &&
             InputBindingRevision > 0 &&

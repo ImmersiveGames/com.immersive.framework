@@ -203,6 +203,7 @@ namespace Immersive.Framework.PlayerParticipation
                     inputContext.TryBind(
                         currentPreparation,
                         slotRecord.Occupancy,
+                        stagedScope.Owner,
                         host,
                         actorDeclaration,
                         gateAdapter,
@@ -263,6 +264,7 @@ namespace Immersive.Framework.PlayerParticipation
 
                 PlayerGameplayAdmissionResult admissionResult =
                     admissionContext.TryAdmit(
+                        stagedScope.Owner,
                         slotRecord.Occupancy,
                         slotRecord.Input,
                         slotRecord.Camera,
@@ -374,17 +376,8 @@ namespace Immersive.Framework.PlayerParticipation
                     slot.InputCreated = false;
                 }
 
-                if (slot.OccupancyCreated && slot.Occupancy.Token.IsValid)
-                {
-                    PlayerGameplayOccupancyResult released =
-                        occupancyContext.TryReleaseOccupancy(slot.Slot, slot.Occupancy.Token, source, reason);
-                    if (!released.Succeeded)
-                    {
-                        failures.Add(released.ToDiagnosticString());
-                        continue;
-                    }
-                    slot.OccupancyCreated = false;
-                }
+                // Occupancy is Session-owned physical state. A failed Activity
+                // gameplay projection retires only contextual capabilities.
 
                 if (slot.PreparationCreated && slot.Preparation.Token.IsValid)
                 {

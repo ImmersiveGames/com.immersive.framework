@@ -156,18 +156,9 @@ namespace Immersive.Framework.PlayerParticipation
                     "Retained Actor preparation evidence is incomplete or stale.");
             }
 
-            PlayerSlotAssignmentResult assignment =
-                participationContext.TryConfirmCurrentAssignment(
+            if (!participationContext.TryGetCurrentAssignment(
                     playerSlotId,
-                    retained.AssignmentToken,
-                    resolvedSource,
-                    resolvedReason);
-            if (assignment == null ||
-                !assignment.Succeeded ||
-                assignment.CurrentAssignment.AssignmentOrigin !=
-                    retained.AssignmentOrigin ||
-                assignment.CurrentAssignment.HostBindingIdentity !=
-                    retained.HostBindingIdentity)
+                    out PlayerSlotAssignmentSnapshot assignment))
             {
                 return ActorEvidenceResult(
                     PlayerCurrentActorEvidenceStatus.RejectedAssignmentDivergence,
@@ -176,9 +167,21 @@ namespace Immersive.Framework.PlayerParticipation
                     summary,
                     resolvedSource,
                     resolvedReason,
-                    assignment != null
-                        ? assignment.ToDiagnosticString()
-                        : "Canonical assignment confirmation returned no result.");
+                    "Prepared Session physical evidence has no current Activity contextual assignment.");
+            }
+
+            if (!assignment.IsAssigned ||
+                assignment.AssignmentOrigin !=
+                    ToAssignmentOrigin(retained.ProvisioningOrigin))
+            {
+                return ActorEvidenceResult(
+                    PlayerCurrentActorEvidenceStatus.RejectedAssignmentDivergence,
+                    operation,
+                    retained,
+                    summary,
+                    resolvedSource,
+                    resolvedReason,
+                    "Current Activity contextual assignment does not match the physical provisioning origin.");
             }
 
             PlayerHostEvidenceResult hostConfirmation =
@@ -189,9 +192,9 @@ namespace Immersive.Framework.PlayerParticipation
             if (hostConfirmation == null ||
                 !hostConfirmation.Succeeded ||
                 hostConfirmation.CurrentEvidence.AssignmentToken !=
-                    retained.AssignmentToken ||
+                    assignment.AssignmentToken ||
                 hostConfirmation.CurrentEvidence.HostBindingIdentity !=
-                    retained.HostBindingIdentity ||
+                    assignment.HostBindingIdentity ||
                 !ReferenceEquals(hostConfirmation.CurrentEvidence.Host, record.Host) ||
                 !ReferenceEquals(record.Handle.LocalPlayerHost, record.Host))
             {
@@ -237,14 +240,8 @@ namespace Immersive.Framework.PlayerParticipation
                     "Prepared Actor owner differs from retained correlation evidence.");
             }
 
-            if ((retained.AssignmentOrigin ==
-                    PlayerSlotAssignmentOrigin.ManagerProvisioned &&
-                 retained.PhysicalOwnership !=
-                    PlayerActorPhysicalOwnership.FrameworkOwned) ||
-                (retained.AssignmentOrigin ==
-                    PlayerSlotAssignmentOrigin.SceneProvided &&
-                 retained.PhysicalOwnership !=
-                    PlayerActorPhysicalOwnership.FrameworkOwned))
+            if (retained.PhysicalOwnership !=
+                PlayerActorPhysicalOwnership.FrameworkOwned)
             {
                 return ActorEvidenceResult(
                     PlayerCurrentActorEvidenceStatus.RejectedPhysicalEvidenceMismatch,

@@ -192,8 +192,19 @@ namespace Immersive.Framework.PlayerParticipation
                 reason);
             if (result != null && result.Succeeded)
             {
-                PlayerHostEvidenceResult registration =
-                    hostEvidenceOwner.RegisterHostEvidence(
+                bool hasRetainedPhysicalHost =
+                    hostEvidenceOwner.TryGetRetainedHostEvidence(
+                        result.Token.PlayerSlotId,
+                        out _);
+                PlayerHostEvidenceResult registration = hasRetainedPhysicalHost
+                    ? hostEvidenceOwner.ReprojectHostEvidence(
+                        result.Token.PlayerSlotId,
+                        PlayerSlotAssignmentOrigin.SceneProvided,
+                        result.Token.AssignmentToken,
+                        result.Token.AssignmentToken.HostBindingIdentity,
+                        source,
+                        reason)
+                    : hostEvidenceOwner.RegisterHostEvidence(
                         result.Token.PlayerSlotId,
                         PlayerSlotAssignmentOrigin.SceneProvided,
                         result.Token.AssignmentToken,
@@ -219,6 +230,12 @@ namespace Immersive.Framework.PlayerParticipation
                             : SceneLocalPlayerAdmissionRuntimeStatus.FailedCompensation,
                         source,
                         reason);
+                }
+                else if (hasRetainedPhysicalHost &&
+                         authoring.SceneLogicalPlayerActor != null)
+                {
+                    authoring.SceneLogicalPlayerActor.BindPlayerInputEvidence(
+                        authoring.LocalPlayerHost.PlayerInput);
                 }
             }
 
@@ -325,6 +342,23 @@ namespace Immersive.Framework.PlayerParticipation
                     authoring,
                     out SceneLocalPlayerAdmissionToken activeToken) ||
                 activeToken != expectedToken)
+            {
+                return runtime.TryRelease(
+                    authoring,
+                    expectedToken,
+                    source,
+                    reason);
+            }
+
+            // A reprojected Activity owns its local admission and assignment, but the retained
+            // evidence points to the Session physical Host from the original adoption. Releasing
+            // that Activity must not delete the physical evidence merely because its local Host
+            // is a different contextual object.
+            if (hostEvidenceOwner.TryGetRetainedHostEvidence(
+                    expectedToken.PlayerSlotId,
+                    out PlayerHostEvidenceSnapshot retainedEvidence) &&
+                (retainedEvidence.AssignmentToken != expectedToken.AssignmentToken ||
+                 !ReferenceEquals(retainedEvidence.Host, authoring.LocalPlayerHost)))
             {
                 return runtime.TryRelease(
                     authoring,

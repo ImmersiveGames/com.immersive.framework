@@ -284,47 +284,62 @@ namespace Immersive.Framework.PlayerParticipation
                 bool adoptionApplied = false;
                 if (requiresActorAdoption)
                 {
-                    var scopeContext = new RuntimeScopeContext(
-                        owner,
-                        resolvedSource,
-                        $"{resolvedReason}:adopt:{index}");
-                    ScenePlayerActorAdoptionResult adoption =
-                        preparationModule.TryAdoptSceneLocalPlayerActor(
-                            scopeContext,
-                            surface,
+                    bool hasSessionPhysicalAdoption =
+                        preparationModule.TryGetScenePlayerActorAdoption(
+                            playerSlotId,
+                            out _);
+                    if (hasSessionPhysicalAdoption)
+                    {
+                        // The existing adoption is Session-owned physical state. This Activity
+                        // contributes only its scene-local PlayerInput evidence; it must not
+                        // attempt a second adoption for the same Slot.
+                        surface.SceneLogicalPlayerActor.BindPlayerInputEvidence(
+                            surface.LocalPlayerHost.PlayerInput);
+                    }
+                    else
+                    {
+                        var scopeContext = new RuntimeScopeContext(
+                            owner,
                             resolvedSource,
                             $"{resolvedReason}:adopt:{index}");
-                    surface.SetActorAdoptionResult(adoption);
-                    if (adoption == null || !adoption.Succeeded || !adoption.Token.IsValid)
-                    {
-                        string rollbackIssue = RollbackCurrentSelectionAndAdmission(
-                            surface,
-                            playerSlotId,
-                            selection.SelectionRevision,
-                            selection.StateChanged,
-                            admission.Token,
-                            resolvedSource,
-                            resolvedReason);
-                        string issue = adoption != null
-                            ? adoption.ToDiagnosticString()
-                            : $"Scene Actor adoption returned no result for Slot '{playerSlotId.StableText}'.";
-                        if (!string.IsNullOrEmpty(rollbackIssue))
+                        ScenePlayerActorAdoptionResult adoption =
+                            preparationModule.TryAdoptSceneLocalPlayerActor(
+                                scopeContext,
+                                surface,
+                                resolvedSource,
+                                $"{resolvedReason}:adopt:{index}");
+                        surface.SetActorAdoptionResult(adoption);
+                        if (adoption == null || !adoption.Succeeded || !adoption.Token.IsValid)
                         {
-                            issue = $"{issue} Current-entry rollback failed. {rollbackIssue}";
+                            string rollbackIssue = RollbackCurrentSelectionAndAdmission(
+                                surface,
+                                playerSlotId,
+                                selection.SelectionRevision,
+                                selection.StateChanged,
+                                admission.Token,
+                                resolvedSource,
+                                resolvedReason);
+                            string issue = adoption != null
+                                ? adoption.ToDiagnosticString()
+                                : $"Scene Actor adoption returned no result for Slot '{playerSlotId.StableText}'.";
+                            if (!string.IsNullOrEmpty(rollbackIssue))
+                            {
+                                issue = $"{issue} Current-entry rollback failed. {rollbackIssue}";
+                            }
+
+                            return FailEnterAndRollback(
+                                activity,
+                                owner,
+                                entries,
+                                resolvedSource,
+                                resolvedReason,
+                                SceneLocalPlayerAdmissionActivityLifecycleStatus.FailedActorAdoption,
+                                issue);
                         }
 
-                        return FailEnterAndRollback(
-                            activity,
-                            owner,
-                            entries,
-                            resolvedSource,
-                            resolvedReason,
-                            SceneLocalPlayerAdmissionActivityLifecycleStatus.FailedActorAdoption,
-                            issue);
+                        adoptionToken = adoption.Token;
+                        adoptionApplied = true;
                     }
-
-                    adoptionToken = adoption.Token;
-                    adoptionApplied = true;
                 }
 
                 entries.Add(new Entry(
@@ -563,23 +578,6 @@ namespace Immersive.Framework.PlayerParticipation
                 if (!entry.AdmissionActive)
                 {
                     continue;
-                }
-
-                if (entry.AdoptionApplied)
-                {
-                    PlayerSlotAssignmentResult promotion = module.ParticipationContext
-                        .TryPromoteSceneProvidedAssignmentToSession(
-                            entry.PlayerSlotId,
-                            entry.AdmissionToken.AssignmentToken,
-                            source,
-                            $"{reason}:promote-session-physical-assignment");
-                    if (promotion == null || !promotion.Succeeded)
-                    {
-                        failures.Add(promotion != null
-                            ? promotion.ToDiagnosticString()
-                            : $"Scene physical assignment promotion returned no result for '{entry.PlayerSlotId.StableText}'.");
-                        continue;
-                    }
                 }
 
                 SceneLocalPlayerAdmissionRuntimeResult retirement =

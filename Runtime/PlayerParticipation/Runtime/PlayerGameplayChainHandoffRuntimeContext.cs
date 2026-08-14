@@ -6,6 +6,7 @@ using Immersive.Framework.Authoring;
 using Immersive.Framework.Camera;
 using Immersive.Framework.Common;
 using Immersive.Framework.PlayerSlots;
+using Immersive.Framework.RuntimeContent;
 using Immersive.Framework.UnityInput;
 using Immersive.Framework.GameFlow.Diagnostics;
 
@@ -1096,6 +1097,7 @@ namespace Immersive.Framework.PlayerParticipation
 
         internal bool TryEnsureCurrentGameplayChain(
             PlayerActorPreparationSummary preparation,
+            RuntimeContentOwner contextualOwner,
             string source,
             string reason,
             out PlayerGameplayAdmissionSummary admission,
@@ -1110,7 +1112,9 @@ namespace Immersive.Framework.PlayerParticipation
             rollbackMessage = string.Empty;
             issue = string.Empty;
 
-            if (!preparation.IsValid ||
+            if (!contextualOwner.IsValid ||
+                contextualOwner.Scope != RuntimeContentScope.Activity ||
+                !preparation.IsValid ||
                 !preparation.IsPrepared ||
                 !preparation.PlayerSlotId.IsValid ||
                 !string.Equals(
@@ -1119,7 +1123,7 @@ namespace Immersive.Framework.PlayerParticipation
                     StringComparison.Ordinal))
             {
                 issue =
-                    "Current gameplay chain creation requires exact prepared P3J evidence from this Session.";
+                    "Current gameplay chain creation requires a current Activity owner and exact prepared P3J evidence from this Session.";
                 return false;
             }
 
@@ -1130,8 +1134,35 @@ namespace Immersive.Framework.PlayerParticipation
                 return false;
             }
 
+            PlayerGameplayAdmissionSnapshot admissionSnapshot =
+                admissionContext.CreateSnapshot();
+            if (admissionSnapshot != null &&
+                admissionSnapshot.TryGetSummary(
+                    preparation.PlayerSlotId,
+                    out PlayerGameplayAdmissionSummary previousAdmission) &&
+                previousAdmission.IsAdmitted &&
+                previousAdmission.Owner != contextualOwner)
+            {
+                PlayerGameplayAdmissionResult released = TryReleaseCurrentGameplayChain(
+                    preparation.PlayerSlotId,
+                    previousAdmission.Token,
+                    source,
+                    "reproject-gameplay-context");
+                if (!released.Succeeded)
+                {
+                    issue = released.ToDiagnosticString();
+                    return false;
+                }
+            }
+
             var chain = new ChainEvidence();
-            if (TryBuildChain(preparation, chain, source, reason, out issue))
+            if (TryBuildChain(
+                    preparation,
+                    contextualOwner,
+                    chain,
+                    source,
+                    reason,
+                    out issue))
             {
                 admission = chain.Admission;
                 rollbackSucceeded = false;
@@ -1159,7 +1190,7 @@ namespace Immersive.Framework.PlayerParticipation
             string chainRollbackMessage = string.Empty;
             if (chainRollbackRequired)
             {
-                chainRollbackSucceeded = TryReleaseChain(
+                chainRollbackSucceeded = TryReleaseContextualChain(
                     chain,
                     source,
                     "ensure-current-gameplay-chain-rollback",
@@ -1177,6 +1208,27 @@ namespace Immersive.Framework.PlayerParticipation
                 chainRollbackMessage);
             issue = Join(buildIssue, rollbackMessage);
             return false;
+        }
+
+        private bool TryReleaseContextualChain(
+            ChainEvidence chain,
+            string source,
+            string reason,
+            out string issue)
+        {
+            if (chain == null)
+            {
+                issue = string.Empty;
+                return true;
+            }
+
+            // Occupancy is physical Session state. A failed Activity reprojection
+            // must retire only its contextual gameplay capabilities.
+            bool occupancyCreated = chain.OccupancyCreated;
+            chain.OccupancyCreated = false;
+            bool released = TryReleaseChain(chain, source, reason, out issue);
+            chain.OccupancyCreated = occupancyCreated;
+            return released;
         }
 
         internal PlayerGameplayAdmissionResult TryReleaseCurrentGameplayChain(
@@ -1224,8 +1276,6 @@ namespace Immersive.Framework.PlayerParticipation
                 return released;
             }
 
-            occupancyContext.TryReleaseOccupancy(
-                playerSlotId, current.OccupancyToken, source, reason);
             return released;
         }
 
@@ -1370,6 +1420,46 @@ namespace Immersive.Framework.PlayerParticipation
 
         private bool TryBuildChain(
             PlayerActorPreparationSummary preparation,
+            RuntimeContentOwner contextualOwner,
+            ChainEvidence chain,
+            string source,
+            string reason,
+            out string issue)
+        {
+            if (!contextualOwner.IsValid)
+            {
+                issue = "Gameplay chain requires a valid Activity contextual owner.";
+                return false;
+            }
+
+            return TryBuildChainCore(
+                preparation,
+                contextualOwner,
+                chain,
+                source,
+                reason,
+                out issue);
+        }
+
+        private bool TryBuildChain(
+            PlayerActorPreparationSummary preparation,
+            ChainEvidence chain,
+            string source,
+            string reason,
+            out string issue)
+        {
+            return TryBuildChainCore(
+                preparation,
+                preparation.Materialization.Owner,
+                chain,
+                source,
+                reason,
+                out issue);
+        }
+
+        private bool TryBuildChainCore(
+            PlayerActorPreparationSummary preparation,
+            RuntimeContentOwner contextualOwner,
             ChainEvidence chain,
             string source,
             string reason,
@@ -1405,6 +1495,7 @@ namespace Immersive.Framework.PlayerParticipation
             PlayerGameplayInputBindingResult input = inputContext.TryBind(
                 preparation,
                 chain.Occupancy,
+                contextualOwner,
                 host,
                 actorDeclaration,
                 gateAdapter,
@@ -1463,6 +1554,7 @@ namespace Immersive.Framework.PlayerParticipation
                 camera.CurrentSummary.HasCurrentDecision;
 
             PlayerGameplayAdmissionResult admission = admissionContext.TryAdmit(
+                contextualOwner,
                 chain.Occupancy,
                 chain.Input,
                 chain.Camera,
