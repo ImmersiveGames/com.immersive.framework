@@ -38,6 +38,7 @@ namespace Immersive.Framework.PlayerParticipation
             internal PlayerHostProvisioningMode ProvisioningMode { get; }
             internal SessionPlayerLeaveRuntimeResult BeginResult { get; set; }
             internal SessionPlayerActivityRepresentationReleaseResult ActivityRelease { get; set; }
+            internal PlayerActorPreparationResult PhysicalActorRelease { get; set; }
             internal PlayerHostEvidenceResult ManagerHostEvidenceRelease { get; set; }
             internal ManagerProvisionedSessionPlayerLeaveReleaseResult ManagerRelease { get; set; }
             internal SceneProvidedSessionPlayerLeaveReleaseResult SceneRelease { get; set; }
@@ -367,6 +368,38 @@ namespace Immersive.Framework.PlayerParticipation
                         record.ActivityRelease != null
                             ? record.ActivityRelease.ToDiagnosticString()
                             : "Activity representation release returned no result."));
+                }
+            }
+
+            // Stage D: only the Session Leave authority may release the physical Actor.
+            // Stage C above deliberately retires gameplay/readiness/context without touching it.
+            if (record.ActivityRelease.HadPreparedActor &&
+                (record.PhysicalActorRelease == null || !record.PhysicalActorRelease.Succeeded))
+            {
+                record.PhysicalActorRelease = preparationModule.TryReleasePreparedActor(
+                    record.LeaveToken.PlayerSlotId,
+                    record.ActivityRelease.PreparationToken,
+                    request.Source,
+                    request.Reason + "; release-session-physical-actor");
+                if (record.PhysicalActorRelease != null &&
+                    record.PhysicalActorRelease.Status ==
+                        PlayerActorPreparationStatus.FailedPreviousRelease &&
+                    record.PhysicalActorRelease.StateChanged)
+                {
+                    record.PhysicalActorRelease = preparationModule.TryReleasePreparedActor(
+                        record.LeaveToken.PlayerSlotId,
+                        default,
+                        request.Source,
+                        request.Reason + "; retry-terminal-retained-actor-cleanup");
+                }
+                if (record.PhysicalActorRelease == null || !record.PhysicalActorRelease.Succeeded)
+                {
+                    return Publish(FromRecord(
+                        SessionPlayerLeaveStatus.FailedActivityRepresentationRelease,
+                        record,
+                        record.PhysicalActorRelease != null
+                            ? record.PhysicalActorRelease.ToDiagnosticString()
+                            : "Terminal physical Actor release returned no result."));
                 }
             }
 

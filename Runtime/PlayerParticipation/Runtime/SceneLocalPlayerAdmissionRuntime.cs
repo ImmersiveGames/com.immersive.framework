@@ -886,6 +886,54 @@ namespace Immersive.Framework.PlayerParticipation
                 assignmentResult: assignmentRelease);
         }
 
+        /// <summary>
+        /// Retires only the contextual Activity admission record after physical Scene Actor
+        /// adoption. Host admission, Session-owned assignment and physical evidence remain
+        /// until the terminal Session Leave stages.
+        /// </summary>
+        internal SceneLocalPlayerAdmissionRuntimeResult TryRetireContextualRepresentation(
+            SceneLocalPlayerAdmissionAuthoring authoring,
+            SceneLocalPlayerAdmissionToken expectedToken,
+            string source,
+            string reason)
+        {
+            const string operation = "RetireSceneLocalPlayerContext";
+            string resolvedSource = source.NormalizeTextOrFallback(nameof(SceneLocalPlayerAdmissionRuntime));
+            string resolvedReason = reason.NormalizeTextOrFallback("retire-scene-local-player-context");
+            AdmissionRecord record = authoring != null ? FindRecordByAuthoring(authoring) : null;
+            if (record == null)
+            {
+                return Result(
+                    expectedToken.IsValid
+                        ? SceneLocalPlayerAdmissionRuntimeStatus.RejectedForeignOrStaleToken
+                        : SceneLocalPlayerAdmissionRuntimeStatus.SucceededAlreadyReleased,
+                    operation, authoring, expectedToken, null, null, null, default, default,
+                    resolvedSource, resolvedReason,
+                    "Scene Local Player contextual representation has no active admission record.");
+            }
+
+            if (!expectedToken.IsValid || record.Token != expectedToken ||
+                !participationContext.TryGetCurrentAssignment(record.Token.PlayerSlotId, out PlayerSlotAssignmentSnapshot assignment) ||
+                assignment.AssignmentToken != expectedToken.AssignmentToken ||
+                assignment.AssignmentOrigin != PlayerSlotAssignmentOrigin.SceneProvided ||
+                assignment.AssignmentOwner.Scope != RuntimeContentScope.Session)
+            {
+                return Result(
+                    SceneLocalPlayerAdmissionRuntimeStatus.RejectedForeignOrStaleToken,
+                    operation, authoring, expectedToken, null, null, null,
+                    record.JoinedSlot, record.JoinedSlot, resolvedSource, resolvedReason,
+                    "Contextual retirement requires the exact Scene-provided assignment already promoted to Session physical ownership.");
+            }
+
+            records.Remove(record);
+            recordsBySlot.Remove(record.Token.PlayerSlotId);
+            return Result(
+                SceneLocalPlayerAdmissionRuntimeStatus.SucceededReleased,
+                operation, authoring, record.Token, null, null, null,
+                record.JoinedSlot, record.JoinedSlot, resolvedSource, resolvedReason,
+                "Scene Local Player Activity admission retired; Session physical assignment and Host evidence remain retained.");
+        }
+
         internal bool TryGetActiveToken(
             SceneLocalPlayerAdmissionAuthoring authoring,
             out SceneLocalPlayerAdmissionToken token)

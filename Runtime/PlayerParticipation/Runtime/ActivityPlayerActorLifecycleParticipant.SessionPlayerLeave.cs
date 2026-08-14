@@ -225,78 +225,9 @@ namespace Immersive.Framework.PlayerParticipation
                         : "Activity gameplay release returned no result.");
             }
 
-            if (progress.HadPreparedActor && !progress.PreparedActorReleased)
-            {
-                PlayerActorPreparationResult actorRelease =
-                    preparationModule.TryReleasePreparedActor(
-                        leaveToken.PlayerSlotId,
-                        progress.PreparationToken,
-                        resolvedSource,
-                        resolvedReason);
-                progress.LastActorRelease = actorRelease;
-                if (actorRelease != null && actorRelease.Succeeded)
-                {
-                    progress.PreparedActorReleased = true;
-                }
-                else if (actorRelease != null &&
-                         actorRelease.Status ==
-                            PlayerActorPreparationStatus.FailedPreviousRelease &&
-                         actorRelease.StateChanged)
-                {
-                    // The current Actor occurrence was released, but retained RuntimeContent
-                    // cleanup still failed. Do not recreate it; retry retained cleanup with the
-                    // same Leave occurrence on the next call.
-                    progress.PreparedActorReleased = true;
-                    progress.ActorRetainedCleanupPending = true;
-                    return Result(
-                        SessionPlayerActivityRepresentationReleaseStatus.FailedActorRelease,
-                        leaveToken,
-                        leaveConfirmation,
-                        progress,
-                        resolvedSource,
-                        resolvedReason,
-                        actorRelease.ToDiagnosticString());
-                }
-                else
-                {
-                    return Result(
-                        SessionPlayerActivityRepresentationReleaseStatus.FailedActorRelease,
-                        leaveToken,
-                        leaveConfirmation,
-                        progress,
-                        resolvedSource,
-                        resolvedReason,
-                        actorRelease != null
-                            ? actorRelease.ToDiagnosticString()
-                            : "Prepared Actor release returned no result.");
-                }
-            }
-
-            if (progress.ActorRetainedCleanupPending)
-            {
-                PlayerActorPreparationResult retainedCleanup =
-                    preparationModule.TryReleasePreparedActor(
-                        leaveToken.PlayerSlotId,
-                        default,
-                        resolvedSource,
-                        resolvedReason + "; retry-retained-actor-cleanup");
-                progress.LastActorRelease = retainedCleanup;
-                if (retainedCleanup == null || !retainedCleanup.Succeeded)
-                {
-                    return Result(
-                        SessionPlayerActivityRepresentationReleaseStatus.FailedActorRelease,
-                        leaveToken,
-                        leaveConfirmation,
-                        progress,
-                        resolvedSource,
-                        resolvedReason,
-                        retainedCleanup != null
-                            ? retainedCleanup.ToDiagnosticString()
-                            : "Retained Actor cleanup retry returned no result.");
-                }
-
-                progress.ActorRetainedCleanupPending = false;
-            }
+            // Stage C deliberately ends at contextual retirement. The prepared Actor and its
+            // RuntimeContent handle remain Session physical resources until stage D in the
+            // Session Leave coordinator; Activity release must never destroy them.
 
             progress.Completed = true;
             return Result(
@@ -306,7 +237,7 @@ namespace Immersive.Framework.PlayerParticipation
                 progress,
                 resolvedSource,
                 resolvedReason,
-                "Current Activity representation retired for the exact Leaving Session Player. Session-scoped Actor selection, provisioning resources and Slot vacancy remain unchanged.");
+                "Current Activity representation retired for the exact Leaving Session Player. Physical Actor release, provisioning resources and Slot vacancy remain downstream stages.");
         }
 
         private SessionPlayerActivityRepresentationReleaseResult

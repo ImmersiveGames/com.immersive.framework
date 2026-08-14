@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using Immersive.Framework.Actors;
 using Immersive.Framework.Common;
 using Immersive.Framework.PlayerSlots;
+using Immersive.Framework.RuntimeContent;
 
 namespace Immersive.Framework.PlayerParticipation
 {
@@ -219,7 +220,32 @@ namespace Immersive.Framework.PlayerParticipation
                     bool hasHostEvidence = hostEvidenceOwner.TryGetRetainedHostEvidence(
                         leaveToken.PlayerSlotId,
                         out PlayerHostEvidenceSnapshot residualHostEvidence);
-                    if (hasAssignment || hasHostEvidence)
+                    // Activity exit may already have retired its SceneLocal admission record.
+                    // That is valid only when the remaining association is the exact
+                    // Session-owned SceneProvided physical correlation.
+                    if (hasAssignment && hasHostEvidence &&
+                        residualAssignment.AssignmentOrigin ==
+                            PlayerSlotAssignmentOrigin.SceneProvided &&
+                        residualAssignment.AssignmentOwner.Scope ==
+                            RuntimeContentScope.Session &&
+                        residualAssignment.AssignmentToken ==
+                            residualHostEvidence.AssignmentToken &&
+                        residualAssignment.HostBindingIdentity ==
+                            residualHostEvidence.HostBindingIdentity)
+                    {
+                        progress = new SceneProvidedSessionPlayerLeaveProgress(
+                            leaveToken,
+                            null,
+                            residualHostEvidence.Host,
+                            null,
+                            default,
+                            residualAssignment)
+                        {
+                            ContextualRecordReleased = true
+                        };
+                        sceneProvidedSessionPlayerLeaveProgress.Add(leaveToken, progress);
+                    }
+                    else if (hasAssignment || hasHostEvidence)
                     {
                         return Result(
                             SceneProvidedSessionPlayerLeaveReleaseStatus.FailedInvariant,
@@ -240,7 +266,9 @@ namespace Immersive.Framework.PlayerParticipation
                             $"No active Scene admission record exists, but authoritative Scene-Provided residue remains. assignment='{(hasAssignment ? residualAssignment.AssignmentToken.StableText : "<none>")}' hostEvidence='{(hasHostEvidence ? residualHostEvidence.AssignmentToken.StableText : "<none>")}'.");
                     }
 
-                    return Result(
+                    if (progress == null)
+                    {
+                        return Result(
                         SceneProvidedSessionPlayerLeaveReleaseStatus.SucceededNoCurrentRepresentation,
                         leaveToken,
                         default,
@@ -257,13 +285,14 @@ namespace Immersive.Framework.PlayerParticipation
                         resolvedSource,
                         resolvedReason,
                         "The Leaving Scene-Provided Session Player has no current contextual Scene representation or retained Framework association to release.");
+                    }
                 }
 
-                if (authoring == null ||
+                if (progress == null && (authoring == null ||
                     host == null ||
                     sceneAdmissionToken.AssignmentToken != assignment.AssignmentToken ||
                     assignment.AssignmentOrigin != PlayerSlotAssignmentOrigin.SceneProvided ||
-                    assignment.HostBindingIdentity != sceneAdmissionToken.AssignmentToken.HostBindingIdentity)
+                    assignment.HostBindingIdentity != sceneAdmissionToken.AssignmentToken.HostBindingIdentity))
                 {
                     return Result(
                         SceneProvidedSessionPlayerLeaveReleaseStatus.RejectedContextualCorrelation,
@@ -284,20 +313,30 @@ namespace Immersive.Framework.PlayerParticipation
                         "Active Scene admission record does not carry one exact SceneProvided assignment/Host binding correlation for this Leaving occurrence.");
                 }
 
-                progress = new SceneProvidedSessionPlayerLeaveProgress(
-                    leaveToken,
-                    authoring,
-                    host,
-                    authoring.SceneLogicalPlayerActor,
-                    sceneAdmissionToken,
-                    assignment);
-                sceneProvidedSessionPlayerLeaveProgress.Add(leaveToken, progress);
+                if (progress == null)
+                {
+                    progress = new SceneProvidedSessionPlayerLeaveProgress(
+                        leaveToken,
+                        authoring,
+                        host,
+                        authoring.SceneLogicalPlayerActor,
+                        sceneAdmissionToken,
+                        assignment);
+                    sceneProvidedSessionPlayerLeaveProgress.Add(leaveToken, progress);
+                }
             }
 
             if (!progress.HostEvidenceReleased)
             {
-                PlayerHostEvidenceResult evidenceRelease =
-                    hostEvidenceOwner.ReleaseHostEvidence(
+                PlayerHostEvidenceResult evidenceRelease = progress.Host == null
+                    ? hostEvidenceOwner.ClearDivergentHostEvidence(
+                        leaveToken.PlayerSlotId,
+                        progress.Assignment.AssignmentToken,
+                        progress.Assignment.HostBindingIdentity,
+                        progress.Host,
+                        resolvedSource,
+                        resolvedReason + "; physical-host-already-terminally-released")
+                    : hostEvidenceOwner.ReleaseHostEvidence(
                         leaveToken.PlayerSlotId,
                         progress.Assignment.AssignmentToken,
                         progress.Assignment.HostBindingIdentity,
@@ -306,7 +345,8 @@ namespace Immersive.Framework.PlayerParticipation
                         resolvedReason);
                 progress.HostEvidenceRelease = evidenceRelease;
                 if (evidenceRelease == null ||
-                    evidenceRelease.Status != PlayerHostEvidenceStatus.SucceededReleased ||
+                    (evidenceRelease.Status != PlayerHostEvidenceStatus.SucceededReleased &&
+                     evidenceRelease.Status != PlayerHostEvidenceStatus.SucceededClearedDivergent) ||
                     !evidenceRelease.PreviousEvidence.IsRecorded ||
                     evidenceRelease.CurrentEvidence.IsRecorded)
                 {
@@ -328,16 +368,12 @@ namespace Immersive.Framework.PlayerParticipation
             {
                 if (ReferenceEquals(progress.Host, null) || progress.Host == null)
                 {
-                    return FromProgress(
-                        SceneProvidedSessionPlayerLeaveReleaseStatus.FailedInvariant,
-                        progress,
-                        leaveConfirmation,
-                        resolvedSource,
-                        resolvedReason,
-                        "Adopted Scene-Provided Local Player Host became unavailable before contextual admission cleanup completed.");
+                    // The physical terminal adapter owns destruction of an adopted Host.
+                    // Its absence here is expected after stage D, not evidence of an external
+                    // Actor that must be restored or preserved.
+                    progress.HostAdmissionReleased = true;
                 }
-
-                if (!progress.Host.TryValidateCommittedAdmissionRelease(
+                else if (!progress.Host.TryValidateCommittedAdmissionRelease(
                         leaveToken.PlayerSlotId,
                         out string hostValidationIssue))
                 {
@@ -348,11 +384,9 @@ namespace Immersive.Framework.PlayerParticipation
                         resolvedSource,
                         resolvedReason,
                         "Scene-Provided Local Player Host admission release validation failed. " +
-                        hostValidationIssue +
-                        " Physical Host/PlayerInput/Actor ownership remains external.");
+                        hostValidationIssue);
                 }
-
-                if (!progress.Host.TryReleaseCommittedAdmission(
+                else if (!progress.Host.TryReleaseCommittedAdmission(
                         leaveToken.PlayerSlotId,
                         resolvedSource,
                         resolvedReason,
@@ -365,11 +399,13 @@ namespace Immersive.Framework.PlayerParticipation
                         resolvedSource,
                         resolvedReason,
                         "Scene-Provided Local Player Host admission release failed. " +
-                        hostReleaseIssue +
-                        " Physical Host/PlayerInput/Actor ownership remains external.");
+                        hostReleaseIssue);
                 }
 
-                progress.HostAdmissionReleased = true;
+                if (!progress.HostAdmissionReleased)
+                {
+                    progress.HostAdmissionReleased = true;
+                }
             }
 
             if (!progress.AssignmentReleased)

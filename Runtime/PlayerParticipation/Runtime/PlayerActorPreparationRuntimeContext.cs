@@ -651,6 +651,9 @@ namespace Immersive.Framework.PlayerParticipation
             }
 
             records.Remove(playerSlotId);
+            // A successful physical release is terminal for an adopted Scene composition.
+            // Do not retain provenance that could later masquerade as an Activity admission.
+            sceneAdoptions.Remove(playerSlotId);
             revision++;
 
             bool retainedReleased = TryReleaseRetainedForSlot(

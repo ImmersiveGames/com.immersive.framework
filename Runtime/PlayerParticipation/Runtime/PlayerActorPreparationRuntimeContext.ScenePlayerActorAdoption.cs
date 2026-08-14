@@ -624,21 +624,6 @@ namespace Immersive.Framework.PlayerParticipation
 
             if (!records.ContainsKey(playerSlotId))
             {
-                if (adoption.SceneActor == null)
-                {
-                    return SceneAdoptionResult(
-                        ScenePlayerActorAdoptionStatus.FailedRelease,
-                        operation,
-                        playerSlotId,
-                        authoring,
-                        expectedToken,
-                        false,
-                        resolvedSource,
-                        resolvedReason,
-                        "Canonical preparation was released, but the external Scene Actor is missing.");
-                }
-
-                RestoreSceneActorDeclaration(adoption);
                 sceneAdoptions.Remove(playerSlotId);
                 return SceneAdoptionResult(
                     ScenePlayerActorAdoptionStatus.SucceededReleased,
@@ -649,7 +634,7 @@ namespace Immersive.Framework.PlayerParticipation
                     true,
                     resolvedSource,
                     resolvedReason,
-                    "Scene Actor adoption bookkeeping finalized after canonical preparation release; external Actor preserved.");
+                    "Scene Actor adoption bookkeeping finalized after terminal canonical preparation release; the adopted physical Host/Actor may already have been destroyed by its terminal adapter.");
             }
 
             PlayerActorPreparationResult release = TryReleasePreparedActor(
@@ -673,21 +658,6 @@ namespace Immersive.Framework.PlayerParticipation
                         : "Scene Player Actor preparation release returned no result.");
             }
 
-            if (adoption.SceneActor == null)
-            {
-                return SceneAdoptionResult(
-                    ScenePlayerActorAdoptionStatus.FailedRelease,
-                    operation,
-                    playerSlotId,
-                    authoring,
-                    expectedToken,
-                    false,
-                    resolvedSource,
-                    resolvedReason,
-                    "Preparation released, but the external Scene Actor is missing.");
-            }
-
-            RestoreSceneActorDeclaration(adoption);
             sceneAdoptions.Remove(playerSlotId);
             return SceneAdoptionResult(
                 ScenePlayerActorAdoptionStatus.SucceededReleased,
@@ -698,7 +668,7 @@ namespace Immersive.Framework.PlayerParticipation
                 true,
                 resolvedSource,
                 resolvedReason,
-                "Scene Player Actor adoption released. Framework proxy and runtime evidence were removed; external Actor was preserved.");
+                "Scene Player Actor adoption released through terminal physical cleanup; Framework proxy and runtime evidence were removed and the adopted physical composition is not preserved as external Scene ownership.");
         }
 
         internal bool TryGetScenePlayerActorAdoption(

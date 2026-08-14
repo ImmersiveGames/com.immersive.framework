@@ -257,6 +257,26 @@ namespace Immersive.Framework.PlayerParticipation
             return result;
         }
 
+        internal SceneLocalPlayerAdmissionRuntimeResult TryRetireContextualRepresentation(
+            SceneLocalPlayerAdmissionAuthoring authoring,
+            SceneLocalPlayerAdmissionToken expectedToken,
+            string source,
+            string reason)
+        {
+            if (!IsReadyFor(authoring))
+            {
+                return SceneLocalPlayerAdmissionRuntimeResult.RuntimeUnavailable(
+                    "RetireSceneLocalPlayerContext", authoring, source, reason, diagnostic);
+            }
+
+            SceneLocalPlayerAdmissionRuntimeResult result = runtime.TryRetireContextualRepresentation(
+                authoring, expectedToken, source, reason);
+            RecordOperation(result, expectedToken.IsValid, true);
+            diagnostic = result.ToDiagnosticString();
+            authoring.SetRuntimeResult(result, diagnostic);
+            return result;
+        }
+
         internal SceneLocalPlayerAdmissionRuntimeResult TryRelease(
             SceneLocalPlayerAdmissionAuthoring authoring,
             SceneLocalPlayerAdmissionToken expectedToken,

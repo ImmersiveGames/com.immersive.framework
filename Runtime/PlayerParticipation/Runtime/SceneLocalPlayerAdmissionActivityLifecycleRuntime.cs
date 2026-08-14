@@ -565,10 +565,39 @@ namespace Immersive.Framework.PlayerParticipation
                     continue;
                 }
 
-                // Successful adoption promotes the original Host/Actor composition to
-                // Session lifetime. Activity exit retires only this contextual ledger;
-                // the admission/assignment and physical handle remain available for
-                // Leave or Session termination.
+                if (entry.AdoptionApplied)
+                {
+                    PlayerSlotAssignmentResult promotion = module.ParticipationContext
+                        .TryPromoteSceneProvidedAssignmentToSession(
+                            entry.PlayerSlotId,
+                            entry.AdmissionToken.AssignmentToken,
+                            source,
+                            $"{reason}:promote-session-physical-assignment");
+                    if (promotion == null || !promotion.Succeeded)
+                    {
+                        failures.Add(promotion != null
+                            ? promotion.ToDiagnosticString()
+                            : $"Scene physical assignment promotion returned no result for '{entry.PlayerSlotId.StableText}'.");
+                        continue;
+                    }
+                }
+
+                SceneLocalPlayerAdmissionRuntimeResult retirement =
+                    entry.AdoptionApplied
+                        ? module.TryRetireContextualRepresentation(
+                            entry.Authoring, entry.AdmissionToken, source,
+                            $"{reason}:retire-contextual-admission")
+                        : module.TryRelease(
+                            entry.Authoring, entry.AdmissionToken, source,
+                            $"{reason}:release-non-adopted-admission");
+                if (retirement == null || !retirement.Succeeded)
+                {
+                    failures.Add(retirement != null
+                        ? retirement.ToDiagnosticString()
+                        : $"Scene contextual retirement returned no result for '{entry.Authoring.name}'.");
+                    continue;
+                }
+
                 entry.AdmissionActive = false;
                 released.Add(entry);
             }

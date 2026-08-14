@@ -1,5 +1,6 @@
 using Immersive.Framework.ActivityFlow;
 using Immersive.Framework.PlayerSlots;
+using Immersive.Framework.RuntimeContent;
 
 namespace Immersive.Framework.PlayerParticipation
 {
