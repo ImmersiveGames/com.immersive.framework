@@ -1,6 +1,6 @@
 # IF-TRACK — Immersive Framework
 
-Status: **Active — Player Physical Lifetime Reconciliation Closed / Full Player QA Certified**  
+Status: **Active — Player Certified / Camera ADR-022 Technically Certified**  
 Last updated: **2026-08-15**
 
 ## Authority model
@@ -19,15 +19,35 @@ Historical certification
   -> evidence for the contract tested at that date
 ```
 
-## Current reviewed package baseline
+## Current reviewed repository baselines
+
+### Package
 
 ```text
 ImmersiveGames/com.immersive.framework
-474eb0c2a7fe1461debb47919899ed3307b099be
 master
+b645f8db57673cbdc3531ce12b6d399225a4d0cb
+commit message: ADR22
 ```
 
-The 2026-08-15 Full Player QA certification was produced from the active package/QA working trees. If runtime implementation changes from that run are not yet present on the GitHub baseline above, source synchronization remains separate repository hygiene. Do not infer that the commit hash itself was the exact tested binary unless that synchronization is confirmed.
+This package baseline contains the ADR-022 C1-C4 implementation.
+
+### QA
+
+At documentation time the remote QA branch remains:
+
+```text
+rinnocenti/QAFramework
+main
+02f2d5589ba9bee88ac512d429f435e1dd1ba584
+```
+
+The 2026-08-15 Full Camera certification was produced from the active QA working
+tree layered on that baseline, including the ADR-022 presentation QA, C9R
+installer reconciliation and Full Camera orchestrator.
+
+Synchronizing those QA changes is repository traceability work. It is not a new
+framework implementation dependency and does not reopen the 53/53 result.
 
 ## Current Player architecture freeze
 
@@ -56,7 +76,6 @@ Activity A -> Activity B
 No Activity representation
   contextual authority may be absent
   Session physical preparation may remain authoritative
-  physical Player may remain existing but inactive
 
 Leave / Session termination
   terminal physical release boundaries
@@ -65,12 +84,7 @@ Leave / Session termination
 Current closure record:  
 [Player Physical Lifetime Recertification — 2026-08-15](../Reconciliation/IMMERSIVE-FRAMEWORK-PLAYER-PHYSICAL-LIFETIME-RECERTIFICATION-2026-08-15.md)
 
-Historical reopen record:  
-[Player Physical Lifetime Reopen — 2026-08-14](../Reconciliation/IMMERSIVE-FRAMEWORK-PLAYER-PHYSICAL-LIFETIME-REOPEN-2026-08-14.md)
-
 ## Full Player certification
-
-Terminal result:
 
 ```text
 PLAYER QA CERTIFIED
@@ -79,127 +93,250 @@ executedContracts = 25
 passedContracts = 25
 ```
 
-Certified Player boundaries include:
+Player implementation remains closed unless new evidence demonstrates a contract
+regression.
+
+## Current Camera architecture freeze
 
 ```text
-Serialization
-Session
-Initial Placement
-SceneProvided A -> B -> A physical identity / pose / fresh context
-SceneProvided Leave with Activity
-SceneProvided Leave without Activity
-SceneProvided Session termination without Activity
-Manager Provisioned
-Manager Join without Activity
-Manager Session termination
-Actor Lifecycle
-Public Surface
-Leave / stale occurrence / rejoin
-Failed First Scene Adoption
-Failed Contextual Reprojection
-No Physical Handoff
+Camera Output
+  one persistent Session output
+  explicit Unity Camera + CinemachineBrain
+
+Camera request authority
+  Session / Route / Activity / eligible Local Player
+  typed publication
+  deterministic arbitration
+  transactional logical/physical synchronization
+
+CameraRigComposer
+  one local rig
+  one local CinemachineCamera
+  presentation intent/materialization
+  not output authority
+
+Presentation
+  Fixed
+  Follow
+  Mounted
+  Third Person
+
+Materialization
+  Editor-owned
+  model-specific
+  exact-reference ownership evidence
+  preflight before mutation
+  external/unknown conflicts block
+  no silent fallback
+
+Runtime output
+  presentation-agnostic
+```
+
+Current technical closure record:  
+[Camera Presentation Technical Certification — 2026-08-15](../Reconciliation/IMMERSIVE-FRAMEWORK-CAMERA-PRESENTATION-TECHNICAL-CERTIFICATION-2026-08-15.md)
+
+## Full Camera certification
+
+Terminal result:
+
+```text
+CAMERA QA CERTIFIED
+mandatoryCases = 53
+executedCases = 53
+passedCases = 53
+```
+
+Breakdown:
+
+```text
+ADR-022 Presentation Models    14/14
+C9R canonical authority        11/11
+ADR-004B negative integrity    18/18
+ADR-004C owner lifetime        10/10
+                              -----
+aggregate                       53/53
+```
+
+Supporting existing Follow pipeline:
+
+```text
+C9M Follow Pipeline             6/6
 ```
 
 ## ADR status
 
 | ADR | Current architecture status | Implementation / QA disposition |
 |---|---|---|
-| 001 | ACCEPTED / RECONCILED | Core composition unchanged; Player lifetime wording aligned |
-| 002 | ACCEPTED | No change |
-| 003 | ACCEPTED / RECONCILED | Revised Session physical lifetime implemented and Full Player certified |
-| 004 | ACCEPTED | No change |
-| 005 | ACCEPTED | No change |
-| 006 | ACCEPTED | No change |
-| 007 | ACCEPTED / RECONCILED | Player readiness boundary and committed-not-ready semantics certified |
-| 008 | ACCEPTED | No change |
-| 009 | ACCEPTED | No change |
-| 010 | ACCEPTED | No Player-specific delta required by this closure |
-| 011 | ACCEPTED / RECONCILED FOR PLAYER BOUNDARY | Player readiness/loading interaction remains occurrence-safe; no false Ready |
-| 012 | ACCEPTED / RECONCILED | Activity exclusion/context projection separated from physical lifetime and certified |
-| 013 | ACCEPTED / Experimental | No change |
-| 014 | ACCEPTED | No change |
-| 015 | ACCEPTED / RECONCILED | Public command/observation surface certified, including no-Activity physical evidence |
-| 016 | ACCEPTED / RECONCILED | Provisioning origin model implemented and certified |
-| 017 | ACCEPTED | No change |
-| 018 | ACCEPTED | No change |
-| 019 | ACCEPTED / RECONCILED / RECERTIFIED | Exact physical identity continuity and Session ownership certified |
-| 020 | ACCEPTED / RECONCILED / RECERTIFIED | Manager + SceneProvided Leave/termination boundaries certified |
-| 021 | ACCEPTED / RECONCILED / CERTIFIED | Dedicated Initial Placement 9/9 + Full Player placement/continuity PASS |
-| 022 | PROPOSED | No change |
+| 001 | ACCEPTED / RECONCILED | Core composition unchanged |
+| 002 | ACCEPTED | No current implementation dependency |
+| 003 | ACCEPTED / RECONCILED | Player Session physical lifetime certified |
+| 004 | ACCEPTED / RECONCILED / RECERTIFIED | Single-output authority preserved; Full Camera 53/53 |
+| 005 | ACCEPTED | No current implementation dependency |
+| 006 | ACCEPTED | No current implementation dependency |
+| 007 | ACCEPTED / RECONCILED | Player readiness boundary certified |
+| 008 | ACCEPTED | No current implementation dependency |
+| 009 | ACCEPTED | No current implementation dependency |
+| 010 | ACCEPTED / RECONCILED FOR CAMERA | ADR-022 Class C Inspector/materialization conforms |
+| 011 | ACCEPTED / RECONCILED FOR PLAYER BOUNDARY | No false Ready |
+| 012 | ACCEPTED / RECONCILED | Context projection separated from physical lifetime |
+| 013 | ACCEPTED / EXPERIMENTAL | Technical boundary certified; FIRSTGAME promotion remains |
+| 014 | ACCEPTED | No current implementation dependency |
+| 015 | ACCEPTED / RECONCILED | Player public command/observation surface certified |
+| 016 | ACCEPTED / RECONCILED | Provisioning origin model certified |
+| 017 | ACCEPTED | No current implementation dependency |
+| 018 | ACCEPTED | No current implementation dependency |
+| 019 | ACCEPTED / RECONCILED / RECERTIFIED | Session physical identity/lifetime certified |
+| 020 | ACCEPTED / RECONCILED / RECERTIFIED | Leave/termination certified |
+| 021 | ACCEPTED / RECONCILED / CERTIFIED | Initial Placement 9/9 + Full Player PASS |
+| 022 | ACCEPTED / IMPLEMENTED / TECHNICALLY CERTIFIED | C1-C5 closed; Full Camera 53/53; C6 FIRSTGAME pending |
 
 ## Player lifetime work closure
 
-### PLR-01 — Physical ownership model — CLOSED
-
-Both provisioning modes converge on Session-owned admitted physical representation.
-
-### PLR-02 — Scene-Provided adoption/promotion — CLOSED
-
-Successful adoption preserves the exact physical object under Session lifetime and survives supplying Activity scene release.
-
-### PLR-03 — Activity contextual handoff — CLOSED
-
-Activity A -> B -> A retires/rebuilds contextual authority while preserving exact physical identity.
-
-### PLR-04 — Inactive no-Activity state — CLOSED
-
-`Contextual=Absent` does not imply physical lifetime loss. Session preparation evidence remains the canonical physical truth.
-
-### PLR-05 — Leave — CLOSED
-
-SceneProvided and Manager-provisioned physical resources release at occurrence-safe Session Leave; no-Activity Leave and Session termination are certified.
-
-### PLR-06 — Initial Placement — CLOSED
-
-Ordinary Activity handoff preserves pose. Placement requires explicit spatial-start intent and exact authority.
-
-### PLR-07 — Focused QA / recertification — CLOSED
-
-Terminal Full Player QA completed `25/25` mandatory contracts.
-
-## Negative-path semantic clarifications
-
-### Route commit versus Activity readiness
-
 ```text
-Route Request = Succeeded
+PLR-01 Physical ownership model               CLOSED
+PLR-02 Scene-Provided adoption/promotion       CLOSED
+PLR-03 Activity contextual handoff             CLOSED
+PLR-04 Inactive no-Activity state              CLOSED
+PLR-05 Leave                                   CLOSED
+PLR-06 Initial Placement                       CLOSED
+PLR-07 Focused QA / recertification            CLOSED
 ```
 
-may legitimately coexist with:
+## Camera R4 / ADR-022 closure
+
+### CAM-R4-C1 — Presentation contracts — CLOSED
 
 ```text
-current startup Activity = Active
-ActivityReadiness = NotReady
-ActivityTransition = CommittedNotReady
-blockingIssues > 0
+Undefined = 0
+Follow = 10
+Fixed = 20
+Mounted = 30
+ThirdPerson = 40
 ```
 
-Route navigation commit is not the same truth as Activity readiness.
+### CAM-R4-C2 — Safe materialization ownership — CLOSED
 
-### Failed contextual reprojection
+Exact-reference Framework ownership and `ExternalOrUnknown` preservation are
+implemented.
 
-If Activity B is already current when its SceneProvided Player admission fails, B may legitimately retain its Activity-owned `RuntimeContent` root until Activity exit/release.
-
-This does **not** mean:
+### CAM-R4-C3 — Model materializers — CLOSED
 
 ```text
-Player B admitted
-physical Player handed off
-Session preparation replaced
+Follow
+Fixed
+Mounted
+Third Person
 ```
 
-The Player contextual failure and Activity scope lifetime remain separate authorities.
+all have explicit supported technical materialization.
 
-### Observation integrity
+### CAM-R4-C4 — Inspector / UX — CLOSED
 
-QA and diagnostics must observe physical truth through canonical Session/occurrence preparation evidence. Hierarchy shape, `childCount`, scene scanning, `FindObjectOfType*` and first-compatible-object lookup are not lifetime authority.
+Designer-selectable model-specific CameraRigComposer surface and Advanced /
+Diagnostics evidence are implemented.
+
+### CAM-R4-C5 — Technical QA — CLOSED / CERTIFIED
+
+```text
+Full Camera QA 53/53
+```
+
+### CAM-R4-C6 — FIRSTGAME consumer proof — PENDING
+
+Required proof remains real consumer usage and usability/integration evidence.
+
+C6 is not a package implementation task unless FIRSTGAME reveals a concrete
+defect.
+
+## Camera negative-path semantic clarifications
+
+### Local presentation is not output authority
+
+A Fixed, Follow, Mounted or Third Person rig uses the same request/output
+authority.
+
+Presentation never grants priority.
+
+### External component protection
+
+```text
+unknown/external incompatible Body or Aim
+  -> block
+  -> diagnose
+  -> preserve
+```
+
+Do not delete to make Apply/Rebuild succeed.
+
+### Compatible external state is not ownership
+
+A compatible component may be used without becoming Framework-owned.
+
+### Blocked switch is transactionally non-partial
+
+A cross-stage conflict must be found before owned Body/Aim replacement begins.
+
+### Unsupported model
+
+Unknown Presentation does not fallback to Follow.
+
+## Known non-blocking QA hygiene
+
+The certified Full Camera run emitted exactly three Unity warnings:
+
+```text
+The referenced script (Unknown) on this Behaviour is missing!
+```
+
+during C9R teardown.
+
+They did not produce a `Failed` or `Blocked` case and the run completed 53/53.
+
+Classification:
+
+```text
+QA fixture authoring hygiene
+non-blocking
+not package behavior
+not ADR-022 certification failure
+```
+
+The QA fixture should be cleaned in a small QA-only hygiene cut.
 
 ## Historical certification policy
 
-Do not delete or rewrite previous dated ADR-019/ADR-020 certification records.
+Do not rewrite historical dated Player or Camera certification records to imply
+they tested later contracts.
 
-They remain evidence of the behavior tested under the former contract. The 2026-08-15 recertification record is the authority for the revised physical-lifetime boundary.
+Current revised authorities:
+
+```text
+Player lifetime
+  Player Physical Lifetime Recertification — 2026-08-15
+
+Camera presentation expansion
+  Camera Presentation Technical Certification — 2026-08-15
+```
 
 ## FIRSTGAME
 
-The technical Player boundary is no longer blocked by PLR reconciliation. FIRSTGAME may proceed as real-consumer integration validation when scheduled. FIRSTGAME remains consumer proof, not the primary technical smoke harness.
+Technically certified framework boundaries:
+
+```text
+Player
+  ready for consumer validation
+
+Camera ADR-004 + ADR-022 C1-C5
+  ready for consumer validation
+```
+
+Current consumer-side promotion work may include:
+
+```text
+ADR-013 Audio real-game integration
+ADR-022 Camera C6
+Player real-game integration/usability
+```
+
+FIRSTGAME remains consumer proof, not the primary technical smoke harness.

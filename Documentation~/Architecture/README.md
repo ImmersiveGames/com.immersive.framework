@@ -14,49 +14,93 @@ Proposed
   -> pending architecture
 
 Reopened
-  -> architecture has been corrected/reconfirmed but implementation and/or prior
-     certification must be reconciled before the boundary is called closed again
+  -> architecture has been corrected/reconfirmed but implementation and/or
+     prior certification must be reconciled before the boundary is closed again
 ```
 
-## Player physical lifetime closure
+## Current major technical closures
 
-The Player lifetime reopen from 2026-08-14 is now technically closed.
+### Player physical lifetime
 
 Current closure authority:
 
 [Player Physical Lifetime Recertification — 2026-08-15](Reconciliation/IMMERSIVE-FRAMEWORK-PLAYER-PHYSICAL-LIFETIME-RECERTIFICATION-2026-08-15.md)
 
-Historical reopen record:
-
-[Player Physical Lifetime Reopen — 2026-08-14](Reconciliation/IMMERSIVE-FRAMEWORK-PLAYER-PHYSICAL-LIFETIME-REOPEN-2026-08-14.md)
-
-Frozen and certified model:
+Frozen model:
 
 ```text
 Session
-  owns Joined Player occurrence
   owns admitted physical Player after successful admission
-  owns retained physical preparation until Leave / Session termination
+  retains physical preparation until Leave / Session termination
 
 Activity
   owns contextual projection / activation / gameplay / camera / readiness
-  owns its current Activity RuntimeContent scope
   does not own terminal physical Player lifetime
 ```
 
-Scene-Provided and Manager-Provisioned differ in acquisition origin and converge on Session ownership after successful admission.
+Terminal certification:
 
-Normal Activity-to-Activity transition preserves the exact physical Player and ordinary gameplay pose while establishing a fresh contextual occurrence.
+```text
+PLAYER QA CERTIFIED
+25/25
+```
 
-No current Activity representation is compatible with retained Session physical preparation.
+### Camera Presentation / materialization
 
-A current Activity may also be `CommittedNotReady`: Activity scope lifetime and Player contextual admission are separate authorities.
+Current technical closure authority:
+
+[Camera Presentation Technical Certification — 2026-08-15](Reconciliation/IMMERSIVE-FRAMEWORK-CAMERA-PRESENTATION-TECHNICAL-CERTIFICATION-2026-08-15.md)
+
+Frozen model:
+
+```text
+IF-ADR-004
+  owns Camera request/output authority
+
+CameraRigComposer
+  owns one local rig's Presentation/materialization
+
+Presentation
+  Fixed
+  Follow
+  Mounted
+  Third Person
+
+Materialization
+  Editor-owned
+  exact-reference ownership evidence
+  external/unknown conflicts block
+  preflight before mutation
+
+CameraOutputRigApplicator
+  remains presentation-agnostic
+```
+
+Terminal certification:
+
+```text
+CAMERA QA CERTIFIED
+53/53
+```
+
+Breakdown:
+
+```text
+ADR-022 Presentation  14/14
+C9R                   11/11
+ADR-004B              18/18
+ADR-004C              10/10
+```
+
+FIRSTGAME C6 remains consumer proof, not technical package certification.
 
 ## Current affected ADR disposition
 
+### Player
+
 - IF-ADR-003 — Accepted / reconciled / Player QA recertified.
 - IF-ADR-007 — Accepted / reconciled / Player readiness boundary recertified.
-- IF-ADR-011 — Accepted / reconciled for the Player readiness interaction.
+- IF-ADR-011 — Accepted / reconciled for Player readiness interaction.
 - IF-ADR-012 — Accepted / reconciled / Player QA recertified.
 - IF-ADR-015 — Accepted / reconciled / Public Surface certified.
 - IF-ADR-016 — Accepted / reconciled / implementation certified.
@@ -64,20 +108,27 @@ A current Activity may also be `CommittedNotReady`: Activity scope lifetime and 
 - IF-ADR-020 — Accepted / reconciled / implementation recertified.
 - IF-ADR-021 — Accepted / reconciled / implementation certified.
 
-The terminal Full Player QA result is:
+### Camera
 
-```text
-PLAYER QA CERTIFIED
-mandatoryContracts = 25
-executedContracts = 25
-passedContracts = 25
-```
+- IF-ADR-004 — Accepted / reconciled / Camera QA recertified.
+- IF-ADR-010 — Accepted / reconciled for the implemented Camera Class C surface.
+- IF-ADR-022 — Accepted / implemented / technical QA certified; FIRSTGAME C6 pending.
 
 ## Historical certification records
 
-Dated ADR-019 and ADR-020 certification records remain historical evidence and are not rewritten to pretend they tested the revised contract.
+Dated certification/reconciliation records remain historical evidence.
 
-The 2026-08-15 recertification record is the current certification authority for the revised physical-lifetime boundary.
+Do not rewrite an older record to imply it tested a later contract.
+
+Current revised authorities:
+
+```text
+Player revised physical lifetime
+  2026-08-15 Player Physical Lifetime Recertification
+
+Camera presentation expansion
+  2026-08-15 Camera Presentation Technical Certification
+```
 
 ## Current delivery state
 

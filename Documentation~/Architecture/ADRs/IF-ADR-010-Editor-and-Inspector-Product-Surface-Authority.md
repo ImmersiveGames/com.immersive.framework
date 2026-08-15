@@ -1,20 +1,17 @@
 # IF-ADR-010 — Editor and Inspector Product Surface Authority
 
-Status: **Accepted**  
-Last updated: 2026-08-09  
+Status: **Accepted / Reconciled for Camera ADR-022 2026-08-15**  
+Last updated: **2026-08-15**  
 Normative classification: **Minimum product-surface standard accepted**  
 Package conformity audit: **CLOSED — IF-ADR-010B**  
-Implementation classification: **Broad package surface is semantically conformant; no generalized missing-tooling implementation is required**  
+Implementation classification: **Broad package surface is semantically conformant; Camera Class C materialization is implemented and technically certified**  
 IF-ADR-010C: **CANCELLED / NOT REQUIRED**  
-Related decisions: IF-ADR-002, IF-ADR-008, IF-ADR-012, IF-ADR-015, IF-ADR-016  
-Current package baseline: `43b96a4b100b8273da1190520536007ba82dc081` (`ADR-010B`)  
-Current QA baseline inspected: `b6a45728285ddb2ce08269fc1f88ae3f1a4235e4`
+Related decisions: IF-ADR-002, IF-ADR-004, IF-ADR-008, IF-ADR-012, IF-ADR-015, IF-ADR-016, IF-ADR-022
 
-> ADR-010 acceptance freezes the product-surface rules below.
->
-> IF-ADR-010B has already audited the current package against those rules.
->
-> No synthetic UX/Inspector certification program is required to close ADR-010.
+> ADR-010 defines the product-surface rules.
+> It does not require equal tooling depth for every feature.
+> IF-ADR-022 is now a concrete Class C example of deterministic,
+> ownership-safe Editor materialization.
 
 ## 1. Context
 
@@ -38,8 +35,8 @@ inspectable
 diagnostic
 ```
 
-Additional authoring layers are justified only when they solve concrete lifecycle
-complexity.
+Additional authoring layers are justified only when they solve concrete
+lifecycle or materialization complexity.
 
 ## 2. Decision
 
@@ -115,15 +112,7 @@ identifiers or generated technical bindings to perform normal configuration.
 Technical configuration may be derived when the derivation is deterministic and
 contains no new gameplay decision.
 
-Example:
-
-```text
-authored Supported Slots = 4
-        ↓
-derived technical player limit = 4
-```
-
-The derived value is technical materialization, not a second authored authority.
+Derived technical state is materialization, not a second authored authority.
 
 ### 3.3 Runtime remains runtime authority
 
@@ -187,7 +176,7 @@ This is semantic vocabulary, not a mandatory visual template.
 
 Required invalid/incomplete state must be explicit.
 
-Where the concepts exist, consumers should be able to distinguish:
+Consumers should be able to distinguish, where the concepts exist:
 
 ```text
 authored configuration
@@ -201,9 +190,7 @@ last Editor/runtime operation
 Diagnostics should identify the actual problem and relevant context.
 
 The existing framework validation infrastructure remains canonical where
-applicable.
-
-ADR-010 does not create a second validation architecture.
+applicable. ADR-010 does not create a second validation architecture.
 
 ### 4.5 Safe Explicit Remediation
 
@@ -249,7 +236,7 @@ Advanced/Debug is a disclosure mechanism, not another authority.
 Editor operations that write assets, scenes, prefabs or components must respect
 the lifecycle they support.
 
-Applicable risks can include:
+Applicable risks include:
 
 ```text
 Undo / Redo
@@ -258,6 +245,8 @@ dirty/save semantics
 multi-object editing
 asset duplication
 domain reload
+ownership preservation
+partial-mutation prevention
 ```
 
 Unsupported contexts must be rejected explicitly rather than partially applied.
@@ -279,7 +268,7 @@ Runtime state is read-only by default.
 
 QA coverage is proportional to actual deterministic risk.
 
-Examples of legitimate technical/editor contracts include:
+Legitimate technical/editor contracts include:
 
 ```text
 validation behavior
@@ -289,12 +278,13 @@ Prefab Stage safety
 ownership preservation
 deterministic asset creation
 runtime command gating
+transactional no-partial-mutation behavior
 ```
 
-A simple direct Inspector does not need a synthetic rendering test.
+A simple direct Inspector does not need a synthetic rendering/UX test.
 
-Do not use QAFramework to certify that an Inspector is understandable or visually
-consistent.
+Do not use QAFramework to certify that an Inspector is visually attractive or
+subjectively understandable.
 
 ## 5. Conditional authoring capabilities
 
@@ -302,7 +292,7 @@ consistent.
 
 Use when reusable intent or standalone authored identity is real.
 
-Do not create an asset layer just because the architecture allows one.
+Do not create an asset layer merely because the architecture allows one.
 
 ### 5.2 Composer
 
@@ -327,7 +317,7 @@ When present, it must be:
 explicit
 idempotent
 deterministic
-Undo-aware
+Undo-aware where supported
 non-destructive
 ownership-safe
 safe to repeat
@@ -338,19 +328,40 @@ diagnostic
 
 Rebuild may remove or replace only content the framework can prove it owns.
 
-Ownership must not be inferred solely from object name, hierarchy location or
-generic component type.
+Ownership must not be inferred solely from:
 
-User-owned content must be preserved.
+```text
+object name
+hierarchy location
+generic component type
+visual similarity to generated content
+```
 
-### 5.6 Materialization receipt
+User-owned or unknown content must be preserved.
 
-Significant materialization should expose enough evidence to explain what
-happened, proportional to the risk.
+Compatible pre-existing content may be consumed only under the owning feature's
+explicit contract; compatibility does not by itself establish Framework
+ownership.
+
+### 5.6 Materialization receipt / provenance
+
+Significant materialization should expose enough evidence to explain:
+
+```text
+what was selected
+what was created
+what was reused
+what is Framework-owned
+what is external/unknown
+what was blocked
+what revision/result was committed
+```
+
+Evidence should be proportional to the risk.
 
 ### 5.7 Create actions
 
-Create actions are valid when they improve discovery or remove repetitive
+Create actions are valid when they improve discovery or remove repetitive,
 deterministic setup.
 
 They must not choose gameplay intent.
@@ -359,8 +370,8 @@ They must not choose gameplay intent.
 
 Wizard is exceptional.
 
-It must solve proven multi-step authoring complexity rather than act as a maturity
-badge.
+It must solve proven multi-step authoring complexity rather than act as a
+maturity badge.
 
 ## 6. Product-surface classes
 
@@ -414,10 +425,18 @@ framework-owned technical materialization
 runtime/diagnostic evidence
 ```
 
-Class C carries stronger technical contracts around idempotency, ownership,
-non-destructive writes and Editor safety.
+Class C carries stronger contracts around:
 
-Camera Rig remains an example of this lifecycle, not a universal template.
+```text
+idempotency
+ownership
+non-destructive writes
+preflight before mutation
+diagnostics
+Editor safety
+```
+
+`CameraRigComposer` under IF-ADR-022 is the current canonical Class C example.
 
 ## 7. Architecture by need, not checklist
 
@@ -435,9 +454,9 @@ solely to satisfy ADR-002/010.
 
 ## 8. Current package audit result
 
-IF-ADR-010B is closed.
+IF-ADR-010B remains closed.
 
-Current package classification from that audit:
+Current package classification:
 
 | Area | Current interpretation |
 |---|---|
@@ -453,61 +472,147 @@ Current package classification from that audit:
 | Persistent Content Scene Template | COMPLIANT AT PACKAGE LEVEL |
 | Activity Readiness Participant | COMPLIANT |
 | Diagnostics-only surfaces | SUPPORT / NOT APPLICABLE |
-| Camera technical bindings | SUPPORT / NOT PRIMARY PRODUCT SURFACE |
+| Camera request/output bindings | SUPPORT / NOT PRIMARY RIG PRODUCT SURFACE |
+| CameraRigComposer | CLASS C / COMPLIANT / TECHNICALLY CERTIFIED |
 
-The audit found:
+The original package audit found no generalized missing-tooling program.
+
+IF-ADR-022 is an independently justified Camera-specific Class C expansion, not
+a reversal of IF-ADR-010B.
+
+## 9. Camera reconciliation — IF-ADR-022
+
+The previous Camera note that Camera was only a future Class C reference is now
+superseded by an implemented concrete surface.
+
+### 9.1 Designer-first Presentation
+
+`CameraRigComposer` exposes:
 
 ```text
-general missing tooling finding  NOT CONFIRMED
-generic Wizard requirement       NO
-generic Composer requirement     NO
-generic Apply/Rebuild requirement NO
-new authoring authority          NO
+Presentation
+  Fixed
+  Follow
+  Mounted
+  Third Person
 ```
 
-Loading/Transition may still be inspected under its own system lifecycle when a
-concrete product question exists. It is not an automatic ADR-010 implementation
-program.
+The normal Inspector shows model-relevant fields rather than raw generic
+Cinemachine component-type selection.
 
-## 9. Resolved audit findings
+### 9.2 Model-specific authoring
 
-### Unity Input Gate
+```text
+Fixed
+  authored pose
+  optional/required Look At
 
-The existing Inspector is semantically substantial.
+Follow
+  Tracking target
+  configurable Look At
+  Follow Offset
 
-Differences in visual/header grammar are optional normalization, not
-non-compliance.
+Mounted
+  Camera Mount / Tracking target
+  Position Damping
+  Rotation Damping
 
-No synthetic Input Gate UX smoke is required.
+Third Person
+  Tracking Pivot
+  Shoulder Offset
+  Vertical Arm Length
+  Camera Side
+  Camera Distance
+  Damping
+```
 
-### Persistent Content
+Nonsensical target requirements are not presented as normal authoring.
 
-The current official lifecycle is a Scene Template with non-mutating verification.
+### 9.3 Safe Apply / Rebuild
 
-Its former `REBASELINE REQUIRED` state is resolved.
+The Camera Apply/Rebuild pipeline is:
 
-No Composer/Apply flow is required.
+```text
+resolve typed targets
+  -> validate selected model
+  -> preflight Position + Rotation stages
+  -> block before mutation on unknown conflict
+  -> reconcile only Framework-owned technical controls
+  -> configure selected model
+  -> commit materialization evidence
+```
 
-### Camera
+The preflight-before-mutation rule prevents a model switch from removing one
+owned stage and then discovering an external conflict in another stage.
 
-Camera remains a Class C reference only.
+### 9.4 Exact-reference ownership evidence
 
-Any future Camera technical QA must be justified by Camera's own technical
-contracts.
+Camera materialization records:
 
-ADR-010 does not require a Camera UX QA program.
+```text
+materialized Presentation
+Framework-owned CinemachineCamera
+Framework-owned Position Control
+Framework-owned Rotation Control
+materialization revision
+last result / blocking issue
+```
 
-The broader Camera redesign is outside this documentation cut.
+Only exact previously recorded references prove Framework ownership.
 
-## 10. QA and FIRSTGAME boundary
+Pre-existing compatible components are `ExternalOrUnknown` unless explicit
+provenance already exists.
+
+### 9.5 Advanced / Diagnostics
+
+The Camera Inspector exposes the technical Body/Aim pipeline and provenance in
+Advanced/Diagnostics while preserving product-intent-first normal authoring.
+
+This is the intended ADR-010 separation:
+
+```text
+normal Inspector
+  product intent
+
+Advanced / Diagnostics
+  technical evidence
+```
+
+## 10. Camera technical QA under ADR-010 rules
+
+ADR-010 still does **not** require synthetic Inspector UX certification.
+
+The IF-ADR-022 QA exists because Camera Class C materialization has deterministic
+technical risks:
+
+```text
+serialized compatibility
+materialization completeness
+model switching
+idempotence
+ownership preservation
+external conflict protection
+transactional no-partial-mutation
+no output-authority mutation
+no silent fallback
+```
+
+Those contracts passed:
+
+```text
+ADR-022 Presentation Models  14/14
+Full Camera QA                53/53
+```
+
+This is technical QA for Camera's own invariants, not a visual UX score.
+
+## 11. QA and FIRSTGAME boundary
 
 The package owns the official product surface.
 
-QAFramework proves deterministic technical/editor contracts.
+QAFramework proves deterministic technical/editor/runtime contracts.
 
-FIRSTGAME evaluates real consumer ergonomics.
-
-The correct distinction is:
+FIRSTGAME evaluates real consumer ergonomics and integration.
 
 ```text
 Technical Status
@@ -520,15 +625,13 @@ Consumer UX Evidence
   real-game observation in FIRSTGAME
 ```
 
-Consumer UX Evidence is not part of technical completion.
+The Camera package surface and its technical materialization are complete for
+IF-ADR-022 C1-C5.
 
-A missing FIRSTGAME observation must not demote an otherwise correct framework
-implementation.
+FIRSTGAME C6 remains real-consumer proof and does not demote the technical
+certification.
 
-Similarly, QA must not simulate Inspector UX merely to create a certification
-score.
-
-## 11. IF-ADR-010A / 010B / 010C disposition
+## 12. IF-ADR-010A / 010B / 010C disposition
 
 ```text
 IF-ADR-010A — Product Surface Standard
@@ -541,39 +644,40 @@ IF-ADR-010C — Canonical Editor Product-Surface QA
   CANCELLED / NOT REQUIRED
 ```
 
-The attempted synthetic UX-smoke direction is explicitly retired.
+If a system needs technical Editor QA, that test belongs to the system's own
+technical contract.
 
-If a system later needs technical Editor QA, that test belongs to the system's
-technical QA because of a real invariant, not because ADR-010 requires UX
-certification.
+IF-ADR-022 follows that rule.
 
-## 12. Consequences
+## 13. Consequences
 
 Positive:
 
 ```text
 manual explicit authoring remains first-class
 tooling quantity is not a maturity metric
-package surfaces may use different legitimate lifecycle shapes
+Camera gains justified Class C materialization
 runtime authority remains explicit
 technical evidence remains inspectable
-future tooling must be justified by concrete friction
+ownership-safe rebuild is proven
+future tooling still requires concrete justification
 ```
 
 Tradeoff:
 
 ```text
 semantic consistency is more important than identical Inspector layouts
-product evaluation requires judgment rather than a synthetic UX pass/fail suite
+real consumer ergonomics still requires FIRSTGAME observation
+Class C features carry stronger technical QA obligations
 ```
 
-## 13. Completion
+## 14. Completion
 
-The normative ADR is complete.
+The normative ADR remains complete.
 
-The current package audit is also complete.
+The Camera-specific reconciliation is also complete for IF-ADR-022 C1-C5.
 
-No further ADR-010 implementation or QA program is required now.
+No generalized ADR-010 implementation program is reopened.
 
 Future product work starts only from:
 
@@ -585,9 +689,7 @@ or
 an independently justified technical Editor invariant
 ```
 
-FIRSTGAME is not a closure dependency.
-
-## 14. Normative summary
+## 15. Normative summary
 
 ```text
 Manual explicit authoring is the default.
@@ -601,6 +703,9 @@ The framework should:
 
 The framework may automate technical materialization
 only when derivation is deterministic and does not invent user intent.
+
+Apply/Rebuild removes or replaces only proven Framework-owned state.
+Unknown/external conflicts block rather than being silently destroyed.
 
 Normal Inspector shows product intent and actionable state.
 Advanced / Debug shows technical evidence.

@@ -7,6 +7,7 @@ Last updated: **2026-08-15**
 - [Stage A canonical package baseline](Architecture/Reconciliation/IMMERSIVE-FRAMEWORK-STAGE-A-CANONICAL-BASELINE-CLOSURE-2026-08-11.md)
 - [Current framework tracker](Architecture/Tracking/IF-TRACK-Framework.md)
 - [Player physical lifetime recertification — 2026-08-15](Architecture/Reconciliation/IMMERSIVE-FRAMEWORK-PLAYER-PHYSICAL-LIFETIME-RECERTIFICATION-2026-08-15.md)
+- [Camera presentation technical certification — 2026-08-15](Architecture/Reconciliation/IMMERSIVE-FRAMEWORK-CAMERA-PRESENTATION-TECHNICAL-CERTIFICATION-2026-08-15.md)
 - [Architecture documentation map](Architecture/README.md)
 - [API maturity and validation governance](Architecture/Governance/IF-GOV-001-API-MATURITY-AND-VALIDATION-GOVERNANCE.md)
 - [Framework usage](Guides/Framework-Usage.md)
@@ -25,17 +26,22 @@ Last updated: **2026-08-15**
 
 ## Current program state
 
-The historical Stage A package baseline remains the approved baseline for already-closed boundaries. Subsequent Player architecture cuts are scoped technical extensions and do not invent a replacement Stage A baseline commit.
+The historical Stage A package baseline remains the approved historical baseline
+for already-closed Stage A boundaries.
+
+Subsequent accepted architecture cuts extend that product without pretending the
+historical Stage A commit tested later contracts.
 
 ```text
 Historical Stage A package baseline
   ImmersiveGames/com.immersive.framework
   7a20ec748e4e5f5f3764bdc34ee249c1fe1c1da6
 
-Current documentation repository baseline reviewed
+Current package baseline reviewed
   ImmersiveGames/com.immersive.framework
-  474eb0c2a7fe1461debb47919899ed3307b099be
   master
+  b645f8db57673cbdc3531ce12b6d399225a4d0cb
+  ADR22
 
 Reverse audit
   RA-01 through RA-04 CLOSED
@@ -45,9 +51,7 @@ Player Physical Lifetime Reconciliation
 
 Full Player QA
   PLAYER QA CERTIFIED
-  mandatoryContracts = 25
-  executedContracts = 25
-  passedContracts = 25
+  25/25
 
 ADR-019
   Accepted / Reconciled / Implemented / QA Recertified
@@ -60,16 +64,36 @@ ADR-021
   Accepted / Reconciled / Implemented / QA Certified
   Initial Placement dedicated QA = 9/9
 
-ADR-022
-  Proposed
+ADR-004
+  Accepted / Reconciled / Camera QA Recertified
 
-Active product phase
-  accepted technical Player boundary may proceed to real-consumer validation when scheduled
+ADR-010
+  Accepted / Reconciled for Camera Class C product surface
+
+ADR-022
+  Accepted / Implemented / Technical QA Certified
+  C1-C5 CLOSED
+  FIRSTGAME C6 PENDING
+
+Full Camera QA
+  CAMERA QA CERTIFIED
+  mandatoryCases = 53
+  executedCases = 53
+  passedCases = 53
+
+Active consumer phase
+  Player real-game validation when scheduled
+  ADR-013 Audio FIRSTGAME promotion
+  ADR-022 Camera C6 FIRSTGAME promotion
 ```
 
-The 2026-08-15 Full Player QA was produced from the active package/QA working trees. If runtime implementation changes from that run have not yet been synchronized to the GitHub commit shown above, that is source-control hygiene and must not be confused with the certification result itself.
+At documentation time the QA remote branch still precedes the ADR-022 C5/Full
+Camera working-tree changes used for the 53/53 certification. Synchronizing the
+tested QA working tree is source-control traceability, not a technical
+implementation blocker.
 
-The canonical mutable status and certification scope are recorded in the [Framework Tracker](Architecture/Tracking/IF-TRACK-Framework.md).
+The canonical mutable status is recorded in the
+[Framework Tracker](Architecture/Tracking/IF-TRACK-Framework.md).
 
 ## Documentation authority
 
@@ -82,7 +106,16 @@ Guides/                        current product usage
 Architecture/Archive/          historical records; not current authority
 ```
 
-ADRs decide. Governance records define cross-cutting policy without creating feature authority. Reconciliation records describe current alignment and certification. The Tracker summarizes current delivery state. Archive records preserve history without acting as current product truth.
+ADRs decide.
+
+Governance records define cross-cutting policy without creating feature
+authority.
+
+Reconciliation records describe current alignment and certification.
+
+The Tracker summarizes mutable delivery state.
+
+Archive records preserve history without acting as current product truth.
 
 ## Canonical decisions
 
@@ -91,16 +124,16 @@ ADRs decide. Governance records define cross-cutting policy without creating fea
 | [001](Architecture/ADRs/IF-ADR-001-Core-Lifecycle-and-Runtime-Authority.md) | Core lifecycle and runtime authority | Accepted |
 | [002](Architecture/ADRs/IF-ADR-002-Product-Authoring-Model.md) | Product authoring model | Accepted |
 | [003](Architecture/ADRs/IF-ADR-003-Player-Participation-and-Actor-Lifecycle.md) | Player participation and Actor lifecycle | Accepted / Reconciled |
-| [004](Architecture/ADRs/IF-ADR-004-Camera-Requests-and-Output-Authority.md) | Camera requests and output authority | Accepted |
+| [004](Architecture/ADRs/IF-ADR-004-Camera-Requests-and-Output-Authority.md) | Camera requests and output authority | Accepted / Recertified |
 | [005](Architecture/ADRs/IF-ADR-005-Input-Pause-Gate-and-Reset.md) | Input, Pause, Gate and Reset | Accepted |
 | [006](Architecture/ADRs/IF-ADR-006-Loading-Transition-Persistence-and-Diagnostics.md) | Loading, transition, persistence and diagnostics | Accepted |
 | [007](Architecture/ADRs/IF-ADR-007-Activity-Entry-Readiness-and-Reveal-Gating.md) | Activity entry readiness and reveal gating | Accepted / Reconciled |
 | [008](Architecture/ADRs/IF-ADR-008-Persistent-Application-Content-Composition.md) | Persistent application content composition | Accepted |
 | [009](Architecture/ADRs/IF-ADR-009-Activity-Local-Visibility-Rules.md) | Activity-local visibility rules | Accepted |
-| [010](Architecture/ADRs/IF-ADR-010-Editor-and-Inspector-Product-Surface-Authority.md) | Editor and Inspector product surface authority | Accepted |
+| [010](Architecture/ADRs/IF-ADR-010-Editor-and-Inspector-Product-Surface-Authority.md) | Editor and Inspector product surface authority | Accepted / Camera Reconciled |
 | [011](Architecture/ADRs/IF-ADR-011-Participant-Aware-Activity-Readiness-Loading-Progress.md) | Participant-aware readiness/loading progress | Accepted |
 | [012](Architecture/ADRs/IF-ADR-012-Activity-Player-Participation-Profile-and-Readiness-Compatibility.md) | Activity Player participation profile and readiness compatibility | Accepted / Reconciled |
-| [013](Architecture/ADRs/IF-ADR-013-Optional-Audio-BGM-Adapter.md) | Optional Audio/BGM adapter | Accepted |
+| [013](Architecture/ADRs/IF-ADR-013-Optional-Audio-BGM-Adapter.md) | Optional Audio/BGM adapter | Accepted / Experimental |
 | [014](Architecture/ADRs/IF-ADR-014-Authored-Definition-and-Stable-Identity-Authority.md) | Authored definition and stable identity authority | Accepted |
 | [015](Architecture/ADRs/IF-ADR-015-Player-Provisioning-Commands-and-Consumer-Observation-Surface.md) | Player provisioning commands and consumer observation surface | Accepted / Reconciled |
 | [016](Architecture/ADRs/IF-ADR-016-Player-Session-Initial-Configuration-and-Provisioning-Profiles.md) | Player session initial configuration and provisioning profiles | Accepted / Reconciled |
@@ -109,11 +142,12 @@ ADRs decide. Governance records define cross-cutting policy without creating fea
 | [019](Architecture/ADRs/IF-ADR-019-Session-Player-Lifetime-and-Activity-Representation-Authority.md) | Session Player lifetime and Activity representation authority | Accepted / Recertified |
 | [020](Architecture/ADRs/IF-ADR-020-Session-Player-Leave-and-Resource-Release-Authority.md) | Session Player Leave and resource release authority | Accepted / Recertified |
 | [021](Architecture/ADRs/IF-ADR-021-Activity-Player-Actor-Initial-Placement-Authority.md) | Activity Player Actor initial placement authority | Accepted / Certified |
-| [022](Architecture/ADRs/IF-ADR-022-Camera-Rig-Presentation-Models-and-Materialization-Authority.md) | Camera Rig presentation models and materialization authority | Proposed |
+| [022](Architecture/ADRs/IF-ADR-022-Camera-Rig-Presentation-Models-and-Materialization-Authority.md) | Camera Rig presentation models and materialization authority | Accepted / Technical QA Certified |
 
 ## Current reconciliation / closure records
 
 - [Player Physical Lifetime Recertification — 2026-08-15](Architecture/Reconciliation/IMMERSIVE-FRAMEWORK-PLAYER-PHYSICAL-LIFETIME-RECERTIFICATION-2026-08-15.md)
+- [Camera Presentation Technical Certification — 2026-08-15](Architecture/Reconciliation/IMMERSIVE-FRAMEWORK-CAMERA-PRESENTATION-TECHNICAL-CERTIFICATION-2026-08-15.md)
 - [Player Physical Lifetime Reopen — 2026-08-14](Architecture/Reconciliation/IMMERSIVE-FRAMEWORK-PLAYER-PHYSICAL-LIFETIME-REOPEN-2026-08-14.md)
 - [ADR-001 reconciliation](Architecture/Reconciliation/IMMERSIVE-FRAMEWORK-ADR-001-RECONCILIATION-2026-08-10.md)
 - [ADR-002 and ADR-009 reconciliation](Architecture/Reconciliation/IMMERSIVE-FRAMEWORK-ADR-002-009-RECONCILIATION-2026-08-10.md)
@@ -132,10 +166,39 @@ ADRs decide. Governance records define cross-cutting policy without creating fea
 - [RA-04 Architecture Governance Hygiene](Architecture/Reconciliation/IMMERSIVE-FRAMEWORK-RA-04-ARCHITECTURE-GOVERNANCE-HYGIENE-2026-08-11.md)
 - [Stage A Canonical Package Baseline Closure](Architecture/Reconciliation/IMMERSIVE-FRAMEWORK-STAGE-A-CANONICAL-BASELINE-CLOSURE-2026-08-11.md)
 
-## Player certification scope
+## Current certification scopes
 
-The current Player boundary is certified as one terminal matrix rather than as disconnected local fixes.
+### Player
 
-The Full Player QA proves physical continuity, fresh contextual authority, no-Activity Session physical truth, occurrence-safe Leave, Session termination, Initial Placement, public surface behavior, failed adoption/reprojection semantics and no physical handoff.
+The current Player boundary is certified as one terminal matrix rather than
+disconnected local fixes.
 
-Historical dated ADR-019/020 certification records are preserved as historical evidence. The 2026-08-15 Player recertification record is the current authority for the revised lifetime contract.
+```text
+PLAYER QA CERTIFIED
+25/25
+```
+
+### Camera
+
+The current Camera boundary combines presentation materialization and
+non-regression of the established request/output authority.
+
+```text
+CAMERA QA CERTIFIED
+53/53
+```
+
+The Camera aggregate proves:
+
+```text
+Presentation Models
+safe materialization ownership
+switching / idempotence
+external conflict protection
+no output-authority mutation
+canonical request lifecycle
+negative transactional integrity
+owner lifetime integrity
+```
+
+FIRSTGAME remains the consumer proof layer.

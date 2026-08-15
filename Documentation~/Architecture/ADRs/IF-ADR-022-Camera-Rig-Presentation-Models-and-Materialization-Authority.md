@@ -1,18 +1,23 @@
 # IF-ADR-022 — Camera Rig Presentation Models and Materialization Authority
 
-Status: **Proposed**  
-Date: 2026-08-11  
+Status: **Accepted / Implemented / Technical QA Certified — FIRSTGAME promotion pending**  
+Proposed: **2026-08-11**  
+Accepted / technically certified: **2026-08-15**  
 Type: architecture / product authoring / editor materialization  
 Primary decision extended: IF-ADR-004 — Camera Requests and Output Authority  
-Source finding: pre-FIRSTGAME architecture review — R4 Camera Presentation Model beyond Follow
+Product-surface governance: IF-ADR-010 — Editor and Inspector Product Surface Authority  
+Related Player spatial authority: IF-ADR-021 — Activity Player Actor Initial Placement Authority  
+Source finding: pre-FIRSTGAME architecture review — R4 Camera Presentation Model beyond Follow  
+Package implementation baseline: `b645f8db57673cbdc3531ce12b6d399225a4d0cb` (`ADR22`)  
+Technical closure record: [Camera Presentation Technical Certification — 2026-08-15](../Reconciliation/IMMERSIVE-FRAMEWORK-CAMERA-PRESENTATION-TECHNICAL-CERTIFICATION-2026-08-15.md)
 
-> This ADR expands the local Camera rig product surface beyond the single current
-> `Follow` presentation without reopening Camera output authority, request arbitration,
-> Session output lifetime or multi-output architecture.
+> This ADR expands the local Camera rig product surface beyond `Follow` without
+> reopening Camera output authority, request arbitration, Session output
+> lifetime or multi-output architecture.
 
-## Context
+## 1. Context
 
-IF-ADR-004 already defines and certifies the Camera authority chain:
+IF-ADR-004 already defines the Camera authority chain:
 
 ```text
 Camera request source
@@ -37,12 +42,12 @@ one explicit Unity Camera + CinemachineBrain
 
 The accepted product has one persistent Camera output per Session.
 
-The local `CameraRigComposer` is deliberately not that authority.
+`CameraRigComposer` is deliberately **not** that authority.
 
-It owns one concrete local rig configuration and materializes one local
+It owns one concrete local rig configuration and materializes/reuses one local
 `CinemachineCamera`.
 
-The current product surface is intentionally narrow:
+Before this ADR the product surface supported only:
 
 ```text
 CameraRigPresentationIntent
@@ -50,33 +55,14 @@ CameraRigPresentationIntent
   Follow
 ```
 
-`CameraRigComposer.TryValidateForApply` rejects every presentation intent other than
-`Follow`.
+The architectural gap was therefore local **presentation authoring and
+materialization**, not Camera request/output authority.
 
-Its Editor Apply/Rebuild path currently materializes:
+## 2. Product problem
 
-```text
-CinemachineCamera
-CinemachineFollow
-Follow target
-optional Look At target
-Follow offset
-```
+A real game needs more than one local camera presentation behavior.
 
-The runtime output path does not depend on `CinemachineFollow`.
-
-`CameraOutputRigApplicator` only requires the winning request to resolve to a
-`CameraRigComposer` with one valid materialized `CinemachineCamera`, then enables that
-camera and disables the previously applied one.
-
-Therefore the architectural gap is local **presentation authoring and materialization**,
-not Camera request/output authority.
-
-## Product problem
-
-A real game commonly needs more than one local camera presentation behavior.
-
-Examples include:
+Accepted first use cases include:
 
 ```text
 static authored shot
@@ -85,43 +71,29 @@ first-person / cockpit mount
 third-person over-the-shoulder camera
 ```
 
-Today a user who needs those behaviors has three bad options:
+Without a Framework product contract, consumers would have to:
 
 ```text
 manually mutate the Cinemachine graph after Apply/Rebuild
 bypass CameraRigComposer
 create game-specific parallel camera authoring
-treat Cinemachine components themselves as the Framework product contract
+treat raw Cinemachine components as the Framework product contract
 ```
 
-Those options undermine the canonical product surface.
+That would fragment the product surface.
 
-At the same time, exposing every Cinemachine component and every possible combination as
-Framework authoring would create a second problem:
+The solution must also avoid the opposite failure: turning the Framework into a
+generic Cinemachine graph editor.
 
-```text
-generic component graph editor
-many invalid combinations
-unclear target requirements
-unclear ownership of generated components
-destructive rebuild behavior
-Framework API coupled directly to Cinemachine implementation details
-```
+## 3. Decision — Camera authority remains unchanged
 
-R4 must expand capability without turning the Framework into a general Cinemachine
-front-end.
-
-## Decision
-
-### 1. Camera authority remains unchanged
-
-R4 does not change:
+IF-ADR-022 does not change:
 
 ```text
 CameraRequest
 CameraOutputContext
 winner arbitration
-request priority
+request precedence
 request lifetime
 CameraOutputSession
 CameraOutputRigApplicator authority
@@ -131,12 +103,12 @@ transactional logical/physical mutation
 rollback guarantees
 ```
 
-A presentation model never decides which camera wins.
+A Presentation Model never decides which Camera wins.
 
-A presentation model only determines how one local rig behaves when its
-`CinemachineCamera` is the selected rig.
+A Presentation Model only determines how one local rig behaves when its
+`CinemachineCamera` is selected by the existing request system.
 
-### 2. One CameraRigComposer remains the canonical product surface
+## 4. One CameraRigComposer remains canonical
 
 The Framework keeps one designer-facing Composer:
 
@@ -144,7 +116,7 @@ The Framework keeps one designer-facing Composer:
 CameraRigComposer
 ```
 
-R4 must not introduce:
+It does not introduce parallel authorities such as:
 
 ```text
 FollowCameraComposer
@@ -153,19 +125,12 @@ FirstPersonCameraComposer
 StaticCameraComposer
 ```
 
-as parallel top-level product authorities.
+The single Composer exposes one explicit `Presentation` and only the fields that
+have product meaning for that model.
 
-The single Composer exposes one explicit **Presentation Model** and the fields relevant
-to that model.
+## 5. Presentation Model is product intent
 
-This preserves the ADR-004 rule that the Composer is the local rig intent/materialization
-surface while keeping runtime output authority elsewhere.
-
-### 3. Presentation Model is product intent, not a raw Cinemachine component choice
-
-`CameraRigPresentationIntent` describes a user-meaningful behavior.
-
-Conceptually:
+`CameraRigPresentationIntent` describes user-meaningful behavior.
 
 ```text
 Presentation Model
@@ -183,74 +148,40 @@ technical Cinemachine materialization
 
 The user chooses the behavior.
 
-The Framework chooses the supported technical Cinemachine shape for that behavior.
+The Framework chooses the supported Cinemachine shape for that behavior.
 
-The Inspector must not ask the normal user to assemble arbitrary Position Control and
-Rotation Control components manually.
+The normal Inspector does not ask the user to assemble arbitrary Body/Aim
+component classes.
 
-### 4. A model owns a coherent camera pipeline
+## 6. Stable presentation identities
 
-A supported Presentation Model defines at minimum:
-
-```text
-required target roles
-optional target roles
-position-control semantics
-rotation-control semantics
-model-specific authoring parameters
-materialization rules
-validation rules
-debug evidence
-```
-
-The model is not complete merely because a Position Control component exists.
-
-For example, a Follow rig with a Look At target must have a compatible rotation-control
-behavior when the Framework claims that Look At participates.
-
-The product surface must not publish configuration fields whose technical effect is
-missing from Apply/Rebuild.
-
-### 5. Position and rotation are distinct technical stages
-
-The architecture explicitly recognizes the Cinemachine pipeline distinction:
+The accepted enum is:
 
 ```text
-Position Control
-Rotation Control
+Undefined = 0
+Follow = 10
+Fixed = 20
+Mounted = 30
+ThirdPerson = 40
 ```
 
-A model may use:
+`Follow = 10` is frozen for serialized compatibility.
 
-```text
-one Position Control
-one Rotation Control
-neither stage when authored Transform is the intended behavior
-```
+No migration may reinterpret existing `Follow` content as another model.
 
-but it must define that intentionally.
+## 7. Accepted Presentation Model family
 
-Apply/Rebuild must not accidentally leave two competing Framework-owned components for
-the same pipeline stage.
-
-## Accepted presentation model family
-
-This ADR accepts the following product model family for the single-output Camera product.
-
-New models may initially carry Experimental API status until their technical QA and
-FIRSTGAME promotion gates are satisfied.
-
-### 6. Fixed
+### 7.1 Fixed
 
 Product intent:
 
 ```text
-Fixed
-  authored local Camera rig pose
-  does not procedurally follow a Tracking target
+authored local Camera rig pose
+no procedural Tracking follow
+optional target-oriented rotation
 ```
 
-Primary use:
+Primary uses:
 
 ```text
 menu shot
@@ -263,34 +194,31 @@ authored establishing shot
 Target contract:
 
 ```text
-Follow / Tracking target
+Tracking / Follow
   Not Used
 
-Look At target
-  Optional or Required when authored aiming is desired
+Look At
+  Not Used / Optional / Required
 ```
 
-Technical intent:
+Materialization:
 
 ```text
 Position Control
-  none — use authored CinemachineCamera Transform
+  none
 
 Rotation Control
-  none when Look At is Not Used
-  supported look-at rotation behavior when Look At participates
+  none when Look At is not used
+  CinemachineHardLookAt when Look At participates
 ```
 
-The first implementation should use a Framework-supported Look At materialization rather
-than leaving a configured Look At target with no rotation behavior.
+The `CinemachineCamera` Transform is authored by the consumer.
 
-Fixed does not mean persistent output.
+Apply/Rebuild preserves that pose.
 
-It is still one local rig participating in normal request arbitration.
+Fixed is still a local rig participating in normal ADR-004 request arbitration.
 
-### 7. Follow
-
-`Follow` remains the existing canonical model.
+### 7.2 Follow
 
 Product intent:
 
@@ -302,38 +230,38 @@ with optional target-oriented framing
 Target contract:
 
 ```text
-Follow / Tracking target
+Tracking / Follow
   Required
 
 Look At
-  Optional / Required / Not Used according to Follow authoring
+  Not Used / Optional / Required
 ```
 
-Technical intent:
+Materialization:
 
 ```text
 Position Control
   CinemachineFollow
 
 Rotation Control
-  none when Look At is Not Used
-  supported look-at rotation behavior when Look At participates
+  none when Look At does not participate
+  CinemachineHardLookAt when Look At participates
 ```
 
-The existing `FollowOffset` remains valid Follow-model authoring.
+`FollowOffset` belongs only to Follow.
 
-The existing serialized numeric value for `CameraRigPresentationIntent.Follow` must not
-be changed.
+A configured Look At target is not considered complete unless a supported
+rotation stage actually consumes it.
 
-### 8. Mounted
+### 7.3 Mounted
 
 Product intent:
 
 ```text
-attach the camera pose to one explicit Tracking target
+attach camera position and rotation to one explicit Tracking target/mount
 ```
 
-Primary use:
+Primary uses:
 
 ```text
 first-person camera mount
@@ -342,58 +270,48 @@ head/helmet camera
 camera socket controlled by gameplay
 ```
 
-The Framework does not own the gameplay code that moves or rotates the mount.
-
-The target itself is the camera-pose authority supplied by the game/Actor.
-
 Target contract:
 
 ```text
-Follow / Tracking target
+Tracking
   Required
 
-separate Look At target
-  Not Used in the first Mounted contract
+separate Look At
+  Not Used in the accepted first contract
 ```
 
-Technical intent:
+Materialization:
 
 ```text
 Position Control
-  Hard Lock to Tracking Target
+  CinemachineHardLockToTarget
 
 Rotation Control
-  match Tracking Target rotation
+  CinemachineRotateWithFollowTarget
 ```
 
-The consumer may author a dedicated camera mount Transform below an Actor.
-
-Example:
+The consumer may author:
 
 ```text
-Player Actor
+Actor
   CameraMount
 ```
 
-The Framework follows that typed/explicit target.
+but the Framework consumes that Transform through the typed target contract. It
+does not discover a child by name.
 
-It does not find a child named `CameraMount`.
+Camera does not own gameplay input that moves or rotates the mount.
 
-Mounted is intentionally broader than naming the architecture `FirstPerson`.
-
-A first-person recipe/preset can use Mounted without making first-person input,
-head-bob, weapon camera, recoil or aiming part of Camera authority.
-
-### 9. Third Person
+### 7.4 Third Person
 
 Product intent:
 
 ```text
-rigid third-person presentation around a rotating Tracking target,
+third-person presentation around a rotating Tracking target
 with explicit shoulder/arm/distance framing
 ```
 
-Primary use:
+Primary uses:
 
 ```text
 third-person exploration
@@ -404,32 +322,22 @@ third-person shooter base camera
 Target contract:
 
 ```text
-Follow / Tracking target
+Tracking
   Required
 
-separate Look At target
-  Not Used in the first Third Person contract
+separate Look At
+  Not Used in the accepted first contract
 ```
 
-The Tracking target may be:
+Materialization:
 
 ```text
-Player camera target
-Actor camera pivot
-independent aim/orbit pivot controlled by gameplay
+CinemachineThirdPersonFollow
 ```
 
-The Framework does not own input that rotates this target.
+No second generic Aim controller is added in the accepted first contract.
 
-Technical intent:
-
-```text
-Position / presentation
-  CinemachineThirdPersonFollow
-```
-
-The accepted first settings surface should include only the parameters needed to make the
-model useful and understandable, for example:
+Accepted authored settings:
 
 ```text
 Shoulder Offset
@@ -439,119 +347,35 @@ Camera Distance
 Damping
 ```
 
-Collision settings may be exposed when they can be represented safely and validated
-without turning the Inspector into a raw Cinemachine mirror.
+The game may rotate an explicit Player/Actor camera pivot through its own
+gameplay/input architecture. Camera Presentation does not read `PlayerInput`
+directly.
 
-The exact first subset is an implementation/product cut.
+## 8. Position and rotation are distinct technical stages
 
-### 10. Presentation intent values are explicit and stable
-
-A likely enum direction is:
-
-```text
-Undefined = 0
-Follow = 10          // existing value preserved
-Fixed = 20
-Mounted = 30
-ThirdPerson = 40
-```
-
-The exact names are frozen by acceptance of this ADR unless implementation review finds
-a concrete API conflict before publication.
-
-Numeric value `Follow = 10` is preserved for serialized compatibility.
-
-## Deliberately deferred presentation models
-
-### 11. Orbital / Free Look is not part of the first R4 contract
-
-Cinemachine Orbital Follow can own input axes or be driven by an input-axis controller.
-
-Adding it as a product model would force decisions about:
+The architecture recognizes:
 
 ```text
-camera input ownership
-PlayerInput integration
-input gating
-pause behavior
-per-Player control
-recenter policy
-device switching
+Position Control
+Rotation Control
 ```
 
-Those are not presentation-only concerns.
-
-Therefore:
+A model may use:
 
 ```text
-Orbital / Free Look
-  Deferred
+one Position Control
+one Rotation Control
+neither stage when authored Transform is intended behavior
 ```
 
-until a real game requirement defines the required input authority.
+but that choice is explicit.
 
-### 12. Spline / Dolly is separate future product work
+Apply/Rebuild must not leave two competing Framework-owned controls for the same
+pipeline stage.
 
-Spline camera behavior introduces:
+## 9. Typed target resolution is retained
 
-```text
-Spline ownership
-position units
-automatic/manual dolly policy
-target-to-spline interaction
-Activity/Route authoring workflow
-```
-
-It is not added merely because Cinemachine provides a component.
-
-### 13. Position Composer / Group Framing are not exposed as raw model names yet
-
-The Framework should add product behavior when there is a demonstrated use case, for
-example:
-
-```text
-2D Framed Follow
-Group Framing
-```
-
-rather than exposing every Cinemachine class as an enum value.
-
-### 14. Camera shake, impulse, noise and aim extensions remain orthogonal
-
-Effects such as:
-
-```text
-noise
-impulse
-Third Person Aim
-post-processing/volume settings
-```
-
-are modifiers/extensions, not primary Presentation Models.
-
-They require separate authoring decisions when promoted.
-
-R4 does not bundle them into the base model taxonomy.
-
-### 15. Multi-output and split-screen remain deferred
-
-R4 must not be used to reopen:
-
-```text
-multiple Unity Camera outputs
-split-screen
-per-Player physical output
-multiple CinemachineBrains
-output channels as Framework product authority
-```
-
-Those remain a separate future contract.
-
-## Target resolution
-
-### 16. Existing typed target-source architecture is retained
-
-The current target source boundary remains useful:
+The existing target architecture remains:
 
 ```text
 Explicit Transform
@@ -562,9 +386,9 @@ Activity
 Player Group
 ```
 
-through typed `ICameraTargetSource` implementations.
+through typed `ICameraTargetSource` contracts.
 
-R4 does not add:
+IF-ADR-022 does not add:
 
 ```text
 Camera.main
@@ -576,34 +400,7 @@ nearest Actor
 global target registry
 ```
 
-### 17. Each model derives valid target requirements
-
-The Inspector must stop presenting target requirement combinations that are nonsensical
-for the selected model.
-
-Examples:
-
-```text
-Fixed
-  Follow requirement is not editable as Required
-
-Mounted
-  Follow/Tracking target is always Required
-  separate Look At is not part of first contract
-
-Third Person
-  Tracking target is always Required
-  separate Look At is not part of first contract
-```
-
-`Follow` retains the existing configurable Look At requirement.
-
-Existing serialized target requirement fields may be preserved for backward
-compatibility, but the product UI should present only model-valid controls.
-
-### 18. Target resolution remains separate from model materialization
-
-The flow is:
+Flow:
 
 ```text
 CameraRigComposer intent
@@ -615,75 +412,153 @@ validate model target contract
 materialize selected presentation model
 ```
 
-A materializer must not perform its own scene lookup.
+A materializer never performs its own scene/global target lookup.
 
-## Materialization authority
+## 10. Model-valid target requirements
 
-### 19. Apply/Rebuild dispatches by explicit presentation model
+The Inspector and validation derive valid target semantics from the selected
+model.
 
-The current Apply/Rebuild path is specialized to Follow even though the materializer has
-a generic-looking name.
+Examples:
 
-R4 changes the conceptual structure to:
+```text
+Fixed
+  Tracking is Not Used
+
+Follow
+  Tracking is Required
+  Look At remains configurable
+
+Mounted
+  Tracking is Required
+  separate Look At is Not Used
+
+Third Person
+  Tracking is Required
+  separate Look At is Not Used
+```
+
+Existing serialized fields may remain for compatibility, but normal product UI
+does not present nonsensical combinations.
+
+## 11. Materialization authority
+
+Apply/Rebuild dispatches explicitly by Presentation Model:
 
 ```text
 CameraRigComposerApplyRebuild
         ↓
-Presentation Model
+Presentation
         ↓
-explicit typed materialization path
+explicit materialization path
         ├─ Fixed
         ├─ Follow
         ├─ Mounted
         └─ Third Person
 ```
 
-The dispatch must be explicit.
+Implementation may use an explicit `switch`, small typed internal helpers and
+typed materialization requests.
 
-Acceptable implementation approaches include:
+It must not use runtime reflection, discovery registries or service locators to
+find model handlers.
 
-```text
-switch on CameraRigPresentationIntent
-small internal model-specific editor materializers
-typed materialization request structures
-```
+Materialization remains Editor-owned.
 
-The implementation must not use runtime reflection or an implicit service registry to
-discover camera model handlers.
+Runtime does not depend on Editor assemblies.
 
-### 20. Materialization remains Editor-owned
+## 12. One local CinemachineCamera per Composer
 
-Creation/repair/removal of the technical Cinemachine pipeline remains Editor tooling.
-
-Runtime must not depend on Editor.
-
-The runtime `CameraRigComposer` stores authoring intent and materialized references
-required by the accepted product surface.
-
-### 21. One local CinemachineCamera remains canonical per Composer
-
-Each Composer materializes/reuses one local `CinemachineCamera`.
-
-A presentation change does not create multiple hidden virtual cameras and switch between
-them internally.
-
-If a game wants two separately arbitrated shots, it authors two rigs and publishes
-requests according to ADR-004.
-
-This keeps:
+The canonical relationship is:
 
 ```text
-one Composer
+one CameraRigComposer
   -> one concrete local rig
   -> one CinemachineCamera
 ```
 
-### 22. Presentation switching must be idempotent
+A Presentation change does not create hidden parallel virtual cameras and switch
+between them internally.
 
-Running Apply/Rebuild repeatedly with unchanged configuration must not continually add,
-duplicate or reorder technical components.
+If a game needs two separately arbitrated shots, it authors two rigs and uses
+the existing ADR-004 request system.
+
+Ambiguous local `CinemachineCamera` candidates block materialization.
+
+## 13. Durable materialization provenance
+
+The Composer retains enough evidence to prove ownership:
+
+```text
+materialized Presentation
+CinemachineCamera
+Framework-owned Position Control
+Framework-owned Rotation Control
+materialization revision
+last materialization result
+```
+
+Ownership is exact-reference based.
+
+```text
+exact previously recorded generated reference
+  -> FrameworkOwned
+
+pre-existing compatible component without proven provenance
+  -> ExternalOrUnknown
+```
+
+Compatibility alone does not establish ownership.
+
+No retroactive silent adoption is allowed.
+
+## 14. Safe model switching
+
+Switching models can require replacing the local Body/Aim pipeline.
 
 Example:
+
+```text
+Follow
+  CinemachineFollow
+
+        ↓ Presentation changes
+
+Third Person
+  CinemachineThirdPersonFollow
+```
+
+The Framework may remove/replace only the old control whose exact reference is
+proven Framework-owned.
+
+An external/unknown incompatible control is preserved and blocks.
+
+## 15. Preflight before mutation
+
+Body and Aim stages are preflighted before any destructive reconciliation.
+
+This is a transactional Editor rule:
+
+```text
+inspect Position stage
+inspect Rotation stage
+validate ownership/conflicts
+        ↓
+if any blocking conflict
+  mutate nothing
+        ↓
+otherwise
+  reconcile owned controls
+  configure selected model
+  commit evidence
+```
+
+A blocked model switch must not partially remove a previously valid
+Framework-owned stage.
+
+## 16. Idempotence
+
+Repeated Apply/Rebuild with unchanged intent converges:
 
 ```text
 Third Person
@@ -692,299 +567,136 @@ Apply
 Apply
 
 result:
-  one CinemachineCamera
-  one Framework-owned Third Person position behavior
-  no duplicate position-control components
+  same CinemachineCamera
+  one Third Person Body control
+  no duplicate stage
 ```
 
-### 23. Model switching must be safe and ownership-aware
+Successful rebuild may advance materialization revision/evidence without
+duplicating the technical pipeline.
 
-Switching:
+## 17. External / unknown conflict policy
 
-```text
-Follow
-  -> Third Person
-```
-
-requires changing the generated technical position pipeline.
-
-The Framework must not delete arbitrary consumer-authored Cinemachine components merely
-because they conflict with the selected model.
-
-The materialization layer therefore needs explicit evidence of which technical
-components it owns.
-
-Conceptually:
-
-```text
-CameraRigComposer
-  materialization evidence
-    CinemachineCamera
-    materialized Presentation Model
-    Framework-owned Position Control
-    Framework-owned Rotation Control
-    materialization revision/version
-```
-
-The exact evidence type is an implementation detail.
-
-### 24. Framework-owned technical pipeline may be replaced
-
-When ownership evidence proves a technical component was generated/materialized by this
-Composer, Apply/Rebuild may replace that component when the selected model changes.
-
-Example:
-
-```text
-owned CinemachineFollow
-  removed/replaced
-owned CinemachineThirdPersonFollow
-  created
-```
-
-This is legitimate idempotent materialization.
-
-### 25. Unknown incompatible components block instead of being destroyed
-
-If the local CinemachineCamera contains an incompatible Position/Rotation Control
-component that is not proven Framework-owned:
+If an incompatible Body/Aim component is not proven Framework-owned:
 
 ```text
 Apply/Rebuild
-  -> blocked
-  -> diagnostic identifies component and stage
+  -> Blocked
+  -> identify stage/component
+  -> report ExternalOrUnknown
+  -> do not destroy component
 ```
 
-It must not silently delete or overwrite the component.
+This is a hard product invariant.
 
-This preserves non-destructive Editor tooling.
+A compatible external control may remain usable under the selected model, but it
+is not silently reclassified as Framework-owned.
 
-### 26. Materialization evidence is visible in Advanced/Debug
+## 18. Inspector and UX
 
-The user should be able to inspect:
+`Presentation` is designer-editable:
 
 ```text
-Presentation Model
-CinemachineCamera
-Position Control
-Rotation Control
-Framework-owned / external evidence
-resolved targets
-last materialization result
-blocking conflict
+Fixed
+Follow
+Mounted
+Third Person
 ```
 
-The technical graph may be secondary to the designer experience, but it cannot be
-irretrievably hidden.
+The Inspector is model-specific.
 
-## Complete model semantics
-
-### 27. Fixed model
-
-Expected technical result:
-
-```text
-CameraRigComposer
-  CinemachineCamera
-    Position Control: none
-    Rotation Control:
-      none
-      or supported Look At rotation behavior
-```
-
-The CinemachineCamera Transform is authored by the consumer.
-
-Apply/Rebuild must preserve its authored pose.
-
-It must not reset Transform to zero on every rebuild merely because the Camera is a
-technical child.
-
-If Apply/Rebuild creates the CinemachineCamera for a new Fixed rig, the creation workflow
-must give the designer a clear initial pose and permit normal scene editing afterward.
-
-### 28. Follow model
-
-Expected technical result:
-
-```text
-CameraRigComposer
-  CinemachineCamera
-    CinemachineFollow
-    compatible rotation behavior when Look At participates
-```
-
-`FollowOffset` belongs only to Follow.
-
-A configured Look At target must not be treated as meaningful evidence if no supported
-rotation stage consumes it.
-
-This closes the gap between product intent and technical materialization.
-
-### 29. Mounted model
-
-Expected technical result:
-
-```text
-CameraRigComposer
-  CinemachineCamera
-    hard-lock position behavior
-    match-tracking-target rotation behavior
-```
-
-The mount Transform is supplied by the target source.
-
-The Framework does not add camera-look input.
-
-Typical Actor authoring:
-
-```text
-Actor
-  CameraTarget / CameraMount
-```
-
-A Player/Actor camera target source may resolve that explicit Transform through the
-existing typed camera target contract.
-
-### 30. Third Person model
-
-Expected technical result:
-
-```text
-CameraRigComposer
-  CinemachineCamera
-    CinemachineThirdPersonFollow
-```
-
-The component itself derives camera position/orientation from the rotating Tracking
-target.
-
-The Framework must not add a second generic rotation controller that conflicts with the
-Third Person Follow model's intended orientation semantics unless a later contract
-explicitly requires it.
-
-Gameplay input rotates the supplied tracking target/pivot through the game's existing
-input/gameplay architecture.
-
-Camera Presentation does not read `PlayerInput` directly.
-
-## Inspector and UX
-
-### 31. Presentation selection becomes designer-editable
-
-The current Inspector disables the Presentation field because only Follow exists.
-
-After R4 implementation:
+### Fixed
 
 ```text
 Presentation
-  Fixed
-  Follow
-  Mounted
-  Third Person
-```
-
-is the primary designer choice.
-
-### 32. Inspector is model-specific
-
-The default Inspector should show only relevant fields.
-
-Example:
-
-```text
-Presentation: Follow
-
 Targets
-  Target Mode
-  Follow Transform / Target Source
-  Look At
-
-Follow Settings
-  Follow Offset
-  ...
-
+  Look At requirement/source when used
+Pose
+  authored through CinemachineCamera Transform
 Materialization
-  Apply / Rebuild Rig
-
 Validation
-  Configuration Status
-
 Advanced / Diagnostics
 ```
 
-Third Person example:
+### Follow
 
 ```text
-Presentation: Third Person
-
+Presentation
 Targets
-  Target Mode
-  Tracking Target / Target Source
+  Tracking
+  Look At
+Follow Settings
+  Follow Offset
+Materialization
+Validation
+Advanced / Diagnostics
+```
 
+### Mounted
+
+```text
+Presentation
+Targets
+  Camera Mount / Tracking
+Mounted Settings
+  Position Damping
+  Rotation Damping
+Materialization
+Validation
+Advanced / Diagnostics
+```
+
+### Third Person
+
+```text
+Presentation
+Targets
+  Tracking Pivot
 Third Person Settings
   Shoulder Offset
   Vertical Arm Length
   Camera Side
   Camera Distance
   Damping
-  optional supported collision settings
-
 Materialization
 Validation
 Advanced / Diagnostics
 ```
 
-Mounted example:
-
-```text
-Presentation: Mounted
-
-Targets
-  Camera Mount / Target Source
-
-Mounted Settings
-  only settings that have product meaning
-
-Materialization
-Validation
-Advanced / Diagnostics
-```
-
-Fixed example:
-
-```text
-Presentation: Fixed
-
-Pose
-  edit rig/camera Transform in Scene
-Look At
-  optional
-
-Materialization
-Validation
-Advanced / Diagnostics
-```
-
-### 33. Do not expose generic Cinemachine graph authoring by default
-
-The default Inspector must not become:
+The normal Inspector must not become:
 
 ```text
 Position Component Type
 Rotation Component Type
 Extension List
-raw component properties
+raw Cinemachine graph editor
 ```
 
-That belongs to advanced technical inspection or direct Cinemachine editing outside the
-canonical Framework product surface.
+## 19. Advanced / Diagnostics
 
-### 34. Unity Presets remain the reusable-value mechanism for this product surface
+The user can inspect:
 
-R4 does not introduce a separate Camera Profile asset merely because multiple models
-exist.
+```text
+Presentation
+materialized Presentation
+CinemachineCamera
+current Position Control
+current Rotation Control
+Framework-owned Position reference
+Framework-owned Rotation reference
+FrameworkOwned / ExternalOrUnknown classification
+resolved targets
+materialization revision
+last result
+blocking conflict
+```
 
-The accepted ADR-004 posture remains:
+This technical evidence is secondary to normal authoring but not hidden.
+
+## 20. Unity Presets remain reusable-value mechanism
+
+IF-ADR-022 does not introduce a Camera Profile asset merely because multiple
+models exist.
 
 ```text
 CameraRigComposer
@@ -994,53 +706,44 @@ Unity Preset
   reusable authoring values when desired
 ```
 
-A Framework Camera Recipe/Profile should only be introduced later if real product
-friction demonstrates capabilities that Unity Presets cannot express safely.
+A new Framework Recipe/Profile requires demonstrated product need that Unity
+Presets cannot safely express.
 
-## Runtime behavior
+## 21. Runtime behavior remains presentation-agnostic
 
-### 35. Runtime arbitration is presentation-agnostic
-
-A request for:
+A request for any accepted model uses the same Camera request contract.
 
 ```text
 Fixed rig
 Follow rig
 Mounted rig
 Third Person rig
+        ↓
+same CameraRequest / arbitration
 ```
 
-uses the same Camera request contract.
-
-The winner algorithm does not inspect Presentation Model to grant special priority.
-
-### 36. CameraOutputRigApplicator remains presentation-agnostic
-
-The runtime applicator continues to resolve:
+`CameraOutputRigApplicator` resolves:
 
 ```text
 winner.Rig.Composer
   -> composer.CinemachineCamera
 ```
 
-and applies that camera to the single output.
+It does not branch on Presentation Model.
 
-No model-specific branches should be added there unless a concrete future runtime
-requirement proves they are necessary.
+## 22. Presentation does not own Camera request lifetime
 
-### 37. Presentation model does not own camera lifetime
+A model does not publish/release its own Camera request automatically from
+`Awake`, `Start` or `OnEnable`.
 
-A model does not publish/release its own request automatically from `Awake`, `Start` or
-`OnEnable`.
+Request lifetime remains owned by existing Session / Route / Activity / Player
+publishing surfaces.
 
-Request lifetime remains owned by the existing Session/Route/Activity/Player publishing
-surfaces.
-
-### 38. Presentation model does not own Player lifecycle
+## 23. Presentation does not own Player lifecycle
 
 Mounted/Third Person target sources may point at Player/Actor evidence.
 
-That does not make Camera Presentation authoritative over:
+That does not make Camera authoritative over:
 
 ```text
 Join
@@ -1051,19 +754,14 @@ Player readiness
 Leave
 ```
 
-A missing required target is an explicit camera configuration/runtime readiness problem,
-not permission for Camera to create a Player or Actor.
+A missing required target is a Camera configuration/readiness problem, not
+permission to create a Player or Actor.
 
-## Relationship to Initial Placement
+## 24. Relationship to IF-ADR-021 Initial Placement
 
-### 39. Camera does not place the Actor
+Camera does not place the Actor.
 
-IF-ADR-021 owns initial Player/Actor spatial placement when accepted.
-
-R4 only consumes the resulting Actor/camera target after the relevant representation
-exists.
-
-The flow may be:
+Typical ordering:
 
 ```text
 Actor representation
@@ -1076,224 +774,106 @@ camera target evidence available
 Camera request may present the Actor
 ```
 
-A Camera rig must not teleport an Actor to satisfy its framing requirements.
+A Camera rig must not teleport an Actor to satisfy framing.
 
-## Validation
+## 25. Validation
 
-### 40. Generic Composer validation
-
-At minimum validate:
+Generic validation covers:
 
 ```text
-Presentation Model is supported
-target source component is typed when used
-resolved targets satisfy the selected model contract
+Presentation is supported
+target source is typed when used
+resolved targets satisfy model contract
 one local CinemachineCamera is identified/materializable
 materialization evidence belongs to this Composer
 no ambiguous local CinemachineCamera candidates
-no unknown incompatible pipeline component will be destroyed
+no unknown incompatible component will be destroyed
+numeric/model settings are valid
 ```
 
-### 41. Fixed validation
-
-Validate:
+### Fixed
 
 ```text
-Follow target is not required
-authored Camera pose is valid
-Look At requirement is satisfied when configured as Required
-Look At rotation behavior can be materialized when Look At participates
+Tracking not required
+authored Camera pose valid
+Look At requirement satisfied when Required
+supported Aim can be materialized when Look At participates
 ```
 
-### 42. Follow validation
-
-Validate:
+### Follow
 
 ```text
-Tracking/Follow target is present
-Follow position behavior exists/materializable
-Follow settings are valid
-Look At target requirement is satisfied
-Look At has a compatible rotation behavior when it participates
+Tracking present
+CinemachineFollow exists/materializable
+Follow Offset valid
+Look At requirement satisfied
+real rotation behavior exists when Look At participates
 ```
 
-### 43. Mounted validation
-
-Validate:
+### Mounted
 
 ```text
-Tracking target/mount is present
-hard-lock position behavior exists/materializable
-matching rotation behavior exists/materializable
-separate Look At is not silently accepted in the first contract
+Tracking/mount present
+Hard Lock exists/materializable
+Rotate With Follow Target exists/materializable
+separate Look At not silently accepted
+damping valid
 ```
 
-### 44. Third Person validation
-
-Validate:
+### Third Person
 
 ```text
-Tracking target is present
-Third Person Follow behavior exists/materializable
-model settings are within valid ranges
-no conflicting Framework/external Position Control remains
-no implicit input source is required by Camera Presentation
+Tracking present
+CinemachineThirdPersonFollow exists/materializable
+settings valid
+no conflicting unknown Body remains
+no implicit Camera input source required
 ```
 
-### 45. Unsupported intent fails explicitly
+Unknown serialized Presentation intent fails explicitly.
 
-An unknown serialized Presentation Model:
+There is no fallback to Follow.
 
-```text
-does not fallback to Follow
-does not leave the old materialization active as if successful
-```
+## 26. Migration and compatibility
 
-Validation/Apply reports an unsupported model.
+Existing Follow rigs remain Follow because `Follow = 10` is preserved.
 
-This follows the Framework no-silent-fallback rule.
+Existing explicit/local `CinemachineCamera` references are reused where valid.
 
-## Migration and compatibility
+A legacy Follow rig that declared Look At but had no real rotation stage can be
+repaired by Apply/Rebuild to add the accepted Framework-owned Look At behavior.
 
-### 46. Existing Follow rigs remain valid
+Pre-existing Cinemachine pipeline components without C2 provenance are
+ExternalOrUnknown.
 
-An existing `CameraRigComposer` serialized as:
+The first implementation intentionally blocks unknown conflicts rather than
+guessing ownership.
 
-```text
-presentationIntent = Follow
-```
+## 27. Rejected behavior
 
-continues to mean Follow.
+Rejected:
 
-No migration should change its model to another value.
+- reopening request arbitration for each Presentation Model;
+- creating another persistent Camera output for a local model;
+- split-screen under IF-ADR-022;
+- one top-level Composer class per model;
+- exposing arbitrary Cinemachine component types as normal product intent;
+- runtime reflection to discover presentation handlers;
+- global materializer registry/service locator;
+- Camera Presentation reading `PlayerInput` directly;
+- Orbital/Free Look without input-authority design;
+- `Camera.main` fallback;
+- target lookup by name/tag/hierarchy guessing;
+- fallback from unsupported model to Follow;
+- stale Framework-owned controls after model switching;
+- deleting external/unknown pipeline components;
+- partial mutation before discovering another stage conflict;
+- creating Unity Camera/CinemachineBrain/AudioListener from the Composer;
+- treating a local CinemachineCamera as Session output authority;
+- declaring Look At active without supported rotation behavior;
+- adding a Camera Profile without demonstrated need.
 
-### 47. Existing local CinemachineCamera references are preserved where valid
-
-Apply/Rebuild should reuse the existing explicit/local CinemachineCamera when it satisfies
-the Composer ownership rules.
-
-R4 does not require recreating every existing Camera rig.
-
-### 48. Current Follow materialization may require repair to become model-complete
-
-If an existing Follow rig has:
-
-```text
-Look At participates
-but no compatible Rotation Control exists
-```
-
-the new model-complete Apply/Rebuild may add the accepted Framework-owned rotation
-behavior.
-
-That is an intentional repair of the declared product configuration.
-
-It must be diagnostic and idempotent.
-
-### 49. Existing consumer-authored Cinemachine components are not silently claimed
-
-A component that predates R4 and has no ownership evidence is external/unknown until the
-Framework can prove otherwise.
-
-Migration tooling may offer an explicit adoption path later.
-
-The first R4 implementation may block and explain the conflict rather than guessing
-ownership.
-
-## Diagnostics
-
-### 50. Designer-level diagnostic
-
-Example:
-
-```text
-CAMERA RIG
-
-Presentation       Third Person
-Target Source      Player Slot
-Tracking Target    Player1/CameraPivot
-Status             Ready
-Materialization    Applied
-```
-
-### 51. Advanced materialization diagnostic
-
-Example:
-
-```text
-CAMERA RIG MATERIALIZATION
-
-Composer            Player Gameplay Camera
-Presentation        Third Person
-Cinemachine Camera  Cinemachine Camera
-Position Control    CinemachineThirdPersonFollow
-Rotation Control    Model-owned by Third Person semantics
-Tracking Target     Player1/CameraPivot
-Look At Target      Not Used
-Ownership           Framework materialized
-Status              Applied
-```
-
-Conflict example:
-
-```text
-CAMERA RIG MATERIALIZATION
-
-Presentation        Mounted
-Status              Blocked
-Conflict            CinemachineOrbitalFollow
-Ownership           External / Unknown
-Diagnostic          Mounted requires one supported Position Control.
-                    The conflicting external component was not removed.
-```
-
-### 52. Output diagnostics remain separate
-
-The Composer may report:
-
-```text
-rig configuration
-targets
-materialization
-```
-
-while Camera Output diagnostics report:
-
-```text
-published requests
-winner
-previous winner
-physical applied CinemachineCamera
-transaction status
-```
-
-The UI/debug story should make those layers distinguishable.
-
-## Rejected behavior
-
-- Reopening Camera request arbitration for each Presentation Model.
-- Creating a second Camera output for Third Person or Mounted.
-- Adding split-screen under R4.
-- One specialized Composer class per presentation model.
-- Exposing arbitrary Cinemachine Position/Rotation component types as the normal product
-  contract.
-- Runtime reflection to discover presentation handlers.
-- Global registry of Camera model materializers.
-- Camera Presentation reading `PlayerInput` directly to control Third Person rotation.
-- Orbital/Free Look without an explicit input-authority decision.
-- `Camera.main` fallback.
-- target lookup by object name/tag.
-- fallback from unknown model to Follow.
-- leaving stale Framework-owned Position Control components after a model switch.
-- silently deleting external/unknown Cinemachine pipeline components.
-- creating a Unity Camera, CinemachineBrain or AudioListener from CameraRigComposer.
-- treating a local CinemachineCamera as Session output authority.
-- materializing a Look At target without any supported rotation semantics while claiming
-  the model is fully configured.
-- adding a CameraProfile asset without demonstrated product need.
-- turning R4 into camera shake, aim, impulse, spline, split-screen or cinematic sequencing.
-
-## Deferred
+## 28. Deliberately deferred work
 
 ```text
 Orbital / Free Look
@@ -1305,9 +885,9 @@ Group Framing product model
 camera shake/noise product authoring
 Cinemachine impulse product authoring
 Third Person Aim extension
-camera collision advanced policy beyond the accepted first Third Person surface
+advanced camera collision policy
 Timeline/cinematic sequence authoring
-blend policy authoring beyond current output behavior
+advanced blend policy
 multi-output
 split-screen
 per-Player physical output
@@ -1316,144 +896,42 @@ XR camera authority
 
 These require demonstrated product requirements and separate cuts.
 
-## Consequences
+## 29. Implementation closure
 
-### Positive
+### C1 — Presentation contracts and Composer shape — CLOSED
 
-The Framework gains real gameplay camera variety while preserving the already-certified
-Camera authority chain.
-
-A developer can use one consistent workflow:
+Implemented:
 
 ```text
-add CameraRigComposer
-choose Presentation
-configure relevant intent
-Apply / Rebuild
-Validate
-publish through existing Session/Route/Activity/Player surface
+CameraRigPresentationIntent
+  Undefined = 0
+  Follow = 10
+  Fixed = 20
+  Mounted = 30
+  ThirdPerson = 40
+
+model-valid target semantics
+model-specific serialized values
+Follow serialized compatibility
 ```
 
-The Inspector becomes more useful without becoming a raw Cinemachine graph editor.
+### C2 — Safe materialization ownership — CLOSED
 
-First-person/cockpit behavior can be expressed through `Mounted`.
-
-Third-person gameplay gains an explicit supported model.
-
-Static menu/Activity/Route shots gain `Fixed`.
-
-Existing Follow remains compatible.
-
-### Architectural gain
-
-The architecture separates:
+Implemented:
 
 ```text
-Camera authority
-  who wins and owns output
-
-Camera request lifetime
-  when a rig participates
-
-Camera target source
-  what the rig tracks
-
-Camera presentation model
-  how the rig behaves
-
-Cinemachine materialization
-  which technical components realize that behavior
+durable exact-reference provenance
+FrameworkOwned vs ExternalOrUnknown
+materialized Presentation evidence
+Position/Rotation ownership evidence
+materialization revision
+unknown conflict blocking
+no retroactive adoption
 ```
 
-This prevents future camera features from accumulating inside one procedural
-`CinemachineFollow` materializer.
+### C3 — Model materializers — CLOSED
 
-### Product cost
-
-The package needs:
-
-```text
-model-specific Composer settings
-model-specific Inspector sections
-typed Editor materialization dispatch
-safe ownership evidence
-model-specific validators
-additional QA
-FIRSTGAME camera samples
-```
-
-The current Follow materialization needs a compatibility/repair pass for complete
-Look At semantics.
-
-## Required architecture reconciliation after acceptance
-
-This draft intentionally does not edit IF-ADR-004 yet.
-
-After acceptance:
-
-```text
-IF-ADR-004
-  replace "Follow is the only accepted presentation capability"
-  with reference to IF-ADR-022
-  preserve all output/request authority rules
-  keep multi-output explicitly future
-
-IF-ADR-010
-  register model-specific CameraRigComposer Inspector behavior
-  and safe Apply/Rebuild ownership evidence
-
-Architecture tracking
-  close R4 as an accepted presentation-model expansion
-```
-
-No existing accepted ADR should be changed until this draft is reviewed.
-
-## Expected implementation cuts
-
-### C1 — Presentation contracts and Composer shape
-
-Objective:
-
-```text
-extend CameraRigPresentationIntent
-define model-valid target semantics
-add serialized model-specific authoring values
-preserve Follow compatibility
-```
-
-Type:
-
-```text
-technical + product authoring
-```
-
-Out of scope:
-
-```text
-runtime Camera output changes
-multi-output
-orbital input
-```
-
-### C2 — Safe materialization ownership
-
-Objective:
-
-```text
-introduce explicit evidence for Framework-owned Camera rig pipeline components
-allow idempotent replacement of owned components
-block on unknown incompatible components
-```
-
-Type:
-
-```text
-Editor tooling / technical materialization
-```
-
-### C3 — Model materializers
-
-Implement in narrow order:
+Implemented in accepted order:
 
 ```text
 Follow completion/repair
@@ -1462,112 +940,244 @@ Mounted
 Third Person
 ```
 
-Each model gets explicit technical materialization and validation.
-
-No generic reflection registry.
-
-### C4 — Inspector / UX
-
-Objective:
+Technical shapes:
 
 ```text
-designer-first presentation selector
-model-specific fields
-Apply/Rebuild
-Validate
-Advanced/Diagnostics
-```
+Follow
+  CinemachineFollow
+  + CinemachineHardLookAt when Look At participates
 
-### C5 — QA
-
-Preserve existing ADR-004 technical suites and add presentation-specific proof.
-
-At minimum:
-
-```text
-Follow existing compatibility
-Follow Look At complete materialization
 Fixed
+  no Body
+  + optional CinemachineHardLookAt
+  authored pose preserved
+
 Mounted
+  CinemachineHardLockToTarget
+  + CinemachineRotateWithFollowTarget
+
 Third Person
-switch Follow -> Third Person -> Follow
-idempotent rebuild
-unknown conflicting component blocks
-no external component deletion
-no output authority regression
-no fallback from unsupported model
+  CinemachineThirdPersonFollow
+  no extra generic Aim
 ```
 
-### C6 — FIRSTGAME
+Model switching preflights Body + Aim before mutation.
 
-Create real consumer examples showing at least:
+### C4 — Inspector / UX — CLOSED
+
+Implemented:
 
 ```text
-Fixed Activity/Route camera
-Follow gameplay camera
-Mounted first-person/cockpit-style camera
-Third Person gameplay camera
-runtime override between separate rigs through existing request system
-broken configuration diagnostics
+designer-editable Presentation
+model-specific targets/settings
+Apply/Rebuild
+Validation
+Advanced / Diagnostics
+ownership/provenance visibility
 ```
 
-FIRSTGAME should prove that a user can understand why changing Presentation changes local
-rig behavior without changing Camera output authority.
+### C5 — Technical QA — CLOSED / CERTIFIED
 
-## Technical acceptance
+Presentation-specific QA:
 
 ```text
-compiles on Unity 6.5 / Cinemachine package used by the Framework
-Follow serialized compatibility preserved
-one Composer remains canonical
-one local CinemachineCamera per Composer
-output authority unchanged
-request arbitration unchanged
-materialization dispatch explicit
-no runtime Editor dependency
-no runtime reflection required
-Apply/Rebuild idempotent
-model switching removes/replaces only Framework-owned technical components
-unknown external conflicts block explicitly
-no silent fallback to Follow
-target requirements are model-valid
-Look At has real rotation semantics when declared active
-existing ADR-004 QA remains green
-new presentation QA passes
+14/14 PASS
 ```
 
-## Product acceptance
+Supporting legacy Follow smoke:
 
 ```text
-user can choose Presentation in CameraRigComposer
-Inspector only shows meaningful fields for selected model
-user can Apply/Rebuild safely
-user can Validate before Play Mode
-user can identify generated Position/Rotation controls in Advanced/Debug
-Fixed is understandable
-Follow remains understandable
-Mounted clearly supports first-person/cockpit camera mounts without owning input
-Third Person clearly exposes shoulder/arm/distance intent
-user can switch models without manually reconstructing Cinemachine components
-external conflicting components are not destroyed
-short documentation explains Presentation vs Camera Output authority
-FIRSTGAME proves at least two gameplay-relevant models in real use
+6/6 PASS
 ```
 
-## Suggested commits
-
-Architecture:
+Full Camera certification:
 
 ```text
-docs(architecture): define camera rig presentation models
+C9R             11/11
+ADR-004B        18/18
+ADR-004C        10/10
+aggregate        53/53
+CAMERA QA CERTIFIED
 ```
 
-Future implementation should be split, for example:
+### C6 — FIRSTGAME — PENDING CONSUMER PROOF
+
+FIRSTGAME should demonstrate real consumer use of at least:
 
 ```text
-feat(camera): add presentation model contracts
-feat(camera-authoring): add safe model materialization evidence
-feat(camera-authoring): materialize fixed and mounted camera rigs
-feat(camera-authoring): materialize third person camera rigs
-qa(camera): prove presentation model materialization
+Fixed Activity/Route Camera
+Follow gameplay Camera
+Mounted first-person/cockpit-style Camera
+Third Person gameplay Camera
+runtime override between separate rigs
+broken-configuration diagnostics
+```
+
+C6 is not additional package implementation unless consumer validation exposes a
+concrete defect.
+
+## 30. Technical certification evidence
+
+Terminal result:
+
+```text
+[QA_CAMERA_FULL]
+status='Completed'
+verdict='CAMERA QA CERTIFIED'
+adr022Presentation='PASS'
+canonicalAuthority='PASS'
+adr004NegativeIntegrity='PASS'
+adr004OwnerLifetime='PASS'
+mandatoryCases='53'
+executedCases='53'
+passedCases='53'
+```
+
+Presentation QA terminal:
+
+```text
+[QA][ADR022 Presentation Models]
+PASS
+cases='14/14'
+```
+
+Canonical authority:
+
+```text
+[CAMERA_RUNTIME_HOST_INTEGRATION_REGRESSION]
+status='Passed'
+phase='canonical-override-fixture'
+cases='11'
+```
+
+Negative integrity:
+
+```text
+[QA_CAMERA_ADR004B]
+status='Passed'
+cases='18/18'
+failed='0'
+blocked='0'
+verdict='ADR-004B CAMERA NEGATIVE INTEGRITY CERTIFIED'
+```
+
+Owner lifetime:
+
+```text
+[QA_CAMERA_ADR004C]
+status='Passed'
+cases='10/10'
+failed='0'
+verdict='ADR-004C CAMERA OWNER LIFETIME INTEGRITY CERTIFIED'
+```
+
+## 31. Non-blocking QA fixture hygiene
+
+The certified run emitted three Unity warnings:
+
+```text
+The referenced script (Unknown) on this Behaviour is missing!
+```
+
+during C9R teardown.
+
+They did not produce `Failed` or `Blocked`, did not prevent Route cleanup, and
+the complete Camera matrix finished `53/53`.
+
+Classification:
+
+```text
+QA fixture authoring hygiene
+not package behavior failure
+not ADR-022 technical failure
+not certification blocker
+```
+
+The QA fixture should still be cleaned so future logs are noise-free.
+
+## 32. Source-control traceability
+
+Package implementation is present on:
+
+```text
+ImmersiveGames/com.immersive.framework
+master
+b645f8db57673cbdc3531ce12b6d399225a4d0cb
+commit: ADR22
+```
+
+The 53/53 certification was executed with the active QA working tree containing
+the ADR-022 presentation smoke, C9R installer reconciliation and Full Camera
+orchestration.
+
+At documentation time the remote QA branch still points to its pre-C5 baseline.
+
+Synchronizing those QA changes is source-control traceability work; it does not
+reopen the successful technical certification.
+
+## 33. Product maturity / promotion boundary
+
+Architecture is accepted.
+
+C1-C5 package/editor/QA work is complete.
+
+The new presentation family has technical certification.
+
+FIRSTGAME C6 remains the real-consumer promotion gate for practical ergonomics
+and gameplay integration.
+
+A FIRSTGAME issue should reopen package architecture only if it demonstrates a
+real contract or product-surface defect.
+
+## 34. Required reconciliation — completed
+
+Acceptance requires:
+
+```text
+IF-ADR-004
+  recognize IF-ADR-022 presentation family
+  preserve request/output authority
+
+IF-ADR-010
+  register Camera model-specific Class C Inspector/materialization
+  preserve ownership-safe Apply/Rebuild rules
+
+Architecture tracking
+  close R4 technical implementation
+  retain C6 FIRSTGAME consumer proof
+```
+
+Those documentation reconciliations are part of the 2026-08-15 technical
+closure.
+
+## 35. Current disposition
+
+```text
+Architecture
+  ACCEPTED
+
+Package C1
+  CLOSED
+
+Package / Editor C2
+  CLOSED
+
+Package / Editor C3
+  CLOSED
+
+Package / Editor C4
+  CLOSED
+
+Technical QA C5
+  CAMERA QA CERTIFIED
+  53/53
+
+FIRSTGAME C6
+  PENDING CONSUMER PROOF
+
+Package implementation blocker
+  NONE
+
+Technical Camera certification blocker
+  NONE
 ```
