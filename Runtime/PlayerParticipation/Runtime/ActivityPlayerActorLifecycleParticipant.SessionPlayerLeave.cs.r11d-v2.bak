@@ -132,6 +132,19 @@ namespace Immersive.Framework.PlayerParticipation
                 sessionPlayerActivityRepresentationReleaseProgress.Add(
                     leaveToken,
                     progress);
+
+                if (!progress.HadActivityRepresentation)
+                {
+                    progress.Completed = true;
+                    return Result(
+                        SessionPlayerActivityRepresentationReleaseStatus.SucceededNoCurrentRepresentation,
+                        leaveToken,
+                        leaveConfirmation,
+                        progress,
+                        resolvedSource,
+                        resolvedReason,
+                        "The exact Leaving Session Player has no current Activity representation; contextual release was skipped without creating one.");
+                }
             }
 
             if (!progress.ActivityLedgerRetired)
@@ -196,19 +209,6 @@ namespace Immersive.Framework.PlayerParticipation
                     gameplay != null
                         ? gameplay.Message
                         : "Activity gameplay release returned no result.");
-            }
-
-            if (!progress.HadActivityRepresentation)
-            {
-                progress.Completed = true;
-                return Result(
-                    SessionPlayerActivityRepresentationReleaseStatus.SucceededNoCurrentRepresentation,
-                    leaveToken,
-                    leaveConfirmation,
-                    progress,
-                    resolvedSource,
-                    resolvedReason,
-                    "The exact Leaving Session Player has no current Activity representation; Stage C performed only terminal cleanup of retained Session gameplay occupancy when present and did not create contextual state.");
             }
 
             if (!preparationModule.TryReleaseManagerContextualProjection(
@@ -329,11 +329,7 @@ namespace Immersive.Framework.PlayerParticipation
                         "Prepared Activity Actor representation does not resolve to the exact retained Host evidence for the same assignment occurrence.");
                 }
             }
-            else if (activeRecord != null &&
-                     snapshotContainsSlot &&
-                     (int)activeRecord.RequirementLevel >=
-                         (int)PlayerParticipationRequirementLevel.LogicalActorsPrepared &&
-                     preparationModule.TryGetRetainedActorEvidence(
+            else if (preparationModule.TryGetRetainedActorEvidence(
                          playerSlotId,
                          out PlayerActorCorrelationEvidence divergentActor) &&
                      divergentActor.IsValid)
@@ -345,7 +341,7 @@ namespace Immersive.Framework.PlayerParticipation
                     null,
                     source,
                     reason,
-                    "Current Activity requires a prepared Actor representation for the Leaving Slot, but retained Session physical Actor evidence exists without its matching Activity lifecycle preparation token.");
+                    "Retained Actor representation exists without a matching preparation token in the Activity lifecycle ledger.");
             }
 
             if (!gameplayRuntime.TryInspectActivityGameplayForSessionPlayerLeave(

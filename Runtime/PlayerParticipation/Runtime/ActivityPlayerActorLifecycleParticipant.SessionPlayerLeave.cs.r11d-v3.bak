@@ -132,6 +132,19 @@ namespace Immersive.Framework.PlayerParticipation
                 sessionPlayerActivityRepresentationReleaseProgress.Add(
                     leaveToken,
                     progress);
+
+                if (!progress.HadActivityRepresentation)
+                {
+                    progress.Completed = true;
+                    return Result(
+                        SessionPlayerActivityRepresentationReleaseStatus.SucceededNoCurrentRepresentation,
+                        leaveToken,
+                        leaveConfirmation,
+                        progress,
+                        resolvedSource,
+                        resolvedReason,
+                        "The exact Leaving Session Player has no current Activity representation; contextual release was skipped without creating one.");
+                }
             }
 
             if (!progress.ActivityLedgerRetired)
@@ -196,19 +209,6 @@ namespace Immersive.Framework.PlayerParticipation
                     gameplay != null
                         ? gameplay.Message
                         : "Activity gameplay release returned no result.");
-            }
-
-            if (!progress.HadActivityRepresentation)
-            {
-                progress.Completed = true;
-                return Result(
-                    SessionPlayerActivityRepresentationReleaseStatus.SucceededNoCurrentRepresentation,
-                    leaveToken,
-                    leaveConfirmation,
-                    progress,
-                    resolvedSource,
-                    resolvedReason,
-                    "The exact Leaving Session Player has no current Activity representation; Stage C performed only terminal cleanup of retained Session gameplay occupancy when present and did not create contextual state.");
             }
 
             if (!preparationModule.TryReleaseManagerContextualProjection(

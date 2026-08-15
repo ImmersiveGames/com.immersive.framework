@@ -300,8 +300,8 @@ namespace Immersive.Framework.PlayerParticipation
                 leaveToken,
                 progress,
                 progress.HadGameplayChain
-                    ? "Exact Activity gameplay Admission, Camera and Input capabilities plus retained Session occupancy were released for Session Player Leave."
-                    : "The Leaving Session Player has no current Activity gameplay capability chain; retained Session occupancy was terminally released when present.");
+                    ? "Exact Activity gameplay Admission, Camera, Input and Occupancy capabilities were released for Session Player Leave."
+                    : "The Leaving Session Player has no current Activity gameplay capability chain.");
         }
 
         private SessionPlayerLeaveGameplayReleaseResult
@@ -330,35 +330,16 @@ namespace Immersive.Framework.PlayerParticipation
                     leaveToken.PlayerSlotId,
                     out PlayerGameplayOccupancySummary occupancy) &&
                 occupancy.IsOccupied;
-            bool hadActivityGameplayChain =
-                hasAdmission || hasCamera || hasInput;
-            bool hasAnyGameplayEvidence =
-                hadActivityGameplayChain || hasOccupancy;
+            bool hadGameplayChain =
+                hasAdmission || hasCamera || hasInput || hasOccupancy;
 
-            if (!expectedPreparation.IsValid && hadActivityGameplayChain)
+            if (!expectedPreparation.IsValid && hadGameplayChain)
             {
                 return GameplayLeaveResult(
                     SessionPlayerLeaveGameplayReleaseStatus.RejectedPreparationCorrelation,
                     leaveToken,
                     null,
-                    "Activity contextual gameplay evidence exists without a retained Activity preparation token in the lifecycle ledger.");
-            }
-
-            if (!expectedPreparation.IsValid && hasOccupancy)
-            {
-                if (!preparationModule.TryGetCurrentPreparation(
-                        leaveToken.PlayerSlotId,
-                        out PlayerActorPreparationSummary sessionPreparation,
-                        out _) ||
-                    !sessionPreparation.IsPrepared ||
-                    sessionPreparation.Token != occupancy.PreparationToken)
-                {
-                    return GameplayLeaveResult(
-                        SessionPlayerLeaveGameplayReleaseStatus.FailedInvariant,
-                        leaveToken,
-                        null,
-                        "Retained Session gameplay occupancy does not correlate with the current prepared Session physical Player for the Leaving occurrence.");
-                }
+                    "Activity gameplay evidence exists without a retained Activity preparation token in the lifecycle ledger.");
             }
 
             if (expectedPreparation.IsValid)
@@ -393,7 +374,7 @@ namespace Immersive.Framework.PlayerParticipation
             {
                 LeaveToken = leaveToken,
                 PreparationToken = expectedPreparation,
-                HadGameplayChain = hadActivityGameplayChain,
+                HadGameplayChain = hadGameplayChain,
                 AdmissionToken = hasAdmission ? admission.Token : default,
                 CameraToken = hasCamera ? camera.Token : default,
                 InputToken = hasInput ? input.Token : default,
@@ -402,7 +383,7 @@ namespace Immersive.Framework.PlayerParticipation
                 CameraReleased = !hasCamera,
                 InputReleased = !hasInput,
                 OccupancyReleased = !hasOccupancy,
-                Completed = !hasAnyGameplayEvidence
+                Completed = !hadGameplayChain
             };
             return null;
         }
