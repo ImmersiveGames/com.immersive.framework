@@ -1293,6 +1293,46 @@ namespace Immersive.Framework.PlayerParticipation
                     source,
                     reason,
                     expectedSelectionRevision);
+                if (!participationContext.TryGetActorSelection(
+                        playerSlotId,
+                        out PlayerSlotRuntimeSnapshot slot))
+                {
+                    return CreatePreparedSelectionRejection(
+                        "SelectDefaultActor",
+                        request,
+                        "Default Actor selection cannot change while a Logical Player Actor is prepared.");
+                }
+
+                if (request.HasExpectedSelectionRevision &&
+                    request.ExpectedSelectionRevision != slot.SelectionRevision)
+                {
+                    return CreateSelectionRejection(
+                        PlayerActorSelectionStatus.RejectedStaleSelectionRevision,
+                        "SelectDefaultActor",
+                        slot,
+                        source,
+                        reason,
+                        $"Expected selection revision '{request.ExpectedSelectionRevision}' does not match current revision '{slot.SelectionRevision}'.");
+                }
+
+                ActorProfile defaultActorProfile =
+                    slot.Profile != null ? slot.Profile.DefaultActorProfile : null;
+                if (slot.HasSelectedActor &&
+                    defaultActorProfile != null &&
+                    defaultActorProfile.TryGetActorProfileId(
+                        out ActorProfileId defaultActorProfileId,
+                        out _) &&
+                    slot.SelectedActorProfileId == defaultActorProfileId)
+                {
+                    return CreateCurrentSelectionResult(
+                        PlayerActorSelectionStatus.SucceededSelected,
+                        "SelectDefaultActor",
+                        slot,
+                        source,
+                        reason,
+                        "Requested default ActorProfile is already selected; no runtime state changed.");
+                }
+
                 return CreatePreparedSelectionRejection(
                     "SelectDefaultActor",
                     request,
@@ -1427,7 +1467,7 @@ namespace Immersive.Framework.PlayerParticipation
                 message);
         }
 
-        private PlayerActorSelectionResult CreateSelectionRejection(
+        private PlayerActorSelectionResult CreateCurrentSelectionResult(
             PlayerActorSelectionStatus status,
             string operation,
             PlayerSlotRuntimeSnapshot slot,
@@ -1453,6 +1493,23 @@ namespace Immersive.Framework.PlayerParticipation
                 message,
                 slot,
                 snapshot);
+        }
+
+        private PlayerActorSelectionResult CreateSelectionRejection(
+            PlayerActorSelectionStatus status,
+            string operation,
+            PlayerSlotRuntimeSnapshot slot,
+            string source,
+            string reason,
+            string message)
+        {
+            return CreateCurrentSelectionResult(
+                status,
+                operation,
+                slot,
+                source,
+                reason,
+                message);
         }
 
         private bool TryResolveCurrentActorCorrelation(

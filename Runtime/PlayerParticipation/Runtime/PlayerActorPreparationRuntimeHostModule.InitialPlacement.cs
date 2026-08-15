@@ -41,18 +41,28 @@ namespace Immersive.Framework.PlayerParticipation
                     continue;
                 }
 
-                ActivityPlayerInitialPlacementRuntimeBinding binding =
-                    host.GetComponent<ActivityPlayerInitialPlacementRuntimeBinding>();
-                if (binding == null)
-                {
-                    binding = host.gameObject
-                        .AddComponent<ActivityPlayerInitialPlacementRuntimeBinding>();
-                }
-
-                binding.Configure(context);
+                PublishCurrentInitialPlacementGate(host);
             }
 
             return true;
+        }
+
+        internal void PublishCurrentInitialPlacementGate(LocalPlayerHostAuthoring host)
+        {
+            if (host == null || !currentActivityInitialPlacementContext.IsValid)
+            {
+                return;
+            }
+
+            ActivityPlayerInitialPlacementRuntimeBinding binding =
+                host.GetComponent<ActivityPlayerInitialPlacementRuntimeBinding>();
+            if (binding == null)
+            {
+                binding = host.gameObject
+                    .AddComponent<ActivityPlayerInitialPlacementRuntimeBinding>();
+            }
+
+            binding.Configure(currentActivityInitialPlacementContext);
         }
 
         internal bool TryApplySceneProvidedInitialPlacement(

@@ -296,6 +296,7 @@ namespace Immersive.Framework.PlayerParticipation
                 return false;
             }
 
+            PublishCurrentInitialPlacementGate(host);
             RecordSuccessfulJoin(joinResult);
             RegisterActivityLifecycleSource();
             diagnostic =
@@ -548,6 +549,14 @@ namespace Immersive.Framework.PlayerParticipation
                     diagnostic);
             }
 
+            if (TryGetRegisteredHost(
+                    playerSlotId,
+                    out LocalPlayerHostAuthoring preparedHost,
+                    out _))
+            {
+                PublishCurrentInitialPlacementGate(preparedHost);
+            }
+
             PlayerActorPreparationResult result =
                 preparationContext.TryPrepareSelectedActor(
                     scopeContext,
@@ -597,6 +606,14 @@ namespace Immersive.Framework.PlayerParticipation
                     "EnsureSessionPhysicalActor",
                     playerSlotId,
                     diagnostic);
+            }
+
+            if (TryGetRegisteredHost(
+                    playerSlotId,
+                    out LocalPlayerHostAuthoring ensuredHost,
+                    out _))
+            {
+                PublishCurrentInitialPlacementGate(ensuredHost);
             }
 
             PlayerActorPreparationResult result =
