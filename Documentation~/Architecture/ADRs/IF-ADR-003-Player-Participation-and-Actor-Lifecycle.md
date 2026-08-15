@@ -1,16 +1,16 @@
 # IF-ADR-003 — Player Participation and Actor Lifecycle
 
-Status: **Accepted / Reconciled**  
-Last updated: **2026-08-14**  
+Status: **Accepted / Reconciled / Player QA Recertified 2026-08-15**  
+Last updated: **2026-08-15**  
 Related decisions: IF-ADR-001, IF-ADR-007, IF-ADR-012, IF-ADR-015, IF-ADR-016, IF-ADR-019, IF-ADR-020, IF-ADR-021  
-Current Player lifetime reconciliation: [2026-08-14 Player Physical Lifetime Reopen](../Reconciliation/IMMERSIVE-FRAMEWORK-PLAYER-PHYSICAL-LIFETIME-REOPEN-2026-08-14.md)
+Reopen record: [2026-08-14 Player Physical Lifetime Reopen](../Reconciliation/IMMERSIVE-FRAMEWORK-PLAYER-PHYSICAL-LIFETIME-REOPEN-2026-08-14.md)  
+Closure record: [2026-08-15 Player Physical Lifetime Recertification](../Reconciliation/IMMERSIVE-FRAMEWORK-PLAYER-PHYSICAL-LIFETIME-RECERTIFICATION-2026-08-15.md)
 
 ## Context
 
-A Logical Player is a Session participant while Activity participation is contextual
-gameplay authority.
+A Logical Player is a Session participant while Activity participation is contextual gameplay authority.
 
-The framework must keep these decisions distinct:
+The framework keeps these decisions distinct:
 
 ```text
 Host Provisioning
@@ -24,8 +24,7 @@ gameplay admission
 Session Player Leave
 ```
 
-The former interpretation incorrectly treated Activity ownership of presentation as
-ownership of the physical Actor lifetime.
+The former interpretation incorrectly treated Activity ownership of presentation as ownership of the physical Actor lifetime.
 
 ## Decision
 
@@ -38,6 +37,7 @@ Session
   Logical Player occurrence
   Actor selection
   admitted physical Player representation
+  physical preparation evidence
 
 Activity
   participation projection
@@ -45,15 +45,14 @@ Activity
   readiness contribution
   gameplay / input / camera authority
   contextual bindings
+  Activity-owned RuntimeContent scope
 ```
 
-Scene-Provided and Manager-Provisioned remain peer provisioning modes. They converge on
-the same Session/Slot/Actor authority after successful admission.
+Scene-Provided and Manager-Provisioned remain peer provisioning modes. They converge on the same Session/Slot/Actor authority after successful admission.
 
 ## Physical Player versus Activity representation
 
-The admitted physical Player occurrence and an Activity representation occurrence are
-different lifetimes.
+The admitted physical Player occurrence and an Activity representation occurrence are different lifetimes.
 
 ```text
 Physical Player occurrence
@@ -85,6 +84,8 @@ Physical Player = Exists
 Activity representation = Absent / Inactive
 ```
 
+Likewise, a current Activity may be committed but NotReady because its Player contextual admission failed. The Activity may still own its own RuntimeContent scope; that scope is not a physical Player occurrence and is released by Activity lifecycle, not Player rollback.
+
 ## Provisioning
 
 ### Manager-Provisioned
@@ -109,11 +110,9 @@ successful admission
 runtime ownership transfers to Session Player occurrence
 ```
 
-A failed Scene-Provided admission does not transfer ownership.
+A failed Scene-Provided admission does not transfer Player ownership.
 
-After successful adoption, unloading the supplying Activity scene must not implicitly
-destroy the admitted Player. The implementation must move/attach the admitted composition
-to the canonical Session-owned runtime scope before the supplying scene can invalidate it.
+After successful adoption, unloading the supplying Activity scene must not implicitly destroy the admitted Player. The implementation moves/attaches the admitted composition to the canonical Session-owned runtime scope before the supplying scene can invalidate it.
 
 ## Slot Join and assignment
 
@@ -127,15 +126,13 @@ Targeted Join
   -> exact requested Supported Slot when eligible
 ```
 
-Targeted Join has no fallback to another Slot. `PlayerSlotId` is domain identity and is
-not `PlayerInput.playerIndex`.
+Targeted Join has no fallback to another Slot. `PlayerSlotId` is domain identity and is not `PlayerInput.playerIndex`.
 
 ## Actor selection
 
 Actor selection is Session-scoped mutable intent for one exact Joined Slot.
 
-Direct Actor selection mutation is not an implicit physical hot-swap. Replacing a
-currently prepared/admitted physical Actor requires a separate explicit operation.
+Direct Actor selection mutation is not an implicit physical hot-swap. Replacing a currently prepared/admitted physical Actor requires a separate explicit operation.
 
 Selection remains revision-aware and stale mutation rejects.
 
@@ -150,6 +147,8 @@ WaitingForJoin / Preparing
 is valid current evidence.
 
 Activity readiness never becomes Session membership or physical lifetime authority.
+
+A Route/Activity commit and Activity readiness are separate truths. A current Activity may be `Active + NotReady` with blocking failure without implying that Session physical lifetime should roll back.
 
 ## Session Player Leave
 
@@ -167,6 +166,12 @@ Session Player Leave
   -> Slot becomes Vacant / Available
 ```
 
+No current Activity representation is also a valid Leave precondition when the Session-owned physical Player remains prepared.
+
+## Observation invariant
+
+Physical truth must be observed from canonical Session/occurrence evidence. Hierarchy shape, scene membership or global lookup are not Actor-lifetime authority.
+
 ## Rejected behavior
 
 - Activity exit destroying/recreating the admitted physical Player by default.
@@ -174,8 +179,22 @@ Session Player Leave
 - Re-Join when moving an already Joined Player between Activities.
 - Scene unload silently ending an adopted Scene-Provided Player.
 - Manager/Scene provisioning modes having divergent post-admission lifetime semantics.
+- Treating Activity-owned RuntimeContent as Player physical ownership.
 - Consumer direct Slot mutation.
 - Consumer direct materialization/reconcile authority.
 - `playerIndex` as Slot identity.
 - Silent fallback.
 - Global Player manager/service locator.
+
+## Certification
+
+The revised Player boundary is recertified by the 2026-08-15 Full Player QA terminal result:
+
+```text
+PLAYER QA CERTIFIED
+mandatoryContracts = 25
+executedContracts = 25
+passedContracts = 25
+```
+
+The certification includes exact SceneProvided physical identity continuity, no-Activity physical retention, occurrence-safe Leave, Manager and SceneProvided Session termination, public surface lifecycle, failed adoption/reprojection integrity and no physical handoff.

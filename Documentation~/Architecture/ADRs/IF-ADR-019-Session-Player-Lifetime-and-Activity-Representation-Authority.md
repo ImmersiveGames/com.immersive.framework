@@ -1,15 +1,13 @@
 # IF-ADR-019 — Session Player Lifetime and Activity Representation Authority
 
-Status: **Accepted / Reopened / Revised 2026-08-14 / Implementation Reconciliation Required**  
+Status: **Accepted / Reconciled / Implemented / QA Recertified 2026-08-15**  
 Previous technical certification: **Historical for superseded Activity-owned physical Actor boundary**  
-Last updated: **2026-08-14**  
+Current recertification: **Full Player QA 25/25 mandatory contracts**  
+Last updated: **2026-08-15**  
 Type: architecture / runtime authority / player product direction  
 Related decisions: IF-ADR-001, IF-ADR-003, IF-ADR-007, IF-ADR-011, IF-ADR-012, IF-ADR-015, IF-ADR-016, IF-ADR-020, IF-ADR-021  
-Reopen record: [2026-08-14 Player Physical Lifetime Reopen](../Reconciliation/IMMERSIVE-FRAMEWORK-PLAYER-PHYSICAL-LIFETIME-REOPEN-2026-08-14.md)
-
-> The 2026-08-12 certification remains valid evidence for the former boundary but no
-> longer certifies the revised physical lifetime contract. The implementation must be
-> reconciled and recertified.
+Reopen record: [2026-08-14 Player Physical Lifetime Reopen](../Reconciliation/IMMERSIVE-FRAMEWORK-PLAYER-PHYSICAL-LIFETIME-REOPEN-2026-08-14.md)  
+Closure record: [2026-08-15 Player Physical Lifetime Recertification](../Reconciliation/IMMERSIVE-FRAMEWORK-PLAYER-PHYSICAL-LIFETIME-RECERTIFICATION-2026-08-15.md)
 
 ## Context
 
@@ -86,9 +84,10 @@ readiness contribution
 interaction bindings
 Activity-local references
 Activity representation occurrence
+Activity-owned RuntimeContent scope while the Activity is current
 ```
 
-Activity does not own terminal physical lifetime.
+Activity does not own terminal physical Player lifetime.
 
 ### 4. Physical Player occurrence and Activity representation occurrence are different
 
@@ -107,8 +106,7 @@ Activity B
   uses Physical occurrence 7
 ```
 
-The new Activity occurrence requires new readiness/gameplay/camera/context evidence even
-though the physical object is the same instance.
+The new Activity occurrence requires new readiness/gameplay/camera/context evidence even though the physical object is the same instance.
 
 ### 5. Activity-to-Activity transition preserves physical identity
 
@@ -162,8 +160,9 @@ Current Activity representation = Absent
 Physical presentation = Inactive / not participating
 ```
 
-A Route with no active Activity can therefore have no visible Player while the admitted
-physical Player still exists under Session ownership.
+A Route with no active Activity can therefore have no contextual Player authority while the admitted physical Player still exists under Session ownership.
+
+Canonical physical truth in this state comes from Session-scoped occurrence/preparation evidence, not from a current Activity reference or hierarchy-shape heuristic.
 
 ### 7. Scene-Provided and Manager-Provisioned differ only before admission
 
@@ -189,15 +188,13 @@ successful admission
 Session owns same physical object
 ```
 
-No clone is required merely to transfer lifetime authority. The intended continuity is the
-same Unity object instance where technically supported.
+No clone is required merely to transfer lifetime authority. The intended continuity is the same Unity object instance where technically supported.
 
-A failed Scene-Provided admission does not transfer ownership.
+A failed Scene-Provided admission does not transfer Player ownership.
 
 ### 8. Scene-Provided promotion
 
-A Scene-Provided candidate may originate inside the Activity scene but successful adoption
-promotes it out of Activity-scene lifetime before that scene can unload.
+A Scene-Provided candidate may originate inside the Activity scene but successful adoption promotes it out of Activity-scene physical lifetime before that scene can unload.
 
 The runtime must provide a canonical Session-owned physical container/scope.
 
@@ -217,8 +214,7 @@ Session Player occurrence owns the admitted physical object
 
 ### 9. Later Activities do not replace an existing admitted Scene-Provided Player silently
 
-If the Session already owns an admitted physical Player for P1, a later Activity cannot
-silently replace it with another scene-authored candidate for the same occurrence.
+If the Session already owns an admitted physical Player for P1, a later Activity cannot silently replace it with another scene-authored candidate for the same occurrence.
 
 Possible later authoring behavior must be explicit:
 
@@ -235,8 +231,7 @@ new conflicting Scene-Provided candidate
 
 Actor selection remains Session mutable intent.
 
-Because physical representation also persists, ordinary Activity transition does not
-implicitly re-resolve or rematerialize the selected Actor.
+Because physical representation also persists, ordinary Activity transition does not implicitly re-resolve or rematerialize the selected Actor.
 
 Explicit physical Actor replacement/hot-swap remains a separate contract.
 
@@ -254,6 +249,10 @@ camera request
 readiness contribution
 ```
 
+A committed Activity may legitimately be current but `NotReady`. Failed Player contextual admission does not automatically roll back the Activity itself.
+
+Therefore a current Activity B may retain its own Activity-scoped `RuntimeContent` root while Player contextual reprojection for B is failed/absent. That root is Activity lifetime, not evidence of a new physical Player or successful Player handoff.
+
 ### 12. Physical release boundaries
 
 Ordinary Activity exit is not a physical release boundary.
@@ -266,8 +265,7 @@ Session termination
 explicit future physical Actor replacement/hot-swap operation
 ```
 
-Exceptional unrecoverable failures may require defensive cleanup, but may not redefine
-normal Activity semantics.
+Exceptional unrecoverable failures may require defensive cleanup, but may not redefine normal Activity semantics.
 
 ## State model
 
@@ -283,6 +281,11 @@ Joined + Represented
 Joined + Not Represented
   Session owns physical Player
   physical presentation inactive/not participating
+
+Current Activity CommittedNotReady
+  Activity may own its RuntimeContent scope
+  Player contextual representation may be failed/absent
+  Session physical Player remains independently owned
 
 Leaving
   no new contextual authority
@@ -303,6 +306,8 @@ Vacant
 - Seamless requires no special persistence switch.
 - Current Activity absence is compatible with physical Player existence.
 - A new Activity representation occurrence does not imply a new physical occurrence.
+- Activity-owned RuntimeContent is not Player physical ownership.
+- Failed contextual reprojection must not cause physical handoff, duplicate Actor creation or stale authority reuse.
 
 ## Rejected behavior
 
@@ -314,26 +319,36 @@ Vacant
 - Silent replacement by a later Scene-Provided candidate.
 - Reusing stale Activity readiness because physical identity persisted.
 - Re-Join during Activity reprojection.
+- Treating Activity-owned RuntimeContent retention as proof of Player physical retention/handoff.
+- Hierarchy shape, `childCount`, scene scan or global object lookup as physical-lifetime authority.
 - Global Player singleton/service locator.
 
-## Certification impact
+## Certification
 
-The 2026-08-12 ADR-019 QA remains historical evidence that:
+The 2026-08-12 ADR-019 QA remains historical evidence for the former boundary.
 
-```text
-Activity exit != Leave
-Slot membership persisted
-Manager Host survived Activity exit
-Scene-Provided could reproject without re-Join
-```
-
-It does **not** certify the revised requirements:
+The revised contract is now recertified by the 2026-08-15 Full Player QA terminal result:
 
 ```text
-same physical Actor identity survives Activity A -> B
-Scene-Provided adopted object becomes Session-owned
-no destroy/recreate occurs between Activities
-no-Activity representation deactivates rather than destroys
+PLAYER QA CERTIFIED
+mandatoryContracts = 25
+executedContracts = 25
+passedContracts = 25
 ```
 
-Focused recertification is required after implementation reconciliation.
+The recertification includes proof that:
+
+```text
+SceneProvided A -> B -> A preserves exact physical identity
+ordinary Activity handoff preserves pose
+new Activity occurrences establish fresh contextual authority
+supplying Activity scene release does not destroy the adopted Player
+no-Activity contextual absence does not end Session physical preparation
+SceneProvided Leave works with and without current Activity
+Session termination releases retained physical resources
+failed first Scene adoption remains blocking without false readiness
+failed contextual reprojection preserves correct Activity scope while denying Player context
+no physical handoff occurs on the negative path
+```
+
+The implementation-reconciliation requirement opened on 2026-08-14 is therefore closed for this boundary.

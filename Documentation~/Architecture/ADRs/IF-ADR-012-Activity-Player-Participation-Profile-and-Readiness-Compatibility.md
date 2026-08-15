@@ -1,25 +1,22 @@
 # IF-ADR-012 — Activity Player Participation Profile and Readiness Compatibility
 
-Status: **Accepted / Reconciled**  
-Last updated: **2026-08-14**  
+Status: **Accepted / Reconciled / Player QA Recertified 2026-08-15**  
+Last updated: **2026-08-15**  
 Related decisions: IF-ADR-003, IF-ADR-007, IF-ADR-010, IF-ADR-015, IF-ADR-016, IF-ADR-019, IF-ADR-020, IF-ADR-021  
-Current Player lifetime reconciliation: [2026-08-14 Player Physical Lifetime Reopen](../Reconciliation/IMMERSIVE-FRAMEWORK-PLAYER-PHYSICAL-LIFETIME-REOPEN-2026-08-14.md)
+Reopen record: [2026-08-14 Player Physical Lifetime Reopen](../Reconciliation/IMMERSIVE-FRAMEWORK-PLAYER-PHYSICAL-LIFETIME-REOPEN-2026-08-14.md)  
+Closure record: [2026-08-15 Player Physical Lifetime Recertification](../Reconciliation/IMMERSIVE-FRAMEWORK-PLAYER-PHYSICAL-LIFETIME-RECERTIFICATION-2026-08-15.md)
 
 ## Context
 
-Activities need reusable Player participation intent without duplicating Session rules
-inside each scene.
+Activities need reusable Player participation intent without duplicating Session rules inside each scene.
 
 ## Decision
 
-Activity Player participation resolves into one normalized effective policy with
-provenance.
+Activity Player participation resolves into one normalized effective policy with provenance.
 
-Runtime consumes explicit Slot/Player/Actor evidence and publishes requested/effective
-state plus diagnostic reasons.
+Runtime consumes explicit Slot/Player/Actor evidence and publishes requested/effective state plus diagnostic reasons.
 
-Activity participation does not own or silently mutate Player Session configuration or
-the terminal lifetime of an admitted physical Player.
+Activity participation does not own or silently mutate Player Session configuration or the terminal lifetime of an admitted physical Player.
 
 ## Session boundary
 
@@ -33,6 +30,7 @@ PlayerSessionProfile
 Session runtime
   owns joined occurrence
   owns admitted physical Player after successful admission
+  owns retained physical preparation evidence
 
 Activity Player policy
   projects/qualifies current Session Slots
@@ -64,8 +62,25 @@ Joined Session Player
   -> readiness is evaluated for this Activity occurrence
 ```
 
-A later Activity does not require a new physical Player occurrence merely because its
-Activity representation occurrence is new.
+A later Activity does not require a new physical Player occurrence merely because its Activity representation occurrence is new.
+
+## Failed contextual inclusion / reprojection
+
+A target Activity may commit and become current while its Player contextual admission fails.
+
+Valid state:
+
+```text
+Activity B = current / Active
+Activity B readiness = NotReady
+Activity B RuntimeContent scope = present
+Player contextual admission for B = failed/absent
+Session physical Player = still owned by the same Session occurrence
+```
+
+The Activity-owned RuntimeContent root is released by Activity exit/release. Player rollback must not destroy current Activity scope simply to make `RuntimeContentOwner.Activity(B)` count zero.
+
+This state is not physical handoff and does not create a Player B occurrence.
 
 ## Readiness requirement compatibility
 
@@ -97,6 +112,12 @@ Activity Ready -> false
 
 No stale Ready, auto-Join, Slot substitution or policy weakening is allowed.
 
+## Observation rule
+
+Activity participation evidence and Session physical evidence are different domains.
+
+`Contextual=Absent` or failed Activity projection must not be interpreted as physical lifetime loss. Session physical truth is resolved from canonical Session/occurrence preparation evidence, not hierarchy shape or scene scan.
+
 ## Constraints
 
 - One normalized effective participation policy is runtime input.
@@ -104,4 +125,9 @@ No stale Ready, auto-Join, Slot substitution or policy weakening is allowed.
 - Invalid compatibility fails explicitly.
 - Activity policy is not a provisioning mode.
 - Activity participation is not physical lifetime authority.
+- Activity-owned RuntimeContent is not Player physical ownership.
 - Session Leave remains Session authority.
+
+## Certification
+
+The 2026-08-15 Full Player QA completed `25/25` mandatory contracts and recertifies exclusion, inclusion/reprojection, fresh occurrence readiness, failed contextual reprojection and no physical handoff against the revised IF-ADR-019 lifetime model.

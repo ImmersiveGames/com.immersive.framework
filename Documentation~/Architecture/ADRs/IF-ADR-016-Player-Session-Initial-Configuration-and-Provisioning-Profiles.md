@@ -1,14 +1,14 @@
 # IF-ADR-016 — Player Session Initial Configuration
 
-Status: **Accepted / Reopened for implementation reconciliation**  
-Last updated: **2026-08-14**  
+Status: **Accepted / Reconciled / Implemented / QA Certified 2026-08-15**  
+Last updated: **2026-08-15**  
 Related decisions: IF-ADR-001, IF-ADR-002, IF-ADR-003, IF-ADR-012, IF-ADR-015, IF-ADR-019, IF-ADR-020  
-Current Player lifetime reconciliation: [2026-08-14 Player Physical Lifetime Reopen](../Reconciliation/IMMERSIVE-FRAMEWORK-PLAYER-PHYSICAL-LIFETIME-REOPEN-2026-08-14.md)
+Reopen record: [2026-08-14 Player Physical Lifetime Reopen](../Reconciliation/IMMERSIVE-FRAMEWORK-PLAYER-PHYSICAL-LIFETIME-REOPEN-2026-08-14.md)  
+Closure record: [2026-08-15 Player Physical Lifetime Recertification](../Reconciliation/IMMERSIVE-FRAMEWORK-PLAYER-PHYSICAL-LIFETIME-RECERTIFICATION-2026-08-15.md)
 
 ## Context
 
-Player Session needs one authorable source for initial intent without turning Profiles into
-live Session state.
+Player Session needs one authorable source for initial intent without turning Profiles into live Session state.
 
 These concerns remain separate:
 
@@ -21,8 +21,7 @@ Session Player Leave
 
 ## Decision
 
-`PlayerSessionProfile` is the only Profile required to configure initial Player Session
-intent.
+`PlayerSessionProfile` is the only Profile required to configure initial Player Session intent.
 
 ```text
 PlayerSessionProfile
@@ -36,8 +35,7 @@ PlayerSessionProfile
     └── Leave Unresolved
 ```
 
-An explicit creation-time Profile replaces the default completely. No field merge and no
-invalid-source fallback are allowed.
+An explicit creation-time Profile replaces the default completely. No field merge and no invalid-source fallback are allowed.
 
 ## Supported Slots and Joining
 
@@ -56,10 +54,9 @@ Targeted Join
 
 Targeted Join has no fallback.
 
-Joining Open/Closed controls entry only. Explicit Leave remains possible for a current
-Joined Player even when Joining is Closed.
+Joining Open/Closed controls entry only. Explicit Leave remains possible for a current Joined Player even when Joining is Closed.
 
-## Host Provisioning — revised meaning
+## Host Provisioning — reconciled meaning
 
 Host Provisioning is a Session-wide **acquisition origin policy**.
 
@@ -69,7 +66,7 @@ It answers:
 How is the candidate physical Player supplied before successful admission?
 ```
 
-It no longer defines divergent post-admission lifetime ownership.
+It does not define divergent post-admission lifetime ownership.
 
 ### Manager Provided
 
@@ -109,8 +106,7 @@ Persist Actor Between Activities
 
 authoring toggle.
 
-Physical continuity across Activity changes is canonical post-admission Session behavior,
-not an optional Profile policy.
+Physical continuity across Activity changes is canonical post-admission Session behavior, not an optional Profile policy.
 
 ## Actor Resolution
 
@@ -126,8 +122,7 @@ Actor selection is Session mutable intent, not physical hot-swap authority.
 
 ## Runtime authority
 
-Profile resolves once into immutable effective configuration. The created Session owns
-mutable runtime state:
+Profile resolves once into immutable effective configuration. The created Session owns mutable runtime state:
 
 ```text
 Joining state
@@ -135,22 +130,21 @@ Slot occupancy
 Session Player occurrence/revision
 Actor selection
 admitted physical Player ownership/state
+physical preparation evidence
 Leave state/result
 ```
 
 Activity and Route changes do not silently reapply `PlayerSessionProfile`.
 
+A Joined Player may exist without current Activity representation. This does not cause the Session Profile to re-run and does not invalidate retained Session physical preparation.
+
 ## Leave consequence
 
 IF-ADR-020 owns individual terminal release.
 
-Because both provisioning modes converge on Session ownership after successful admission,
-Leave must release the admitted physical Player through the appropriate semantic release
-path for the current occurrence.
+Because both provisioning modes converge on Session ownership after successful admission, Leave releases the admitted physical Player through the appropriate semantic release path for the current occurrence.
 
-Provisioning origin remains diagnostic and may require different acquisition/release
-adapters, but it does not preserve external runtime lifetime ownership after successful
-adoption.
+Provisioning origin remains diagnostic and may require different acquisition/release adapters, but it does not preserve external runtime lifetime ownership after successful adoption.
 
 ## Rejected behavior
 
@@ -160,4 +154,24 @@ adoption.
 - Per-Player physical persistence option.
 - Scene-Provided remaining Activity-owned after successful admission.
 - Runtime Profile reapplication on Activity changes.
+- Treating no-Activity contextual absence as a request to reacquire/recreate physical state.
 - Silent fallback between provisioning modes.
+
+## Certification
+
+The implementation-reconciliation requirement opened on 2026-08-14 is closed.
+
+Current evidence includes:
+
+```text
+Player serialized command identity       5/5 PASS
+Player Session                           PASS
+SceneProvided provisioning/lifetime      PASS
+Manager Provisioned                      PASS
+Manager Join Without Activity            PASS
+Manager Session Termination              PASS
+Public Surface                           PASS
+Full Player mandatory contracts          25/25 PASS
+```
+
+The certification confirms that provisioning origin remains initial acquisition policy while both successful modes converge on the same Session-owned physical lifetime.

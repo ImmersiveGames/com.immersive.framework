@@ -1,11 +1,10 @@
 # Activity Readiness
 
-Activity readiness is the occurrence-scoped post-materialization contract used
-to decide when an Activity is safe to reveal and release for normal use.
+Last updated: **2026-08-15**
 
-`ActivityFlowRuntime` remains the authority for Activity identity, participant
-lifecycle and readiness. Consumer authoring contributes preparation evidence; it
-does not assign global Activity state or control persistent Loading directly.
+Activity readiness is the occurrence-scoped post-materialization contract used to decide when an Activity is safe to reveal and release for normal use.
+
+`ActivityFlowRuntime` remains the authority for Activity identity, participant lifecycle and readiness. Consumer authoring contributes preparation evidence; it does not assign global Activity state or control persistent Loading directly.
 
 ## Choose the product behavior first
 
@@ -19,13 +18,11 @@ Open the `ActivityAsset` and configure **Activity Entry Readiness > Policy**.
 
 ### Observe Only
 
-Use when content may be shown before every preparation contribution finishes.
-This is the compatibility default.
+Use when content may be shown before every preparation contribution finishes. This is the compatibility default.
 
 ### Wait Visible
 
-Use for visible assembly, staged introductions or didactic samples. The target is
-visible while unsafe capabilities remain blocked.
+Use for visible assembly, staged introductions or didactic samples. The target is visible while unsafe capabilities remain blocked.
 
 ### Wait Covered
 
@@ -39,8 +36,7 @@ Visual Transition = Fade With Loading
 Block During Transition = Input Interaction And Gameplay
 ```
 
-`Wait Covered + Seamless` is invalid. The framework reports the mismatch and
-does not silently add a fade or strengthen the gate.
+`Wait Covered + Seamless` is invalid. The framework reports the mismatch and does not silently add a fade or strengthen the gate.
 
 ## Add a readiness participant
 
@@ -56,13 +52,9 @@ The framework does not provide a timer or fabricated completion coroutine.
 
 ## Discovery scope and inactive objects
 
-Participants are discovered only from explicit Route-owned and matching
-Activity-owned loaded scenes. Discovery includes roots, descendants and inactive
-GameObjects.
+Participants are discovered only from explicit Route-owned and matching Activity-owned loaded scenes. Discovery includes roots, descendants and inactive GameObjects.
 
-Package Player readiness contribution is resolved from Activity configuration and
-the current Session projection **before** Activity content lifecycle executes, so
-a Required Player participant is present when the readiness occurrence begins.
+Package Player readiness contribution is resolved from Activity configuration and the current Session projection **before** Activity content lifecycle executes, so a Required Player participant is present when the readiness occurrence begins.
 
 Therefore:
 
@@ -70,10 +62,7 @@ Therefore:
 disabling a participant GameObject does not exclude it from readiness discovery
 ```
 
-A legacy participant left inactive may still be captured, begin preparation and
-block a waiting policy. Remove it from the explicit scope, remove the component or
-repurpose it as a valid Required/Optional participant. Do not rely on inactive
-state as authoring exclusion.
+A legacy participant left inactive may still be captured, begin preparation and block a waiting policy. Remove it from the explicit scope, remove the component or repurpose it as a valid Required/Optional participant. Do not rely on inactive state as authoring exclusion.
 
 ## Required and Optional semantics
 
@@ -100,8 +89,7 @@ Participant IDs must be unique inside the captured occurrence.
 
 ## One aggregate participant or several independent participants
 
-Use one aggregate Required participant when the product condition is one compound
-unit:
+Use one aggregate Required participant when the product condition is one compound unit:
 
 ```text
 all four objects prepared
@@ -109,8 +97,7 @@ all four objects prepared
 → one readiness progress increment
 ```
 
-Use several independent Required participants when separate progress increments
-are meaningful:
+Use several independent Required participants when separate progress increments are meaningful:
 
 ```text
 object 01 prepared → Required 01 completes
@@ -119,8 +106,7 @@ object 03 prepared → Required 03 completes
 object 04 prepared → Required 04 completes
 ```
 
-The framework counts completed Required participants. It does not count gameplay
-objects directly.
+The framework counts completed Required participants. It does not count gameplay objects directly.
 
 ## Wait Covered Loading progress
 
@@ -142,21 +128,15 @@ technical range
 → terminal 100% only after aggregate Ready
 ```
 
-The technical step count is known before the operation. The Required participant
-count is captured after target materialization and subdivides only the reserved
-readiness range.
+The technical step count is known before the operation. The Required participant count is captured after target materialization and subdivides only the reserved readiness range.
 
-For four Required participants, the Loading surface receives four monotonic
-readiness increments. An Optional participant may remain pending without changing
-the denominator.
+For four Required participants, the Loading surface receives four monotonic readiness increments. An Optional participant may remain pending without changing the denominator.
 
-The exact global percentages depend on the number of technical operation steps.
-Do not assume the readiness increments are globally `25/50/75/100`.
+The exact global percentages depend on the number of technical operation steps. Do not assume the readiness increments are globally `25/50/75/100`.
 
 ## Persistent Loading requirements
 
-The application should expose one explicit persistent Loading adapter. A typical
-Unity surface uses:
+The application should expose one explicit persistent Loading adapter. A typical Unity surface uses:
 
 ```text
 UnityLoadingSurfaceAdapter
@@ -169,9 +149,7 @@ Hide Progress When Hidden
 Reset Progress On Hide
 ```
 
-The Activity scene and readiness participants must not hold references to this
-adapter. Game Flow supplies Loading requests and progress snapshots through the
-canonical runtime path.
+The Activity scene and readiness participants must not hold references to this adapter. Game Flow supplies Loading requests and progress snapshots through the canonical runtime path.
 
 ## Ordering contract
 
@@ -192,6 +170,35 @@ Loading Show
 
 `100%` never means “technical scenes loaded but readiness still pending.”
 
+## Commit versus Ready
+
+Navigation commit and Activity readiness are separate truths.
+
+A Route request may successfully commit the Route while its startup Activity ends in a blocking readiness state:
+
+```text
+Route Request = Succeeded
+current Activity = target Activity
+ActivityState = Active
+ActivityReadiness = NotReady
+ActivityTransition = CommittedNotReady
+blockingIssues > 0
+```
+
+Do not read Route success as implicit startup-Activity readiness success.
+
+When the target Activity is already current, its Activity-owned `RuntimeContent` root remains valid until Activity exit/release even if a required Player contextual admission failed. Player rollback must not destroy the current Activity scope merely to satisfy a zero-root assertion.
+
+This is especially important when diagnosing SceneProvided negative paths:
+
+```text
+Activity scope present
+!=
+Player contextual admission succeeded
+!=
+physical Player handed off
+```
+
 ## Failure and interruption
 
 The following never publish successful `100%`:
@@ -204,20 +211,21 @@ wait cancellation
 runtime disposal
 ```
 
-For a committed `Wait Covered` destination, visual cover and the last valid
-Loading progress remain visible while an explicit recovery blocker keeps unsafe
-capabilities blocked. A typed failure result is returned; there is no silent
-fallback or automatic rollback.
+For a committed `Wait Covered` destination, visual cover and the last valid Loading progress remain visible while an explicit recovery blocker keeps unsafe capabilities blocked. A typed failure result is returned; there is no silent fallback or automatic rollback.
 
-Stopping Play Mode while the operation is pending produces a typed cancellation
-such as `GameFlowRuntimeDisposed`. That is interruption evidence, not a successful
-readiness result.
+Stopping Play Mode while the operation is pending produces a typed cancellation such as `GameFlowRuntimeDisposed`. That is interruption evidence, not a successful readiness result.
+
+## Player-specific failure evidence
+
+Player failures must be observed at the layer that owns them.
+
+A SceneProvided authoring/adoption failure may be canonically exposed through Activity content participant failure and readiness blocking before a public Player admission operation/result exists. Do not fabricate a public terminal admission result merely to make the failure observable.
+
+Likewise, `Contextual=Absent` does not prove physical Actor destruction. Session-owned physical truth comes from Session/occurrence preparation evidence.
 
 ## Present local readiness without polling
 
-Add **Immersive Framework/Activity Readiness Events** in the same explicit
-Activity scope. Wire `Preparing`, `Ready` and `Not Ready` to a local presenter.
-The presenter may update visuals, text or enabled content, but must not:
+Add **Immersive Framework/Activity Readiness Events** in the same explicit Activity scope. Wire `Preparing`, `Ready` and `Not Ready` to a local presenter. The presenter may update visuals, text or enabled content, but must not:
 
 ```text
 change readiness authority
@@ -227,8 +235,7 @@ poll global objects
 parse logs as a command path
 ```
 
-Local UI progress may explain a game-specific condition, but it must not replace
-the framework Loading authority.
+Local UI progress may explain a game-specific condition, but it must not replace the framework Loading authority.
 
 ## Advanced and runtime diagnostics
 
@@ -238,6 +245,7 @@ Useful evidence includes:
 activityReadiness
 activityReadinessReason
 occurrence transition sequence
+Activity transition terminal phase
 Required total/completed/pending/failed/released
 Optional total/completed/pending/failed/released
 loadingProgressSupported
@@ -249,6 +257,9 @@ loadingProgressMessage
 Loading hidden
 reveal completed
 blockingIssues
+Activity RuntimeContent owner
+Player contextual admission evidence
+Session physical preparation evidence
 ```
 
 Expected successful terminal evidence for a four-Required/one-Optional case:
@@ -283,6 +294,10 @@ enter Wait Covered
 ```
 
 Old occurrence updates must not advance the replacement occurrence.
+
+## Player certification reference
+
+The 2026-08-15 Full Player QA completed `25/25` mandatory contracts. Its public-surface, failed-first-adoption, failed-contextual-reprojection and no-physical-handoff cases certify the Player/readiness separation described above.
 
 ## FIRSTGAME reference
 
