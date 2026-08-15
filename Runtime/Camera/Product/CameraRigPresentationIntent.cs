@@ -11,6 +11,9 @@ namespace Immersive.Framework.Camera
     public enum CameraRigPresentationIntent
     {
         Undefined = 0,
-        Follow = 10
+        Follow = 10,
+        Fixed = 20,
+        Mounted = 30,
+        ThirdPerson = 40
     }
 }

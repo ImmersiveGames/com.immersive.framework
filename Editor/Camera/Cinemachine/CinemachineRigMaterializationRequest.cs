@@ -1,15 +1,20 @@
+using Immersive.Framework.Camera;
 using Unity.Cinemachine;
 using UnityEngine;
 
 namespace Immersive.Framework.Editor.Camera.Cinemachine
 {
     /// <summary>
-    /// Editor-only request for creating or repairing a Cinemachine technical rig.
-    /// It does not perform lookup outside the supplied rig root.
+    /// Editor-only request for creating or repairing one supported Cinemachine rig.
+    /// Target resolution is completed by the caller; this request never authorizes
+    /// scene/global lookup or Camera output arbitration.
     /// </summary>
     public sealed class CinemachineRigMaterializationRequest
     {
         public Transform RigRoot { get; set; }
+
+        public CameraRigPresentationIntent PresentationIntent { get; set; } =
+            CameraRigPresentationIntent.Follow;
 
         /// <summary>
         /// When true, materialization also requires or creates one Unity Camera
@@ -35,13 +40,42 @@ namespace Immersive.Framework.Editor.Camera.Cinemachine
         public bool CreateCinemachineCameraIfMissing { get; set; } = true;
 
         /// <summary>
-        /// Materializes the Cinemachine position pipeline required for Follow
-        /// intent. A Follow target without a position control is incomplete.
+        /// Retained for the existing Follow materialization contract. C3 dispatches
+        /// explicitly by PresentationIntent and never uses this as model fallback.
         /// </summary>
         public bool CreateCinemachineFollowIfMissing { get; set; } = true;
 
         public Vector3 FollowOffset { get; set; } =
             new Vector3(0f, 5f, -8f);
+
+        public float MountedPositionDamping { get; set; }
+
+        public float MountedRotationDamping { get; set; }
+
+        public Vector3 ThirdPersonShoulderOffset { get; set; } =
+            new Vector3(0.5f, -0.4f, 0f);
+
+        public float ThirdPersonVerticalArmLength { get; set; } = 0.4f;
+
+        public float ThirdPersonCameraSide { get; set; } = 1f;
+
+        public float ThirdPersonCameraDistance { get; set; } = 2f;
+
+        public Vector3 ThirdPersonDamping { get; set; } =
+            new Vector3(0.1f, 0.5f, 0.3f);
+
+        /// <summary>
+        /// Durable provenance supplied by the owning Composer. These references are
+        /// evidence only: a pre-existing component that is not exactly one of these
+        /// references is ExternalOrUnknown and must never be adopted implicitly.
+        /// </summary>
+        public CinemachineCamera FrameworkOwnedCinemachineCamera { get; set; }
+
+        public Component FrameworkOwnedPositionControl { get; set; }
+
+        public Component FrameworkOwnedRotationControl { get; set; }
+
+        public int PreviousMaterializationRevision { get; set; }
 
         public bool UseUndo { get; set; } = true;
 

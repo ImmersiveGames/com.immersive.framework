@@ -44,8 +44,8 @@ namespace Immersive.Framework.Editor.CameraAuthoring
 
             CameraTargetResolveResult targets =
                 composer.ResolveCameraTargets(
-                    composer.FollowRequirement,
-                    composer.LookAtRequirement);
+                    composer.EffectiveFollowRequirement,
+                    composer.EffectiveLookAtRequirement);
 
             if (targets.IsBlocked)
             {
@@ -131,8 +131,8 @@ namespace Immersive.Framework.Editor.CameraAuthoring
 
             CameraTargetResolveResult targets =
                 composer.ResolveCameraTargets(
-                    composer.FollowRequirement,
-                    composer.LookAtRequirement);
+                    composer.EffectiveFollowRequirement,
+                    composer.EffectiveLookAtRequirement);
 
             if (targets.IsBlocked)
             {
@@ -150,31 +150,55 @@ namespace Immersive.Framework.Editor.CameraAuthoring
                 new CinemachineRigMaterializationRequest
                 {
                     RigRoot = composer.transform,
+                    PresentationIntent =
+                        composer.PresentationIntent,
                     MaterializeUnityOutput = false,
                     UnityCamera = null,
                     CinemachineCamera =
                         composer.CinemachineCamera,
                     FollowTarget =
-                        composer.FollowRequirement ==
+                        composer.EffectiveFollowRequirement ==
                         CameraTargetRequirement.NotUsed
                             ? null
                             : targets.Targets.FollowTarget,
                     LookAtTarget =
-                        composer.LookAtRequirement ==
+                        composer.EffectiveLookAtRequirement ==
                         CameraTargetRequirement.NotUsed
                             ? null
                             : targets.Targets.LookAtTarget,
                     RequireFollowTarget =
-                        composer.FollowRequirement ==
+                        composer.EffectiveFollowRequirement ==
                         CameraTargetRequirement.Required,
                     RequireLookAtTarget =
-                        composer.LookAtRequirement ==
+                        composer.EffectiveLookAtRequirement ==
                         CameraTargetRequirement.Required,
                     CreateUnityCameraIfMissing = false,
                     CreateCinemachineCameraIfMissing =
                         composer.CreateCinemachineCameraIfMissing,
                     CreateCinemachineFollowIfMissing = true,
                     FollowOffset = composer.FollowOffset,
+                    MountedPositionDamping =
+                        composer.MountedPositionDamping,
+                    MountedRotationDamping =
+                        composer.MountedRotationDamping,
+                    ThirdPersonShoulderOffset =
+                        composer.ThirdPersonShoulderOffset,
+                    ThirdPersonVerticalArmLength =
+                        composer.ThirdPersonVerticalArmLength,
+                    ThirdPersonCameraSide =
+                        composer.ThirdPersonCameraSide,
+                    ThirdPersonCameraDistance =
+                        composer.ThirdPersonCameraDistance,
+                    ThirdPersonDamping =
+                        composer.ThirdPersonDamping,
+                    FrameworkOwnedCinemachineCamera =
+                        composer.FrameworkOwnedCinemachineCamera,
+                    FrameworkOwnedPositionControl =
+                        composer.FrameworkOwnedPositionControl,
+                    FrameworkOwnedRotationControl =
+                        composer.FrameworkOwnedRotationControl,
+                    PreviousMaterializationRevision =
+                        composer.MaterializationRevision,
                     UseUndo = useUndo,
                     CinemachineCameraObjectName =
                         composer.CinemachineCameraObjectName
@@ -192,8 +216,24 @@ namespace Immersive.Framework.Editor.CameraAuthoring
                 ? string.Empty
                 : report.FirstBlockingIssue;
 
-            composer.EditorSetGeneratedReference(
-                report.Evidence.CinemachineCamera);
+            if (report.Succeeded)
+            {
+                composer.EditorSetGeneratedReference(
+                    report.Evidence.CinemachineCamera);
+                composer.EditorCommitMaterializationEvidence(
+                    report.Evidence.PresentationIntent,
+                    report.Evidence.CinemachineCamera,
+                    report.Evidence.CinemachineCameraOwnership ==
+                    CinemachineRigMaterializationOwnership.FrameworkOwned,
+                    report.Evidence.PositionControl,
+                    report.Evidence.PositionControlOwnership ==
+                    CinemachineRigMaterializationOwnership.FrameworkOwned,
+                    report.Evidence.RotationControl,
+                    report.Evidence.RotationControlOwnership ==
+                    CinemachineRigMaterializationOwnership.FrameworkOwned,
+                    report.Evidence.MaterializationRevision);
+            }
+
             composer.EditorSetApplyRebuildResult(
                 status,
                 blockingIssue,
@@ -221,6 +261,11 @@ namespace Immersive.Framework.Editor.CameraAuthoring
                     LogFields.Field("alreadyValid", report.AlreadyValidCount),
                     LogFields.Field("skipped", report.SkippedCount),
                     LogFields.Field("blocked", report.BlockedCount),
+                    LogFields.Field("presentation", report.Evidence.PresentationIntent),
+                    LogFields.Field("cameraOwnership", report.Evidence.CinemachineCameraOwnership),
+                    LogFields.Field("positionOwnership", report.Evidence.PositionControlOwnership),
+                    LogFields.Field("rotationOwnership", report.Evidence.RotationControlOwnership),
+                    LogFields.Field("materializationRevision", report.Evidence.MaterializationRevision),
                     LogFields.Field("targetSummary", targets.DiagnosticSummary),
                     LogFields.Field("materializationSummary", materializationSummary),
                     LogFields.Field("blockingIssue", blockingIssue));

@@ -59,9 +59,54 @@ namespace Immersive.Framework.CameraAuthoring
         private Vector3 followOffset =
             new Vector3(0f, 5f, -8f);
 
+        [Header("Mounted Settings")]
+        [SerializeField, Min(0f)]
+        private float mountedPositionDamping;
+
+        [SerializeField, Min(0f)]
+        private float mountedRotationDamping;
+
+        [Header("Third Person Settings")]
+        [SerializeField]
+        private Vector3 thirdPersonShoulderOffset =
+            new Vector3(0.5f, -0.4f, 0f);
+
+        [SerializeField]
+        private float thirdPersonVerticalArmLength = 0.4f;
+
+        [SerializeField, Range(0f, 1f)]
+        private float thirdPersonCameraSide = 1f;
+
+        [SerializeField, Min(0f)]
+        private float thirdPersonCameraDistance = 2f;
+
+        [SerializeField]
+        private Vector3 thirdPersonDamping =
+            new Vector3(0.1f, 0.5f, 0.3f);
+
         [Header("Technical Materialization")]
         [SerializeField]
         private CinemachineCamera cinemachineCamera;
+
+        // Durable provenance for editor materialization. These references are deliberately
+        // hidden from the product surface: they prove ownership, but they are not authoring
+        // controls. A component is Framework-owned only when its exact serialized reference
+        // was recorded here at creation time.
+        [SerializeField, HideInInspector]
+        private CameraRigPresentationIntent materializedPresentationIntent =
+            CameraRigPresentationIntent.Undefined;
+
+        [SerializeField, HideInInspector]
+        private CinemachineCamera frameworkOwnedCinemachineCamera;
+
+        [SerializeField, HideInInspector]
+        private Component frameworkOwnedPositionControl;
+
+        [SerializeField, HideInInspector]
+        private Component frameworkOwnedRotationControl;
+
+        [SerializeField, HideInInspector]
+        private int materializationRevision;
 
         [SerializeField]
         private bool logApplyRebuildDiagnostics = true;
@@ -112,8 +157,82 @@ namespace Immersive.Framework.CameraAuthoring
         public Vector3 FollowOffset =>
             followOffset;
 
+        public float MountedPositionDamping =>
+            mountedPositionDamping;
+
+        public float MountedRotationDamping =>
+            mountedRotationDamping;
+
+        public Vector3 ThirdPersonShoulderOffset =>
+            thirdPersonShoulderOffset;
+
+        public float ThirdPersonVerticalArmLength =>
+            thirdPersonVerticalArmLength;
+
+        public float ThirdPersonCameraSide =>
+            thirdPersonCameraSide;
+
+        public float ThirdPersonCameraDistance =>
+            thirdPersonCameraDistance;
+
+        public Vector3 ThirdPersonDamping =>
+            thirdPersonDamping;
+
+        public CameraTargetRequirement EffectiveFollowRequirement
+        {
+            get
+            {
+                switch (presentationIntent)
+                {
+                    case CameraRigPresentationIntent.Follow:
+                    case CameraRigPresentationIntent.Mounted:
+                    case CameraRigPresentationIntent.ThirdPerson:
+                        return CameraTargetRequirement.Required;
+
+                    case CameraRigPresentationIntent.Fixed:
+                    case CameraRigPresentationIntent.Undefined:
+                    default:
+                        return CameraTargetRequirement.NotUsed;
+                }
+            }
+        }
+
+        public CameraTargetRequirement EffectiveLookAtRequirement
+        {
+            get
+            {
+                switch (presentationIntent)
+                {
+                    case CameraRigPresentationIntent.Fixed:
+                    case CameraRigPresentationIntent.Follow:
+                        return lookAtRequirement;
+
+                    case CameraRigPresentationIntent.Mounted:
+                    case CameraRigPresentationIntent.ThirdPerson:
+                    case CameraRigPresentationIntent.Undefined:
+                    default:
+                        return CameraTargetRequirement.NotUsed;
+                }
+            }
+        }
+
         public CinemachineCamera CinemachineCamera =>
             cinemachineCamera;
+
+        public CameraRigPresentationIntent MaterializedPresentationIntent =>
+            materializedPresentationIntent;
+
+        public CinemachineCamera FrameworkOwnedCinemachineCamera =>
+            frameworkOwnedCinemachineCamera;
+
+        public Component FrameworkOwnedPositionControl =>
+            frameworkOwnedPositionControl;
+
+        public Component FrameworkOwnedRotationControl =>
+            frameworkOwnedRotationControl;
+
+        public int MaterializationRevision =>
+            materializationRevision;
 
         /// <summary>
         /// Apply / Rebuild always materializes a missing local Cinemachine Camera.
@@ -151,14 +270,6 @@ namespace Immersive.Framework.CameraAuthoring
         {
             issue = string.Empty;
 
-            if (presentationIntent !=
-                CameraRigPresentationIntent.Follow)
-            {
-                issue =
-                    $"CameraRigComposer supports only Follow presentation intent. Current intent: '{presentationIntent}'.";
-                return false;
-            }
-
             if (targetSource != null &&
                 TargetSource == null)
             {
@@ -176,15 +287,65 @@ namespace Immersive.Framework.CameraAuthoring
                 return false;
             }
 
-            if (followRequirement ==
-                CameraTargetRequirement.NotUsed)
+            if (!IsDefinedRequirement(EffectiveLookAtRequirement))
             {
                 issue =
-                    "Follow presentation requires Follow to participate.";
+                    $"CameraRigComposer has invalid Look At requirement '{lookAtRequirement}' for presentation '{presentationIntent}'.";
                 return false;
             }
 
-            return true;
+            switch (presentationIntent)
+            {
+                case CameraRigPresentationIntent.Fixed:
+                    return true;
+
+                case CameraRigPresentationIntent.Follow:
+                    if (!IsFinite(followOffset))
+                    {
+                        issue =
+                            "Follow presentation requires a finite Follow Offset.";
+                        return false;
+                    }
+
+                    return true;
+
+                case CameraRigPresentationIntent.Mounted:
+                    if (!IsFiniteNonNegative(mountedPositionDamping) ||
+                        !IsFiniteNonNegative(mountedRotationDamping))
+                    {
+                        issue =
+                            "Mounted presentation damping values must be finite and non-negative.";
+                        return false;
+                    }
+
+                    return true;
+
+                case CameraRigPresentationIntent.ThirdPerson:
+                    if (!IsFinite(thirdPersonShoulderOffset) ||
+                        !IsFinite(thirdPersonVerticalArmLength) ||
+                        !IsFinite(thirdPersonCameraSide) ||
+                        thirdPersonCameraSide < 0f ||
+                        thirdPersonCameraSide > 1f ||
+                        !IsFiniteNonNegative(thirdPersonCameraDistance) ||
+                        !IsFiniteNonNegative(thirdPersonDamping))
+                    {
+                        issue =
+                            "Third Person presentation settings contain invalid, non-finite or out-of-range values.";
+                        return false;
+                    }
+
+                    return true;
+
+                case CameraRigPresentationIntent.Undefined:
+                    issue =
+                        "CameraRigComposer requires an explicit Presentation intent.";
+                    return false;
+
+                default:
+                    issue =
+                        $"CameraRigComposer does not support Presentation intent '{presentationIntent}'.";
+                    return false;
+            }
         }
 
         public CameraTargetResolveResult ResolveCameraTargets(
@@ -243,10 +404,16 @@ namespace Immersive.Framework.CameraAuthoring
                     "Camera rig target resolution was blocked by unsupported source authoring.");
             }
 
+            Transform explicitSourceTarget =
+                requestedFollowRequirement !=
+                CameraTargetRequirement.NotUsed
+                    ? explicitFollowTarget
+                    : explicitLookAtTarget;
+
             CameraTargetSourceDescriptor source =
                 CameraTargetSourceDescriptor.ExplicitTransform(
-                    explicitFollowTarget,
-                    explicitFollowTarget != null
+                    explicitSourceTarget,
+                    explicitSourceTarget != null
                         ? "ExplicitTransform"
                         : "ExplicitTransform:missing");
 
@@ -271,8 +438,8 @@ namespace Immersive.Framework.CameraAuthoring
         public CameraTargetResolveResult ResolveConfiguredCameraTargets()
         {
             return ResolveCameraTargets(
-                followRequirement,
-                lookAtRequirement);
+                EffectiveFollowRequirement,
+                EffectiveLookAtRequirement);
         }
 
         public CameraRigComposerDebugSnapshot CreateDebugSnapshot()
@@ -306,6 +473,41 @@ namespace Immersive.Framework.CameraAuthoring
                 lastMaterializationSummary.NormalizeText());
         }
 
+        private static bool IsDefinedRequirement(
+            CameraTargetRequirement requirement)
+        {
+            return requirement == CameraTargetRequirement.NotUsed ||
+                   requirement == CameraTargetRequirement.Optional ||
+                   requirement == CameraTargetRequirement.Required;
+        }
+
+        private static bool IsFinite(float value)
+        {
+            return !float.IsNaN(value) &&
+                   !float.IsInfinity(value);
+        }
+
+        private static bool IsFinite(Vector3 value)
+        {
+            return IsFinite(value.x) &&
+                   IsFinite(value.y) &&
+                   IsFinite(value.z);
+        }
+
+        private static bool IsFiniteNonNegative(float value)
+        {
+            return IsFinite(value) &&
+                   value >= 0f;
+        }
+
+        private static bool IsFiniteNonNegative(Vector3 value)
+        {
+            return IsFinite(value) &&
+                   value.x >= 0f &&
+                   value.y >= 0f &&
+                   value.z >= 0f;
+        }
+
 #if UNITY_EDITOR
         public void EditorSetGeneratedReference(
             CinemachineCamera generatedCinemachineCamera)
@@ -315,6 +517,38 @@ namespace Immersive.Framework.CameraAuthoring
                 cinemachineCamera =
                     generatedCinemachineCamera;
             }
+        }
+
+        public void EditorCommitMaterializationEvidence(
+            CameraRigPresentationIntent materializedIntent,
+            CinemachineCamera resolvedCinemachineCamera,
+            bool cinemachineCameraFrameworkOwned,
+            Component resolvedPositionControl,
+            bool positionControlFrameworkOwned,
+            Component resolvedRotationControl,
+            bool rotationControlFrameworkOwned,
+            int revision)
+        {
+            materializedPresentationIntent =
+                materializedIntent;
+
+            frameworkOwnedCinemachineCamera =
+                cinemachineCameraFrameworkOwned
+                    ? resolvedCinemachineCamera
+                    : null;
+
+            frameworkOwnedPositionControl =
+                positionControlFrameworkOwned
+                    ? resolvedPositionControl
+                    : null;
+
+            frameworkOwnedRotationControl =
+                rotationControlFrameworkOwned
+                    ? resolvedRotationControl
+                    : null;
+
+            materializationRevision =
+                revision;
         }
 
         public void EditorSetApplyRebuildResult(
@@ -358,9 +592,30 @@ namespace Immersive.Framework.CameraAuthoring
             lookAtRequirement =
                 CameraTargetRequirement.Optional;
 
+            followOffset =
+                new Vector3(0f, 5f, -8f);
+
+            mountedPositionDamping = 0f;
+            mountedRotationDamping = 0f;
+
+            thirdPersonShoulderOffset =
+                new Vector3(0.5f, -0.4f, 0f);
+            thirdPersonVerticalArmLength = 0.4f;
+            thirdPersonCameraSide = 1f;
+            thirdPersonCameraDistance = 2f;
+            thirdPersonDamping =
+                new Vector3(0.1f, 0.5f, 0.3f);
+
             cinemachineCamera =
                 GetComponentInChildren<CinemachineCamera>(
                     true);
+
+            materializedPresentationIntent =
+                CameraRigPresentationIntent.Undefined;
+            frameworkOwnedCinemachineCamera = null;
+            frameworkOwnedPositionControl = null;
+            frameworkOwnedRotationControl = null;
+            materializationRevision = 0;
         }
 #endif
     }

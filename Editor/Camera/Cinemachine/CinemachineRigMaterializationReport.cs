@@ -73,7 +73,12 @@ namespace Immersive.Framework.Editor.Camera.Cinemachine
             builder.Append("repaired='").Append(RepairedCount).Append("' ");
             builder.Append("alreadyValid='").Append(AlreadyValidCount).Append("' ");
             builder.Append("skipped='").Append(SkippedCount).Append("' ");
-            builder.Append("blocked='").Append(BlockedCount).Append("'");
+            builder.Append("blocked='").Append(BlockedCount).Append("' ");
+            builder.Append("presentation='").Append(Evidence.PresentationIntent).Append("' ");
+            builder.Append("cameraOwnership='").Append(Evidence.CinemachineCameraOwnership).Append("' ");
+            builder.Append("positionOwnership='").Append(Evidence.PositionControlOwnership).Append("' ");
+            builder.Append("rotationOwnership='").Append(Evidence.RotationControlOwnership).Append("' ");
+            builder.Append("revision='").Append(Evidence.MaterializationRevision).Append("'");
 
             if (_blocked.Count > 0)
             {
