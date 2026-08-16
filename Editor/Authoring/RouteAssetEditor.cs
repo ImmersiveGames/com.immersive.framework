@@ -111,6 +111,7 @@ namespace Immersive.Framework.Editor.Editor.Authoring
             DrawPrimaryScene();
             DrawFirstActivity();
             DrawAdditionalContent();
+            DrawSceneList();
             DrawTransition();
             DrawValidation();
             DrawAdvancedDebug();
@@ -163,18 +164,31 @@ namespace Immersive.Framework.Editor.Editor.Authoring
                 return;
             }
 
-            if (GUILayout.Button(
-                    new GUIContent(
-                        "Open Primary Scene",
-                        "Opens the assigned Primary Scene.")))
-            {
-                serializedObject.ApplyModifiedProperties();
-                _serializedBindingsDirty = true;
-
-                AssetDatabase.OpenAsset(
+            string primaryScenePath =
+                AssetDatabase.GetAssetPath(
                     _primarySceneAsset);
 
-                GUIUtility.ExitGUI();
+            using (new EditorGUILayout.HorizontalScope())
+            {
+                if (GUILayout.Button(
+                        new GUIContent(
+                            "Open Primary Scene",
+                            "Opens the assigned Primary Scene.")))
+                {
+                    serializedObject.ApplyModifiedProperties();
+                    _serializedBindingsDirty = true;
+
+                    AssetDatabase.OpenAsset(
+                        _primarySceneAsset);
+
+                    GUIUtility.ExitGUI();
+                }
+
+                if (BuildSceneListAuthoringUtility
+                        .DrawAction(primaryScenePath))
+                {
+                    Repaint();
+                }
             }
         }
 
@@ -290,6 +304,17 @@ namespace Immersive.Framework.Editor.Editor.Authoring
                     _sceneActionMessage,
                     EditorStyles.wordWrappedMiniLabel);
             }
+        }
+
+        private void DrawSceneList()
+        {
+            DrawSection("Build Profile Scene List");
+
+            BuildSceneListAuthoringUtility
+                .DrawAction(
+                    BuildSceneListAuthoringUtility
+                        .GetScenePaths(
+                            (RouteAsset)target));
         }
 
         private void DrawRouteSceneSummary(

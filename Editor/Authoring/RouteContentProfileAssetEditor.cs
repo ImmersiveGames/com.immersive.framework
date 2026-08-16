@@ -71,6 +71,7 @@ namespace Immersive.Framework.Editor.Editor.Authoring
 
             DrawProfile();
             DrawScenes();
+            DrawSceneList();
             DrawValidation();
             DrawAdvancedDebug();
 
@@ -159,6 +160,17 @@ namespace Immersive.Framework.Editor.Editor.Authoring
                     _sceneAddMessage,
                     EditorStyles.wordWrappedMiniLabel);
             }
+        }
+
+        private void DrawSceneList()
+        {
+            DrawSection("Build Profile Scene List");
+
+            BuildSceneListAuthoringUtility
+                .DrawAction(
+                    BuildSceneListAuthoringUtility
+                        .GetScenePaths(
+                            (RouteContentProfileAsset)target));
         }
 
         private bool DrawSceneEntry(

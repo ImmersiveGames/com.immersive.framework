@@ -143,6 +143,7 @@ namespace Immersive.Framework.Editor.Editor.Authoring
             DrawOverview();
             DrawPlayers();
             DrawActivityContent();
+            DrawSceneList();
             DrawActivityEntryReadiness();
             DrawTransition();
             DrawValidation();
@@ -251,6 +252,17 @@ namespace Immersive.Framework.Editor.Editor.Authoring
                 Selection.activeObject = profile;
                 EditorGUIUtility.PingObject(profile);
             }
+        }
+
+        private void DrawSceneList()
+        {
+            DrawSection("Build Profile Scene List");
+
+            BuildSceneListAuthoringUtility
+                .DrawAction(
+                    BuildSceneListAuthoringUtility
+                        .GetScenePaths(
+                            (ActivityAsset)target));
         }
 
         private void DrawActivitySceneSummary(
