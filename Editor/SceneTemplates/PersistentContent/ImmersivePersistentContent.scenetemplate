@@ -14,8 +14,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: UnityEditor.dll::UnityEditor.SceneTemplate.SceneTemplateAsset
   templateScene: {fileID: 102900000, guid: 4161f227aa0041e8a64469795941f3b1, type: 3}
   templateName: Immersive Persistent Content
-  description: "Application-persistent Camera, Transition and Loading composition\n 
-    for the Immersive Framework."
+  description: Minimal application-persistent Camera and EventSystem composition
+    for the Immersive Framework.
   preview: {fileID: 0}
   dependencies:
   - dependency: {fileID: 2800000, guid: 3028dc075ba8c584d9bc7d1e0255e038, type: 3}
@@ -25,12 +25,6 @@ MonoBehaviour:
   - dependency: {fileID: 2800000, guid: 57da91ef0c2a5489891995dc81537253, type: 3}
     instantiationMode: 1
   - dependency: {fileID: 2800000, guid: 26663a5ec9987421996161615506b6c5, type: 3}
-    instantiationMode: 1
-  - dependency: {fileID: 11500000, guid: 01614664b831546d2ae94a42149d80ac, type: 3}
-    instantiationMode: 1
-  - dependency: {fileID: 11500000, guid: 10db67ff6fae4c499379c88e86c0467d, type: 3}
-    instantiationMode: 1
-  - dependency: {fileID: 11500000, guid: 58e94e8580dc4e85af879169ac33dd7c, type: 3}
     instantiationMode: 1
   templatePipeline: {fileID: 11500000, guid: b345ce5f4a9c4fc2a02250530ebe6b7b, type: 3}
   badge: {fileID: 0}

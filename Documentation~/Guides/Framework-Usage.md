@@ -1,7 +1,7 @@
 # Framework Usage
 
 Status: Current  
-Last updated: 2026-08-09
+Last updated: 2026-08-16
 
 ## 1. Product workflow
 
@@ -11,7 +11,9 @@ A typical manual workflow is:
 2. Configure the official application policies required by the game.
 3. Create `RouteAsset` and `ActivityAsset` definitions.
 4. Configure Route/Activity content, participation, transition and readiness policies.
-5. Create one Persistent Content Scene from the official Scene Template and assign it.
+5. Create one Persistent Content Scene from the official Scene Template, save it as
+   a concrete game-owned `.unity` scene, assign it to the Game Application and add
+   it to the Build Profile Scene List through the explicit Inspector action.
 6. Author gameplay features through their official package surface: component,
    asset, Project Settings, Template or Composer as appropriate.
 7. Use explicit Apply/Rebuild only for features that actually materialize derived
@@ -69,8 +71,8 @@ Preferred creation path:
 
 ```text
 File
-  New Scene
-    Immersive Persistent Content
+  -> New Scene
+  -> Immersive Persistent Content
 ```
 
 The official product model is:
@@ -80,26 +82,49 @@ package source scene
   -> Scene Template
   -> consumer-created .unity scene
   -> GameApplicationAsset reference
+  -> explicit Build Profile Scene List entry
 ```
 
 The Scene Template pipeline validates the instantiated scene but does not create,
 repair, save or assign consumer assets.
 
-Typical persistent composition may contain:
+The current minimal Scene Template starts with the framework-owned persistent
+camera structure and the UI event authority required by the product baseline:
 
 ```text
-physical Camera Output
-Presentation Canvas
-Transition surface
-Loading surface
-Pause presentation
-optional Player provisioning
-optional Audio integration
+Persistent Camera
+├── Camera Output
+├── Session Camera Target
+└── Session Camera Rig
+
+EventSystem
 ```
 
+The concrete scene remains owned by the consumer game. Presentation Canvas,
+Transition, Loading, Pause presentation, Player provisioning and Audio integration
+are added only when the game needs them; they are not silently materialized by the
+template pipeline.
+
 Exactly one physical Camera Output is required for the current single-output
-Camera product boundary. Optional presentation adapters remain explicitly
-optional; the framework does not fabricate missing scene objects.
+Camera product boundary. The current minimal template also carries one `EventSystem`
+with `InputSystemUIInputModule`.
+
+### 4.1 Game Application Inspector workflow
+
+After creating and saving the concrete scene:
+
+1. Assign it to `GameApplicationAsset > Persistent Content > Content Scene`.
+2. Use `Open Content Scene` to inspect/edit the assigned scene.
+3. Use `Add to Scene List` to append it, enabled, to the Scene List used by the
+   active Build Profile.
+4. If the scene already exists in that list but is disabled, use
+   `Enable in Scene List` instead.
+5. When it is already enabled, the Inspector reports `In Scene List` and does not
+   create a duplicate.
+
+This Build Profile operation is an explicit Editor authoring command. Assignment,
+validation, Scene Template instantiation and runtime boot never modify the Scene
+List automatically.
 
 ## 5. Authoring and materialization
 

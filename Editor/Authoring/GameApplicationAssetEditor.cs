@@ -454,24 +454,144 @@ namespace Immersive.Framework.Editor.Editor.Authoring
             if (selectedScene == null)
             {
                 EditorGUILayout.HelpBox(
+                    "Tip: create the starting Persistent Content Scene with File > New Scene > Immersive Persistent Content.",
+                    MessageType.Info);
+
+                EditorGUILayout.HelpBox(
                     "Select the Persistent Content Scene.",
                     MessageType.Error);
                 return;
             }
 
-            if (GUILayout.Button(
-                    new GUIContent(
-                        "Open Content Scene",
-                        "Opens the assigned Persistent Content Scene.")))
+            string scenePath =
+                AssetDatabase.GetAssetPath(selectedScene);
+
+            EditorBuildSettingsScene[] buildScenes =
+                EditorBuildSettings.scenes;
+
+            int buildSceneIndex =
+                FindBuildSceneIndex(
+                    buildScenes,
+                    scenePath);
+
+            bool isInSceneList =
+                buildSceneIndex >= 0;
+
+            bool isEnabledInSceneList =
+                isInSceneList &&
+                buildScenes[buildSceneIndex].enabled;
+
+            using (new EditorGUILayout.HorizontalScope())
             {
-                serializedObject.ApplyModifiedProperties();
-                _serializedBindingsDirty = true;
+                if (GUILayout.Button(
+                        new GUIContent(
+                            "Open Content Scene",
+                            "Opens the assigned Persistent Content Scene.")))
+                {
+                    serializedObject.ApplyModifiedProperties();
+                    _serializedBindingsDirty = true;
 
-                AssetDatabase.OpenAsset(
-                    selectedScene);
+                    AssetDatabase.OpenAsset(
+                        selectedScene);
 
-                GUIUtility.ExitGUI();
+                    GUIUtility.ExitGUI();
+                }
+
+                string sceneListButtonLabel =
+                    !isInSceneList
+                        ? "Add to Scene List"
+                        : isEnabledInSceneList
+                            ? "In Scene List"
+                            : "Enable in Scene List";
+
+                string sceneListButtonTooltip =
+                    !isInSceneList
+                        ? "Adds the assigned Persistent Content Scene, enabled, to the Scene List used by the active Build Profile."
+                        : isEnabledInSceneList
+                            ? "The assigned Persistent Content Scene is already enabled in the Scene List used by the active Build Profile."
+                            : "Enables the existing Persistent Content Scene entry in the Scene List used by the active Build Profile.";
+
+                using (new EditorGUI.DisabledScope(
+                           Application.isPlaying ||
+                           isEnabledInSceneList))
+                {
+                    if (GUILayout.Button(
+                            new GUIContent(
+                                sceneListButtonLabel,
+                                sceneListButtonTooltip)))
+                    {
+                        AddOrEnableBuildScene(
+                            buildScenes,
+                            buildSceneIndex,
+                            scenePath);
+
+                        Repaint();
+                    }
+                }
             }
+        }
+
+        private static int FindBuildSceneIndex(
+            EditorBuildSettingsScene[] buildScenes,
+            string scenePath)
+        {
+            for (int index = 0;
+                 index < buildScenes.Length;
+                 index++)
+            {
+                if (string.Equals(
+                        buildScenes[index].path,
+                        scenePath,
+                        System.StringComparison.Ordinal))
+                {
+                    return index;
+                }
+            }
+
+            return -1;
+        }
+
+        private static void AddOrEnableBuildScene(
+            EditorBuildSettingsScene[] buildScenes,
+            int buildSceneIndex,
+            string scenePath)
+        {
+            if (buildSceneIndex >= 0)
+            {
+                if (buildScenes[buildSceneIndex].enabled)
+                {
+                    return;
+                }
+
+                buildScenes[buildSceneIndex] =
+                    new EditorBuildSettingsScene(
+                        scenePath,
+                        true);
+
+                EditorBuildSettings.scenes =
+                    buildScenes;
+                return;
+            }
+
+            EditorBuildSettingsScene[] updatedBuildScenes =
+                new EditorBuildSettingsScene[
+                    buildScenes.Length + 1];
+
+            for (int index = 0;
+                 index < buildScenes.Length;
+                 index++)
+            {
+                updatedBuildScenes[index] =
+                    buildScenes[index];
+            }
+
+            updatedBuildScenes[updatedBuildScenes.Length - 1] =
+                new EditorBuildSettingsScene(
+                    scenePath,
+                    true);
+
+            EditorBuildSettings.scenes =
+                updatedBuildScenes;
         }
 
         private void DrawValidation()

@@ -31,6 +31,36 @@ does not expose a static current-host registry or service-locator API. Required
 runtime dependencies are supplied through typed bindings and fail explicitly
 when unavailable.
 
+## Persistent Content Scene Template
+
+The package includes an official Editor Scene Template for the application-persistent
+content scene:
+
+```text
+File
+  -> New Scene
+  -> Immersive Persistent Content
+```
+
+Use the template as a starting point, save the result as a concrete `.unity` scene
+owned by the game, and assign that scene to:
+
+```text
+GameApplicationAsset
+  -> Persistent Content
+  -> Content Scene
+```
+
+The `GameApplicationAsset` Inspector also provides explicit authoring actions to
+open the assigned scene and add or enable it in the active Build Profile Scene List.
+
+The Scene Template is an Editor authoring aid only. The template asset is not a
+runtime authority, and the framework does not silently create, repair, save, assign
+or add consumer scenes to a build.
+
+See [Framework usage](Documentation~/Guides/Framework-Usage.md) for the complete
+Persistent Content workflow.
+
 ## Player technical QA status
 
 The current accepted Player model was technically certified by the canonical

@@ -44,7 +44,7 @@ namespace Immersive.Framework.Editor.PlayerParticipation
                 (SceneLocalPlayerAdmissionAuthoring)target;
 
             EditorGUI.BeginChangeCheck();
-            DrawScenePlayer();
+            DrawScenePlayer(authoring);
             DrawAdmission();
             bool authoringChanged = EditorGUI.EndChangeCheck();
 
@@ -70,7 +70,8 @@ namespace Immersive.Framework.Editor.PlayerParticipation
             DrawDebug(authoring);
         }
 
-        private void DrawScenePlayer()
+        private void DrawScenePlayer(
+            SceneLocalPlayerAdmissionAuthoring authoring)
         {
             DrawSection("Scene Player");
 
@@ -84,13 +85,38 @@ namespace Immersive.Framework.Editor.PlayerParticipation
                 actorProfile,
                 new GUIContent(
                     "Actor Profile",
-                    "Player / Protagonist Actor Profile whose canonical Logical Actor Host prefab must match the authored Scene Actor."));
+                    "Player / Protagonist Actor Profile. Its Logical Actor Host prefab is the single authored prefab authority for this Scene-Provided Player."));
 
-            EditorGUILayout.PropertyField(
-                sceneLogicalPlayerActor,
-                new GUIContent(
-                    "Scene Actor",
-                    "Exact PlayerActorDeclaration authored under this Host's Actor Mount."));
+            ActorProfile selectedProfile =
+                actorProfile.objectReferenceValue as ActorProfile;
+            GameObject logicalActorPrefab =
+                selectedProfile != null
+                    ? selectedProfile.LogicalActorHostPrefab
+                    : null;
+
+            using (new EditorGUI.DisabledScope(true))
+            {
+                EditorGUILayout.ObjectField(
+                    "Logical Actor Prefab",
+                    logicalActorPrefab,
+                    typeof(GameObject),
+                    false);
+
+                EditorGUILayout.ObjectField(
+                    "Scene Actor Instance",
+                    authoring.SceneLogicalPlayerActor,
+                    typeof(PlayerActorDeclaration),
+                    true);
+            }
+
+            if (selectedProfile != null &&
+                logicalActorPrefab != null &&
+                authoring.SceneLogicalPlayerActor == null)
+            {
+                EditorGUILayout.HelpBox(
+                    $"Scene Actor is derived from Actor Profile. Apply / Rebuild will instantiate '{logicalActorPrefab.name}' under the Local Player Host Actor Mount and bind its PlayerActorDeclaration. Existing conflicting Actor content is never replaced silently.",
+                    MessageType.Info);
+            }
         }
 
         private void DrawAdmission()
@@ -122,7 +148,7 @@ namespace Immersive.Framework.Editor.PlayerParticipation
                 if (GUILayout.Button(
                         new GUIContent(
                             "Apply / Rebuild",
-                            "Store or update the framework-owned typed Actor evidence. This does not create, replace or unpack the scene Player.")))
+                            "Ensure the selected Actor Profile Logical Actor Host prefab exists under Actor Mount, bind the exact Scene Actor instance, and store typed Actor evidence. Matching authored prefab instances are preserved; conflicting content is never replaced or unpacked silently.")))
                 {
                     SceneLocalPlayerAdmissionAuthoringUtility
                         .ApplyOrRebuild(
@@ -134,7 +160,7 @@ namespace Immersive.Framework.Editor.PlayerParticipation
                 if (GUILayout.Button(
                         new GUIContent(
                             "Validate",
-                            "Validate the authored composition and stored typed Actor evidence without starting runtime admission.")))
+                            "Validate the authored composition, Scene Actor prefab provenance and stored typed Actor evidence without creating content or starting runtime admission.")))
                 {
                     SceneLocalPlayerAdmissionAuthoringUtility
                         .Validate(
@@ -183,7 +209,7 @@ namespace Immersive.Framework.Editor.PlayerParticipation
                 EditorGUILayout.LabelField(
                     "Status",
                     authoring.HasTypedActorEvidence
-                        ? "Valid — typed Actor evidence is stored"
+                        ? "Valid — Scene Actor and typed evidence are materialized"
                         : "Valid");
 
                 return;
@@ -274,6 +300,12 @@ namespace Immersive.Framework.Editor.PlayerParticipation
                         ? authoring.LocalPlayerHost.ActorMount
                         : null,
                     typeof(Transform),
+                    true);
+
+                EditorGUILayout.ObjectField(
+                    "Resolved Scene Actor",
+                    sceneLogicalPlayerActor.objectReferenceValue,
+                    typeof(PlayerActorDeclaration),
                     true);
 
                 EditorGUILayout.TextField(

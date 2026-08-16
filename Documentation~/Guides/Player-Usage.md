@@ -1,7 +1,7 @@
 # Player Usage
 
 Status: **Current architecture implemented / Full Player QA certified**  
-Last updated: **2026-08-15**  
+Last updated: **2026-08-16**  
 Decision sources: IF-ADR-003, IF-ADR-007, IF-ADR-012, IF-ADR-015, IF-ADR-016, IF-ADR-019, IF-ADR-020, IF-ADR-021  
 Certification record: [Player Physical Lifetime Recertification — 2026-08-15](../Architecture/Reconciliation/IMMERSIVE-FRAMEWORK-PLAYER-PHYSICAL-LIFETIME-RECERTIFICATION-2026-08-15.md)
 
@@ -46,7 +46,28 @@ The provisioning choice does not imply different post-admission lifetime semanti
 
 ## 3. Scene-Provided
 
-Typical authored candidate:
+Scene-Provided authoring keeps consumer intent separate from deterministic Actor materialization.
+
+The consumer authors the Player Host and selects the exact Player Slot and Actor Profile:
+
+```text
+Player_SceneProvided
+  PlayerInput
+  LocalPlayerHostAuthoring
+  SceneLocalPlayerAdmissionAuthoring
+    Player Slot
+    Actor Profile
+    Admission Timing
+    Initial Placement
+  Actor Mount
+
+ActorProfile
+  Logical Actor Host Prefab
+```
+
+`ActorProfile.LogicalActorHostPrefab` is the single authored prefab authority for the Logical Actor. The consumer does not author a second Scene Actor prefab authority.
+
+`Apply / Rebuild` derives the canonical Logical Actor prefab from the selected Actor Profile and materializes or preserves the matching prefab instance under the exact `Actor Mount`:
 
 ```text
 Player_SceneProvided
@@ -54,9 +75,25 @@ Player_SceneProvided
   LocalPlayerHostAuthoring
   SceneLocalPlayerAdmissionAuthoring
   Actor Mount
-    Actor
+    Logical Actor Host [prefab instance]
       PlayerActorDeclaration
       gameplay components
+```
+
+The Scene Actor reference is derived technical evidence. `Apply / Rebuild` binds the exact `PlayerActorDeclaration` from the matching prefab instance; consumers do not need to manually instantiate the Actor prefab or manually assign the declaration.
+
+Materialization is deterministic and non-destructive:
+
+```text
+Actor missing
+  -> instantiate ActorProfile.LogicalActorHostPrefab under Actor Mount
+
+matching Actor already present
+  -> preserve and bind it
+
+mismatched, unpacked or conflicting Actor content
+  -> reject explicitly
+  -> do not silently replace or destroy consumer content
 ```
 
 Before admission, the scene owns this candidate.

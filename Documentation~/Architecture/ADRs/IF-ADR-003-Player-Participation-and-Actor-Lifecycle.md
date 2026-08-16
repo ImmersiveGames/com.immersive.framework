@@ -1,7 +1,7 @@
 # IF-ADR-003 — Player Participation and Actor Lifecycle
 
 Status: **Accepted / Reconciled / Player QA Recertified 2026-08-15**  
-Last updated: **2026-08-15**  
+Last updated: **2026-08-16**  
 Related decisions: IF-ADR-001, IF-ADR-007, IF-ADR-012, IF-ADR-015, IF-ADR-016, IF-ADR-019, IF-ADR-020, IF-ADR-021  
 Reopen record: [2026-08-14 Player Physical Lifetime Reopen](../Reconciliation/IMMERSIVE-FRAMEWORK-PLAYER-PHYSICAL-LIFETIME-REOPEN-2026-08-14.md)  
 Closure record: [2026-08-15 Player Physical Lifetime Recertification](../Reconciliation/IMMERSIVE-FRAMEWORK-PLAYER-PHYSICAL-LIFETIME-RECERTIFICATION-2026-08-15.md)
@@ -101,14 +101,22 @@ Session owns admitted physical Player representation
 ### Scene-Provided
 
 ```text
-consumer scene authors candidate Host / PlayerInput / Actor composition
+consumer scene authors candidate Host / PlayerInput
+and selects exact Player Slot + ActorProfile intent
         ↓
-Framework validates/adopts exact candidate
+Scene-Provided Player authoring materializes or preserves
+ActorProfile.LogicalActorHostPrefab under the exact Actor Mount
+        ↓
+Framework validates/adopts the exact resulting physical candidate
         ↓
 successful admission
         ↓
 runtime ownership transfers to Session Player occurrence
 ```
+
+`ActorProfile.LogicalActorHostPrefab` is the single authored prefab authority for the Scene-Provided Logical Actor. The Scene Actor reference is derived technical evidence of the exact matching prefab instance, not a second consumer-authored Actor authority.
+
+Editor materialization must be deterministic, non-destructive and conflict-safe. A missing Actor may be materialized from the selected Actor Profile; an existing matching prefab instance is preserved; mismatched, unpacked or conflicting Actor content is rejected explicitly rather than silently replaced.
 
 A failed Scene-Provided admission does not transfer Player ownership.
 
@@ -182,6 +190,8 @@ Physical truth must be observed from canonical Session/occurrence evidence. Hier
 - Treating Activity-owned RuntimeContent as Player physical ownership.
 - Consumer direct Slot mutation.
 - Consumer direct materialization/reconcile authority.
+- A second consumer-authored Scene Actor prefab authority beside `ActorProfile.LogicalActorHostPrefab`.
+- Silent replacement of mismatched or conflicting Scene-Provided Actor content during Editor materialization.
 - `playerIndex` as Slot identity.
 - Silent fallback.
 - Global Player manager/service locator.
