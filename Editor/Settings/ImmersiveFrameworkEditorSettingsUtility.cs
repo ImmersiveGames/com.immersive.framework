@@ -4,6 +4,8 @@ using System.IO;
 using System.Linq;
 using Immersive.Framework.Authoring;
 using Immersive.Framework.Diagnostics;
+using Immersive.Framework.PlayerParticipation;
+using Immersive.Framework.ProgressionSave;
 using Immersive.Logging.Unity;
 using UnityEditor;
 using UnityEngine;
@@ -12,11 +14,6 @@ namespace Immersive.Framework.Editor.Editor.Settings
     internal static class ImmersiveFrameworkEditorSettingsUtility
     {
         internal const string SettingsPath = "Assets/_Project/Settings/ImmersiveFramework/Resources/ImmersiveFrameworkSettings.asset";
-        internal const string GameApplicationDefaultPath = "Assets/_Project/ScriptableObjects/ImmersiveFramework/GameApplication.asset";
-        internal const string StartupRouteDefaultPath = "Assets/_Project/ScriptableObjects/ImmersiveFramework/Routes/StartupRoute.asset";
-        internal const string StartupActivityDefaultPath = "Assets/_Project/ScriptableObjects/ImmersiveFramework/Activities/StartupActivity.asset";
-        internal const string RouteContentProfileDefaultPath = "Assets/_Project/ScriptableObjects/ImmersiveFramework/RouteContentProfiles/RouteContentProfile.asset";
-        internal const string ActivityContentProfileDefaultPath = "Assets/_Project/ScriptableObjects/ImmersiveFramework/ActivityContentProfiles/ActivityContentProfile.asset";
         internal const string LoggingConfigDefaultPath = "Assets/_Project/Settings/ImmersiveFramework/Logging/LoggingConfig.asset";
         internal const string UsageGuidePath = "Packages/com.immersive.framework/Documentation~/Guides/Usage/index.html";
 
@@ -60,29 +57,49 @@ namespace Immersive.Framework.Editor.Editor.Settings
 
         internal static GameApplicationAsset CreateGameApplicationAsset()
         {
-            EnsureDirectory("Assets/_Project/ScriptableObjects/ImmersiveFramework");
-
-            var path = AssetDatabase.GenerateUniqueAssetPath(GameApplicationDefaultPath);
-            var gameApplication = ScriptableObject.CreateInstance<GameApplicationAsset>();
-            AssetDatabase.CreateAsset(gameApplication, path);
-            AssetDatabase.SaveAssets();
-            AssetDatabase.Refresh();
-
-            return gameApplication;
+            return CreateAuthoredAsset<GameApplicationAsset>(
+                "Create Game Application",
+                "GameApplication.asset",
+                "Choose where to save the Game Application.");
         }
 
         internal static RouteAsset CreateStartupRouteAsset()
         {
-            EnsureDirectory("Assets/_Project/ScriptableObjects/ImmersiveFramework/Routes");
+            return CreateAuthoredAsset<RouteAsset>(
+                "Create Startup Route",
+                "StartupRoute.asset",
+                "Choose where to save the startup Route.",
+                AssignNewRouteId);
+        }
 
-            var path = AssetDatabase.GenerateUniqueAssetPath(StartupRouteDefaultPath);
-            var route = ScriptableObject.CreateInstance<RouteAsset>();
-            AssignNewRouteId(route);
-            AssetDatabase.CreateAsset(route, path);
-            AssetDatabase.SaveAssets();
-            AssetDatabase.Refresh();
+        internal static PlayerSessionProfile CreatePlayerSessionProfileAsset()
+        {
+            return CreateAuthoredAsset<PlayerSessionProfile>(
+                "Create Player Session Profile",
+                "PlayerSessionProfile.asset",
+                "Choose where to save the Player Session Profile.");
+        }
 
-            return route;
+        internal static PlayerSlotProfile CreatePlayerSlotProfileAsset()
+        {
+            return CreateAuthoredAsset<PlayerSlotProfile>(
+                "Create Player Slot Profile",
+                "PlayerSlotProfile.asset",
+                "Choose where to save the Player Slot Profile.");
+        }
+
+        internal static ProgressionSaveProfile CreateProgressionSaveProfileAsset(
+            string suggestedName)
+        {
+            string defaultName =
+                string.IsNullOrWhiteSpace(suggestedName)
+                    ? "ProgressionSaveProfile.asset"
+                    : suggestedName;
+
+            return CreateAuthoredAsset<ProgressionSaveProfile>(
+                "Create Progression Save Profile",
+                defaultName,
+                "Choose where to save the Progression Save Profile.");
         }
 
         internal static string GenerateRouteIdText() => GenerateAuthoringIdText();
@@ -100,41 +117,26 @@ namespace Immersive.Framework.Editor.Editor.Settings
 
         internal static ActivityAsset CreateStartupActivityAsset()
         {
-            EnsureDirectory("Assets/_Project/ScriptableObjects/ImmersiveFramework/Activities");
-
-            var path = AssetDatabase.GenerateUniqueAssetPath(StartupActivityDefaultPath);
-            var activity = ScriptableObject.CreateInstance<ActivityAsset>();
-            AssetDatabase.CreateAsset(activity, path);
-            AssetDatabase.SaveAssets();
-            AssetDatabase.Refresh();
-
-            return activity;
+            return CreateAuthoredAsset<ActivityAsset>(
+                "Create First Activity",
+                "StartupActivity.asset",
+                "Choose where to save the startup Activity.");
         }
 
         internal static RouteContentProfileAsset CreateRouteContentProfileAsset()
         {
-            EnsureDirectory("Assets/_Project/ScriptableObjects/ImmersiveFramework/RouteContentProfiles");
-
-            var path = AssetDatabase.GenerateUniqueAssetPath(RouteContentProfileDefaultPath);
-            var profile = ScriptableObject.CreateInstance<RouteContentProfileAsset>();
-            AssetDatabase.CreateAsset(profile, path);
-            AssetDatabase.SaveAssets();
-            AssetDatabase.Refresh();
-
-            return profile;
+            return CreateAuthoredAsset<RouteContentProfileAsset>(
+                "Create Route Content Profile",
+                "RouteContentProfile.asset",
+                "Choose where to save the Route Content Profile.");
         }
 
         internal static ActivityContentProfileAsset CreateActivityContentProfileAsset()
         {
-            EnsureDirectory("Assets/_Project/ScriptableObjects/ImmersiveFramework/ActivityContentProfiles");
-
-            var path = AssetDatabase.GenerateUniqueAssetPath(ActivityContentProfileDefaultPath);
-            var profile = ScriptableObject.CreateInstance<ActivityContentProfileAsset>();
-            AssetDatabase.CreateAsset(profile, path);
-            AssetDatabase.SaveAssets();
-            AssetDatabase.Refresh();
-
-            return profile;
+            return CreateAuthoredAsset<ActivityContentProfileAsset>(
+                "Create Activity Content Profile",
+                "ActivityContentProfile.asset",
+                "Choose where to save the Activity Content Profile.");
         }
 
         internal static LoggingConfigAsset CreateLoggingConfigAsset()
@@ -245,6 +247,69 @@ namespace Immersive.Framework.Editor.Editor.Settings
 
                 current = next;
             }
+        }
+
+        private static T CreateAuthoredAsset<T>(
+            string title,
+            string defaultName,
+            string message,
+            Action<T> initialize = null)
+            where T : ScriptableObject
+        {
+            string initialFolder = ResolveAuthoredAssetCreationFolder();
+            string selectedPath = EditorUtility.SaveFilePanelInProject(
+                title,
+                defaultName,
+                "asset",
+                message,
+                initialFolder);
+
+            if (string.IsNullOrWhiteSpace(selectedPath))
+            {
+                return null;
+            }
+
+            string path = AssetDatabase.GenerateUniqueAssetPath(selectedPath);
+            var asset = ScriptableObject.CreateInstance<T>();
+            initialize?.Invoke(asset);
+
+            AssetDatabase.CreateAsset(asset, path);
+            Undo.RegisterCreatedObjectUndo(asset, title);
+            AssetDatabase.SaveAssets();
+            AssetDatabase.Refresh();
+
+            return asset;
+        }
+
+        private static string ResolveAuthoredAssetCreationFolder()
+        {
+            string selectedPath = AssetDatabase.GetAssetPath(Selection.activeObject);
+            if (string.IsNullOrWhiteSpace(selectedPath))
+            {
+                return "Assets";
+            }
+
+            string normalizedPath = selectedPath.Replace('\\', '/');
+            bool isAssetsPath =
+                string.Equals(normalizedPath, "Assets", StringComparison.Ordinal) ||
+                normalizedPath.StartsWith("Assets/", StringComparison.Ordinal);
+            if (!isAssetsPath)
+            {
+                return "Assets";
+            }
+
+            if (AssetDatabase.IsValidFolder(normalizedPath))
+            {
+                return normalizedPath;
+            }
+
+            string directory =
+                Path.GetDirectoryName(normalizedPath)?.Replace('\\', '/');
+
+            return !string.IsNullOrWhiteSpace(directory) &&
+                   AssetDatabase.IsValidFolder(directory)
+                ? directory
+                : "Assets";
         }
 
         private static List<ImmersiveFrameworkSettingsAsset> FindExistingSettingsAssets()

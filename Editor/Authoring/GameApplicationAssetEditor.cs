@@ -269,6 +269,26 @@ namespace Immersive.Framework.Editor.Editor.Authoring
                 EditorGUILayout.HelpBox(
                     "Player Session is enabled and requires a Default Player Session Profile.",
                     MessageType.Error);
+
+                if (GUILayout.Button(
+                        new GUIContent(
+                            "Create Player Session Profile",
+                            "Creates a Player Session Profile asset and assigns it as the application default.")))
+                {
+                    PlayerSessionProfile created =
+                        ImmersiveFrameworkEditorSettingsUtility
+                            .CreatePlayerSessionProfileAsset();
+
+                    if (created != null)
+                    {
+                        _defaultPlayerSessionProfile.objectReferenceValue =
+                            created;
+                        serializedObject.ApplyModifiedProperties();
+                        Selection.activeObject = created;
+                        EditorGUIUtility.PingObject(created);
+                    }
+                }
+
                 return;
             }
 
@@ -380,30 +400,15 @@ namespace Immersive.Framework.Editor.Editor.Authoring
             string suggestedName =
                 $"{gameApplication.name}-ProgressionSaveProfile.asset";
 
-            string path =
-                EditorUtility.SaveFilePanelInProject(
-                    "Create Progression Save Profile",
-                    suggestedName,
-                    "asset",
-                    "Choose where to save the Progression Save Profile.");
+            ProgressionSaveProfile created =
+                ImmersiveFrameworkEditorSettingsUtility
+                    .CreateProgressionSaveProfileAsset(
+                        suggestedName);
 
-            if (string.IsNullOrWhiteSpace(path))
+            if (created == null)
             {
                 return;
             }
-
-            var created =
-                ScriptableObject.CreateInstance<ProgressionSaveProfile>();
-
-            AssetDatabase.CreateAsset(
-                created,
-                path);
-
-            Undo.RegisterCreatedObjectUndo(
-                created,
-                "Create Progression Save Profile");
-
-            AssetDatabase.SaveAssets();
 
             _defaultProgressionSaveProfile.objectReferenceValue =
                 created;

@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using Immersive.Framework.Actors;
+using Immersive.Framework.Editor.Editor.Settings;
 using Immersive.Framework.PlayerParticipation;
 using Immersive.Framework.PlayerSlots;
 using UnityEditor;
@@ -68,6 +69,14 @@ namespace Immersive.Framework.Editor.Editor.PlayerParticipation
             DrawSection("Primary Intent");
             _supportedSlotsList?.DoLayoutList();
 
+            if (GUILayout.Button(
+                    new GUIContent(
+                        "Create & Add Player Slot Profile",
+                        "Creates a Player Slot Profile asset, adds it to Supported Slots and selects it for authoring.")))
+            {
+                CreateAndAddPlayerSlotProfile();
+            }
+
             DrawSection("Initial Joining");
             int joiningIndex = _initialJoiningOpen.boolValue ? 1 : 0;
             int nextJoiningIndex = EditorGUILayout.Popup(
@@ -110,6 +119,30 @@ namespace Immersive.Framework.Editor.Editor.PlayerParticipation
                 _validationMessage);
 
             DrawAdvanced();
+        }
+
+        private void CreateAndAddPlayerSlotProfile()
+        {
+            PlayerSlotProfile created =
+                ImmersiveFrameworkEditorSettingsUtility
+                    .CreatePlayerSlotProfileAsset();
+
+            if (created == null)
+            {
+                return;
+            }
+
+            int index = _supportedSlots.arraySize;
+            _supportedSlots.InsertArrayElementAtIndex(index);
+            _supportedSlots
+                .GetArrayElementAtIndex(index)
+                .objectReferenceValue = created;
+
+            serializedObject.ApplyModifiedProperties();
+            ClearValidation();
+
+            Selection.activeObject = created;
+            EditorGUIUtility.PingObject(created);
         }
 
         private void RunValidation()
