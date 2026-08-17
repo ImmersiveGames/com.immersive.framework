@@ -106,38 +106,67 @@ Current product decision:
 
 [Scene-Provided Local Player Product Composition — 2026-08-17](Reconciliation/IMMERSIVE-FRAMEWORK-SCENE-PROVIDED-LOCAL-PLAYER-PRODUCT-COMPOSITION-2026-08-17.md)
 
-The implementation cut is intentionally product/editor-owned:
+Current implementation/evidence:
+
+```text
+Package
+  5c9dab5661c95cf712d8cfce124a5d730d0dd1f1
+  -> canonical Create Scene-Provided Local Player action implemented
+
+FIRSTGAME
+  facb6e2d9b763b7200e670a029c06100505d7c06
+  -> Scene-Provided Local Player prefab created
+  -> Scene-Provided Logical Player prefab kept as separate ActorProfile authority
+  -> scene composes the Logical Player under the Local Player ActorMount
+```
+
+Current product split:
 
 ```text
 Scene-Provided Local Player
-  -> official explicit Create action
-  -> canonical inspectable prefab/template
-  -> coherent Local Player Editor naming family
-  -> existing runtime authorities remain separate
+  technical Host product
+  PlayerInput
+  LocalPlayerHostAuthoring
+  SceneLocalPlayerAdmissionAuthoring
+  UnityPlayerInputGateAdapter
+  ActorMount
+
+Scene-Provided Logical Player
+  consumer/example ActorProfile.LogicalActorHostPrefab
+  gameplay representation
+  separate asset authority
 ```
 
-Stable public C# type renames are not implicit in that product cut; IF-GOV-001 requires
+The official Create action owns deterministic technical composition only. Player Slot,
+Actor Profile, `InputActionAsset`, Gameplay Action Map and the exact Logical Player
+remain explicit consumer intent.
+
+A neutral inspectable package prefab/template for the technical Local Player shape is
+still a product artifact to add. It must match the Create action and must not embed
+project-specific Slot / Actor / Input defaults.
+
+Stable public C# type renames are not implicit in this product cut; IF-GOV-001 requires
 an explicit migration decision for breaking changes to Stable consumer surfaces.
 
 ## Current affected ADR disposition
 
 ### Player
 
-- IF-ADR-003 — Accepted / reconciled / Player QA recertified.
-- IF-ADR-007 — Accepted / reconciled / Player readiness boundary recertified.
-- IF-ADR-011 — Accepted / reconciled for Player readiness interaction.
-- IF-ADR-012 — Accepted / reconciled / Player QA recertified.
-- IF-ADR-015 — Accepted / reconciled / Public Surface certified.
-- IF-ADR-016 — Accepted / reconciled / implementation certified.
-- IF-ADR-019 — Accepted / reconciled / implementation recertified.
-- IF-ADR-020 — Accepted / reconciled / implementation recertified.
-- IF-ADR-021 — Accepted / reconciled / implementation certified.
+- IF-ADR-003 — Accepted baseline / reconciled / implemented; later R6/R7/R8 expansion remains separately tracked.
+- IF-ADR-007 — Accepted baseline / readiness boundary implemented.
+- IF-ADR-011 — Accepted baseline for participant-aware readiness/loading interaction.
+- IF-ADR-012 — Accepted baseline / implemented.
+- IF-ADR-015 — Accepted baseline / current public consumer surface implemented.
+- IF-ADR-016 — Accepted baseline / current Session initial configuration implemented.
+- IF-ADR-019 — Proposed / not implementation authority for the accepted Stage B baseline.
+- IF-ADR-020 — Proposed / not implementation authority for the accepted Stage B baseline.
+- IF-ADR-021 — Proposed / not implementation authority for the accepted Stage B baseline.
 
 ### Camera
 
 - IF-ADR-004 — Accepted / reconciled / Camera QA recertified.
 - IF-ADR-010 — Accepted / reconciled for the implemented Camera Class C surface.
-- IF-ADR-022 — Accepted / implemented / technical QA certified; FIRSTGAME C6 pending.
+- IF-ADR-022 — tracked according to the current Tracker; do not infer implementation authority from a proposed record alone.
 
 ## Historical certification records
 
@@ -145,15 +174,8 @@ Dated certification/reconciliation records remain historical evidence.
 
 Do not rewrite an older record to imply it tested a later contract.
 
-Current revised authorities:
-
-```text
-Player revised physical lifetime
-  2026-08-15 Player Physical Lifetime Recertification
-
-Camera presentation expansion
-  2026-08-15 Camera Presentation Technical Certification
-```
+Current revised authorities and current proposed expansions must be interpreted through
+the mutable Tracker rather than by commit chronology alone.
 
 ## Current delivery state
 
