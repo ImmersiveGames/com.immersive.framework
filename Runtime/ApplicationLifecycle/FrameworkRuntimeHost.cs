@@ -497,7 +497,6 @@ namespace Immersive.Framework.ApplicationLifecycle
                     new CameraOutputSessionInjectionRuntime(
                         sessionCameraOverride);
             }
-
             _loadingSurfaceRuntime = CreateLoadingSurfaceRuntime(_globalUiSceneRuntime);
             _pauseSurfaceRuntime = CreatePauseSurfaceRuntime(_globalUiSceneRuntime);
             GlobalUiPauseRequestTriggerBindingResult pauseRequestTriggerBinding =
@@ -533,7 +532,7 @@ namespace Immersive.Framework.ApplicationLifecycle
                 return failed;
             }
             ApplyPauseSurfaceSnapshot("FrameworkRuntimeHost", "framework-start");
-            var transitionOrchestrator = CreateTransitionOrchestrator(_globalUiSceneRuntime, sessionCameraOverride);
+            var transitionOrchestrator = CreateTransitionOrchestrator(_globalUiSceneRuntime, cameraOutputSession);
             _gameFlowRuntime = new GameFlowRuntime(
                 _runtimeContentRuntime,
                 transitionOrchestrator,
@@ -1666,7 +1665,7 @@ namespace Immersive.Framework.ApplicationLifecycle
 
         private ITransitionOrchestrator CreateTransitionOrchestrator(
             GlobalUiSceneRuntime globalUiSceneRuntime,
-            SessionCameraOverrideBinding sessionCameraOverride)
+            CameraOutputSessionBinding cameraOutputSession)
         {
             if (globalUiSceneRuntime == null)
             {
@@ -1699,11 +1698,9 @@ namespace Immersive.Framework.ApplicationLifecycle
                     sceneAdapters,
                     sceneLabel);
 
-            return sessionCameraOverride != null
-                ? new SessionCameraTransitionOrchestrator(
-                    transitionOrchestrator,
-                    sessionCameraOverride)
-                : transitionOrchestrator;
+            return new SessionCameraTransitionOrchestrator(
+                transitionOrchestrator,
+                cameraOutputSession);
         }
 
 
@@ -2330,7 +2327,7 @@ namespace Immersive.Framework.ApplicationLifecycle
                 LogFields.Field("gameFlowEnvelopeLifecycleStages", envelope.LifecycleStageCount),
                 LogFields.Field("gameFlowEnvelopeLifecycleBlockingIssues", envelope.LifecycleBlockingIssueCount),
                 LogFields.Field("gameFlowEnvelopeLifecycleFailedStages", envelope.LifecycleFailedStageCount),
-                LogFields.Field("gameFlowEnvelopeLifecycleSkippedStages", envelope.LifecycleSkippedStageCount),
+                LogFields.Field("gameFlowEnvelopeLifecycleSkippedStages", envelope.LifecycleStageCount),
                 LogFields.Field("gameFlowEnvelopeContentStatus", envelope.LifecycleContentStatus),
                 LogFields.Field("gameFlowEnvelopeContentBlockingIssues", envelope.LifecycleContentBlockingIssueCount),
                 LogFields.Field("gameFlowEnvelopeContentHandles", envelope.LifecycleContentHandleCount),
@@ -2497,7 +2494,6 @@ namespace Immersive.Framework.ApplicationLifecycle
 
             AddTransitionStages(builder, result.TransitionDiagnostics, result.Source, result.Reason);
             AddLoadingStages(builder, loadingDiagnostics, result.Source, result.Reason);
-
             builder.AddStage(
                 FrameworkLifecycleOperationStage.RouteExit,
                 routeLifecycle.RouteExitResult.DiagnosticStatus,
