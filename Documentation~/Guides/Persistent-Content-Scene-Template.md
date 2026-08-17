@@ -1,7 +1,17 @@
 # Persistent Content Scene Template
 
 Status: Current
-Last updated: 2026-07-24
+Last updated: 2026-08-16
+
+## Purpose
+
+Persistent Content uses Unity Scene Templates as an explicit Editor authoring
+surface for application-persistent composition.
+
+The current package ships a **minimal baseline template**. Additional templates
+covering optional persistent presentation modules such as Pause, Loading and
+Transition are expected future product work; they are not part of the current
+baseline and are not required by the Persistent Content contract.
 
 ## Authority
 
@@ -58,140 +68,162 @@ repair a referenced asset automatically
 save another asset silently
 ```
 
-## Source-scene workflow
+## Current template baseline
 
-1. Author the physical Persistent Content scene.
-2. Add the required Camera and presentation contracts directly in that scene.
-3. Save the scene.
-4. Assign it temporarily to the Game Application.
-5. Run `Validate Configuration`.
-6. Correct all blocking issues.
-7. Create a `SceneTemplateAsset` from the validated physical scene through Unity's
-   native Scene Template workflow.
-8. Keep the source scene and template in the official package.
-9. Consumer projects create their own Persistent Content scene from that template.
-10. The consumer assigns the created `.unity` scene to its Game Application.
+The current official template is intentionally minimal.
+
+```text
+Persistent Camera
+├── Camera Output
+│   ├── Camera
+│   ├── CinemachineBrain
+│   ├── CameraOutputSessionBinding
+│   └── SessionCameraOverrideBinding
+├── Session Camera Target
+└── Session Camera Rig
+    ├── CinemachineCamera
+    ├── CinemachineFollow
+    ├── CinemachineRotationComposer
+    └── CameraRigComposer
+
+EventSystem
+├── EventSystem
+└── InputSystemUIInputModule
+```
+
+The canonical persistent Camera Output ID is:
+
+```text
+camera.output.main
+```
+
+The current baseline does **not** include:
+
+```text
+Global Canvas
+Transition surface
+Loading surface
+Pause surface
+other game-specific persistent presentation
+```
+
+Their absence does not make the template incomplete. Those systems remain
+optional composition and explicit NoOp where the corresponding product contract
+allows it.
 
 ## Minimum current source-scene contracts
 
+The minimal template requires:
+
 ```text
 exactly one CameraOutputSessionBinding
+exactly one EventSystem
+exactly one InputSystemUIInputModule
 zero or one SessionCameraOverrideBinding
 ```
 
-The Camera Output must contain its explicit Output ID and references to the
-physical Unity Camera and Cinemachine Brain. Transition, Loading, Pause and
-Session Camera are optional modules. Their absence is explicit NoOp/optional
-composition; the template retains all of them as a complete starting point.
+The Camera Output contains its explicit Output ID and references to the physical
+Unity Camera and Cinemachine Brain.
 
-The EventSystem and InputSystem UI module live on the same root GameObject. The UI
-module references the Input System package's built-in `DefaultInputActions`, so the
-template remains consumer-neutral while still providing Point, Left Click, Scroll,
-Move, Submit and Cancel actions explicitly.
+`SessionCameraOverrideBinding` remains optional. Omit it when Persistent Content
+does not need a Session-scoped Camera request. Player, Activity and Route Camera
+publication continue to use the explicit output without requiring an implicit
+Session request.
 
-The persistent output is mandatory. `SessionCameraOverrideBinding` is optional:
-omit it when Persistent Content does not need a Session-scoped Camera request.
-Player, Activity and Route Camera publication continue to use the explicit
-output without creating an implicit Session request.
+When authored, `SessionCameraOverrideBinding` intentionally does not reference a
+consumer application asset. Session ownership is explicit through its Scope ID,
+which keeps the template reusable across projects.
 
-When authored, `SessionCameraOverrideBinding` intentionally does not reference
-a consumer application asset. Session ownership is already explicit through its
-Scope ID, which keeps the source scene reusable across projects.
+The EventSystem and Input System UI module live on the same root GameObject.
 
+## Source-scene workflow
 
-## Persistent Pause presentation
+1. Maintain the physical package source scene for the desired template.
+2. Validate the contracts owned by that template.
+3. Create or refresh the `SceneTemplateAsset` through explicit Editor tooling.
+4. Consumer projects create their own Persistent Content `.unity` scene from the
+   template.
+5. The consumer saves and owns that concrete scene.
+6. Assign the concrete scene to `GameApplicationAsset > Persistent Content > Content Scene`.
+7. Add or enable that scene explicitly in the active Build Profile Scene List.
+8. Run explicit validation and Play Mode integration proof as required by the
+   consumer project.
 
-The official source scene contains:
+The Scene Template itself is never a runtime reference from `GameApplicationAsset`.
 
-```text
-Persistent Presentation
-  GlobalCanvas
-    PauseSurface
-      Visual
-        Pause Panel
-          Pause Title
-          Resume Button
-```
+## Planned template family
 
-The surface uses:
+The minimal template is the baseline, not the intended maximum product surface.
 
-```text
-UnityPauseSurfaceAdapter
-  CanvasGroup
-  explicit Surface Root
-  initial Running presentation on Awake
-
-Resume Button
-  Button.OnClick
-    PauseRequestTrigger.RequestResume
-```
-
-Authority remains separated:
-
-```text
-PausePlayerInputBinding
-  reads the canonical Pause action from the admitted PlayerInput
-
-PauseRuntime
-  owns logical Running / Paused state
-
-PauseSurfaceRuntime
-  projects PauseSnapshot to persistent adapters
-
-UnityPauseSurfaceAdapter
-  mutates only the configured presentation hierarchy
-
-PauseRequestTrigger
-  submits an authored Resume request
-```
-
-The Pause surface does not read Escape, own `Time.timeScale`, select action maps,
-resolve a Player or create UI content. Escape continues through the canonical
-`PausePlayerInputBinding` attached to an officially admitted PlayerInput.
-
-### Pause presentation does not provide Escape input
-
-The Scene Template provides:
+Future authoring work may add dedicated Persistent Content template variants for
+commonly reused optional modules, including:
 
 ```text
 Pause presentation
-PauseSnapshot projection
-Resume button
-PauseRequestTrigger request surface
+Loading presentation
+Transition presentation
+combined persistent presentation compositions
+other reusable persistent framework modules when a concrete product need exists
 ```
 
-It does not provide a standalone keyboard listener or an input-only Player. For
-Escape to work, the game must have an officially admitted local Player host:
+The exact variant names, combinations and delivery order are **not frozen** by
+this guide.
+
+The important architectural rule is that future variants extend authoring
+convenience without changing runtime authority or making optional modules
+mandatory.
+
+A future variant must preserve:
 
 ```text
-Local Player Host
-  PlayerInput
-  LocalPlayerHostAuthoring
-  UnityPlayerInputGateAdapter
-  PausePlayerInputBinding
+Scene Template
+  Editor-only reusable creation surface
+
+Created .unity scene
+  consumer-owned runtime composition
+
+GameApplicationAsset
+  references the concrete scene only
+
+Template pipeline
+  verifies the contracts owned by that variant
+  does not silently materialize or repair consumer content
 ```
 
-The Player lifecycle associates that physical host with a logical `PlayerSlotId`
-at runtime. The Player prefab does not serialize its own Slot identity. The
-`Global` map is an action map inside the same PlayerInput action asset, not a
-separate global Player.
+A more complete template therefore does not supersede the minimal template.
+Consumers should be able to choose the smallest authored composition that matches
+their game.
+
+## Future optional presentation templates
+
+Pause, Loading and Transition already have framework runtime/product contracts,
+but inclusion of their persistent visual composition in Scene Templates is a
+separate Editor authoring concern.
+
+When those template variants are implemented, each one should explicitly define:
 
 ```text
-PlayerInput actions
-  Global
-    PauseToggle
-      Escape
+owned hierarchy
+required adapters/bindings
+required references
+validation invariants
+consumer-neutral dependencies
+what remains optional
 ```
 
-Without an admitted Player host, Escape does not submit Pause. Direct authored
-buttons using `PauseRequestTrigger.RequestPause`, `RequestResume` or `TogglePause`
-remain valid because they use the product request port rather than Player input.
-A `PlayerInputManager` may provision the Player host, but the manager itself is
-not the Escape listener.
+They must not introduce:
 
-The source surface starts hidden and non-interactive. When the Pause snapshot is
-`Paused`, it becomes visible, interactable and raycast-blocking. When the snapshot
-returns to `Running`, it hides and releases UI interaction.
+```text
+silent scene repair
+implicit GameApplication assignment
+implicit Build Profile mutation
+runtime lookup by hierarchy/name
+hidden gameplay intent
+mandatory presentation for games that do not use it
+```
+
+The current minimal template must not be expanded opportunistically merely because
+those modules exist. New variants should be introduced as deliberate product cuts.
 
 ## Scene Template boundary
 
@@ -208,26 +240,32 @@ created .unity scene
   runtime-loadable concrete composition
 ```
 
-The template must be produced only after the source scene compiles and passes
-explicit validation.
+The template should be produced only after the source scene compiles and passes
+its explicit validation.
 
 ## Package asset layout
+
+Current baseline:
 
 ```text
 Editor/SceneTemplates/PersistentContent/
   PersistentContentTemplateSource.unity
   ImmersivePersistentContent.scenetemplate
+  PersistentContentSceneTemplatePipeline.cs
 ```
 
 The source scene is Editor-only package content. Consumer projects instantiate a
 normal runtime `.unity` scene from the template.
 
+Future template variants should remain under an explicit Persistent Content
+Scene Template product surface rather than being generated by runtime assets.
+
 The core source scene is render-pipeline-neutral. Render-pipeline-specific Camera
 components belong to explicitly scoped template variants or consumer composition.
 
-## Scene Template Pipeline
+## Scene Template pipeline
 
-The official template uses:
+The official baseline uses:
 
 ```text
 PersistentContentSceneTemplatePipeline
@@ -244,10 +282,11 @@ AfterTemplateInstantiation
   log PASS or explicit contract errors
 ```
 
-It checks the same Camera, transition, loading, Pause presentation and EventSystem
-contracts used by explicit Game Application validation. It also reports missing
-scripts, verifies the authored Resume button binding and rejects a legacy
-`StandaloneInputModule` in the persistent composition.
+For the current minimal template it validates the Camera and EventSystem contracts
+owned by that baseline.
+
+Future template variants may validate additional contracts only when those
+contracts are actually authored by the selected variant.
 
 The pipeline never:
 
@@ -260,28 +299,19 @@ adds the scene to the Build Profile
 creates or clones assets
 ```
 
-## Refreshing the official template
+## Runtime evidence
 
-After editing the package source scene, run:
+The current minimal template has been instantiated into a concrete consumer
+Persistent Content scene and exercised in Play Mode.
 
-```text
-Tools
-  Immersive Framework
-    Package Maintenance
-      Refresh Persistent Content Template
-```
+Observed integration evidence includes successful framework boot with the
+persistent composition materialized for application lifetime, including the
+Persistent Camera structure and EventSystem. In the current implementation those
+objects were observed under Unity's `DontDestroyOnLoad` scene.
 
-This explicit package-maintenance action:
-
-```text
-validates the existing source scene
-binds the existing pipeline script
-synchronizes the required referenced Input System and Pause dependencies
-saves the existing SceneTemplateAsset
-```
-
-It does not create any asset. The action must run from the editable framework
-package repository; Git-installed read-only package copies are rejected explicitly.
+`DontDestroyOnLoad` is implementation evidence, not the authoring authority of the
+Scene Template. The architectural contract is application-persistent lifetime and
+scoped runtime authority.
 
 ## Validation
 
@@ -293,55 +323,30 @@ Inspector repaint
   no component scan
 
 Validate Configuration
-  open scene additively
+  open scene additively when required
   inspect contracts
   close only when validator owns the load
 ```
 
+Validation reports invalid authored state. It does not silently repair it.
 
-## Creating the Scene Template asset
-
-Select:
-
-```text
-Editor/SceneTemplates/PersistentContent/
-  PersistentContentTemplateSource.unity
-```
-
-Use Unity's native command:
+## Product direction summary
 
 ```text
-Assets
-  Create
-    Scene Template From Scene
+CURRENT
+  Minimal Persistent Content template
+    Camera / Session Camera structure
+    EventSystem
+
+PLANNED, NOT YET IMPLEMENTED AS TEMPLATE VARIANTS
+  Pause composition
+  Loading composition
+  Transition composition
+  useful combined variants
+
+ALWAYS
+  concrete .unity scene is the game product
+  template is Editor-only authoring convenience
+  optional modules remain optional
+  pipeline verifies and does not materialize/repair
 ```
-
-Save the generated asset beside the source scene as:
-
-```text
-ImmersivePersistentContent.scenetemplate
-```
-
-Configure:
-
-```text
-Title:
-  Immersive Persistent Content
-
-Description:
-  Application-persistent Camera, Transition, Loading and Pause presentation
-  composition for the Immersive Framework.
-
-Pin in New Scene Dialog:
-  enabled
-```
-
-Keep all dependencies referenced rather than cloned. The source scene depends on
-framework runtime scripts and Cinemachine implementations that must continue
-referencing their package assets.
-
-After the source scene changes, use the explicit package-maintenance refresh action
-so the existing `.scenetemplate` records the pipeline plus the referenced Input
-System and Pause dependencies. Then create a new scene from the template, confirm the
-Pause hierarchy is present and confirm the pipeline logs a passing instantiation
-report.
