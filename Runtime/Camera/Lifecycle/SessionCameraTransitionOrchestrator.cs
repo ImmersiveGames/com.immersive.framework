@@ -7,18 +7,34 @@ using UnityEngine;
 namespace Immersive.Framework.Camera
 {
     /// <summary>
-    /// Wraps the visual transition boundary so the persistent Session camera is active only while the curtain is closed.
+    /// Wraps the visual transition boundary so the output presents its explicit Default Camera Rig while the curtain is closed.
+    /// Normal camera-request arbitration remains untouched.
     /// </summary>
     [FrameworkApiStatus(FrameworkApiStatus.Internal, "Runtime implementation detail; not game-facing API.")]
     internal sealed class SessionCameraTransitionOrchestrator : ITransitionOrchestrator
     {
-        private readonly ITransitionOrchestrator inner;
-        private readonly SessionCameraOverrideBinding sessionOverride;
+        private const string ForceDefaultOwner = "SessionCameraTransitionOrchestrator";
 
-        internal SessionCameraTransitionOrchestrator(ITransitionOrchestrator inner, SessionCameraOverrideBinding sessionOverride)
+        private readonly ITransitionOrchestrator inner;
+        private readonly CameraOutputSessionBinding outputSessionBinding;
+
+        internal SessionCameraTransitionOrchestrator(
+            ITransitionOrchestrator inner,
+            CameraOutputSessionBinding outputSessionBinding)
         {
             this.inner = inner ?? throw new ArgumentNullException(nameof(inner));
-            this.sessionOverride = sessionOverride ?? throw new ArgumentNullException(nameof(sessionOverride));
+            this.outputSessionBinding = outputSessionBinding ?? throw new ArgumentNullException(nameof(outputSessionBinding));
+        }
+
+        internal SessionCameraTransitionOrchestrator(
+            ITransitionOrchestrator inner,
+            SessionCameraOverrideBinding sessionOverride)
+            : this(
+                inner,
+                sessionOverride != null
+                    ? sessionOverride.PersistentOutputSession
+                    : null)
+        {
         }
 
         public TransitionResult Execute(TransitionRequest request) => ExecuteAsync(request).GetAwaiter().GetResult();
@@ -27,18 +43,51 @@ namespace Immersive.Framework.Camera
         {
             if (request.Phase == TransitionPhase.OperationClosed)
             {
-                CameraOverrideResult release = sessionOverride.ReleaseOverride();
-                if (!release.Succeeded) return Blocked(request, "Session camera release blocked transition opening.", release.Diagnostic);
+                if (!TryResolveOutputSession(out CameraOutputSession session, out string diagnostic))
+                {
+                    return Blocked(request, "Default camera release could not resolve the Camera Output Session.", diagnostic);
+                }
+
+                CameraOutputApplyResult release = session.ReleaseForceDefault(ForceDefaultOwner);
+                if (!release.Succeeded)
+                {
+                    return Blocked(request, "Default camera release blocked transition opening.", release.DiagnosticSummary);
+                }
+
                 return await inner.ExecuteAsync(request);
             }
 
             TransitionResult result = await inner.ExecuteAsync(request);
-            if (!result.Completed || request.Phase != TransitionPhase.OperationOpened) return result;
+            if (!result.Completed || request.Phase != TransitionPhase.OperationOpened)
+            {
+                return result;
+            }
 
-            CameraOverrideResult requestResult = sessionOverride.RequestOverride();
-            return requestResult.Succeeded
+            if (!TryResolveOutputSession(out CameraOutputSession outputSession, out string outputDiagnostic))
+            {
+                return Blocked(request, "Default camera forcing could not resolve the Camera Output Session.", outputDiagnostic);
+            }
+
+            CameraOutputApplyResult force = outputSession.ForceDefault(ForceDefaultOwner);
+            return force.Succeeded
                 ? result
-                : Blocked(request, "Session camera request blocked transition after the visual surface closed.", requestResult.Diagnostic);
+                : Blocked(request, "Default camera forcing blocked transition after the visual surface closed.", force.DiagnosticSummary);
+        }
+
+        private bool TryResolveOutputSession(
+            out CameraOutputSession session,
+            out string diagnostic)
+        {
+            if (outputSessionBinding == null)
+            {
+                session = null;
+                diagnostic = "Session Camera Transition Orchestrator has no explicit Camera Output Session Binding.";
+                return false;
+            }
+
+            return outputSessionBinding.TryGetSession(
+                out session,
+                out diagnostic);
         }
 
         private static TransitionResult Blocked(TransitionRequest request, string message, string diagnostic)
