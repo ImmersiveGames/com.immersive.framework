@@ -10,7 +10,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 13966, guid: 0000000000000000e000000000000000, type: 0}
-  m_Name: ImmersivePersistentContent
+  m_Name: ImmersivePersistentContentMinimal
   m_EditorClassIdentifier: UnityEditor.dll::UnityEditor.SceneTemplate.SceneTemplateAsset
   templateScene: {fileID: 102900000, guid: 4161f227aa0041e8a64469795941f3b1, type: 3}
   templateName: Immersive Persistent Content

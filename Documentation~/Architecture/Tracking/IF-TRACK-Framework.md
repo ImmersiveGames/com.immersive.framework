@@ -1,7 +1,7 @@
 # IF-TRACK — Immersive Framework
 
-Status: **Active — Player Certified / Camera ADR-022 Technically Certified**  
-Last updated: **2026-08-15**
+Status: **Active — Player Certified / Camera ADR-022 Technically Certified / Persistent Content Minimal Baseline Confirmed**  
+Last updated: **2026-08-16**
 
 ## Authority model
 
@@ -175,7 +175,7 @@ C9M Follow Pipeline             6/6
 | 005 | ACCEPTED | No current implementation dependency |
 | 006 | ACCEPTED | No current implementation dependency |
 | 007 | ACCEPTED / RECONCILED | Player readiness boundary certified |
-| 008 | ACCEPTED | No current implementation dependency |
+| 008 | ACCEPTED / MINIMAL BASELINE IMPLEMENTED / RUNTIME INTEGRATION OBSERVED | Camera + EventSystem baseline current; Pause/Loading/Transition template variants are planned future authoring surfaces, not current gaps |
 | 009 | ACCEPTED | No current implementation dependency |
 | 010 | ACCEPTED / RECONCILED FOR CAMERA | ADR-022 Class C Inspector/materialization conforms |
 | 011 | ACCEPTED / RECONCILED FOR PLAYER BOUNDARY | No false Ready |
@@ -190,6 +190,89 @@ C9M Follow Pipeline             6/6
 | 020 | ACCEPTED / RECONCILED / RECERTIFIED | Leave/termination certified |
 | 021 | ACCEPTED / RECONCILED / CERTIFIED | Initial Placement 9/9 + Full Player PASS |
 | 022 | ACCEPTED / IMPLEMENTED / TECHNICALLY CERTIFIED | C1-C5 closed; Full Camera 53/53; C6 FIRSTGAME pending |
+
+## Persistent Content / ADR-008 current closure
+
+The current Persistent Content authoring surface is deliberately minimal:
+
+```text
+Immersive Persistent Content
+  Persistent Camera
+    Camera Output
+      Camera
+      CinemachineBrain
+      CameraOutputSessionBinding
+      optional SessionCameraOverrideBinding
+    Session Camera Target
+    Session Camera Rig
+  EventSystem
+    EventSystem
+    InputSystemUIInputModule
+```
+
+Canonical output:
+
+```text
+camera.output.main
+```
+
+The minimal template has been instantiated into a concrete consumer scene and
+exercised in Play Mode. Current integration evidence showed successful framework
+boot and application-persistent materialization of the Persistent Camera structure
+and EventSystem. In the observed implementation these objects appeared under
+Unity's `DontDestroyOnLoad` scene.
+
+Classification:
+
+```text
+Minimal Scene Template baseline     CONFIRMED
+Concrete consumer scene workflow    CONFIRMED
+Application-persistent runtime path OBSERVED
+Silent template materialization     NOT PART OF MODEL
+Silent repair                       NOT PART OF MODEL
+```
+
+`DontDestroyOnLoad` is implementation evidence, not the Scene Template authoring
+authority. The contract remains application-persistent lifetime with scoped runtime
+authorities.
+
+### Planned Persistent Content template family
+
+The minimal template is the baseline, not the intended maximum authoring surface.
+
+Future product cuts are expected to add useful optional variants for:
+
+```text
+Pause presentation
+Loading presentation
+Transition presentation
+combined persistent presentation compositions
+```
+
+The exact variant names, combinations and delivery order are not frozen.
+
+These items are classified as:
+
+```text
+PLANNED FUTURE AUTHORING SURFACES
+NOT CURRENT BASELINE GAPS
+NOT RUNTIME AUTHORITY CHANGES
+```
+
+Each variant must preserve the ADR-008 Class B model:
+
+```text
+source scene owns authored composition
+SceneTemplateAsset is Editor-only creation convenience
+consumer owns the instantiated .unity scene
+GameApplication references the concrete scene only
+pipeline verifies without silent repair/materialization
+optional modules remain optional
+```
+
+A future fuller template does not supersede or invalidate the minimal template.
+Consumers should be able to choose the smallest persistent composition appropriate
+for their game.
 
 ## Player lifetime work closure
 
@@ -337,6 +420,7 @@ Current consumer-side promotion work may include:
 ADR-013 Audio real-game integration
 ADR-022 Camera C6
 Player real-game integration/usability
+Persistent Content template-variant usability needs
 ```
 
 FIRSTGAME remains consumer proof, not the primary technical smoke harness.
