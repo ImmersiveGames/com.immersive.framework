@@ -12,6 +12,7 @@ namespace Immersive.Framework.Camera
         private readonly CameraOutputBinding binding;
 
         private bool hasAppliedRequest;
+        private bool hasAppliedDefault;
         private CameraRequestId appliedRequestId;
         private CinemachineCamera appliedCamera;
 
@@ -29,10 +30,14 @@ namespace Immersive.Framework.Camera
 
         public CameraOutputBinding Binding => binding;
         public bool HasAppliedRequest => hasAppliedRequest;
+        public bool HasAppliedDefault => hasAppliedDefault;
         public CameraRequestId AppliedRequestId => appliedRequestId;
         public CinemachineCamera AppliedCamera => appliedCamera;
 
-        public CameraOutputApplyResult Apply(CameraOutputContext context)
+        public CameraOutputApplyResult Apply(
+            CameraOutputContext context,
+            CameraRigReference defaultRig,
+            bool forceDefault)
         {
             if (context == null)
             {
@@ -50,9 +55,17 @@ namespace Immersive.Framework.Camera
                     $"Camera output context '{context.OutputId}' does not match binding '{binding.OutputId}'.");
             }
 
-            if (!context.HasWinner)
+            if (!defaultRig.IsValid)
             {
-                return Clear();
+                return Blocked(
+                    default,
+                    "camera.output-apply.default-rig.invalid",
+                    $"Camera output '{binding.OutputId}' requires an explicit valid Default Camera Rig.");
+            }
+
+            if (forceDefault || !context.HasWinner)
+            {
+                return ApplyDefault(defaultRig);
             }
 
             return ApplyWinner(context.Winner);
@@ -68,6 +81,7 @@ namespace Immersive.Framework.Camera
             }
 
             hasAppliedRequest = false;
+            hasAppliedDefault = false;
             appliedRequestId = default;
             appliedCamera = null;
 
@@ -80,6 +94,72 @@ namespace Immersive.Framework.Camera
                 previous != null
                     ? $"Camera output cleared. previousCamera='{previous.name}'."
                     : "Camera output was already clear.");
+        }
+
+        private CameraOutputApplyResult ApplyDefault(CameraRigReference defaultRig)
+        {
+            CameraRigComposer composer = defaultRig.Composer;
+
+            if (composer == null)
+            {
+                return Blocked(
+                    default,
+                    "camera.output-apply.default-composer.missing",
+                    "Default Camera Rig requires a materialized CameraRigComposer before it can be applied.");
+            }
+
+            CinemachineCamera targetCamera = composer.CinemachineCamera;
+
+            if (targetCamera == null)
+            {
+                return Blocked(
+                    default,
+                    "camera.output-apply.default-cinemachine-camera.missing",
+                    $"Default CameraRigComposer '{composer.name}' has no materialized CinemachineCamera.");
+            }
+
+            if (!targetCamera.gameObject.scene.IsValid())
+            {
+                return Blocked(
+                    default,
+                    "camera.output-apply.default-cinemachine-camera.scene-invalid",
+                    $"Default CinemachineCamera '{targetCamera.name}' is not part of a valid loaded scene.");
+            }
+
+            if (hasAppliedDefault &&
+                appliedCamera == targetCamera &&
+                targetCamera.enabled)
+            {
+                return new CameraOutputApplyResult(
+                    CameraOutputApplyKind.Preserved,
+                    default,
+                    targetCamera,
+                    targetCamera,
+                    Array.Empty<CameraIssue>(),
+                    $"Camera output preserved Default Camera Rig. camera='{targetCamera.name}' output='{binding.OutputId}'.");
+            }
+
+            CinemachineCamera previous = appliedCamera;
+
+            if (previous != null && previous != targetCamera)
+            {
+                previous.enabled = false;
+            }
+
+            targetCamera.enabled = true;
+
+            hasAppliedRequest = false;
+            hasAppliedDefault = true;
+            appliedRequestId = default;
+            appliedCamera = targetCamera;
+
+            return new CameraOutputApplyResult(
+                CameraOutputApplyKind.Applied,
+                default,
+                previous,
+                targetCamera,
+                Array.Empty<CameraIssue>(),
+                $"Camera output applied Default Camera Rig. camera='{targetCamera.name}' output='{binding.OutputId}'.");
         }
 
         private CameraOutputApplyResult ApplyWinner(CameraRequest winner)
@@ -152,6 +232,7 @@ namespace Immersive.Framework.Camera
             targetCamera.enabled = true;
 
             hasAppliedRequest = true;
+            hasAppliedDefault = false;
             appliedRequestId = winner.RequestId;
             appliedCamera = targetCamera;
 
