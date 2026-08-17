@@ -10,6 +10,7 @@ namespace Immersive.Framework.Editor.CameraAuthoring
         private SerializedProperty outputId;
         private SerializedProperty unityCamera;
         private SerializedProperty cinemachineBrain;
+        private SerializedProperty defaultCameraRig;
         private SerializedProperty initializeOnAwake;
         private SerializedProperty logDiagnostics;
         private SerializedProperty lastStatus;
@@ -25,6 +26,7 @@ namespace Immersive.Framework.Editor.CameraAuthoring
             outputId = serializedObject.FindProperty("outputId");
             unityCamera = serializedObject.FindProperty("unityCamera");
             cinemachineBrain = serializedObject.FindProperty("cinemachineBrain");
+            defaultCameraRig = serializedObject.FindProperty("defaultCameraRig");
             initializeOnAwake = serializedObject.FindProperty("initializeOnAwake");
             logDiagnostics = serializedObject.FindProperty("logDiagnostics");
             lastStatus = serializedObject.FindProperty("lastStatus");
@@ -59,7 +61,7 @@ namespace Immersive.Framework.Editor.CameraAuthoring
                 "Camera Output",
                 EditorStyles.boldLabel);
             EditorGUILayout.HelpBox(
-                "Defines the persistent physical Camera output used by Camera arbitration. It references an existing Unity Camera and Cinemachine Brain; it does not create, discover or repair them automatically.",
+                "Defines the persistent physical Camera output and its explicit Default Camera Rig. Camera arbitration may present a winning request, while the Default is used when no request wins or system presentation explicitly forces Default.",
                 MessageType.Info);
         }
 
@@ -78,10 +80,15 @@ namespace Immersive.Framework.Editor.CameraAuthoring
                 cinemachineBrain,
                 new GUIContent(
                     "Cinemachine Brain",
-                    "Cinemachine Brain that applies the winning virtual Camera rig."));
+                    "Cinemachine Brain that applies the active virtual Camera rig."));
+            EditorGUILayout.PropertyField(
+                defaultCameraRig,
+                new GUIContent(
+                    "Default Camera Rig",
+                    "Explicit persistent Camera Rig presented when no request wins or system presentation forces Default."));
 
             EditorGUILayout.HelpBox(
-                "The Unity Camera and Cinemachine Brain must exist on the same GameObject. Stable identity and technical settings remain under Advanced / Diagnostics.",
+                "The Unity Camera and Cinemachine Brain must exist on the same GameObject. The Default Camera Rig is explicit authoring and is never discovered or synthesized automatically. Stable identity and technical settings remain under Advanced / Diagnostics.",
                 MessageType.None);
         }
 
