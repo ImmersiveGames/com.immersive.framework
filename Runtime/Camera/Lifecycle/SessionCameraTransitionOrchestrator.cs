@@ -26,17 +26,6 @@ namespace Immersive.Framework.Camera
             this.outputSessionBinding = outputSessionBinding ?? throw new ArgumentNullException(nameof(outputSessionBinding));
         }
 
-        internal SessionCameraTransitionOrchestrator(
-            ITransitionOrchestrator inner,
-            SessionCameraOverrideBinding sessionOverride)
-            : this(
-                inner,
-                sessionOverride != null
-                    ? sessionOverride.PersistentOutputSession
-                    : null)
-        {
-        }
-
         public TransitionResult Execute(TransitionRequest request) => ExecuteAsync(request).GetAwaiter().GetResult();
 
         public async Awaitable<TransitionResult> ExecuteAsync(TransitionRequest request)
