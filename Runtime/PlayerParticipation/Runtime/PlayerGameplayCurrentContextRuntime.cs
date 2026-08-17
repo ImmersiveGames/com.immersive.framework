@@ -1,9 +1,11 @@
 using System;
+using System.Collections.Generic;
 using Immersive.Framework.Actors;
 using Immersive.Framework.Camera;
 using Immersive.Framework.PlayerSlots;
 using Immersive.Framework.RuntimeContent;
 using Immersive.Framework.UnityInput;
+using UnityEngine.InputSystem;
 
 namespace Immersive.Framework.PlayerParticipation
 {
@@ -36,6 +38,9 @@ namespace Immersive.Framework.PlayerParticipation
         private readonly PlayerGameplayCameraEligibilityRuntimeContext cameraContext;
         private readonly PlayerGameplayAdmissionRuntimeContext admissionContext;
         private readonly string sessionContextId;
+        private readonly Dictionary<PlayerSlotId, PlayerGameplayInputConsumerBinding>
+            gameplayInputConsumers =
+                new Dictionary<PlayerSlotId, PlayerGameplayInputConsumerBinding>();
 
         private PlayerGameplayCurrentContextRuntime(
             PlayerActorPreparationRuntimeHostModule preparationModule,
@@ -177,6 +182,13 @@ namespace Immersive.Framework.PlayerParticipation
                 return admissionContext.TryRelease(playerSlotId, expectedAdmission, source, reason);
             }
 
+            // Fail closed at the public Actor boundary before admission/input teardown can
+            // restore the physical Action Map. Session PlayerInput may survive Activity exit,
+            // but the retired Activity consumer must not retain gameplay authority.
+            ReleaseInputConsumer(
+                playerSlotId,
+                "Activity gameplay input consumer authority released.");
+
             PlayerGameplayAdmissionResult released = admissionContext.TryRelease(
                 playerSlotId, expectedAdmission, source, reason);
             if (!released.Succeeded)
@@ -277,7 +289,99 @@ namespace Immersive.Framework.PlayerParticipation
             chain.Admission = admission.CurrentSummary;
             chain.AdmissionCreated = !admission.PreviousSummary.IsAdmitted &&
                 admission.CurrentSummary.IsAdmitted;
+
+            if (!TryBindInputConsumer(actor, chain.Input, chain.Admission, out issue))
+                return false;
+
             return true;
+        }
+
+        private bool TryBindInputConsumer(
+            PlayerActorDeclaration actor,
+            PlayerGameplayInputBindingSummary input,
+            PlayerGameplayAdmissionSummary admission,
+            out string issue)
+        {
+            issue = string.Empty;
+            PlayerSlotId playerSlotId = input.PlayerSlotId;
+            PlayerGameplayInputConsumerBinding consumer =
+                actor != null ? actor.GetComponent<PlayerGameplayInputConsumerBinding>() : null;
+
+            if (consumer == null)
+            {
+                ReleaseInputConsumer(
+                    playerSlotId,
+                    "Current Logical Actor has no authored gameplay input consumer binding.");
+                return true;
+            }
+
+            if (gameplayInputConsumers.TryGetValue(playerSlotId, out var previousConsumer) &&
+                previousConsumer != null && !ReferenceEquals(previousConsumer, consumer))
+            {
+                previousConsumer.ReleaseRuntimeBinding(
+                    "Gameplay input consumer replaced by a fresh Activity Actor occurrence.");
+                gameplayInputConsumers.Remove(playerSlotId);
+            }
+
+            if (actor.PlayerInput == null || actor.PlayerInput.actions == null)
+            {
+                issue =
+                    "Gameplay input consumer requires current PlayerInput evidence on the Logical Actor declaration.";
+                return false;
+            }
+
+            InputActionMap gameplayActionMap = actor.PlayerInput.currentActionMap;
+            if (gameplayActionMap == null ||
+                !string.Equals(gameplayActionMap.name, input.ActionMapName, StringComparison.Ordinal) ||
+                !ReferenceEquals(gameplayActionMap.asset, actor.PlayerInput.actions))
+            {
+                issue =
+                    $"Gameplay input consumer expected current runtime Action Map '{input.ActionMapName}' on PlayerInput.actions.";
+                return false;
+            }
+
+            if (admission.InputBindingToken != input.Token)
+            {
+                issue =
+                    "Gameplay input consumer requires admission and input evidence from the same Activity occurrence.";
+                return false;
+            }
+
+            if (!consumer.TryBindRuntime(
+                    actor,
+                    actor.PlayerInput,
+                    gameplayActionMap,
+                    input.Token,
+                    IsGameplayInputReady,
+                    out issue))
+                return false;
+
+            gameplayInputConsumers[playerSlotId] = consumer;
+            return true;
+        }
+
+        private bool IsGameplayInputReady(PlayerGameplayInputBindingToken bindingToken)
+        {
+            if (!bindingToken.IsValid)
+                return false;
+
+            PlayerGameplayAdmissionSnapshot snapshot = admissionContext.CreateSnapshot();
+            return snapshot != null && snapshot.IsInitialized &&
+                snapshot.TryGetSummary(
+                    bindingToken.PlayerSlotId,
+                    out PlayerGameplayAdmissionSummary admission) &&
+                admission.GameplayReady &&
+                admission.InputBindingToken == bindingToken;
+        }
+
+        private void ReleaseInputConsumer(PlayerSlotId playerSlotId, string reason)
+        {
+            if (!gameplayInputConsumers.TryGetValue(playerSlotId, out var consumer))
+                return;
+
+            gameplayInputConsumers.Remove(playerSlotId);
+            if (consumer != null)
+                consumer.ReleaseRuntimeBinding(reason);
         }
 
         private bool TryReleaseContextualChain(
@@ -286,12 +390,18 @@ namespace Immersive.Framework.PlayerParticipation
             issue = string.Empty;
             if (chain == null)
                 return true;
-            if (chain.AdmissionCreated && chain.Admission.Token.IsValid &&
-                !admissionContext.TryRelease(chain.Admission.PlayerSlotId, chain.Admission.Token,
-                    source, reason).Succeeded)
+            if (chain.AdmissionCreated && chain.Admission.Token.IsValid)
             {
-                issue = "Could not release contextual gameplay admission after projection failure.";
-                return false;
+                ReleaseInputConsumer(
+                    chain.Admission.PlayerSlotId,
+                    "Gameplay input consumer authority released during contextual rollback.");
+
+                if (!admissionContext.TryRelease(chain.Admission.PlayerSlotId, chain.Admission.Token,
+                        source, reason).Succeeded)
+                {
+                    issue = "Could not release contextual gameplay admission after projection failure.";
+                    return false;
+                }
             }
             if (chain.CameraCreated && chain.Camera.Token.IsValid &&
                 !cameraContext.TryRelease(chain.Camera.PlayerSlotId, chain.Camera.Token,
