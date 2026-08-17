@@ -1,6 +1,6 @@
 # Scene-Provided Local Player Product Composition — 2026-08-17
 
-Status: **DECIDED / IMPLEMENTATION PENDING**  
+Status: **DECIDED / CREATE TOOL IMPLEMENTED / PACKAGE PREFAB PENDING**  
 Classification: **Stage B product-authoring correction**  
 Runtime authority change: **None**  
 Primary related decisions: IF-ADR-002, IF-ADR-003, IF-ADR-005, IF-ADR-010, IF-ADR-012, IF-ADR-015, IF-ADR-016  
@@ -37,16 +37,109 @@ Disposition:
 runtime gameplay chain          CORRECT / FAIL-CLOSED
 locomotion                      NOT THE CAUSE
 FIRSTGAME integration           CORRECTED
-product authoring composition   INCOMPLETE / UX GAP CONFIRMED
+product authoring composition   UX GAP CONFIRMED
 ```
 
-## 2. Product definition
+## 2. Current implementation evidence
 
-The framework will expose **Scene-Provided Local Player** as one understandable
+### Package Create tool
+
+The development-only Scene Local Player creator was replaced in package commit:
+
+```text
+ImmersiveGames/com.immersive.framework
+5c9dab5661c95cf712d8cfce124a5d730d0dd1f1
+feat(player): replace development creator with canonical local player tool
+```
+
+The implemented menu is:
+
+```text
+GameObject
+  > Immersive Framework
+    > Player
+      > Create Scene-Provided Local Player
+```
+
+The command creates and wires the deterministic technical composition:
+
+```text
+Scene-Provided Local Player
+├─ PlayerInput
+├─ LocalPlayerHostAuthoring
+├─ SceneLocalPlayerAdmissionAuthoring
+├─ UnityPlayerInputGateAdapter
+└─ ActorMount
+```
+
+It explicitly wires:
+
+```text
+LocalPlayerHostAuthoring.playerInput -> same-root PlayerInput
+LocalPlayerHostAuthoring.actorMount  -> ActorMount
+UnityPlayerInputGateAdapter.playerInput -> same-root PlayerInput
+```
+
+It does not choose consumer intent:
+
+```text
+Player Slot Profile
+Actor Profile
+Scene Actor
+InputActionAsset
+Gameplay Action Map
+```
+
+The legacy hidden gameplay-map name hint is cleared by the creator so assigning a later
+`InputActionAsset` does not silently turn a historical map name into current gameplay
+intent.
+
+### FIRSTGAME prefab proof
+
+The latest FIRSTGAME Sample 00 product-authoring proof is:
+
+```text
+ImmersiveGames/planet-devourer
+facb6e2d9b763b7200e670a029c06100505d7c06
+Prefab localPlayer
+```
+
+That commit replaces the previously inline Local Player scene composition with a prefab
+instance and establishes two distinct prefab roles:
+
+```text
+Scene-Provided Local Player.prefab
+  technical Local Player product composition
+
+Scene-Provided Logical Player.prefab
+  ActorProfile-owned Logical Actor / gameplay representation
+```
+
+The scene composes them as:
+
+```text
+Scene-Provided Local Player [prefab instance]
+└─ ActorMount
+   └─ Scene-Provided Logical Player [prefab instance]
+```
+
+and the scene instance binds the exact `PlayerActorDeclaration` from the Logical Player
+prefab to `SceneLocalPlayerAdmissionAuthoring.sceneLogicalPlayerActor`.
+
+This proves the product should not collapse the technical Local Player prefab and the
+Logical Actor prefab into one asset authority.
+
+The FIRSTGAME `Scene-Provided Local Player.prefab` contains sample-specific Slot,
+ActorProfile, `InputActionAsset` and Gameplay Action Map configuration. Those values are
+consumer configuration and are not framework defaults.
+
+## 3. Product definition
+
+The framework exposes **Scene-Provided Local Player** as one understandable
 product-authoring composition.
 
-For the Unity Input variant capable of reaching `GameplayReady`, the canonical
-composition is:
+For the Unity Input variant capable of reaching `GameplayReady`, the canonical scene
+relationship is:
 
 ```text
 Scene-Provided Local Player
@@ -55,7 +148,7 @@ Scene-Provided Local Player
 ├─ PlayerInput
 ├─ UnityPlayerInputGateAdapter
 └─ ActorMount
-     └─ Logical Actor
+     └─ Logical Player [ActorProfile.LogicalActorHostPrefab instance]
 ```
 
 This is a product composition, not a new runtime authority.
@@ -75,11 +168,75 @@ PlayerInput
 UnityPlayerInputGateAdapter
   canonical Framework Gate integration for that PlayerInput
 
-Logical Actor
-  gameplay representation selected/adopted by existing Player lifecycle authority
+Logical Player / PlayerActorDeclaration
+  gameplay representation selected/adopted through existing Player lifecycle authority
 ```
 
-## 3. Scope
+## 4. Prefab authority split
+
+Two asset roles must remain distinct.
+
+### 4.1 Scene-Provided Local Player prefab
+
+Canonical product-facing name:
+
+```text
+Scene-Provided Local Player
+```
+
+Its reusable technical shape is:
+
+```text
+Scene-Provided Local Player
+├─ PlayerInput
+├─ LocalPlayerHostAuthoring
+├─ SceneLocalPlayerAdmissionAuthoring
+├─ UnityPlayerInputGateAdapter
+└─ ActorMount
+```
+
+For a package-provided neutral prefab/template, consumer-specific choices remain
+unassigned. In particular, the package must not invent:
+
+```text
+Player Slot Profile
+Actor Profile
+InputActionAsset
+Gameplay Action Map
+Logical Actor prefab
+```
+
+A consumer project may save a configured instance as its own product prefab, as
+FIRSTGAME now does.
+
+### 4.2 Logical Player prefab
+
+The Logical Player prefab remains owned by `ActorProfile.LogicalActorHostPrefab`.
+
+FIRSTGAME currently uses the clear product name:
+
+```text
+Scene-Provided Logical Player
+```
+
+for its Sample 00 Logical Actor prefab. That name is valid consumer/example vocabulary,
+but it does not create a second Local Player Host authority and it is not implicitly the
+package's generic gameplay prefab.
+
+The Logical Player may contain consumer gameplay components such as:
+
+```text
+PlayerActorDeclaration
+PlayerGameplayInputConsumerBinding
+CharacterController
+locomotion / interaction code
+CameraMount or other gameplay-owned mounts
+representation objects
+```
+
+`PlayerInput` remains on the Local Player Host, not on the Logical Player prefab.
+
+## 5. Scope
 
 The canonical statement is intentionally specific:
 
@@ -89,74 +246,41 @@ Scene-Provided Local Player
 + Activity requiring GameplayReady
 ```
 
-requires the complete composition above.
+requires the complete technical Local Player composition above plus an exact Logical
+Player relationship when that Activity participates with a Player Actor.
 
 This does **not** mean every possible Player provisioning model must use the same
-components. Manager-Provisioned and future accepted provisioning models may have
-other product compositions while preserving the same underlying authority boundaries.
+components. Manager-Provisioned and future accepted provisioning models may have other
+product compositions while preserving the same underlying authority boundaries.
 
-## 4. Official authoring path
+## 6. Official authoring path
 
-The package will provide two complementary product surfaces.
+The package provides the explicit Create action as the primary deterministic creation
+surface.
 
-### 4.1 Explicit Create action
+The Create action owns only technical composition. It does not start runtime gameplay
+or invent consumer gameplay intent.
 
-Canonical product path:
-
-```text
-GameObject
-  > Immersive Framework
-    > Player
-      > Create Scene-Provided Local Player
-```
-
-The Create action owns only deterministic technical composition. It must create and
-wire the required product structure without starting runtime gameplay or inventing
-consumer gameplay intent.
-
-It may deterministically create/wire:
+Implemented behavior includes:
 
 ```text
-SceneLocalPlayerAdmissionAuthoring
-LocalPlayerHostAuthoring
-PlayerInput
-UnityPlayerInputGateAdapter
-ActorMount
-same-object PlayerInput references
+required component set
+same-root PlayerInput references
 Host -> ActorMount reference
+single Undo group
+rollback on failed composition
+unique sibling name
+Play Mode guard
 ```
 
-Consumer-authored decisions remain explicit, including where applicable:
+The consumer then configures the explicit project inputs and may save the configured
+result as a project prefab.
 
-```text
-Player Slot Profile
-Actor Profile / Scene Actor
-InputActionAsset
-Gameplay Action Map
-```
+A package-provided inspectable neutral prefab/template remains a separate pending
+product artifact. When added, it must describe the same technical shape as the Create
+action and must not contain hidden project-specific defaults.
 
-The operation must be Undo-aware and safe under the existing ADR-010 Editor-write
-rules.
-
-### 4.2 Canonical prefab/template
-
-The package will also expose an inspectable canonical product composition representing
-the same Scene-Provided Local Player shape.
-
-Working product name:
-
-```text
-LocalPlayer_SceneProvided_UnityInput
-```
-
-The template/prefab exists to make the official product graph visible and reusable. It
-must not become a second runtime authority and must not hide the concrete components it
-contains.
-
-The Create action and canonical template must describe the same composition; they must
-not drift into separate Local Player definitions.
-
-## 5. No permanent Composer is introduced by this cut
+## 7. No permanent Composer is introduced by this cut
 
 The current problem is initial deterministic composition, not an ongoing derived
 materialization lifecycle.
@@ -165,15 +289,17 @@ Therefore this cut does not introduce:
 
 ```text
 LocalPlayerComposer
-Apply / Rebuild
 LocalPlayerCompositionRuntime
 new Local Player manager/service
 ```
 
-A future Composer/Apply model requires separate evidence that continued materialization
-is actually necessary.
+The existing `SceneLocalPlayerAdmissionAuthoringUtility.ApplyOrRebuild` continues to
+operate within its existing Actor materialization/evidence responsibility. It is not a
+new owner of the complete Local Player product graph.
 
-## 6. No validator proliferation
+A broader Local Player Composer requires separate evidence and a separate decision.
+
+## 8. No validator proliferation
 
 The correction should prevent the incomplete product from being the normal creation
 path rather than compensate with a parallel validation subsystem.
@@ -193,42 +319,33 @@ solely to repair an avoidable creation UX problem.
 Runtime remains fail-closed when an explicitly hand-authored or modified composition is
 invalid.
 
-## 7. Product naming family
+## 9. Product naming family
 
-The Editor/product language will use **Local Player** as the common family term so the
-consumer can see that separate authorities participate in one product composition.
-
-Canonical product term:
+Canonical product terms are now:
 
 ```text
 Scene-Provided Local Player
+  technical Local Player Host product composition
+
+Scene-Provided Logical Player
+  clear FIRSTGAME name for its ActorProfile-owned Logical Player prefab
 ```
 
-Recommended Editor grouping:
+The terms must not be treated as synonyms.
 
-```text
-Immersive Framework
-  > Player
-    > Local Player
-      > Scene-Provided Admission
-      > Host
-      > Unity Input Gate
-```
+`SceneLocalPlayerAdmissionAuthoring` is one authority inside the Local Player product;
+it is not itself the complete Player composer.
 
-The current `SceneLocalPlayerAdmissionAuthoring` Add Component label
-`Scene-Provided Player Composer` is misleading because that component does not compose
-the complete gameplay-capable Local Player. The product-facing label must describe its
-actual authority as admission authoring, not imply ownership of the whole composition.
+`LocalPlayerHostAuthoring` remains the technical Host authority.
 
-The current `LocalPlayerHostAuthoring` product label should be normalized into the same
-`Player > Local Player` family.
-
-`UnityPlayerInputGateAdapter` remains a technical Unity Input adapter and may continue
-to serve its existing reusable contract; the official Local Player Create action must
-include/wire it so normal Local Player authoring does not depend on discovering that
+`UnityPlayerInputGateAdapter` remains the reusable Unity Input Gate adapter; the official
+Local Player Create action includes/wires it so consumers do not have to discover that
 technical prerequisite manually.
 
-## 8. Stable type-name boundary
+Product/Editor labels may continue to be normalized into a coherent Local Player family
+without changing Stable public C# type names.
+
+## 10. Stable type-name boundary
 
 This decision distinguishes **product/Editor naming** from **public C# type naming**.
 
@@ -236,59 +353,48 @@ Current public classes marked `Stable` are not renamed silently by this product 
 IF-GOV-001 requires breaking changes to Stable consumer surfaces to have an explicit
 architecture/migration decision.
 
-Therefore the immediate implementation may normalize:
+Therefore this product correction may normalize:
 
 ```text
 Create menu labels
 AddComponentMenu paths/labels
-product/template names
+product/prefab names
 documentation vocabulary
 ```
 
 while retaining existing Stable class names.
 
-If stronger source-level homogenization is later desired, for example renaming
-`UnityPlayerInputGateAdapter` or other Stable Player authoring types, that work must be
-handled as an explicit API migration with compatibility consequences reviewed first.
+If stronger source-level homogenization is later desired, that work must be handled as
+an explicit API migration with compatibility consequences reviewed first.
 
-## 9. Existing partial composition evidence
+## 11. PLAYER-PRODUCT-1 disposition
 
-The package already expresses most of this product graph structurally:
-
-```text
-SceneLocalPlayerAdmissionAuthoring
-  RequireComponent(LocalPlayerHostAuthoring)
-
-LocalPlayerHostAuthoring
-  RequireComponent(PlayerInput)
-```
-
-The missing product-composition link discovered by FIRSTGAME is the gameplay Gate
-adapter plus an official creation path that presents the complete product rather than
-expecting consumers to infer it from runtime internals.
-
-The existing development-only command
-`Create Scene Local Player Test Surface` is therefore not the final product path. Its
-current behavior creates only the admission surface and relies on component dependency
-materialization plus manual product knowledge. It should be replaced or superseded by
-the official Scene-Provided Local Player Create action.
-
-## 10. Implementation cut
-
-The smallest accepted implementation cut is:
+Current state:
 
 ```text
 PLAYER-PRODUCT-1
-  establish product-facing Local Player naming family
-  replace/supersede development-only Scene Local Player creator
-  create complete Scene-Provided Local Player Unity Input composition
+
+DONE
+  replace development-only creator
+  expose Create Scene-Provided Local Player
+  create complete technical Unity Input composition
   include and wire UnityPlayerInputGateAdapter
   create ActorMount
-  provide canonical inspectable prefab/template
-  keep consumer gameplay intent explicit
-  preserve existing runtime authorities
-  do not introduce Composer/Apply/Rebuild
-  do not rename Stable C# types without separate migration decision
+  keep Slot / Actor / Input intent explicit
+  preserve runtime authorities
+  preserve Stable public C# type names
+
+FIRSTGAME PROVEN
+  Scene-Provided Local Player project prefab
+  separate Scene-Provided Logical Player Actor prefab
+  scene prefab composition through ActorMount
+  exact sceneLogicalPlayerActor binding
+  gameplay-capable consumer configuration
+
+PENDING PACKAGE PRODUCT ARTIFACT
+  optional neutral inspectable Scene-Provided Local Player prefab/template
+  must match Create action technical shape
+  must contain no project-specific Slot / Actor / Input defaults
 ```
 
 Technical Editor QA is justified only for deterministic creation invariants such as:
@@ -297,29 +403,32 @@ Technical Editor QA is justified only for deterministic creation invariants such
 required component set
 same-object Host / PlayerInput / Gate wiring
 ActorMount wiring
-Undo safety
-idempotent/safe creation behavior where applicable
+Undo / rollback safety
 no runtime side effects
+no hidden consumer intent
 ```
 
 FIRSTGAME remains the consumer proof for whether the resulting product path is actually
 understandable.
 
-## 11. Documentation follow-up
+## 12. Consumer guidance
 
-After `PLAYER-PRODUCT-1` is implemented, the package README/Guide should teach the
-official path concisely:
+The concise normal flow is:
 
 ```text
-Create Scene-Provided Local Player
-configure explicit Slot / Actor / Input intent
-use GameplayReady when the Activity consumes gameplay input
+1. GameObject > Immersive Framework > Player > Create Scene-Provided Local Player
+2. assign the project InputActionAsset to PlayerInput
+3. assign the exact Gameplay Action Map to UnityPlayerInputGateAdapter
+4. assign Player Slot Profile
+5. assign Actor Profile
+6. keep ActorProfile.LogicalActorHostPrefab as the Logical Player prefab authority
+7. Apply / Rebuild or otherwise establish the exact scene Logical Player instance
+8. use GameplayReady when the Activity consumes current gameplay input/camera authority
 ```
 
-The README/Guide is the discoverability layer. This reconciliation record remains the
-reasoning and boundary record for why the composed product exists.
+The Local Player Host prefab and Logical Player prefab remain different asset roles.
 
-## 12. Normative summary
+## 13. Normative summary
 
 ```text
 Local Player is a product composition, not a new runtime authority.
@@ -329,13 +438,19 @@ Scene-Provided Local Player + Unity Input + GameplayReady requires:
   LocalPlayerHostAuthoring
   PlayerInput
   UnityPlayerInputGateAdapter
-  ActorMount / Logical Actor relationship
+  ActorMount / exact Logical Player relationship
 
-Normal consumers should create that product through one official Create action or the
-canonical template, not discover the graph by assembling framework internals manually.
+The canonical Create action is implemented.
 
-Editor naming should present one coherent Local Player family while each component
-retains its separate authority.
+The Local Player prefab and the ActorProfile Logical Player prefab are separate
+asset authorities.
+
+FIRSTGAME proves the split with:
+  Scene-Provided Local Player.prefab
+  Scene-Provided Logical Player.prefab
+
+A package-neutral Local Player prefab/template, if provided, must match the Create
+action's technical composition and must not invent Slot / Actor / Input intent.
 
 Stable public C# types are not silently renamed; any source-level rename is a separate
 migration decision.
