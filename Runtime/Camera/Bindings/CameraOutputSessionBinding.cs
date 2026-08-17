@@ -1,4 +1,5 @@
 using System;
+using Immersive.Framework.CameraAuthoring;
 using Immersive.Framework.Common;
 using Immersive.Framework.Diagnostics;
 using Immersive.Framework.ApiStatus;
@@ -19,6 +20,7 @@ namespace Immersive.Framework.Camera
         [SerializeField] private string outputId;
         [SerializeField] private UnityEngine.Camera unityCamera;
         [SerializeField] private CinemachineBrain cinemachineBrain;
+        [SerializeField] private CameraRigComposer defaultCameraRig;
         [SerializeField] private bool initializeOnAwake = true;
         [SerializeField] private bool logDiagnostics = true;
 
@@ -34,6 +36,7 @@ namespace Immersive.Framework.Camera
         public string OutputIdText => outputId.NormalizeText();
         public UnityEngine.Camera UnityCamera => unityCamera;
         public CinemachineBrain CinemachineBrain => cinemachineBrain;
+        public CameraRigComposer DefaultCameraRig => defaultCameraRig;
         public bool IsInitialized => session != null;
         public CameraOutputContext Context => context;
         public CameraOutputRigApplicator Applicator => applicator;
@@ -55,6 +58,18 @@ namespace Immersive.Framework.Camera
             {
                 TryInitialize(out _);
             }
+        }
+
+        private void OnDestroy()
+        {
+            if (session != null)
+            {
+                session.Teardown();
+            }
+
+            session = null;
+            applicator = null;
+            context = null;
         }
 
         public bool TryInitialize(out string diagnostic)
@@ -96,17 +111,43 @@ namespace Immersive.Framework.Camera
                 return false;
             }
 
+            if (defaultCameraRig == null)
+            {
+                diagnostic = "Camera Output Session Binding requires an explicit Default Camera Rig.";
+                SetDiagnostic("Blocked", diagnostic, true);
+                return false;
+            }
+
             var resolvedOutputId = new CameraOutputId(normalizedOutputId);
+            var resolvedDefaultRig = CameraRigReference.FromComposer(defaultCameraRig);
 
             try
             {
-                context = new CameraOutputContext(resolvedOutputId);
-                applicator = new CameraOutputRigApplicator(
+                var resolvedContext = new CameraOutputContext(resolvedOutputId);
+                var resolvedApplicator = new CameraOutputRigApplicator(
                     new CameraOutputBinding(
                         resolvedOutputId,
                         unityCamera,
                         cinemachineBrain));
-                session = new CameraOutputSession(context, applicator);
+                var resolvedSession = new CameraOutputSession(
+                    resolvedContext,
+                    resolvedApplicator,
+                    resolvedDefaultRig);
+
+                CameraOutputSessionResult synchronizeResult =
+                    resolvedSession.Synchronize();
+                if (!synchronizeResult.Succeeded)
+                {
+                    resolvedSession.Teardown();
+                    diagnostic =
+                        $"Camera Output Session Binding could not apply the explicit Default Camera Rig. {synchronizeResult.DiagnosticSummary}";
+                    SetDiagnostic("Blocked", diagnostic, true);
+                    return false;
+                }
+
+                context = resolvedContext;
+                applicator = resolvedApplicator;
+                session = resolvedSession;
             }
             catch (Exception exception)
             {
@@ -120,7 +161,7 @@ namespace Immersive.Framework.Camera
             }
 
             diagnostic =
-                $"Camera output session initialized. output='{resolvedOutputId}' camera='{unityCamera.name}' brain='{cinemachineBrain.name}'.";
+                $"Camera output session initialized. output='{resolvedOutputId}' camera='{unityCamera.name}' brain='{cinemachineBrain.name}' defaultRig='{defaultCameraRig.name}'.";
             SetDiagnostic("Initialized", diagnostic, false);
             return true;
         }
