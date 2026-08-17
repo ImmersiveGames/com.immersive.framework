@@ -2166,7 +2166,7 @@ namespace Immersive.Framework.ApplicationLifecycle
                 LogFields.Field("activityContentParticipantEnter", activityFlow.ActivityContentExecutionResult.EnterResult.Status),
                 LogFields.Field("activityContentParticipantEnterRequests", activityFlow.ActivityContentExecutionResult.EnterRequestCount),
                 LogFields.Field("activityContentParticipantExit", activityFlow.ActivityContentExecutionResult.ExitResult.Status),
-                LogFields.Field("activityContentParticipantExitRequests", activityFlow.ActivityContentExecutionResult.ExitResult.Status),
+                LogFields.Field("activityContentParticipantExitRequests", activityFlow.ActivityContentExecutionResult.ExitRequestCount),
                 LogFields.Field("activityContentParticipantBlockingIssues", activityFlow.ActivityContentExecutionResult.BlockingIssueCount),
                 LogFields.Field("activityContentParticipantBlocksReadiness", activityFlow.ActivityContentExecutionResult.BlocksReadiness),
                 LogFields.Field("routeContentEnterReceivers", routeLifecycle.RouteContentEnterResult.ReceiverCount),
