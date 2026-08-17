@@ -1,6 +1,6 @@
 # Immersive Framework Architecture Documentation
 
-Last updated: **2026-08-15**
+Last updated: **2026-08-17**
 
 ## Normative architecture
 
@@ -93,6 +93,31 @@ ADR-004C              10/10
 ```
 
 FIRSTGAME C6 remains consumer proof, not technical package certification.
+
+## Current product-authoring decisions
+
+### Scene-Provided Local Player
+
+FIRSTGAME Sample 00 established a concrete Player product-composition gap: a
+Scene-Provided Local Player could appear correctly authored while still omit the Unity
+Input Gate endpoint required to reach `GameplayReady`.
+
+Current product decision:
+
+[Scene-Provided Local Player Product Composition — 2026-08-17](Reconciliation/IMMERSIVE-FRAMEWORK-SCENE-PROVIDED-LOCAL-PLAYER-PRODUCT-COMPOSITION-2026-08-17.md)
+
+The implementation cut is intentionally product/editor-owned:
+
+```text
+Scene-Provided Local Player
+  -> official explicit Create action
+  -> canonical inspectable prefab/template
+  -> coherent Local Player Editor naming family
+  -> existing runtime authorities remain separate
+```
+
+Stable public C# type renames are not implicit in that product cut; IF-GOV-001 requires
+an explicit migration decision for breaking changes to Stable consumer surfaces.
 
 ## Current affected ADR disposition
 
