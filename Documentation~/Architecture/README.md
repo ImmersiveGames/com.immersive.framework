@@ -92,7 +92,59 @@ ADR-004B              18/18
 ADR-004C              10/10
 ```
 
-FIRSTGAME C6 remains consumer proof, not technical package certification.
+The `53/53` run predates the later Default-output authority correction below and
+must not be read as certification of that later cut.
+
+### Camera Default output presentation
+
+Current reconciliation authority:
+
+[IF-ADR-004D — Camera Default Output Presentation Authority — 2026-08-17](Reconciliation/IF-ADR-004D-Camera-Default-Output-Presentation-Authority-2026-08-17.md)
+
+Frozen model:
+
+```text
+CameraOutputSessionBinding
+  owns one explicit persistent Default Camera Rig
+
+CameraOutputContext
+  normal admitted Camera requests only
+  deterministic winner arbitration only
+
+CameraOutputSession
+  no normal winner -> Default
+  normal winner -> winner
+  force-default owner active -> Default
+
+SessionCameraOverrideBinding
+  optional real Session Camera request
+  never the Default Camera
+```
+
+Transition presentation now forces/releases Default directly through the output
+session rather than publishing a fake Session request or depending on one existing.
+The force-default surface is owner-based and idempotent. The 2026-08-17 cut wires
+Transition only; it does not introduce Pause-to-Camera authority.
+
+Sample 00 real-consumer evidence after explicit Default authoring:
+
+```text
+CameraOutputSessionBinding
+  Initialized
+  defaultRig = Session Camera Rig
+
+Activity
+  Ready
+  blockingIssues = 0
+
+MinimalFirstPersonLocomotion
+  READY
+  gameplayReady = true
+  Move / Look consumed
+```
+
+This is Stage B consumer evidence. A new aggregate Camera QA run covering 004D has
+not been recorded.
 
 ## Current product-authoring decisions
 
@@ -164,9 +216,10 @@ an explicit migration decision for breaking changes to Stable consumer surfaces.
 
 ### Camera
 
-- IF-ADR-004 — Accepted / reconciled / Camera QA recertified.
-- IF-ADR-010 — Accepted / reconciled for the implemented Camera Class C surface.
-- IF-ADR-022 — tracked according to the current Tracker; do not infer implementation authority from a proposed record alone.
+- IF-ADR-004 — Accepted / reconciled / implemented; 004D is the current Default-output presentation correction.
+- IF-ADR-004D — Implemented on `master`; Sample 00 consumer proof PASS; focused post-cut Camera QA not yet recorded.
+- IF-ADR-010 — Accepted / reconciled for the implemented Camera Class C surface, including explicit required Default authoring in the output Inspector.
+- IF-ADR-022 — Accepted / implemented / technical QA certified for local presentation models; broader FIRSTGAME C6 promotion remains separate.
 
 ## Historical certification records
 
