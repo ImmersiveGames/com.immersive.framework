@@ -25,19 +25,22 @@ corresponding package, QA and integration evidence exists.
 
 ## Current canonical baseline
 
-Repository HEAD reviewed for this tracker update:
+Current package implementation merge reviewed for the 2026-08-17 Camera Default-output
+tracker update:
 
 ```text
 ImmersiveGames/com.immersive.framework
-7bfe77f8371338f1abbc4a1c2d9dd3fa42ce7e04
-New ADrs
+master
+8591385d14b646b612b32defc7180e71f21a2beb
+Merge branch 'camera/default-output-authority-cut'
 ```
 
-That HEAD adds proposed architecture records and proposed reconciliation deltas. It does
-not supersede the currently approved executable Stage A package baseline below.
+That merge extends the accepted single-output Camera implementation with explicit
+output-owned Default presentation. It does not retroactively change what earlier Stage A
+or Camera QA baselines tested.
 
-The current package baseline approved for FIRSTGAME Stage B work on accepted boundaries
-remains:
+The historical package baseline approved for the original FIRSTGAME Stage B work on
+accepted boundaries remains:
 
 ```text
 ImmersiveGames/com.immersive.framework
@@ -45,7 +48,7 @@ ImmersiveGames/com.immersive.framework
 fix(authoring): enforce validation governance semantics
 ```
 
-Companion QA baseline:
+Companion QA baseline recorded for that historical closure:
 
 ```text
 rinnocenti/QAFramework
@@ -56,6 +59,10 @@ qa: prove validation governance policy
 Canonical closure record:
 
 [Stage A Canonical Package Baseline Closure](../Reconciliation/IMMERSIVE-FRAMEWORK-STAGE-A-CANONICAL-BASELINE-CLOSURE-2026-08-11.md)
+
+Current Camera Default-output reconciliation:
+
+[IF-ADR-004D — Camera Default Output Presentation Authority](../Reconciliation/IF-ADR-004D-Camera-Default-Output-Presentation-Authority-2026-08-17.md)
 
 ## Reconciliation sequence
 
@@ -82,13 +89,13 @@ retroactively invalidating the already certified baseline.
 | [001](../ADRs/IF-ADR-001-Core-Lifecycle-and-Runtime-Authority.md) | ACCEPTED / RECONCILED / IMPLEMENTED | CERTIFIED | Core lifecycle proven; current Stage A boundary closed. |
 | [002](../ADRs/IF-ADR-002-Product-Authoring-Model.md) | ACCEPTED / RECONCILED / IMPLEMENTED | No generic cross-cutting QA gate | Stage A closed; product proof remains feature-owned. |
 | [003](../ADRs/IF-ADR-003-Player-Participation-and-Actor-Lifecycle.md) | ACCEPTED baseline / RECONCILED / IMPLEMENTED; R6/R7/R8 reconciliation DRAFT pending | CERTIFIED baseline; draft delta not certified | Existing Player proof remains required. Targeted Slot Join and explicit Actor Selection are proposed extensions, not delivered baseline behavior. |
-| [004](../ADRs/IF-ADR-004-Camera-Requests-and-Output-Authority.md) | ACCEPTED / RECONCILED / IMPLEMENTED for single-output boundary | CERTIFIED | Complete real-consumer Camera proof; multi-output remains future scope. |
+| [004](../ADRs/IF-ADR-004-Camera-Requests-and-Output-Authority.md) | ACCEPTED / RECONCILED / IMPLEMENTED for single-output boundary; IF-ADR-004D Default-output cut merged | Full Camera 53/53 CERTIFIED for 2026-08-15 boundary; post-004D aggregate rerun not recorded | Sample 00 explicit Default-output + gameplay readiness proof PASS; broader Camera consumer proof remains separate. |
 | [005](../ADRs/IF-ADR-005-Input-Pause-Gate-and-Reset.md) | ACCEPTED / RECONCILED / IMPLEMENTED | CERTIFIED: Input Gate 9/9; Restart 8/8; Pause 27/27 | Stage A closed; Stage B may test authoring/usability. |
 | [006](../ADRs/IF-ADR-006-Loading-Transition-Persistence-and-Diagnostics.md) | ACCEPTED / RECONCILED / IMPLEMENTED | CERTIFIED: focused matrix 8/8; Progress 32/32; Terminal 34/34 | Prove real Loading/Transition authoring and diagnostics. |
 | [007](../ADRs/IF-ADR-007-Activity-Entry-Readiness-and-Reveal-Gating.md) | ACCEPTED / RECONCILED / IMPLEMENTED | CERTIFIED: Foundation 18/18; Direct Policies 42/42 | Prove real readiness authoring, cover/wait/reveal behavior and diagnostics. |
 | [008](../ADRs/IF-ADR-008-Persistent-Application-Content-Composition.md) | ACCEPTED / RECONCILED / IMPLEMENTED | No default technical gate | Current boundary closed; reopen only on concrete contract failure/change. |
 | [009](../ADRs/IF-ADR-009-Activity-Local-Visibility-Rules.md) | ACCEPTED / RECONCILED / IMPLEMENTED | CERTIFIED | Current boundary closed. |
-| [010](../ADRs/IF-ADR-010-Editor-and-Inspector-Product-Surface-Authority.md) | ACCEPTED / IMPLEMENTED | No generic synthetic UX QA gate | Feature-owned adoption evidence continues in real product flows. |
+| [010](../ADRs/IF-ADR-010-Editor-and-Inspector-Product-Surface-Authority.md) | ACCEPTED / IMPLEMENTED | No generic synthetic UX QA gate | Camera output Inspector now exposes required Default Camera Rig and validates missing Default explicitly. |
 | [011](../ADRs/IF-ADR-011-Participant-Aware-Activity-Readiness-Loading-Progress.md) | ACCEPTED / RECONCILED / IMPLEMENTED | CERTIFIED: Progress 32/32; Terminal 34/34; Route 25/25; App 20/20 | Prove real participant-aware Loading progress/usability where used. |
 | [012](../ADRs/IF-ADR-012-Activity-Player-Participation-Profile-and-Readiness-Compatibility.md) | ACCEPTED / RECONCILED / IMPLEMENTED | CERTIFIED | FIRSTGAME participation proof required. |
 | [013](../ADRs/IF-ADR-013-Optional-Audio-BGM-Adapter.md) | ACCEPTED / Experimental / IMPLEMENTED | CERTIFIED: Audio 26/26; ADR-013A 11/11 | FIRSTGAME real-consumer proof is the promotion gate. |
@@ -100,12 +107,18 @@ retroactively invalidating the already certified baseline.
 | [019](../ADRs/IF-ADR-019-Session-Player-Lifetime-and-Activity-Representation-Authority.md) | PROPOSED / NOT IMPLEMENTED as complete decision | NOT STARTED for proposed boundary | Defines Session-scoped Logical Player lifetime, Activity-scoped representation and provisioning-specific physical lifetimes. Must be accepted before implementation/certification is reported. |
 | [020](../ADRs/IF-ADR-020-Session-Player-Leave-and-Resource-Release-Authority.md) | PROPOSED / NOT IMPLEMENTED | NOT STARTED | Defines explicit occurrence-aware Session Player Leave and staged resource release. Depends on the lifetime boundary introduced by proposed ADR-019. |
 | [021](../ADRs/IF-ADR-021-Activity-Player-Actor-Initial-Placement-Authority.md) | PROPOSED / NOT IMPLEMENTED | NOT STARTED | Defines Activity-scoped Initial Placement, explicit Slot-to-Anchor intent and no-fallback placement before readiness. |
-| [022](../ADRs/IF-ADR-022-Camera-Rig-Presentation-Models-and-Materialization-Authority.md) | PROPOSED / NOT IMPLEMENTED | NOT STARTED | Extends CameraRigComposer presentation authoring/materialization while preserving ADR-004 single-output request/output authority. |
+| [022](../ADRs/IF-ADR-022-Camera-Rig-Presentation-Models-and-Materialization-Authority.md) | ACCEPTED / IMPLEMENTED | CERTIFIED: Presentation 14/14; Full Camera aggregate 53/53 for 2026-08-15 boundary | C1-C5 closed; broader FIRSTGAME C6 promotion remains pending. |
+
+> Camera status above is reconciled to the current Camera ADRs and 004D implementation.
+> Non-Camera proposed/accepted status conflicts elsewhere in the documentation are not
+> re-baselined by this scoped Camera tracker update.
 
 ## Proposed architecture expansion — pre-FIRSTGAME review
 
-Repository HEAD `7bfe77f8371338f1abbc4a1c2d9dd3fa42ce7e04` records the current proposed
-architecture expansion discovered before continuing normal FIRSTGAME proof.
+The pre-FIRSTGAME review originally recorded Player R6/R7/R8 and ADR-019 through
+ADR-022 as proposed expansion. ADR-022 has since been accepted, implemented and
+technically certified; its current status is the table above. The historical proposal
+context below remains useful for the still-pending Player decisions.
 
 ### Player R6 / R7 / R8 reconciliation draft
 
@@ -205,10 +218,10 @@ Apply Activity Placement
 Missing required placement is a preparation/readiness failure. There is no fallback to
 world origin, Host pose, previous Activity pose, prefab pose or another Slot's anchor.
 
-### ADR-022 — Camera presentation models
+### ADR-022 — Camera presentation models — accepted after proposal
 
-ADR-004 Camera request/output authority remains unchanged. The proposed extension keeps
-one canonical `CameraRigComposer` and expands its local Presentation Model family to:
+ADR-004 Camera request/output authority remains the normative parent. ADR-022 keeps one
+canonical `CameraRigComposer` and expands its local Presentation Model family to:
 
 ```text
 Fixed
@@ -217,35 +230,42 @@ Mounted
 Third Person
 ```
 
-Apply/Rebuild remains Editor-owned, explicit, idempotent and ownership-aware. One
-Composer continues to materialize one local `CinemachineCamera`; unknown incompatible
-external Cinemachine components block materialization instead of being destroyed.
+Apply/Rebuild is Editor-owned, explicit, idempotent and ownership-aware. One Composer
+continues to materialize one local `CinemachineCamera`; unknown incompatible external
+Cinemachine components block materialization instead of being destroyed.
 
-Multi-output/split-screen remains outside this proposal.
+ADR-022 C1-C5 are now implemented/certified. Multi-output/split-screen remains outside
+the accepted product.
+
+The later IF-ADR-004D cut changes only output Default presentation authority; it does not
+change ADR-022 local presentation materialization.
 
 ## Stage A summary
 
 For the currently accepted and certified technical boundaries:
 
 ```text
-Package implementation:       APPROVED BASELINE
-Technical reconciliation:     CLOSED for current accepted boundaries
+Package implementation:       APPROVED BASELINE + later accepted scoped cuts
+Technical reconciliation:     CLOSED for recorded accepted boundaries
 Reverse audit:                CLOSED
 Open reverse-audit cuts:      NONE
 Current generic Stage A task: NONE
 ```
 
-The closure above does not claim implementation or certification of:
+The historical closure does not claim implementation or certification of:
 
 ```text
 R6/R7/R8 proposed reconciliation deltas
 ADR-019
 ADR-020
 ADR-021
-ADR-022
 ```
 
-If those proposed decisions are accepted, each becomes a new scoped technical/product
+ADR-022 is no longer part of that not-implemented list; it was accepted and certified on
+2026-08-15. IF-ADR-004D is a later scoped Camera correction merged on 2026-08-17 and
+consumer-proven in Sample 00, with focused post-cut Camera QA still unrecorded.
+
+If proposed Player decisions are accepted, each becomes a new scoped technical/product
 cut with its own package implementation and QA evidence. Their existence does not reopen
 unrelated already-certified Stage A boundaries.
 
@@ -301,7 +321,7 @@ Stage B remains the real-consumer proof lane for the **currently accepted packag
 baseline**. Proposed ADRs and proposed reconciliation deltas must not be treated as
 already available FIRSTGAME capabilities.
 
-Primary areas already identified for Stage B proof on the accepted baseline:
+Primary areas identified for Stage B proof:
 
 1. **Player** — ADR-003, ADR-012, ADR-015 and ADR-016: participation,
    Scene-/Manager-Provisioned flows, current provisioning commands and session profiles.
@@ -310,8 +330,10 @@ Primary areas already identified for Stage B proof on the accepted baseline:
    implemented.
 2. **Loading / Readiness** — ADR-006, ADR-007 and ADR-011: authoring sequence,
    cover/wait/reveal behavior, participant-aware progress and diagnostics.
-3. **Camera** — ADR-004: real single-output consumer integration and usability. Proposed
-   ADR-022 presentation models are not part of the certified baseline yet.
+3. **Camera** — ADR-004/004D explicit Default-output integration is now proven in Sample
+   00. ADR-022 broader C6 still needs real use across Fixed/Follow/Mounted/Third Person and
+   normal runtime override scenarios. Transition force-default remains package behavior
+   without focused consumer proof in the Sample run because no Transition adapter was configured.
 4. **Pause** — ADR-005: consumer authoring/usability rather than re-proving the already
    certified runtime contract.
 5. **Audio** — ADR-013: real optional BGM integration and promotion evidence.
@@ -322,7 +344,7 @@ Primary areas already identified for Stage B proof on the accepted baseline:
 
 ### Sample 00 — gameplay input readiness authoring correction (2026-08-17)
 
-Stage B audit of `Assets/_Sample/GettingStarted/MinimalGame` isolated the current
+Stage B audit of `Assets/_Sample/GettingStarted/MinimalGame` isolated the first
 first-person gameplay-input failure to Activity authoring rather than locomotion or the
 accepted Scene-Provided admission path.
 
@@ -370,20 +392,103 @@ The correction strengthens explicit Activity readiness intent. It does not add a
 Join, change `initialJoiningOpen`, enable Manager Provisioning, add `PlayerInput` to the
 Logical Actor, fabricate readiness or weaken ADR-007 fail-closed behavior.
 
-Validation after applying the Sample asset cut must confirm either:
+### Sample 00 — Camera Default output authority correction (2026-08-17)
+
+After gameplay admission progressed far enough to exercise Camera eligibility, the next
+blocking defect was explicit and package-owned:
 
 ```text
-GameplayReady succeeds
-  -> consumer binds and Sample locomotion can consume runtime Move/Look
-
-or
-GameplayReady fails explicitly
-  -> the next missing gameplay endpoint/composition prerequisite is diagnosed at its
-     actual owner
+CameraOutputSessionBinding
+  Blocked
+  Camera Output Session Binding requires an explicit Default Camera Rig.
 ```
 
-This Stage B finding is evaluated against the accepted executable baseline. Proposed
-ADR-019/ADR-021 semantics are not used as authority for this correction.
+The architecture review identified that the historical persistent Session camera had
+been represented by a normal `SessionCameraOverrideBinding` request instead of an
+output-owned Default presentation.
+
+The accepted correction is IF-ADR-004D:
+
+```text
+CameraOutputSessionBinding
+  explicit persistent Default Camera Rig
+
+CameraOutputContext
+  normal requests only
+
+CameraOutputSession
+  force-default -> Default
+  normal winner -> winner
+  no winner -> Default
+
+SessionCameraOverrideBinding
+  optional real Session override only
+```
+
+Package implementation:
+
+```text
+camera/default-output-authority-cut
+688f34e23096c26d2f8e644a432094c64c117ac4
+
+merged master
+8591385d14b646b612b32defc7180e71f21a2beb
+```
+
+The output Inspector and authoring validator were included in the same product cut so a
+required Default is visible in normal authoring and missing Default blocks explicitly.
+
+Sample 00 was migrated by assigning its existing `Session Camera Rig` as the Default on
+`CameraOutputSessionBinding`.
+
+Terminal consumer evidence:
+
+```text
+CameraOutputSessionBinding
+  status = Initialized
+  output = camera.output.main
+  defaultRig = Session Camera Rig
+
+Activity
+  readiness = Ready
+  blockingIssues = 0
+
+MinimalFirstPersonLocomotion
+  READY
+  hasBinding = true
+  gameplayReady = true
+  bindingRevision = 1
+  LOOK_INPUT received
+  MOVE_INPUT received
+```
+
+Disposition:
+
+```text
+Default-output authority
+  IMPLEMENTED / SAMPLE 00 PROVEN
+
+locomotion/input failure after Camera correction
+  RESOLVED in observed run
+
+Full Camera 53/53
+  historical certification remains valid for 2026-08-15 boundary
+  does not claim IF-ADR-004D coverage
+
+post-004D focused/aggregate Camera QA
+  NOT YET RECORDED
+
+Transition force-default consumer proof
+  NOT ESTABLISHED by this Sample run
+  transitionAdapterCount = 0
+
+Persistent Content package template artifact
+  pre-004D source shape still requires refresh
+```
+
+This finding is recorded in:
+
+[IF-ADR-004D — Camera Default Output Presentation Authority](../Reconciliation/IF-ADR-004D-Camera-Default-Output-Presentation-Authority-2026-08-17.md)
 
 ## Classification of FIRSTGAME findings
 
@@ -433,17 +538,18 @@ baseline:
 - persisted Frame Rate preference integration after the relevant
   Persistence/Preferences architecture is accepted.
 
-Session Player lifetime, Session Player Leave, Activity Initial Placement and expanded
-Camera presentation models are no longer unnamed future bullets; they are explicitly
-tracked as proposed ADR-019 through ADR-022 above.
+Session Player lifetime, Session Player Leave and Activity Initial Placement remain
+explicitly tracked as proposed ADR-019 through ADR-021 in this tracker snapshot.
+Expanded Camera presentation models are no longer future scope: ADR-022 is accepted and
+implemented. Multi-output and additional presentation families remain future.
 
 ## Current architecture / governance records
 
 - [IF-GOV-001 — API Maturity and Validation Governance](../Governance/IF-GOV-001-API-MATURITY-AND-VALIDATION-GOVERNANCE.md)
-- [IF-ADR-019 — Session Player Lifetime and Activity Representation Authority](../ADRs/IF-ADR-019-Session-Player-Lifetime-and-Activity-Representation-Authority.md) — Proposed
-- [IF-ADR-020 — Session Player Leave and Resource Release Authority](../ADRs/IF-ADR-020-Session-Player-Leave-and-Resource-Release-Authority.md) — Proposed
-- [IF-ADR-021 — Activity Player Actor Initial Placement Authority](../ADRs/IF-ADR-021-Activity-Player-Actor-Initial-Placement-Authority.md) — Proposed
-- [IF-ADR-022 — Camera Rig Presentation Models and Materialization Authority](../ADRs/IF-ADR-022-Camera-Rig-Presentation-Models-and-Materialization-Authority.md) — Proposed
+- [IF-ADR-019 — Session Player Lifetime and Activity Representation Authority](../ADRs/IF-ADR-019-Session-Player-Lifetime-and-Activity-Representation-Authority.md) — Proposed in this tracker snapshot
+- [IF-ADR-020 — Session Player Leave and Resource Release Authority](../ADRs/IF-ADR-020-Session-Player-Leave-and-Resource-Release-Authority.md) — Proposed in this tracker snapshot
+- [IF-ADR-021 — Activity Player Actor Initial Placement Authority](../ADRs/IF-ADR-021-Activity-Player-Actor-Initial-Placement-Authority.md) — Proposed in this tracker snapshot
+- [IF-ADR-022 — Camera Rig Presentation Models and Materialization Authority](../ADRs/IF-ADR-022-Camera-Rig-Presentation-Models-and-Materialization-Authority.md) — Accepted / Implemented / Technical QA Certified
 - [RA-03 — Object Entry Ownership Reconciliation](../Reconciliation/IMMERSIVE-FRAMEWORK-RA-03-OBJECT-ENTRY-OWNERSHIP-RECONCILIATION-2026-08-11.md)
 - [RA-04 — Architecture Governance Hygiene](../Reconciliation/IMMERSIVE-FRAMEWORK-RA-04-ARCHITECTURE-GOVERNANCE-HYGIENE-2026-08-11.md)
 - [Stage A Canonical Package Baseline Closure](../Reconciliation/IMMERSIVE-FRAMEWORK-STAGE-A-CANONICAL-BASELINE-CLOSURE-2026-08-11.md)
@@ -454,7 +560,8 @@ tracked as proposed ADR-019 through ADR-022 above.
 - [ADR-002](../Reconciliation/IMMERSIVE-FRAMEWORK-ADR-002-RECONCILIATION-2026-08-10.md)
 - [ADR-002 and ADR-009](../Reconciliation/IMMERSIVE-FRAMEWORK-ADR-002-009-RECONCILIATION-2026-08-10.md)
 - [ADR-003 and ADR-012](../Reconciliation/IMMERSIVE-FRAMEWORK-ADR-003-012-RECONCILIATION-2026-08-10.md)
-- [ADR-004 Camera](../Reconciliation/IF-ADR-004A-Camera-Authority-Normative-Reconciliation-2026-08-10.md)
+- [ADR-004 Camera — 004A](../Reconciliation/IF-ADR-004A-Camera-Authority-Normative-Reconciliation-2026-08-10.md)
+- [ADR-004 Camera — 004D Default Output](../Reconciliation/IF-ADR-004D-Camera-Default-Output-Presentation-Authority-2026-08-17.md)
 - [ADR-005](../Reconciliation/IMMERSIVE-FRAMEWORK-ADR-005-RECONCILIATION-2026-08-10.md)
 - [ADR-006](../Reconciliation/IMMERSIVE-FRAMEWORK-ADR-006-RECONCILIATION-2026-08-10.md)
 - [ADR-007](../Reconciliation/IMMERSIVE-FRAMEWORK-ADR-007-RECONCILIATION-2026-08-11.md)
@@ -465,7 +572,9 @@ tracked as proposed ADR-019 through ADR-022 above.
 - [ADR-018-A Certification](../Reconciliation/IMMERSIVE-FRAMEWORK-ADR-018-A-CERTIFICATION-2026-08-11.md)
 - [ADR-018-C Certification](../Reconciliation/IMMERSIVE-FRAMEWORK-ADR-018-C-CERTIFICATION-2026-08-11.md)
 
-There is no reconciliation/certification record yet for ADR-019 through ADR-022.
+IF-ADR-004D is the current Camera reconciliation record for the explicit persistent
+Default-output correction. Historical Camera certification records are retained without
+claiming they tested the later cut.
 
 ## Documentation maintenance
 
@@ -478,3 +587,4 @@ There is no reconciliation/certification record yet for ADR-019 through ADR-022.
   reconciliation or archive records.
 - FIRSTGAME evidence must be recorded as Stage B product/consumer evidence rather than
   merged back into historical Stage A audit prose.
+- Dated QA records must never be rewritten to imply coverage of later package changes.
