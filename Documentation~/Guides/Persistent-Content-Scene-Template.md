@@ -1,7 +1,7 @@
 # Persistent Content Scene Template
 
-Status: Current
-Last updated: 2026-08-16
+Status: **Current contract / package source template refresh required for IF-ADR-004D**  
+Last updated: **2026-08-17**
 
 ## Purpose
 
@@ -12,6 +12,10 @@ The current package ships a **minimal baseline template**. Additional templates
 covering optional persistent presentation modules such as Pause, Loading and
 Transition are expected future product work; they are not part of the current
 baseline and are not required by the Persistent Content contract.
+
+The 2026-08-17 Camera Default-output authority cut adds one required Camera authoring
+reference to the runtime contract: `CameraOutputSessionBinding` must explicitly reference
+its persistent Default `CameraRigComposer`.
 
 ## Authority
 
@@ -68,9 +72,9 @@ repair a referenced asset automatically
 save another asset silently
 ```
 
-## Current template baseline
+## Current Camera contract for the minimal template
 
-The current official template is intentionally minimal.
+The required persistent Camera shape after IF-ADR-004D is:
 
 ```text
 Persistent Camera
@@ -78,12 +82,12 @@ Persistent Camera
 │   ├── Camera
 │   ├── CinemachineBrain
 │   ├── CameraOutputSessionBinding
-│   └── SessionCameraOverrideBinding
+│   │   └── Default Camera Rig -> Session Camera Rig / CameraRigComposer
+│   └── SessionCameraOverrideBinding [optional real Session request]
 ├── Session Camera Target
 └── Session Camera Rig
     ├── CinemachineCamera
-    ├── CinemachineFollow
-    ├── CinemachineRotationComposer
+    ├── supported local presentation components
     └── CameraRigComposer
 
 EventSystem
@@ -97,13 +101,17 @@ The canonical persistent Camera Output ID is:
 camera.output.main
 ```
 
-The current baseline does **not** include:
+The Default Camera Rig is not a request and is not derived from
+`SessionCameraOverrideBinding`.
+
+The current baseline does **not** require:
 
 ```text
 Global Canvas
 Transition surface
 Loading surface
 Pause surface
+Session Camera Override request
 other game-specific persistent presentation
 ```
 
@@ -111,24 +119,30 @@ Their absence does not make the template incomplete. Those systems remain
 optional composition and explicit NoOp where the corresponding product contract
 allows it.
 
-## Minimum current source-scene contracts
+## Minimum source-scene contracts after IF-ADR-004D
 
-The minimal template requires:
+The minimal template contract requires:
 
 ```text
 exactly one CameraOutputSessionBinding
+exactly one explicit Default Camera Rig on that binding
 exactly one EventSystem
 exactly one InputSystemUIInputModule
 zero or one SessionCameraOverrideBinding
 ```
 
-The Camera Output contains its explicit Output ID and references to the physical
-Unity Camera and Cinemachine Brain.
+The Camera Output contains its explicit Output ID and references to:
+
+```text
+physical Unity Camera
+Cinemachine Brain
+persistent Default Camera Rig
+```
 
 `SessionCameraOverrideBinding` remains optional. Omit it when Persistent Content
-does not need a Session-scoped Camera request. Player, Activity and Route Camera
-publication continue to use the explicit output without requiring an implicit
-Session request.
+does not need a real Session-scoped Camera request. Player, Activity and Route Camera
+publication continue to use the explicit output without requiring an implicit Session
+request.
 
 When authored, `SessionCameraOverrideBinding` intentionally does not reference a
 consumer application asset. Session ownership is explicit through its Scope ID,
@@ -136,10 +150,98 @@ which keeps the template reusable across projects.
 
 The EventSystem and Input System UI module live on the same root GameObject.
 
+## Default Camera semantics
+
+The output selection contract is:
+
+```text
+force-default system presentation active
+  -> Default Camera Rig
+
+otherwise normal Camera request winner exists
+  -> winner rig
+
+otherwise
+  -> Default Camera Rig
+```
+
+Consequences for Persistent Content authoring:
+
+- the Default is required even when no Session override exists;
+- the Default has no precedence or tie-break ID;
+- `SessionCameraOverrideBinding` must never be authored merely to keep a baseline Camera
+  visible;
+- normal no-winner state does not clear the physical output;
+- missing Default must block validation rather than trigger discovery/repair.
+
+## Migration note — scenes created before 2026-08-17
+
+Existing consumer Persistent Content scenes created before IF-ADR-004D must explicitly
+assign their intended persistent Default rig.
+
+Typical migration:
+
+```text
+Camera Output
+  CameraOutputSessionBinding
+    Default Camera Rig -> existing Session Camera Rig / CameraRigComposer
+```
+
+Recommended verification:
+
+1. assign the existing persistent rig through the normal Inspector;
+2. run `Validate Configuration`;
+3. save the scene;
+4. close and reopen the scene;
+5. verify `Default Camera Rig` still points to the intended `CameraRigComposer`;
+6. run Play Mode consumer proof.
+
+A missing reference fails explicitly at runtime:
+
+```text
+Camera Output Session Binding requires an explicit Default Camera Rig.
+```
+
+## Package source-template status at the IF-ADR-004D merge
+
+The IF-ADR-004D runtime/editor implementation was merged to `master` at:
+
+```text
+8591385d14b646b612b32defc7180e71f21a2beb
+Merge branch 'camera/default-output-authority-cut'
+```
+
+At that merge, the package source scene:
+
+```text
+Editor/SceneTemplates/PersistentContent/PersistentContentTemplateSource.unity
+```
+
+still serialized the pre-004D `CameraOutputSessionBinding` shape:
+
+```text
+outputId
+unityCamera
+cinemachineBrain
+```
+
+and did not yet serialize `defaultCameraRig`.
+
+It also still contains the historical `SessionCameraOverrideBinding` that previously
+represented the persistent Session Camera composition.
+
+Therefore the runtime/Inspector contract is current, but the reusable source scene and
+resulting Scene Template artifact require a **separate refresh** before new consumer
+scenes created from that template can be called IF-ADR-004D-conformant.
+
+Do not hide this mismatch by restoring Default semantics to the Session request. The
+correct follow-up is to update the source/template authoring artifact to the accepted
+output contract.
+
 ## Source-scene workflow
 
 1. Maintain the physical package source scene for the desired template.
-2. Validate the contracts owned by that template.
+2. Validate the contracts owned by that template, including explicit Default Camera Rig.
 3. Create or refresh the `SceneTemplateAsset` through explicit Editor tooling.
 4. Consumer projects create their own Persistent Content `.unity` scene from the
    template.
@@ -245,7 +347,7 @@ its explicit validation.
 
 ## Package asset layout
 
-Current baseline:
+Current baseline location:
 
 ```text
 Editor/SceneTemplates/PersistentContent/
@@ -282,8 +384,9 @@ AfterTemplateInstantiation
   log PASS or explicit contract errors
 ```
 
-For the current minimal template it validates the Camera and EventSystem contracts
-owned by that baseline.
+For the minimal template it must validate the Camera and EventSystem contracts owned by
+that baseline, including the explicit Default Camera Rig after the template artifact is
+refreshed for IF-ADR-004D.
 
 Future template variants may validate additional contracts only when those
 contracts are actually authored by the selected variant.
@@ -301,15 +404,30 @@ creates or clones assets
 
 ## Runtime evidence
 
-The current minimal template has been instantiated into a concrete consumer
-Persistent Content scene and exercised in Play Mode.
+A concrete Sample 00 Persistent Content scene has been migrated to the explicit Default
+contract and exercised in Play Mode.
 
-Observed integration evidence includes successful framework boot with the
-persistent composition materialized for application lifetime, including the
-Persistent Camera structure and EventSystem. In the current implementation those
-objects were observed under Unity's `DontDestroyOnLoad` scene.
+Observed evidence:
 
-`DontDestroyOnLoad` is implementation evidence, not the authoring authority of the
+```text
+CameraOutputSessionBinding
+  Initialized
+  defaultRig = Session Camera Rig
+
+Activity
+  Ready
+  blockingIssues = 0
+
+MinimalFirstPersonLocomotion
+  READY
+  gameplayReady = true
+  Move / Look consumed
+```
+
+This proves the consumer-scene authoring contract. It is separate from refreshing the
+package's reusable Scene Template source/artifact.
+
+`DontDestroyOnLoad` remains implementation evidence, not the authoring authority of the
 Scene Template. The architectural contract is application-persistent lifetime and
 scoped runtime authority.
 
@@ -330,13 +448,20 @@ Validate Configuration
 
 Validation reports invalid authored state. It does not silently repair it.
 
+For Camera Output, missing Default Camera Rig is a blocking issue.
+
 ## Product direction summary
 
 ```text
-CURRENT
-  Minimal Persistent Content template
-    Camera / Session Camera structure
+CURRENT RUNTIME / INSPECTOR CONTRACT
+  Minimal Persistent Content
+    one Camera Output
+    explicit Default Camera Rig
     EventSystem
+    optional real Session Camera Override
+
+CURRENT PACKAGE AUTHORING ARTIFACT STATUS
+  pre-004D source/template requires refresh
 
 PLANNED, NOT YET IMPLEMENTED AS TEMPLATE VARIANTS
   Pause composition
@@ -348,5 +473,6 @@ ALWAYS
   concrete .unity scene is the game product
   template is Editor-only authoring convenience
   optional modules remain optional
+  Default is output-owned, not a request
   pipeline verifies and does not materialize/repair
 ```
