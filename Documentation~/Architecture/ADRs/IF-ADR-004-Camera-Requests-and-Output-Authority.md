@@ -1,16 +1,17 @@
 # IF-ADR-004 — Camera Requests and Output Authority
 
-Status: **Accepted / Reconciled / Camera QA Recertified 2026-08-15**  
-Last updated: **2026-08-15**  
+Status: **Accepted / Reconciled / Implemented — Default Output cut consumer-proven 2026-08-17**  
+Last updated: **2026-08-17**  
 Package implementation: **Implemented**  
-Technical QA: **Certified — Full Camera QA 53/53**  
-FIRSTGAME integration: **Partial — real-consumer Camera proof remains separate**  
-Related decisions: IF-ADR-001, IF-ADR-002, IF-ADR-003, IF-ADR-004A, IF-ADR-004B, IF-ADR-004C, IF-ADR-005, IF-ADR-006, IF-ADR-008, IF-ADR-010, IF-ADR-014, IF-ADR-021, IF-ADR-022  
-Current reconciliation: [IF-ADR-004A](../Reconciliation/IF-ADR-004A-Camera-Authority-Normative-Reconciliation-2026-08-10.md), [IF-ADR-004B](../Reconciliation/IF-ADR-004B-Camera-Negative-Integrity-Certification-2026-08-10.md), [IF-ADR-004C](IF-ADR-004C-Camera-Owner-Lifetime-Integrity-2026-08-10.md), and [Camera Presentation Technical Certification — 2026-08-15](../Reconciliation/IMMERSIVE-FRAMEWORK-CAMERA-PRESENTATION-TECHNICAL-CERTIFICATION-2026-08-15.md).
+Technical QA: **Full Camera QA 53/53 remains certified for the 2026-08-15 boundary; post-004D aggregate rerun not recorded**  
+FIRSTGAME integration: **Partial PASS — Default output + gameplay readiness proven in Sample 00; broader ADR-022 C6 remains separate**  
+Related decisions: IF-ADR-001, IF-ADR-002, IF-ADR-003, IF-ADR-004A, IF-ADR-004B, IF-ADR-004C, IF-ADR-004D, IF-ADR-005, IF-ADR-006, IF-ADR-008, IF-ADR-010, IF-ADR-014, IF-ADR-021, IF-ADR-022  
+Current reconciliation: [IF-ADR-004A](../Reconciliation/IF-ADR-004A-Camera-Authority-Normative-Reconciliation-2026-08-10.md), [IF-ADR-004B](../Reconciliation/IF-ADR-004B-Camera-Negative-Integrity-Certification-2026-08-10.md), [IF-ADR-004C](IF-ADR-004C-Camera-Owner-Lifetime-Integrity-2026-08-10.md), [IF-ADR-004D](../Reconciliation/IF-ADR-004D-Camera-Default-Output-Presentation-Authority-2026-08-17.md), and [Camera Presentation Technical Certification — 2026-08-15](../Reconciliation/IMMERSIVE-FRAMEWORK-CAMERA-PRESENTATION-TECHNICAL-CERTIFICATION-2026-08-15.md).
 
 > This ADR remains the normative Camera **request/output authority**.
 > IF-ADR-022 extends local Camera rig presentation/materialization only.
-> Presentation Model never becomes arbitration or physical output authority.
+> IF-ADR-004D separates persistent Default output presentation from normal Camera request arbitration.
+> Presentation Model and Default presentation never become request precedence policy.
 
 ## 1. Context
 
@@ -29,11 +30,17 @@ product authoring
   -> physical Unity/Cinemachine projection
 ```
 
+The output also owns one explicit persistent **Default Camera Rig**. That Default
+is the physical presentation used when no normal request wins and when explicit
+system presentation temporarily forces Default.
+
 The accepted product supports **one persistent Camera output per Session**.
 Multi-output, split-screen and concurrent per-player physical outputs are separate
 future contracts.
 
 ## 2. Decision — authority chain
+
+Normal Camera request authority remains:
 
 ```text
 Camera request source
@@ -46,26 +53,28 @@ ScopedCameraRequestPublisher
 CameraOutputSession
         ↓
 CameraOutputContext
-  admission + deterministic winner
+  admission + deterministic normal winner
         ↓
 CameraOutputRigApplicator
   physical projection
         ↓
 CameraOutputSessionBinding
         ↓
-explicit Unity Camera + CinemachineBrain
+explicit Unity Camera + CinemachineBrain + Default Camera Rig
 ```
 
 Responsibilities:
 
-- `CameraOutputContext` owns admitted requests, deterministic arbitration,
-  logical winner and next-winner restoration for one `CameraOutputId`;
-- `CameraOutputRigApplicator` owns projection of the logical winner to the
-  concrete output;
+- `CameraOutputContext` owns admitted **normal Camera requests**, deterministic
+  arbitration, logical winner and next-winner restoration for one `CameraOutputId`;
+- `CameraOutputRigApplicator` owns physical projection of either the current
+  normal winner or the explicit output Default selected by `CameraOutputSession`;
 - `CameraOutputSession` is the transactional mutation boundary between logical
-  state and physical projection;
-- `CameraOutputSessionBinding` owns the scene-authored physical output and its
-  explicit Unity Camera/CinemachineBrain references;
+  request state and physical projection and also owns output-level Default / force-default
+  presentation state;
+- `CameraOutputSessionBinding` owns the scene-authored physical output, its
+  explicit Unity Camera/CinemachineBrain references and one explicit persistent
+  Default `CameraRigComposer`;
 - request publishers translate one already-owned scope into publish/release;
 - `CameraRigComposer` owns one local rig's presentation intent and materialized
   `CinemachineCamera`, never persistent application output authority.
@@ -81,6 +90,7 @@ For the single-output product boundary:
   composition;
 - it references exactly one explicit Unity `Camera` and one explicit
   `CinemachineBrain` on the same physical output GameObject;
+- it references exactly one explicit persistent Default `CameraRigComposer`;
 - it exposes one explicit `CameraOutputId`;
 - consumers receive that output through explicit typed composition/injection;
 - duplicate persistent outputs are invalid composition and must block.
@@ -94,6 +104,52 @@ CameraOutputSessionBinding
 AudioListener
 global Camera authority
 ```
+
+### 3.1 Default presentation is not a Camera request
+
+The persistent Default belongs to output authority, not request arbitration.
+
+Selection order is:
+
+```text
+force-default presentation owner active
+  -> Default Camera Rig
+
+otherwise CameraOutputContext has a normal winner
+  -> winner rig
+
+otherwise
+  -> Default Camera Rig
+```
+
+Therefore:
+
+- the Default has no `CameraRequestId`;
+- the Default has no precedence;
+- the Default has no tie-break identity;
+- `SessionCameraOverrideBinding` is not the Default and must not be used as a
+  synthetic default request;
+- `CameraOutputContext` remains exclusively the admitted normal-request set;
+- normal absence of a winner does not clear the physical output;
+- `Clear()` is reserved for true teardown.
+
+No magic precedence value such as `0`, `301` or another synthetic ladder slot is
+accepted as a replacement for output-owned Default semantics.
+
+### 3.2 Force-default system presentation
+
+`CameraOutputSession` exposes independent idempotent force-default ownership so
+system presentation can temporarily present Default without mutating normal request
+arbitration.
+
+The 2026-08-17 cut wires `SessionCameraTransitionOrchestrator` directly to
+`CameraOutputSessionBinding` and forces/releases Default around Transition
+presentation. The application composition root does not require a
+`SessionCameraOverrideBinding` for this behavior.
+
+The owner model permits overlapping force-default callers without one caller
+releasing another caller's state. The current cut wires Transition only; this ADR
+does not claim a Pause-to-Camera binding or other unwired system presentation.
 
 ## 4. Camera rig authoring
 
@@ -128,18 +184,19 @@ local CinemachineCamera reference
 diagnostics
 ```
 
-The Composer does **not** decide whether its rig wins.
+The Composer does **not** decide whether its rig wins or whether the output is in
+force-default presentation.
 
 The runtime output path remains presentation-agnostic:
 
 ```text
-winning CameraRequest
-  -> CameraRigComposer
+selected CameraRigComposer
   -> composer.CinemachineCamera
   -> CameraOutputRigApplicator
   -> persistent output
 ```
 
+The selected Composer may be the normal request winner or the output-owned Default.
 No `switch(Presentation)` belongs in output arbitration merely because additional
 presentation models exist.
 
@@ -204,7 +261,7 @@ These presentation semantics are normative in IF-ADR-022.
 
 ## 6. Typed request contract
 
-Every Camera request must carry explicit, valid evidence for:
+Every **normal Camera request** must carry explicit, valid evidence for:
 
 - request identity;
 - output identity;
@@ -219,7 +276,7 @@ Every Camera request must carry explicit, valid evidence for:
 Missing or invalid mandatory evidence blocks explicitly. Runtime does not guess
 identity, ownership, target or output state.
 
-Presentation Model is **not** request priority evidence.
+Presentation Model and output Default are **not** request priority evidence.
 
 ## 7. Deterministic arbitration
 
@@ -237,7 +294,7 @@ equal precedence
 Missing or duplicate equal-precedence tie-break evidence blocks the conflicting
 admission. Duplicate `CameraRequestId` also blocks.
 
-Current product convention:
+Current product convention for **normal requests**:
 
 ```text
 Local Player   50
@@ -249,6 +306,8 @@ Session       300
 The normative contract is explicit precedence + deterministic tie-break evidence,
 not those four values hard-coded into output authority.
 
+The persistent Default is outside this ladder.
+
 ## 8. Transactional logical / physical integrity
 
 Logical mutation is not successful until physical application succeeds.
@@ -257,10 +316,12 @@ Admission:
 
 ```text
 context.Admit(request)
-  -> applicator.Apply(context)
+  -> synchronize selected presentation
+     normal winner when one exists
+     otherwise Default
      success       -> commit
      failure       -> remove admitted request
-                   -> re-apply previous state
+                   -> re-apply previous selected presentation
                    -> RolledBack or RollbackFailed
 ```
 
@@ -268,15 +329,20 @@ Release:
 
 ```text
 context.Release(request)
-  -> apply replacement/cleared state
+  -> synchronize replacement winner or Default
      success       -> commit
      failure       -> re-admit released request
-                   -> re-apply previous state
+                   -> re-apply previous selected presentation
                    -> RolledBack or RollbackFailed
 ```
 
+Force-default acquire/release also synchronizes physical presentation while preserving
+normal admitted request state.
+
 Rollback failure is terminal diagnostic evidence and is never reported as normal
 success.
+
+Normal no-winner state is not a physical clear. `Clear()` belongs to teardown.
 
 IF-ADR-022 materialization does not change this transactional boundary.
 
@@ -293,11 +359,14 @@ Route
 Activity
   -> canonical Activity enter/exit lifecycle
 
-Session
+Session normal override
   -> SessionCameraOverrideBinding component availability
 
 Local Player
   -> explicit Player eligibility/publication boundary
+
+Output Default
+  -> persistent CameraOutputSessionBinding / CameraOutputSession lifetime
 ```
 
 Route/Activity binding owner identity follows the exact authored `RouteAsset` or
@@ -324,11 +393,14 @@ For Route and Activity this does not synthesize a Route/Activity exit and does
 not clear their logical-owner state. Re-enable does not silently re-publish.
 
 `SessionCameraOverrideBinding` is intentionally different: the component itself
-owns Session availability, so disable/destroy ends that owner scope through
+owns Session override availability, so disable/destroy ends that owner scope through
 `EndOwnerScope(...)`.
 
+This Session override lifetime is independent from persistent Default output lifetime.
+Removing or omitting `SessionCameraOverrideBinding` does not remove the Default.
+
 Normal lifecycle exit, abnormal component loss, repeated cleanup and re-enable
-without silent republish remain certified by IF-ADR-004C.
+without silent republish remain certified by IF-ADR-004C for normal requests.
 
 ## 10. Target resolution
 
@@ -363,6 +435,9 @@ global service lookup
 Presentation materializers consume already-resolved targets and do not perform
 their own scene discovery.
 
+The output Default is likewise an explicit authored `CameraRigComposer` reference;
+it is never discovered by name, hierarchy or request precedence.
+
 ## 11. Runtime / Editor boundary
 
 Editor tooling may:
@@ -371,7 +446,8 @@ Editor tooling may:
 - materialize one supported presentation pipeline;
 - reconcile Framework-owned technical components;
 - expose provenance and diagnostics;
-- validate persistent Camera composition.
+- validate persistent Camera composition;
+- expose the required Default Camera Rig as primary output authoring.
 
 Editor tooling never becomes runtime output authority.
 
@@ -426,7 +502,7 @@ hierarchy location
 Supported product-facing surfaces include:
 
 - `CameraRigComposer`;
-- `CameraOutputSessionBinding`;
+- `CameraOutputSessionBinding` with explicit required Default Camera Rig;
 - Session / Route / Activity Camera override bindings;
 - typed Local Player Camera publication;
 - authoring/composition validation;
@@ -436,7 +512,18 @@ Supported product-facing surfaces include:
 The Composer Inspector is model-specific rather than a generic Cinemachine graph
 editor.
 
-Normal authoring exposes product intent. Advanced/Diagnostics may expose:
+The `CameraOutputSessionBinding` Inspector exposes primary output authoring as:
+
+```text
+Unity Camera
+Cinemachine Brain
+Default Camera Rig
+```
+
+The Default is required. Missing Default is a blocking authoring/runtime issue, not a
+reason to synthesize a request or discover a rig.
+
+Normal Composer authoring exposes product intent. Advanced/Diagnostics may expose:
 
 ```text
 Presentation
@@ -454,20 +541,25 @@ Output diagnostics remain separate:
 
 ```text
 Output ID
+Default Camera Rig
+force-default owners / state
 Request ID
 Owner / Lifetime
 Precedence / Tie-Breaker
-admitted request set
-current winner
+admitted normal request set
+current normal winner
+selected physical presentation
 physical apply result
 rollback evidence
 ```
 
-## 14. Technical certification — 2026-08-15
+## 14. Technical certification and post-certification reconciliation
 
-The current Camera technical boundary is certified by one aggregate run.
+### 14.1 Technical certification — 2026-08-15
 
-### ADR-022 presentation materialization
+The 2026-08-15 Camera technical boundary was certified by one aggregate run.
+
+#### ADR-022 presentation materialization
 
 ```text
 [QA][ADR022 Presentation Models]
@@ -496,7 +588,7 @@ unsupported model has no fallback
 
 The existing Follow pipeline also passed its supporting `6/6` smoke.
 
-### C9R — positive authority lifecycle
+#### C9R — positive authority lifecycle
 
 ```text
 [CAMERA_RUNTIME_HOST_INTEGRATION_REGRESSION]
@@ -505,10 +597,11 @@ phase='canonical-override-fixture'
 cases='11'
 ```
 
-C9R proves the canonical authority ladder, restoration behavior, duplicate
-publish/release handling and Activity/Route lifecycle cleanup.
+C9R proves the canonical normal-request authority ladder, restoration behavior,
+duplicate publish/release handling and Activity/Route lifecycle cleanup for the boundary
+that existed when it ran.
 
-### IF-ADR-004B — negative integrity
+#### IF-ADR-004B — negative integrity
 
 ```text
 [QA_CAMERA_ADR004B]
@@ -519,7 +612,7 @@ blocked='0'
 verdict='ADR-004B CAMERA NEGATIVE INTEGRITY CERTIFIED'
 ```
 
-### IF-ADR-004C — owner lifetime integrity
+#### IF-ADR-004C — owner lifetime integrity
 
 ```text
 [QA_CAMERA_ADR004C]
@@ -529,7 +622,7 @@ failed='0'
 verdict='ADR-004C CAMERA OWNER LIFETIME INTEGRITY CERTIFIED'
 ```
 
-### Full Camera
+#### Full Camera
 
 ```text
 [QA_CAMERA_FULL]
@@ -544,11 +637,55 @@ executedCases='53'
 passedCases='53'
 ```
 
-The aggregate `53/53` is the current technical Camera certification authority.
+The aggregate `53/53` remains valid certification evidence for that 2026-08-15
+boundary. It predates IF-ADR-004D and must not be rewritten to imply it tested
+Default-output or force-default semantics.
+
+### 14.2 IF-ADR-004D — Default output presentation, 2026-08-17
+
+Implementation:
+
+```text
+branch head
+  688f34e23096c26d2f8e644a432094c64c117ac4
+
+merged master
+  8591385d14b646b612b32defc7180e71f21a2beb
+```
+
+Real Sample 00 evidence after assigning the existing `Session Camera Rig` as the
+explicit output Default:
+
+```text
+CameraOutputSessionBinding
+  status = Initialized
+  defaultRig = Session Camera Rig
+
+Activity
+  readiness = Ready
+  blockingIssues = 0
+
+MinimalFirstPersonLocomotion
+  READY
+  hasBinding = true
+  gameplayReady = true
+  bindingRevision = 1
+  LOOK_INPUT received
+  MOVE_INPUT received
+```
+
+This is Stage B consumer proof for the explicit Default-output authoring path and its
+interaction with Player gameplay readiness.
+
+The Sample run had no configured Transition adapter, so it does not constitute a
+runtime proof of Transition force-default behavior. A focused post-004D Camera QA run or
+new aggregate rerun has not been recorded.
+
+See [IF-ADR-004D](../Reconciliation/IF-ADR-004D-Camera-Default-Output-Presentation-Authority-2026-08-17.md).
 
 ## 15. Certification history
 
-The Camera authority certification remains evidence-driven:
+The Camera authority evidence remains chronology-aware:
 
 ```text
 004A
@@ -570,15 +707,21 @@ ADR-022
 ADR-022 presentation QA
   14/14
       ↓
-Full Camera QA
+Full Camera QA — 2026-08-15
   C9R 11/11
   ADR-004B 18/18
   ADR-004C 10/10
   aggregate 53/53
+      ↓
+004D — 2026-08-17
+  separate persistent Default from normal Session override request
+  merge to master
+  Sample 00 Default-output consumer proof PASS
+  post-004D aggregate QA not yet recorded
 ```
 
-The historical IF-ADR-004B/C records remain historical evidence and are not
-rewritten to pretend they tested IF-ADR-022.
+Historical IF-ADR-004B/C and Full Camera records remain historical evidence and are not
+rewritten to pretend they tested later contracts.
 
 ## 16. Non-goals / deferred work
 
@@ -586,6 +729,8 @@ This ADR does not authorize:
 
 - global `CameraManager` / service locator / static request registry;
 - timing-based priority;
+- persistent Default represented by a synthetic Camera request;
+- magic precedence for Default/system presentation;
 - multiple simultaneous physical outputs;
 - split-screen;
 - concurrent per-player physical output ownership;
@@ -594,7 +739,8 @@ This ADR does not authorize:
 - automatic creation of persistent output from a local rig;
 - Camera ownership of AudioListener behavior;
 - arbitrary Cinemachine graph authoring as the Framework product contract;
-- Camera ownership of Player lifecycle or Initial Placement.
+- Camera ownership of Player lifecycle or Initial Placement;
+- implicit Pause-to-Camera authority.
 
 Presentation features deliberately deferred by IF-ADR-022 include Orbital /
 Free Look input authority, spline/dolly, group framing product models, 2D framed
@@ -611,13 +757,17 @@ Architecture
 Package — current single-output authority
   IMPLEMENTED
 
+Package — explicit Default output authority / IF-ADR-004D
+  IMPLEMENTED ON MASTER
+
 Package — ADR-022 local presentation expansion
   IMPLEMENTED
 
 Product Surface / Diagnostics
-  IMPLEMENTED / CONFORMANT
+  IMPLEMENTED
+  Default Camera Rig exposed and validated explicitly
 
-Technical QA
+Technical QA — pre-004D boundary
   CAMERA QA CERTIFIED
   ADR-022 Presentation 14/14
   C9R 11/11
@@ -625,13 +775,22 @@ Technical QA
   IF-ADR-004C 10/10
   Full Camera 53/53
 
-FIRSTGAME
-  PENDING broader Camera consumer proof / ADR-022 C6
+Post-004D focused/aggregate Camera QA
+  NOT YET RECORDED
 
-Current technical blocker
-  NONE for the accepted single-output + presentation boundary
+FIRSTGAME / Sample 00
+  Default-output authoring PASS
+  Activity Ready
+  Gameplay input bound
+  Move / Look consumed
+  broader ADR-022 C6 still separate
+
+Current runtime architecture blocker
+  NONE for the accepted 004D Default/request authority split
+
+Current authoring artifact follow-up
+  Persistent Content source/template predates serialized Default field and must be refreshed
 ```
 
-FIRSTGAME consumer proof may promote confidence/maturity of the new presentation
-models, but it does not reopen the technically certified ADR-004 output authority
-or ADR-022 C1-C5 implementation by default.
+FIRSTGAME consumer proof may promote confidence/maturity of Camera product surfaces,
+but it does not retroactively alter what earlier technical certification runs tested.
