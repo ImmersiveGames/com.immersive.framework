@@ -533,7 +533,7 @@ namespace Immersive.Framework.ApplicationLifecycle
                 return failed;
             }
             ApplyPauseSurfaceSnapshot("FrameworkRuntimeHost", "framework-start");
-            var transitionOrchestrator = CreateTransitionOrchestrator(_globalUiSceneRuntime, sessionCameraOverride);
+            var transitionOrchestrator = CreateTransitionOrchestrator(_globalUiSceneRuntime, cameraOutputSession);
             _gameFlowRuntime = new GameFlowRuntime(
                 _runtimeContentRuntime,
                 transitionOrchestrator,
@@ -1666,7 +1666,7 @@ namespace Immersive.Framework.ApplicationLifecycle
 
         private ITransitionOrchestrator CreateTransitionOrchestrator(
             GlobalUiSceneRuntime globalUiSceneRuntime,
-            SessionCameraOverrideBinding sessionCameraOverride)
+            CameraOutputSessionBinding cameraOutputSession)
         {
             if (globalUiSceneRuntime == null)
             {
@@ -1699,11 +1699,9 @@ namespace Immersive.Framework.ApplicationLifecycle
                     sceneAdapters,
                     sceneLabel);
 
-            return sessionCameraOverride != null
-                ? new SessionCameraTransitionOrchestrator(
-                    transitionOrchestrator,
-                    sessionCameraOverride)
-                : transitionOrchestrator;
+            return new SessionCameraTransitionOrchestrator(
+                transitionOrchestrator,
+                cameraOutputSession);
         }
 
 

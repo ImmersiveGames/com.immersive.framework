@@ -55,6 +55,12 @@ namespace Immersive.Framework.Editor.CameraAuthoring
                     "Assign the Cinemachine Brain used by this output.");
             }
 
+            if (binding.DefaultCameraRig == null)
+            {
+                issues.Add(
+                    "Assign the explicit Default Camera Rig used when no camera request wins or system presentation forces Default.");
+            }
+
             if (binding.UnityCamera != null &&
                 binding.CinemachineBrain != null &&
                 binding.UnityCamera.gameObject !=

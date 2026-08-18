@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using Immersive.Framework.Common;
 using Immersive.Framework.ApiStatus;
 
@@ -14,10 +15,14 @@ namespace Immersive.Framework.Camera
     {
         private readonly CameraOutputContext context;
         private readonly CameraOutputRigApplicator applicator;
+        private readonly CameraRigReference defaultRig;
+        private readonly HashSet<string> forceDefaultOwners =
+            new HashSet<string>(StringComparer.Ordinal);
 
         public CameraOutputSession(
             CameraOutputContext context,
-            CameraOutputRigApplicator applicator)
+            CameraOutputRigApplicator applicator,
+            CameraRigReference defaultRig)
         {
             this.context = context ??
                 throw new ArgumentNullException(nameof(context));
@@ -31,6 +36,15 @@ namespace Immersive.Framework.Camera
                     $"Camera output context '{context.OutputId}' does not match applicator binding '{applicator.Binding.OutputId}'.",
                     nameof(applicator));
             }
+
+            if (!defaultRig.IsValid)
+            {
+                throw new ArgumentException(
+                    $"Camera output session '{context.OutputId}' requires an explicit valid Default Camera Rig.",
+                    nameof(defaultRig));
+            }
+
+            this.defaultRig = defaultRig;
         }
 
         public CameraOutputContext Context => context;
@@ -38,6 +52,12 @@ namespace Immersive.Framework.Camera
         public CameraOutputRigApplicator Applicator => applicator;
 
         public CameraOutputId OutputId => context.OutputId;
+
+        public CameraRigReference DefaultRig => defaultRig;
+
+        public bool IsDefaultForced => forceDefaultOwners.Count > 0;
+
+        public int ForceDefaultOwnerCount => forceDefaultOwners.Count;
 
         public CameraOutputSessionResult Admit(CameraRequest request)
         {
@@ -52,21 +72,21 @@ namespace Immersive.Framework.Camera
             }
 
             CameraOutputApplyResult applyResult =
-                applicator.Apply(context);
+                ApplyEffectivePresentation();
 
             if (applyResult.Succeeded)
             {
                 return Succeeded(
                     contextResult,
                     applyResult,
-                    $"Camera output session admitted and applied request '{request.RequestId}'.");
+                    $"Camera output session admitted and synchronized request '{request.RequestId}'.");
             }
 
             CameraOutputContextResult rollbackContext =
                 context.Release(request.RequestId);
 
             CameraOutputApplyResult rollbackApply =
-                applicator.Apply(context);
+                ApplyEffectivePresentation();
 
             return CreateRollbackResult(
                 contextResult,
@@ -90,7 +110,7 @@ namespace Immersive.Framework.Camera
             }
 
             CameraOutputApplyResult applyResult =
-                applicator.Apply(context);
+                ApplyEffectivePresentation();
 
             if (applyResult.Succeeded)
             {
@@ -107,7 +127,7 @@ namespace Immersive.Framework.Camera
                 context.Admit(releasedRequest);
 
             CameraOutputApplyResult rollbackApply =
-                applicator.Apply(context);
+                ApplyEffectivePresentation();
 
             return CreateRollbackResult(
                 contextResult,
@@ -118,10 +138,58 @@ namespace Immersive.Framework.Camera
                 requestId);
         }
 
+        public CameraOutputApplyResult ForceDefault(string owner)
+        {
+            string normalizedOwner = owner.NormalizeText();
+            if (string.IsNullOrWhiteSpace(normalizedOwner))
+            {
+                return BlockedForceDefaultOwner(
+                    "camera.output-session.force-default.owner-missing",
+                    "Camera output force-default requires an explicit owner.");
+            }
+
+            bool added = forceDefaultOwners.Add(normalizedOwner);
+            CameraOutputApplyResult applyResult =
+                ApplyEffectivePresentation();
+
+            if (applyResult.Succeeded || !added)
+            {
+                return applyResult;
+            }
+
+            forceDefaultOwners.Remove(normalizedOwner);
+            ApplyEffectivePresentation();
+            return applyResult;
+        }
+
+        public CameraOutputApplyResult ReleaseForceDefault(string owner)
+        {
+            string normalizedOwner = owner.NormalizeText();
+            if (string.IsNullOrWhiteSpace(normalizedOwner))
+            {
+                return BlockedForceDefaultOwner(
+                    "camera.output-session.force-default.owner-missing",
+                    "Camera output force-default release requires an explicit owner.");
+            }
+
+            bool removed = forceDefaultOwners.Remove(normalizedOwner);
+            CameraOutputApplyResult applyResult =
+                ApplyEffectivePresentation();
+
+            if (applyResult.Succeeded || !removed)
+            {
+                return applyResult;
+            }
+
+            forceDefaultOwners.Add(normalizedOwner);
+            ApplyEffectivePresentation();
+            return applyResult;
+        }
+
         public CameraOutputSessionResult Synchronize()
         {
             CameraOutputApplyResult applyResult =
-                applicator.Apply(context);
+                ApplyEffectivePresentation();
 
             if (applyResult.Succeeded)
             {
@@ -149,6 +217,40 @@ namespace Immersive.Framework.Camera
                 default,
                 applyResult.Issues,
                 $"Camera output session synchronization was blocked. {applyResult.DiagnosticSummary}");
+        }
+
+        public CameraOutputApplyResult Teardown()
+        {
+            forceDefaultOwners.Clear();
+            return applicator.Clear();
+        }
+
+        private CameraOutputApplyResult ApplyEffectivePresentation()
+        {
+            return applicator.Apply(
+                context,
+                defaultRig,
+                forceDefaultOwners.Count > 0);
+        }
+
+        private CameraOutputApplyResult BlockedForceDefaultOwner(
+            string code,
+            string message)
+        {
+            string normalized =
+                message.NormalizeTextOrFallback(
+                    "Camera output force-default mutation was blocked.");
+
+            return new CameraOutputApplyResult(
+                CameraOutputApplyKind.Blocked,
+                default,
+                applicator.AppliedCamera,
+                applicator.AppliedCamera,
+                new[]
+                {
+                    CameraIssue.Blocking(code, normalized)
+                },
+                normalized);
         }
 
         private static CameraOutputSessionResult Succeeded(
