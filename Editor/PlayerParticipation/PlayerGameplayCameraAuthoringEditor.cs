@@ -1,17 +1,16 @@
 using Immersive.Framework.Actors;
 using Immersive.Framework.Camera;
 using Immersive.Framework.CameraAuthoring;
+using Immersive.Framework.Editor.Common;
 using Immersive.Framework.PlayerParticipation;
 using UnityEditor;
 using UnityEngine;
 
 namespace Immersive.Framework.Editor.PlayerParticipation
 {
-    [CustomEditor(
-        typeof(PlayerGameplayCameraAuthoring))]
-    internal sealed class
-        PlayerGameplayCameraAuthoringEditor :
-            UnityEditor.Editor
+    [CustomEditor(typeof(PlayerGameplayCameraAuthoring))]
+    internal sealed class PlayerGameplayCameraAuthoringEditor :
+        UnityEditor.Editor
     {
         private SerializedProperty requiredness;
         private SerializedProperty cameraRig;
@@ -35,69 +34,50 @@ namespace Immersive.Framework.Editor.PlayerParticipation
 
         public override void OnInspectorGUI()
         {
-            serializedObject.Update();
+            serializedObject.UpdateIfRequiredOrScript();
 
             EditorGUILayout.LabelField(
-                "Player Gameplay Camera",
+                new GUIContent(
+                    "Player Gameplay Camera",
+                    "Declares gameplay Camera participation for this Logical Player Actor and selects its Actor-owned Camera Rig. Targets and framing remain authored on Camera Rig Composer."),
                 EditorStyles.boldLabel);
 
-            EditorGUILayout.HelpBox(
-                "Add this component inside a Logical Player Actor hierarchy. It declares Camera participation and references one Actor-owned Camera Rig Composer. Targets are configured only on the Composer.",
-                MessageType.Info);
+            DrawConfiguration();
 
-            EditorGUILayout.Space(6f);
-            EditorGUILayout.LabelField(
-                "Participation",
-                EditorStyles.boldLabel);
+            serializedObject.ApplyModifiedProperties();
+
+            DrawConfigurationStatus();
+            DrawAdvancedDebug();
+        }
+
+        private void DrawConfiguration()
+        {
+            FrameworkAuthoringInspectorGui.Section(
+                "Configuration");
 
             EditorGUILayout.PropertyField(
                 requiredness,
                 new GUIContent(
-                    "Requiredness"));
-
-            EditorGUILayout.Space(6f);
-            EditorGUILayout.LabelField(
-                "Camera",
-                EditorStyles.boldLabel);
+                    "Requiredness",
+                    "Declares whether gameplay Camera participation is optional or required for this Player Actor."));
 
             EditorGUILayout.PropertyField(
                 cameraRig,
                 new GUIContent(
-                    "Camera Rig"));
-
-            EditorGUILayout.Space(6f);
-            EditorGUILayout.LabelField(
-                "Arbitration",
-                EditorStyles.boldLabel);
+                    "Camera Rig",
+                    "Actor-owned Camera Rig Composer that supplies targets, target requirements and framing for this Player's gameplay Camera request."));
 
             EditorGUILayout.PropertyField(
                 precedence,
                 new GUIContent(
-                    "Precedence"));
-
-            serializedObject
-                .ApplyModifiedProperties();
-
-            DrawStatus();
-
-            EditorGUILayout.Space(6f);
-            showAdvancedDebug =
-                EditorGUILayout.Foldout(
-                    showAdvancedDebug,
-                    "Advanced / Debug",
-                    true);
-
-            if (showAdvancedDebug)
-            {
-                DrawAdvancedDebug();
-            }
+                    "Precedence",
+                    "Arbitration precedence used when this Player gameplay Camera participates in the Camera output selection."));
         }
 
-        private void DrawStatus()
+        private void DrawConfigurationStatus()
         {
-            var authoring =
-                (PlayerGameplayCameraAuthoring)
-                    target;
+            PlayerGameplayCameraAuthoring authoring =
+                (PlayerGameplayCameraAuthoring)target;
 
             bool valid =
                 TryValidateAuthoring(
@@ -105,63 +85,84 @@ namespace Immersive.Framework.Editor.PlayerParticipation
                     out string diagnostic,
                     out _);
 
-            EditorGUILayout.Space(6f);
-            EditorGUILayout.LabelField(
-                "Status",
-                EditorStyles.boldLabel);
+            FrameworkAuthoringInspectorGui.Section(
+                "Configuration Status");
 
             EditorGUILayout.LabelField(
-                "Authoring",
+                "Status",
                 valid
                     ? "Ready"
                     : "Incomplete");
 
-            EditorGUILayout.HelpBox(
-                valid
-                    ? "Player Gameplay Camera authoring is ready."
-                    : diagnostic,
-                valid
-                    ? MessageType.Info
-                    : MessageType.Warning);
+            if (!valid)
+            {
+                EditorGUILayout.HelpBox(
+                    diagnostic,
+                    MessageType.Warning);
+            }
         }
 
         private void DrawAdvancedDebug()
         {
-            var authoring =
-                (PlayerGameplayCameraAuthoring)
-                    target;
+            EditorGUILayout.Space(6f);
+            showAdvancedDebug =
+                EditorGUILayout.Foldout(
+                    showAdvancedDebug,
+                    "Advanced / Debug",
+                    true);
+
+            if (!showAdvancedDebug)
+            {
+                return;
+            }
+
+            PlayerGameplayCameraAuthoring authoring =
+                (PlayerGameplayCameraAuthoring)target;
 
             TryValidateAuthoring(
                 authoring,
                 out string diagnostic,
                 out CameraResolvedTargets targets);
 
-            EditorGUI.indentLevel++;
+            FrameworkAuthoringInspectorGui.Section(
+                "Resolved Camera Targets");
 
-            EditorGUILayout.LabelField(
-                "Resolved Follow Target",
-                targets.FollowTarget != null
-                    ? targets.FollowTarget.name
-                    : "<none>");
+            using (new EditorGUI.DisabledScope(true))
+            {
+                EditorGUILayout.ObjectField(
+                    "Follow Target",
+                    targets.FollowTarget,
+                    typeof(Transform),
+                    true);
 
-            EditorGUILayout.LabelField(
-                "Resolved Look At Target",
-                targets.LookAtTarget != null
-                    ? targets.LookAtTarget.name
-                    : "<none>");
+                EditorGUILayout.ObjectField(
+                    "Look At Target",
+                    targets.LookAtTarget,
+                    typeof(Transform),
+                    true);
+            }
 
-            EditorGUILayout.LabelField(
-                "Rig Status",
-                authoring.CameraRig != null
-                    ? authoring.CameraRig
-                        .LastApplyRebuildStatus
-                    : "<missing>");
+            FrameworkAuthoringInspectorGui.Section(
+                "Composer Evidence");
 
-            EditorGUILayout.HelpBox(
-                diagnostic,
-                MessageType.None);
+            using (new EditorGUI.DisabledScope(true))
+            {
+                EditorGUILayout.TextField(
+                    "Last Apply / Rebuild",
+                    authoring.CameraRig != null
+                        ? authoring.CameraRig.LastApplyRebuildStatus
+                        : "<missing>");
+            }
 
-            EditorGUI.indentLevel--;
+            if (!string.IsNullOrWhiteSpace(diagnostic))
+            {
+                EditorGUILayout.LabelField(
+                    new GUIContent(
+                        "Resolution Diagnostic",
+                        "Latest target-resolution diagnostic derived from the current authored configuration."),
+                    new GUIContent(diagnostic),
+                    EditorStyles.wordWrappedMiniLabel);
+            }
         }
 
         private static bool TryValidateAuthoring(

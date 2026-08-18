@@ -1,3 +1,4 @@
+using Immersive.Framework.Editor.Common;
 using Immersive.Framework.UnityInput;
 using UnityEditor;
 using UnityEngine;
@@ -9,6 +10,36 @@ namespace Immersive.Framework.Editor.UnityInput
     internal sealed class UnityPlayerInputGateAdapterEditor :
         UnityEditor.Editor
     {
+        private static readonly GUIContent PlayerInputLabel =
+            new GUIContent(
+                "Player Input",
+                "Gameplay-owned PlayerInput gated by this adapter. If empty, runtime resolution uses PlayerInput on the same GameObject.");
+
+        private static readonly GUIContent GameplayActionMapLabel =
+            new GUIContent(
+                "Gameplay Action Map",
+                "Exact gameplay Input Action Map controlled when the Framework Gate blocks gameplay input.");
+
+        private static readonly GUIContent BlockInputAcceptanceLabel =
+            new GUIContent(
+                "Block Input Acceptance",
+                "Block the gameplay Action Map when the canonical Gate blocks input acceptance.");
+
+        private static readonly GUIContent BlockGameplayActionsLabel =
+            new GUIContent(
+                "Block Gameplay Actions",
+                "Block the gameplay Action Map when the canonical Gate blocks gameplay actions.");
+
+        private static readonly GUIContent RestorePreviousStateLabel =
+            new GUIContent(
+                "Restore Previous State",
+                "Ask the canonical Unity input state writer to restore only state changed by this Gate block.");
+
+        private static readonly GUIContent ApplyOnEnableLabel =
+            new GUIContent(
+                "Apply On Enable",
+                "Evaluate and apply the current Gate state when this adapter becomes enabled.");
+
         private SerializedProperty playerInput;
         private SerializedProperty gameplayActionMap;
         private SerializedProperty blockOnInputAcceptance;
@@ -66,177 +97,220 @@ namespace Immersive.Framework.Editor.UnityInput
 
         public override void OnInspectorGUI()
         {
-            serializedObject.Update();
+            serializedObject.UpdateIfRequiredOrScript();
 
             EditorGUILayout.LabelField(
-                "Target",
+                new GUIContent(
+                    "Unity PlayerInput Gate Adapter",
+                    "Connects one gameplay-owned PlayerInput to the Framework Gate. Physical Input Action Map mutations remain delegated to the canonical Unity input state writer."),
                 EditorStyles.boldLabel);
+
+            DrawConfiguration();
+
+            serializedObject.ApplyModifiedProperties();
+
+            UnityPlayerInputGateAdapter adapter =
+                (UnityPlayerInputGateAdapter)target;
+
+            DrawConfigurationStatus(adapter);
+
+            if (Application.isPlaying)
+            {
+                DrawRuntimeStatus(adapter);
+                DrawRuntimeActions(adapter);
+            }
+
+            DrawAdvancedDebug();
+        }
+
+        private void DrawConfiguration()
+        {
+            FrameworkAuthoringInspectorGui.Section(
+                "Configuration");
 
             EditorGUILayout.PropertyField(
                 playerInput,
-                new GUIContent(
-                    "Player Input"));
+                PlayerInputLabel);
 
             PlayerInput selectedPlayerInput =
                 playerInput.objectReferenceValue
                     as PlayerInput;
 
             PlayerInputActionMapReferenceEditorGui.DrawForPlayerInput(
-                new GUIContent(
-                    "Gameplay Action Map"),
+                GameplayActionMapLabel,
                 gameplayActionMap,
                 selectedPlayerInput);
 
-            EditorGUILayout.Space();
-            EditorGUILayout.LabelField(
-                "Gate Policy",
-                EditorStyles.boldLabel);
-
             EditorGUILayout.PropertyField(
                 blockOnInputAcceptance,
-                new GUIContent(
-                    "Block Input Acceptance"));
+                BlockInputAcceptanceLabel);
 
             EditorGUILayout.PropertyField(
                 blockOnGameplayAction,
-                new GUIContent(
-                    "Block Gameplay Actions"));
-
-            serializedObject.ApplyModifiedProperties();
-
-            DrawStatus();
-
-            EditorGUILayout.Space();
-            showAdvancedDebug =
-                EditorGUILayout.Foldout(
-                    showAdvancedDebug,
-                    "Advanced / Debug",
-                    true);
-
-            if (showAdvancedDebug)
-            {
-                DrawAdvancedDebug();
-            }
+                BlockGameplayActionsLabel);
         }
 
-        private void DrawStatus()
+        private static void DrawConfigurationStatus(
+            UnityPlayerInputGateAdapter adapter)
         {
-            var adapter =
-                (UnityPlayerInputGateAdapter)target;
-
             bool valid =
                 adapter.TryValidateAuthoring(
                     out string diagnostic);
 
-            EditorGUILayout.Space();
-            EditorGUILayout.LabelField(
-                "Status",
-                EditorStyles.boldLabel);
+            FrameworkAuthoringInspectorGui.Section(
+                "Configuration Status");
 
             EditorGUILayout.LabelField(
-                "Authoring",
+                "Status",
                 valid
                     ? "Ready"
                     : "Incomplete");
 
-            EditorGUILayout.LabelField(
-                "Runtime Binding",
-                adapter.InputGateRuntimeBindingStatus);
-
-            EditorGUILayout.HelpBox(
-                valid
-                    ? "Gate Adapter authoring is ready."
-                    : diagnostic,
-                valid
-                    ? MessageType.Info
-                    : MessageType.Warning);
+            if (!valid)
+            {
+                EditorGUILayout.HelpBox(
+                    diagnostic,
+                    MessageType.Warning);
+            }
         }
 
-        private void DrawAdvancedDebug()
+        private static void DrawRuntimeStatus(
+            UnityPlayerInputGateAdapter adapter)
         {
-            serializedObject.Update();
+            FrameworkAuthoringInspectorGui.Section(
+                "Runtime Status");
 
-            EditorGUI.indentLevel++;
-
-            EditorGUILayout.LabelField(
-                "Physical Application",
-                EditorStyles.boldLabel);
-
-            EditorGUILayout.PropertyField(
-                restorePreviousState);
-
-            EditorGUILayout.PropertyField(
-                applyOnEnable);
-
-            EditorGUILayout.Space();
-            EditorGUILayout.LabelField(
-                "Diagnostics",
-                EditorStyles.boldLabel);
-
-            EditorGUILayout.PropertyField(
-                logStateChanges);
-
-            EditorGUILayout.PropertyField(
-                logMissingRuntimeOnce);
-
-            EditorGUILayout.PropertyField(
-                logMissingTargetOnce);
-
-            serializedObject.ApplyModifiedProperties();
-
-            var adapter =
-                (UnityPlayerInputGateAdapter)target;
-
-            EditorGUILayout.Space();
-            EditorGUILayout.LabelField(
-                "Runtime Evidence",
-                EditorStyles.boldLabel);
-
-            EditorGUILayout.LabelField(
-                "Blocked By Adapter",
-                adapter.IsBlockedByAdapter
-                    ? "True"
-                    : "False");
-
-            EditorGUILayout.LabelField(
-                "Last Status",
-                adapter.LastStatus);
-
-            EditorGUILayout.LabelField(
-                "Last Reason",
-                adapter.LastReason);
-
-            EditorGUILayout.HelpBox(
-                adapter.InputGateRuntimeBindingDiagnostic,
-                MessageType.None);
-
-            if (gameplayActionMapName != null &&
-                !string.IsNullOrWhiteSpace(
-                    gameplayActionMapName.stringValue))
+            using (new EditorGUI.DisabledScope(true))
             {
                 EditorGUILayout.LabelField(
-                    "Legacy Gameplay Map",
-                    gameplayActionMapName.stringValue);
+                    new GUIContent(
+                        "Runtime Binding",
+                        "Current binding state between this adapter and the Framework Input Gate runtime."),
+                    new GUIContent(
+                        adapter.InputGateRuntimeBindingStatus));
+
+                EditorGUILayout.Toggle(
+                    new GUIContent(
+                        "Blocked By Adapter",
+                        "Whether this adapter currently owns an applied gameplay-input block."),
+                    adapter.IsBlockedByAdapter);
+
+                EditorGUILayout.TextField(
+                    new GUIContent(
+                        "Last Status",
+                        "Latest adapter runtime status."),
+                    adapter.LastStatus);
+
+                EditorGUILayout.TextField(
+                    new GUIContent(
+                        "Last Reason",
+                        "Latest adapter runtime reason."),
+                    adapter.LastReason);
             }
 
-            EditorGUILayout.Space();
-            EditorGUILayout.LabelField(
-                "Technical Commands",
-                EditorStyles.boldLabel);
+            if (!adapter.HasInputGateRuntimeBinding &&
+                !string.IsNullOrWhiteSpace(
+                    adapter.InputGateRuntimeBindingDiagnostic))
+            {
+                EditorGUILayout.HelpBox(
+                    adapter.InputGateRuntimeBindingDiagnostic,
+                    MessageType.Warning);
+            }
+        }
 
-            using (new EditorGUI.DisabledScope(
-                       !Application.isPlaying))
+        private static void DrawRuntimeActions(
+            UnityPlayerInputGateAdapter adapter)
+        {
+            FrameworkAuthoringInspectorGui.Section(
+                "Actions");
+
+            using (new EditorGUILayout.HorizontalScope())
             {
                 if (GUILayout.Button(
-                        "Apply Current Gate"))
+                        new GUIContent(
+                            "Apply Current Gate",
+                            "Re-evaluate the current Framework Gate and explicitly apply the resulting state to this adapter's gameplay Action Map.")))
                 {
                     adapter.ApplyCurrentGate();
                 }
 
                 if (GUILayout.Button(
-                        "Restore"))
+                        new GUIContent(
+                            "Restore",
+                            "Explicitly restore state previously changed by this Gate adapter, subject to its configured restore policy.")))
                 {
                     adapter.Restore();
+                }
+            }
+        }
+
+        private void DrawAdvancedDebug()
+        {
+            EditorGUILayout.Space(7f);
+            showAdvancedDebug =
+                EditorGUILayout.Foldout(
+                    showAdvancedDebug,
+                    new GUIContent(
+                        "Advanced / Debug",
+                        "Shows physical application policy, diagnostic logging and legacy serialized evidence."),
+                    true);
+
+            if (!showAdvancedDebug)
+            {
+                return;
+            }
+
+            serializedObject.UpdateIfRequiredOrScript();
+            EditorGUI.indentLevel++;
+
+            FrameworkAuthoringInspectorGui.Section(
+                "Physical Application");
+
+            EditorGUILayout.PropertyField(
+                restorePreviousState,
+                RestorePreviousStateLabel);
+
+            EditorGUILayout.PropertyField(
+                applyOnEnable,
+                ApplyOnEnableLabel);
+
+            FrameworkAuthoringInspectorGui.Section(
+                "Diagnostics");
+
+            EditorGUILayout.PropertyField(
+                logStateChanges,
+                new GUIContent(
+                    "Log State Changes",
+                    "Logs adapter state changes for technical diagnosis."));
+
+            EditorGUILayout.PropertyField(
+                logMissingRuntimeOnce,
+                new GUIContent(
+                    "Log Missing Runtime Once",
+                    "Logs the first missing Input Gate runtime binding occurrence."));
+
+            EditorGUILayout.PropertyField(
+                logMissingTargetOnce,
+                new GUIContent(
+                    "Log Missing Target Once",
+                    "Logs the first missing PlayerInput or gameplay Action Map target occurrence."));
+
+            serializedObject.ApplyModifiedProperties();
+
+            if (gameplayActionMapName != null &&
+                !string.IsNullOrWhiteSpace(
+                    gameplayActionMapName.stringValue))
+            {
+                FrameworkAuthoringInspectorGui.Section(
+                    "Legacy Evidence");
+
+                using (new EditorGUI.DisabledScope(true))
+                {
+                    EditorGUILayout.TextField(
+                        new GUIContent(
+                            "Legacy Gameplay Map",
+                            "Legacy serialized Action Map name retained only as migration/debug evidence."),
+                        gameplayActionMapName.stringValue);
                 }
             }
 

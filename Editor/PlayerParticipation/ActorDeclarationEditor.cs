@@ -1,5 +1,6 @@
 using System;
 using Immersive.Framework.Actors;
+using Immersive.Framework.Editor.Common;
 using Immersive.Framework.Editor.Editor.Validation;
 using UnityEditor;
 using UnityEngine;
@@ -7,7 +8,7 @@ using UnityEngine;
 namespace Immersive.Framework.Editor.Editor.PlayerParticipation
 {
     /// <summary>
-    /// Designer-first inspector shared by ActorDeclaration and specialized declarations.
+    /// Designer-first Inspector shared by ActorDeclaration and specialized declarations.
     /// Stable identity and technical evidence remain available under Advanced / Debug.
     /// </summary>
     [CustomEditor(typeof(ActorDeclaration), true)]
@@ -21,9 +22,7 @@ namespace Immersive.Framework.Editor.Editor.PlayerParticipation
         private SerializedProperty displayName;
         private SerializedProperty reason;
 
-        private FrameworkAuthoringValidationReport lastValidationReport;
-        private bool validationOutdated;
-        private bool showAdvanced;
+        private bool showAdvancedDebug;
 
         private void OnEnable()
         {
@@ -43,22 +42,12 @@ namespace Immersive.Framework.Editor.Editor.PlayerParticipation
             bool isPlayer =
                 declaration is PlayerActorDeclaration;
 
-            EditorGUI.BeginChangeCheck();
-            DrawActor();
-            DrawClassification(isPlayer);
-            bool primaryChanged =
-                EditorGUI.EndChangeCheck();
+            DrawHeader(isPlayer);
+            DrawConfiguration(isPlayer);
 
-            bool primaryModified =
-                serializedObject.ApplyModifiedProperties();
+            serializedObject.ApplyModifiedProperties();
 
-            if (primaryChanged || primaryModified)
-            {
-                MarkValidationOutdated();
-            }
-
-            DrawActions(declaration);
-            DrawValidationSummary();
+            DrawConfigurationStatus(declaration);
 
             if (Application.isPlaying && isPlayer)
             {
@@ -66,24 +55,39 @@ namespace Immersive.Framework.Editor.Editor.PlayerParticipation
                     (PlayerActorDeclaration)declaration);
             }
 
-            DrawAdvanced(declaration);
+            DrawAdvancedDebug(declaration);
         }
 
-        private void DrawActor()
+        private static void DrawHeader(
+            bool isPlayer)
         {
-            DrawSection("Actor");
+            EditorGUILayout.LabelField(
+                new GUIContent(
+                    isPlayer
+                        ? "Player Actor Declaration"
+                        : "Actor Declaration",
+                    isPlayer
+                        ? "Declares the stable identity of one contextual Logical Player Actor. PlayerInput remains owned by the Local Player Host and is shown here only as runtime evidence."
+                        : "Declares stable framework identity and classification for one Actor. Lifetime, movement, input, reset, snapshot and save behavior are owned elsewhere."),
+                EditorStyles.boldLabel);
+        }
+
+        private void DrawConfiguration(
+            bool isPlayer)
+        {
+            FrameworkAuthoringInspectorGui.Section(
+                "Configuration");
 
             EditorGUILayout.PropertyField(
                 displayName,
                 new GUIContent(
                     "Display Name",
                     "Human-readable Actor label used in authoring and diagnostics. It is not functional identity."));
-        }
 
-        private void DrawClassification(
-            bool isPlayer)
-        {
-            DrawSection("Classification");
+            EditorGUILayout.Space(3f);
+            EditorGUILayout.LabelField(
+                "Classification",
+                EditorStyles.miniBoldLabel);
 
             if (isPlayer)
             {
@@ -113,69 +117,68 @@ namespace Immersive.Framework.Editor.Editor.PlayerParticipation
                     "Broad gameplay role used by framework contracts."));
         }
 
-        private void DrawActions(
+        private static void DrawConfigurationStatus(
             ActorDeclaration declaration)
         {
-            DrawSection("Actions");
+            FrameworkAuthoringValidationReport report =
+                ActorDeclarationAuthoringValidator.Validate(
+                    declaration);
 
-            if (GUILayout.Button(
-                    new GUIContent(
-                        "Validate Actor",
-                        "Validate Actor identity, classification and Player-specific hierarchy rules without modifying runtime state.")))
-            {
-                serializedObject.ApplyModifiedProperties();
-                lastValidationReport =
-                    ActorDeclarationAuthoringValidator.Validate(
-                        declaration);
-                validationOutdated = false;
-            }
-        }
-
-        private void DrawValidationSummary()
-        {
-            DrawSection("Validation Summary");
-
-            if (lastValidationReport == null)
-            {
-                EditorGUILayout.LabelField(
-                    "Status",
-                    "Not Validated");
-                return;
-            }
-
-            if (validationOutdated)
-            {
-                EditorGUILayout.LabelField(
-                    "Status",
-                    "Not Validated — configuration changed");
-                return;
-            }
-
-            if (lastValidationReport.IsValid)
-            {
-                EditorGUILayout.LabelField(
-                    "Status",
-                    "Valid");
-                return;
-            }
+            FrameworkAuthoringInspectorGui.Section(
+                "Configuration Status");
 
             EditorGUILayout.LabelField(
                 "Status",
-                "Invalid");
+                report.IsValid
+                    ? "Ready"
+                    : "Needs Attention");
 
-            EditorGUILayout.HelpBox(
-                $"{lastValidationReport.ErrorCount} blocking issue(s) were found. Correct the Actor configuration and validate again.",
-                MessageType.Error);
+            if (report.IsValid)
+            {
+                return;
+            }
 
-            FrameworkAuthoringValidationGui.DrawIssues(
-                lastValidationReport,
-                false);
+            DrawFirstActionableIssue(report);
+        }
+
+        private static void DrawFirstActionableIssue(
+            FrameworkAuthoringValidationReport report)
+        {
+            if (report == null)
+            {
+                return;
+            }
+
+            for (int index = 0;
+                 index < report.Issues.Count;
+                 index++)
+            {
+                FrameworkAuthoringValidationIssue issue =
+                    report.Issues[index];
+
+                if (issue.Severity !=
+                        FrameworkAuthoringValidationSeverity.Error &&
+                    issue.Severity !=
+                        FrameworkAuthoringValidationSeverity.Warning)
+                {
+                    continue;
+                }
+
+                EditorGUILayout.HelpBox(
+                    issue.Message,
+                    issue.Severity ==
+                        FrameworkAuthoringValidationSeverity.Error
+                            ? MessageType.Error
+                            : MessageType.Warning);
+                return;
+            }
         }
 
         private static void DrawRuntimeStatus(
             PlayerActorDeclaration player)
         {
-            DrawSection("Runtime Status");
+            FrameworkAuthoringInspectorGui.Section(
+                "Runtime Status");
 
             using (new EditorGUI.DisabledScope(true))
             {
@@ -193,44 +196,34 @@ namespace Immersive.Framework.Editor.Editor.PlayerParticipation
             }
         }
 
-        private void DrawAdvanced(
+        private void DrawAdvancedDebug(
             ActorDeclaration declaration)
         {
             EditorGUILayout.Space(6f);
-            showAdvanced =
+            showAdvancedDebug =
                 EditorGUILayout.Foldout(
-                    showAdvanced,
+                    showAdvancedDebug,
                     "Advanced / Debug",
                     true);
 
-            if (!showAdvanced)
+            if (!showAdvancedDebug)
             {
                 return;
             }
 
-            EditorGUI.BeginChangeCheck();
-
-            DrawStableIdentity();
+            DrawStableIdentity(declaration);
             DrawDiagnostics();
 
-            bool advancedChanged =
-                EditorGUI.EndChangeCheck();
-
-            bool advancedModified =
-                serializedObject.ApplyModifiedProperties();
-
-            if (advancedChanged || advancedModified)
-            {
-                MarkValidationOutdated();
-            }
+            serializedObject.ApplyModifiedProperties();
 
             DrawTechnicalEvidence(declaration);
-            DrawValidationEvidence();
         }
 
-        private void DrawStableIdentity()
+        private void DrawStableIdentity(
+            ActorDeclaration declaration)
         {
-            DrawSection("Stable Identity");
+            FrameworkAuthoringInspectorGui.Section(
+                "Stable Identity");
 
             string currentActorId =
                 actorId != null
@@ -247,12 +240,6 @@ namespace Immersive.Framework.Editor.Editor.PlayerParticipation
                 string.IsNullOrWhiteSpace(currentActorId) ||
                 isLegacyPlaceholder;
 
-            if (isLegacyPlaceholder)
-            {
-                EditorGUILayout.HelpBox(
-                    "This Actor uses the legacy QA placeholder. Replace it before product use.",
-                    MessageType.Warning);
-            }
 
             using (new EditorGUILayout.HorizontalScope())
             {
@@ -276,8 +263,9 @@ namespace Immersive.Framework.Editor.Editor.PlayerParticipation
                             buttonLabel,
                             GUILayout.Width(90f)))
                     {
-                        actorId.stringValue =
-                            $"actor.{Guid.NewGuid():N}";
+                        GenerateActorId(declaration);
+                        currentActorId =
+                            actorId.stringValue ?? string.Empty;
                     }
                 }
 
@@ -296,9 +284,29 @@ namespace Immersive.Framework.Editor.Editor.PlayerParticipation
             }
         }
 
+        private void GenerateActorId(
+            ActorDeclaration declaration)
+        {
+            Undo.RecordObject(
+                declaration,
+                "Generate Actor ID");
+
+            actorId.stringValue =
+                $"actor.{Guid.NewGuid():N}";
+
+            serializedObject.ApplyModifiedProperties();
+
+            EditorUtility.SetDirty(declaration);
+            PrefabUtility.RecordPrefabInstancePropertyModifications(
+                declaration);
+
+            serializedObject.UpdateIfRequiredOrScript();
+        }
+
         private void DrawDiagnostics()
         {
-            DrawSection("Diagnostics");
+            FrameworkAuthoringInspectorGui.Section(
+                "Diagnostics");
 
             EditorGUILayout.PropertyField(
                 reason,
@@ -310,7 +318,8 @@ namespace Immersive.Framework.Editor.Editor.PlayerParticipation
         private static void DrawTechnicalEvidence(
             ActorDeclaration declaration)
         {
-            DrawSection("Technical Evidence");
+            FrameworkAuthoringInspectorGui.Section(
+                "Technical Evidence");
 
             using (new EditorGUI.DisabledScope(true))
             {
@@ -339,51 +348,6 @@ namespace Immersive.Framework.Editor.Editor.PlayerParticipation
                         true);
                 }
             }
-        }
-
-        private void DrawValidationEvidence()
-        {
-            if (lastValidationReport == null)
-            {
-                return;
-            }
-
-            DrawSection("Validation Evidence");
-
-            if (validationOutdated)
-            {
-                EditorGUILayout.LabelField(
-                    "Status",
-                    "Not Validated — configuration changed");
-                return;
-            }
-
-            FrameworkAuthoringValidationGui.DrawSummary(
-                lastValidationReport);
-
-            FrameworkAuthoringValidationGui.DrawIssues(
-                lastValidationReport,
-                false);
-        }
-
-        private void MarkValidationOutdated()
-        {
-            if (lastValidationReport == null)
-            {
-                return;
-            }
-
-            validationOutdated = true;
-            Repaint();
-        }
-
-        private static void DrawSection(
-            string title)
-        {
-            EditorGUILayout.Space(6f);
-            EditorGUILayout.LabelField(
-                title,
-                EditorStyles.boldLabel);
         }
     }
 }
