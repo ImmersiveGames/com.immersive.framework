@@ -59,8 +59,8 @@ namespace Immersive.Framework.Audio
                 return;
             }
 
-            Warning(
-                "Route has Startup Activity but no valid explicit Startup Activity BGM binding was assigned. Pending Route BGM intent will be evaluated.",
+            Debug(
+                "No explicit Startup Activity BGM intent was applied. Pending Route BGM intent will be evaluated.",
                 LogFields.Of(
                     LogFields.Field("route", context.RouteName),
                     LogFields.Field("startupActivity", FormatActivity(startupActivity))));
@@ -111,10 +111,10 @@ namespace Immersive.Framework.Audio
             return activity != null ? activity.ActivityName : "<none>";
         }
 
-        private void Warning(string message, params LogField[] fields)
+        private void Debug(string message, params LogField[] fields)
         {
             EnsureLogger();
-            logger.Warning(message, fields);
+            logger.Debug(message, fields);
         }
 
         private void Error(string message, params LogField[] fields)
