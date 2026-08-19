@@ -71,7 +71,12 @@ namespace Immersive.Framework.Audio
     public enum FrameworkBgmOperation
     {
         Apply = 0,
-        Release = 1
+        Release = 1,
+
+        /// <summary>
+        /// No explicit provider mutation was requested; keep the confirmed presentation unchanged.
+        /// </summary>
+        Preserve = 2
     }
 
     public enum FrameworkBgmOperationOutcome

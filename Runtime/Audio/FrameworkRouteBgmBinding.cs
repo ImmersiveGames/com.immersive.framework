@@ -9,15 +9,19 @@ using UnityEngine;
 namespace Immersive.Framework.Audio
 {
     /// <summary>
-    /// API status: Experimental. Route content binding that supplies BGM to a FrameworkBgmDirector.
+    /// API status: Experimental. Route content binding that publishes explicit BGM intent to the
+    /// persistent FrameworkBgmDirector injected by the Audio assembly runtime.
     /// </summary>
     [DisallowMultipleComponent]
     [AddComponentMenu("Immersive Framework/Audio/Route BGM Binding")]
-    [FrameworkApiStatus(FrameworkApiStatus.Experimental, "F47C optional framework-owned BGM adapter.")]
-    public sealed class FrameworkRouteBgmBinding : RouteContentBehaviour
+    [FrameworkApiStatus(FrameworkApiStatus.Experimental, "BGM-CONTINUITY-1 Route BGM intent adapter.")]
+    public sealed class FrameworkRouteBgmBinding : RouteContentBehaviour, IFrameworkBgmDirectorConsumer
     {
         [SerializeField] private AudioBgmCueAsset routeBgm;
+
+        [HideInInspector]
         [SerializeField] private FrameworkBgmDirector director;
+
         [SerializeField] private FrameworkActivityBgmBinding startupActivityBgmBinding;
         private FrameworkLogger logger;
 
@@ -33,7 +37,7 @@ namespace Immersive.Framework.Audio
         {
             if (director == null)
             {
-                Error("Route BGM binding requires a FrameworkBgmDirector.");
+                Error("Route BGM binding requires an injected FrameworkBgmDirector.");
                 return;
             }
 
@@ -56,7 +60,7 @@ namespace Immersive.Framework.Audio
             }
 
             Warning(
-                "Route has Startup Activity but no valid explicit Startup Activity BGM binding was assigned. Route BGM fallback will be applied.",
+                "Route has Startup Activity but no valid explicit Startup Activity BGM binding was assigned. Pending Route BGM intent will be evaluated.",
                 LogFields.Of(
                     LogFields.Field("route", context.RouteName),
                     LogFields.Field("startupActivity", FormatActivity(startupActivity))));
@@ -67,11 +71,39 @@ namespace Immersive.Framework.Audio
         {
             if (director == null)
             {
-                Error("Route BGM binding requires a FrameworkBgmDirector.");
+                Error("Route BGM binding requires an injected FrameworkBgmDirector.");
                 return;
             }
 
             LastOperationResult = director.ClearRouteBgm(routeBgm);
+        }
+
+        void IFrameworkBgmDirectorConsumer.AttachBgmDirector(FrameworkBgmDirector nextDirector)
+        {
+            if (nextDirector == null)
+            {
+                return;
+            }
+
+            if (director != null && !ReferenceEquals(director, nextDirector))
+            {
+                Error(
+                    "Route BGM binding rejected a second FrameworkBgmDirector authority.",
+                    LogFields.Of(
+                        LogFields.Field("currentDirector", director.name),
+                        LogFields.Field("rejectedDirector", nextDirector.name)));
+                return;
+            }
+
+            director = nextDirector;
+        }
+
+        void IFrameworkBgmDirectorConsumer.DetachBgmDirector(FrameworkBgmDirector detachedDirector)
+        {
+            if (ReferenceEquals(director, detachedDirector))
+            {
+                director = null;
+            }
         }
 
         private static string FormatActivity(ActivityAsset activity)

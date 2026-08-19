@@ -9,17 +9,21 @@ using UnityEngine;
 namespace Immersive.Framework.Audio
 {
     /// <summary>
-    /// API status: Experimental. Activity content binding that supplies BGM to a FrameworkBgmDirector.
+    /// API status: Experimental. Activity content binding that publishes explicit BGM intent to
+    /// the persistent FrameworkBgmDirector injected by the Audio assembly runtime.
     /// </summary>
     [DisallowMultipleComponent]
     [AddComponentMenu("Immersive Framework/Audio/Activity BGM Binding")]
-    [FrameworkApiStatus(FrameworkApiStatus.Experimental, "F47C optional framework-owned BGM adapter.")]
-    public sealed class FrameworkActivityBgmBinding : ActivityContentBehaviour
+    [FrameworkApiStatus(FrameworkApiStatus.Experimental, "BGM-CONTINUITY-1 Activity BGM intent adapter.")]
+    public sealed class FrameworkActivityBgmBinding : ActivityContentBehaviour, IFrameworkBgmDirectorConsumer
     {
         [SerializeField] private ActivityAsset assignedActivity;
         [SerializeField] private AudioBgmCueAsset activityBgm;
         [SerializeField] private FrameworkBgmActivityPolicy policy = FrameworkBgmActivityPolicy.UseOwnOrRoute;
+
+        [HideInInspector]
         [SerializeField] private FrameworkBgmDirector director;
+
         private FrameworkLogger logger;
 
         public FrameworkBgmOperationResult LastOperationResult { get; private set; }
@@ -39,7 +43,7 @@ namespace Immersive.Framework.Audio
         {
             if (director == null)
             {
-                Error("Activity BGM binding requires a FrameworkBgmDirector.");
+                Error("Activity BGM binding requires an injected FrameworkBgmDirector.");
                 return false;
             }
 
@@ -91,7 +95,7 @@ namespace Immersive.Framework.Audio
         {
             if (director == null)
             {
-                Error("Activity BGM binding requires a FrameworkBgmDirector.");
+                Error("Activity BGM binding requires an injected FrameworkBgmDirector.");
                 return;
             }
 
@@ -102,7 +106,7 @@ namespace Immersive.Framework.Audio
         {
             if (director == null)
             {
-                Error("Activity BGM binding requires a FrameworkBgmDirector.");
+                Error("Activity BGM binding requires an injected FrameworkBgmDirector.");
                 return;
             }
 
@@ -110,6 +114,34 @@ namespace Immersive.Framework.Audio
                 && (context.Activity == null || !ReferenceEquals(context.NextActivity, context.Activity));
 
             LastOperationResult = director.ClearActivityBgm(activityBgm, deferRefreshForActivityTransition);
+        }
+
+        void IFrameworkBgmDirectorConsumer.AttachBgmDirector(FrameworkBgmDirector nextDirector)
+        {
+            if (nextDirector == null)
+            {
+                return;
+            }
+
+            if (director != null && !ReferenceEquals(director, nextDirector))
+            {
+                Error(
+                    "Activity BGM binding rejected a second FrameworkBgmDirector authority.",
+                    LogFields.Of(
+                        LogFields.Field("currentDirector", director.name),
+                        LogFields.Field("rejectedDirector", nextDirector.name)));
+                return;
+            }
+
+            director = nextDirector;
+        }
+
+        void IFrameworkBgmDirectorConsumer.DetachBgmDirector(FrameworkBgmDirector detachedDirector)
+        {
+            if (ReferenceEquals(director, detachedDirector))
+            {
+                director = null;
+            }
         }
 
         private bool MatchesExpectedActivity(
@@ -146,7 +178,7 @@ namespace Immersive.Framework.Audio
 
         private static string FormatCue(AudioBgmCueAsset cue)
         {
-            return cue != null ? cue.name : "<silence>";
+            return cue != null ? cue.name : "<none>";
         }
 
         private static string FormatActivity(ActivityAsset activity)
