@@ -8,47 +8,84 @@ namespace Immersive.Framework.Editor.Common
         internal static void ProductHeader(string title, string responsibility)
         {
             EditorGUILayout.LabelField(title, EditorStyles.boldLabel);
-            EditorGUILayout.HelpBox(responsibility, MessageType.Info);
+
+            if (!string.IsNullOrWhiteSpace(responsibility))
+            {
+                EditorGUILayout.LabelField(
+                    responsibility,
+                    EditorStyles.wordWrappedMiniLabel);
+            }
         }
 
         internal static void IntentSummary(string text)
         {
-            EditorGUILayout.LabelField("Intent Summary", EditorStyles.boldLabel);
-            EditorGUILayout.HelpBox(text, MessageType.None);
+            if (string.IsNullOrWhiteSpace(text))
+            {
+                return;
+            }
+
+            EditorGUILayout.Space(2f);
+            EditorGUILayout.LabelField("Intent", EditorStyles.miniBoldLabel);
+            EditorGUILayout.LabelField(text, EditorStyles.wordWrappedMiniLabel);
         }
 
         internal static void Section(string title)
         {
-            EditorGUILayout.Space(5f);
+            EditorGUILayout.Space(6f);
             EditorGUILayout.LabelField(title, EditorStyles.boldLabel);
         }
 
-        internal static void RuntimeBinding(string status, string diagnostic, string correctiveAction)
+        internal static void Status(string value)
+        {
+            EditorGUILayout.LabelField("Status", value);
+        }
+
+        internal static void RuntimeBinding(
+            string status,
+            string diagnostic,
+            string correctiveAction)
         {
             Section("Runtime Binding");
             EditorGUILayout.LabelField("Status", status);
-            if (status != "Bound")
+
+            if (status != "Bound" &&
+                !string.IsNullOrWhiteSpace(correctiveAction))
             {
-                EditorGUILayout.HelpBox(correctiveAction, MessageType.Warning);
+                EditorGUILayout.HelpBox(
+                    correctiveAction,
+                    MessageType.Warning);
             }
 
             if (!string.IsNullOrWhiteSpace(diagnostic))
             {
-                EditorGUILayout.HelpBox(diagnostic, MessageType.None);
+                EditorGUILayout.LabelField(
+                    diagnostic,
+                    EditorStyles.wordWrappedMiniLabel);
             }
         }
 
         internal static bool AdvancedFoldout(bool expanded)
         {
-            Section("Advanced / Debug");
-            return EditorGUILayout.Foldout(expanded, "Advanced / Debug", true);
+            EditorGUILayout.Space(7f);
+            return EditorGUILayout.Foldout(
+                expanded,
+                "Advanced / Debug",
+                true);
         }
 
-        internal static void ApplySuggestion(SerializedObject serializedObject, SerializedProperty property, string value, string undoName)
+        internal static void ApplySuggestion(
+            SerializedObject serializedObject,
+            SerializedProperty property,
+            string value,
+            string undoName)
         {
-            Undo.RecordObjects(serializedObject.targetObjects, undoName);
+            Undo.RecordObjects(
+                serializedObject.targetObjects,
+                undoName);
+
             property.stringValue = value;
             serializedObject.ApplyModifiedProperties();
+
             foreach (Object item in serializedObject.targetObjects)
             {
                 EditorUtility.SetDirty(item);

@@ -8,7 +8,8 @@ namespace Immersive.Framework.Editor.Editor.Authoring
 {
     [CustomEditor(typeof(RouteContentBinding))]
     [CanEditMultipleObjects]
-    internal sealed class RouteContentBindingEditor : UnityEditor.Editor
+    internal sealed class RouteContentBindingEditor :
+        UnityEditor.Editor
     {
         private SerializedProperty _route;
         private SerializedProperty _localContentId;
@@ -18,9 +19,14 @@ namespace Immersive.Framework.Editor.Editor.Authoring
 
         private void OnEnable()
         {
-            _route = serializedObject.FindProperty("route");
-            _localContentId = serializedObject.FindProperty("localContentId");
-            _requiredness = serializedObject.FindProperty("requiredness");
+            _route =
+                serializedObject.FindProperty("route");
+
+            _localContentId =
+                serializedObject.FindProperty("localContentId");
+
+            _requiredness =
+                serializedObject.FindProperty("requiredness");
         }
 
         public override void OnInspectorGUI()
@@ -29,24 +35,30 @@ namespace Immersive.Framework.Editor.Editor.Authoring
 
             FrameworkAuthoringInspectorGui.ProductHeader(
                 "Route Content Binding",
-                "Declares one scene-authored Route content boundary and dispatches local Route enter/exit callbacks.");
-            FrameworkAuthoringInspectorGui.IntentSummary(BuildIntentSummary());
+                "Declares one scene-local Route content boundary and dispatches Route enter/exit callbacks.");
+
+            FrameworkAuthoringInspectorGui.IntentSummary(
+                BuildIntentSummary());
 
             EditorGUI.BeginChangeCheck();
             DrawPrimaryAuthoring();
-            bool authoringChanged = EditorGUI.EndChangeCheck();
+            bool authoringChanged =
+                EditorGUI.EndChangeCheck();
 
             serializedObject.ApplyModifiedProperties();
+
             if (authoringChanged)
             {
                 _validationReport = null;
             }
 
-            DrawSuggestedIdentityAction();
             DrawConfigurationStatus();
             DrawValidation();
 
-            _showAdvanced = FrameworkAuthoringInspectorGui.AdvancedFoldout(_showAdvanced);
+            _showAdvanced =
+                FrameworkAuthoringInspectorGui.AdvancedFoldout(
+                    _showAdvanced);
+
             if (_showAdvanced)
             {
                 DrawAdvanced();
@@ -55,177 +67,248 @@ namespace Immersive.Framework.Editor.Editor.Authoring
 
         private void DrawPrimaryAuthoring()
         {
-            FrameworkAuthoringInspectorGui.Section("Route Binding");
-            EditorGUILayout.PropertyField(
-                _route,
-                new GUIContent(
-                    "Route",
-                    "Route that owns this scene-authored content. Normally this is the Route whose Primary Scene contains the binding."));
-            DrawSelectAssetAction(_route, "Select Route Asset");
+            FrameworkAuthoringInspectorGui.Section(
+                "Route Binding");
 
-            FrameworkAuthoringInspectorGui.Section("Local Content Identity");
+            using (new EditorGUILayout.HorizontalScope())
+            {
+                EditorGUILayout.PropertyField(
+                    _route,
+                    new GUIContent(
+                        "Route",
+                        "Route that owns this scene-authored contribution."));
+
+                DrawSelectAssetButton(_route);
+            }
+
+            FrameworkAuthoringInspectorGui.Section(
+                "Local Content");
+
             EditorGUILayout.PropertyField(
                 _localContentId,
                 new GUIContent(
                     "Local Content Id",
-                    "Explicit identity for this local contribution. GameObject names and hierarchy paths are diagnostics only."));
+                    "Explicit identity for this local contribution. GameObject names and hierarchy paths are diagnostic only."));
+
+            DrawSuggestedIdentityAction();
+
             EditorGUILayout.PropertyField(
                 _requiredness,
                 new GUIContent(
                     "Requiredness",
-                    "Declares whether this contribution is required or optional for consumers that evaluate local content readiness."));
+                    "Declares whether this contribution is required or optional for readiness consumers."));
         }
 
         private string BuildIntentSummary()
         {
-            if (_route == null || _localContentId == null || _requiredness == null)
+            if (_route == null ||
+                _localContentId == null ||
+                _requiredness == null)
             {
-                return "Configure a Route, explicit local identity and requiredness for this scene-authored contribution.";
+                return
+                    "Configure Route ownership, local identity and requiredness.";
             }
 
             if (_route.hasMultipleDifferentValues ||
                 _localContentId.hasMultipleDifferentValues ||
                 _requiredness.hasMultipleDifferentValues)
             {
-                return "The selected bindings contain mixed Route, identity or requiredness values.";
+                return
+                    "Selected bindings contain mixed authoring values.";
             }
 
-            string routeName = _route.objectReferenceValue != null
-                ? _route.objectReferenceValue.name
-                : "<missing Route>";
-            string identity = string.IsNullOrWhiteSpace(_localContentId.stringValue)
-                ? "<missing local identity>"
-                : _localContentId.stringValue.Trim();
+            string routeName =
+                _route.objectReferenceValue != null
+                    ? _route.objectReferenceValue.name
+                    : "<missing Route>";
 
-            return $"Bind this scene-authored content to Route '{routeName}' as {GetRequirednessLabel()} local content '{identity}'.";
+            string identity =
+                string.IsNullOrWhiteSpace(
+                    _localContentId.stringValue)
+                    ? "<missing Id>"
+                    : _localContentId.stringValue.Trim();
+
+            return
+                $"{GetRequirednessLabel()} local content '{identity}' owned by Route '{routeName}'.";
         }
 
         private void DrawSuggestedIdentityAction()
         {
             if (targets.Length != 1 ||
                 _localContentId == null ||
-                !string.IsNullOrWhiteSpace(_localContentId.stringValue))
+                !string.IsNullOrWhiteSpace(
+                    _localContentId.stringValue))
             {
                 return;
             }
 
-            if (GUILayout.Button("Use Suggested Local Content Id"))
+            using (new EditorGUILayout.HorizontalScope())
             {
-                FrameworkAuthoringInspectorGui.ApplySuggestion(
-                    serializedObject,
-                    _localContentId,
-                    FrameworkAuthoringSuggestionUtility.SuggestIdentity(target, "route.local-content"),
-                    "Suggest Route Local Content Id");
-                _validationReport = null;
+                GUILayout.FlexibleSpace();
+
+                if (GUILayout.Button(
+                        "Use Suggested Id",
+                        EditorStyles.miniButton,
+                        GUILayout.Width(112f)))
+                {
+                    FrameworkAuthoringInspectorGui.ApplySuggestion(
+                        serializedObject,
+                        _localContentId,
+                        FrameworkAuthoringSuggestionUtility
+                            .SuggestIdentity(
+                                target,
+                                "route.local-content"),
+                        "Suggest Route Local Content Id");
+
+                    _validationReport = null;
+                }
             }
         }
 
         private void DrawConfigurationStatus()
         {
-            FrameworkAuthoringInspectorGui.Section("Configuration Status");
+            FrameworkAuthoringInspectorGui.Section(
+                "Configuration");
 
             if (serializedObject.isEditingMultipleObjects &&
                 (_route.hasMultipleDifferentValues ||
                  _localContentId.hasMultipleDifferentValues ||
                  _requiredness.hasMultipleDifferentValues))
             {
-                EditorGUILayout.HelpBox(
-                    "The selected bindings use mixed authoring values. Validate to review each binding independently.",
-                    MessageType.Info);
+                FrameworkAuthoringInspectorGui.Status(
+                    "Mixed values");
                 return;
             }
 
-            bool hasError = false;
+            bool hasIssue = false;
+
             if (_route.objectReferenceValue == null)
             {
-                hasError = true;
+                hasIssue = true;
+
                 EditorGUILayout.HelpBox(
-                    "Route is missing. Assign the Route that owns this scene-authored content.",
+                    "Route is missing.",
                     MessageType.Error);
             }
 
-            if (string.IsNullOrWhiteSpace(_localContentId.stringValue))
+            if (string.IsNullOrWhiteSpace(
+                    _localContentId.stringValue))
             {
-                hasError = true;
+                hasIssue = true;
+
                 EditorGUILayout.HelpBox(
-                    "Local Content Id is missing. Enter an explicit identity or use the suggested value.",
+                    "Local Content Id is missing.",
                     MessageType.Error);
             }
 
-            if (!serializedObject.isEditingMultipleObjects && target is RouteContentBinding binding)
+            if (!serializedObject.isEditingMultipleObjects &&
+                target is RouteContentBinding binding)
             {
-                RouteContentBinding parent = FindParentBinding(binding);
+                RouteContentBinding parent =
+                    FindParentBinding(binding);
+
                 if (parent != null)
                 {
+                    hasIssue = true;
+
                     EditorGUILayout.HelpBox(
-                        $"A parent GameObject also contains a Route Content Binding ('{parent.gameObject.name}'). Nested Route content ownership is not defined; keep binding roots flat.",
+                        $"Nested Route Content Binding detected under '{parent.gameObject.name}'. Keep Route content roots flat.",
                         MessageType.Warning);
                 }
 
-                int childCount = CountChildBindings(binding);
+                int childCount =
+                    CountChildBindings(binding);
+
                 if (childCount > 0)
                 {
+                    hasIssue = true;
+
                     EditorGUILayout.HelpBox(
-                        $"This GameObject contains {childCount} child Route Content Binding component(s). Nested Route content ownership is not defined; keep binding roots flat.",
+                        $"{childCount} child Route Content Binding component(s) detected. Keep Route content roots flat.",
                         MessageType.Warning);
                 }
             }
 
-            if (!hasError)
+            if (!hasIssue)
             {
-                EditorGUILayout.HelpBox(
-                    "Ready for authoring validation. Route Content Binding dispatches lifecycle callbacks; it does not control GameObject visibility.",
-                    MessageType.Info);
+                FrameworkAuthoringInspectorGui.Status("Ready");
             }
         }
 
         private void DrawValidation()
         {
-            FrameworkAuthoringInspectorGui.Section("Validation");
+            FrameworkAuthoringInspectorGui.Section(
+                "Validation");
+
+            FrameworkAuthoringValidationGui.DrawSummary(
+                _validationReport);
+
             if (GUILayout.Button("Validate Configuration"))
             {
-                _validationReport = new FrameworkAuthoringValidationReport();
-                for (int index = 0; index < targets.Length; index++)
+                _validationReport =
+                    new FrameworkAuthoringValidationReport();
+
+                for (int index = 0;
+                     index < targets.Length;
+                     index++)
                 {
                     _validationReport.AddRange(
-                        FrameworkAuthoringValidator.ValidateRouteContentBinding(
-                            targets[index] as RouteContentBinding));
+                        FrameworkAuthoringValidator
+                            .ValidateRouteContentBinding(
+                                targets[index]
+                                    as RouteContentBinding));
                 }
             }
 
-            if (_validationReport == null)
-            {
-                EditorGUILayout.HelpBox(
-                    "Validation is explicit and non-mutating. Run it after changing the binding or identity.",
-                    MessageType.None);
-                return;
-            }
-
-            FrameworkAuthoringValidationGui.DrawSummary(_validationReport);
-            FrameworkAuthoringValidationGui.DrawIssues(_validationReport, false);
+            FrameworkAuthoringValidationGui.DrawIssues(
+                _validationReport,
+                false);
         }
 
         private void DrawAdvanced()
         {
-            if (targets.Length != 1 || !(target is RouteContentBinding binding))
+            if (targets.Length != 1 ||
+                !(target is RouteContentBinding binding))
             {
-                EditorGUILayout.HelpBox(
-                    "Advanced evidence is available for one selected binding at a time.",
-                    MessageType.None);
+                EditorGUILayout.LabelField(
+                    "Runtime Evidence",
+                    "Single selection only");
                 return;
             }
 
-            EditorGUILayout.LabelField("Assigned Route", binding.Route != null ? binding.Route.name : "<missing>");
-            EditorGUILayout.LabelField("Normalized Local Content Id", binding.HasExplicitLocalContentId ? binding.LocalContentIdText : "<missing>");
-            EditorGUILayout.LabelField("Requiredness", binding.Requiredness.ToString());
-            EditorGUILayout.LabelField("Local Scope Kind", binding.LocalScopeKind.ToString());
-            EditorGUILayout.LabelField("Scene", binding.gameObject.scene.IsValid() ? binding.gameObject.scene.name : "<no scene>");
-            EditorGUILayout.HelpBox(
-                "This component is a Route lifecycle boundary. Visibility remains consumer-authored through explicit receivers or other components.",
-                MessageType.None);
+            EditorGUI.indentLevel++;
+
+            EditorGUILayout.LabelField(
+                "Assigned Route",
+                binding.Route != null
+                    ? binding.Route.name
+                    : "<missing>");
+
+            EditorGUILayout.LabelField(
+                "Normalized Local Content Id",
+                binding.HasExplicitLocalContentId
+                    ? binding.LocalContentIdText
+                    : "<missing>");
+
+            EditorGUILayout.LabelField(
+                "Requiredness",
+                binding.Requiredness.ToString());
+
+            EditorGUILayout.LabelField(
+                "Local Scope Kind",
+                binding.LocalScopeKind.ToString());
+
+            EditorGUILayout.LabelField(
+                "Scene",
+                binding.gameObject.scene.IsValid()
+                    ? binding.gameObject.scene.name
+                    : "<no scene>");
+
+            EditorGUI.indentLevel--;
         }
 
-        private void DrawSelectAssetAction(SerializedProperty property, string label)
+        private void DrawSelectAssetButton(
+            SerializedProperty property)
         {
             if (serializedObject.isEditingMultipleObjects ||
                 property == null ||
@@ -235,28 +318,37 @@ namespace Immersive.Framework.Editor.Editor.Authoring
                 return;
             }
 
-            using (new EditorGUILayout.HorizontalScope())
+            if (GUILayout.Button(
+                    "Select",
+                    EditorStyles.miniButton,
+                    GUILayout.Width(52f)))
             {
-                GUILayout.FlexibleSpace();
-                if (GUILayout.Button(label, GUILayout.Width(160f)))
-                {
-                    Selection.activeObject = property.objectReferenceValue;
-                }
+                Selection.activeObject =
+                    property.objectReferenceValue;
+
+                EditorGUIUtility.PingObject(
+                    property.objectReferenceValue);
             }
         }
 
         private string GetRequirednessLabel()
         {
-            return _requiredness != null && !_requiredness.hasMultipleDifferentValues
-                ? _requiredness.enumDisplayNames[_requiredness.enumValueIndex]
+            return _requiredness != null &&
+                   !_requiredness.hasMultipleDifferentValues
+                ? _requiredness.enumDisplayNames[
+                    _requiredness.enumValueIndex]
                 : "Mixed";
         }
 
-        private static RouteContentBinding FindParentBinding(RouteContentBinding binding)
+        private static RouteContentBinding FindParentBinding(
+            RouteContentBinding binding)
         {
-            for (Transform parent = binding.transform.parent; parent != null; parent = parent.parent)
+            for (Transform parent = binding.transform.parent;
+                 parent != null;
+                 parent = parent.parent)
             {
-                if (parent.TryGetComponent(out RouteContentBinding parentBinding))
+                if (parent.TryGetComponent(
+                        out RouteContentBinding parentBinding))
                 {
                     return parentBinding;
                 }
@@ -265,13 +357,21 @@ namespace Immersive.Framework.Editor.Editor.Authoring
             return null;
         }
 
-        private static int CountChildBindings(RouteContentBinding binding)
+        private static int CountChildBindings(
+            RouteContentBinding binding)
         {
-            RouteContentBinding[] bindings = binding.GetComponentsInChildren<RouteContentBinding>(true);
+            RouteContentBinding[] bindings =
+                binding.GetComponentsInChildren<RouteContentBinding>(
+                    true);
+
             int count = 0;
-            for (int index = 0; index < bindings.Length; index++)
+
+            for (int index = 0;
+                 index < bindings.Length;
+                 index++)
             {
-                if (bindings[index] != null && bindings[index] != binding)
+                if (bindings[index] != null &&
+                    bindings[index] != binding)
                 {
                     count++;
                 }
