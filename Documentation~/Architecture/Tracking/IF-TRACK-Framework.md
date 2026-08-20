@@ -1,7 +1,7 @@
 # IF-TRACK — Immersive Framework
 
 Status: **Active — Stage B baseline + proposed architecture expansion**  
-Last updated: **2026-08-19**
+Last updated: **2026-08-20**
 
 ## Authority and status model
 
@@ -32,6 +32,11 @@ Audio Fix
 
 This includes the BGM-CONTINUITY-1 Framework runtime cut. It is later than the historical Stage A baseline and later than the Camera Default-output implementation merge.
 
+An additional Editor-only startup-isolation cut was implemented and proven locally on
+2026-08-20 after the canonical package state above. No published commit SHA is recorded
+for that cut in this documentation update, so it is tracked as a scoped local
+implementation/evidence record below and does not replace the canonical package SHA.
+
 Historical Stage A package baseline remains:
 
 ```text
@@ -52,6 +57,7 @@ Later scoped cuts do not rewrite what earlier Stage A or Camera QA runs tested.
 Current closure records:
 
 - [Stage A Canonical Package Baseline Closure](../Reconciliation/IMMERSIVE-FRAMEWORK-STAGE-A-CANONICAL-BASELINE-CLOSURE-2026-08-11.md)
+- [IF-ADR-001A — Editor Play Mode Startup Isolation](../Reconciliation/IF-ADR-001A-Editor-Play-Mode-Startup-Isolation-2026-08-20.md)
 - [IF-ADR-004D — Camera Default Output Presentation Authority](../Reconciliation/IF-ADR-004D-Camera-Default-Output-Presentation-Authority-2026-08-17.md)
 - [IF-ADR-013 — BGM Continuity Technical Certification](../Reconciliation/IF-ADR-013-BGM-Continuity-Technical-Certification-2026-08-19.md)
 
@@ -71,16 +77,16 @@ A real consumer can expose product/UX debt, an integration gap, future scope, or
 
 | ADR | Architecture / package | Technical QA | Stage B / current disposition |
 |---|---|---|---|
-| [001](../ADRs/IF-ADR-001-Core-Lifecycle-and-Runtime-Authority.md) | ACCEPTED / RECONCILED / IMPLEMENTED | CERTIFIED | Core lifecycle proven; current Stage A boundary closed. |
+| [001](../ADRs/IF-ADR-001-Core-Lifecycle-and-Runtime-Authority.md) | ACCEPTED / RECONCILED / IMPLEMENTED; 001A Editor startup isolation implemented locally | Existing core certification preserved; 001A is scoped consumer/Play Mode regression evidence, not new broad QA certification | Both Editor startup policies proven: `FrameworkStartup` uses neutral bootstrap and prevents the reproduced EventSystem/listener contamination; `CurrentSceneOnly` executes the current scene with Framework boot explicitly skipped. |
 | [002](../ADRs/IF-ADR-002-Product-Authoring-Model.md) | ACCEPTED / RECONCILED / IMPLEMENTED | Feature-owned evidence | Stage A closed; product proof remains feature-owned. |
 | [003](../ADRs/IF-ADR-003-Player-Participation-and-Actor-Lifecycle.md) | ACCEPTED baseline / RECONCILED / IMPLEMENTED; R6/R7/R8 draft pending | CERTIFIED baseline | Existing Player proof remains valid; proposed deltas are not delivered baseline behavior. |
 | [004](../ADRs/IF-ADR-004-Camera-Requests-and-Output-Authority.md) | ACCEPTED / RECONCILED / IMPLEMENTED; 004D Default-output cut merged | Full Camera 53/53 CERTIFIED for 2026-08-15 boundary | Sample 00 Default-output + gameplay readiness proof PASS; broader Camera consumer proof remains separate. |
 | [005](../ADRs/IF-ADR-005-Input-Pause-Gate-and-Reset.md) | ACCEPTED / RECONCILED / IMPLEMENTED | Input Gate 9/9; Restart 8/8; Pause 27/27 CERTIFIED | Stage A closed; Stage B may test authoring/usability. |
 | [006](../ADRs/IF-ADR-006-Loading-Transition-Persistence-and-Diagnostics.md) | ACCEPTED / RECONCILED / IMPLEMENTED | Focused 8/8; Progress 32/32; Terminal 34/34 CERTIFIED | Real consumer authoring/diagnostics remain Stage B evidence. |
 | [007](../ADRs/IF-ADR-007-Activity-Entry-Readiness-and-Reveal-Gating.md) | ACCEPTED / RECONCILED / IMPLEMENTED | Foundation 18/18; Direct Policies 42/42 CERTIFIED | Real readiness authoring remains Stage B proof. |
-| [008](../ADRs/IF-ADR-008-Persistent-Application-Content-Composition.md) | ACCEPTED / RECONCILED / IMPLEMENTED | No generic default gate | Current boundary closed; persistent content is used by Camera and BGM authorities. |
+| [008](../ADRs/IF-ADR-008-Persistent-Application-Content-Composition.md) | ACCEPTED / RECONCILED / IMPLEMENTED | No generic default gate | Persistent content remains explicit Game Application composition; 001A prevents unrelated Editor-open scenes from becoming persistent-composition sources under `FrameworkStartup`. |
 | [009](../ADRs/IF-ADR-009-Activity-Local-Visibility-Rules.md) | ACCEPTED / RECONCILED / IMPLEMENTED | CERTIFIED | Current boundary closed. |
-| [010](../ADRs/IF-ADR-010-Editor-and-Inspector-Product-Surface-Authority.md) | ACCEPTED / IMPLEMENTED | Feature-owned | Camera required Default is surfaced; Audio warning/discovery polish remains product debt where noted. |
+| [010](../ADRs/IF-ADR-010-Editor-and-Inspector-Product-Surface-Authority.md) | ACCEPTED / IMPLEMENTED; Editor Play Mode startup surface reconciled with 001A | Feature-owned | Project Settings now has a deterministic technical consequence: `FrameworkStartup` -> neutral bootstrap; `CurrentSceneOnly` -> current scene/no framework startup. |
 | [011](../ADRs/IF-ADR-011-Participant-Aware-Activity-Readiness-Loading-Progress.md) | ACCEPTED / RECONCILED / IMPLEMENTED | Progress 32/32; Terminal 34/34; Route 25/25; App 20/20 CERTIFIED | Real participant-aware usability where used. |
 | [012](../ADRs/IF-ADR-012-Activity-Player-Participation-Profile-and-Readiness-Compatibility.md) | ACCEPTED / RECONCILED / IMPLEMENTED | CERTIFIED | FIRSTGAME participation proof required. |
 | [013](../ADRs/IF-ADR-013-Optional-Audio-BGM-Adapter.md) | ACCEPTED / EXPERIMENTAL / IMPLEMENTED — IF-ADR-013A + BGM-CONTINUITY-1 | CERTIFIED: Audio 30/30 = Core 7/7 + Framework BGM 14/14 + ADR-013A 5/5 + physical continuity 4/4; real Framework Route A->B continuity PASS | Technical boundary closed in QA; FIRSTGAME/Sample real-consumer integration remains the promotion gate. |
@@ -95,6 +101,88 @@ A real consumer can expose product/UX debt, an integration gap, future scope, or
 | [022](../ADRs/IF-ADR-022-Camera-Rig-Presentation-Models-and-Materialization-Authority.md) | ACCEPTED / IMPLEMENTED | Presentation 14/14; Full Camera 53/53 for 2026-08-15 boundary | C1-C5 closed; broader FIRSTGAME C6 remains pending. |
 
 ## Current scoped closures
+
+### Editor Play Mode startup isolation — IF-ADR-001A — 2026-08-20
+
+Accepted lifecycle rule:
+
+```text
+Editor authoring never becomes runtime authority.
+```
+
+Scoped Editor realization:
+
+```text
+FrameworkStartup
+  -> package-owned empty FrameworkPlayModeBootstrap
+  -> FrameworkRuntimeHost
+  -> Startup Route Primary Scene
+  -> Persistent Content
+  -> normal Route / Activity composition
+
+CurrentSceneOnly
+  -> no Framework Play Mode start-scene override
+  -> current Editor scene executes intentionally
+  -> Framework startup skipped
+```
+
+Regression cause:
+
+```text
+previous AfterSceneLoad bootstrap timing
+  -> Editor-open scene Awake / OnEnable could run first
+  -> side effects could occur
+  -> objects could escape through DontDestroyOnLoad
+  -> later Single scene load could not undo those effects
+```
+
+Observed `FrameworkStartup` evidence:
+
+```text
+SceneReleasing
+  scene='FrameworkPlayModeBootstrap'
+  reason='single-scene-replacement'
+
+Startup Route Primary Scene
+  scene='MinimalGame_Gameplay'
+  alreadyLoaded='False'
+  loadMode='Single'
+  loaded='True'
+
+Boot
+  succeeded
+  activityReadiness='Ready'
+  blockingIssues='0'
+```
+
+The path was then rerun with the Editor scene that had previously reproduced duplicate
+`EventSystem` / listener contamination. The neutral-bootstrap sequence remained intact
+and the previous symptom was absent.
+
+The explicit `CurrentSceneOnly` counter-mode was also exercised. Observed evidence:
+
+```text
+[INFO][Immersive.Framework][ImmersiveFrameworkBootstrap]
+Boot skipped. editorPlayModeStartup='CurrentSceneOnly'
+```
+
+This confirms that the current Editor scene remains the intentional execution target in
+that mode while Framework application startup is skipped.
+
+Evidence classification:
+
+```text
+implementation                 local package cut
+FrameworkStartup path          PROVEN in consumer Play Mode
+CurrentSceneOnly path          PROVEN in consumer Play Mode
+regression reproduction        CLOSED
+dedicated automated QA         not added / not required for this cut
+published package SHA          not recorded yet
+```
+
+Reconciliation record:
+
+[IF-ADR-001A — Editor Play Mode Startup Isolation](../Reconciliation/IF-ADR-001A-Editor-Play-Mode-Startup-Isolation-2026-08-20.md)
 
 ### Camera Default output — IF-ADR-004D
 
@@ -196,6 +284,10 @@ The historical closure does not claim implementation/certification of proposed A
 
 A new accepted contract or reproducible regression may open a new scoped technical cut without invalidating unrelated historical certification.
 
+IF-ADR-001A is such a scoped regression correction. Its consumer Play Mode evidence
+does not rewrite prior ADR-001 certification and does not claim a new broad automated
+certification.
+
 ## Active work — Stage B / FIRSTGAME
 
 Stage B is the real-consumer lane for accepted package boundaries.
@@ -206,7 +298,7 @@ Stage B is the real-consumer lane for accepted package boundaries.
 4. **Pause** — consumer authoring/usability only; runtime contract is certified.
 5. **Audio** — BGM-CONTINUITY-1 technical runtime/QA is closed; next work is real Sample/FIRSTGAME BGM integration and promotion evidence.
 6. **Progression Save** — real Built-in JSON and Custom Provider usability/persistence proof.
-7. **Editor/Product Surface** — feature-owned Inspector/discovery/workflow evidence from the systems above.
+7. **Editor/Product Surface** — IF-ADR-001A is closed for both startup policies: `FrameworkStartup` isolation and `CurrentSceneOnly` boot-skip behavior are proven. Continue feature-owned Inspector/discovery/workflow evidence.
 
 ## Reopen conditions for a closed technical boundary
 
@@ -249,6 +341,7 @@ ADR-022 presentation models are not future scope; Fixed/Follow/Mounted/Third Per
 ## Current reconciliation records
 
 - [ADR-001](../Reconciliation/IMMERSIVE-FRAMEWORK-ADR-001-RECONCILIATION-2026-08-10.md)
+- [ADR-001A — Editor Play Mode Startup Isolation](../Reconciliation/IF-ADR-001A-Editor-Play-Mode-Startup-Isolation-2026-08-20.md)
 - [ADR-002](../Reconciliation/IMMERSIVE-FRAMEWORK-ADR-002-RECONCILIATION-2026-08-10.md)
 - [ADR-002 and ADR-009](../Reconciliation/IMMERSIVE-FRAMEWORK-ADR-002-009-RECONCILIATION-2026-08-10.md)
 - [ADR-003 and ADR-012](../Reconciliation/IMMERSIVE-FRAMEWORK-ADR-003-012-RECONCILIATION-2026-08-10.md)

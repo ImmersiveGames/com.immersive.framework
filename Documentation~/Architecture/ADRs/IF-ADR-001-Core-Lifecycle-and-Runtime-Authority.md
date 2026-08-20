@@ -1,14 +1,18 @@
 # IF-ADR-001 — Core Lifecycle and Runtime Authority
 
 Status: **Accepted / Reconciled**  
-Last updated: **2026-08-14**  
-Related decisions: IF-ADR-003, IF-ADR-005, IF-ADR-006, IF-ADR-007, IF-ADR-011, IF-ADR-014, IF-ADR-019, IF-ADR-020, IF-ADR-021  
-Current Player lifetime reconciliation: [2026-08-14 Player Physical Lifetime Reopen](../Reconciliation/IMMERSIVE-FRAMEWORK-PLAYER-PHYSICAL-LIFETIME-REOPEN-2026-08-14.md)
+Last updated: **2026-08-20**  
+Related decisions: IF-ADR-003, IF-ADR-005, IF-ADR-006, IF-ADR-007, IF-ADR-008, IF-ADR-010, IF-ADR-011, IF-ADR-014, IF-ADR-019, IF-ADR-020, IF-ADR-021  
+Current Player lifetime reconciliation: [2026-08-14 Player Physical Lifetime Reopen](../Reconciliation/IMMERSIVE-FRAMEWORK-PLAYER-PHYSICAL-LIFETIME-REOPEN-2026-08-14.md)  
+Current Editor startup isolation reconciliation: [IF-ADR-001A — Editor Play Mode Startup Isolation](../Reconciliation/IF-ADR-001A-Editor-Play-Mode-Startup-Isolation-2026-08-20.md)
 
 > Current implementation and certification state is tracked in
 > `../Tracking/IF-TRACK-Framework.md`. This ADR is normative. The 2026-08-14
 > reconciliation corrects the former interpretation that Activity representation
 > ownership implied Activity ownership of the Player's physical lifetime.
+>
+> The 2026-08-20 reconciliation makes the existing rule that Editor authoring
+> never becomes runtime authority concrete for Unity Editor Play Mode startup.
 
 ## Context
 
@@ -45,6 +49,74 @@ Route and Activity do not own Session participant identity.
 
 After successful Player admission, Route and Activity also do not own the terminal
 lifetime of the admitted physical Player representation.
+
+## Editor Play Mode startup isolation
+
+Unity Editor authoring state is not an implicit runtime composition input.
+
+When Project Settings selects:
+
+```text
+Editor Play Mode Startup
+  FrameworkStartup
+```
+
+the framework owns an Editor-only startup isolation step before ordinary runtime
+composition begins.
+
+Canonical flow:
+
+```text
+scenes currently open for authoring
+        ↓
+Play
+        ↓
+package-owned neutral bootstrap scene
+        ↓
+FrameworkRuntimeHost
+        ↓
+Startup Route Primary Scene
+        ↓
+Persistent Content
+        ↓
+remaining Route / Activity composition
+```
+
+The neutral bootstrap scene is Editor-only infrastructure. It must contain no gameplay,
+framework authoring, persistent composition, Camera, EventSystem, Player, GameApplication
+or other runtime product object.
+
+For `FrameworkStartup`:
+
+1. scenes currently open for authoring are not admitted as the initial runtime scene set;
+2. their GameObjects do not receive Play lifecycle before Framework startup;
+3. they cannot contribute arbitrary `DontDestroyOnLoad` state before the framework owns
+   application/session composition;
+4. `FrameworkRuntimeHost` is created from the neutral bootstrap context;
+5. `SceneLifecycle` then materializes the Startup Route Primary Scene through the normal
+   runtime lifecycle;
+6. application-persistent content is composed only through the explicit Game Application
+   / Persistent Content path;
+7. failure to resolve the required neutral bootstrap scene is blocking;
+8. `FrameworkStartup` must never silently fall back to executing the currently open
+   authoring scene.
+
+This is isolation of Editor startup state. It does not create a new runtime authority.
+
+When Project Settings selects:
+
+```text
+Editor Play Mode Startup
+  CurrentSceneOnly
+```
+
+the current Editor scene is intentionally executed and the Framework startup path is
+skipped according to the existing Editor Play Mode policy.
+
+`CurrentSceneOnly` is therefore an explicit opt-in to execute authoring scene content,
+not a fallback from failed `FrameworkStartup`.
+
+Player/runtime builds are unchanged by this Editor-only mechanism.
 
 ## Session Player physical lifetime boundary
 
@@ -192,6 +264,8 @@ metadata into lifecycle authority.
 - No silent fallback may change authority or policy.
 - Runtime contexts/services remain scoped rather than globally discoverable.
 - Editor authoring never becomes runtime authority.
+- Under `FrameworkStartup`, Editor-open authoring scenes are not admitted before framework runtime composition.
+- A missing required Editor bootstrap scene blocks `FrameworkStartup`; it never authorizes current-scene fallback.
 - Activity representation authority is not physical Player lifetime authority.
 - Physical Player persistence is not implemented by arbitrary persistent GameObjects.
 - Session Player Leave remains the explicit individual terminal operation under IF-ADR-020.

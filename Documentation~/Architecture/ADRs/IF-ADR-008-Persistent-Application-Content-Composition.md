@@ -1,11 +1,11 @@
 # IF-ADR-008 — Persistent Application Content Composition
 
 Status: **Accepted**  
-Last updated: 2026-08-16  
+Last updated: 2026-08-20  
 Package implementation: **COMPLETE FOR CURRENT ACCEPTED PRODUCT MODEL**  
 Current package assessment: **30/30** — local package/product assessment; not release certification  
 Product lifecycle: **Class B — reusable Scene Template with source-scene-owned composition**  
-Related decisions: IF-ADR-002, IF-ADR-006, IF-ADR-010, IF-ADR-015  
+Related decisions: IF-ADR-001, IF-ADR-002, IF-ADR-006, IF-ADR-010, IF-ADR-015  
 Current package baseline at last reconciliation: `baa5b00a004e81aec6f0080395cc2b8621d3d22c`  
 Reconciliation record: [ADR-008 Reconciliation — 2026-08-10](../Reconciliation/IMMERSIVE-FRAMEWORK-ADR-008-RECONCILIATION-2026-08-10.md)
 
@@ -227,6 +227,36 @@ This observation confirms the current runtime integration path. `DontDestroyOnLo
 itself is not the authoring authority described by this ADR; the architectural
 contract is application-persistent lifetime with scoped runtime authorities.
 
+## Editor startup isolation boundary
+
+Application-persistent composition must originate from explicit Game Application /
+Persistent Content ownership, not from whichever scene happened to be open for
+authoring when Play Mode started.
+
+Under IF-ADR-001 `FrameworkStartup`:
+
+```text
+Editor-open authoring scene
+  -> not admitted as initial runtime composition
+
+neutral package bootstrap scene
+  -> FrameworkRuntimeHost
+
+Game Application
+  -> explicit Persistent Content
+      -> application-persistent Camera / EventSystem / other configured content
+```
+
+Therefore a Camera, `EventSystem`, listener host or other object from an unrelated
+Editor-open scene cannot become an alternative persistent composition source merely by
+running `Awake`, `OnEnable` or `DontDestroyOnLoad` before the framework starts.
+
+`CurrentSceneOnly` remains an explicit separate Editor mode in which the open scene is
+intentionally executed and Framework startup is skipped.
+
+This boundary does not change the Persistent Content Scene Template ownership model. It
+prevents unrelated Editor authoring state from bypassing that model.
+
 ## Product surface status
 
 Current package classification:
@@ -362,6 +392,9 @@ Source scene owns composition.
 Consumer owns the instantiated scene.
 Pipeline verifies; it does not materialize or repair.
 Runtime systems keep runtime authority.
+
+Editor-open authoring scenes are not persistent-composition sources under
+FrameworkStartup.
 
 Pause, Loading, Transition and combined persistent presentation templates are
 valid future product variants, not current baseline requirements.

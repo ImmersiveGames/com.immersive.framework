@@ -1,12 +1,12 @@
 # IF-ADR-010 — Editor and Inspector Product Surface Authority
 
 Status: **Accepted / Reconciled for Camera ADR-022 2026-08-15**  
-Last updated: **2026-08-15**  
+Last updated: **2026-08-20**  
 Normative classification: **Minimum product-surface standard accepted**  
 Package conformity audit: **CLOSED — IF-ADR-010B**  
 Implementation classification: **Broad package surface is semantically conformant; Camera Class C materialization is implemented and technically certified**  
 IF-ADR-010C: **CANCELLED / NOT REQUIRED**  
-Related decisions: IF-ADR-002, IF-ADR-004, IF-ADR-008, IF-ADR-012, IF-ADR-015, IF-ADR-016, IF-ADR-022
+Related decisions: IF-ADR-001, IF-ADR-002, IF-ADR-004, IF-ADR-008, IF-ADR-012, IF-ADR-015, IF-ADR-016, IF-ADR-022
 
 > ADR-010 defines the product-surface rules.
 > It does not require equal tooling depth for every feature.
@@ -286,6 +286,62 @@ A simple direct Inspector does not need a synthetic rendering/UX test.
 Do not use QAFramework to certify that an Inspector is visually attractive or
 subjectively understandable.
 
+### 4.10 Editor Play Mode startup surface
+
+Project Settings owns the explicit Editor Play Mode startup intent:
+
+```text
+Project Settings
+  -> Immersive Framework
+      -> Editor Play Mode
+          -> Startup
+```
+
+The supported policies remain:
+
+```text
+FrameworkStartup
+CurrentSceneOnly
+```
+
+The Editor product surface must materialize those choices deterministically.
+
+For `FrameworkStartup`:
+
+```text
+Project Settings intent
+  -> package-owned neutral Play Mode bootstrap scene
+      -> FrameworkRuntimeHost
+          -> Startup Route Primary Scene
+```
+
+Scenes currently open for authoring are not runtime composition input for this mode.
+They must not execute Play lifecycle before Framework startup and must not become an
+accidental source of `DontDestroyOnLoad` state, duplicate `EventSystem` instances,
+listeners or other persistent composition.
+
+For `CurrentSceneOnly`:
+
+```text
+Project Settings intent
+  -> no Framework Play Mode start-scene override
+      -> currently open Editor scene executes intentionally
+      -> Framework startup is skipped
+```
+
+The Editor implementation may use Unity's Play Mode start-scene mechanism to realize
+this policy. That mechanism remains Editor-only infrastructure; it is not runtime
+authority and does not alter Player/build startup.
+
+If `FrameworkStartup` cannot resolve its required neutral bootstrap scene, entering Play
+must be blocked rather than silently falling back to the currently open authoring scene.
+
+The normative lifecycle/isolation contract is owned by IF-ADR-001. ADR-010 owns the
+discoverable Project Settings surface and its deterministic, non-silent Editor behavior.
+
+This is not Class C gameplay materialization. It is a direct project-level Editor policy
+whose technical effect is confined to Play Mode entry.
+
 ## 5. Conditional authoring capabilities
 
 ### 5.1 Recipe / Profile / Template
@@ -468,7 +524,7 @@ Current package classification:
 | Activity Restart | COMPLIANT |
 | Reset primary surface | COMPLIANT |
 | Unity Input Gate | COMPLIANT SEMANTICALLY |
-| Global Settings | COMPLIANT |
+| Global Settings | COMPLIANT — includes explicit Editor Play Mode startup policy |
 | Persistent Content Scene Template | COMPLIANT AT PACKAGE LEVEL |
 | Activity Readiness Participant | COMPLIANT |
 | Diagnostics-only surfaces | SUPPORT / NOT APPLICABLE |
