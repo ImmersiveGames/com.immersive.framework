@@ -1,9 +1,8 @@
-using Immersive.Framework.ObjectReset;
 using Immersive.Framework.Editor.Common;
+using Immersive.Framework.ObjectReset;
 using UnityEditor;
 using UnityEngine;
-
-namespace Immersive.Framework.Editor.Editor.Authoring
+namespace Immersive.Framework.Editor.Authoring
 {
     [CustomEditor(typeof(ObjectResetTrigger))]
     [CanEditMultipleObjects]

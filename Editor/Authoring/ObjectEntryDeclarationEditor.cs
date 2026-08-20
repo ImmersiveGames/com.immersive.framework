@@ -1,8 +1,7 @@
 using Immersive.Framework.ObjectEntry;
 using UnityEditor;
 using UnityEngine;
-
-namespace Immersive.Framework.Editor.Editor.Authoring
+namespace Immersive.Framework.Editor.Authoring
 {
     [CustomEditor(typeof(ObjectEntryDeclaration))]
     [CanEditMultipleObjects]

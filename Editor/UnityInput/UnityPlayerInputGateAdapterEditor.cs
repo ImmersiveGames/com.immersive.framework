@@ -40,57 +40,57 @@ namespace Immersive.Framework.Editor.UnityInput
                 "Apply On Enable",
                 "Evaluate and apply the current Gate state when this adapter becomes enabled.");
 
-        private SerializedProperty playerInput;
-        private SerializedProperty gameplayActionMap;
-        private SerializedProperty blockOnInputAcceptance;
-        private SerializedProperty blockOnGameplayAction;
-        private SerializedProperty restorePreviousState;
-        private SerializedProperty applyOnEnable;
-        private SerializedProperty logStateChanges;
-        private SerializedProperty logMissingRuntimeOnce;
-        private SerializedProperty logMissingTargetOnce;
-        private SerializedProperty gameplayActionMapName;
-        private bool showAdvancedDebug;
+        private SerializedProperty _playerInput;
+        private SerializedProperty _gameplayActionMap;
+        private SerializedProperty _blockOnInputAcceptance;
+        private SerializedProperty _blockOnGameplayAction;
+        private SerializedProperty _restorePreviousState;
+        private SerializedProperty _applyOnEnable;
+        private SerializedProperty _logStateChanges;
+        private SerializedProperty _logMissingRuntimeOnce;
+        private SerializedProperty _logMissingTargetOnce;
+        private SerializedProperty _gameplayActionMapName;
+        private bool _showAdvancedDebug;
 
         private void OnEnable()
         {
-            playerInput =
+            _playerInput =
                 serializedObject.FindProperty(
                     "playerInput");
 
-            gameplayActionMap =
+            _gameplayActionMap =
                 serializedObject.FindProperty(
                     "gameplayActionMap");
 
-            blockOnInputAcceptance =
+            _blockOnInputAcceptance =
                 serializedObject.FindProperty(
                     "blockOnInputAcceptance");
 
-            blockOnGameplayAction =
+            _blockOnGameplayAction =
                 serializedObject.FindProperty(
                     "blockOnGameplayAction");
 
-            restorePreviousState =
+            _restorePreviousState =
                 serializedObject.FindProperty(
                     "restorePreviousState");
 
-            applyOnEnable =
+            _applyOnEnable =
                 serializedObject.FindProperty(
                     "applyOnEnable");
 
-            logStateChanges =
+            _logStateChanges =
                 serializedObject.FindProperty(
                     "logStateChanges");
 
-            logMissingRuntimeOnce =
+            _logMissingRuntimeOnce =
                 serializedObject.FindProperty(
                     "logMissingRuntimeOnce");
 
-            logMissingTargetOnce =
+            _logMissingTargetOnce =
                 serializedObject.FindProperty(
                     "logMissingTargetOnce");
 
-            gameplayActionMapName =
+            _gameplayActionMapName =
                 serializedObject.FindProperty(
                     "gameplayActionMapName");
         }
@@ -129,24 +129,24 @@ namespace Immersive.Framework.Editor.UnityInput
                 "Configuration");
 
             EditorGUILayout.PropertyField(
-                playerInput,
+                _playerInput,
                 PlayerInputLabel);
 
             PlayerInput selectedPlayerInput =
-                playerInput.objectReferenceValue
+                _playerInput.objectReferenceValue
                     as PlayerInput;
 
             PlayerInputActionMapReferenceEditorGui.DrawForPlayerInput(
                 GameplayActionMapLabel,
-                gameplayActionMap,
+                _gameplayActionMap,
                 selectedPlayerInput);
 
             EditorGUILayout.PropertyField(
-                blockOnInputAcceptance,
+                _blockOnInputAcceptance,
                 BlockInputAcceptanceLabel);
 
             EditorGUILayout.PropertyField(
-                blockOnGameplayAction,
+                _blockOnGameplayAction,
                 BlockGameplayActionsLabel);
         }
 
@@ -247,15 +247,15 @@ namespace Immersive.Framework.Editor.UnityInput
         private void DrawAdvancedDebug()
         {
             EditorGUILayout.Space(7f);
-            showAdvancedDebug =
+            _showAdvancedDebug =
                 EditorGUILayout.Foldout(
-                    showAdvancedDebug,
+                    _showAdvancedDebug,
                     new GUIContent(
                         "Advanced / Debug",
                         "Shows physical application policy, diagnostic logging and legacy serialized evidence."),
                     true);
 
-            if (!showAdvancedDebug)
+            if (!_showAdvancedDebug)
             {
                 return;
             }
@@ -267,39 +267,39 @@ namespace Immersive.Framework.Editor.UnityInput
                 "Physical Application");
 
             EditorGUILayout.PropertyField(
-                restorePreviousState,
+                _restorePreviousState,
                 RestorePreviousStateLabel);
 
             EditorGUILayout.PropertyField(
-                applyOnEnable,
+                _applyOnEnable,
                 ApplyOnEnableLabel);
 
             FrameworkAuthoringInspectorGui.Section(
                 "Diagnostics");
 
             EditorGUILayout.PropertyField(
-                logStateChanges,
+                _logStateChanges,
                 new GUIContent(
                     "Log State Changes",
                     "Logs adapter state changes for technical diagnosis."));
 
             EditorGUILayout.PropertyField(
-                logMissingRuntimeOnce,
+                _logMissingRuntimeOnce,
                 new GUIContent(
                     "Log Missing Runtime Once",
                     "Logs the first missing Input Gate runtime binding occurrence."));
 
             EditorGUILayout.PropertyField(
-                logMissingTargetOnce,
+                _logMissingTargetOnce,
                 new GUIContent(
                     "Log Missing Target Once",
                     "Logs the first missing PlayerInput or gameplay Action Map target occurrence."));
 
             serializedObject.ApplyModifiedProperties();
 
-            if (gameplayActionMapName != null &&
+            if (_gameplayActionMapName != null &&
                 !string.IsNullOrWhiteSpace(
-                    gameplayActionMapName.stringValue))
+                    _gameplayActionMapName.stringValue))
             {
                 FrameworkAuthoringInspectorGui.Section(
                     "Legacy Evidence");
@@ -310,7 +310,7 @@ namespace Immersive.Framework.Editor.UnityInput
                         new GUIContent(
                             "Legacy Gameplay Map",
                             "Legacy serialized Action Map name retained only as migration/debug evidence."),
-                        gameplayActionMapName.stringValue);
+                        _gameplayActionMapName.stringValue);
                 }
             }
 

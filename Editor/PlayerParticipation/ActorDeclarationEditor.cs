@@ -1,11 +1,10 @@
 using System;
 using Immersive.Framework.Actors;
 using Immersive.Framework.Editor.Common;
-using Immersive.Framework.Editor.Editor.Validation;
+using Immersive.Framework.Editor.Validation;
 using UnityEditor;
 using UnityEngine;
-
-namespace Immersive.Framework.Editor.Editor.PlayerParticipation
+namespace Immersive.Framework.Editor.PlayerParticipation
 {
     /// <summary>
     /// Designer-first Inspector shared by ActorDeclaration and specialized declarations.
@@ -16,21 +15,21 @@ namespace Immersive.Framework.Editor.Editor.PlayerParticipation
     {
         private const string LegacyQaActorId = "qa.actor.generic";
 
-        private SerializedProperty actorId;
-        private SerializedProperty actorKind;
-        private SerializedProperty actorRole;
-        private SerializedProperty displayName;
-        private SerializedProperty reason;
+        private SerializedProperty _actorId;
+        private SerializedProperty _actorKind;
+        private SerializedProperty _actorRole;
+        private SerializedProperty _displayName;
+        private SerializedProperty _reason;
 
-        private bool showAdvancedDebug;
+        private bool _showAdvancedDebug;
 
         private void OnEnable()
         {
-            actorId = serializedObject.FindProperty("actorId");
-            actorKind = serializedObject.FindProperty("actorKind");
-            actorRole = serializedObject.FindProperty("actorRole");
-            displayName = serializedObject.FindProperty("displayName");
-            reason = serializedObject.FindProperty("reason");
+            _actorId = serializedObject.FindProperty("actorId");
+            _actorKind = serializedObject.FindProperty("actorKind");
+            _actorRole = serializedObject.FindProperty("actorRole");
+            _displayName = serializedObject.FindProperty("displayName");
+            _reason = serializedObject.FindProperty("reason");
         }
 
         public override void OnInspectorGUI()
@@ -79,7 +78,7 @@ namespace Immersive.Framework.Editor.Editor.PlayerParticipation
                 "Configuration");
 
             EditorGUILayout.PropertyField(
-                displayName,
+                _displayName,
                 new GUIContent(
                     "Display Name",
                     "Human-readable Actor label used in authoring and diagnostics. It is not functional identity."));
@@ -105,13 +104,13 @@ namespace Immersive.Framework.Editor.Editor.PlayerParticipation
             }
 
             EditorGUILayout.PropertyField(
-                actorKind,
+                _actorKind,
                 new GUIContent(
                     "Actor Kind",
                     "Broad Actor category used by framework contracts."));
 
             EditorGUILayout.PropertyField(
-                actorRole,
+                _actorRole,
                 new GUIContent(
                     "Actor Role",
                     "Broad gameplay role used by framework contracts."));
@@ -200,13 +199,13 @@ namespace Immersive.Framework.Editor.Editor.PlayerParticipation
             ActorDeclaration declaration)
         {
             EditorGUILayout.Space(6f);
-            showAdvancedDebug =
+            _showAdvancedDebug =
                 EditorGUILayout.Foldout(
-                    showAdvancedDebug,
+                    _showAdvancedDebug,
                     "Advanced / Debug",
                     true);
 
-            if (!showAdvancedDebug)
+            if (!_showAdvancedDebug)
             {
                 return;
             }
@@ -226,8 +225,8 @@ namespace Immersive.Framework.Editor.Editor.PlayerParticipation
                 "Stable Identity");
 
             string currentActorId =
-                actorId != null
-                    ? actorId.stringValue ?? string.Empty
+                _actorId != null
+                    ? _actorId.stringValue ?? string.Empty
                     : string.Empty;
 
             bool isLegacyPlaceholder =
@@ -265,7 +264,7 @@ namespace Immersive.Framework.Editor.Editor.PlayerParticipation
                     {
                         GenerateActorId(declaration);
                         currentActorId =
-                            actorId.stringValue ?? string.Empty;
+                            _actorId.stringValue ?? string.Empty;
                     }
                 }
 
@@ -291,7 +290,7 @@ namespace Immersive.Framework.Editor.Editor.PlayerParticipation
                 declaration,
                 "Generate Actor ID");
 
-            actorId.stringValue =
+            _actorId.stringValue =
                 $"actor.{Guid.NewGuid():N}";
 
             serializedObject.ApplyModifiedProperties();
@@ -309,7 +308,7 @@ namespace Immersive.Framework.Editor.Editor.PlayerParticipation
                 "Diagnostics");
 
             EditorGUILayout.PropertyField(
-                reason,
+                _reason,
                 new GUIContent(
                     "Reason",
                     "Diagnostic declaration source or reason. It is not Actor identity."));

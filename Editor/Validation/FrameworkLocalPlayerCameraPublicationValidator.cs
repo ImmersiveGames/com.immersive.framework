@@ -3,7 +3,7 @@ using Immersive.Framework.PlayerParticipation;
 using UnityEngine;
 using Object = UnityEngine.Object;
 
-namespace Immersive.Framework.Editor.Editor.Validation
+namespace Immersive.Framework.Editor.Validation
 {
     /// <summary>
     /// Prevents two Local Player camera request publishers from being authored for

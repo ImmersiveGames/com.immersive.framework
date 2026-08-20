@@ -6,13 +6,12 @@ using Immersive.Framework.Camera;
 using Immersive.Framework.CameraAuthoring;
 using Immersive.Framework.ContentFlow;
 using Immersive.Framework.CycleReset;
-using Immersive.Framework.Editor.Editor.Authoring;
+using Immersive.Framework.Editor.Authoring;
 using Immersive.Framework.Loading;
 using Immersive.Framework.Pause;
 using Immersive.Framework.RouteLifecycle;
 using Immersive.Framework.Transition;
 using Immersive.Framework.TransitionEffects;
-using Unity.Cinemachine;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.EventSystems;
@@ -21,7 +20,7 @@ using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 using Object = UnityEngine.Object;
 
-namespace Immersive.Framework.Editor.Editor.Validation
+namespace Immersive.Framework.Editor.Validation
 {
     internal static class FrameworkAuthoringValidator
     {

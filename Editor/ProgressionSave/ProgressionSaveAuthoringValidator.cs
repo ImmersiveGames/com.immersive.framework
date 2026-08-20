@@ -1,7 +1,6 @@
 using Immersive.Framework.Authoring;
-using Immersive.Framework.Editor.Editor.Validation;
-
-namespace Immersive.Framework.Editor.Editor.ProgressionSave
+using Immersive.Framework.Editor.Validation;
+namespace Immersive.Framework.Editor.ProgressionSave
 {
     internal static class ProgressionSaveAuthoringValidator
     {

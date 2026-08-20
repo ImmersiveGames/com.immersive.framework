@@ -2,8 +2,7 @@ using Immersive.Framework.Editor.Common;
 using Immersive.Framework.ObjectReset;
 using UnityEditor;
 using UnityEngine;
-
-namespace Immersive.Framework.Reset.Editor
+namespace Immersive.Framework.Editor.Reset
 {
     [CustomEditor(typeof(ObjectResetGroupTrigger))]
     internal sealed class ObjectResetGroupTriggerEditor : UnityEditor.Editor

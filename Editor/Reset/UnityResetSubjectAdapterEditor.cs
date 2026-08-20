@@ -8,17 +8,17 @@ namespace Immersive.Framework.Editor.Reset
     [CustomEditor(typeof(UnityResetSubjectAdapter))]
     internal sealed class UnityResetSubjectAdapterEditor : UnityEditor.Editor
     {
-        private SerializedProperty idGeneration, subjectId, scope, displayName, participantDiscovery, includeInactiveParticipants, includeUnityResettableComponents;
-        private SerializedProperty registerOnEnable, unregisterOnDisable, retryUntilRuntimeAvailable, runtimeSubjectIdPrefix, diagnosticTag, sourceActor, sourcePlayerActor;
-        private bool showAdvanced, showDiagnostics;
-        private string validationMessage;
-        private MessageType validationMessageType;
+        private SerializedProperty _idGeneration, _subjectId, _scope, _displayName, _participantDiscovery, _includeInactiveParticipants, _includeUnityResettableComponents;
+        private SerializedProperty _registerOnEnable, _unregisterOnDisable, _retryUntilRuntimeAvailable, _runtimeSubjectIdPrefix, _diagnosticTag, _sourceActor, _sourcePlayerActor;
+        private bool _showAdvanced, _showDiagnostics;
+        private string _validationMessage;
+        private MessageType _validationMessageType;
 
         private void OnEnable()
         {
-            idGeneration = serializedObject.FindProperty("idGeneration"); subjectId = serializedObject.FindProperty("subjectId"); scope = serializedObject.FindProperty("scope"); displayName = serializedObject.FindProperty("displayName");
-            participantDiscovery = serializedObject.FindProperty("participantDiscovery"); includeInactiveParticipants = serializedObject.FindProperty("includeInactiveParticipants"); includeUnityResettableComponents = serializedObject.FindProperty("includeUnityResettableComponents");
-            registerOnEnable = serializedObject.FindProperty("registerOnEnable"); unregisterOnDisable = serializedObject.FindProperty("unregisterOnDisable"); retryUntilRuntimeAvailable = serializedObject.FindProperty("retryUntilRuntimeAvailable"); runtimeSubjectIdPrefix = serializedObject.FindProperty("runtimeSubjectIdPrefix"); diagnosticTag = serializedObject.FindProperty("diagnosticTag"); sourceActor = serializedObject.FindProperty("sourceActor"); sourcePlayerActor = serializedObject.FindProperty("sourcePlayerActor");
+            _idGeneration = serializedObject.FindProperty("idGeneration"); _subjectId = serializedObject.FindProperty("subjectId"); _scope = serializedObject.FindProperty("scope"); _displayName = serializedObject.FindProperty("displayName");
+            _participantDiscovery = serializedObject.FindProperty("participantDiscovery"); _includeInactiveParticipants = serializedObject.FindProperty("includeInactiveParticipants"); _includeUnityResettableComponents = serializedObject.FindProperty("includeUnityResettableComponents");
+            _registerOnEnable = serializedObject.FindProperty("registerOnEnable"); _unregisterOnDisable = serializedObject.FindProperty("unregisterOnDisable"); _retryUntilRuntimeAvailable = serializedObject.FindProperty("retryUntilRuntimeAvailable"); _runtimeSubjectIdPrefix = serializedObject.FindProperty("runtimeSubjectIdPrefix"); _diagnosticTag = serializedObject.FindProperty("diagnosticTag"); _sourceActor = serializedObject.FindProperty("sourceActor"); _sourcePlayerActor = serializedObject.FindProperty("sourcePlayerActor");
         }
 
         public override void OnInspectorGUI()
@@ -38,8 +38,8 @@ namespace Immersive.Framework.Editor.Reset
         {
             EditorGUILayout.LabelField("Reset Subject", EditorStyles.boldLabel);
             EditorGUILayout.HelpBox("A Reset Subject groups the resettable parts of one logical object. Triggers request a reset of the Subject; Participants restore its state.", MessageType.Info);
-            EditorGUILayout.LabelField("Display Name", string.IsNullOrWhiteSpace(displayName.stringValue) ? adapter.name : displayName.stringValue);
-            EditorGUILayout.LabelField("Scope", scope.enumDisplayNames[scope.enumValueIndex]);
+            EditorGUILayout.LabelField("Display Name", string.IsNullOrWhiteSpace(_displayName.stringValue) ? adapter.name : _displayName.stringValue);
+            EditorGUILayout.LabelField("Scope", _scope.enumDisplayNames[_scope.enumValueIndex]);
             EditorGUILayout.LabelField("Participants", CountParticipants(adapter).ToString() + " configured");
             EditorGUILayout.LabelField("Identity", ResolveIdentityStatus());
         }
@@ -47,19 +47,19 @@ namespace Immersive.Framework.Editor.Reset
         private void DrawSubject()
         {
             EditorGUILayout.LabelField("Subject", EditorStyles.boldLabel);
-            EditorGUILayout.PropertyField(displayName, new GUIContent("Display Name"));
-            EditorGUILayout.PropertyField(scope, new GUIContent("Scope", "Defines the runtime context that owns Subject registration."));
-            EditorGUILayout.PropertyField(participantDiscovery, new GUIContent("Participants"));
-            using (new EditorGUI.DisabledScope(true)) EditorGUILayout.TextField("Identity", subjectId.stringValue);
-            EditorGUILayout.LabelField(idGeneration.intValue == 10 ? "Generated automatically when missing." : "Identity is derived at runtime by the selected generation mode.", EditorStyles.wordWrappedMiniLabel);
+            EditorGUILayout.PropertyField(_displayName, new GUIContent("Display Name"));
+            EditorGUILayout.PropertyField(_scope, new GUIContent("Scope", "Defines the runtime context that owns Subject registration."));
+            EditorGUILayout.PropertyField(_participantDiscovery, new GUIContent("Participants"));
+            using (new EditorGUI.DisabledScope(true)) EditorGUILayout.TextField("Identity", _subjectId.stringValue);
+            EditorGUILayout.LabelField(_idGeneration.intValue == 10 ? "Generated automatically when missing." : "Identity is derived at runtime by the selected generation mode.", EditorStyles.wordWrappedMiniLabel);
         }
 
         private void DrawParticipants(UnityResetSubjectAdapter adapter)
         {
             EditorGUILayout.LabelField("Participants", EditorStyles.boldLabel);
-            bool sameObject = participantDiscovery.intValue == (int)UnityResetParticipantDiscoveryMode.SameGameObject;
+            bool sameObject = _participantDiscovery.intValue == (int)UnityResetParticipantDiscoveryMode.SameGameObject;
             EditorGUILayout.HelpBox(sameObject ? "Uses Reset Participants attached to this GameObject." : "Uses Reset Participants in this hierarchy according to the configured inclusion rules.", MessageType.None);
-            UnityResetParticipantBehaviour[] participants = sameObject ? adapter.GetComponents<UnityResetParticipantBehaviour>() : adapter.GetComponentsInChildren<UnityResetParticipantBehaviour>(includeInactiveParticipants.boolValue);
+            UnityResetParticipantBehaviour[] participants = sameObject ? adapter.GetComponents<UnityResetParticipantBehaviour>() : adapter.GetComponentsInChildren<UnityResetParticipantBehaviour>(_includeInactiveParticipants.boolValue);
             EditorGUILayout.LabelField("Configured Participants", participants.Length.ToString());
             for (int index = 0; index < participants.Length; index++)
             {
@@ -79,33 +79,33 @@ namespace Immersive.Framework.Editor.Reset
                 if (GUILayout.Button("Validate Subject")) ValidateSubject(adapter);
             }
             if (targets.Length != 1) EditorGUILayout.HelpBox("Identity actions are disabled for multi-object editing so a generated ID is never copied between Subjects.", MessageType.Info);
-            if (!string.IsNullOrWhiteSpace(validationMessage))
+            if (!string.IsNullOrWhiteSpace(_validationMessage))
             {
-                EditorGUILayout.HelpBox(validationMessage, validationMessageType);
+                EditorGUILayout.HelpBox(_validationMessage, _validationMessageType);
             }
         }
 
         private void DrawAdvanced()
         {
-            showAdvanced = EditorGUILayout.Foldout(showAdvanced, "Advanced", true);
-            if (!showAdvanced) return;
+            _showAdvanced = EditorGUILayout.Foldout(_showAdvanced, "Advanced", true);
+            if (!_showAdvanced) return;
             EditorGUILayout.LabelField("Registration", EditorStyles.miniBoldLabel);
-            EditorGUILayout.PropertyField(registerOnEnable); EditorGUILayout.PropertyField(unregisterOnDisable); EditorGUILayout.PropertyField(retryUntilRuntimeAvailable);
+            EditorGUILayout.PropertyField(_registerOnEnable); EditorGUILayout.PropertyField(_unregisterOnDisable); EditorGUILayout.PropertyField(_retryUntilRuntimeAvailable);
             EditorGUILayout.LabelField("Identity", EditorStyles.miniBoldLabel);
-            EditorGUILayout.PropertyField(idGeneration); EditorGUILayout.PropertyField(subjectId); EditorGUILayout.PropertyField(runtimeSubjectIdPrefix);
+            EditorGUILayout.PropertyField(_idGeneration); EditorGUILayout.PropertyField(_subjectId); EditorGUILayout.PropertyField(_runtimeSubjectIdPrefix);
             EditorGUILayout.LabelField("Actor Identity Bridge", EditorStyles.miniBoldLabel);
-            EditorGUILayout.PropertyField(sourceActor); EditorGUILayout.PropertyField(sourcePlayerActor);
+            EditorGUILayout.PropertyField(_sourceActor); EditorGUILayout.PropertyField(_sourcePlayerActor);
             EditorGUILayout.HelpBox("Actor declarations take precedence over authored Subject ID when they provide the selected identity mode. Conflicting actor identities are rejected by runtime registration.", MessageType.None);
             EditorGUILayout.LabelField("Participant Discovery Details", EditorStyles.miniBoldLabel);
-            EditorGUILayout.PropertyField(includeInactiveParticipants); EditorGUILayout.PropertyField(includeUnityResettableComponents); EditorGUILayout.PropertyField(diagnosticTag);
+            EditorGUILayout.PropertyField(_includeInactiveParticipants); EditorGUILayout.PropertyField(_includeUnityResettableComponents); EditorGUILayout.PropertyField(_diagnosticTag);
         }
 
         private void DrawDiagnostics(UnityResetSubjectAdapter adapter)
         {
-            showDiagnostics = EditorGUILayout.Foldout(showDiagnostics, "Diagnostics", true);
-            if (!showDiagnostics) return;
-            EditorGUILayout.LabelField("Serialized Subject ID", subjectId.stringValue);
-            EditorGUILayout.LabelField("ID Generation", idGeneration.enumDisplayNames[idGeneration.enumValueIndex]);
+            _showDiagnostics = EditorGUILayout.Foldout(_showDiagnostics, "Diagnostics", true);
+            if (!_showDiagnostics) return;
+            EditorGUILayout.LabelField("Serialized Subject ID", _subjectId.stringValue);
+            EditorGUILayout.LabelField("ID Generation", _idGeneration.enumDisplayNames[_idGeneration.enumValueIndex]);
             EditorGUILayout.LabelField("Discovered Participant Count", CountParticipants(adapter).ToString());
             EditorGUILayout.LabelField("Runtime Port", adapter.ResetRegistrationRuntimeBindingStatus);
             EditorGUILayout.LabelField("Registration", Application.isPlaying ? (adapter.IsRegistered ? "Registered" : "Not registered") : "Runtime-dependent");
@@ -114,20 +114,20 @@ namespace Immersive.Framework.Editor.Reset
             EditorGUILayout.HelpBox(adapter.ResetRegistrationRuntimeBindingDiagnostic, MessageType.None);
         }
 
-        private string ResolveIdentityStatus() => idGeneration.intValue != 10 ? "Runtime-derived" : string.IsNullOrWhiteSpace(subjectId.stringValue) ? "Missing" : "Generated / Valid";
-        private int CountParticipants(UnityResetSubjectAdapter adapter) => participantDiscovery.intValue == (int)UnityResetParticipantDiscoveryMode.SameGameObject ? adapter.GetComponents<UnityResetParticipantBehaviour>().Length : adapter.GetComponentsInChildren<UnityResetParticipantBehaviour>(includeInactiveParticipants.boolValue).Length;
+        private string ResolveIdentityStatus() => _idGeneration.intValue != 10 ? "Runtime-derived" : string.IsNullOrWhiteSpace(_subjectId.stringValue) ? "Missing" : "Generated / Valid";
+        private int CountParticipants(UnityResetSubjectAdapter adapter) => _participantDiscovery.intValue == (int)UnityResetParticipantDiscoveryMode.SameGameObject ? adapter.GetComponents<UnityResetParticipantBehaviour>().Length : adapter.GetComponentsInChildren<UnityResetParticipantBehaviour>(_includeInactiveParticipants.boolValue).Length;
 
         private void GenerateMissingIds(UnityResetSubjectAdapter adapter)
         {
             Undo.RegisterCompleteObjectUndo(adapter, "Generate Reset IDs");
             bool hasActorIdentityBridge =
-                sourceActor.objectReferenceValue != null ||
-                sourcePlayerActor.objectReferenceValue != null;
+                _sourceActor.objectReferenceValue != null ||
+                _sourcePlayerActor.objectReferenceValue != null;
             bool changed = !hasActorIdentityBridge &&
                 ResetAuthoringIdentityUtility.GenerateMissingSubjectId(
-                    idGeneration,
-                    subjectId);
-            UnityResetParticipantBehaviour[] participants = participantDiscovery.intValue == (int)UnityResetParticipantDiscoveryMode.SameGameObject ? adapter.GetComponents<UnityResetParticipantBehaviour>() : adapter.GetComponentsInChildren<UnityResetParticipantBehaviour>(includeInactiveParticipants.boolValue);
+                    _idGeneration,
+                    _subjectId);
+            UnityResetParticipantBehaviour[] participants = _participantDiscovery.intValue == (int)UnityResetParticipantDiscoveryMode.SameGameObject ? adapter.GetComponents<UnityResetParticipantBehaviour>() : adapter.GetComponentsInChildren<UnityResetParticipantBehaviour>(_includeInactiveParticipants.boolValue);
             foreach (UnityResetParticipantBehaviour participant in participants)
             {
                 if (participant == null) continue;
@@ -142,14 +142,14 @@ namespace Immersive.Framework.Editor.Reset
         private void ValidateSubject(UnityResetSubjectAdapter adapter)
         {
             var issues = new List<string>();
-            if (idGeneration.intValue == 10 && string.IsNullOrWhiteSpace(subjectId.stringValue) && sourceActor.objectReferenceValue == null && sourcePlayerActor.objectReferenceValue == null) issues.Add("Authored stable Subject ID is missing and no actor identity bridge is configured.");
+            if (_idGeneration.intValue == 10 && string.IsNullOrWhiteSpace(_subjectId.stringValue) && _sourceActor.objectReferenceValue == null && _sourcePlayerActor.objectReferenceValue == null) issues.Add("Authored stable Subject ID is missing and no actor identity bridge is configured.");
             var ids = new HashSet<string>();
-            UnityResetParticipantBehaviour[] participants = participantDiscovery.intValue == (int)UnityResetParticipantDiscoveryMode.SameGameObject ? adapter.GetComponents<UnityResetParticipantBehaviour>() : adapter.GetComponentsInChildren<UnityResetParticipantBehaviour>(includeInactiveParticipants.boolValue);
+            UnityResetParticipantBehaviour[] participants = _participantDiscovery.intValue == (int)UnityResetParticipantDiscoveryMode.SameGameObject ? adapter.GetComponents<UnityResetParticipantBehaviour>() : adapter.GetComponentsInChildren<UnityResetParticipantBehaviour>(_includeInactiveParticipants.boolValue);
             foreach (UnityResetParticipantBehaviour participant in participants) { if (participant == null) { issues.Add("A discovered participant reference is invalid."); continue; } if (string.IsNullOrWhiteSpace(participant.ParticipantIdText)) issues.Add("Participant '" + participant.name + "' has no Participant ID."); else if (!ids.Add(participant.ParticipantIdText.Trim())) issues.Add("Duplicate Participant ID: " + participant.ParticipantIdText.Trim()); }
-            validationMessage = issues.Count == 0
+            _validationMessage = issues.Count == 0
                 ? "Authoring evidence is valid. Runtime registration remains runtime-dependent."
                 : string.Join("\n", issues);
-            validationMessageType = issues.Count == 0
+            _validationMessageType = issues.Count == 0
                 ? MessageType.Info
                 : MessageType.Error;
         }

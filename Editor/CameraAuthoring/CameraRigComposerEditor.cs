@@ -17,93 +17,93 @@ namespace Immersive.Framework.Editor.CameraAuthoring
             TargetSourceComponent = 1
         }
 
-        private SerializedProperty presentationIntent;
-        private SerializedProperty targetSourceKind;
-        private SerializedProperty targetSource;
-        private SerializedProperty explicitFollowTarget;
-        private SerializedProperty explicitLookAtTarget;
-        private SerializedProperty lookAtRequirement;
-        private SerializedProperty followOffset;
-        private SerializedProperty mountedPositionDamping;
-        private SerializedProperty mountedRotationDamping;
-        private SerializedProperty thirdPersonShoulderOffset;
-        private SerializedProperty thirdPersonVerticalArmLength;
-        private SerializedProperty thirdPersonCameraSide;
-        private SerializedProperty thirdPersonCameraDistance;
-        private SerializedProperty thirdPersonDamping;
-        private SerializedProperty cinemachineCamera;
-        private SerializedProperty materializedPresentationIntent;
-        private SerializedProperty frameworkOwnedCinemachineCamera;
-        private SerializedProperty frameworkOwnedPositionControl;
-        private SerializedProperty frameworkOwnedRotationControl;
-        private SerializedProperty materializationRevision;
-        private SerializedProperty logApplyRebuildDiagnostics;
-        private SerializedProperty lastApplyRebuildStatus;
-        private SerializedProperty lastBlockingIssue;
-        private SerializedProperty lastTargetResolutionSummary;
-        private SerializedProperty lastMaterializationSummary;
-        private SerializedProperty lastResolvedFollowTarget;
-        private SerializedProperty lastResolvedLookAtTarget;
+        private SerializedProperty _presentationIntent;
+        private SerializedProperty _targetSourceKind;
+        private SerializedProperty _targetSource;
+        private SerializedProperty _explicitFollowTarget;
+        private SerializedProperty _explicitLookAtTarget;
+        private SerializedProperty _lookAtRequirement;
+        private SerializedProperty _followOffset;
+        private SerializedProperty _mountedPositionDamping;
+        private SerializedProperty _mountedRotationDamping;
+        private SerializedProperty _thirdPersonShoulderOffset;
+        private SerializedProperty _thirdPersonVerticalArmLength;
+        private SerializedProperty _thirdPersonCameraSide;
+        private SerializedProperty _thirdPersonCameraDistance;
+        private SerializedProperty _thirdPersonDamping;
+        private SerializedProperty _cinemachineCamera;
+        private SerializedProperty _materializedPresentationIntent;
+        private SerializedProperty _frameworkOwnedCinemachineCamera;
+        private SerializedProperty _frameworkOwnedPositionControl;
+        private SerializedProperty _frameworkOwnedRotationControl;
+        private SerializedProperty _materializationRevision;
+        private SerializedProperty _logApplyRebuildDiagnostics;
+        private SerializedProperty _lastApplyRebuildStatus;
+        private SerializedProperty _lastBlockingIssue;
+        private SerializedProperty _lastTargetResolutionSummary;
+        private SerializedProperty _lastMaterializationSummary;
+        private SerializedProperty _lastResolvedFollowTarget;
+        private SerializedProperty _lastResolvedLookAtTarget;
 
-        private CameraRigComposerApplyRebuildResult? lastOperationResult;
-        private bool lastOperationOutdated;
-        private bool showAdvancedDebug;
+        private CameraRigComposerApplyRebuildResult? _lastOperationResult;
+        private bool _lastOperationOutdated;
+        private bool _showAdvancedDebug;
 
         private void OnEnable()
         {
-            presentationIntent =
+            _presentationIntent =
                 serializedObject.FindProperty("presentationIntent");
-            targetSourceKind =
+            _targetSourceKind =
                 serializedObject.FindProperty("targetSourceKind");
-            targetSource =
+            _targetSource =
                 serializedObject.FindProperty("targetSource");
-            explicitFollowTarget =
+            _explicitFollowTarget =
                 serializedObject.FindProperty("explicitFollowTarget");
-            explicitLookAtTarget =
+            _explicitLookAtTarget =
                 serializedObject.FindProperty("explicitLookAtTarget");
-            lookAtRequirement =
+            _lookAtRequirement =
                 serializedObject.FindProperty("lookAtRequirement");
-            followOffset =
+            _followOffset =
                 serializedObject.FindProperty("followOffset");
-            mountedPositionDamping =
+            _mountedPositionDamping =
                 serializedObject.FindProperty("mountedPositionDamping");
-            mountedRotationDamping =
+            _mountedRotationDamping =
                 serializedObject.FindProperty("mountedRotationDamping");
-            thirdPersonShoulderOffset =
+            _thirdPersonShoulderOffset =
                 serializedObject.FindProperty("thirdPersonShoulderOffset");
-            thirdPersonVerticalArmLength =
+            _thirdPersonVerticalArmLength =
                 serializedObject.FindProperty("thirdPersonVerticalArmLength");
-            thirdPersonCameraSide =
+            _thirdPersonCameraSide =
                 serializedObject.FindProperty("thirdPersonCameraSide");
-            thirdPersonCameraDistance =
+            _thirdPersonCameraDistance =
                 serializedObject.FindProperty("thirdPersonCameraDistance");
-            thirdPersonDamping =
+            _thirdPersonDamping =
                 serializedObject.FindProperty("thirdPersonDamping");
-            cinemachineCamera =
+            _cinemachineCamera =
                 serializedObject.FindProperty("cinemachineCamera");
-            materializedPresentationIntent =
+            _materializedPresentationIntent =
                 serializedObject.FindProperty("materializedPresentationIntent");
-            frameworkOwnedCinemachineCamera =
+            _frameworkOwnedCinemachineCamera =
                 serializedObject.FindProperty("frameworkOwnedCinemachineCamera");
-            frameworkOwnedPositionControl =
+            _frameworkOwnedPositionControl =
                 serializedObject.FindProperty("frameworkOwnedPositionControl");
-            frameworkOwnedRotationControl =
+            _frameworkOwnedRotationControl =
                 serializedObject.FindProperty("frameworkOwnedRotationControl");
-            materializationRevision =
+            _materializationRevision =
                 serializedObject.FindProperty("materializationRevision");
-            logApplyRebuildDiagnostics =
+            _logApplyRebuildDiagnostics =
                 serializedObject.FindProperty("logApplyRebuildDiagnostics");
-            lastApplyRebuildStatus =
+            _lastApplyRebuildStatus =
                 serializedObject.FindProperty("lastApplyRebuildStatus");
-            lastBlockingIssue =
+            _lastBlockingIssue =
                 serializedObject.FindProperty("lastBlockingIssue");
-            lastTargetResolutionSummary =
+            _lastTargetResolutionSummary =
                 serializedObject.FindProperty("lastTargetResolutionSummary");
-            lastMaterializationSummary =
+            _lastMaterializationSummary =
                 serializedObject.FindProperty("lastMaterializationSummary");
-            lastResolvedFollowTarget =
+            _lastResolvedFollowTarget =
                 serializedObject.FindProperty("lastResolvedFollowTarget");
-            lastResolvedLookAtTarget =
+            _lastResolvedLookAtTarget =
                 serializedObject.FindProperty("lastResolvedLookAtTarget");
         }
 
@@ -124,7 +124,7 @@ namespace Immersive.Framework.Editor.CameraAuthoring
             if ((authoringChanged || modified) &&
                 HasRecordedOperation())
             {
-                lastOperationOutdated = true;
+                _lastOperationOutdated = true;
             }
 
             CameraRigPresentationIntent presentation =
@@ -171,7 +171,7 @@ namespace Immersive.Framework.Editor.CameraAuthoring
                 EditorStyles.miniBoldLabel);
 
             EditorGUILayout.PropertyField(
-                presentationIntent,
+                _presentationIntent,
                 new GUIContent(
                     "Model",
                     "Fixed preserves the local camera pose; Follow tracks one target with offset; Mounted locks to a Camera Mount and its rotation; Third Person tracks a rotating pivot using Cinemachine Third Person Follow. Presentation never decides runtime Camera Output arbitration."));
@@ -199,7 +199,7 @@ namespace Immersive.Framework.Editor.CameraAuthoring
                 presentation == CameraRigPresentationIntent.Follow)
             {
                 EditorGUILayout.PropertyField(
-                    lookAtRequirement,
+                    _lookAtRequirement,
                     new GUIContent(
                         "Look At",
                         "Not Used disables the Look At role. Optional permits a missing target. Required blocks validation when missing."));
@@ -271,7 +271,7 @@ namespace Immersive.Framework.Editor.CameraAuthoring
                             : "Tracking Target";
 
                 EditorGUILayout.PropertyField(
-                    explicitFollowTarget,
+                    _explicitFollowTarget,
                     new GUIContent(
                         label,
                         "Explicit Transform used as the model's Tracking / Follow target."));
@@ -283,7 +283,7 @@ namespace Immersive.Framework.Editor.CameraAuthoring
                     CameraTargetRequirement.NotUsed)
             {
                 EditorGUILayout.PropertyField(
-                    explicitLookAtTarget,
+                    _explicitLookAtTarget,
                     new GUIContent(
                         "Look At Target",
                         "Explicit target consumed by the model's supported rotation behavior."));
@@ -295,7 +295,7 @@ namespace Immersive.Framework.Editor.CameraAuthoring
             EditorGUI.BeginChangeCheck();
 
             EditorGUILayout.PropertyField(
-                targetSource,
+                _targetSource,
                 new GUIContent(
                     "Target Source",
                     "Component implementing ICameraTargetSource. The selected Presentation still defines which target roles are requested."));
@@ -383,7 +383,7 @@ namespace Immersive.Framework.Editor.CameraAuthoring
         private void DrawFollowSettings()
         {
             EditorGUILayout.PropertyField(
-                followOffset,
+                _followOffset,
                 new GUIContent(
                     "Follow Offset",
                     "Camera offset used by the Framework-owned Cinemachine Follow Position Control."));
@@ -392,13 +392,13 @@ namespace Immersive.Framework.Editor.CameraAuthoring
         private void DrawMountedSettings()
         {
             EditorGUILayout.PropertyField(
-                mountedPositionDamping,
+                _mountedPositionDamping,
                 new GUIContent(
                     "Position Damping",
                     "Damping used by Cinemachine Hard Lock to Target. Zero is a hard positional lock."));
 
             EditorGUILayout.PropertyField(
-                mountedRotationDamping,
+                _mountedRotationDamping,
                 new GUIContent(
                     "Rotation Damping",
                     "Damping used by Cinemachine Rotate With Follow Target. Zero matches mount rotation immediately."));
@@ -407,28 +407,28 @@ namespace Immersive.Framework.Editor.CameraAuthoring
         private void DrawThirdPersonSettings()
         {
             EditorGUILayout.PropertyField(
-                thirdPersonShoulderOffset,
+                _thirdPersonShoulderOffset,
                 new GUIContent(
                     "Shoulder Offset"));
 
             EditorGUILayout.PropertyField(
-                thirdPersonVerticalArmLength,
+                _thirdPersonVerticalArmLength,
                 new GUIContent(
                     "Vertical Arm Length"));
 
             EditorGUILayout.PropertyField(
-                thirdPersonCameraSide,
+                _thirdPersonCameraSide,
                 new GUIContent(
                     "Camera Side",
                     "0 = left shoulder, 1 = right shoulder, intermediate values blend between sides."));
 
             EditorGUILayout.PropertyField(
-                thirdPersonCameraDistance,
+                _thirdPersonCameraDistance,
                 new GUIContent(
                     "Camera Distance"));
 
             EditorGUILayout.PropertyField(
-                thirdPersonDamping,
+                _thirdPersonDamping,
                 new GUIContent(
                     "Damping",
                     "Per-axis tracking damping applied by Cinemachine Third Person Follow."));
@@ -469,7 +469,7 @@ namespace Immersive.Framework.Editor.CameraAuthoring
             {
                 if (effectiveFollow ==
                         CameraTargetRequirement.Required &&
-                    explicitFollowTarget.objectReferenceValue == null)
+                    _explicitFollowTarget.objectReferenceValue == null)
                 {
                     EditorGUILayout.LabelField(
                         "Status",
@@ -483,7 +483,7 @@ namespace Immersive.Framework.Editor.CameraAuthoring
 
                 if (effectiveLookAt ==
                         CameraTargetRequirement.Required &&
-                    explicitLookAtTarget.objectReferenceValue == null)
+                    _explicitLookAtTarget.objectReferenceValue == null)
                 {
                     EditorGUILayout.LabelField(
                         "Status",
@@ -616,11 +616,11 @@ namespace Immersive.Framework.Editor.CameraAuthoring
         private void DrawLastAuthoringResult()
         {
             string persistedStatus =
-                lastApplyRebuildStatus != null
-                    ? lastApplyRebuildStatus.stringValue ?? string.Empty
+                _lastApplyRebuildStatus != null
+                    ? _lastApplyRebuildStatus.stringValue ?? string.Empty
                     : string.Empty;
 
-            if (!lastOperationResult.HasValue &&
+            if (!_lastOperationResult.HasValue &&
                 string.IsNullOrWhiteSpace(
                     persistedStatus))
             {
@@ -631,8 +631,8 @@ namespace Immersive.Framework.Editor.CameraAuthoring
                 "Last Authoring Result");
 
             string status =
-                lastOperationResult.HasValue
-                    ? lastOperationResult.Value.Status
+                _lastOperationResult.HasValue
+                    ? _lastOperationResult.Value.Status
                     : persistedStatus;
 
             EditorGUILayout.LabelField(
@@ -641,7 +641,7 @@ namespace Immersive.Framework.Editor.CameraAuthoring
                     ? "Not Recorded"
                     : status);
 
-            if (lastOperationOutdated)
+            if (_lastOperationOutdated)
             {
                 EditorGUILayout.HelpBox(
                     "The recorded result predates the current configuration. Validate or Apply / Rebuild again.",
@@ -650,11 +650,11 @@ namespace Immersive.Framework.Editor.CameraAuthoring
             }
 
             bool succeeded =
-                lastOperationResult.HasValue
-                    ? lastOperationResult.Value.Succeeded
+                _lastOperationResult.HasValue
+                    ? _lastOperationResult.Value.Succeeded
                     : string.IsNullOrWhiteSpace(
-                        lastBlockingIssue != null
-                            ? lastBlockingIssue.stringValue
+                        _lastBlockingIssue != null
+                            ? _lastBlockingIssue.stringValue
                             : string.Empty);
 
             if (!succeeded)
@@ -668,13 +668,13 @@ namespace Immersive.Framework.Editor.CameraAuthoring
         private void DrawAdvancedDebug()
         {
             EditorGUILayout.Space(6f);
-            showAdvancedDebug =
+            _showAdvancedDebug =
                 EditorGUILayout.Foldout(
-                    showAdvancedDebug,
+                    _showAdvancedDebug,
                     "Advanced / Debug",
                     true);
 
-            if (!showAdvancedDebug)
+            if (!_showAdvancedDebug)
             {
                 return;
             }
@@ -694,7 +694,7 @@ namespace Immersive.Framework.Editor.CameraAuthoring
             if ((advancedChanged || advancedModified) &&
                 HasRecordedOperation())
             {
-                lastOperationOutdated = true;
+                _lastOperationOutdated = true;
             }
         }
 
@@ -704,20 +704,20 @@ namespace Immersive.Framework.Editor.CameraAuthoring
                 "Technical Reference");
 
             EditorGUILayout.PropertyField(
-                cinemachineCamera,
+                _cinemachineCamera,
                 new GUIContent(
                     "Cinemachine Camera",
                     "Explicit local Cinemachine Camera reference used by this Composer. A missing reference may be materialized locally by Apply / Rebuild."));
 
             EditorGUILayout.PropertyField(
-                logApplyRebuildDiagnostics,
+                _logApplyRebuildDiagnostics,
                 new GUIContent(
                     "Log Apply / Rebuild Diagnostics"));
 
             using (new EditorGUI.DisabledScope(true))
             {
                 EditorGUILayout.PropertyField(
-                    targetSourceKind,
+                    _targetSourceKind,
                     new GUIContent(
                         "Resolved Target Source Kind"));
             }
@@ -731,31 +731,31 @@ namespace Immersive.Framework.Editor.CameraAuthoring
             using (new EditorGUI.DisabledScope(true))
             {
                 EditorGUILayout.PropertyField(
-                    materializedPresentationIntent,
+                    _materializedPresentationIntent,
                     new GUIContent(
                         "Materialized Presentation",
                         "Presentation recorded by the last successful Framework materialization."));
 
                 EditorGUILayout.PropertyField(
-                    frameworkOwnedCinemachineCamera,
+                    _frameworkOwnedCinemachineCamera,
                     new GUIContent(
                         "Owned Cinemachine Camera",
                         "Exact serialized reference proving that this Cinemachine Camera was materialized by the Framework."));
 
                 EditorGUILayout.PropertyField(
-                    frameworkOwnedPositionControl,
+                    _frameworkOwnedPositionControl,
                     new GUIContent(
                         "Owned Position Control",
                         "Exact serialized provenance for the Framework-owned Cinemachine Body / Position control."));
 
                 EditorGUILayout.PropertyField(
-                    frameworkOwnedRotationControl,
+                    _frameworkOwnedRotationControl,
                     new GUIContent(
                         "Owned Rotation Control",
                         "Exact serialized provenance for the Framework-owned Cinemachine Aim / Rotation control."));
 
                 EditorGUILayout.PropertyField(
-                    materializationRevision,
+                    _materializationRevision,
                     new GUIContent(
                         "Materialization Revision",
                         "Revision counter advanced by successful materialization."));
@@ -788,11 +788,11 @@ namespace Immersive.Framework.Editor.CameraAuthoring
             DrawPipelineControl(
                 "Position Control",
                 body,
-                frameworkOwnedPositionControl.objectReferenceValue as Component);
+                _frameworkOwnedPositionControl.objectReferenceValue as Component);
             DrawPipelineControl(
                 "Rotation Control",
                 aim,
-                frameworkOwnedRotationControl.objectReferenceValue as Component);
+                _frameworkOwnedRotationControl.objectReferenceValue as Component);
         }
 
         private static void DrawPipelineControl(
@@ -846,64 +846,64 @@ namespace Immersive.Framework.Editor.CameraAuthoring
             using (new EditorGUI.DisabledScope(true))
             {
                 EditorGUILayout.PropertyField(
-                    lastApplyRebuildStatus,
+                    _lastApplyRebuildStatus,
                     new GUIContent(
                         "Last Status"));
 
                 EditorGUILayout.PropertyField(
-                    lastBlockingIssue,
+                    _lastBlockingIssue,
                     new GUIContent(
                         "Last Blocking Issue"));
 
                 EditorGUILayout.PropertyField(
-                    lastTargetResolutionSummary,
+                    _lastTargetResolutionSummary,
                     new GUIContent(
                         "Target Resolution"));
 
                 EditorGUILayout.PropertyField(
-                    lastMaterializationSummary,
+                    _lastMaterializationSummary,
                     new GUIContent(
                         "Materialization Summary"));
 
                 EditorGUILayout.PropertyField(
-                    lastResolvedFollowTarget,
+                    _lastResolvedFollowTarget,
                     new GUIContent(
                         "Resolved Tracking Target"));
 
                 EditorGUILayout.PropertyField(
-                    lastResolvedLookAtTarget,
+                    _lastResolvedLookAtTarget,
                     new GUIContent(
                         "Resolved Look At Target"));
             }
 
-            if (lastOperationResult.HasValue &&
-                !lastOperationOutdated &&
-                !lastOperationResult.Value.Succeeded)
+            if (_lastOperationResult.HasValue &&
+                !_lastOperationOutdated &&
+                !_lastOperationResult.Value.Succeeded)
             {
                 EditorGUILayout.HelpBox(
-                    lastOperationResult.Value.BlockingIssue,
+                    _lastOperationResult.Value.BlockingIssue,
                     MessageType.Error);
             }
         }
 
         private bool HasRecordedOperation()
         {
-            return lastOperationResult.HasValue ||
-                (lastApplyRebuildStatus != null &&
+            return _lastOperationResult.HasValue ||
+                (_lastApplyRebuildStatus != null &&
                  !string.IsNullOrWhiteSpace(
-                     lastApplyRebuildStatus.stringValue));
+                     _lastApplyRebuildStatus.stringValue));
         }
 
         private CameraRigPresentationIntent ResolvePresentationIntent()
         {
             return (CameraRigPresentationIntent)
-                presentationIntent.intValue;
+                _presentationIntent.intValue;
         }
 
         private CameraRigPresentationIntent ResolveMaterializedPresentationIntent()
         {
             return (CameraRigPresentationIntent)
-                materializedPresentationIntent.intValue;
+                _materializedPresentationIntent.intValue;
         }
 
         private CameraTargetRequirement ResolveEffectiveLookAtRequirement(
@@ -914,7 +914,7 @@ namespace Immersive.Framework.Editor.CameraAuthoring
                 case CameraRigPresentationIntent.Fixed:
                 case CameraRigPresentationIntent.Follow:
                     return (CameraTargetRequirement)
-                        lookAtRequirement.intValue;
+                        _lookAtRequirement.intValue;
 
                 case CameraRigPresentationIntent.Mounted:
                 case CameraRigPresentationIntent.ThirdPerson:
@@ -963,7 +963,7 @@ namespace Immersive.Framework.Editor.CameraAuthoring
                 (CameraRigComposer)target;
 
             CinemachineCamera assigned =
-                cinemachineCamera.objectReferenceValue
+                _cinemachineCamera.objectReferenceValue
                     as CinemachineCamera;
 
             return assigned != null
@@ -977,10 +977,10 @@ namespace Immersive.Framework.Editor.CameraAuthoring
         {
             CameraTargetSourceKind kind =
                 (CameraTargetSourceKind)
-                    targetSourceKind.intValue;
+                    _targetSourceKind.intValue;
 
             return
-                targetSource.objectReferenceValue == null &&
+                _targetSource.objectReferenceValue == null &&
                 kind ==
                     CameraTargetSourceKind.ExplicitTransform
                     ? TargetAuthoringMode.ExplicitTransforms
@@ -993,10 +993,10 @@ namespace Immersive.Framework.Editor.CameraAuthoring
             if (mode ==
                 TargetAuthoringMode.ExplicitTransforms)
             {
-                targetSource.objectReferenceValue =
+                _targetSource.objectReferenceValue =
                     null;
 
-                targetSourceKind.intValue =
+                _targetSourceKind.intValue =
                     (int)CameraTargetSourceKind
                         .ExplicitTransform;
 
@@ -1004,10 +1004,10 @@ namespace Immersive.Framework.Editor.CameraAuthoring
             }
 
             if ((CameraTargetSourceKind)
-                    targetSourceKind.intValue ==
+                    _targetSourceKind.intValue ==
                 CameraTargetSourceKind.ExplicitTransform)
             {
-                targetSourceKind.intValue =
+                _targetSourceKind.intValue =
                     (int)CameraTargetSourceKind.None;
             }
         }
@@ -1015,17 +1015,17 @@ namespace Immersive.Framework.Editor.CameraAuthoring
         private void SyncSerializedTargetSourceKind()
         {
             Object assigned =
-                targetSource.objectReferenceValue;
+                _targetSource.objectReferenceValue;
 
             if (assigned is
                 ICameraTargetSource provider)
             {
-                targetSourceKind.intValue =
+                _targetSourceKind.intValue =
                     (int)provider.TargetSourceKind;
                 return;
             }
 
-            targetSourceKind.intValue =
+            _targetSourceKind.intValue =
                 (int)CameraTargetSourceKind.None;
         }
 
@@ -1033,13 +1033,13 @@ namespace Immersive.Framework.Editor.CameraAuthoring
         {
             serializedObject.ApplyModifiedProperties();
 
-            lastOperationResult =
+            _lastOperationResult =
                 CameraRigComposerApplyRebuildUtility
                     .Validate(
                         (CameraRigComposer)target,
                         false);
 
-            lastOperationOutdated = false;
+            _lastOperationOutdated = false;
 
             serializedObject
                 .UpdateIfRequiredOrScript();
@@ -1049,14 +1049,14 @@ namespace Immersive.Framework.Editor.CameraAuthoring
         {
             serializedObject.ApplyModifiedProperties();
 
-            lastOperationResult =
+            _lastOperationResult =
                 CameraRigComposerApplyRebuildUtility
                     .ApplyOrRebuild(
                         (CameraRigComposer)target,
                         true,
                         true);
 
-            lastOperationOutdated = false;
+            _lastOperationOutdated = false;
 
             serializedObject
                 .UpdateIfRequiredOrScript();

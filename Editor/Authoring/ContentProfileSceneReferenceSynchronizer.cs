@@ -4,8 +4,7 @@ using System.IO;
 using Immersive.Framework.Authoring;
 using UnityEditor;
 using UnityEngine;
-
-namespace Immersive.Framework.Editor.Editor.Authoring
+namespace Immersive.Framework.Editor.Authoring
 {
     internal sealed class ContentProfileSceneReferenceSynchronizer :
         AssetPostprocessor

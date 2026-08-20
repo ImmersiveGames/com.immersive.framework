@@ -2,8 +2,7 @@ using Immersive.Framework.ActivityFlow;
 using Immersive.Framework.Editor.Common;
 using UnityEditor;
 using UnityEngine;
-
-namespace Immersive.Framework.Editor.Editor.Authoring
+namespace Immersive.Framework.Editor.Authoring
 {
     [CustomEditor(typeof(ActivityReadinessParticipant))]
     internal sealed class ActivityReadinessParticipantEditor :

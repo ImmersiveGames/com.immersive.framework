@@ -1,8 +1,7 @@
-using Immersive.Framework.Editor.Editor.Validation;
+using Immersive.Framework.Editor.Validation;
 using UnityEditor.SceneTemplate;
 using UnityEngine.SceneManagement;
-
-namespace Immersive.Framework.Editor.Editor.SceneTemplates
+namespace Immersive.Framework.Editor.SceneTemplates.PersistentContent
 {
     /// <summary>
     /// Non-mutating verification pipeline for the official Persistent Content

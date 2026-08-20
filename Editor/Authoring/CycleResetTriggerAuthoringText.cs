@@ -1,6 +1,5 @@
 using System;
-
-namespace Immersive.Framework.Editor.Editor.Authoring
+namespace Immersive.Framework.Editor.Authoring
 {
     internal static class CycleResetTriggerAuthoringText
     {

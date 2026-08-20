@@ -3,8 +3,7 @@ using Immersive.Framework.Diagnostics;
 using Immersive.Logging.Records;
 using UnityEditor;
 using UnityEngine;
-
-namespace Immersive.Framework.Editor.Editor.Validation
+namespace Immersive.Framework.Editor.Validation
 {
     internal static class FrameworkAuthoringValidationGui
     {

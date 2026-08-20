@@ -1,13 +1,11 @@
 using System.Collections.Generic;
 using Immersive.Framework.Actors;
 using Immersive.Framework.Authoring;
-using Immersive.Framework.Editor.Editor.Validation;
-using Immersive.Framework.PlayerParticipation;
+using Immersive.Framework.Editor.Validation;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.InputSystem;
-
-namespace Immersive.Framework.Editor.Editor.PlayerParticipation
+namespace Immersive.Framework.Editor.PlayerParticipation
 {
     /// <summary>
     /// Non-mutating authoring validation for Actor Profiles.

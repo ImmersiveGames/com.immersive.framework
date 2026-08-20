@@ -1,8 +1,8 @@
 using Immersive.Framework.Camera;
+using Immersive.Framework.Editor.CameraAuthoring;
 using UnityEditor;
 using UnityEngine;
-
-namespace Immersive.Framework.Editor.CameraAuthoring
+namespace Immersive.Framework.Editor.Camera.Bindings
 {
     [CustomEditor(typeof(CameraOutputSessionBinding))]
     public sealed class CameraOutputSessionBindingEditor : UnityEditor.Editor
@@ -42,30 +42,30 @@ namespace Immersive.Framework.Editor.CameraAuthoring
                 "Log Diagnostics",
                 "Emits non-error Camera Output diagnostics through the framework logger. Errors are still logged when this option is disabled.");
 
-        private SerializedProperty outputId;
-        private SerializedProperty unityCamera;
-        private SerializedProperty cinemachineBrain;
-        private SerializedProperty defaultCameraRig;
-        private SerializedProperty initializeOnAwake;
-        private SerializedProperty logDiagnostics;
-        private SerializedProperty lastStatus;
-        private SerializedProperty lastDiagnostic;
+        private SerializedProperty _outputId;
+        private SerializedProperty _unityCamera;
+        private SerializedProperty _cinemachineBrain;
+        private SerializedProperty _defaultCameraRig;
+        private SerializedProperty _initializeOnAwake;
+        private SerializedProperty _logDiagnostics;
+        private SerializedProperty _lastStatus;
+        private SerializedProperty _lastDiagnostic;
 
         private CameraOutputSessionBindingAuthoringValidationResult
-            lastValidationResult;
-        private bool validationOutdated;
-        private bool showAdvancedDebug;
+            _lastValidationResult;
+        private bool _validationOutdated;
+        private bool _showAdvancedDebug;
 
         private void OnEnable()
         {
-            outputId = serializedObject.FindProperty("outputId");
-            unityCamera = serializedObject.FindProperty("unityCamera");
-            cinemachineBrain = serializedObject.FindProperty("cinemachineBrain");
-            defaultCameraRig = serializedObject.FindProperty("defaultCameraRig");
-            initializeOnAwake = serializedObject.FindProperty("initializeOnAwake");
-            logDiagnostics = serializedObject.FindProperty("logDiagnostics");
-            lastStatus = serializedObject.FindProperty("lastStatus");
-            lastDiagnostic = serializedObject.FindProperty("lastDiagnostic");
+            _outputId = serializedObject.FindProperty("outputId");
+            _unityCamera = serializedObject.FindProperty("unityCamera");
+            _cinemachineBrain = serializedObject.FindProperty("cinemachineBrain");
+            _defaultCameraRig = serializedObject.FindProperty("defaultCameraRig");
+            _initializeOnAwake = serializedObject.FindProperty("initializeOnAwake");
+            _logDiagnostics = serializedObject.FindProperty("logDiagnostics");
+            _lastStatus = serializedObject.FindProperty("lastStatus");
+            _lastDiagnostic = serializedObject.FindProperty("lastDiagnostic");
         }
 
         public override void OnInspectorGUI()
@@ -89,9 +89,9 @@ namespace Immersive.Framework.Editor.CameraAuthoring
             DrawAdvancedDebug();
 
             bool modified = serializedObject.ApplyModifiedProperties();
-            if (modified && lastValidationResult != null)
+            if (modified && _lastValidationResult != null)
             {
-                validationOutdated = true;
+                _validationOutdated = true;
             }
         }
 
@@ -100,13 +100,13 @@ namespace Immersive.Framework.Editor.CameraAuthoring
             DrawSection("Configuration");
 
             EditorGUILayout.PropertyField(
-                unityCamera,
+                _unityCamera,
                 UnityCameraLabel);
             EditorGUILayout.PropertyField(
-                cinemachineBrain,
+                _cinemachineBrain,
                 CinemachineBrainLabel);
             EditorGUILayout.PropertyField(
-                defaultCameraRig,
+                _defaultCameraRig,
                 DefaultCameraRigLabel);
         }
 
@@ -135,32 +135,32 @@ namespace Immersive.Framework.Editor.CameraAuthoring
 
         private string GetValidationStatus()
         {
-            if (lastValidationResult == null)
+            if (_lastValidationResult == null)
             {
                 return "Not Validated";
             }
 
-            if (validationOutdated)
+            if (_validationOutdated)
             {
                 return "Outdated";
             }
 
-            if (lastValidationResult.IsValid)
+            if (_lastValidationResult.IsValid)
             {
                 return "Ready";
             }
 
-            return $"Needs Attention ({lastValidationResult.BlockingIssueCount})";
+            return $"Needs Attention ({_lastValidationResult.BlockingIssueCount})";
         }
 
         private void DrawFirstActionableValidationIssue()
         {
-            if (lastValidationResult == null)
+            if (_lastValidationResult == null)
             {
                 return;
             }
 
-            if (validationOutdated)
+            if (_validationOutdated)
             {
                 EditorGUILayout.HelpBox(
                     "Configuration changed after validation. Validate again before relying on the result.",
@@ -168,14 +168,14 @@ namespace Immersive.Framework.Editor.CameraAuthoring
                 return;
             }
 
-            if (lastValidationResult.IsValid ||
-                lastValidationResult.BlockingIssueCount == 0)
+            if (_lastValidationResult.IsValid ||
+                _lastValidationResult.BlockingIssueCount == 0)
             {
                 return;
             }
 
             EditorGUILayout.HelpBox(
-                lastValidationResult.BlockingIssues[0],
+                _lastValidationResult.BlockingIssues[0],
                 MessageType.Error);
         }
 
@@ -195,7 +195,7 @@ namespace Immersive.Framework.Editor.CameraAuthoring
                     binding != null && binding.IsInitialized);
 
                 EditorGUILayout.PropertyField(
-                    lastStatus,
+                    _lastStatus,
                     new GUIContent(
                         "Last Status",
                         "Most recent status recorded by Camera Output Session initialization or synchronization."));
@@ -206,14 +206,14 @@ namespace Immersive.Framework.Editor.CameraAuthoring
         {
             EditorGUILayout.Space(7f);
 
-            showAdvancedDebug = EditorGUILayout.Foldout(
-                showAdvancedDebug,
+            _showAdvancedDebug = EditorGUILayout.Foldout(
+                _showAdvancedDebug,
                 new GUIContent(
                     "Advanced / Debug",
                     "Shows stable identity, technical initialization options, runtime diagnostics and the complete validation report."),
                 true);
 
-            if (!showAdvancedDebug)
+            if (!_showAdvancedDebug)
             {
                 return;
             }
@@ -240,8 +240,8 @@ namespace Immersive.Framework.Editor.CameraAuthoring
                 "Stable Identity",
                 EditorStyles.miniBoldLabel);
 
-            string id = outputId != null
-                ? outputId.stringValue ?? string.Empty
+            string id = _outputId != null
+                ? _outputId.stringValue ?? string.Empty
                 : string.Empty;
 
             using (new EditorGUILayout.HorizontalScope())
@@ -288,10 +288,10 @@ namespace Immersive.Framework.Editor.CameraAuthoring
                 EditorStyles.miniBoldLabel);
 
             EditorGUILayout.PropertyField(
-                initializeOnAwake,
+                _initializeOnAwake,
                 InitializeOnAwakeLabel);
             EditorGUILayout.PropertyField(
-                logDiagnostics,
+                _logDiagnostics,
                 LogDiagnosticsLabel);
         }
 
@@ -313,11 +313,11 @@ namespace Immersive.Framework.Editor.CameraAuthoring
                     binding != null && binding.IsInitialized);
 
                 EditorGUILayout.PropertyField(
-                    lastStatus,
+                    _lastStatus,
                     new GUIContent("Last Status"));
 
                 EditorGUILayout.PropertyField(
-                    lastDiagnostic,
+                    _lastDiagnostic,
                     new GUIContent(
                         "Last Diagnostic",
                         "Most recent diagnostic recorded by this binding."));
@@ -335,17 +335,17 @@ namespace Immersive.Framework.Editor.CameraAuthoring
                 GetValidationStatus(),
                 EditorStyles.miniLabel);
 
-            if (lastValidationResult == null)
+            if (_lastValidationResult == null)
             {
                 return;
             }
 
             for (int index = 0;
-                 index < lastValidationResult.BlockingIssues.Count;
+                 index < _lastValidationResult.BlockingIssues.Count;
                  index++)
             {
                 EditorGUILayout.LabelField(
-                    $"{index + 1}. {lastValidationResult.BlockingIssues[index]}",
+                    $"{index + 1}. {_lastValidationResult.BlockingIssues[index]}",
                     EditorStyles.wordWrappedMiniLabel);
             }
         }
@@ -353,7 +353,7 @@ namespace Immersive.Framework.Editor.CameraAuthoring
         private void GenerateOutputId()
         {
             serializedObject.UpdateIfRequiredOrScript();
-            if (HasText(outputId))
+            if (HasText(_outputId))
             {
                 return;
             }
@@ -362,16 +362,16 @@ namespace Immersive.Framework.Editor.CameraAuthoring
                 target,
                 "Generate Camera Output ID");
 
-            outputId.stringValue =
+            _outputId.stringValue =
                 CameraAuthoringIdUtility.GenerateIdText();
 
             serializedObject.ApplyModifiedProperties();
             EditorUtility.SetDirty(target);
             PrefabUtility.RecordPrefabInstancePropertyModifications(target);
 
-            if (lastValidationResult != null)
+            if (_lastValidationResult != null)
             {
-                validationOutdated = true;
+                _validationOutdated = true;
             }
 
             serializedObject.UpdateIfRequiredOrScript();
@@ -381,10 +381,10 @@ namespace Immersive.Framework.Editor.CameraAuthoring
         {
             serializedObject.ApplyModifiedProperties();
 
-            lastValidationResult =
+            _lastValidationResult =
                 CameraOutputSessionBindingAuthoringValidator.Validate(
                     (CameraOutputSessionBinding)target);
-            validationOutdated = false;
+            _validationOutdated = false;
 
             serializedObject.UpdateIfRequiredOrScript();
         }

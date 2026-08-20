@@ -1,7 +1,7 @@
 
 using System;
 using Immersive.Framework.Audio;
-using Immersive.Framework.Editor.Editor.Validation;
+using Immersive.Framework.Editor.Validation;
 using Immersive.Framework.RouteLifecycle;
 using UnityEditor;
 using UnityEngine;

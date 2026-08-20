@@ -1,8 +1,7 @@
 using Immersive.Framework.Authoring;
 using Immersive.Framework.Performance;
 using UnityEditor;
-
-namespace Immersive.Framework.Editor.Editor.Validation
+namespace Immersive.Framework.Editor.Validation
 {
     internal static class ApplicationFrameRateAuthoringValidator
     {

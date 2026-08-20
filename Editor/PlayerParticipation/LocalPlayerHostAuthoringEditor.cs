@@ -1,25 +1,24 @@
-using Immersive.Framework.Editor.Editor.Validation;
+using Immersive.Framework.Editor.Validation;
 using Immersive.Framework.PlayerParticipation;
 using UnityEditor;
 using UnityEngine;
-
-namespace Immersive.Framework.Editor.Editor.PlayerParticipation
+namespace Immersive.Framework.Editor.PlayerParticipation
 {
     [CustomEditor(typeof(LocalPlayerHostAuthoring))]
     internal sealed class LocalPlayerHostAuthoringEditor : UnityEditor.Editor
     {
-        private SerializedProperty playerInput;
-        private SerializedProperty actorMount;
+        private SerializedProperty _playerInput;
+        private SerializedProperty _actorMount;
 
-        private FrameworkAuthoringValidationReport lastValidationReport;
-        private bool validationOutdated;
-        private bool showAdvanced;
+        private FrameworkAuthoringValidationReport _lastValidationReport;
+        private bool _validationOutdated;
+        private bool _showAdvanced;
 
         private void OnEnable()
         {
-            playerInput =
+            _playerInput =
                 serializedObject.FindProperty("playerInput");
-            actorMount =
+            _actorMount =
                 serializedObject.FindProperty("actorMount");
         }
 
@@ -38,9 +37,9 @@ namespace Immersive.Framework.Editor.Editor.PlayerParticipation
                 serializedObject.ApplyModifiedProperties();
 
             if ((authoringChanged || modified) &&
-                lastValidationReport != null)
+                _lastValidationReport != null)
             {
-                validationOutdated = true;
+                _validationOutdated = true;
             }
 
             DrawActions(host);
@@ -59,13 +58,13 @@ namespace Immersive.Framework.Editor.Editor.PlayerParticipation
             DrawSection("Host Configuration");
 
             EditorGUILayout.PropertyField(
-                playerInput,
+                _playerInput,
                 new GUIContent(
                     "Player Input",
                     "PlayerInput owned by this exact Local Player Host root."));
 
             EditorGUILayout.PropertyField(
-                actorMount,
+                _actorMount,
                 new GUIContent(
                     "Actor Mount",
                     "Child transform that contains or receives the contextual Logical Actor. Scene-Provided hosts may already contain an authored Actor; Manager-Provisioned hosts begin with an empty mount."));
@@ -82,9 +81,9 @@ namespace Immersive.Framework.Editor.Editor.PlayerParticipation
                         "Validate the shared Local Player Host invariants without modifying the Host.")))
             {
                 serializedObject.ApplyModifiedProperties();
-                lastValidationReport =
+                _lastValidationReport =
                     LocalPlayerHostAuthoringValidator.Validate(host);
-                validationOutdated = false;
+                _validationOutdated = false;
             }
         }
 
@@ -92,7 +91,7 @@ namespace Immersive.Framework.Editor.Editor.PlayerParticipation
         {
             DrawSection("Validation Summary");
 
-            if (lastValidationReport == null)
+            if (_lastValidationReport == null)
             {
                 EditorGUILayout.LabelField(
                     "Status",
@@ -100,7 +99,7 @@ namespace Immersive.Framework.Editor.Editor.PlayerParticipation
                 return;
             }
 
-            if (validationOutdated)
+            if (_validationOutdated)
             {
                 EditorGUILayout.LabelField(
                     "Status",
@@ -108,7 +107,7 @@ namespace Immersive.Framework.Editor.Editor.PlayerParticipation
                 return;
             }
 
-            if (lastValidationReport.IsValid)
+            if (_lastValidationReport.IsValid)
             {
                 EditorGUILayout.LabelField(
                     "Status",
@@ -121,11 +120,11 @@ namespace Immersive.Framework.Editor.Editor.PlayerParticipation
                 "Invalid");
 
             EditorGUILayout.HelpBox(
-                $"{lastValidationReport.ErrorCount} blocking issue(s) were found. Correct the configuration and validate again.",
+                $"{_lastValidationReport.ErrorCount} blocking issue(s) were found. Correct the configuration and validate again.",
                 MessageType.Error);
 
             FrameworkAuthoringValidationGui.DrawIssues(
-                lastValidationReport,
+                _lastValidationReport,
                 false);
         }
 
@@ -166,13 +165,13 @@ namespace Immersive.Framework.Editor.Editor.PlayerParticipation
             LocalPlayerHostAuthoring host)
         {
             EditorGUILayout.Space(6f);
-            showAdvanced =
+            _showAdvanced =
                 EditorGUILayout.Foldout(
-                    showAdvanced,
+                    _showAdvanced,
                     "Advanced / Debug",
                     true);
 
-            if (!showAdvanced)
+            if (!_showAdvanced)
             {
                 return;
             }
@@ -218,14 +217,14 @@ namespace Immersive.Framework.Editor.Editor.PlayerParticipation
                     host.AdmissionReason);
             }
 
-            if (lastValidationReport == null)
+            if (_lastValidationReport == null)
             {
                 return;
             }
 
             DrawSection("Validation Evidence");
 
-            if (validationOutdated)
+            if (_validationOutdated)
             {
                 EditorGUILayout.LabelField(
                     "Status",
@@ -234,9 +233,9 @@ namespace Immersive.Framework.Editor.Editor.PlayerParticipation
             }
 
             FrameworkAuthoringValidationGui.DrawSummary(
-                lastValidationReport);
+                _lastValidationReport);
             FrameworkAuthoringValidationGui.DrawIssues(
-                lastValidationReport,
+                _lastValidationReport,
                 false);
         }
 

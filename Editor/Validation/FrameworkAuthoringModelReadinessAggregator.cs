@@ -1,8 +1,7 @@
 using Immersive.Framework.Authoring;
-using Immersive.Framework.Editor.Editor.PlayerParticipation;
-using Immersive.Framework.Editor.Editor.Authoring;
-
-namespace Immersive.Framework.Editor.Editor.Validation
+using Immersive.Framework.Editor.Authoring;
+using Immersive.Framework.Editor.PlayerParticipation;
+namespace Immersive.Framework.Editor.Validation
 {
     /// <summary>
     /// Canonical Editor-only aggregation point for the complete Model Readiness report.

@@ -2,12 +2,11 @@ using System;
 using System.Globalization;
 using System.Text;
 using Immersive.Framework.Actors;
-using Immersive.Framework.Editor.Editor.Validation;
+using Immersive.Framework.Editor.Validation;
 using Immersive.Framework.PlayerParticipation;
 using UnityEditor;
 using UnityEngine;
-
-namespace Immersive.Framework.Editor.Editor.PlayerParticipation
+namespace Immersive.Framework.Editor.PlayerParticipation
 {
     [CustomEditor(typeof(PlayerSlotProfile))]
     internal sealed class PlayerSlotProfileEditor : UnityEditor.Editor

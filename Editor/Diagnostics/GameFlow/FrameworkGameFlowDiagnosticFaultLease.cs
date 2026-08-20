@@ -5,7 +5,7 @@ namespace Immersive.Framework.Editor.Diagnostics.GameFlow
 {
     public sealed class FrameworkGameFlowDiagnosticFaultLease : IDisposable
     {
-        private readonly Action<FrameworkGameFlowDiagnosticFaultLease> release;
+        private readonly Action<FrameworkGameFlowDiagnosticFaultLease> _release;
 
         internal FrameworkGameFlowDiagnosticFaultLease(
             FrameworkGameFlowDiagnosticFaultScenario scenario,
@@ -16,7 +16,7 @@ namespace Immersive.Framework.Editor.Diagnostics.GameFlow
             Scenario = scenario;
             ExpectedCheckpoint = expectedCheckpoint.ToString();
             LeaseId = leaseId;
-            this.release = release;
+            this._release = release;
         }
 
         public FrameworkGameFlowDiagnosticFaultScenario Scenario { get; }
@@ -43,7 +43,7 @@ namespace Immersive.Framework.Editor.Diagnostics.GameFlow
 
         public void Dispose()
         {
-            if (!Released) release?.Invoke(this);
+            if (!Released) _release?.Invoke(this);
         }
     }
 }

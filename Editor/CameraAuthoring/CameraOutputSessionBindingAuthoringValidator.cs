@@ -5,17 +5,17 @@ namespace Immersive.Framework.Editor.CameraAuthoring
 {
     internal sealed class CameraOutputSessionBindingAuthoringValidationResult
     {
-        private readonly List<string> blockingIssues;
+        private readonly List<string> _blockingIssues;
 
         internal CameraOutputSessionBindingAuthoringValidationResult(
             List<string> blockingIssues)
         {
-            this.blockingIssues = blockingIssues ?? new List<string>();
+            this._blockingIssues = blockingIssues ?? new List<string>();
         }
 
-        internal bool IsValid => blockingIssues.Count == 0;
-        internal int BlockingIssueCount => blockingIssues.Count;
-        internal IReadOnlyList<string> BlockingIssues => blockingIssues;
+        internal bool IsValid => _blockingIssues.Count == 0;
+        internal int BlockingIssueCount => _blockingIssues.Count;
+        internal IReadOnlyList<string> BlockingIssues => _blockingIssues;
     }
 
     /// <summary>

@@ -40,29 +40,29 @@ namespace Immersive.Framework.Editor.PlayerParticipation
                 "Validate",
                 "Validates the authored composition, Scene Actor prefab provenance and stored typed Actor evidence without creating content or starting runtime admission.");
 
-        private SerializedProperty playerSlotProfile;
-        private SerializedProperty actorProfile;
-        private SerializedProperty sceneLogicalPlayerActor;
-        private SerializedProperty admissionTiming;
-        private SerializedProperty initialPlacementPolicy;
+        private SerializedProperty _playerSlotProfile;
+        private SerializedProperty _actorProfile;
+        private SerializedProperty _sceneLogicalPlayerActor;
+        private SerializedProperty _admissionTiming;
+        private SerializedProperty _initialPlacementPolicy;
 
-        private bool showDebug;
+        private bool _showDebug;
 
         private void OnEnable()
         {
-            playerSlotProfile =
+            _playerSlotProfile =
                 serializedObject.FindProperty(
                     "playerSlotProfile");
-            actorProfile =
+            _actorProfile =
                 serializedObject.FindProperty(
                     "actorProfile");
-            sceneLogicalPlayerActor =
+            _sceneLogicalPlayerActor =
                 serializedObject.FindProperty(
                     "sceneLogicalPlayerActor");
-            admissionTiming =
+            _admissionTiming =
                 serializedObject.FindProperty(
                     "admissionTiming");
-            initialPlacementPolicy =
+            _initialPlacementPolicy =
                 serializedObject.FindProperty(
                     "initialPlacementPolicy");
         }
@@ -120,19 +120,19 @@ namespace Immersive.Framework.Editor.PlayerParticipation
                 "Configuration");
 
             EditorGUILayout.PropertyField(
-                playerSlotProfile,
+                _playerSlotProfile,
                 PlayerSlotLabel);
 
             EditorGUILayout.PropertyField(
-                actorProfile,
+                _actorProfile,
                 ActorProfileLabel);
 
             EditorGUILayout.PropertyField(
-                admissionTiming,
+                _admissionTiming,
                 AdmissionTimingLabel);
 
             EditorGUILayout.PropertyField(
-                initialPlacementPolicy,
+                _initialPlacementPolicy,
                 InitialPlacementLabel);
         }
 
@@ -291,15 +291,15 @@ namespace Immersive.Framework.Editor.PlayerParticipation
             SceneLocalPlayerAdmissionAuthoring authoring)
         {
             EditorGUILayout.Space(7f);
-            showDebug =
+            _showDebug =
                 EditorGUILayout.Foldout(
-                    showDebug,
+                    _showDebug,
                     new GUIContent(
                         "Advanced / Debug",
                         "Shows resolved composition, typed provenance and runtime/adoption evidence."),
                     true);
 
-            if (!showDebug)
+            if (!_showDebug)
             {
                 return;
             }
@@ -321,7 +321,7 @@ namespace Immersive.Framework.Editor.PlayerParticipation
                 "Resolved Composition");
 
             ActorProfile selectedProfile =
-                actorProfile.objectReferenceValue as ActorProfile;
+                _actorProfile.objectReferenceValue as ActorProfile;
             GameObject logicalActorPrefab =
                 selectedProfile != null
                     ? selectedProfile.LogicalActorHostPrefab
@@ -351,7 +351,7 @@ namespace Immersive.Framework.Editor.PlayerParticipation
 
                 EditorGUILayout.ObjectField(
                     "Scene Actor",
-                    sceneLogicalPlayerActor.objectReferenceValue,
+                    _sceneLogicalPlayerActor.objectReferenceValue,
                     typeof(PlayerActorDeclaration),
                     true);
 

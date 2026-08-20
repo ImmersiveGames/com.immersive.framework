@@ -1,10 +1,9 @@
 using Immersive.Framework.ActivityFlow;
 using Immersive.Framework.Authoring;
-using Immersive.Framework.Editor.Editor.Validation;
+using Immersive.Framework.Editor.Validation;
 using Immersive.Framework.PlayerParticipation;
 using UnityEditor;
-
-namespace Immersive.Framework.Editor.Editor.PlayerParticipation
+namespace Immersive.Framework.Editor.PlayerParticipation
 {
     /// <summary>
     /// Editor-only validation for Activity-owned participation Projection and Requirement authoring.

@@ -6,7 +6,7 @@ using UnityEditor;
 using UnityEngine;
 using Object = UnityEngine.Object;
 
-namespace Immersive.Framework.Editor.Editor.Validation
+namespace Immersive.Framework.Editor.Validation
 {
     internal static class FrameworkResetRestartAuthoringValidator
     {

@@ -1,29 +1,28 @@
 using Immersive.Framework.Authoring;
-using Immersive.Framework.Editor.Editor.Validation;
+using Immersive.Framework.Editor.Validation;
 using Immersive.Framework.PlayerParticipation;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.InputSystem;
-
-namespace Immersive.Framework.Editor.Editor.PlayerParticipation
+namespace Immersive.Framework.Editor.PlayerParticipation
 {
     [CustomEditor(typeof(LocalPlayerProvisioningAuthoring))]
     internal sealed class LocalPlayerProvisioningAuthoringEditor :
         UnityEditor.Editor
     {
-        private SerializedProperty playerInputManager;
-        private SerializedProperty localPlayerHostPrefab;
+        private SerializedProperty _playerInputManager;
+        private SerializedProperty _localPlayerHostPrefab;
 
-        private FrameworkAuthoringValidationReport lastValidationReport;
-        private bool validationOutdated;
-        private bool showAdvanced;
+        private FrameworkAuthoringValidationReport _lastValidationReport;
+        private bool _validationOutdated;
+        private bool _showAdvanced;
 
         private void OnEnable()
         {
-            playerInputManager =
+            _playerInputManager =
                 serializedObject.FindProperty(
                     "playerInputManager");
-            localPlayerHostPrefab =
+            _localPlayerHostPrefab =
                 serializedObject.FindProperty(
                     "localPlayerHostPrefab");
         }
@@ -60,13 +59,13 @@ namespace Immersive.Framework.Editor.Editor.PlayerParticipation
             DrawSection("Provisioning Setup");
 
             EditorGUILayout.PropertyField(
-                playerInputManager,
+                _playerInputManager,
                 new GUIContent(
                     "Player Input Manager",
                     "Explicit PlayerInputManager authorized by this Session. Automatic manager discovery is not used."));
 
             EditorGUILayout.PropertyField(
-                localPlayerHostPrefab,
+                _localPlayerHostPrefab,
                 new GUIContent(
                     "Local Player Host Prefab",
                     "Technical Host prefab used for future Manager-Provisioned Players. It must contain PlayerInput and LocalPlayerHostAuthoring. It is not a Logical Actor prefab."));
@@ -75,10 +74,10 @@ namespace Immersive.Framework.Editor.Editor.PlayerParticipation
         private void DrawExplicitMigrationAction()
         {
             PlayerInputManager manager =
-                playerInputManager.objectReferenceValue
+                _playerInputManager.objectReferenceValue
                     as PlayerInputManager;
 
-            if (localPlayerHostPrefab.objectReferenceValue != null ||
+            if (_localPlayerHostPrefab.objectReferenceValue != null ||
                 manager == null ||
                 manager.playerPrefab == null)
             {
@@ -106,7 +105,7 @@ namespace Immersive.Framework.Editor.Editor.PlayerParticipation
                     serializedObject.targetObjects,
                     "Use Existing Manager Player Prefab");
 
-                localPlayerHostPrefab.objectReferenceValue =
+                _localPlayerHostPrefab.objectReferenceValue =
                     manager.playerPrefab;
 
                 serializedObject.ApplyModifiedProperties();
@@ -139,12 +138,12 @@ namespace Immersive.Framework.Editor.Editor.PlayerParticipation
                 {
                     serializedObject.ApplyModifiedProperties();
 
-                    lastValidationReport =
+                    _lastValidationReport =
                         LocalPlayerProvisioningValidator.Validate(
                             authoring,
                             ResolveActiveGameApplication());
 
-                    validationOutdated = false;
+                    _validationOutdated = false;
                 }
             }
         }
@@ -260,7 +259,7 @@ namespace Immersive.Framework.Editor.Editor.PlayerParticipation
         {
             DrawSection("Validation Summary");
 
-            if (lastValidationReport == null)
+            if (_lastValidationReport == null)
             {
                 EditorGUILayout.LabelField(
                     "Status",
@@ -268,7 +267,7 @@ namespace Immersive.Framework.Editor.Editor.PlayerParticipation
                 return;
             }
 
-            if (validationOutdated)
+            if (_validationOutdated)
             {
                 EditorGUILayout.LabelField(
                     "Status",
@@ -276,7 +275,7 @@ namespace Immersive.Framework.Editor.Editor.PlayerParticipation
                 return;
             }
 
-            if (lastValidationReport.IsValid)
+            if (_lastValidationReport.IsValid)
             {
                 EditorGUILayout.LabelField(
                     "Status",
@@ -289,11 +288,11 @@ namespace Immersive.Framework.Editor.Editor.PlayerParticipation
                 "Invalid");
 
             EditorGUILayout.HelpBox(
-                $"{lastValidationReport.ErrorCount} blocking issue(s) were found. Correct the provisioning setup and validate again.",
+                $"{_lastValidationReport.ErrorCount} blocking issue(s) were found. Correct the provisioning setup and validate again.",
                 MessageType.Error);
 
             FrameworkAuthoringValidationGui.DrawIssues(
-                lastValidationReport,
+                _lastValidationReport,
                 false);
         }
 
@@ -302,13 +301,13 @@ namespace Immersive.Framework.Editor.Editor.PlayerParticipation
         {
             EditorGUILayout.Space(6f);
 
-            showAdvanced =
+            _showAdvanced =
                 EditorGUILayout.Foldout(
-                    showAdvanced,
+                    _showAdvanced,
                     "Advanced / Debug",
                     true);
 
-            if (!showAdvanced)
+            if (!_showAdvanced)
             {
                 return;
             }
@@ -475,14 +474,14 @@ namespace Immersive.Framework.Editor.Editor.PlayerParticipation
 
         private void DrawValidationEvidence()
         {
-            if (lastValidationReport == null)
+            if (_lastValidationReport == null)
             {
                 return;
             }
 
             DrawSection("Validation Evidence");
 
-            if (validationOutdated)
+            if (_validationOutdated)
             {
                 EditorGUILayout.LabelField(
                     "Status",
@@ -491,21 +490,21 @@ namespace Immersive.Framework.Editor.Editor.PlayerParticipation
             }
 
             FrameworkAuthoringValidationGui.DrawSummary(
-                lastValidationReport);
+                _lastValidationReport);
 
             FrameworkAuthoringValidationGui.DrawIssues(
-                lastValidationReport,
+                _lastValidationReport,
                 false);
         }
 
         private void MarkValidationOutdated()
         {
-            if (lastValidationReport == null)
+            if (_lastValidationReport == null)
             {
                 return;
             }
 
-            validationOutdated = true;
+            _validationOutdated = true;
             Repaint();
         }
 

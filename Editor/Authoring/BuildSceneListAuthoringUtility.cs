@@ -3,8 +3,7 @@ using System.Collections.Generic;
 using Immersive.Framework.Authoring;
 using UnityEditor;
 using UnityEngine;
-
-namespace Immersive.Framework.Editor.Editor.Authoring
+namespace Immersive.Framework.Editor.Authoring
 {
     /// <summary>
     /// Explicit Editor-only authoring support for the Scene List used by the active Build Profile.

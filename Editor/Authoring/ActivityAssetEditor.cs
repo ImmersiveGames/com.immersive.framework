@@ -1,14 +1,13 @@
 using Immersive.Framework.ActivityFlow;
 using Immersive.Framework.Authoring;
-using Immersive.Framework.Editor.Editor.PlayerParticipation;
-using Immersive.Framework.Editor.Editor.Settings;
-using Immersive.Framework.Editor.Editor.Validation;
+using Immersive.Framework.Editor.PlayerParticipation;
+using Immersive.Framework.Editor.Settings;
+using Immersive.Framework.Editor.Validation;
 using Immersive.Framework.PlayerParticipation;
 using Immersive.Framework.Transition;
 using UnityEditor;
 using UnityEngine;
-
-namespace Immersive.Framework.Editor.Editor.Authoring
+namespace Immersive.Framework.Editor.Authoring
 {
     [CustomEditor(typeof(ActivityAsset))]
     internal sealed class ActivityAssetEditor : UnityEditor.Editor

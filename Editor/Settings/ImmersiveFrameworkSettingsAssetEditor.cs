@@ -1,8 +1,7 @@
 using Immersive.Framework.Authoring;
 using UnityEditor;
 using UnityEngine;
-
-namespace Immersive.Framework.Editor.Editor.Settings
+namespace Immersive.Framework.Editor.Settings
 {
     [CustomEditor(typeof(ImmersiveFrameworkSettingsAsset))]
     internal sealed class ImmersiveFrameworkSettingsAssetEditor : UnityEditor.Editor

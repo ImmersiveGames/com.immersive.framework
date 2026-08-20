@@ -1,10 +1,9 @@
 using Immersive.Framework.Authoring;
-using Immersive.Framework.Editor.Editor.Validation;
+using Immersive.Framework.Editor.Validation;
 using Immersive.Framework.PlayerParticipation;
 using UnityEngine;
 using UnityEngine.InputSystem;
-
-namespace Immersive.Framework.Editor.Editor.PlayerParticipation
+namespace Immersive.Framework.Editor.PlayerParticipation
 {
     /// <summary>
     /// Non-mutating validation for manual local Player technical-host provisioning authoring.

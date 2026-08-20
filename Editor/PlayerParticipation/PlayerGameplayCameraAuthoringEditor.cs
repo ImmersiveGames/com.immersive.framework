@@ -12,22 +12,22 @@ namespace Immersive.Framework.Editor.PlayerParticipation
     internal sealed class PlayerGameplayCameraAuthoringEditor :
         UnityEditor.Editor
     {
-        private SerializedProperty requiredness;
-        private SerializedProperty cameraRig;
-        private SerializedProperty precedence;
-        private bool showAdvancedDebug;
+        private SerializedProperty _requiredness;
+        private SerializedProperty _cameraRig;
+        private SerializedProperty _precedence;
+        private bool _showAdvancedDebug;
 
         private void OnEnable()
         {
-            requiredness =
+            _requiredness =
                 serializedObject.FindProperty(
                     "requiredness");
 
-            cameraRig =
+            _cameraRig =
                 serializedObject.FindProperty(
                     "cameraRig");
 
-            precedence =
+            _precedence =
                 serializedObject.FindProperty(
                     "precedence");
         }
@@ -56,19 +56,19 @@ namespace Immersive.Framework.Editor.PlayerParticipation
                 "Configuration");
 
             EditorGUILayout.PropertyField(
-                requiredness,
+                _requiredness,
                 new GUIContent(
                     "Requiredness",
                     "Declares whether gameplay Camera participation is optional or required for this Player Actor."));
 
             EditorGUILayout.PropertyField(
-                cameraRig,
+                _cameraRig,
                 new GUIContent(
                     "Camera Rig",
                     "Actor-owned Camera Rig Composer that supplies targets, target requirements and framing for this Player's gameplay Camera request."));
 
             EditorGUILayout.PropertyField(
-                precedence,
+                _precedence,
                 new GUIContent(
                     "Precedence",
                     "Arbitration precedence used when this Player gameplay Camera participates in the Camera output selection."));
@@ -105,13 +105,13 @@ namespace Immersive.Framework.Editor.PlayerParticipation
         private void DrawAdvancedDebug()
         {
             EditorGUILayout.Space(6f);
-            showAdvancedDebug =
+            _showAdvancedDebug =
                 EditorGUILayout.Foldout(
-                    showAdvancedDebug,
+                    _showAdvancedDebug,
                     "Advanced / Debug",
                     true);
 
-            if (!showAdvancedDebug)
+            if (!_showAdvancedDebug)
             {
                 return;
             }

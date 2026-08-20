@@ -2,7 +2,7 @@ using Immersive.Audio.Authoring;
 using Immersive.Audio.Unity.Hosts;
 using Immersive.Framework.Audio;
 using Immersive.Framework.Editor.Common;
-using Immersive.Framework.Editor.Editor.Validation;
+using Immersive.Framework.Editor.Validation;
 using UnityEditor;
 using UnityEngine;
 

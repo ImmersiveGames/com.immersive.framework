@@ -1,7 +1,6 @@
 using UnityEditor.SceneManagement;
 using UnityEngine.SceneManagement;
-
-namespace Immersive.Framework.Editor.Editor.Validation
+namespace Immersive.Framework.Editor.Validation
 {
     internal static class FrameworkEditorSceneValidationUtility
     {

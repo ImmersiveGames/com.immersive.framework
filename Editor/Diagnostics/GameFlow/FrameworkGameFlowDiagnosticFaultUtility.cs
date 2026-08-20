@@ -114,21 +114,21 @@ namespace Immersive.Framework.Editor.Diagnostics.GameFlow
 
         private sealed class FixedOneShotPlan : IGameFlowDiagnosticFaultPlan
         {
-            private readonly FrameworkGameFlowDiagnosticFaultLease lease;
-            private readonly GameFlowDiagnosticFaultCheckpoint checkpoint;
-            private readonly string caseName;
+            private readonly FrameworkGameFlowDiagnosticFaultLease _lease;
+            private readonly GameFlowDiagnosticFaultCheckpoint _checkpoint;
+            private readonly string _caseName;
 
             internal FixedOneShotPlan(FrameworkGameFlowDiagnosticFaultLease lease, GameFlowDiagnosticFaultCheckpoint checkpoint, string caseName)
-            { this.lease = lease; this.checkpoint = checkpoint; this.caseName = caseName; }
+            { this._lease = lease; this._checkpoint = checkpoint; this._caseName = caseName; }
 
             public GameFlowDiagnosticFaultDecision Evaluate(GameFlowDiagnosticFaultRequest request)
             {
-                if (lease.Released || lease.Consumed || request.Checkpoint != checkpoint)
+                if (_lease.Released || _lease.Consumed || request.Checkpoint != _checkpoint)
                     return GameFlowDiagnosticFaultDecision.None;
 
-                string diagnostic = $"scenario='{lease.Scenario}' case='{caseName}' checkpoint='{checkpoint}'";
-                lease.MarkConsumed(request, diagnostic);
-                Debug.Log($"{LogPrefix} phase='consumed' lease='{lease.LeaseId}' scenario='{lease.Scenario}' consumptionCount='{lease.ConsumptionCount}' operation='{request.Operation}' transaction='{request.Transaction}' slot='{request.Slot}'.");
+                string diagnostic = $"scenario='{_lease.Scenario}' case='{_caseName}' checkpoint='{_checkpoint}'";
+                _lease.MarkConsumed(request, diagnostic);
+                Debug.Log($"{LogPrefix} phase='consumed' lease='{_lease.LeaseId}' scenario='{_lease.Scenario}' consumptionCount='{_lease.ConsumptionCount}' operation='{request.Operation}' transaction='{request.Transaction}' slot='{request.Slot}'.");
                 return GameFlowDiagnosticFaultDecision.Fail(diagnostic);
             }
         }

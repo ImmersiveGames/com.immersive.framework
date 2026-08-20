@@ -1,8 +1,7 @@
 using System;
 using Immersive.Framework.Reset;
 using UnityEditor;
-
-namespace Immersive.Framework.Editor.Editor.Authoring
+namespace Immersive.Framework.Editor.Authoring
 {
     public enum ObjectResetTargetAuthoringValidationStatus
     {

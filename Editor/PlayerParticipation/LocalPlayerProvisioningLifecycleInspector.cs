@@ -2,8 +2,7 @@ using System;
 using Immersive.Framework.PlayerParticipation;
 using UnityEditor;
 using UnityEngine;
-
-namespace Immersive.Framework.Editor.Editor.PlayerParticipation
+namespace Immersive.Framework.Editor.PlayerParticipation
 {
     /// <summary>
     /// Designer-first, read-only lifecycle panel rendered immediately after
@@ -18,7 +17,7 @@ namespace Immersive.Framework.Editor.Editor.PlayerParticipation
         private const string AdvancedStatePrefix =
             "Immersive.Framework.PlayerParticipation.LifecycleInspector.";
 
-        private static double nextRepaintTime;
+        private static double _nextRepaintTime;
 
         static LocalPlayerProvisioningLifecycleInspector()
         {
@@ -438,12 +437,12 @@ namespace Immersive.Framework.Editor.Editor.PlayerParticipation
 
             double now =
                 EditorApplication.timeSinceStartup;
-            if (now < nextRepaintTime)
+            if (now < _nextRepaintTime)
             {
                 return;
             }
 
-            nextRepaintTime =
+            _nextRepaintTime =
                 now + RepaintIntervalSeconds;
 
             ActiveEditorTracker tracker =

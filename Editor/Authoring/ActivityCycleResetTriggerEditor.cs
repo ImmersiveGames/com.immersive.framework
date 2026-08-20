@@ -1,8 +1,7 @@
 using Immersive.Framework.CycleReset;
 using UnityEditor;
 using UnityEngine;
-
-namespace Immersive.Framework.Editor.Editor.Authoring
+namespace Immersive.Framework.Editor.Authoring
 {
     [CustomEditor(typeof(ActivityCycleResetTrigger))]
     [CanEditMultipleObjects]

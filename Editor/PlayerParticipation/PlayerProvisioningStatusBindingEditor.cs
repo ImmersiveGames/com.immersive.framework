@@ -2,24 +2,23 @@ using Immersive.Framework.Editor.Common;
 using Immersive.Framework.PlayerParticipation;
 using UnityEditor;
 using UnityEngine;
-
-namespace Immersive.Framework.Editor.Editor.PlayerParticipation
+namespace Immersive.Framework.Editor.PlayerParticipation
 {
     [CustomEditor(typeof(PlayerProvisioningStatusBinding))]
     internal sealed class PlayerProvisioningStatusBindingEditor : UnityEditor.Editor
     {
-        private SerializedProperty consumerAccessBinding;
-        private SerializedProperty commandTrigger;
-        private bool showAdvanced;
-        private bool hasValidation;
-        private string validationMessage;
-        private MessageType validationType;
+        private SerializedProperty _consumerAccessBinding;
+        private SerializedProperty _commandTrigger;
+        private bool _showAdvanced;
+        private bool _hasValidation;
+        private string _validationMessage;
+        private MessageType _validationType;
 
         private void OnEnable()
         {
-            consumerAccessBinding = serializedObject.FindProperty(
+            _consumerAccessBinding = serializedObject.FindProperty(
                 "consumerAccessBinding");
-            commandTrigger = serializedObject.FindProperty("commandTrigger");
+            _commandTrigger = serializedObject.FindProperty("commandTrigger");
         }
 
         public override void OnInspectorGUI()
@@ -36,14 +35,14 @@ namespace Immersive.Framework.Editor.Editor.PlayerParticipation
 
             FrameworkAuthoringInspectorGui.Section("Scoped Observation");
             EditorGUILayout.PropertyField(
-                consumerAccessBinding,
+                _consumerAccessBinding,
                 new GUIContent(
                     "Consumer Access Binding",
                     "Explicit P1 Route or Activity binding used to read P2 observation."));
 
             FrameworkAuthoringInspectorGui.Section("Last Operation (Optional)");
             EditorGUILayout.PropertyField(
-                commandTrigger,
+                _commandTrigger,
                 new GUIContent(
                     "Command Trigger",
                     "Optional explicit P3 trigger using the same Consumer Access Binding. No global Last Operation is inferred."));
@@ -51,15 +50,15 @@ namespace Immersive.Framework.Editor.Editor.PlayerParticipation
             DrawValidation(binding);
             DrawNormalRuntimeStatus(binding);
 
-            showAdvanced = FrameworkAuthoringInspectorGui.AdvancedFoldout(showAdvanced);
-            if (showAdvanced)
+            _showAdvanced = FrameworkAuthoringInspectorGui.AdvancedFoldout(_showAdvanced);
+            if (_showAdvanced)
             {
                 DrawAdvanced(binding);
             }
 
             if (EditorGUI.EndChangeCheck())
             {
-                hasValidation = false;
+                _hasValidation = false;
             }
 
             serializedObject.ApplyModifiedProperties();
@@ -71,22 +70,22 @@ namespace Immersive.Framework.Editor.Editor.PlayerParticipation
             if (GUILayout.Button("Validate"))
             {
                 serializedObject.ApplyModifiedProperties();
-                hasValidation = true;
-                if (binding.TryValidateConfiguration(out validationMessage))
+                _hasValidation = true;
+                if (binding.TryValidateConfiguration(out _validationMessage))
                 {
-                    validationType = MessageType.Info;
-                    validationMessage =
+                    _validationType = MessageType.Info;
+                    _validationMessage =
                         "Configuration is valid. Scope availability is evaluated only when the status is read.";
                 }
                 else
                 {
-                    validationType = MessageType.Error;
+                    _validationType = MessageType.Error;
                 }
             }
 
-            if (hasValidation)
+            if (_hasValidation)
             {
-                EditorGUILayout.HelpBox(validationMessage, validationType);
+                EditorGUILayout.HelpBox(_validationMessage, _validationType);
             }
             else if (binding.TryValidateConfiguration(out string issue))
             {

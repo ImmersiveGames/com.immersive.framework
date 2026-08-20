@@ -1,14 +1,13 @@
 using Immersive.Framework.Authoring;
-using Immersive.Framework.Editor.Editor.PlayerParticipation;
-using Immersive.Framework.Editor.Editor.ProgressionSave;
-using Immersive.Framework.Editor.Editor.Settings;
-using Immersive.Framework.Editor.Editor.Validation;
+using Immersive.Framework.Editor.PlayerParticipation;
+using Immersive.Framework.Editor.ProgressionSave;
+using Immersive.Framework.Editor.Settings;
+using Immersive.Framework.Editor.Validation;
 using Immersive.Framework.PlayerParticipation;
 using Immersive.Framework.ProgressionSave;
 using UnityEditor;
 using UnityEngine;
-
-namespace Immersive.Framework.Editor.Editor.Authoring
+namespace Immersive.Framework.Editor.Authoring
 {
     [CustomEditor(typeof(GameApplicationAsset))]
     internal sealed class GameApplicationAssetEditor : UnityEditor.Editor

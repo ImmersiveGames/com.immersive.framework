@@ -13,27 +13,27 @@ namespace Immersive.Framework.Editor.Pause
     internal sealed class PausePlayerInputBindingEditor :
         UnityEditor.Editor
     {
-        private SerializedProperty playerInput;
-        private SerializedProperty pauseAction;
-        private SerializedProperty gameplayActionMap;
-        private SerializedProperty gameplayActionMapName;
-        private bool showAdvancedDebug;
+        private SerializedProperty _playerInput;
+        private SerializedProperty _pauseAction;
+        private SerializedProperty _gameplayActionMap;
+        private SerializedProperty _gameplayActionMapName;
+        private bool _showAdvancedDebug;
 
         private void OnEnable()
         {
-            playerInput =
+            _playerInput =
                 serializedObject.FindProperty(
                     "playerInput");
 
-            pauseAction =
+            _pauseAction =
                 serializedObject.FindProperty(
                     "pauseAction");
 
-            gameplayActionMap =
+            _gameplayActionMap =
                 serializedObject.FindProperty(
                     "gameplayActionMap");
 
-            gameplayActionMapName =
+            _gameplayActionMapName =
                 serializedObject.FindProperty(
                     "gameplayActionMapName");
         }
@@ -47,12 +47,12 @@ namespace Immersive.Framework.Editor.Pause
                 EditorStyles.boldLabel);
 
             EditorGUILayout.PropertyField(
-                playerInput,
+                _playerInput,
                 new GUIContent(
                     "Player Input"));
 
             PlayerInput selectedPlayerInput =
-                playerInput.objectReferenceValue
+                _playerInput.objectReferenceValue
                     as PlayerInput;
 
             EditorGUILayout.Space();
@@ -61,7 +61,7 @@ namespace Immersive.Framework.Editor.Pause
                 EditorStyles.boldLabel);
 
             EditorGUILayout.PropertyField(
-                pauseAction,
+                _pauseAction,
                 new GUIContent(
                     "Pause Action"));
 
@@ -75,7 +75,7 @@ namespace Immersive.Framework.Editor.Pause
             PlayerInputActionMapReferenceEditorGui.DrawForPlayerInput(
                 new GUIContent(
                     "Gameplay Action Map"),
-                gameplayActionMap,
+                _gameplayActionMap,
                 selectedPlayerInput);
 
             serializedObject.ApplyModifiedProperties();
@@ -95,13 +95,13 @@ namespace Immersive.Framework.Editor.Pause
             }
 
             EditorGUILayout.Space();
-            showAdvancedDebug =
+            _showAdvancedDebug =
                 EditorGUILayout.Foldout(
-                    showAdvancedDebug,
+                    _showAdvancedDebug,
                     "Advanced / Debug",
                     true);
 
-            if (showAdvancedDebug)
+            if (_showAdvancedDebug)
             {
                 DrawAdvancedDebug();
             }
@@ -165,13 +165,13 @@ namespace Immersive.Framework.Editor.Pause
                 "Technical Adapter Count",
                 adapters.Length.ToString());
 
-            if (gameplayActionMapName != null &&
+            if (_gameplayActionMapName != null &&
                 !string.IsNullOrWhiteSpace(
-                    gameplayActionMapName.stringValue))
+                    _gameplayActionMapName.stringValue))
             {
                 EditorGUILayout.LabelField(
                     "Legacy Gameplay Map",
-                    gameplayActionMapName.stringValue);
+                    _gameplayActionMapName.stringValue);
             }
 
             EditorGUI.indentLevel--;
@@ -180,7 +180,7 @@ namespace Immersive.Framework.Editor.Pause
         private string ResolveGlobalMapName()
         {
             InputActionReference reference =
-                pauseAction.objectReferenceValue
+                _pauseAction.objectReferenceValue
                     as InputActionReference;
 
             return reference != null &&

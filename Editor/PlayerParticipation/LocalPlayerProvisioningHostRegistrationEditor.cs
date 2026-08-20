@@ -11,12 +11,12 @@ namespace Immersive.Framework.Editor.PlayerParticipation
         LocalPlayerProvisioningHostRegistrationEditor :
             UnityEditor.Editor
     {
-        private SerializedProperty provisioningAuthoring;
-        private bool showAdvanced;
+        private SerializedProperty _provisioningAuthoring;
+        private bool _showAdvanced;
 
         private void OnEnable()
         {
-            provisioningAuthoring =
+            _provisioningAuthoring =
                 serializedObject.FindProperty(
                     "provisioningAuthoring");
         }
@@ -37,13 +37,13 @@ namespace Immersive.Framework.Editor.PlayerParticipation
             DrawSection("Provisioning Registration");
 
             EditorGUILayout.PropertyField(
-                provisioningAuthoring,
+                _provisioningAuthoring,
                 new GUIContent(
                     "Provisioning Authoring",
                     "Explicit Local Player Provisioning Authoring exposed by this Game Application's UIGlobal composition."));
 
-            if (provisioningAuthoring == null ||
-                provisioningAuthoring.objectReferenceValue == null)
+            if (_provisioningAuthoring == null ||
+                _provisioningAuthoring.objectReferenceValue == null)
             {
                 EditorGUILayout.HelpBox(
                     "Assign the Local Player Provisioning Authoring exposed by this Game Application's UIGlobal composition.",
@@ -55,13 +55,13 @@ namespace Immersive.Framework.Editor.PlayerParticipation
         {
             EditorGUILayout.Space(6f);
 
-            showAdvanced =
+            _showAdvanced =
                 EditorGUILayout.Foldout(
-                    showAdvanced,
+                    _showAdvanced,
                     "Advanced / Debug",
                     true);
 
-            if (!showAdvanced)
+            if (!_showAdvanced)
             {
                 return;
             }
@@ -69,8 +69,8 @@ namespace Immersive.Framework.Editor.PlayerParticipation
             DrawSection("Registration Evidence");
 
             LocalPlayerProvisioningAuthoring authoring =
-                provisioningAuthoring != null
-                    ? provisioningAuthoring
+                _provisioningAuthoring != null
+                    ? _provisioningAuthoring
                         .objectReferenceValue
                         as LocalPlayerProvisioningAuthoring
                     : null;

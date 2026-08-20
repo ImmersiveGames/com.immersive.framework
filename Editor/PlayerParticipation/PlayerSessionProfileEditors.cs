@@ -1,13 +1,11 @@
 using System.Collections.Generic;
 using Immersive.Framework.Actors;
-using Immersive.Framework.Editor.Editor.Settings;
+using Immersive.Framework.Editor.Settings;
 using Immersive.Framework.PlayerParticipation;
-using Immersive.Framework.PlayerSlots;
 using UnityEditor;
 using UnityEditorInternal;
 using UnityEngine;
-
-namespace Immersive.Framework.Editor.Editor.PlayerParticipation
+namespace Immersive.Framework.Editor.PlayerParticipation
 {
     [CustomEditor(typeof(PlayerSessionProfile))]
     internal sealed class PlayerSessionProfileEditor : UnityEditor.Editor

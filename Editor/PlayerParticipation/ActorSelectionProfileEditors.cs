@@ -1,9 +1,8 @@
 using Immersive.Framework.Actors;
-using Immersive.Framework.Editor.Editor.Validation;
+using Immersive.Framework.Editor.Validation;
 using UnityEditor;
 using UnityEngine;
-
-namespace Immersive.Framework.Editor.Editor.PlayerParticipation
+namespace Immersive.Framework.Editor.PlayerParticipation
 {
     [CustomEditor(typeof(ActorProfile))]
     internal sealed class ActorProfileEditor : UnityEditor.Editor

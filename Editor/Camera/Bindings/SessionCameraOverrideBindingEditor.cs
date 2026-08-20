@@ -1,8 +1,8 @@
 using Immersive.Framework.Camera;
+using Immersive.Framework.Editor.CameraAuthoring;
 using UnityEditor;
 using UnityEngine;
-
-namespace Immersive.Framework.Editor.CameraAuthoring
+namespace Immersive.Framework.Editor.Camera.Bindings
 {
     [CustomEditor(typeof(SessionCameraOverrideBinding))]
     public sealed class SessionCameraOverrideBindingEditor : UnityEditor.Editor

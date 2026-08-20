@@ -1,8 +1,7 @@
 using Immersive.Framework.ProgressionSave;
 using UnityEditor;
 using UnityEngine;
-
-namespace Immersive.Framework.Editor.Editor.ProgressionSave
+namespace Immersive.Framework.Editor.ProgressionSave
 {
     [CustomEditor(typeof(ProgressionSaveProfile))]
     internal sealed class ProgressionSaveProfileEditor :
