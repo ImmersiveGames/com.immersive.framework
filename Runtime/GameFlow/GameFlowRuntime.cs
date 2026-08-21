@@ -547,21 +547,24 @@ namespace Immersive.Framework.GameFlow
                     transitionGateMode,
                     resolvedSource,
                     resolvedReason);
-                routeStartupPlayerAdmissionAuthorization =
-                    AuthorizeActivityPlayerTransition(
-                        routeStartupPlayerAdmissionPreparation,
-                        resolvedSource,
-                        resolvedReason);
-                if (routeStartupPlayerAdmissionAuthorization == null ||
-                    !routeStartupPlayerAdmissionAuthorization.ReadyForTransition)
+                if (targetRoute.HasStartupActivity)
                 {
-                    return FrameworkRouteRequestResult.FailedInvalidConfig(
-                        routeStartupPlayerAdmissionAuthorization != null
-                            ? routeStartupPlayerAdmissionAuthorization.ToDiagnosticString()
-                            : "Route Startup Activity Player transition authorization returned no result.",
-                        targetRoute,
-                        resolvedSource,
-                        resolvedReason);
+                    routeStartupPlayerAdmissionAuthorization =
+                        AuthorizeActivityPlayerTransition(
+                            routeStartupPlayerAdmissionPreparation,
+                            resolvedSource,
+                            resolvedReason);
+                    if (routeStartupPlayerAdmissionAuthorization == null ||
+                        !routeStartupPlayerAdmissionAuthorization.ReadyForTransition)
+                    {
+                        return FrameworkRouteRequestResult.FailedInvalidConfig(
+                            routeStartupPlayerAdmissionAuthorization != null
+                                ? routeStartupPlayerAdmissionAuthorization.ToDiagnosticString()
+                                : "Route Startup Activity Player transition authorization returned no result.",
+                            targetRoute,
+                            resolvedSource,
+                            resolvedReason);
+                    }
                 }
 
                 var transitionBefore = await ExecuteTransitionAsync(
