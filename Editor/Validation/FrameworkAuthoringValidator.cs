@@ -172,10 +172,10 @@ namespace Immersive.Framework.Editor.Validation
         }
 
         internal static FrameworkAuthoringValidationReport
-            ValidateActivityLocalVisibilityAdapter(
-                ActivityLocalVisibilityAdapter binding)
+            ValidateActivityContentBinding(
+                ActivityContentBinding binding)
         {
-            return ValidateActivityLocalVisibilityAdapter(
+            return ValidateActivityContentBinding(
                 binding,
                 FrameworkValidationMode.Standard);
         }
@@ -1550,15 +1550,15 @@ namespace Immersive.Framework.Editor.Validation
             }
         }
 
-        private static FrameworkAuthoringValidationReport ValidateActivityLocalVisibilityAdapter(
-            ActivityLocalVisibilityAdapter binding,
+        private static FrameworkAuthoringValidationReport ValidateActivityContentBinding(
+            ActivityContentBinding binding,
             FrameworkValidationMode validationMode)
         {
             var report = new FrameworkAuthoringValidationReport(validationMode);
 
             if (binding == null)
             {
-                report.AddError("Activity Local Visibility Adapter is missing.", null);
+                report.AddError("ActivityContentBinding is missing.", null);
                 return report;
             }
 
@@ -1569,14 +1569,14 @@ namespace Immersive.Framework.Editor.Validation
             if (!visibilityEvaluation.IsValid)
             {
                 report.AddError(
-                    $"Activity Local Visibility Adapter on GameObject '{objectName}' has an invalid Activity Rule: {visibilityEvaluation.DiagnosticReason}. Correct the indicated schema, list entry, enum or Activity identity without relying on automatic repair.",
+                    $"ActivityContentBinding on GameObject '{objectName}' has an invalid Activity Rule: {visibilityEvaluation.DiagnosticReason}. Correct the indicated schema, list entry, enum or Activity identity without relying on automatic repair.",
                     binding);
             }
 
             if (!binding.HasExplicitLocalContentId)
             {
                 report.AddError(
-                    $"Activity Local Visibility Adapter on GameObject '{objectName}' has no Local Content Id. F5 local identity requires an explicit id; GameObject names and hierarchy paths are diagnostics only.",
+                    $"ActivityContentBinding on GameObject '{objectName}' has no Local Content Id. F5 local identity requires an explicit id; GameObject names and hierarchy paths are diagnostics only.",
                     binding);
             }
 
@@ -1584,7 +1584,7 @@ namespace Immersive.Framework.Editor.Validation
             if (parentBinding != null)
             {
                 report.AddWarning(
-                    $"Activity Local Visibility Adapter on GameObject '{objectName}' is nested under '{parentBinding.gameObject.name}'. Nested Activity local visibility policy is not defined yet.",
+                    $"ActivityContentBinding on GameObject '{objectName}' is nested under '{parentBinding.gameObject.name}'. Nested Activity local visibility policy is not defined yet.",
                     binding);
             }
 
@@ -1592,14 +1592,14 @@ namespace Immersive.Framework.Editor.Validation
             if (childBindingCount > 0)
             {
                 report.AddWarning(
-                    $"Activity Local Visibility Adapter on GameObject '{objectName}' has {childBindingCount} child Activity Local Visibility Adapter component(s). Keep Activity local visibility adapter roots flat for now.",
+                    $"ActivityContentBinding on GameObject '{objectName}' has {childBindingCount} child ActivityContentBinding component(s). Keep ActivityContentBinding roots flat for now.",
                     binding);
             }
 
             if (!report.HasIssues)
             {
                 report.AddInfo(
-                    $"Activity Local Visibility Adapter on GameObject '{objectName}' is valid for the current framework scope.",
+                    $"ActivityContentBinding on GameObject '{objectName}' is valid for the current framework scope.",
                     binding);
             }
 
@@ -1874,10 +1874,10 @@ namespace Immersive.Framework.Editor.Validation
             FrameworkAuthoringValidationReport report,
             FrameworkValidationMode validationMode)
         {
-            ActivityLocalVisibilityAdapter[] bindings = Object.FindObjectsByType<ActivityLocalVisibilityAdapter>(FindObjectsInactive.Include);
+            ActivityContentBinding[] bindings = Object.FindObjectsByType<ActivityContentBinding>(FindObjectsInactive.Include);
             if (bindings == null || bindings.Length == 0)
             {
-                report.AddInfo("No Activity Local Visibility Adapter components were found in open scenes.", null);
+                report.AddInfo("No ActivityContentBinding components were found in open scenes.", null);
                 return;
             }
 
@@ -1896,12 +1896,12 @@ namespace Immersive.Framework.Editor.Validation
                 }
 
                 sceneBindingCount++;
-                report.AddRange(ValidateActivityLocalVisibilityAdapter(binding, validationMode));
+                report.AddRange(ValidateActivityContentBinding(binding, validationMode));
             }
 
             if (sceneBindingCount == 0)
             {
-                report.AddInfo("No scene-authored Activity Local Visibility Adapter components were found in loaded scenes.", null);
+                report.AddInfo("No scene-authored ActivityContentBinding components were found in loaded scenes.", null);
             }
         }
 
@@ -2004,12 +2004,12 @@ namespace Immersive.Framework.Editor.Validation
                 : FrameworkValidationMode.Strict;
         }
 
-        private static ActivityLocalVisibilityAdapter FindParentActivityLocalVisibilityAdapter(ActivityLocalVisibilityAdapter binding)
+        private static ActivityContentBinding FindParentActivityLocalVisibilityAdapter(ActivityContentBinding binding)
         {
             var parent = binding.transform.parent;
             while (parent != null)
             {
-                if (parent.TryGetComponent<ActivityLocalVisibilityAdapter>(out var parentBinding))
+                if (parent.TryGetComponent<ActivityContentBinding>(out var parentBinding))
                 {
                     return parentBinding;
                 }
@@ -2020,9 +2020,9 @@ namespace Immersive.Framework.Editor.Validation
             return null;
         }
 
-        private static int CountChildActivityLocalVisibilityAdapters(ActivityLocalVisibilityAdapter binding)
+        private static int CountChildActivityLocalVisibilityAdapters(ActivityContentBinding binding)
         {
-            ActivityLocalVisibilityAdapter[] all = binding.GetComponentsInChildren<ActivityLocalVisibilityAdapter>(true);
+            ActivityContentBinding[] all = binding.GetComponentsInChildren<ActivityContentBinding>(true);
             int count = 0;
             for (int i = 0; i < all.Length; i++)
             {

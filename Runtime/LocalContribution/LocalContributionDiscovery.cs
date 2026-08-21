@@ -120,8 +120,8 @@ namespace Immersive.Framework.LocalContribution
             List<LocalContributionHandle> handles,
             List<LocalContributionDiscoveryIssue> issues)
         {
-            IReadOnlyList<ActivityLocalVisibilityAdapter> adapters =
-                SceneCompositionComponentQuery.GetComponents<ActivityLocalVisibilityAdapter>(
+            IReadOnlyList<ActivityContentBinding> adapters =
+                SceneCompositionComponentQuery.GetComponents<ActivityContentBinding>(
                     scope,
                     activityFilter);
             if (adapters == null || adapters.Count == 0)
@@ -141,7 +141,7 @@ namespace Immersive.Framework.LocalContribution
                 {
                     issues.Add(new LocalContributionDiscoveryIssue(
                         LocalContributionDiscoveryIssueKind.MissingOwner,
-                        "ActivityLocalVisibilityAdapter has no singular Activity owner. Local contribution discovery requires one positive Activity with no-active hidden.",
+                        "ActivityContentBinding has no singular Activity owner. Local contribution discovery requires one positive Activity with no-active hidden.",
                         sceneName: adapter.SceneName,
                         objectName: adapter.ObjectName));
                     continue;
@@ -157,7 +157,7 @@ namespace Immersive.Framework.LocalContribution
                 {
                     issues.Add(new LocalContributionDiscoveryIssue(
                         LocalContributionDiscoveryIssueKind.MissingOwner,
-                        "ActivityLocalVisibilityAdapter requires an explicit Activity owner before it can produce a LocalContentIdentity.",
+                        "ActivityContentBinding requires an explicit Activity owner before it can produce a LocalContentIdentity.",
                         sceneName: adapter.SceneName,
                         objectName: adapter.ObjectName));
                     continue;
@@ -167,7 +167,7 @@ namespace Immersive.Framework.LocalContribution
                 {
                     issues.Add(new LocalContributionDiscoveryIssue(
                         LocalContributionDiscoveryIssueKind.MissingLocalContentId,
-                        "ActivityLocalVisibilityAdapter requires an explicit Local Content Id. GameObject names and hierarchy paths are diagnostics only.",
+                        "ActivityContentBinding requires an explicit Local Content Id. GameObject names and hierarchy paths are diagnostics only.",
                         sceneName: adapter.SceneName,
                         objectName: adapter.ObjectName));
                     continue;
@@ -184,7 +184,7 @@ namespace Immersive.Framework.LocalContribution
                     adapter.Requiredness,
                     adapter.SceneName,
                     adapter.ObjectName,
-                    nameof(ActivityLocalVisibilityAdapter));
+                    nameof(ActivityContentBinding));
             }
         }
 

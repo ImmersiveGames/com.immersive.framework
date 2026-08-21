@@ -1,5 +1,4 @@
 using UnityEditor;
-using UnityEngine;
 using Immersive.Framework.Editor.Common;
 
 namespace Immersive.Framework.Editor.Reset

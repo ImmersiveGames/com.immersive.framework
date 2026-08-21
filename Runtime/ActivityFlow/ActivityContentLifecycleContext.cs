@@ -17,7 +17,7 @@ namespace Immersive.Framework.ActivityFlow
             ActivityAsset activity,
             ActivityAsset previousActivity,
             ActivityAsset nextActivity,
-            ActivityLocalVisibilityAdapter binding,
+            ActivityContentBinding binding,
             GameObject contentRoot,
             string source,
             string reason)
@@ -40,7 +40,7 @@ namespace Immersive.Framework.ActivityFlow
 
         public ActivityAsset NextActivity { get; }
 
-        public ActivityLocalVisibilityAdapter Binding { get; }
+        public ActivityContentBinding Binding { get; }
 
         public GameObject ContentRoot { get; }
 
@@ -61,7 +61,7 @@ namespace Immersive.Framework.ActivityFlow
         internal static ActivityContentLifecycleContext Entered(
             ActivityAsset activity,
             ActivityAsset previousActivity,
-            ActivityLocalVisibilityAdapter binding,
+            ActivityContentBinding binding,
             string source,
             string reason)
         {
@@ -79,7 +79,7 @@ namespace Immersive.Framework.ActivityFlow
         internal static ActivityContentLifecycleContext Exited(
             ActivityAsset activity,
             ActivityAsset nextActivity,
-            ActivityLocalVisibilityAdapter binding,
+            ActivityContentBinding binding,
             string source,
             string reason)
         {

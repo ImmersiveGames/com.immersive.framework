@@ -4,7 +4,6 @@ using Immersive.Framework.Diagnostics;
 using Immersive.Framework.Editor.Camera.Cinemachine;
 using Immersive.Logging.Records;
 using UnityEditor;
-using UnityEngine;
 
 namespace Immersive.Framework.Editor.CameraAuthoring
 {

@@ -1,4 +1,3 @@
-using System;
 using Immersive.Framework.Diagnostics;
 using Immersive.Framework.Editor.UnityInput;
 using Immersive.Framework.Pause;

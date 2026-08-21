@@ -90,16 +90,16 @@ namespace Immersive.Framework.ActivityFlow
             return CompleteActivityContentTransition(context);
         }
 
-        private IReadOnlyList<ActivityLocalVisibilityAdapter> CollectActivityLocalVisibilityAdapters(
+        private IReadOnlyList<ActivityContentBinding> CollectActivityLocalVisibilityAdapters(
             ActivityAsset previousActivity,
             ActivityAsset activeActivity)
         {
-            var bindings = new List<ActivityLocalVisibilityAdapter>();
-            var seen = new HashSet<ActivityLocalVisibilityAdapter>();
+            var bindings = new List<ActivityContentBinding>();
+            var seen = new HashSet<ActivityContentBinding>();
             AddBindings(
                 bindings,
                 seen,
-                SceneCompositionComponentQuery.GetComponents<ActivityLocalVisibilityAdapter>(
+                SceneCompositionComponentQuery.GetComponents<ActivityContentBinding>(
                     _discoveryScope,
                     previousActivity));
 
@@ -108,7 +108,7 @@ namespace Immersive.Framework.ActivityFlow
                 AddBindings(
                     bindings,
                     seen,
-                    SceneCompositionComponentQuery.GetComponents<ActivityLocalVisibilityAdapter>(
+                    SceneCompositionComponentQuery.GetComponents<ActivityContentBinding>(
                         _discoveryScope,
                         activeActivity));
             }
@@ -117,9 +117,9 @@ namespace Immersive.Framework.ActivityFlow
         }
 
         private static void AddBindings(
-            List<ActivityLocalVisibilityAdapter> bindings,
-            HashSet<ActivityLocalVisibilityAdapter> seen,
-            IReadOnlyList<ActivityLocalVisibilityAdapter> discovered)
+            List<ActivityContentBinding> bindings,
+            HashSet<ActivityContentBinding> seen,
+            IReadOnlyList<ActivityContentBinding> discovered)
         {
             if (bindings == null || seen == null || discovered == null || discovered.Count == 0)
             {
@@ -136,7 +136,7 @@ namespace Immersive.Framework.ActivityFlow
         }
 
         private static ActivityContentEntry CreateActivityContentEntry(
-            ActivityLocalVisibilityAdapter binding,
+            ActivityContentBinding binding,
             ActivityAsset activity,
             string source,
             string reason,
@@ -153,7 +153,7 @@ namespace Immersive.Framework.ActivityFlow
                 true,
                 source,
                 reason,
-                $"Activity local visibility adapter action='{FormatValue(action)}'.");
+                $"ActivityContentBinding action='{FormatValue(action)}'.");
 
             return new ActivityContentEntry(handle);
         }
@@ -165,7 +165,7 @@ namespace Immersive.Framework.ActivityFlow
         }
 
         private void DispatchActivityContentEntered(
-            ActivityLocalVisibilityAdapter binding,
+            ActivityContentBinding binding,
             ActivityAsset activity,
             ActivityAsset previousActivity,
             string source,
@@ -185,7 +185,7 @@ namespace Immersive.Framework.ActivityFlow
         }
 
         private void DispatchActivityContentExited(
-            ActivityLocalVisibilityAdapter binding,
+            ActivityContentBinding binding,
             ActivityAsset activity,
             ActivityAsset nextActivity,
             string source,
@@ -205,7 +205,7 @@ namespace Immersive.Framework.ActivityFlow
         }
 
         private void DispatchActivityContentLifecycle(
-            ActivityLocalVisibilityAdapter binding,
+            ActivityContentBinding binding,
             string phase,
             ActivityAsset activity,
             bool parentFirst,
@@ -253,7 +253,7 @@ namespace Immersive.Framework.ActivityFlow
         }
 
         private void LogActivityContentReceiverException(
-            ActivityLocalVisibilityAdapter binding,
+            ActivityContentBinding binding,
             string phase,
             ActivityAsset activity,
             IActivityContentLifecycleReceiver receiver,
@@ -265,7 +265,7 @@ namespace Immersive.Framework.ActivityFlow
             string exceptionMessage = exception != null ? exception.Message : string.Empty;
 
             _logger.Error(
-                $"Activity Local Visibility Adapter lifecycle receiver failed. phase='{FormatValue(phase)}' activity='{FormatValue(activityName)}' object='{FormatValue(binding.ObjectName)}' scene='{FormatValue(binding.SceneName)}' receiver='{FormatValue(receiverType)}' exception='{FormatValue(exceptionType)}' message='{FormatValue(exceptionMessage)}'.");
+                $"ActivityContentBinding lifecycle receiver failed. phase='{FormatValue(phase)}' activity='{FormatValue(activityName)}' object='{FormatValue(binding.ObjectName)}' scene='{FormatValue(binding.SceneName)}' receiver='{FormatValue(receiverType)}' exception='{FormatValue(exceptionType)}' message='{FormatValue(exceptionMessage)}'.");
         }
 
 
@@ -291,7 +291,7 @@ namespace Immersive.Framework.ActivityFlow
         private static void AddObservation(
             List<string> observedBindings,
             ref int omittedObservationCount,
-            ActivityLocalVisibilityAdapter binding,
+            ActivityContentBinding binding,
             string assignedActivity,
             string action,
             string reason)
@@ -306,13 +306,13 @@ namespace Immersive.Framework.ActivityFlow
                 $"object='{FormatValue(binding.ObjectName)}' scene='{FormatValue(binding.SceneName)}' assignedActivity='{FormatValue(assignedActivity)}' action='{FormatValue(action)}' reason='{FormatValue(reason)}'");
         }
 
-        private static void AddWarning(List<string> warningBindings, ActivityLocalVisibilityAdapter binding, string reason)
+        private static void AddWarning(List<string> warningBindings, ActivityContentBinding binding, string reason)
         {
             warningBindings.Add(
                 $"object='{FormatValue(binding.ObjectName)}' scene='{FormatValue(binding.SceneName)}' localContentId='{FormatValue(binding.LocalContentIdText)}' requiredness='{binding.Requiredness}' listedActivities='{FormatValue(FormatListedActivities(binding))}' reason='{FormatValue(reason)}'");
         }
 
-        private static string FormatListedActivities(ActivityLocalVisibilityAdapter binding)
+        private static string FormatListedActivities(ActivityContentBinding binding)
         {
             if (binding == null || binding.Activities == null || binding.Activities.Count == 0)
             {
@@ -337,7 +337,7 @@ namespace Immersive.Framework.ActivityFlow
             }
 
             string activeActivityName = activeActivity.ToDiagnosticText(x => x.ActivityName);
-            string details = $"Activity Local Visibility Adapter diagnostics. activeActivity='{FormatValue(activeActivityName)}' observations=[{string.Join("; ", observedBindings)}]";
+            string details = $"ActivityContentBinding diagnostics. activeActivity='{FormatValue(activeActivityName)}' observations=[{string.Join("; ", observedBindings)}]";
             if (omittedObservationCount > 0)
             {
                 details += $" omitted='{omittedObservationCount}'";
@@ -353,7 +353,7 @@ namespace Immersive.Framework.ActivityFlow
                 return string.Empty;
             }
 
-            return $"Activity Local Visibility Adapter warning. warnings=[{string.Join("; ", warningBindings)}].";
+            return $"ActivityContentBinding warning. warnings=[{string.Join("; ", warningBindings)}].";
         }
 
         private static string FormatValue(string value)

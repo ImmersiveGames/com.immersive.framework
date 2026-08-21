@@ -165,13 +165,13 @@ namespace Immersive.Framework.Audio
                 return assignedActivity;
             }
 
-            ActivityLocalVisibilityAdapter adapter = GetComponent<ActivityLocalVisibilityAdapter>();
-            if (adapter == null)
+            ActivityContentBinding binding = GetComponent<ActivityContentBinding>();
+            if (binding == null)
             {
-                adapter = GetComponentInParent<ActivityLocalVisibilityAdapter>();
+                binding = GetComponentInParent<ActivityContentBinding>();
             }
 
-            return adapter != null && adapter.TryGetSingleActivityOwner(out ActivityAsset activity)
+            return binding != null && binding.TryGetSingleActivityOwner(out ActivityAsset activity)
                 ? activity
                 : null;
         }

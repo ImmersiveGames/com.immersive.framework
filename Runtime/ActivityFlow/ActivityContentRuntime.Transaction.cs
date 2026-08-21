@@ -16,13 +16,13 @@ namespace Immersive.Framework.ActivityFlow
             internal ActivityContentTransitionContext(
                 ActivityAsset previousActivity,
                 ActivityAsset activeActivity,
-                IReadOnlyList<ActivityLocalVisibilityAdapter> bindings,
+                IReadOnlyList<ActivityContentBinding> bindings,
                 string source,
                 string reason)
             {
                 PreviousActivity = previousActivity;
                 ActiveActivity = activeActivity;
-                Bindings = bindings ?? Array.Empty<ActivityLocalVisibilityAdapter>();
+                Bindings = bindings ?? Array.Empty<ActivityContentBinding>();
                 Source = source;
                 Reason = reason;
                 ObservedBindings = new List<string>(MaxObservedBindingsInMessage);
@@ -35,7 +35,7 @@ namespace Immersive.Framework.ActivityFlow
 
             internal ActivityAsset ActiveActivity { get; }
 
-            internal IReadOnlyList<ActivityLocalVisibilityAdapter> Bindings { get; }
+            internal IReadOnlyList<ActivityContentBinding> Bindings { get; }
 
             internal string Source { get; }
 
@@ -92,7 +92,7 @@ namespace Immersive.Framework.ActivityFlow
         {
             string resolvedSource = NormalizeSource(source);
             string resolvedReason = NormalizeReason(reason);
-            IReadOnlyList<ActivityLocalVisibilityAdapter> bindings =
+            IReadOnlyList<ActivityContentBinding> bindings =
                 CollectActivityLocalVisibilityAdapters(
                     previousActivity,
                     activeActivity);
@@ -105,7 +105,7 @@ namespace Immersive.Framework.ActivityFlow
 
             for (int index = 0; index < context.Bindings.Count; index++)
             {
-                ActivityLocalVisibilityAdapter binding = context.Bindings[index];
+                ActivityContentBinding binding = context.Bindings[index];
                 if (binding == null || !binding.IsSceneBinding)
                 {
                     continue;
@@ -164,7 +164,7 @@ namespace Immersive.Framework.ActivityFlow
 
             for (int index = 0; index < context.Bindings.Count; index++)
             {
-                ActivityLocalVisibilityAdapter binding = context.Bindings[index];
+                ActivityContentBinding binding = context.Bindings[index];
                 if (binding == null || !binding.IsSceneBinding)
                 {
                     continue;
@@ -232,7 +232,7 @@ namespace Immersive.Framework.ActivityFlow
 
             for (int index = 0; index < context.Bindings.Count; index++)
             {
-                ActivityLocalVisibilityAdapter binding = context.Bindings[index];
+                ActivityContentBinding binding = context.Bindings[index];
                 if (binding == null || !binding.IsSceneBinding)
                 {
                     continue;
@@ -363,7 +363,7 @@ namespace Immersive.Framework.ActivityFlow
             }
 
             return
-                $"Required Activity Local Visibility Adapter configuration is invalid. requiredInvalidBinding='{context.RequiredInvalidBindingCount}' diagnostics=[{string.Join("; ", context.RequiredInvalidBindingDiagnostics)}].";
+                $"Required ActivityContentBinding configuration is invalid. requiredInvalidBinding='{context.RequiredInvalidBindingCount}' diagnostics=[{string.Join("; ", context.RequiredInvalidBindingDiagnostics)}].";
         }
 
         private static void RecordVisibilityChange(

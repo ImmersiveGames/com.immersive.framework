@@ -1,4 +1,3 @@
-using System;
 using Immersive.Framework.Editor.Common;
 using Immersive.Framework.GameFlow;
 using UnityEditor;

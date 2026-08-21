@@ -1,22 +1,30 @@
+using Immersive.Framework.ActivityFlow;
 using Immersive.Framework.Editor.Common;
 using Immersive.Framework.Editor.Validation;
-using Immersive.Framework.RouteLifecycle;
 using UnityEditor;
 using UnityEngine;
 
 namespace Immersive.Framework.Editor.Authoring
 {
-    [CustomEditor(typeof(RouteContentBinding))]
+    [CustomEditor(typeof(ActivityContentBinding))]
     [CanEditMultipleObjects]
-    internal sealed class RouteContentBindingEditor : UnityEditor.Editor
+    internal sealed class ActivityContentBindingEditor : UnityEditor.Editor
     {
         private static readonly GUIContent HeaderLabel = new GUIContent(
-            "Route Content Binding",
-            "Declares one scene-local Route content boundary. Route lifecycle callbacks are dispatched to receivers in this GameObject subtree.");
+            "Activity Content Binding",
+            "Declares one scene-local Activity content boundary. It evaluates Activity-driven visibility and dispatches Activity lifecycle callbacks to receivers in this GameObject subtree.");
 
-        private static readonly GUIContent RouteLabel = new GUIContent(
-            "Route",
-            "Route that owns this scene-authored content boundary.");
+        private static readonly GUIContent ActivitiesLabel = new GUIContent(
+            "Activities",
+            "Activities evaluated by this local content boundary. Order is authored and preserved.");
+
+        private static readonly GUIContent MatchModeLabel = new GUIContent(
+            "Match Mode",
+            "Defines whether a listed active Activity makes this content root visible or hidden.");
+
+        private static readonly GUIContent NoActivePolicyLabel = new GUIContent(
+            "No Active Activity",
+            "Defines this content root visibility when no Activity is active.");
 
         private static readonly GUIContent LocalContentIdLabel = new GUIContent(
             "Local Content Id",
@@ -24,13 +32,15 @@ namespace Immersive.Framework.Editor.Authoring
 
         private static readonly GUIContent RequirednessLabel = new GUIContent(
             "Requiredness",
-            "Defines whether this local contribution is required or optional for framework content/readiness consumers.");
+            "Defines whether this local contribution is required or optional in the Activity content contract.");
 
         private static readonly GUIContent ValidateLabel = new GUIContent(
             "Validate Configuration",
             "Checks the authored configuration without modifying it.");
 
-        private SerializedProperty _route;
+        private SerializedProperty _activities;
+        private SerializedProperty _matchMode;
+        private SerializedProperty _noActiveActivityPolicy;
         private SerializedProperty _localContentId;
         private SerializedProperty _requiredness;
         private FrameworkAuthoringValidationReport _validationReport;
@@ -38,7 +48,9 @@ namespace Immersive.Framework.Editor.Authoring
 
         private void OnEnable()
         {
-            _route = serializedObject.FindProperty("route");
+            _activities = serializedObject.FindProperty("activities");
+            _matchMode = serializedObject.FindProperty("matchMode");
+            _noActiveActivityPolicy = serializedObject.FindProperty("noActiveActivityPolicy");
             _localContentId = serializedObject.FindProperty("localContentId");
             _requiredness = serializedObject.FindProperty("requiredness");
         }
@@ -50,7 +62,9 @@ namespace Immersive.Framework.Editor.Authoring
             EditorGUILayout.LabelField(HeaderLabel, EditorStyles.boldLabel);
 
             EditorGUI.BeginChangeCheck();
-            EditorGUILayout.PropertyField(_route, RouteLabel);
+            EditorGUILayout.PropertyField(_activities, ActivitiesLabel, true);
+            EditorGUILayout.PropertyField(_matchMode, MatchModeLabel);
+            EditorGUILayout.PropertyField(_noActiveActivityPolicy, NoActivePolicyLabel);
             EditorGUILayout.PropertyField(_localContentId, LocalContentIdLabel);
             DrawSuggestedIdentityAction();
             EditorGUILayout.PropertyField(_requiredness, RequirednessLabel);
@@ -98,8 +112,8 @@ namespace Immersive.Framework.Editor.Authoring
                         _localContentId,
                         FrameworkAuthoringSuggestionUtility.SuggestIdentity(
                             target,
-                            "route.local-content"),
-                        "Suggest Route Local Content Id");
+                            "activity.local-content"),
+                        "Suggest Activity Local Content Id");
 
                     _validationReport = null;
                 }
@@ -108,17 +122,22 @@ namespace Immersive.Framework.Editor.Authoring
 
         private void DrawImmediateIssues()
         {
-            if (_route != null &&
-                !_route.hasMultipleDifferentValues &&
-                _route.objectReferenceValue == null)
+            if (serializedObject.isEditingMultipleObjects ||
+                !(target is ActivityContentBinding binding))
+            {
+                return;
+            }
+
+            ActivityVisibilityEvaluation evaluation = binding.EvaluateVisibility(null);
+            if (!evaluation.IsValid &&
+                evaluation.DiagnosticReason != "MissingLocalContentId")
             {
                 EditorGUILayout.HelpBox(
-                    "Route is missing.",
+                    $"Invalid Activity configuration: {evaluation.DiagnosticReason}.",
                     MessageType.Error);
             }
 
-            if (_localContentId != null &&
-                !_localContentId.hasMultipleDifferentValues &&
+            if (_localContentId is { hasMultipleDifferentValues: false } &&
                 string.IsNullOrWhiteSpace(_localContentId.stringValue))
             {
                 EditorGUILayout.HelpBox(
@@ -126,17 +145,11 @@ namespace Immersive.Framework.Editor.Authoring
                     MessageType.Error);
             }
 
-            if (serializedObject.isEditingMultipleObjects ||
-                !(target is RouteContentBinding binding))
-            {
-                return;
-            }
-
-            RouteContentBinding parent = FindParentBinding(binding);
+            ActivityContentBinding parent = FindParentBinding(binding);
             if (parent != null)
             {
                 EditorGUILayout.HelpBox(
-                    $"Nested Route Content Binding detected under '{parent.gameObject.name}'. Keep content binding roots flat.",
+                    $"Nested ActivityContentBinding detected under '{parent.gameObject.name}'. Keep content binding roots flat.",
                     MessageType.Warning);
             }
 
@@ -144,7 +157,7 @@ namespace Immersive.Framework.Editor.Authoring
             if (childCount > 0)
             {
                 EditorGUILayout.HelpBox(
-                    $"{childCount} child Route Content Binding component(s) detected. Keep content binding roots flat.",
+                    $"{childCount} child ActivityContentBinding component(s) detected. Keep content binding roots flat.",
                     MessageType.Warning);
             }
         }
@@ -184,8 +197,8 @@ namespace Immersive.Framework.Editor.Authoring
             for (int index = 0; index < targets.Length; index++)
             {
                 _validationReport.AddRange(
-                    FrameworkAuthoringValidator.ValidateRouteContentBinding(
-                        targets[index] as RouteContentBinding));
+                    FrameworkAuthoringValidator.ValidateActivityContentBinding(
+                        targets[index] as ActivityContentBinding));
             }
         }
 
@@ -212,7 +225,7 @@ namespace Immersive.Framework.Editor.Authoring
         private void DrawAdvanced()
         {
             if (targets.Length != 1 ||
-                !(target is RouteContentBinding binding))
+                !(target is ActivityContentBinding binding))
             {
                 EditorGUILayout.LabelField(
                     new GUIContent(
@@ -223,6 +236,20 @@ namespace Immersive.Framework.Editor.Authoring
             }
 
             EditorGUI.indentLevel++;
+
+            ActivityVisibilityEvaluation evaluation = binding.EvaluateVisibility(null);
+
+            EditorGUILayout.LabelField(
+                new GUIContent(
+                    "Desired Visibility",
+                    "Visibility result produced by the current authored rule when evaluated with no active Activity."),
+                evaluation.DesiredVisibility.ToString());
+
+            EditorGUILayout.LabelField(
+                new GUIContent(
+                    "Diagnostic",
+                    "Technical result of the current Activity visibility evaluation."),
+                evaluation.DiagnosticReason);
 
             EditorGUILayout.LabelField(
                 new GUIContent(
@@ -246,18 +273,28 @@ namespace Immersive.Framework.Editor.Authoring
                     ? binding.gameObject.scene.name
                     : "<no scene>");
 
+            EditorGUILayout.LabelField(
+                new GUIContent(
+                    "Runtime Status",
+                    "Current active state of this content root while the application is running."),
+                Application.isPlaying
+                    ? binding.gameObject.activeSelf
+                        ? "Visible"
+                        : "Hidden"
+                    : "Not Available in Edit Mode");
+
             EditorGUI.indentLevel--;
         }
 
-        private static RouteContentBinding FindParentBinding(
-            RouteContentBinding binding)
+        private static ActivityContentBinding FindParentBinding(
+            ActivityContentBinding binding)
         {
             for (Transform parent = binding.transform.parent;
                  parent != null;
                  parent = parent.parent)
             {
                 if (parent.TryGetComponent(
-                        out RouteContentBinding parentBinding))
+                        out ActivityContentBinding parentBinding))
                 {
                     return parentBinding;
                 }
@@ -267,10 +304,10 @@ namespace Immersive.Framework.Editor.Authoring
         }
 
         private static int CountChildBindings(
-            RouteContentBinding binding)
+            ActivityContentBinding binding)
         {
-            RouteContentBinding[] bindings =
-                binding.GetComponentsInChildren<RouteContentBinding>(true);
+            ActivityContentBinding[] bindings =
+                binding.GetComponentsInChildren<ActivityContentBinding>(true);
 
             int count = 0;
             for (int index = 0; index < bindings.Length; index++)

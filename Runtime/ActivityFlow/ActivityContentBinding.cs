@@ -15,9 +15,9 @@ namespace Immersive.Framework.ActivityFlow
     /// It is not canonical Activity materialization.
     /// </summary>
     [DisallowMultipleComponent]
-    [AddComponentMenu("Immersive Framework/Activity Local Visibility Adapter")]
+    [AddComponentMenu("Immersive Framework/ActivityContentBinding")]
     [FrameworkApiStatus(FrameworkApiStatus.Experimental, "Baseline surface kept for development use until the owning roadmap phase stabilizes it.")]
-    public sealed class ActivityLocalVisibilityAdapter : MonoBehaviour
+    public sealed class ActivityContentBinding : MonoBehaviour
     {
         [SerializeField]
         [Tooltip("Explicit Activities evaluated by the current visibility rule. Order is authored and preserved.")]
