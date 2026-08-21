@@ -12,7 +12,7 @@ namespace Immersive.Framework.Editor.Validation
         {
             if (report == null)
             {
-                EditorGUILayout.LabelField("Result", "Not run");
+                DrawLabelValue("Result", "Not run");
                 return;
             }
 
@@ -22,7 +22,7 @@ namespace Immersive.Framework.Editor.Validation
                     ? $"Valid with {report.WarningCount} warning(s)"
                     : "Valid";
 
-            EditorGUILayout.LabelField("Result", result);
+            DrawLabelValue("Result", result);
         }
 
         internal static void DrawIssues(
@@ -153,6 +153,13 @@ namespace Immersive.Framework.Editor.Validation
                         break;
                 }
             }
+        }
+
+        private static void DrawLabelValue(string label, string value)
+        {
+            EditorGUILayout.LabelField(
+                new GUIContent(label),
+                new GUIContent(value ?? string.Empty));
         }
 
         private static void DrawSelectButton(

@@ -11,8 +11,7 @@ namespace Immersive.Framework.Audio
     public enum FrameworkBgmActivityPolicy
     {
         /// <summary>
-        /// Play the Activity cue when authored; otherwise explicitly request the current Route cue
-        /// when one is authored. If neither exists, publish no request.
+        /// Play the Activity cue when authored; otherwise inherit the complete current Route intent.
         /// </summary>
         UseOwnOrRoute = 0,
 
@@ -23,7 +22,7 @@ namespace Immersive.Framework.Audio
         UseOwnOrPreserveCurrent = 1,
 
         /// <summary>
-        /// Explicitly request the current Route cue. If the Route has no cue, publish no request.
+        /// Explicitly inherit the complete current Route intent.
         /// </summary>
         UseRoute = 2,
 

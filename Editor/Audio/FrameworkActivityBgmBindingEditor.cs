@@ -144,7 +144,7 @@ namespace Immersive.Framework.Editor.Audio
                         : "No Request / Preserve current confirmed BGM.";
 
                 case FrameworkBgmActivityPolicy.UseRoute:
-                    return "Use Route BGM; no Route cue means No Request.";
+                    return "Inherit the complete current Route intent.";
 
                 case FrameworkBgmActivityPolicy.Silence:
                     return "Explicit Silence.";
@@ -152,7 +152,7 @@ namespace Immersive.Framework.Editor.Audio
                 default:
                     return cue != null
                         ? $"Play '{cue.name}'."
-                        : "Use Route BGM; if absent, No Request.";
+                        : "Inherit the complete current Route intent.";
             }
         }
 
@@ -221,8 +221,8 @@ namespace Immersive.Framework.Editor.Audio
                 !(target is FrameworkActivityBgmBinding binding))
             {
                 EditorGUILayout.LabelField(
-                    "Runtime Evidence",
-                    "Single selection only");
+                    new GUIContent("Runtime Evidence"),
+                    new GUIContent("Single selection only"));
                 return;
             }
 
@@ -280,8 +280,9 @@ namespace Immersive.Framework.Editor.Audio
                 _assignedActivity.objectReferenceValue == null)
             {
                 EditorGUILayout.LabelField(
-                    "Activity Ownership",
-                    "Resolved from local lifecycle evidence");
+                    new GUIContent("Activity Ownership"),
+                    new GUIContent(
+                        "Resolved from local lifecycle evidence"));
             }
         }
     }

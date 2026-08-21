@@ -1,7 +1,7 @@
 # Audio BGM Usage
 
 Status: Current / Experimental
-Last updated: 2026-08-19
+Last updated: 2026-08-21
 
 ## Dependency and boundary
 
@@ -35,18 +35,30 @@ Do not serialize cross-scene references from transient Route/Activity bindings t
 
 1. In Framework Persistent Content, configure an `AudioRuntimeHost` with an explicit `AudioDefaultsAsset`.
 2. Add `FrameworkBgmDirector` and assign the `AudioRuntimeHost` explicitly.
-3. Add `FrameworkRouteBgmBinding` to Route content and assign the Route cue only when the Route has an explicit BGM opinion.
+3. Add `FrameworkRouteBgmBinding` to Route content and choose its explicit Route BGM Policy. `PlayOwn` requires a Route cue; `PreserveCurrent` and `Silence` do not.
 4. Add `FrameworkActivityBgmBinding` to Activity content when that Activity has an explicit BGM policy.
 5. Assign `Assigned Activity`, cue when applicable, and one of the policies below.
 6. If a Route Startup Activity must publish an immediate Play/Silence intent during Route entry, assign its explicit `FrameworkActivityBgmBinding` to `FrameworkRouteBgmBinding.StartupActivityBgmBinding`.
+
+## Route policy
+
+| Policy | Published intent |
+|---|---|
+| `PlayOwn` | Play the required Route cue. |
+| `PreserveCurrent` | No Request; preserve the confirmed presentation. |
+| `Silence` | Explicitly request silence/stop. |
+
+The Route policy, rather than cue presence, is the complete Route intent. Existing
+bindings are migrated once: a serialized cue becomes `PlayOwn`; no serialized cue
+becomes `PreserveCurrent`.
 
 ## Activity policies
 
 | Policy | Published intent |
 |---|---|
-| `UseOwnOrRoute` | Play Activity cue when authored; otherwise Play Route cue when authored; if neither exists, publish no request. |
+| `UseOwnOrRoute` | Play Activity cue when authored; otherwise inherit the complete current Route intent. |
 | `UseOwnOrPreserveCurrent` | Play Activity cue when authored; otherwise publish no request and preserve the confirmed presentation. |
-| `UseRoute` | Play the Route cue when authored; if the Route has no cue, publish no request. |
+| `UseRoute` | Inherit the complete current Route intent. |
 | `Silence` | Explicitly request silence/stop. |
 
 `UseOwnOrRetainActivityUntilRouteExit` is not the current contract. Sticky continuity is no longer based on automatic restoration at owner exit.
@@ -73,7 +85,7 @@ Owner exit        -> Preserve / NoChange
 
 A confirmed BGM presentation remains active across Activity exit, Route exit, and transient scene lifetime changes until a new explicit Play or Silence intent is successfully applied.
 
-Absence of a binding, `routeBgm = null`, `activityBgm = null` under a preserve/no-request policy, owner exit, or absence of a new winner is not Silence.
+Absence of a binding, an Activity cue absent under a preserve/no-request policy, owner exit, or absence of a new winner is not Silence. Route intent is always explicit: `PreserveCurrent` is No Request and `Silence` is an explicit Stop request.
 
 Explicit Silence is also sticky: once silence is provider-confirmed, later no-request/owner-exit operations preserve that silence until a new Play succeeds.
 
@@ -114,7 +126,7 @@ When a Route has a Startup Activity, Route BGM refresh is deferred so the Startu
 
 If `StartupActivityBgmBinding` is valid and matches the Route Startup Activity, it is applied immediately.
 
-If no valid explicit Startup Activity BGM binding is assigned, the current runtime emits a warning and evaluates the pending Route intent. This can still be semantically valid for an intentionally no-op Startup Activity where both the Route and Activity publish no BGM request; the warning is diagnostic/product-surface debt, not an instruction to fabricate a cue or Silence intent.
+If no valid explicit Startup Activity BGM binding is assigned, the current runtime emits a warning and evaluates the pending Route intent. This can still be semantically valid for an intentionally no-op Startup Activity where the Route publishes `PreserveCurrent`; the warning is diagnostic/product-surface debt, not an instruction to fabricate a cue or Silence intent.
 
 Do not add a fake BGM binding merely to suppress that warning.
 
@@ -124,6 +136,7 @@ Inspect:
 
 - `FrameworkBgmDirector.ConfirmedBgm`;
 - `FrameworkBgmDirector.ConfirmedExplicitSilence`;
+- `FrameworkBgmDirector.CurrentRoutePolicy` and `CurrentRouteBgm` (the cue only when Route policy is `PlayOwn`);
 - Route and Activity authored cues/policies;
 - `LastOperationResult` on director/bindings;
 - requested cue / requested silence;
@@ -162,7 +175,9 @@ TOTAL              30/30 PASS
 FAILED               0
 ```
 
-The suite proves:
+The historical suite proves BGM-CONTINUITY-1. `BGM-ROUTE-POLICY-1` extends that model and requires a new focused Play Mode run; the historical 30/30 result is not relabeled as certification of the Route policy matrix.
+
+The historical suite proves:
 
 - Route Play and same-confirmed cue NoChange;
 - Startup Activity Play;
@@ -171,7 +186,6 @@ The suite proves:
 - Route exit preserves confirmed BGM;
 - Route no-request preserves;
 - Activity no-request preserves;
-- `UseRoute` with no Route cue preserves;
 - explicit Silence;
 - owner exit and no-request preserve confirmed Silence;
 - Play after Silence;

@@ -227,7 +227,7 @@ namespace Immersive.Framework.Editor.Authoring
             if (targets.Length != 1 ||
                 !(target is ActivityContentBinding binding))
             {
-                EditorGUILayout.LabelField(
+                DrawLabelValue(
                     new GUIContent(
                         "Runtime Evidence",
                         "Technical evidence is shown only for a single selected binding."),
@@ -239,19 +239,19 @@ namespace Immersive.Framework.Editor.Authoring
 
             ActivityVisibilityEvaluation evaluation = binding.EvaluateVisibility(null);
 
-            EditorGUILayout.LabelField(
+            DrawLabelValue(
                 new GUIContent(
                     "Desired Visibility",
                     "Visibility result produced by the current authored rule when evaluated with no active Activity."),
                 evaluation.DesiredVisibility.ToString());
 
-            EditorGUILayout.LabelField(
+            DrawLabelValue(
                 new GUIContent(
                     "Diagnostic",
                     "Technical result of the current Activity visibility evaluation."),
                 evaluation.DiagnosticReason);
 
-            EditorGUILayout.LabelField(
+            DrawLabelValue(
                 new GUIContent(
                     "Normalized Local Content Id",
                     "Normalized stable identity used by the framework for this local contribution."),
@@ -259,13 +259,13 @@ namespace Immersive.Framework.Editor.Authoring
                     ? binding.LocalContentIdText
                     : "<missing>");
 
-            EditorGUILayout.LabelField(
+            DrawLabelValue(
                 new GUIContent(
                     "Local Scope Kind",
                     "Technical scope classification used by local contribution discovery."),
                 binding.LocalScopeKind.ToString());
 
-            EditorGUILayout.LabelField(
+            DrawLabelValue(
                 new GUIContent(
                     "Scene",
                     "Scene that currently owns this binding."),
@@ -273,7 +273,7 @@ namespace Immersive.Framework.Editor.Authoring
                     ? binding.gameObject.scene.name
                     : "<no scene>");
 
-            EditorGUILayout.LabelField(
+            DrawLabelValue(
                 new GUIContent(
                     "Runtime Status",
                     "Current active state of this content root while the application is running."),
@@ -284,6 +284,15 @@ namespace Immersive.Framework.Editor.Authoring
                     : "Not Available in Edit Mode");
 
             EditorGUI.indentLevel--;
+        }
+
+        private static void DrawLabelValue(
+            GUIContent label,
+            string value)
+        {
+            EditorGUILayout.LabelField(
+                label,
+                new GUIContent(value ?? string.Empty));
         }
 
         private static ActivityContentBinding FindParentBinding(

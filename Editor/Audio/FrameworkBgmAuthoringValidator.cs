@@ -42,6 +42,22 @@ namespace Immersive.Framework.Editor.Audio
                 return report;
             }
 
+            if (!Enum.IsDefined(
+                    typeof(FrameworkBgmRoutePolicy),
+                    binding.Policy))
+            {
+                report.AddError(
+                    "Route BGM Policy has an invalid serialized value.",
+                    binding);
+            }
+            else if (binding.Policy == FrameworkBgmRoutePolicy.PlayOwn &&
+                     binding.RouteBgm == null)
+            {
+                report.AddError(
+                    "Route BGM Policy Play Own requires a Route BGM cue.",
+                    binding);
+            }
+
             FrameworkActivityBgmBinding startupBinding =
                 binding.StartupActivityBgmBinding;
 

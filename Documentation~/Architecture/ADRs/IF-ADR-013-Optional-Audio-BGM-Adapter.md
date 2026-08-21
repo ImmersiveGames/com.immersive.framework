@@ -1,8 +1,8 @@
 # IF-ADR-013 — Optional Audio BGM Adapter
 
 Status: **Accepted / Experimental — technical boundary certified**  
-Last updated: **2026-08-19**  
-Package implementation: **Implemented — IF-ADR-013A + BGM-CONTINUITY-1**  
+Last updated: **2026-08-21**  
+Package implementation: **Implemented — IF-ADR-013A + BGM-CONTINUITY-1 + BGM-ROUTE-POLICY-1**  
 Technical QA: **Certified — Audio QA 30/30**  
 FIRSTGAME: **Not Proven — real consumer integration remains the promotion gate**  
 Related decisions: IF-ADR-001, IF-ADR-002, IF-ADR-006, IF-ADR-008, IF-ADR-010, IF-ADR-014  
@@ -25,6 +25,7 @@ The Framework exposes optional Route/Activity BGM intent through:
 - `FrameworkBgmDirector`;
 - `FrameworkRouteBgmBinding`;
 - `FrameworkActivityBgmBinding`;
+- `FrameworkBgmRoutePolicy`;
 - `FrameworkBgmActivityPolicy`;
 - `FrameworkBgmOperationResult`.
 
@@ -74,18 +75,41 @@ Owner exit
 
 Confirmed explicit silence is also sticky. After Silence is provider-confirmed, later owner exit or no-request operations preserve silence until a later Play succeeds.
 
+## Route policy — BGM-ROUTE-POLICY-1
+
+Route BGM is an explicit intent, not an optional cue shorthand:
+
+| Policy | Published intent |
+|---|---|
+| `PlayOwn` | Play the required Route cue. |
+| `PreserveCurrent` | No Request; preserve the confirmed presentation. |
+| `Silence` | Explicit Silence. |
+
+`FrameworkBgmDirector` retains the complete current Route intent. `CurrentRouteBgm`
+is therefore only the cue carried by a `PlayOwn` intent; `PreserveCurrent` and
+`Silence` do not fabricate a cue.
+
+For existing serialized bindings authored before this policy, the one-time
+`BGM-ROUTE-POLICY-1` migration writes `PlayOwn` when a Route cue was serialized and
+`PreserveCurrent` when it was absent. This preserves prior behavior without retaining
+an `Auto`, `Legacy`, or cue-null heuristic in the final contract.
+
 ## Activity policy
 
 Current policies:
 
 | Policy | Published intent |
 |---|---|
-| `UseOwnOrRoute` | Play Activity cue when authored; otherwise Play Route cue when authored; otherwise No Request. |
+| `UseOwnOrRoute` | Play Activity cue when authored; otherwise inherit the complete current Route intent. |
 | `UseOwnOrPreserveCurrent` | Play Activity cue when authored; otherwise No Request. |
-| `UseRoute` | Play Route cue when authored; otherwise No Request. |
+| `UseRoute` | Inherit the complete current Route intent. |
 | `Silence` | Explicit Silence. |
 
 The former `UseOwnOrRetainActivityUntilRouteExit` restoration model is not the current contract. A retained Activity cue may exist as diagnostic/confirmed evidence, but owner exit does not automatically restore Route BGM or another prior presentation.
+
+Accordingly, a Route `Silence` is inherited as Silence, and a Route
+`PreserveCurrent` is inherited as No Request by both `UseRoute` and cue-less
+`UseOwnOrRoute`.
 
 ## Provider-confirmed execution evidence — IF-ADR-013A
 
@@ -165,9 +189,9 @@ When a Route has a Startup Activity, Route BGM refresh is deferred so an explici
 
 If a valid `StartupActivityBgmBinding` is present, the Startup Activity intent is applied immediately.
 
-If no valid explicit Startup Activity BGM binding is assigned, the current runtime warns and evaluates the pending Route intent. A Route with `routeBgm = null` therefore still publishes No Request. An Activity using `UseOwnOrPreserveCurrent` with no cue also publishes No Request.
+If no valid explicit Startup Activity BGM binding is assigned, the current runtime warns and evaluates the pending Route intent. A Route `PreserveCurrent` publishes No Request, while Route `Silence` remains an explicit Silence request. An Activity using `UseOwnOrPreserveCurrent` with no cue also publishes No Request.
 
-This allows a Route transition to have a valid Startup Activity/readiness contract while remaining BGM-neutral. The warning is diagnostic/product-surface debt and must not be “fixed” by inventing a cue or Silence intent.
+This allows a Route transition to have a valid Startup Activity/readiness contract while remaining BGM-neutral. The warning is diagnostic/product-surface debt and must not be “fixed” by inventing a cue, Preserve policy, or Silence intent.
 
 ## Identity authority compatibility — IF-ADR-014
 
@@ -231,10 +255,13 @@ Framework behavior now proves:
 - Route exit preserves confirmed BGM;
 - Route no-request preserves;
 - Activity no-request preserves;
-- `UseRoute` with no Route cue preserves;
 - explicit Silence;
 - owner exit/no-request preserve confirmed Silence;
 - Play after confirmed Silence.
+
+That historical certification predates `BGM-ROUTE-POLICY-1`; it remains evidence for
+its executed BGM-CONTINUITY-1 boundary and is not relabeled as certification of the
+new Route policy matrix.
 
 Provider behavior proves:
 
@@ -302,7 +329,7 @@ Experimental status is maturity governance, not an unresolved technical BGM defe
 
 ```text
 Architecture: Accepted
-Package: Implemented — IF-ADR-013A + BGM-CONTINUITY-1
+Package: Implemented — IF-ADR-013A + BGM-CONTINUITY-1 + BGM-ROUTE-POLICY-1
 QA: Certified — Audio QA 30/30
 Real Framework lifecycle continuity: Certified in QA
 FIRSTGAME: Not Proven
@@ -318,6 +345,8 @@ Keep the concrete provider behind the optional bridge.
 Compose the BGM director and physical audio host explicitly under the lifetime that must survive transient content.
 Treat authored Route/Activity BGM as explicit intent, not physical ownership.
 Distinguish No Request, Play and Silence.
+Route intent is explicit: PlayOwn, PreserveCurrent or Silence.
+UseRoute and cue-less UseOwnOrRoute inherit that complete Route intent.
 No Request means Preserve; it never means Stop or automatic fallback.
 Activity exit and Route exit preserve the confirmed presentation.
 Same confirmed cue is NoChange and must not restart provider playback.

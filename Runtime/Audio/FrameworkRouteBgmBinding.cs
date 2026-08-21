@@ -15,9 +15,15 @@ namespace Immersive.Framework.Audio
     [DisallowMultipleComponent]
     [AddComponentMenu("Immersive Framework/Audio/Route BGM Binding")]
     [FrameworkApiStatus(FrameworkApiStatus.Experimental, "BGM-CONTINUITY-1 Route BGM intent adapter.")]
-    public sealed class FrameworkRouteBgmBinding : RouteContentBehaviour, IFrameworkBgmDirectorConsumer
+    public sealed class FrameworkRouteBgmBinding : RouteContentBehaviour, IFrameworkBgmDirectorConsumer, ISerializationCallbackReceiver
     {
+        private const int CurrentRoutePolicySerializationVersion = 1;
+
         [SerializeField] private AudioBgmCueAsset routeBgm;
+        [SerializeField] private FrameworkBgmRoutePolicy policy = FrameworkBgmRoutePolicy.PlayOwn;
+
+        [HideInInspector]
+        [SerializeField] private int routePolicySerializationVersion = CurrentRoutePolicySerializationVersion;
 
         [HideInInspector]
         [SerializeField] private FrameworkBgmDirector director;
@@ -28,6 +34,8 @@ namespace Immersive.Framework.Audio
         public FrameworkBgmOperationResult LastOperationResult { get; private set; }
 
         public AudioBgmCueAsset RouteBgm => routeBgm;
+
+        public FrameworkBgmRoutePolicy Policy => policy;
 
         public FrameworkBgmDirector Director => director;
 
@@ -46,7 +54,7 @@ namespace Immersive.Framework.Audio
                 : null;
 
             bool hasStartupActivity = startupActivity != null;
-            LastOperationResult = director.SetRouteBgm(routeBgm, hasStartupActivity);
+            LastOperationResult = director.SetRouteBgm(routeBgm, policy, hasStartupActivity);
 
             if (!hasStartupActivity)
             {
@@ -75,7 +83,7 @@ namespace Immersive.Framework.Audio
                 return;
             }
 
-            LastOperationResult = director.ClearRouteBgm(routeBgm);
+            LastOperationResult = director.ClearRouteBgm(routeBgm, policy);
         }
 
         void IFrameworkBgmDirectorConsumer.AttachBgmDirector(FrameworkBgmDirector nextDirector)
@@ -104,6 +112,30 @@ namespace Immersive.Framework.Audio
             {
                 director = null;
             }
+        }
+
+        void ISerializationCallbackReceiver.OnBeforeSerialize()
+        {
+            MigrateRoutePolicyIfRequired();
+        }
+
+        void ISerializationCallbackReceiver.OnAfterDeserialize()
+        {
+            MigrateRoutePolicyIfRequired();
+        }
+
+        private void MigrateRoutePolicyIfRequired()
+        {
+            if (routePolicySerializationVersion >= CurrentRoutePolicySerializationVersion)
+            {
+                return;
+            }
+
+            // Migration BGM-ROUTE-POLICY-1: old bindings encoded Play/Preserve only by cue presence.
+            policy = routeBgm != null
+                ? FrameworkBgmRoutePolicy.PlayOwn
+                : FrameworkBgmRoutePolicy.PreserveCurrent;
+            routePolicySerializationVersion = CurrentRoutePolicySerializationVersion;
         }
 
         private static string FormatActivity(ActivityAsset activity)

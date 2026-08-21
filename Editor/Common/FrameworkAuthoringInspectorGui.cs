@@ -37,7 +37,7 @@ namespace Immersive.Framework.Editor.Common
 
         internal static void Status(string value)
         {
-            EditorGUILayout.LabelField("Status", value);
+            DrawLabelValue("Status", value);
         }
 
         internal static void RuntimeBinding(
@@ -46,7 +46,7 @@ namespace Immersive.Framework.Editor.Common
             string correctiveAction)
         {
             Section("Runtime Binding");
-            EditorGUILayout.LabelField("Status", status);
+            DrawLabelValue("Status", status);
 
             if (status != "Bound" &&
                 !string.IsNullOrWhiteSpace(correctiveAction))
@@ -91,6 +91,13 @@ namespace Immersive.Framework.Editor.Common
                 EditorUtility.SetDirty(item);
                 PrefabUtility.RecordPrefabInstancePropertyModifications(item);
             }
+        }
+
+        private static void DrawLabelValue(string label, string value)
+        {
+            EditorGUILayout.LabelField(
+                new GUIContent(label),
+                new GUIContent(value ?? string.Empty));
         }
     }
 }

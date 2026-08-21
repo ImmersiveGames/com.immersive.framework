@@ -14,6 +14,7 @@ namespace Immersive.Framework.Editor.Audio
         UnityEditor.Editor
     {
         private SerializedProperty _routeBgm;
+        private SerializedProperty _policy;
         private SerializedProperty _startupActivityBgmBinding;
         private FrameworkAuthoringValidationReport _validationReport;
         private bool _showAdvanced;
@@ -22,6 +23,9 @@ namespace Immersive.Framework.Editor.Audio
         {
             _routeBgm =
                 serializedObject.FindProperty("routeBgm");
+
+            _policy =
+                serializedObject.FindProperty("policy");
 
             _startupActivityBgmBinding =
                 serializedObject.FindProperty(
@@ -70,10 +74,21 @@ namespace Immersive.Framework.Editor.Audio
                 "BGM Intent");
 
             EditorGUILayout.PropertyField(
-                _routeBgm,
+                _policy,
                 new GUIContent(
-                    "Route BGM",
-                    "Optional Route-level Play request. None publishes No Request and preserves confirmed BGM."));
+                    "Route BGM Policy",
+                    "Defines the complete BGM intent published by this Route."));
+
+            if (ShouldShowRouteCue())
+            {
+                EditorGUILayout.PropertyField(
+                    _routeBgm,
+                    new GUIContent(
+                        "Route BGM",
+                        "Cue required by Play Own."));
+            }
+
+            DrawPolicyExplanation();
 
             EditorGUILayout.PropertyField(
                 _startupActivityBgmBinding,
@@ -82,15 +97,53 @@ namespace Immersive.Framework.Editor.Audio
                     "Optional explicit Startup Activity BGM binding. None is valid."));
         }
 
+        private bool ShouldShowRouteCue()
+        {
+            if (_policy == null || _policy.hasMultipleDifferentValues)
+            {
+                return true;
+            }
+
+            return (FrameworkBgmRoutePolicy)_policy.intValue ==
+                FrameworkBgmRoutePolicy.PlayOwn;
+        }
+
+        private void DrawPolicyExplanation()
+        {
+            if (_policy == null || _policy.hasMultipleDifferentValues)
+            {
+                return;
+            }
+
+            FrameworkBgmRoutePolicy policy =
+                (FrameworkBgmRoutePolicy)_policy.intValue;
+
+            switch (policy)
+            {
+                case FrameworkBgmRoutePolicy.PreserveCurrent:
+                    EditorGUILayout.HelpBox(
+                        "Preserve Current publishes No Request and keeps the confirmed presentation.",
+                        MessageType.Info);
+                    break;
+
+                case FrameworkBgmRoutePolicy.Silence:
+                    EditorGUILayout.HelpBox(
+                        "Silence publishes an explicit Silence / Stop intent. No cue is required.",
+                        MessageType.Info);
+                    break;
+            }
+        }
+
         private string BuildIntentSummary()
         {
-            if (_routeBgm == null ||
+            if (_routeBgm == null || _policy == null ||
                 _startupActivityBgmBinding == null)
             {
                 return "Configure Route BGM intent.";
             }
 
             if (_routeBgm.hasMultipleDifferentValues ||
+                _policy.hasMultipleDifferentValues ||
                 _startupActivityBgmBinding.hasMultipleDifferentValues)
             {
                 return "Selected bindings contain mixed BGM intent.";
@@ -104,10 +157,10 @@ namespace Immersive.Framework.Editor.Audio
                 _startupActivityBgmBinding.objectReferenceValue
                     as FrameworkActivityBgmBinding;
 
-            string routeIntent =
-                routeCue != null
-                    ? $"Play '{routeCue.name}'"
-                    : "No Request / Preserve";
+            FrameworkBgmRoutePolicy policy =
+                (FrameworkBgmRoutePolicy)_policy.intValue;
+
+            string routeIntent = BuildRouteIntentSummary(policy, routeCue);
 
             string startupIntent =
                 startupBinding != null
@@ -115,6 +168,28 @@ namespace Immersive.Framework.Editor.Audio
                     : "No Startup Activity request";
 
             return $"{routeIntent}; {startupIntent}.";
+        }
+
+        private static string BuildRouteIntentSummary(
+            FrameworkBgmRoutePolicy policy,
+            AudioBgmCueAsset cue)
+        {
+            switch (policy)
+            {
+                case FrameworkBgmRoutePolicy.PreserveCurrent:
+                    return "Preserve Current";
+
+                case FrameworkBgmRoutePolicy.Silence:
+                    return "Silence";
+
+                case FrameworkBgmRoutePolicy.PlayOwn:
+                    return cue != null
+                        ? $"Play '{cue.name}'"
+                        : "Play Own requires Route BGM";
+
+                default:
+                    return "Invalid Route BGM Policy";
+            }
         }
 
         private void DrawConfigurationStatus()
@@ -136,6 +211,25 @@ namespace Immersive.Framework.Editor.Audio
             {
                 EditorGUILayout.HelpBox(
                     "Route BGM Binding is unavailable.",
+                    MessageType.Error);
+                return;
+            }
+
+            if (!System.Enum.IsDefined(
+                    typeof(FrameworkBgmRoutePolicy),
+                    binding.Policy))
+            {
+                EditorGUILayout.HelpBox(
+                    "Route BGM Policy has an invalid serialized value.",
+                    MessageType.Error);
+                return;
+            }
+
+            if (binding.Policy == FrameworkBgmRoutePolicy.PlayOwn &&
+                binding.RouteBgm == null)
+            {
+                EditorGUILayout.HelpBox(
+                    "Play Own requires a Route BGM cue.",
                     MessageType.Error);
                 return;
             }
@@ -225,8 +319,8 @@ namespace Immersive.Framework.Editor.Audio
                 !(target is FrameworkRouteBgmBinding binding))
             {
                 EditorGUILayout.LabelField(
-                    "Runtime Evidence",
-                    "Single selection only");
+                    new GUIContent("Runtime Evidence"),
+                    new GUIContent("Single selection only"));
                 return;
             }
 
@@ -239,6 +333,10 @@ namespace Immersive.Framework.Editor.Audio
                     binding.Director,
                     typeof(FrameworkBgmDirector),
                     true);
+
+                EditorGUILayout.TextField(
+                    "Route Policy",
+                    binding.Policy.ToString());
 
                 EditorGUILayout.TextField(
                     "Last Operation",

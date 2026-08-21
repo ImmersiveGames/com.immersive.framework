@@ -192,6 +192,10 @@ namespace Immersive.Framework.Editor.Audio
 
             using (new EditorGUI.DisabledScope(true))
             {
+                EditorGUILayout.TextField(
+                    "Route Policy",
+                    director.CurrentRoutePolicy.ToString());
+
                 EditorGUILayout.ObjectField(
                     "Current Route BGM",
                     director.CurrentRouteBgm,
@@ -223,6 +227,16 @@ namespace Immersive.Framework.Editor.Audio
                 EditorGUILayout.TextField(
                     "Activity Policy",
                     director.CurrentActivityPolicy.ToString());
+
+                EditorGUILayout.ObjectField(
+                    "Requested BGM",
+                    director.LastOperationResult.RequestedCue,
+                    typeof(AudioBgmCueAsset),
+                    false);
+
+                EditorGUILayout.Toggle(
+                    "Requested Silence",
+                    director.LastOperationResult.RequestedExplicitSilence);
 
                 EditorGUILayout.TextField(
                     "Last Operation",
