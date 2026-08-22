@@ -1,6 +1,6 @@
 # IF Stage B — Game Flow Sample Consumer Evidence — 2026-08-21
 
-Status: **RECORDED — scoped Stage B consumer evidence; readiness success path updated 2026-08-22**  
+Status: **RECORDED — scoped Stage B consumer evidence; Game Flow positive consumer proof closed 2026-08-22**  
 Consumer repository: `ImmersiveGames/planet-devourer`  
 Consumer baseline: `34c01be29daaef62a428547b07e9818d0f8c4a41` (`Readiness Separate`)  
 Demonstration: `Assets/_Sample/GameFlow/GameFlowShowcase/`  
@@ -11,6 +11,8 @@ Related decisions: IF-ADR-006, IF-ADR-007, IF-ADR-008, IF-ADR-009, IF-ADR-011, I
 Record real-consumer Play Mode evidence produced by the Game Flow Showcase without relabeling technical QA or claiming contracts the Sample has not exercised.
 
 This record is Stage B consumer evidence. It does not replace Stage A certification records and it does not make FIRSTGAME/Sample an exceptional-path laboratory.
+
+The consumer lane proves valid authored gameplay behavior and product usability. Negative, invalid, interrupted and terminal-failure robustness remains technical QA responsibility unless a future game feature intentionally exposes a player-facing recovery flow as a product behavior.
 
 ## Current consumer topology
 
@@ -405,27 +407,38 @@ This evidence does not itself change API maturity annotations. ADR-013 remains `
 
 | ADR | Stage B disposition after this Sample proof |
 |---|---|
-| IF-ADR-006 | **PARTIAL STAGE B PASS** — persistent Transition/Loading, Route cover/reveal, Activity Fade/Seamless/FadeWithLoading and readiness-governed successful covered waiting are consumer-proven. Terminal failure/recovery remains a separate consumer proof. |
-| IF-ADR-007 | **SUCCESS-PATH STAGE B PASS** — real `WaitVisible` and `WaitCovered` authoring, reveal gating, capability blocking until Ready and clean reentry are consumer-proven. Terminal failure/recovery is not claimed. |
+| IF-ADR-006 | **GAME FLOW CONSUMER PASS** — persistent Transition/Loading, Route cover/reveal, Activity Fade/Seamless/FadeWithLoading and readiness-governed successful covered waiting are consumer-proven. Negative/terminal robustness remains technical QA responsibility and is not a FIRSTGAME/Sample completion gate. |
+| IF-ADR-007 | **GAME FLOW CONSUMER PASS** — real `ObserveOnly`, `WaitVisible` and `WaitCovered` valid authoring, reveal behavior, capability blocking until Ready and clean reentry are consumer-proven. Negative, interrupted and terminal-failure semantics remain QA-owned. |
 | IF-ADR-008 | **CONSUMER EVIDENCE ADDED** — explicit Persistent Content successfully hosts optional Transition/Loading presentation; current ADR-008 technical/product baseline was already closed. |
 | IF-ADR-009 | **CONSUMER EVIDENCE ADDED** — A/B positive visibility plus C negative isolation proven; Readiness menu visibility also uses the same explicit binding model. ADR-009 technical boundary was already closed. |
-| IF-ADR-011 | **CORE CONSUMER PROOF PASS** — participant-aware determinate readiness Loading progress is exercised with one Required participant, including release and fresh reentry. Broader technical QA remains the certification authority for the full matrix. |
+| IF-ADR-011 | **CORE CONSUMER PROOF PASS** — participant-aware determinate readiness Loading progress is exercised with one Required participant, including release and fresh reentry. Broader technical QA remains the certification authority for the full matrix, including negative paths. |
 | IF-ADR-013 | **FIRSTGAME/SAMPLE CONSUMER GATE PASS** — Play, Preserve/NoRequest, owner-exit continuity and explicit Silence are exercised in the real Sample topology. |
 
-## Remaining Game Flow Stage B proof
+## Game Flow Stage B consumer closure
 
-Successful readiness waiting/progress is no longer pending. The next readiness-specific consumer scenario should prove a distinct terminal contract:
+The intended positive Game Flow consumer proof is closed by the current Showcase:
 
 ```text
-Required readiness failure or interruption
--> committed destination remains explicitly unsafe
--> cover / last valid Loading state follows accepted recovery semantics
--> typed failure result
--> no false 100% / no false Ready
--> explicit recovery path
+Basic Route / Activity navigation
+Route-owned + Activity-local + Activity-owned composition
+content-less Activity
+Route Fade + Loading
+Activity Seamless
+Activity Fade
+Activity Fade With Loading
+Observe Only
+Wait Visible
+Wait Covered
+Required readiness contribution
+participant-aware determinate Loading progress
+release / fresh reentry
+contextual BGM Play / Preserve / Silence
+blockingIssues = 0 on valid demonstrated paths
 ```
 
-Restart / Recovery remains a separate later Game Flow scenario and may be combined only where it teaches a distinct product contract without obscuring readiness failure semantics.
+There is no remaining mandatory Game Flow Sample scenario solely to provoke failure, cancellation, invalidation, supersession or recovery. Those behaviors are Framework robustness contracts and remain under technical QA/certification.
+
+Activity Restart, Camera, Player, Pause, Progression Save and additional Audio are feature-owned or evolutionary consumer demonstrations. They may be added when they teach a distinct positive product contract, but they do not block this Game Flow consumer closure.
 
 ## Scope boundary
 
@@ -442,13 +455,13 @@ This record now claims consumer proof for:
 - content-less Activity and Activity-local visibility;
 - BGM Play / Preserve / Silence.
 
-This record does **not** claim:
+This record intentionally does **not** claim consumer demonstrations of:
 
-- terminal readiness failure/recovery consumer proof;
-- Player participation proof from this Sample;
-- Pause consumer proof;
-- broader Camera consumer proof;
-- UPM Package Manager import proof;
-- ADR-013 Stable API promotion.
+- Required readiness failure;
+- interruption/cancellation/invalidation/supersession;
+- terminal readiness recovery;
+- invalid authoring paths.
 
-Those remain separately governed.
+Those are QA-owned robustness cases, not pending FIRSTGAME/Sample completion gates.
+
+Player participation, Pause, broader Camera consumer proof, UPM Package Manager import proof and ADR-013 Stable API promotion remain separately governed by their own feature/product lanes.
