@@ -1,6 +1,6 @@
 # Activity Readiness
 
-Last updated: **2026-08-15**
+Last updated: **2026-08-22**
 
 Activity readiness is the occurrence-scoped post-materialization contract used to decide when an Activity is safe to reveal and release for normal use.
 
@@ -237,6 +237,47 @@ parse logs as a command path
 
 Local UI progress may explain a game-specific condition, but it must not replace the framework Loading authority.
 
+## Repeatable isolated comparison pattern
+
+When a consumer wants to compare `Wait Visible` and `Wait Covered` using the **same Activity-owned preparation scene**, use a neutral baseline Activity between test entries if each test is expected to exercise a fresh materialization.
+
+A valid pattern is:
+
+```text
+Baseline
+  Observe Only
+  no ActivityContentProfile
+
+Baseline -> Wait Visible -> Baseline
+Baseline -> Wait Covered -> Baseline
+```
+
+The waiting Activities may share one `ActivityContentProfile` when the previous waiting Activity is fully exited and its Activity-owned scene is released before the next test begins.
+
+This prevents a demonstration from accidentally becoming:
+
+```text
+Wait Visible -> Wait Covered
+  shared scene already loaded
+  -> no fresh scene-load work
+  -> Loading evidence no longer represents the intended comparison
+```
+
+The baseline is not a hidden readiness reset API. It is an ordinary Activity request whose authored content boundary causes the previous Activity-owned scene to release normally.
+
+A Route-owned menu may use `ActivityContentBinding` to show only the controls valid for the current demonstration state:
+
+```text
+Baseline active
+  show Wait Visible / Wait Covered requests
+
+waiting Activity active
+  hide direct cross-policy requests
+  show return-to-Baseline request
+```
+
+`ActivityContentBinding` controls presentation only. `ActivityRequestTrigger` / Game Flow remains the request path and `ActivityFlowRuntime` remains readiness authority.
+
 ## Advanced and runtime diagnostics
 
 Useful evidence includes:
@@ -283,14 +324,15 @@ Validate at least:
 
 ```text
 enter Wait Covered
-→ four Required participants complete independently
+→ Required participants complete
 → Loading reaches 100 and hides
 → reveal completes
 → exit to another Activity
-→ all tracked participants release
+→ tracked participants release
+→ Activity-owned readiness content releases when authored to release on change
 → reenter Wait Covered
 → a fresh occurrence starts
-→ the same four contributions complete again
+→ the same contributions complete again
 ```
 
 Old occurrence updates must not advance the replacement occurrence.
@@ -299,7 +341,7 @@ Old occurrence updates must not advance the replacement occurrence.
 
 The 2026-08-15 Full Player QA completed `25/25` mandatory contracts. Its public-surface, failed-first-adoption, failed-contextual-reprojection and no-physical-handoff cases certify the Player/readiness separation described above.
 
-## FIRSTGAME reference
+## Game Flow Showcase consumer proof — 2026-08-22
 
 Repository:
 
@@ -307,7 +349,75 @@ Repository:
 ImmersiveGames/planet-devourer
 ```
 
-Demo:
+Demonstration:
+
+```text
+Assets/_Sample/GameFlow/GameFlowShowcase/
+```
+
+Current readiness topology:
+
+```text
+Route_ReadinessShowcase
+  Primary Scene -> SCN_GameFlow_Basic_Readiness
+  Startup Activity -> Activity_Basic_C
+
+Activity_Basic_C
+  Observe Only
+  no ActivityContentProfile
+  neutral baseline
+
+Activity_Basic_D
+  Wait Visible
+  Fade With Loading
+  Input Interaction And Gameplay gate
+
+Activity_Basic_E
+  Wait Covered
+  Fade With Loading
+  Input Interaction And Gameplay gate
+
+D / E
+  shared ActivityContentReadiness
+  -> SCN_GameFlow_Content_Readiness
+  -> one Required ActivityReadinessParticipant
+  -> content released when returning to C
+```
+
+The consumer proof exercises:
+
+```text
+C -> D -> C
+C -> E -> C
+D -> C -> D repeatability
+E -> C -> E repeatability
+```
+
+Observed successful evidence includes fresh Activity-scene materialization on D/E entry, release of `SCN_GameFlow_Content_Readiness` on return to C, fresh readiness occurrence on reentry, `activityReadiness=Ready` and `blockingIssues=0`.
+
+For `Wait Covered`, the Loading surface reaches its readiness terminal through:
+
+```text
+loadingProgressMode = Determinate
+loadingProgressPhase = ActivityReadiness
+Required completed = 1
+Required total = 1
+Required pending = 0
+```
+
+For `Wait Visible`, the same preparation is revealed while it may still be running and the Activity settles to `Ready` before capability release.
+
+This closes the **successful consumer path** for `Wait Visible`, `Wait Covered`, `Fade With Loading` and participant-aware readiness progress in the Game Flow Showcase. It does not certify terminal readiness failure/recovery; that remains a separate consumer scenario.
+
+## Earlier FIRSTGAME reference
+
+Repository:
+
+```text
+ImmersiveGames/planet-devourer
+```
+
+Earlier demo:
 
 ```text
 Assets/_Project/Demo 01 - Routes and Activities/
@@ -323,7 +433,7 @@ Prefabs/Activity Readiness/Activity Readiness Scenario - Wait Covered.prefab
 Prefabs/Activity Readiness/Ui/Canvas_ActivityReadinessNavigation.prefab
 ```
 
-The scenario proves:
+That earlier scenario proves:
 
 ```text
 4 independent Required participants
@@ -335,7 +445,7 @@ Loading Hide before reveal
 Intermission exit and clean reentry
 ```
 
-FIRSTGAME is a consumer proof, not the authority for the progress formula.
+Consumer demonstrations are evidence, not authority for the progress formula.
 
 ## Current limits
 
