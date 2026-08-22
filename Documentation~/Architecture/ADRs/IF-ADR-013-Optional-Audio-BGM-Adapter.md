@@ -1,16 +1,18 @@
 # IF-ADR-013 — Optional Audio BGM Adapter
 
-Status: **Accepted / Experimental — technical boundary certified**  
+Status: **Accepted / Experimental — technical boundary certified; consumer gate proven**  
 Last updated: **2026-08-21**  
 Package implementation: **Implemented — IF-ADR-013A + BGM-CONTINUITY-1 + BGM-ROUTE-POLICY-1**  
 Technical QA: **Certified — Audio QA 30/30**  
-FIRSTGAME: **Not Proven — real consumer integration remains the promotion gate**  
+FIRSTGAME: **Proven — Game Flow Sample real-consumer integration gate passed**  
 Related decisions: IF-ADR-001, IF-ADR-002, IF-ADR-006, IF-ADR-008, IF-ADR-010, IF-ADR-014  
 External provider currently certified: `com.immersive.audio`
 
 > Current mutable implementation, QA and FIRSTGAME status is tracked in
 > `../Tracking/IF-TRACK-Framework.md`. Current technical certification is recorded in
 > `../Reconciliation/IF-ADR-013-BGM-Continuity-Technical-Certification-2026-08-19.md`.
+> Current real-consumer evidence is recorded in
+> `../Reconciliation/IF-STAGE-B-GAMEFLOW-SAMPLE-EVIDENCE-2026-08-21.md`.
 
 ## Context
 
@@ -309,19 +311,83 @@ This proves continuity across real Framework Route/Activity and scene-lifetime c
 
 The QA real-lifecycle proof is technical integration evidence. It is not FIRSTGAME consumer-promotion evidence.
 
+## Stage B consumer proof — Game Flow Sample — 2026-08-21
+
+The real Game Flow Sample now exercises the accepted BGM boundary in a consumer-authored application topology:
+
+```text
+Route_Hub
+  BGM intent = Silence
+
+Route_BasicFlow
+  Startup Activity = Activity_Basic_A
+
+Activity_Basic_A
+  Play BGM_Floresta
+
+Activity_Basic_B
+  Play BGM_Gelo
+
+Activity_Basic_C
+  no new BGM intent
+  no ActivityContentProfile
+```
+
+Observed real-consumer behavior:
+
+```text
+HUB -> A
+  explicit Silence -> Play BGM_Floresta
+
+A -> B
+  owner exit preserves confirmed A presentation until B Play is applied
+  BGM_Gelo becomes confirmed
+
+A -> C
+  A owner exit publishes no provider mutation
+  C publishes no new BGM intent
+  BGM_Floresta remains confirmed
+
+B -> C
+  B owner exit publishes no provider mutation
+  C publishes no new BGM intent
+  BGM_Gelo remains confirmed
+
+Basic Flow -> HUB
+  destination Route publishes explicit Silence
+  provider confirms release
+  confirmed explicit Silence becomes true
+```
+
+The same consumer flow also proves that transient Activity scene release does not itself become BGM Stop authority.
+
+The Stage B consumer gate therefore covers the normal supported intent contract:
+
+```text
+Play(cue)   -> PROVEN in Sample
+No Request  -> Preserve PROVEN in Sample
+Owner exit  -> Preserve PROVEN in Sample
+Silence     -> PROVEN in Sample
+persistent BGM authority across transient Route/Activity scenes -> PROVEN in Sample
+```
+
+Detailed evidence is recorded in:
+
+[IF Stage B — Game Flow Sample Consumer Evidence — 2026-08-21](../Reconciliation/IF-STAGE-B-GAMEFLOW-SAMPLE-EVIDENCE-2026-08-21.md)
+
 ## Experimental promotion
 
-Technical gates are closed:
+The previously pending real-consumer integration gate is now closed:
 
 ```text
 IF-ADR-013A provider-confirmed execution semantics     DONE
 BGM-CONTINUITY-1 sticky intent/runtime implementation  DONE
 QAFramework 30/30 technical certification              DONE
 real Framework Route A -> B lifecycle continuity       DONE
-FIRSTGAME / real consumer integration                  PENDING
+FIRSTGAME / Sample real-consumer integration           DONE
 ```
 
-ADR-013 remains `Experimental` only because the supported optional BGM boundary has not yet completed real consumer integration/usability proof in Sample/FIRSTGAME.
+ADR-013 remains `Experimental` until an explicit product-maturity promotion cut updates the supported API status and any corresponding API-status annotations consistently. The missing real-consumer proof is no longer the reason for Experimental status.
 
 Experimental status is maturity governance, not an unresolved technical BGM defect.
 
@@ -332,10 +398,12 @@ Architecture: Accepted
 Package: Implemented — IF-ADR-013A + BGM-CONTINUITY-1 + BGM-ROUTE-POLICY-1
 QA: Certified — Audio QA 30/30
 Real Framework lifecycle continuity: Certified in QA
-FIRSTGAME: Not Proven
-Status: Accepted / Experimental — technical boundary certified
-Next: real consumer integration/usability proof in Sample/FIRSTGAME
+FIRSTGAME / Sample: Proven — Game Flow Showcase
+Status: Accepted / Experimental — technical boundary certified; consumer gate proven
+Next: explicit product-maturity promotion decision if Stable API status is desired
 ```
+
+No additional BGM runtime redesign is required by the accepted boundary on the basis of current Stage A or Stage B evidence.
 
 ## Normative summary
 
@@ -353,5 +421,7 @@ Same confirmed cue is NoChange and must not restart provider playback.
 Applied and Released require provider-confirmed execution.
 Rejected provider operations preserve the previous confirmed presentation and remain retryable.
 Explicit Silence is the only normal lifecycle intent that releases BGM to silence.
-BGM-CONTINUITY-1 is technically implemented and certified; FIRSTGAME remains the promotion gate.
+BGM-CONTINUITY-1 is technically implemented and certified.
+The Game Flow Sample proves the accepted real-consumer Play / Preserve / Silence lifecycle boundary.
+API maturity remains Experimental until a separate explicit promotion cut changes it.
 ```
