@@ -130,6 +130,13 @@ namespace Immersive.Framework.ActivityFlow
                 new ActivityReadinessOccurrence(
                     nextActivity,
                     transaction.Sequence);
+            TraceReadinessOccurrence(
+                "Create",
+                _currentReadinessOccurrence,
+                pendingReadinessOccurrence,
+                nextActivity,
+                "ActivityTransitionCreated",
+                transaction.Sequence);
             IFrameworkLoadingProgressReporter resolvedProgressReporter =
                 progressReporter ?? NoOpFrameworkLoadingProgressReporter.Instance;
 
@@ -470,6 +477,13 @@ namespace Immersive.Framework.ActivityFlow
                         CreateActivitySceneLedgerSnapshot())
                     .WithActivityReadinessState(aggregateReadiness)
                     .WithActivityTransition(snapshot);
+                TraceReadinessOccurrence(
+                    "Publish",
+                    _currentReadinessOccurrence,
+                    pendingReadinessOccurrence,
+                    nextActivity,
+                    "ActivityStartCommitted",
+                    transaction.Sequence);
                 _currentReadinessOccurrence = pendingReadinessOccurrence;
                 SetCurrentActivityContext(result);
                 PromotePendingAuthorableReadiness(

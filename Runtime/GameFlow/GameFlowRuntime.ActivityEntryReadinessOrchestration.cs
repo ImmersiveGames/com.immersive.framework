@@ -1,17 +1,21 @@
 using System;
 using System.Collections.Generic;
+using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 using Immersive.Framework.ActivityFlow;
 using Immersive.Framework.Authoring;
+using Immersive.Framework.Diagnostics;
 using Immersive.Framework.Gate;
 using Immersive.Framework.Identity;
 using Immersive.Framework.RouteLifecycle;
 using Immersive.Framework.Transition;
+using Immersive.Logging.Records;
 
 namespace Immersive.Framework.GameFlow
 {
     internal sealed partial class GameFlowRuntime
     {
+        private readonly FrameworkLogger _readinessOccurrenceLogger = FrameworkLogger.Create<GameFlowRuntime>();
         private GateSnapshot _activityEntryReadinessRecoveryGateSnapshot;
         private ActivityReadinessOccurrence _activityEntryReadinessRecoveryOccurrence;
         private FrameworkIdentityKey _activityEntryReadinessRecoveryOwner;
@@ -123,6 +127,10 @@ namespace Immersive.Framework.GameFlow
             }
 
             ActivityReadinessOccurrence occurrence = _routeLifecycleRuntime.CurrentOccurrence;
+            TraceActivityEntryReadinessOccurrenceRead(
+                activity,
+                activityFlowResult,
+                occurrence);
             if (!occurrence.Matches(activity, occurrence.TransitionSequence))
             {
                 result = new ActivityEntryReadinessExecutionResult(
@@ -148,6 +156,34 @@ namespace Immersive.Framework.GameFlow
                 true,
                 occurrence: occurrence);
             return true;
+        }
+
+        private void TraceActivityEntryReadinessOccurrenceRead(
+            ActivityAsset targetActivity,
+            ActivityFlowStartResult activityFlowResult,
+            ActivityReadinessOccurrence occurrence)
+        {
+            _readinessOccurrenceLogger.Info(
+                "[ReadinessOccurrenceTrace]",
+                LogFields.Of(
+                    new LogField("action", "Read"),
+                    new LogField("owner", nameof(GameFlowRuntime)),
+                    new LogField("gameFlowRuntime", RuntimeHelpers.GetHashCode(this)),
+                    new LogField("routeLifecycleRuntime", RuntimeHelpers.GetHashCode(_routeLifecycleRuntime)),
+                    new LogField("activityFlowRuntime", _routeLifecycleRuntime.ActivityFlowRuntimeInstanceIdentity),
+                    new LogField("targetActivity", ActivityIdText(targetActivity)),
+                    new LogField("currentActivity", ActivityIdText(_routeLifecycleRuntime.CurrentActivity)),
+                    new LogField("occurrence", occurrence.TransitionSequence),
+                    new LogField("revision", _routeLifecycleRuntime.CurrentReadinessRevision),
+                    new LogField("startCompleted", activityFlowResult.Completed),
+                    new LogField("startActivity", ActivityIdText(activityFlowResult.Activity))));
+        }
+
+        private static string ActivityIdText(ActivityAsset activity)
+        {
+            return activity != null && activity.HasValidActivityId
+                ? activity.ActivityId.StableText
+                : string.Empty;
         }
 
         private async Task<ActivityEntryReadinessExecutionResult>

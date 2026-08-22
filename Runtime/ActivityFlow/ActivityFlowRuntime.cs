@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 using Immersive.Foundation.Events;
 using Immersive.Framework.Authoring;
@@ -12,7 +13,9 @@ using Immersive.Framework.Loading;
 using Immersive.Framework.Common;
 using Immersive.Framework.GameFlow;
 using Immersive.Framework.CycleReset;
+using Immersive.Framework.Diagnostics;
 using Immersive.Framework.RouteLifecycle;
+using Immersive.Logging.Records;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
@@ -29,6 +32,7 @@ namespace Immersive.Framework.ActivityFlow
         private RouteContentDiscoveryScope _routeContentDiscoveryScope;
         private readonly ActivityContentExecutionRuntime _activityContentExecutionRuntime = new ActivityContentExecutionRuntime();
         private readonly ActivityReadinessParticipantSource _activityReadinessParticipantSource = new ActivityReadinessParticipantSource();
+        private readonly FrameworkLogger _readinessOccurrenceLogger = FrameworkLogger.Create<ActivityFlowRuntime>();
         private readonly ActivitySceneCompositionRuntime _activitySceneCompositionRuntime;
         private readonly ActivityOperationPlanner _activityOperationPlanner;
         private readonly ActivityOperationExecutor _activityOperationExecutor = new ActivityOperationExecutor();
@@ -95,6 +99,8 @@ namespace Immersive.Framework.ActivityFlow
 
         internal ActivityReadinessOccurrence CurrentOccurrence => _currentReadinessOccurrence;
 
+        internal int CurrentReadinessRevision => _activityReadinessRevision;
+
         internal bool HasCurrentActivityContext =>
             _hasCurrentActivityContext &&
             _currentReadinessOccurrence.IsValid &&
@@ -140,9 +146,46 @@ namespace Immersive.Framework.ActivityFlow
 
         private void ClearCurrentActivityContext()
         {
+            TraceReadinessOccurrence(
+                "Clear",
+                _currentReadinessOccurrence,
+                default,
+                _currentActivityState.Activity,
+                "ClearCurrentActivityContext",
+                _activityTransitionSequence);
             _currentReadinessOccurrence = default;
             _currentActivityResult = default;
             _hasCurrentActivityContext = false;
+        }
+
+        private void TraceReadinessOccurrence(
+            string action,
+            ActivityReadinessOccurrence previousOccurrence,
+            ActivityReadinessOccurrence occurrence,
+            ActivityAsset activity,
+            string reason,
+            int operationSequence)
+        {
+            _readinessOccurrenceLogger.Info(
+                "[ReadinessOccurrenceTrace]",
+                LogFields.Of(
+                    new LogField("action", action),
+                    new LogField("owner", nameof(ActivityFlowRuntime)),
+                    new LogField("runtime", RuntimeHelpers.GetHashCode(this)),
+                    new LogField("operation", operationSequence),
+                    new LogField("activity", ActivityIdText(activity)),
+                    new LogField("currentActivity", ActivityIdText(CurrentActivity)),
+                    new LogField("previousOccurrence", previousOccurrence.TransitionSequence),
+                    new LogField("occurrence", occurrence.TransitionSequence),
+                    new LogField("revision", _activityReadinessRevision),
+                    new LogField("reason", reason)));
+        }
+
+        private static string ActivityIdText(ActivityAsset activity)
+        {
+            return activity != null && activity.HasValidActivityId
+                ? activity.ActivityId.StableText
+                : string.Empty;
         }
 
         internal bool TryGetCurrentAuthorableReadinessState(
@@ -316,6 +359,16 @@ namespace Immersive.Framework.ActivityFlow
         {
             ActivityReadinessOccurrenceState current =
                 _currentAuthorableReadinessState;
+            ActivityReadinessOccurrence releasedOccurrence = current != null
+                ? current.Occurrence
+                : default;
+            TraceReadinessOccurrence(
+                "Release",
+                _currentReadinessOccurrence,
+                _currentReadinessOccurrence,
+                releasedOccurrence.Activity,
+                reason,
+                _activityTransitionSequence);
             _currentAuthorableReadinessState = null;
             current?.Invalidate();
             _activityReadinessParticipantSource.ReleaseTracked(reason);

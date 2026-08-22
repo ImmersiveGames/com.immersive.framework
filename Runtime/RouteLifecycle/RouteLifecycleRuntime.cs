@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 using Immersive.Foundation.Events;
 using Immersive.Framework.ActivityFlow;
@@ -87,6 +88,12 @@ namespace Immersive.Framework.RouteLifecycle
 
         internal ActivityFlowRuntime CurrentActivityFlowRuntime =>
             _hasCurrentRouteContext ? _activityFlowRuntime : null;
+
+        internal int ActivityFlowRuntimeInstanceIdentity =>
+            RuntimeHelpers.GetHashCode(_activityFlowRuntime);
+
+        internal int CurrentReadinessRevision =>
+            _activityFlowRuntime.CurrentReadinessRevision;
 
         internal bool TryGetCurrentRouteResult(out RouteLifecycleStartResult result)
         {
