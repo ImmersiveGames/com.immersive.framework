@@ -13,7 +13,7 @@ namespace Immersive.Framework.Editor.Authoring
         private static readonly GUIContent RequirednessLabel =
             new GUIContent(
                 "Contribution",
-                "Required blocks Activity Ready until this participant completes. Optional remains diagnostic and does not block. The Activity scope comes from Activity-owned content composition.");
+                "Required blocks Activity Ready until this participant completes. Optional remains diagnostic and does not block. Activity scope comes from Activity-owned content composition.");
 
         private static readonly GUIContent PreparationStartedLabel =
             new GUIContent(
