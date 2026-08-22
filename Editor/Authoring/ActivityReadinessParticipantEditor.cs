@@ -13,17 +13,17 @@ namespace Immersive.Framework.Editor.Authoring
         private static readonly GUIContent RequirednessLabel =
             new GUIContent(
                 "Contribution",
-                "Required blocks Activity readiness until this participant completes. Optional remains diagnostic and does not block readiness.");
+                "Required blocks Activity Ready until this participant completes. Optional remains diagnostic and does not block. The Activity scope comes from Activity-owned content composition.");
 
         private static readonly GUIContent PreparationStartedLabel =
             new GUIContent(
-                "When Preparation Starts",
-                "Invoked when ActivityFlow starts preparation for the current Activity occurrence. Start the real local work here, then complete or fail the participant explicitly.");
+                "Preparation Started",
+                "Invoked when ActivityFlow starts preparation for the current occurrence. Start the real work here, then call CompletePreparation() or FailPreparation(reason).");
 
         private static readonly GUIContent PreparationReleasedLabel =
             new GUIContent(
-                "When Preparation Is Released",
-                "Invoked when the owning Activity occurrence releases this preparation. Cancel or release local preparation work here.");
+                "Preparation Released",
+                "Invoked when the owning Activity occurrence releases this preparation. Cancel or release local work here.");
 
         private static readonly GUIContent ParticipantIdLabel =
             new GUIContent(
@@ -33,7 +33,17 @@ namespace Immersive.Framework.Editor.Authoring
         private static readonly GUIContent OrderLabel =
             new GUIContent(
                 "Execution Order",
-                "Technical execution order relative to other readiness participants discovered in the same Activity content scope.");
+                "Technical execution order relative to other readiness participants in the same Activity content scope.");
+
+        private static readonly GUIContent RuntimeStateLabel =
+            new GUIContent(
+                "State",
+                "Current state for this readiness participant in the active Activity occurrence.");
+
+        private static readonly GUIContent BlocksReadyLabel =
+            new GUIContent(
+                "Blocks Activity Ready",
+                "Yes when this Required participant is still Preparing or has Failed for the active occurrence.");
 
         private SerializedProperty _participantId;
         private SerializedProperty _requiredness;
@@ -65,12 +75,9 @@ namespace Immersive.Framework.Editor.Authoring
         {
             serializedObject.UpdateIfRequiredOrScript();
 
-            FrameworkAuthoringInspectorGui.ProductHeader(
+            EditorGUILayout.LabelField(
                 "Activity Readiness Participant",
-                "Represents one piece of Activity preparation that contributes to the current Activity readiness occurrence.");
-
-            FrameworkAuthoringInspectorGui.IntentSummary(
-                "Author this component in Activity-owned content. ActivityFlow starts preparation for the active occurrence; the owning content completes it with CompletePreparation() or fails it with FailPreparation(reason). The Activity scope comes from content composition, not from an authored Activity reference on this component.");
+                EditorStyles.boldLabel);
 
             DrawReadiness();
             DrawPreparation();
@@ -88,28 +95,6 @@ namespace Immersive.Framework.Editor.Authoring
             EditorGUILayout.PropertyField(
                 _requiredness,
                 RequirednessLabel);
-
-            if (_requiredness == null ||
-                _requiredness.hasMultipleDifferentValues)
-            {
-                return;
-            }
-
-            switch ((ActivityContentExecutionRequiredness)
-                    _requiredness.intValue)
-            {
-                case ActivityContentExecutionRequiredness.Required:
-                    EditorGUILayout.HelpBox(
-                        "Required preparation must reach Completed before the Activity readiness occurrence can become Ready. A failure remains blocking and diagnostic.",
-                        MessageType.Info);
-                    break;
-
-                case ActivityContentExecutionRequiredness.Optional:
-                    EditorGUILayout.HelpBox(
-                        "Optional preparation is observable diagnostics. It does not block the Activity readiness occurrence from becoming Ready.",
-                        MessageType.Info);
-                    break;
-            }
         }
 
         private void DrawPreparation()
@@ -123,10 +108,6 @@ namespace Immersive.Framework.Editor.Authoring
             EditorGUILayout.PropertyField(
                 _preparationReleased,
                 PreparationReleasedLabel);
-
-            EditorGUILayout.HelpBox(
-                "Preparation remains Preparing until the real work explicitly calls CompletePreparation(). If the work cannot complete, call FailPreparation(reason). ActivityFlow does not invent completion or apply a hidden timeout.",
-                MessageType.None);
         }
 
         private void DrawConfigurationStatus()
@@ -142,7 +123,7 @@ namespace Immersive.Framework.Editor.Authoring
                     _participantId.stringValue))
             {
                 EditorGUILayout.HelpBox(
-                    "A stable Participant ID is required. Open Advanced / Debug and generate or enter one.",
+                    "Participant ID is required. Generate one in Advanced / Debug.",
                     MessageType.Error);
                 return;
             }
@@ -190,16 +171,12 @@ namespace Immersive.Framework.Editor.Authoring
 
         private void DrawRuntimeStatus()
         {
-            FrameworkAuthoringInspectorGui.Section(
-                "Runtime Status");
-
             if (!Application.isPlaying)
             {
-                EditorGUILayout.HelpBox(
-                    "Runtime readiness evidence is available in Play Mode.",
-                    MessageType.None);
                 return;
             }
+
+            FrameworkAuthoringInspectorGui.Section("Runtime");
 
             ActivityReadinessParticipant participant =
                 (ActivityReadinessParticipant)target;
@@ -207,49 +184,14 @@ namespace Immersive.Framework.Editor.Authoring
             using (new EditorGUI.DisabledScope(true))
             {
                 EditorGUILayout.TextField(
-                    "State",
+                    RuntimeStateLabel,
                     participant.State.ToString());
 
                 EditorGUILayout.TextField(
-                    "Blocks Activity Ready",
+                    BlocksReadyLabel,
                     IsBlockingReadiness(participant)
                         ? "Yes"
                         : "No");
-
-                EditorGUILayout.IntField(
-                    "Occurrence",
-                    participant.Occurrence);
-
-                EditorGUILayout.TextField(
-                    "Last Reason",
-                    string.IsNullOrWhiteSpace(
-                        participant.LastReason)
-                            ? "<none>"
-                            : participant.LastReason);
-            }
-
-            switch (participant.State)
-            {
-                case ActivityReadinessParticipantState.Preparing:
-                    EditorGUILayout.HelpBox(
-                        participant.Requiredness ==
-                            ActivityContentExecutionRequiredness.Required
-                            ? "This Required participant is currently preparing and is blocking Activity Ready."
-                            : "This Optional participant is currently preparing but does not block Activity Ready.",
-                        MessageType.Info);
-                    break;
-
-                case ActivityReadinessParticipantState.Failed:
-                    EditorGUILayout.HelpBox(
-                        participant.Requiredness ==
-                            ActivityContentExecutionRequiredness.Required
-                            ? "This Required participant failed. Activity readiness remains blocked until the owning operation resolves or recovers according to the ActivityFlow contract."
-                            : "This Optional participant failed. The failure remains diagnostic but does not block Activity Ready.",
-                        participant.Requiredness ==
-                            ActivityContentExecutionRequiredness.Required
-                            ? MessageType.Error
-                            : MessageType.Warning);
-                    break;
             }
         }
 
@@ -287,6 +229,26 @@ namespace Immersive.Framework.Editor.Authoring
             EditorGUILayout.PropertyField(
                 _order,
                 OrderLabel);
+
+            if (Application.isPlaying)
+            {
+                ActivityReadinessParticipant participant =
+                    (ActivityReadinessParticipant)target;
+
+                using (new EditorGUI.DisabledScope(true))
+                {
+                    EditorGUILayout.IntField(
+                        "Occurrence",
+                        participant.Occurrence);
+
+                    EditorGUILayout.TextField(
+                        "Last Reason",
+                        string.IsNullOrWhiteSpace(
+                            participant.LastReason)
+                            ? "<none>"
+                            : participant.LastReason);
+                }
+            }
 
             EditorGUI.indentLevel--;
         }
