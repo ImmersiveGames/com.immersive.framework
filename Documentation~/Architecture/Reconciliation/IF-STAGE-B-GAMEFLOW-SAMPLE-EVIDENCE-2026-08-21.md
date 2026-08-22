@@ -1,18 +1,18 @@
 # IF Stage B — Game Flow Sample Consumer Evidence — 2026-08-21
 
-Status: **RECORDED — scoped Stage B consumer evidence**  
+Status: **RECORDED — scoped Stage B consumer evidence; readiness success path updated 2026-08-22**  
 Consumer repository: `ImmersiveGames/planet-devourer`  
-Consumer baseline: `3642fb2ad207b7dcfc0c230f657a475fdf67a27d` (`Activity C`)  
+Consumer baseline: `34c01be29daaef62a428547b07e9818d0f8c4a41` (`Readiness Separate`)  
 Demonstration: `Assets/_Sample/GameFlow/GameFlowShowcase/`  
 Related decisions: IF-ADR-006, IF-ADR-007, IF-ADR-008, IF-ADR-009, IF-ADR-011, IF-ADR-013
 
 ## Purpose
 
-Record the current real-consumer Play Mode evidence produced by the Game Flow Sample without relabeling technical QA or claiming contracts that the Sample has not exercised.
+Record real-consumer Play Mode evidence produced by the Game Flow Showcase without relabeling technical QA or claiming contracts the Sample has not exercised.
 
-This record is Stage B evidence. It does not replace Stage A certification records and it does not make FIRSTGAME/Sample an exceptional-path laboratory.
+This record is Stage B consumer evidence. It does not replace Stage A certification records and it does not make FIRSTGAME/Sample an exceptional-path laboratory.
 
-## Consumer topology
+## Current consumer topology
 
 ```text
 GameApplication_GameFlow
@@ -23,6 +23,22 @@ Route_Hub
   no Startup Activity
   BGM -> explicit Silence
 
+HUB topics
+  -> Route_BasicFlow
+  -> Route_ReadinessShowcase
+```
+
+Persistent presentation is explicit consumer composition:
+
+```text
+SCN_GameFlow_Persistence
+  UnityFadeCurtainEffectAdapter
+  UnityLoadingSurfaceAdapter
+```
+
+### Basic Flow
+
+```text
 Route_BasicFlow
   Primary Scene -> SCN_GameFlow_Basic
   Startup Activity -> Activity_Basic_A
@@ -46,13 +62,62 @@ Activity_Basic_C
   no new BGM intent
 ```
 
-Persistent presentation is explicit consumer composition:
+### Readiness Showcase
 
 ```text
-SCN_GameFlow_Persistence
-  UnityFadeCurtainEffectAdapter
-  UnityLoadingSurfaceAdapter
+Route_ReadinessShowcase
+  Primary Scene -> SCN_GameFlow_Basic_Readiness
+  Startup Activity -> Activity_Basic_C
+
+Activity_Basic_C
+  Observe Only
+  no ActivityContentProfile
+  no Activity-owned scene
+  role in this Route -> neutral readiness baseline
+
+Activity_Basic_D
+  ActivityContentProfile -> ActivityContentReadiness
+  Activity-owned scene -> SCN_GameFlow_Content_Readiness
+  Entry Readiness -> Wait Visible
+  Visual Transition -> Fade With Loading
+  Gate -> Input Interaction And Gameplay
+
+Activity_Basic_E
+  ActivityContentProfile -> ActivityContentReadiness
+  Activity-owned scene -> SCN_GameFlow_Content_Readiness
+  Entry Readiness -> Wait Covered
+  Visual Transition -> Fade With Loading
+  Gate -> Input Interaction And Gameplay
+
+SCN_GameFlow_Content_Readiness
+  sample preparation controller
+  one Required ActivityReadinessParticipant
 ```
+
+D and E intentionally share the same preparation content. The variable under demonstration is the entry-readiness policy.
+
+The readiness Activity content is authored to release on Activity change. The Route-owned menu uses `ActivityContentBinding` only to expose valid sample controls:
+
+```text
+C active
+  D / E request controls visible
+  return-to-C control hidden
+
+D or E active
+  D / E request controls hidden
+  return-to-C control visible
+```
+
+The return control is a normal `ActivityRequestTrigger` targeting C. It is not Reset/Restart authority.
+
+Canonical readiness cycles:
+
+```text
+C -> D -> C
+C -> E -> C
+```
+
+This prevents direct D/E cross-entry from reusing an already-loaded shared Activity scene when the purpose is to compare fresh Loading/readiness behavior.
 
 ## Persistent Content / presentation resolution
 
@@ -61,7 +126,6 @@ Observed boot evidence:
 ```text
 Persistent Content loaded
 scene='SCN_GameFlow_Persistence'
-rootCount='4'
 transitionAdapterCount='1'
 loadingAdapterCount='1'
 
@@ -76,52 +140,29 @@ This is consumer evidence that optional Transition and Loading presentation can 
 
 ## Route Transition + Loading proof
 
-Observed `Route_Hub -> Route_BasicFlow` result:
+Observed Route requests complete with the persistent presentation surface:
 
 ```text
-kind='Succeeded'
 transition='SucceededWithUnitySurface'
 loading='SucceededWithUnitySurface'
-activity='Basic Flow A'
-activityReadiness='Ready'
 blockingIssues='0'
 ```
 
-Detailed evidence:
+For `Route_Hub -> Route_BasicFlow`, destination Activity A settles `Ready`. For `Route_Hub -> Route_ReadinessShowcase`, destination Activity C settles `Ready` with no Activity scene composition.
 
-```text
-transitionScope='Route'
-transitionVisual='UnitySurface'
-transitionEffect='Fade'
-transitionEffectBefore='Succeeded'
-transitionEffectAfter='Succeeded'
-transitionEffectAdapterCount='1'
-transitionEffectAdapterEvidenceApplied='2'
-transitionEffectBlockingIssues='0'
-
-LoadingBefore='Succeeded'
-LoadingAfter='Succeeded'
-loadingAdapterEvidenceApplied='2'
-loadingAdapterBlockingIssues='0'
-
-transitionGateMode='InputInteractionAndGameplay'
-transitionGateApplied='True'
-transitionGateReleased='True'
-```
-
-This proves real consumer authoring and execution of the baseline Route presentation envelope:
+The baseline Route presentation envelope remains:
 
 ```text
 Fade cover
   -> Route lifecycle / scene composition
   -> Loading presentation during Route work
-  -> destination Activity Ready
+  -> destination Activity Ready when one exists
   -> Fade reveal
 ```
 
-The sample also exercises the reverse `Route_BasicFlow -> Route_Hub` Route-switch envelope.
+The sample also exercises reverse Route switches to the HUB.
 
-## Activity presentation proof
+## Basic Activity presentation proof
 
 ### Seamless A <-> B
 
@@ -139,17 +180,15 @@ activityScenesReleased='1'
 blockingIssues='0'
 ```
 
-Therefore Activity-owned scene load/release is independent from requiring visual cover: the scene side effects occur while presentation remains intentionally Seamless.
+Therefore Activity-owned scene load/release is independent from requiring visual cover: scene side effects occur while presentation remains intentionally Seamless.
 
 ### Fade A/B -> C
 
 C uses `ActivityVisualTransitionMode.Fade`.
 
-Observed `B -> C` result:
+Observed target-C evidence includes:
 
 ```text
-previousActivity='Basic Flow B'
-targetActivity='Basic Flow C'
 currentActivity='Basic Flow C'
 activityReadiness='Ready'
 transition='SucceededWithUnitySurface'
@@ -161,22 +200,7 @@ activityScenesReleased='1'
 blockingIssues='0'
 ```
 
-Detailed evidence confirms:
-
-```text
-transitionScope='Activity'
-transitionVisual='UnitySurface'
-transitionEffect='Fade'
-transitionEffectBefore='Succeeded'
-transitionEffectAfter='Succeeded'
-transitionEffectBlockingIssues='0'
-activityTransitionMode='Fade'
-activityLoadingMode='ActivitySceneRelease'
-```
-
-The same target-C policy is exercised from A as well. Returning from C to A/B uses the target Activity's Seamless policy.
-
-This consumer proof closes the baseline distinction:
+This closes the baseline distinction:
 
 ```text
 Activity target Seamless
@@ -186,8 +210,6 @@ Activity target Fade
   -> Fade cover/reveal
   -> no canonical Loading presentation
 ```
-
-It does **not** prove `FadeWithLoading`, readiness-governed Loading or recovery.
 
 ## Content-less Activity / negative visibility proof
 
@@ -199,18 +221,126 @@ Observed result while C is active:
 activitySceneComposition='NotRequested'
 activitySceneCompositionProfile=''
 activitySceneCompositionScenes='0'
-activityContentHandles='0'
 activityReadiness='Ready'
 blockingIssues='0'
 ```
 
-The Activity-local visibility diagnostics show A/B-scoped objects deactivated under C because there is no listed Activity match. Therefore C is a valid active Activity without owned content and A/B content does not leak into it.
+In Basic Flow, Activity-local visibility diagnostics show A/B-scoped objects deactivated under C. Therefore C is a valid active Activity without owned content and A/B content does not leak into it.
 
-This is additional real-consumer evidence for IF-ADR-009's explicit negative visibility semantics. ADR-009 was already technically closed; this evidence does not reopen or redefine that boundary.
+In Readiness Showcase, the same content-less Activity is a neutral baseline between readiness tests. This reuse does not create new readiness authority; it uses ordinary Activity lifecycle to release the previous Activity-owned readiness scene before the next test.
+
+## Readiness success-path consumer proof
+
+### Route entry baseline
+
+Observed `Route_Hub -> Route_ReadinessShowcase` result:
+
+```text
+currentRoute='Readiness Showcase'
+scene='SCN_GameFlow_Basic_Readiness'
+currentActivity='Basic Flow C'
+activitySceneComposition='NotRequested'
+activityReadiness='Ready'
+blockingIssues='0'
+```
+
+This proves the Route enters a neutral baseline rather than automatically executing D or E.
+
+### Wait Visible — C -> D
+
+D uses:
+
+```text
+Entry Readiness = Wait Visible
+Visual Transition = Fade With Loading
+Gate = Input Interaction And Gameplay
+```
+
+Observed consumer evidence:
+
+```text
+activitySceneComposition='Succeeded'
+activitySceneCompositionLoaded='1'
+activitySceneCompositionAlreadyLoaded='0'
+activityTransition terminal='CommittedNotReady'
+final activityReadiness='Ready'
+transition='SucceededWithUnitySurface'
+loadingPresentation='SucceededWithUnitySurface'
+blockingIssues='0'
+```
+
+The target commits while its Required readiness contribution is still preparing, is revealed according to `Wait Visible`, then settles to `Ready` before the capability gate is released and the request completes.
+
+The final Loading progress phase is the Activity transition rather than a readiness-held covered phase, which is expected for `Wait Visible`.
+
+### D -> C release / neutralization
+
+Observed return to C:
+
+```text
+SceneReleasing
+  scene='SCN_GameFlow_Content_Readiness'
+  reason='scene-unload'
+
+activitySceneRelease='Succeeded'
+activityScenesReleased='1'
+activitySceneComposition='NotRequested'
+currentActivity='Basic Flow C'
+activityReadiness='Ready'
+blockingIssues='0'
+```
+
+This is the reset boundary for the demonstration: it is normal Activity replacement and Activity-scene release, not a Framework Reset API.
+
+### Wait Covered — C -> E
+
+E uses:
+
+```text
+Entry Readiness = Wait Covered
+Visual Transition = Fade With Loading
+Gate = Input Interaction And Gameplay
+```
+
+Observed consumer evidence:
+
+```text
+activitySceneComposition='Succeeded'
+activitySceneCompositionLoaded='1'
+activitySceneCompositionAlreadyLoaded='0'
+activityTransition terminal='CommittedNotReady'
+final activityReadiness='Ready'
+transition='SucceededWithUnitySurface'
+loadingPresentation='SucceededWithUnitySurface'
+loadingProgressSupported='True'
+loadingProgressMode='Determinate'
+loadingProgressPhase='ActivityReadiness'
+Required completed='1'
+Required total='1'
+Required pending='0'
+blockingIssues='0'
+```
+
+This is direct consumer proof that the Loading operation remains governed by Activity readiness until the Required participant completes, then reaches terminal progress and permits reveal.
+
+### Reentry / fresh occurrence
+
+The same runtime path is repeatable:
+
+```text
+D -> C -> D
+E -> C -> E
+```
+
+Returning to C releases the shared readiness Activity scene. Reentry therefore loads `SCN_GameFlow_Content_Readiness` again instead of taking an `AlreadyLoaded` path and starts a fresh readiness occurrence.
+
+The temporary occurrence trace used during diagnosis also showed consistent Create -> Publish -> Read identity on successful waiting entries. The earlier `InitialOccurrenceUnavailable` symptom was traced to invalid Sample authoring, not an occurrence propagation defect in the package runtime.
+
+No package behavior correction was required for that investigation.
 
 ## BGM real-consumer proof
 
-The sample exercises explicit Play, no-request Preserve and explicit Silence under real Route/Activity and scene lifetime.
+The Basic Flow sample exercises explicit Play, no-request Preserve and explicit Silence under real Route/Activity and scene lifetime.
 
 Explicit Play path:
 
@@ -259,7 +389,7 @@ confirmedBgm='<none>'
 confirmedExplicitSilence='True'
 ```
 
-This closes the previously pending Sample/FIRSTGAME real-consumer integration gate for the accepted IF-ADR-013 BGM intent boundary:
+This closes the Sample/FIRSTGAME real-consumer integration gate for the accepted IF-ADR-013 BGM intent boundary:
 
 ```text
 Play(cue)   -> proven
@@ -275,36 +405,47 @@ This evidence does not itself change API maturity annotations. ADR-013 remains `
 
 | ADR | Stage B disposition after this Sample proof |
 |---|---|
-| IF-ADR-006 | **PARTIAL PASS** — real Transition + Loading authoring and Route cover/reveal execution proven; readiness-governed wait/reveal, terminal recovery and participant-aware progress remain pending. |
-| IF-ADR-007 | **NOT CLOSED BY THIS EVIDENCE** — current Activities use baseline `ObserveOnly`; `WaitCovered` / `WaitVisible` consumer proof remains pending. |
+| IF-ADR-006 | **PARTIAL STAGE B PASS** — persistent Transition/Loading, Route cover/reveal, Activity Fade/Seamless/FadeWithLoading and readiness-governed successful covered waiting are consumer-proven. Terminal failure/recovery remains a separate consumer proof. |
+| IF-ADR-007 | **SUCCESS-PATH STAGE B PASS** — real `WaitVisible` and `WaitCovered` authoring, reveal gating, capability blocking until Ready and clean reentry are consumer-proven. Terminal failure/recovery is not claimed. |
 | IF-ADR-008 | **CONSUMER EVIDENCE ADDED** — explicit Persistent Content successfully hosts optional Transition/Loading presentation; current ADR-008 technical/product baseline was already closed. |
-| IF-ADR-009 | **CONSUMER EVIDENCE ADDED** — A/B positive visibility plus C negative isolation proven; ADR-009 technical boundary was already closed. |
-| IF-ADR-011 | **NOT CLOSED BY THIS EVIDENCE** — Player Session is disabled and participant-aware readiness progress is not exercised. |
-| IF-ADR-013 | **FIRSTGAME/SAMPLE CONSUMER GATE PASS** — Play, Preserve/NoRequest, owner-exit continuity and explicit Silence are all exercised in the real Sample topology. |
+| IF-ADR-009 | **CONSUMER EVIDENCE ADDED** — A/B positive visibility plus C negative isolation proven; Readiness menu visibility also uses the same explicit binding model. ADR-009 technical boundary was already closed. |
+| IF-ADR-011 | **CORE CONSUMER PROOF PASS** — participant-aware determinate readiness Loading progress is exercised with one Required participant, including release and fresh reentry. Broader technical QA remains the certification authority for the full matrix. |
+| IF-ADR-013 | **FIRSTGAME/SAMPLE CONSUMER GATE PASS** — Play, Preserve/NoRequest, owner-exit continuity and explicit Silence are exercised in the real Sample topology. |
 
 ## Remaining Game Flow Stage B proof
 
-The next presentation/readiness proof should target a distinct contract rather than duplicate the baseline Transition demonstration:
+Successful readiness waiting/progress is no longer pending. The next readiness-specific consumer scenario should prove a distinct terminal contract:
 
 ```text
-Activity Visual Transition = FadeWithLoading
-Activity Entry Readiness = WaitCovered or WaitVisible
-real Required readiness contribution
-truthful progress remains below terminal 100% while not Ready
-Ready -> terminal progress -> hide Loading -> reveal
-terminal failure / recovery remains explicit
+Required readiness failure or interruption
+-> committed destination remains explicitly unsafe
+-> cover / last valid Loading state follows accepted recovery semantics
+-> typed failure result
+-> no false 100% / no false Ready
+-> explicit recovery path
 ```
 
-Restart / Recovery remains a separate later Game Flow proof.
+Restart / Recovery remains a separate later Game Flow scenario and may be combined only where it teaches a distinct product contract without obscuring readiness failure semantics.
 
 ## Scope boundary
 
-This record does not claim:
+This record now claims consumer proof for:
 
-- participant-aware Loading progress;
-- `WaitCovered` / `WaitVisible` consumer proof;
-- terminal readiness failure/recovery proof;
-- Player participation proof;
+- baseline Route Transition/Loading presentation;
+- Activity Seamless and Fade presentation;
+- Activity `FadeWithLoading` on the readiness path;
+- `WaitVisible` successful entry;
+- `WaitCovered` successful entry;
+- one Required participant readiness contribution;
+- participant-aware determinate Loading progress;
+- clean Activity-scene release and fresh reentry;
+- content-less Activity and Activity-local visibility;
+- BGM Play / Preserve / Silence.
+
+This record does **not** claim:
+
+- terminal readiness failure/recovery consumer proof;
+- Player participation proof from this Sample;
 - Pause consumer proof;
 - broader Camera consumer proof;
 - UPM Package Manager import proof;
