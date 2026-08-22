@@ -1,7 +1,7 @@
 # IF-TRACK — Immersive Framework
 
 Status: **Active — Stage B baseline + proposed architecture expansion**  
-Last updated: **2026-08-21**
+Last updated: **2026-08-22**
 
 ## Authority and status model
 
@@ -83,12 +83,12 @@ A real consumer can expose product/UX debt, an integration gap, future scope, or
 | [003](../ADRs/IF-ADR-003-Player-Participation-and-Actor-Lifecycle.md) | ACCEPTED baseline / RECONCILED / IMPLEMENTED; R6/R7/R8 draft pending | CERTIFIED baseline | Existing Player proof remains valid; proposed deltas are not delivered baseline behavior. |
 | [004](../ADRs/IF-ADR-004-Camera-Requests-and-Output-Authority.md) | ACCEPTED / RECONCILED / IMPLEMENTED; 004D Default-output cut merged | Full Camera 53/53 CERTIFIED for 2026-08-15 boundary | Sample 00 Default-output + gameplay readiness proof PASS; broader Camera consumer proof remains separate. |
 | [005](../ADRs/IF-ADR-005-Input-Pause-Gate-and-Reset.md) | ACCEPTED / RECONCILED / IMPLEMENTED | Input Gate 9/9; Restart 8/8; Pause 27/27 CERTIFIED | Stage A closed; Stage B may test authoring/usability. |
-| [006](../ADRs/IF-ADR-006-Loading-Transition-Persistence-and-Diagnostics.md) | ACCEPTED / RECONCILED / IMPLEMENTED | Focused 8/8; Progress 32/32; Terminal 34/34 CERTIFIED | **PARTIAL STAGE B PASS** — Game Flow Sample proves real persistent Transition/Loading authoring, Route Fade cover/reveal, Route Loading presentation and Activity Fade/Seamless selection with clean diagnostics. Readiness-governed cover/wait/reveal, terminal recovery and participant-aware progress remain. |
-| [007](../ADRs/IF-ADR-007-Activity-Entry-Readiness-and-Reveal-Gating.md) | ACCEPTED / RECONCILED / IMPLEMENTED | Foundation 18/18; Direct Policies 42/42 CERTIFIED | Current Game Flow Sample settles Activities through `ObserveOnly`; real `WaitCovered` / `WaitVisible` readiness authoring and reveal gating remain Stage B proof. |
+| [006](../ADRs/IF-ADR-006-Loading-Transition-Persistence-and-Diagnostics.md) | ACCEPTED / RECONCILED / IMPLEMENTED | Focused 8/8; Progress 32/32; Terminal 34/34 CERTIFIED | **PARTIAL STAGE B PASS** — Game Flow Sample proves real persistent Transition/Loading authoring, Route Fade cover/reveal, Activity Fade/Seamless/FadeWithLoading selection and successful readiness-governed covered waiting. Terminal readiness failure/recovery remains separate. |
+| [007](../ADRs/IF-ADR-007-Activity-Entry-Readiness-and-Reveal-Gating.md) | ACCEPTED / RECONCILED / IMPLEMENTED | Foundation 18/18; Direct Policies 42/42 CERTIFIED | **SUCCESS-PATH STAGE B PASS** — Game Flow Readiness Showcase proves real `WaitVisible` and `WaitCovered` authoring, reveal gating, capability blocking until Ready, release and fresh reentry. Failure/recovery remains separate consumer proof. |
 | [008](../ADRs/IF-ADR-008-Persistent-Application-Content-Composition.md) | ACCEPTED / RECONCILED / IMPLEMENTED | No generic default gate | Persistent content remains explicit Game Application composition; Game Flow Sample now adds real consumer evidence for explicitly composed optional Transition + Loading adapters. 001A prevents unrelated Editor-open scenes from becoming persistent-composition sources under `FrameworkStartup`. |
 | [009](../ADRs/IF-ADR-009-Activity-Local-Visibility-Rules.md) | ACCEPTED / RECONCILED / IMPLEMENTED | CERTIFIED | Current boundary closed; Game Flow Sample adds positive A/B visibility plus content-less Activity C negative-isolation consumer evidence. |
 | [010](../ADRs/IF-ADR-010-Editor-and-Inspector-Product-Surface-Authority.md) | ACCEPTED / IMPLEMENTED; Editor Play Mode startup surface reconciled with 001A | Feature-owned | Project Settings now has a deterministic technical consequence: `FrameworkStartup` -> neutral bootstrap; `CurrentSceneOnly` -> current scene/no framework startup. |
-| [011](../ADRs/IF-ADR-011-Participant-Aware-Activity-Readiness-Loading-Progress.md) | ACCEPTED / RECONCILED / IMPLEMENTED | Progress 32/32; Terminal 34/34; Route 25/25; App 20/20 CERTIFIED | Not closed by the current Game Flow Sample: Player Session is disabled and participant-aware readiness progress is not exercised. Real participant-aware usability remains Stage B work. |
+| [011](../ADRs/IF-ADR-011-Participant-Aware-Activity-Readiness-Loading-Progress.md) | ACCEPTED / RECONCILED / IMPLEMENTED | Progress 32/32; Terminal 34/34; Route 25/25; App 20/20 CERTIFIED | **CORE CONSUMER PROOF PASS** — Game Flow Readiness Showcase exercises determinate `ActivityReadiness` Loading progress with one Required participant, terminal Ready, content release and fresh reentry. Broader technical QA remains certification authority for the full matrix. |
 | [012](../ADRs/IF-ADR-012-Activity-Player-Participation-Profile-and-Readiness-Compatibility.md) | ACCEPTED / RECONCILED / IMPLEMENTED | CERTIFIED | FIRSTGAME participation proof required. |
 | [013](../ADRs/IF-ADR-013-Optional-Audio-BGM-Adapter.md) | ACCEPTED / EXPERIMENTAL / IMPLEMENTED — IF-ADR-013A + BGM-CONTINUITY-1 + BGM-ROUTE-POLICY-1 | CERTIFIED: Audio 30/30 = Core 7/7 + Framework BGM 14/14 + ADR-013A 5/5 + physical continuity 4/4; real Framework Route A->B continuity PASS | **FIRSTGAME/SAMPLE CONSUMER GATE PASS** — Game Flow Sample proves Play, no-request Preserve, owner-exit preservation and explicit Silence across transient Route/Activity scenes. API remains Experimental pending an explicit product-maturity promotion cut. |
 | [014](../ADRs/IF-ADR-014-Authored-Definition-and-Stable-Identity-Authority.md) | ACCEPTED / IMPLEMENTED | CERTIFIED | Current boundary closed and consumer-proven. |
@@ -207,7 +207,7 @@ SessionCameraOverrideBinding
 
 Sample 00 proved explicit Default output + gameplay readiness. The earlier Camera 53/53 aggregate predates 004D and remains historical evidence for the boundary it executed.
 
-### Game Flow Sample Stage B consumer evidence — 2026-08-21
+### Game Flow Sample Stage B consumer evidence — updated 2026-08-22
 
 Current consumer topology:
 
@@ -222,6 +222,14 @@ Basic Flow
   Startup Activity = A
   Activity A / B = Seamless
   Activity C = Fade + no ActivityContentProfile
+
+Readiness Showcase
+  Route_ReadinessShowcase
+  Startup Activity = C neutral baseline
+  D = Wait Visible + Fade With Loading
+  E = Wait Covered + Fade With Loading
+  D / E share ActivityContentReadiness
+  one Required ActivityReadinessParticipant
 ```
 
 Persistent Content explicitly composes:
@@ -231,7 +239,7 @@ UnityFadeCurtainEffectAdapter
 UnityLoadingSurfaceAdapter
 ```
 
-Observed real-consumer proof:
+Observed real-consumer Basic Flow proof:
 
 ```text
 Persistent Content
@@ -260,7 +268,44 @@ A/B -> C
   blockingIssues=0
 ```
 
-BGM consumer proof in the same topology:
+Observed Readiness Showcase proof:
+
+```text
+HUB -> Readiness Showcase
+  Startup Activity = C
+  C scene composition = NotRequested
+  C = Ready
+  blockingIssues=0
+
+C -> D
+  Wait Visible
+  shared readiness scene loaded fresh
+  target commits NotReady then settles Ready
+  Fade With Loading presentation succeeds
+  blockingIssues=0
+
+D -> C
+  SCN_GameFlow_Content_Readiness unloaded
+  activityScenesReleased=1
+  C = Ready
+
+C -> E
+  Wait Covered
+  shared readiness scene loaded fresh
+  target commits NotReady then settles Ready
+  loadingProgressMode=Determinate
+  loadingProgressPhase=ActivityReadiness
+  Required completed=1 total=1 pending=0
+  blockingIssues=0
+
+D -> C -> D
+E -> C -> E
+  repeatable with fresh Activity content / readiness occurrence
+```
+
+The Readiness menu uses `ActivityContentBinding` only for sample presentation: C exposes D/E requests; D/E expose a return-to-C request. All transitions remain normal `ActivityRequestTrigger` / Game Flow requests.
+
+BGM consumer proof in the Basic Flow topology:
 
 ```text
 HUB Silence
@@ -280,13 +325,15 @@ Basic Flow -> HUB
 Disposition:
 
 ```text
-IF-ADR-006 baseline Transition/Route Loading authoring    PARTIAL STAGE B PASS
-IF-ADR-007 readiness wait/reveal                          PENDING
-IF-ADR-008 optional persistent presentation composition  CONSUMER EVIDENCE ADDED
-IF-ADR-009 positive/negative local visibility             CONSUMER EVIDENCE ADDED
-IF-ADR-011 participant-aware readiness progress           PENDING
-IF-ADR-013 real-consumer BGM integration gate             PASS
+IF-ADR-006 Transition/Loading + readiness success path     PARTIAL STAGE B PASS
+IF-ADR-007 Wait Visible / Wait Covered success path        STAGE B PASS
+IF-ADR-008 optional persistent presentation composition    CONSUMER EVIDENCE ADDED
+IF-ADR-009 positive/negative local visibility              CONSUMER EVIDENCE ADDED
+IF-ADR-011 participant-aware readiness progress            CORE CONSUMER PROOF PASS
+IF-ADR-013 real-consumer BGM integration gate              PASS
 ```
+
+Terminal readiness failure/recovery remains separate and is not claimed by the successful D/E proof.
 
 Detailed record:
 
@@ -385,7 +432,7 @@ certification.
 Stage B is the real-consumer lane for accepted package boundaries.
 
 1. **Player** — participation, Scene-/Manager-Provisioned flows, current command/profile usability; proposed Session-lifetime/Leave/Initial-Placement work remains separate until accepted.
-2. **Loading / Readiness** — baseline Route Fade + Loading authoring is proven in the Game Flow Sample. Remaining work is readiness-governed `FadeWithLoading`, real `WaitCovered` / `WaitVisible`, participant-aware progress, terminal recovery and diagnostics.
+2. **Loading / Readiness** — baseline Route Fade + Loading, Activity `FadeWithLoading`, `WaitVisible`, `WaitCovered`, one-Required participant-aware determinate progress, content release and fresh reentry are proven in the Game Flow Showcase. Remaining readiness work is terminal failure/recovery and its consumer diagnostics; do not duplicate the successful wait/progress proof.
 3. **Camera** — 004D Default-output integration is proven in Sample 00; broader ADR-022 C6 remains pending.
 4. **Pause** — consumer authoring/usability only; runtime contract is certified.
 5. **Audio** — BGM-CONTINUITY-1 technical runtime/QA and Game Flow Sample real-consumer integration are closed. Remaining ADR-013 work, if desired, is an explicit API maturity promotion decision rather than another FIRSTGAME proof gate.
