@@ -215,6 +215,8 @@ For a committed `Wait Covered` destination, visual cover and the last valid Load
 
 Stopping Play Mode while the operation is pending produces a typed cancellation such as `GameFlowRuntimeDisposed`. That is interruption evidence, not a successful readiness result.
 
+These are Framework robustness contracts. Their negative, invalid, interrupted and terminal paths belong to technical QA/certification. A game-facing Sample or FIRSTGAME scenario should prove valid authored gameplay behavior and should not fabricate a failure button, invalid participant or forced cancellation solely to duplicate QA coverage. Only add a consumer recovery scenario if the game itself intentionally exposes such recovery as a real player-facing product behavior.
+
 ## Player-specific failure evidence
 
 Player failures must be observed at the layer that owns them.
@@ -407,7 +409,7 @@ Required pending = 0
 
 For `Wait Visible`, the same preparation is revealed while it may still be running and the Activity settles to `Ready` before capability release.
 
-This closes the **successful consumer path** for `Wait Visible`, `Wait Covered`, `Fade With Loading` and participant-aware readiness progress in the Game Flow Showcase. It does not certify terminal readiness failure/recovery; that remains a separate consumer scenario.
+This closes the intended **Game Flow consumer path** for `Observe Only`, `Wait Visible`, `Wait Covered`, `Fade With Loading` and participant-aware readiness progress. Terminal failure/recovery semantics remain part of technical QA and are not a pending Game Flow Showcase/FIRSTGAME completion gate.
 
 ## Earlier FIRSTGAME reference
 
