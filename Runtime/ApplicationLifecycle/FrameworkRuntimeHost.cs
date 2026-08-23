@@ -47,6 +47,9 @@ namespace Immersive.Framework.ApplicationLifecycle
 
         private GameApplicationAsset _gameApplication;
         private GameFlowRuntime _gameFlowRuntime;
+        private readonly ActivityParticipantSourceBindings
+            _activityParticipantSourceBindings =
+                new ActivityParticipantSourceBindings();
         private IEventBinding _activityReadinessBinding;
         private PauseRuntime _pauseRuntime;
         private PauseTimeScaleRuntime _pauseTimeScaleRuntime;
@@ -213,6 +216,8 @@ namespace Immersive.Framework.ApplicationLifecycle
 
         internal void SetActivityContentExecutionParticipantSource(IActivityContentExecutionParticipantSource participantSource)
         {
+            _activityParticipantSourceBindings.SetContentSource(
+                participantSource);
             _gameFlowRuntime?.SetActivityContentExecutionParticipantSource(participantSource);
         }
 
@@ -543,6 +548,7 @@ namespace Immersive.Framework.ApplicationLifecycle
                 this,
                 this,
                 _sceneLifecycleRuntime);
+            ApplyRetainedActivityParticipantSources();
             _activityReadinessBinding = _gameFlowRuntime.SubscribeActivityReadinessUpdates(HandleActivityReadinessUpdate);
             ApplyPauseActivityBindingLifecycle();
             IRouteCycleResetRuntimePort routeCycleResetRuntimePort = this;
@@ -1466,6 +1472,18 @@ namespace Immersive.Framework.ApplicationLifecycle
         {
             _gameFlowRuntime?.SetPauseActivityBindingLifecycle(
                 _pauseActivityBindingModule);
+        }
+
+        private void ApplyRetainedActivityParticipantSources()
+        {
+            if (_gameFlowRuntime == null)
+            {
+                return;
+            }
+
+            _activityParticipantSourceBindings.ApplyTo(
+                _gameFlowRuntime.SetActivityContentExecutionParticipantSource,
+                _gameFlowRuntime.SetActivityReadinessParticipantSource);
         }
 
         private void InvalidateObjectEntryRuntimeContextSnapshot(string reason)
