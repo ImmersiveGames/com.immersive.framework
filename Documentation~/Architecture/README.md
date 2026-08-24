@@ -1,6 +1,6 @@
 # Immersive Framework Architecture Documentation
 
-Last updated: **2026-08-23**
+Last updated: **2026-08-24**
 
 ## Normative architecture
 
@@ -22,7 +22,11 @@ Reopened
 
 ### Player physical lifetime
 
-Current closure authority:
+Current Player certification authority:
+
+[Player Current Aggregate Recertification — 2026-08-24](Reconciliation/IF-PLAYER-CURRENT-AGGREGATE-RECERTIFICATION-2026-08-24.md)
+
+Historical physical-lifetime recertification:
 
 [Player Physical Lifetime Recertification — 2026-08-15](Reconciliation/IMMERSIVE-FRAMEWORK-PLAYER-PHYSICAL-LIFETIME-RECERTIFICATION-2026-08-15.md)
 
@@ -38,18 +42,24 @@ Activity
   does not own terminal physical Player lifetime
 ```
 
-Terminal certification:
+Current terminal certification:
 
 ```text
-PLAYER QA CERTIFIED
-25/25
+PLAYER CURRENT AGGREGATE COMPLETE
+27/27
 ```
+
+Historical Full Player `25/25` remains valid dated evidence for the 2026-08-15 boundary and is not relabeled as the current aggregate.
 
 ### Initial Placement discovery / scene authority
 
 Current reconciliation authority:
 
 [IF-ADR-021 — Player Authority and Initial Placement Reconciliation — 2026-08-23](Reconciliation/IF-ADR-021-Player-Authority-and-Initial-Placement-Reconciliation-2026-08-23.md)
+
+Current certification:
+
+[Player Current Aggregate Recertification — 2026-08-24](Reconciliation/IF-PLAYER-CURRENT-AGGREGATE-RECERTIFICATION-2026-08-24.md)
 
 Frozen authority matrix:
 
@@ -63,10 +73,18 @@ ActivityContentProfile remains optional.
 IF-ADR-021 accepts Model B: Route owns baseline spatial entry for the current Route
 occurrence; Activity owns only opt-in explicit contextual relocation. Route placement
 is exact by `RouteId + PlayerSlotId`; Activity relocation is exact by
-`ActivityId + PlayerSlotId`. The Primary Scene remains Route-owned. Historical
-implementation/QA is preserved; Route Spatial Entry and Activity Explicit Relocation
-are implemented, while replacement QA remains pending
-runtime implementation and replacement QA.
+`ActivityId + PlayerSlotId`. The Primary Scene remains Route-owned.
+
+Replacement implementation and QA are complete for the accepted Model B boundary:
+
+```text
+Route Spatial Entry      18/18 PASS
+Activity Relocation      23/23 PASS
+Full Player aggregate    27/27 PASS
+```
+
+Historical ADR-021 Initial Placement `9/9` remains evidence for the superseded
+Activity-owned discovery model only.
 
 ### Camera Presentation / materialization
 
@@ -230,12 +248,12 @@ an explicit migration decision for breaking changes to Stable consumer surfaces.
 - IF-ADR-003 — Accepted baseline / reconciled / implemented; later R6/R7/R8 expansion remains separately tracked.
 - IF-ADR-007 — Accepted baseline / readiness boundary implemented.
 - IF-ADR-011 — Accepted baseline for participant-aware readiness/loading interaction.
-- IF-ADR-012 — Accepted baseline / implemented.
-- IF-ADR-015 — Accepted baseline / current public consumer surface implemented.
-- IF-ADR-016 — Accepted baseline / current Session initial configuration implemented.
-- IF-ADR-019 — Accepted / reconciled / implemented / QA recertified.
-- IF-ADR-020 — Accepted / reconciled / implemented / QA recertified.
-- IF-ADR-021 — Accepted / reconciled; Route Spatial Entry and Activity Explicit Relocation implemented; replacement QA pending.
+- IF-ADR-012 — Accepted baseline / implemented; current aggregate PASS.
+- IF-ADR-015 — Accepted baseline / current public consumer surface implemented; current aggregate PASS.
+- IF-ADR-016 — Accepted baseline / current Session initial configuration implemented; current aggregate PASS.
+- IF-ADR-019 — Accepted / reconciled / implemented; current Full Player aggregate 27/27 PASS; historical 25/25 recertification preserved.
+- IF-ADR-020 — Accepted / reconciled / implemented; current Full Player aggregate 27/27 PASS; historical 25/25 recertification preserved.
+- IF-ADR-021 — Accepted / reconciled / implemented / current QA verified; Route Spatial Entry 18/18, Activity Relocation 23/23 and Full Player aggregate 27/27 PASS.
 
 ### Camera
 
@@ -249,6 +267,8 @@ an explicit migration decision for breaking changes to Stable consumer surfaces.
 Dated certification/reconciliation records remain historical evidence.
 
 Do not rewrite an older record to imply it tested a later contract.
+
+The Full Player `25/25` certification remains the 2026-08-15 historical boundary. The current Player certification is the 2026-08-24 `27/27` aggregate. The historical ADR-021 Initial Placement `9/9` remains tied to the superseded Activity-owned discovery model.
 
 Current revised authorities and current proposed expansions must be interpreted through
 the mutable Tracker rather than by commit chronology alone.
