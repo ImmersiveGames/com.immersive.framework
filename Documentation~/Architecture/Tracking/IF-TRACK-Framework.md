@@ -1,7 +1,7 @@
 # IF-TRACK — Immersive Framework
 
 Status: **Active — Stage B baseline + proposed architecture expansion**  
-Last updated: **2026-08-23**
+Last updated: **2026-08-24**
 
 ## Authority and status model
 
@@ -62,6 +62,7 @@ Current closure records:
 - [IF-ADR-013 — BGM Continuity Technical Certification](../Reconciliation/IF-ADR-013-BGM-Continuity-Technical-Certification-2026-08-19.md)
 - [Stage B — Game Flow Sample Consumer Evidence](../Reconciliation/IF-STAGE-B-GAMEFLOW-SAMPLE-EVIDENCE-2026-08-21.md)
 - [IF-ADR-021 — Player Authority and Initial Placement Reconciliation](../Reconciliation/IF-ADR-021-Player-Authority-and-Initial-Placement-Reconciliation-2026-08-23.md)
+- [Player Current Aggregate Recertification — 2026-08-24](../Reconciliation/IF-PLAYER-CURRENT-AGGREGATE-RECERTIFICATION-2026-08-24.md)
 
 ## Reconciliation sequence
 
@@ -81,7 +82,7 @@ A real consumer can expose product/UX debt, an integration gap, future scope, or
 |---|---|---|---|
 | [001](../ADRs/IF-ADR-001-Core-Lifecycle-and-Runtime-Authority.md) | ACCEPTED / RECONCILED / IMPLEMENTED; 001A Editor startup isolation implemented locally | Existing core certification preserved; 001A is scoped consumer/Play Mode regression evidence, not new broad QA certification | Both Editor startup policies proven: `FrameworkStartup` uses neutral bootstrap and prevents the reproduced EventSystem/listener contamination; `CurrentSceneOnly` executes the current scene with Framework boot explicitly skipped. |
 | [002](../ADRs/IF-ADR-002-Product-Authoring-Model.md) | ACCEPTED / RECONCILED / IMPLEMENTED | Feature-owned evidence | Stage A closed; product proof remains feature-owned. |
-| [003](../ADRs/IF-ADR-003-Player-Participation-and-Actor-Lifecycle.md) | ACCEPTED baseline / RECONCILED / IMPLEMENTED; R6/R7/R8 draft pending | CERTIFIED baseline | Existing Player proof remains valid; proposed deltas are not delivered baseline behavior. |
+| [003](../ADRs/IF-ADR-003-Player-Participation-and-Actor-Lifecycle.md) | ACCEPTED baseline / RECONCILED / IMPLEMENTED; R6/R7/R8 draft pending | CERTIFIED baseline; current Full Player aggregate 27/27 PASS | Existing Player proof remains valid; proposed deltas are not delivered baseline behavior. |
 | [004](../ADRs/IF-ADR-004-Camera-Requests-and-Output-Authority.md) | ACCEPTED / RECONCILED / IMPLEMENTED; 004D Default-output cut merged | Full Camera 53/53 CERTIFIED for 2026-08-15 boundary | Sample 00 Default-output + gameplay readiness proof PASS; broader Camera consumer proof remains separate. |
 | [005](../ADRs/IF-ADR-005-Input-Pause-Gate-and-Reset.md) | ACCEPTED / RECONCILED / IMPLEMENTED | Input Gate 9/9; Restart 8/8; Pause 27/27 CERTIFIED | Stage A closed; Stage B may test authoring/usability. |
 | [006](../ADRs/IF-ADR-006-Loading-Transition-Persistence-and-Diagnostics.md) | ACCEPTED / RECONCILED / IMPLEMENTED | Focused 8/8; Progress 32/32; Terminal 34/34 CERTIFIED | **GAME FLOW CONSUMER PASS** — Game Flow Sample proves real persistent Transition/Loading authoring, Route Fade cover/reveal, Activity Fade/Seamless/FadeWithLoading selection and successful readiness-governed covered waiting. Negative/terminal robustness remains technical QA-owned and is not a FIRSTGAME/Sample completion gate. |
@@ -90,19 +91,54 @@ A real consumer can expose product/UX debt, an integration gap, future scope, or
 | [009](../ADRs/IF-ADR-009-Activity-Local-Visibility-Rules.md) | ACCEPTED / RECONCILED / IMPLEMENTED | CERTIFIED | Current boundary closed; Game Flow Sample adds positive A/B visibility plus content-less Activity C negative-isolation consumer evidence. |
 | [010](../ADRs/IF-ADR-010-Editor-and-Inspector-Product-Surface-Authority.md) | ACCEPTED / IMPLEMENTED; Editor Play Mode startup surface reconciled with 001A | Feature-owned | Project Settings now has a deterministic technical consequence: `FrameworkStartup` -> neutral bootstrap; `CurrentSceneOnly` -> current scene/no framework startup. |
 | [011](../ADRs/IF-ADR-011-Participant-Aware-Activity-Readiness-Loading-Progress.md) | ACCEPTED / RECONCILED / IMPLEMENTED | Progress 32/32; Terminal 34/34; Route 25/25; App 20/20 CERTIFIED | **CORE CONSUMER PROOF PASS** — Game Flow Readiness Showcase exercises determinate `ActivityReadiness` Loading progress with one Required participant, terminal Ready, content release and fresh reentry. Broader technical QA remains certification authority for the full matrix, including negative paths. |
-| [012](../ADRs/IF-ADR-012-Activity-Player-Participation-Profile-and-Readiness-Compatibility.md) | ACCEPTED / RECONCILED / IMPLEMENTED | CERTIFIED | FIRSTGAME participation proof required. |
+| [012](../ADRs/IF-ADR-012-Activity-Player-Participation-Profile-and-Readiness-Compatibility.md) | ACCEPTED / RECONCILED / IMPLEMENTED | CERTIFIED; current Full Player aggregate 27/27 PASS | FIRSTGAME participation proof required. |
 | [013](../ADRs/IF-ADR-013-Optional-Audio-BGM-Adapter.md) | ACCEPTED / EXPERIMENTAL / IMPLEMENTED — IF-ADR-013A + BGM-CONTINUITY-1 + BGM-ROUTE-POLICY-1 | CERTIFIED: Audio 30/30 = Core 7/7 + Framework BGM 14/14 + ADR-013A 5/5 + physical continuity 4/4; real Framework Route A->B continuity PASS | **FIRSTGAME/SAMPLE CONSUMER GATE PASS** — Game Flow Sample proves Play, no-request Preserve, owner-exit preservation and explicit Silence across transient Route/Activity scenes. API remains Experimental pending an explicit product-maturity promotion cut. |
 | [014](../ADRs/IF-ADR-014-Authored-Definition-and-Stable-Identity-Authority.md) | ACCEPTED / IMPLEMENTED | CERTIFIED | Current boundary closed and consumer-proven. |
-| [015](../ADRs/IF-ADR-015-Player-Provisioning-Commands-and-Consumer-Observation-Surface.md) | ACCEPTED baseline / IMPLEMENTED; R6/R7/R8 draft pending | CERTIFIED baseline | Targeted Join / Actor Selection draft deltas are not current delivered baseline. |
-| [016](../ADRs/IF-ADR-016-Player-Session-Initial-Configuration-and-Provisioning-Profiles.md) | ACCEPTED baseline / IMPLEMENTED; R6/R7/R8 draft pending | CERTIFIED baseline | Scene-/Manager-Provisioned baseline remains valid. |
+| [015](../ADRs/IF-ADR-015-Player-Provisioning-Commands-and-Consumer-Observation-Surface.md) | ACCEPTED baseline / IMPLEMENTED; R6/R7/R8 draft pending | CERTIFIED baseline; current Full Player aggregate 27/27 PASS | Targeted Join / Actor Selection draft deltas are not current delivered baseline. |
+| [016](../ADRs/IF-ADR-016-Player-Session-Initial-Configuration-and-Provisioning-Profiles.md) | ACCEPTED baseline / IMPLEMENTED; R6/R7/R8 draft pending | CERTIFIED baseline; current Full Player aggregate 27/27 PASS | Scene-/Manager-Provisioned baseline remains valid. |
 | [017](../ADRs/IF-ADR-017-Application-Frame-Rate-Project-Authority.md) | ACCEPTED / RECONCILED / IMPLEMENTED | Edit 13/13; Target 13/13; VSync 13/13; Defaults 13/13 CERTIFIED | Stage A closed. |
 | [018](../ADRs/IF-ADR-018-Progression-Save-Backend-Independence-and-Persistence-Domain-Boundaries.md) | ACCEPTED / RECONCILED; A Stable, B JSON certified, C composition implemented | backend conformance; JSON 18/18; composition 12/12 CERTIFIED | FIRSTGAME persistence/backend usability proof remains. |
-| [019](../ADRs/IF-ADR-019-Session-Player-Lifetime-and-Activity-Representation-Authority.md) | ACCEPTED / RECONCILED / IMPLEMENTED | Full Player 25/25 RECERTIFIED | Closed for Session physical Player lifetime and contextual representation authority. |
-| [020](../ADRs/IF-ADR-020-Session-Player-Leave-and-Resource-Release-Authority.md) | ACCEPTED / RECONCILED / IMPLEMENTED | ADR020-H 26/26; Full Player 25/25 RECERTIFIED | Closed for Session Player Leave and resource release authority. |
-| [021](../ADRs/IF-ADR-021-Activity-Player-Actor-Initial-Placement-Authority.md) | ACCEPTED / RECONCILED — Model B; Route Spatial Entry + Activity Explicit Relocation IMPLEMENTED; QA PENDING | Route 18/18 unchanged; Full Player 25/25 preserved; replacement QA pending | Route baseline entry and optional Activity relocation are separate lifecycle-correct pipelines. |
+| [019](../ADRs/IF-ADR-019-Session-Player-Lifetime-and-Activity-Representation-Authority.md) | ACCEPTED / RECONCILED / IMPLEMENTED | Full Player current aggregate 27/27 PASS; historical 25/25 recertification preserved | Closed for Session physical Player lifetime and contextual representation authority. |
+| [020](../ADRs/IF-ADR-020-Session-Player-Leave-and-Resource-Release-Authority.md) | ACCEPTED / RECONCILED / IMPLEMENTED | ADR020-H 26/26; Full Player current aggregate 27/27 PASS; historical 25/25 recertification preserved | Closed for Session Player Leave and resource release authority. |
+| [021](../ADRs/IF-ADR-021-Activity-Player-Actor-Initial-Placement-Authority.md) | ACCEPTED / RECONCILED — Model B; Route Spatial Entry + Activity Explicit Relocation IMPLEMENTED / CURRENT QA VERIFIED | Route Spatial Entry 18/18 PASS; Activity Relocation 23/23 PASS; Full Player current aggregate 27/27 PASS; historical Initial Placement 9/9 and Full Player 25/25 preserved | Route baseline entry and optional Activity relocation are separate lifecycle-correct pipelines; replacement QA closed. |
 | [022](../ADRs/IF-ADR-022-Camera-Rig-Presentation-Models-and-Materialization-Authority.md) | ACCEPTED / IMPLEMENTED | Presentation 14/14; Full Camera 53/53 for 2026-08-15 boundary | C1-C5 closed; broader FIRSTGAME C6 remains pending. |
 
 ## Current scoped closures
+
+### Player current aggregate — IF-ADR-019 / 020 / 021 — 2026-08-24
+
+Current technical Player certification:
+
+```text
+PLAYER CURRENT AGGREGATE COMPLETE
+mandatoryContracts=27
+executedContracts=27
+passedContracts=27
+```
+
+Focused Model B evidence:
+
+```text
+Route Spatial Entry      18/18 PASS
+Activity Relocation      23/23 PASS
+```
+
+The historical Full Player `25/25` and ADR-021 Initial Placement `9/9` remain dated evidence for their earlier boundaries; neither is relabeled as current Model B proof.
+
+Bootstrap composition now preserves the required authority order:
+
+```text
+Player Session core
+  -> Game Flow / Route lifecycle authority
+  -> Player Actor Preparation lifecycle attachment
+  -> Route startup
+```
+
+The QA Play Mode synchronization sweep aligned observation timing with canonical Host readiness. It did not alter runtime authority or Player semantics.
+
+Certification record:
+
+[Player Current Aggregate Recertification — 2026-08-24](../Reconciliation/IF-PLAYER-CURRENT-AGGREGATE-RECERTIFICATION-2026-08-24.md)
 
 ### Editor Play Mode startup isolation — IF-ADR-001A — 2026-08-20
 
@@ -420,9 +456,11 @@ Reverse audit:            closed
 Generic Stage A task:     none
 ```
 
-The historical closure does not claim implementation/certification of the reconciled
-Model B delta in ADR-021 or of pending Player draft deltas. ADR-019 and ADR-020 retain
-their separately recorded implementation and certification.
+The historical Stage A closure does not claim implementation/certification of later
+accepted cuts. IF-ADR-021 Model B is now separately implemented and certified by the
+2026-08-24 Player Current Aggregate Recertification. ADR-019 and ADR-020 retain their
+historical 2026-08-15 recertification and are also covered by the current 27/27
+aggregate.
 
 A new accepted contract or reproducible regression may open a new scoped technical cut without invalidating unrelated historical certification.
 
@@ -434,7 +472,7 @@ certification.
 
 Stage B is the real-consumer lane for accepted package boundaries.
 
-1. **Player** — participation, Scene-/Manager-Provisioned flows, current command/profile usability; proposed Session-lifetime/Leave/Initial-Placement work remains separate until accepted.
+1. **Player** — current technical Player boundary is certified by the `27/27` aggregate, including Scene-/Manager-Provisioned flows, Actor Lifecycle, public surface, Leave and IF-ADR-021 Model B spatial semantics. Remaining Player work in Stage B is consumer/sample integration and usability proof; proposed future deltas remain separate until accepted.
 2. **Loading / Readiness** — **Game Flow consumer proof CLOSED** for valid product paths: Route Fade + Loading, Activity `FadeWithLoading`, `ObserveOnly`, `WaitVisible`, `WaitCovered`, one-Required participant-aware determinate progress, content release and fresh reentry are proven. Negative/invalid/interrupted/terminal failure semantics remain technical QA/certification and do not block FIRSTGAME.
 3. **Camera** — 004D Default-output integration is proven in Sample 00; broader ADR-022 C6 remains pending.
 4. **Pause** — consumer authoring/usability only; runtime contract is certified.
@@ -475,9 +513,9 @@ ADR-022 presentation models are not future scope; Fixed/Follow/Mounted/Third Per
 
 - [IF-GOV-001 — API Maturity and Validation Governance](../Governance/IF-GOV-001-API-MATURITY-AND-VALIDATION-GOVERNANCE.md)
 - [IF-ADR-013 — Optional Audio BGM Adapter](../ADRs/IF-ADR-013-Optional-Audio-BGM-Adapter.md) — Accepted / Experimental / technically certified / consumer gate proven
-- [IF-ADR-019 — Session Player Lifetime and Activity Representation Authority](../ADRs/IF-ADR-019-Session-Player-Lifetime-and-Activity-Representation-Authority.md) — Accepted / reconciled / implemented / QA recertified
-- [IF-ADR-020 — Session Player Leave and Resource Release Authority](../ADRs/IF-ADR-020-Session-Player-Leave-and-Resource-Release-Authority.md) — Accepted / reconciled / implemented / QA recertified
-- [IF-ADR-021 — Route Spatial Entry and Activity Explicit Relocation](../ADRs/IF-ADR-021-Activity-Player-Actor-Initial-Placement-Authority.md) — Accepted / reconciled; Route Spatial Entry + Activity Explicit Relocation implemented; QA pending
+- [IF-ADR-019 — Session Player Lifetime and Activity Representation Authority](../ADRs/IF-ADR-019-Session-Player-Lifetime-and-Activity-Representation-Authority.md) — Accepted / reconciled / implemented / current aggregate PASS
+- [IF-ADR-020 — Session Player Leave and Resource Release Authority](../ADRs/IF-ADR-020-Session-Player-Leave-and-Resource-Release-Authority.md) — Accepted / reconciled / implemented / current aggregate PASS
+- [IF-ADR-021 — Route Spatial Entry and Activity Explicit Relocation](../ADRs/IF-ADR-021-Activity-Player-Actor-Initial-Placement-Authority.md) — Accepted / reconciled / implemented / current QA verified
 - [IF-ADR-022 — Camera Rig Presentation Models and Materialization Authority](../ADRs/IF-ADR-022-Camera-Rig-Presentation-Models-and-Materialization-Authority.md) — Accepted / Implemented / Technical QA Certified
 
 ## Current reconciliation records
@@ -500,6 +538,7 @@ ADR-022 presentation models are not future scope; Fixed/Follow/Mounted/Third Per
 - [ADR-018](../Reconciliation/IMMERSIVE-FRAMEWORK-ADR-018-RECONCILIATION-2026-08-11.md)
 - [ADR-018-A Certification](../Reconciliation/IMMERSIVE-FRAMEWORK-ADR-018-A-CERTIFICATION-2026-08-11.md)
 - [ADR-018-C Certification](../Reconciliation/IMMERSIVE-FRAMEWORK-ADR-018-C-CERTIFICATION-2026-08-11.md)
+- [Player Current Aggregate Recertification](../Reconciliation/IF-PLAYER-CURRENT-AGGREGATE-RECERTIFICATION-2026-08-24.md)
 - [RA-03 — Object Entry Ownership Reconciliation](../Reconciliation/IMMERSIVE-FRAMEWORK-RA-03-OBJECT-ENTRY-OWNERSHIP-RECONCILIATION-2026-08-11.md)
 - [RA-04 — Architecture Governance Hygiene](../Reconciliation/IMMERSIVE-FRAMEWORK-RA-04-ARCHITECTURE-GOVERNANCE-HYGIENE-2026-08-11.md)
 - [Stage A Canonical Package Baseline Closure](../Reconciliation/IMMERSIVE-FRAMEWORK-STAGE-A-CANONICAL-BASELINE-CLOSURE-2026-08-11.md)
