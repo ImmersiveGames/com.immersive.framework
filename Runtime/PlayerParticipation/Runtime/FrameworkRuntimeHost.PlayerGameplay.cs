@@ -1,6 +1,7 @@
 using Immersive.Framework.Camera;
 using Immersive.Framework.PlayerParticipation;
 using Immersive.Framework.GameFlow.Diagnostics;
+using Immersive.Framework.RouteLifecycle;
 
 namespace Immersive.Framework.ApplicationLifecycle
 {
@@ -22,6 +23,22 @@ namespace Immersive.Framework.ApplicationLifecycle
         {
             playerActivityLifecycleAdmissionRuntime = runtime;
             ApplyPlayerActivityLifecycleAdmissionRuntime();
+        }
+
+        internal bool SetRoutePlayerSpatialEntryParticipant(
+            IRoutePlayerSpatialEntryLifecycleParticipant participant,
+            out string issue)
+        {
+            issue = string.Empty;
+            if (_gameFlowRuntime == null)
+            {
+                issue = "FrameworkRuntimeHost has no canonical Game Flow lifecycle authority.";
+                return false;
+            }
+
+            return _gameFlowRuntime.SetRoutePlayerSpatialEntryParticipant(
+                participant,
+                out issue);
         }
 
         internal bool TryInstallGameFlowDiagnosticFaultPlan(

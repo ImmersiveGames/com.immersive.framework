@@ -4,6 +4,7 @@ using Immersive.Framework.Actors;
 using Immersive.Framework.ApiStatus;
 using Immersive.Framework.ApplicationLifecycle;
 using Immersive.Framework.PlayerSlots;
+using Immersive.Framework.RouteLifecycle;
 using Immersive.Framework.RuntimeContent;
 using UnityEngine;
 using UnityEngine.InputSystem;
@@ -19,7 +20,8 @@ namespace Immersive.Framework.PlayerParticipation
     [FrameworkApiStatus(
         FrameworkApiStatus.Internal,
         "P3J.5/P3J.6 FrameworkRuntimeHost integration for real local Player Actor preparation and Activity lifecycle.")]
-    internal sealed partial class PlayerActorPreparationRuntimeHostModule : MonoBehaviour
+    internal sealed partial class PlayerActorPreparationRuntimeHostModule : MonoBehaviour,
+        IRoutePlayerSpatialEntryLifecycleParticipant
     {
         private FrameworkRuntimeHost runtimeHost;
         private PlayerParticipationRuntimeContext participationContext;
@@ -158,6 +160,22 @@ namespace Immersive.Framework.PlayerParticipation
                 activityLifecycleParticipant);
             targetRuntimeHost.SetPauseActivityBindingPlayerEvidence(
                 activityLifecycleParticipant);
+            if (!targetRuntimeHost.SetRoutePlayerSpatialEntryParticipant(
+                    this,
+                    out string routeSpatialEntryIssue))
+            {
+                targetRuntimeHost.SetActivityContentExecutionParticipantSource(null);
+                targetRuntimeHost.SetPauseActivityBindingPlayerEvidence(null);
+                activityLifecycleParticipant = null;
+                preparationContext = null;
+                sessionPhysicalScopeContext = default;
+                hostEvidenceProjection = null;
+                participationContext = null;
+                runtimeHost = null;
+                diagnostic = "Player Actor preparation could not compose Route spatial entry. " + routeSpatialEntryIssue;
+                issue = diagnostic;
+                return false;
+            }
             if (!PlayerGameplayRuntimeHostModule.TryAttach(
                     targetRuntimeHost,
                     out _,
@@ -165,6 +183,7 @@ namespace Immersive.Framework.PlayerParticipation
             {
                 targetRuntimeHost.SetActivityContentExecutionParticipantSource(null);
                 targetRuntimeHost.SetPauseActivityBindingPlayerEvidence(null);
+                targetRuntimeHost.SetRoutePlayerSpatialEntryParticipant(null, out _);
                 activityLifecycleParticipant = null;
                 preparationContext = null;
                 sessionPhysicalScopeContext = default;
@@ -944,6 +963,11 @@ namespace Immersive.Framework.PlayerParticipation
                     out _,
                     out _,
                     out _);
+            }
+
+            if (runtimeHost != null)
+            {
+                runtimeHost.SetRoutePlayerSpatialEntryParticipant(null, out _);
             }
 
             hostEvidenceProjection?.ClearAll();

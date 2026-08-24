@@ -140,7 +140,7 @@ namespace Immersive.Framework.PlayerParticipation
                 else if (!hasEverActivated)
                 {
                     issue =
-                        "Session-owned framework Logical Player Actor cannot perform its first gameplay activation without the current Activity IF-ADR-021 initial-placement gate.";
+                        "Session-owned framework Logical Player Actor cannot perform its first activation without the current Route spatial-entry occurrence gate.";
                     return false;
                 }
             }

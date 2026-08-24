@@ -1,4 +1,5 @@
 using Immersive.Framework.ActivityFlow;
+using Immersive.Framework.RouteLifecycle;
 using Immersive.Framework.RuntimeContent;
 using UnityEngine;
 
@@ -12,12 +13,27 @@ namespace Immersive.Framework.PlayerParticipation
     internal sealed class ActivityPlayerInitialPlacementRuntimeBinding : MonoBehaviour
     {
         private ActivityTransitionPreparationContext context;
+        private RoutePlayerSpatialEntryContext routeContext;
         private ActivityPlayerInitialPlacementEvidence lastEvidence;
+        private int lastRouteOccurrenceSequence;
+        private string lastRouteRepresentationIdentity;
 
         internal void Configure(ActivityTransitionPreparationContext value)
         {
             context = value;
             lastEvidence = default;
+        }
+
+        internal void ConfigureRouteSpatialEntry(RoutePlayerSpatialEntryContext value)
+        {
+            if (routeContext.Matches(value))
+            {
+                return;
+            }
+
+            routeContext = value;
+            lastRouteOccurrenceSequence = 0;
+            lastRouteRepresentationIdentity = string.Empty;
         }
 
         internal bool MatchesOwner(RuntimeContentOwner owner) =>
@@ -36,14 +52,21 @@ namespace Immersive.Framework.PlayerParticipation
                 return false;
             }
 
-            // Scene-Provided adoption uses a release proxy as the typed handle's LogicalActorHost.
-            // Only a framework-owned Actor whose declaration belongs to this physical hierarchy is
-            // subject to the mandatory Manager-Provisioned placement gate here.
-            Transform declarationTransform =
-                handle.PlayerActorDeclaration.transform;
+            if (!TryApplyRouteSpatialEntry(handle, out issue))
+            {
+                return false;
+            }
+
+            // Activity relocation is optional and strictly subsequent to Route entry.
+            // A Route without a current Activity is therefore a complete supported state.
+            if (!context.IsValid)
+            {
+                return true;
+            }
+
+            Transform declarationTransform = handle.PlayerActorDeclaration.transform;
             Transform logicalRoot = handle.LogicalActorHost.transform;
-            bool frameworkOwnedPhysicalActor =
-                ReferenceEquals(declarationTransform, logicalRoot) ||
+            bool frameworkOwnedPhysicalActor = ReferenceEquals(declarationTransform, logicalRoot) ||
                 declarationTransform.IsChildOf(logicalRoot);
             if (!frameworkOwnedPhysicalActor)
             {
@@ -83,7 +106,57 @@ namespace Immersive.Framework.PlayerParticipation
                     representationIdentity,
                     logicalRoot,
                     out lastEvidence,
-                    out issue);
+                out issue);
+        }
+
+        internal bool TryApplyRouteSpatialEntry(
+            PlayerActorMaterializationHandle handle,
+            out string issue)
+        {
+            issue = string.Empty;
+            if (handle == null || handle.PlayerActorDeclaration == null ||
+                handle.LogicalActorHost == null)
+            {
+                issue = "Route Player spatial entry requires a complete materialization handle.";
+                return false;
+            }
+
+            if (!routeContext.IsValid)
+            {
+                issue =
+                    "Session Player cannot activate without current Route spatial-entry occurrence evidence.";
+                return false;
+            }
+
+            string representationIdentity = handle.Request.RuntimeContentIdentity.StableText;
+            if (lastRouteOccurrenceSequence == routeContext.OccurrenceSequence &&
+                string.Equals(lastRouteRepresentationIdentity, representationIdentity,
+                    System.StringComparison.Ordinal))
+            {
+                return true;
+            }
+
+            Transform declarationTransform = handle.PlayerActorDeclaration.transform;
+            Transform logicalRoot = handle.LogicalActorHost.transform;
+            bool frameworkOwnedPhysicalActor = ReferenceEquals(declarationTransform, logicalRoot) ||
+                declarationTransform.IsChildOf(logicalRoot);
+            Transform target = frameworkOwnedPhysicalActor
+                ? logicalRoot
+                : declarationTransform;
+            if (!RoutePlayerSpatialEntryRuntime.TryApply(
+                    routeContext,
+                    handle.Request.Slot.PlayerSlotId,
+                    handle.Request.ActorId,
+                    representationIdentity,
+                    target,
+                    out issue))
+            {
+                return false;
+            }
+
+            lastRouteOccurrenceSequence = routeContext.OccurrenceSequence;
+            lastRouteRepresentationIdentity = representationIdentity;
+            return true;
         }
 
         internal ActivityPlayerInitialPlacementEvidence LastEvidence =>

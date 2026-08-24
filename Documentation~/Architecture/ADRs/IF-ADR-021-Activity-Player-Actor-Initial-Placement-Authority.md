@@ -1,6 +1,6 @@
 # IF-ADR-021 — Route Spatial Entry and Activity Explicit Relocation
 
-Status: **Accepted / Reconciled — Model B; reconciled spatial delta not implemented or certified**
+Status: **Accepted / Reconciled — Model B; Route spatial-entry lifecycle cut implemented, not certified**
 Historical implementation QA: **ADR-021 Initial Placement 9/9**
 Historical Full Player certification: **25/25 mandatory contracts**
 Last updated: **2026-08-23**
@@ -203,18 +203,22 @@ required for the Model B discovery boundary.
 
 ## Current implementation coverage
 
-Historical Activity-owned Initial Placement is implemented and certified. The accepted
-Model B delta — Route baseline policy, RouteId binding discovery, Activity relocation
-intent, combined eligible scopes, replacement evidence and QA — is **not implemented
-and not certified**.
+Historical Activity-owned Initial Placement remains historical evidence. The Route
+baseline cut is implemented: `RouteLifecycleRuntime` publishes an occurrence only
+after Route composition yields `RouteContentDiscoveryScope`; Player preparation
+consumes it for prepared Players and late admissions. The Route policy is explicit,
+Route-owned discovery is restricted to Primary plus Route-owned content, and the
+per-Host guard is keyed by Route occurrence plus physical representation.
+
+Activity explicit relocation, public Route/Activity evidence/readiness correlation,
+and replacement certification remain pending. This cut is **not certified**.
 
 ## Pending implementation
 
-- Define the concrete authoring/runtime surfaces without prematurely fixing public API names.
-- Implement explicit Route policy and exact `RouteId + PlayerSlotId` discovery.
+- Certify the Route lifecycle cut for Primary, Route Content, late admission,
+  no-Activity and a new occurrence of the same physical Player.
 - Implement opt-in Activity relocation and exact `ActivityId + PlayerSlotId` discovery.
-- Preserve current/authored pose without a hidden default or fallback.
-- Extend readiness/evidence correlation for Route occurrence and optional Activity relocation.
+- Extend public readiness/evidence correlation for Route occurrence and optional Activity relocation.
 - Add replacement QA for Route Primary, Route Content, shared-scene Activity relocation,
   zero/duplicate bindings, ineligible scenes, manager-provisioned active-Route join and
   `ActivityContentProfile = null`.

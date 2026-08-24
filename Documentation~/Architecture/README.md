@@ -234,7 +234,7 @@ an explicit migration decision for breaking changes to Stable consumer surfaces.
 - IF-ADR-016 — Accepted baseline / current Session initial configuration implemented.
 - IF-ADR-019 — Accepted / reconciled / implemented / QA recertified.
 - IF-ADR-020 — Accepted / reconciled / implemented / QA recertified.
-- IF-ADR-021 — Accepted / reconciled; Model B accepted; historical implementation/QA preserved; runtime and replacement QA pending.
+- IF-ADR-021 — Accepted / reconciled; Route lifecycle cut implemented; Activity relocation and replacement QA pending.
 
 ### Camera
 

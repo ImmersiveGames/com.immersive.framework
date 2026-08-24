@@ -1,5 +1,6 @@
 using Immersive.Framework.ActivityFlow;
 using Immersive.Framework.PlayerSlots;
+using Immersive.Framework.RouteLifecycle;
 using Immersive.Framework.RuntimeContent;
 
 namespace Immersive.Framework.PlayerParticipation
@@ -10,6 +11,7 @@ namespace Immersive.Framework.PlayerParticipation
             currentActivityInitialPlacementContext;
         private ActivityPlayerInitialPlacementEvidence
             lastActivityInitialPlacementEvidence;
+        private RoutePlayerSpatialEntryContext currentRouteSpatialEntryContext;
 
         internal bool TryConfigureActivityInitialPlacementContext(
             ActivityTransitionPreparationContext context,
@@ -49,7 +51,7 @@ namespace Immersive.Framework.PlayerParticipation
 
         internal void PublishCurrentInitialPlacementGate(LocalPlayerHostAuthoring host)
         {
-            if (host == null || !currentActivityInitialPlacementContext.IsValid)
+            if (host == null)
             {
                 return;
             }
@@ -62,7 +64,68 @@ namespace Immersive.Framework.PlayerParticipation
                     .AddComponent<ActivityPlayerInitialPlacementRuntimeBinding>();
             }
 
-            binding.Configure(currentActivityInitialPlacementContext);
+            if (currentRouteSpatialEntryContext.IsValid)
+            {
+                binding.ConfigureRouteSpatialEntry(currentRouteSpatialEntryContext);
+            }
+
+            if (currentActivityInitialPlacementContext.IsValid)
+            {
+                binding.Configure(currentActivityInitialPlacementContext);
+            }
+        }
+
+        bool IRoutePlayerSpatialEntryLifecycleParticipant.TryEnterRouteSpatialEntry(
+            RoutePlayerSpatialEntryContext context,
+            out string issue)
+        {
+            issue = string.Empty;
+            if (!IsReady || !context.IsValid)
+            {
+                issue = "Route spatial entry requires a ready Player preparation module and valid Route occurrence context.";
+                return false;
+            }
+
+            // A Route occurrence supersedes any prior Activity relocation context.
+            // The destination Activity, if one exists, publishes a new context later.
+            currentActivityInitialPlacementContext = default;
+            currentRouteSpatialEntryContext = context;
+            PlayerParticipationSnapshot snapshot = participationContext.CreateSnapshot();
+            for (int index = 0; index < snapshot.Slots.Count; index++)
+            {
+                PlayerSlotRuntimeSnapshot slot = snapshot.Slots[index];
+                if (!slot.IsJoined || !TryGetRegisteredHost(slot.PlayerSlotId, out LocalPlayerHostAuthoring host, out _))
+                {
+                    continue;
+                }
+
+                PublishCurrentInitialPlacementGate(host);
+                if (!TryGetCurrentPreparation(slot.PlayerSlotId, out PlayerActorPreparationSummary preparation, out _) ||
+                    !TryGetPreparedPhysicalEvidence(
+                        slot.PlayerSlotId,
+                        preparation.Token,
+                        out _, out _, out _, out PlayerActorMaterializationHandle handle, out _))
+                {
+                    continue;
+                }
+
+                ActivityPlayerInitialPlacementRuntimeBinding binding = host.GetComponent<ActivityPlayerInitialPlacementRuntimeBinding>();
+                if (binding == null || !binding.TryApplyRouteSpatialEntry(handle, out issue))
+                {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+        void IRoutePlayerSpatialEntryLifecycleParticipant.ExitRouteSpatialEntry(
+            RoutePlayerSpatialEntryContext context)
+        {
+            if (currentRouteSpatialEntryContext.Matches(context))
+            {
+                currentRouteSpatialEntryContext = default;
+            }
         }
 
         internal bool TryApplySceneProvidedInitialPlacement(
@@ -70,7 +133,7 @@ namespace Immersive.Framework.PlayerParticipation
             out string issue)
         {
             issue = string.Empty;
-            if (!currentActivityInitialPlacementContext.IsValid ||
+            if (!currentRouteSpatialEntryContext.IsValid ||
                 authoring == null ||
                 authoring.SceneLogicalPlayerActor == null ||
                 !authoring.TryGetPlayerSlotId(
@@ -80,20 +143,18 @@ namespace Immersive.Framework.PlayerParticipation
                 if (string.IsNullOrEmpty(issue))
                 {
                     issue =
-                        "Scene-Provided initial placement requires current Activity occurrence context and complete authoring.";
+                    "Scene-Provided spatial entry requires current Route occurrence context and complete authoring.";
                 }
                 return false;
             }
 
-            bool applied = ActivityPlayerInitialPlacementRuntime
-                .TryApplyScenePolicy(
-                    currentActivityInitialPlacementContext,
+            bool applied = RoutePlayerSpatialEntryRuntime
+                .TryApply(
+                    currentRouteSpatialEntryContext,
                     playerSlotId,
                     authoring.SceneLogicalPlayerActor.ActorId,
                     $"scene-provided:{playerSlotId.StableText}:{authoring.SceneLogicalPlayerActor.ActorId.StableText}",
-                    authoring.InitialPlacementPolicy,
                     authoring.SceneLogicalPlayerActor.transform,
-                    out lastActivityInitialPlacementEvidence,
                     out issue);
             return applied;
         }

@@ -1,14 +1,14 @@
 # IF-ADR-021 — Player Authority and Initial Placement Reconciliation
 
-Status: **Accepted / Reconciled — Model B selected; runtime and replacement QA pending**  
+Status: **Accepted / Reconciled — Model B selected; Route lifecycle cut implemented, replacement QA pending**
 Date: **2026-08-23**  
 Related decisions: IF-ADR-003, IF-ADR-015, IF-ADR-019, IF-ADR-020, IF-ADR-021
 
 ## Purpose
 
 This reconciliation preserves the 2026-08-23 authority matrix and closes its open
-model choice by accepting Model B. It is documentation only: it changes neither
-runtime, Editor, QA, FIRSTGAME nor Sample behavior.
+model choice by accepting Model B. The original reconciliation was documentation
+only; the later Route lifecycle cut is recorded in the ADR implementation coverage.
 
 ## Authority matrix
 
@@ -94,12 +94,10 @@ exclusively Activity-owned scene.
 The historical Full Player 25/25 certification remains intact for its Session
 physical-lifetime and continuity evidence. Nothing in Model B changes those claims.
 
-## Pending runtime cut
+## Remaining runtime cut
 
-- Concrete Route spatial-entry and Activity relocation authoring/runtime contracts.
-- Exact RouteId and ActivityId binding discovery over their accepted scopes.
-- Occurrence-correlated readiness/evidence and explicit failure reporting.
+- Activity relocation authoring/runtime contract and exact `ActivityId + PlayerSlotId` discovery.
+- Public occurrence-correlated readiness/evidence for Route entry and Activity relocation.
 - Replacement QA for Primary/Route Content, shared Activity relocation, duplicate and
   missing bindings, ineligible scenes, Scene-Provided pose preservation,
   Manager-Provisioned active-Route join and null Activity Content.
-

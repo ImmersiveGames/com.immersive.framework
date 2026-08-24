@@ -1,6 +1,7 @@
 using UnityEngine;
 using Immersive.Framework.ApiStatus;
 using Immersive.Framework.Transition;
+using Immersive.Framework.PlayerParticipation;
 
 namespace Immersive.Framework.Authoring
 {
@@ -39,6 +40,11 @@ namespace Immersive.Framework.Authoring
         [SerializeField]
         [Tooltip("Optional first Activity started after this route primary scene is resolved.")]
         private ActivityAsset startupActivity;
+
+        [SerializeField]
+        [Tooltip("Baseline spatial entry applied to every Session Player for each Route occurrence. Apply Explicit Placement requires one exact Route-owned Slot binding.")]
+        private RoutePlayerSpatialEntryPolicy playerSpatialEntryPolicy =
+            RoutePlayerSpatialEntryPolicy.PreserveCurrentPose;
 
         [SerializeField]
         [Tooltip("Controls which requests/capabilities are blocked while this Route transition is running. Route transitions should normally block input, interaction and gameplay.")]
@@ -130,6 +136,23 @@ namespace Immersive.Framework.Authoring
         public ActivityAsset StartupActivity => startupActivity;
 
         public bool HasStartupActivity => startupActivity != null;
+
+        public RoutePlayerSpatialEntryPolicy PlayerSpatialEntryPolicy
+        {
+            get
+            {
+                return System.Enum.IsDefined(
+                    typeof(RoutePlayerSpatialEntryPolicy),
+                    playerSpatialEntryPolicy)
+                    ? playerSpatialEntryPolicy
+                    : RoutePlayerSpatialEntryPolicy.PreserveCurrentPose;
+            }
+        }
+
+        public bool HasDefinedPlayerSpatialEntryPolicy =>
+            System.Enum.IsDefined(
+                typeof(RoutePlayerSpatialEntryPolicy),
+                playerSpatialEntryPolicy);
 
         public TransitionGateMode TransitionGateMode
         {

@@ -132,6 +132,15 @@ namespace Immersive.Framework.GameFlow
             _routeLifecycleRuntime.SetActivityContentExecutionParticipantSource(participantSource);
         }
 
+        internal bool SetRoutePlayerSpatialEntryParticipant(
+            IRoutePlayerSpatialEntryLifecycleParticipant participant,
+            out string issue)
+        {
+            return _routeLifecycleRuntime.SetPlayerSpatialEntryParticipant(
+                participant,
+                out issue);
+        }
+
         internal void SetPauseActivityBindingLifecycle(
             PauseActivityBindingRuntimeHostModule lifecycle)
         {

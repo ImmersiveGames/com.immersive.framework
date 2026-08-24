@@ -44,8 +44,12 @@ namespace Immersive.Framework.RouteLifecycle
         private readonly EventBus<ActivityReadinessUpdate> _activityReadinessUpdates = new EventBus<ActivityReadinessUpdate>();
         private RouteRuntimeState _currentRouteState;
         private RouteContentDiscoveryScope _currentRouteContentDiscoveryScope;
+        private RoutePlayerSpatialEntryContext _currentPlayerSpatialEntryContext;
         private RouteLifecycleStartResult _currentRouteResult;
         private bool _hasCurrentRouteContext;
+        private int _routeOccurrenceSequence;
+        private IRoutePlayerSpatialEntryLifecycleParticipant
+            _playerSpatialEntryParticipant;
         private ICycleResetParticipantSource _cycleResetParticipantSource = EmptyCycleResetParticipantSource.Instance;
 
         internal RouteLifecycleRuntime(
@@ -145,6 +149,29 @@ namespace Immersive.Framework.RouteLifecycle
         internal void SetActivityContentExecutionParticipantSource(IActivityContentExecutionParticipantSource participantSource)
         {
             _activityFlowRuntime.SetActivityContentExecutionParticipantSource(participantSource);
+        }
+
+        internal bool SetPlayerSpatialEntryParticipant(
+            IRoutePlayerSpatialEntryLifecycleParticipant participant,
+            out string issue)
+        {
+            issue = string.Empty;
+            _playerSpatialEntryParticipant = participant;
+            if (participant == null || !_currentPlayerSpatialEntryContext.IsValid)
+            {
+                return true;
+            }
+
+            if (!participant.TryEnterRouteSpatialEntry(
+                    _currentPlayerSpatialEntryContext,
+                    out issue))
+            {
+                participant.ExitRouteSpatialEntry(_currentPlayerSpatialEntryContext);
+                _playerSpatialEntryParticipant = null;
+                return false;
+            }
+
+            return true;
         }
 
         internal IEventBinding SubscribeActivityReadinessUpdates(Action<ActivityReadinessUpdate> handler)
@@ -300,6 +327,7 @@ namespace Immersive.Framework.RouteLifecycle
             // Scene-authored Activity receivers can then release scoped camera, audio and input
             // state before their targets and rigs are destroyed by Route scene replacement.
             var routeContentExitResult = _routeContentRuntime.ExitRouteContent(_currentRouteContentDiscoveryScope, route, source, reason);
+            ExitCurrentPlayerSpatialEntry();
             _currentRouteContentDiscoveryScope = default;
             _activityFlowRuntime.SetRouteContentDiscoveryScope(default);
 
@@ -393,6 +421,15 @@ namespace Immersive.Framework.RouteLifecycle
             _activityFlowRuntime.SetRouteContentDiscoveryScope(routeContentDiscoveryScope);
             var routeContentEnterResult = _routeContentRuntime.EnterRouteContent(routeContentDiscoveryScope, previousRoute, source, reason);
 
+            var playerSpatialEntryContext = new RoutePlayerSpatialEntryContext(
+                route,
+                _routeOccurrenceSequence + 1,
+                routeContentDiscoveryScope);
+            if (!TryEnterPlayerSpatialEntry(playerSpatialEntryContext, out string playerSpatialEntryIssue))
+            {
+                return RouteLifecycleStartResult.Failed(playerSpatialEntryIssue);
+            }
+
             var startupActivityProgressReporter = FrameworkLoadingProgressReporterUtility.CreateWeightedRangeReporter(
                 progressReporter,
                 routeProgressStepIndex,
@@ -421,6 +458,7 @@ namespace Immersive.Framework.RouteLifecycle
                 "Route transition loading progress completed.");
             if (!startupActivityFlowResult.Completed)
             {
+                ExitCurrentPlayerSpatialEntry();
                 return RouteLifecycleStartResult.Failed(startupActivityFlowResult.Message);
             }
             ActivityFlowStartResult routeStartupActivityFlowResult =
@@ -502,10 +540,50 @@ namespace Immersive.Framework.RouteLifecycle
                 activitySceneRouteReleaseResult);
             _currentRouteState = result.RouteState;
             _currentRouteContentDiscoveryScope = routeContentDiscoveryScope;
+            _currentPlayerSpatialEntryContext = playerSpatialEntryContext;
+            _routeOccurrenceSequence = playerSpatialEntryContext.OccurrenceSequence;
             _currentRouteResult = result;
             _hasCurrentRouteContext = true;
             PublishRouteTransition(previousRoute, route, source, reason);
             return result;
+        }
+
+        private bool TryEnterPlayerSpatialEntry(
+            RoutePlayerSpatialEntryContext context,
+            out string issue)
+        {
+            issue = string.Empty;
+            if (!context.IsValid)
+            {
+                issue = "Route Player spatial entry requires a valid materialized Route occurrence context.";
+                return false;
+            }
+
+            _currentPlayerSpatialEntryContext = context;
+            if (_playerSpatialEntryParticipant == null)
+            {
+                return true;
+            }
+
+            if (_playerSpatialEntryParticipant.TryEnterRouteSpatialEntry(context, out issue))
+            {
+                return true;
+            }
+
+            _playerSpatialEntryParticipant.ExitRouteSpatialEntry(context);
+            _currentPlayerSpatialEntryContext = default;
+            return false;
+        }
+
+        private void ExitCurrentPlayerSpatialEntry()
+        {
+            if (_currentPlayerSpatialEntryContext.IsValid)
+            {
+                _playerSpatialEntryParticipant?.ExitRouteSpatialEntry(
+                    _currentPlayerSpatialEntryContext);
+            }
+
+            _currentPlayerSpatialEntryContext = default;
         }
 
         private static IReadOnlyList<GameObject> ResolveMaterializedRouteSceneRoots(
