@@ -15,7 +15,7 @@ namespace Immersive.Framework.PlayerParticipation
     /// </summary>
     [DisallowMultipleComponent]
     [AddComponentMenu(
-        "Immersive Framework/Player/Local Player Provisioning Authoring")]
+        "Immersive Framework/Player/Provisioning/Authoring")]
     [FrameworkApiStatus(
         FrameworkApiStatus.Experimental,
         "P3G/P3J local Player provisioning authoring, preparation and lifecycle observation surface.")]
@@ -28,7 +28,7 @@ namespace Immersive.Framework.PlayerParticipation
 
         [SerializeField]
         [Tooltip(
-            "Technical prefab created by Manager-Provisioned joins. This must contain PlayerInput and LocalPlayerHostAuthoring; it is not a Logical Actor prefab.")]
+            "Technical Local Player Host prefab created by this provisioning authority when a ManagerProvisioned join is requested. This must contain PlayerInput and LocalPlayerHostAuthoring; it is not a Logical Actor prefab.")]
         private GameObject localPlayerHostPrefab;
 
         [NonSerialized]

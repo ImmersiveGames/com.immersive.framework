@@ -1,6 +1,8 @@
 using System;
 using Immersive.Framework.ApiStatus;
+using Immersive.Framework.Diagnostics;
 using Immersive.Framework.PlayerSlots;
+using Immersive.Logging.Records;
 using UnityEngine;
 
 namespace Immersive.Framework.PlayerParticipation
@@ -163,6 +165,7 @@ namespace Immersive.Framework.PlayerParticipation
             invocationCount++;
             ClearLastResult();
             string resolvedReason = ResolveReason();
+            LogCommandRequested(resolvedReason);
 
             switch (operation)
             {
@@ -195,6 +198,7 @@ namespace Immersive.Framework.PlayerParticipation
                 default:
                     lastDiagnostic =
                         $"Player Provisioning Command Trigger operation '{operation}' is not supported.";
+                    LogCommandRejected(lastDiagnostic);
                     return;
             }
         }
@@ -351,6 +355,7 @@ namespace Immersive.Framework.PlayerParticipation
             {
                 lastDiagnostic =
                     "Request Default Actor Selection was not submitted because its explicit Local Player Actor Selection Requests component is missing.";
+                LogCommandRejected(lastDiagnostic);
                 return;
             }
 
@@ -388,9 +393,11 @@ namespace Immersive.Framework.PlayerParticipation
                     out LocalPlayerProvisioningConsumerObservationSnapshot observation) ||
                 observation == null || !observation.IsAvailable)
             {
+                const string observationIssue =
+                    "Request Leave could not read the current scoped Player observation required to correlate the target occurrence.";
                 Complete(SessionPlayerLeaveResult.RuntimeUnavailable(
                     default,
-                    "Request Leave could not read the current scoped Player observation required to correlate the target occurrence."));
+                    observationIssue));
                 return;
             }
 
@@ -453,6 +460,7 @@ namespace Immersive.Framework.PlayerParticipation
             lastDiagnostic = result != null
                 ? result.ToDiagnosticString()
                 : "Player participation command returned no typed result.";
+            LogCommandCompleted();
         }
 
         private void Complete(LocalPlayerJoinResult result)
@@ -462,6 +470,7 @@ namespace Immersive.Framework.PlayerParticipation
             lastDiagnostic = result != null
                 ? result.ToDiagnosticString()
                 : "Local Player Join returned no typed result.";
+            LogCommandCompleted();
         }
 
         private void Complete(PlayerActorSelectionResult result)
@@ -471,6 +480,7 @@ namespace Immersive.Framework.PlayerParticipation
             lastDiagnostic = result != null
                 ? result.ToDiagnosticString()
                 : "Default Actor selection returned no typed result.";
+            LogCommandCompleted();
         }
 
         private void Complete(SessionPlayerLeaveResult result)
@@ -485,6 +495,7 @@ namespace Immersive.Framework.PlayerParticipation
             lastDiagnostic = result != null
                 ? result.ToDiagnosticString()
                 : "Session Player Leave returned no typed result.";
+            LogCommandCompleted();
         }
 
         private void ClearLastResult()
@@ -512,14 +523,215 @@ namespace Immersive.Framework.PlayerParticipation
                     : lastDiagnostic;
         }
 
+        private void LogCommandRequested(string resolvedReason)
+        {
+            FrameworkLogger.Create(typeof(PlayerProvisioningCommandTrigger))
+                .Info(
+                    "Player provisioning command requested.",
+                    BuildCommandFields("Requested", resolvedReason));
+        }
+
+        private void LogCommandRejected(string issue)
+        {
+            FrameworkLogger.Create(typeof(PlayerProvisioningCommandTrigger))
+                .Warning(
+                    "Player provisioning command rejected before submission.",
+                    BuildCommandFields("Rejected", issue));
+        }
+
+        private void LogCommandCompleted()
+        {
+            string resultStatus = GetLastResultStatus();
+            string outcome = GetLastResultOutcome();
+            LogField[] fields = LogFields.Of(
+                LogFields.Field("component", name),
+                LogFields.Field("scene", gameObject.scene.name),
+                LogFields.Field("operation", operation),
+                LogFields.Field("invocation", invocationCount),
+                LogFields.Field("scope", GetConfiguredScopeLabel()),
+                LogFields.Field("bindingStatus", ScopeBindingStatus),
+                LogFields.Field("resultKind", lastResultKind),
+                LogFields.Field("resultStatus", resultStatus),
+                LogFields.Field("outcome", outcome),
+                LogFields.Field("playerSlot", GetLastResultPlayerSlot()),
+                LogFields.Field("selectedActor", GetLastResultSelectedActor()),
+                LogFields.Field("localPlayerHost", GetLastResultLocalPlayerHost()),
+                LogFields.Field("unityPlayerIndex", GetLastResultUnityPlayerIndex()),
+                LogFields.Field("message", lastDiagnostic ?? string.Empty));
+
+            FrameworkLogger logger =
+                FrameworkLogger.Create(typeof(PlayerProvisioningCommandTrigger));
+            if (string.Equals(outcome, "Succeeded", StringComparison.Ordinal) ||
+                string.Equals(outcome, "IgnoredNoChange", StringComparison.Ordinal))
+            {
+                logger.Info("Player provisioning command completed.", fields);
+                return;
+            }
+
+            logger.Warning("Player provisioning command completed without success.", fields);
+        }
+
+        private string GetLastResultStatus()
+        {
+            return lastResultKind switch
+            {
+                PlayerProvisioningCommandResultKind.ParticipationOperation =>
+                    lastParticipationResult != null
+                        ? lastParticipationResult.Status.ToString()
+                        : "Missing",
+                PlayerProvisioningCommandResultKind.LocalPlayerJoin =>
+                    lastJoinResult != null
+                        ? lastJoinResult.Status.ToString()
+                        : "Missing",
+                PlayerProvisioningCommandResultKind.ActorSelection =>
+                    lastActorSelectionResult != null
+                        ? lastActorSelectionResult.Status.ToString()
+                        : "Missing",
+                PlayerProvisioningCommandResultKind.SessionPlayerLeave =>
+                    lastLeaveResult != null
+                        ? lastLeaveResult.Status.ToString()
+                        : "Missing",
+                _ => "None"
+            };
+        }
+
+        private string GetLastResultOutcome()
+        {
+            switch (lastResultKind)
+            {
+                case PlayerProvisioningCommandResultKind.ParticipationOperation:
+                    if (lastParticipationResult == null) return "Missing";
+                    if (lastParticipationResult.Succeeded) return "Succeeded";
+                    if (lastParticipationResult.IgnoredNoChange) return "IgnoredNoChange";
+                    if (lastParticipationResult.Failed) return "Failed";
+                    if (lastParticipationResult.Rejected) return "Rejected";
+                    return "Incomplete";
+
+                case PlayerProvisioningCommandResultKind.LocalPlayerJoin:
+                    if (lastJoinResult == null) return "Missing";
+                    if (lastJoinResult.Succeeded) return "Succeeded";
+                    if (lastJoinResult.Failed) return "Failed";
+                    if (lastJoinResult.Rejected) return "Rejected";
+                    return "Incomplete";
+
+                case PlayerProvisioningCommandResultKind.ActorSelection:
+                    if (lastActorSelectionResult == null) return "Missing";
+                    return lastActorSelectionResult.Succeeded
+                        ? "Succeeded"
+                        : lastActorSelectionResult.Rejected
+                            ? "Rejected"
+                            : "Incomplete";
+
+                case PlayerProvisioningCommandResultKind.SessionPlayerLeave:
+                    if (lastLeaveResult == null) return "Missing";
+                    if (lastLeaveResult.Succeeded) return "Succeeded";
+                    if (lastLeaveResult.Failed) return "Failed";
+                    if (lastLeaveResult.Rejected) return "Rejected";
+                    return "Incomplete";
+
+                default:
+                    return "None";
+            }
+        }
+
+        private string GetLastResultPlayerSlot()
+        {
+            if (lastParticipationResult != null &&
+                lastParticipationResult.Slot.PlayerSlotId.IsValid)
+            {
+                return lastParticipationResult.Slot.PlayerSlotId.StableText;
+            }
+
+            if (lastJoinResult != null && lastJoinResult.Slot.PlayerSlotId.IsValid)
+            {
+                return lastJoinResult.Slot.PlayerSlotId.StableText;
+            }
+
+            if (lastActorSelectionResult != null &&
+                lastActorSelectionResult.PlayerSlotId.IsValid)
+            {
+                return lastActorSelectionResult.PlayerSlotId.StableText;
+            }
+
+            if (lastLeaveResult != null)
+            {
+                if (lastLeaveResult.Slot.PlayerSlotId.IsValid)
+                {
+                    return lastLeaveResult.Slot.PlayerSlotId.StableText;
+                }
+
+                if (lastLeaveResult.Request.PlayerSlotId.IsValid)
+                {
+                    return lastLeaveResult.Request.PlayerSlotId.StableText;
+                }
+            }
+
+            return string.Empty;
+        }
+
+        private string GetLastResultSelectedActor()
+        {
+            return lastActorSelectionResult != null &&
+                lastActorSelectionResult.SelectedActorProfileId.IsValid
+                    ? lastActorSelectionResult.SelectedActorProfileId.StableText
+                    : string.Empty;
+        }
+
+        private string GetLastResultLocalPlayerHost()
+        {
+            return lastJoinResult != null && lastJoinResult.LocalPlayerHost != null
+                ? lastJoinResult.LocalPlayerHost.name
+                : string.Empty;
+        }
+
+        private int GetLastResultUnityPlayerIndex()
+        {
+            return lastJoinResult != null ? lastJoinResult.UnityPlayerIndex : -1;
+        }
+
+        private LogField[] BuildCommandFields(string status, string message)
+        {
+            return LogFields.Of(
+                LogFields.Field("component", name),
+                LogFields.Field("scene", gameObject.scene.name),
+                LogFields.Field("status", status),
+                LogFields.Field("operation", operation),
+                LogFields.Field("invocation", invocationCount),
+                LogFields.Field("scope", GetConfiguredScopeLabel()),
+                LogFields.Field("bindingStatus", ScopeBindingStatus),
+                LogFields.Field("controlScheme", controlScheme ?? string.Empty),
+                LogFields.Field("selectedPlayerSlot", selectedPlayerSlot != null ? selectedPlayerSlot.name : string.Empty),
+                LogFields.Field("selectedPlayerSlotId", GetPlayerSlotId(selectedPlayerSlot)),
+                LogFields.Field("leavePlayerSlot", leavePlayerSlot != null ? leavePlayerSlot.name : string.Empty),
+                LogFields.Field("leavePlayerSlotId", GetPlayerSlotId(leavePlayerSlot)),
+                LogFields.Field("expectedSelectionRevision", expectedSelectionRevision),
+                LogFields.Field("expectedLeaveOccurrenceRevision", expectedLeaveOccurrenceRevision),
+                LogFields.Field("message", message ?? string.Empty));
+        }
+
+        private static string GetPlayerSlotId(PlayerSlotProfile profile)
+        {
+            return profile != null &&
+                profile.TryGetPlayerSlotId(out PlayerSlotId playerSlotId, out _) &&
+                playerSlotId.IsValid
+                    ? playerSlotId.StableText
+                    : string.Empty;
+        }
+
+        private string GetConfiguredScopeLabel()
+        {
+            return consumerAccessBinding != null
+                ? consumerAccessBinding.Scope.ToString()
+                : "Missing";
+        }
+
         private static bool IsDefinedOperation(
             PlayerProvisioningCommandOperation value)
         {
             return value == PlayerProvisioningCommandOperation.OpenJoining ||
                 value == PlayerProvisioningCommandOperation.CloseJoining ||
                 value == PlayerProvisioningCommandOperation.RequestJoin ||
-                value == PlayerProvisioningCommandOperation
-                    .RequestDefaultActorSelection ||
+                value == PlayerProvisioningCommandOperation.RequestDefaultActorSelection ||
                 value == PlayerProvisioningCommandOperation.RequestLeave;
         }
     }

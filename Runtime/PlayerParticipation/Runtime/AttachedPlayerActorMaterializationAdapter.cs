@@ -210,7 +210,8 @@ namespace Immersive.Framework.PlayerParticipation
                         "Logical Player Actor prefab instantiation returned null.");
                 }
 
-                logicalActorHost.name = actorProfile.LogicalActorHostPrefab.name;
+                logicalActorHost.name =
+                    $"Player {slot.ConfiguredIndex + 1} [{slot.PlayerSlotId.StableText}] — {actorProfile.DisplayName}";
                 logicalActorHost.SetActive(false);
                 logicalActorHost.transform.SetParent(localPlayerHost.ActorMount, false);
                 DestroyObject(stagingRoot);

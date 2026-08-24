@@ -2,6 +2,7 @@ using Immersive.Framework.Editor.Common;
 using Immersive.Framework.PlayerParticipation;
 using UnityEditor;
 using UnityEngine;
+
 namespace Immersive.Framework.Editor.PlayerParticipation
 {
     [CustomEditor(typeof(PlayerProvisioningCommandTrigger))]
@@ -48,7 +49,7 @@ namespace Immersive.Framework.Editor.PlayerParticipation
                 "Player Provisioning Command Trigger",
                 "Invokes one supported Player command only when called by a Button, UnityEvent or other explicit consumer action.");
             FrameworkAuthoringInspectorGui.IntentSummary(
-                "This component has no automatic Awake, OnEnable, Start or OnValidate command path.");
+                "Runtime request, binding, result and rejection evidence is written to the Console. No automatic lifecycle command path exists.");
 
             FrameworkAuthoringInspectorGui.Section("Command");
             EditorGUILayout.PropertyField(
@@ -62,16 +63,11 @@ namespace Immersive.Framework.Editor.PlayerParticipation
                 _consumerAccessBinding,
                 new GUIContent(
                     "Consumer Access Binding",
-                    "Explicit Route or Activity scoped P1 access. This is not a Player authority reference."));
+                    "Explicit Route or Activity scoped access. This is not a Player authority reference."));
 
             DrawOperationParameters();
 
             FrameworkAuthoringInspectorGui.Section("Request Metadata");
-            using (new EditorGUI.DisabledScope(true))
-            {
-                EditorGUILayout.TextField("Source", nameof(PlayerProvisioningCommandTrigger));
-            }
-
             EditorGUILayout.PropertyField(
                 _reason,
                 new GUIContent(
@@ -80,12 +76,15 @@ namespace Immersive.Framework.Editor.PlayerParticipation
 
             DrawActions(trigger);
             DrawConfigurationStatus(trigger);
-            DrawRuntimeEvidence(trigger);
 
-            _showAdvanced = FrameworkAuthoringInspectorGui.AdvancedFoldout(_showAdvanced);
-            if (_showAdvanced)
+            if ((PlayerProvisioningCommandOperation)_operation.intValue ==
+                PlayerProvisioningCommandOperation.RequestLeave)
             {
-                DrawAdvanced(trigger);
+                _showAdvanced = FrameworkAuthoringInspectorGui.AdvancedFoldout(_showAdvanced);
+                if (_showAdvanced)
+                {
+                    DrawLeaveAdvanced();
+                }
             }
 
             if (EditorGUI.EndChangeCheck())
@@ -108,11 +107,10 @@ namespace Immersive.Framework.Editor.PlayerParticipation
                         _controlScheme,
                         new GUIContent(
                             "Control Scheme Hint",
-                            "Optional input hint forwarded to the existing LocalPlayerJoinRequest."));
+                            "Optional input hint forwarded to the Local Player Join request."));
                     break;
 
-                case PlayerProvisioningCommandOperation
-                    .RequestDefaultActorSelection:
+                case PlayerProvisioningCommandOperation.RequestDefaultActorSelection:
                     FrameworkAuthoringInspectorGui.Section(
                         "Request Default Actor Selection");
                     EditorGUILayout.PropertyField(
@@ -140,7 +138,7 @@ namespace Immersive.Framework.Editor.PlayerParticipation
                             "Player Slot Profile",
                             "Exact Player target. The current joined occurrence revision is resolved from the same scoped observation when invoked."));
                     EditorGUILayout.HelpBox(
-                        "Leave always targets an explicit Player Slot. With the Advanced occurrence override at -1, the trigger captures the current joined occurrence and reuses that exact correlation if the same Leave must be retried.",
+                        "Leave always targets an explicit Player Slot. With the Advanced occurrence override at -1, the trigger resolves the current joined occurrence from scoped observation.",
                         MessageType.None);
                     break;
             }
@@ -158,7 +156,8 @@ namespace Immersive.Framework.Editor.PlayerParticipation
                     if (trigger.TryValidateConfiguration(out _validationMessage))
                     {
                         _validationType = MessageType.Info;
-                        _validationMessage = "Configuration is valid. Runtime scope availability is checked only when explicitly invoked.";
+                        _validationMessage =
+                            "Configuration is valid. Runtime scope availability is checked only when explicitly invoked.";
                     }
                     else
                     {
@@ -191,7 +190,7 @@ namespace Immersive.Framework.Editor.PlayerParticipation
             if (trigger.TryValidateConfiguration(out string issue))
             {
                 EditorGUILayout.HelpBox(
-                    "Not validated in this Inspector session. The current authored configuration is structurally valid.",
+                    "The current authored configuration is structurally valid.",
                     MessageType.None);
             }
             else
@@ -200,93 +199,14 @@ namespace Immersive.Framework.Editor.PlayerParticipation
             }
         }
 
-        private static void DrawRuntimeEvidence(
-            PlayerProvisioningCommandTrigger trigger)
+        private void DrawLeaveAdvanced()
         {
-            if (!Application.isPlaying || !trigger)
-            {
-                return;
-            }
-
-            FrameworkAuthoringInspectorGui.RuntimeBinding(
-                trigger.ScopeBindingStatus,
-                trigger.ScopeBindingDiagnostic,
-                "Place the Consumer Access Binding in the active Route or Activity scope, and ensure its scope matches that content.");
-            FrameworkAuthoringInspectorGui.Section("Last Typed Result");
-            EditorGUILayout.LabelField("Invocations", trigger.InvocationCount.ToString());
-            EditorGUILayout.LabelField("Result Contract", trigger.LastResultKind.ToString());
-            EditorGUILayout.HelpBox(
-                trigger.LastResultSummary,
-                trigger.HasLastTypedResult ? MessageType.Info : MessageType.Warning);
-        }
-
-        private void DrawAdvanced(PlayerProvisioningCommandTrigger trigger)
-        {
-            using (new EditorGUI.DisabledScope(true))
-            {
-                EditorGUILayout.EnumPopup("Operation", trigger.Operation);
-                EditorGUILayout.TextField("Scope Binding", trigger.ScopeBindingStatus);
-                EditorGUILayout.TextField("Scope Diagnostic", trigger.ScopeBindingDiagnostic);
-                EditorGUILayout.EnumPopup("Last Result Contract", trigger.LastResultKind);
-            }
-
-            if ((PlayerProvisioningCommandOperation)_operation.intValue ==
-                PlayerProvisioningCommandOperation.RequestLeave)
-            {
-                FrameworkAuthoringInspectorGui.Section("Leave Correlation Override");
-                EditorGUILayout.PropertyField(
-                    _expectedLeaveOccurrenceRevision,
-                    new GUIContent(
-                        "Expected Occurrence Revision",
-                        "Advanced/debug only. -1 resolves the current joined occurrence from scoped observation; a non-negative value sends that exact revision."));
-            }
-
-            if (!Application.isPlaying || !trigger)
-            {
-                EditorGUILayout.HelpBox(
-                    "Runtime result and scope correlation are available in Play Mode for one selected trigger.",
-                    MessageType.None);
-                return;
-            }
-
-            if (trigger.LastLeaveRequest.IsValid)
-            {
-                FrameworkAuthoringInspectorGui.Section("Last Leave Correlation");
-                using (new EditorGUI.DisabledScope(true))
-                {
-                    EditorGUILayout.TextField(
-                        "Player Slot",
-                        trigger.LastLeaveRequest.PlayerSlotId.StableText);
-                    EditorGUILayout.IntField(
-                        "Expected Occurrence Revision",
-                        trigger.LastLeaveRequest.ExpectedOccurrenceRevision);
-                }
-            }
-
-            if (trigger.LastParticipationResult != null)
-            {
-                EditorGUILayout.TextArea(
-                    trigger.LastParticipationResult.ToDiagnosticString(),
-                    GUILayout.MinHeight(48f));
-            }
-            else if (trigger.LastJoinResult != null)
-            {
-                EditorGUILayout.TextArea(
-                    trigger.LastJoinResult.ToDiagnosticString(),
-                    GUILayout.MinHeight(48f));
-            }
-            else if (trigger.LastActorSelectionResult != null)
-            {
-                EditorGUILayout.TextArea(
-                    trigger.LastActorSelectionResult.ToDiagnosticString(),
-                    GUILayout.MinHeight(48f));
-            }
-            else if (trigger.LastLeaveResult != null)
-            {
-                EditorGUILayout.TextArea(
-                    trigger.LastLeaveResult.ToDiagnosticString(),
-                    GUILayout.MinHeight(64f));
-            }
+            FrameworkAuthoringInspectorGui.Section("Leave Correlation Override");
+            EditorGUILayout.PropertyField(
+                _expectedLeaveOccurrenceRevision,
+                new GUIContent(
+                    "Expected Occurrence Revision",
+                    "Advanced/debug authoring input. -1 resolves the current joined occurrence from scoped observation; a non-negative value sends that exact revision."));
         }
     }
 }

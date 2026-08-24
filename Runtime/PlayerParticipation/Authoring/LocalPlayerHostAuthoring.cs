@@ -17,7 +17,7 @@ namespace Immersive.Framework.PlayerParticipation
     [DisallowMultipleComponent]
     [RequireComponent(typeof(PlayerInput))]
     [AddComponentMenu("Immersive Framework/Player/Local Player Host Authoring")]
-    [FrameworkApiStatus(FrameworkApiStatus.Stable, "Stable Scene-Provided local Player product surface. Manager-Provisioned and Session-Persistent remain Experimental.")]
+    [FrameworkApiStatus(FrameworkApiStatus.Stable, "Stable Local Player Host surface. Scene-authored admission is Stable; manager provisioning and Session-Persistent remain Experimental.")]
     public sealed class LocalPlayerHostAuthoring : MonoBehaviour
     {
         private enum AdmissionState

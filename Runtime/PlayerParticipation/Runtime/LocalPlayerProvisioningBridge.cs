@@ -353,6 +353,12 @@ namespace Immersive.Framework.PlayerParticipation
                     $"Local Player Host commit threw '{exception.GetType().Name}': {exception.Message}");
             }
 
+            string slotDisplayName =
+                commitResult.Slot.Profile.DisplayName.NormalizeTextOrFallback("Player Slot");
+            string slotId = commitResult.Slot.PlayerSlotId.Value.Value;
+            localPlayerHost.gameObject.name =
+                $"{slotDisplayName} [{slotId}] — Local Player Host";
+
             LocalPlayerJoinCallbackConfirmation callbackConfirmation =
                 pendingJoin.CallbackConfirmation;
             callbackConfirmations[operationId] = callbackConfirmation;

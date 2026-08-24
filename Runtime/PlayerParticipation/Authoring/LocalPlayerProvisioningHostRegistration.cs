@@ -10,7 +10,7 @@ namespace Immersive.Framework.PlayerParticipation
     /// </summary>
     [DisallowMultipleComponent]
     [AddComponentMenu(
-        "Immersive Framework/Player/Local Player Provisioning Host Registration")]
+        "Immersive Framework/Player/Provisioning/Host Registration")]
     [FrameworkApiStatus(
         FrameworkApiStatus.Experimental,
         "Explicit UIGlobal registration for Local Player provisioning bootstrap composition.")]

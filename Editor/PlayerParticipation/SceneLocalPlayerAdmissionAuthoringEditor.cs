@@ -13,12 +13,12 @@ namespace Immersive.Framework.Editor.PlayerParticipation
         private static readonly GUIContent PlayerSlotLabel =
             new GUIContent(
                 "Player Slot",
-                "Exact configured Session Player Slot admitted by this Scene-Provided Player.");
+                "Exact configured Session Player Slot admitted by this Scene Local Player.");
 
         private static readonly GUIContent ActorProfileLabel =
             new GUIContent(
                 "Actor Profile",
-                "Player / Protagonist Actor Profile. Its Logical Actor Host prefab is the authored prefab authority for this Scene-Provided Player.");
+                "Player / Protagonist Actor Profile. Its Logical Actor Host prefab is the authored prefab authority for this Scene Local Player.");
 
         private static readonly GUIContent AdmissionTimingLabel =
             new GUIContent(
@@ -67,7 +67,7 @@ namespace Immersive.Framework.Editor.PlayerParticipation
 
             EditorGUILayout.LabelField(
                 new GUIContent(
-                    "Scene-Provided Local Player",
+                    "Scene Local Player",
                     "Authors one local Player already present in the Scene. Player Slot and Actor Profile define admission intent; Apply / Rebuild materializes the exact Actor composition under the same-root Local Player Host."),
                 EditorStyles.boldLabel);
 
@@ -83,11 +83,11 @@ namespace Immersive.Framework.Editor.PlayerParticipation
             {
                 Undo.RecordObject(
                     authoring,
-                    "Invalidate Scene-Provided Player Configuration");
+                    "Invalidate Scene Local Player Configuration");
 
                 authoring.EditorSetAuthoringResult(
                     SceneLocalPlayerAdmissionAuthoringStatus.NotValidated,
-                    "Scene-Provided Player configuration changed. Run Apply / Rebuild and Validate.");
+                    "Scene Local Player configuration changed. Run Apply / Rebuild and Validate.");
 
                 EditorUtility.SetDirty(authoring);
                 PrefabUtility.RecordPrefabInstancePropertyModifications(
@@ -179,7 +179,7 @@ namespace Immersive.Framework.Editor.PlayerParticipation
             EditorGUILayout.HelpBox(
                 string.IsNullOrWhiteSpace(
                     authoring.LastAuthoringDiagnostic)
-                    ? "The Scene-Provided Player configuration is invalid."
+                    ? "The Scene Local Player configuration is invalid."
                     : authoring.LastAuthoringDiagnostic,
                 MessageType.Error);
         }
@@ -233,7 +233,7 @@ namespace Immersive.Framework.Editor.PlayerParticipation
                 EditorGUILayout.LabelField(
                     new GUIContent(
                         "Admission",
-                        "Whether this Scene-Provided Player currently owns an active admission."),
+                        "Whether this Scene Local Player currently owns an active admission."),
                     new GUIContent(
                         authoring.HasActiveAdmission
                             ? "Admitted"

@@ -15,8 +15,8 @@ namespace Immersive.Framework.PlayerParticipation
     /// </summary>
     [DisallowMultipleComponent]
     [RequireComponent(typeof(LocalPlayerHostAuthoring))]
-    [AddComponentMenu("Immersive Framework/Player/Scene-Provided Player Composer")]
-    [FrameworkApiStatus(FrameworkApiStatus.Stable, "Stable Scene-Provided local Player product surface. Manager-Provisioned and Session-Persistent remain Experimental.")]
+    [AddComponentMenu("Immersive Framework/Player/Scene/Admission")]
+    [FrameworkApiStatus(FrameworkApiStatus.Stable, "Stable Scene Local Player admission surface. Manager provisioning and Session-Persistent remain Experimental.")]
     public sealed class SceneLocalPlayerAdmissionAuthoring : MonoBehaviour
     {
         [SerializeField]
@@ -24,7 +24,7 @@ namespace Immersive.Framework.PlayerParticipation
         private PlayerSlotProfile playerSlotProfile;
 
         [SerializeField]
-        [Tooltip("Exact Actor Profile selected for this Scene-Provided Player.")]
+        [Tooltip("Exact Actor Profile selected for this Scene Local Player.")]
         private ActorProfile actorProfile;
 
         [SerializeField]
@@ -50,7 +50,7 @@ namespace Immersive.Framework.PlayerParticipation
 
         [SerializeField, HideInInspector]
         private string lastAuthoringDiagnostic =
-            "Scene-Provided Player has not been validated.";
+            "Scene Local Player has not been validated.";
 
         [NonSerialized]
         private SceneLocalPlayerAdmissionRuntimeHostModule runtimeModule;
@@ -60,7 +60,7 @@ namespace Immersive.Framework.PlayerParticipation
 
         [NonSerialized]
         private string runtimeDiagnostic =
-            "Scene-Provided Player runtime is not bound.";
+            "Scene Local Player runtime is not bound.";
 
         [NonSerialized]
         private ScenePlayerActorAdoptionResult lastActorAdoptionResult;
@@ -149,7 +149,7 @@ namespace Immersive.Framework.PlayerParticipation
             {
                 playerSlotId = default;
                 issue =
-                    "Scene-Provided Player requires an explicit Player Slot Profile.";
+                    "Scene Local Player requires an explicit Player Slot Profile.";
                 return false;
             }
 
@@ -167,7 +167,7 @@ namespace Immersive.Framework.PlayerParticipation
             if (!HasCompleteReferences)
             {
                 issue =
-                    "Scene-Provided Player requires Player Slot Profile, same-root Local Player Host, Actor Profile and Scene Logical Player Actor.";
+                    "Scene Local Player requires Player Slot Profile, same-root Local Player Host, Actor Profile and Scene Logical Player Actor.";
                 return false;
             }
 
@@ -176,7 +176,7 @@ namespace Immersive.Framework.PlayerParticipation
                     admissionTiming))
             {
                 issue =
-                    $"Scene-Provided Player has invalid Admission Timing '{admissionTiming}'.";
+                    $"Scene Local Player has invalid Admission Timing '{admissionTiming}'.";
                 return false;
             }
 
@@ -220,14 +220,14 @@ namespace Immersive.Framework.PlayerParticipation
             if (!HasTypedActorEvidence)
             {
                 issue =
-                    "Scene-Provided Player requires serialized Actor Profile evidence. Run Apply / Rebuild in the Inspector.";
+                    "Scene Local Player requires serialized Actor Profile evidence. Run Apply / Rebuild in the Inspector.";
                 return false;
             }
 
             if (!IsTypedActorEvidenceCompatibleWith(actorProfile))
             {
                 issue =
-                    "Scene-Provided Player evidence does not match the selected Actor Profile and its Logical Actor Host prefab.";
+                    "Scene Local Player evidence does not match the selected Actor Profile and its Logical Actor Host prefab.";
                 return false;
             }
 
@@ -322,7 +322,7 @@ namespace Immersive.Framework.PlayerParticipation
                 !ReferenceEquals(runtimeModule, module))
             {
                 throw new InvalidOperationException(
-                    "Scene-Provided Player is already bound to another Session runtime module.");
+                    "Scene Local Player is already bound to another Session runtime module.");
             }
 
             runtimeModule = module;
@@ -341,7 +341,7 @@ namespace Immersive.Framework.PlayerParticipation
 
             runtimeDiagnostic =
                 string.IsNullOrWhiteSpace(diagnostic)
-                    ? "Scene-Provided Player runtime is not bound."
+                    ? "Scene Local Player runtime is not bound."
                     : diagnostic.Trim();
         }
 

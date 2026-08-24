@@ -1,5 +1,7 @@
 using System;
 using Immersive.Framework.ApiStatus;
+using Immersive.Framework.Diagnostics;
+using Immersive.Logging.Records;
 using UnityEngine;
 
 namespace Immersive.Framework.PlayerParticipation
@@ -87,6 +89,7 @@ namespace Immersive.Framework.PlayerParticipation
                     bindingState =
                         LocalPlayerProvisioningConsumerBindingState.Released;
                 }
+
                 resolvedAccess = null;
                 return false;
             }
@@ -107,6 +110,8 @@ namespace Immersive.Framework.PlayerParticipation
                 diagnostic = issue;
                 bindingState =
                     LocalPlayerProvisioningConsumerBindingState.Unavailable;
+                LogBindingWarning("Player provisioning consumer access binding rejected.",
+                    "InvalidAuthoredScope", actualScope, issue);
                 return false;
             }
 
@@ -117,6 +122,8 @@ namespace Immersive.Framework.PlayerParticipation
                 diagnostic = issue;
                 bindingState =
                     LocalPlayerProvisioningConsumerBindingState.Unavailable;
+                LogBindingDebug("Player provisioning consumer access binding skipped.",
+                    "ScopeMismatch", actualScope, issue);
                 return false;
             }
 
@@ -128,6 +135,8 @@ namespace Immersive.Framework.PlayerParticipation
                 diagnostic = issue;
                 bindingState =
                     LocalPlayerProvisioningConsumerBindingState.Unavailable;
+                LogBindingWarning("Player provisioning consumer access binding rejected.",
+                    "AccessUnavailable", actualScope, issue);
                 return false;
             }
 
@@ -136,25 +145,59 @@ namespace Immersive.Framework.PlayerParticipation
                 issue =
                     "Local Player provisioning consumer binding is already bound to a different live scope.";
                 diagnostic = issue;
+                LogBindingWarning("Player provisioning consumer access binding rejected.",
+                    "AlreadyBound", actualScope, issue);
                 return false;
             }
+
+            bool wasAlreadyBound = ReferenceEquals(access, scopedAccess) &&
+                bindingState == LocalPlayerProvisioningConsumerBindingState.Bound;
 
             access = scopedAccess;
             diagnostic = scopedAccess.Snapshot.Diagnostic;
             bindingState = LocalPlayerProvisioningConsumerBindingState.Bound;
             issue = string.Empty;
+
+            if (wasAlreadyBound)
+            {
+                LogBindingTrace("Player provisioning consumer access binding is already current.",
+                    "Idempotent", actualScope, diagnostic);
+            }
+            else
+            {
+                LogBindingDebug("Player provisioning consumer access bound.",
+                    "Bound", actualScope, diagnostic);
+            }
+
             return true;
         }
 
         internal void Release(string reason, bool isStale = false)
         {
-            access = null;
-            diagnostic = string.IsNullOrWhiteSpace(reason)
+            string resolvedReason = string.IsNullOrWhiteSpace(reason)
                 ? UnboundDiagnostic
                 : reason.Trim();
-            bindingState = isStale
+            LocalPlayerProvisioningConsumerBindingState nextState = isStale
                 ? LocalPlayerProvisioningConsumerBindingState.Released
                 : LocalPlayerProvisioningConsumerBindingState.Unavailable;
+            bool changed = access != null ||
+                bindingState != nextState ||
+                !string.Equals(diagnostic, resolvedReason, StringComparison.Ordinal);
+
+            access = null;
+            diagnostic = resolvedReason;
+            bindingState = nextState;
+
+            if (!changed)
+            {
+                return;
+            }
+
+            LogBindingDebug(
+                "Player provisioning consumer access released.",
+                isStale ? "StaleReleased" : "Released",
+                scope,
+                resolvedReason);
         }
 
         private string GetUnboundDiagnostic()
@@ -166,11 +209,68 @@ namespace Immersive.Framework.PlayerParticipation
 
         private void OnDestroy()
         {
+            bool hadLiveBinding = access != null ||
+                bindingState == LocalPlayerProvisioningConsumerBindingState.Bound;
+
             access = null;
             diagnostic =
                 "Local Player provisioning consumer binding was destroyed; any previous scoped access is invalid.";
             bindingState =
                 LocalPlayerProvisioningConsumerBindingState.Released;
+
+            if (hadLiveBinding)
+            {
+                LogBindingDebug(
+                    "Player provisioning consumer access released because its binding component was destroyed.",
+                    "Destroyed",
+                    scope,
+                    diagnostic);
+            }
+        }
+
+        private void LogBindingTrace(
+            string message,
+            string status,
+            LocalPlayerProvisioningConsumerScope runtimeScope,
+            string reason)
+        {
+            FrameworkLogger.Create(typeof(LocalPlayerProvisioningConsumerAccessBinding))
+                .Trace(message, BuildBindingFields(status, runtimeScope, reason));
+        }
+
+        private void LogBindingDebug(
+            string message,
+            string status,
+            LocalPlayerProvisioningConsumerScope runtimeScope,
+            string reason)
+        {
+            FrameworkLogger.Create(typeof(LocalPlayerProvisioningConsumerAccessBinding))
+                .Debug(message, BuildBindingFields(status, runtimeScope, reason));
+        }
+
+        private void LogBindingWarning(
+            string message,
+            string status,
+            LocalPlayerProvisioningConsumerScope runtimeScope,
+            string reason)
+        {
+            FrameworkLogger.Create(typeof(LocalPlayerProvisioningConsumerAccessBinding))
+                .Warning(message, BuildBindingFields(status, runtimeScope, reason));
+        }
+
+        private LogField[] BuildBindingFields(
+            string status,
+            LocalPlayerProvisioningConsumerScope runtimeScope,
+            string reason)
+        {
+            return LogFields.Of(
+                LogFields.Field("component", name),
+                LogFields.Field("scene", gameObject.scene.name),
+                LogFields.Field("status", status),
+                LogFields.Field("authoredScope", scope),
+                LogFields.Field("runtimeScope", runtimeScope),
+                LogFields.Field("bindingState", bindingState),
+                LogFields.Field("message", reason ?? string.Empty));
         }
     }
 }

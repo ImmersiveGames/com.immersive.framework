@@ -9,20 +9,20 @@ using UnityEngine.InputSystem;
 namespace Immersive.Framework.Editor.PlayerParticipation
 {
     /// <summary>
-    /// Canonical Editor creation surface for one Scene-Provided Local Player.
+    /// Canonical Editor creation surface for one Scene Local Player.
     /// It creates and wires only the deterministic technical composition required
     /// before consumer-authored Slot, Actor and Input Action intent is assigned.
     /// </summary>
     [FrameworkApiStatus(
         FrameworkApiStatus.DevelopmentTooling,
-        "Canonical Editor create action for the Scene-Provided Local Player product composition.")]
+        "Canonical Editor create action for the Scene Local Player composition.")]
     public static class SceneProvidedLocalPlayerCreator
     {
         private const string MenuPath =
-            "GameObject/Immersive Framework/Player/Create Scene-Provided Local Player";
+            "GameObject/Immersive Framework/Player/Scene/Create Local Player";
 
         private const string UndoName =
-            "Create Scene-Provided Local Player";
+            "Create Scene Local Player";
 
         [MenuItem(MenuPath, false, 10)]
         private static void CreateFromMenu(MenuCommand command)
@@ -44,7 +44,7 @@ namespace Immersive.Framework.Editor.PlayerParticipation
             if (EditorApplication.isPlayingOrWillChangePlaymode)
             {
                 throw new InvalidOperationException(
-                    "Scene-Provided Local Player authoring is unavailable while entering or running Play Mode.");
+                    "Scene Local Player authoring is unavailable while entering or running Play Mode.");
             }
 
             Undo.IncrementCurrentGroup();
@@ -54,7 +54,7 @@ namespace Immersive.Framework.Editor.PlayerParticipation
             try
             {
                 var root =
-                    new GameObject("Scene-Provided Local Player");
+                    new GameObject("Scene Local Player");
 
                 if (parent != null)
                 {
