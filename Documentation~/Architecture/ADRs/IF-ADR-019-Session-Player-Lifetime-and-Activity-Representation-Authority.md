@@ -8,6 +8,7 @@ Type: architecture / runtime authority / player product direction
 Related decisions: IF-ADR-001, IF-ADR-003, IF-ADR-007, IF-ADR-011, IF-ADR-012, IF-ADR-015, IF-ADR-016, IF-ADR-020, IF-ADR-021  
 Reopen record: [2026-08-14 Player Physical Lifetime Reopen](../Reconciliation/IMMERSIVE-FRAMEWORK-PLAYER-PHYSICAL-LIFETIME-REOPEN-2026-08-14.md)  
 Closure record: [2026-08-15 Player Physical Lifetime Recertification](../Reconciliation/IMMERSIVE-FRAMEWORK-PLAYER-PHYSICAL-LIFETIME-RECERTIFICATION-2026-08-15.md)
+Initial Placement reconciliation: [2026-08-23 Player Authority and Initial Placement](../Reconciliation/IF-ADR-021-Player-Authority-and-Initial-Placement-Reconciliation-2026-08-23.md)
 
 ## Context
 
@@ -88,6 +89,11 @@ Activity-owned RuntimeContent scope while the Activity is current
 ```
 
 Activity does not own terminal physical Player lifetime.
+
+IF-ADR-021 keeps placement separate: Route owns baseline spatial-entry intent for
+the current Route occurrence, while Activity may own opt-in contextual relocation.
+Neither creates a new Player occurrence, changes Session physical lifetime, or turns
+an Activity transition into Join, Leave or recreation.
 
 ### 4. Physical Player occurrence and Activity representation occurrence are different
 

@@ -1,6 +1,6 @@
 # Immersive Framework Architecture Documentation
 
-Last updated: **2026-08-17**
+Last updated: **2026-08-23**
 
 ## Normative architecture
 
@@ -44,6 +44,28 @@ Terminal certification:
 PLAYER QA CERTIFIED
 25/25
 ```
+
+### Initial Placement discovery / scene authority
+
+Current reconciliation authority:
+
+[IF-ADR-021 — Player Authority and Initial Placement Reconciliation — 2026-08-23](Reconciliation/IF-ADR-021-Player-Authority-and-Initial-Placement-Reconciliation-2026-08-23.md)
+
+Frozen authority matrix:
+
+```text
+Session owns Player provisioning and admitted physical lifetime.
+Route owns the Primary Scene, Route composition and baseline spatial-entry intent.
+Activity owns contextual participation/readiness/representation, optional content and optional explicit relocation.
+ActivityContentProfile remains optional.
+```
+
+IF-ADR-021 accepts Model B: Route owns baseline spatial entry for the current Route
+occurrence; Activity owns only opt-in explicit contextual relocation. Route placement
+is exact by `RouteId + PlayerSlotId`; Activity relocation is exact by
+`ActivityId + PlayerSlotId`. The Primary Scene remains Route-owned. Historical
+implementation/QA is preserved, while the reconciled spatial delta remains pending
+runtime implementation and replacement QA.
 
 ### Camera Presentation / materialization
 
@@ -210,9 +232,9 @@ an explicit migration decision for breaking changes to Stable consumer surfaces.
 - IF-ADR-012 — Accepted baseline / implemented.
 - IF-ADR-015 — Accepted baseline / current public consumer surface implemented.
 - IF-ADR-016 — Accepted baseline / current Session initial configuration implemented.
-- IF-ADR-019 — Proposed / not implementation authority for the accepted Stage B baseline.
-- IF-ADR-020 — Proposed / not implementation authority for the accepted Stage B baseline.
-- IF-ADR-021 — Proposed / not implementation authority for the accepted Stage B baseline.
+- IF-ADR-019 — Accepted / reconciled / implemented / QA recertified.
+- IF-ADR-020 — Accepted / reconciled / implemented / QA recertified.
+- IF-ADR-021 — Accepted / reconciled; Model B accepted; historical implementation/QA preserved; runtime and replacement QA pending.
 
 ### Camera
 

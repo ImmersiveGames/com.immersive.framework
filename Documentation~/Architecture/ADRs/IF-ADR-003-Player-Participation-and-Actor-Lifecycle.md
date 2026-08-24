@@ -5,6 +5,7 @@ Last updated: **2026-08-16**
 Related decisions: IF-ADR-001, IF-ADR-007, IF-ADR-012, IF-ADR-015, IF-ADR-016, IF-ADR-019, IF-ADR-020, IF-ADR-021  
 Reopen record: [2026-08-14 Player Physical Lifetime Reopen](../Reconciliation/IMMERSIVE-FRAMEWORK-PLAYER-PHYSICAL-LIFETIME-REOPEN-2026-08-14.md)  
 Closure record: [2026-08-15 Player Physical Lifetime Recertification](../Reconciliation/IMMERSIVE-FRAMEWORK-PLAYER-PHYSICAL-LIFETIME-RECERTIFICATION-2026-08-15.md)
+Initial Placement reconciliation: [2026-08-23 Player Authority and Initial Placement](../Reconciliation/IF-ADR-021-Player-Authority-and-Initial-Placement-Reconciliation-2026-08-23.md)
 
 ## Context
 
@@ -101,7 +102,7 @@ Session owns admitted physical Player representation
 ### Scene-Provided
 
 ```text
-consumer scene authors candidate Host / PlayerInput
+supplying consumer scene authors candidate Host / PlayerInput
 and selects exact Player Slot + ActorProfile intent
         ↓
 Scene-Provided Player authoring materializes or preserves
@@ -120,7 +121,17 @@ Editor materialization must be deterministic, non-destructive and conflict-safe.
 
 A failed Scene-Provided admission does not transfer Player ownership.
 
-After successful adoption, unloading the supplying Activity scene must not implicitly destroy the admitted Player. The implementation moves/attaches the admitted composition to the canonical Session-owned runtime scope before the supplying scene can invalidate it.
+After successful adoption, unloading the supplying consumer scene must not implicitly destroy the admitted Player. The implementation moves/attaches the admitted composition to the canonical Session-owned runtime scope before the supplying scene can invalidate it. Scene location does not make that scene Player-lifetime authority or require Activity-owned content.
+
+## Spatial intent
+
+IF-ADR-021 separates spatial intent from this lifecycle boundary. Route owns the
+baseline spatial entry of the Session-owned Player for its current Route occurrence;
+Activity may own only an explicit contextual relocation. Neither operation creates a
+new Player occurrence, transfers physical lifetime, or turns Activity transition into
+Join/Leave/recreation. Scene-Provided and Manager-Provisioned Players retain the same
+post-admission Session authority; Scene-Provided may preserve its authored/current
+pose when the explicit Route policy chooses it.
 
 ## Slot Join and assignment
 

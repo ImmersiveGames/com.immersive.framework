@@ -1,7 +1,7 @@
 # IF-TRACK — Immersive Framework
 
 Status: **Active — Stage B baseline + proposed architecture expansion**  
-Last updated: **2026-08-22**
+Last updated: **2026-08-23**
 
 ## Authority and status model
 
@@ -61,6 +61,7 @@ Current closure records:
 - [IF-ADR-004D — Camera Default Output Presentation Authority](../Reconciliation/IF-ADR-004D-Camera-Default-Output-Presentation-Authority-2026-08-17.md)
 - [IF-ADR-013 — BGM Continuity Technical Certification](../Reconciliation/IF-ADR-013-BGM-Continuity-Technical-Certification-2026-08-19.md)
 - [Stage B — Game Flow Sample Consumer Evidence](../Reconciliation/IF-STAGE-B-GAMEFLOW-SAMPLE-EVIDENCE-2026-08-21.md)
+- [IF-ADR-021 — Player Authority and Initial Placement Reconciliation](../Reconciliation/IF-ADR-021-Player-Authority-and-Initial-Placement-Reconciliation-2026-08-23.md)
 
 ## Reconciliation sequence
 
@@ -96,9 +97,9 @@ A real consumer can expose product/UX debt, an integration gap, future scope, or
 | [016](../ADRs/IF-ADR-016-Player-Session-Initial-Configuration-and-Provisioning-Profiles.md) | ACCEPTED baseline / IMPLEMENTED; R6/R7/R8 draft pending | CERTIFIED baseline | Scene-/Manager-Provisioned baseline remains valid. |
 | [017](../ADRs/IF-ADR-017-Application-Frame-Rate-Project-Authority.md) | ACCEPTED / RECONCILED / IMPLEMENTED | Edit 13/13; Target 13/13; VSync 13/13; Defaults 13/13 CERTIFIED | Stage A closed. |
 | [018](../ADRs/IF-ADR-018-Progression-Save-Backend-Independence-and-Persistence-Domain-Boundaries.md) | ACCEPTED / RECONCILED; A Stable, B JSON certified, C composition implemented | backend conformance; JSON 18/18; composition 12/12 CERTIFIED | FIRSTGAME persistence/backend usability proof remains. |
-| [019](../ADRs/IF-ADR-019-Session-Player-Lifetime-and-Activity-Representation-Authority.md) | PROPOSED / NOT IMPLEMENTED as complete decision | NOT STARTED for proposed boundary | Must be accepted before implementation/certification is reported. |
-| [020](../ADRs/IF-ADR-020-Session-Player-Leave-and-Resource-Release-Authority.md) | PROPOSED / NOT IMPLEMENTED | NOT STARTED | Depends on proposed Session Player lifetime boundary. |
-| [021](../ADRs/IF-ADR-021-Activity-Player-Actor-Initial-Placement-Authority.md) | PROPOSED / NOT IMPLEMENTED | NOT STARTED | Defines proposed explicit Activity placement authority. |
+| [019](../ADRs/IF-ADR-019-Session-Player-Lifetime-and-Activity-Representation-Authority.md) | ACCEPTED / RECONCILED / IMPLEMENTED | Full Player 25/25 RECERTIFIED | Closed for Session physical Player lifetime and contextual representation authority. |
+| [020](../ADRs/IF-ADR-020-Session-Player-Leave-and-Resource-Release-Authority.md) | ACCEPTED / RECONCILED / IMPLEMENTED | ADR020-H 26/26; Full Player 25/25 RECERTIFIED | Closed for Session Player Leave and resource release authority. |
+| [021](../ADRs/IF-ADR-021-Activity-Player-Actor-Initial-Placement-Authority.md) | ACCEPTED / RECONCILED — Model B; historical boundary IMPLEMENTED / CERTIFIED; reconciled spatial delta NOT IMPLEMENTED | Historical ADR-021 9/9; Full Player 25/25 preserved | Route baseline spatial entry and opt-in Activity relocation are accepted. Replacement runtime/evidence and QA are required for Route/Activity discovery scopes and exact identities. |
 | [022](../ADRs/IF-ADR-022-Camera-Rig-Presentation-Models-and-Materialization-Authority.md) | ACCEPTED / IMPLEMENTED | Presentation 14/14; Full Camera 53/53 for 2026-08-15 boundary | C1-C5 closed; broader FIRSTGAME C6 remains pending. |
 
 ## Current scoped closures
@@ -419,7 +420,9 @@ Reverse audit:            closed
 Generic Stage A task:     none
 ```
 
-The historical closure does not claim implementation/certification of proposed ADR-019 through ADR-021 or pending Player draft deltas.
+The historical closure does not claim implementation/certification of the reconciled
+Model B delta in ADR-021 or of pending Player draft deltas. ADR-019 and ADR-020 retain
+their separately recorded implementation and certification.
 
 A new accepted contract or reproducible regression may open a new scoped technical cut without invalidating unrelated historical certification.
 
@@ -457,7 +460,7 @@ These remain outside the current accepted baseline unless separately accepted:
 - device disconnect/reconnect, reassignment and network reconnection semantics;
 - heterogeneous per-Slot Host Provisioning;
 - consumer-facing physical Actor hot-swap/replacement while represented;
-- generic respawn/checkpoint/dynamic Spawn beyond proposed ADR-021 Initial Placement;
+- generic respawn/checkpoint/dynamic Spawn beyond the accepted ADR-021 spatial contract;
 - Orbital / Free Look input ownership and additional camera product models;
 - split-screen / multiple Camera outputs;
 - exceptional post-commit compensation beyond accepted boundaries;
@@ -472,9 +475,9 @@ ADR-022 presentation models are not future scope; Fixed/Follow/Mounted/Third Per
 
 - [IF-GOV-001 — API Maturity and Validation Governance](../Governance/IF-GOV-001-API-MATURITY-AND-VALIDATION-GOVERNANCE.md)
 - [IF-ADR-013 — Optional Audio BGM Adapter](../ADRs/IF-ADR-013-Optional-Audio-BGM-Adapter.md) — Accepted / Experimental / technically certified / consumer gate proven
-- [IF-ADR-019 — Session Player Lifetime and Activity Representation Authority](../ADRs/IF-ADR-019-Session-Player-Lifetime-and-Activity-Representation-Authority.md) — Proposed
-- [IF-ADR-020 — Session Player Leave and Resource Release Authority](../ADRs/IF-ADR-020-Session-Player-Leave-and-Resource-Release-Authority.md) — Proposed
-- [IF-ADR-021 — Activity Player Actor Initial Placement Authority](../ADRs/IF-ADR-021-Activity-Player-Actor-Initial-Placement-Authority.md) — Proposed
+- [IF-ADR-019 — Session Player Lifetime and Activity Representation Authority](../ADRs/IF-ADR-019-Session-Player-Lifetime-and-Activity-Representation-Authority.md) — Accepted / reconciled / implemented / QA recertified
+- [IF-ADR-020 — Session Player Leave and Resource Release Authority](../ADRs/IF-ADR-020-Session-Player-Leave-and-Resource-Release-Authority.md) — Accepted / reconciled / implemented / QA recertified
+- [IF-ADR-021 — Route Spatial Entry and Activity Explicit Relocation](../ADRs/IF-ADR-021-Activity-Player-Actor-Initial-Placement-Authority.md) — Accepted / reconciled; Model B accepted; runtime and replacement QA pending
 - [IF-ADR-022 — Camera Rig Presentation Models and Materialization Authority](../ADRs/IF-ADR-022-Camera-Rig-Presentation-Models-and-Materialization-Authority.md) — Accepted / Implemented / Technical QA Certified
 
 ## Current reconciliation records

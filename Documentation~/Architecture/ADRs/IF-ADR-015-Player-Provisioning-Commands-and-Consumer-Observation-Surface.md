@@ -176,6 +176,10 @@ diagnostic when unavailable
 free of serialized cross-scene authority references
 ```
 
+Route- or Activity-scoped consumer lifetime is only an access boundary. It does
+not transfer Player provisioning, Slot, Actor or physical-lifetime authority from
+Session to that Route, Activity or its scene.
+
 No public static registry, service locator, reflection, scene-wide authority
 search or hierarchy/name inference is required.
 

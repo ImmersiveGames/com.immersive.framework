@@ -1,6 +1,6 @@
 # Immersive Framework Documentation
 
-Last updated: **2026-08-17**
+Last updated: **2026-08-23**
 
 ## Start here
 
@@ -159,9 +159,9 @@ Archive records preserve history without acting as current product truth.
 | [016](Architecture/ADRs/IF-ADR-016-Player-Session-Initial-Configuration-and-Provisioning-Profiles.md) | Player session initial configuration and provisioning profiles | Accepted / Reconciled |
 | [017](Architecture/ADRs/IF-ADR-017-Application-Frame-Rate-Project-Authority.md) | Application frame-rate project authority | Accepted |
 | [018](Architecture/ADRs/IF-ADR-018-Progression-Save-Backend-Independence-and-Persistence-Domain-Boundaries.md) | Progression Save backend independence and persistence boundaries | Accepted |
-| [019](Architecture/ADRs/IF-ADR-019-Session-Player-Lifetime-and-Activity-Representation-Authority.md) | Session Player lifetime and Activity representation authority | See current ADR / Tracker |
-| [020](Architecture/ADRs/IF-ADR-020-Session-Player-Leave-and-Resource-Release-Authority.md) | Session Player Leave and resource release authority | See current ADR / Tracker |
-| [021](Architecture/ADRs/IF-ADR-021-Activity-Player-Actor-Initial-Placement-Authority.md) | Activity Player Actor initial placement authority | See current ADR / Tracker |
+| [019](Architecture/ADRs/IF-ADR-019-Session-Player-Lifetime-and-Activity-Representation-Authority.md) | Session Player lifetime and Activity representation authority | Accepted / Reconciled / Implemented / QA Recertified |
+| [020](Architecture/ADRs/IF-ADR-020-Session-Player-Leave-and-Resource-Release-Authority.md) | Session Player Leave and resource release authority | Accepted / Reconciled / Implemented / QA Recertified |
+| [021](Architecture/ADRs/IF-ADR-021-Activity-Player-Actor-Initial-Placement-Authority.md) | Route spatial entry and Activity explicit relocation | Accepted / Reconciled — Model B; runtime and replacement QA pending |
 | [022](Architecture/ADRs/IF-ADR-022-Camera-Rig-Presentation-Models-and-Materialization-Authority.md) | Camera Rig presentation models and materialization authority | Accepted / Technical QA Certified |
 
 ## Current reconciliation / closure records
@@ -183,6 +183,7 @@ Archive records preserve history without acting as current product truth.
 - [ADR-018 reconciliation](Architecture/Reconciliation/IMMERSIVE-FRAMEWORK-ADR-018-RECONCILIATION-2026-08-11.md)
 - [ADR-019 historical reconciliation](Architecture/Reconciliation/IMMERSIVE-FRAMEWORK-ADR-019-RECONCILIATION-2026-08-12.md)
 - [ADR-020 historical reconciliation](Architecture/Reconciliation/IMMERSIVE-FRAMEWORK-ADR-020-RECONCILIATION-2026-08-13.md)
+- [ADR-021 Player authority and Initial Placement reconciliation](Architecture/Reconciliation/IF-ADR-021-Player-Authority-and-Initial-Placement-Reconciliation-2026-08-23.md)
 - [RA-03 Object Entry ownership](Architecture/Reconciliation/IMMERSIVE-FRAMEWORK-RA-03-OBJECT-ENTRY-OWNERSHIP-RECONCILIATION-2026-08-11.md)
 - [RA-04 Architecture Governance Hygiene](Architecture/Reconciliation/IMMERSIVE-FRAMEWORK-RA-04-ARCHITECTURE-GOVERNANCE-HYGIENE-2026-08-11.md)
 - [Stage A Canonical Package Baseline Closure](Architecture/Reconciliation/IMMERSIVE-FRAMEWORK-STAGE-A-CANONICAL-BASELINE-CLOSURE-2026-08-11.md)
