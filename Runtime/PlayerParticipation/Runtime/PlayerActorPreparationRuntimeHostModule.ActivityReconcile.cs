@@ -11,23 +11,23 @@ namespace Immersive.Framework.PlayerParticipation
     {
         private const string ActivityPlayerReadinessObjectName =
             "Player Activity Readiness";
-        private ActivityReadinessParticipant activityPlayerReadinessParticipant;
+        private ActivityReadinessParticipant _activityPlayerReadinessParticipant;
 
         internal ActivityReadinessParticipant
             GetOrCreateActivityPlayerReadinessParticipant()
         {
-            if (runtimeHost == null)
+            if (_runtimeHost == null)
             {
                 throw new InvalidOperationException(
                     "Player Activity readiness participant requires an initialized FrameworkRuntimeHost.");
             }
 
-            if (activityPlayerReadinessParticipant != null)
+            if (_activityPlayerReadinessParticipant != null)
             {
-                return activityPlayerReadinessParticipant;
+                return _activityPlayerReadinessParticipant;
             }
 
-            Transform existing = runtimeHost.transform.Find(
+            Transform existing = _runtimeHost.transform.Find(
                 ActivityPlayerReadinessObjectName);
             GameObject participantObject = existing != null
                 ? existing.gameObject
@@ -35,33 +35,33 @@ namespace Immersive.Framework.PlayerParticipation
             if (existing == null)
             {
                 participantObject.transform.SetParent(
-                    runtimeHost.transform,
+                    _runtimeHost.transform,
                     false);
             }
 
-            activityPlayerReadinessParticipant =
+            _activityPlayerReadinessParticipant =
                 participantObject.GetComponent<
                     ActivityReadinessParticipant>();
-            if (activityPlayerReadinessParticipant == null)
+            if (_activityPlayerReadinessParticipant == null)
             {
-                activityPlayerReadinessParticipant =
+                _activityPlayerReadinessParticipant =
                     participantObject.AddComponent<
                         ActivityReadinessParticipant>();
             }
 
-            activityPlayerReadinessParticipant.ConfigureRuntimeParticipant(
+            _activityPlayerReadinessParticipant.ConfigureRuntimeParticipant(
                 "framework.player-actor.activity-readiness",
                 ActivityContentExecutionRequiredness.Required,
                 -190);
-            return activityPlayerReadinessParticipant;
+            return _activityPlayerReadinessParticipant;
         }
 
         internal bool TryGetPlayerGameplayRuntime(
             out PlayerGameplayRuntimeHostModule gameplayRuntime,
             out string issue)
         {
-            gameplayRuntime = runtimeHost != null
-                ? runtimeHost.GetComponent<PlayerGameplayRuntimeHostModule>()
+            gameplayRuntime = _runtimeHost != null
+                ? _runtimeHost.GetComponent<PlayerGameplayRuntimeHostModule>()
                 : null;
             if (gameplayRuntime == null || !gameplayRuntime.IsReady)
             {
@@ -78,7 +78,7 @@ namespace Immersive.Framework.PlayerParticipation
         internal bool TryGetActivityPlayerActorReconcileResult(
             out ActivityPlayerActorReconcileResult result)
         {
-            result = activityLifecycleParticipant?.LastReconcileResult;
+            result = _activityLifecycleParticipant?.LastReconcileResult;
             return result != null;
         }
 
@@ -90,7 +90,7 @@ namespace Immersive.Framework.PlayerParticipation
                 string source,
                 string reason)
         {
-            if (activityLifecycleParticipant == null)
+            if (_activityLifecycleParticipant == null)
             {
                 return new ActivityPlayerActorReconcileResult(
                     ActivityPlayerActorReconcileStatus
@@ -115,7 +115,7 @@ namespace Immersive.Framework.PlayerParticipation
                     "Activity Player Actor lifecycle participant is unavailable.");
             }
 
-            return activityLifecycleParticipant
+            return _activityLifecycleParticipant
                 .TryReconcileActiveActivityPlayerLifecycle(
                     expectedActivity,
                     expectedOwner,

@@ -28,19 +28,19 @@ namespace Immersive.Framework.Camera
         [SerializeField] private string lastStatus = "NotInitialized";
         [SerializeField] private string lastDiagnostic;
 
-        private CameraOutputContext context;
-        private CameraOutputRigApplicator applicator;
-        private CameraOutputSession session;
-        private FrameworkLogger logger;
+        private CameraOutputContext _context;
+        private CameraOutputRigApplicator _applicator;
+        private CameraOutputSession _session;
+        private FrameworkLogger _logger;
 
         public string OutputIdText => outputId.NormalizeText();
         public UnityEngine.Camera UnityCamera => unityCamera;
         public CinemachineBrain CinemachineBrain => cinemachineBrain;
         public CameraRigComposer DefaultCameraRig => defaultCameraRig;
-        public bool IsInitialized => session != null;
-        public CameraOutputContext Context => context;
-        public CameraOutputRigApplicator Applicator => applicator;
-        public CameraOutputSession Session => session;
+        public bool IsInitialized => _session != null;
+        public CameraOutputContext Context => _context;
+        public CameraOutputRigApplicator Applicator => _applicator;
+        public CameraOutputSession Session => _session;
         public string LastStatus => lastStatus ?? string.Empty;
         public string LastDiagnostic => lastDiagnostic ?? string.Empty;
 
@@ -62,19 +62,19 @@ namespace Immersive.Framework.Camera
 
         private void OnDestroy()
         {
-            if (session != null)
+            if (_session != null)
             {
-                session.Teardown();
+                _session.Teardown();
             }
 
-            session = null;
-            applicator = null;
-            context = null;
+            _session = null;
+            _applicator = null;
+            _context = null;
         }
 
         public bool TryInitialize(out string diagnostic)
         {
-            if (session != null)
+            if (_session != null)
             {
                 diagnostic = "Camera output session is already initialized.";
                 SetDiagnostic("Preserved", diagnostic, false);
@@ -145,15 +145,15 @@ namespace Immersive.Framework.Camera
                     return false;
                 }
 
-                context = resolvedContext;
-                applicator = resolvedApplicator;
-                session = resolvedSession;
+                _context = resolvedContext;
+                _applicator = resolvedApplicator;
+                _session = resolvedSession;
             }
             catch (Exception exception)
             {
-                context = null;
-                applicator = null;
-                session = null;
+                _context = null;
+                _applicator = null;
+                _session = null;
                 diagnostic =
                     $"Camera Output Session Binding initialization failed. exception='{exception.GetType().Name}' message='{exception.Message}'.";
                 SetDiagnostic("Blocked", diagnostic, true);
@@ -176,7 +176,7 @@ namespace Immersive.Framework.Camera
                 return false;
             }
 
-            resolvedSession = session;
+            resolvedSession = _session;
             return true;
         }
 
@@ -194,17 +194,17 @@ namespace Immersive.Framework.Camera
             EnsureLogger();
             if (error)
             {
-                logger.Error(message);
+                _logger.Error(message);
             }
             else if (logDiagnostics)
             {
-                logger.Debug(message);
+                _logger.Debug(message);
             }
         }
 
         private void EnsureLogger()
         {
-            logger ??= FrameworkLogger.Create<CameraOutputSessionBinding>();
+            _logger ??= FrameworkLogger.Create<CameraOutputSessionBinding>();
         }
     }
 }

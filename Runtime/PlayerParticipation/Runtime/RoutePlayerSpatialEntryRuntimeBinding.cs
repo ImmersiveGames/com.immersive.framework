@@ -7,16 +7,16 @@ namespace Immersive.Framework.PlayerParticipation
     [DisallowMultipleComponent]
     internal sealed class RoutePlayerSpatialEntryRuntimeBinding : MonoBehaviour
     {
-        private RoutePlayerSpatialEntryContext context;
-        private int lastOccurrenceSequence;
-        private string lastRepresentationIdentity;
+        private RoutePlayerSpatialEntryContext _context;
+        private int _lastOccurrenceSequence;
+        private string _lastRepresentationIdentity;
 
         internal void Configure(RoutePlayerSpatialEntryContext value)
         {
-            if (context.Matches(value)) return;
-            context = value;
-            lastOccurrenceSequence = 0;
-            lastRepresentationIdentity = string.Empty;
+            if (_context.Matches(value)) return;
+            _context = value;
+            _lastOccurrenceSequence = 0;
+            _lastRepresentationIdentity = string.Empty;
         }
 
         internal bool TryApplyBeforeActivation(PlayerActorMaterializationHandle handle, out string issue)
@@ -27,15 +27,15 @@ namespace Immersive.Framework.PlayerParticipation
                 issue = "Route Player spatial entry requires a complete materialization handle.";
                 return false;
             }
-            if (!context.IsValid)
+            if (!_context.IsValid)
             {
                 issue = "Session Player cannot activate without current Route spatial-entry occurrence evidence.";
                 return false;
             }
 
             string representation = handle.Request.RuntimeContentIdentity.StableText;
-            if (lastOccurrenceSequence == context.OccurrenceSequence &&
-                string.Equals(lastRepresentationIdentity, representation, System.StringComparison.Ordinal))
+            if (_lastOccurrenceSequence == _context.OccurrenceSequence &&
+                string.Equals(_lastRepresentationIdentity, representation, System.StringComparison.Ordinal))
                 return true;
 
             Transform declaration = handle.PlayerActorDeclaration.transform;
@@ -43,11 +43,11 @@ namespace Immersive.Framework.PlayerParticipation
             Transform target = ReferenceEquals(declaration, root) || declaration.IsChildOf(root)
                 ? root : declaration;
             if (!RoutePlayerSpatialEntryRuntime.TryApply(
-                    context, handle.Request.Slot.PlayerSlotId, handle.Request.ActorId,
+                    _context, handle.Request.Slot.PlayerSlotId, handle.Request.ActorId,
                     representation, target, out issue)) return false;
 
-            lastOccurrenceSequence = context.OccurrenceSequence;
-            lastRepresentationIdentity = representation;
+            _lastOccurrenceSequence = _context.OccurrenceSequence;
+            _lastRepresentationIdentity = representation;
             return true;
         }
     }

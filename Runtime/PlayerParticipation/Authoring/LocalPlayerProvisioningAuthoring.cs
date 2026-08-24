@@ -32,10 +32,10 @@ namespace Immersive.Framework.PlayerParticipation
         private GameObject localPlayerHostPrefab;
 
         [NonSerialized]
-        private LocalPlayerProvisioningRuntimeHostModule runtimeModule;
+        private LocalPlayerProvisioningRuntimeHostModule _runtimeModule;
 
         [NonSerialized]
-        private string runtimeDiagnostic =
+        private string _runtimeDiagnostic =
             "Local Player provisioning runtime is not bound.";
 
         public PlayerInputManager PlayerInputManager =>
@@ -82,17 +82,17 @@ namespace Immersive.Framework.PlayerParticipation
                 localPlayerHostPrefab;
 
         public bool RuntimeReady =>
-            runtimeModule != null &&
-            runtimeModule.IsReadyFor(this);
+            _runtimeModule != null &&
+            _runtimeModule.IsReadyFor(this);
 
         public string RuntimeDiagnostic =>
             RuntimeReady
-                ? runtimeModule.Diagnostic
-                : runtimeDiagnostic;
+                ? _runtimeModule.Diagnostic
+                : _runtimeDiagnostic;
 
         public LocalPlayerJoinResult LastJoinResult =>
             RuntimeReady
-                ? runtimeModule.LastJoinResult
+                ? _runtimeModule.LastJoinResult
                 : null;
 
         public PlayerParticipationSnapshot RuntimeSnapshot
@@ -100,7 +100,7 @@ namespace Immersive.Framework.PlayerParticipation
             get
             {
                 if (RuntimeReady &&
-                    runtimeModule.TryGetSnapshot(
+                    _runtimeModule.TryGetSnapshot(
                         out PlayerParticipationSnapshot snapshot))
                 {
                     return snapshot;
@@ -137,7 +137,7 @@ namespace Immersive.Framework.PlayerParticipation
             out ManagerProvisionedPlayerLifecycleSnapshot snapshot)
         {
             if (RuntimeReady &&
-                runtimeModule.TryGetLifecycleSnapshot(out snapshot))
+                _runtimeModule.TryGetLifecycleSnapshot(out snapshot))
             {
                 return true;
             }
@@ -153,7 +153,7 @@ namespace Immersive.Framework.PlayerParticipation
             RuntimeContentOwner scopeOwner,
             out LocalPlayerProvisioningConsumerObservationSnapshot observation)
         {
-            if (RuntimeReady && runtimeModule.TryGetObservation(
+            if (RuntimeReady && _runtimeModule.TryGetObservation(
                     scope,
                     scopeOwner,
                     out observation))
@@ -178,7 +178,7 @@ namespace Immersive.Framework.PlayerParticipation
             string reason)
         {
             return RuntimeReady
-                ? runtimeModule.TryOpenJoining(source, reason)
+                ? _runtimeModule.TryOpenJoining(source, reason)
                 : PlayerParticipationOperationResult
                     .RuntimeUnavailable(
                         "OpenJoining",
@@ -196,7 +196,7 @@ namespace Immersive.Framework.PlayerParticipation
             string reason)
         {
             return RuntimeReady
-                ? runtimeModule.TryCloseJoining(source, reason)
+                ? _runtimeModule.TryCloseJoining(source, reason)
                 : PlayerParticipationOperationResult
                     .RuntimeUnavailable(
                         "CloseJoining",
@@ -222,8 +222,8 @@ namespace Immersive.Framework.PlayerParticipation
             }
 
             LocalPlayerJoinResult result =
-                runtimeModule.TryJoin(request);
-            return runtimeModule
+                _runtimeModule.TryJoin(request);
+            return _runtimeModule
                 .RegisterJoinWithActorPreparation(result);
         }
 
@@ -244,7 +244,7 @@ namespace Immersive.Framework.PlayerParticipation
             SessionPlayerLeaveRequest request)
         {
             return RuntimeReady
-                ? runtimeModule.TryLeave(request)
+                ? _runtimeModule.TryLeave(request)
                 : SessionPlayerLeaveResult.RuntimeUnavailable(
                     request,
                     RuntimeDiagnostic);
@@ -258,8 +258,8 @@ namespace Immersive.Framework.PlayerParticipation
                 throw new ArgumentNullException(nameof(module));
             }
 
-            if (runtimeModule != null &&
-                !ReferenceEquals(runtimeModule, module))
+            if (_runtimeModule != null &&
+                !ReferenceEquals(_runtimeModule, module))
             {
                 throw new InvalidOperationException(
                     "Local Player provisioning authoring is already bound to another Session runtime module.");
@@ -268,8 +268,8 @@ namespace Immersive.Framework.PlayerParticipation
             module.RegisterActivityPlayerActorLifecycleSource();
             module
                 .RegisterSceneLocalPlayerAdmissionLifecycleSourceIfAvailable();
-            runtimeModule = module;
-            runtimeDiagnostic = module.Diagnostic;
+            _runtimeModule = module;
+            _runtimeDiagnostic = module.Diagnostic;
         }
 
         internal bool TryMaterializeManagerPrefab(
@@ -322,7 +322,7 @@ namespace Immersive.Framework.PlayerParticipation
                 return;
             }
 
-            runtimeDiagnostic =
+            _runtimeDiagnostic =
                 string.IsNullOrWhiteSpace(diagnostic)
                     ? "Local Player provisioning runtime initialization failed without a diagnostic."
                     : diagnostic.Trim();
@@ -332,13 +332,13 @@ namespace Immersive.Framework.PlayerParticipation
             LocalPlayerProvisioningRuntimeHostModule module,
             string diagnostic)
         {
-            if (runtimeModule != null &&
-                ReferenceEquals(runtimeModule, module))
+            if (_runtimeModule != null &&
+                ReferenceEquals(_runtimeModule, module))
             {
-                runtimeModule = null;
+                _runtimeModule = null;
             }
 
-            runtimeDiagnostic =
+            _runtimeDiagnostic =
                 string.IsNullOrWhiteSpace(diagnostic)
                     ? "Local Player provisioning runtime is not bound."
                     : diagnostic.Trim();

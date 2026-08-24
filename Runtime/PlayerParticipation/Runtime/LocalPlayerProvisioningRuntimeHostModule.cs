@@ -25,26 +25,26 @@ namespace Immersive.Framework.PlayerParticipation
         "P3G/P3J host-scoped local Player technical-host provisioning composition adapter.")]
     internal sealed partial class LocalPlayerProvisioningRuntimeHostModule : MonoBehaviour
     {
-        private FrameworkRuntimeHost runtimeHost;
-        private PlayerParticipationRuntimeContext participationContext;
-        private LocalPlayerProvisioningAuthoring authoring;
-        private LocalPlayerProvisioningBridge bridge;
+        private FrameworkRuntimeHost _runtimeHost;
+        private PlayerParticipationRuntimeContext _participationContext;
+        private LocalPlayerProvisioningAuthoring _authoring;
+        private LocalPlayerProvisioningBridge _bridge;
         private readonly Dictionary<
             LocalPlayerProvisioningConsumerAccessBinding,
-            LocalPlayerProvisioningConsumerAccess> consumerAccesses = new();
-        private string diagnostic = "Local Player provisioning runtime is not initialized.";
-        private int requestCount;
+            LocalPlayerProvisioningConsumerAccess> _consumerAccesses = new();
+        private string _diagnostic = "Local Player provisioning runtime is not initialized.";
+        private int _requestCount;
 
         internal bool IsReady =>
-            runtimeHost != null &&
-            participationContext != null &&
-            authoring != null &&
-            bridge != null;
+            _runtimeHost != null &&
+            _participationContext != null &&
+            _authoring != null &&
+            _bridge != null;
 
-        internal string Diagnostic => diagnostic;
-        internal LocalPlayerProvisioningAuthoring Authoring => authoring;
-        internal LocalPlayerJoinResult LastJoinResult => bridge?.LastResult;
-        internal int RequestCount => requestCount;
+        internal string Diagnostic => _diagnostic;
+        internal LocalPlayerProvisioningAuthoring Authoring => _authoring;
+        internal LocalPlayerJoinResult LastJoinResult => _bridge?.LastResult;
+        internal int RequestCount => _requestCount;
 
         internal static bool TryAttach(
             FrameworkRuntimeHost runtimeHost,
@@ -92,8 +92,8 @@ namespace Immersive.Framework.PlayerParticipation
 
             if (IsReady)
             {
-                if (ReferenceEquals(runtimeHost, targetRuntimeHost) &&
-                    ReferenceEquals(authoring, targetAuthoring))
+                if (ReferenceEquals(_runtimeHost, targetRuntimeHost) &&
+                    ReferenceEquals(_authoring, targetAuthoring))
                 {
                     return true;
                 }
@@ -105,14 +105,14 @@ namespace Immersive.Framework.PlayerParticipation
             if (targetRuntimeHost == null)
             {
                 issue = "FrameworkRuntimeHost is missing.";
-                diagnostic = issue;
+                _diagnostic = issue;
                 return false;
             }
 
             if (targetAuthoring == null)
             {
                 issue = "Local Player provisioning authoring is missing.";
-                diagnostic = issue;
+                _diagnostic = issue;
                 return false;
             }
 
@@ -120,14 +120,14 @@ namespace Immersive.Framework.PlayerParticipation
                     out PlayerParticipationRuntimeContext targetParticipationContext))
             {
                 issue = "FrameworkRuntimeHost has no initialized Session Player participation context.";
-                diagnostic = issue;
+                _diagnostic = issue;
                 return false;
             }
 
             if (!targetAuthoring.TryMaterializeManagerPrefab(out string materializationDiagnostic))
             {
                 issue = materializationDiagnostic;
-                diagnostic = issue;
+                _diagnostic = issue;
                 return false;
             }
 
@@ -136,7 +136,7 @@ namespace Immersive.Framework.PlayerParticipation
                     targetParticipationContext,
                     out issue))
             {
-                diagnostic = issue;
+                _diagnostic = issue;
                 return false;
             }
 
@@ -146,7 +146,7 @@ namespace Immersive.Framework.PlayerParticipation
             {
                 issue =
                     $"PlayerInputManager '{targetManager.name}' did not close its technical joining gate during Session initialization.";
-                diagnostic = issue;
+                _diagnostic = issue;
                 return false;
             }
 
@@ -157,32 +157,32 @@ namespace Immersive.Framework.PlayerParticipation
                     out LocalPlayerProvisioningBridge targetBridge,
                     out issue))
             {
-                diagnostic = issue;
+                _diagnostic = issue;
                 return false;
             }
 
-            runtimeHost = targetRuntimeHost;
-            participationContext = targetParticipationContext;
-            authoring = targetAuthoring;
-            bridge = targetBridge;
-            requestCount = 0;
-            diagnostic =
-                $"Local Player provisioning runtime is ready. manager='{authoring.PlayerInputManager.name}' localPlayerHostPrefab='{authoring.LocalPlayerHostPrefab.name}'. {materializationDiagnostic}";
+            _runtimeHost = targetRuntimeHost;
+            _participationContext = targetParticipationContext;
+            _authoring = targetAuthoring;
+            _bridge = targetBridge;
+            _requestCount = 0;
+            _diagnostic =
+                $"Local Player provisioning runtime is ready. manager='{_authoring.PlayerInputManager.name}' localPlayerHostPrefab='{_authoring.LocalPlayerHostPrefab.name}'. {materializationDiagnostic}";
 
             try
             {
-                authoring.BindRuntime(this);
+                _authoring.BindRuntime(this);
             }
             catch (Exception exception)
             {
-                bridge.Dispose();
-                bridge = null;
-                authoring = null;
-                participationContext = null;
-                runtimeHost = null;
-                diagnostic =
+                _bridge.Dispose();
+                _bridge = null;
+                _authoring = null;
+                _participationContext = null;
+                _runtimeHost = null;
+                _diagnostic =
                     $"Local Player provisioning authoring rejected Session runtime binding. {exception.Message}";
-                issue = diagnostic;
+                issue = _diagnostic;
                 return false;
             }
 
@@ -202,7 +202,7 @@ namespace Immersive.Framework.PlayerParticipation
             var desired = new Dictionary<
                 LocalPlayerProvisioningConsumerAccessBinding,
                 RuntimeContentOwner>();
-            var flow = runtimeHost.CurrentGameFlowRuntime;
+            var flow = _runtimeHost.CurrentGameFlowRuntime;
             if (flow != null && flow.CurrentRoute != null)
             {
                 RouteAsset route = flow.CurrentRoute;
@@ -251,7 +251,7 @@ namespace Immersive.Framework.PlayerParticipation
 
             var staleBindings = new List<
                 LocalPlayerProvisioningConsumerAccessBinding>();
-            foreach (var pair in consumerAccesses)
+            foreach (var pair in _consumerAccesses)
             {
                 if (pair.Key == null || !desired.TryGetValue(
                         pair.Key,
@@ -266,7 +266,7 @@ namespace Immersive.Framework.PlayerParticipation
             {
                 LocalPlayerProvisioningConsumerAccessBinding binding =
                     staleBindings[index];
-                if (consumerAccesses.TryGetValue(binding, out var access))
+                if (_consumerAccesses.TryGetValue(binding, out var access))
                 {
                     access.Dispose();
                     if (binding != null)
@@ -276,13 +276,13 @@ namespace Immersive.Framework.PlayerParticipation
                             true);
                     }
 
-                    consumerAccesses.Remove(binding);
+                    _consumerAccesses.Remove(binding);
                 }
             }
 
             foreach (var pair in desired)
             {
-                if (consumerAccesses.ContainsKey(pair.Key))
+                if (_consumerAccesses.ContainsKey(pair.Key))
                 {
                     continue;
                 }
@@ -292,7 +292,7 @@ namespace Immersive.Framework.PlayerParticipation
                         ? LocalPlayerProvisioningConsumerScope.Route
                         : LocalPlayerProvisioningConsumerScope.Activity;
                 var access = new LocalPlayerProvisioningConsumerAccess(
-                    authoring,
+                    _authoring,
                     actualScope,
                     pair.Value,
                     pair.Key,
@@ -304,13 +304,13 @@ namespace Immersive.Framework.PlayerParticipation
                     continue;
                 }
 
-                consumerAccesses.Add(pair.Key, access);
+                _consumerAccesses.Add(pair.Key, access);
             }
         }
 
         private bool IsCurrentConsumerScope(RuntimeContentOwner expectedOwner)
         {
-            var flow = runtimeHost != null ? runtimeHost.CurrentGameFlowRuntime : null;
+            var flow = _runtimeHost != null ? _runtimeHost.CurrentGameFlowRuntime : null;
             if (flow == null)
             {
                 return false;
@@ -459,19 +459,19 @@ namespace Immersive.Framework.PlayerParticipation
 
         internal bool IsReadyFor(LocalPlayerProvisioningAuthoring targetAuthoring)
         {
-            return IsReady && ReferenceEquals(authoring, targetAuthoring);
+            return IsReady && ReferenceEquals(_authoring, targetAuthoring);
         }
 
         internal LocalPlayerJoinResult TryJoin(LocalPlayerJoinRequest request)
         {
             if (!IsReady)
             {
-                return LocalPlayerJoinResult.RuntimeUnavailable(request, diagnostic);
+                return LocalPlayerJoinResult.RuntimeUnavailable(request, _diagnostic);
             }
 
-            requestCount++;
-            LocalPlayerJoinResult result = bridge.TryJoin(request);
-            diagnostic = result != null
+            _requestCount++;
+            LocalPlayerJoinResult result = _bridge.TryJoin(request);
+            _diagnostic = result != null
                 ? result.ToDiagnosticString()
                 : "Local Player join returned no result.";
             return result ?? LocalPlayerJoinResult.RuntimeUnavailable(
@@ -482,29 +482,29 @@ namespace Immersive.Framework.PlayerParticipation
         internal SessionPlayerLeaveResult TryLeave(
             SessionPlayerLeaveRequest request)
         {
-            if (!IsReady || runtimeHost == null)
+            if (!IsReady || _runtimeHost == null)
             {
                 return SessionPlayerLeaveResult.RuntimeUnavailable(
                     request,
-                    diagnostic);
+                    _diagnostic);
             }
 
             if (!SessionPlayerLeaveRuntimeHostModule.TryAttach(
-                    runtimeHost,
+                    _runtimeHost,
                     out SessionPlayerLeaveRuntimeHostModule leaveRuntime,
                     out string issue))
             {
-                diagnostic =
+                _diagnostic =
                     "Session Player Leave runtime could not be composed for the explicit request. " +
                     issue;
                 return SessionPlayerLeaveResult.RuntimeUnavailable(
                     request,
-                    diagnostic);
+                    _diagnostic);
             }
 
-            requestCount++;
+            _requestCount++;
             SessionPlayerLeaveResult result = leaveRuntime.TryLeave(request);
-            diagnostic = result != null
+            _diagnostic = result != null
                 ? result.ToDiagnosticString()
                 : "Session Player Leave returned no result.";
             return result ?? SessionPlayerLeaveResult.RuntimeUnavailable(
@@ -525,7 +525,7 @@ namespace Immersive.Framework.PlayerParticipation
             bool explicitCallerRollback)
         {
             const string source = nameof(LocalPlayerProvisioningRuntimeHostModule);
-            if (bridge == null)
+            if (_bridge == null)
             {
                 return LocalPlayerJoinResult.RuntimeUnavailable(
                     joinResult != null ? joinResult.Request : default,
@@ -542,7 +542,7 @@ namespace Immersive.Framework.PlayerParticipation
                     "Committed Local Player join rollback requires complete successful join and physical Host evidence.");
             }
 
-            if (!runtimeHost.TryGetPlayerActorPreparationRuntime(
+            if (!_runtimeHost.TryGetPlayerActorPreparationRuntime(
                     out PlayerActorPreparationRuntimeHostModule preparation))
             {
                 return CreateRollbackFailure(
@@ -561,7 +561,7 @@ namespace Immersive.Framework.PlayerParticipation
                     $"slot='{joinResult.Slot.PlayerSlotId.StableText}' preparation='{activePreparation.Token.StableText}'.");
             }
 
-            if (runtimeHost.TryGetPlayerGameplayRuntimeSnapshot(
+            if (_runtimeHost.TryGetPlayerGameplayRuntimeSnapshot(
                     out PlayerGameplayRuntimeHostSnapshot gameplaySnapshot) &&
                 HasActiveGameplayState(gameplaySnapshot, joinResult.Slot.PlayerSlotId))
             {
@@ -590,7 +590,7 @@ namespace Immersive.Framework.PlayerParticipation
                     hostEvidenceRelease.ToDiagnosticString());
             }
 
-            LocalPlayerJoinResult rollback = bridge.RollbackCommittedJoin(
+            LocalPlayerJoinResult rollback = _bridge.RollbackCommittedJoin(
                 joinResult,
                 reason,
                 explicitCallerRollback);
@@ -598,7 +598,7 @@ namespace Immersive.Framework.PlayerParticipation
                                   rollback.RollbackResult.Succeeded;
             if (bridgeSucceeded)
             {
-                diagnostic =
+                _diagnostic =
                     $"Committed Local Player join was rolled back explicitly. " +
                     $"slot='{joinResult.Slot.PlayerSlotId.StableText}' " +
                     $"hostEvidenceReleased='{(hostEvidenceRelease != null)}'.";
@@ -699,34 +699,34 @@ namespace Immersive.Framework.PlayerParticipation
             string source,
             string reason)
         {
-            if (participationContext == null)
+            if (_participationContext == null)
             {
                 return PlayerParticipationOperationResult.RuntimeUnavailable(
                     "OpenJoining",
                     source,
                     reason,
-                    diagnostic);
+                    _diagnostic);
             }
 
-            PlayerParticipationSnapshot before = participationContext.CreateSnapshot();
+            PlayerParticipationSnapshot before = _participationContext.CreateSnapshot();
             PlayerParticipationOperationResult result =
-                participationContext.TryOpenJoining(source, reason);
+                _participationContext.TryOpenJoining(source, reason);
             if (!result.Completed || !result.Snapshot.JoiningOpen)
             {
-                diagnostic = result.ToDiagnosticString();
+                _diagnostic = result.ToDiagnosticString();
                 return result;
             }
 
-            PlayerInputManager manager = authoring != null
-                ? authoring.PlayerInputManager
+            PlayerInputManager manager = _authoring != null
+                ? _authoring.PlayerInputManager
                 : null;
             if (manager == null || !manager.isActiveAndEnabled)
             {
                 PlayerParticipationOperationResult rollback =
-                    participationContext.TryCloseJoining(
+                    _participationContext.TryCloseJoining(
                         nameof(LocalPlayerProvisioningRuntimeHostModule),
                         "technical-joining-gate-unavailable");
-                PlayerParticipationSnapshot afterRollback = participationContext.CreateSnapshot();
+                PlayerParticipationSnapshot afterRollback = _participationContext.CreateSnapshot();
                 string message = manager == null
                     ? "PlayerInputManager is missing after logical joining was opened."
                     : $"PlayerInputManager '{manager.name}' is not active and enabled after logical joining was opened.";
@@ -742,7 +742,7 @@ namespace Immersive.Framework.PlayerParticipation
                     default,
                     default,
                     afterRollback);
-                diagnostic = failed.ToDiagnosticString();
+                _diagnostic = failed.ToDiagnosticString();
                 return failed;
             }
 
@@ -750,10 +750,10 @@ namespace Immersive.Framework.PlayerParticipation
             if (!manager.joiningEnabled)
             {
                 PlayerParticipationOperationResult rollback =
-                    participationContext.TryCloseJoining(
+                    _participationContext.TryCloseJoining(
                         nameof(LocalPlayerProvisioningRuntimeHostModule),
                         "technical-joining-gate-enable-failed");
-                PlayerParticipationSnapshot afterRollback = participationContext.CreateSnapshot();
+                PlayerParticipationSnapshot afterRollback = _participationContext.CreateSnapshot();
                 var failed = new PlayerParticipationOperationResult(
                     PlayerParticipationOperationStatus.FailedInvalidConfiguration,
                     "OpenJoining",
@@ -767,11 +767,11 @@ namespace Immersive.Framework.PlayerParticipation
                     default,
                     default,
                     afterRollback);
-                diagnostic = failed.ToDiagnosticString();
+                _diagnostic = failed.ToDiagnosticString();
                 return failed;
             }
 
-            diagnostic = result.ToDiagnosticString();
+            _diagnostic = result.ToDiagnosticString();
             return result;
         }
 
@@ -779,24 +779,24 @@ namespace Immersive.Framework.PlayerParticipation
             string source,
             string reason)
         {
-            if (participationContext == null)
+            if (_participationContext == null)
             {
                 return PlayerParticipationOperationResult.RuntimeUnavailable(
                     "CloseJoining",
                     source,
                     reason,
-                    diagnostic);
+                    _diagnostic);
             }
 
-            PlayerInputManager manager = authoring != null
-                ? authoring.PlayerInputManager
+            PlayerInputManager manager = _authoring != null
+                ? _authoring.PlayerInputManager
                 : null;
             if (manager != null)
             {
                 manager.DisableJoining();
                 if (manager.joiningEnabled)
                 {
-                    PlayerParticipationSnapshot snapshot = participationContext.CreateSnapshot();
+                    PlayerParticipationSnapshot snapshot = _participationContext.CreateSnapshot();
                     var failed = new PlayerParticipationOperationResult(
                         PlayerParticipationOperationStatus.FailedInvalidConfiguration,
                         "CloseJoining",
@@ -808,34 +808,34 @@ namespace Immersive.Framework.PlayerParticipation
                         default,
                         default,
                         snapshot);
-                    diagnostic = failed.ToDiagnosticString();
+                    _diagnostic = failed.ToDiagnosticString();
                     return failed;
                 }
             }
 
             PlayerParticipationOperationResult result =
-                participationContext.TryCloseJoining(source, reason);
-            diagnostic = result.ToDiagnosticString();
+                _participationContext.TryCloseJoining(source, reason);
+            _diagnostic = result.ToDiagnosticString();
             return result;
         }
 
         internal bool TryGetSnapshot(out PlayerParticipationSnapshot snapshot)
         {
-            if (participationContext == null)
+            if (_participationContext == null)
             {
                 snapshot = PlayerParticipationSnapshot.Empty(
                     PlayerParticipationOperationStatus.RejectedInvalidState,
-                    diagnostic);
+                    _diagnostic);
                 return false;
             }
 
-            snapshot = participationContext.CreateSnapshot();
+            snapshot = _participationContext.CreateSnapshot();
             return true;
         }
 
         private void OnDestroy()
         {
-            foreach (var pair in consumerAccesses)
+            foreach (var pair in _consumerAccesses)
             {
                 pair.Value.Dispose();
                 if (pair.Key != null)
@@ -845,24 +845,24 @@ namespace Immersive.Framework.PlayerParticipation
                 }
             }
 
-            consumerAccesses.Clear();
-            if (authoring != null && authoring.PlayerInputManager != null)
+            _consumerAccesses.Clear();
+            if (_authoring != null && _authoring.PlayerInputManager != null)
             {
-                authoring.PlayerInputManager.DisableJoining();
+                _authoring.PlayerInputManager.DisableJoining();
             }
 
-            bridge?.Dispose();
-            bridge = null;
+            _bridge?.Dispose();
+            _bridge = null;
 
-            if (authoring != null)
+            if (_authoring != null)
             {
-                authoring.UnbindRuntime(this, "Session Local Player provisioning runtime was released.");
+                _authoring.UnbindRuntime(this, "Session Local Player provisioning runtime was released.");
             }
 
-            authoring = null;
-            participationContext = null;
-            runtimeHost = null;
-            diagnostic = "Session Local Player provisioning runtime was released.";
+            _authoring = null;
+            _participationContext = null;
+            _runtimeHost = null;
+            _diagnostic = "Session Local Player provisioning runtime was released.";
         }
     }
 
@@ -874,13 +874,13 @@ namespace Immersive.Framework.PlayerParticipation
         ILocalPlayerProvisioningConsumerAccess,
         IDisposable
     {
-        private readonly LocalPlayerProvisioningAuthoring authoring;
-        private readonly LocalPlayerProvisioningConsumerScope scope;
-        private readonly RuntimeContentOwner owner;
-        private readonly LocalPlayerProvisioningConsumerAccessBinding binding;
-        private readonly Func<RuntimeContentOwner, bool> isCurrentScope;
-        private string diagnostic;
-        private bool disposed;
+        private readonly LocalPlayerProvisioningAuthoring _authoring;
+        private readonly LocalPlayerProvisioningConsumerScope _scope;
+        private readonly RuntimeContentOwner _owner;
+        private readonly LocalPlayerProvisioningConsumerAccessBinding _binding;
+        private readonly Func<RuntimeContentOwner, bool> _isCurrentScope;
+        private string _diagnostic;
+        private bool _disposed;
 
         internal LocalPlayerProvisioningConsumerAccess(
             LocalPlayerProvisioningAuthoring authoring,
@@ -889,29 +889,29 @@ namespace Immersive.Framework.PlayerParticipation
             LocalPlayerProvisioningConsumerAccessBinding binding,
             Func<RuntimeContentOwner, bool> isCurrentScope)
         {
-            this.authoring = authoring ??
+            this._authoring = authoring ??
                 throw new ArgumentNullException(nameof(authoring));
-            this.scope = scope;
-            this.owner = owner;
-            this.binding = binding ??
+            this._scope = scope;
+            this._owner = owner;
+            this._binding = binding ??
                 throw new ArgumentNullException(nameof(binding));
-            this.isCurrentScope = isCurrentScope ??
+            this._isCurrentScope = isCurrentScope ??
                 throw new ArgumentNullException(nameof(isCurrentScope));
-            diagnostic = CreateReadyDiagnostic(owner);
+            _diagnostic = CreateReadyDiagnostic(owner);
         }
 
         public LocalPlayerProvisioningConsumerAccessSnapshot Snapshot
         {
             get
             {
-                bool available = IsCurrent() && authoring != null &&
-                    authoring.RuntimeReady;
+                bool available = IsCurrent() && _authoring != null &&
+                    _authoring.RuntimeReady;
                 return new LocalPlayerProvisioningConsumerAccessSnapshot(
-                    scope,
-                    owner,
+                    _scope,
+                    _owner,
                     available,
-                    disposed,
-                    available ? CreateReadyDiagnostic(owner) : CurrentIssue);
+                    _disposed,
+                    available ? CreateReadyDiagnostic(_owner) : CurrentIssue);
             }
         }
 
@@ -920,21 +920,21 @@ namespace Immersive.Framework.PlayerParticipation
         {
             if (TryGetAuthoring(out string issue))
             {
-                if (authoring.TryGetConsumerObservation(
-                        scope,
-                        owner,
+                if (_authoring.TryGetConsumerObservation(
+                        _scope,
+                        _owner,
                         out observation))
                 {
                     return true;
                 }
 
-                issue = authoring.RuntimeDiagnostic;
+                issue = _authoring.RuntimeDiagnostic;
             }
 
             observation =
                 LocalPlayerProvisioningConsumerObservationSnapshot.Unavailable(
-                    scope,
-                    owner,
+                    _scope,
+                    _owner,
                     issue);
             return false;
         }
@@ -944,7 +944,7 @@ namespace Immersive.Framework.PlayerParticipation
             string reason)
         {
             return TryGetAuthoring(out string issue)
-                ? authoring.OpenJoining(source, reason)
+                ? _authoring.OpenJoining(source, reason)
                 : PlayerParticipationOperationResult.RuntimeUnavailable(
                     "OpenJoining",
                     source,
@@ -957,7 +957,7 @@ namespace Immersive.Framework.PlayerParticipation
             string reason)
         {
             return TryGetAuthoring(out string issue)
-                ? authoring.CloseJoining(source, reason)
+                ? _authoring.CloseJoining(source, reason)
                 : PlayerParticipationOperationResult.RuntimeUnavailable(
                     "CloseJoining",
                     source,
@@ -968,7 +968,7 @@ namespace Immersive.Framework.PlayerParticipation
         public LocalPlayerJoinResult RequestJoin(LocalPlayerJoinRequest request)
         {
             return TryGetAuthoring(out string issue)
-                ? authoring.RequestJoin(request)
+                ? _authoring.RequestJoin(request)
                 : LocalPlayerJoinResult.RuntimeUnavailable(request, issue);
         }
 
@@ -976,19 +976,19 @@ namespace Immersive.Framework.PlayerParticipation
             SessionPlayerLeaveRequest request)
         {
             return TryGetAuthoring(out string issue)
-                ? authoring.RequestLeave(request)
+                ? _authoring.RequestLeave(request)
                 : SessionPlayerLeaveResult.RuntimeUnavailable(request, issue);
         }
 
         public void Dispose()
         {
-            if (disposed)
+            if (_disposed)
             {
                 return;
             }
 
-            disposed = true;
-            diagnostic =
+            _disposed = true;
+            _diagnostic =
                 "Local Player provisioning consumer access was released because its framework scope was replaced or disposed.";
         }
 
@@ -1000,12 +1000,12 @@ namespace Immersive.Framework.PlayerParticipation
                 return false;
             }
 
-            if (authoring == null || !authoring.RuntimeReady)
+            if (_authoring == null || !_authoring.RuntimeReady)
             {
-                issue = authoring != null
-                    ? authoring.RuntimeDiagnostic
+                issue = _authoring != null
+                    ? _authoring.RuntimeDiagnostic
                     : "Local Player provisioning authority is unavailable.";
-                diagnostic = issue;
+                _diagnostic = issue;
                 return false;
             }
 
@@ -1015,23 +1015,23 @@ namespace Immersive.Framework.PlayerParticipation
 
         private bool IsCurrent()
         {
-            if (disposed)
+            if (_disposed)
             {
                 return false;
             }
 
-            if (binding == null)
+            if (_binding == null)
             {
-                disposed = true;
-                diagnostic =
+                _disposed = true;
+                _diagnostic =
                     "Local Player provisioning consumer access was released because its scene-local binding was destroyed.";
                 return false;
             }
 
-            if (!isCurrentScope(owner))
+            if (!_isCurrentScope(_owner))
             {
-                disposed = true;
-                diagnostic =
+                _disposed = true;
+                _diagnostic =
                     "Local Player provisioning consumer access was released because its Route or Activity scope was replaced or disposed.";
                 return false;
             }
@@ -1039,9 +1039,9 @@ namespace Immersive.Framework.PlayerParticipation
             return true;
         }
 
-        private string CurrentIssue => string.IsNullOrWhiteSpace(diagnostic)
+        private string CurrentIssue => string.IsNullOrWhiteSpace(_diagnostic)
             ? "Local Player provisioning consumer access is unavailable."
-            : diagnostic;
+            : _diagnostic;
 
         private static string CreateReadyDiagnostic(RuntimeContentOwner owner)
         {

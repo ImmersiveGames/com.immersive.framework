@@ -29,19 +29,19 @@ namespace Immersive.Framework.Diagnostics
             new Rect(16f, 16f, 420f, 300f);
 
         [NonSerialized]
-        private IFrameworkRuntimeDiagnosticsPort runtimeDiagnostics;
+        private IFrameworkRuntimeDiagnosticsPort _runtimeDiagnostics;
 
         [NonSerialized]
-        private string runtimeDiagnosticsBindingDiagnostic =
+        private string _runtimeDiagnosticsBindingDiagnostic =
             MissingRuntimeBindingDiagnostic;
 
         [NonSerialized]
-        private int windowId;
+        private int _windowId;
 
-        private static int nextWindowId = 36000;
+        private static int _nextWindowId = 36000;
 
         public bool HasFrameworkRuntimeDiagnosticsBinding =>
-            runtimeDiagnostics != null;
+            _runtimeDiagnostics != null;
 
         public string FrameworkRuntimeDiagnosticsBindingStatus =>
             HasFrameworkRuntimeDiagnosticsBinding
@@ -49,11 +49,11 @@ namespace Immersive.Framework.Diagnostics
                 : "Missing";
 
         public string FrameworkRuntimeDiagnosticsBindingDiagnostic =>
-            runtimeDiagnosticsBindingDiagnostic;
+            _runtimeDiagnosticsBindingDiagnostic;
 
         private void Awake()
         {
-            windowId = nextWindowId++;
+            _windowId = _nextWindowId++;
         }
 
         private void OnGUI()
@@ -76,7 +76,7 @@ namespace Immersive.Framework.Diagnostics
             }
 
             windowRect = GUILayout.Window(
-                windowId,
+                _windowId,
                 windowRect,
                 DrawWindow,
                 "Immersive Framework Diagnostics");
@@ -89,32 +89,32 @@ namespace Immersive.Framework.Diagnostics
             if (diagnosticsRuntime == null)
             {
                 issue = MissingRuntimeBindingDiagnostic;
-                runtimeDiagnosticsBindingDiagnostic = issue;
+                _runtimeDiagnosticsBindingDiagnostic = issue;
                 return false;
             }
 
-            if (runtimeDiagnostics == null)
+            if (_runtimeDiagnostics == null)
             {
-                runtimeDiagnostics = diagnosticsRuntime;
+                _runtimeDiagnostics = diagnosticsRuntime;
                 issue = string.Empty;
-                runtimeDiagnosticsBindingDiagnostic =
+                _runtimeDiagnosticsBindingDiagnostic =
                     "Framework runtime diagnostics port is bound.";
                 return true;
             }
 
             if (ReferenceEquals(
-                    runtimeDiagnostics,
+                    _runtimeDiagnostics,
                     diagnosticsRuntime))
             {
                 issue = string.Empty;
-                runtimeDiagnosticsBindingDiagnostic =
+                _runtimeDiagnosticsBindingDiagnostic =
                     "Framework runtime diagnostics port binding is already applied.";
                 return true;
             }
 
             issue =
                 "Framework QA Canvas is already bound to a different diagnostics runtime for the current component lifetime.";
-            runtimeDiagnosticsBindingDiagnostic = issue;
+            _runtimeDiagnosticsBindingDiagnostic = issue;
             return false;
         }
 
@@ -158,15 +158,15 @@ namespace Immersive.Framework.Diagnostics
                 "Application Runtime",
                 GUI.skin.box);
 
-            if (runtimeDiagnostics == null)
+            if (_runtimeDiagnostics == null)
             {
                 GUILayout.Label("Status: unavailable");
-                GUILayout.Label(runtimeDiagnosticsBindingDiagnostic);
+                GUILayout.Label(_runtimeDiagnosticsBindingDiagnostic);
                 return;
             }
 
             FrameworkRuntimeDiagnosticsSnapshot snapshot =
-                runtimeDiagnostics.CreateFrameworkRuntimeDiagnosticsSnapshot();
+                _runtimeDiagnostics.CreateFrameworkRuntimeDiagnosticsSnapshot();
 
             GUILayout.Label("Status: available");
             GUILayout.Label(

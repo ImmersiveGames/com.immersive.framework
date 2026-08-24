@@ -24,7 +24,7 @@ namespace Immersive.Framework.SceneLifecycle
         [SerializeField] private int availableCount;
         [SerializeField] private int releasingCount;
 
-        private bool isAvailable;
+        private bool _isAvailable;
 
         public UnityEvent Available => available;
 
@@ -38,12 +38,12 @@ namespace Immersive.Framework.SceneLifecycle
 
         internal void NotifySceneAvailable()
         {
-            if (isAvailable)
+            if (_isAvailable)
             {
                 return;
             }
 
-            isAvailable = true;
+            _isAvailable = true;
             availableCount++;
             lastEvent = "Available";
             available?.Invoke();
@@ -51,12 +51,12 @@ namespace Immersive.Framework.SceneLifecycle
 
         internal void NotifySceneReleasing()
         {
-            if (!isAvailable)
+            if (!_isAvailable)
             {
                 return;
             }
 
-            isAvailable = false;
+            _isAvailable = false;
             releasingCount++;
             lastEvent = "Releasing";
             releasing?.Invoke();

@@ -16,29 +16,29 @@ namespace Immersive.Framework.PlayerParticipation
         "P3K.2 Session effective Player gameplay occupancy authority.")]
     internal sealed class PlayerGameplayOccupancyRuntimeContext
     {
-        private readonly string sessionContextId;
-        private readonly PlayerSlotId[] orderedSlots;
-        private readonly Dictionary<PlayerSlotId, PlayerGameplayOccupancySummary> slots;
+        private readonly string _sessionContextId;
+        private readonly PlayerSlotId[] _orderedSlots;
+        private readonly Dictionary<PlayerSlotId, PlayerGameplayOccupancySummary> _slots;
 
-        private int revision = 1;
-        private int occupancySequence;
-        private PlayerGameplayOccupancyStatus lastOperationStatus;
-        private string lastOperationMessage =
+        private int _revision = 1;
+        private int _occupancySequence;
+        private PlayerGameplayOccupancyStatus _lastOperationStatus;
+        private string _lastOperationMessage =
             "Player gameplay occupancy runtime initialized.";
 
         private PlayerGameplayOccupancyRuntimeContext(
             string sessionContextId,
             PlayerSlotId[] orderedSlots)
         {
-            this.sessionContextId = sessionContextId;
-            this.orderedSlots = orderedSlots;
-            slots = new Dictionary<PlayerSlotId, PlayerGameplayOccupancySummary>(
+            this._sessionContextId = sessionContextId;
+            this._orderedSlots = orderedSlots;
+            _slots = new Dictionary<PlayerSlotId, PlayerGameplayOccupancySummary>(
                 orderedSlots.Length);
 
             for (int index = 0; index < orderedSlots.Length; index++)
             {
                 PlayerSlotId slot = orderedSlots[index];
-                slots.Add(
+                _slots.Add(
                     slot,
                     PlayerGameplayOccupancySummary.Vacant(
                         sessionContextId,
@@ -50,8 +50,8 @@ namespace Immersive.Framework.PlayerParticipation
             }
         }
 
-        internal string SessionContextId => sessionContextId;
-        internal int Revision => revision;
+        internal string SessionContextId => _sessionContextId;
+        internal int Revision => _revision;
 
         internal static bool TryCreate(
             PlayerActorPreparationSnapshot preparationSnapshot,
@@ -116,7 +116,7 @@ namespace Immersive.Framework.PlayerParticipation
             string source,
             string reason)
         {
-            const string Operation = "ConfirmOccupancy";
+            const string operation = "ConfirmOccupancy";
             string resolvedSource = source.NormalizeTextOrFallback(
                 nameof(PlayerGameplayOccupancyRuntimeContext));
             string resolvedReason = reason.NormalizeTextOrFallback(
@@ -128,7 +128,7 @@ namespace Immersive.Framework.PlayerParticipation
             {
                 return Reject(
                     PlayerGameplayOccupancyStatus.RejectedInvalidRequest,
-                    Operation,
+                    operation,
                     preparation.PlayerSlotId,
                     default,
                     "Effective occupancy requires valid current preparation evidence.");
@@ -136,24 +136,24 @@ namespace Immersive.Framework.PlayerParticipation
 
             if (!string.Equals(
                     preparation.SessionContextId,
-                    sessionContextId,
+                    _sessionContextId,
                     StringComparison.Ordinal))
             {
                 return Reject(
                     PlayerGameplayOccupancyStatus.RejectedSessionMismatch,
-                    Operation,
+                    operation,
                     preparation.PlayerSlotId,
                     GetSummaryOrDefault(preparation.PlayerSlotId),
                     "Preparation belongs to another Session context.");
             }
 
-            if (!slots.TryGetValue(
+            if (!_slots.TryGetValue(
                     preparation.PlayerSlotId,
                     out PlayerGameplayOccupancySummary previous))
             {
                 return Reject(
                     PlayerGameplayOccupancyStatus.RejectedSlotNotConfigured,
-                    Operation,
+                    operation,
                     preparation.PlayerSlotId,
                     default,
                     $"Player Slot '{preparation.PlayerSlotId.StableText}' is not configured in this occupancy context.");
@@ -165,7 +165,7 @@ namespace Immersive.Framework.PlayerParticipation
             {
                 return Reject(
                     PlayerGameplayOccupancyStatus.RejectedPreparationNotReady,
-                    Operation,
+                    operation,
                     preparation.PlayerSlotId,
                     previous,
                     "Effective occupancy requires an Active prepared Logical Player Actor.");
@@ -175,7 +175,7 @@ namespace Immersive.Framework.PlayerParticipation
             {
                 return Reject(
                     PlayerGameplayOccupancyStatus.RejectedForeignOrStalePreparation,
-                    Operation,
+                    operation,
                     preparation.PlayerSlotId,
                     previous,
                     "Preparation identity is incoherent or stale.");
@@ -187,7 +187,7 @@ namespace Immersive.Framework.PlayerParticipation
             {
                 return Reject(
                     PlayerGameplayOccupancyStatus.RejectedPreparationAlreadyOccupied,
-                    Operation,
+                    operation,
                     preparation.PlayerSlotId,
                     previous,
                     $"Prepared Actor identity is already occupied by Slot '{conflicting.PlayerSlotId.StableText}'.");
@@ -202,31 +202,31 @@ namespace Immersive.Framework.PlayerParticipation
                     previous.RuntimeContentIdentity ==
                         preparation.Materialization.RuntimeContentIdentity)
                 {
-                    lastOperationStatus =
+                    _lastOperationStatus =
                         PlayerGameplayOccupancyStatus.SucceededAlreadyOccupied;
-                    lastOperationMessage =
+                    _lastOperationMessage =
                         "Prepared Logical Player Actor is already the effective occupant.";
                     return Result(
-                        lastOperationStatus,
-                        Operation,
+                        _lastOperationStatus,
+                        operation,
                         preparation.PlayerSlotId,
                         previous,
                         previous,
-                        lastOperationMessage);
+                        _lastOperationMessage);
                 }
 
                 return Reject(
                     PlayerGameplayOccupancyStatus.RejectedSlotAlreadyOccupied,
-                    Operation,
+                    operation,
                     preparation.PlayerSlotId,
                     previous,
                     $"Player Slot '{preparation.PlayerSlotId.StableText}' is already occupied by another preparation.");
             }
 
-            occupancySequence++;
-            revision++;
+            _occupancySequence++;
+            _revision++;
             var token = new PlayerGameplayOccupancyToken(
-                sessionContextId,
+                _sessionContextId,
                 preparation.Materialization.Owner,
                 preparation.PlayerSlotId,
                 preparation.PreparedActorProfileId,
@@ -234,9 +234,9 @@ namespace Immersive.Framework.PlayerParticipation
                 preparation.Token,
                 preparation.Materialization.RuntimeContentIdentity,
                 preparation.Materialization.MaterializationRevision,
-                occupancySequence);
+                _occupancySequence);
             var current = new PlayerGameplayOccupancySummary(
-                sessionContextId,
+                _sessionContextId,
                 preparation.PlayerSlotId,
                 PlayerGameplayOccupancyState.Occupied,
                 preparation.PreparedActorProfileId,
@@ -245,7 +245,7 @@ namespace Immersive.Framework.PlayerParticipation
                 preparation.Materialization.RuntimeContentIdentity,
                 preparation.Token,
                 token,
-                occupancySequence,
+                _occupancySequence,
                 resolvedSource,
                 resolvedReason,
                 "Prepared Logical Player Actor confirmed as the effective Slot occupant.");
@@ -254,22 +254,22 @@ namespace Immersive.Framework.PlayerParticipation
             {
                 return Reject(
                     PlayerGameplayOccupancyStatus.RejectedForeignOrStalePreparation,
-                    Operation,
+                    operation,
                     preparation.PlayerSlotId,
                     previous,
                     "Effective occupancy token creation produced incoherent identity evidence.");
             }
 
-            slots[preparation.PlayerSlotId] = current;
-            lastOperationStatus = PlayerGameplayOccupancyStatus.SucceededOccupied;
-            lastOperationMessage = current.Message;
+            _slots[preparation.PlayerSlotId] = current;
+            _lastOperationStatus = PlayerGameplayOccupancyStatus.SucceededOccupied;
+            _lastOperationMessage = current.Message;
             return Result(
-                lastOperationStatus,
-                Operation,
+                _lastOperationStatus,
+                operation,
                 preparation.PlayerSlotId,
                 previous,
                 current,
-                lastOperationMessage);
+                _lastOperationMessage);
         }
 
         internal PlayerGameplayOccupancyResult TryReleaseOccupancy(
@@ -278,7 +278,7 @@ namespace Immersive.Framework.PlayerParticipation
             string source,
             string reason)
         {
-            const string Operation = "ReleaseOccupancy";
+            const string operation = "ReleaseOccupancy";
             string resolvedSource = source.NormalizeTextOrFallback(
                 nameof(PlayerGameplayOccupancyRuntimeContext));
             string resolvedReason = reason.NormalizeTextOrFallback(
@@ -288,19 +288,19 @@ namespace Immersive.Framework.PlayerParticipation
             {
                 return Reject(
                     PlayerGameplayOccupancyStatus.RejectedInvalidRequest,
-                    Operation,
+                    operation,
                     playerSlotId,
                     default,
                     "Effective occupancy release requires a valid Player Slot identity.");
             }
 
-            if (!slots.TryGetValue(
+            if (!_slots.TryGetValue(
                     playerSlotId,
                     out PlayerGameplayOccupancySummary previous))
             {
                 return Reject(
                     PlayerGameplayOccupancyStatus.RejectedSlotNotConfigured,
-                    Operation,
+                    operation,
                     playerSlotId,
                     default,
                     $"Player Slot '{playerSlotId.StableText}' is not configured in this occupancy context.");
@@ -312,23 +312,23 @@ namespace Immersive.Framework.PlayerParticipation
                 {
                     return Reject(
                         PlayerGameplayOccupancyStatus.RejectedForeignOrStaleOccupancy,
-                        Operation,
+                        operation,
                         playerSlotId,
                         previous,
                         "Expected occupancy token is foreign or stale because the Slot is already vacant.");
                 }
 
-                lastOperationStatus =
+                _lastOperationStatus =
                     PlayerGameplayOccupancyStatus.SucceededAlreadyReleased;
-                lastOperationMessage =
+                _lastOperationMessage =
                     "Player Slot occupancy was already released.";
                 return Result(
-                    lastOperationStatus,
-                    Operation,
+                    _lastOperationStatus,
+                    operation,
                     playerSlotId,
                     previous,
                     previous,
-                    lastOperationMessage);
+                    _lastOperationMessage);
             }
 
             if (!expectedOccupancy.IsValid ||
@@ -336,64 +336,64 @@ namespace Immersive.Framework.PlayerParticipation
             {
                 return Reject(
                     PlayerGameplayOccupancyStatus.RejectedForeignOrStaleOccupancy,
-                    Operation,
+                    operation,
                     playerSlotId,
                     previous,
                     "Effective occupancy release rejected a foreign or stale occupancy token.");
             }
 
-            revision++;
+            _revision++;
             var current = PlayerGameplayOccupancySummary.Vacant(
-                sessionContextId,
+                _sessionContextId,
                 playerSlotId,
                 previous.OccupancyRevision,
                 resolvedSource,
                 resolvedReason,
                 "Effective Player Slot occupancy released.");
-            slots[playerSlotId] = current;
-            lastOperationStatus = PlayerGameplayOccupancyStatus.SucceededReleased;
-            lastOperationMessage = current.Message;
+            _slots[playerSlotId] = current;
+            _lastOperationStatus = PlayerGameplayOccupancyStatus.SucceededReleased;
+            _lastOperationMessage = current.Message;
             return Result(
-                lastOperationStatus,
-                Operation,
+                _lastOperationStatus,
+                operation,
                 playerSlotId,
                 previous,
                 current,
-                lastOperationMessage);
+                _lastOperationMessage);
         }
 
         internal bool TryGetSummary(
             PlayerSlotId playerSlotId,
             out PlayerGameplayOccupancySummary summary)
         {
-            return slots.TryGetValue(playerSlotId, out summary);
+            return _slots.TryGetValue(playerSlotId, out summary);
         }
 
         internal PlayerGameplayOccupancySnapshot CreateSnapshot()
         {
             var summaries =
-                new PlayerGameplayOccupancySummary[orderedSlots.Length];
-            for (int index = 0; index < orderedSlots.Length; index++)
+                new PlayerGameplayOccupancySummary[_orderedSlots.Length];
+            for (int index = 0; index < _orderedSlots.Length; index++)
             {
-                summaries[index] = slots[orderedSlots[index]];
+                summaries[index] = _slots[_orderedSlots[index]];
             }
 
             return new PlayerGameplayOccupancySnapshot(
-                sessionContextId,
-                revision,
+                _sessionContextId,
+                _revision,
                 summaries,
-                lastOperationStatus,
-                lastOperationMessage);
+                _lastOperationStatus,
+                _lastOperationMessage);
         }
 
         private bool TryFindConflictingOccupancy(
             PlayerActorPreparationSummary preparation,
             out PlayerGameplayOccupancySummary conflicting)
         {
-            for (int index = 0; index < orderedSlots.Length; index++)
+            for (int index = 0; index < _orderedSlots.Length; index++)
             {
                 PlayerGameplayOccupancySummary current =
-                    slots[orderedSlots[index]];
+                    _slots[_orderedSlots[index]];
                 if (!current.IsOccupied ||
                     current.PlayerSlotId == preparation.PlayerSlotId)
                 {
@@ -440,7 +440,7 @@ namespace Immersive.Framework.PlayerParticipation
             PlayerSlotId playerSlotId)
         {
             return playerSlotId.IsValid &&
-                slots.TryGetValue(playerSlotId, out PlayerGameplayOccupancySummary summary)
+                _slots.TryGetValue(playerSlotId, out PlayerGameplayOccupancySummary summary)
                 ? summary
                 : default;
         }
@@ -452,8 +452,8 @@ namespace Immersive.Framework.PlayerParticipation
             PlayerGameplayOccupancySummary current,
             string message)
         {
-            lastOperationStatus = status;
-            lastOperationMessage = message;
+            _lastOperationStatus = status;
+            _lastOperationMessage = message;
             return Result(
                 status,
                 operation,

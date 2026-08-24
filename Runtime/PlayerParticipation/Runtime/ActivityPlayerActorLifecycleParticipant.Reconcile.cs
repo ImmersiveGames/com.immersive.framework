@@ -11,56 +11,56 @@ namespace Immersive.Framework.PlayerParticipation
     {
         private sealed class ActivityPlayerReadinessRecord
         {
-            internal ActivityAsset Activity;
-            internal RuntimeContentOwner Owner;
-            internal RuntimeScopeContext ScopeContext;
-            internal PlayerParticipationRequirementLevel RequirementLevel;
-            internal List<PlayerReadinessSlotRecord> ProjectedSlots;
-            internal int EnterSessionRevision;
-            internal int AppliedSessionRevision;
-            internal int Occurrence;
-            internal bool Completed;
-            internal bool Failed;
-            internal bool Released;
-            internal ActivityPlayerActorReadinessReason ReadinessReason;
-            internal string Message;
+            internal ActivityAsset activity;
+            internal RuntimeContentOwner owner;
+            internal RuntimeScopeContext scopeContext;
+            internal PlayerParticipationRequirementLevel requirementLevel;
+            internal List<PlayerReadinessSlotRecord> projectedSlots;
+            internal int enterSessionRevision;
+            internal int appliedSessionRevision;
+            internal int occurrence;
+            internal bool completed;
+            internal bool failed;
+            internal bool released;
+            internal ActivityPlayerActorReadinessReason readinessReason;
+            internal string message;
         }
 
         private sealed class PlayerReadinessSlotRecord
         {
-            internal PlayerSlotId PlayerSlotId;
-            internal int SlotRevision;
-            internal int SelectionRevision;
-            internal bool Joined;
-            internal bool Selected;
-            internal bool Prepared;
-            internal bool GameplayAdmitted;
-            internal bool GameplayReady;
-            internal bool SelectionCreatedByLifecycle;
-            internal bool PreparationCreatedByLifecycle;
-            internal bool GameplayCreatedByLifecycle;
-            internal PlayerActorPreparationToken PreparationToken;
-            internal PlayerGameplayAdmissionToken GameplayAdmissionToken;
-            internal ActivityPlayerActorReadinessReason ReadinessReason;
-            internal string Message;
+            internal PlayerSlotId playerSlotId;
+            internal int slotRevision;
+            internal int selectionRevision;
+            internal bool joined;
+            internal bool selected;
+            internal bool prepared;
+            internal bool gameplayAdmitted;
+            internal bool gameplayReady;
+            internal bool selectionCreatedByLifecycle;
+            internal bool preparationCreatedByLifecycle;
+            internal bool gameplayCreatedByLifecycle;
+            internal PlayerActorPreparationToken preparationToken;
+            internal PlayerGameplayAdmissionToken gameplayAdmissionToken;
+            internal ActivityPlayerActorReadinessReason readinessReason;
+            internal string message;
         }
 
         private sealed class ReconcilePassDelta
         {
-            internal PlayerSlotId PlayerSlotId;
-            internal bool SelectionApplied;
-            internal int SelectionRevision;
-            internal bool PreparationApplied;
-            internal PlayerActorPreparationToken PreparationToken;
-            internal bool GameplayApplied;
-            internal PlayerGameplayAdmissionToken GameplayAdmissionToken;
+            internal PlayerSlotId playerSlotId;
+            internal bool selectionApplied;
+            internal int selectionRevision;
+            internal bool preparationApplied;
+            internal PlayerActorPreparationToken preparationToken;
+            internal bool gameplayApplied;
+            internal PlayerGameplayAdmissionToken gameplayAdmissionToken;
         }
 
-        private ActivityPlayerReadinessRecord playerReadinessRecord;
-        private ActivityPlayerActorReconcileResult lastReconcileResult;
+        private ActivityPlayerReadinessRecord _playerReadinessRecord;
+        private ActivityPlayerActorReconcileResult _lastReconcileResult;
 
         internal ActivityPlayerActorReconcileResult LastReconcileResult =>
-            lastReconcileResult;
+            _lastReconcileResult;
 
         private static bool ShouldDeferActivityPlayerReadiness(
             PlayerParticipationRequirementLevel requirementLevel,
@@ -93,12 +93,12 @@ namespace Immersive.Framework.PlayerParticipation
                 IReadOnlyList<PlayerSlotRuntimeSnapshot> projectedSlots)
         {
             PlayerParticipationSnapshot session =
-                participationContext.CreateSnapshot();
+                _participationContext.CreateSnapshot();
             if (session == null || !session.IsInitialized)
             {
                 string issue =
                     "Deferred Activity Player readiness requires an initialized Session participation snapshot.";
-                lastSnapshot = FailureSnapshot(
+                _lastSnapshot = FailureSnapshot(
                     ActivityPlayerActorLifecycleStatus.FailedProjection,
                     activity,
                     owner,
@@ -126,7 +126,7 @@ namespace Immersive.Framework.PlayerParticipation
                 {
                     if (RequiresActivityActorRepresentation(requirementLevel))
                     {
-                        if (!preparationModule.TryGetRegisteredHost(
+                        if (!_preparationModule.TryGetRegisteredHost(
                                 slot.PlayerSlotId,
                                 out LocalPlayerHostAuthoring host,
                                 out string hostIssue))
@@ -134,8 +134,8 @@ namespace Immersive.Framework.PlayerParticipation
                             string representationIssue =
                                 "Activity Actor representation is required but its " +
                                 "Host evidence is unavailable. " + hostIssue;
-                            playerReadinessRecord = null;
-                            lastSnapshot = FailureSnapshot(
+                            _playerReadinessRecord = null;
+                            _lastSnapshot = FailureSnapshot(
                                 ActivityPlayerActorLifecycleStatus
                                     .FailedRequirement,
                                 activity,
@@ -152,7 +152,7 @@ namespace Immersive.Framework.PlayerParticipation
 
                         admittedHosts.Add(host);
                     }
-                    else if (preparationModule.TryGetRegisteredHost(
+                    else if (_preparationModule.TryGetRegisteredHost(
                                  slot.PlayerSlotId,
                                  out LocalPlayerHostAuthoring optionalHost,
                                  out _))
@@ -171,16 +171,16 @@ namespace Immersive.Framework.PlayerParticipation
                         : ActivityPlayerActorReadinessReason.WaitingForJoin;
                 slots.Add(new PlayerReadinessSlotRecord
                 {
-                    PlayerSlotId = slot.PlayerSlotId,
-                    SlotRevision = slot.Revision,
-                    SelectionRevision = slot.SelectionRevision,
-                    Joined = slot.IsJoined,
-                    Selected = slot.HasSelectedActor,
-                    Prepared = false,
-                    GameplayAdmitted = false,
-                    GameplayReady = false,
-                    ReadinessReason = slotReason,
-                    Message = slot.IsJoined
+                    playerSlotId = slot.PlayerSlotId,
+                    slotRevision = slot.Revision,
+                    selectionRevision = slot.SelectionRevision,
+                    joined = slot.IsJoined,
+                    selected = slot.HasSelectedActor,
+                    prepared = false,
+                    gameplayAdmitted = false,
+                    gameplayReady = false,
+                    readinessReason = slotReason,
+                    message = slot.IsJoined
                         ? RequiresActivityActorRepresentation(requirementLevel)
                             ? "Player lifecycle will continue through explicit delta reconcile; this Activity requires an Actor representation."
                             : "Player lifecycle will continue through explicit delta reconcile; Session membership does not require an Activity Actor representation at this requirement level."
@@ -195,28 +195,28 @@ namespace Immersive.Framework.PlayerParticipation
                     false,
                     false,
                     PlayerActorPreparationStatus.None,
-                    slots[index].Message);
+                    slots[index].message);
             }
 
-            playerReadinessRecord = new ActivityPlayerReadinessRecord
+            _playerReadinessRecord = new ActivityPlayerReadinessRecord
             {
-                Activity = activity,
-                Owner = owner,
-                ScopeContext = request.RuntimeScopeContext,
-                RequirementLevel = requirementLevel,
-                ProjectedSlots = slots,
-                EnterSessionRevision = session.Revision,
-                AppliedSessionRevision = session.Revision,
-                Occurrence = 0,
-                Completed = false,
-                Failed = false,
-                Released = false,
-                ReadinessReason = ResolveAggregateReadinessReason(slots),
-                Message = "Activity Player lifecycle entered in a normal Preparing state and awaits explicit delta reconcile."
+                activity = activity,
+                owner = owner,
+                scopeContext = request.RuntimeScopeContext,
+                requirementLevel = requirementLevel,
+                projectedSlots = slots,
+                enterSessionRevision = session.Revision,
+                appliedSessionRevision = session.Revision,
+                occurrence = 0,
+                completed = false,
+                failed = false,
+                released = false,
+                readinessReason = ResolveAggregateReadinessReason(slots),
+                message = "Activity Player lifecycle entered in a normal Preparing state and awaits explicit delta reconcile."
             };
             SynchronizePlayerReadinessContributionAfterRecordCreated();
 
-            activeRecord = new ActiveActivityRecord(
+            _activeRecord = new ActiveActivityRecord(
                 activity,
                 owner,
                 requirementLevel,
@@ -224,7 +224,7 @@ namespace Immersive.Framework.PlayerParticipation
                 selectedCount,
                 new List<PreparedSlotRecord>(),
                 admittedHosts);
-            lastSnapshot = new ActivityPlayerActorLifecycleSnapshot(
+            _lastSnapshot = new ActivityPlayerActorLifecycleSnapshot(
                 ActivityPlayerActorLifecycleStatus.SucceededEnteredPreparing,
                 activity.ActivityName,
                 owner,
@@ -235,12 +235,12 @@ namespace Immersive.Framework.PlayerParticipation
                 0,
                 0,
                 evidence,
-                playerReadinessRecord.Message);
+                _playerReadinessRecord.message);
             return ActivityContentExecutionResult.Success(
                 request,
                 nameof(ActivityPlayerActorLifecycleParticipant),
                 "activity-player-actor-entered-preparing",
-                lastSnapshot.ToDiagnosticString());
+                _lastSnapshot.ToDiagnosticString());
         }
 
         private void CaptureImmediateActivityPlayerReadiness(
@@ -256,12 +256,12 @@ namespace Immersive.Framework.PlayerParticipation
                 projectedSlots == null ||
                 projectedSlots.Count == 0)
             {
-                playerReadinessRecord = null;
+                _playerReadinessRecord = null;
                 return;
             }
 
             PlayerParticipationSnapshot session =
-                participationContext.CreateSnapshot();
+                _participationContext.CreateSnapshot();
             var slots = new List<PlayerReadinessSlotRecord>(
                 projectedSlots.Count);
             for (int index = 0; index < projectedSlots.Count; index++)
@@ -273,26 +273,26 @@ namespace Immersive.Framework.PlayerParticipation
                     FindGameplayAdmissionToken(slot.PlayerSlotId);
                 slots.Add(new PlayerReadinessSlotRecord
                 {
-                    PlayerSlotId = slot.PlayerSlotId,
-                    SlotRevision = slot.Revision,
-                    SelectionRevision = slot.SelectionRevision,
-                    Joined = slot.IsJoined,
-                    Selected = slot.HasSelectedActor,
-                    Prepared =
+                    playerSlotId = slot.PlayerSlotId,
+                    slotRevision = slot.Revision,
+                    selectionRevision = slot.SelectionRevision,
+                    joined = slot.IsJoined,
+                    selected = slot.HasSelectedActor,
+                    prepared =
                         (int)requirementLevel <
                             (int)PlayerParticipationRequirementLevel
                                 .LogicalActorsPrepared ||
                         preparationToken.IsValid,
-                    GameplayAdmitted =
+                    gameplayAdmitted =
                         (int)requirementLevel <
                             (int)PlayerParticipationRequirementLevel.GameplayReady ||
                         admissionToken.IsValid,
-                    GameplayReady = true,
-                    PreparationToken = preparationToken,
-                    GameplayAdmissionToken = admissionToken,
-                    ReadinessReason =
+                    gameplayReady = true,
+                    preparationToken = preparationToken,
+                    gameplayAdmissionToken = admissionToken,
+                    readinessReason =
                         ActivityPlayerActorReadinessReason.RequirementSatisfied,
-                    Message = RequiresActivityActorRepresentation(requirementLevel)
+                    message = RequiresActivityActorRepresentation(requirementLevel)
                         ? "Player requirement was satisfied with an Activity Actor representation prepared for this occurrence."
                         : "Session Player requirement was satisfied without requiring an Activity Actor representation."
                 });
@@ -301,22 +301,22 @@ namespace Immersive.Framework.PlayerParticipation
             int revision = session != null && session.IsInitialized
                 ? session.Revision
                 : 0;
-            playerReadinessRecord = new ActivityPlayerReadinessRecord
+            _playerReadinessRecord = new ActivityPlayerReadinessRecord
             {
-                Activity = activity,
-                Owner = owner,
-                ScopeContext = request.RuntimeScopeContext,
-                RequirementLevel = requirementLevel,
-                ProjectedSlots = slots,
-                EnterSessionRevision = revision,
-                AppliedSessionRevision = revision,
-                Occurrence = 0,
-                Completed = true,
-                Failed = false,
-                Released = false,
-                ReadinessReason =
+                activity = activity,
+                owner = owner,
+                scopeContext = request.RuntimeScopeContext,
+                requirementLevel = requirementLevel,
+                projectedSlots = slots,
+                enterSessionRevision = revision,
+                appliedSessionRevision = revision,
+                occurrence = 0,
+                completed = true,
+                failed = false,
+                released = false,
+                readinessReason =
                     ActivityPlayerActorReadinessReason.RequirementSatisfied,
-                Message =
+                message =
                     "Activity Player lifecycle requirement was satisfied during Activity enter."
             };
             SynchronizePlayerReadinessContributionAfterRecordCreated();
@@ -344,12 +344,12 @@ namespace Immersive.Framework.PlayerParticipation
                     expectedOccurrence);
             if (rejected != null)
             {
-                lastReconcileResult = rejected;
+                _lastReconcileResult = rejected;
                 return rejected;
             }
 
             PlayerParticipationSnapshot session =
-                participationContext.CreateSnapshot();
+                _participationContext.CreateSnapshot();
             if (session == null || !session.IsInitialized)
             {
                 return PublishReconcileFailure(
@@ -361,50 +361,50 @@ namespace Immersive.Framework.PlayerParticipation
             }
 
             if (session.Revision <
-                playerReadinessRecord.AppliedSessionRevision)
+                _playerReadinessRecord.appliedSessionRevision)
             {
                 return PublishReconcileFailure(
                     ActivityPlayerActorReconcileStatus.FailedProjection,
                     session.Revision,
-                    $"Session revision regressed from '{playerReadinessRecord.AppliedSessionRevision}' to '{session.Revision}'.",
+                    $"Session revision regressed from '{_playerReadinessRecord.appliedSessionRevision}' to '{session.Revision}'.",
                     false,
                     false);
             }
 
-            if (playerReadinessRecord.Completed)
+            if (_playerReadinessRecord.completed)
             {
                 bool projectedSlotRevisionChanged =
                     HasProjectedSlotRevisionDelta(session);
                 if (!projectedSlotRevisionChanged)
                 {
-                    playerReadinessRecord.AppliedSessionRevision =
+                    _playerReadinessRecord.appliedSessionRevision =
                         session.Revision;
                 }
 
-                lastReconcileResult = BuildReconcileResult(
+                _lastReconcileResult = BuildReconcileResult(
                     ActivityPlayerActorReconcileStatus.SucceededNoChange,
                     session.Revision,
-                    playerReadinessRecord.AppliedSessionRevision,
+                    _playerReadinessRecord.appliedSessionRevision,
                     false,
                     false,
                     true,
                     projectedSlotRevisionChanged
                         ? "Activity Player readiness is already complete; the completed occurrence retains its existing applied revision because a projected Slot changed."
                         : "Activity Player readiness is already complete; the Session revision changed only outside the frozen Activity projection and was acknowledged without lifecycle mutation.");
-                return lastReconcileResult;
+                return _lastReconcileResult;
             }
 
             if (!HasReconcileRevisionDelta(session))
             {
-                lastReconcileResult = BuildReconcileResult(
+                _lastReconcileResult = BuildReconcileResult(
                     ActivityPlayerActorReconcileStatus.SucceededNoChange,
                     session.Revision,
-                    playerReadinessRecord.AppliedSessionRevision,
+                    _playerReadinessRecord.appliedSessionRevision,
                     false,
                     false,
                     true,
                     "Session and projected Slot revisions have not changed.");
-                return lastReconcileResult;
+                return _lastReconcileResult;
             }
 
             var deltas = new List<ReconcilePassDelta>();
@@ -413,14 +413,14 @@ namespace Immersive.Framework.PlayerParticipation
             string gameplayRuntimeIssue = string.Empty;
 
             for (int index = 0;
-                 index < playerReadinessRecord.ProjectedSlots.Count;
+                 index < _playerReadinessRecord.projectedSlots.Count;
                  index++)
             {
                 PlayerReadinessSlotRecord slotRecord =
-                    playerReadinessRecord.ProjectedSlots[index];
+                    _playerReadinessRecord.projectedSlots[index];
                 if (!TryFindSlot(
                         session,
-                        slotRecord.PlayerSlotId,
+                        slotRecord.playerSlotId,
                         out PlayerSlotRuntimeSnapshot slot))
                 {
                     return FailAndRollbackReconcile(
@@ -430,12 +430,12 @@ namespace Immersive.Framework.PlayerParticipation
                         gameplayRuntime,
                         resolvedSource,
                         resolvedReason,
-                        $"Projected Player Slot '{slotRecord.PlayerSlotId.StableText}' is no longer configured in the Session.");
+                        $"Projected Player Slot '{slotRecord.playerSlotId.StableText}' is no longer configured in the Session.");
                 }
 
-                if (slot.Revision < slotRecord.SlotRevision ||
+                if (slot.Revision < slotRecord.slotRevision ||
                     slot.SelectionRevision <
-                        slotRecord.SelectionRevision)
+                        slotRecord.selectionRevision)
                 {
                     return FailAndRollbackReconcile(
                         ActivityPlayerActorReconcileStatus.FailedProjection,
@@ -445,30 +445,30 @@ namespace Immersive.Framework.PlayerParticipation
                         resolvedSource,
                         resolvedReason,
                         $"Projected Player Slot '{slot.PlayerSlotId.StableText}' " +
-                        $"revision regressed. previousSlotRevision='{slotRecord.SlotRevision}' " +
+                        $"revision regressed. previousSlotRevision='{slotRecord.slotRevision}' " +
                         $"currentSlotRevision='{slot.Revision}' " +
-                        $"previousSelectionRevision='{slotRecord.SelectionRevision}' " +
+                        $"previousSelectionRevision='{slotRecord.selectionRevision}' " +
                         $"currentSelectionRevision='{slot.SelectionRevision}'.");
                 }
 
-                slotRecord.SlotRevision = slot.Revision;
-                slotRecord.SelectionRevision = slot.SelectionRevision;
-                slotRecord.Joined = slot.IsJoined;
-                slotRecord.Selected = slot.HasSelectedActor;
+                slotRecord.slotRevision = slot.Revision;
+                slotRecord.selectionRevision = slot.SelectionRevision;
+                slotRecord.joined = slot.IsJoined;
+                slotRecord.selected = slot.HasSelectedActor;
 
-                if ((int)playerReadinessRecord.RequirementLevel >=
+                if ((int)_playerReadinessRecord.requirementLevel >=
                         (int)PlayerParticipationRequirementLevel.JoinedSlots &&
                     !slot.IsJoined)
                 {
-                    slotRecord.ReadinessReason =
+                    slotRecord.readinessReason =
                         ActivityPlayerActorReadinessReason.WaitingForJoin;
-                    slotRecord.Message = "Projected Player Slot is waiting for Join.";
+                    slotRecord.message = "Projected Player Slot is waiting for Join.";
                     continue;
                 }
 
                 if (RequiresActivityActorRepresentation(
-                        playerReadinessRecord.RequirementLevel) &&
-                    !preparationModule.TryGetRegisteredHost(
+                        _playerReadinessRecord.requirementLevel) &&
+                    !_preparationModule.TryGetRegisteredHost(
                         slot.PlayerSlotId,
                         out _,
                         out string hostIssue))
@@ -484,16 +484,16 @@ namespace Immersive.Framework.PlayerParticipation
                         "Host evidence is unavailable. " + hostIssue);
                 }
 
-                if ((int)playerReadinessRecord.RequirementLevel >=
+                if ((int)_playerReadinessRecord.requirementLevel >=
                     (int)PlayerParticipationRequirementLevel.SelectedActors)
                 {
                     if (!slot.HasSelectedActor)
                     {
-                        slotRecord.ReadinessReason =
+                        slotRecord.readinessReason =
                             ActivityPlayerActorReadinessReason
                                 .WaitingForActorSelection;
                         PlayerActorSelectionResult selection =
-                            preparationModule.TrySelectDefaultActor(
+                            _preparationModule.TrySelectDefaultActor(
                                 slot.PlayerSlotId,
                                 slot.SelectionRevision,
                                 resolvedSource,
@@ -513,17 +513,17 @@ namespace Immersive.Framework.PlayerParticipation
                         }
 
                         slot = selection.Slot;
-                        slotRecord.Selected = slot.HasSelectedActor;
-                        slotRecord.SelectionRevision = slot.SelectionRevision;
-                        slotRecord.SelectionCreatedByLifecycle |=
+                        slotRecord.selected = slot.HasSelectedActor;
+                        slotRecord.selectionRevision = slot.SelectionRevision;
+                        slotRecord.selectionCreatedByLifecycle |=
                             selection.StateChanged;
                         if (selection.StateChanged)
                         {
                             deltas.Add(new ReconcilePassDelta
                             {
-                                PlayerSlotId = slot.PlayerSlotId,
-                                SelectionApplied = true,
-                                SelectionRevision =
+                                playerSlotId = slot.PlayerSlotId,
+                                selectionApplied = true,
+                                selectionRevision =
                                     selection.SelectionRevision
                             });
                             progressed = true;
@@ -543,16 +543,16 @@ namespace Immersive.Framework.PlayerParticipation
                     }
                 }
 
-                if ((int)playerReadinessRecord.RequirementLevel >=
+                if ((int)_playerReadinessRecord.requirementLevel >=
                     (int)PlayerParticipationRequirementLevel
                         .LogicalActorsPrepared)
                 {
-                    slotRecord.ReadinessReason =
+                    slotRecord.readinessReason =
                         ActivityPlayerActorReadinessReason
                             .PreparingLogicalActor;
                     PlayerActorPreparationResult preparation =
-                        preparationModule.TryEnsureSessionPhysicalActor(
-                            playerReadinessRecord.ScopeContext,
+                        _preparationModule.TryEnsureSessionPhysicalActor(
+                            _playerReadinessRecord.scopeContext,
                             slot.PlayerSlotId,
                             resolvedSource,
                             resolvedReason + "; prepare-selected-actor");
@@ -570,8 +570,8 @@ namespace Immersive.Framework.PlayerParticipation
                                 : $"Logical Actor preparation returned no result for Slot '{slot.PlayerSlotId.StableText}'.");
                     }
 
-                    if (!preparationModule.TryApplyCurrentActivityRelocation(
-                            playerReadinessRecord.ScopeContext.Owner,
+                    if (!_preparationModule.TryApplyCurrentActivityRelocation(
+                            _playerReadinessRecord.scopeContext.Owner,
                             slot.PlayerSlotId,
                             preparation.CurrentSummary.Token,
                             out string relocationIssue))
@@ -586,33 +586,33 @@ namespace Immersive.Framework.PlayerParticipation
                     bool preparationApplied =
                         preparation.Status ==
                         PlayerActorPreparationStatus.SucceededPrepared;
-                    slotRecord.PreparationToken =
+                    slotRecord.preparationToken =
                         preparation.CurrentSummary.Token;
-                    slotRecord.Prepared =
+                    slotRecord.prepared =
                         preparation.CurrentSummary.IsPrepared;
-                    slotRecord.PreparationCreatedByLifecycle |=
+                    slotRecord.preparationCreatedByLifecycle |=
                         preparationApplied;
                     if (preparationApplied)
                     {
                         deltas.Add(new ReconcilePassDelta
                         {
-                            PlayerSlotId = slot.PlayerSlotId,
-                            PreparationApplied = true,
-                            PreparationToken =
+                            playerSlotId = slot.PlayerSlotId,
+                            preparationApplied = true,
+                            preparationToken =
                                 preparation.CurrentSummary.Token
                         });
                         progressed = true;
                     }
                 }
 
-                if ((int)playerReadinessRecord.RequirementLevel >=
+                if ((int)_playerReadinessRecord.requirementLevel >=
                     (int)PlayerParticipationRequirementLevel.GameplayReady)
                 {
-                    slotRecord.ReadinessReason =
+                    slotRecord.readinessReason =
                         ActivityPlayerActorReadinessReason
                             .PreparingGameplayAdmission;
                     if (gameplayRuntime == null &&
-                        !preparationModule.TryGetPlayerGameplayRuntime(
+                        !_preparationModule.TryGetPlayerGameplayRuntime(
                             out gameplayRuntime,
                             out gameplayRuntimeIssue))
                     {
@@ -630,7 +630,7 @@ namespace Immersive.Framework.PlayerParticipation
                     PlayerGameplayRuntimeOperationResult gameplay =
                         gameplayRuntime.TryEnsureCurrentGameplay(
                             slot.PlayerSlotId,
-                            playerReadinessRecord.Owner,
+                            _playerReadinessRecord.owner,
                             resolvedSource,
                             resolvedReason + "; ensure-current-gameplay");
                     if (gameplay == null || !gameplay.Succeeded)
@@ -651,36 +651,36 @@ namespace Immersive.Framework.PlayerParticipation
                     bool gameplayApplied =
                         !gameplay.PreviousAdmission.IsAdmitted &&
                         gameplay.CurrentAdmission.IsAdmitted;
-                    slotRecord.GameplayAdmissionToken =
+                    slotRecord.gameplayAdmissionToken =
                         gameplay.CurrentAdmission.Token;
-                    slotRecord.GameplayAdmitted =
+                    slotRecord.gameplayAdmitted =
                         gameplay.CurrentAdmission.IsAdmitted;
-                    slotRecord.GameplayReady = gameplay.GameplayReady;
-                    slotRecord.GameplayCreatedByLifecycle |=
+                    slotRecord.gameplayReady = gameplay.GameplayReady;
+                    slotRecord.gameplayCreatedByLifecycle |=
                         gameplayApplied;
                     if (gameplayApplied)
                     {
                         deltas.Add(new ReconcilePassDelta
                         {
-                            PlayerSlotId = slot.PlayerSlotId,
-                            GameplayApplied = true,
-                            GameplayAdmissionToken =
+                            playerSlotId = slot.PlayerSlotId,
+                            gameplayApplied = true,
+                            gameplayAdmissionToken =
                                 gameplay.CurrentAdmission.Token
                         });
                         progressed = true;
                     }
                 }
 
-                slotRecord.ReadinessReason =
+                slotRecord.readinessReason =
                     ActivityPlayerActorReadinessReason.RequirementSatisfied;
-                slotRecord.Message = RequiresActivityActorRepresentation(
-                        playerReadinessRecord.RequirementLevel)
+                slotRecord.message = RequiresActivityActorRepresentation(
+                        _playerReadinessRecord.requirementLevel)
                     ? "Player lifecycle delta is satisfied with an Activity Actor representation prepared for this occurrence."
                     : "Session Player requirement is satisfied; no physical Activity Actor representation is required at this level.";
             }
 
             PlayerParticipationSnapshot appliedSession =
-                participationContext.CreateSnapshot();
+                _participationContext.CreateSnapshot();
             if (appliedSession == null || !appliedSession.IsInitialized)
             {
                 return FailAndRollbackReconcile(
@@ -694,7 +694,7 @@ namespace Immersive.Framework.PlayerParticipation
             }
 
             RefreshReadinessSlotRevisions(appliedSession);
-            playerReadinessRecord.AppliedSessionRevision =
+            _playerReadinessRecord.appliedSessionRevision =
                 appliedSession.Revision;
             RebuildActiveRecordFromReadiness(appliedSession);
 
@@ -730,16 +730,16 @@ namespace Immersive.Framework.PlayerParticipation
                         .SucceededReconciledReady,
                     evaluatedSession,
                     evaluation,
-                    playerReadinessRecord.Message);
-                lastReconcileResult = BuildReconcileResult(
+                    _playerReadinessRecord.message);
+                _lastReconcileResult = BuildReconcileResult(
                     ActivityPlayerActorReconcileStatus.SucceededCompleted,
                     appliedSession.Revision,
-                    playerReadinessRecord.AppliedSessionRevision,
+                    _playerReadinessRecord.appliedSessionRevision,
                     true,
                     false,
                     true,
-                    playerReadinessRecord.Message);
-                return lastReconcileResult;
+                    _playerReadinessRecord.message);
+                return _lastReconcileResult;
             }
 
             if (evaluation.IsFailed || evaluation.IsBlocked)
@@ -761,17 +761,17 @@ namespace Immersive.Framework.PlayerParticipation
                 evaluatedSession,
                 evaluation,
                 evaluation.Message);
-            lastReconcileResult = BuildReconcileResult(
+            _lastReconcileResult = BuildReconcileResult(
                 progressed
                     ? ActivityPlayerActorReconcileStatus.SucceededProgressed
                     : ActivityPlayerActorReconcileStatus.SucceededNoChange,
                 appliedSession.Revision,
-                playerReadinessRecord.AppliedSessionRevision,
+                _playerReadinessRecord.appliedSessionRevision,
                 progressed,
                 false,
                 true,
                 evaluation.Message);
-            return lastReconcileResult;
+            return _lastReconcileResult;
         }
 
         private ActivityPlayerActorReconcileResult ValidateReconcileRequest(
@@ -791,8 +791,8 @@ namespace Immersive.Framework.PlayerParticipation
                     "Reconcile requires an exact Activity, RuntimeContentOwner and positive occurrence sequence.");
             }
 
-            if (playerReadinessRecord == null ||
-                playerReadinessRecord.Released)
+            if (_playerReadinessRecord == null ||
+                _playerReadinessRecord.released)
             {
                 return BuildRejectedResult(
                     ActivityPlayerActorReconcileStatus.RejectedNoActiveActivity,
@@ -803,7 +803,7 @@ namespace Immersive.Framework.PlayerParticipation
             }
 
             if (!ReferenceEquals(
-                    playerReadinessRecord.Activity,
+                    _playerReadinessRecord.activity,
                     expectedActivity))
             {
                 return BuildRejectedResult(
@@ -815,9 +815,9 @@ namespace Immersive.Framework.PlayerParticipation
                     "Reconcile Activity is foreign or stale.");
             }
 
-            if (playerReadinessRecord.Owner != expectedOwner ||
-                !playerReadinessRecord.ScopeContext.IsValid ||
-                playerReadinessRecord.ScopeContext.Owner != expectedOwner)
+            if (_playerReadinessRecord.owner != expectedOwner ||
+                !_playerReadinessRecord.scopeContext.IsValid ||
+                _playerReadinessRecord.scopeContext.Owner != expectedOwner)
             {
                 return BuildRejectedResult(
                     ActivityPlayerActorReconcileStatus
@@ -828,9 +828,9 @@ namespace Immersive.Framework.PlayerParticipation
                     "Reconcile RuntimeContentOwner or retained Activity scope context is foreign or stale.");
             }
 
-            if (playerReadinessRecord.Occurrence != expectedOccurrence ||
-                playerReadinessParticipant == null ||
-                playerReadinessParticipant.Occurrence != expectedOccurrence)
+            if (_playerReadinessRecord.occurrence != expectedOccurrence ||
+                _playerReadinessParticipant == null ||
+                _playerReadinessParticipant.Occurrence != expectedOccurrence)
             {
                 return BuildRejectedResult(
                     ActivityPlayerActorReconcileStatus
@@ -853,17 +853,17 @@ namespace Immersive.Framework.PlayerParticipation
             }
 
             for (int recordIndex = 0;
-                 recordIndex < playerReadinessRecord.ProjectedSlots.Count;
+                 recordIndex < _playerReadinessRecord.projectedSlots.Count;
                  recordIndex++)
             {
                 PlayerReadinessSlotRecord record =
-                    playerReadinessRecord.ProjectedSlots[recordIndex];
+                    _playerReadinessRecord.projectedSlots[recordIndex];
                 if (!TryFindSlot(
                         session,
-                        record.PlayerSlotId,
+                        record.playerSlotId,
                         out PlayerSlotRuntimeSnapshot slot) ||
-                    slot.Revision != record.SlotRevision ||
-                    slot.SelectionRevision != record.SelectionRevision)
+                    slot.Revision != record.slotRevision ||
+                    slot.SelectionRevision != record.selectionRevision)
                 {
                     return true;
                 }
@@ -877,7 +877,7 @@ namespace Immersive.Framework.PlayerParticipation
         {
             return
                 session.Revision !=
-                    playerReadinessRecord.AppliedSessionRevision ||
+                    _playerReadinessRecord.appliedSessionRevision ||
                 HasProjectedSlotRevisionDelta(session);
         }
 
@@ -887,23 +887,23 @@ namespace Immersive.Framework.PlayerParticipation
                 out PlayerActorPreparationSnapshot preparation,
                 out PlayerGameplayAdmissionSnapshot gameplay)
         {
-            session = participationContext.CreateSnapshot();
+            session = _participationContext.CreateSnapshot();
             preparation = null;
             gameplay = null;
 
-            if ((int)playerReadinessRecord.RequirementLevel >=
+            if ((int)_playerReadinessRecord.requirementLevel >=
                 (int)PlayerParticipationRequirementLevel
                     .LogicalActorsPrepared)
             {
-                preparationModule.TryGetSnapshot(
+                _preparationModule.TryGetSnapshot(
                     out PlayerActorPreparationRuntimeHostSnapshot
                         preparationHost);
                 preparation = preparationHost?.Preparation;
             }
 
-            if ((int)playerReadinessRecord.RequirementLevel >=
+            if ((int)_playerReadinessRecord.requirementLevel >=
                 (int)PlayerParticipationRequirementLevel.GameplayReady &&
-                preparationModule.TryGetPlayerGameplayRuntime(
+                _preparationModule.TryGetPlayerGameplayRuntime(
                     out PlayerGameplayRuntimeHostModule gameplayRuntime,
                     out _))
             {
@@ -913,7 +913,7 @@ namespace Immersive.Framework.PlayerParticipation
             }
 
             return ActivityPlayerAdmissionEvaluator.Evaluate(
-                playerReadinessRecord.Activity,
+                _playerReadinessRecord.activity,
                 session,
                 preparation,
                 gameplay);
@@ -951,49 +951,49 @@ namespace Immersive.Framework.PlayerParticipation
 
         private void MarkAllReadinessSlotsSatisfied(string message)
         {
-            if (playerReadinessRecord == null)
+            if (_playerReadinessRecord == null)
             {
                 return;
             }
 
             for (int index = 0;
-                 index < playerReadinessRecord.ProjectedSlots.Count;
+                 index < _playerReadinessRecord.projectedSlots.Count;
                  index++)
             {
                 PlayerReadinessSlotRecord record =
-                    playerReadinessRecord.ProjectedSlots[index];
-                record.ReadinessReason =
+                    _playerReadinessRecord.projectedSlots[index];
+                record.readinessReason =
                     ActivityPlayerActorReadinessReason.RequirementSatisfied;
-                record.Message = message ?? string.Empty;
+                record.message = message ?? string.Empty;
             }
         }
 
         private void RefreshReadinessSlotRevisions(
             PlayerParticipationSnapshot session)
         {
-            if (session == null || playerReadinessRecord == null)
+            if (session == null || _playerReadinessRecord == null)
             {
                 return;
             }
 
             for (int index = 0;
-                 index < playerReadinessRecord.ProjectedSlots.Count;
+                 index < _playerReadinessRecord.projectedSlots.Count;
                  index++)
             {
                 PlayerReadinessSlotRecord record =
-                    playerReadinessRecord.ProjectedSlots[index];
+                    _playerReadinessRecord.projectedSlots[index];
                 if (!TryFindSlot(
                         session,
-                        record.PlayerSlotId,
+                        record.playerSlotId,
                         out PlayerSlotRuntimeSnapshot slot))
                 {
                     continue;
                 }
 
-                record.SlotRevision = slot.Revision;
-                record.SelectionRevision = slot.SelectionRevision;
-                record.Joined = slot.IsJoined;
-                record.Selected = slot.HasSelectedActor;
+                record.slotRevision = slot.Revision;
+                record.selectionRevision = slot.SelectionRevision;
+                record.joined = slot.IsJoined;
+                record.selected = slot.HasSelectedActor;
             }
         }
 
@@ -1013,17 +1013,17 @@ namespace Immersive.Framework.PlayerParticipation
                     continue;
                 }
 
-                record.ReadinessReason =
+                record.readinessReason =
                     MapMissingRequirement(evaluated.MissingRequirement);
-                record.Message = evaluated.Message;
-                if (record.ReadinessReason < aggregate)
+                record.message = evaluated.Message;
+                if (record.readinessReason < aggregate)
                 {
-                    aggregate = record.ReadinessReason;
+                    aggregate = record.readinessReason;
                 }
             }
 
-            playerReadinessRecord.ReadinessReason = aggregate;
-            playerReadinessRecord.Message = evaluation.Message;
+            _playerReadinessRecord.readinessReason = aggregate;
+            _playerReadinessRecord.message = evaluation.Message;
         }
 
         private ActivityPlayerActorReconcileResult
@@ -1069,44 +1069,44 @@ namespace Immersive.Framework.PlayerParticipation
             for (int index = deltas.Count - 1; index >= 0; index--)
             {
                 ReconcilePassDelta delta = deltas[index];
-                if (delta.GameplayApplied &&
-                    delta.GameplayAdmissionToken.IsValid)
+                if (delta.gameplayApplied &&
+                    delta.gameplayAdmissionToken.IsValid)
                 {
                     if (gameplayRuntime == null)
                     {
                         issues.Add(
-                            $"Gameplay rollback runtime is unavailable for Slot '{delta.PlayerSlotId.StableText}'.");
+                            $"Gameplay rollback runtime is unavailable for Slot '{delta.playerSlotId.StableText}'.");
                     }
                     else
                     {
                         PlayerGameplayRuntimeOperationResult release =
                             gameplayRuntime.TryReleaseCurrentGameplay(
-                                delta.PlayerSlotId,
-                                delta.GameplayAdmissionToken,
+                                delta.playerSlotId,
+                                delta.gameplayAdmissionToken,
                                 source,
                                 reason + "; rollback-gameplay");
                         if (release == null || !release.Succeeded)
                         {
                             issues.Add(release != null
                                 ? release.ToDiagnosticString()
-                                : $"Gameplay rollback returned no result for Slot '{delta.PlayerSlotId.StableText}'.");
+                                : $"Gameplay rollback returned no result for Slot '{delta.playerSlotId.StableText}'.");
                         }
                         else
                         {
                             PlayerReadinessSlotRecord record =
-                                FindReadinessSlot(delta.PlayerSlotId);
+                                FindReadinessSlot(delta.playerSlotId);
                             if (record != null)
                             {
-                                record.GameplayAdmitted = false;
-                                record.GameplayReady = false;
-                                record.GameplayAdmissionToken = default;
-                                record.GameplayCreatedByLifecycle = false;
+                                record.gameplayAdmitted = false;
+                                record.gameplayReady = false;
+                                record.gameplayAdmissionToken = default;
+                                record.gameplayCreatedByLifecycle = false;
                             }
                         }
                     }
                 }
 
-                if (delta.SelectionApplied)
+                if (delta.selectionApplied)
                 {
                     bool physicalCommitted = false;
                     for (int deltaIndex = 0;
@@ -1114,9 +1114,9 @@ namespace Immersive.Framework.PlayerParticipation
                          deltaIndex++)
                     {
                         ReconcilePassDelta preparedDelta = deltas[deltaIndex];
-                        if (preparedDelta.PlayerSlotId == delta.PlayerSlotId &&
-                            preparedDelta.PreparationApplied &&
-                            preparedDelta.PreparationToken.IsValid)
+                        if (preparedDelta.playerSlotId == delta.playerSlotId &&
+                            preparedDelta.preparationApplied &&
+                            preparedDelta.preparationToken.IsValid)
                         {
                             physicalCommitted = true;
                             break;
@@ -1129,39 +1129,39 @@ namespace Immersive.Framework.PlayerParticipation
                     }
 
                     PlayerActorSelectionResult clear =
-                        preparationModule.TryClearActorSelection(
+                        _preparationModule.TryClearActorSelection(
                             new PlayerActorSelectionRequest(
-                                delta.PlayerSlotId,
+                                delta.playerSlotId,
                                 null,
                                 source,
                                 reason + "; rollback-selection",
-                                delta.SelectionRevision));
+                                delta.selectionRevision));
                     if (clear == null || !clear.Succeeded)
                     {
                         issues.Add(clear != null
                             ? clear.ToDiagnosticString()
-                            : $"Selection rollback returned no result for Slot '{delta.PlayerSlotId.StableText}'.");
+                            : $"Selection rollback returned no result for Slot '{delta.playerSlotId.StableText}'.");
                     }
                     else
                     {
                         PlayerReadinessSlotRecord record =
-                            FindReadinessSlot(delta.PlayerSlotId);
+                            FindReadinessSlot(delta.playerSlotId);
                         if (record != null)
                         {
-                            record.Selected = false;
-                            record.SelectionRevision = clear.SelectionRevision;
-                            record.SelectionCreatedByLifecycle = false;
+                            record.selected = false;
+                            record.selectionRevision = clear.SelectionRevision;
+                            record.selectionCreatedByLifecycle = false;
                         }
                     }
                 }
             }
 
             PlayerParticipationSnapshot session =
-                participationContext.CreateSnapshot();
+                _participationContext.CreateSnapshot();
             if (session != null && session.IsInitialized)
             {
                 RefreshReadinessSlotRevisions(session);
-                playerReadinessRecord.AppliedSessionRevision =
+                _playerReadinessRecord.appliedSessionRevision =
                     session.Revision;
             }
 
@@ -1180,35 +1180,35 @@ namespace Immersive.Framework.PlayerParticipation
             bool rollbackSucceeded)
         {
             FailPlayerReadinessContribution(issue);
-            lastSnapshot = new ActivityPlayerActorLifecycleSnapshot(
+            _lastSnapshot = new ActivityPlayerActorLifecycleSnapshot(
                 status == ActivityPlayerActorReconcileStatus.FailedRollback
                     ? ActivityPlayerActorLifecycleStatus.FailedRollback
                     : ActivityPlayerActorLifecycleStatus.FailedReconcile,
-                playerReadinessRecord != null
-                    ? playerReadinessRecord.Activity.ActivityName
+                _playerReadinessRecord != null
+                    ? _playerReadinessRecord.activity.ActivityName
                     : string.Empty,
-                playerReadinessRecord != null
-                    ? playerReadinessRecord.Owner
+                _playerReadinessRecord != null
+                    ? _playerReadinessRecord.owner
                     : default,
-                playerReadinessRecord != null
-                    ? playerReadinessRecord.RequirementLevel
+                _playerReadinessRecord != null
+                    ? _playerReadinessRecord.requirementLevel
                     : PlayerParticipationRequirementLevel.None,
-                playerReadinessRecord?.ProjectedSlots.Count ?? 0,
+                _playerReadinessRecord?.projectedSlots.Count ?? 0,
                 CountSelectedSlots(),
                 CountPreparedSlots(),
                 0,
                 1,
                 BuildLifecycleSlotEvidence(),
                 issue);
-            lastReconcileResult = BuildReconcileResult(
+            _lastReconcileResult = BuildReconcileResult(
                 status,
                 requestedSessionRevision,
-                playerReadinessRecord?.AppliedSessionRevision ?? 0,
+                _playerReadinessRecord?.appliedSessionRevision ?? 0,
                 true,
                 rollbackAttempted,
                 rollbackSucceeded,
                 issue);
-            return lastReconcileResult;
+            return _lastReconcileResult;
         }
 
         private ActivityPlayerActorReconcileResult BuildRejectedResult(
@@ -1224,17 +1224,17 @@ namespace Immersive.Framework.PlayerParticipation
                 owner,
                 occurrence,
                 0,
-                playerReadinessRecord?.AppliedSessionRevision ?? 0,
-                playerReadinessRecord?.ProjectedSlots.Count ?? 0,
+                _playerReadinessRecord?.appliedSessionRevision ?? 0,
+                _playerReadinessRecord?.projectedSlots.Count ?? 0,
                 CountSatisfiedSlots(),
                 CountPendingSlots(),
                 CountFailedSlots(),
-                playerReadinessRecord?.ReadinessReason ??
+                _playerReadinessRecord?.readinessReason ??
                     ActivityPlayerActorReadinessReason.None,
                 false,
                 false,
                 false,
-                lastSnapshot,
+                _lastSnapshot,
                 message);
         }
 
@@ -1249,25 +1249,25 @@ namespace Immersive.Framework.PlayerParticipation
         {
             return new ActivityPlayerActorReconcileResult(
                 status,
-                playerReadinessRecord?.Activity != null
-                    ? playerReadinessRecord.Activity.ActivityName
+                _playerReadinessRecord?.activity != null
+                    ? _playerReadinessRecord.activity.ActivityName
                     : string.Empty,
-                playerReadinessRecord != null
-                    ? playerReadinessRecord.Owner
+                _playerReadinessRecord != null
+                    ? _playerReadinessRecord.owner
                     : default,
-                playerReadinessRecord?.Occurrence ?? 0,
+                _playerReadinessRecord?.occurrence ?? 0,
                 requestedSessionRevision,
                 appliedSessionRevision,
-                playerReadinessRecord?.ProjectedSlots.Count ?? 0,
+                _playerReadinessRecord?.projectedSlots.Count ?? 0,
                 CountSatisfiedSlots(),
                 CountPendingSlots(),
                 CountFailedSlots(),
-                playerReadinessRecord?.ReadinessReason ??
+                _playerReadinessRecord?.readinessReason ??
                     ActivityPlayerActorReadinessReason.None,
                 stateChanged,
                 rollbackAttempted,
                 rollbackSucceeded,
-                lastSnapshot,
+                _lastSnapshot,
                 message);
         }
 
@@ -1278,27 +1278,27 @@ namespace Immersive.Framework.PlayerParticipation
             var hosts = new List<LocalPlayerHostAuthoring>();
             int selectedCount = 0;
             for (int index = 0;
-                 index < playerReadinessRecord.ProjectedSlots.Count;
+                 index < _playerReadinessRecord.projectedSlots.Count;
                  index++)
             {
                 PlayerReadinessSlotRecord record =
-                    playerReadinessRecord.ProjectedSlots[index];
-                if (record.Selected)
+                    _playerReadinessRecord.projectedSlots[index];
+                if (record.selected)
                 {
                     selectedCount++;
                 }
 
-                if (record.PreparationToken.IsValid)
+                if (record.preparationToken.IsValid)
                 {
                     prepared.Add(new PreparedSlotRecord(
-                        record.PlayerSlotId,
-                        record.PreparationToken,
-                        record.PreparationCreatedByLifecycle));
+                        record.playerSlotId,
+                        record.preparationToken,
+                        record.preparationCreatedByLifecycle));
                 }
 
-                if (record.Joined &&
-                    preparationModule.TryGetRegisteredHost(
-                        record.PlayerSlotId,
+                if (record.joined &&
+                    _preparationModule.TryGetRegisteredHost(
+                        record.playerSlotId,
                         out LocalPlayerHostAuthoring host,
                         out _) &&
                     host != null &&
@@ -1308,11 +1308,11 @@ namespace Immersive.Framework.PlayerParticipation
                 }
             }
 
-            activeRecord = new ActiveActivityRecord(
-                playerReadinessRecord.Activity,
-                playerReadinessRecord.Owner,
-                playerReadinessRecord.RequirementLevel,
-                playerReadinessRecord.ProjectedSlots.Count,
+            _activeRecord = new ActiveActivityRecord(
+                _playerReadinessRecord.activity,
+                _playerReadinessRecord.owner,
+                _playerReadinessRecord.requirementLevel,
+                _playerReadinessRecord.projectedSlots.Count,
                 selectedCount,
                 prepared,
                 hosts);
@@ -1324,12 +1324,12 @@ namespace Immersive.Framework.PlayerParticipation
             ActivityPlayerAdmissionEvaluationResult evaluation,
             string message)
         {
-            lastSnapshot = new ActivityPlayerActorLifecycleSnapshot(
+            _lastSnapshot = new ActivityPlayerActorLifecycleSnapshot(
                 status,
-                playerReadinessRecord.Activity.ActivityName,
-                playerReadinessRecord.Owner,
-                playerReadinessRecord.RequirementLevel,
-                playerReadinessRecord.ProjectedSlots.Count,
+                _playerReadinessRecord.activity.ActivityName,
+                _playerReadinessRecord.owner,
+                _playerReadinessRecord.requirementLevel,
+                _playerReadinessRecord.projectedSlots.Count,
                 CountSelectedSlots(),
                 CountPreparedSlots(),
                 0,
@@ -1341,7 +1341,7 @@ namespace Immersive.Framework.PlayerParticipation
         private ActivityPlayerActorSlotLifecycleSnapshot[]
             BuildLifecycleSlotEvidence()
         {
-            if (playerReadinessRecord == null)
+            if (_playerReadinessRecord == null)
             {
                 return Array.Empty<
                     ActivityPlayerActorSlotLifecycleSnapshot>();
@@ -1349,33 +1349,33 @@ namespace Immersive.Framework.PlayerParticipation
 
             var evidence =
                 new ActivityPlayerActorSlotLifecycleSnapshot[
-                    playerReadinessRecord.ProjectedSlots.Count];
+                    _playerReadinessRecord.projectedSlots.Count];
             PlayerParticipationSnapshot session =
-                participationContext.CreateSnapshot();
+                _participationContext.CreateSnapshot();
             for (int index = 0;
-                 index < playerReadinessRecord.ProjectedSlots.Count;
+                 index < _playerReadinessRecord.projectedSlots.Count;
                  index++)
             {
                 PlayerReadinessSlotRecord record =
-                    playerReadinessRecord.ProjectedSlots[index];
+                    _playerReadinessRecord.projectedSlots[index];
                 TryFindSlot(
                     session,
-                    record.PlayerSlotId,
+                    record.playerSlotId,
                     out PlayerSlotRuntimeSnapshot slot);
                 evidence[index] =
                     new ActivityPlayerActorSlotLifecycleSnapshot(
-                        record.PlayerSlotId,
-                        record.Joined,
+                        record.playerSlotId,
+                        record.joined,
                         slot.SelectedActorProfileId,
-                        record.SelectionCreatedByLifecycle,
-                        record.PreparationToken,
-                        record.PreparationCreatedByLifecycle,
+                        record.selectionCreatedByLifecycle,
+                        record.preparationToken,
+                        record.preparationCreatedByLifecycle,
                         false,
-                        record.Prepared
+                        record.prepared
                             ? PlayerActorPreparationStatus
                                 .SucceededAlreadyPrepared
                             : PlayerActorPreparationStatus.None,
-                        record.Message);
+                        record.message);
             }
 
             return evidence;
@@ -1384,17 +1384,17 @@ namespace Immersive.Framework.PlayerParticipation
         private PlayerActorPreparationToken FindPreparedToken(
             PlayerSlotId playerSlotId)
         {
-            if (activeRecord == null)
+            if (_activeRecord == null)
             {
                 return default;
             }
 
             for (int index = 0;
-                 index < activeRecord.PreparedSlots.Count;
+                 index < _activeRecord.PreparedSlots.Count;
                  index++)
             {
                 PreparedSlotRecord prepared =
-                    activeRecord.PreparedSlots[index];
+                    _activeRecord.PreparedSlots[index];
                 if (prepared.PlayerSlotId == playerSlotId)
                 {
                     return prepared.Token;
@@ -1407,7 +1407,7 @@ namespace Immersive.Framework.PlayerParticipation
         private PlayerGameplayAdmissionToken FindGameplayAdmissionToken(
             PlayerSlotId playerSlotId)
         {
-            if (!preparationModule.TryGetPlayerGameplayRuntime(
+            if (!_preparationModule.TryGetPlayerGameplayRuntime(
                     out PlayerGameplayRuntimeHostModule gameplay,
                     out _) ||
                 !gameplay.TryGetCurrentAdmission(
@@ -1446,19 +1446,19 @@ namespace Immersive.Framework.PlayerParticipation
         private PlayerReadinessSlotRecord FindReadinessSlot(
             PlayerSlotId playerSlotId)
         {
-            if (playerReadinessRecord == null)
+            if (_playerReadinessRecord == null)
             {
                 return null;
             }
 
             for (int index = 0;
-                 index < playerReadinessRecord.ProjectedSlots.Count;
+                 index < _playerReadinessRecord.projectedSlots.Count;
                  index++)
             {
-                if (playerReadinessRecord.ProjectedSlots[index]
-                        .PlayerSlotId == playerSlotId)
+                if (_playerReadinessRecord.projectedSlots[index]
+                        .playerSlotId == playerSlotId)
                 {
-                    return playerReadinessRecord.ProjectedSlots[index];
+                    return _playerReadinessRecord.projectedSlots[index];
                 }
             }
 
@@ -1513,9 +1513,9 @@ namespace Immersive.Framework.PlayerParticipation
                 ActivityPlayerActorReadinessReason.RequirementSatisfied;
             for (int index = 0; index < slots.Count; index++)
             {
-                if (slots[index].ReadinessReason < result)
+                if (slots[index].readinessReason < result)
                 {
-                    result = slots[index].ReadinessReason;
+                    result = slots[index].readinessReason;
                 }
             }
 
@@ -1548,16 +1548,16 @@ namespace Immersive.Framework.PlayerParticipation
         private int CountSelectedSlots()
         {
             int count = 0;
-            if (playerReadinessRecord == null)
+            if (_playerReadinessRecord == null)
             {
                 return count;
             }
 
             for (int index = 0;
-                 index < playerReadinessRecord.ProjectedSlots.Count;
+                 index < _playerReadinessRecord.projectedSlots.Count;
                  index++)
             {
-                if (playerReadinessRecord.ProjectedSlots[index].Selected)
+                if (_playerReadinessRecord.projectedSlots[index].selected)
                 {
                     count++;
                 }
@@ -1569,16 +1569,16 @@ namespace Immersive.Framework.PlayerParticipation
         private int CountPreparedSlots()
         {
             int count = 0;
-            if (playerReadinessRecord == null)
+            if (_playerReadinessRecord == null)
             {
                 return count;
             }
 
             for (int index = 0;
-                 index < playerReadinessRecord.ProjectedSlots.Count;
+                 index < _playerReadinessRecord.projectedSlots.Count;
                  index++)
             {
-                if (playerReadinessRecord.ProjectedSlots[index].Prepared)
+                if (_playerReadinessRecord.projectedSlots[index].prepared)
                 {
                     count++;
                 }
@@ -1590,17 +1590,17 @@ namespace Immersive.Framework.PlayerParticipation
         private int CountSatisfiedSlots()
         {
             int count = 0;
-            if (playerReadinessRecord == null)
+            if (_playerReadinessRecord == null)
             {
                 return count;
             }
 
             for (int index = 0;
-                 index < playerReadinessRecord.ProjectedSlots.Count;
+                 index < _playerReadinessRecord.projectedSlots.Count;
                  index++)
             {
-                if (playerReadinessRecord.ProjectedSlots[index]
-                        .ReadinessReason ==
+                if (_playerReadinessRecord.projectedSlots[index]
+                        .readinessReason ==
                     ActivityPlayerActorReadinessReason
                         .RequirementSatisfied)
                 {
@@ -1613,22 +1613,22 @@ namespace Immersive.Framework.PlayerParticipation
 
         private int CountPendingSlots()
         {
-            if (playerReadinessRecord == null)
+            if (_playerReadinessRecord == null)
             {
                 return 0;
             }
 
             return Math.Max(
                 0,
-                playerReadinessRecord.ProjectedSlots.Count -
+                _playerReadinessRecord.projectedSlots.Count -
                     CountSatisfiedSlots() -
                     CountFailedSlots());
         }
 
         private int CountFailedSlots()
         {
-            if (playerReadinessRecord == null ||
-                !playerReadinessRecord.Failed)
+            if (_playerReadinessRecord == null ||
+                !_playerReadinessRecord.failed)
             {
                 return 0;
             }

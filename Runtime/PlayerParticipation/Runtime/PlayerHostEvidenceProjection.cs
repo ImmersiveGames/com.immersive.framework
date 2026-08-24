@@ -170,29 +170,29 @@ namespace Immersive.Framework.PlayerParticipation
             internal string Reason { get; set; }
         }
 
-        private readonly PlayerParticipationRuntimeContext participationContext;
-        private readonly string sessionContextId;
-        private readonly Dictionary<PlayerSlotId, Record> records = new();
+        private readonly PlayerParticipationRuntimeContext _participationContext;
+        private readonly string _sessionContextId;
+        private readonly Dictionary<PlayerSlotId, Record> _records = new();
 
         internal PlayerHostEvidenceProjection(
             PlayerParticipationRuntimeContext participationContext)
         {
-            this.participationContext = participationContext ??
+            this._participationContext = participationContext ??
                 throw new ArgumentNullException(nameof(participationContext));
             PlayerParticipationSnapshot snapshot =
                 participationContext.CreateSnapshot();
-            sessionContextId = snapshot != null
+            _sessionContextId = snapshot != null
                 ? snapshot.ContextId.NormalizeText()
                 : string.Empty;
-            if (string.IsNullOrEmpty(sessionContextId))
+            if (string.IsNullOrEmpty(_sessionContextId))
             {
                 throw new InvalidOperationException(
                     "Host evidence projection requires an initialized Player participation context.");
             }
         }
 
-        internal int RetainedEvidenceCount => records.Count;
-        internal string SessionContextId => sessionContextId;
+        internal int RetainedEvidenceCount => _records.Count;
+        internal string SessionContextId => _sessionContextId;
 
         internal PlayerHostEvidenceResult RegisterSessionPhysicalHost(
             PlayerSlotId playerSlotId,
@@ -220,7 +220,7 @@ namespace Immersive.Framework.PlayerParticipation
                     "Session physical Host registration requires the exact available Joined Host for the Slot.");
             }
 
-            if (records.TryGetValue(playerSlotId, out Record existing))
+            if (_records.TryGetValue(playerSlotId, out Record existing))
             {
                 PlayerHostEvidenceSnapshot snapshot = Snapshot(existing);
                 return ReferenceEquals(existing.Host, host)
@@ -228,7 +228,7 @@ namespace Immersive.Framework.PlayerParticipation
                     : Result(PlayerHostEvidenceStatus.RejectedHostConflict, operation, snapshot, snapshot, null, resolvedSource, resolvedReason, "Another Session physical Host is already registered for this Slot.");
             }
 
-            foreach (KeyValuePair<PlayerSlotId, Record> pair in records)
+            foreach (KeyValuePair<PlayerSlotId, Record> pair in _records)
             {
                 if (ReferenceEquals(pair.Value.Host, host))
                 {
@@ -246,7 +246,7 @@ namespace Immersive.Framework.PlayerParticipation
                 host,
                 resolvedSource,
                 resolvedReason);
-            records.Add(playerSlotId, record);
+            _records.Add(playerSlotId, record);
             return Result(PlayerHostEvidenceStatus.SucceededRegistered, operation, default, Snapshot(record), null, resolvedSource, resolvedReason, "Session physical Host registered without a contextual assignment.");
         }
 
@@ -256,7 +256,7 @@ namespace Immersive.Framework.PlayerParticipation
             out PlayerHostEvidenceResult result)
         {
             host = null;
-            if (!playerSlotId.IsValid || !records.TryGetValue(playerSlotId, out Record record))
+            if (!playerSlotId.IsValid || !_records.TryGetValue(playerSlotId, out Record record))
             {
                 result = Result(PlayerHostEvidenceStatus.RejectedNoEvidence, "LookupSessionPhysicalHost", default, default, null, nameof(PlayerHostEvidenceProjection), "lookup-session-physical-host", "No Session physical Host is registered for the Slot.");
                 return false;
@@ -307,7 +307,7 @@ namespace Immersive.Framework.PlayerParticipation
             }
 
             PlayerSlotAssignmentResult assignment =
-                participationContext.TryConfirmCurrentAssignment(
+                _participationContext.TryConfirmCurrentAssignment(
                     playerSlotId,
                     assignmentToken,
                     resolvedSource,
@@ -326,7 +326,7 @@ namespace Immersive.Framework.PlayerParticipation
                 return assignmentFailure;
             }
 
-            foreach (KeyValuePair<PlayerSlotId, Record> pair in records)
+            foreach (KeyValuePair<PlayerSlotId, Record> pair in _records)
             {
                 if (pair.Key == playerSlotId)
                 {
@@ -361,7 +361,7 @@ namespace Immersive.Framework.PlayerParticipation
                 }
             }
 
-            if (records.TryGetValue(playerSlotId, out Record existing))
+            if (_records.TryGetValue(playerSlotId, out Record existing))
             {
                 PlayerHostEvidenceSnapshot existingSnapshot = Snapshot(existing);
                 if (!existingSnapshot.HasContextualProjection &&
@@ -428,7 +428,7 @@ namespace Immersive.Framework.PlayerParticipation
                 host,
                 resolvedSource,
                 resolvedReason);
-            records.Add(playerSlotId, record);
+            _records.Add(playerSlotId, record);
             PlayerHostEvidenceSnapshot current = Snapshot(record);
             return Result(
                 PlayerHostEvidenceStatus.SucceededRegistered,
@@ -475,7 +475,7 @@ namespace Immersive.Framework.PlayerParticipation
             string resolvedReason = reason.NormalizeTextOrFallback(
                 "reproject-host-evidence");
             if (!playerSlotId.IsValid ||
-                !records.TryGetValue(playerSlotId, out Record existing))
+                !_records.TryGetValue(playerSlotId, out Record existing))
             {
                 return Result(
                     PlayerHostEvidenceStatus.RejectedNoEvidence,
@@ -513,7 +513,7 @@ namespace Immersive.Framework.PlayerParticipation
             }
 
             PlayerSlotAssignmentResult assignment =
-                participationContext.TryConfirmCurrentAssignment(
+                _participationContext.TryConfirmCurrentAssignment(
                     playerSlotId,
                     assignmentToken,
                     resolvedSource,
@@ -568,7 +568,7 @@ namespace Immersive.Framework.PlayerParticipation
             out PlayerHostEvidenceSnapshot evidence)
         {
             if (playerSlotId.IsValid &&
-                records.TryGetValue(playerSlotId, out Record record))
+                _records.TryGetValue(playerSlotId, out Record record))
             {
                 evidence = Snapshot(record);
                 return true;
@@ -601,7 +601,7 @@ namespace Immersive.Framework.PlayerParticipation
                     "Host evidence confirmation requires a valid Player Slot identity.");
             }
 
-            if (!records.TryGetValue(playerSlotId, out Record record))
+            if (!_records.TryGetValue(playerSlotId, out Record record))
             {
                 return Result(
                     PlayerHostEvidenceStatus.RejectedNoEvidence,
@@ -670,7 +670,7 @@ namespace Immersive.Framework.PlayerParticipation
             }
 
             PlayerSlotAssignmentResult assignment =
-                participationContext.TryConfirmCurrentAssignment(
+                _participationContext.TryConfirmCurrentAssignment(
                     playerSlotId,
                     record.AssignmentToken,
                     resolvedSource,
@@ -760,7 +760,7 @@ namespace Immersive.Framework.PlayerParticipation
                 nameof(PlayerHostEvidenceProjection));
             string resolvedReason = reason.NormalizeTextOrFallback(
                 "release-session-physical-host");
-            if (!playerSlotId.IsValid || !records.TryGetValue(playerSlotId, out Record record))
+            if (!playerSlotId.IsValid || !_records.TryGetValue(playerSlotId, out Record record))
             {
                 return Result(PlayerHostEvidenceStatus.RejectedNoEvidence, operation, default, default, null, resolvedSource, resolvedReason, "No Session physical Host evidence exists for terminal release.");
             }
@@ -771,7 +771,7 @@ namespace Immersive.Framework.PlayerParticipation
                 return Result(PlayerHostEvidenceStatus.RejectedHostConflict, operation, previous, previous, null, resolvedSource, resolvedReason, "Terminal physical Host release requires the exact retained Host reference.");
             }
 
-            records.Remove(playerSlotId);
+            _records.Remove(playerSlotId);
             return Result(PlayerHostEvidenceStatus.SucceededReleased, operation, previous, default, null, resolvedSource, resolvedReason, "Session physical Host evidence released terminally.");
         }
 
@@ -819,7 +819,7 @@ namespace Immersive.Framework.PlayerParticipation
                     "Current correlated Host evidence must use ReleaseHostEvidence.");
             }
 
-            records.Remove(playerSlotId);
+            _records.Remove(playerSlotId);
             return Result(
                 PlayerHostEvidenceStatus.SucceededClearedDivergent,
                 operation,
@@ -833,7 +833,7 @@ namespace Immersive.Framework.PlayerParticipation
 
         internal void ClearAll()
         {
-            records.Clear();
+            _records.Clear();
         }
 
         private PlayerHostEvidenceResult ValidateRequest(
@@ -891,7 +891,7 @@ namespace Immersive.Framework.PlayerParticipation
 
             if (!string.Equals(
                     assignmentToken.SessionContextId,
-                    sessionContextId,
+                    _sessionContextId,
                     StringComparison.Ordinal))
             {
                 return Result(
@@ -1051,7 +1051,7 @@ namespace Immersive.Framework.PlayerParticipation
                     "Host evidence release requires a valid Player Slot identity.");
             }
 
-            if (!records.TryGetValue(playerSlotId, out record))
+            if (!_records.TryGetValue(playerSlotId, out record))
             {
                 return Result(
                     PlayerHostEvidenceStatus.RejectedNoEvidence,
@@ -1093,7 +1093,7 @@ namespace Immersive.Framework.PlayerParticipation
 
             if (!string.Equals(
                     assignmentToken.SessionContextId,
-                    sessionContextId,
+                    _sessionContextId,
                     StringComparison.Ordinal))
             {
                 return Result(

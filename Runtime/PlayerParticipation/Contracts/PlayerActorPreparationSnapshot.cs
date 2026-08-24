@@ -12,8 +12,8 @@ namespace Immersive.Framework.PlayerParticipation
         "P3J.4 Session Logical Player Actor preparation snapshot.")]
     public sealed class PlayerActorPreparationSnapshot
     {
-        private readonly PlayerActorPreparationSummary[] slots;
-        private readonly PlayerActorMaterializationSnapshot[] retainedReleaseFailures;
+        private readonly PlayerActorPreparationSummary[] _slots;
+        private readonly PlayerActorMaterializationSnapshot[] _retainedReleaseFailures;
 
         internal PlayerActorPreparationSnapshot(
             string sessionContextId,
@@ -25,26 +25,26 @@ namespace Immersive.Framework.PlayerParticipation
         {
             SessionContextId = sessionContextId ?? string.Empty;
             Revision = revision;
-            this.slots = slots != null
+            this._slots = slots != null
                 ? (PlayerActorPreparationSummary[])slots.Clone()
                 : Array.Empty<PlayerActorPreparationSummary>();
-            this.retainedReleaseFailures = retainedReleaseFailures != null
+            this._retainedReleaseFailures = retainedReleaseFailures != null
                 ? (PlayerActorMaterializationSnapshot[])retainedReleaseFailures.Clone()
                 : Array.Empty<PlayerActorMaterializationSnapshot>();
             LastOperationStatus = lastOperationStatus;
             LastOperationMessage = lastOperationMessage ?? string.Empty;
 
-            for (int index = 0; index < this.slots.Length; index++)
+            for (int index = 0; index < this._slots.Length; index++)
             {
-                if (this.slots[index].IsPrepared)
+                if (this._slots[index].IsPrepared)
                 {
                     PreparedCount++;
                 }
-                else if (this.slots[index].IsReleaseFailed)
+                else if (this._slots[index].IsReleaseFailed)
                 {
                     ReleaseFailedCount++;
                 }
-                else if (this.slots[index].IsUnprepared)
+                else if (this._slots[index].IsUnprepared)
                 {
                     UnpreparedCount++;
                 }
@@ -53,13 +53,13 @@ namespace Immersive.Framework.PlayerParticipation
 
         public string SessionContextId { get; }
         public int Revision { get; }
-        public IReadOnlyList<PlayerActorPreparationSummary> Slots => slots;
-        public IReadOnlyList<PlayerActorMaterializationSnapshot> RetainedReleaseFailures => retainedReleaseFailures;
-        public int ConfiguredSlotCount => slots.Length;
+        public IReadOnlyList<PlayerActorPreparationSummary> Slots => _slots;
+        public IReadOnlyList<PlayerActorMaterializationSnapshot> RetainedReleaseFailures => _retainedReleaseFailures;
+        public int ConfiguredSlotCount => _slots.Length;
         public int PreparedCount { get; }
         public int UnpreparedCount { get; }
         public int ReleaseFailedCount { get; }
-        public int RetainedReleaseFailureCount => retainedReleaseFailures.Length;
+        public int RetainedReleaseFailureCount => _retainedReleaseFailures.Length;
         public PlayerActorPreparationStatus LastOperationStatus { get; }
         public string LastOperationMessage { get; }
 

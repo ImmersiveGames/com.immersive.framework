@@ -25,37 +25,37 @@ namespace Immersive.Framework.PlayerParticipation
         private const string UnboundDiagnostic =
             "Gameplay input consumer is not bound to a current Activity gameplay occurrence.";
 
-        [NonSerialized] private PlayerActorDeclaration actorDeclaration;
-        [NonSerialized] private PlayerInput playerInput;
-        [NonSerialized] private InputActionAsset runtimeActions;
-        [NonSerialized] private InputActionMap gameplayActionMap;
-        [NonSerialized] private PlayerGameplayInputBindingToken bindingToken;
-        [NonSerialized] private Func<PlayerGameplayInputBindingToken, bool> readinessEvaluator;
-        [NonSerialized] private int bindingRevision;
-        [NonSerialized] private string diagnostic = UnboundDiagnostic;
+        [NonSerialized] private PlayerActorDeclaration _actorDeclaration;
+        [NonSerialized] private PlayerInput _playerInput;
+        [NonSerialized] private InputActionAsset _runtimeActions;
+        [NonSerialized] private InputActionMap _gameplayActionMap;
+        [NonSerialized] private PlayerGameplayInputBindingToken _bindingToken;
+        [NonSerialized] private Func<PlayerGameplayInputBindingToken, bool> _readinessEvaluator;
+        [NonSerialized] private int _bindingRevision;
+        [NonSerialized] private string _diagnostic = UnboundDiagnostic;
 
-        private readonly Dictionary<Guid, InputAction> resolvedActions =
+        private readonly Dictionary<Guid, InputAction> _resolvedActions =
             new Dictionary<Guid, InputAction>();
 
         public bool HasCurrentGameplayBinding =>
-            bindingToken.IsValid &&
-            actorDeclaration != null &&
-            playerInput != null &&
-            runtimeActions != null &&
-            gameplayActionMap != null &&
-            readinessEvaluator != null;
+            _bindingToken.IsValid &&
+            _actorDeclaration != null &&
+            _playerInput != null &&
+            _runtimeActions != null &&
+            _gameplayActionMap != null &&
+            _readinessEvaluator != null;
 
         public bool GameplayReady =>
             HasCurrentGameplayBinding &&
             isActiveAndEnabled &&
-            playerInput.enabled &&
-            playerInput.inputIsActive &&
-            gameplayActionMap.enabled &&
-            readinessEvaluator(bindingToken);
+            _playerInput.enabled &&
+            _playerInput.inputIsActive &&
+            _gameplayActionMap.enabled &&
+            _readinessEvaluator(_bindingToken);
 
-        public int BindingRevision => bindingRevision;
-        public PlayerGameplayInputBindingToken CurrentBindingToken => bindingToken;
-        public string Diagnostic => diagnostic ?? string.Empty;
+        public int BindingRevision => _bindingRevision;
+        public PlayerGameplayInputBindingToken CurrentBindingToken => _bindingToken;
+        public string Diagnostic => _diagnostic ?? string.Empty;
 
         public bool TryReadValue<TValue>(
             InputActionReference authoredAction,
@@ -74,7 +74,7 @@ namespace Immersive.Framework.PlayerParticipation
             catch (Exception exception)
             {
                 value = default;
-                diagnostic =
+                _diagnostic =
                     $"Runtime action '{action.name}' could not be read as '{typeof(TValue).Name}'. {exception.Message}";
                 return false;
             }
@@ -161,27 +161,27 @@ namespace Immersive.Framework.PlayerParticipation
             }
 
             if (HasCurrentGameplayBinding &&
-                bindingToken == resolvedBindingToken &&
-                ReferenceEquals(actorDeclaration, resolvedActorDeclaration) &&
-                ReferenceEquals(playerInput, resolvedPlayerInput) &&
-                ReferenceEquals(runtimeActions, actions) &&
-                ReferenceEquals(gameplayActionMap, resolvedGameplayActionMap))
+                _bindingToken == resolvedBindingToken &&
+                ReferenceEquals(_actorDeclaration, resolvedActorDeclaration) &&
+                ReferenceEquals(_playerInput, resolvedPlayerInput) &&
+                ReferenceEquals(_runtimeActions, actions) &&
+                ReferenceEquals(_gameplayActionMap, resolvedGameplayActionMap))
             {
-                readinessEvaluator = resolvedReadinessEvaluator;
-                diagnostic = "Gameplay input consumer binding is already current.";
+                _readinessEvaluator = resolvedReadinessEvaluator;
+                _diagnostic = "Gameplay input consumer binding is already current.";
                 return true;
             }
 
             ClearRuntimeState(false, string.Empty);
-            actorDeclaration = resolvedActorDeclaration;
-            playerInput = resolvedPlayerInput;
-            runtimeActions = actions;
-            gameplayActionMap = resolvedGameplayActionMap;
-            bindingToken = resolvedBindingToken;
-            readinessEvaluator = resolvedReadinessEvaluator;
-            resolvedActions.Clear();
-            bindingRevision++;
-            diagnostic = "Gameplay input consumer binding is current for the Activity gameplay occurrence.";
+            _actorDeclaration = resolvedActorDeclaration;
+            _playerInput = resolvedPlayerInput;
+            _runtimeActions = actions;
+            _gameplayActionMap = resolvedGameplayActionMap;
+            _bindingToken = resolvedBindingToken;
+            _readinessEvaluator = resolvedReadinessEvaluator;
+            _resolvedActions.Clear();
+            _bindingRevision++;
+            _diagnostic = "Gameplay input consumer binding is current for the Activity gameplay occurrence.";
             return true;
         }
 
@@ -197,7 +197,7 @@ namespace Immersive.Framework.PlayerParticipation
             runtimeAction = null;
             if (!GameplayReady)
             {
-                diagnostic = HasCurrentGameplayBinding
+                _diagnostic = HasCurrentGameplayBinding
                     ? "Gameplay input consumer is bound but current gameplay is not Ready."
                     : UnboundDiagnostic;
                 return false;
@@ -206,34 +206,34 @@ namespace Immersive.Framework.PlayerParticipation
             InputAction authored = authoredAction != null ? authoredAction.action : null;
             if (authored == null)
             {
-                diagnostic =
+                _diagnostic =
                     "Gameplay input read requires an authored InputActionReference used as action identity.";
                 return false;
             }
 
             Guid actionId = authored.id;
-            if (!resolvedActions.TryGetValue(actionId, out runtimeAction) || runtimeAction == null)
+            if (!_resolvedActions.TryGetValue(actionId, out runtimeAction) || runtimeAction == null)
             {
                 if (!TryResolveRuntimeActionIdentity(
-                        runtimeActions,
-                        gameplayActionMap,
+                        _runtimeActions,
+                        _gameplayActionMap,
                         authoredAction,
                         out runtimeAction,
-                        out diagnostic))
+                        out _diagnostic))
                     return false;
 
-                resolvedActions[actionId] = runtimeAction;
+                _resolvedActions[actionId] = runtimeAction;
             }
 
             if (!runtimeAction.enabled)
             {
-                diagnostic =
+                _diagnostic =
                     $"Runtime action '{runtimeAction.name}' is not enabled in the current gameplay binding.";
                 runtimeAction = null;
                 return false;
             }
 
-            diagnostic = "Gameplay input read resolved the current PlayerInput.actions instance.";
+            _diagnostic = "Gameplay input read resolved the current PlayerInput.actions instance.";
             return true;
         }
 
@@ -286,19 +286,19 @@ namespace Immersive.Framework.PlayerParticipation
 
         private void ClearRuntimeState(bool incrementRevision, string reason)
         {
-            bool hadBinding = HasCurrentGameplayBinding || bindingToken.IsValid;
-            actorDeclaration = null;
-            playerInput = null;
-            runtimeActions = null;
-            gameplayActionMap = null;
-            bindingToken = default;
-            readinessEvaluator = null;
-            resolvedActions.Clear();
+            bool hadBinding = HasCurrentGameplayBinding || _bindingToken.IsValid;
+            _actorDeclaration = null;
+            _playerInput = null;
+            _runtimeActions = null;
+            _gameplayActionMap = null;
+            _bindingToken = default;
+            _readinessEvaluator = null;
+            _resolvedActions.Clear();
 
             if (incrementRevision && hadBinding)
-                bindingRevision++;
+                _bindingRevision++;
 
-            diagnostic = string.IsNullOrWhiteSpace(reason)
+            _diagnostic = string.IsNullOrWhiteSpace(reason)
                 ? UnboundDiagnostic
                 : reason.Trim();
         }

@@ -33,7 +33,7 @@ namespace Immersive.Framework.Pause
             string reason,
             out PauseActivityBindingOperationResult result)
         {
-            const string Operation = "activate";
+            const string operation = "activate";
             string resolvedSource = source.NormalizeTextOrFallback(nameof(PauseActivityBindingRuntimeContext));
             string resolvedReason = reason.NormalizeTextOrFallback("pause-activity-binding-activate");
 
@@ -43,7 +43,7 @@ namespace Immersive.Framework.Pause
                 {
                     return Complete(
                         PauseActivityBindingOperationStatus.Rejected,
-                        Operation,
+                        operation,
                         "active-scope-conflict: Pause Activity binding is already active; an absent intent cannot replace it.",
                         false,
                         false,
@@ -53,7 +53,7 @@ namespace Immersive.Framework.Pause
 
                 return Complete(
                     PauseActivityBindingOperationStatus.Absent,
-                    Operation,
+                    operation,
                     "intent-absent: Activity does not require Pause binding.",
                     false,
                     false,
@@ -65,7 +65,7 @@ namespace Immersive.Framework.Pause
             {
                 return Complete(
                     PauseActivityBindingOperationStatus.Rejected,
-                    Operation,
+                    operation,
                     "activity-scope-invalid: Pause Activity binding requires a valid Activity binding scope.",
                     false,
                     false,
@@ -79,7 +79,7 @@ namespace Immersive.Framework.Pause
                 {
                     return Complete(
                         PauseActivityBindingOperationStatus.AlreadyActive,
-                        Operation,
+                        operation,
                         "binding-already-active: Pause Activity binding is already registered for this exact Activity scope.",
                         false,
                         false,
@@ -89,7 +89,7 @@ namespace Immersive.Framework.Pause
 
                 return Complete(
                     PauseActivityBindingOperationStatus.Rejected,
-                    Operation,
+                    operation,
                     "active-scope-conflict: Pause Activity binding cannot replace an active scope, host, binding or port.",
                     false,
                     false,
@@ -101,7 +101,7 @@ namespace Immersive.Framework.Pause
             {
                 return Complete(
                     PauseActivityBindingOperationStatus.Failed,
-                    Operation,
+                    operation,
                     $"intent-invalid: {intentResolution.Diagnostic.NormalizeTextOrFallback("Pause Activity binding intent is invalid.")}",
                     false,
                     false,
@@ -113,7 +113,7 @@ namespace Immersive.Framework.Pause
             {
                 return Complete(
                     PauseActivityBindingOperationStatus.Rejected,
-                    Operation,
+                    operation,
                     "binding-port-missing: Pause Activity binding requires the explicit product binding port.",
                     false,
                     false,
@@ -125,7 +125,7 @@ namespace Immersive.Framework.Pause
             {
                 return Complete(
                     PauseActivityBindingOperationStatus.Failed,
-                    Operation,
+                    operation,
                     hostDiagnostic,
                     false,
                     false,
@@ -137,7 +137,7 @@ namespace Immersive.Framework.Pause
             {
                 return Complete(
                     PauseActivityBindingOperationStatus.Failed,
-                    Operation,
+                    operation,
                     bindingDiagnostic,
                     false,
                     false,
@@ -151,7 +151,7 @@ namespace Immersive.Framework.Pause
                 _state = PauseActivityBindingRuntimeState.Inactive;
                 return Complete(
                     PauseActivityBindingOperationStatus.Failed,
-                    Operation,
+                    operation,
                     $"binding-registration-failed: {registrationDiagnostic.NormalizeTextOrFallback("Pause PlayerInput Binding rejected registration.")}",
                     false,
                     false,
@@ -167,7 +167,7 @@ namespace Immersive.Framework.Pause
                 _state = PauseActivityBindingRuntimeState.Inactive;
                 return Complete(
                     PauseActivityBindingOperationStatus.Failed,
-                    Operation,
+                    operation,
                     $"binding-registration-failed: Pause PlayerInput Binding reported registration without retained token evidence. {(rollbackSucceeded ? "rollback-succeeded" : "rollback-failed")}: {rollbackDiagnostic.NormalizeTextOrFallback("No rollback diagnostic was supplied.")}",
                     true,
                     rollbackSucceeded,
@@ -184,7 +184,7 @@ namespace Immersive.Framework.Pause
             _state = PauseActivityBindingRuntimeState.Active;
             return Complete(
                 PauseActivityBindingOperationStatus.Activated,
-                Operation,
+                operation,
                 $"binding-registered: Pause Activity binding registered for '{activityScope.StableText}' from '{resolvedSource}' reason '{resolvedReason}'.",
                 false,
                 false,
@@ -198,7 +198,7 @@ namespace Immersive.Framework.Pause
             string reason,
             out PauseActivityBindingOperationResult result)
         {
-            const string Operation = "release";
+            const string operation = "release";
             string resolvedSource = source.NormalizeTextOrFallback(nameof(PauseActivityBindingRuntimeContext));
             string resolvedReason = reason.NormalizeTextOrFallback("pause-activity-binding-release");
 
@@ -206,7 +206,7 @@ namespace Immersive.Framework.Pause
             {
                 return Complete(
                     PauseActivityBindingOperationStatus.Rejected,
-                    Operation,
+                    operation,
                     "activity-scope-invalid: Pause Activity binding release requires a valid Activity binding scope.",
                     false,
                     false,
@@ -220,7 +220,7 @@ namespace Immersive.Framework.Pause
                 {
                     return Complete(
                         PauseActivityBindingOperationStatus.AlreadyReleased,
-                        Operation,
+                        operation,
                         "binding-released: Pause Activity binding was already released for this scope.",
                         false,
                         false,
@@ -230,7 +230,7 @@ namespace Immersive.Framework.Pause
 
                 return Complete(
                     PauseActivityBindingOperationStatus.Rejected,
-                    Operation,
+                    operation,
                     ScopeMismatchDiagnostic(activityScope, _lastReleasedScope),
                     false,
                     false,
@@ -242,7 +242,7 @@ namespace Immersive.Framework.Pause
             {
                 return Complete(
                     PauseActivityBindingOperationStatus.Rejected,
-                    Operation,
+                    operation,
                     ScopeMismatchDiagnostic(activityScope, _activeScope),
                     false,
                     false,
@@ -256,7 +256,7 @@ namespace Immersive.Framework.Pause
                 _state = PauseActivityBindingRuntimeState.Failed;
                 return Complete(
                     PauseActivityBindingOperationStatus.Failed,
-                    Operation,
+                    operation,
                     $"binding-release-failed: {releaseDiagnostic.NormalizeTextOrFallback("Pause PlayerInput Binding rejected release.")}",
                     false,
                     false,
@@ -269,7 +269,7 @@ namespace Immersive.Framework.Pause
             _state = PauseActivityBindingRuntimeState.Inactive;
             return Complete(
                 PauseActivityBindingOperationStatus.Released,
-                Operation,
+                operation,
                 $"binding-released: Pause Activity binding released from '{resolvedSource}' reason '{resolvedReason}'.",
                 false,
                 false,

@@ -18,9 +18,9 @@ namespace Immersive.Framework.PlayerParticipation
     internal sealed class HostScopedPlayerGameplayChainEndpointSource :
         IPlayerGameplayCurrentContextEndpointSource
     {
-        private readonly FrameworkRuntimeHost runtimeHost;
-        private readonly PlayerActorPreparationRuntimeHostModule preparationModule;
-        private readonly PlayerGameplayCameraRequiredness missingCameraRequiredness;
+        private readonly FrameworkRuntimeHost _runtimeHost;
+        private readonly PlayerActorPreparationRuntimeHostModule _preparationModule;
+        private readonly PlayerGameplayCameraRequiredness _missingCameraRequiredness;
 
         internal HostScopedPlayerGameplayChainEndpointSource(
             FrameworkRuntimeHost runtimeHost,
@@ -28,11 +28,11 @@ namespace Immersive.Framework.PlayerParticipation
             PlayerGameplayCameraRequiredness missingCameraRequiredness =
                 PlayerGameplayCameraRequiredness.Optional)
         {
-            this.runtimeHost = runtimeHost ??
+            this._runtimeHost = runtimeHost ??
                 throw new ArgumentNullException(nameof(runtimeHost));
-            this.preparationModule = preparationModule ??
+            this._preparationModule = preparationModule ??
                 throw new ArgumentNullException(nameof(preparationModule));
-            this.missingCameraRequiredness = missingCameraRequiredness;
+            this._missingCameraRequiredness = missingCameraRequiredness;
         }
 
         public bool TryResolveGameplayEndpoints(
@@ -49,7 +49,7 @@ namespace Immersive.Framework.PlayerParticipation
             actorDeclaration = null;
             gateAdapter = null;
             cameraAuthoring = null;
-            cameraRequiredness = missingCameraRequiredness;
+            cameraRequiredness = _missingCameraRequiredness;
             outputSession = null;
             issue = string.Empty;
 
@@ -62,7 +62,7 @@ namespace Immersive.Framework.PlayerParticipation
                 return false;
             }
 
-            if (!preparationModule.TryGetPreparedPhysicalEvidence(
+            if (!_preparationModule.TryGetPreparedPhysicalEvidence(
                     preparation.PlayerSlotId,
                     preparation.Token,
                     out host,
@@ -87,7 +87,7 @@ namespace Immersive.Framework.PlayerParticipation
 
             gateAdapter = gateAdapters[0];
             if (!gateAdapter.TryBindInputGateRuntime(
-                    runtimeHost,
+                    _runtimeHost,
                     out issue))
             {
                 issue =
@@ -110,10 +110,10 @@ namespace Immersive.Framework.PlayerParticipation
                 cameraAuthorings.Length == 1 ? cameraAuthorings[0] : null;
             cameraRequiredness = cameraAuthoring != null
                 ? cameraAuthoring.Requiredness
-                : missingCameraRequiredness;
+                : _missingCameraRequiredness;
 
             if (cameraAuthoring != null &&
-                !runtimeHost.TryGetPlayerGameplayCameraOutputSession(
+                !_runtimeHost.TryGetPlayerGameplayCameraOutputSession(
                     out outputSession,
                     out issue))
             {
@@ -122,7 +122,7 @@ namespace Immersive.Framework.PlayerParticipation
 
             if (cameraAuthoring == null)
             {
-                runtimeHost.TryGetPlayerGameplayCameraOutputSession(
+                _runtimeHost.TryGetPlayerGameplayCameraOutputSession(
                     out outputSession,
                     out _);
             }

@@ -6,14 +6,14 @@ namespace Immersive.Framework.PlayerParticipation
 {
     internal sealed partial class PlayerActorPreparationRuntimeHostModule
     {
-        private RoutePlayerSpatialEntryContext currentRouteSpatialEntryContext;
+        private RoutePlayerSpatialEntryContext _currentRouteSpatialEntryContext;
 
         internal void PublishCurrentRouteSpatialEntryGate(LocalPlayerHostAuthoring host)
         {
-            if (host == null || !currentRouteSpatialEntryContext.IsValid) return;
+            if (host == null || !_currentRouteSpatialEntryContext.IsValid) return;
             RoutePlayerSpatialEntryRuntimeBinding binding = host.GetComponent<RoutePlayerSpatialEntryRuntimeBinding>();
             if (binding == null) binding = host.gameObject.AddComponent<RoutePlayerSpatialEntryRuntimeBinding>();
-            binding.Configure(currentRouteSpatialEntryContext);
+            binding.Configure(_currentRouteSpatialEntryContext);
         }
 
         bool IRoutePlayerSpatialEntryLifecycleParticipant.TryEnterRouteSpatialEntry(
@@ -25,8 +25,8 @@ namespace Immersive.Framework.PlayerParticipation
                 issue = "Route spatial entry requires a ready Player preparation module and valid Route occurrence context.";
                 return false;
             }
-            currentRouteSpatialEntryContext = context;
-            PlayerParticipationSnapshot snapshot = participationContext.CreateSnapshot();
+            _currentRouteSpatialEntryContext = context;
+            PlayerParticipationSnapshot snapshot = _participationContext.CreateSnapshot();
             for (int index = 0; index < snapshot.Slots.Count; index++)
             {
                 PlayerSlotRuntimeSnapshot slot = snapshot.Slots[index];
@@ -42,13 +42,13 @@ namespace Immersive.Framework.PlayerParticipation
 
         void IRoutePlayerSpatialEntryLifecycleParticipant.ExitRouteSpatialEntry(RoutePlayerSpatialEntryContext context)
         {
-            if (currentRouteSpatialEntryContext.Matches(context)) currentRouteSpatialEntryContext = default;
+            if (_currentRouteSpatialEntryContext.Matches(context)) _currentRouteSpatialEntryContext = default;
         }
 
         internal bool TryApplySceneProvidedRouteSpatialEntry(SceneLocalPlayerAdmissionAuthoring authoring, out string issue)
         {
             issue = string.Empty;
-            if (!currentRouteSpatialEntryContext.IsValid || authoring == null ||
+            if (!_currentRouteSpatialEntryContext.IsValid || authoring == null ||
                 authoring.SceneLogicalPlayerActor == null ||
                 !authoring.TryGetPlayerSlotId(out PlayerSlotId slot, out issue))
             {
@@ -56,18 +56,18 @@ namespace Immersive.Framework.PlayerParticipation
                 return false;
             }
             return RoutePlayerSpatialEntryRuntime.TryApply(
-                currentRouteSpatialEntryContext, slot, authoring.SceneLogicalPlayerActor.ActorId,
+                _currentRouteSpatialEntryContext, slot, authoring.SceneLogicalPlayerActor.ActorId,
                 $"scene-provided:{slot.StableText}:{authoring.SceneLogicalPlayerActor.ActorId.StableText}",
                 authoring.SceneLogicalPlayerActor.transform, out issue);
         }
 
         internal bool ShouldRetainPhysicalActorPresentationForIncomingActivity(
             RuntimeContentOwner exitingOwner, PlayerSlotId playerSlotId) =>
-            currentActivityRelocationContext.IsValid && exitingOwner.IsValid &&
-            currentActivityRelocationContext.Owner != exitingOwner && playerSlotId.IsValid &&
-            participationContext != null &&
+            _currentActivityRelocationContext.IsValid && exitingOwner.IsValid &&
+            _currentActivityRelocationContext.Owner != exitingOwner && playerSlotId.IsValid &&
+            _participationContext != null &&
             ActivityPlayerParticipationProjectionResolver.TryResolve(
-                currentActivityRelocationContext.Activity, participationContext, out _,
+                _currentActivityRelocationContext.Activity, _participationContext, out _,
                 out var slots, out _) && slots.Exists(slot => slot.PlayerSlotId == playerSlotId);
     }
 }

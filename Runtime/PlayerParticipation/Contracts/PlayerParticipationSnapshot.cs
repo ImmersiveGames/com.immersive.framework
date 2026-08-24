@@ -10,7 +10,7 @@ namespace Immersive.Framework.PlayerParticipation
     [FrameworkApiStatus(FrameworkApiStatus.Experimental, "P3F/P3H Session Player participation snapshot with Actor selection evidence.")]
     public sealed class PlayerParticipationSnapshot
     {
-        private readonly PlayerSlotRuntimeSnapshot[] slots;
+        private readonly PlayerSlotRuntimeSnapshot[] _slots;
 
         internal PlayerParticipationSnapshot(
             string contextId,
@@ -27,15 +27,15 @@ namespace Immersive.Framework.PlayerParticipation
             IsInitialized = initialized;
             JoiningOpen = joiningOpen;
             ActorSelectionDuplicatePolicy = actorSelectionDuplicatePolicy;
-            this.slots = slots != null
+            this._slots = slots != null
                 ? (PlayerSlotRuntimeSnapshot[])slots.Clone()
                 : Array.Empty<PlayerSlotRuntimeSnapshot>();
             LastOperationStatus = lastOperationStatus;
             LastOperationMessage = lastOperationMessage ?? string.Empty;
 
-            for (int index = 0; index < this.slots.Length; index++)
+            for (int index = 0; index < this._slots.Length; index++)
             {
-                PlayerSlotRuntimeSnapshot slot = this.slots[index];
+                PlayerSlotRuntimeSnapshot slot = this._slots[index];
                 switch (slot.AllocationState)
                 {
                     case PlayerSlotAllocationState.Unavailable:
@@ -79,9 +79,9 @@ namespace Immersive.Framework.PlayerParticipation
 
         public PlayerActorSelectionDuplicatePolicy ActorSelectionDuplicatePolicy { get; }
 
-        public IReadOnlyList<PlayerSlotRuntimeSnapshot> Slots => slots;
+        public IReadOnlyList<PlayerSlotRuntimeSnapshot> Slots => _slots;
 
-        public int ConfiguredSlotCount => slots.Length;
+        public int ConfiguredSlotCount => _slots.Length;
 
         public int UnavailableCount { get; }
 

@@ -54,15 +54,15 @@ namespace Immersive.Framework.PlayerParticipation
             internal string SelectionReason { get; set; }
         }
 
-        private readonly string contextId;
-        private readonly List<SlotRecord> slots;
-        private readonly PlayerActorSelectionDuplicatePolicy actorSelectionDuplicatePolicy;
-        private readonly PlayerActorResolutionPolicy actorResolutionPolicy;
-        private int revision;
-        private int reservationSequence;
-        private bool joiningOpen;
-        private PlayerParticipationOperationStatus lastOperationStatus;
-        private string lastOperationMessage;
+        private readonly string _contextId;
+        private readonly List<SlotRecord> _slots;
+        private readonly PlayerActorSelectionDuplicatePolicy _actorSelectionDuplicatePolicy;
+        private readonly PlayerActorResolutionPolicy _actorResolutionPolicy;
+        private int _revision;
+        private int _reservationSequence;
+        private bool _joiningOpen;
+        private PlayerParticipationOperationStatus _lastOperationStatus;
+        private string _lastOperationMessage;
 
         private PlayerParticipationRuntimeContext(
             List<SlotRecord> slots,
@@ -70,14 +70,14 @@ namespace Immersive.Framework.PlayerParticipation
             PlayerActorSelectionDuplicatePolicy actorSelectionDuplicatePolicy,
             PlayerActorResolutionPolicy actorResolutionPolicy)
         {
-            contextId = Guid.NewGuid().ToString("N");
-            this.slots = slots ?? throw new ArgumentNullException(nameof(slots));
-            joiningOpen = initialJoiningOpen;
-            this.actorSelectionDuplicatePolicy = actorSelectionDuplicatePolicy;
-            this.actorResolutionPolicy = actorResolutionPolicy;
-            revision = 1;
-            lastOperationStatus = PlayerParticipationOperationStatus.Succeeded;
-            lastOperationMessage = "Player participation runtime context initialized.";
+            _contextId = Guid.NewGuid().ToString("N");
+            this._slots = slots ?? throw new ArgumentNullException(nameof(slots));
+            _joiningOpen = initialJoiningOpen;
+            this._actorSelectionDuplicatePolicy = actorSelectionDuplicatePolicy;
+            this._actorResolutionPolicy = actorResolutionPolicy;
+            _revision = 1;
+            _lastOperationStatus = PlayerParticipationOperationStatus.Succeeded;
+            _lastOperationMessage = "Player participation runtime context initialized.";
         }
 
         internal static PlayerParticipationOperationResult TryCreate(
@@ -261,9 +261,9 @@ namespace Immersive.Framework.PlayerParticipation
         {
             string resolvedSource = source.NormalizeTextOrFallback("Unknown");
             string resolvedReason = reason.NormalizeTextOrFallback("reserve-next-slot");
-            int previousRevision = revision;
+            int previousRevision = _revision;
 
-            if (!joiningOpen)
+            if (!_joiningOpen)
             {
                 return CreateResult(
                     PlayerParticipationOperationStatus.RejectedJoiningClosed,
@@ -277,11 +277,11 @@ namespace Immersive.Framework.PlayerParticipation
             }
 
             SlotRecord selected = null;
-            for (int index = 0; index < slots.Count; index++)
+            for (int index = 0; index < _slots.Count; index++)
             {
-                if (slots[index].AllocationState == PlayerSlotAllocationState.Available)
+                if (_slots[index].AllocationState == PlayerSlotAllocationState.Available)
                 {
-                    selected = slots[index];
+                    selected = _slots[index];
                     break;
                 }
             }
@@ -314,15 +314,15 @@ namespace Immersive.Framework.PlayerParticipation
 
             selected.AllocationState = PlayerSlotAllocationState.Reserved;
             selected.Revision++;
-            reservationSequence++;
+            _reservationSequence++;
             selected.ReservationToken = new PlayerSlotReservationToken(
-                contextId,
-                reservationSequence,
+                _contextId,
+                _reservationSequence,
                 selected.PlayerSlotId,
                 selected.Revision);
             selected.Source = resolvedSource;
             selected.Reason = resolvedReason;
-            revision++;
+            _revision++;
 
             PlayerSlotRuntimeSnapshot slotSnapshot = CreateSlotSnapshot(selected);
             return CreateResult(
@@ -398,7 +398,7 @@ namespace Immersive.Framework.PlayerParticipation
             string reason)
         {
             SlotRecord record = FindSlot(playerSlotId);
-            if (actorResolutionPolicy == PlayerActorResolutionPolicy.LeaveUnresolved)
+            if (_actorResolutionPolicy == PlayerActorResolutionPolicy.LeaveUnresolved)
             {
                 return CreateActorSelectionResult(
                     PlayerActorSelectionStatus.RejectedDefaultResolutionDisabled,
@@ -459,21 +459,21 @@ namespace Immersive.Framework.PlayerParticipation
 
         internal PlayerParticipationSnapshot CreateSnapshot()
         {
-            var snapshots = new PlayerSlotRuntimeSnapshot[slots.Count];
-            for (int index = 0; index < slots.Count; index++)
+            var snapshots = new PlayerSlotRuntimeSnapshot[_slots.Count];
+            for (int index = 0; index < _slots.Count; index++)
             {
-                snapshots[index] = CreateSlotSnapshot(slots[index]);
+                snapshots[index] = CreateSlotSnapshot(_slots[index]);
             }
 
             return new PlayerParticipationSnapshot(
-                contextId,
-                revision,
+                _contextId,
+                _revision,
                 true,
-                joiningOpen,
-                actorSelectionDuplicatePolicy,
+                _joiningOpen,
+                _actorSelectionDuplicatePolicy,
                 snapshots,
-                lastOperationStatus,
-                lastOperationMessage);
+                _lastOperationStatus,
+                _lastOperationMessage);
         }
 
         private enum PlayerActorSelectionOperation
@@ -508,7 +508,7 @@ namespace Immersive.Framework.PlayerParticipation
                     "Actor selection request is invalid. Slot, source and reason are required and expected revision cannot be below -1.");
             }
 
-            if (actorSelectionDuplicatePolicy == PlayerActorSelectionDuplicatePolicy.Unspecified)
+            if (_actorSelectionDuplicatePolicy == PlayerActorSelectionDuplicatePolicy.Unspecified)
             {
                 return CreateActorSelectionResult(
                     PlayerActorSelectionStatus.RejectedPolicyMissing,
@@ -524,7 +524,7 @@ namespace Immersive.Framework.PlayerParticipation
                     "Actor selection policy is not configured for this Session participation context.");
             }
 
-            if (!actorSelectionDuplicatePolicy.IsDefinedPolicy())
+            if (!_actorSelectionDuplicatePolicy.IsDefinedPolicy())
             {
                 return CreateActorSelectionResult(
                     PlayerActorSelectionStatus.RejectedPolicyInvalid,
@@ -537,7 +537,7 @@ namespace Immersive.Framework.PlayerParticipation
                     source,
                     reason,
                     default,
-                    $"Actor selection duplicate policy '{actorSelectionDuplicatePolicy}' is invalid for this Session participation context.");
+                    $"Actor selection duplicate policy '{_actorSelectionDuplicatePolicy}' is invalid for this Session participation context.");
             }
 
             SlotRecord record = FindSlot(request.PlayerSlotId);
@@ -743,7 +743,7 @@ namespace Immersive.Framework.PlayerParticipation
                     "Requested ActorProfile is already selected; no runtime state changed.");
             }
 
-            if (actorSelectionDuplicatePolicy.RequiresUniqueActors() &&
+            if (_actorSelectionDuplicatePolicy.RequiresUniqueActors() &&
                 TryFindDuplicateActorSelection(record, requestedActorProfileId, out SlotRecord conflictingRecord))
             {
                 return CreateActorSelectionResult(
@@ -790,7 +790,7 @@ namespace Immersive.Framework.PlayerParticipation
             record.SelectionSource = source;
             record.SelectionReason = reason;
             record.Revision++;
-            revision++;
+            _revision++;
         }
 
         private PlayerActorSelectionResult CreateActorSelectionResult(
@@ -819,7 +819,7 @@ namespace Immersive.Framework.PlayerParticipation
                 selectedActorProfile,
                 previousSelectionRevision,
                 currentSelectionRevision,
-                actorSelectionDuplicatePolicy,
+                _actorSelectionDuplicatePolicy,
                 conflictingPlayerSlotId,
                 source,
                 reason,
@@ -833,9 +833,9 @@ namespace Immersive.Framework.PlayerParticipation
             ActorProfileId requestedActorProfileId,
             out SlotRecord conflictingRecord)
         {
-            for (int index = 0; index < slots.Count; index++)
+            for (int index = 0; index < _slots.Count; index++)
             {
-                SlotRecord candidate = slots[index];
+                SlotRecord candidate = _slots[index];
                 if (ReferenceEquals(candidate, targetRecord) ||
                     candidate.AllocationState != PlayerSlotAllocationState.Joined ||
                     candidate.SelectedActorProfile == null)
@@ -914,9 +914,9 @@ namespace Immersive.Framework.PlayerParticipation
         {
             string resolvedSource = source.NormalizeTextOrFallback("Unknown");
             string resolvedReason = reason.NormalizeTextOrFallback(requestedOpen ? "open-joining" : "close-joining");
-            int previousRevision = revision;
+            int previousRevision = _revision;
 
-            if (joiningOpen == requestedOpen)
+            if (_joiningOpen == requestedOpen)
             {
                 return CreateResult(
                     PlayerParticipationOperationStatus.IgnoredNoChange,
@@ -929,8 +929,8 @@ namespace Immersive.Framework.PlayerParticipation
                     default);
             }
 
-            joiningOpen = requestedOpen;
-            revision++;
+            _joiningOpen = requestedOpen;
+            _revision++;
             return CreateResult(
                 PlayerParticipationOperationStatus.Succeeded,
                 requestedOpen ? "OpenJoining" : "CloseJoining",
@@ -952,10 +952,10 @@ namespace Immersive.Framework.PlayerParticipation
         {
             string resolvedSource = source.NormalizeTextOrFallback("Unknown");
             string resolvedReason = reason.NormalizeTextOrFallback(operation);
-            int previousRevision = revision;
+            int previousRevision = _revision;
 
             if (!reservationToken.IsValid ||
-                !string.Equals(reservationToken.ContextId, contextId, StringComparison.Ordinal))
+                !string.Equals(reservationToken.ContextId, _contextId, StringComparison.Ordinal))
             {
                 return CreateResult(
                     PlayerParticipationOperationStatus.RejectedForeignOrStaleReservation,
@@ -990,7 +990,7 @@ namespace Immersive.Framework.PlayerParticipation
             record.Revision++;
             record.Source = resolvedSource;
             record.Reason = resolvedReason;
-            revision++;
+            _revision++;
 
             return CreateResult(
                 PlayerParticipationOperationStatus.Succeeded,
@@ -1013,8 +1013,8 @@ namespace Immersive.Framework.PlayerParticipation
             PlayerSlotRuntimeSnapshot slot,
             PlayerSlotReservationToken reservationToken)
         {
-            lastOperationStatus = status;
-            lastOperationMessage = message ?? string.Empty;
+            _lastOperationStatus = status;
+            _lastOperationMessage = message ?? string.Empty;
             PlayerParticipationSnapshot snapshot = CreateSnapshot();
             return new PlayerParticipationOperationResult(
                 status,
@@ -1023,7 +1023,7 @@ namespace Immersive.Framework.PlayerParticipation
                 reason,
                 message,
                 previousRevision,
-                revision,
+                _revision,
                 slot,
                 reservationToken,
                 snapshot);
@@ -1053,11 +1053,11 @@ namespace Immersive.Framework.PlayerParticipation
 
         private SlotRecord FindSlot(PlayerSlotId playerSlotId)
         {
-            for (int index = 0; index < slots.Count; index++)
+            for (int index = 0; index < _slots.Count; index++)
             {
-                if (slots[index].PlayerSlotId == playerSlotId)
+                if (_slots[index].PlayerSlotId == playerSlotId)
                 {
-                    return slots[index];
+                    return _slots[index];
                 }
             }
 

@@ -14,12 +14,12 @@ namespace Immersive.Framework.Camera
     [FrameworkApiStatus(FrameworkApiStatus.Internal, "Runtime implementation detail; not game-facing API.")]
     public sealed class CameraOutputContext
     {
-        private readonly CameraOutputId outputId;
-        private readonly Dictionary<CameraRequestId, CameraRequest> admittedRequests =
+        private readonly CameraOutputId _outputId;
+        private readonly Dictionary<CameraRequestId, CameraRequest> _admittedRequests =
             new Dictionary<CameraRequestId, CameraRequest>();
 
-        private bool hasWinner;
-        private CameraRequest winner;
+        private bool _hasWinner;
+        private CameraRequest _winner;
 
         public CameraOutputContext(CameraOutputId outputId)
         {
@@ -30,16 +30,16 @@ namespace Immersive.Framework.Camera
                     nameof(outputId));
             }
 
-            this.outputId = outputId;
+            this._outputId = outputId;
         }
 
-        public CameraOutputId OutputId => outputId;
+        public CameraOutputId OutputId => _outputId;
 
-        public int AdmittedRequestCount => admittedRequests.Count;
+        public int AdmittedRequestCount => _admittedRequests.Count;
 
-        public bool HasWinner => hasWinner;
+        public bool HasWinner => _hasWinner;
 
-        public CameraRequest Winner => winner;
+        public CameraRequest Winner => _winner;
 
         public CameraOutputContextResult Admit(CameraRequest request)
         {
@@ -51,15 +51,15 @@ namespace Immersive.Framework.Camera
                     "Camera output context rejected an invalid request.");
             }
 
-            if (request.OutputId != outputId)
+            if (request.OutputId != _outputId)
             {
                 return Blocked(
                     request,
                     "camera.output-context.output-mismatch",
-                    $"Camera request output '{request.OutputId}' does not match context output '{outputId}'.");
+                    $"Camera request output '{request.OutputId}' does not match context output '{_outputId}'.");
             }
 
-            if (admittedRequests.ContainsKey(request.RequestId))
+            if (_admittedRequests.ContainsKey(request.RequestId))
             {
                 return Blocked(
                     request,
@@ -67,8 +67,8 @@ namespace Immersive.Framework.Camera
                     $"Camera request '{request.RequestId}' is already admitted.");
             }
 
-            bool previousHasWinner = hasWinner;
-            CameraRequest previousWinner = winner;
+            bool previousHasWinner = _hasWinner;
+            CameraRequest previousWinner = _winner;
 
             if (!CanAdmitWithoutAmbiguity(request, out CameraIssue ambiguityIssue))
             {
@@ -84,14 +84,14 @@ namespace Immersive.Framework.Camera
                     ambiguityIssue.Message);
             }
 
-            admittedRequests.Add(request.RequestId, request);
+            _admittedRequests.Add(request.RequestId, request);
             SelectWinner();
 
             CameraOutputContextChangeKind changeKind = ResolveChangeKind(
                 previousHasWinner,
                 previousWinner,
-                hasWinner,
-                winner);
+                _hasWinner,
+                _winner);
 
             return new CameraOutputContextResult(
                 CameraOutputContextOperationKind.Admitted,
@@ -99,10 +99,10 @@ namespace Immersive.Framework.Camera
                 request,
                 previousHasWinner,
                 previousWinner,
-                hasWinner,
-                winner,
+                _hasWinner,
+                _winner,
                 Array.Empty<CameraIssue>(),
-                $"Camera request admitted. request='{request.RequestId}' output='{outputId}' change='{changeKind}'.");
+                $"Camera request admitted. request='{request.RequestId}' output='{_outputId}' change='{changeKind}'.");
         }
 
         public CameraOutputContextResult Release(CameraRequestId requestId)
@@ -115,37 +115,37 @@ namespace Immersive.Framework.Camera
                     "Camera output context release requires a valid request id.");
             }
 
-            if (!admittedRequests.TryGetValue(requestId, out CameraRequest releasedRequest))
+            if (!_admittedRequests.TryGetValue(requestId, out CameraRequest releasedRequest))
             {
                 return new CameraOutputContextResult(
                     CameraOutputContextOperationKind.NotFound,
                     CameraOutputContextChangeKind.None,
                     default,
-                    hasWinner,
-                    winner,
-                    hasWinner,
-                    winner,
+                    _hasWinner,
+                    _winner,
+                    _hasWinner,
+                    _winner,
                     new[]
                     {
                         CameraIssue.Warning(
                             "camera.output-context.release-not-found",
-                            $"Camera request '{requestId}' is not admitted on output '{outputId}'.")
+                            $"Camera request '{requestId}' is not admitted on output '{_outputId}'.")
                     },
                     $"Camera request release skipped because request '{requestId}' was not found.");
             }
 
-            bool previousHasWinner = hasWinner;
-            CameraRequest previousWinner = winner;
+            bool previousHasWinner = _hasWinner;
+            CameraRequest previousWinner = _winner;
 
-            admittedRequests.Remove(requestId);
+            _admittedRequests.Remove(requestId);
             CameraIssue[] releaseIssues = PruneInvalidRequests();
             SelectWinner();
 
             CameraOutputContextChangeKind changeKind = ResolveChangeKind(
                 previousHasWinner,
                 previousWinner,
-                hasWinner,
-                winner);
+                _hasWinner,
+                _winner);
 
             return new CameraOutputContextResult(
                 CameraOutputContextOperationKind.Released,
@@ -153,25 +153,25 @@ namespace Immersive.Framework.Camera
                 releasedRequest,
                 previousHasWinner,
                 previousWinner,
-                hasWinner,
-                winner,
+                _hasWinner,
+                _winner,
                 releaseIssues,
                 releaseIssues.Length == 0
-                    ? $"Camera request released. request='{requestId}' output='{outputId}' change='{changeKind}'."
-                    : $"Camera request released and stale invalid requests were pruned. request='{requestId}' output='{outputId}' change='{changeKind}' pruned='{releaseIssues.Length}'.");
+                    ? $"Camera request released. request='{requestId}' output='{_outputId}' change='{changeKind}'."
+                    : $"Camera request released and stale invalid requests were pruned. request='{requestId}' output='{_outputId}' change='{changeKind}' pruned='{releaseIssues.Length}'.");
         }
 
         public bool Contains(CameraRequestId requestId)
         {
-            return requestId.IsValid && admittedRequests.ContainsKey(requestId);
+            return requestId.IsValid && _admittedRequests.ContainsKey(requestId);
         }
 
         public CameraOutputContextSnapshot CaptureSnapshot()
         {
-            var ids = new CameraRequestId[admittedRequests.Count];
+            var ids = new CameraRequestId[_admittedRequests.Count];
             int index = 0;
 
-            foreach (CameraRequestId requestId in admittedRequests.Keys)
+            foreach (CameraRequestId requestId in _admittedRequests.Keys)
             {
                 ids[index++] = requestId;
             }
@@ -185,10 +185,10 @@ namespace Immersive.Framework.Camera
                         StringComparison.Ordinal));
 
             return new CameraOutputContextSnapshot(
-                outputId,
-                admittedRequests.Count,
-                hasWinner,
-                winner,
+                _outputId,
+                _admittedRequests.Count,
+                _hasWinner,
+                _winner,
                 ids);
         }
 
@@ -196,7 +196,7 @@ namespace Immersive.Framework.Camera
             CameraRequest candidate,
             out CameraIssue issue)
         {
-            foreach (CameraRequest admitted in admittedRequests.Values)
+            foreach (CameraRequest admitted in _admittedRequests.Values)
             {
                 if (admitted.Policy.Precedence != candidate.Policy.Precedence)
                 {
@@ -233,15 +233,15 @@ namespace Immersive.Framework.Camera
 
         private void SelectWinner()
         {
-            hasWinner = false;
-            winner = default;
+            _hasWinner = false;
+            _winner = default;
 
-            foreach (CameraRequest request in admittedRequests.Values)
+            foreach (CameraRequest request in _admittedRequests.Values)
             {
-                if (!hasWinner || Compare(request, winner) < 0)
+                if (!_hasWinner || Compare(request, _winner) < 0)
                 {
-                    winner = request;
-                    hasWinner = true;
+                    _winner = request;
+                    _hasWinner = true;
                 }
             }
         }
@@ -250,7 +250,7 @@ namespace Immersive.Framework.Camera
         {
             List<CameraRequestId> invalidRequestIds = null;
 
-            foreach (KeyValuePair<CameraRequestId, CameraRequest> entry in admittedRequests)
+            foreach (KeyValuePair<CameraRequestId, CameraRequest> entry in _admittedRequests)
             {
                 if (entry.Value.IsValid)
                 {
@@ -277,10 +277,10 @@ namespace Immersive.Framework.Camera
             for (int index = 0; index < invalidRequestIds.Count; index++)
             {
                 CameraRequestId invalidRequestId = invalidRequestIds[index];
-                admittedRequests.Remove(invalidRequestId);
+                _admittedRequests.Remove(invalidRequestId);
                 issues[index] = CameraIssue.Warning(
                     "camera.output-context.stale-request-pruned",
-                    $"Camera output context pruned stale invalid request '{invalidRequestId}' while processing release on output '{outputId}'.");
+                    $"Camera output context pruned stale invalid request '{invalidRequestId}' while processing release on output '{_outputId}'.");
             }
 
             return issues;
@@ -341,10 +341,10 @@ namespace Immersive.Framework.Camera
                 CameraOutputContextOperationKind.Blocked,
                 CameraOutputContextChangeKind.None,
                 request,
-                hasWinner,
-                winner,
-                hasWinner,
-                winner,
+                _hasWinner,
+                _winner,
+                _hasWinner,
+                _winner,
                 new[]
                 {
                     CameraIssue.Blocking(code, normalizedMessage)

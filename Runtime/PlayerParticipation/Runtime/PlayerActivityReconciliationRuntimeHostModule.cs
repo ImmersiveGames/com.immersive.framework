@@ -11,20 +11,20 @@ namespace Immersive.Framework.PlayerParticipation
     /// </summary>
     internal sealed class PlayerActivityReconciliationRuntimeHostModule
     {
-        private int observedSessionRevision = -1;
-        private ActivityAsset observedActivity;
-        private RuntimeContentOwner observedOwner;
-        private int observedOccurrence;
-        private ActivityPlayerActorReconcileTargetStatus observedTargetStatus;
-        private bool reconciling;
-        private PlayerActivityReconciliationRuntimeHostSnapshot lastSnapshot;
+        private int _observedSessionRevision = -1;
+        private ActivityAsset _observedActivity;
+        private RuntimeContentOwner _observedOwner;
+        private int _observedOccurrence;
+        private ActivityPlayerActorReconcileTargetStatus _observedTargetStatus;
+        private bool _reconciling;
+        private PlayerActivityReconciliationRuntimeHostSnapshot _lastSnapshot;
 
         internal PlayerActivityReconciliationRuntimeHostSnapshot LastSnapshot =>
-            lastSnapshot ??
+            _lastSnapshot ??
             new PlayerActivityReconciliationRuntimeHostSnapshot(
                 PlayerActivityReconciliationCoordinatorStatus.Ready,
                 PlayerActivityReconciliationStableChangeKind.None,
-                observedSessionRevision,
+                _observedSessionRevision,
                 null,
                 default,
                 0,
@@ -40,7 +40,7 @@ namespace Immersive.Framework.PlayerParticipation
         {
             if (session == null || !session.IsInitialized)
             {
-                lastSnapshot =
+                _lastSnapshot =
                     PlayerActivityReconciliationRuntimeHostSnapshot.Unavailable(
                         "Session Player participation snapshot is unavailable.");
                 return false;
@@ -48,7 +48,7 @@ namespace Immersive.Framework.PlayerParticipation
 
             if (lifecycle == null)
             {
-                lastSnapshot =
+                _lastSnapshot =
                     PlayerActivityReconciliationRuntimeHostSnapshot.Unavailable(
                         "Activity Player Actor lifecycle participant is unavailable.");
                 return false;
@@ -57,7 +57,7 @@ namespace Immersive.Framework.PlayerParticipation
             ActivityPlayerActorReconcileTarget target =
                 lifecycle.CaptureActiveReconcileTarget();
             bool revisionChanged =
-                session.Revision != observedSessionRevision;
+                session.Revision != _observedSessionRevision;
             bool targetChanged = HasTargetChanged(target);
             if (!revisionChanged && !targetChanged)
             {
@@ -67,12 +67,12 @@ namespace Immersive.Framework.PlayerParticipation
             PlayerActivityReconciliationStableChangeKind changeKind =
                 ResolveChangeKind(revisionChanged, targetChanged);
 
-            if (reconciling)
+            if (_reconciling)
             {
                 return false;
             }
 
-            reconciling = true;
+            _reconciling = true;
             try
             {
                 RecordObservedState(session.Revision, target);
@@ -80,7 +80,7 @@ namespace Immersive.Framework.PlayerParticipation
                 if (target.Status ==
                     ActivityPlayerActorReconcileTargetStatus.NoActiveActivity)
                 {
-                    lastSnapshot =
+                    _lastSnapshot =
                         new PlayerActivityReconciliationRuntimeHostSnapshot(
                             PlayerActivityReconciliationCoordinatorStatus
                                 .SucceededNoActiveActivity,
@@ -99,7 +99,7 @@ namespace Immersive.Framework.PlayerParticipation
                     ActivityPlayerActorReconcileTargetStatus
                         .WaitingForOccurrence)
                 {
-                    lastSnapshot =
+                    _lastSnapshot =
                         new PlayerActivityReconciliationRuntimeHostSnapshot(
                             PlayerActivityReconciliationCoordinatorStatus
                                 .SucceededWaitingForOccurrence,
@@ -116,7 +116,7 @@ namespace Immersive.Framework.PlayerParticipation
 
                 if (!target.IsReady)
                 {
-                    lastSnapshot =
+                    _lastSnapshot =
                         new PlayerActivityReconciliationRuntimeHostSnapshot(
                             PlayerActivityReconciliationCoordinatorStatus
                                 .FailedInvalidTarget,
@@ -154,7 +154,7 @@ namespace Immersive.Framework.PlayerParticipation
                     ? result.ToDiagnosticString()
                     : "Active-Activity Player reconcile returned no result.";
 
-                lastSnapshot =
+                _lastSnapshot =
                     new PlayerActivityReconciliationRuntimeHostSnapshot(
                         status,
                         changeKind,
@@ -169,7 +169,7 @@ namespace Immersive.Framework.PlayerParticipation
             }
             catch (Exception exception)
             {
-                lastSnapshot =
+                _lastSnapshot =
                     new PlayerActivityReconciliationRuntimeHostSnapshot(
                         PlayerActivityReconciliationCoordinatorStatus
                             .FailedException,
@@ -186,7 +186,7 @@ namespace Immersive.Framework.PlayerParticipation
             }
             finally
             {
-                reconciling = false;
+                _reconciling = false;
             }
         }
 
@@ -194,21 +194,21 @@ namespace Immersive.Framework.PlayerParticipation
             ActivityPlayerActorReconcileTarget target)
         {
             return
-                target.Status != observedTargetStatus ||
-                !ReferenceEquals(target.Activity, observedActivity) ||
-                target.Owner != observedOwner ||
-                target.Occurrence != observedOccurrence;
+                target.Status != _observedTargetStatus ||
+                !ReferenceEquals(target.Activity, _observedActivity) ||
+                target.Owner != _observedOwner ||
+                target.Occurrence != _observedOccurrence;
         }
 
         private void RecordObservedState(
             int sessionRevision,
             ActivityPlayerActorReconcileTarget target)
         {
-            observedSessionRevision = sessionRevision;
-            observedActivity = target.Activity;
-            observedOwner = target.Owner;
-            observedOccurrence = target.Occurrence;
-            observedTargetStatus = target.Status;
+            _observedSessionRevision = sessionRevision;
+            _observedActivity = target.Activity;
+            _observedOwner = target.Owner;
+            _observedOccurrence = target.Occurrence;
+            _observedTargetStatus = target.Status;
         }
 
         private static PlayerActivityReconciliationStableChangeKind

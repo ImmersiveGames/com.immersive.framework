@@ -13,7 +13,7 @@ namespace Immersive.Framework.PlayerParticipation
         "P3K.4 Session prepared Player camera eligibility snapshot.")]
     public sealed class PlayerGameplayCameraEligibilitySnapshot
     {
-        private readonly PlayerGameplayCameraEligibilitySummary[] slots;
+        private readonly PlayerGameplayCameraEligibilitySummary[] _slots;
 
         internal PlayerGameplayCameraEligibilitySnapshot(
             string sessionContextId,
@@ -24,16 +24,16 @@ namespace Immersive.Framework.PlayerParticipation
         {
             SessionContextId = sessionContextId ?? string.Empty;
             Revision = revision;
-            this.slots = slots != null
+            this._slots = slots != null
                 ? (PlayerGameplayCameraEligibilitySummary[])slots.Clone()
                 : Array.Empty<PlayerGameplayCameraEligibilitySummary>();
             LastOperationStatus = lastOperationStatus;
             LastOperationMessage = lastOperationMessage ?? string.Empty;
 
-            for (int index = 0; index < this.slots.Length; index++)
+            for (int index = 0; index < this._slots.Length; index++)
             {
                 PlayerGameplayCameraEligibilitySummary summary =
-                    this.slots[index];
+                    this._slots[index];
                 if (summary.IsEligible)
                 {
                     EligibleCount++;
@@ -54,8 +54,8 @@ namespace Immersive.Framework.PlayerParticipation
         public string SessionContextId { get; }
         public int Revision { get; }
         public IReadOnlyList<PlayerGameplayCameraEligibilitySummary> Slots =>
-            slots;
-        public int ConfiguredSlotCount => slots.Length;
+            _slots;
+        public int ConfiguredSlotCount => _slots.Length;
         public int EligibleCount { get; }
         public int RequiredEligibleCount { get; }
         public int OptionalEligibleCount { get; }
@@ -72,11 +72,11 @@ namespace Immersive.Framework.PlayerParticipation
             PlayerSlotId playerSlotId,
             out PlayerGameplayCameraEligibilitySummary summary)
         {
-            for (int index = 0; index < slots.Length; index++)
+            for (int index = 0; index < _slots.Length; index++)
             {
-                if (slots[index].PlayerSlotId == playerSlotId)
+                if (_slots[index].PlayerSlotId == playerSlotId)
                 {
-                    summary = slots[index];
+                    summary = _slots[index];
                     return true;
                 }
             }

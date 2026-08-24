@@ -22,8 +22,8 @@ namespace Immersive.Framework.PlayerParticipation
         }
 
         private readonly Dictionary<PlayerSlotId, SessionPlayerLeaveRecord>
-            activeSessionPlayerLeaves = new();
-        private int sessionPlayerLeaveSequence;
+            _activeSessionPlayerLeaves = new();
+        private int _sessionPlayerLeaveSequence;
 
         /// <summary>
         /// Stages Leave for the exact currently Joined Slot occurrence. This transition only
@@ -41,7 +41,7 @@ namespace Immersive.Framework.PlayerParticipation
                 nameof(PlayerParticipationRuntimeContext));
             string resolvedReason = reason.NormalizeTextOrFallback(
                 "session-player-leave");
-            int previousContextRevision = revision;
+            int previousContextRevision = _revision;
 
             if (!playerSlotId.IsValid || expectedOccurrenceRevision < 0)
             {
@@ -76,7 +76,7 @@ namespace Immersive.Framework.PlayerParticipation
 
             if (record.AllocationState == PlayerSlotAllocationState.Leaving)
             {
-                if (!activeSessionPlayerLeaves.TryGetValue(
+                if (!_activeSessionPlayerLeaves.TryGetValue(
                         playerSlotId,
                         out SessionPlayerLeaveRecord activeLeave))
                 {
@@ -161,7 +161,7 @@ namespace Immersive.Framework.PlayerParticipation
                     $"Expected Session Player occurrence revision '{expectedOccurrenceRevision}' does not match current Slot revision '{record.Revision}'.");
             }
 
-            if (activeSessionPlayerLeaves.ContainsKey(playerSlotId))
+            if (_activeSessionPlayerLeaves.ContainsKey(playerSlotId))
             {
                 return CreateSessionPlayerLeaveResult(
                     SessionPlayerLeaveRuntimeStatus.FailedInvariant,
@@ -180,16 +180,16 @@ namespace Immersive.Framework.PlayerParticipation
             record.Revision++;
             record.Source = resolvedSource;
             record.Reason = resolvedReason;
-            revision++;
+            _revision++;
 
-            sessionPlayerLeaveSequence++;
+            _sessionPlayerLeaveSequence++;
             var token = new SessionPlayerLeaveToken(
-                contextId,
-                sessionPlayerLeaveSequence,
+                _contextId,
+                _sessionPlayerLeaveSequence,
                 record.PlayerSlotId,
                 expectedOccurrenceRevision,
                 record.Revision);
-            activeSessionPlayerLeaves.Add(
+            _activeSessionPlayerLeaves.Add(
                 record.PlayerSlotId,
                 new SessionPlayerLeaveRecord(token, record.Revision));
 
@@ -220,7 +220,7 @@ namespace Immersive.Framework.PlayerParticipation
                 nameof(PlayerParticipationRuntimeContext));
             string resolvedReason = reason.NormalizeTextOrFallback(
                 "confirm-session-player-leave");
-            int previousContextRevision = revision;
+            int previousContextRevision = _revision;
 
             if (!TryResolveActiveSessionPlayerLeave(
                     token,
@@ -272,7 +272,7 @@ namespace Immersive.Framework.PlayerParticipation
                 nameof(PlayerParticipationRuntimeContext));
             string resolvedReason = reason.NormalizeTextOrFallback(
                 "session-player-leave-clear-actor-selection");
-            int previousContextRevision = revision;
+            int previousContextRevision = _revision;
 
             if (!TryResolveActiveSessionPlayerLeave(
                     token,
@@ -342,7 +342,7 @@ namespace Immersive.Framework.PlayerParticipation
                 nameof(PlayerParticipationRuntimeContext));
             string resolvedReason = reason.NormalizeTextOrFallback(
                 "commit-session-player-leave");
-            int previousContextRevision = revision;
+            int previousContextRevision = _revision;
 
             if (!TryResolveActiveSessionPlayerLeave(
                     token,
@@ -386,8 +386,8 @@ namespace Immersive.Framework.PlayerParticipation
             record.Revision++;
             record.Source = resolvedSource;
             record.Reason = resolvedReason;
-            revision++;
-            activeSessionPlayerLeaves.Remove(record.PlayerSlotId);
+            _revision++;
+            _activeSessionPlayerLeaves.Remove(record.PlayerSlotId);
 
             PlayerSlotRuntimeSnapshot currentSlot = CreateSlotSnapshot(record);
             return CreateSessionPlayerLeaveResult(
@@ -414,7 +414,7 @@ namespace Immersive.Framework.PlayerParticipation
             rejectionStatus = SessionPlayerLeaveRuntimeStatus.RejectedForeignOrStaleOccurrence;
 
             if (!token.IsValid ||
-                !string.Equals(token.ContextId, contextId, StringComparison.Ordinal))
+                !string.Equals(token.ContextId, _contextId, StringComparison.Ordinal))
             {
                 issue = "Session Player Leave token is invalid or belongs to another Session participation context.";
                 return false;
@@ -427,7 +427,7 @@ namespace Immersive.Framework.PlayerParticipation
                 return false;
             }
 
-            if (!activeSessionPlayerLeaves.TryGetValue(token.PlayerSlotId, out activeLeave) ||
+            if (!_activeSessionPlayerLeaves.TryGetValue(token.PlayerSlotId, out activeLeave) ||
                 activeLeave.Token != token)
             {
                 issue = "Session Player Leave token is foreign, stale or no longer owns the active Slot occurrence.";
@@ -463,8 +463,8 @@ namespace Immersive.Framework.PlayerParticipation
             string reason,
             string message)
         {
-            lastOperationStatus = MapSessionPlayerLeaveStatus(status);
-            lastOperationMessage = message ?? string.Empty;
+            _lastOperationStatus = MapSessionPlayerLeaveStatus(status);
+            _lastOperationMessage = message ?? string.Empty;
             return new SessionPlayerLeaveRuntimeResult(
                 status,
                 operation,
@@ -472,7 +472,7 @@ namespace Immersive.Framework.PlayerParticipation
                 previousSlot,
                 currentSlot,
                 previousContextRevision,
-                revision,
+                _revision,
                 source,
                 reason,
                 message);

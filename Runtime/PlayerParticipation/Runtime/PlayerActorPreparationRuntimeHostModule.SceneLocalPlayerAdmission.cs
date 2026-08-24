@@ -7,9 +7,9 @@ namespace Immersive.Framework.PlayerParticipation
     internal sealed partial class PlayerActorPreparationRuntimeHostModule
     {
         private SceneLocalPlayerAdmissionCompositeLifecycleParticipant
-            sceneLocalPlayerCompositeLifecycleParticipant;
+            _sceneLocalPlayerCompositeLifecycleParticipant;
         private SceneLocalPlayerAdmissionRuntimeHostModule
-            composedSceneLocalPlayerAdmissionModule;
+            _composedSceneLocalPlayerAdmissionModule;
         internal bool TryComposeSceneLocalPlayerAdmissionLifecycle(
             SceneLocalPlayerAdmissionRuntimeHostModule sceneModule,
             out string issue)
@@ -17,7 +17,7 @@ namespace Immersive.Framework.PlayerParticipation
             issue = string.Empty;
             if (!IsReady)
             {
-                issue = diagnostic;
+                issue = _diagnostic;
                 return false;
             }
 
@@ -27,17 +27,17 @@ namespace Immersive.Framework.PlayerParticipation
                 return false;
             }
 
-            if (sceneLocalPlayerCompositeLifecycleParticipant == null)
+            if (_sceneLocalPlayerCompositeLifecycleParticipant == null)
             {
-                composedSceneLocalPlayerAdmissionModule = sceneModule;
-                sceneLocalPlayerCompositeLifecycleParticipant =
+                _composedSceneLocalPlayerAdmissionModule = sceneModule;
+                _sceneLocalPlayerCompositeLifecycleParticipant =
                     new SceneLocalPlayerAdmissionCompositeLifecycleParticipant(
-                        activityLifecycleParticipant,
+                        _activityLifecycleParticipant,
                         sceneModule,
                         this);
             }
             else if (!ReferenceEquals(
-                         composedSceneLocalPlayerAdmissionModule,
+                         _composedSceneLocalPlayerAdmissionModule,
                          sceneModule))
             {
                 issue =
@@ -48,8 +48,8 @@ namespace Immersive.Framework.PlayerParticipation
             // The base preparation module may re-register its canonical participant after
             // provisioning or host registration. Scene Local Player composition is the more
             // complete source and must remain authoritative for every later Activity transition.
-            runtimeHost.SetActivityContentExecutionParticipantSource(
-                sceneLocalPlayerCompositeLifecycleParticipant);
+            _runtimeHost.SetActivityContentExecutionParticipantSource(
+                _sceneLocalPlayerCompositeLifecycleParticipant);
             return true;
         }
 
@@ -64,16 +64,16 @@ namespace Immersive.Framework.PlayerParticipation
             issue = string.Empty;
             if (!IsReady)
             {
-                issue = diagnostic;
+                issue = _diagnostic;
                 return false;
             }
 
-            if (sceneLocalPlayerCompositeLifecycleParticipant == null)
+            if (_sceneLocalPlayerCompositeLifecycleParticipant == null)
             {
                 return true;
             }
 
-            result = sceneLocalPlayerCompositeLifecycleParticipant
+            result = _sceneLocalPlayerCompositeLifecycleParticipant
                 .TryRetireContextForSessionPlayerLeave(
                     leaveToken,
                     source,
@@ -91,18 +91,18 @@ namespace Immersive.Framework.PlayerParticipation
 
         private void RetireSceneLocalPlayerContextForSessionTermination()
         {
-            if (sceneLocalPlayerCompositeLifecycleParticipant == null)
+            if (_sceneLocalPlayerCompositeLifecycleParticipant == null)
             {
                 return;
             }
 
-            if (!sceneLocalPlayerCompositeLifecycleParticipant
+            if (!_sceneLocalPlayerCompositeLifecycleParticipant
                     .TryRetireAllContextForSessionTermination(
                         nameof(PlayerActorPreparationRuntimeHostModule),
                         "runtime-host-shutdown",
                         out string issue))
             {
-                diagnostic = "Scene Local Player contextual termination retirement failed. " + issue;
+                _diagnostic = "Scene Local Player contextual termination retirement failed. " + issue;
             }
         }
 
@@ -112,14 +112,14 @@ namespace Immersive.Framework.PlayerParticipation
             string source,
             string reason)
         {
-            if (!IsReady || preparationContext == null || runtimeHost == null)
+            if (!IsReady || _preparationContext == null || _runtimeHost == null)
             {
                 return ScenePlayerActorAdoptionResult.RuntimeUnavailable(
                     "AdoptScenePlayerActor",
                     authoring,
                     source,
                     reason,
-                    diagnostic);
+                    _diagnostic);
             }
 
             PlayerSlotId playerSlotId = default;
@@ -189,21 +189,21 @@ namespace Immersive.Framework.PlayerParticipation
                         "Scene Player Actor Route spatial-entry gate failed. " +
                         issue);
                 authoring.SetActorAdoptionResult(placementFailure);
-                diagnostic = placementFailure.ToDiagnosticString();
+                _diagnostic = placementFailure.ToDiagnosticString();
                 return placementFailure;
             }
 
             ScenePlayerActorAdoptionResult result =
-                preparationContext.TryAdoptScenePlayerActor(
-                    runtimeHost.RuntimeContentRuntime,
+                _preparationContext.TryAdoptScenePlayerActor(
+                    _runtimeHost.RuntimeContentRuntime,
                     scopeContext,
-                    sessionPhysicalScopeContext,
+                    _sessionPhysicalScopeContext,
                     authoring,
                     source,
                     reason);
             authoring.SetActorAdoptionResult(result);
 
-            diagnostic = result != null
+            _diagnostic = result != null
                 ? result.ToDiagnosticString()
                 : "Scene Player Actor adoption returned no result.";
             return result;
@@ -215,18 +215,18 @@ namespace Immersive.Framework.PlayerParticipation
             string source,
             string reason)
         {
-            if (!IsReady || preparationContext == null)
+            if (!IsReady || _preparationContext == null)
             {
                 return ScenePlayerActorAdoptionResult.RuntimeUnavailable(
                     "ReleaseScenePlayerActorAdoption",
                     authoring,
                     source,
                     reason,
-                    diagnostic);
+                    _diagnostic);
             }
 
             ScenePlayerActorAdoptionResult result =
-                preparationContext.TryReleaseScenePlayerActorAdoption(
+                _preparationContext.TryReleaseScenePlayerActorAdoption(
                     authoring,
                     expectedToken,
                     source,
@@ -236,7 +236,7 @@ namespace Immersive.Framework.PlayerParticipation
                 authoring.SetActorAdoptionResult(result);
             }
 
-            diagnostic = result != null
+            _diagnostic = result != null
                 ? result.ToDiagnosticString()
                 : "Scene Player Actor adoption release returned no result.";
             return result;
@@ -247,8 +247,8 @@ namespace Immersive.Framework.PlayerParticipation
             out ScenePlayerActorAdoptionToken token)
         {
             token = default;
-            return preparationContext != null &&
-                preparationContext.TryGetScenePlayerActorAdoption(
+            return _preparationContext != null &&
+                _preparationContext.TryGetScenePlayerActorAdoption(
                     playerSlotId,
                     out token);
         }
@@ -258,8 +258,8 @@ namespace Immersive.Framework.PlayerParticipation
             out PlayerActorPreparationSummary summary)
         {
             summary = default;
-            return preparationContext != null &&
-                preparationContext.TryGetPreparationSummary(
+            return _preparationContext != null &&
+                _preparationContext.TryGetPreparationSummary(
                     playerSlotId,
                     out summary);
         }

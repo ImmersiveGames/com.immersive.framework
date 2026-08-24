@@ -61,7 +61,7 @@ namespace Immersive.Framework.PlayerParticipation
         private readonly Dictionary<
             SessionPlayerLeaveToken,
             SceneProvidedSessionPlayerLeaveProgress>
-            sceneProvidedSessionPlayerLeaveProgress = new();
+            _sceneProvidedSessionPlayerLeaveProgress = new();
 
         /// <summary>
         /// Releases Framework authority associated with the exact Scene-Provided occurrence owned
@@ -81,7 +81,7 @@ namespace Immersive.Framework.PlayerParticipation
             string resolvedReason = reason.NormalizeTextOrFallback(
                 "scene-provided-session-player-leave-release");
 
-            if (!IsReady || hostEvidenceOwner == null)
+            if (!IsReady || _hostEvidenceOwner == null)
             {
                 return Result(
                     SceneProvidedSessionPlayerLeaveReleaseStatus.RejectedRuntimeUnavailable,
@@ -145,7 +145,7 @@ namespace Immersive.Framework.PlayerParticipation
             }
 
             SessionPlayerLeaveRuntimeResult leaveConfirmation =
-                participationContext.TryConfirmSessionPlayerLeave(
+                _participationContext.TryConfirmSessionPlayerLeave(
                     leaveToken,
                     resolvedSource,
                     resolvedReason);
@@ -173,7 +173,7 @@ namespace Immersive.Framework.PlayerParticipation
                         : "Scene-Provided resource release received no Leave confirmation result.");
             }
 
-            if (!participationContext.TryGetEffectiveHostProvisioningMode(
+            if (!_participationContext.TryGetEffectiveHostProvisioningMode(
                     leaveToken.PlayerSlotId,
                     out PlayerHostProvisioningMode provisioningMode) ||
                 provisioningMode != PlayerHostProvisioningMode.SceneProvided)
@@ -197,7 +197,7 @@ namespace Immersive.Framework.PlayerParticipation
                     $"Leaving Slot provisioning mode is '{provisioningMode}', not SceneProvided. No ownership fallback was applied.");
             }
 
-            if (sceneProvidedSessionPlayerLeaveProgress.TryGetValue(
+            if (_sceneProvidedSessionPlayerLeaveProgress.TryGetValue(
                     leaveToken,
                     out SceneProvidedSessionPlayerLeaveProgress existingProgress) &&
                 existingProgress.IsComplete)
@@ -214,18 +214,18 @@ namespace Immersive.Framework.PlayerParticipation
             SceneProvidedSessionPlayerLeaveProgress progress = existingProgress;
             if (progress == null)
             {
-                if (!runtime.TryGetSessionPlayerLeaveRepresentation(
+                if (!_runtime.TryGetSessionPlayerLeaveRepresentation(
                         leaveToken.PlayerSlotId,
                         out SceneLocalPlayerAdmissionAuthoring authoring,
                         out LocalPlayerHostAuthoring host,
                         out SceneLocalPlayerAdmissionToken sceneAdmissionToken,
                         out PlayerSlotAssignmentSnapshot assignment))
                 {
-                    bool hasAssignment = participationContext.TryGetCurrentAssignment(
+                    bool hasAssignment = _participationContext.TryGetCurrentAssignment(
                         leaveToken.PlayerSlotId,
                         out PlayerSlotAssignmentSnapshot residualAssignment) &&
                         residualAssignment.IsAssigned;
-                    bool hasHostEvidence = hostEvidenceOwner.TryGetRetainedHostEvidence(
+                    bool hasHostEvidence = _hostEvidenceOwner.TryGetRetainedHostEvidence(
                         leaveToken.PlayerSlotId,
                         out PlayerHostEvidenceSnapshot residualHostEvidence);
                     // Activity exit deliberately retires its contextual assignment. A retained
@@ -254,7 +254,7 @@ namespace Immersive.Framework.PlayerParticipation
                             AssignmentReleased = true,
                             ContextualRecordReleased = true
                         };
-                        sceneProvidedSessionPlayerLeaveProgress.Add(leaveToken, progress);
+                        _sceneProvidedSessionPlayerLeaveProgress.Add(leaveToken, progress);
                     }
                     else if (hasAssignment || hasHostEvidence)
                     {
@@ -336,7 +336,7 @@ namespace Immersive.Framework.PlayerParticipation
                         assignment,
                         assignment.AssignmentToken,
                         assignment.HostBindingIdentity);
-                    sceneProvidedSessionPlayerLeaveProgress.Add(leaveToken, progress);
+                    _sceneProvidedSessionPlayerLeaveProgress.Add(leaveToken, progress);
                 }
             }
 
@@ -344,14 +344,14 @@ namespace Immersive.Framework.PlayerParticipation
             {
                 PlayerHostEvidenceResult evidenceRelease =
                     !progress.Assignment.IsAssigned || progress.SessionPhysicalHost == null
-                    ? hostEvidenceOwner.ClearDivergentHostEvidence(
+                    ? _hostEvidenceOwner.ClearDivergentHostEvidence(
                         leaveToken.PlayerSlotId,
                         progress.EvidenceAssignmentToken,
                         progress.EvidenceHostBindingIdentity,
                         progress.SessionPhysicalHost,
                         resolvedSource,
                         resolvedReason + "; physical-host-already-terminally-released")
-                    : hostEvidenceOwner.ReleaseHostEvidence(
+                    : _hostEvidenceOwner.ReleaseHostEvidence(
                         leaveToken.PlayerSlotId,
                         progress.EvidenceAssignmentToken,
                         progress.EvidenceHostBindingIdentity,
@@ -426,7 +426,7 @@ namespace Immersive.Framework.PlayerParticipation
             if (!progress.SessionPhysicalHostReleased)
             {
                 PlayerHostEvidenceResult physicalRelease =
-                    hostEvidenceOwner.ReleaseSessionPhysicalHost(
+                    _hostEvidenceOwner.ReleaseSessionPhysicalHost(
                         leaveToken.PlayerSlotId,
                         progress.SessionPhysicalHost,
                         resolvedSource,
@@ -459,7 +459,7 @@ namespace Immersive.Framework.PlayerParticipation
                 else
                 {
                 PlayerSlotAssignmentResult assignmentConfirmation =
-                    participationContext.TryConfirmCurrentAssignment(
+                    _participationContext.TryConfirmCurrentAssignment(
                         leaveToken.PlayerSlotId,
                         progress.Assignment.AssignmentToken,
                         resolvedSource,
@@ -485,7 +485,7 @@ namespace Immersive.Framework.PlayerParticipation
                 }
 
                 PlayerSlotAssignmentResult assignmentRelease =
-                    participationContext.ReleaseAssignment(
+                    _participationContext.ReleaseAssignment(
                         leaveToken.PlayerSlotId,
                         progress.Assignment.AssignmentToken,
                         resolvedSource,
@@ -510,7 +510,7 @@ namespace Immersive.Framework.PlayerParticipation
 
             if (!progress.ContextualRecordReleased)
             {
-                if (!runtime.TryReleaseSessionPlayerLeaveRepresentationRecord(
+                if (!_runtime.TryReleaseSessionPlayerLeaveRepresentationRecord(
                         leaveToken,
                         progress.SceneAdmissionToken,
                         resolvedSource,

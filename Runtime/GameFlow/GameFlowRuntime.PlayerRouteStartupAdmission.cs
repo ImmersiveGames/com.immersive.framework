@@ -39,7 +39,7 @@ namespace Immersive.Framework.GameFlow
 
             if (preparation.CurrentSnapshot == null ||
                 !preparation.CurrentSnapshot.Token.IsValid ||
-                activityPlayerLifecycleAdmissionRuntime == null)
+                _activityPlayerLifecycleAdmissionRuntime == null)
             {
                 issue =
                     "Route Startup Activity Player lifecycle preparation has no exact transaction evidence.";
@@ -47,7 +47,7 @@ namespace Immersive.Framework.GameFlow
             }
 
             ActivityPlayerLifecycleAdmissionSnapshot snapshot =
-                activityPlayerLifecycleAdmissionRuntime.CreateSnapshot();
+                _activityPlayerLifecycleAdmissionRuntime.CreateSnapshot();
             if (snapshot == null ||
                 snapshot.Token != preparation.CurrentSnapshot.Token ||
                 !snapshot.IsRouteStartupFlow ||

@@ -16,16 +16,16 @@ namespace Immersive.Framework.PlayerParticipation
     public readonly struct PlayerActorMaterializationOperationId :
         IEquatable<PlayerActorMaterializationOperationId>
     {
-        private readonly string value;
+        private readonly string _value;
 
         private PlayerActorMaterializationOperationId(string value)
         {
-            this.value = value.NormalizeText();
+            this._value = value.NormalizeText();
         }
 
-        public bool IsValid => !string.IsNullOrEmpty(value);
+        public bool IsValid => !string.IsNullOrEmpty(_value);
 
-        public string StableText => IsValid ? value : string.Empty;
+        public string StableText => IsValid ? _value : string.Empty;
 
         internal static bool TryCreate(
             string sessionContextId,
@@ -74,7 +74,7 @@ namespace Immersive.Framework.PlayerParticipation
 
         public bool Equals(PlayerActorMaterializationOperationId other)
         {
-            return string.Equals(value, other.value, StringComparison.Ordinal);
+            return string.Equals(_value, other._value, StringComparison.Ordinal);
         }
 
         public override bool Equals(object obj)
@@ -84,7 +84,7 @@ namespace Immersive.Framework.PlayerParticipation
 
         public override int GetHashCode()
         {
-            return StringComparer.Ordinal.GetHashCode(value ?? string.Empty);
+            return StringComparer.Ordinal.GetHashCode(_value ?? string.Empty);
         }
 
         public override string ToString()

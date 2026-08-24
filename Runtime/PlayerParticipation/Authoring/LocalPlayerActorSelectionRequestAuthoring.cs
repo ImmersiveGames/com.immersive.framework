@@ -26,20 +26,20 @@ namespace Immersive.Framework.PlayerParticipation
         private LocalPlayerProvisioningAuthoring provisioningAuthoring;
 
         [System.NonSerialized]
-        private PlayerActorSelectionResult lastResult;
+        private PlayerActorSelectionResult _lastResult;
 
         [System.NonSerialized]
-        private string lastDiagnostic =
+        private string _lastDiagnostic =
             "No local Player Actor selection request has executed.";
 
         [System.NonSerialized]
-        private int requestCount;
+        private int _requestCount;
 
         [System.NonSerialized]
-        private IPlayerActorSelectionRuntimePort playerActorSelectionRuntime;
+        private IPlayerActorSelectionRuntimePort _playerActorSelectionRuntime;
 
         [System.NonSerialized]
-        private string playerActorSelectionRuntimeBindingDiagnostic =
+        private string _playerActorSelectionRuntimeBindingDiagnostic =
             MissingRuntimeBindingDiagnostic;
 
         public LocalPlayerProvisioningAuthoring ProvisioningAuthoring
@@ -56,20 +56,20 @@ namespace Immersive.Framework.PlayerParticipation
                 out _,
                 out _);
 
-        public PlayerActorSelectionResult LastResult => lastResult;
+        public PlayerActorSelectionResult LastResult => _lastResult;
 
-        public string LastDiagnostic => lastDiagnostic;
+        public string LastDiagnostic => _lastDiagnostic;
 
-        public int RequestCount => requestCount;
+        public int RequestCount => _requestCount;
 
         public bool HasPlayerActorSelectionRuntimeBinding =>
-            playerActorSelectionRuntime != null;
+            _playerActorSelectionRuntime != null;
 
         public string PlayerActorSelectionRuntimeBindingStatus =>
             HasPlayerActorSelectionRuntimeBinding ? "Bound" : "Missing";
 
         public string PlayerActorSelectionRuntimeBindingDiagnostic =>
-            playerActorSelectionRuntimeBindingDiagnostic;
+            _playerActorSelectionRuntimeBindingDiagnostic;
 
         /// <summary>
         /// Explicitly applies the configured PlayerSlotProfile default Actor after
@@ -81,7 +81,7 @@ namespace Immersive.Framework.PlayerParticipation
             string source,
             string reason)
         {
-            requestCount++;
+            _requestCount++;
 
             var request = new PlayerActorSelectionRequest(
                 playerSlotId,
@@ -149,14 +149,14 @@ namespace Immersive.Framework.PlayerParticipation
                 return false;
             }
 
-            if (playerActorSelectionRuntime == null)
+            if (_playerActorSelectionRuntime == null)
             {
                 issue = string.Empty;
                 return true;
             }
 
             if (ReferenceEquals(
-                    playerActorSelectionRuntime,
+                    _playerActorSelectionRuntime,
                     selectionRuntime))
             {
                 alreadyBound = true;
@@ -177,12 +177,12 @@ namespace Immersive.Framework.PlayerParticipation
                     out bool alreadyBound,
                     out string issue))
             {
-                playerActorSelectionRuntimeBindingDiagnostic = issue;
+                _playerActorSelectionRuntimeBindingDiagnostic = issue;
                 throw new System.InvalidOperationException(issue);
             }
 
-            playerActorSelectionRuntime = selectionRuntime;
-            playerActorSelectionRuntimeBindingDiagnostic = alreadyBound
+            _playerActorSelectionRuntime = selectionRuntime;
+            _playerActorSelectionRuntimeBindingDiagnostic = alreadyBound
                 ? "Player Actor selection runtime port binding is already applied."
                 : "Player Actor selection runtime port is bound.";
         }
@@ -192,7 +192,7 @@ namespace Immersive.Framework.PlayerParticipation
             out bool alreadyReleased,
             out string issue)
         {
-            alreadyReleased = playerActorSelectionRuntime == null;
+            alreadyReleased = _playerActorSelectionRuntime == null;
             if (selectionRuntime == null)
             {
                 issue =
@@ -201,7 +201,7 @@ namespace Immersive.Framework.PlayerParticipation
             }
 
             if (alreadyReleased || ReferenceEquals(
-                    playerActorSelectionRuntime,
+                    _playerActorSelectionRuntime,
                     selectionRuntime))
             {
                 issue = string.Empty;
@@ -221,16 +221,16 @@ namespace Immersive.Framework.PlayerParticipation
                     out bool alreadyReleased,
                     out string issue))
             {
-                playerActorSelectionRuntimeBindingDiagnostic = issue;
+                _playerActorSelectionRuntimeBindingDiagnostic = issue;
                 throw new System.InvalidOperationException(issue);
             }
 
             if (!alreadyReleased)
             {
-                playerActorSelectionRuntime = null;
+                _playerActorSelectionRuntime = null;
             }
 
-            playerActorSelectionRuntimeBindingDiagnostic = alreadyReleased
+            _playerActorSelectionRuntimeBindingDiagnostic = alreadyReleased
                 ? "Player Actor selection runtime port binding was already released."
                 : "Player Actor selection runtime port binding was released.";
         }
@@ -255,14 +255,14 @@ namespace Immersive.Framework.PlayerParticipation
                 return false;
             }
 
-            if (playerActorSelectionRuntime == null)
+            if (_playerActorSelectionRuntime == null)
             {
                 issue =
                     "Local Player Actor selection runtime is unavailable because the explicit runtime port is not bound.";
                 return false;
             }
 
-            if (!playerActorSelectionRuntime.TryValidatePlayerActorSelectionRuntime(
+            if (!_playerActorSelectionRuntime.TryValidatePlayerActorSelectionRuntime(
                     out issue))
             {
                 issue = string.IsNullOrWhiteSpace(issue)
@@ -271,7 +271,7 @@ namespace Immersive.Framework.PlayerParticipation
                 return false;
             }
 
-            selectionRuntime = playerActorSelectionRuntime;
+            selectionRuntime = _playerActorSelectionRuntime;
             issue = string.Empty;
             return true;
         }
@@ -279,8 +279,8 @@ namespace Immersive.Framework.PlayerParticipation
         private PlayerActorSelectionResult Complete(
             PlayerActorSelectionResult result)
         {
-            lastResult = result;
-            lastDiagnostic = result != null
+            _lastResult = result;
+            _lastDiagnostic = result != null
                 ? result.ToDiagnosticString()
                 : "Local Player Actor selection returned no result.";
             return result;
@@ -288,8 +288,8 @@ namespace Immersive.Framework.PlayerParticipation
 
         private void OnDestroy()
         {
-            playerActorSelectionRuntime = null;
-            playerActorSelectionRuntimeBindingDiagnostic =
+            _playerActorSelectionRuntime = null;
+            _playerActorSelectionRuntimeBindingDiagnostic =
                 "Player Actor selection request authoring was destroyed.";
         }
 

@@ -45,21 +45,21 @@ namespace Immersive.Framework.PlayerParticipation
         }
 
         private readonly Dictionary<PlayerSlotId, CurrentAssignmentRecord>
-            currentAssignments = new();
-        private int assignmentSequence;
-        private int hostBindingSequence;
+            _currentAssignments = new();
+        private int _assignmentSequence;
+        private int _hostBindingSequence;
 
         internal RuntimeContentOwner CreateSessionAssignmentOwner()
         {
             return RuntimeContentOwner.Session(
-                contextId,
+                _contextId,
                 "Player Participation Session");
         }
 
         internal PlayerHostBindingIdentity CreateHostBindingIdentity()
         {
-            hostBindingSequence++;
-            return new PlayerHostBindingIdentity(contextId, hostBindingSequence);
+            _hostBindingSequence++;
+            return new PlayerHostBindingIdentity(_contextId, _hostBindingSequence);
         }
 
         internal PlayerSlotAssignmentResult BeginAssignment(
@@ -148,7 +148,7 @@ namespace Immersive.Framework.PlayerParticipation
             if (!hostBindingIdentity.IsValid ||
                 !string.Equals(
                     hostBindingIdentity.SessionContextId,
-                    contextId,
+                    _contextId,
                     StringComparison.Ordinal))
             {
                 return AssignmentResult(
@@ -189,7 +189,7 @@ namespace Immersive.Framework.PlayerParticipation
                     $"Player Slot '{playerSlotId.StableText}' must be Joined before assignment begins.");
             }
 
-            if (currentAssignments.TryGetValue(
+            if (_currentAssignments.TryGetValue(
                     playerSlotId,
                     out CurrentAssignmentRecord existing))
             {
@@ -215,7 +215,7 @@ namespace Immersive.Framework.PlayerParticipation
             }
 
             foreach (KeyValuePair<PlayerSlotId, CurrentAssignmentRecord> pair in
-                     currentAssignments)
+                     _currentAssignments)
             {
                 if (pair.Value.HostBindingIdentity == hostBindingIdentity)
                 {
@@ -233,25 +233,25 @@ namespace Immersive.Framework.PlayerParticipation
                 }
             }
 
-            assignmentSequence++;
+            _assignmentSequence++;
             const int initialAssignmentRevision = 1;
             var token = new PlayerSlotAssignmentToken(
-                contextId,
+                _contextId,
                 playerSlotId,
-                assignmentSequence,
+                _assignmentSequence,
                 initialAssignmentRevision,
                 hostBindingIdentity);
             var record = new CurrentAssignmentRecord(
                 slot,
                 origin,
                 owner,
-                assignmentSequence,
+                _assignmentSequence,
                 initialAssignmentRevision,
                 token,
                 hostBindingIdentity,
                 resolvedSource,
                 resolvedReason);
-            currentAssignments.Add(playerSlotId, record);
+            _currentAssignments.Add(playerSlotId, record);
             PlayerSlotAssignmentSnapshot current = CreateAssignmentSnapshot(record);
             return AssignmentResult(
                 PlayerSlotAssignmentStatus.SucceededAssigned,
@@ -269,7 +269,7 @@ namespace Immersive.Framework.PlayerParticipation
             out PlayerSlotAssignmentSnapshot assignment)
         {
             if (playerSlotId.IsValid &&
-                currentAssignments.TryGetValue(
+                _currentAssignments.TryGetValue(
                     playerSlotId,
                     out CurrentAssignmentRecord record))
             {
@@ -334,11 +334,11 @@ namespace Immersive.Framework.PlayerParticipation
                 nameof(PlayerParticipationRuntimeContext));
             string resolvedReason = reason.NormalizeTextOrFallback(
                 "assignment-admission-rollback");
-            int previousRevision = revision;
+            int previousRevision = _revision;
             SlotRecord slot = playerSlotId.IsValid ? FindSlot(playerSlotId) : null;
             if (slot == null ||
                 slot.AllocationState != PlayerSlotAllocationState.Joined ||
-                currentAssignments.ContainsKey(playerSlotId))
+                _currentAssignments.ContainsKey(playerSlotId))
             {
                 return CreateResult(
                     PlayerParticipationOperationStatus.RejectedInvalidState,
@@ -366,7 +366,7 @@ namespace Immersive.Framework.PlayerParticipation
             slot.Revision++;
             slot.Source = resolvedSource;
             slot.Reason = resolvedReason;
-            revision++;
+            _revision++;
             return CreateResult(
                 PlayerParticipationOperationStatus.Succeeded,
                 "AbandonJoinedSlotAfterAssignmentFailure",
@@ -390,10 +390,10 @@ namespace Immersive.Framework.PlayerParticipation
                 nameof(PlayerParticipationRuntimeContext));
             string resolvedReason = reason.NormalizeTextOrFallback(
                 "assignment-release-rollback");
-            int previousRevision = revision;
+            int previousRevision = _revision;
             SlotRecord slot = playerSlotId.IsValid ? FindSlot(playerSlotId) : null;
             bool assignmentCurrent =
-                currentAssignments.TryGetValue(
+                _currentAssignments.TryGetValue(
                     playerSlotId,
                     out CurrentAssignmentRecord assignment) &&
                 assignment.Token == expectedAssignmentToken;
@@ -416,7 +416,7 @@ namespace Immersive.Framework.PlayerParticipation
             slot.Revision++;
             slot.Source = resolvedSource;
             slot.Reason = resolvedReason;
-            revision++;
+            _revision++;
             return CreateResult(
                 PlayerParticipationOperationStatus.Succeeded,
                 "RestoreJoinedSlotAfterAssignmentReleaseFailure",
@@ -486,7 +486,7 @@ namespace Immersive.Framework.PlayerParticipation
             if (!expectedToken.IsValid ||
                 !string.Equals(
                     expectedToken.SessionContextId,
-                    contextId,
+                    _contextId,
                     StringComparison.Ordinal))
             {
                 return AssignmentResult(
@@ -500,7 +500,7 @@ namespace Immersive.Framework.PlayerParticipation
                     "Assignment token is invalid or belongs to another Session context.");
             }
 
-            if (!currentAssignments.TryGetValue(
+            if (!_currentAssignments.TryGetValue(
                     playerSlotId,
                     out CurrentAssignmentRecord record))
             {
@@ -542,7 +542,7 @@ namespace Immersive.Framework.PlayerParticipation
                     "Expected token confirms the current Player Slot assignment.");
             }
 
-            currentAssignments.Remove(playerSlotId);
+            _currentAssignments.Remove(playerSlotId);
             return AssignmentResult(
                 PlayerSlotAssignmentStatus.SucceededReleased,
                 operation,
@@ -579,7 +579,7 @@ namespace Immersive.Framework.PlayerParticipation
             CurrentAssignmentRecord record)
         {
             return new PlayerSlotAssignmentSnapshot(
-                contextId,
+                _contextId,
                 record.Slot.PlayerSlotId,
                 record.Slot.ConfiguredIndex,
                 PlayerSlotAssignmentState.Assigned,
@@ -597,7 +597,7 @@ namespace Immersive.Framework.PlayerParticipation
             SlotRecord slot)
         {
             return new PlayerSlotAssignmentSnapshot(
-                contextId,
+                _contextId,
                 slot.PlayerSlotId,
                 slot.ConfiguredIndex,
                 PlayerSlotAssignmentState.Unassigned,

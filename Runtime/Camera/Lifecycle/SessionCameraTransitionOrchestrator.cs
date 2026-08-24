@@ -15,15 +15,15 @@ namespace Immersive.Framework.Camera
     {
         private const string ForceDefaultOwner = "SessionCameraTransitionOrchestrator";
 
-        private readonly ITransitionOrchestrator inner;
-        private readonly CameraOutputSessionBinding outputSessionBinding;
+        private readonly ITransitionOrchestrator _inner;
+        private readonly CameraOutputSessionBinding _outputSessionBinding;
 
         internal SessionCameraTransitionOrchestrator(
             ITransitionOrchestrator inner,
             CameraOutputSessionBinding outputSessionBinding)
         {
-            this.inner = inner ?? throw new ArgumentNullException(nameof(inner));
-            this.outputSessionBinding = outputSessionBinding ?? throw new ArgumentNullException(nameof(outputSessionBinding));
+            this._inner = inner ?? throw new ArgumentNullException(nameof(inner));
+            this._outputSessionBinding = outputSessionBinding ?? throw new ArgumentNullException(nameof(outputSessionBinding));
         }
 
         public TransitionResult Execute(TransitionRequest request) => ExecuteAsync(request).GetAwaiter().GetResult();
@@ -43,10 +43,10 @@ namespace Immersive.Framework.Camera
                     return Blocked(request, "Default camera release blocked transition opening.", release.DiagnosticSummary);
                 }
 
-                return await inner.ExecuteAsync(request);
+                return await _inner.ExecuteAsync(request);
             }
 
-            TransitionResult result = await inner.ExecuteAsync(request);
+            TransitionResult result = await _inner.ExecuteAsync(request);
             if (!result.Completed || request.Phase != TransitionPhase.OperationOpened)
             {
                 return result;
@@ -67,14 +67,14 @@ namespace Immersive.Framework.Camera
             out CameraOutputSession session,
             out string diagnostic)
         {
-            if (outputSessionBinding == null)
+            if (_outputSessionBinding == null)
             {
                 session = null;
                 diagnostic = "Session Camera Transition Orchestrator has no explicit Camera Output Session Binding.";
                 return false;
             }
 
-            return outputSessionBinding.TryGetSession(
+            return _outputSessionBinding.TryGetSession(
                 out session,
                 out diagnostic);
         }

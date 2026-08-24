@@ -14,17 +14,17 @@ namespace Immersive.Framework.ActivityFlow
         "ARCH-A2 Activity transition transaction implementation detail.")]
     internal sealed class ActivityTransitionRuntimeTransaction
     {
-        private ActivityTransitionPhase phase;
-        private ActivityTransitionTerminalStatus terminalStatus;
-        private bool commitReached;
-        private bool previousContentExited;
-        private bool previousParticipantsExited;
-        private bool targetParticipantsEntered;
-        private bool targetContentEntered;
-        private PreviousActivityFinalizationStatus previousFinalizationStatus;
-        private bool previousScenesReleased;
-        private ActivityReadinessState readinessState;
-        private string message;
+        private ActivityTransitionPhase _phase;
+        private ActivityTransitionTerminalStatus _terminalStatus;
+        private bool _commitReached;
+        private bool _previousContentExited;
+        private bool _previousParticipantsExited;
+        private bool _targetParticipantsEntered;
+        private bool _targetContentEntered;
+        private PreviousActivityFinalizationStatus _previousFinalizationStatus;
+        private bool _previousScenesReleased;
+        private ActivityReadinessState _readinessState;
+        private string _message;
 
         internal ActivityTransitionRuntimeTransaction(
             int sequence,
@@ -47,13 +47,13 @@ namespace Immersive.Framework.ActivityFlow
             Source = source.NormalizeTextOrFallback(
                 nameof(ActivityTransitionRuntimeTransaction));
             Reason = reason.NormalizeTextOrFallback("activity-transition");
-            phase = ActivityTransitionPhase.PreparingTarget;
-            terminalStatus = ActivityTransitionTerminalStatus.None;
-            previousFinalizationStatus = previousActivity == null
+            _phase = ActivityTransitionPhase.PreparingTarget;
+            _terminalStatus = ActivityTransitionTerminalStatus.None;
+            _previousFinalizationStatus = previousActivity == null
                 ? PreviousActivityFinalizationStatus.NotRequired
                 : PreviousActivityFinalizationStatus.Pending;
-            previousScenesReleased = previousActivity == null;
-            message = "Activity transition target preparation started.";
+            _previousScenesReleased = previousActivity == null;
+            _message = "Activity transition target preparation started.";
         }
 
         internal int Sequence { get; }
@@ -66,33 +66,33 @@ namespace Immersive.Framework.ActivityFlow
 
         internal string Reason { get; }
 
-        internal bool CommitReached => commitReached;
+        internal bool CommitReached => _commitReached;
 
-        internal bool IsTerminal => terminalStatus != ActivityTransitionTerminalStatus.None;
+        internal bool IsTerminal => _terminalStatus != ActivityTransitionTerminalStatus.None;
 
         internal ActivityTransitionSnapshot Snapshot => new ActivityTransitionSnapshot(
             Sequence,
-            phase,
-            terminalStatus,
+            _phase,
+            _terminalStatus,
             PreviousActivity,
             TargetActivity,
-            commitReached,
-            previousContentExited,
-            previousParticipantsExited,
-            targetParticipantsEntered,
-            targetContentEntered,
-            previousFinalizationStatus,
-            previousScenesReleased,
-            readinessState,
+            _commitReached,
+            _previousContentExited,
+            _previousParticipantsExited,
+            _targetParticipantsEntered,
+            _targetContentEntered,
+            _previousFinalizationStatus,
+            _previousScenesReleased,
+            _readinessState,
             Source,
             Reason,
-            message);
+            _message);
 
         internal void MarkReadyToCommit(string diagnostic)
         {
             RequirePhase(ActivityTransitionPhase.PreparingTarget);
-            phase = ActivityTransitionPhase.ReadyToCommit;
-            message = NormalizeDiagnostic(
+            _phase = ActivityTransitionPhase.ReadyToCommit;
+            _message = NormalizeDiagnostic(
                 diagnostic,
                 "Activity transition reached ReadyToCommit.");
         }
@@ -100,9 +100,9 @@ namespace Immersive.Framework.ActivityFlow
         internal void Commit(string diagnostic)
         {
             RequirePhase(ActivityTransitionPhase.ReadyToCommit);
-            commitReached = true;
-            phase = ActivityTransitionPhase.CommittedTransitioning;
-            message = NormalizeDiagnostic(
+            _commitReached = true;
+            _phase = ActivityTransitionPhase.CommittedTransitioning;
+            _message = NormalizeDiagnostic(
                 diagnostic,
                 "Target Activity authority committed.");
         }
@@ -111,8 +111,8 @@ namespace Immersive.Framework.ActivityFlow
         {
             RequireCommittedNonTerminal();
             RequirePhase(ActivityTransitionPhase.CommittedTransitioning);
-            phase = ActivityTransitionPhase.PreviousExiting;
-            message = NormalizeDiagnostic(
+            _phase = ActivityTransitionPhase.PreviousExiting;
+            _message = NormalizeDiagnostic(
                 diagnostic,
                 "Previous Activity exit started.");
         }
@@ -120,8 +120,8 @@ namespace Immersive.Framework.ActivityFlow
         internal void MarkPreviousContentExited(string diagnostic)
         {
             RequirePhase(ActivityTransitionPhase.PreviousExiting);
-            previousContentExited = true;
-            message = NormalizeDiagnostic(
+            _previousContentExited = true;
+            _message = NormalizeDiagnostic(
                 diagnostic,
                 "Previous Activity scene content exit completed.");
         }
@@ -129,8 +129,8 @@ namespace Immersive.Framework.ActivityFlow
         internal void MarkPreviousParticipantsExited(string diagnostic)
         {
             RequirePhase(ActivityTransitionPhase.PreviousExiting);
-            previousParticipantsExited = true;
-            message = NormalizeDiagnostic(
+            _previousParticipantsExited = true;
+            _message = NormalizeDiagnostic(
                 diagnostic,
                 "Previous Activity participant exit completed.");
         }
@@ -139,14 +139,14 @@ namespace Immersive.Framework.ActivityFlow
         {
             RequireCommittedNonTerminal();
             RequirePhase(ActivityTransitionPhase.PreviousExiting);
-            if (!previousContentExited || !previousParticipantsExited)
+            if (!_previousContentExited || !_previousParticipantsExited)
             {
                 throw new InvalidOperationException(
                     "Target Activity enter cannot begin before previous content and participants finish exit.");
             }
 
-            phase = ActivityTransitionPhase.TargetEntering;
-            message = NormalizeDiagnostic(
+            _phase = ActivityTransitionPhase.TargetEntering;
+            _message = NormalizeDiagnostic(
                 diagnostic,
                 "Target Activity enter started.");
         }
@@ -154,8 +154,8 @@ namespace Immersive.Framework.ActivityFlow
         internal void MarkTargetParticipantsEntered(string diagnostic)
         {
             RequirePhase(ActivityTransitionPhase.TargetEntering);
-            targetParticipantsEntered = true;
-            message = NormalizeDiagnostic(
+            _targetParticipantsEntered = true;
+            _message = NormalizeDiagnostic(
                 diagnostic,
                 "Target Activity participants entered.");
         }
@@ -163,14 +163,14 @@ namespace Immersive.Framework.ActivityFlow
         internal void MarkTargetContentEntered(string diagnostic)
         {
             RequirePhase(ActivityTransitionPhase.TargetEntering);
-            if (!targetParticipantsEntered)
+            if (!_targetParticipantsEntered)
             {
                 throw new InvalidOperationException(
                     "Target Activity scene content cannot enter before target participants.");
             }
 
-            targetContentEntered = true;
-            message = NormalizeDiagnostic(
+            _targetContentEntered = true;
+            _message = NormalizeDiagnostic(
                 diagnostic,
                 "Target Activity scene content entered.");
         }
@@ -179,14 +179,14 @@ namespace Immersive.Framework.ActivityFlow
         {
             RequireCommittedNonTerminal();
             RequirePhase(ActivityTransitionPhase.TargetEntering);
-            if (!targetParticipantsEntered || !targetContentEntered)
+            if (!_targetParticipantsEntered || !_targetContentEntered)
             {
                 throw new InvalidOperationException(
                     "Previous Activity finalization cannot begin before target enter completes.");
             }
 
-            phase = ActivityTransitionPhase.PreviousFinalizing;
-            message = NormalizeDiagnostic(
+            _phase = ActivityTransitionPhase.PreviousFinalizing;
+            _message = NormalizeDiagnostic(
                 diagnostic,
                 "Previous Activity finalization started.");
         }
@@ -195,12 +195,12 @@ namespace Immersive.Framework.ActivityFlow
         {
             RequireCommittedNonTerminal();
             RequirePhase(ActivityTransitionPhase.PreviousFinalizing);
-            previousFinalizationStatus = PreviousActivity == null
+            _previousFinalizationStatus = PreviousActivity == null
                 ? PreviousActivityFinalizationStatus.NotRequired
                 : succeeded
                     ? PreviousActivityFinalizationStatus.Succeeded
                     : PreviousActivityFinalizationStatus.Failed;
-            message = NormalizeDiagnostic(
+            _message = NormalizeDiagnostic(
                 diagnostic,
                 succeeded
                     ? "Previous Activity finalization completed."
@@ -211,13 +211,13 @@ namespace Immersive.Framework.ActivityFlow
         {
             RequireCommittedNonTerminal();
             RequirePhase(ActivityTransitionPhase.PreviousFinalizing);
-            previousScenesReleased = PreviousActivity == null || succeeded;
+            _previousScenesReleased = PreviousActivity == null || succeeded;
             if (!succeeded && PreviousActivity != null)
             {
-                previousFinalizationStatus = PreviousActivityFinalizationStatus.Failed;
+                _previousFinalizationStatus = PreviousActivityFinalizationStatus.Failed;
             }
 
-            message = NormalizeDiagnostic(
+            _message = NormalizeDiagnostic(
                 diagnostic,
                 succeeded
                     ? "Previous Activity scene release completed."
@@ -226,15 +226,15 @@ namespace Immersive.Framework.ActivityFlow
 
         internal ActivityTransitionSnapshot FailBeforeCommit(string diagnostic)
         {
-            if (commitReached)
+            if (_commitReached)
             {
                 throw new InvalidOperationException(
                     "A committed Activity transition cannot finish as FailedBeforeCommit.");
             }
 
-            terminalStatus = ActivityTransitionTerminalStatus.FailedBeforeCommit;
-            phase = ActivityTransitionPhase.FailedBeforeCommit;
-            message = NormalizeDiagnostic(
+            _terminalStatus = ActivityTransitionTerminalStatus.FailedBeforeCommit;
+            _phase = ActivityTransitionPhase.FailedBeforeCommit;
+            _message = NormalizeDiagnostic(
                 diagnostic,
                 "Activity transition failed before authority commit.");
             return Snapshot;
@@ -247,30 +247,30 @@ namespace Immersive.Framework.ActivityFlow
             string diagnostic)
         {
             RequireCommittedNonTerminal();
-            readinessState = finalReadinessState;
+            _readinessState = finalReadinessState;
 
             if (PreviousActivity != null &&
                 (!previousFinalizationSucceeded || !previousSceneReleaseSucceeded))
             {
-                previousFinalizationStatus = PreviousActivityFinalizationStatus.Failed;
-                terminalStatus =
+                _previousFinalizationStatus = PreviousActivityFinalizationStatus.Failed;
+                _terminalStatus =
                     ActivityTransitionTerminalStatus.CommittedFinalizationFailed;
-                phase = ActivityTransitionPhase.CommittedFinalizationFailed;
+                _phase = ActivityTransitionPhase.CommittedFinalizationFailed;
             }
             else if (TargetActivity != null && !finalReadinessState.IsReady)
             {
-                terminalStatus = ActivityTransitionTerminalStatus.CommittedNotReady;
-                phase = ActivityTransitionPhase.CommittedNotReady;
+                _terminalStatus = ActivityTransitionTerminalStatus.CommittedNotReady;
+                _phase = ActivityTransitionPhase.CommittedNotReady;
             }
             else
             {
-                terminalStatus = ActivityTransitionTerminalStatus.CommittedReady;
-                phase = ActivityTransitionPhase.Completed;
+                _terminalStatus = ActivityTransitionTerminalStatus.CommittedReady;
+                _phase = ActivityTransitionPhase.Completed;
             }
 
-            message = NormalizeDiagnostic(
+            _message = NormalizeDiagnostic(
                 diagnostic,
-                $"Activity transition completed as '{terminalStatus}'.");
+                $"Activity transition completed as '{_terminalStatus}'.");
             return Snapshot;
         }
 
@@ -279,19 +279,19 @@ namespace Immersive.Framework.ActivityFlow
             string diagnostic)
         {
             RequireCommittedNonTerminal();
-            readinessState = finalReadinessState;
+            _readinessState = finalReadinessState;
             bool targetReady = TargetActivity == null || finalReadinessState.IsReady;
-            previousFinalizationStatus = PreviousActivity == null
+            _previousFinalizationStatus = PreviousActivity == null
                 ? PreviousActivityFinalizationStatus.NotRequired
                 : PreviousActivityFinalizationStatus.Failed;
-            previousScenesReleased = PreviousActivity == null;
-            terminalStatus = targetReady
+            _previousScenesReleased = PreviousActivity == null;
+            _terminalStatus = targetReady
                 ? ActivityTransitionTerminalStatus.CommittedFinalizationFailed
                 : ActivityTransitionTerminalStatus.CommittedNotReady;
-            phase = targetReady
+            _phase = targetReady
                 ? ActivityTransitionPhase.CommittedFinalizationFailed
                 : ActivityTransitionPhase.CommittedNotReady;
-            message = NormalizeDiagnostic(
+            _message = NormalizeDiagnostic(
                 diagnostic,
                 targetReady
                     ? "Committed Activity transition failed during previous finalization."
@@ -301,7 +301,7 @@ namespace Immersive.Framework.ActivityFlow
 
         private void RequireCommittedNonTerminal()
         {
-            if (!commitReached)
+            if (!_commitReached)
             {
                 throw new InvalidOperationException(
                     "Activity transition operation requires committed target authority.");
@@ -316,10 +316,10 @@ namespace Immersive.Framework.ActivityFlow
 
         private void RequirePhase(ActivityTransitionPhase expected)
         {
-            if (phase != expected)
+            if (_phase != expected)
             {
                 throw new InvalidOperationException(
-                    $"Activity transition phase mismatch. expected='{expected}' actual='{phase}'.");
+                    $"Activity transition phase mismatch. expected='{expected}' actual='{_phase}'.");
             }
         }
 

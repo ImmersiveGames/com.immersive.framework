@@ -53,17 +53,17 @@ namespace Immersive.Framework.PlayerParticipation
             "Scene Local Player has not been validated.";
 
         [NonSerialized]
-        private SceneLocalPlayerAdmissionRuntimeHostModule runtimeModule;
+        private SceneLocalPlayerAdmissionRuntimeHostModule _runtimeModule;
 
         [NonSerialized]
-        private SceneLocalPlayerAdmissionRuntimeResult lastRuntimeResult;
+        private SceneLocalPlayerAdmissionRuntimeResult _lastRuntimeResult;
 
         [NonSerialized]
-        private string runtimeDiagnostic =
+        private string _runtimeDiagnostic =
             "Scene Local Player runtime is not bound.";
 
         [NonSerialized]
-        private ScenePlayerActorAdoptionResult lastActorAdoptionResult;
+        private ScenePlayerActorAdoptionResult _lastActorAdoptionResult;
 
         public PlayerSlotProfile PlayerSlotProfile =>
             playerSlotProfile;
@@ -81,9 +81,9 @@ namespace Immersive.Framework.PlayerParticipation
             admissionTiming;
 
         public PlayerActorPhysicalOwnership ActorPhysicalOwnership =>
-            lastActorAdoptionResult != null &&
-            lastActorAdoptionResult.Succeeded &&
-            lastActorAdoptionResult.Status !=
+            _lastActorAdoptionResult != null &&
+            _lastActorAdoptionResult.Succeeded &&
+            _lastActorAdoptionResult.Status !=
                 ScenePlayerActorAdoptionStatus.SucceededReleased
                 ? PlayerActorPhysicalOwnership.FrameworkOwned
                 : PlayerActorPhysicalOwnership.ExternalSceneOwned;
@@ -95,23 +95,23 @@ namespace Immersive.Framework.PlayerParticipation
             lastAuthoringDiagnostic ?? string.Empty;
 
         public bool RuntimeReady =>
-            runtimeModule != null &&
-            runtimeModule.IsReadyFor(this);
+            _runtimeModule != null &&
+            _runtimeModule.IsReadyFor(this);
 
         public string RuntimeDiagnostic =>
             RuntimeReady
-                ? runtimeModule.Diagnostic
-                : runtimeDiagnostic ?? string.Empty;
+                ? _runtimeModule.Diagnostic
+                : _runtimeDiagnostic ?? string.Empty;
 
         public SceneLocalPlayerAdmissionRuntimeResult LastRuntimeResult =>
-            lastRuntimeResult;
+            _lastRuntimeResult;
 
         public ScenePlayerActorAdoptionResult LastActorAdoptionResult =>
-            lastActorAdoptionResult;
+            _lastActorAdoptionResult;
 
         public bool HasActiveAdmission =>
             RuntimeReady &&
-            runtimeModule.TryGetActiveToken(this, out _);
+            _runtimeModule.TryGetActiveToken(this, out _);
 
         public bool HasTypedActorEvidence =>
             evidenceActorProfile != null &&
@@ -246,17 +246,17 @@ namespace Immersive.Framework.PlayerParticipation
         {
             if (!RuntimeReady)
             {
-                lastRuntimeResult =
+                _lastRuntimeResult =
                     SceneLocalPlayerAdmissionRuntimeResult.RuntimeUnavailable(
                         "AdmitSceneLocalPlayer",
                         this,
                         source,
                         reason,
                         RuntimeDiagnostic);
-                return lastRuntimeResult;
+                return _lastRuntimeResult;
             }
 
-            return runtimeModule.TryAdmit(
+            return _runtimeModule.TryAdmit(
                 this,
                 assignmentOwner,
                 source,
@@ -269,17 +269,17 @@ namespace Immersive.Framework.PlayerParticipation
         {
             if (!RuntimeReady)
             {
-                lastRuntimeResult =
+                _lastRuntimeResult =
                     SceneLocalPlayerAdmissionRuntimeResult.RuntimeUnavailable(
                         "ReleaseSceneLocalPlayer",
                         this,
                         source,
                         reason,
                         RuntimeDiagnostic);
-                return lastRuntimeResult;
+                return _lastRuntimeResult;
             }
 
-            return runtimeModule.TryRelease(
+            return _runtimeModule.TryRelease(
                 this,
                 source,
                 reason);
@@ -292,17 +292,17 @@ namespace Immersive.Framework.PlayerParticipation
         {
             if (!RuntimeReady)
             {
-                lastRuntimeResult =
+                _lastRuntimeResult =
                     SceneLocalPlayerAdmissionRuntimeResult.RuntimeUnavailable(
                         "ReleaseSceneLocalPlayer",
                         this,
                         source,
                         reason,
                         RuntimeDiagnostic);
-                return lastRuntimeResult;
+                return _lastRuntimeResult;
             }
 
-            return runtimeModule.TryRelease(
+            return _runtimeModule.TryRelease(
                 this,
                 expectedToken,
                 source,
@@ -318,28 +318,28 @@ namespace Immersive.Framework.PlayerParticipation
                     nameof(module));
             }
 
-            if (runtimeModule != null &&
-                !ReferenceEquals(runtimeModule, module))
+            if (_runtimeModule != null &&
+                !ReferenceEquals(_runtimeModule, module))
             {
                 throw new InvalidOperationException(
                     "Scene Local Player is already bound to another Session runtime module.");
             }
 
-            runtimeModule = module;
-            runtimeDiagnostic = module.Diagnostic;
+            _runtimeModule = module;
+            _runtimeDiagnostic = module.Diagnostic;
         }
 
         internal void UnbindRuntime(
             SceneLocalPlayerAdmissionRuntimeHostModule module,
             string diagnostic)
         {
-            if (runtimeModule != null &&
-                ReferenceEquals(runtimeModule, module))
+            if (_runtimeModule != null &&
+                ReferenceEquals(_runtimeModule, module))
             {
-                runtimeModule = null;
+                _runtimeModule = null;
             }
 
-            runtimeDiagnostic =
+            _runtimeDiagnostic =
                 string.IsNullOrWhiteSpace(diagnostic)
                     ? "Scene Local Player runtime is not bound."
                     : diagnostic.Trim();
@@ -348,21 +348,21 @@ namespace Immersive.Framework.PlayerParticipation
         internal void SetActorAdoptionResult(
             ScenePlayerActorAdoptionResult result)
         {
-            lastActorAdoptionResult = result;
+            _lastActorAdoptionResult = result;
         }
 
         internal void SetRuntimeResult(
             SceneLocalPlayerAdmissionRuntimeResult result,
             string diagnostic)
         {
-            lastRuntimeResult = result;
-            runtimeDiagnostic =
+            _lastRuntimeResult = result;
+            _runtimeDiagnostic =
                 diagnostic ?? string.Empty;
         }
 
         private void OnDestroy()
         {
-            runtimeModule?.HandleAuthoringDestroyed(this);
+            _runtimeModule?.HandleAuthoringDestroyed(this);
         }
 
 #if UNITY_EDITOR

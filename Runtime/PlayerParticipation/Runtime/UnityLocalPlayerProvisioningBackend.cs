@@ -40,73 +40,73 @@ namespace Immersive.Framework.PlayerParticipation
         /// </summary>
         private sealed class JoinedSubscription : IDisposable
         {
-            private readonly PlayerInputManager manager;
-            private readonly Action<PlayerInput> listener;
-            private readonly List<PendingJoinedPlayer> pendingPlayers = new();
-            private bool sceneLoadedSubscribed;
-            private bool disposed;
+            private readonly PlayerInputManager _manager;
+            private readonly Action<PlayerInput> _listener;
+            private readonly List<PendingJoinedPlayer> _pendingPlayers = new();
+            private bool _sceneLoadedSubscribed;
+            private bool _disposed;
 
             internal JoinedSubscription(
                 PlayerInputManager manager,
                 Action<PlayerInput> listener)
             {
-                this.manager = manager != null
+                this._manager = manager != null
                     ? manager
                     : throw new ArgumentNullException(nameof(manager));
-                this.listener = listener ??
+                this._listener = listener ??
                     throw new ArgumentNullException(nameof(listener));
                 manager.onPlayerJoined += HandlePlayerJoined;
             }
 
             internal bool Matches(Action<PlayerInput> candidate)
             {
-                return listener == candidate;
+                return _listener == candidate;
             }
 
             public void Dispose()
             {
-                if (disposed)
+                if (_disposed)
                 {
                     return;
                 }
 
-                disposed = true;
-                manager.onPlayerJoined -= HandlePlayerJoined;
+                _disposed = true;
+                _manager.onPlayerJoined -= HandlePlayerJoined;
                 ReleaseSceneLoadedSubscription();
-                pendingPlayers.Clear();
+                _pendingPlayers.Clear();
             }
 
             private void HandlePlayerJoined(PlayerInput playerInput)
             {
-                if (disposed)
+                if (_disposed)
                 {
                     return;
                 }
 
                 if (ReferenceEquals(playerInput, null) || playerInput == null)
                 {
-                    listener(playerInput);
+                    _listener(playerInput);
                     return;
                 }
 
                 Scene scene = playerInput.gameObject.scene;
                 if (!scene.IsValid() || scene.isLoaded)
                 {
-                    listener(playerInput);
+                    _listener(playerInput);
                     return;
                 }
 
-                for (int index = 0; index < pendingPlayers.Count; index++)
+                for (int index = 0; index < _pendingPlayers.Count; index++)
                 {
                     if (ReferenceEquals(
-                            pendingPlayers[index].PlayerInput,
+                            _pendingPlayers[index].PlayerInput,
                             playerInput))
                     {
                         return;
                     }
                 }
 
-                pendingPlayers.Add(new PendingJoinedPlayer(
+                _pendingPlayers.Add(new PendingJoinedPlayer(
                     playerInput,
                     scene.handle.GetRawData()));
                 EnsureSceneLoadedSubscription();
@@ -114,24 +114,24 @@ namespace Immersive.Framework.PlayerParticipation
 
             private void HandleSceneLoaded(Scene scene, LoadSceneMode mode)
             {
-                if (disposed)
+                if (_disposed)
                 {
                     return;
                 }
 
-                for (int index = pendingPlayers.Count - 1; index >= 0; index--)
+                for (int index = _pendingPlayers.Count - 1; index >= 0; index--)
                 {
-                    PendingJoinedPlayer pending = pendingPlayers[index];
+                    PendingJoinedPlayer pending = _pendingPlayers[index];
                     if (pending.SourceSceneHandle != scene.handle.GetRawData())
                     {
                         continue;
                     }
 
-                    pendingPlayers.RemoveAt(index);
-                    listener(pending.PlayerInput);
+                    _pendingPlayers.RemoveAt(index);
+                    _listener(pending.PlayerInput);
                 }
 
-                if (pendingPlayers.Count == 0)
+                if (_pendingPlayers.Count == 0)
                 {
                     ReleaseSceneLoadedSubscription();
                 }
@@ -139,75 +139,75 @@ namespace Immersive.Framework.PlayerParticipation
 
             private void EnsureSceneLoadedSubscription()
             {
-                if (sceneLoadedSubscribed)
+                if (_sceneLoadedSubscribed)
                 {
                     return;
                 }
 
                 SceneManager.sceneLoaded += HandleSceneLoaded;
-                sceneLoadedSubscribed = true;
+                _sceneLoadedSubscribed = true;
             }
 
             private void ReleaseSceneLoadedSubscription()
             {
-                if (!sceneLoadedSubscribed)
+                if (!_sceneLoadedSubscribed)
                 {
                     return;
                 }
 
                 SceneManager.sceneLoaded -= HandleSceneLoaded;
-                sceneLoadedSubscribed = false;
+                _sceneLoadedSubscribed = false;
             }
         }
 
-        private readonly PlayerInputManager manager;
-        private readonly List<JoinedSubscription> joinedSubscriptions = new();
+        private readonly PlayerInputManager _manager;
+        private readonly List<JoinedSubscription> _joinedSubscriptions = new();
 
         internal UnityLocalPlayerProvisioningBackend(PlayerInputManager manager)
         {
-            this.manager = manager;
+            this._manager = manager;
         }
 
-        public bool IsAvailable => manager != null;
+        public bool IsAvailable => _manager != null;
 
         public bool UsesManualJoin =>
-            manager != null &&
-            manager.joinBehavior == PlayerJoinBehavior.JoinPlayersManually;
+            _manager != null &&
+            _manager.joinBehavior == PlayerJoinBehavior.JoinPlayersManually;
 
-        public GameObject PlayerPrefab => manager != null
-            ? manager.playerPrefab
+        public GameObject PlayerPrefab => _manager != null
+            ? _manager.playerPrefab
             : null;
 
         public event Action<PlayerInput> PlayerJoined
         {
             add
             {
-                if (manager == null || value == null)
+                if (_manager == null || value == null)
                 {
                     return;
                 }
 
-                joinedSubscriptions.Add(new JoinedSubscription(manager, value));
+                _joinedSubscriptions.Add(new JoinedSubscription(_manager, value));
             }
             remove
             {
-                if (manager == null || value == null)
+                if (_manager == null || value == null)
                 {
                     return;
                 }
 
-                for (int index = joinedSubscriptions.Count - 1;
+                for (int index = _joinedSubscriptions.Count - 1;
                      index >= 0;
                      index--)
                 {
-                    JoinedSubscription subscription = joinedSubscriptions[index];
+                    JoinedSubscription subscription = _joinedSubscriptions[index];
                     if (!subscription.Matches(value))
                     {
                         continue;
                     }
 
                     subscription.Dispose();
-                    joinedSubscriptions.RemoveAt(index);
+                    _joinedSubscriptions.RemoveAt(index);
                     return;
                 }
             }
@@ -215,7 +215,7 @@ namespace Immersive.Framework.PlayerParticipation
 
         public PlayerInput JoinPlayer(LocalPlayerJoinRequest request)
         {
-            if (manager == null)
+            if (_manager == null)
             {
                 throw new InvalidOperationException(
                     "Local Player provisioning backend has no PlayerInputManager.");
@@ -226,7 +226,7 @@ namespace Immersive.Framework.PlayerParticipation
                 throw new ArgumentException(issue, nameof(request));
             }
 
-            return manager.JoinPlayer(
+            return _manager.JoinPlayer(
                 playerIndex: -1,
                 splitScreenIndex: -1,
                 controlScheme: request.HasControlSchemeHint

@@ -29,7 +29,7 @@ namespace Immersive.Framework.PlayerParticipation
             List<PlayerSlotRuntimeSnapshot> projectedSlots)
         {
             PlayerGameplayRuntimeHostModule gameplayRuntime =
-                preparationModule.GetComponent<PlayerGameplayRuntimeHostModule>();
+                _preparationModule.GetComponent<PlayerGameplayRuntimeHostModule>();
             if (gameplayRuntime == null || !gameplayRuntime.IsReady)
             {
                 string issue = gameplayRuntime != null
@@ -50,7 +50,7 @@ namespace Immersive.Framework.PlayerParticipation
             {
                 PlayerSlotRuntimeSnapshot slot = projectedSlots[index];
                 string hostIssue = string.Empty;
-                if (!slot.IsJoined || !preparationModule.TryGetRegisteredHost(
+                if (!slot.IsJoined || !_preparationModule.TryGetRegisteredHost(
                         slot.PlayerSlotId,
                         out LocalPlayerHostAuthoring host,
                         out hostIssue))
@@ -68,7 +68,7 @@ namespace Immersive.Framework.PlayerParticipation
                 if (!slot.HasSelectedActor)
                 {
                     PlayerActorSelectionResult selection =
-                        preparationModule.TrySelectDefaultActor(
+                        _preparationModule.TrySelectDefaultActor(
                             slot.PlayerSlotId,
                             slot.SelectionRevision,
                             nameof(ActivityPlayerActorLifecycleParticipant),
@@ -101,7 +101,7 @@ namespace Immersive.Framework.PlayerParticipation
                 }
 
                 PlayerActorPreparationResult preparation =
-                    preparationModule.TryEnsureSessionPhysicalActor(
+                    _preparationModule.TryEnsureSessionPhysicalActor(
                         request.RuntimeScopeContext,
                         slot.PlayerSlotId,
                         nameof(ActivityPlayerActorLifecycleParticipant),
@@ -118,7 +118,7 @@ namespace Immersive.Framework.PlayerParticipation
                             : $"Session physical preparation returned no result for Slot '{slot.PlayerSlotId.StableText}'.");
                 }
 
-                if (!preparationModule.TryApplyCurrentActivityRelocation(
+                if (!_preparationModule.TryApplyCurrentActivityRelocation(
                         owner,
                         slot.PlayerSlotId,
                         preparation.CurrentSummary.Token,
@@ -176,10 +176,10 @@ namespace Immersive.Framework.PlayerParticipation
                     current.Message);
             }
 
-            activeRecord = new ActiveActivityRecord(
+            _activeRecord = new ActiveActivityRecord(
                 activity, owner, PlayerParticipationRequirementLevel.GameplayReady,
                 projectedSlots.Count, projectedSlots.Count, prepared, hosts);
-            lastSnapshot = new ActivityPlayerActorLifecycleSnapshot(
+            _lastSnapshot = new ActivityPlayerActorLifecycleSnapshot(
                 ActivityPlayerActorLifecycleStatus.SucceededEntered,
                 activity.ActivityName,
                 owner,
@@ -195,7 +195,7 @@ namespace Immersive.Framework.PlayerParticipation
                 request,
                 nameof(ActivityPlayerActorLifecycleParticipant),
                 "activity-player-actor-gameplay-ready-entered",
-                lastSnapshot.ToDiagnosticString());
+                _lastSnapshot.ToDiagnosticString());
         }
 
         private ActivityContentExecutionResult RollbackGameplayReadyEnter(
@@ -239,7 +239,7 @@ namespace Immersive.Framework.PlayerParticipation
                 }
 
                 PlayerActorSelectionResult clear =
-                    preparationModule.TryClearActorSelection(
+                    _preparationModule.TryClearActorSelection(
                         new PlayerActorSelectionRequest(
                             selection.PlayerSlotId,
                             null,
@@ -257,9 +257,9 @@ namespace Immersive.Framework.PlayerParticipation
             string finalIssue = failures.Count == 0
                 ? issue
                 : issue + " Rollback failures: " + string.Join(" | ", failures);
-            activeRecord = null;
-            playerReadinessRecord = null;
-            lastSnapshot = FailureSnapshot(
+            _activeRecord = null;
+            _playerReadinessRecord = null;
+            _lastSnapshot = FailureSnapshot(
                 failures.Count == 0
                     ? ActivityPlayerActorLifecycleStatus.FailedRequirement
                     : ActivityPlayerActorLifecycleStatus.FailedRollback,
@@ -283,7 +283,7 @@ namespace Immersive.Framework.PlayerParticipation
             List<PlayerSlotRuntimeSnapshot> projectedSlots,
             string issue)
         {
-            lastSnapshot = FailureSnapshot(
+            _lastSnapshot = FailureSnapshot(
                 ActivityPlayerActorLifecycleStatus.FailedRequirement,
                 activity,
                 owner,
@@ -304,10 +304,10 @@ namespace Immersive.Framework.PlayerParticipation
         {
             issue = string.Empty;
             PlayerGameplayRuntimeHostModule gameplayRuntime =
-                preparationModule.GetComponent<PlayerGameplayRuntimeHostModule>();
+                _preparationModule.GetComponent<PlayerGameplayRuntimeHostModule>();
             if (gameplayRuntime == null || !gameplayRuntime.IsReady)
             {
-                if (activeRecord != null && activeRecord.RequirementLevel ==
+                if (_activeRecord != null && _activeRecord.RequirementLevel ==
                     PlayerParticipationRequirementLevel.GameplayReady)
                 {
                     issue =

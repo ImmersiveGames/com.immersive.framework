@@ -17,7 +17,7 @@ namespace Immersive.Framework.PlayerParticipation
                 nameof(PlayerParticipationRuntimeContext));
             string resolvedReason = reason.NormalizeTextOrFallback(
                 "reserve-scene-local-player-slot");
-            int previousRevision = revision;
+            int previousRevision = _revision;
 
             if (!requestedPlayerSlotId.IsValid)
             {
@@ -73,11 +73,11 @@ namespace Immersive.Framework.PlayerParticipation
             }
 
             SlotRecord firstAvailable = null;
-            for (int index = 0; index < slots.Count; index++)
+            for (int index = 0; index < _slots.Count; index++)
             {
-                if (slots[index].AllocationState == PlayerSlotAllocationState.Available)
+                if (_slots[index].AllocationState == PlayerSlotAllocationState.Available)
                 {
-                    firstAvailable = slots[index];
+                    firstAvailable = _slots[index];
                     break;
                 }
             }
@@ -111,15 +111,15 @@ namespace Immersive.Framework.PlayerParticipation
 
             requested.AllocationState = PlayerSlotAllocationState.Reserved;
             requested.Revision++;
-            reservationSequence++;
+            _reservationSequence++;
             requested.ReservationToken = new PlayerSlotReservationToken(
-                contextId,
-                reservationSequence,
+                _contextId,
+                _reservationSequence,
                 requested.PlayerSlotId,
                 requested.Revision);
             requested.Source = resolvedSource;
             requested.Reason = resolvedReason;
-            revision++;
+            _revision++;
 
             return CreateResult(
                 PlayerParticipationOperationStatus.Succeeded,
@@ -168,7 +168,7 @@ namespace Immersive.Framework.PlayerParticipation
                 nameof(PlayerParticipationRuntimeContext));
             string resolvedReason = reason.NormalizeTextOrFallback(
                 "begin-scene-local-player-release");
-            int previousRevision = revision;
+            int previousRevision = _revision;
 
             if (!TryResolveCurrentSceneAdmissionRecord(
                     admissionToken,
@@ -206,7 +206,7 @@ namespace Immersive.Framework.PlayerParticipation
             record.Revision++;
             record.Source = resolvedSource;
             record.Reason = resolvedReason;
-            revision++;
+            _revision++;
             releaseToken = new SceneLocalPlayerAdmissionReleaseToken(
                 admissionToken,
                 joinedRevision,
@@ -232,7 +232,7 @@ namespace Immersive.Framework.PlayerParticipation
                 nameof(PlayerParticipationRuntimeContext));
             string resolvedReason = reason.NormalizeTextOrFallback(
                 "commit-scene-local-player-release");
-            int previousRevision = revision;
+            int previousRevision = _revision;
 
             if (!TryResolveReleaseRecord(releaseToken, out SlotRecord record, out string issue))
             {
@@ -252,7 +252,7 @@ namespace Immersive.Framework.PlayerParticipation
             record.Revision++;
             record.Source = resolvedSource;
             record.Reason = resolvedReason;
-            revision++;
+            _revision++;
 
             return CreateResult(
                 PlayerParticipationOperationStatus.Succeeded,
@@ -274,7 +274,7 @@ namespace Immersive.Framework.PlayerParticipation
                 nameof(PlayerParticipationRuntimeContext));
             string resolvedReason = reason.NormalizeTextOrFallback(
                 "rollback-scene-local-player-release");
-            int previousRevision = revision;
+            int previousRevision = _revision;
 
             if (!TryResolveReleaseRecord(releaseToken, out SlotRecord record, out string issue))
             {
@@ -293,7 +293,7 @@ namespace Immersive.Framework.PlayerParticipation
             record.Revision++;
             record.Source = resolvedSource;
             record.Reason = resolvedReason;
-            revision++;
+            _revision++;
 
             return CreateResult(
                 PlayerParticipationOperationStatus.Succeeded,
@@ -315,7 +315,7 @@ namespace Immersive.Framework.PlayerParticipation
                 nameof(PlayerParticipationRuntimeContext));
             string resolvedReason = reason.NormalizeTextOrFallback(
                 "abandon-committed-scene-admission");
-            int previousRevision = revision;
+            int previousRevision = _revision;
 
             if (!TryResolveCurrentSceneAdmissionRecord(
                     admissionToken,
@@ -353,7 +353,7 @@ namespace Immersive.Framework.PlayerParticipation
             record.Revision++;
             record.Source = resolvedSource;
             record.Reason = resolvedReason;
-            revision++;
+            _revision++;
 
             return CreateResult(
                 PlayerParticipationOperationStatus.Succeeded,
@@ -375,7 +375,7 @@ namespace Immersive.Framework.PlayerParticipation
         {
             record = null;
             if (!admissionToken.IsValid ||
-                !string.Equals(admissionToken.ContextId, contextId, StringComparison.Ordinal))
+                !string.Equals(admissionToken.ContextId, _contextId, StringComparison.Ordinal))
             {
                 issue = "Scene Local Player admission token is invalid or belongs to another Session context.";
                 return false;
@@ -404,7 +404,7 @@ namespace Immersive.Framework.PlayerParticipation
             if (!releaseToken.IsValid ||
                 !string.Equals(
                     releaseToken.AdmissionToken.ContextId,
-                    contextId,
+                    _contextId,
                     StringComparison.Ordinal))
             {
                 issue = "Scene Local Player release token is invalid or belongs to another Session context.";

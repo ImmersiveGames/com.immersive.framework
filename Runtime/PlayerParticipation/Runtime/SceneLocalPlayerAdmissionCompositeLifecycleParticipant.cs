@@ -16,10 +16,10 @@ namespace Immersive.Framework.PlayerParticipation
         IActivityContentExecutionParticipant,
         IActivityContentExecutionParticipantSource
     {
-        private readonly ActivityPlayerActorLifecycleParticipant canonicalParticipant;
-        private readonly SceneLocalPlayerAdmissionRuntimeHostModule sceneModule;
-        private readonly PlayerActorPreparationRuntimeHostModule preparationModule;
-        private readonly SceneLocalPlayerAdmissionActivityLifecycleRuntime sceneLifecycle;
+        private readonly ActivityPlayerActorLifecycleParticipant _canonicalParticipant;
+        private readonly SceneLocalPlayerAdmissionRuntimeHostModule _sceneModule;
+        private readonly PlayerActorPreparationRuntimeHostModule _preparationModule;
+        private readonly SceneLocalPlayerAdmissionActivityLifecycleRuntime _sceneLifecycle;
 
         internal SceneLocalPlayerAdmissionCompositeLifecycleParticipant(
             ActivityPlayerActorLifecycleParticipant canonicalParticipant,
@@ -33,18 +33,18 @@ namespace Immersive.Framework.PlayerParticipation
             SceneLocalPlayerAdmissionRuntimeHostModule sceneModule,
             PlayerActorPreparationRuntimeHostModule preparationModule)
         {
-            this.canonicalParticipant = canonicalParticipant ??
+            this._canonicalParticipant = canonicalParticipant ??
                 throw new ArgumentNullException(nameof(canonicalParticipant));
-            this.sceneModule = sceneModule ??
+            this._sceneModule = sceneModule ??
                 throw new ArgumentNullException(nameof(sceneModule));
-            this.preparationModule = preparationModule;
-            sceneLifecycle = new SceneLocalPlayerAdmissionActivityLifecycleRuntime(
-                this.sceneModule,
+            this._preparationModule = preparationModule;
+            _sceneLifecycle = new SceneLocalPlayerAdmissionActivityLifecycleRuntime(
+                this._sceneModule,
                 preparationModule);
         }
 
-        internal string Diagnostic => sceneLifecycle.Diagnostic;
-        internal int ActiveEntryCount => sceneLifecycle.ActiveEntryCount;
+        internal string Diagnostic => _sceneLifecycle.Diagnostic;
+        internal int ActiveEntryCount => _sceneLifecycle.ActiveEntryCount;
 
         internal SceneLocalPlayerAdmissionActivityLifecycleResult
             TryRetireContextForSessionPlayerLeave(
@@ -52,7 +52,7 @@ namespace Immersive.Framework.PlayerParticipation
                 string source,
                 string reason)
         {
-            return sceneLifecycle.TryRetireContextForSessionPlayerLeave(
+            return _sceneLifecycle.TryRetireContextForSessionPlayerLeave(
                 leaveToken,
                 source,
                 reason);
@@ -63,7 +63,7 @@ namespace Immersive.Framework.PlayerParticipation
             string reason,
             out string issue)
         {
-            return sceneLifecycle.TryRetireAllContextForSessionTermination(
+            return _sceneLifecycle.TryRetireAllContextForSessionTermination(
                 source,
                 reason,
                 out issue);
@@ -82,7 +82,7 @@ namespace Immersive.Framework.PlayerParticipation
                     "Scene Local Player composite lifecycle requires a valid Activity transition request.");
             }
 
-            sceneModule.SetActivityLifecycleContext(
+            _sceneModule.SetActivityLifecycleContext(
                 request.RouteContext,
                 request.NextActivityContext);
 
@@ -100,7 +100,7 @@ namespace Immersive.Framework.PlayerParticipation
         public ActivityContentExecutionParticipantDescriptor
             GetActivityContentExecutionDescriptor()
         {
-            return canonicalParticipant.GetActivityContentExecutionDescriptor();
+            return _canonicalParticipant.GetActivityContentExecutionDescriptor();
         }
 
         public ActivityContentExecutionResult ExecuteActivityContent(
@@ -132,10 +132,10 @@ namespace Immersive.Framework.PlayerParticipation
                 // Canonical preparation/provisioning paths may re-register their narrower
                 // participant source while this composite executes. Restore the complete
                 // source before the next Activity transition is resolved.
-                if (preparationModule != null)
+                if (_preparationModule != null)
                 {
-                    preparationModule.TryComposeSceneLocalPlayerAdmissionLifecycle(
-                        sceneModule,
+                    _preparationModule.TryComposeSceneLocalPlayerAdmissionLifecycle(
+                        _sceneModule,
                         out _);
                 }
             }
@@ -144,7 +144,7 @@ namespace Immersive.Framework.PlayerParticipation
         private ActivityContentExecutionResult ExecuteEnter(
             ActivityContentExecutionRequest request)
         {
-            SceneLocalPlayerAdmissionActivityLifecycleResult scene = sceneLifecycle.TryEnter(
+            SceneLocalPlayerAdmissionActivityLifecycleResult scene = _sceneLifecycle.TryEnter(
                 request.Activity,
                 request.Owner,
                 nameof(SceneLocalPlayerAdmissionCompositeLifecycleParticipant),
@@ -162,7 +162,7 @@ namespace Immersive.Framework.PlayerParticipation
             }
 
             ActivityContentExecutionResult canonical =
-                canonicalParticipant.ExecuteActivityContent(request);
+                _canonicalParticipant.ExecuteActivityContent(request);
             if (!canonical.Failed && !canonical.HasBlockingIssues)
             {
                 return CreateCombinedSuccess(
@@ -173,7 +173,7 @@ namespace Immersive.Framework.PlayerParticipation
             }
 
             SceneLocalPlayerAdmissionActivityLifecycleResult rollback =
-                sceneLifecycle.TryRollbackEnter(
+                _sceneLifecycle.TryRollbackEnter(
                     request.Activity,
                     request.Owner,
                     nameof(SceneLocalPlayerAdmissionCompositeLifecycleParticipant),
@@ -197,13 +197,13 @@ namespace Immersive.Framework.PlayerParticipation
             ActivityContentExecutionRequest request)
         {
             ActivityContentExecutionResult canonical =
-                canonicalParticipant.ExecuteActivityContent(request);
+                _canonicalParticipant.ExecuteActivityContent(request);
             if (canonical.Failed || canonical.HasBlockingIssues)
             {
                 return canonical;
             }
 
-            SceneLocalPlayerAdmissionActivityLifecycleResult scene = sceneLifecycle.TryExit(
+            SceneLocalPlayerAdmissionActivityLifecycleResult scene = _sceneLifecycle.TryExit(
                 request.Activity,
                 request.Owner,
                 nameof(SceneLocalPlayerAdmissionCompositeLifecycleParticipant),

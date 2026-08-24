@@ -12,16 +12,16 @@ namespace Immersive.Framework.PlayerParticipation
     [FrameworkApiStatus(FrameworkApiStatus.Experimental, "P3G.2 local Player join operation identity.")]
     public readonly struct LocalPlayerJoinOperationId : IEquatable<LocalPlayerJoinOperationId>
     {
-        private readonly string value;
+        private readonly string _value;
 
         private LocalPlayerJoinOperationId(string value)
         {
-            this.value = value.NormalizeText();
+            this._value = value.NormalizeText();
         }
 
-        public bool IsValid => !string.IsNullOrEmpty(value);
+        public bool IsValid => !string.IsNullOrEmpty(_value);
 
-        public string StableText => IsValid ? value : string.Empty;
+        public string StableText => IsValid ? _value : string.Empty;
 
         internal static bool TryCreate(
             string sessionContextId,
@@ -52,7 +52,7 @@ namespace Immersive.Framework.PlayerParticipation
 
         public bool Equals(LocalPlayerJoinOperationId other)
         {
-            return string.Equals(value, other.value, StringComparison.Ordinal);
+            return string.Equals(_value, other._value, StringComparison.Ordinal);
         }
 
         public override bool Equals(object obj)
@@ -62,7 +62,7 @@ namespace Immersive.Framework.PlayerParticipation
 
         public override int GetHashCode()
         {
-            return StringComparer.Ordinal.GetHashCode(value ?? string.Empty);
+            return StringComparer.Ordinal.GetHashCode(_value ?? string.Empty);
         }
 
         public override string ToString()

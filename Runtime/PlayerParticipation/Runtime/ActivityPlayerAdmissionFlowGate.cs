@@ -15,9 +15,9 @@ namespace Immersive.Framework.PlayerParticipation
         "P3K.7A pre-activation Activity Player admission decision gate.")]
     internal sealed class ActivityPlayerAdmissionFlowGate
     {
-        private int attemptSequence;
+        private int _attemptSequence;
 
-        internal int AttemptSequence => attemptSequence;
+        internal int AttemptSequence => _attemptSequence;
 
         internal ActivityPlayerAdmissionFlowDecision Evaluate(
             ActivityAsset activity,
@@ -54,7 +54,7 @@ namespace Immersive.Framework.PlayerParticipation
                 evaluation = CreateMissingEvaluationFailure();
             }
 
-            attemptSequence++;
+            _attemptSequence++;
             ActivityPlayerAdmissionFlowDisposition disposition =
                 MapDisposition(evaluation.Status);
             string resolvedSource = source.NormalizeTextOrFallback(
@@ -64,7 +64,7 @@ namespace Immersive.Framework.PlayerParticipation
             string message = BuildMessage(evaluation, disposition);
 
             return new ActivityPlayerAdmissionFlowDecision(
-                attemptSequence,
+                _attemptSequence,
                 disposition,
                 evaluation,
                 resolvedSource,

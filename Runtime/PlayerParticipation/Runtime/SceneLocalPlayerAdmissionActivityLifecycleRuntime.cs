@@ -77,22 +77,22 @@ namespace Immersive.Framework.PlayerParticipation
             internal List<Entry> Entries { get; }
         }
 
-        private readonly SceneLocalPlayerAdmissionRuntimeHostModule module;
-        private readonly PlayerActorPreparationRuntimeHostModule preparationModule;
-        private ActiveRecord activeRecord;
-        private string diagnostic =
+        private readonly SceneLocalPlayerAdmissionRuntimeHostModule _module;
+        private readonly PlayerActorPreparationRuntimeHostModule _preparationModule;
+        private ActiveRecord _activeRecord;
+        private string _diagnostic =
             "Scene Local Player Activity lifecycle has not executed.";
 
         internal SceneLocalPlayerAdmissionActivityLifecycleRuntime(
             SceneLocalPlayerAdmissionRuntimeHostModule module,
             PlayerActorPreparationRuntimeHostModule preparationModule = null)
         {
-            this.module = module ?? throw new ArgumentNullException(nameof(module));
-            this.preparationModule = preparationModule;
+            this._module = module ?? throw new ArgumentNullException(nameof(module));
+            this._preparationModule = preparationModule;
         }
 
-        internal string Diagnostic => diagnostic;
-        internal int ActiveEntryCount => activeRecord?.Entries.Count ?? 0;
+        internal string Diagnostic => _diagnostic;
+        internal int ActiveEntryCount => _activeRecord?.Entries.Count ?? 0;
 
         internal SceneLocalPlayerAdmissionActivityLifecycleResult TryEnter(
             ActivityAsset activity,
@@ -118,10 +118,10 @@ namespace Immersive.Framework.PlayerParticipation
                     "Scene Local Player Activity enter requires an Activity and valid Activity owner.");
             }
 
-            if (activeRecord != null)
+            if (_activeRecord != null)
             {
-                if (ReferenceEquals(activeRecord.Activity, activity) &&
-                    activeRecord.Owner == owner)
+                if (ReferenceEquals(_activeRecord.Activity, activity) &&
+                    _activeRecord.Owner == owner)
                 {
                     return Success(
                         SceneLocalPlayerAdmissionActivityLifecycleStatus.SucceededAlreadyEntered,
@@ -129,7 +129,7 @@ namespace Immersive.Framework.PlayerParticipation
                         owner,
                         resolvedSource,
                         resolvedReason,
-                        activeRecord.Entries.Count,
+                        _activeRecord.Entries.Count,
                         "Scene Local Player Activity lifecycle is already entered for the same owner.");
                 }
 
@@ -139,10 +139,10 @@ namespace Immersive.Framework.PlayerParticipation
                     owner,
                     resolvedSource,
                     resolvedReason,
-                    $"Activity owner '{owner.StableText}' cannot replace retained Scene Local Player owner '{activeRecord.Owner.StableText}' without exit.");
+                    $"Activity owner '{owner.StableText}' cannot replace retained Scene Local Player owner '{_activeRecord.Owner.StableText}' without exit.");
             }
 
-            if (!module.TryResolveAutomaticActivityAuthoring(
+            if (!_module.TryResolveAutomaticActivityAuthoring(
                     activity,
                     out IReadOnlyList<SceneLocalPlayerAdmissionAuthoring> authoring,
                     out string resolveIssue))
@@ -185,7 +185,7 @@ namespace Immersive.Framework.PlayerParticipation
                 (int)requirementLevel >=
                 (int)PlayerParticipationRequirementLevel.LogicalActorsPrepared;
             if (requiresActorAdoption &&
-                (preparationModule == null || !preparationModule.IsReady))
+                (_preparationModule == null || !_preparationModule.IsReady))
             {
                 return Failure(
                     SceneLocalPlayerAdmissionActivityLifecycleStatus.RejectedActorAdoptionRequired,
@@ -200,7 +200,7 @@ namespace Immersive.Framework.PlayerParticipation
             for (int index = 0; index < authoring.Count; index++)
             {
                 SceneLocalPlayerAdmissionAuthoring surface = authoring[index];
-                SceneLocalPlayerAdmissionRuntimeResult admission = module.TryAdmit(
+                SceneLocalPlayerAdmissionRuntimeResult admission = _module.TryAdmit(
                     surface,
                     owner,
                     resolvedSource,
@@ -223,7 +223,7 @@ namespace Immersive.Framework.PlayerParticipation
                 if (!surface.TryGetPlayerSlotId(
                         out PlayerSlotId playerSlotId,
                         out string slotIssue) ||
-                    !module.TryGetSlotSnapshot(
+                    !_module.TryGetSlotSnapshot(
                         playerSlotId,
                         out PlayerSlotRuntimeSnapshot slot))
                 {
@@ -255,7 +255,7 @@ namespace Immersive.Framework.PlayerParticipation
                     $"{resolvedReason}:select:{index}",
                     slot.SelectionRevision);
                 PlayerActorSelectionResult selection =
-                    module.TrySelectActorProfile(selectionRequest);
+                    _module.TrySelectActorProfile(selectionRequest);
                 if (selection == null || !selection.Succeeded)
                 {
                     string releaseIssue = string.Empty;
@@ -292,7 +292,7 @@ namespace Immersive.Framework.PlayerParticipation
                 if (requiresActorAdoption)
                 {
                     bool hasSessionPhysicalAdoption =
-                        preparationModule.TryGetScenePlayerActorAdoption(
+                        _preparationModule.TryGetScenePlayerActorAdoption(
                             playerSlotId,
                             out _);
                     if (hasSessionPhysicalAdoption)
@@ -310,7 +310,7 @@ namespace Immersive.Framework.PlayerParticipation
                             resolvedSource,
                             $"{resolvedReason}:adopt:{index}");
                         ScenePlayerActorAdoptionResult adoption =
-                            preparationModule.TryAdoptSceneLocalPlayerActor(
+                            _preparationModule.TryAdoptSceneLocalPlayerActor(
                                 scopeContext,
                                 surface,
                                 resolvedSource,
@@ -360,7 +360,7 @@ namespace Immersive.Framework.PlayerParticipation
                     adoptionApplied));
             }
 
-            activeRecord = new ActiveRecord(activity, owner, entries);
+            _activeRecord = new ActiveRecord(activity, owner, entries);
             return Success(
                 SceneLocalPlayerAdmissionActivityLifecycleStatus.SucceededEntered,
                 activity,
@@ -397,7 +397,7 @@ namespace Immersive.Framework.PlayerParticipation
                     "Scene Local Player Activity exit requires an Activity and valid Activity owner.");
             }
 
-            if (activeRecord == null)
+            if (_activeRecord == null)
             {
                 return Success(
                     SceneLocalPlayerAdmissionActivityLifecycleStatus.SucceededAlreadyExited,
@@ -409,8 +409,8 @@ namespace Immersive.Framework.PlayerParticipation
                     "Scene Local Player Activity lifecycle is already exited.");
             }
 
-            if (!ReferenceEquals(activeRecord.Activity, activity) ||
-                activeRecord.Owner != owner)
+            if (!ReferenceEquals(_activeRecord.Activity, activity) ||
+                _activeRecord.Owner != owner)
             {
                 return Failure(
                     SceneLocalPlayerAdmissionActivityLifecycleStatus.RejectedForeignOrStaleActivity,
@@ -418,12 +418,12 @@ namespace Immersive.Framework.PlayerParticipation
                     owner,
                     resolvedSource,
                     resolvedReason,
-                    $"Activity owner '{owner.StableText}' does not match retained Scene Local Player owner '{activeRecord.Owner.StableText}'.");
+                    $"Activity owner '{owner.StableText}' does not match retained Scene Local Player owner '{_activeRecord.Owner.StableText}'.");
             }
 
             if (!TryReleaseEntries(
-                    activeRecord.Entries,
-                    activeRecord.Owner,
+                    _activeRecord.Entries,
+                    _activeRecord.Owner,
                     compensateReleasedEntries: true,
                     resolvedSource,
                     resolvedReason,
@@ -436,11 +436,11 @@ namespace Immersive.Framework.PlayerParticipation
                     resolvedSource,
                     resolvedReason,
                     issue,
-                    activeRecord.Entries.Count);
+                    _activeRecord.Entries.Count);
             }
 
-            int releasedCount = activeRecord.Entries.Count;
-            activeRecord = null;
+            int releasedCount = _activeRecord.Entries.Count;
+            _activeRecord = null;
             return Success(
                 SceneLocalPlayerAdmissionActivityLifecycleStatus.SucceededExited,
                 activity,
@@ -463,7 +463,7 @@ namespace Immersive.Framework.PlayerParticipation
             string resolvedReason = Normalize(
                 reason,
                 "scene-local-player-activity-enter-rollback");
-            if (activeRecord == null)
+            if (_activeRecord == null)
             {
                 return Success(
                     SceneLocalPlayerAdmissionActivityLifecycleStatus.SucceededAlreadyExited,
@@ -475,8 +475,8 @@ namespace Immersive.Framework.PlayerParticipation
                     "Scene Local Player enter rollback had no retained entries.");
             }
 
-            if (!ReferenceEquals(activeRecord.Activity, activity) ||
-                activeRecord.Owner != owner)
+            if (!ReferenceEquals(_activeRecord.Activity, activity) ||
+                _activeRecord.Owner != owner)
             {
                 return Failure(
                     SceneLocalPlayerAdmissionActivityLifecycleStatus.RejectedForeignOrStaleActivity,
@@ -488,8 +488,8 @@ namespace Immersive.Framework.PlayerParticipation
             }
 
             if (!TryReleaseEntries(
-                    activeRecord.Entries,
-                    activeRecord.Owner,
+                    _activeRecord.Entries,
+                    _activeRecord.Owner,
                     compensateReleasedEntries: false,
                     resolvedSource,
                     resolvedReason,
@@ -502,11 +502,11 @@ namespace Immersive.Framework.PlayerParticipation
                     resolvedSource,
                     resolvedReason,
                     issue,
-                    activeRecord.Entries.Count);
+                    _activeRecord.Entries.Count);
             }
 
-            int rolledBackCount = activeRecord.Entries.Count;
-            activeRecord = null;
+            int rolledBackCount = _activeRecord.Entries.Count;
+            _activeRecord = null;
             return Success(
                 SceneLocalPlayerAdmissionActivityLifecycleStatus.SucceededRolledBack,
                 activity,
@@ -534,14 +534,14 @@ namespace Immersive.Framework.PlayerParticipation
             {
                 return Failure(
                     SceneLocalPlayerAdmissionActivityLifecycleStatus.RejectedInvalidRequest,
-                    activeRecord?.Activity,
-                    activeRecord != null ? activeRecord.Owner : default,
+                    _activeRecord?.Activity,
+                    _activeRecord != null ? _activeRecord.Owner : default,
                     resolvedSource,
                     resolvedReason,
                     "Scene Local Player Session Leave contextual retirement requires a valid Leave correlation token.");
             }
 
-            if (activeRecord == null)
+            if (_activeRecord == null)
             {
                 return Success(
                     SceneLocalPlayerAdmissionActivityLifecycleStatus.SucceededAlreadyExited,
@@ -554,9 +554,9 @@ namespace Immersive.Framework.PlayerParticipation
             }
 
             var entries = new List<Entry>();
-            for (int index = 0; index < activeRecord.Entries.Count; index++)
+            for (int index = 0; index < _activeRecord.Entries.Count; index++)
             {
-                Entry entry = activeRecord.Entries[index];
+                Entry entry = _activeRecord.Entries[index];
                 if (entry.AdmissionActive && entry.PlayerSlotId == leaveToken.PlayerSlotId)
                 {
                     entries.Add(entry);
@@ -567,8 +567,8 @@ namespace Immersive.Framework.PlayerParticipation
             {
                 return Success(
                     SceneLocalPlayerAdmissionActivityLifecycleStatus.SucceededAlreadyExited,
-                    activeRecord.Activity,
-                    activeRecord.Owner,
+                    _activeRecord.Activity,
+                    _activeRecord.Owner,
                     resolvedSource,
                     resolvedReason,
                     0,
@@ -577,7 +577,7 @@ namespace Immersive.Framework.PlayerParticipation
 
             if (!TryReleaseEntriesForSessionPlayerLeave(
                     entries,
-                    activeRecord.Owner,
+                    _activeRecord.Owner,
                     leaveToken,
                     resolvedSource,
                     resolvedReason,
@@ -585,27 +585,27 @@ namespace Immersive.Framework.PlayerParticipation
             {
                 return Failure(
                     SceneLocalPlayerAdmissionActivityLifecycleStatus.FailedExit,
-                    activeRecord.Activity,
-                    activeRecord.Owner,
+                    _activeRecord.Activity,
+                    _activeRecord.Owner,
                     resolvedSource,
                     resolvedReason,
                     issue,
                     entries.Count);
             }
 
-            for (int index = activeRecord.Entries.Count - 1; index >= 0; index--)
+            for (int index = _activeRecord.Entries.Count - 1; index >= 0; index--)
             {
-                if (!activeRecord.Entries[index].AdmissionActive)
+                if (!_activeRecord.Entries[index].AdmissionActive)
                 {
-                    activeRecord.Entries.RemoveAt(index);
+                    _activeRecord.Entries.RemoveAt(index);
                 }
             }
 
-            ActivityAsset retiredActivity = activeRecord.Activity;
-            RuntimeContentOwner retiredOwner = activeRecord.Owner;
-            if (activeRecord.Entries.Count == 0)
+            ActivityAsset retiredActivity = _activeRecord.Activity;
+            RuntimeContentOwner retiredOwner = _activeRecord.Owner;
+            if (_activeRecord.Entries.Count == 0)
             {
-                activeRecord = null;
+                _activeRecord = null;
             }
 
             return Success(
@@ -624,14 +624,14 @@ namespace Immersive.Framework.PlayerParticipation
             out string issue)
         {
             issue = string.Empty;
-            if (activeRecord == null)
+            if (_activeRecord == null)
             {
                 return true;
             }
 
             if (!TryReleaseEntriesForSessionTermination(
-                    activeRecord.Entries,
-                    activeRecord.Owner,
+                    _activeRecord.Entries,
+                    _activeRecord.Owner,
                     Normalize(source, nameof(SceneLocalPlayerAdmissionActivityLifecycleRuntime)),
                     Normalize(reason, "scene-local-player-session-termination-context-retirement"),
                     out issue))
@@ -639,7 +639,7 @@ namespace Immersive.Framework.PlayerParticipation
                 return false;
             }
 
-            activeRecord = null;
+            _activeRecord = null;
             return true;
         }
 
@@ -663,7 +663,7 @@ namespace Immersive.Framework.PlayerParticipation
                     issue);
             }
 
-            activeRecord = new ActiveRecord(activity, owner, entries);
+            _activeRecord = new ActiveRecord(activity, owner, entries);
             if (TryReleaseEntries(
                     entries,
                     owner,
@@ -672,7 +672,7 @@ namespace Immersive.Framework.PlayerParticipation
                     $"{reason}:rollback",
                     out string rollbackIssue))
             {
-                activeRecord = null;
+                _activeRecord = null;
                 return Failure(
                     originalStatus,
                     activity,
@@ -825,19 +825,19 @@ namespace Immersive.Framework.PlayerParticipation
                 return cause switch
                 {
                     ContextualRetirementCause.SessionPlayerLeave =>
-                        module.TryRetireContextualRepresentationForSessionPlayerLeave(
+                        _module.TryRetireContextualRepresentationForSessionPlayerLeave(
                             entry.Authoring,
                             entry.AdmissionToken,
                             leaveToken,
                             source,
                             $"{reason}:retire-contextual-admission"),
                     ContextualRetirementCause.SessionTermination =>
-                        module.TryRetireContextualRepresentationForSessionTermination(
+                        _module.TryRetireContextualRepresentationForSessionTermination(
                             entry.Authoring,
                             entry.AdmissionToken,
                             source,
                             $"{reason}:retire-contextual-admission"),
-                    _ => module.TryRetireContextualRepresentation(
+                    _ => _module.TryRetireContextualRepresentation(
                         entry.Authoring,
                         entry.AdmissionToken,
                         source,
@@ -848,19 +848,19 @@ namespace Immersive.Framework.PlayerParticipation
             return cause switch
             {
                 ContextualRetirementCause.SessionPlayerLeave =>
-                    module.TryReleaseForSessionPlayerLeave(
+                    _module.TryReleaseForSessionPlayerLeave(
                         entry.Authoring,
                         entry.AdmissionToken,
                         leaveToken,
                         source,
                         $"{reason}:release-non-adopted-admission"),
                 ContextualRetirementCause.SessionTermination =>
-                    module.TryReleaseForSessionTermination(
+                    _module.TryReleaseForSessionTermination(
                         entry.Authoring,
                         entry.AdmissionToken,
                         source,
                         $"{reason}:release-non-adopted-admission"),
-                _ => module.TryRelease(
+                _ => _module.TryRelease(
                     entry.Authoring,
                     entry.AdmissionToken,
                     source,
@@ -879,7 +879,7 @@ namespace Immersive.Framework.PlayerParticipation
             for (int index = released.Count - 1; index >= 0; index--)
             {
                 Entry entry = released[index];
-                SceneLocalPlayerAdmissionRuntimeResult admission = module.TryAdmit(
+                SceneLocalPlayerAdmissionRuntimeResult admission = _module.TryAdmit(
                     entry.Authoring,
                     owner,
                     source,
@@ -927,7 +927,7 @@ namespace Immersive.Framework.PlayerParticipation
             out string issue)
         {
             issue = string.Empty;
-            if (!module.TryGetSlotSnapshot(
+            if (!_module.TryGetSlotSnapshot(
                     entry.PlayerSlotId,
                     out PlayerSlotRuntimeSnapshot slot))
             {
@@ -947,7 +947,7 @@ namespace Immersive.Framework.PlayerParticipation
                 source,
                 $"{reason}:confirm-session-selection",
                 slot.SelectionRevision);
-            PlayerActorSelectionResult selection = module.TrySelectActorProfile(request);
+            PlayerActorSelectionResult selection = _module.TrySelectActorProfile(request);
             if (selection == null || !selection.Succeeded)
             {
                 issue = selection != null
@@ -999,7 +999,7 @@ namespace Immersive.Framework.PlayerParticipation
                 return true;
             }
 
-            if (preparationModule == null || !preparationModule.IsReady)
+            if (_preparationModule == null || !_preparationModule.IsReady)
             {
                 issue = "Scene Actor adoption compensation requires the ready Player Actor preparation authority.";
                 return false;
@@ -1010,7 +1010,7 @@ namespace Immersive.Framework.PlayerParticipation
                 source,
                 $"{reason}:compensate-adoption");
             ScenePlayerActorAdoptionResult adoption =
-                preparationModule.TryAdoptSceneLocalPlayerActor(
+                _preparationModule.TryAdoptSceneLocalPlayerActor(
                     scopeContext,
                     entry.Authoring,
                     source,
@@ -1036,7 +1036,7 @@ namespace Immersive.Framework.PlayerParticipation
             string reason,
             out string issue)
         {
-            SceneLocalPlayerAdmissionRuntimeResult release = module.TryRelease(
+            SceneLocalPlayerAdmissionRuntimeResult release = _module.TryRelease(
                 authoring,
                 token,
                 source,
@@ -1062,7 +1062,7 @@ namespace Immersive.Framework.PlayerParticipation
             int affectedCount,
             string message)
         {
-            diagnostic = message ?? string.Empty;
+            _diagnostic = message ?? string.Empty;
             return new SceneLocalPlayerAdmissionActivityLifecycleResult(
                 status,
                 status,
@@ -1072,7 +1072,7 @@ namespace Immersive.Framework.PlayerParticipation
                 0,
                 source,
                 reason,
-                diagnostic);
+                _diagnostic);
         }
 
         private SceneLocalPlayerAdmissionActivityLifecycleResult Failure(
@@ -1086,7 +1086,7 @@ namespace Immersive.Framework.PlayerParticipation
             SceneLocalPlayerAdmissionActivityLifecycleStatus originalStatus =
                 SceneLocalPlayerAdmissionActivityLifecycleStatus.None)
         {
-            diagnostic = message ?? string.Empty;
+            _diagnostic = message ?? string.Empty;
             return new SceneLocalPlayerAdmissionActivityLifecycleResult(
                 status,
                 originalStatus == SceneLocalPlayerAdmissionActivityLifecycleStatus.None
@@ -1098,7 +1098,7 @@ namespace Immersive.Framework.PlayerParticipation
                 1,
                 source,
                 reason,
-                diagnostic);
+                _diagnostic);
         }
 
         private static string Normalize(string value, string fallback)

@@ -59,23 +59,23 @@ namespace Immersive.Framework.PlayerParticipation
 
         private sealed class SessionPlayerLeaveGameplayReleaseProgress
         {
-            internal SessionPlayerLeaveToken LeaveToken;
-            internal PlayerActorPreparationToken PreparationToken;
-            internal bool HadGameplayChain;
-            internal PlayerGameplayAdmissionToken AdmissionToken;
-            internal PlayerGameplayCameraEligibilityToken CameraToken;
-            internal PlayerGameplayInputBindingToken InputToken;
-            internal PlayerGameplayOccupancyToken OccupancyToken;
-            internal bool AdmissionReleased;
-            internal bool CameraReleased;
-            internal bool InputReleased;
-            internal bool OccupancyReleased;
-            internal bool Completed;
+            internal SessionPlayerLeaveToken leaveToken;
+            internal PlayerActorPreparationToken preparationToken;
+            internal bool hadGameplayChain;
+            internal PlayerGameplayAdmissionToken admissionToken;
+            internal PlayerGameplayCameraEligibilityToken cameraToken;
+            internal PlayerGameplayInputBindingToken inputToken;
+            internal PlayerGameplayOccupancyToken occupancyToken;
+            internal bool admissionReleased;
+            internal bool cameraReleased;
+            internal bool inputReleased;
+            internal bool occupancyReleased;
+            internal bool completed;
         }
 
         private readonly Dictionary<SessionPlayerLeaveToken,
             SessionPlayerLeaveGameplayReleaseProgress>
-            sessionPlayerLeaveGameplayReleaseProgress = new();
+            _sessionPlayerLeaveGameplayReleaseProgress = new();
 
         /// <summary>
         /// Captures and validates the exact current P3K Activity gameplay chain without releasing
@@ -95,7 +95,7 @@ namespace Immersive.Framework.PlayerParticipation
             failureStatus = SessionPlayerLeaveGameplayReleaseStatus.None;
             issue = string.Empty;
 
-            if (!IsReady || participationContext == null || !leaveToken.IsValid)
+            if (!IsReady || _participationContext == null || !leaveToken.IsValid)
             {
                 failureStatus = SessionPlayerLeaveGameplayReleaseStatus.RejectedInvalidRequest;
                 issue = "Player gameplay runtime and a valid Leave token are required to inspect Activity gameplay release evidence.";
@@ -103,7 +103,7 @@ namespace Immersive.Framework.PlayerParticipation
             }
 
             SessionPlayerLeaveRuntimeResult leaveConfirmation =
-                participationContext.TryConfirmSessionPlayerLeave(
+                _participationContext.TryConfirmSessionPlayerLeave(
                     leaveToken,
                     source,
                     reason);
@@ -128,18 +128,18 @@ namespace Immersive.Framework.PlayerParticipation
                 return false;
             }
 
-            if (sessionPlayerLeaveGameplayReleaseProgress.TryGetValue(
+            if (_sessionPlayerLeaveGameplayReleaseProgress.TryGetValue(
                     leaveToken,
                     out SessionPlayerLeaveGameplayReleaseProgress existing))
             {
-                if (existing.PreparationToken != expectedPreparation)
+                if (existing.preparationToken != expectedPreparation)
                 {
                     failureStatus = SessionPlayerLeaveGameplayReleaseStatus.RejectedPreparationCorrelation;
                     issue = "Retry changed the expected Activity preparation token for the same Session Player Leave occurrence.";
                     return false;
                 }
 
-                hadGameplayChain = existing.HadGameplayChain;
+                hadGameplayChain = existing.hadGameplayChain;
                 return true;
             }
 
@@ -155,10 +155,10 @@ namespace Immersive.Framework.PlayerParticipation
                 return false;
             }
 
-            sessionPlayerLeaveGameplayReleaseProgress.Add(
+            _sessionPlayerLeaveGameplayReleaseProgress.Add(
                 leaveToken,
                 progress);
-            hadGameplayChain = progress.HadGameplayChain;
+            hadGameplayChain = progress.hadGameplayChain;
             return true;
         }
 
@@ -186,7 +186,7 @@ namespace Immersive.Framework.PlayerParticipation
                 return GameplayLeaveResult(
                     inspectionFailure,
                     leaveToken,
-                    sessionPlayerLeaveGameplayReleaseProgress.TryGetValue(
+                    _sessionPlayerLeaveGameplayReleaseProgress.TryGetValue(
                         leaveToken,
                         out SessionPlayerLeaveGameplayReleaseProgress failedProgress)
                             ? failedProgress
@@ -195,11 +195,11 @@ namespace Immersive.Framework.PlayerParticipation
             }
 
             SessionPlayerLeaveGameplayReleaseProgress progress =
-                sessionPlayerLeaveGameplayReleaseProgress[leaveToken];
-            if (progress.Completed)
+                _sessionPlayerLeaveGameplayReleaseProgress[leaveToken];
+            if (progress.completed)
             {
                 return GameplayLeaveResult(
-                    progress.HadGameplayChain
+                    progress.hadGameplayChain
                         ? SessionPlayerLeaveGameplayReleaseStatus.SucceededAlreadyReleased
                         : SessionPlayerLeaveGameplayReleaseStatus.SucceededNoCurrentGameplay,
                     leaveToken,
@@ -207,11 +207,11 @@ namespace Immersive.Framework.PlayerParticipation
                     "The exact Leave occurrence already has no current Activity gameplay capability chain.");
             }
 
-            if (!progress.AdmissionReleased)
+            if (!progress.admissionReleased)
             {
-                PlayerGameplayAdmissionResult result = admissionContext.TryRelease(
+                PlayerGameplayAdmissionResult result = _admissionContext.TryRelease(
                     leaveToken.PlayerSlotId,
-                    progress.AdmissionToken,
+                    progress.admissionToken,
                     source,
                     reason);
                 // PlayerGameplayAdmissionResult is a value type (struct) and cannot be compared to null.
@@ -225,14 +225,14 @@ namespace Immersive.Framework.PlayerParticipation
                         result.ToDiagnosticString());
                 }
 
-                progress.AdmissionReleased = true;
+                progress.admissionReleased = true;
             }
 
-            if (!progress.CameraReleased)
+            if (!progress.cameraReleased)
             {
-                PlayerGameplayCameraEligibilityResult result = cameraContext.TryRelease(
+                PlayerGameplayCameraEligibilityResult result = _cameraContext.TryRelease(
                     leaveToken.PlayerSlotId,
-                    progress.CameraToken,
+                    progress.cameraToken,
                     source,
                     reason);
                 if (result == null || !result.Succeeded)
@@ -246,14 +246,14 @@ namespace Immersive.Framework.PlayerParticipation
                             : "Gameplay Camera eligibility release returned no result.");
                 }
 
-                progress.CameraReleased = true;
+                progress.cameraReleased = true;
             }
 
-            if (!progress.InputReleased)
+            if (!progress.inputReleased)
             {
-                PlayerGameplayInputBindingResult result = inputContext.TryRelease(
+                PlayerGameplayInputBindingResult result = _inputContext.TryRelease(
                     leaveToken.PlayerSlotId,
-                    progress.InputToken,
+                    progress.inputToken,
                     source,
                     reason);
                 if (result == null || !result.Succeeded)
@@ -267,15 +267,15 @@ namespace Immersive.Framework.PlayerParticipation
                             : "Gameplay Input binding release returned no result.");
                 }
 
-                progress.InputReleased = true;
+                progress.inputReleased = true;
             }
 
-            if (!progress.OccupancyReleased)
+            if (!progress.occupancyReleased)
             {
                 PlayerGameplayOccupancyResult result =
-                    occupancyContext.TryReleaseOccupancy(
+                    _occupancyContext.TryReleaseOccupancy(
                         leaveToken.PlayerSlotId,
-                        progress.OccupancyToken,
+                        progress.occupancyToken,
                         source,
                         reason);
                 if (result == null || !result.Succeeded)
@@ -289,17 +289,17 @@ namespace Immersive.Framework.PlayerParticipation
                             : "Gameplay occupancy release returned no result.");
                 }
 
-                progress.OccupancyReleased = true;
+                progress.occupancyReleased = true;
             }
 
-            progress.Completed = true;
+            progress.completed = true;
             return GameplayLeaveResult(
-                progress.HadGameplayChain
+                progress.hadGameplayChain
                     ? SessionPlayerLeaveGameplayReleaseStatus.SucceededReleased
                     : SessionPlayerLeaveGameplayReleaseStatus.SucceededNoCurrentGameplay,
                 leaveToken,
                 progress,
-                progress.HadGameplayChain
+                progress.hadGameplayChain
                     ? "Exact Activity gameplay Admission, Camera and Input capabilities plus retained Session occupancy were released for Session Player Leave."
                     : "The Leaving Session Player has no current Activity gameplay capability chain; retained Session occupancy was terminally released when present.");
         }
@@ -312,21 +312,21 @@ namespace Immersive.Framework.PlayerParticipation
         {
             progress = null;
             bool hasAdmission =
-                admissionContext.CreateSnapshot().TryGetSummary(
+                _admissionContext.CreateSnapshot().TryGetSummary(
                     leaveToken.PlayerSlotId,
                     out PlayerGameplayAdmissionSummary admission) &&
                 admission.IsAdmitted;
             bool hasCamera =
-                cameraContext.CreateSnapshot().TryGetSummary(
+                _cameraContext.CreateSnapshot().TryGetSummary(
                     leaveToken.PlayerSlotId,
                     out PlayerGameplayCameraEligibilitySummary camera) &&
                 camera.HasCurrentDecision;
             bool hasInput =
-                inputContext.TryGetRetainedInputBinding(
+                _inputContext.TryGetRetainedInputBinding(
                     leaveToken.PlayerSlotId,
                     out PlayerGameplayInputBindingSummary input);
             bool hasOccupancy =
-                occupancyContext.TryGetSummary(
+                _occupancyContext.TryGetSummary(
                     leaveToken.PlayerSlotId,
                     out PlayerGameplayOccupancySummary occupancy) &&
                 occupancy.IsOccupied;
@@ -346,7 +346,7 @@ namespace Immersive.Framework.PlayerParticipation
 
             if (!expectedPreparation.IsValid && hasOccupancy)
             {
-                if (!preparationModule.TryGetCurrentPreparation(
+                if (!_preparationModule.TryGetCurrentPreparation(
                         leaveToken.PlayerSlotId,
                         out PlayerActorPreparationSummary sessionPreparation,
                         out _) ||
@@ -391,18 +391,18 @@ namespace Immersive.Framework.PlayerParticipation
 
             progress = new SessionPlayerLeaveGameplayReleaseProgress
             {
-                LeaveToken = leaveToken,
-                PreparationToken = expectedPreparation,
-                HadGameplayChain = hadActivityGameplayChain,
-                AdmissionToken = hasAdmission ? admission.Token : default,
-                CameraToken = hasCamera ? camera.Token : default,
-                InputToken = hasInput ? input.Token : default,
-                OccupancyToken = hasOccupancy ? occupancy.Token : default,
-                AdmissionReleased = !hasAdmission,
-                CameraReleased = !hasCamera,
-                InputReleased = !hasInput,
-                OccupancyReleased = !hasOccupancy,
-                Completed = !hasAnyGameplayEvidence
+                leaveToken = leaveToken,
+                preparationToken = expectedPreparation,
+                hadGameplayChain = hadActivityGameplayChain,
+                admissionToken = hasAdmission ? admission.Token : default,
+                cameraToken = hasCamera ? camera.Token : default,
+                inputToken = hasInput ? input.Token : default,
+                occupancyToken = hasOccupancy ? occupancy.Token : default,
+                admissionReleased = !hasAdmission,
+                cameraReleased = !hasCamera,
+                inputReleased = !hasInput,
+                occupancyReleased = !hasOccupancy,
+                completed = !hasAnyGameplayEvidence
             };
             return null;
         }
@@ -416,11 +416,11 @@ namespace Immersive.Framework.PlayerParticipation
             return new SessionPlayerLeaveGameplayReleaseResult(
                 status,
                 leaveToken,
-                progress != null && progress.HadGameplayChain,
-                progress != null && progress.AdmissionReleased,
-                progress != null && progress.CameraReleased,
-                progress != null && progress.InputReleased,
-                progress != null && progress.OccupancyReleased,
+                progress != null && progress.hadGameplayChain,
+                progress != null && progress.admissionReleased,
+                progress != null && progress.cameraReleased,
+                progress != null && progress.inputReleased,
+                progress != null && progress.occupancyReleased,
                 message);
         }
     }

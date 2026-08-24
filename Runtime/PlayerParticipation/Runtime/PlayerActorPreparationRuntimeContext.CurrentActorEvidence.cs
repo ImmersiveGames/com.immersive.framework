@@ -27,7 +27,7 @@ namespace Immersive.Framework.PlayerParticipation
             out PlayerActorCorrelationEvidence evidence)
         {
             if (playerSlotId.IsValid &&
-                records.TryGetValue(playerSlotId, out PreparationRecord record) &&
+                _records.TryGetValue(playerSlotId, out PreparationRecord record) &&
                 record.Summary.ActorEvidence.IsValid)
             {
                 evidence = record.Summary.ActorEvidence;
@@ -66,7 +66,7 @@ namespace Immersive.Framework.PlayerParticipation
             {
                 if (!string.Equals(
                         expectedPreparation.SessionContextId,
-                        sessionContextId,
+                        _sessionContextId,
                         StringComparison.Ordinal))
                 {
                     return ActorEvidenceResult(
@@ -92,9 +92,9 @@ namespace Immersive.Framework.PlayerParticipation
                 }
             }
 
-            if (!records.TryGetValue(playerSlotId, out PreparationRecord record))
+            if (!_records.TryGetValue(playerSlotId, out PreparationRecord record))
             {
-                participationContext.TryGetActorSelection(
+                _participationContext.TryGetActorSelection(
                     playerSlotId,
                     out PlayerSlotRuntimeSnapshot unpreparedSlot);
                 return ActorEvidenceResult(
@@ -156,7 +156,7 @@ namespace Immersive.Framework.PlayerParticipation
                     "Retained Actor preparation evidence is incomplete or stale.");
             }
 
-            if (!participationContext.TryGetCurrentAssignment(
+            if (!_participationContext.TryGetCurrentAssignment(
                     playerSlotId,
                     out PlayerSlotAssignmentSnapshot assignment))
             {
@@ -185,7 +185,7 @@ namespace Immersive.Framework.PlayerParticipation
             }
 
             PlayerHostEvidenceResult hostConfirmation =
-                hostEvidenceProjection.ConfirmHostEvidence(
+                _hostEvidenceProjection.ConfirmHostEvidence(
                     playerSlotId,
                     resolvedSource,
                     resolvedReason);
@@ -210,7 +210,7 @@ namespace Immersive.Framework.PlayerParticipation
                         : "Physical Host evidence confirmation returned no result.");
             }
 
-            if (!participationContext.TryGetActorSelection(
+            if (!_participationContext.TryGetActorSelection(
                     playerSlotId,
                     out PlayerSlotRuntimeSnapshot slot) ||
                 !slot.IsJoined ||
@@ -298,7 +298,7 @@ namespace Immersive.Framework.PlayerParticipation
             out CurrentPlayerSlotActorSnapshot snapshot)
         {
             snapshot = default;
-            if (!participationContext.TryGetCurrentAssignment(
+            if (!_participationContext.TryGetCurrentAssignment(
                     playerSlotId,
                     out PlayerSlotAssignmentSnapshot assignment))
             {
@@ -306,14 +306,14 @@ namespace Immersive.Framework.PlayerParticipation
             }
 
             PlayerHostEvidenceResult hostResult =
-                hostEvidenceProjection.ConfirmHostEvidence(
+                _hostEvidenceProjection.ConfirmHostEvidence(
                     playerSlotId,
                     nameof(PlayerActorPreparationRuntimeContext),
                     "aggregate-current-slot-host-actor");
             PlayerHostEvidenceSnapshot retainedHost =
                 hostResult != null && hostResult.CurrentEvidence.IsRecorded
                     ? hostResult.CurrentEvidence
-                    : hostEvidenceProjection.TryGetRetainedEvidence(
+                    : _hostEvidenceProjection.TryGetRetainedEvidence(
                         playerSlotId,
                         out PlayerHostEvidenceSnapshot fallback)
                         ? fallback

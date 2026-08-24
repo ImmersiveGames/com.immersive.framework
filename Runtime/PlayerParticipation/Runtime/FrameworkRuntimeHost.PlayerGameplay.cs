@@ -7,21 +7,21 @@ namespace Immersive.Framework.ApplicationLifecycle
 {
     internal sealed partial class FrameworkRuntimeHost
     {
-        private CameraOutputSessionBinding playerGameplayCameraOutputSession;
+        private CameraOutputSessionBinding _playerGameplayCameraOutputSession;
         private IActivityPlayerLifecycleAdmissionRuntime
-            playerActivityLifecycleAdmissionRuntime;
+            _playerActivityLifecycleAdmissionRuntime;
 
         internal void SetPlayerGameplayCameraOutputSession(
             CameraOutputSessionBinding outputSession)
         {
-            playerGameplayCameraOutputSession = outputSession;
+            _playerGameplayCameraOutputSession = outputSession;
         }
 
 
         internal void SetActivityPlayerLifecycleAdmissionRuntime(
             IActivityPlayerLifecycleAdmissionRuntime runtime)
         {
-            playerActivityLifecycleAdmissionRuntime = runtime;
+            _playerActivityLifecycleAdmissionRuntime = runtime;
             ApplyPlayerActivityLifecycleAdmissionRuntime();
         }
 
@@ -79,14 +79,14 @@ namespace Immersive.Framework.ApplicationLifecycle
         private void ApplyPlayerActivityLifecycleAdmissionRuntime()
         {
             _gameFlowRuntime?.SetActivityPlayerLifecycleAdmissionRuntime(
-                playerActivityLifecycleAdmissionRuntime);
+                _playerActivityLifecycleAdmissionRuntime);
         }
 
         internal bool TryGetPlayerGameplayCameraOutputSession(
             out CameraOutputSessionBinding outputSession,
             out string issue)
         {
-            outputSession = playerGameplayCameraOutputSession;
+            outputSession = _playerGameplayCameraOutputSession;
             if (outputSession == null)
             {
                 issue =

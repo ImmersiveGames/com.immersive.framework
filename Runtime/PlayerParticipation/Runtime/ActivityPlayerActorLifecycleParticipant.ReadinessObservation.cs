@@ -8,7 +8,7 @@ namespace Immersive.Framework.PlayerParticipation
             out ActivityPlayerReadinessContributionRuntimeSnapshot snapshot)
         {
             ActivityReadinessParticipant participant =
-                playerReadinessParticipant;
+                _playerReadinessParticipant;
             if (participant == null)
             {
                 snapshot =

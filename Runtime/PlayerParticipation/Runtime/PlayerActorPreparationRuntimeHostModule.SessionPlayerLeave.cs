@@ -13,22 +13,22 @@ namespace Immersive.Framework.PlayerParticipation
                 string source,
                 string reason)
         {
-            if (!IsReady || activityLifecycleParticipant == null)
+            if (!IsReady || _activityLifecycleParticipant == null)
             {
                 return SessionPlayerActivityRepresentationReleaseResult.RuntimeUnavailable(
                     leaveToken,
                     source,
                     reason,
-                    diagnostic);
+                    _diagnostic);
             }
 
             SessionPlayerActivityRepresentationReleaseResult result =
-                activityLifecycleParticipant
+                _activityLifecycleParticipant
                     .TryReleaseActivityRepresentationForSessionPlayerLeave(
                         leaveToken,
                         source,
                         reason);
-            diagnostic = result != null
+            _diagnostic = result != null
                 ? result.ToDiagnosticString()
                 : "Session Player Activity representation release returned no result.";
             return result;

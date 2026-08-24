@@ -13,7 +13,7 @@ namespace Immersive.Framework.PlayerParticipation
         "P3K.5 Session gameplay admission snapshot.")]
     public sealed class PlayerGameplayAdmissionSnapshot
     {
-        private readonly PlayerGameplayAdmissionSummary[] slots;
+        private readonly PlayerGameplayAdmissionSummary[] _slots;
 
         internal PlayerGameplayAdmissionSnapshot(
             string sessionContextId,
@@ -24,15 +24,15 @@ namespace Immersive.Framework.PlayerParticipation
         {
             SessionContextId = sessionContextId ?? string.Empty;
             Revision = revision;
-            this.slots = slots != null
+            this._slots = slots != null
                 ? (PlayerGameplayAdmissionSummary[])slots.Clone()
                 : Array.Empty<PlayerGameplayAdmissionSummary>();
             LastOperationStatus = lastOperationStatus;
             LastOperationMessage = lastOperationMessage ?? string.Empty;
 
-            for (int index = 0; index < this.slots.Length; index++)
+            for (int index = 0; index < this._slots.Length; index++)
             {
-                PlayerGameplayAdmissionSummary summary = this.slots[index];
+                PlayerGameplayAdmissionSummary summary = this._slots[index];
                 if (summary.IsReady) ReadyCount++;
                 else if (summary.IsBlockedByInputGate) BlockedByInputGateCount++;
                 else if (summary.IsReleaseFailed) ReleaseFailedCount++;
@@ -42,8 +42,8 @@ namespace Immersive.Framework.PlayerParticipation
 
         public string SessionContextId { get; }
         public int Revision { get; }
-        public IReadOnlyList<PlayerGameplayAdmissionSummary> Slots => slots;
-        public int ConfiguredSlotCount => slots.Length;
+        public IReadOnlyList<PlayerGameplayAdmissionSummary> Slots => _slots;
+        public int ConfiguredSlotCount => _slots.Length;
         public int ReadyCount { get; }
         public int BlockedByInputGateCount { get; }
         public int ReleaseFailedCount { get; }
@@ -58,11 +58,11 @@ namespace Immersive.Framework.PlayerParticipation
             PlayerSlotId playerSlotId,
             out PlayerGameplayAdmissionSummary summary)
         {
-            for (int index = 0; index < slots.Length; index++)
+            for (int index = 0; index < _slots.Length; index++)
             {
-                if (slots[index].PlayerSlotId == playerSlotId)
+                if (_slots[index].PlayerSlotId == playerSlotId)
                 {
-                    summary = slots[index];
+                    summary = _slots[index];
                     return true;
                 }
             }

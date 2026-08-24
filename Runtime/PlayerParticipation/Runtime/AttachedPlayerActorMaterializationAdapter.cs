@@ -20,18 +20,18 @@ namespace Immersive.Framework.PlayerParticipation
     {
         private const string ResourceType = "PlayerLogicalActorHost";
 
-        private readonly RuntimeContentRuntime runtimeContentRuntime;
-        private readonly string sessionContextId;
-        private int materializationSequence;
+        private readonly RuntimeContentRuntime _runtimeContentRuntime;
+        private readonly string _sessionContextId;
+        private int _materializationSequence;
 
         internal AttachedPlayerActorMaterializationAdapter(
             RuntimeContentRuntime runtimeContentRuntime,
             string sessionContextId)
         {
-            this.runtimeContentRuntime = runtimeContentRuntime ??
+            this._runtimeContentRuntime = runtimeContentRuntime ??
                 throw new ArgumentNullException(nameof(runtimeContentRuntime));
-            this.sessionContextId = sessionContextId.NormalizeText();
-            if (string.IsNullOrEmpty(this.sessionContextId))
+            this._sessionContextId = sessionContextId.NormalizeText();
+            if (string.IsNullOrEmpty(this._sessionContextId))
             {
                 throw new ArgumentException(
                     "Attached Player Actor materialization adapter requires a non-empty Session context identity.",
@@ -39,7 +39,7 @@ namespace Immersive.Framework.PlayerParticipation
             }
         }
 
-        internal string SessionContextId => sessionContextId;
+        internal string SessionContextId => _sessionContextId;
 
         internal PlayerActorMaterializationResult TryMaterialize(
             RuntimeScopeContext scopeContext,
@@ -108,10 +108,10 @@ namespace Immersive.Framework.PlayerParticipation
                     profileIssue);
             }
 
-            materializationSequence++;
-            int materializationRevision = materializationSequence;
+            _materializationSequence++;
+            int materializationRevision = _materializationSequence;
             if (!PlayerActorMaterializationOperationId.TryCreate(
-                    sessionContextId,
+                    _sessionContextId,
                     scopeContext.Owner,
                     slot.PlayerSlotId,
                     materializationRevision,
@@ -144,7 +144,7 @@ namespace Immersive.Framework.PlayerParticipation
 
             var request = new PlayerActorMaterializationRequest(
                 operationId,
-                sessionContextId,
+                _sessionContextId,
                 scopeContext,
                 slot,
                 actorProfile,
@@ -161,7 +161,7 @@ namespace Immersive.Framework.PlayerParticipation
                 actorProfile.DisplayName,
                 string.Empty);
 
-            if (!runtimeContentRuntime.TryCreateMaterializationRequest(
+            if (!_runtimeContentRuntime.TryCreateMaterializationRequest(
                     scopeContext,
                     runtimeContentId,
                     resource,
@@ -271,7 +271,7 @@ namespace Immersive.Framework.PlayerParticipation
                     resolvedReason,
                     "Attached Logical Player Actor instance staged inactive.");
                 RuntimeMaterializationResult appliedResult =
-                    runtimeContentRuntime.ApplyMaterializationResult(
+                    _runtimeContentRuntime.ApplyMaterializationResult(
                         physicalResult,
                         resolvedSource,
                         resolvedReason);
@@ -362,7 +362,7 @@ namespace Immersive.Framework.PlayerParticipation
 
             if (!string.Equals(
                     handle.Request.SessionContextId,
-                    sessionContextId,
+                    _sessionContextId,
                     StringComparison.Ordinal))
             {
                 issue = "Logical Player Actor rollback rejected a foreign Session materialization handle.";
@@ -415,7 +415,7 @@ namespace Immersive.Framework.PlayerParticipation
                 }
 
                 RuntimeReleaseResult releaseResult =
-                    runtimeContentRuntime.ReleaseHandleLogically(
+                    _runtimeContentRuntime.ReleaseHandleLogically(
                         handle.RuntimeContentRequest.Context,
                         handle.RuntimeContentRequest.Identity,
                         RuntimeReleasePolicy.MarkReleasedAndUnregister,
@@ -625,7 +625,7 @@ namespace Immersive.Framework.PlayerParticipation
             try
             {
                 string identitySuffix =
-                    $"{sessionContextId}:{scopeContext.Owner.Scope}:" +
+                    $"{_sessionContextId}:{scopeContext.Owner.Scope}:" +
                     $"{scopeContext.Owner.OwnerIdentity.Value.Value}:" +
                     $"{slot.PlayerSlotId.Value.Value}:{sequence}";
                 actorId = ActorId.From($"player-actor:{identitySuffix}");
@@ -726,7 +726,7 @@ namespace Immersive.Framework.PlayerParticipation
                 return true;
             }
 
-            if (!runtimeContentRuntime.TryGetHandle(
+            if (!_runtimeContentRuntime.TryGetHandle(
                     runtimeRequest.Context,
                     runtimeRequest.Identity,
                     out RuntimeContentHandle registeredHandle))
@@ -734,7 +734,7 @@ namespace Immersive.Framework.PlayerParticipation
                 return true;
             }
 
-            RuntimeReleaseResult releaseResult = runtimeContentRuntime.ReleaseHandleLogically(
+            RuntimeReleaseResult releaseResult = _runtimeContentRuntime.ReleaseHandleLogically(
                 runtimeRequest.Context,
                 runtimeRequest.Identity,
                 RuntimeReleasePolicy.MarkReleasedAndUnregister,

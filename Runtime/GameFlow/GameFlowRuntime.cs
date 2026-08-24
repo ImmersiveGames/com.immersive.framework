@@ -2278,14 +2278,14 @@ namespace Immersive.Framework.GameFlow
             if (authorization == null || authorization.NotRequired ||
                 authorization.CurrentSnapshot == null ||
                 !authorization.CurrentSnapshot.Token.IsValid ||
-                activityPlayerLifecycleAdmissionRuntime == null)
+                _activityPlayerLifecycleAdmissionRuntime == null)
             {
                 issue = "Committed target diagnostic fault requires a Player lifecycle authorization.";
                 return false;
             }
 
             ActivityPlayerLifecycleAdmissionSnapshot lifecycle =
-                activityPlayerLifecycleAdmissionRuntime.CreateSnapshot();
+                _activityPlayerLifecycleAdmissionRuntime.CreateSnapshot();
             RuntimeContentOwner targetOwner = RuntimeContentOwner.Activity(
                 targetActivity.ActivityId.StableText,
                 targetActivity.ActivityName,

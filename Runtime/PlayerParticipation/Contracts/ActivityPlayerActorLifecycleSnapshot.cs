@@ -14,7 +14,7 @@ namespace Immersive.Framework.PlayerParticipation
         "IF-M07-10 Activity-scoped Logical Player Actor lifecycle diagnostics.")]
     public sealed class ActivityPlayerActorLifecycleSnapshot
     {
-        private readonly ActivityPlayerActorSlotLifecycleSnapshot[] slots;
+        private readonly ActivityPlayerActorSlotLifecycleSnapshot[] _slots;
 
         internal ActivityPlayerActorLifecycleSnapshot(
             ActivityPlayerActorLifecycleStatus status,
@@ -38,7 +38,7 @@ namespace Immersive.Framework.PlayerParticipation
             PreparedCount = preparedCount;
             ReleasedCount = releasedCount;
             FailedCount = failedCount;
-            this.slots = slots != null
+            this._slots = slots != null
                 ? (ActivityPlayerActorSlotLifecycleSnapshot[])slots.Clone()
                 : Array.Empty<ActivityPlayerActorSlotLifecycleSnapshot>();
             Message = message ?? string.Empty;
@@ -53,7 +53,7 @@ namespace Immersive.Framework.PlayerParticipation
         public int PreparedCount { get; }
         public int ReleasedCount { get; }
         public int FailedCount { get; }
-        public IReadOnlyList<ActivityPlayerActorSlotLifecycleSnapshot> Slots => slots;
+        public IReadOnlyList<ActivityPlayerActorSlotLifecycleSnapshot> Slots => _slots;
         public string Message { get; }
 
         public bool Succeeded => Status is

@@ -46,8 +46,8 @@ namespace Immersive.Framework.PlayerParticipation
         internal ActivityPlayerActorReconcileTarget
             CaptureActiveReconcileTarget()
         {
-            if (playerReadinessRecord == null ||
-                playerReadinessRecord.Released)
+            if (_playerReadinessRecord == null ||
+                _playerReadinessRecord.released)
             {
                 return new ActivityPlayerActorReconcileTarget(
                     ActivityPlayerActorReconcileTargetStatus.NoActiveActivity,
@@ -58,11 +58,11 @@ namespace Immersive.Framework.PlayerParticipation
                     "No active Activity Player readiness record is available.");
             }
 
-            ActivityAsset activity = playerReadinessRecord.Activity;
-            RuntimeContentOwner owner = playerReadinessRecord.Owner;
-            int occurrence = playerReadinessRecord.Occurrence;
+            ActivityAsset activity = _playerReadinessRecord.activity;
+            RuntimeContentOwner owner = _playerReadinessRecord.owner;
+            int occurrence = _playerReadinessRecord.occurrence;
             int appliedSessionRevision =
-                playerReadinessRecord.AppliedSessionRevision;
+                _playerReadinessRecord.appliedSessionRevision;
 
             if (activity == null)
             {
@@ -76,8 +76,8 @@ namespace Immersive.Framework.PlayerParticipation
             }
 
             if (!owner.IsValid ||
-                !playerReadinessRecord.ScopeContext.IsValid ||
-                playerReadinessRecord.ScopeContext.Owner != owner)
+                !_playerReadinessRecord.scopeContext.IsValid ||
+                _playerReadinessRecord.scopeContext.Owner != owner)
             {
                 return new ActivityPlayerActorReconcileTarget(
                     ActivityPlayerActorReconcileTargetStatus.InvalidState,
@@ -88,7 +88,7 @@ namespace Immersive.Framework.PlayerParticipation
                     "The active Activity Player readiness record has no exact valid RuntimeContentOwner.");
             }
 
-            if (occurrence <= 0 || playerReadinessParticipant == null)
+            if (occurrence <= 0 || _playerReadinessParticipant == null)
             {
                 return new ActivityPlayerActorReconcileTarget(
                     ActivityPlayerActorReconcileTargetStatus
@@ -100,7 +100,7 @@ namespace Immersive.Framework.PlayerParticipation
                     "Activity Player readiness is waiting for its occurrence to start.");
             }
 
-            if (playerReadinessParticipant.Occurrence != occurrence)
+            if (_playerReadinessParticipant.Occurrence != occurrence)
             {
                 return new ActivityPlayerActorReconcileTarget(
                     ActivityPlayerActorReconcileTargetStatus.InvalidState,

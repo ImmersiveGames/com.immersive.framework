@@ -18,31 +18,31 @@ namespace Immersive.Framework.PlayerParticipation
         "P3K.7F official Session Player gameplay authority composition.")]
     internal sealed partial class PlayerGameplayRuntimeHostModule : MonoBehaviour
     {
-        private FrameworkRuntimeHost runtimeHost;
-        private PlayerParticipationRuntimeContext participationContext;
-        private PlayerActorPreparationRuntimeHostModule preparationModule;
-        private PlayerGameplayOccupancyRuntimeContext occupancyContext;
-        private PlayerGameplayInputBindingRuntimeContext inputContext;
-        private PlayerGameplayCameraEligibilityRuntimeContext cameraContext;
-        private PlayerGameplayAdmissionRuntimeContext admissionContext;
-        private PlayerGameplayCurrentContextRuntime currentGameplayContext;
-        private IActivityPlayerLifecycleAdmissionRuntime activityRelocationContext;
-        private PlayerGameplayRuntimeOperationStatus lastOperationStatus;
-        private string diagnostic =
+        private FrameworkRuntimeHost _runtimeHost;
+        private PlayerParticipationRuntimeContext _participationContext;
+        private PlayerActorPreparationRuntimeHostModule _preparationModule;
+        private PlayerGameplayOccupancyRuntimeContext _occupancyContext;
+        private PlayerGameplayInputBindingRuntimeContext _inputContext;
+        private PlayerGameplayCameraEligibilityRuntimeContext _cameraContext;
+        private PlayerGameplayAdmissionRuntimeContext _admissionContext;
+        private PlayerGameplayCurrentContextRuntime _currentGameplayContext;
+        private IActivityPlayerLifecycleAdmissionRuntime _activityRelocationContext;
+        private PlayerGameplayRuntimeOperationStatus _lastOperationStatus;
+        private string _diagnostic =
             "Player gameplay runtime is not initialized.";
-        private bool shuttingDown;
+        private bool _shuttingDown;
 
         internal bool IsReady =>
-            runtimeHost != null &&
-            participationContext != null &&
-            preparationModule != null &&
-            occupancyContext != null &&
-            inputContext != null &&
-            cameraContext != null &&
-            admissionContext != null &&
-            currentGameplayContext != null;
+            _runtimeHost != null &&
+            _participationContext != null &&
+            _preparationModule != null &&
+            _occupancyContext != null &&
+            _inputContext != null &&
+            _cameraContext != null &&
+            _admissionContext != null &&
+            _currentGameplayContext != null;
 
-        internal string Diagnostic => diagnostic;
+        internal string Diagnostic => _diagnostic;
 
         internal static bool TryAttach(
             FrameworkRuntimeHost runtimeHost,
@@ -77,7 +77,7 @@ namespace Immersive.Framework.PlayerParticipation
 
             if (IsReady)
             {
-                if (ReferenceEquals(runtimeHost, targetRuntimeHost))
+                if (ReferenceEquals(_runtimeHost, targetRuntimeHost))
                 {
                     return true;
                 }
@@ -90,7 +90,7 @@ namespace Immersive.Framework.PlayerParticipation
             if (targetRuntimeHost == null)
             {
                 issue = "FrameworkRuntimeHost is missing.";
-                diagnostic = issue;
+                _diagnostic = issue;
                 return false;
             }
 
@@ -99,7 +99,7 @@ namespace Immersive.Framework.PlayerParticipation
             {
                 issue =
                     "FrameworkRuntimeHost has no initialized Player participation authority.";
-                diagnostic = issue;
+                _diagnostic = issue;
                 return false;
             }
 
@@ -108,7 +108,7 @@ namespace Immersive.Framework.PlayerParticipation
             {
                 issue =
                     "FrameworkRuntimeHost has no ready P3J Player Actor preparation module.";
-                diagnostic = issue;
+                _diagnostic = issue;
                 return false;
             }
 
@@ -121,7 +121,7 @@ namespace Immersive.Framework.PlayerParticipation
             {
                 issue =
                     "Player gameplay runtime requires an initialized P3J preparation snapshot.";
-                diagnostic = issue;
+                _diagnostic = issue;
                 return false;
             }
 
@@ -130,8 +130,8 @@ namespace Immersive.Framework.PlayerParticipation
                     out PlayerGameplayOccupancyRuntimeContext targetOccupancy,
                     out issue))
             {
-                diagnostic = "P3K.2 composition failed. " + issue;
-                issue = diagnostic;
+                _diagnostic = "P3K.2 composition failed. " + issue;
+                issue = _diagnostic;
                 return false;
             }
 
@@ -141,8 +141,8 @@ namespace Immersive.Framework.PlayerParticipation
                     out PlayerGameplayInputBindingRuntimeContext targetInput,
                     out issue))
             {
-                diagnostic = "P3K.3 composition failed. " + issue;
-                issue = diagnostic;
+                _diagnostic = "P3K.3 composition failed. " + issue;
+                issue = _diagnostic;
                 return false;
             }
 
@@ -152,8 +152,8 @@ namespace Immersive.Framework.PlayerParticipation
                     out PlayerGameplayCameraEligibilityRuntimeContext targetCamera,
                     out issue))
             {
-                diagnostic = "P3K.4 composition failed. " + issue;
-                issue = diagnostic;
+                _diagnostic = "P3K.4 composition failed. " + issue;
+                issue = _diagnostic;
                 return false;
             }
 
@@ -164,8 +164,8 @@ namespace Immersive.Framework.PlayerParticipation
                     out PlayerGameplayAdmissionRuntimeContext targetAdmission,
                     out issue))
             {
-                diagnostic = "P3K.5 composition failed. " + issue;
-                issue = diagnostic;
+                _diagnostic = "P3K.5 composition failed. " + issue;
+                issue = _diagnostic;
                 return false;
             }
 
@@ -184,27 +184,27 @@ namespace Immersive.Framework.PlayerParticipation
                     out PlayerGameplayCurrentContextRuntime targetCurrentGameplay,
                     out issue))
             {
-                diagnostic = "Current gameplay context composition failed. " + issue;
-                issue = diagnostic;
+                _diagnostic = "Current gameplay context composition failed. " + issue;
+                issue = _diagnostic;
                 return false;
             }
 
-            runtimeHost = targetRuntimeHost;
-            participationContext = targetParticipation;
-            preparationModule = targetPreparation;
-            occupancyContext = targetOccupancy;
-            inputContext = targetInput;
-            cameraContext = targetCamera;
-            admissionContext = targetAdmission;
-            currentGameplayContext = targetCurrentGameplay;
-            activityRelocationContext =
+            _runtimeHost = targetRuntimeHost;
+            _participationContext = targetParticipation;
+            _preparationModule = targetPreparation;
+            _occupancyContext = targetOccupancy;
+            _inputContext = targetInput;
+            _cameraContext = targetCamera;
+            _admissionContext = targetAdmission;
+            _currentGameplayContext = targetCurrentGameplay;
+            _activityRelocationContext =
                 new ActivityPlayerRelocationContextRuntime(targetPreparation);
             targetRuntimeHost.SetActivityPlayerLifecycleAdmissionRuntime(
-                activityRelocationContext);
+                _activityRelocationContext);
 
-            lastOperationStatus =
+            _lastOperationStatus =
                 PlayerGameplayRuntimeOperationStatus.None;
-            diagnostic =
+            _diagnostic =
                 $"Player gameplay runtime is ready. session='{preparationHost.SessionContextId}' " +
                 $"slots='{preparationHost.Preparation.ConfiguredSlotCount}'.";
             return true;
@@ -216,7 +216,7 @@ namespace Immersive.Framework.PlayerParticipation
             string source,
             string reason)
         {
-            const string Operation = "EnsureCurrentGameplay";
+            const string operation = "EnsureCurrentGameplay";
             PlayerGameplayAdmissionSummary previous =
                 GetAdmissionOrDefault(playerSlotId);
 
@@ -224,14 +224,14 @@ namespace Immersive.Framework.PlayerParticipation
             {
                 return Result(
                     PlayerGameplayRuntimeOperationStatus.RejectedRuntimeUnavailable,
-                    Operation,
+                    operation,
                     playerSlotId,
                     previous,
                     previous,
                     false,
                     false,
                     string.Empty,
-                    diagnostic);
+                    _diagnostic);
             }
 
             if (!playerSlotId.IsValid || !contextualOwner.IsValid ||
@@ -239,7 +239,7 @@ namespace Immersive.Framework.PlayerParticipation
             {
                 return Result(
                     PlayerGameplayRuntimeOperationStatus.RejectedInvalidRequest,
-                    Operation,
+                    operation,
                     playerSlotId,
                     previous,
                     previous,
@@ -249,7 +249,7 @@ namespace Immersive.Framework.PlayerParticipation
                     "Current gameplay creation requires a valid Player Slot and Activity contextual owner.");
             }
 
-            if (!preparationModule.TryGetCurrentPreparation(
+            if (!_preparationModule.TryGetCurrentPreparation(
                     playerSlotId,
                     out PlayerActorPreparationSummary preparation,
                     out string preparationIssue) ||
@@ -257,7 +257,7 @@ namespace Immersive.Framework.PlayerParticipation
             {
                 return Result(
                     PlayerGameplayRuntimeOperationStatus.RejectedInvalidRequest,
-                    Operation,
+                    operation,
                     playerSlotId,
                     previous,
                     previous,
@@ -267,7 +267,7 @@ namespace Immersive.Framework.PlayerParticipation
                     preparationIssue);
             }
 
-            bool succeeded = currentGameplayContext.TryEnsureCurrentGameplay(
+            bool succeeded = _currentGameplayContext.TryEnsureCurrentGameplay(
                 preparation,
                 contextualOwner,
                 source,
@@ -286,7 +286,7 @@ namespace Immersive.Framework.PlayerParticipation
                         : PlayerGameplayRuntimeOperationStatus.FailedChainBuild;
                 return Result(
                     failure,
-                    Operation,
+                    operation,
                     playerSlotId,
                     previous,
                     GetAdmissionOrDefault(playerSlotId),
@@ -316,7 +316,7 @@ namespace Immersive.Framework.PlayerParticipation
 
             return Result(
                 successStatus,
-                Operation,
+                operation,
                 playerSlotId,
                 previous,
                 current,
@@ -332,7 +332,7 @@ namespace Immersive.Framework.PlayerParticipation
             string source,
             string reason)
         {
-            const string Operation = "ReleaseCurrentGameplay";
+            const string operation = "ReleaseCurrentGameplay";
             PlayerGameplayAdmissionSummary previous =
                 GetAdmissionOrDefault(playerSlotId);
 
@@ -340,14 +340,14 @@ namespace Immersive.Framework.PlayerParticipation
             {
                 return Result(
                     PlayerGameplayRuntimeOperationStatus.RejectedRuntimeUnavailable,
-                    Operation,
+                    operation,
                     playerSlotId,
                     previous,
                     previous,
                     false,
                     false,
                     string.Empty,
-                    diagnostic);
+                    _diagnostic);
             }
 
             if (!playerSlotId.IsValid ||
@@ -356,7 +356,7 @@ namespace Immersive.Framework.PlayerParticipation
             {
                 return Result(
                     PlayerGameplayRuntimeOperationStatus.RejectedInvalidRequest,
-                    Operation,
+                    operation,
                     playerSlotId,
                     previous,
                     previous,
@@ -372,7 +372,7 @@ namespace Immersive.Framework.PlayerParticipation
                 return Result(
                     PlayerGameplayRuntimeOperationStatus
                         .RejectedForeignOrStaleAdmission,
-                    Operation,
+                    operation,
                     playerSlotId,
                     previous,
                     previous,
@@ -383,7 +383,7 @@ namespace Immersive.Framework.PlayerParticipation
             }
 
             PlayerGameplayAdmissionResult release =
-                currentGameplayContext.TryReleaseCurrentGameplay(
+                _currentGameplayContext.TryReleaseCurrentGameplay(
                     playerSlotId,
                     expectedAdmission,
                     source,
@@ -394,7 +394,7 @@ namespace Immersive.Framework.PlayerParticipation
             return release.Succeeded
                 ? Result(
                     PlayerGameplayRuntimeOperationStatus.SucceededReleased,
-                    Operation,
+                    operation,
                     playerSlotId,
                     previous,
                     current,
@@ -404,7 +404,7 @@ namespace Immersive.Framework.PlayerParticipation
                     release.Message)
                 : Result(
                     PlayerGameplayRuntimeOperationStatus.FailedRelease,
-                    Operation,
+                    operation,
                     playerSlotId,
                     previous,
                     current,
@@ -420,7 +420,7 @@ namespace Immersive.Framework.PlayerParticipation
         {
             admission = default;
             return IsReady &&
-                currentGameplayContext.TryGetCurrentAdmission(
+                _currentGameplayContext.TryGetCurrentAdmission(
                     playerSlotId,
                 out admission);
         }
@@ -432,8 +432,8 @@ namespace Immersive.Framework.PlayerParticipation
         {
             binding = default;
             confirmation = null;
-            return inputContext != null &&
-                inputContext.TryGetCurrentInputBinding(
+            return _inputContext != null &&
+                _inputContext.TryGetCurrentInputBinding(
                     playerSlotId,
                     out binding,
                     out confirmation);
@@ -444,8 +444,8 @@ namespace Immersive.Framework.PlayerParticipation
             out PlayerGameplayInputBindingSummary binding)
         {
             binding = default;
-            return inputContext != null &&
-                inputContext.TryGetRetainedInputBinding(
+            return _inputContext != null &&
+                _inputContext.TryGetRetainedInputBinding(
                     playerSlotId,
                     out binding);
         }
@@ -456,8 +456,8 @@ namespace Immersive.Framework.PlayerParticipation
             string source,
             string reason)
         {
-            return inputContext != null
-                ? inputContext.ConfirmCurrentInputBinding(
+            return _inputContext != null
+                ? _inputContext.ConfirmCurrentInputBinding(
                     playerSlotId,
                     expectedBinding,
                     source,
@@ -471,8 +471,8 @@ namespace Immersive.Framework.PlayerParticipation
             string source,
             string reason)
         {
-            return inputContext != null
-                ? inputContext.TryRefreshAvailability(
+            return _inputContext != null
+                ? _inputContext.TryRefreshAvailability(
                     playerSlotId,
                     expectedBinding,
                     source,
@@ -486,14 +486,14 @@ namespace Immersive.Framework.PlayerParticipation
             string source,
             string reason)
         {
-            if (admissionContext != null &&
-                admissionContext.CreateSnapshot().TryGetSummary(
+            if (_admissionContext != null &&
+                _admissionContext.CreateSnapshot().TryGetSummary(
                     playerSlotId,
                     out PlayerGameplayAdmissionSummary admission) &&
                 admission.IsAdmitted)
             {
                 PlayerGameplayAdmissionResult admissionRelease =
-                    admissionContext.TryRelease(
+                    _admissionContext.TryRelease(
                         playerSlotId,
                         admission.Token,
                         source,
@@ -504,8 +504,8 @@ namespace Immersive.Framework.PlayerParticipation
                 }
             }
 
-            return inputContext != null
-                ? inputContext.TryRelease(
+            return _inputContext != null
+                ? _inputContext.TryRelease(
                     playerSlotId,
                     expectedBinding,
                     source,
@@ -525,27 +525,27 @@ namespace Immersive.Framework.PlayerParticipation
             if (!IsReady)
             {
                 return PlayerGameplayRuntimeHostSnapshot.Unavailable(
-                    diagnostic);
+                    _diagnostic);
             }
 
             return new PlayerGameplayRuntimeHostSnapshot(
                 true,
-                occupancyContext.SessionContextId,
-                occupancyContext.CreateSnapshot(),
-                inputContext.CreateSnapshot(),
-                cameraContext.CreateSnapshot(),
-                admissionContext.CreateSnapshot(),
-                lastOperationStatus,
-                diagnostic);
+                _occupancyContext.SessionContextId,
+                _occupancyContext.CreateSnapshot(),
+                _inputContext.CreateSnapshot(),
+                _cameraContext.CreateSnapshot(),
+                _admissionContext.CreateSnapshot(),
+                _lastOperationStatus,
+                _diagnostic);
         }
 
         private PlayerGameplayAdmissionSummary GetAdmissionOrDefault(
             PlayerSlotId playerSlotId)
         {
-            if (admissionContext != null)
+            if (_admissionContext != null)
             {
                 PlayerGameplayAdmissionSnapshot snapshot =
-                    admissionContext.CreateSnapshot();
+                    _admissionContext.CreateSnapshot();
                 if (snapshot != null &&
                     snapshot.TryGetSummary(
                         playerSlotId,
@@ -569,8 +569,8 @@ namespace Immersive.Framework.PlayerParticipation
             string rollbackMessage,
             string message)
         {
-            lastOperationStatus = status;
-            diagnostic = message ?? string.Empty;
+            _lastOperationStatus = status;
+            _diagnostic = message ?? string.Empty;
             return new PlayerGameplayRuntimeOperationResult(
                 status,
                 operation,
@@ -586,17 +586,17 @@ namespace Immersive.Framework.PlayerParticipation
 
         private void OnDestroy()
         {
-            if (shuttingDown)
+            if (_shuttingDown)
             {
                 return;
             }
 
-            shuttingDown = true;
-            if (admissionContext != null &&
-                currentGameplayContext != null)
+            _shuttingDown = true;
+            if (_admissionContext != null &&
+                _currentGameplayContext != null)
             {
                 PlayerGameplayAdmissionSnapshot snapshot =
-                    admissionContext.CreateSnapshot();
+                    _admissionContext.CreateSnapshot();
                 for (int index = snapshot.Slots.Count - 1;
                      index >= 0;
                      index--)
@@ -609,7 +609,7 @@ namespace Immersive.Framework.PlayerParticipation
                         continue;
                     }
 
-                    currentGameplayContext.TryReleaseCurrentGameplay(
+                    _currentGameplayContext.TryReleaseCurrentGameplay(
                         admission.PlayerSlotId,
                         admission.Token,
                         nameof(PlayerGameplayRuntimeHostModule),
@@ -617,20 +617,20 @@ namespace Immersive.Framework.PlayerParticipation
                 }
             }
 
-            currentGameplayContext = null;
-            if (runtimeHost != null)
+            _currentGameplayContext = null;
+            if (_runtimeHost != null)
             {
-                runtimeHost.SetActivityPlayerLifecycleAdmissionRuntime(null);
+                _runtimeHost.SetActivityPlayerLifecycleAdmissionRuntime(null);
             }
-            activityRelocationContext = null;
-            admissionContext = null;
-            cameraContext = null;
-            inputContext = null;
-            occupancyContext = null;
-            preparationModule = null;
-            participationContext = null;
-            runtimeHost = null;
-            diagnostic = "Player gameplay runtime was released.";
+            _activityRelocationContext = null;
+            _admissionContext = null;
+            _cameraContext = null;
+            _inputContext = null;
+            _occupancyContext = null;
+            _preparationModule = null;
+            _participationContext = null;
+            _runtimeHost = null;
+            _diagnostic = "Player gameplay runtime was released.";
         }
     }
 

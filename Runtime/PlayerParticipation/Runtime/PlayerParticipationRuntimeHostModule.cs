@@ -17,21 +17,21 @@ namespace Immersive.Framework.PlayerParticipation
         "P3F/P3H/P3J host-scoped composition adapter for Session Player participation, Actor selection and preparation runtime.")]
     internal sealed class PlayerParticipationRuntimeHostModule : MonoBehaviour
     {
-        private PlayerParticipationRuntimeContext runtimeContext;
-        private EffectivePlayerSessionConfiguration effectiveConfiguration;
-        private PlayerParticipationOperationResult initializationResult;
+        private PlayerParticipationRuntimeContext _runtimeContext;
+        private EffectivePlayerSessionConfiguration _effectiveConfiguration;
+        private PlayerParticipationOperationResult _initializationResult;
 
-        internal bool IsInitialized => runtimeContext != null &&
-            initializationResult != null &&
-            initializationResult.Succeeded;
+        internal bool IsInitialized => _runtimeContext != null &&
+            _initializationResult != null &&
+            _initializationResult.Succeeded;
 
-        internal PlayerParticipationOperationResult InitializationResult => initializationResult;
+        internal PlayerParticipationOperationResult InitializationResult => _initializationResult;
 
-        internal EffectivePlayerSessionConfiguration EffectiveConfiguration => effectiveConfiguration;
+        internal EffectivePlayerSessionConfiguration EffectiveConfiguration => _effectiveConfiguration;
 
         internal PlayerActorSelectionDuplicatePolicy ActorSelectionDuplicatePolicy =>
-            runtimeContext != null
-                ? runtimeContext.CreateSnapshot().ActorSelectionDuplicatePolicy
+            _runtimeContext != null
+                ? _runtimeContext.CreateSnapshot().ActorSelectionDuplicatePolicy
                 : PlayerActorSelectionDuplicatePolicy.Unspecified;
 
         internal static PlayerParticipationRuntimeHostModule Attach(
@@ -68,58 +68,58 @@ namespace Immersive.Framework.PlayerParticipation
             string source,
             string reason)
         {
-            if (initializationResult != null)
+            if (_initializationResult != null)
             {
-                return initializationResult;
+                return _initializationResult;
             }
 
             if (targetEffectiveConfiguration == null)
             {
-                runtimeContext = null;
-                initializationResult = PlayerParticipationRuntimeContext.TryCreateWithEffectiveConfiguration(
+                _runtimeContext = null;
+                _initializationResult = PlayerParticipationRuntimeContext.TryCreateWithEffectiveConfiguration(
                     null,
                     actorSelectionDuplicatePolicy,
                     source,
                     reason,
                     out _);
-                return initializationResult;
+                return _initializationResult;
             }
 
-            initializationResult = PlayerParticipationRuntimeContext.TryCreateWithEffectiveConfiguration(
+            _initializationResult = PlayerParticipationRuntimeContext.TryCreateWithEffectiveConfiguration(
                 targetEffectiveConfiguration,
                 actorSelectionDuplicatePolicy,
                 source,
                 reason,
-                out runtimeContext);
-            if (initializationResult.Succeeded)
+                out _runtimeContext);
+            if (_initializationResult.Succeeded)
             {
-                effectiveConfiguration = targetEffectiveConfiguration;
+                _effectiveConfiguration = targetEffectiveConfiguration;
             }
 
-            return initializationResult;
+            return _initializationResult;
         }
 
         internal bool TryGetRuntimeContext(out PlayerParticipationRuntimeContext context)
         {
-            context = runtimeContext;
+            context = _runtimeContext;
             return context != null;
         }
 
         internal bool TryGetSnapshot(out PlayerParticipationSnapshot snapshot)
         {
-            if (runtimeContext == null)
+            if (_runtimeContext == null)
             {
                 snapshot = PlayerParticipationSnapshot.Empty(
-                    initializationResult != null
-                        ? initializationResult.Status
+                    _initializationResult != null
+                        ? _initializationResult.Status
                         : PlayerParticipationOperationStatus.None,
-                    initializationResult != null
-                        ? initializationResult.Message
+                    _initializationResult != null
+                        ? _initializationResult.Message
                         : "Player participation runtime module is not initialized.");
                 return false;
             }
 
-            snapshot = runtimeContext.CreateSnapshot();
+            snapshot = _runtimeContext.CreateSnapshot();
             return true;
         }
 
@@ -127,26 +127,26 @@ namespace Immersive.Framework.PlayerParticipation
             PlayerSlotId playerSlotId,
             out PlayerSlotRuntimeSnapshot snapshot)
         {
-            if (runtimeContext == null)
+            if (_runtimeContext == null)
             {
                 snapshot = default;
                 return false;
             }
 
-            return runtimeContext.TryGetSlotSnapshot(playerSlotId, out snapshot);
+            return _runtimeContext.TryGetSlotSnapshot(playerSlotId, out snapshot);
         }
 
         internal bool TryGetActorSelection(
             PlayerSlotId playerSlotId,
             out PlayerSlotRuntimeSnapshot snapshot)
         {
-            if (runtimeContext == null)
+            if (_runtimeContext == null)
             {
                 snapshot = default;
                 return false;
             }
 
-            return runtimeContext.TryGetActorSelection(playerSlotId, out snapshot);
+            return _runtimeContext.TryGetActorSelection(playerSlotId, out snapshot);
         }
 
         internal PlayerActorSelectionResult TrySelectActorProfile(
@@ -217,9 +217,9 @@ namespace Immersive.Framework.PlayerParticipation
 
         private void OnDestroy()
         {
-            runtimeContext = null;
-            effectiveConfiguration = null;
-            initializationResult = null;
+            _runtimeContext = null;
+            _effectiveConfiguration = null;
+            _initializationResult = null;
         }
     }
 

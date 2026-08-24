@@ -48,11 +48,11 @@ namespace Immersive.Framework.PlayerParticipation
             internal PlayerInput PreviousPlayerInput { get; }
         }
 
-        private readonly Dictionary<PlayerSlotId, SceneAdoptionRecord> sceneAdoptions =
+        private readonly Dictionary<PlayerSlotId, SceneAdoptionRecord> _sceneAdoptions =
             new Dictionary<PlayerSlotId, SceneAdoptionRecord>();
-        private int sceneAdoptionSequence;
+        private int _sceneAdoptionSequence;
 
-        internal int SceneAdoptionCount => sceneAdoptions.Count;
+        internal int SceneAdoptionCount => _sceneAdoptions.Count;
 
         internal ScenePlayerActorAdoptionResult TryAdoptScenePlayerActor(
             RuntimeContentRuntime runtimeContentRuntime,
@@ -105,7 +105,7 @@ namespace Immersive.Framework.PlayerParticipation
                     issue);
             }
 
-            if (!participationContext.TryGetActorSelection(
+            if (!_participationContext.TryGetActorSelection(
                     playerSlotId,
                     out PlayerSlotRuntimeSnapshot slot) ||
                 !slot.IsValid ||
@@ -211,14 +211,14 @@ namespace Immersive.Framework.PlayerParticipation
                     "Scene Logical Player Actor must remain under the exact Local Player Host Actor Mount.");
             }
 
-            if (sceneAdoptions.TryGetValue(playerSlotId, out SceneAdoptionRecord existingAdoption))
+            if (_sceneAdoptions.TryGetValue(playerSlotId, out SceneAdoptionRecord existingAdoption))
             {
                 if (IsCurrentSceneAdoption(
                         existingAdoption,
                         physicalScopeContext.Owner,
                         host,
                         sceneActor) &&
-                    records.TryGetValue(playerSlotId, out PreparationRecord existingPreparation) &&
+                    _records.TryGetValue(playerSlotId, out PreparationRecord existingPreparation) &&
                     existingPreparation.Summary.IsPrepared &&
                     existingPreparation.Summary.Token == existingAdoption.Token.PreparationToken)
                 {
@@ -246,7 +246,7 @@ namespace Immersive.Framework.PlayerParticipation
                     "Player Slot retains a different or stale Scene Actor adoption. Release it explicitly before re-adoption.");
             }
 
-            if (records.ContainsKey(playerSlotId))
+            if (_records.ContainsKey(playerSlotId))
             {
                 return SceneAdoptionResult(
                     ScenePlayerActorAdoptionStatus.RejectedPreparationConflict,
@@ -276,10 +276,10 @@ namespace Immersive.Framework.PlayerParticipation
                     issue);
             }
 
-            sceneAdoptionSequence++;
-            int adoptionRevision = sceneAdoptionSequence;
+            _sceneAdoptionSequence++;
+            int adoptionRevision = _sceneAdoptionSequence;
             if (!PlayerActorMaterializationOperationId.TryCreate(
-                    sessionContextId,
+                    _sessionContextId,
                     physicalScopeContext.Owner,
                     playerSlotId,
                     adoptionRevision,
@@ -303,7 +303,7 @@ namespace Immersive.Framework.PlayerParticipation
             try
             {
                 string suffix =
-                    $"{sessionContextId}:{physicalScopeContext.Owner.Scope}:" +
+                    $"{_sessionContextId}:{physicalScopeContext.Owner.Scope}:" +
                     $"{physicalScopeContext.Owner.OwnerIdentity.Value.Value}:" +
                     $"{playerSlotId.Value.Value}:{adoptionRevision}";
                 actorId = ActorId.From($"scene-player-actor:{suffix}");
@@ -326,7 +326,7 @@ namespace Immersive.Framework.PlayerParticipation
 
             var request = new PlayerActorMaterializationRequest(
                 operationId,
-                sessionContextId,
+                _sessionContextId,
                 physicalScopeContext,
                 slot,
                 authoring.ActorProfile,
@@ -511,19 +511,19 @@ namespace Immersive.Framework.PlayerParticipation
                     resolvedSource,
                     resolvedReason,
                     "Original Scene Logical Player Actor adopted into Session physical lifetime.");
-                records.Add(
+                _records.Add(
                     playerSlotId,
                     new PreparationRecord(handle, host, prepared));
-                revision++;
+                _revision++;
 
                 var token = new ScenePlayerActorAdoptionToken(
-                    sessionContextId,
+                    _sessionContextId,
                     playerSlotId,
                     actorId,
                     runtimeRequest.Identity,
                     prepared.Token,
                     adoptionRevision);
-                sceneAdoptions.Add(
+                _sceneAdoptions.Add(
                     playerSlotId,
                     new SceneAdoptionRecord(
                         token,
@@ -535,8 +535,8 @@ namespace Immersive.Framework.PlayerParticipation
                         previousDisplayName,
                         previousReason,
                         previousPlayerInput));
-                lastOperationStatus = PlayerActorPreparationStatus.SucceededPrepared;
-                lastOperationMessage =
+                _lastOperationStatus = PlayerActorPreparationStatus.SucceededPrepared;
+                _lastOperationMessage =
                     "Original Scene Logical Player Actor adopted by the Session physical representation authority.";
 
                 return SceneAdoptionResult(
@@ -548,15 +548,15 @@ namespace Immersive.Framework.PlayerParticipation
                     true,
                     resolvedSource,
                     resolvedReason,
-                    lastOperationMessage);
+                    _lastOperationMessage);
             }
             catch (Exception exception)
             {
-                bool preparationRemoved = records.Remove(playerSlotId);
-                bool adoptionRemoved = sceneAdoptions.Remove(playerSlotId);
+                bool preparationRemoved = _records.Remove(playerSlotId);
+                bool adoptionRemoved = _sceneAdoptions.Remove(playerSlotId);
                 if (preparationRemoved || adoptionRemoved)
                 {
-                    revision++;
+                    _revision++;
                 }
 
                 bool rollbackSucceeded = TryRollbackSceneAdoptionRegistration(
@@ -604,8 +604,8 @@ namespace Immersive.Framework.PlayerParticipation
 
             if (authoring == null ||
                 !expectedToken.IsValid ||
-                expectedToken.SessionContextId != sessionContextId ||
-                !sceneAdoptions.TryGetValue(playerSlotId, out SceneAdoptionRecord adoption) ||
+                expectedToken.SessionContextId != _sessionContextId ||
+                !_sceneAdoptions.TryGetValue(playerSlotId, out SceneAdoptionRecord adoption) ||
                 adoption.Token != expectedToken ||
                 !ReferenceEquals(adoption.Host, authoring.LocalPlayerHost) ||
                 !ReferenceEquals(adoption.SceneActor, authoring.SceneLogicalPlayerActor))
@@ -622,9 +622,9 @@ namespace Immersive.Framework.PlayerParticipation
                     "Scene Player Actor release rejected a foreign or stale adoption token.");
             }
 
-            if (!records.ContainsKey(playerSlotId))
+            if (!_records.ContainsKey(playerSlotId))
             {
-                sceneAdoptions.Remove(playerSlotId);
+                _sceneAdoptions.Remove(playerSlotId);
                 return SceneAdoptionResult(
                     ScenePlayerActorAdoptionStatus.SucceededReleased,
                     operation,
@@ -658,7 +658,7 @@ namespace Immersive.Framework.PlayerParticipation
                         : "Scene Player Actor preparation release returned no result.");
             }
 
-            sceneAdoptions.Remove(playerSlotId);
+            _sceneAdoptions.Remove(playerSlotId);
             return SceneAdoptionResult(
                 ScenePlayerActorAdoptionStatus.SucceededReleased,
                 operation,
@@ -676,7 +676,7 @@ namespace Immersive.Framework.PlayerParticipation
             out ScenePlayerActorAdoptionToken token)
         {
             if (playerSlotId.IsValid &&
-                sceneAdoptions.TryGetValue(playerSlotId, out SceneAdoptionRecord record) &&
+                _sceneAdoptions.TryGetValue(playerSlotId, out SceneAdoptionRecord record) &&
                 record.Token.IsValid)
             {
                 token = record.Token;

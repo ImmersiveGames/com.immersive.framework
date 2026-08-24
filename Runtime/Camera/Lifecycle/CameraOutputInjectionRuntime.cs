@@ -12,12 +12,12 @@ namespace Immersive.Framework.Camera
     [FrameworkApiStatus(FrameworkApiStatus.Internal, "Runtime implementation detail; not game-facing API.")]
     internal sealed class CameraOutputInjectionRuntime : IDisposable
     {
-        private readonly CameraOutputSessionBinding outputSession;
+        private readonly CameraOutputSessionBinding _outputSession;
 
         internal CameraOutputInjectionRuntime(
             CameraOutputSessionBinding outputSession)
         {
-            this.outputSession = outputSession ??
+            this._outputSession = outputSession ??
                 throw new ArgumentNullException(nameof(outputSession));
             SceneManager.sceneLoaded += OnSceneLoaded;
 
@@ -55,7 +55,7 @@ namespace Immersive.Framework.Camera
                 {
                     if (behaviours[index] is ICameraOutputSessionConsumer consumer)
                     {
-                        consumer.AttachOutputSession(outputSession);
+                        consumer.AttachOutputSession(_outputSession);
                     }
                 }
             }

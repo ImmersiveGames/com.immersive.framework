@@ -3,7 +3,7 @@ namespace Immersive.Framework.PlayerParticipation
     internal sealed partial class PlayerActorPreparationRuntimeHostModule
     {
         private PlayerActivityReconciliationRuntimeHostModule
-            activityReconciliationRuntime;
+            _activityReconciliationRuntime;
 
         /// <summary>
         /// Observes only committed Session snapshots. A revision produced by
@@ -12,23 +12,23 @@ namespace Immersive.Framework.PlayerParticipation
         /// </summary>
         private void LateUpdate()
         {
-            if (shuttingDown ||
+            if (_shuttingDown ||
                 !IsReady ||
-                participationContext == null ||
-                activityLifecycleParticipant == null)
+                _participationContext == null ||
+                _activityLifecycleParticipant == null)
             {
                 return;
             }
 
-            if (activityReconciliationRuntime == null)
+            if (_activityReconciliationRuntime == null)
             {
-                activityReconciliationRuntime =
+                _activityReconciliationRuntime =
                     new PlayerActivityReconciliationRuntimeHostModule();
             }
 
-            activityReconciliationRuntime.ObserveAndReconcile(
-                participationContext.CreateSnapshot(),
-                activityLifecycleParticipant,
+            _activityReconciliationRuntime.ObserveAndReconcile(
+                _participationContext.CreateSnapshot(),
+                _activityLifecycleParticipant,
                 nameof(PlayerActorPreparationRuntimeHostModule),
                 "stable-session-revision-or-activity-occurrence");
         }
@@ -36,7 +36,7 @@ namespace Immersive.Framework.PlayerParticipation
         internal bool TryGetActivityReconciliationSnapshot(
             out PlayerActivityReconciliationRuntimeHostSnapshot snapshot)
         {
-            if (activityReconciliationRuntime == null)
+            if (_activityReconciliationRuntime == null)
             {
                 snapshot =
                     PlayerActivityReconciliationRuntimeHostSnapshot.Unavailable(
@@ -44,7 +44,7 @@ namespace Immersive.Framework.PlayerParticipation
                 return false;
             }
 
-            snapshot = activityReconciliationRuntime.LastSnapshot;
+            snapshot = _activityReconciliationRuntime.LastSnapshot;
             return true;
         }
     }

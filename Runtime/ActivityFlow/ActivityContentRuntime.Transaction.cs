@@ -77,7 +77,7 @@ namespace Immersive.Framework.ActivityFlow
 
             internal int ExitFailedReceiverCount { get; set; }
 
-            internal int OmittedObservationCount;
+            internal int omittedObservationCount;
 
             internal bool ExitExecuted { get; set; }
 
@@ -138,7 +138,7 @@ namespace Immersive.Framework.ActivityFlow
                 }
                 AddObservation(
                     context.ObservedBindings,
-                    ref context.OmittedObservationCount,
+                    ref context.omittedObservationCount,
                     binding,
                     FormatListedActivities(binding),
                     "Ignore",
@@ -200,7 +200,7 @@ namespace Immersive.Framework.ActivityFlow
 
                 AddObservation(
                     context.ObservedBindings,
-                    ref context.OmittedObservationCount,
+                    ref context.omittedObservationCount,
                     binding,
                     FormatListedActivities(binding),
                     "Exit",
@@ -286,7 +286,7 @@ namespace Immersive.Framework.ActivityFlow
 
                 AddObservation(
                     context.ObservedBindings,
-                    ref context.OmittedObservationCount,
+                    ref context.omittedObservationCount,
                     binding,
                     FormatListedActivities(binding),
                     action,
@@ -348,7 +348,7 @@ namespace Immersive.Framework.ActivityFlow
                 BuildDetailMessage(
                     context.ActiveActivity,
                     context.ObservedBindings,
-                    context.OmittedObservationCount),
+                    context.omittedObservationCount),
                 BuildWarningMessage(context.WarningBindings));
             StoreLastApplyResult(result);
             return result;

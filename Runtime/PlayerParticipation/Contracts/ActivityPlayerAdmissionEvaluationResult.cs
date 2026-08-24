@@ -14,7 +14,7 @@ namespace Immersive.Framework.PlayerParticipation
         "P3K.6 Activity Player admission evaluation result.")]
     public sealed class ActivityPlayerAdmissionEvaluationResult
     {
-        private readonly ActivityPlayerAdmissionSlotResult[] slots;
+        private readonly ActivityPlayerAdmissionSlotResult[] _slots;
 
         internal ActivityPlayerAdmissionEvaluationResult(
             string activityName,
@@ -34,14 +34,14 @@ namespace Immersive.Framework.PlayerParticipation
             RequirementLevel = requirementLevel;
             Status = status;
             Code = code;
-            this.slots = slots != null
+            this._slots = slots != null
                 ? (ActivityPlayerAdmissionSlotResult[])slots.Clone()
                 : Array.Empty<ActivityPlayerAdmissionSlotResult>();
             Message = message.NormalizeText();
 
-            for (int index = 0; index < this.slots.Length; index++)
+            for (int index = 0; index < this._slots.Length; index++)
             {
-                switch (this.slots[index].Status)
+                switch (this._slots[index].Status)
                 {
                     case ActivityPlayerAdmissionSlotStatus.Satisfied:
                         SatisfiedSlotCount++;
@@ -66,8 +66,8 @@ namespace Immersive.Framework.PlayerParticipation
         public PlayerParticipationRequirementLevel RequirementLevel { get; }
         public ActivityPlayerAdmissionEvaluationStatus Status { get; }
         public ActivityPlayerAdmissionEvaluationCode Code { get; }
-        public IReadOnlyList<ActivityPlayerAdmissionSlotResult> Slots => slots;
-        public int ProjectedSlotCount => slots.Length;
+        public IReadOnlyList<ActivityPlayerAdmissionSlotResult> Slots => _slots;
+        public int ProjectedSlotCount => _slots.Length;
         public int SatisfiedSlotCount { get; }
         public int PendingSlotCount { get; }
         public int BlockedSlotCount { get; }
@@ -92,9 +92,9 @@ namespace Immersive.Framework.PlayerParticipation
 
         private string FormatSlots()
         {
-            if (slots.Length == 0) return "<none>";
-            var diagnostics = new string[slots.Length];
-            for (int index = 0; index < slots.Length; index++) diagnostics[index] = slots[index].ToDiagnosticString();
+            if (_slots.Length == 0) return "<none>";
+            var diagnostics = new string[_slots.Length];
+            for (int index = 0; index < _slots.Length; index++) diagnostics[index] = _slots[index].ToDiagnosticString();
             return string.Join(" || ", diagnostics);
         }
     }

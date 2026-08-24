@@ -8,92 +8,92 @@ namespace Immersive.Framework.Camera
     public abstract class ScopedCameraRequestPublisher :
         ICameraRequestPublisher
     {
-        private readonly CameraOutputSession session;
-        private readonly CameraRequest request;
+        private readonly CameraOutputSession _session;
+        private readonly CameraRequest _request;
 
-        private bool isPublished;
+        private bool _isPublished;
 
         protected ScopedCameraRequestPublisher(
             CameraOutputSession session,
             CameraRequest request)
         {
-            this.session = session;
-            this.request = request;
+            this._session = session;
+            this._request = request;
         }
 
-        public CameraRequest Request => request;
-        public bool IsPublished => isPublished;
+        public CameraRequest Request => _request;
+        public bool IsPublished => _isPublished;
 
         public CameraRequestPublisherResult Publish()
         {
-            if (isPublished)
+            if (_isPublished)
             {
                 return new CameraRequestPublisherResult(
                     CameraRequestPublisherOperationKind.Preserved,
-                    request,
+                    _request,
                     false,
                     default,
                     Array.Empty<CameraIssue>(),
-                    $"Camera request publisher preserved published request '{request.RequestId}'.");
+                    $"Camera request publisher preserved published request '{_request.RequestId}'.");
             }
 
             CameraOutputSessionResult sessionResult =
-                session.Admit(request);
+                _session.Admit(_request);
 
             if (!sessionResult.Succeeded)
             {
                 return Rejected(
                     sessionResult,
-                    $"Camera request publisher failed to publish request '{request.RequestId}'.");
+                    $"Camera request publisher failed to publish request '{_request.RequestId}'.");
             }
 
-            isPublished = true;
+            _isPublished = true;
 
             return new CameraRequestPublisherResult(
                 CameraRequestPublisherOperationKind.Published,
-                request,
+                _request,
                 true,
                 sessionResult,
                 sessionResult.Issues,
                 sessionResult.Issues.Length == 0
-                    ? $"Camera request publisher published request '{request.RequestId}'."
-                    : $"Camera request publisher published request '{request.RequestId}'. {sessionResult.DiagnosticSummary}".NormalizeText());
+                    ? $"Camera request publisher published request '{_request.RequestId}'."
+                    : $"Camera request publisher published request '{_request.RequestId}'. {sessionResult.DiagnosticSummary}".NormalizeText());
         }
 
         public CameraRequestPublisherResult Release()
         {
-            if (!isPublished)
+            if (!_isPublished)
             {
                 return new CameraRequestPublisherResult(
                     CameraRequestPublisherOperationKind.Preserved,
-                    request,
+                    _request,
                     false,
                     default,
                     Array.Empty<CameraIssue>(),
-                    $"Camera request publisher preserved released state for request '{request.RequestId}'.");
+                    $"Camera request publisher preserved released state for request '{_request.RequestId}'.");
             }
 
             CameraOutputSessionResult sessionResult =
-                session.Release(request.RequestId);
+                _session.Release(_request.RequestId);
 
             if (!sessionResult.Succeeded)
             {
                 return Rejected(
                     sessionResult,
-                    $"Camera request publisher failed to release request '{request.RequestId}'.");
+                    $"Camera request publisher failed to release request '{_request.RequestId}'.");
             }
 
-            isPublished = false;
+            _isPublished = false;
 
             return new CameraRequestPublisherResult(
                 CameraRequestPublisherOperationKind.Released,
-                request,
+                _request,
                 true,
                 sessionResult,
                 sessionResult.Issues,
                 sessionResult.Issues.Length == 0
-                    ? $"Camera request publisher released request '{request.RequestId}'."
-                    : $"Camera request publisher released request '{request.RequestId}'. {sessionResult.DiagnosticSummary}".NormalizeText());
+                    ? $"Camera request publisher released request '{_request.RequestId}'."
+                    : $"Camera request publisher released request '{_request.RequestId}'. {sessionResult.DiagnosticSummary}".NormalizeText());
         }
 
         private CameraRequestPublisherResult Rejected(
@@ -102,7 +102,7 @@ namespace Immersive.Framework.Camera
         {
             return new CameraRequestPublisherResult(
                 CameraRequestPublisherOperationKind.Rejected,
-                request,
+                _request,
                 true,
                 sessionResult,
                 sessionResult.Issues,

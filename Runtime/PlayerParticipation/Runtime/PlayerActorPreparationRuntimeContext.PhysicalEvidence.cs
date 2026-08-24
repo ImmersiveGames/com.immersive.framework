@@ -24,8 +24,8 @@ namespace Immersive.Framework.PlayerParticipation
 
             if (!playerSlotId.IsValid || !expectedPreparation.IsValid ||
                 expectedPreparation.PlayerSlotId != playerSlotId ||
-                expectedPreparation.SessionContextId != sessionContextId ||
-                !records.TryGetValue(playerSlotId, out PreparationRecord record) ||
+                expectedPreparation.SessionContextId != _sessionContextId ||
+                !_records.TryGetValue(playerSlotId, out PreparationRecord record) ||
                 !record.Summary.IsPrepared ||
                 record.Summary.Token != expectedPreparation ||
                 record.Handle == null || record.Host == null ||

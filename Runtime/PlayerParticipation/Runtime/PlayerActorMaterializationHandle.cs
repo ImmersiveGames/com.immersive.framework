@@ -17,11 +17,11 @@ namespace Immersive.Framework.PlayerParticipation
         "P3J.3 typed physical handle for attached Logical Player Actor materialization.")]
     internal sealed class PlayerActorMaterializationHandle
     {
-        private PlayerActorMaterializationState state;
-        private bool hasEverActivated;
-        private string source;
-        private string reason;
-        private string message;
+        private PlayerActorMaterializationState _state;
+        private bool _hasEverActivated;
+        private string _source;
+        private string _reason;
+        private string _message;
 
         internal PlayerActorMaterializationHandle(
             PlayerActorMaterializationRequest request,
@@ -73,10 +73,10 @@ namespace Immersive.Framework.PlayerParticipation
             LogicalActorHost = logicalActorHost != null
                 ? logicalActorHost
                 : throw new ArgumentNullException(nameof(logicalActorHost));
-            state = PlayerActorMaterializationState.StagedInactive;
-            this.source = source.NormalizeText();
-            this.reason = reason.NormalizeText();
-            message = "Logical Player Actor is staged inactive.";
+            _state = PlayerActorMaterializationState.StagedInactive;
+            this._source = source.NormalizeText();
+            this._reason = reason.NormalizeText();
+            _message = "Logical Player Actor is staged inactive.";
         }
 
         internal PlayerActorMaterializationRequest Request { get; }
@@ -86,22 +86,22 @@ namespace Immersive.Framework.PlayerParticipation
         internal PlayerInput PlayerInput { get; }
         internal PlayerActorDeclaration PlayerActorDeclaration { get; }
         internal GameObject LogicalActorHost { get; }
-        internal PlayerActorMaterializationState State => state;
-        internal string Source => source ?? string.Empty;
-        internal string Reason => reason ?? string.Empty;
-        internal string Message => message ?? string.Empty;
+        internal PlayerActorMaterializationState State => _state;
+        internal string Source => _source ?? string.Empty;
+        internal string Reason => _reason ?? string.Empty;
+        internal string Message => _message ?? string.Empty;
 
         internal bool TryActivate(string operationSource, string operationReason, out string issue)
         {
-            if (state == PlayerActorMaterializationState.Active)
+            if (_state == PlayerActorMaterializationState.Active)
             {
                 issue = string.Empty;
                 return true;
             }
 
-            if (state != PlayerActorMaterializationState.StagedInactive)
+            if (_state != PlayerActorMaterializationState.StagedInactive)
             {
-                issue = $"Logical Player Actor cannot activate from state '{state}'.";
+                issue = $"Logical Player Actor cannot activate from state '{_state}'.";
                 return false;
             }
 
@@ -125,7 +125,7 @@ namespace Immersive.Framework.PlayerParticipation
                  PlayerActorDeclaration.transform
                      .IsChildOf(LogicalActorHost.transform));
             bool requiresRouteSpatialEntry =
-                declarationBelongsToLogicalActor && !hasEverActivated;
+                declarationBelongsToLogicalActor && !_hasEverActivated;
             if (requiresRouteSpatialEntry)
             {
                 if (spatialEntryBinding != null)
@@ -137,7 +137,7 @@ namespace Immersive.Framework.PlayerParticipation
                         return false;
                     }
                 }
-                else if (!hasEverActivated)
+                else if (!_hasEverActivated)
                 {
                     issue =
                         "Session-owned framework Logical Player Actor cannot perform its first activation without the current Route spatial-entry occurrence gate.";
@@ -146,26 +146,26 @@ namespace Immersive.Framework.PlayerParticipation
             }
 
             LogicalActorHost.SetActive(true);
-            hasEverActivated = true;
-            state = PlayerActorMaterializationState.Active;
-            source = operationSource.NormalizeTextOrFallback(Source);
-            reason = operationReason.NormalizeTextOrFallback(Reason);
-            message = "Logical Player Actor activated.";
+            _hasEverActivated = true;
+            _state = PlayerActorMaterializationState.Active;
+            _source = operationSource.NormalizeTextOrFallback(Source);
+            _reason = operationReason.NormalizeTextOrFallback(Reason);
+            _message = "Logical Player Actor activated.";
             issue = string.Empty;
             return true;
         }
 
         internal bool TryDeactivate(string operationSource, string operationReason, out string issue)
         {
-            if (state == PlayerActorMaterializationState.StagedInactive)
+            if (_state == PlayerActorMaterializationState.StagedInactive)
             {
                 issue = string.Empty;
                 return true;
             }
 
-            if (state != PlayerActorMaterializationState.Active)
+            if (_state != PlayerActorMaterializationState.Active)
             {
-                issue = $"Logical Player Actor cannot deactivate from state '{state}'.";
+                issue = $"Logical Player Actor cannot deactivate from state '{_state}'.";
                 return false;
             }
 
@@ -176,28 +176,28 @@ namespace Immersive.Framework.PlayerParticipation
             }
 
             LogicalActorHost.SetActive(false);
-            state = PlayerActorMaterializationState.StagedInactive;
-            source = operationSource.NormalizeTextOrFallback(Source);
-            reason = operationReason.NormalizeTextOrFallback(Reason);
-            message = "Logical Player Actor deactivated.";
+            _state = PlayerActorMaterializationState.StagedInactive;
+            _source = operationSource.NormalizeTextOrFallback(Source);
+            _reason = operationReason.NormalizeTextOrFallback(Reason);
+            _message = "Logical Player Actor deactivated.";
             issue = string.Empty;
             return true;
         }
 
         internal void MarkReleaseRequested(string operationSource, string operationReason)
         {
-            state = PlayerActorMaterializationState.ReleaseRequested;
-            source = operationSource.NormalizeTextOrFallback(Source);
-            reason = operationReason.NormalizeTextOrFallback(Reason);
-            message = "Logical Player Actor physical release requested.";
+            _state = PlayerActorMaterializationState.ReleaseRequested;
+            _source = operationSource.NormalizeTextOrFallback(Source);
+            _reason = operationReason.NormalizeTextOrFallback(Reason);
+            _message = "Logical Player Actor physical release requested.";
         }
 
         internal void MarkReleased(string operationSource, string operationReason)
         {
-            state = PlayerActorMaterializationState.Released;
-            source = operationSource.NormalizeTextOrFallback(Source);
-            reason = operationReason.NormalizeTextOrFallback(Reason);
-            message = "Logical Player Actor physical instance released.";
+            _state = PlayerActorMaterializationState.Released;
+            _source = operationSource.NormalizeTextOrFallback(Source);
+            _reason = operationReason.NormalizeTextOrFallback(Reason);
+            _message = "Logical Player Actor physical instance released.";
         }
 
         internal void MarkReleaseFailed(
@@ -205,10 +205,10 @@ namespace Immersive.Framework.PlayerParticipation
             string operationReason,
             string failureMessage)
         {
-            state = PlayerActorMaterializationState.ReleaseFailed;
-            source = operationSource.NormalizeTextOrFallback(Source);
-            reason = operationReason.NormalizeTextOrFallback(Reason);
-            message = failureMessage.NormalizeTextOrFallback(
+            _state = PlayerActorMaterializationState.ReleaseFailed;
+            _source = operationSource.NormalizeTextOrFallback(Source);
+            _reason = operationReason.NormalizeTextOrFallback(Reason);
+            _message = failureMessage.NormalizeTextOrFallback(
                 "Logical Player Actor physical release failed.");
         }
 
@@ -221,7 +221,7 @@ namespace Immersive.Framework.PlayerParticipation
                 Request.ActorProfileId,
                 Request.ActorId,
                 Request.MaterializationRevision,
-                state,
+                _state,
                 Source,
                 Reason);
         }

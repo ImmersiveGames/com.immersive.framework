@@ -26,9 +26,9 @@ namespace Immersive.Framework.PlayerParticipation
             provisioningRelease = null;
             issue = string.Empty;
 
-            if (!IsReady || bridge == null || runtimeHost == null)
+            if (!IsReady || _bridge == null || _runtimeHost == null)
             {
-                issue = diagnostic;
+                issue = _diagnostic;
                 return false;
             }
 
@@ -38,7 +38,7 @@ namespace Immersive.Framework.PlayerParticipation
                 return false;
             }
 
-            if (!runtimeHost.TryGetPlayerActorPreparationRuntime(
+            if (!_runtimeHost.TryGetPlayerActorPreparationRuntime(
                     out PlayerActorPreparationRuntimeHostModule preparation))
             {
                 issue =
@@ -87,7 +87,7 @@ namespace Immersive.Framework.PlayerParticipation
                 return false;
             }
 
-            provisioningRelease = bridge.TryReleaseAdmittedPlayerForSessionLeave(
+            provisioningRelease = _bridge.TryReleaseAdmittedPlayerForSessionLeave(
                 leaveToken,
                 hostEvidenceRelease,
                 resolvedSource,
@@ -100,7 +100,7 @@ namespace Immersive.Framework.PlayerParticipation
                 return false;
             }
 
-            diagnostic = provisioningRelease.ToDiagnosticString();
+            _diagnostic = provisioningRelease.ToDiagnosticString();
             return true;
         }
     }

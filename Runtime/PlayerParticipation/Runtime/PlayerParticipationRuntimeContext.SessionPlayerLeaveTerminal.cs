@@ -32,12 +32,12 @@ namespace Immersive.Framework.PlayerParticipation
         private readonly Dictionary<
             SessionPlayerLeaveToken,
             SessionPlayerLeaveTerminalProgress>
-            sessionPlayerLeaveTerminalProgress = new();
+            _sessionPlayerLeaveTerminalProgress = new();
 
         private readonly Dictionary<
             SessionPlayerLeaveToken,
             SessionPlayerLeaveTerminalResult>
-            completedSessionPlayerLeaveTerminalResults = new();
+            _completedSessionPlayerLeaveTerminalResults = new();
 
         /// <summary>
         /// Finalizes one Manager-Provisioned Session Player Leave after the exact Activity and
@@ -119,7 +119,7 @@ namespace Immersive.Framework.PlayerParticipation
                     "Terminal Session Player Leave requires a valid Leave token and explicit provisioning mode.");
             }
 
-            if (completedSessionPlayerLeaveTerminalResults.TryGetValue(
+            if (_completedSessionPlayerLeaveTerminalResults.TryGetValue(
                     leaveToken,
                     out SessionPlayerLeaveTerminalResult completed))
             {
@@ -292,7 +292,7 @@ namespace Immersive.Framework.PlayerParticipation
                 }
             }
 
-            if (!sessionPlayerLeaveTerminalProgress.TryGetValue(
+            if (!_sessionPlayerLeaveTerminalProgress.TryGetValue(
                     leaveToken,
                     out SessionPlayerLeaveTerminalProgress progress))
             {
@@ -300,7 +300,7 @@ namespace Immersive.Framework.PlayerParticipation
                     leaveToken,
                     expectedProvisioningMode,
                     expectedManagerAssignmentToken);
-                sessionPlayerLeaveTerminalProgress.Add(leaveToken, progress);
+                _sessionPlayerLeaveTerminalProgress.Add(leaveToken, progress);
             }
             else if (progress.ProvisioningMode != expectedProvisioningMode)
             {
@@ -486,7 +486,7 @@ namespace Immersive.Framework.PlayerParticipation
                 resolvedSource,
                 resolvedReason,
                 "All required pre-commit release evidence was accepted. Session-scoped assignment and Actor selection are clear; the exact Session Player occurrence ended and its Slot committed Available.");
-            completedSessionPlayerLeaveTerminalResults.Add(leaveToken, terminal);
+            _completedSessionPlayerLeaveTerminalResults.Add(leaveToken, terminal);
             return terminal;
         }
 

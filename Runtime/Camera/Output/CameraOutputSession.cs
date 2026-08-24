@@ -13,10 +13,10 @@ namespace Immersive.Framework.Camera
     [FrameworkApiStatus(FrameworkApiStatus.Internal, "Runtime implementation detail; not game-facing API.")]
     public sealed class CameraOutputSession
     {
-        private readonly CameraOutputContext context;
-        private readonly CameraOutputRigApplicator applicator;
-        private readonly CameraRigReference defaultRig;
-        private readonly HashSet<string> forceDefaultOwners =
+        private readonly CameraOutputContext _context;
+        private readonly CameraOutputRigApplicator _applicator;
+        private readonly CameraRigReference _defaultRig;
+        private readonly HashSet<string> _forceDefaultOwners =
             new HashSet<string>(StringComparer.Ordinal);
 
         public CameraOutputSession(
@@ -24,10 +24,10 @@ namespace Immersive.Framework.Camera
             CameraOutputRigApplicator applicator,
             CameraRigReference defaultRig)
         {
-            this.context = context ??
+            this._context = context ??
                 throw new ArgumentNullException(nameof(context));
 
-            this.applicator = applicator ??
+            this._applicator = applicator ??
                 throw new ArgumentNullException(nameof(applicator));
 
             if (context.OutputId != applicator.Binding.OutputId)
@@ -44,25 +44,25 @@ namespace Immersive.Framework.Camera
                     nameof(defaultRig));
             }
 
-            this.defaultRig = defaultRig;
+            this._defaultRig = defaultRig;
         }
 
-        public CameraOutputContext Context => context;
+        public CameraOutputContext Context => _context;
 
-        public CameraOutputRigApplicator Applicator => applicator;
+        public CameraOutputRigApplicator Applicator => _applicator;
 
-        public CameraOutputId OutputId => context.OutputId;
+        public CameraOutputId OutputId => _context.OutputId;
 
-        public CameraRigReference DefaultRig => defaultRig;
+        public CameraRigReference DefaultRig => _defaultRig;
 
-        public bool IsDefaultForced => forceDefaultOwners.Count > 0;
+        public bool IsDefaultForced => _forceDefaultOwners.Count > 0;
 
-        public int ForceDefaultOwnerCount => forceDefaultOwners.Count;
+        public int ForceDefaultOwnerCount => _forceDefaultOwners.Count;
 
         public CameraOutputSessionResult Admit(CameraRequest request)
         {
             CameraOutputContextResult contextResult =
-                context.Admit(request);
+                _context.Admit(request);
 
             if (!contextResult.Succeeded)
             {
@@ -83,7 +83,7 @@ namespace Immersive.Framework.Camera
             }
 
             CameraOutputContextResult rollbackContext =
-                context.Release(request.RequestId);
+                _context.Release(request.RequestId);
 
             CameraOutputApplyResult rollbackApply =
                 ApplyEffectivePresentation();
@@ -100,7 +100,7 @@ namespace Immersive.Framework.Camera
         public CameraOutputSessionResult Release(CameraRequestId requestId)
         {
             CameraOutputContextResult contextResult =
-                context.Release(requestId);
+                _context.Release(requestId);
 
             if (!contextResult.Succeeded)
             {
@@ -124,7 +124,7 @@ namespace Immersive.Framework.Camera
                 contextResult.Request;
 
             CameraOutputContextResult rollbackContext =
-                context.Admit(releasedRequest);
+                _context.Admit(releasedRequest);
 
             CameraOutputApplyResult rollbackApply =
                 ApplyEffectivePresentation();
@@ -148,7 +148,7 @@ namespace Immersive.Framework.Camera
                     "Camera output force-default requires an explicit owner.");
             }
 
-            bool added = forceDefaultOwners.Add(normalizedOwner);
+            bool added = _forceDefaultOwners.Add(normalizedOwner);
             CameraOutputApplyResult applyResult =
                 ApplyEffectivePresentation();
 
@@ -157,7 +157,7 @@ namespace Immersive.Framework.Camera
                 return applyResult;
             }
 
-            forceDefaultOwners.Remove(normalizedOwner);
+            _forceDefaultOwners.Remove(normalizedOwner);
             ApplyEffectivePresentation();
             return applyResult;
         }
@@ -172,7 +172,7 @@ namespace Immersive.Framework.Camera
                     "Camera output force-default release requires an explicit owner.");
             }
 
-            bool removed = forceDefaultOwners.Remove(normalizedOwner);
+            bool removed = _forceDefaultOwners.Remove(normalizedOwner);
             CameraOutputApplyResult applyResult =
                 ApplyEffectivePresentation();
 
@@ -181,7 +181,7 @@ namespace Immersive.Framework.Camera
                 return applyResult;
             }
 
-            forceDefaultOwners.Add(normalizedOwner);
+            _forceDefaultOwners.Add(normalizedOwner);
             ApplyEffectivePresentation();
             return applyResult;
         }
@@ -221,16 +221,16 @@ namespace Immersive.Framework.Camera
 
         public CameraOutputApplyResult Teardown()
         {
-            forceDefaultOwners.Clear();
-            return applicator.Clear();
+            _forceDefaultOwners.Clear();
+            return _applicator.Clear();
         }
 
         private CameraOutputApplyResult ApplyEffectivePresentation()
         {
-            return applicator.Apply(
-                context,
-                defaultRig,
-                forceDefaultOwners.Count > 0);
+            return _applicator.Apply(
+                _context,
+                _defaultRig,
+                _forceDefaultOwners.Count > 0);
         }
 
         private CameraOutputApplyResult BlockedForceDefaultOwner(
@@ -244,8 +244,8 @@ namespace Immersive.Framework.Camera
             return new CameraOutputApplyResult(
                 CameraOutputApplyKind.Blocked,
                 default,
-                applicator.AppliedCamera,
-                applicator.AppliedCamera,
+                _applicator.AppliedCamera,
+                _applicator.AppliedCamera,
                 new[]
                 {
                     CameraIssue.Blocking(code, normalized)

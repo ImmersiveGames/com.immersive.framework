@@ -13,7 +13,7 @@ namespace Immersive.Framework.PlayerParticipation
         "P3K.2 Session effective Player gameplay occupancy snapshot.")]
     public sealed class PlayerGameplayOccupancySnapshot
     {
-        private readonly PlayerGameplayOccupancySummary[] slots;
+        private readonly PlayerGameplayOccupancySummary[] _slots;
 
         internal PlayerGameplayOccupancySnapshot(
             string sessionContextId,
@@ -24,19 +24,19 @@ namespace Immersive.Framework.PlayerParticipation
         {
             SessionContextId = sessionContextId ?? string.Empty;
             Revision = revision;
-            this.slots = slots != null
+            this._slots = slots != null
                 ? (PlayerGameplayOccupancySummary[])slots.Clone()
                 : Array.Empty<PlayerGameplayOccupancySummary>();
             LastOperationStatus = lastOperationStatus;
             LastOperationMessage = lastOperationMessage ?? string.Empty;
 
-            for (int index = 0; index < this.slots.Length; index++)
+            for (int index = 0; index < this._slots.Length; index++)
             {
-                if (this.slots[index].IsOccupied)
+                if (this._slots[index].IsOccupied)
                 {
                     OccupiedCount++;
                 }
-                else if (this.slots[index].IsVacant)
+                else if (this._slots[index].IsVacant)
                 {
                     VacantCount++;
                 }
@@ -45,8 +45,8 @@ namespace Immersive.Framework.PlayerParticipation
 
         public string SessionContextId { get; }
         public int Revision { get; }
-        public IReadOnlyList<PlayerGameplayOccupancySummary> Slots => slots;
-        public int ConfiguredSlotCount => slots.Length;
+        public IReadOnlyList<PlayerGameplayOccupancySummary> Slots => _slots;
+        public int ConfiguredSlotCount => _slots.Length;
         public int OccupiedCount { get; }
         public int VacantCount { get; }
         public PlayerGameplayOccupancyStatus LastOperationStatus { get; }
@@ -60,11 +60,11 @@ namespace Immersive.Framework.PlayerParticipation
             PlayerSlotId playerSlotId,
             out PlayerGameplayOccupancySummary summary)
         {
-            for (int index = 0; index < slots.Length; index++)
+            for (int index = 0; index < _slots.Length; index++)
             {
-                if (slots[index].PlayerSlotId == playerSlotId)
+                if (_slots[index].PlayerSlotId == playerSlotId)
                 {
-                    summary = slots[index];
+                    summary = _slots[index];
                     return true;
                 }
             }

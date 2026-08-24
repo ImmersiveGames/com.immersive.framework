@@ -8,19 +8,19 @@ namespace Immersive.Framework.GameFlow
     internal sealed partial class GameFlowRuntime
     {
         private IActivityPlayerLifecycleAdmissionRuntime
-            activityPlayerLifecycleAdmissionRuntime;
-        private IGameFlowDiagnosticFaultPlan diagnosticFaultPlan =
+            _activityPlayerLifecycleAdmissionRuntime;
+        private IGameFlowDiagnosticFaultPlan _diagnosticFaultPlan =
             NoOpGameFlowDiagnosticFaultPlan.Instance;
 
         internal void SetActivityPlayerLifecycleAdmissionRuntime(
             IActivityPlayerLifecycleAdmissionRuntime runtime)
         {
-            activityPlayerLifecycleAdmissionRuntime = runtime;
+            _activityPlayerLifecycleAdmissionRuntime = runtime;
         }
 
         internal void SetDiagnosticFaultPlan(IGameFlowDiagnosticFaultPlan plan)
         {
-            diagnosticFaultPlan = plan ?? NoOpGameFlowDiagnosticFaultPlan.Instance;
+            _diagnosticFaultPlan = plan ?? NoOpGameFlowDiagnosticFaultPlan.Instance;
         }
 
         private bool TryConsumeDiagnosticFault(
@@ -30,7 +30,7 @@ namespace Immersive.Framework.GameFlow
             string slot,
             out string diagnostic)
         {
-            GameFlowDiagnosticFaultDecision decision = diagnosticFaultPlan.Evaluate(
+            GameFlowDiagnosticFaultDecision decision = _diagnosticFaultPlan.Evaluate(
                 new GameFlowDiagnosticFaultRequest(checkpoint, operation, transaction, slot));
             diagnostic = decision.Diagnostic;
             return decision.ShouldFail;
@@ -77,7 +77,7 @@ namespace Immersive.Framework.GameFlow
             if (!preparation.ReadyForTransition ||
                 preparation.CurrentSnapshot == null ||
                 !preparation.CurrentSnapshot.Token.IsValid ||
-                activityPlayerLifecycleAdmissionRuntime == null)
+                _activityPlayerLifecycleAdmissionRuntime == null)
             {
                 return ActivityPlayerLifecycleAdmissionResult
                     .RejectedRuntimeUnavailable(
@@ -87,7 +87,7 @@ namespace Immersive.Framework.GameFlow
                         "Activity Player lifecycle admission is not ready to authorize transition.");
             }
 
-            return activityPlayerLifecycleAdmissionRuntime
+            return _activityPlayerLifecycleAdmissionRuntime
                 .TryAuthorizeTransition(
                     preparation.CurrentSnapshot.Token,
                     source,
@@ -119,8 +119,8 @@ namespace Immersive.Framework.GameFlow
                     "Target Activity scene composition completed without a valid pre-commit Activity occurrence/discovery context.");
             }
 
-            if (activityPlayerLifecycleAdmissionRuntime != null &&
-                !activityPlayerLifecycleAdmissionRuntime
+            if (_activityPlayerLifecycleAdmissionRuntime != null &&
+                !_activityPlayerLifecycleAdmissionRuntime
                     .TryConfigureRelocationContext(
                         placementContext,
                         source,
@@ -145,7 +145,7 @@ namespace Immersive.Framework.GameFlow
             if (!authorization.ReadyForTransition ||
                 authorization.CurrentSnapshot == null ||
                 !authorization.CurrentSnapshot.Token.IsValid ||
-                activityPlayerLifecycleAdmissionRuntime == null)
+                _activityPlayerLifecycleAdmissionRuntime == null)
             {
                 return ActivityActivationGateResult.Blocked(
                     source,
@@ -154,7 +154,7 @@ namespace Immersive.Framework.GameFlow
             }
 
             ActivityPlayerLifecycleAdmissionResult commit =
-                activityPlayerLifecycleAdmissionRuntime.TryCommit(
+                _activityPlayerLifecycleAdmissionRuntime.TryCommit(
                     authorization.CurrentSnapshot.Token,
                     placementContext,
                     source,
@@ -187,7 +187,7 @@ namespace Immersive.Framework.GameFlow
                     "Target Activity has no valid pre-commit occurrence/discovery context for relocation.");
             }
 
-            if (activityPlayerLifecycleAdmissionRuntime == null)
+            if (_activityPlayerLifecycleAdmissionRuntime == null)
             {
                 return ActivityActivationGateResult.Allowed(
                     source,
@@ -195,7 +195,7 @@ namespace Immersive.Framework.GameFlow
                     "Player lifecycle runtime is absent; no Activity Player relocation authority is composed.");
             }
 
-            return activityPlayerLifecycleAdmissionRuntime
+            return _activityPlayerLifecycleAdmissionRuntime
                 .TryConfigureRelocationContext(
                     context,
                     source,
@@ -220,13 +220,13 @@ namespace Immersive.Framework.GameFlow
                 authorization.NotRequired ||
                 authorization.CurrentSnapshot == null ||
                 !authorization.CurrentSnapshot.Token.IsValid ||
-                activityPlayerLifecycleAdmissionRuntime == null)
+                _activityPlayerLifecycleAdmissionRuntime == null)
             {
                 return;
             }
 
             ActivityPlayerLifecycleAdmissionSnapshot live =
-                activityPlayerLifecycleAdmissionRuntime.CreateSnapshot();
+                _activityPlayerLifecycleAdmissionRuntime.CreateSnapshot();
             if (live == null ||
                 live.Token != authorization.CurrentSnapshot.Token ||
                 !live.IsRollbackAvailable)
@@ -234,7 +234,7 @@ namespace Immersive.Framework.GameFlow
                 return;
             }
 
-            activityPlayerLifecycleAdmissionRuntime.TryRollback(
+            _activityPlayerLifecycleAdmissionRuntime.TryRollback(
                 live.Token,
                 source,
                 reason);

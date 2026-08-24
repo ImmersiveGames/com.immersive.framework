@@ -38,26 +38,26 @@ namespace Immersive.Framework.PlayerParticipation
         [Tooltip("Explicit child transform where a contextual Logical Actor Host is materialized or scene-authored.")]
         private Transform actorMount;
 
-        [NonSerialized] private AdmissionState admissionState;
-        [NonSerialized] private PlayerSlotId joinedPlayerSlotId;
-        [NonSerialized] private int joinedConfiguredIndex = -1;
-        [NonSerialized] private string admissionSource = string.Empty;
-        [NonSerialized] private string admissionReason = string.Empty;
+        [NonSerialized] private AdmissionState _admissionState;
+        [NonSerialized] private PlayerSlotId _joinedPlayerSlotId;
+        [NonSerialized] private int _joinedConfiguredIndex = -1;
+        [NonSerialized] private string _admissionSource = string.Empty;
+        [NonSerialized] private string _admissionReason = string.Empty;
 
         public PlayerInput PlayerInput => playerInput;
         public Transform ActorMount => actorMount;
         public bool HasPlayerInputEvidence => playerInput != null;
         public bool HasActorMount => actorMount != null;
-        public bool IsAdmissionStaged => admissionState == AdmissionState.Staged;
-        public bool IsJoined => admissionState == AdmissionState.Joined;
-        public bool IsReleaseStaged => admissionState == AdmissionState.ReleaseStaged;
-        public bool IsReleaseFailed => admissionState == AdmissionState.ReleaseFailed;
-        internal bool IsAdmissionReleased => admissionState == AdmissionState.None;
-        public bool HasJoinedSlot => IsJoined && joinedPlayerSlotId.IsValid;
-        public PlayerSlotId JoinedPlayerSlotId => HasJoinedSlot ? joinedPlayerSlotId : default;
-        public int JoinedConfiguredIndex => IsJoined ? joinedConfiguredIndex : -1;
-        public string AdmissionSource => admissionSource.NormalizeText();
-        public string AdmissionReason => admissionReason.NormalizeText();
+        public bool IsAdmissionStaged => _admissionState == AdmissionState.Staged;
+        public bool IsJoined => _admissionState == AdmissionState.Joined;
+        public bool IsReleaseStaged => _admissionState == AdmissionState.ReleaseStaged;
+        public bool IsReleaseFailed => _admissionState == AdmissionState.ReleaseFailed;
+        internal bool IsAdmissionReleased => _admissionState == AdmissionState.None;
+        public bool HasJoinedSlot => IsJoined && _joinedPlayerSlotId.IsValid;
+        public PlayerSlotId JoinedPlayerSlotId => HasJoinedSlot ? _joinedPlayerSlotId : default;
+        public int JoinedConfiguredIndex => IsJoined ? _joinedConfiguredIndex : -1;
+        public string AdmissionSource => _admissionSource.NormalizeText();
+        public string AdmissionReason => _admissionReason.NormalizeText();
         public bool HasLogicalActor =>
             actorMount != null &&
             actorMount.GetComponentInChildren<ActorDeclaration>(true) != null;
@@ -129,19 +129,19 @@ namespace Immersive.Framework.PlayerParticipation
                 return false;
             }
 
-            if (admissionState != AdmissionState.None)
+            if (_admissionState != AdmissionState.None)
             {
-                issue = admissionState == AdmissionState.Joined
-                    ? $"Local Player Host is already joined to Slot '{joinedPlayerSlotId.StableText}'."
-                    : $"Local Player Host cannot stage admission from state '{admissionState}'.";
+                issue = _admissionState == AdmissionState.Joined
+                    ? $"Local Player Host is already joined to Slot '{_joinedPlayerSlotId.StableText}'."
+                    : $"Local Player Host cannot stage admission from state '{_admissionState}'.";
                 return false;
             }
 
-            joinedPlayerSlotId = reservedSlot.PlayerSlotId;
-            joinedConfiguredIndex = reservedSlot.ConfiguredIndex;
-            admissionSource = source.NormalizeTextOrFallback(nameof(LocalPlayerHostAuthoring));
-            admissionReason = reason.NormalizeTextOrFallback("local-player-host-admission");
-            admissionState = AdmissionState.Staged;
+            _joinedPlayerSlotId = reservedSlot.PlayerSlotId;
+            _joinedConfiguredIndex = reservedSlot.ConfiguredIndex;
+            _admissionSource = source.NormalizeTextOrFallback(nameof(LocalPlayerHostAuthoring));
+            _admissionReason = reason.NormalizeTextOrFallback("local-player-host-admission");
+            _admissionState = AdmissionState.Staged;
             return true;
         }
 
@@ -150,7 +150,7 @@ namespace Immersive.Framework.PlayerParticipation
             string source,
             string reason)
         {
-            if (admissionState != AdmissionState.Staged || !joinedPlayerSlotId.IsValid)
+            if (_admissionState != AdmissionState.Staged || !_joinedPlayerSlotId.IsValid)
             {
                 throw new InvalidOperationException(
                     "Local Player Host has no staged admission to commit.");
@@ -162,21 +162,21 @@ namespace Immersive.Framework.PlayerParticipation
                     "Local Player Host admission commit requires a valid Joined Player Slot snapshot.");
             }
 
-            if (joinedSlot.PlayerSlotId != joinedPlayerSlotId ||
-                joinedSlot.ConfiguredIndex != joinedConfiguredIndex)
+            if (joinedSlot.PlayerSlotId != _joinedPlayerSlotId ||
+                joinedSlot.ConfiguredIndex != _joinedConfiguredIndex)
             {
                 throw new InvalidOperationException(
                     "Local Player Host admission commit does not match the staged Player Slot identity.");
             }
 
-            admissionSource = source.NormalizeTextOrFallback(admissionSource);
-            admissionReason = reason.NormalizeTextOrFallback(admissionReason);
-            admissionState = AdmissionState.Joined;
+            _admissionSource = source.NormalizeTextOrFallback(_admissionSource);
+            _admissionReason = reason.NormalizeTextOrFallback(_admissionReason);
+            _admissionState = AdmissionState.Joined;
         }
 
         internal void RollbackStagedAdmission(string source, string reason)
         {
-            if (admissionState != AdmissionState.Staged)
+            if (_admissionState != AdmissionState.Staged)
             {
                 return;
             }
@@ -192,21 +192,21 @@ namespace Immersive.Framework.PlayerParticipation
         {
             issue = string.Empty;
 
-            if (admissionState == AdmissionState.None)
+            if (_admissionState == AdmissionState.None)
             {
                 return true;
             }
 
-            if (admissionState != AdmissionState.Joined &&
-                admissionState != AdmissionState.ReleaseFailed)
+            if (_admissionState != AdmissionState.Joined &&
+                _admissionState != AdmissionState.ReleaseFailed)
             {
-                issue = $"Local Player Host cannot release admission from state '{admissionState}'.";
+                issue = $"Local Player Host cannot release admission from state '{_admissionState}'.";
                 return false;
             }
 
             if (!expectedPlayerSlotId.IsValid ||
-                !joinedPlayerSlotId.IsValid ||
-                expectedPlayerSlotId != joinedPlayerSlotId)
+                !_joinedPlayerSlotId.IsValid ||
+                expectedPlayerSlotId != _joinedPlayerSlotId)
             {
                 issue = "Local Player Host admission release rejected a foreign or stale Player Slot identity.";
                 return false;
@@ -226,12 +226,12 @@ namespace Immersive.Framework.PlayerParticipation
                 return false;
             }
 
-            if (admissionState == AdmissionState.None)
+            if (_admissionState == AdmissionState.None)
             {
                 return true;
             }
 
-            admissionState = AdmissionState.ReleaseStaged;
+            _admissionState = AdmissionState.ReleaseStaged;
             try
             {
                 ClearAdmission(
@@ -241,9 +241,9 @@ namespace Immersive.Framework.PlayerParticipation
             }
             catch (Exception exception)
             {
-                admissionState = AdmissionState.ReleaseFailed;
-                admissionSource = source.NormalizeTextOrFallback(nameof(LocalPlayerHostAuthoring));
-                admissionReason = reason.NormalizeTextOrFallback("local-player-host-admission-release-failed");
+                _admissionState = AdmissionState.ReleaseFailed;
+                _admissionSource = source.NormalizeTextOrFallback(nameof(LocalPlayerHostAuthoring));
+                _admissionReason = reason.NormalizeTextOrFallback("local-player-host-admission-release-failed");
                 issue = $"Local Player Host admission release failed. {exception.Message}";
                 return false;
             }
@@ -273,10 +273,10 @@ namespace Immersive.Framework.PlayerParticipation
                 return false;
             }
 
-            if (admissionState == AdmissionState.Joined)
+            if (_admissionState == AdmissionState.Joined)
             {
-                if (joinedPlayerSlotId == joinedSlot.PlayerSlotId &&
-                    joinedConfiguredIndex == joinedSlot.ConfiguredIndex)
+                if (_joinedPlayerSlotId == joinedSlot.PlayerSlotId &&
+                    _joinedConfiguredIndex == joinedSlot.ConfiguredIndex)
                 {
                     return true;
                 }
@@ -285,18 +285,18 @@ namespace Immersive.Framework.PlayerParticipation
                 return false;
             }
 
-            if (admissionState != AdmissionState.None &&
-                admissionState != AdmissionState.ReleaseFailed)
+            if (_admissionState != AdmissionState.None &&
+                _admissionState != AdmissionState.ReleaseFailed)
             {
-                issue = $"Local Player Host cannot restore admission from state '{admissionState}'.";
+                issue = $"Local Player Host cannot restore admission from state '{_admissionState}'.";
                 return false;
             }
 
-            joinedPlayerSlotId = joinedSlot.PlayerSlotId;
-            joinedConfiguredIndex = joinedSlot.ConfiguredIndex;
-            admissionSource = source.NormalizeTextOrFallback(nameof(LocalPlayerHostAuthoring));
-            admissionReason = reason.NormalizeTextOrFallback("local-player-host-admission-restore");
-            admissionState = AdmissionState.Joined;
+            _joinedPlayerSlotId = joinedSlot.PlayerSlotId;
+            _joinedConfiguredIndex = joinedSlot.ConfiguredIndex;
+            _admissionSource = source.NormalizeTextOrFallback(nameof(LocalPlayerHostAuthoring));
+            _admissionReason = reason.NormalizeTextOrFallback("local-player-host-admission-restore");
+            _admissionState = AdmissionState.Joined;
             return true;
         }
 
@@ -392,11 +392,11 @@ namespace Immersive.Framework.PlayerParticipation
 
         private void ClearAdmission(string source, string reason)
         {
-            joinedPlayerSlotId = default;
-            joinedConfiguredIndex = -1;
-            admissionSource = source ?? string.Empty;
-            admissionReason = reason ?? string.Empty;
-            admissionState = AdmissionState.None;
+            _joinedPlayerSlotId = default;
+            _joinedConfiguredIndex = -1;
+            _admissionSource = source ?? string.Empty;
+            _admissionReason = reason ?? string.Empty;
+            _admissionState = AdmissionState.None;
         }
 
 #if UNITY_EDITOR

@@ -124,7 +124,7 @@ namespace Immersive.Framework.PlayerParticipation
                             LocalPlayerProvisioningConsumerSlotObservation>());
 
         private readonly IReadOnlyList<
-            LocalPlayerProvisioningConsumerSlotObservation> slots;
+            LocalPlayerProvisioningConsumerSlotObservation> _slots;
 
         internal LocalPlayerProvisioningConsumerObservationSnapshot(
             bool isAvailable,
@@ -146,7 +146,7 @@ namespace Immersive.Framework.PlayerParticipation
             Lifecycle = lifecycle;
             ActivityOwner = activityOwner;
             ActivityOccurrence = Math.Max(0, activityOccurrence);
-            this.slots = CopySlots(slots);
+            this._slots = CopySlots(slots);
             Diagnostic = diagnostic ?? string.Empty;
         }
 
@@ -180,7 +180,7 @@ namespace Immersive.Framework.PlayerParticipation
         public bool HasCurrentActivityOccurrence =>
             ActivityOwner.IsValid && ActivityOccurrence > 0;
         public IReadOnlyList<LocalPlayerProvisioningConsumerSlotObservation>
-            Slots => slots;
+            Slots => _slots;
         public int SessionRevision => Participation?.Revision ?? 0;
         public int AppliedSessionRevision =>
             Lifecycle?.AppliedSessionRevision ?? 0;

@@ -17,7 +17,7 @@ namespace Immersive.Framework.RuntimeContent
         "IF-ID-05 process-local definition token for operational ownership.")]
     public readonly struct RuntimeDefinitionToken : IEquatable<RuntimeDefinitionToken>
     {
-        private static long s_nextValue;
+        private static long _sNextValue;
 
         private readonly long _value;
 
@@ -60,10 +60,10 @@ namespace Immersive.Framework.RuntimeContent
         /// </summary>
         public static RuntimeDefinitionToken MintAnonymous()
         {
-            long value = Interlocked.Increment(ref s_nextValue);
+            long value = Interlocked.Increment(ref _sNextValue);
             if (value == 0L)
             {
-                value = Interlocked.Increment(ref s_nextValue);
+                value = Interlocked.Increment(ref _sNextValue);
             }
 
             return new RuntimeDefinitionToken(value);
@@ -107,10 +107,10 @@ namespace Immersive.Framework.RuntimeContent
                     definition,
                     _ =>
                     {
-                        long value = Interlocked.Increment(ref s_nextValue);
+                        long value = Interlocked.Increment(ref _sNextValue);
                         if (value == 0L)
                         {
-                            value = Interlocked.Increment(ref s_nextValue);
+                            value = Interlocked.Increment(ref _sNextValue);
                         }
 
                         return new Holder(value);

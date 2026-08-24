@@ -15,23 +15,23 @@ namespace Immersive.Framework.InputMode
         "IC2 scoped resident InputMode state owner and request arbiter.")]
     public sealed class InputModeRuntimeContext
     {
-        private readonly string contextId;
+        private readonly string _contextId;
 
-        private InputModeState currentState;
-        private long operationSequence;
-        private bool operationInFlight;
-        private InputModeRuntimeTransaction activeTransaction;
-        private InputModeRuntimeOperationStatus lastStatus =
+        private InputModeState _currentState;
+        private long _operationSequence;
+        private bool _operationInFlight;
+        private InputModeRuntimeTransaction _activeTransaction;
+        private InputModeRuntimeOperationStatus _lastStatus =
             InputModeRuntimeOperationStatus.Unknown;
-        private string lastMessage =
+        private string _lastMessage =
             "InputMode runtime context has not processed an operation.";
 
         public InputModeRuntimeContext(
             string contextId,
             InputModeState initialState)
         {
-            this.contextId = contextId.NormalizeText();
-            if (string.IsNullOrEmpty(this.contextId))
+            this._contextId = contextId.NormalizeText();
+            if (string.IsNullOrEmpty(this._contextId))
             {
                 throw new ArgumentException(
                     "InputMode runtime context requires an explicit context id.",
@@ -45,12 +45,12 @@ namespace Immersive.Framework.InputMode
                     nameof(initialState));
             }
 
-            currentState = initialState;
+            _currentState = initialState;
         }
 
-        public string ContextId => contextId;
-        public InputModeState CurrentState => currentState;
-        public bool OperationInFlight => operationInFlight;
+        public string ContextId => _contextId;
+        public InputModeState CurrentState => _currentState;
+        public bool OperationInFlight => _operationInFlight;
 
         public InputModeRuntimeOperationResult TryBegin(
             InputModeRequest request,
@@ -67,29 +67,29 @@ namespace Immersive.Framework.InputMode
                     InputModeRuntimeOperationStatus.RejectedInvalidRequest,
                     request,
                     default,
-                    currentState,
-                    currentState,
+                    _currentState,
+                    _currentState,
                     resolvedSource,
                     request.Reason,
                     "InputMode runtime rejected an invalid target mode.");
             }
 
-            if (operationInFlight)
+            if (_operationInFlight)
             {
                 return Record(
                     InputModeRuntimeOperationStatus.RejectedOperationInFlight,
                     request,
-                    activeTransaction,
-                    currentState,
-                    currentState,
+                    _activeTransaction,
+                    _currentState,
+                    _currentState,
                     resolvedSource,
                     request.Reason,
-                    $"InputMode runtime already has transaction '{activeTransaction.Sequence}' in flight.");
+                    $"InputMode runtime already has transaction '{_activeTransaction.Sequence}' in flight.");
             }
 
             InputModeRequestResult preview =
                 InputModeRequestEvaluator.Preview(
-                    currentState,
+                    _currentState,
                     request,
                     resolvedSource);
             if (preview.Ignored)
@@ -98,8 +98,8 @@ namespace Immersive.Framework.InputMode
                     InputModeRuntimeOperationStatus.IgnoredAlreadyCurrent,
                     request,
                     default,
-                    currentState,
-                    currentState,
+                    _currentState,
+                    _currentState,
                     resolvedSource,
                     request.Reason,
                     "InputMode runtime is already in the requested mode.");
@@ -111,29 +111,29 @@ namespace Immersive.Framework.InputMode
                     InputModeRuntimeOperationStatus.RejectedInvalidRequest,
                     request,
                     default,
-                    currentState,
-                    currentState,
+                    _currentState,
+                    _currentState,
                     resolvedSource,
                     request.Reason,
                     "InputMode runtime request preview failed.");
             }
 
-            operationSequence++;
+            _operationSequence++;
             transaction = new InputModeRuntimeTransaction(
-                contextId,
-                operationSequence,
+                _contextId,
+                _operationSequence,
                 request,
                 preview.PreviousState,
                 preview.CurrentState);
-            activeTransaction = transaction;
-            operationInFlight = true;
+            _activeTransaction = transaction;
+            _operationInFlight = true;
 
             return Record(
                 InputModeRuntimeOperationStatus.SucceededPrepared,
                 request,
                 transaction,
-                currentState,
-                currentState,
+                _currentState,
+                _currentState,
                 resolvedSource,
                 request.Reason,
                 $"InputMode transaction '{transaction.Sequence}' prepared.");
@@ -147,7 +147,7 @@ namespace Immersive.Framework.InputMode
             string resolvedSource = source.NormalizeTextOrFallback(
                 nameof(InputModeRuntimeContext));
             string resolvedReason = reason.NormalizeText();
-            InputModeState previous = currentState;
+            InputModeState previous = _currentState;
 
             if (!IsCurrentTransaction(transaction))
             {
@@ -156,21 +156,21 @@ namespace Immersive.Framework.InputMode
                         .RejectedForeignOrStaleTransaction,
                     transaction.Request,
                     transaction,
-                    currentState,
-                    currentState,
+                    _currentState,
+                    _currentState,
                     resolvedSource,
                     resolvedReason,
                     "InputMode commit rejected missing, foreign or stale transaction evidence.");
             }
 
-            currentState = transaction.NextState;
+            _currentState = transaction.NextState;
             ClearActiveTransaction();
             return Record(
                 InputModeRuntimeOperationStatus.SucceededCommitted,
                 transaction.Request,
                 transaction,
                 previous,
-                currentState,
+                _currentState,
                 resolvedSource,
                 resolvedReason,
                 $"InputMode transaction '{transaction.Sequence}' committed.");
@@ -192,14 +192,14 @@ namespace Immersive.Framework.InputMode
                         .RejectedForeignOrStaleTransaction,
                     transaction.Request,
                     transaction,
-                    currentState,
-                    currentState,
+                    _currentState,
+                    _currentState,
                     resolvedSource,
                     resolvedReason,
                     "InputMode rollback rejected missing, foreign or stale transaction evidence.");
             }
 
-            InputModeState preserved = currentState;
+            InputModeState preserved = _currentState;
             ClearActiveTransaction();
             return Record(
                 InputModeRuntimeOperationStatus.RolledBack,
@@ -215,33 +215,33 @@ namespace Immersive.Framework.InputMode
         public InputModeRuntimeSnapshot CreateSnapshot()
         {
             return new InputModeRuntimeSnapshot(
-                contextId,
-                currentState,
-                operationSequence,
-                operationInFlight,
-                activeTransaction,
-                lastStatus,
-                lastMessage);
+                _contextId,
+                _currentState,
+                _operationSequence,
+                _operationInFlight,
+                _activeTransaction,
+                _lastStatus,
+                _lastMessage);
         }
 
         private bool IsCurrentTransaction(
             InputModeRuntimeTransaction transaction)
         {
-            return operationInFlight &&
+            return _operationInFlight &&
                    transaction.IsValid &&
-                   activeTransaction.IsValid &&
-                   transaction == activeTransaction &&
+                   _activeTransaction.IsValid &&
+                   transaction == _activeTransaction &&
                    string.Equals(
                        transaction.ContextId,
-                       contextId,
+                       _contextId,
                        StringComparison.Ordinal) &&
-                   transaction.PreviousState.Equals(currentState);
+                   transaction.PreviousState.Equals(_currentState);
         }
 
         private void ClearActiveTransaction()
         {
-            operationInFlight = false;
-            activeTransaction = default;
+            _operationInFlight = false;
+            _activeTransaction = default;
         }
 
         private InputModeRuntimeOperationResult Record(
@@ -254,8 +254,8 @@ namespace Immersive.Framework.InputMode
             string reason,
             string message)
         {
-            lastStatus = status;
-            lastMessage = message.NormalizeText();
+            _lastStatus = status;
+            _lastMessage = message.NormalizeText();
             return new InputModeRuntimeOperationResult(
                 status,
                 request,
@@ -265,7 +265,7 @@ namespace Immersive.Framework.InputMode
                 CreateSnapshot(),
                 source,
                 reason,
-                lastMessage);
+                _lastMessage);
         }
     }
 }

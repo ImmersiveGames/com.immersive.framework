@@ -17,45 +17,45 @@ namespace Immersive.Framework.PlayerParticipation
     {
         private sealed class ActiveRecord
         {
-            internal ActivityPlayerAdmissionStageToken Token;
-            internal ActivityPlayerAdmissionStageScope Scope;
-            internal ActivityPlayerAdmissionStageResolution Resolution;
-            internal ActivityPlayerAdmissionFlowDecision Decision;
-            internal ActivityPlayerAdmissionStageSnapshot Snapshot;
+            internal ActivityPlayerAdmissionStageToken token;
+            internal ActivityPlayerAdmissionStageScope scope;
+            internal ActivityPlayerAdmissionStageResolution resolution;
+            internal ActivityPlayerAdmissionFlowDecision decision;
+            internal ActivityPlayerAdmissionStageSnapshot snapshot;
         }
 
-        private readonly IActivityPlayerAdmissionStageScopeRuntime scopeRuntime;
-        private readonly IActivityPlayerAdmissionStageResolver resolver;
-        private readonly ActivityPlayerAdmissionFlowGate flowGate;
-        private ActiveRecord active;
-        private int stageSequence;
-        private ActivityPlayerAdmissionStageSnapshot lastSnapshot;
+        private readonly IActivityPlayerAdmissionStageScopeRuntime _scopeRuntime;
+        private readonly IActivityPlayerAdmissionStageResolver _resolver;
+        private readonly ActivityPlayerAdmissionFlowGate _flowGate;
+        private ActiveRecord _active;
+        private int _stageSequence;
+        private ActivityPlayerAdmissionStageSnapshot _lastSnapshot;
 
         internal ActivityPlayerAdmissionStageRuntimeContext(
             IActivityPlayerAdmissionStageScopeRuntime scopeRuntime,
             IActivityPlayerAdmissionStageResolver resolver,
             ActivityPlayerAdmissionFlowGate flowGate = null)
         {
-            this.scopeRuntime = scopeRuntime ??
+            this._scopeRuntime = scopeRuntime ??
                 throw new ArgumentNullException(nameof(scopeRuntime));
-            this.resolver = resolver ??
+            this._resolver = resolver ??
                 throw new ArgumentNullException(nameof(resolver));
-            this.flowGate = flowGate ?? new ActivityPlayerAdmissionFlowGate();
-            lastSnapshot = ActivityPlayerAdmissionStageSnapshot.Empty(
+            this._flowGate = flowGate ?? new ActivityPlayerAdmissionFlowGate();
+            _lastSnapshot = ActivityPlayerAdmissionStageSnapshot.Empty(
                 nameof(ActivityPlayerAdmissionStageRuntimeContext),
                 "runtime-initialization",
                 "No Activity Player admission stage is active.");
         }
 
-        internal int StageSequence => stageSequence;
-        internal bool HasActiveStage => active != null;
+        internal int StageSequence => _stageSequence;
+        internal bool HasActiveStage => _active != null;
 
         internal ActivityPlayerAdmissionStageResult TryStage(
             ActivityAsset activity,
             string source,
             string reason)
         {
-            const string Operation = "StageActivityPlayerAdmission";
+            const string operation = "StageActivityPlayerAdmission";
             string resolvedSource = source.NormalizeTextOrFallback(
                 nameof(ActivityPlayerAdmissionStageRuntimeContext));
             string resolvedReason = reason.NormalizeTextOrFallback(
@@ -66,7 +66,7 @@ namespace Immersive.Framework.PlayerParticipation
             {
                 return Result(
                     ActivityPlayerAdmissionStageStatus.RejectedInvalidRequest,
-                    Operation,
+                    operation,
                     previous,
                     previous,
                     false,
@@ -75,11 +75,11 @@ namespace Immersive.Framework.PlayerParticipation
                     "Staged Activity Player admission requires an ActivityAsset.");
             }
 
-            if (active != null)
+            if (_active != null)
             {
                 return Result(
                     ActivityPlayerAdmissionStageStatus.RejectedAnotherStageActive,
-                    Operation,
+                    operation,
                     previous,
                     previous,
                     false,
@@ -88,15 +88,15 @@ namespace Immersive.Framework.PlayerParticipation
                     "Another Activity Player admission stage is already active.");
             }
 
-            stageSequence++;
+            _stageSequence++;
             ActivityPlayerAdmissionStageScope scope = null;
             string scopeIssue = string.Empty;
             bool scopeCreated;
             try
             {
-                scopeCreated = scopeRuntime.TryCreate(
+                scopeCreated = _scopeRuntime.TryCreate(
                     activity,
-                    stageSequence,
+                    _stageSequence,
                     resolvedSource,
                     resolvedReason,
                     out scope,
@@ -111,26 +111,26 @@ namespace Immersive.Framework.PlayerParticipation
 
             if (!scopeCreated || scope == null || !scope.IsValid)
             {
-                lastSnapshot = ActivityPlayerAdmissionStageSnapshot.Empty(
+                _lastSnapshot = ActivityPlayerAdmissionStageSnapshot.Empty(
                     resolvedSource,
                     resolvedReason,
                     scopeIssue.NormalizeTextOrFallback(
                         "Staged Activity scope creation failed."));
                 return Result(
                     ActivityPlayerAdmissionStageStatus.FailedScopeCreation,
-                    Operation,
+                    operation,
                     previous,
-                    lastSnapshot,
+                    _lastSnapshot,
                     false,
                     false,
                     string.Empty,
-                    lastSnapshot.Message);
+                    _lastSnapshot.Message);
             }
 
             ActivityPlayerAdmissionStageResolution resolution;
             try
             {
-                resolution = resolver.Resolve(
+                resolution = _resolver.Resolve(
                     activity,
                     scope,
                     resolvedSource,
@@ -161,7 +161,7 @@ namespace Immersive.Framework.PlayerParticipation
                 var failedToken = new ActivityPlayerAdmissionStageToken(
                     resolution?.ParticipationSnapshot?.ContextId ?? string.Empty,
                     scope.Owner,
-                    stageSequence);
+                    _stageSequence);
                 var failed = new ActivityPlayerAdmissionStageSnapshot(
                     failedToken,
                     rollbackSucceeded
@@ -176,23 +176,23 @@ namespace Immersive.Framework.PlayerParticipation
                     resolvedSource,
                     resolvedReason,
                     resolutionIssue);
-                lastSnapshot = failed;
+                _lastSnapshot = failed;
                 if (!rollbackSucceeded)
                 {
-                    active = new ActiveRecord
+                    _active = new ActiveRecord
                     {
-                        Token = failedToken,
-                        Scope = scope,
-                        Resolution = resolution,
-                        Decision = null,
-                        Snapshot = failed
+                        token = failedToken,
+                        scope = scope,
+                        resolution = resolution,
+                        decision = null,
+                        snapshot = failed
                     };
                 }
                 return Result(
                     rollbackSucceeded
                         ? ActivityPlayerAdmissionStageStatus.FailedResolution
                         : ActivityPlayerAdmissionStageStatus.FailedRollback,
-                    Operation,
+                    operation,
                     previous,
                     failed,
                     true,
@@ -201,7 +201,7 @@ namespace Immersive.Framework.PlayerParticipation
                     resolutionIssue);
             }
 
-            ActivityPlayerAdmissionFlowDecision decision = flowGate.Evaluate(
+            ActivityPlayerAdmissionFlowDecision decision = _flowGate.Evaluate(
                 activity,
                 resolution.ParticipationSnapshot,
                 resolution.PreparationSnapshot,
@@ -222,7 +222,7 @@ namespace Immersive.Framework.PlayerParticipation
                 var failedToken = new ActivityPlayerAdmissionStageToken(
                     resolution.ParticipationSnapshot?.ContextId ?? string.Empty,
                     scope.Owner,
-                    stageSequence);
+                    _stageSequence);
                 var failed = new ActivityPlayerAdmissionStageSnapshot(
                     failedToken,
                     rollbackSucceeded
@@ -237,23 +237,23 @@ namespace Immersive.Framework.PlayerParticipation
                     resolvedSource,
                     resolvedReason,
                     "Activity Player admission flow gate returned no decision.");
-                lastSnapshot = failed;
+                _lastSnapshot = failed;
                 if (!rollbackSucceeded)
                 {
-                    active = new ActiveRecord
+                    _active = new ActiveRecord
                     {
-                        Token = failedToken,
-                        Scope = scope,
-                        Resolution = resolution,
-                        Decision = null,
-                        Snapshot = failed
+                        token = failedToken,
+                        scope = scope,
+                        resolution = resolution,
+                        decision = null,
+                        snapshot = failed
                     };
                 }
                 return Result(
                     rollbackSucceeded
                         ? ActivityPlayerAdmissionStageStatus.FailedEvaluation
                         : ActivityPlayerAdmissionStageStatus.FailedRollback,
-                    Operation,
+                    operation,
                     previous,
                     failed,
                     true,
@@ -265,7 +265,7 @@ namespace Immersive.Framework.PlayerParticipation
             var token = new ActivityPlayerAdmissionStageToken(
                 decision.SessionContextId,
                 scope.Owner,
-                stageSequence);
+                _stageSequence);
 
             if (decision.CanProceed && token.IsValid)
             {
@@ -281,18 +281,18 @@ namespace Immersive.Framework.PlayerParticipation
                     resolvedSource,
                     resolvedReason,
                     "Staged Activity Player admission is ready for explicit commit handoff.");
-                active = new ActiveRecord
+                _active = new ActiveRecord
                 {
-                    Token = token,
-                    Scope = scope,
-                    Resolution = resolution,
-                    Decision = decision,
-                    Snapshot = ready
+                    token = token,
+                    scope = scope,
+                    resolution = resolution,
+                    decision = decision,
+                    snapshot = ready
                 };
-                lastSnapshot = ready;
+                _lastSnapshot = ready;
                 return Result(
                     ActivityPlayerAdmissionStageStatus.SucceededReadyToCommit,
-                    Operation,
+                    operation,
                     previous,
                     ready,
                     false,
@@ -325,16 +325,16 @@ namespace Immersive.Framework.PlayerParticipation
                 stageRollbackSucceeded
                     ? "Staged Activity Player admission did not proceed and was fully rolled back."
                     : "Staged Activity Player admission did not proceed and rollback failed.");
-            lastSnapshot = rolledBack;
+            _lastSnapshot = rolledBack;
             if (!stageRollbackSucceeded)
             {
-                active = new ActiveRecord
+                _active = new ActiveRecord
                 {
-                    Token = token,
-                    Scope = scope,
-                    Resolution = resolution,
-                    Decision = decision,
-                    Snapshot = rolledBack
+                    token = token,
+                    scope = scope,
+                    resolution = resolution,
+                    decision = decision,
+                    snapshot = rolledBack
                 };
             }
 
@@ -342,7 +342,7 @@ namespace Immersive.Framework.PlayerParticipation
                 stageRollbackSucceeded
                     ? ActivityPlayerAdmissionStageStatus.SucceededRolledBack
                     : ActivityPlayerAdmissionStageStatus.FailedRollback,
-                Operation,
+                operation,
                 previous,
                 rolledBack,
                 true,
@@ -355,7 +355,7 @@ namespace Immersive.Framework.PlayerParticipation
             ActivityPlayerAdmissionStageToken expectedStage,
             out ActivityPlayerAdmissionStageCommit commit)
         {
-            const string Operation = "CommitActivityPlayerAdmissionStage";
+            const string operation = "CommitActivityPlayerAdmissionStage";
             commit = null;
             ActivityPlayerAdmissionStageSnapshot previous = CreateSnapshot();
 
@@ -363,7 +363,7 @@ namespace Immersive.Framework.PlayerParticipation
             {
                 return Result(
                     ActivityPlayerAdmissionStageStatus.RejectedForeignOrStaleStage,
-                    Operation,
+                    operation,
                     previous,
                     previous,
                     false,
@@ -372,11 +372,11 @@ namespace Immersive.Framework.PlayerParticipation
                     issue);
             }
 
-            if (!active.Snapshot.IsReadyToCommit)
+            if (!_active.snapshot.IsReadyToCommit)
             {
                 return Result(
                     ActivityPlayerAdmissionStageStatus.RejectedNotReadyToCommit,
-                    Operation,
+                    operation,
                     previous,
                     previous,
                     false,
@@ -386,29 +386,29 @@ namespace Immersive.Framework.PlayerParticipation
             }
 
             var committed = new ActivityPlayerAdmissionStageSnapshot(
-                active.Token,
+                _active.token,
                 ActivityPlayerAdmissionStageState.Committed,
-                active.Decision,
-                active.Scope.Owner,
+                _active.decision,
+                _active.scope.Owner,
                 true,
                 true,
                 false,
                 false,
-                active.Snapshot.Source,
-                active.Snapshot.Reason,
+                _active.snapshot.Source,
+                _active.snapshot.Reason,
                 "Staged Activity Player admission ownership was handed off for Activity commit.");
             commit = new ActivityPlayerAdmissionStageCommit(
-                active.Token,
-                active.Decision,
-                scopeRuntime,
-                resolver,
-                active.Scope,
-                active.Resolution);
-            active = null;
-            lastSnapshot = committed;
+                _active.token,
+                _active.decision,
+                _scopeRuntime,
+                _resolver,
+                _active.scope,
+                _active.resolution);
+            _active = null;
+            _lastSnapshot = committed;
             return Result(
                 ActivityPlayerAdmissionStageStatus.SucceededCommitted,
-                Operation,
+                operation,
                 previous,
                 committed,
                 false,
@@ -422,20 +422,20 @@ namespace Immersive.Framework.PlayerParticipation
             string source,
             string reason)
         {
-            const string Operation = "RollbackActivityPlayerAdmissionStage";
+            const string operation = "RollbackActivityPlayerAdmissionStage";
             ActivityPlayerAdmissionStageSnapshot previous = CreateSnapshot();
             string resolvedSource = source.NormalizeTextOrFallback(
                 nameof(ActivityPlayerAdmissionStageRuntimeContext));
             string resolvedReason = reason.NormalizeTextOrFallback(
                 "rollback-activity-player-admission-stage");
 
-            if (active == null)
+            if (_active == null)
             {
                 return Result(
                     expectedStage.IsValid
                         ? ActivityPlayerAdmissionStageStatus.RejectedForeignOrStaleStage
                         : ActivityPlayerAdmissionStageStatus.SucceededAlreadyRolledBack,
-                    Operation,
+                    operation,
                     previous,
                     previous,
                     false,
@@ -450,7 +450,7 @@ namespace Immersive.Framework.PlayerParticipation
             {
                 return Result(
                     ActivityPlayerAdmissionStageStatus.RejectedForeignOrStaleStage,
-                    Operation,
+                    operation,
                     previous,
                     previous,
                     false,
@@ -460,20 +460,20 @@ namespace Immersive.Framework.PlayerParticipation
             }
 
             bool rollbackSucceeded = RollbackParts(
-                active.Resolution,
-                active.Scope,
+                _active.resolution,
+                _active.scope,
                 resolvedSource,
                 resolvedReason,
                 out string rollbackIssue,
                 out bool resolverRolledBack,
                 out bool scopeReleased);
             var current = new ActivityPlayerAdmissionStageSnapshot(
-                active.Token,
+                _active.token,
                 rollbackSucceeded
                     ? ActivityPlayerAdmissionStageState.RolledBack
                     : ActivityPlayerAdmissionStageState.RollbackFailed,
-                active.Decision,
-                active.Scope.Owner,
+                _active.decision,
+                _active.scope.Owner,
                 true,
                 true,
                 resolverRolledBack,
@@ -483,21 +483,21 @@ namespace Immersive.Framework.PlayerParticipation
                 rollbackSucceeded
                     ? "Activity Player admission stage rolled back."
                     : "Activity Player admission stage rollback failed.");
-            lastSnapshot = current;
+            _lastSnapshot = current;
             if (rollbackSucceeded)
             {
-                active = null;
+                _active = null;
             }
             else
             {
-                active.Snapshot = current;
+                _active.snapshot = current;
             }
 
             return Result(
                 rollbackSucceeded
                     ? ActivityPlayerAdmissionStageStatus.SucceededRolledBack
                     : ActivityPlayerAdmissionStageStatus.FailedRollback,
-                Operation,
+                operation,
                 previous,
                 current,
                 true,
@@ -508,20 +508,20 @@ namespace Immersive.Framework.PlayerParticipation
 
         internal ActivityPlayerAdmissionStageSnapshot CreateSnapshot()
         {
-            return active?.Snapshot ?? lastSnapshot;
+            return _active?.snapshot ?? _lastSnapshot;
         }
 
         private bool TryValidateActive(
             ActivityPlayerAdmissionStageToken expectedStage,
             out string issue)
         {
-            if (active == null)
+            if (_active == null)
             {
                 issue = "No Activity Player admission stage is active.";
                 return false;
             }
 
-            if (!expectedStage.IsValid || expectedStage != active.Token)
+            if (!expectedStage.IsValid || expectedStage != _active.token)
             {
                 issue = "Activity Player admission stage token is foreign or stale.";
                 return false;
@@ -543,7 +543,7 @@ namespace Immersive.Framework.PlayerParticipation
             string resolverIssue = string.Empty;
             try
             {
-                resolverRolledBack = resolver.TryRollback(
+                resolverRolledBack = _resolver.TryRollback(
                     resolution,
                     source,
                     reason,
@@ -562,7 +562,7 @@ namespace Immersive.Framework.PlayerParticipation
             {
                 try
                 {
-                    scopeReleased = scopeRuntime.TryRelease(
+                    scopeReleased = _scopeRuntime.TryRelease(
                         scope,
                         source,
                         reason,

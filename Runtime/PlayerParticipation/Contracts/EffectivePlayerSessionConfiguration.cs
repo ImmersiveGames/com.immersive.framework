@@ -15,7 +15,7 @@ namespace Immersive.Framework.PlayerParticipation
         "ADR-016 resolved immutable Player Session initial configuration.")]
     public sealed class EffectivePlayerSessionConfiguration
     {
-        private readonly IReadOnlyList<EffectivePlayerSlotProvisioning> slots;
+        private readonly IReadOnlyList<EffectivePlayerSlotProvisioning> _slots;
 
         public EffectivePlayerSessionConfiguration(
             IReadOnlyList<EffectivePlayerSlotProvisioning> orderedSlots,
@@ -31,7 +31,7 @@ namespace Immersive.Framework.PlayerParticipation
                 FrameworkCollectionCopy.ToArrayOrEmpty(orderedSlots);
             ValidateSlots(copiedSlots, hostProvisioning);
 
-            slots = Array.AsReadOnly(copiedSlots);
+            _slots = Array.AsReadOnly(copiedSlots);
             InitialJoiningOpen = initialJoiningOpen;
             HostProvisioning = hostProvisioning;
             ActorResolutionPolicy = actorResolutionPolicy;
@@ -40,7 +40,7 @@ namespace Immersive.Framework.PlayerParticipation
         /// <summary>
         /// Resolved Slot provisioning in canonical allocation order.
         /// </summary>
-        public IReadOnlyList<EffectivePlayerSlotProvisioning> Slots => slots;
+        public IReadOnlyList<EffectivePlayerSlotProvisioning> Slots => _slots;
 
         public bool InitialJoiningOpen { get; }
 
@@ -53,7 +53,7 @@ namespace Immersive.Framework.PlayerParticipation
 
         public PlayerActorResolutionPolicy ActorResolutionPolicy { get; }
 
-        public int SupportedSlotCount => slots.Count;
+        public int SupportedSlotCount => _slots.Count;
 
         private static void ValidateSlots(
             IReadOnlyList<EffectivePlayerSlotProvisioning> orderedSlots,

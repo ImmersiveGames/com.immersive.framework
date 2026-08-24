@@ -21,7 +21,7 @@ namespace Immersive.Framework.PlayerParticipation
             assignment = default;
 
             if (!playerSlotId.IsValid ||
-                !recordsBySlot.TryGetValue(playerSlotId, out AdmissionRecord record) ||
+                !_recordsBySlot.TryGetValue(playerSlotId, out AdmissionRecord record) ||
                 record == null)
             {
                 return false;
@@ -60,7 +60,7 @@ namespace Immersive.Framework.PlayerParticipation
             }
 
             SessionPlayerLeaveRuntimeResult leaveConfirmation =
-                participationContext.TryConfirmSessionPlayerLeave(
+                _participationContext.TryConfirmSessionPlayerLeave(
                     leaveToken,
                     source,
                     reason);
@@ -73,7 +73,7 @@ namespace Immersive.Framework.PlayerParticipation
                 return false;
             }
 
-            if (!recordsBySlot.TryGetValue(
+            if (!_recordsBySlot.TryGetValue(
                     leaveToken.PlayerSlotId,
                     out AdmissionRecord record) ||
                 record == null)
@@ -90,7 +90,7 @@ namespace Immersive.Framework.PlayerParticipation
                 return false;
             }
 
-            if (participationContext.TryGetCurrentAssignment(
+            if (_participationContext.TryGetCurrentAssignment(
                     leaveToken.PlayerSlotId,
                     out PlayerSlotAssignmentSnapshot currentAssignment) &&
                 currentAssignment.IsAssigned)
@@ -100,8 +100,8 @@ namespace Immersive.Framework.PlayerParticipation
                 return false;
             }
 
-            records.Remove(record);
-            recordsBySlot.Remove(leaveToken.PlayerSlotId);
+            _records.Remove(record);
+            _recordsBySlot.Remove(leaveToken.PlayerSlotId);
             return true;
         }
     }

@@ -19,7 +19,7 @@ namespace Immersive.Framework.PlayerParticipation
                             ManagerProvisionedPlayerLifecycleSlotSnapshot>());
 
         private readonly IReadOnlyList<
-            ManagerProvisionedPlayerLifecycleSlotSnapshot> slots;
+            ManagerProvisionedPlayerLifecycleSlotSnapshot> _slots;
 
         [Obsolete(
             "Use the overload that declares GateEvidenceScope explicitly.")]
@@ -109,7 +109,7 @@ namespace Immersive.Framework.PlayerParticipation
             GateHeld = HasGateEvidence && gateHeld;
             JoiningOpen = joiningOpen;
             HostCount = Math.Max(0, hostCount);
-            this.slots = CopySlots(slots);
+            this._slots = CopySlots(slots);
             Diagnostic = Normalize(diagnostic);
         }
 
@@ -153,9 +153,9 @@ namespace Immersive.Framework.PlayerParticipation
         public int HostCount { get; }
 
         public IReadOnlyList<
-            ManagerProvisionedPlayerLifecycleSlotSnapshot> Slots => slots;
+            ManagerProvisionedPlayerLifecycleSlotSnapshot> Slots => _slots;
 
-        public int SlotCount => slots.Count;
+        public int SlotCount => _slots.Count;
 
         public string Diagnostic { get; }
 

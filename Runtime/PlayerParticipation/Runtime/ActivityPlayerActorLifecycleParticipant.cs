@@ -88,10 +88,10 @@ namespace Immersive.Framework.PlayerParticipation
             internal int SelectionRevision { get; }
         }
 
-        private readonly PlayerActorPreparationRuntimeHostModule preparationModule;
-        private readonly PlayerParticipationRuntimeContext participationContext;
-        private ActiveActivityRecord activeRecord;
-        private ActivityPlayerActorLifecycleSnapshot lastSnapshot =
+        private readonly PlayerActorPreparationRuntimeHostModule _preparationModule;
+        private readonly PlayerParticipationRuntimeContext _participationContext;
+        private ActiveActivityRecord _activeRecord;
+        private ActivityPlayerActorLifecycleSnapshot _lastSnapshot =
             ActivityPlayerActorLifecycleSnapshot.Empty(
                 "Activity Player Actor lifecycle has not executed.");
 
@@ -99,13 +99,13 @@ namespace Immersive.Framework.PlayerParticipation
             PlayerActorPreparationRuntimeHostModule preparationModule,
             PlayerParticipationRuntimeContext participationContext)
         {
-            this.preparationModule = preparationModule ??
+            this._preparationModule = preparationModule ??
                 throw new ArgumentNullException(nameof(preparationModule));
-            this.participationContext = participationContext ??
+            this._participationContext = participationContext ??
                 throw new ArgumentNullException(nameof(participationContext));
         }
 
-        internal ActivityPlayerActorLifecycleSnapshot Snapshot => lastSnapshot;
+        internal ActivityPlayerActorLifecycleSnapshot Snapshot => _lastSnapshot;
 
         public bool TryResolveAdmittedHosts(
             ActivityAsset activity,
@@ -115,16 +115,16 @@ namespace Immersive.Framework.PlayerParticipation
         {
             hosts = Array.Empty<LocalPlayerHostAuthoring>();
             diagnostic = string.Empty;
-            if (activeRecord == null ||
-                !ReferenceEquals(activeRecord.Activity, activity) ||
-                activeRecord.Owner != owner)
+            if (_activeRecord == null ||
+                !ReferenceEquals(_activeRecord.Activity, activity) ||
+                _activeRecord.Owner != owner)
             {
                 diagnostic =
                     "Official Activity Player lifecycle has no admitted Host evidence for this Activity owner.";
                 return false;
             }
 
-            hosts = activeRecord.AdmittedHosts;
+            hosts = _activeRecord.AdmittedHosts;
             return true;
         }
 
@@ -207,10 +207,10 @@ namespace Immersive.Framework.PlayerParticipation
         {
             ActivityAsset activity = request.Activity;
             RuntimeContentOwner owner = request.Owner;
-            if (activeRecord != null)
+            if (_activeRecord != null)
             {
-                if (ReferenceEquals(activeRecord.Activity, activity) &&
-                    activeRecord.Owner == owner)
+                if (ReferenceEquals(_activeRecord.Activity, activity) &&
+                    _activeRecord.Owner == owner)
                 {
                     return ActivityContentExecutionResult.SucceededNoOp(
                         request,
@@ -219,7 +219,7 @@ namespace Immersive.Framework.PlayerParticipation
                         "Activity Player Actor lifecycle is already entered for the same Activity owner.");
                 }
 
-                lastSnapshot = new ActivityPlayerActorLifecycleSnapshot(
+                _lastSnapshot = new ActivityPlayerActorLifecycleSnapshot(
                     ActivityPlayerActorLifecycleStatus
                         .RejectedForeignOrStaleActivity,
                     activity != null ? activity.ActivityName : string.Empty,
@@ -232,14 +232,14 @@ namespace Immersive.Framework.PlayerParticipation
                     1,
                     Array.Empty<ActivityPlayerActorSlotLifecycleSnapshot>(),
                     $"Activity enter owner '{owner.StableText}' cannot " +
-                    $"replace retained owner '{activeRecord.Owner.StableText}' " +
+                    $"replace retained owner '{_activeRecord.Owner.StableText}' " +
                     "without an exit phase.");
                 return ActivityContentExecutionResult.BlockingFailure(
                     request,
                     1,
                     nameof(ActivityPlayerActorLifecycleParticipant),
                     "activity-player-actor-stale-active-owner",
-                    lastSnapshot.Message);
+                    _lastSnapshot.Message);
             }
 
             if (!TryResolveProjection(
@@ -248,8 +248,8 @@ namespace Immersive.Framework.PlayerParticipation
                     out List<PlayerSlotRuntimeSnapshot> projectedSlots,
                     out string projectionIssue))
             {
-                playerReadinessRecord = null;
-                lastSnapshot = FailureSnapshot(
+                _playerReadinessRecord = null;
+                _lastSnapshot = FailureSnapshot(
                     ActivityPlayerActorLifecycleStatus.FailedProjection,
                     activity,
                     owner,
@@ -264,8 +264,8 @@ namespace Immersive.Framework.PlayerParticipation
 
             if (projectedSlots.Count == 0)
             {
-                playerReadinessRecord = null;
-                activeRecord = new ActiveActivityRecord(
+                _playerReadinessRecord = null;
+                _activeRecord = new ActiveActivityRecord(
                     activity,
                     owner,
                     requirementLevel,
@@ -273,7 +273,7 @@ namespace Immersive.Framework.PlayerParticipation
                     0,
                     new List<PreparedSlotRecord>(),
                     Array.Empty<LocalPlayerHostAuthoring>());
-                lastSnapshot = new ActivityPlayerActorLifecycleSnapshot(
+                _lastSnapshot = new ActivityPlayerActorLifecycleSnapshot(
                     ActivityPlayerActorLifecycleStatus
                         .SucceededEnteredNoParticipants,
                     activity.ActivityName,
@@ -290,7 +290,7 @@ namespace Immersive.Framework.PlayerParticipation
                     request,
                     nameof(ActivityPlayerActorLifecycleParticipant),
                     "activity-player-actor-enter-no-participants",
-                    lastSnapshot.Message);
+                    _lastSnapshot.Message);
             }
 
             if (ShouldDeferActivityPlayerReadiness(
@@ -359,7 +359,7 @@ namespace Immersive.Framework.PlayerParticipation
                 {
                     if (RequiresActivityActorRepresentation(requirementLevel))
                     {
-                        if (!preparationModule.TryGetRegisteredHost(
+                        if (!_preparationModule.TryGetRegisteredHost(
                                 slot.PlayerSlotId,
                                 out LocalPlayerHostAuthoring host,
                                 out string hostIssue))
@@ -381,7 +381,7 @@ namespace Immersive.Framework.PlayerParticipation
 
                         admittedHosts.Add(host);
                     }
-                    else if (preparationModule.TryGetRegisteredHost(
+                    else if (_preparationModule.TryGetRegisteredHost(
                                  slot.PlayerSlotId,
                                  out LocalPlayerHostAuthoring optionalHost,
                                  out _))
@@ -400,7 +400,7 @@ namespace Immersive.Framework.PlayerParticipation
                     if (!slot.HasSelectedActor)
                     {
                         PlayerActorSelectionResult selection =
-                            preparationModule.TrySelectDefaultActor(
+                            _preparationModule.TrySelectDefaultActor(
                                 slot.PlayerSlotId,
                                 slot.SelectionRevision,
                                 nameof(ActivityPlayerActorLifecycleParticipant),
@@ -467,7 +467,7 @@ namespace Immersive.Framework.PlayerParticipation
                         .LogicalActorsPrepared)
                 {
                     PlayerActorPreparationResult preparation =
-                        preparationModule.TryEnsureSessionPhysicalActor(
+                        _preparationModule.TryEnsureSessionPhysicalActor(
                             request.RuntimeScopeContext,
                             slot.PlayerSlotId,
                             nameof(ActivityPlayerActorLifecycleParticipant),
@@ -491,7 +491,7 @@ namespace Immersive.Framework.PlayerParticipation
                             issue);
                     }
 
-                    if (!preparationModule.TryApplyCurrentActivityRelocation(
+                    if (!_preparationModule.TryApplyCurrentActivityRelocation(
                             request.Owner,
                             slot.PlayerSlotId,
                             preparation.CurrentSummary.Token,
@@ -531,7 +531,7 @@ namespace Immersive.Framework.PlayerParticipation
                         message));
             }
 
-            activeRecord = new ActiveActivityRecord(
+            _activeRecord = new ActiveActivityRecord(
                 activity,
                 owner,
                 requirementLevel,
@@ -539,7 +539,7 @@ namespace Immersive.Framework.PlayerParticipation
                 selectedCount,
                 prepared,
                 admittedHosts);
-            lastSnapshot = new ActivityPlayerActorLifecycleSnapshot(
+            _lastSnapshot = new ActivityPlayerActorLifecycleSnapshot(
                 ActivityPlayerActorLifecycleStatus.SucceededEntered,
                 activity.ActivityName,
                 owner,
@@ -556,7 +556,7 @@ namespace Immersive.Framework.PlayerParticipation
                     request,
                     nameof(ActivityPlayerActorLifecycleParticipant),
                     "activity-player-actor-entered",
-                    lastSnapshot.ToDiagnosticString());
+                    _lastSnapshot.ToDiagnosticString());
             CaptureImmediateActivityPlayerReadiness(
                 request,
                 activity,
@@ -570,9 +570,9 @@ namespace Immersive.Framework.PlayerParticipation
         private ActivityContentExecutionResult ExecuteExit(
             ActivityContentExecutionRequest request)
         {
-            if (activeRecord == null)
+            if (_activeRecord == null)
             {
-                lastSnapshot = new ActivityPlayerActorLifecycleSnapshot(
+                _lastSnapshot = new ActivityPlayerActorLifecycleSnapshot(
                     ActivityPlayerActorLifecycleStatus
                         .SucceededExitedNoActors,
                     request.Activity.ActivityName,
@@ -590,25 +590,25 @@ namespace Immersive.Framework.PlayerParticipation
                     request,
                     nameof(ActivityPlayerActorLifecycleParticipant),
                     "activity-player-actor-exit-no-actors",
-                    lastSnapshot.Message);
+                    _lastSnapshot.Message);
             }
 
-            if (!ReferenceEquals(activeRecord.Activity, request.Activity) ||
-                activeRecord.Owner != request.Owner)
+            if (!ReferenceEquals(_activeRecord.Activity, request.Activity) ||
+                _activeRecord.Owner != request.Owner)
             {
                 string issue =
                     $"Activity exit owner '{request.Owner.StableText}' does not " +
                     $"match retained Player Actor owner " +
-                    $"'{activeRecord.Owner.StableText}'.";
-                lastSnapshot = new ActivityPlayerActorLifecycleSnapshot(
+                    $"'{_activeRecord.Owner.StableText}'.";
+                _lastSnapshot = new ActivityPlayerActorLifecycleSnapshot(
                     ActivityPlayerActorLifecycleStatus
                         .RejectedForeignOrStaleActivity,
                     request.Activity.ActivityName,
                     request.Owner,
-                    activeRecord.RequirementLevel,
-                    activeRecord.ProjectedSlotCount,
-                    activeRecord.SelectedCount,
-                    activeRecord.PreparedSlots.Count,
+                    _activeRecord.RequirementLevel,
+                    _activeRecord.ProjectedSlotCount,
+                    _activeRecord.SelectedCount,
+                    _activeRecord.PreparedSlots.Count,
                     0,
                     1,
                     Array.Empty<ActivityPlayerActorSlotLifecycleSnapshot>(),
@@ -624,11 +624,11 @@ namespace Immersive.Framework.PlayerParticipation
             var failures = new List<string>();
             int releasedCount = 0;
             for (int index = 0;
-                 index < activeRecord.PreparedSlots.Count;
+                 index < _activeRecord.PreparedSlots.Count;
                  index++)
             {
                 PreparedSlotRecord prepared =
-                    activeRecord.PreparedSlots[index];
+                    _activeRecord.PreparedSlots[index];
                 if (!TryReleaseGameplayBeforePreparedActor(
                         prepared,
                         nameof(ActivityPlayerActorLifecycleParticipant),
@@ -650,8 +650,8 @@ namespace Immersive.Framework.PlayerParticipation
                     continue;
                 }
 
-                if (!preparationModule.TryReleaseManagerContextualProjection(
-                        activeRecord.Owner,
+                if (!_preparationModule.TryReleaseManagerContextualProjection(
+                        _activeRecord.Owner,
                         prepared.PlayerSlotId,
                         nameof(ActivityPlayerActorLifecycleParticipant),
                         "activity-exit-release-manager-context",
@@ -688,14 +688,14 @@ namespace Immersive.Framework.PlayerParticipation
             if (failures.Count > 0)
             {
                 string issue = string.Join(" | ", failures);
-                lastSnapshot = new ActivityPlayerActorLifecycleSnapshot(
+                _lastSnapshot = new ActivityPlayerActorLifecycleSnapshot(
                     ActivityPlayerActorLifecycleStatus.FailedRelease,
                     request.Activity.ActivityName,
                     request.Owner,
-                    activeRecord.RequirementLevel,
-                    activeRecord.ProjectedSlotCount,
-                    activeRecord.SelectedCount,
-                    activeRecord.PreparedSlots.Count,
+                    _activeRecord.RequirementLevel,
+                    _activeRecord.ProjectedSlotCount,
+                    _activeRecord.SelectedCount,
+                    _activeRecord.PreparedSlots.Count,
                     releasedCount,
                     failures.Count,
                     evidence.ToArray(),
@@ -707,12 +707,12 @@ namespace Immersive.Framework.PlayerParticipation
             }
 
             PlayerParticipationRequirementLevel requirementLevel =
-                activeRecord.RequirementLevel;
-            int projectedSlotCount = activeRecord.ProjectedSlotCount;
-            int selectedCount = activeRecord.SelectedCount;
-            int preparedCount = activeRecord.PreparedSlots.Count;
-            activeRecord = null;
-            lastSnapshot = new ActivityPlayerActorLifecycleSnapshot(
+                _activeRecord.RequirementLevel;
+            int projectedSlotCount = _activeRecord.ProjectedSlotCount;
+            int selectedCount = _activeRecord.SelectedCount;
+            int preparedCount = _activeRecord.PreparedSlots.Count;
+            _activeRecord = null;
+            _lastSnapshot = new ActivityPlayerActorLifecycleSnapshot(
                 preparedCount > 0
                     ? ActivityPlayerActorLifecycleStatus.SucceededExited
                     : ActivityPlayerActorLifecycleStatus
@@ -735,12 +735,12 @@ namespace Immersive.Framework.PlayerParticipation
                     request,
                     nameof(ActivityPlayerActorLifecycleParticipant),
                     "activity-player-actor-exited",
-                    lastSnapshot.ToDiagnosticString())
+                    _lastSnapshot.ToDiagnosticString())
                 : ActivityContentExecutionResult.SucceededNoOp(
                     request,
                     nameof(ActivityPlayerActorLifecycleParticipant),
                     "activity-player-actor-exit-no-actors",
-                    lastSnapshot.Message);
+                    _lastSnapshot.Message);
         }
 
         private bool TryResolveProjection(
@@ -751,7 +751,7 @@ namespace Immersive.Framework.PlayerParticipation
         {
             return ActivityPlayerParticipationProjectionResolver.TryResolve(
                 activity,
-                participationContext,
+                _participationContext,
                 out requirementLevel,
                 out projectedSlots,
                 out issue);
@@ -797,7 +797,7 @@ namespace Immersive.Framework.PlayerParticipation
                 }
 
                 PlayerActorSelectionResult clear =
-                    preparationModule.TryClearActorSelection(
+                    _preparationModule.TryClearActorSelection(
                         new PlayerActorSelectionRequest(
                             selection.PlayerSlotId,
                             null,
@@ -812,7 +812,7 @@ namespace Immersive.Framework.PlayerParticipation
                 }
             }
 
-            playerReadinessRecord = null;
+            _playerReadinessRecord = null;
             ActivityPlayerActorLifecycleStatus finalStatus =
                 rollbackIssues.Count == 0
                     ? failureStatus
@@ -820,7 +820,7 @@ namespace Immersive.Framework.PlayerParticipation
             string finalIssue = rollbackIssues.Count == 0
                 ? issue
                 : $"{issue} Rollback failures: {string.Join(" | ", rollbackIssues)}";
-            lastSnapshot = new ActivityPlayerActorLifecycleSnapshot(
+            _lastSnapshot = new ActivityPlayerActorLifecycleSnapshot(
                 finalStatus,
                 activity != null ? activity.ActivityName : string.Empty,
                 owner,

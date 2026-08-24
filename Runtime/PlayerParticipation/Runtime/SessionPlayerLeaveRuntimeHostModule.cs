@@ -54,21 +54,21 @@ namespace Immersive.Framework.PlayerParticipation
             }
         }
 
-        private FrameworkRuntimeHost runtimeHost;
-        private PlayerParticipationRuntimeContext participationContext;
-        private PlayerActorPreparationRuntimeHostModule preparationModule;
-        private readonly Dictionary<PlayerSlotId, ExecutionRecord> latestBySlot = new();
-        private string diagnostic = "Session Player Leave runtime is not initialized.";
-        private int requestCount;
+        private FrameworkRuntimeHost _runtimeHost;
+        private PlayerParticipationRuntimeContext _participationContext;
+        private PlayerActorPreparationRuntimeHostModule _preparationModule;
+        private readonly Dictionary<PlayerSlotId, ExecutionRecord> _latestBySlot = new();
+        private string _diagnostic = "Session Player Leave runtime is not initialized.";
+        private int _requestCount;
 
         internal bool IsReady =>
-            runtimeHost != null &&
-            participationContext != null &&
-            preparationModule != null &&
-            preparationModule.IsReady;
+            _runtimeHost != null &&
+            _participationContext != null &&
+            _preparationModule != null &&
+            _preparationModule.IsReady;
 
-        internal string Diagnostic => diagnostic;
-        internal int RequestCount => requestCount;
+        internal string Diagnostic => _diagnostic;
+        internal int RequestCount => _requestCount;
 
         internal static bool TryAttach(
             FrameworkRuntimeHost runtimeHost,
@@ -99,7 +99,7 @@ namespace Immersive.Framework.PlayerParticipation
             issue = string.Empty;
             if (IsReady)
             {
-                if (ReferenceEquals(runtimeHost, targetRuntimeHost))
+                if (ReferenceEquals(_runtimeHost, targetRuntimeHost))
                 {
                     return true;
                 }
@@ -111,7 +111,7 @@ namespace Immersive.Framework.PlayerParticipation
             if (targetRuntimeHost == null)
             {
                 issue = "FrameworkRuntimeHost is missing.";
-                diagnostic = issue;
+                _diagnostic = issue;
                 return false;
             }
 
@@ -119,7 +119,7 @@ namespace Immersive.Framework.PlayerParticipation
                     out PlayerParticipationRuntimeContext targetParticipation))
             {
                 issue = "FrameworkRuntimeHost has no initialized Session Player participation authority.";
-                diagnostic = issue;
+                _diagnostic = issue;
                 return false;
             }
 
@@ -127,24 +127,24 @@ namespace Immersive.Framework.PlayerParticipation
                     out PlayerActorPreparationRuntimeHostModule targetPreparation))
             {
                 issue = "FrameworkRuntimeHost has no ready Player Actor preparation authority.";
-                diagnostic = issue;
+                _diagnostic = issue;
                 return false;
             }
 
-            runtimeHost = targetRuntimeHost;
-            participationContext = targetParticipation;
-            preparationModule = targetPreparation;
-            requestCount = 0;
-            diagnostic = "Session Player Leave runtime is ready.";
+            _runtimeHost = targetRuntimeHost;
+            _participationContext = targetParticipation;
+            _preparationModule = targetPreparation;
+            _requestCount = 0;
+            _diagnostic = "Session Player Leave runtime is ready.";
             return true;
         }
 
         internal SessionPlayerLeaveResult TryLeave(SessionPlayerLeaveRequest request)
         {
-            requestCount++;
+            _requestCount++;
             if (!IsReady)
             {
-                return Publish(SessionPlayerLeaveResult.RuntimeUnavailable(request, diagnostic));
+                return Publish(SessionPlayerLeaveResult.RuntimeUnavailable(request, _diagnostic));
             }
 
             if (!request.TryValidate(out string requestIssue))
@@ -163,7 +163,7 @@ namespace Immersive.Framework.PlayerParticipation
                     requestIssue));
             }
 
-            if (latestBySlot.TryGetValue(
+            if (_latestBySlot.TryGetValue(
                     request.PlayerSlotId,
                     out ExecutionRecord latest) &&
                 latest.Matches(request) &&
@@ -172,7 +172,7 @@ namespace Immersive.Framework.PlayerParticipation
                 return Publish(RepeatCompleted(latest));
             }
 
-            PlayerParticipationSnapshot before = participationContext.CreateSnapshot();
+            PlayerParticipationSnapshot before = _participationContext.CreateSnapshot();
             if (before == null || !before.IsInitialized)
             {
                 return Publish(SessionPlayerLeaveResult.RuntimeUnavailable(
@@ -246,7 +246,7 @@ namespace Immersive.Framework.PlayerParticipation
             {
                 provisioningMode = latest.ProvisioningMode;
             }
-            else if (!participationContext.TryGetEffectiveHostProvisioningMode(
+            else if (!_participationContext.TryGetEffectiveHostProvisioningMode(
                          request.PlayerSlotId,
                          out provisioningMode) ||
                      !provisioningMode.IsDefinedMode())
@@ -298,7 +298,7 @@ namespace Immersive.Framework.PlayerParticipation
             }
 
             SessionPlayerLeaveRuntimeResult begin =
-                participationContext.TryBeginSessionPlayerLeave(
+                _participationContext.TryBeginSessionPlayerLeave(
                     request.PlayerSlotId,
                     request.ExpectedOccurrenceRevision,
                     request.Source,
@@ -351,12 +351,12 @@ namespace Immersive.Framework.PlayerParticipation
                     begin.Token,
                     provisioningMode,
                     begin);
-                latestBySlot[request.PlayerSlotId] = record;
+                _latestBySlot[request.PlayerSlotId] = record;
             }
 
             if (record.ActivityRelease == null || !record.ActivityRelease.Succeeded)
             {
-                record.ActivityRelease = preparationModule
+                record.ActivityRelease = _preparationModule
                     .TryReleaseActivityRepresentationForSessionPlayerLeave(
                         record.LeaveToken,
                         request.Source,
@@ -376,7 +376,7 @@ namespace Immersive.Framework.PlayerParticipation
             {
                 if (ReferenceEquals(record.SessionPhysicalHost, null))
                 {
-                    if (!preparationModule.TryGetCurrentSessionPhysicalHost(
+                    if (!_preparationModule.TryGetCurrentSessionPhysicalHost(
                             record.LeaveToken.PlayerSlotId,
                             out LocalPlayerHostAuthoring sessionPhysicalHost,
                             out string sessionPhysicalHostIssue))
@@ -391,7 +391,7 @@ namespace Immersive.Framework.PlayerParticipation
                     record.SessionPhysicalHost = sessionPhysicalHost;
                 }
 
-                if (!preparationModule.TryRetireSceneLocalPlayerContextForSessionPlayerLeave(
+                if (!_preparationModule.TryRetireSceneLocalPlayerContextForSessionPlayerLeave(
                         record.LeaveToken,
                         request.Source,
                         request.Reason + "; release-scene-provided-context",
@@ -410,7 +410,7 @@ namespace Immersive.Framework.PlayerParticipation
             if (record.PhysicalActorRelease == null || !record.PhysicalActorRelease.Succeeded)
             {
                 PlayerActorPreparationToken sessionPhysicalPreparation = default;
-                if (preparationModule.TryGetCurrentPreparation(
+                if (_preparationModule.TryGetCurrentPreparation(
                         record.LeaveToken.PlayerSlotId,
                         out PlayerActorPreparationSummary currentPreparation,
                         out _))
@@ -418,7 +418,7 @@ namespace Immersive.Framework.PlayerParticipation
                     sessionPhysicalPreparation = currentPreparation.Token;
                 }
 
-                record.PhysicalActorRelease = preparationModule.TryReleasePreparedActor(
+                record.PhysicalActorRelease = _preparationModule.TryReleasePreparedActor(
                     record.LeaveToken.PlayerSlotId,
                     sessionPhysicalPreparation,
                     request.Source,
@@ -428,7 +428,7 @@ namespace Immersive.Framework.PlayerParticipation
                         PlayerActorPreparationStatus.FailedPreviousRelease &&
                     record.PhysicalActorRelease.StateChanged)
                 {
-                    record.PhysicalActorRelease = preparationModule.TryReleasePreparedActor(
+                    record.PhysicalActorRelease = _preparationModule.TryReleasePreparedActor(
                         record.LeaveToken.PlayerSlotId,
                         default,
                         request.Source,
@@ -500,13 +500,13 @@ namespace Immersive.Framework.PlayerParticipation
 
             record.TerminalResult = record.ProvisioningMode ==
                 PlayerHostProvisioningMode.ManagerProvisioned
-                ? participationContext.TryFinalizeSessionPlayerLeave(
+                ? _participationContext.TryFinalizeSessionPlayerLeave(
                     record.LeaveToken,
                     record.ActivityRelease,
                     record.ManagerRelease,
                     request.Source,
                     request.Reason + "; terminal-commit")
-                : participationContext.TryFinalizeSessionPlayerLeave(
+                : _participationContext.TryFinalizeSessionPlayerLeave(
                     record.LeaveToken,
                     record.ActivityRelease,
                     record.SceneRelease,
@@ -541,13 +541,13 @@ namespace Immersive.Framework.PlayerParticipation
         {
             record.TerminalResult = record.ProvisioningMode ==
                 PlayerHostProvisioningMode.ManagerProvisioned
-                ? participationContext.TryFinalizeSessionPlayerLeave(
+                ? _participationContext.TryFinalizeSessionPlayerLeave(
                     record.LeaveToken,
                     record.ActivityRelease,
                     record.ManagerRelease,
                     record.Request.Source,
                     record.Request.Reason + "; repeat-terminal-confirmation")
-                : participationContext.TryFinalizeSessionPlayerLeave(
+                : _participationContext.TryFinalizeSessionPlayerLeave(
                     record.LeaveToken,
                     record.ActivityRelease,
                     record.SceneRelease,
@@ -579,7 +579,7 @@ namespace Immersive.Framework.PlayerParticipation
             managerProvisioning = null;
             sceneProvisioning = null;
             issue = string.Empty;
-            if (runtimeHost == null)
+            if (_runtimeHost == null)
             {
                 issue = "Session Player Leave has no FrameworkRuntimeHost.";
                 return false;
@@ -588,7 +588,7 @@ namespace Immersive.Framework.PlayerParticipation
             switch (provisioningMode)
             {
                 case PlayerHostProvisioningMode.ManagerProvisioned:
-                    if (!runtimeHost.TryGetLocalPlayerProvisioningRuntime(
+                    if (!_runtimeHost.TryGetLocalPlayerProvisioningRuntime(
                             out managerProvisioning))
                     {
                         issue =
@@ -599,7 +599,7 @@ namespace Immersive.Framework.PlayerParticipation
                     return true;
 
                 case PlayerHostProvisioningMode.SceneProvided:
-                    sceneProvisioning = runtimeHost.GetComponent<
+                    sceneProvisioning = _runtimeHost.GetComponent<
                         SceneLocalPlayerAdmissionRuntimeHostModule>();
                     if (sceneProvisioning == null || !sceneProvisioning.IsReady)
                     {
@@ -661,7 +661,7 @@ namespace Immersive.Framework.PlayerParticipation
 
         private PlayerSlotRuntimeSnapshot CurrentSlot(PlayerSlotId playerSlotId)
         {
-            PlayerParticipationSnapshot snapshot = participationContext?.CreateSnapshot();
+            PlayerParticipationSnapshot snapshot = _participationContext?.CreateSnapshot();
             return snapshot != null && TryFindSlot(snapshot, playerSlotId, out PlayerSlotRuntimeSnapshot slot)
                 ? slot
                 : default;
@@ -751,21 +751,21 @@ namespace Immersive.Framework.PlayerParticipation
 
         private SessionPlayerLeaveResult Publish(SessionPlayerLeaveResult result)
         {
-            diagnostic = result != null
+            _diagnostic = result != null
                 ? result.ToDiagnosticString()
                 : "Session Player Leave orchestration returned no result.";
             return result ?? SessionPlayerLeaveResult.RuntimeUnavailable(
                 default,
-                diagnostic);
+                _diagnostic);
         }
 
         private void OnDestroy()
         {
-            latestBySlot.Clear();
-            preparationModule = null;
-            participationContext = null;
-            runtimeHost = null;
-            diagnostic = "Session Player Leave runtime was released with the FrameworkRuntimeHost lifetime.";
+            _latestBySlot.Clear();
+            _preparationModule = null;
+            _participationContext = null;
+            _runtimeHost = null;
+            _diagnostic = "Session Player Leave runtime was released with the FrameworkRuntimeHost lifetime.";
         }
     }
 

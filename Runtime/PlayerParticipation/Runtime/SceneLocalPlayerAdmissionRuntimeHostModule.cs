@@ -46,36 +46,36 @@ namespace Immersive.Framework.PlayerParticipation
             internal int ConfiguredIndex { get; }
         }
 
-        private readonly List<SceneLocalPlayerAdmissionAuthoring> boundAuthoring = new();
-        private FrameworkRuntimeHost runtimeHost;
-        private PlayerParticipationRuntimeContext participationContext;
-        private PlayerActorPreparationRuntimeHostModule hostEvidenceOwner;
-        private SceneLocalPlayerAdmissionRuntime runtime;
-        private RouteAsset activityLifecycleRouteContext;
-        private ActivityAsset activityLifecycleActivityContext;
-        private string diagnostic = "Scene Local Player admission runtime is not initialized.";
-        private SceneLocalPlayerAdmissionDiagnosticsSnapshot lastDiagnostics =
+        private readonly List<SceneLocalPlayerAdmissionAuthoring> _boundAuthoring = new();
+        private FrameworkRuntimeHost _runtimeHost;
+        private PlayerParticipationRuntimeContext _participationContext;
+        private PlayerActorPreparationRuntimeHostModule _hostEvidenceOwner;
+        private SceneLocalPlayerAdmissionRuntime _runtime;
+        private RouteAsset _activityLifecycleRouteContext;
+        private ActivityAsset _activityLifecycleActivityContext;
+        private string _diagnostic = "Scene Local Player admission runtime is not initialized.";
+        private SceneLocalPlayerAdmissionDiagnosticsSnapshot _lastDiagnostics =
             SceneLocalPlayerAdmissionDiagnosticsSnapshot.Empty(
                 "No Scene-Provided Player admission operation has been recorded.");
-        private bool shuttingDown;
+        private bool _shuttingDown;
 
         internal bool IsReady =>
-            runtimeHost != null &&
-            participationContext != null &&
-            runtime != null;
+            _runtimeHost != null &&
+            _participationContext != null &&
+            _runtime != null;
 
-        internal string Diagnostic => diagnostic;
-        internal int BoundAuthoringCount => boundAuthoring.Count;
-        internal int ActiveAdmissionCount => runtime?.ActiveAdmissionCount ?? 0;
-        internal PlayerParticipationRuntimeContext ParticipationContext => participationContext;
-        internal SceneLocalPlayerAdmissionDiagnosticsSnapshot LastDiagnostics => lastDiagnostics;
+        internal string Diagnostic => _diagnostic;
+        internal int BoundAuthoringCount => _boundAuthoring.Count;
+        internal int ActiveAdmissionCount => _runtime?.ActiveAdmissionCount ?? 0;
+        internal PlayerParticipationRuntimeContext ParticipationContext => _participationContext;
+        internal SceneLocalPlayerAdmissionDiagnosticsSnapshot LastDiagnostics => _lastDiagnostics;
 
         internal void SetActivityLifecycleContext(
             RouteAsset route,
             ActivityAsset nextActivity)
         {
-            activityLifecycleRouteContext = route;
-            activityLifecycleActivityContext = nextActivity;
+            _activityLifecycleRouteContext = route;
+            _activityLifecycleActivityContext = nextActivity;
         }
 
         internal static bool TryAttach(
@@ -116,8 +116,8 @@ namespace Immersive.Framework.PlayerParticipation
             issue = string.Empty;
             if (IsReady)
             {
-                if (ReferenceEquals(runtimeHost, targetRuntimeHost) &&
-                    ReferenceEquals(participationContext, targetParticipationContext))
+                if (ReferenceEquals(_runtimeHost, targetRuntimeHost) &&
+                    ReferenceEquals(_participationContext, targetParticipationContext))
                 {
                     BindLoadedScenes();
                     return true;
@@ -130,7 +130,7 @@ namespace Immersive.Framework.PlayerParticipation
             if (targetRuntimeHost == null || targetParticipationContext == null)
             {
                 issue = "Scene Local Player admission runtime initialization requires explicit host and participation authorities.";
-                diagnostic = issue;
+                _diagnostic = issue;
                 return false;
             }
 
@@ -141,17 +141,17 @@ namespace Immersive.Framework.PlayerParticipation
             {
                 issue =
                     "Scene Local Player admission requires the ready host-scoped physical Host evidence projection.";
-                diagnostic = issue;
+                _diagnostic = issue;
                 return false;
             }
 
-            runtimeHost = targetRuntimeHost;
-            participationContext = targetParticipationContext;
-            hostEvidenceOwner = targetHostEvidenceOwner;
-            runtime = new SceneLocalPlayerAdmissionRuntime(targetParticipationContext);
+            _runtimeHost = targetRuntimeHost;
+            _participationContext = targetParticipationContext;
+            _hostEvidenceOwner = targetHostEvidenceOwner;
+            _runtime = new SceneLocalPlayerAdmissionRuntime(targetParticipationContext);
             SceneManager.sceneLoaded += HandleSceneLoaded;
             BindLoadedScenes();
-            diagnostic =
+            _diagnostic =
                 $"Scene Local Player admission runtime is ready. surfaces='{BoundAuthoringCount}' activeAdmissions='{ActiveAdmissionCount}'.";
             return true;
         }
@@ -186,13 +186,13 @@ namespace Immersive.Framework.PlayerParticipation
                     reason,
                     IsReady
                         ? "Scene Local Player authoring surface is not bound to this Session runtime."
-                        : diagnostic);
+                        : _diagnostic);
             }
 
-            bool hadActiveAdmission = runtime.TryGetActiveToken(
+            bool hadActiveAdmission = _runtime.TryGetActiveToken(
                 authoring,
                 out _);
-            SceneLocalPlayerAdmissionRuntimeResult result = runtime.TryAdmit(
+            SceneLocalPlayerAdmissionRuntimeResult result = _runtime.TryAdmit(
                 authoring,
                 assignmentOwner,
                 source,
@@ -200,18 +200,18 @@ namespace Immersive.Framework.PlayerParticipation
             if (result != null && result.Succeeded)
             {
                 bool hasRetainedPhysicalHost =
-                    hostEvidenceOwner.TryGetRetainedHostEvidence(
+                    _hostEvidenceOwner.TryGetRetainedHostEvidence(
                         result.Token.PlayerSlotId,
                         out _);
                 PlayerHostEvidenceResult registration = hasRetainedPhysicalHost
-                    ? hostEvidenceOwner.ReprojectHostEvidence(
+                    ? _hostEvidenceOwner.ReprojectHostEvidence(
                         result.Token.PlayerSlotId,
                         PlayerSlotAssignmentOrigin.SceneProvided,
                         result.Token.AssignmentToken,
                         result.Token.AssignmentToken.HostBindingIdentity,
                         source,
                         reason)
-                    : hostEvidenceOwner.RegisterHostEvidence(
+                    : _hostEvidenceOwner.RegisterHostEvidence(
                         result.Token.PlayerSlotId,
                         PlayerSlotAssignmentOrigin.SceneProvided,
                         result.Token.AssignmentToken,
@@ -222,7 +222,7 @@ namespace Immersive.Framework.PlayerParticipation
                 if (!registration.Succeeded)
                 {
                     SceneLocalPlayerAdmissionRuntimeResult rollback =
-                        runtime.TryRelease(
+                        _runtime.TryRelease(
                             authoring,
                             result.Token,
                             source,
@@ -247,8 +247,8 @@ namespace Immersive.Framework.PlayerParticipation
             }
 
             RecordOperation(result, hadActiveAdmission, false);
-            diagnostic = result.ToDiagnosticString();
-            authoring.SetRuntimeResult(result, diagnostic);
+            _diagnostic = result.ToDiagnosticString();
+            authoring.SetRuntimeResult(result, _diagnostic);
             return result;
         }
 
@@ -266,10 +266,10 @@ namespace Immersive.Framework.PlayerParticipation
                     reason,
                     IsReady
                         ? "Scene Local Player authoring surface is not bound to this Session runtime."
-                        : diagnostic);
+                        : _diagnostic);
             }
 
-            runtime.TryGetActiveToken(authoring, out SceneLocalPlayerAdmissionToken token);
+            _runtime.TryGetActiveToken(authoring, out SceneLocalPlayerAdmissionToken token);
             SceneLocalPlayerAdmissionRuntimeResult result = TryReleaseWithHostEvidence(
                 authoring,
                 token,
@@ -278,8 +278,8 @@ namespace Immersive.Framework.PlayerParticipation
                 source,
                 reason);
             RecordOperation(result, token.IsValid, true);
-            diagnostic = result.ToDiagnosticString();
-            authoring.SetRuntimeResult(result, diagnostic);
+            _diagnostic = result.ToDiagnosticString();
+            authoring.SetRuntimeResult(result, _diagnostic);
             return result;
         }
 
@@ -343,7 +343,7 @@ namespace Immersive.Framework.PlayerParticipation
             if (!IsReadyFor(authoring))
             {
                 return SceneLocalPlayerAdmissionRuntimeResult.RuntimeUnavailable(
-                    "RetireSceneLocalPlayerContext", authoring, source, reason, diagnostic);
+                    "RetireSceneLocalPlayerContext", authoring, source, reason, _diagnostic);
             }
 
             if (authority == ContextualReleaseAuthority.SessionPlayerLeave &&
@@ -363,7 +363,7 @@ namespace Immersive.Framework.PlayerParticipation
                 : null;
             PlayerHostEvidenceSnapshot retainedEvidence = default;
             bool hasRetainedEvidence = expectedToken.IsValid &&
-                hostEvidenceOwner.TryGetRetainedHostEvidence(
+                _hostEvidenceOwner.TryGetRetainedHostEvidence(
                     expectedToken.PlayerSlotId,
                     out retainedEvidence);
             if (hasRetainedEvidence)
@@ -376,20 +376,20 @@ namespace Immersive.Framework.PlayerParticipation
             {
                 SceneLocalPlayerAdmissionRuntimeResult residual =
                     authority == ContextualReleaseAuthority.SessionPlayerLeave
-                    ? runtime.TryRetireContextualRepresentationForSessionPlayerLeave(
+                    ? _runtime.TryRetireContextualRepresentationForSessionPlayerLeave(
                         authoring, expectedToken, leaveToken, source, reason)
-                    : runtime.TryRetireContextualRepresentationForSessionTermination(
+                    : _runtime.TryRetireContextualRepresentationForSessionTermination(
                         authoring, expectedToken, source, reason);
                 RecordOperation(residual, expectedToken.IsValid, true);
-                diagnostic = residual != null
+                _diagnostic = residual != null
                     ? residual.ToDiagnosticString()
                     : "Scene Local Player contextual retirement returned no residual result.";
-                authoring.SetRuntimeResult(residual, diagnostic);
+                authoring.SetRuntimeResult(residual, _diagnostic);
                 return residual;
             }
 
             PlayerHostEvidenceResult evidenceRelease = expectedToken.IsValid
-                ? hostEvidenceOwner.ReleaseHostEvidence(
+                ? _hostEvidenceOwner.ReleaseHostEvidence(
                     expectedToken.PlayerSlotId,
                     expectedToken.AssignmentToken,
                     expectedToken.AssignmentToken.HostBindingIdentity,
@@ -415,19 +415,19 @@ namespace Immersive.Framework.PlayerParticipation
             SceneLocalPlayerAdmissionRuntimeResult result = authority switch
             {
                 ContextualReleaseAuthority.SessionPlayerLeave =>
-                    runtime.TryRetireContextualRepresentationForSessionPlayerLeave(
+                    _runtime.TryRetireContextualRepresentationForSessionPlayerLeave(
                         authoring, expectedToken, leaveToken, source, reason),
                 ContextualReleaseAuthority.SessionTermination =>
-                    runtime.TryRetireContextualRepresentationForSessionTermination(
+                    _runtime.TryRetireContextualRepresentationForSessionTermination(
                         authoring, expectedToken, source, reason),
-                _ => runtime.TryRetireContextualRepresentation(
+                _ => _runtime.TryRetireContextualRepresentation(
                     authoring, expectedToken, source, reason)
             };
             if (result != null && result.Succeeded)
             {
                 RecordOperation(result, expectedToken.IsValid, true);
-                diagnostic = result.ToDiagnosticString();
-                authoring.SetRuntimeResult(result, diagnostic);
+                _diagnostic = result.ToDiagnosticString();
+                authoring.SetRuntimeResult(result, _diagnostic);
                 return result;
             }
 
@@ -437,7 +437,7 @@ namespace Immersive.Framework.PlayerParticipation
             }
 
             PlayerHostEvidenceResult restoration = expectedToken.IsValid
-                ? hostEvidenceOwner.RegisterHostEvidence(
+                ? _hostEvidenceOwner.RegisterHostEvidence(
                     expectedToken.PlayerSlotId,
                     PlayerSlotAssignmentOrigin.SceneProvided,
                     expectedToken.AssignmentToken,
@@ -459,8 +459,8 @@ namespace Immersive.Framework.PlayerParticipation
                     authoring,
                     expectedToken);
             RecordOperation(result, expectedToken.IsValid, true);
-            diagnostic = result.ToDiagnosticString();
-            authoring.SetRuntimeResult(result, diagnostic);
+            _diagnostic = result.ToDiagnosticString();
+            authoring.SetRuntimeResult(result, _diagnostic);
             return result;
         }
 
@@ -479,7 +479,7 @@ namespace Immersive.Framework.PlayerParticipation
                     reason,
                     IsReady
                         ? "Scene Local Player authoring surface is not bound to this Session runtime."
-                        : diagnostic);
+                        : _diagnostic);
             }
 
             SceneLocalPlayerAdmissionRuntimeResult result = TryReleaseWithHostEvidence(
@@ -490,8 +490,8 @@ namespace Immersive.Framework.PlayerParticipation
                 source,
                 reason);
             RecordOperation(result, expectedToken.IsValid, true);
-            diagnostic = result.ToDiagnosticString();
-            authoring.SetRuntimeResult(result, diagnostic);
+            _diagnostic = result.ToDiagnosticString();
+            authoring.SetRuntimeResult(result, _diagnostic);
             return result;
         }
 
@@ -511,7 +511,7 @@ namespace Immersive.Framework.PlayerParticipation
                     reason,
                     IsReady
                         ? "Scene Local Player authoring surface is not bound to this Session runtime."
-                        : diagnostic);
+                        : _diagnostic);
             }
 
             if (!TryConfirmSessionPlayerLeaveContextualRelease(
@@ -533,8 +533,8 @@ namespace Immersive.Framework.PlayerParticipation
                 source,
                 reason);
             RecordOperation(result, expectedToken.IsValid, true);
-            diagnostic = result.ToDiagnosticString();
-            authoring.SetRuntimeResult(result, diagnostic);
+            _diagnostic = result.ToDiagnosticString();
+            authoring.SetRuntimeResult(result, _diagnostic);
             return result;
         }
 
@@ -548,7 +548,7 @@ namespace Immersive.Framework.PlayerParticipation
         {
             rejection = null;
             SessionPlayerLeaveRuntimeResult confirmation =
-                participationContext.TryConfirmSessionPlayerLeave(
+                _participationContext.TryConfirmSessionPlayerLeave(
                     leaveToken,
                     source,
                     reason + "; confirm-session-player-leave-before-contextual-retirement");
@@ -594,7 +594,7 @@ namespace Immersive.Framework.PlayerParticipation
                     reason,
                     IsReady
                         ? "Scene Local Player authoring surface is not bound to this Session runtime."
-                        : diagnostic);
+                        : _diagnostic);
             }
 
             SceneLocalPlayerAdmissionRuntimeResult result = TryReleaseWithHostEvidence(
@@ -605,8 +605,8 @@ namespace Immersive.Framework.PlayerParticipation
                 source,
                 reason);
             RecordOperation(result, expectedToken.IsValid, true);
-            diagnostic = result.ToDiagnosticString();
-            authoring.SetRuntimeResult(result, diagnostic);
+            _diagnostic = result.ToDiagnosticString();
+            authoring.SetRuntimeResult(result, _diagnostic);
             return result;
         }
 
@@ -629,7 +629,7 @@ namespace Immersive.Framework.PlayerParticipation
                     reason);
             }
 
-            if (!runtime.TryGetActiveToken(
+            if (!_runtime.TryGetActiveToken(
                     authoring,
                     out SceneLocalPlayerAdmissionToken activeToken) ||
                 activeToken != expectedToken)
@@ -648,7 +648,7 @@ namespace Immersive.Framework.PlayerParticipation
             // using that retained reference; never use the Activity Host as physical identity.
             LocalPlayerHostAuthoring expectedEvidenceHost = authoring.LocalPlayerHost;
             PlayerHostEvidenceSnapshot retainedEvidence = default;
-            bool hasRetainedEvidence = hostEvidenceOwner.TryGetRetainedHostEvidence(
+            bool hasRetainedEvidence = _hostEvidenceOwner.TryGetRetainedHostEvidence(
                 expectedToken.PlayerSlotId,
                 out retainedEvidence);
             if (hasRetainedEvidence)
@@ -669,7 +669,7 @@ namespace Immersive.Framework.PlayerParticipation
             }
 
             PlayerHostEvidenceResult evidenceRelease =
-                hostEvidenceOwner.ReleaseHostEvidence(
+                _hostEvidenceOwner.ReleaseHostEvidence(
                     expectedToken.PlayerSlotId,
                     expectedToken.AssignmentToken,
                     expectedToken.AssignmentToken.HostBindingIdentity,
@@ -708,7 +708,7 @@ namespace Immersive.Framework.PlayerParticipation
             }
 
             PlayerHostEvidenceResult restoration =
-                hostEvidenceOwner.RegisterHostEvidence(
+                _hostEvidenceOwner.RegisterHostEvidence(
                     expectedToken.PlayerSlotId,
                     PlayerSlotAssignmentOrigin.SceneProvided,
                     expectedToken.AssignmentToken,
@@ -741,12 +741,12 @@ namespace Immersive.Framework.PlayerParticipation
             return authority switch
             {
                 ContextualReleaseAuthority.SessionPlayerLeave =>
-                    runtime.TryReleaseForSessionPlayerLeave(
+                    _runtime.TryReleaseForSessionPlayerLeave(
                         authoring, expectedToken, leaveToken, source, reason),
                 ContextualReleaseAuthority.SessionTermination =>
-                    runtime.TryReleaseForSessionTermination(
+                    _runtime.TryReleaseForSessionTermination(
                         authoring, expectedToken, source, reason),
-                _ => runtime.TryRelease(authoring, expectedToken, source, reason)
+                _ => _runtime.TryRelease(authoring, expectedToken, source, reason)
             };
         }
 
@@ -794,7 +794,7 @@ namespace Immersive.Framework.PlayerParticipation
             out SceneLocalPlayerAdmissionToken token)
         {
             token = default;
-            return runtime != null && runtime.TryGetActiveToken(authoring, out token);
+            return _runtime != null && _runtime.TryGetActiveToken(authoring, out token);
         }
 
 
@@ -803,30 +803,30 @@ namespace Immersive.Framework.PlayerParticipation
             out PlayerSlotRuntimeSnapshot snapshot)
         {
             snapshot = default;
-            return participationContext != null &&
-                participationContext.TryGetSlotSnapshot(playerSlotId, out snapshot);
+            return _participationContext != null &&
+                _participationContext.TryGetSlotSnapshot(playerSlotId, out snapshot);
         }
 
         internal PlayerActorSelectionResult TrySelectActorProfile(
             PlayerActorSelectionRequest request)
         {
-            return participationContext != null
-                ? participationContext.TrySelectActorProfile(request)
+            return _participationContext != null
+                ? _participationContext.TrySelectActorProfile(request)
                 : PlayerActorSelectionResult.RuntimeUnavailable(
                     "SelectActorProfile",
                     request,
-                    diagnostic);
+                    _diagnostic);
         }
 
         internal PlayerActorSelectionResult TryClearActorSelection(
             PlayerActorSelectionRequest request)
         {
-            return participationContext != null
-                ? participationContext.TryClearActorSelection(request)
+            return _participationContext != null
+                ? _participationContext.TryClearActorSelection(request)
                 : PlayerActorSelectionResult.RuntimeUnavailable(
                     "ClearActorSelection",
                     request,
-                    diagnostic);
+                    _diagnostic);
         }
 
         internal bool TryResolveAutomaticActivityAuthoring(
@@ -840,7 +840,7 @@ namespace Immersive.Framework.PlayerParticipation
 
             if (!IsReady)
             {
-                issue = diagnostic;
+                issue = _diagnostic;
                 return false;
             }
 
@@ -855,7 +855,7 @@ namespace Immersive.Framework.PlayerParticipation
             RouteAsset routeContext =
                 ResolveActivityLifecycleRouteContext(activity);
 
-            PlayerParticipationSnapshot snapshot = participationContext.CreateSnapshot();
+            PlayerParticipationSnapshot snapshot = _participationContext.CreateSnapshot();
             if (snapshot == null || !snapshot.IsInitialized)
             {
                 issue = "Scene Local Player automatic admission requires an initialized Session participation snapshot.";
@@ -866,9 +866,9 @@ namespace Immersive.Framework.PlayerParticipation
             var hosts = new List<LocalPlayerHostAuthoring>();
             var actors = new List<PlayerActorDeclaration>();
 
-            for (int index = 0; index < boundAuthoring.Count; index++)
+            for (int index = 0; index < _boundAuthoring.Count; index++)
             {
-                SceneLocalPlayerAdmissionAuthoring candidate = boundAuthoring[index];
+                SceneLocalPlayerAdmissionAuthoring candidate = _boundAuthoring[index];
                 if (candidate == null ||
                     candidate.AdmissionTiming != SceneLocalPlayerAdmissionTiming.OnActivityEnter ||
                     !IsDeclaredByActivityOrRoute(
@@ -949,12 +949,12 @@ namespace Immersive.Framework.PlayerParticipation
 
         internal void HandleAuthoringDestroyed(SceneLocalPlayerAdmissionAuthoring authoring)
         {
-            if (shuttingDown || ReferenceEquals(authoring, null))
+            if (_shuttingDown || ReferenceEquals(authoring, null))
             {
                 return;
             }
 
-            if (runtime != null && runtime.TryGetActiveToken(authoring, out SceneLocalPlayerAdmissionToken token))
+            if (_runtime != null && _runtime.TryGetActiveToken(authoring, out SceneLocalPlayerAdmissionToken token))
             {
                 SceneLocalPlayerAdmissionRuntimeResult result = TryReleaseWithHostEvidence(
                     authoring,
@@ -964,7 +964,7 @@ namespace Immersive.Framework.PlayerParticipation
                     nameof(SceneLocalPlayerAdmissionRuntimeHostModule),
                     "authoring-destroyed-best-effort-release");
                 RecordOperation(result, true, true);
-                diagnostic = result.ToDiagnosticString();
+                _diagnostic = result.ToDiagnosticString();
             }
 
             RemoveAuthoring(authoring);
@@ -986,14 +986,14 @@ namespace Immersive.Framework.PlayerParticipation
             PruneDestroyedAuthoring();
             if (!TryRestoreCompositeLifecycleSource(out string sourceIssue))
             {
-                diagnostic =
+                _diagnostic =
                     "Scene Local Player admission runtime reconciled loaded scenes, " +
                     "but could not restore the composite Activity lifecycle source. " +
                     sourceIssue;
                 return;
             }
 
-            diagnostic =
+            _diagnostic =
                 $"Scene Local Player admission runtime reconciled loaded scenes. " +
                 $"surfaces='{BoundAuthoringCount}' activeAdmissions='{ActiveAdmissionCount}' " +
                 "lifecycleSource='SceneLocalPlayerComposite'.";
@@ -1001,11 +1001,11 @@ namespace Immersive.Framework.PlayerParticipation
 
         private void PruneDestroyedAuthoring()
         {
-            for (int index = boundAuthoring.Count - 1; index >= 0; index--)
+            for (int index = _boundAuthoring.Count - 1; index >= 0; index--)
             {
-                if (boundAuthoring[index] == null)
+                if (_boundAuthoring[index] == null)
                 {
-                    boundAuthoring.RemoveAt(index);
+                    _boundAuthoring.RemoveAt(index);
                 }
             }
         }
@@ -1043,16 +1043,16 @@ namespace Immersive.Framework.PlayerParticipation
                 return;
             }
 
-            boundAuthoring.Add(authoring);
+            _boundAuthoring.Add(authoring);
             authoring.BindRuntime(this);
             TryRestoreCompositeLifecycleSource(out _);
         }
 
         private bool ContainsAuthoring(SceneLocalPlayerAdmissionAuthoring authoring)
         {
-            for (int index = 0; index < boundAuthoring.Count; index++)
+            for (int index = 0; index < _boundAuthoring.Count; index++)
             {
-                if (ReferenceEquals(boundAuthoring[index], authoring))
+                if (ReferenceEquals(_boundAuthoring[index], authoring))
                 {
                     return true;
                 }
@@ -1063,11 +1063,11 @@ namespace Immersive.Framework.PlayerParticipation
 
         private void RemoveAuthoring(SceneLocalPlayerAdmissionAuthoring authoring)
         {
-            for (int index = boundAuthoring.Count - 1; index >= 0; index--)
+            for (int index = _boundAuthoring.Count - 1; index >= 0; index--)
             {
-                if (ReferenceEquals(boundAuthoring[index], authoring))
+                if (ReferenceEquals(_boundAuthoring[index], authoring))
                 {
-                    boundAuthoring.RemoveAt(index);
+                    _boundAuthoring.RemoveAt(index);
                     return;
                 }
             }
@@ -1078,13 +1078,13 @@ namespace Immersive.Framework.PlayerParticipation
             ActivityAsset activity)
         {
             if (activity == null ||
-                activityLifecycleActivityContext == null ||
-                !ReferenceEquals(activityLifecycleActivityContext, activity))
+                _activityLifecycleActivityContext == null ||
+                !ReferenceEquals(_activityLifecycleActivityContext, activity))
             {
                 return null;
             }
 
-            return activityLifecycleRouteContext;
+            return _activityLifecycleRouteContext;
         }
 
         private static bool IsDeclaredByActivityOrRoute(
@@ -1190,14 +1190,14 @@ namespace Immersive.Framework.PlayerParticipation
             BindScene(scene);
             if (!TryRestoreCompositeLifecycleSource(out string sourceIssue))
             {
-                diagnostic =
+                _diagnostic =
                     $"Scene Local Player admission runtime attached loaded scene '{scene.name}', " +
                     "but could not restore the composite Activity lifecycle source. " +
                     sourceIssue;
                 return;
             }
 
-            diagnostic =
+            _diagnostic =
                 $"Scene Local Player admission runtime attached loaded scene '{scene.name}'. " +
                 $"surfaces='{BoundAuthoringCount}' activeAdmissions='{ActiveAdmissionCount}' " +
                 "lifecycleSource='SceneLocalPlayerComposite'.";
@@ -1206,14 +1206,14 @@ namespace Immersive.Framework.PlayerParticipation
         private bool TryRestoreCompositeLifecycleSource(out string issue)
         {
             issue = string.Empty;
-            if (runtimeHost == null)
+            if (_runtimeHost == null)
             {
                 issue = "FrameworkRuntimeHost is unavailable.";
                 return false;
             }
 
             PlayerActorPreparationRuntimeHostModule preparation =
-                runtimeHost.GetComponent<PlayerActorPreparationRuntimeHostModule>();
+                _runtimeHost.GetComponent<PlayerActorPreparationRuntimeHostModule>();
             if (preparation == null || !preparation.IsReady)
             {
                 issue =
@@ -1228,15 +1228,15 @@ namespace Immersive.Framework.PlayerParticipation
 
         private void OnDestroy()
         {
-            if (shuttingDown)
+            if (_shuttingDown)
             {
                 return;
             }
 
-            shuttingDown = true;
+            _shuttingDown = true;
             SceneManager.sceneLoaded -= HandleSceneLoaded;
 
-            var snapshot = new List<SceneLocalPlayerAdmissionAuthoring>(boundAuthoring);
+            var snapshot = new List<SceneLocalPlayerAdmissionAuthoring>(_boundAuthoring);
             for (int index = snapshot.Count - 1; index >= 0; index--)
             {
                 SceneLocalPlayerAdmissionAuthoring authoring = snapshot[index];
@@ -1245,7 +1245,7 @@ namespace Immersive.Framework.PlayerParticipation
                     continue;
                 }
 
-                if (runtime != null && runtime.TryGetActiveToken(authoring, out SceneLocalPlayerAdmissionToken token))
+                if (_runtime != null && _runtime.TryGetActiveToken(authoring, out SceneLocalPlayerAdmissionToken token))
                 {
                     SceneLocalPlayerAdmissionRuntimeResult result = TryReleaseWithHostEvidence(
                         authoring,
@@ -1260,14 +1260,14 @@ namespace Immersive.Framework.PlayerParticipation
                 authoring.UnbindRuntime(this, "Session Scene Local Player admission runtime was released.");
             }
 
-            boundAuthoring.Clear();
-            activityLifecycleRouteContext = null;
-            activityLifecycleActivityContext = null;
-            runtime = null;
-            hostEvidenceOwner = null;
-            participationContext = null;
-            runtimeHost = null;
-            diagnostic = "Session Scene Local Player admission runtime was released.";
+            _boundAuthoring.Clear();
+            _activityLifecycleRouteContext = null;
+            _activityLifecycleActivityContext = null;
+            _runtime = null;
+            _hostEvidenceOwner = null;
+            _participationContext = null;
+            _runtimeHost = null;
+            _diagnostic = "Session Scene Local Player admission runtime was released.";
         }
 
         private void RecordOperation(
@@ -1290,13 +1290,13 @@ namespace Immersive.Framework.PlayerParticipation
                     ? result.Authoring.SceneLogicalPlayerActor.ActorId
                     : default;
             bool hostEvidencePresent = slot.IsValid &&
-                hostEvidenceOwner != null &&
-                hostEvidenceOwner.TryGetRetainedHostEvidence(slot, out _);
+                _hostEvidenceOwner != null &&
+                _hostEvidenceOwner.TryGetRetainedHostEvidence(slot, out _);
             PlayerParticipationSnapshot participation =
-                participationContext != null
-                    ? participationContext.CreateSnapshot()
+                _participationContext != null
+                    ? _participationContext.CreateSnapshot()
                     : null;
-            lastDiagnostics = new SceneLocalPlayerAdmissionDiagnosticsSnapshot(
+            _lastDiagnostics = new SceneLocalPlayerAdmissionDiagnosticsSnapshot(
                 result.Operation,
                 result.Status,
                 result.Source,

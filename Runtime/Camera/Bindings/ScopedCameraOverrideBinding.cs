@@ -33,9 +33,9 @@ namespace Immersive.Framework.Camera
         [SerializeField] private string lastStatus = "Unavailable";
         [SerializeField] private string lastDiagnostic;
 
-        private CameraOutputSessionBinding outputSession;
-        private ICameraRequestPublisher publisher;
-        private FrameworkLogger logger;
+        private CameraOutputSessionBinding _outputSession;
+        private ICameraRequestPublisher _publisher;
+        private FrameworkLogger _logger;
 
         public string ScopeId => scopeId.NormalizeText();
         public string RequestIdText => requestId.NormalizeText();
@@ -43,7 +43,7 @@ namespace Immersive.Framework.Camera
         public Transform TargetSource => targetSource;
         public int Precedence => precedence;
         public string TieBreakerId => tieBreakerId.NormalizeText();
-        public CameraOutputSessionBinding OutputSession => outputSession;
+        public CameraOutputSessionBinding OutputSession => _outputSession;
         public bool IsOverrideActive => overrideActive;
         public bool IsPublished => overrideActive;
         public bool IsOwnerActive => ownerActive;
@@ -92,7 +92,7 @@ namespace Immersive.Framework.Camera
                 return Result(CameraOverrideOperationKind.Blocked, false, diagnostic, true);
             }
 
-            if (!outputSession.TryGetSession(out CameraOutputSession session, out diagnostic))
+            if (!_outputSession.TryGetSession(out CameraOutputSession session, out diagnostic))
             {
                 return Result(CameraOverrideOperationKind.Blocked, false, diagnostic, true);
             }
@@ -127,7 +127,7 @@ namespace Immersive.Framework.Camera
                 return Result(CameraOverrideOperationKind.Blocked, false, publication.DiagnosticSummary, true);
             }
 
-            publisher = creation.Publisher;
+            _publisher = creation.Publisher;
             overrideActive = true;
             return Result(CameraOverrideOperationKind.Requested, true,
                 $"Camera override requested. owner='{OwnerDiagnosticName}' scope='{ScopeId}' request='{requestResult.Request.RequestId}' output='{session.OutputId}' precedence='{precedence}'.", false);
@@ -184,12 +184,12 @@ namespace Immersive.Framework.Camera
         void ICameraOutputSessionConsumer.DetachOutputSession(string reason)
         {
             EndOwnerScope(reason.NormalizeTextOrFallback("OutputDetached"));
-            outputSession = null;
+            _outputSession = null;
         }
 
         protected void SetOutputSession(CameraOutputSessionBinding binding)
         {
-            outputSession = binding;
+            _outputSession = binding;
             SetDiagnostic("OutputAttached", binding == null
                 ? "Camera output injection was empty."
                 : $"Camera output session attached. output='{binding.OutputIdText}'.", binding == null);
@@ -200,20 +200,20 @@ namespace Immersive.Framework.Camera
             string reason,
             bool errorOnFailure)
         {
-            if (publisher == null || !overrideActive)
+            if (_publisher == null || !overrideActive)
             {
                 overrideActive = false;
                 return Result(CameraOverrideOperationKind.Preserved, true,
                     $"Camera override is already released. reason='{reason}'.", false);
             }
 
-            CameraRequestPublisherResult release = publisher.Release();
+            CameraRequestPublisherResult release = _publisher.Release();
             if (!release.Succeeded)
             {
                 return Result(CameraOverrideOperationKind.Blocked, false, release.DiagnosticSummary, errorOnFailure);
             }
 
-            publisher = null;
+            _publisher = null;
             overrideActive = false;
             return Result(operation, true,
                 $"Camera override released. reason='{reason}'.", false);
@@ -223,7 +223,7 @@ namespace Immersive.Framework.Camera
         {
             if (string.IsNullOrWhiteSpace(ScopeId)) { diagnostic = "Camera override requires an explicit scope id."; return false; }
             if (string.IsNullOrWhiteSpace(RequestIdText)) { diagnostic = "Camera override requires an explicit request id."; return false; }
-            if (outputSession == null) { diagnostic = "Camera override requires an injected CameraOutputSessionBinding."; return false; }
+            if (_outputSession == null) { diagnostic = "Camera override requires an injected CameraOutputSessionBinding."; return false; }
             if (rigComposer == null) { diagnostic = "Camera override requires a CameraRigComposer."; return false; }
             if (targetSource == null) { diagnostic = "Camera override requires an explicit target source."; return false; }
             if (string.IsNullOrWhiteSpace(TieBreakerId)) { diagnostic = "Camera override requires an explicit tie-breaker id."; return false; }
@@ -245,17 +245,17 @@ namespace Immersive.Framework.Camera
             EnsureLogger();
             if (error)
             {
-                logger.Error(message);
+                _logger.Error(message);
             }
             else if (logDiagnostics)
             {
-                logger.Debug(message);
+                _logger.Debug(message);
             }
         }
 
         private void EnsureLogger()
         {
-            logger ??= FrameworkLogger.Create(GetType());
+            _logger ??= FrameworkLogger.Create(GetType());
         }
 
         protected abstract CameraRequestOwnerKind OwnerKind { get; }

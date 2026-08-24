@@ -13,27 +13,27 @@ namespace Immersive.Framework.Pause
     /// </summary>
     internal sealed class PauseActivityBindingRuntimeHostModule
     {
-        private readonly PauseActivityBindingRuntimeContext runtime;
-        private readonly IPauseProductBindingPort bindingPort;
-        private IPauseActivityBindingPlayerEvidence playerEvidence;
-        private RuntimeContentOwner preparedOwner;
-        private int preparedEntrySequence;
-        private PauseActivityBindingIntentResolution preparedIntent;
-        private bool hasPreparedIntent;
+        private readonly PauseActivityBindingRuntimeContext _runtime;
+        private readonly IPauseProductBindingPort _bindingPort;
+        private IPauseActivityBindingPlayerEvidence _playerEvidence;
+        private RuntimeContentOwner _preparedOwner;
+        private int _preparedEntrySequence;
+        private PauseActivityBindingIntentResolution _preparedIntent;
+        private bool _hasPreparedIntent;
 
         internal PauseActivityBindingRuntimeHostModule(
             PauseActivityBindingRuntimeContext runtime,
             IPauseProductBindingPort bindingPort)
         {
-            this.runtime = runtime ?? throw new ArgumentNullException(nameof(runtime));
-            this.bindingPort = bindingPort ?? throw new ArgumentNullException(nameof(bindingPort));
+            this._runtime = runtime ?? throw new ArgumentNullException(nameof(runtime));
+            this._bindingPort = bindingPort ?? throw new ArgumentNullException(nameof(bindingPort));
         }
 
-        internal PauseActivityBindingRuntimeSnapshot Snapshot => runtime.Snapshot;
+        internal PauseActivityBindingRuntimeSnapshot Snapshot => _runtime.Snapshot;
 
         internal void SetPlayerEvidence(IPauseActivityBindingPlayerEvidence evidence)
         {
-            playerEvidence = evidence;
+            _playerEvidence = evidence;
         }
 
         internal bool TryPrepareIntent(
@@ -56,10 +56,10 @@ namespace Immersive.Framework.Pause
                 PauseActivityBindingAuthoringValidator.ResolveFromRoots(
                     materializedRoots,
                     source);
-            preparedOwner = owner;
-            preparedEntrySequence = entrySequence;
-            preparedIntent = intent;
-            hasPreparedIntent = true;
+            _preparedOwner = owner;
+            _preparedEntrySequence = entrySequence;
+            _preparedIntent = intent;
+            _hasPreparedIntent = true;
             if (intent.IsAbsent)
             {
                 diagnostic = "intent-absent: Activity has no Pause Activity Binding declaration.";
@@ -96,15 +96,15 @@ namespace Immersive.Framework.Pause
                 return false;
             }
 
-            if (!hasPreparedIntent ||
-                preparedOwner != owner ||
-                preparedEntrySequence != entrySequence)
+            if (!_hasPreparedIntent ||
+                _preparedOwner != owner ||
+                _preparedEntrySequence != entrySequence)
             {
                 diagnostic = "intent-not-prepared: Pause Activity binding activation requires the intent frozen by this Activity transition.";
                 return false;
             }
 
-            if (preparedIntent.IsAbsent)
+            if (_preparedIntent.IsAbsent)
             {
                 diagnostic = "intent-absent: Activity has no Pause Activity Binding declaration.";
                 return true;
@@ -112,8 +112,8 @@ namespace Immersive.Framework.Pause
 
             IReadOnlyList<LocalPlayerHostAuthoring> hosts = Array.Empty<LocalPlayerHostAuthoring>();
             string playerDiagnostic = string.Empty;
-            if (playerEvidence == null ||
-                !playerEvidence.TryResolveAdmittedHosts(
+            if (_playerEvidence == null ||
+                !_playerEvidence.TryResolveAdmittedHosts(
                     activity,
                     owner,
                     out hosts,
@@ -127,11 +127,11 @@ namespace Immersive.Framework.Pause
                 return false;
             }
 
-            bool succeeded = runtime.TryActivate(
+            bool succeeded = _runtime.TryActivate(
                 scope,
-                preparedIntent,
+                _preparedIntent,
                 hosts,
-                bindingPort,
+                _bindingPort,
                 source,
                 reason,
                 out PauseActivityBindingOperationResult operation);
@@ -139,7 +139,7 @@ namespace Immersive.Framework.Pause
                 ? operation.Status == PauseActivityBindingOperationStatus.AlreadyActive
                     ? "binding-already-active: " + operation.Diagnostic
                     : "binding-activated: " + operation.Diagnostic
-                : $"binding-activation-failed: scope='{scope.StableText}' hosts='{hosts?.Count ?? 0}' intent='{preparedIntent.Status}'. {operation.Diagnostic}";
+                : $"binding-activation-failed: scope='{scope.StableText}' hosts='{hosts?.Count ?? 0}' intent='{_preparedIntent.Status}'. {operation.Diagnostic}";
             return succeeded;
         }
 
@@ -149,7 +149,7 @@ namespace Immersive.Framework.Pause
             string reason,
             out string diagnostic)
         {
-            PauseActivityBindingRuntimeSnapshot snapshot = runtime.Snapshot;
+            PauseActivityBindingRuntimeSnapshot snapshot = _runtime.Snapshot;
             if (!snapshot.HasActiveBinding)
             {
                 diagnostic = "binding-release-not-required: no Pause Activity binding is active.";
@@ -163,7 +163,7 @@ namespace Immersive.Framework.Pause
                 return false;
             }
 
-            bool succeeded = runtime.TryRelease(
+            bool succeeded = _runtime.TryRelease(
                 snapshot.ActiveScope,
                 source,
                 reason,
@@ -186,7 +186,7 @@ namespace Immersive.Framework.Pause
         {
             diagnostic = string.Empty;
             ClearPreparedIntentForOwner(owner);
-            if (!runtime.Snapshot.HasActiveBinding || runtime.Snapshot.ActiveScope.Owner != owner)
+            if (!_runtime.Snapshot.HasActiveBinding || _runtime.Snapshot.ActiveScope.Owner != owner)
             {
                 return true;
             }
@@ -200,15 +200,15 @@ namespace Immersive.Framework.Pause
 
         private void ClearPreparedIntentForOwner(RuntimeContentOwner owner)
         {
-            if (!hasPreparedIntent || preparedOwner != owner)
+            if (!_hasPreparedIntent || _preparedOwner != owner)
             {
                 return;
             }
 
-            hasPreparedIntent = false;
-            preparedOwner = default;
-            preparedEntrySequence = 0;
-            preparedIntent = default;
+            _hasPreparedIntent = false;
+            _preparedOwner = default;
+            _preparedEntrySequence = 0;
+            _preparedIntent = default;
         }
     }
 }

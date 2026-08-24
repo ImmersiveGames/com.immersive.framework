@@ -23,30 +23,30 @@ namespace Immersive.Framework.PlayerParticipation
     internal sealed partial class PlayerActorPreparationRuntimeHostModule : MonoBehaviour,
         IRoutePlayerSpatialEntryLifecycleParticipant
     {
-        private FrameworkRuntimeHost runtimeHost;
-        private PlayerParticipationRuntimeContext participationContext;
-        private PlayerHostEvidenceProjection hostEvidenceProjection;
-        private PlayerActorPreparationRuntimeContext preparationContext;
-        private RuntimeScopeContext sessionPhysicalScopeContext;
-        private ActivityPlayerActorLifecycleParticipant activityLifecycleParticipant;
-        private LocalPlayerJoinResult lastJoinResult;
-        private string diagnostic = "Player Actor preparation runtime is not initialized.";
-        private int joinRequestCount;
-        private int preparationRequestCount;
-        private bool shuttingDown;
+        private FrameworkRuntimeHost _runtimeHost;
+        private PlayerParticipationRuntimeContext _participationContext;
+        private PlayerHostEvidenceProjection _hostEvidenceProjection;
+        private PlayerActorPreparationRuntimeContext _preparationContext;
+        private RuntimeScopeContext _sessionPhysicalScopeContext;
+        private ActivityPlayerActorLifecycleParticipant _activityLifecycleParticipant;
+        private LocalPlayerJoinResult _lastJoinResult;
+        private string _diagnostic = "Player Actor preparation runtime is not initialized.";
+        private int _joinRequestCount;
+        private int _preparationRequestCount;
+        private bool _shuttingDown;
 
         internal bool IsReady =>
-            runtimeHost != null &&
-            participationContext != null &&
-            preparationContext != null &&
-            activityLifecycleParticipant != null;
+            _runtimeHost != null &&
+            _participationContext != null &&
+            _preparationContext != null &&
+            _activityLifecycleParticipant != null;
 
-        internal string Diagnostic => diagnostic;
-        internal LocalPlayerJoinResult LastJoinResult => lastJoinResult;
+        internal string Diagnostic => _diagnostic;
+        internal LocalPlayerJoinResult LastJoinResult => _lastJoinResult;
         internal int RegisteredHostCount =>
-            hostEvidenceProjection?.RetainedEvidenceCount ?? 0;
-        internal int JoinRequestCount => joinRequestCount;
-        internal int PreparationRequestCount => preparationRequestCount;
+            _hostEvidenceProjection?.RetainedEvidenceCount ?? 0;
+        internal int JoinRequestCount => _joinRequestCount;
+        internal int PreparationRequestCount => _preparationRequestCount;
 
         internal static bool TryAttach(
             FrameworkRuntimeHost runtimeHost,
@@ -79,7 +79,7 @@ namespace Immersive.Framework.PlayerParticipation
 
             if (IsReady)
             {
-                if (ReferenceEquals(runtimeHost, targetRuntimeHost))
+                if (ReferenceEquals(_runtimeHost, targetRuntimeHost))
                 {
                     return true;
                 }
@@ -91,7 +91,7 @@ namespace Immersive.Framework.PlayerParticipation
             if (targetRuntimeHost == null)
             {
                 issue = "FrameworkRuntimeHost is missing.";
-                diagnostic = issue;
+                _diagnostic = issue;
                 return false;
             }
 
@@ -99,7 +99,7 @@ namespace Immersive.Framework.PlayerParticipation
                     out PlayerParticipationRuntimeContext targetParticipationContext))
             {
                 issue = "FrameworkRuntimeHost has no initialized Session Player participation context.";
-                diagnostic = issue;
+                _diagnostic = issue;
                 return false;
             }
 
@@ -107,7 +107,7 @@ namespace Immersive.Framework.PlayerParticipation
             if (runtimeContentRuntime == null)
             {
                 issue = "FrameworkRuntimeHost has no RuntimeContentRuntime for Player Actor materialization.";
-                diagnostic = issue;
+                _diagnostic = issue;
                 return false;
             }
 
@@ -117,7 +117,7 @@ namespace Immersive.Framework.PlayerParticipation
                     out RuntimeScopeContext targetSessionPhysicalScopeContext,
                     out issue))
             {
-                diagnostic = issue;
+                _diagnostic = issue;
                 return false;
             }
 
@@ -128,7 +128,7 @@ namespace Immersive.Framework.PlayerParticipation
                 string.IsNullOrEmpty(participationSnapshot.ContextId))
             {
                 issue = "Session Player participation snapshot is not initialized.";
-                diagnostic = issue;
+                _diagnostic = issue;
                 return false;
             }
 
@@ -144,36 +144,36 @@ namespace Immersive.Framework.PlayerParticipation
                     out PlayerActorPreparationRuntimeContext targetPreparationContext,
                     out issue))
             {
-                diagnostic = issue;
+                _diagnostic = issue;
                 return false;
             }
 
-            runtimeHost = targetRuntimeHost;
-            participationContext = targetParticipationContext;
-            hostEvidenceProjection = targetHostEvidenceProjection;
-            preparationContext = targetPreparationContext;
-            sessionPhysicalScopeContext = targetSessionPhysicalScopeContext;
-            activityLifecycleParticipant = new ActivityPlayerActorLifecycleParticipant(
+            _runtimeHost = targetRuntimeHost;
+            _participationContext = targetParticipationContext;
+            _hostEvidenceProjection = targetHostEvidenceProjection;
+            _preparationContext = targetPreparationContext;
+            _sessionPhysicalScopeContext = targetSessionPhysicalScopeContext;
+            _activityLifecycleParticipant = new ActivityPlayerActorLifecycleParticipant(
                 this,
                 targetParticipationContext);
             targetRuntimeHost.SetActivityContentExecutionParticipantSource(
-                activityLifecycleParticipant);
+                _activityLifecycleParticipant);
             targetRuntimeHost.SetPauseActivityBindingPlayerEvidence(
-                activityLifecycleParticipant);
+                _activityLifecycleParticipant);
             if (!targetRuntimeHost.SetRoutePlayerSpatialEntryParticipant(
                     this,
                     out string routeSpatialEntryIssue))
             {
                 targetRuntimeHost.SetActivityContentExecutionParticipantSource(null);
                 targetRuntimeHost.SetPauseActivityBindingPlayerEvidence(null);
-                activityLifecycleParticipant = null;
-                preparationContext = null;
-                sessionPhysicalScopeContext = default;
-                hostEvidenceProjection = null;
-                participationContext = null;
-                runtimeHost = null;
-                diagnostic = "Player Actor preparation could not compose Route spatial entry. " + routeSpatialEntryIssue;
-                issue = diagnostic;
+                _activityLifecycleParticipant = null;
+                _preparationContext = null;
+                _sessionPhysicalScopeContext = default;
+                _hostEvidenceProjection = null;
+                _participationContext = null;
+                _runtimeHost = null;
+                _diagnostic = "Player Actor preparation could not compose Route spatial entry. " + routeSpatialEntryIssue;
+                issue = _diagnostic;
                 return false;
             }
             if (!PlayerGameplayRuntimeHostModule.TryAttach(
@@ -184,19 +184,19 @@ namespace Immersive.Framework.PlayerParticipation
                 targetRuntimeHost.SetActivityContentExecutionParticipantSource(null);
                 targetRuntimeHost.SetPauseActivityBindingPlayerEvidence(null);
                 targetRuntimeHost.SetRoutePlayerSpatialEntryParticipant(null, out _);
-                activityLifecycleParticipant = null;
-                preparationContext = null;
-                sessionPhysicalScopeContext = default;
-                hostEvidenceProjection = null;
-                participationContext = null;
-                runtimeHost = null;
-                diagnostic =
+                _activityLifecycleParticipant = null;
+                _preparationContext = null;
+                _sessionPhysicalScopeContext = default;
+                _hostEvidenceProjection = null;
+                _participationContext = null;
+                _runtimeHost = null;
+                _diagnostic =
                     "Player Actor preparation could not compose the official Player gameplay runtime. " +
                     gameplayIssue;
-                issue = diagnostic;
+                issue = _diagnostic;
                 return false;
             }
-            diagnostic =
+            _diagnostic =
                 $"Player Actor preparation runtime is ready. session='{participationSnapshot.ContextId}'.";
             return true;
         }
@@ -235,28 +235,28 @@ namespace Immersive.Framework.PlayerParticipation
                     out LocalPlayerProvisioningRuntimeHostModule provisioning,
                     out string issue))
             {
-                diagnostic = issue;
-                lastJoinResult = LocalPlayerJoinResult.RuntimeUnavailable(request, issue);
-                return lastJoinResult;
+                _diagnostic = issue;
+                _lastJoinResult = LocalPlayerJoinResult.RuntimeUnavailable(request, issue);
+                return _lastJoinResult;
             }
 
             LocalPlayerJoinResult result = provisioning.TryJoin(request);
             result = provisioning.RegisterJoinWithActorPreparation(result);
-            lastJoinResult = result;
+            _lastJoinResult = result;
             if (result == null)
             {
-                diagnostic = "Local Player provisioning returned no join result.";
-                lastJoinResult = LocalPlayerJoinResult.RuntimeUnavailable(request, diagnostic);
-                return lastJoinResult;
+                _diagnostic = "Local Player provisioning returned no join result.";
+                _lastJoinResult = LocalPlayerJoinResult.RuntimeUnavailable(request, _diagnostic);
+                return _lastJoinResult;
             }
 
             if (!result.Succeeded)
             {
-                diagnostic = result.ToDiagnosticString();
+                _diagnostic = result.ToDiagnosticString();
                 return result;
             }
 
-            diagnostic =
+            _diagnostic =
                 $"Local Player joined and registered for Actor preparation. " +
                 $"slot='{result.Slot.PlayerSlotId.StableText}' host='{result.LocalPlayerHost.name}'.";
             return result;
@@ -270,7 +270,7 @@ namespace Immersive.Framework.PlayerParticipation
 
             if (!IsReady)
             {
-                issue = diagnostic;
+                issue = _diagnostic;
                 return false;
             }
 
@@ -318,7 +318,7 @@ namespace Immersive.Framework.PlayerParticipation
             PublishCurrentRouteSpatialEntryGate(host);
             RecordSuccessfulJoin(joinResult);
             RegisterActivityLifecycleSource();
-            diagnostic =
+            _diagnostic =
                 $"Joined Local Player Host registered. slot='{slot.PlayerSlotId.StableText}' host='{host.name}'.";
             return true;
         }
@@ -330,13 +330,13 @@ namespace Immersive.Framework.PlayerParticipation
         {
             host = null;
             issue = string.Empty;
-            if (!IsReady || hostEvidenceProjection == null)
+            if (!IsReady || _hostEvidenceProjection == null)
             {
-                issue = diagnostic;
+                issue = _diagnostic;
                 return false;
             }
 
-            bool found = hostEvidenceProjection.TryGetSessionPhysicalHost(
+            bool found = _hostEvidenceProjection.TryGetSessionPhysicalHost(
                 playerSlotId,
                 out host,
                 out PlayerHostEvidenceResult result);
@@ -353,8 +353,8 @@ namespace Immersive.Framework.PlayerParticipation
             string source,
             string reason)
         {
-            return hostEvidenceProjection != null
-                ? hostEvidenceProjection.RegisterHostEvidence(
+            return _hostEvidenceProjection != null
+                ? _hostEvidenceProjection.RegisterHostEvidence(
                     playerSlotId,
                     assignmentOrigin,
                     assignmentToken,
@@ -374,8 +374,8 @@ namespace Immersive.Framework.PlayerParticipation
             string source,
             string reason)
         {
-            return hostEvidenceProjection != null
-                ? hostEvidenceProjection.RegisterSessionPhysicalHost(
+            return _hostEvidenceProjection != null
+                ? _hostEvidenceProjection.RegisterSessionPhysicalHost(
                     playerSlotId,
                     host,
                     source,
@@ -394,8 +394,8 @@ namespace Immersive.Framework.PlayerParticipation
             string source,
             string reason)
         {
-            return hostEvidenceProjection != null
-                ? hostEvidenceProjection.ReprojectHostEvidence(
+            return _hostEvidenceProjection != null
+                ? _hostEvidenceProjection.ReprojectHostEvidence(
                     playerSlotId,
                     assignmentOrigin,
                     assignmentToken,
@@ -413,8 +413,8 @@ namespace Immersive.Framework.PlayerParticipation
             string source,
             string reason)
         {
-            return hostEvidenceProjection != null
-                ? hostEvidenceProjection.ConfirmHostEvidence(
+            return _hostEvidenceProjection != null
+                ? _hostEvidenceProjection.ConfirmHostEvidence(
                     playerSlotId,
                     source,
                     reason)
@@ -432,8 +432,8 @@ namespace Immersive.Framework.PlayerParticipation
             string source,
             string reason)
         {
-            return hostEvidenceProjection != null
-                ? hostEvidenceProjection.ReleaseHostEvidence(
+            return _hostEvidenceProjection != null
+                ? _hostEvidenceProjection.ReleaseHostEvidence(
                     playerSlotId,
                     assignmentToken,
                     hostBindingIdentity,
@@ -452,8 +452,8 @@ namespace Immersive.Framework.PlayerParticipation
             string source,
             string reason)
         {
-            return hostEvidenceProjection != null
-                ? hostEvidenceProjection.ReleaseSessionPhysicalHost(
+            return _hostEvidenceProjection != null
+                ? _hostEvidenceProjection.ReleaseSessionPhysicalHost(
                     playerSlotId,
                     expectedHost,
                     source,
@@ -469,8 +469,8 @@ namespace Immersive.Framework.PlayerParticipation
             out PlayerHostEvidenceSnapshot evidence)
         {
             evidence = default;
-            return hostEvidenceProjection != null &&
-                hostEvidenceProjection.TryGetRetainedEvidence(
+            return _hostEvidenceProjection != null &&
+                _hostEvidenceProjection.TryGetRetainedEvidence(
                     playerSlotId,
                     out evidence);
         }
@@ -483,8 +483,8 @@ namespace Immersive.Framework.PlayerParticipation
             string source,
             string reason)
         {
-            return hostEvidenceProjection != null
-                ? hostEvidenceProjection.ClearDivergentHostEvidence(
+            return _hostEvidenceProjection != null
+                ? _hostEvidenceProjection.ClearDivergentHostEvidence(
                     playerSlotId,
                     assignmentToken,
                     hostBindingIdentity,
@@ -500,34 +500,34 @@ namespace Immersive.Framework.PlayerParticipation
         internal PlayerActorSelectionResult TrySelectActorProfile(
             PlayerActorSelectionRequest request)
         {
-            return preparationContext != null
-                ? preparationContext.TrySelectActorProfile(request)
+            return _preparationContext != null
+                ? _preparationContext.TrySelectActorProfile(request)
                 : PlayerActorSelectionResult.RuntimeUnavailable(
                     "SelectActorProfile",
                     request,
-                    diagnostic);
+                    _diagnostic);
         }
 
         internal PlayerActorSelectionResult TryReplaceActorSelection(
             PlayerActorSelectionRequest request)
         {
-            return preparationContext != null
-                ? preparationContext.TryReplaceActorSelection(request)
+            return _preparationContext != null
+                ? _preparationContext.TryReplaceActorSelection(request)
                 : PlayerActorSelectionResult.RuntimeUnavailable(
                     "ReplaceActorSelection",
                     request,
-                    diagnostic);
+                    _diagnostic);
         }
 
         internal PlayerActorSelectionResult TryClearActorSelection(
             PlayerActorSelectionRequest request)
         {
-            return preparationContext != null
-                ? preparationContext.TryClearActorSelection(request)
+            return _preparationContext != null
+                ? _preparationContext.TryClearActorSelection(request)
                 : PlayerActorSelectionResult.RuntimeUnavailable(
                     "ClearActorSelection",
                     request,
-                    diagnostic);
+                    _diagnostic);
         }
 
         internal PlayerActorSelectionResult TrySelectDefaultActor(
@@ -536,8 +536,8 @@ namespace Immersive.Framework.PlayerParticipation
             string source,
             string reason)
         {
-            return preparationContext != null
-                ? preparationContext.TrySelectDefaultActor(
+            return _preparationContext != null
+                ? _preparationContext.TrySelectDefaultActor(
                     playerSlotId,
                     expectedSelectionRevision,
                     source,
@@ -550,7 +550,7 @@ namespace Immersive.Framework.PlayerParticipation
                         source,
                         reason,
                         expectedSelectionRevision),
-                    diagnostic);
+                    _diagnostic);
         }
 
         internal PlayerActorPreparationResult TryPrepareSelectedActor(
@@ -559,13 +559,13 @@ namespace Immersive.Framework.PlayerParticipation
             string source,
             string reason)
         {
-            preparationRequestCount++;
-            if (preparationContext == null)
+            _preparationRequestCount++;
+            if (_preparationContext == null)
             {
                 return PlayerActorPreparationResult.RuntimeUnavailable(
                     "PrepareSelectedActor",
                     playerSlotId,
-                    diagnostic);
+                    _diagnostic);
             }
 
             if (TryGetRegisteredHost(
@@ -577,13 +577,13 @@ namespace Immersive.Framework.PlayerParticipation
             }
 
             PlayerActorPreparationResult result =
-                preparationContext.TryPrepareSelectedActor(
+                _preparationContext.TryPrepareSelectedActor(
                     scopeContext,
-                    sessionPhysicalScopeContext,
+                    _sessionPhysicalScopeContext,
                     playerSlotId,
                     source,
                     reason);
-            diagnostic = result.ToDiagnosticString();
+            _diagnostic = result.ToDiagnosticString();
             return result;
         }
 
@@ -593,22 +593,22 @@ namespace Immersive.Framework.PlayerParticipation
             string source,
             string reason)
         {
-            preparationRequestCount++;
-            if (preparationContext == null)
+            _preparationRequestCount++;
+            if (_preparationContext == null)
             {
                 return PlayerActorPreparationResult.RuntimeUnavailable(
                     "ReleasePreparedActor",
                     playerSlotId,
-                    diagnostic);
+                    _diagnostic);
             }
 
             PlayerActorPreparationResult result =
-                preparationContext.TryReleasePreparedActor(
+                _preparationContext.TryReleasePreparedActor(
                     playerSlotId,
                     expectedPreparation,
                     source,
                     reason);
-            diagnostic = result.ToDiagnosticString();
+            _diagnostic = result.ToDiagnosticString();
             return result;
         }
 
@@ -618,13 +618,13 @@ namespace Immersive.Framework.PlayerParticipation
             string source,
             string reason)
         {
-            preparationRequestCount++;
-            if (preparationContext == null)
+            _preparationRequestCount++;
+            if (_preparationContext == null)
             {
                 return PlayerActorPreparationResult.RuntimeUnavailable(
                     "EnsureSessionPhysicalActor",
                     playerSlotId,
-                    diagnostic);
+                    _diagnostic);
             }
 
             if (TryGetRegisteredHost(
@@ -636,13 +636,13 @@ namespace Immersive.Framework.PlayerParticipation
             }
 
             PlayerActorPreparationResult result =
-                preparationContext.TryEnsureSessionPhysicalActor(
+                _preparationContext.TryEnsureSessionPhysicalActor(
                     scopeContext,
-                    sessionPhysicalScopeContext,
+                    _sessionPhysicalScopeContext,
                     playerSlotId,
                     source,
                     reason);
-            diagnostic = result.ToDiagnosticString();
+            _diagnostic = result.ToDiagnosticString();
             return result;
         }
 
@@ -653,13 +653,13 @@ namespace Immersive.Framework.PlayerParticipation
             string reason,
             out string issue)
         {
-            if (preparationContext == null)
+            if (_preparationContext == null)
             {
-                issue = diagnostic;
+                issue = _diagnostic;
                 return false;
             }
 
-            return preparationContext.TryReleaseManagerContextualProjection(
+            return _preparationContext.TryReleaseManagerContextualProjection(
                 activityOwner,
                 playerSlotId,
                 source,
@@ -675,13 +675,13 @@ namespace Immersive.Framework.PlayerParticipation
             out string issue)
         {
             issue = string.Empty;
-            if (preparationContext == null)
+            if (_preparationContext == null)
             {
-                issue = diagnostic;
+                issue = _diagnostic;
                 return false;
             }
 
-            bool deactivated = preparationContext.TryDeactivatePreparedActorPresentation(
+            bool deactivated = _preparationContext.TryDeactivatePreparedActorPresentation(
                 playerSlotId,
                 expectedPreparation,
                 source,
@@ -689,7 +689,7 @@ namespace Immersive.Framework.PlayerParticipation
                 out issue);
             if (!deactivated)
             {
-                diagnostic = issue;
+                _diagnostic = issue;
             }
 
             return deactivated;
@@ -702,8 +702,8 @@ namespace Immersive.Framework.PlayerParticipation
         {
             evidence = default;
             result = null;
-            return preparationContext != null &&
-                preparationContext.TryGetCurrentActorEvidence(
+            return _preparationContext != null &&
+                _preparationContext.TryGetCurrentActorEvidence(
                     playerSlotId,
                     out evidence,
                     out result);
@@ -715,8 +715,8 @@ namespace Immersive.Framework.PlayerParticipation
             string source,
             string reason)
         {
-            return preparationContext != null
-                ? preparationContext.ConfirmCurrentActorEvidence(
+            return _preparationContext != null
+                ? _preparationContext.ConfirmCurrentActorEvidence(
                     playerSlotId,
                     expectedPreparation,
                     source,
@@ -728,7 +728,7 @@ namespace Immersive.Framework.PlayerParticipation
                     default,
                     source,
                     reason,
-                    diagnostic);
+                    _diagnostic);
         }
 
         internal bool TryGetRetainedActorEvidence(
@@ -736,8 +736,8 @@ namespace Immersive.Framework.PlayerParticipation
             out PlayerActorCorrelationEvidence evidence)
         {
             evidence = default;
-            return preparationContext != null &&
-                preparationContext.TryGetRetainedActorEvidence(
+            return _preparationContext != null &&
+                _preparationContext.TryGetRetainedActorEvidence(
                     playerSlotId,
                     out evidence);
         }
@@ -747,8 +747,8 @@ namespace Immersive.Framework.PlayerParticipation
             out CurrentPlayerSlotActorSnapshot snapshot)
         {
             snapshot = default;
-            return preparationContext != null &&
-                preparationContext.TryGetCurrentSlotActorSnapshot(
+            return _preparationContext != null &&
+                _preparationContext.TryGetCurrentSlotActorSnapshot(
                     playerSlotId,
                     out snapshot);
         }
@@ -760,13 +760,13 @@ namespace Immersive.Framework.PlayerParticipation
             string source,
             string reason)
         {
-            preparationRequestCount++;
-            if (preparationContext == null)
+            _preparationRequestCount++;
+            if (_preparationContext == null)
             {
                 return PlayerActorPreparationResult.RuntimeUnavailable(
                     "ReplacePreparedActor",
                     replacementRequest.PlayerSlotId,
-                    diagnostic);
+                    _diagnostic);
             }
 
             if (!TryGetRegisteredHost(replacementRequest.PlayerSlotId, out _, out string issue))
@@ -775,17 +775,17 @@ namespace Immersive.Framework.PlayerParticipation
                     "ReplacePreparedActor",
                     replacementRequest.PlayerSlotId,
                     issue,
-                    preparationContext.CreateSnapshot());
+                    _preparationContext.CreateSnapshot());
             }
 
             PlayerActorPreparationResult result =
-                preparationContext.TryReplacePreparedActor(
+                _preparationContext.TryReplacePreparedActor(
                     scopeContext,
                     replacementRequest,
                     expectedPreparation,
                     source,
                     reason);
-            diagnostic = result.ToDiagnosticString();
+            _diagnostic = result.ToDiagnosticString();
             return result;
         }
 
@@ -793,25 +793,25 @@ namespace Immersive.Framework.PlayerParticipation
             out PlayerActorPreparationRuntimeHostSnapshot snapshot)
         {
             PlayerActorPreparationSnapshot preparation =
-                preparationContext != null
-                    ? preparationContext.CreateSnapshot()
+                _preparationContext != null
+                    ? _preparationContext.CreateSnapshot()
                     : new PlayerActorPreparationSnapshot(
                         string.Empty,
                         0,
                         Array.Empty<PlayerActorPreparationSummary>(),
                         Array.Empty<PlayerActorMaterializationSnapshot>(),
                         PlayerActorPreparationStatus.RejectedRuntimeUnavailable,
-                        diagnostic);
+                        _diagnostic);
 
             snapshot = new PlayerActorPreparationRuntimeHostSnapshot(
                 IsReady,
                 preparation.SessionContextId,
                 RegisteredHostCount,
-                joinRequestCount,
-                preparationRequestCount,
-                lastJoinResult != null ? lastJoinResult.Status : LocalPlayerJoinStatus.None,
+                _joinRequestCount,
+                _preparationRequestCount,
+                _lastJoinResult != null ? _lastJoinResult.Status : LocalPlayerJoinStatus.None,
                 preparation,
-                diagnostic);
+                _diagnostic);
             return IsReady;
         }
 
@@ -819,14 +819,14 @@ namespace Immersive.Framework.PlayerParticipation
         internal bool TryGetActivityPlayerActorLifecycleSnapshot(
             out ActivityPlayerActorLifecycleSnapshot snapshot)
         {
-            if (activityLifecycleParticipant == null)
+            if (_activityLifecycleParticipant == null)
             {
                 snapshot = ActivityPlayerActorLifecycleSnapshot.Empty(
                     "Activity Player Actor lifecycle participant is unavailable.");
                 return false;
             }
 
-            snapshot = activityLifecycleParticipant.Snapshot;
+            snapshot = _activityLifecycleParticipant.Snapshot;
             return true;
         }
 
@@ -841,13 +841,13 @@ namespace Immersive.Framework.PlayerParticipation
             failedCount = 0;
             issue = string.Empty;
 
-            if (preparationContext == null)
+            if (_preparationContext == null)
             {
-                issue = diagnostic;
+                issue = _diagnostic;
                 return false;
             }
 
-            PlayerActorPreparationSnapshot snapshot = preparationContext.CreateSnapshot();
+            PlayerActorPreparationSnapshot snapshot = _preparationContext.CreateSnapshot();
             var failures = new List<string>();
             for (int index = 0; index < snapshot.Slots.Count; index++)
             {
@@ -858,7 +858,7 @@ namespace Immersive.Framework.PlayerParticipation
                 }
 
                 PlayerActorPreparationResult result =
-                    preparationContext.TryReleasePreparedActor(
+                    _preparationContext.TryReleasePreparedActor(
                         summary.PlayerSlotId,
                         summary.Token,
                         source,
@@ -877,7 +877,7 @@ namespace Immersive.Framework.PlayerParticipation
             issue = failures.Count == 0
                 ? string.Empty
                 : string.Join(" | ", failures);
-            diagnostic = failures.Count == 0
+            _diagnostic = failures.Count == 0
                 ? $"Released '{releasedCount}' prepared Player Actors."
                 : $"Prepared Player Actor shutdown release failed for '{failedCount}' Slots. {issue}";
             return failedCount == 0;
@@ -886,24 +886,24 @@ namespace Immersive.Framework.PlayerParticipation
 
         internal void RegisterActivityLifecycleSource()
         {
-            if (runtimeHost == null || activityLifecycleParticipant == null)
+            if (_runtimeHost == null || _activityLifecycleParticipant == null)
             {
                 throw new InvalidOperationException(
                     "Activity Player Actor lifecycle source cannot be registered before runtime initialization.");
             }
 
-            runtimeHost.SetActivityContentExecutionParticipantSource(
-                activityLifecycleParticipant);
+            _runtimeHost.SetActivityContentExecutionParticipantSource(
+                _activityLifecycleParticipant);
         }
 
         private void RecordSuccessfulJoin(LocalPlayerJoinResult joinResult)
         {
-            if (!ReferenceEquals(lastJoinResult, joinResult))
+            if (!ReferenceEquals(_lastJoinResult, joinResult))
             {
-                joinRequestCount++;
+                _joinRequestCount++;
             }
 
-            lastJoinResult = joinResult;
+            _lastJoinResult = joinResult;
         }
 
         private PlayerHostEvidenceResult UnavailableHostEvidenceResult(
@@ -919,7 +919,7 @@ namespace Immersive.Framework.PlayerParticipation
                 null,
                 source,
                 reason,
-                diagnostic);
+                _diagnostic);
         }
 
         private bool TryGetProvisioningRuntime(
@@ -931,11 +931,11 @@ namespace Immersive.Framework.PlayerParticipation
 
             if (!IsReady)
             {
-                issue = diagnostic;
+                issue = _diagnostic;
                 return false;
             }
 
-            provisioning = runtimeHost.GetComponent<LocalPlayerProvisioningRuntimeHostModule>();
+            provisioning = _runtimeHost.GetComponent<LocalPlayerProvisioningRuntimeHostModule>();
             if (provisioning == null || !provisioning.IsReady)
             {
                 provisioning = null;
@@ -948,13 +948,13 @@ namespace Immersive.Framework.PlayerParticipation
 
         private void OnDestroy()
         {
-            if (shuttingDown)
+            if (_shuttingDown)
             {
                 return;
             }
 
-            shuttingDown = true;
-            if (preparationContext != null)
+            _shuttingDown = true;
+            if (_preparationContext != null)
             {
                 RetireSceneLocalPlayerContextForSessionTermination();
                 TryReleaseAllPreparedActors(
@@ -965,19 +965,19 @@ namespace Immersive.Framework.PlayerParticipation
                     out _);
             }
 
-            if (runtimeHost != null)
+            if (_runtimeHost != null)
             {
-                runtimeHost.SetRoutePlayerSpatialEntryParticipant(null, out _);
+                _runtimeHost.SetRoutePlayerSpatialEntryParticipant(null, out _);
             }
 
-            hostEvidenceProjection?.ClearAll();
-            hostEvidenceProjection = null;
-            activityLifecycleParticipant = null;
-            preparationContext = null;
-            sessionPhysicalScopeContext = default;
-            participationContext = null;
-            runtimeHost = null;
-            diagnostic = "Player Actor preparation runtime was released.";
+            _hostEvidenceProjection?.ClearAll();
+            _hostEvidenceProjection = null;
+            _activityLifecycleParticipant = null;
+            _preparationContext = null;
+            _sessionPhysicalScopeContext = default;
+            _participationContext = null;
+            _runtimeHost = null;
+            _diagnostic = "Player Actor preparation runtime was released.";
         }
     }
 

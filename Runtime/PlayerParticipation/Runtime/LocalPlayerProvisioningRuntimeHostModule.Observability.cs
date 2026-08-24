@@ -12,10 +12,10 @@ namespace Immersive.Framework.PlayerParticipation
     /// </summary>
     internal sealed partial class LocalPlayerProvisioningRuntimeHostModule
     {
-        private bool hasLifecycleObservabilityFingerprint;
-        private int lifecycleObservabilityFingerprint;
+        private bool _hasLifecycleObservabilityFingerprint;
+        private int _lifecycleObservabilityFingerprint;
         private readonly Dictionary<string, int>
-            slotObservabilityFingerprints = new();
+            _slotObservabilityFingerprints = new();
 
         /// <summary>
         /// The public provisioning observation contract is intentionally pull-only.
@@ -43,21 +43,21 @@ namespace Immersive.Framework.PlayerParticipation
 
             int fingerprint = BuildLifecycleObservabilityFingerprint(snapshot);
             bool aggregateChanged =
-                !hasLifecycleObservabilityFingerprint ||
-                fingerprint != lifecycleObservabilityFingerprint;
+                !_hasLifecycleObservabilityFingerprint ||
+                fingerprint != _lifecycleObservabilityFingerprint;
 
             if (aggregateChanged)
             {
-                hasLifecycleObservabilityFingerprint = true;
-                lifecycleObservabilityFingerprint = fingerprint;
+                _hasLifecycleObservabilityFingerprint = true;
+                _lifecycleObservabilityFingerprint = fingerprint;
                 LogLifecycleSnapshot(snapshot, available);
             }
 
             if (!available || !snapshot.IsAvailable)
             {
-                if (slotObservabilityFingerprints.Count > 0)
+                if (_slotObservabilityFingerprints.Count > 0)
                 {
-                    slotObservabilityFingerprints.Clear();
+                    _slotObservabilityFingerprints.Clear();
                 }
 
                 return;
@@ -123,7 +123,7 @@ namespace Immersive.Framework.PlayerParticipation
                     : slot.PlayerSlotId;
                 int fingerprint = BuildSlotObservabilityFingerprint(slot);
 
-                if (slotObservabilityFingerprints.TryGetValue(
+                if (_slotObservabilityFingerprints.TryGetValue(
                         key,
                         out int previousFingerprint) &&
                     previousFingerprint == fingerprint)
@@ -131,7 +131,7 @@ namespace Immersive.Framework.PlayerParticipation
                     continue;
                 }
 
-                slotObservabilityFingerprints[key] = fingerprint;
+                _slotObservabilityFingerprints[key] = fingerprint;
                 logger.Debug(
                     "Manager-provisioned Player slot lifecycle changed.",
                     LogFields.Of(
@@ -150,13 +150,13 @@ namespace Immersive.Framework.PlayerParticipation
         private void RemoveStaleSlotFingerprints(
             ManagerProvisionedPlayerLifecycleSnapshot snapshot)
         {
-            if (slotObservabilityFingerprints.Count <= snapshot.SlotCount)
+            if (_slotObservabilityFingerprints.Count <= snapshot.SlotCount)
             {
                 return;
             }
 
             var stale = new List<string>();
-            foreach (string key in slotObservabilityFingerprints.Keys)
+            foreach (string key in _slotObservabilityFingerprints.Keys)
             {
                 bool found = false;
                 for (int index = 0; index < snapshot.Slots.Count; index++)
@@ -190,7 +190,7 @@ namespace Immersive.Framework.PlayerParticipation
             for (int index = 0; index < stale.Count; index++)
             {
                 string key = stale[index];
-                slotObservabilityFingerprints.Remove(key);
+                _slotObservabilityFingerprints.Remove(key);
                 logger.Debug(
                     "Manager-provisioned Player slot lifecycle projection released.",
                     LogFields.Of(
@@ -203,9 +203,9 @@ namespace Immersive.Framework.PlayerParticipation
 
         private void ResetLifecycleObservability()
         {
-            hasLifecycleObservabilityFingerprint = false;
-            lifecycleObservabilityFingerprint = 0;
-            slotObservabilityFingerprints.Clear();
+            _hasLifecycleObservabilityFingerprint = false;
+            _lifecycleObservabilityFingerprint = 0;
+            _slotObservabilityFingerprints.Clear();
         }
 
         private static int BuildLifecycleObservabilityFingerprint(

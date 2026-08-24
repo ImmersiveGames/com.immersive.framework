@@ -10,7 +10,7 @@ namespace Immersive.Framework.PlayerParticipation
         private readonly Dictionary<
             SessionPlayerLeaveToken,
             ManagerProvisionedSessionPlayerLeaveReleaseResult>
-            completedSessionPlayerLeaveReleases = new();
+            _completedSessionPlayerLeaveReleases = new();
 
         /// <summary>
         /// Releases the exact Manager-Provisioned technical Host owned by one active Session
@@ -31,7 +31,7 @@ namespace Immersive.Framework.PlayerParticipation
             string resolvedReason = reason.NormalizeTextOrFallback(
                 "manager-provisioned-session-player-leave-release");
 
-            if (disposed)
+            if (_disposed)
             {
                 return Result(
                     ManagerProvisionedSessionPlayerLeaveReleaseStatus.RejectedRuntimeUnavailable,
@@ -66,7 +66,7 @@ namespace Immersive.Framework.PlayerParticipation
             }
 
             SessionPlayerLeaveRuntimeResult leaveConfirmation =
-                participationContext.TryConfirmSessionPlayerLeave(
+                _participationContext.TryConfirmSessionPlayerLeave(
                     leaveToken,
                     resolvedSource,
                     resolvedReason);
@@ -90,7 +90,7 @@ namespace Immersive.Framework.PlayerParticipation
                         : "Manager-Provisioned resource release received no Leave confirmation result.");
             }
 
-            if (completedSessionPlayerLeaveReleases.TryGetValue(
+            if (_completedSessionPlayerLeaveReleases.TryGetValue(
                     leaveToken,
                     out ManagerProvisionedSessionPlayerLeaveReleaseResult completed))
             {
@@ -208,7 +208,7 @@ namespace Immersive.Framework.PlayerParticipation
                     "Manager-Provisioned Host no longer owns the exact live PlayerInput expected for physical release.");
             }
 
-            if (!admittedPlayers.Contains(playerInput))
+            if (!_admittedPlayers.Contains(playerInput))
             {
                 return Result(
                     ManagerProvisionedSessionPlayerLeaveReleaseStatus.RejectedPlayerNotAdmitted,
@@ -225,7 +225,7 @@ namespace Immersive.Framework.PlayerParticipation
                     "The exact PlayerInput is not tracked as an admitted Manager-Provisioned Player by this provisioning bridge.");
             }
 
-            if (!(backend is IAdmittedLocalPlayerReleaseBackend releaseBackend))
+            if (!(_backend is IAdmittedLocalPlayerReleaseBackend releaseBackend))
             {
                 return Result(
                     ManagerProvisionedSessionPlayerLeaveReleaseStatus.RejectedReleaseBackendUnavailable,
@@ -239,7 +239,7 @@ namespace Immersive.Framework.PlayerParticipation
                     physicalPlayerReleased: false,
                     resolvedSource,
                     resolvedReason,
-                    $"Provisioning backend '{backend.GetType().FullName}' does not implement {nameof(IAdmittedLocalPlayerReleaseBackend)}. RejectPlayer is not a Leave fallback.");
+                    $"Provisioning backend '{_backend.GetType().FullName}' does not implement {nameof(IAdmittedLocalPlayerReleaseBackend)}. RejectPlayer is not a Leave fallback.");
             }
 
             if (!host.TryValidateCommittedAdmissionRelease(
@@ -308,8 +308,8 @@ namespace Immersive.Framework.PlayerParticipation
                     $"Manager-Provisioned physical Player release threw '{exception.GetType().Name}': {exception.Message}");
             }
 
-            admittedPlayers.Remove(playerInput);
-            awaitingCallbackConfirmations.Remove(playerInput);
+            _admittedPlayers.Remove(playerInput);
+            _awaitingCallbackConfirmations.Remove(playerInput);
 
             ManagerProvisionedSessionPlayerLeaveReleaseResult released = Result(
                 ManagerProvisionedSessionPlayerLeaveReleaseStatus.SucceededReleased,
@@ -324,7 +324,7 @@ namespace Immersive.Framework.PlayerParticipation
                 resolvedSource,
                 resolvedReason,
                 "Exact Manager-Provisioned Local Player Host admission and physical PlayerInput were released. Logical Leaving membership remains for downstream terminal cleanup.");
-            completedSessionPlayerLeaveReleases.Add(leaveToken, released);
+            _completedSessionPlayerLeaveReleases.Add(leaveToken, released);
             return released;
         }
 

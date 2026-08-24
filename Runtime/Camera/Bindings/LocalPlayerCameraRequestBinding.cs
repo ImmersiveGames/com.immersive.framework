@@ -55,8 +55,8 @@ namespace Immersive.Framework.Camera
         [SerializeField] private string lastStatus = "NotEligible";
         [SerializeField] private string lastDiagnostic;
 
-        private LocalPlayerCameraRequestPublisher publisher;
-        private FrameworkLogger logger;
+        private LocalPlayerCameraRequestPublisher _publisher;
+        private FrameworkLogger _logger;
 
         public LocalPlayerHostAuthoring LocalPlayerHost => localPlayerHost;
         public PlayerActorDeclaration PlayerActor => playerActor;
@@ -67,7 +67,7 @@ namespace Immersive.Framework.Camera
             ? "SceneAutoPublisherOptIn"
             : "AuthoringEvidence";
         public bool IsLocallyEligible => isLocallyEligible;
-        public bool IsPublished => publisher != null && publisher.IsPublished;
+        public bool IsPublished => _publisher != null && _publisher.IsPublished;
         public string LastStatus => lastStatus.NormalizeText();
         public string LastDiagnostic => lastDiagnostic.NormalizeText();
 
@@ -105,7 +105,7 @@ namespace Immersive.Framework.Camera
                 return false;
             }
 
-            if (publisher != null && publisher.IsPublished)
+            if (_publisher != null && _publisher.IsPublished)
             {
                 isLocallyEligible = true;
                 SetDiagnostic(
@@ -160,8 +160,8 @@ namespace Immersive.Framework.Camera
                 return false;
             }
 
-            publisher = creation.Publisher as LocalPlayerCameraRequestPublisher;
-            if (publisher == null)
+            _publisher = creation.Publisher as LocalPlayerCameraRequestPublisher;
+            if (_publisher == null)
             {
                 isLocallyEligible = false;
                 SetDiagnostic(
@@ -171,10 +171,10 @@ namespace Immersive.Framework.Camera
                 return false;
             }
 
-            CameraRequestPublisherResult publishResult = publisher.Publish();
+            CameraRequestPublisherResult publishResult = _publisher.Publish();
             if (!publishResult.Succeeded)
             {
-                publisher = null;
+                _publisher = null;
                 isLocallyEligible = false;
                 SetDiagnostic("Blocked", publishResult.DiagnosticSummary, true);
                 return false;
@@ -190,7 +190,7 @@ namespace Immersive.Framework.Camera
 
         public bool TryRelease()
         {
-            if (publisher == null)
+            if (_publisher == null)
             {
                 isLocallyEligible = false;
                 SetDiagnostic(
@@ -200,14 +200,14 @@ namespace Immersive.Framework.Camera
                 return true;
             }
 
-            CameraRequestPublisherResult releaseResult = publisher.Release();
+            CameraRequestPublisherResult releaseResult = _publisher.Release();
             if (!releaseResult.Succeeded)
             {
                 SetDiagnostic("Blocked", releaseResult.DiagnosticSummary, true);
                 return false;
             }
 
-            publisher = null;
+            _publisher = null;
             isLocallyEligible = false;
             SetDiagnostic(
                 "Released",
@@ -468,17 +468,17 @@ namespace Immersive.Framework.Camera
             EnsureLogger();
             if (error)
             {
-                logger.Error(message);
+                _logger.Error(message);
             }
             else if (logDiagnostics)
             {
-                logger.Debug(message);
+                _logger.Debug(message);
             }
         }
 
         private void EnsureLogger()
         {
-            logger ??= FrameworkLogger.Create<LocalPlayerCameraRequestBinding>();
+            _logger ??= FrameworkLogger.Create<LocalPlayerCameraRequestBinding>();
         }
 
         private string GetSlotDiagnosticId()

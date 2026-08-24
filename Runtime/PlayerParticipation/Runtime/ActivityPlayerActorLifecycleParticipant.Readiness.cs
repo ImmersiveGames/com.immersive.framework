@@ -9,8 +9,8 @@ namespace Immersive.Framework.PlayerParticipation
     internal sealed partial class ActivityPlayerActorLifecycleParticipant :
         IActivityReadinessParticipantSource
     {
-        private ActivityReadinessParticipant playerReadinessParticipant;
-        private bool playerReadinessCallbacksBound;
+        private ActivityReadinessParticipant _playerReadinessParticipant;
+        private bool _playerReadinessCallbacksBound;
 
         public IReadOnlyList<ActivityReadinessParticipant>
             ResolveActivityReadinessParticipants(ActivityAsset activity)
@@ -44,22 +44,22 @@ namespace Immersive.Framework.PlayerParticipation
         private ActivityReadinessParticipant
             EnsurePlayerReadinessParticipant()
         {
-            if (playerReadinessParticipant == null)
+            if (_playerReadinessParticipant == null)
             {
-                playerReadinessParticipant = preparationModule
+                _playerReadinessParticipant = _preparationModule
                     .GetOrCreateActivityPlayerReadinessParticipant();
             }
 
-            if (!playerReadinessCallbacksBound)
+            if (!_playerReadinessCallbacksBound)
             {
-                playerReadinessParticipant.PreparationStarted.AddListener(
+                _playerReadinessParticipant.PreparationStarted.AddListener(
                     OnPlayerReadinessPreparationStarted);
-                playerReadinessParticipant.PreparationReleased.AddListener(
+                _playerReadinessParticipant.PreparationReleased.AddListener(
                     OnPlayerReadinessPreparationReleased);
-                playerReadinessCallbacksBound = true;
+                _playerReadinessCallbacksBound = true;
             }
 
-            return playerReadinessParticipant;
+            return _playerReadinessParticipant;
         }
 
         private void OnPlayerReadinessPreparationStarted()
@@ -69,71 +69,71 @@ namespace Immersive.Framework.PlayerParticipation
 
         private void SynchronizePlayerReadinessContributionAfterRecordCreated()
         {
-            if (playerReadinessRecord == null ||
-                playerReadinessParticipant == null ||
-                playerReadinessParticipant.State !=
+            if (_playerReadinessRecord == null ||
+                _playerReadinessParticipant == null ||
+                _playerReadinessParticipant.State !=
                     ActivityReadinessParticipantState.Preparing)
             {
                 return;
             }
 
-            playerReadinessRecord.Occurrence =
-                playerReadinessParticipant.Occurrence;
+            _playerReadinessRecord.occurrence =
+                _playerReadinessParticipant.Occurrence;
             ApplyPlayerReadinessRecordTerminalState();
         }
 
         private void ApplyPlayerReadinessRecordTerminalState()
         {
-            if (playerReadinessRecord == null ||
-                playerReadinessParticipant == null ||
-                playerReadinessParticipant.State !=
+            if (_playerReadinessRecord == null ||
+                _playerReadinessParticipant == null ||
+                _playerReadinessParticipant.State !=
                     ActivityReadinessParticipantState.Preparing)
             {
                 return;
             }
 
-            if (playerReadinessRecord.Failed)
+            if (_playerReadinessRecord.failed)
             {
-                playerReadinessParticipant.FailPreparation(
-                    playerReadinessRecord.Message);
+                _playerReadinessParticipant.FailPreparation(
+                    _playerReadinessRecord.message);
                 return;
             }
 
-            if (playerReadinessRecord.Completed)
+            if (_playerReadinessRecord.completed)
             {
-                playerReadinessParticipant.CompletePreparation();
+                _playerReadinessParticipant.CompletePreparation();
             }
         }
 
         private void OnPlayerReadinessPreparationReleased()
         {
-            if (playerReadinessRecord == null ||
-                playerReadinessParticipant == null ||
-                playerReadinessRecord.Occurrence <= 0 ||
-                playerReadinessRecord.Occurrence !=
-                    playerReadinessParticipant.Occurrence)
+            if (_playerReadinessRecord == null ||
+                _playerReadinessParticipant == null ||
+                _playerReadinessRecord.occurrence <= 0 ||
+                _playerReadinessRecord.occurrence !=
+                    _playerReadinessParticipant.Occurrence)
             {
                 return;
             }
 
-            playerReadinessRecord.Released = true;
-            playerReadinessRecord.ReadinessReason =
+            _playerReadinessRecord.released = true;
+            _playerReadinessRecord.readinessReason =
                 ActivityPlayerActorReadinessReason.Released;
         }
 
         private void CompletePlayerReadinessContribution(
             string message)
         {
-            if (playerReadinessRecord == null)
+            if (_playerReadinessRecord == null)
             {
                 return;
             }
 
-            playerReadinessRecord.Completed = true;
-            playerReadinessRecord.Failed = false;
-            playerReadinessRecord.ReadinessReason =
+            _playerReadinessRecord.completed = true;
+            _playerReadinessRecord.failed = false;
+            _playerReadinessRecord.readinessReason =
                 ActivityPlayerActorReadinessReason.RequirementSatisfied;
-            playerReadinessRecord.Message = message ?? string.Empty;
+            _playerReadinessRecord.message = message ?? string.Empty;
 
             ApplyPlayerReadinessRecordTerminalState();
         }
@@ -141,16 +141,16 @@ namespace Immersive.Framework.PlayerParticipation
         private void FailPlayerReadinessContribution(
             string message)
         {
-            if (playerReadinessRecord == null)
+            if (_playerReadinessRecord == null)
             {
                 return;
             }
 
-            playerReadinessRecord.Completed = false;
-            playerReadinessRecord.Failed = true;
-            playerReadinessRecord.ReadinessReason =
+            _playerReadinessRecord.completed = false;
+            _playerReadinessRecord.failed = true;
+            _playerReadinessRecord.readinessReason =
                 ActivityPlayerActorReadinessReason.Failed;
-            playerReadinessRecord.Message = string.IsNullOrWhiteSpace(message)
+            _playerReadinessRecord.message = string.IsNullOrWhiteSpace(message)
                 ? "Player Activity readiness failed."
                 : message.Trim();
 
@@ -159,18 +159,18 @@ namespace Immersive.Framework.PlayerParticipation
 
         private void ReleasePlayerReadinessRecord(string reason)
         {
-            if (playerReadinessRecord == null)
+            if (_playerReadinessRecord == null)
             {
                 return;
             }
 
-            playerReadinessRecord.Released = true;
-            playerReadinessRecord.ReadinessReason =
+            _playerReadinessRecord.released = true;
+            _playerReadinessRecord.readinessReason =
                 ActivityPlayerActorReadinessReason.Released;
-            playerReadinessRecord.Message = string.IsNullOrWhiteSpace(reason)
+            _playerReadinessRecord.message = string.IsNullOrWhiteSpace(reason)
                 ? "ActivityExit"
                 : reason.Trim();
-            playerReadinessRecord = null;
+            _playerReadinessRecord = null;
         }
     }
 }

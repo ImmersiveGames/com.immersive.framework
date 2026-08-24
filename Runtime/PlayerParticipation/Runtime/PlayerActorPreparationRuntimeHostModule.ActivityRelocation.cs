@@ -9,9 +9,9 @@ namespace Immersive.Framework.PlayerParticipation
 {
     internal sealed partial class PlayerActorPreparationRuntimeHostModule
     {
-        private ActivityTransitionPreparationContext currentActivityRelocationContext;
+        private ActivityTransitionPreparationContext _currentActivityRelocationContext;
         private readonly Dictionary<PlayerSlotId, ActivityPlayerRelocationEvidence>
-            activityRelocationEvidenceBySlot = new Dictionary<PlayerSlotId, ActivityPlayerRelocationEvidence>();
+            _activityRelocationEvidenceBySlot = new Dictionary<PlayerSlotId, ActivityPlayerRelocationEvidence>();
 
         internal bool TryConfigureActivityRelocationContext(
             ActivityTransitionPreparationContext context, out string issue)
@@ -23,12 +23,12 @@ namespace Immersive.Framework.PlayerParticipation
                 return false;
             }
 
-            currentActivityRelocationContext = context;
-            activityRelocationEvidenceBySlot.Clear();
+            _currentActivityRelocationContext = context;
+            _activityRelocationEvidenceBySlot.Clear();
             if (context.Activity.PlayerRelocationPolicy == ActivityPlayerRelocationPolicy.NoRelocation)
                 return true;
 
-            PlayerParticipationSnapshot snapshot = participationContext.CreateSnapshot();
+            PlayerParticipationSnapshot snapshot = _participationContext.CreateSnapshot();
             for (int index = 0; index < snapshot.Slots.Count; index++)
             {
                 PlayerSlotRuntimeSnapshot slot = snapshot.Slots[index];
@@ -47,13 +47,13 @@ namespace Immersive.Framework.PlayerParticipation
             PlayerActorPreparationToken preparationToken, out string issue)
         {
             issue = string.Empty;
-            if (!currentActivityRelocationContext.IsValid ||
-                currentActivityRelocationContext.Owner != owner ||
-                currentActivityRelocationContext.Activity.PlayerRelocationPolicy ==
+            if (!_currentActivityRelocationContext.IsValid ||
+                _currentActivityRelocationContext.Owner != owner ||
+                _currentActivityRelocationContext.Activity.PlayerRelocationPolicy ==
                     ActivityPlayerRelocationPolicy.NoRelocation)
                 return true;
 
-            if (currentActivityRelocationContext.Activity.PlayerRelocationPolicy !=
+            if (_currentActivityRelocationContext.Activity.PlayerRelocationPolicy !=
                 ActivityPlayerRelocationPolicy.ApplyExplicitRelocation ||
                 !playerSlotId.IsValid || !preparationToken.IsValid ||
                 !TryGetPreparedPhysicalEvidence(playerSlotId, preparationToken,
@@ -72,23 +72,23 @@ namespace Immersive.Framework.PlayerParticipation
             }
 
             string representation = handle.Request.RuntimeContentIdentity.StableText;
-            if (activityRelocationEvidenceBySlot.TryGetValue(playerSlotId, out ActivityPlayerRelocationEvidence previous) &&
-                previous.IsApplied && previous.Owner == currentActivityRelocationContext.Owner &&
-                previous.Occurrence.Matches(currentActivityRelocationContext.Activity,
-                    currentActivityRelocationContext.Occurrence.TransitionSequence) &&
+            if (_activityRelocationEvidenceBySlot.TryGetValue(playerSlotId, out ActivityPlayerRelocationEvidence previous) &&
+                previous.IsApplied && previous.Owner == _currentActivityRelocationContext.Owner &&
+                previous.Occurrence.Matches(_currentActivityRelocationContext.Activity,
+                    _currentActivityRelocationContext.Occurrence.TransitionSequence) &&
                 previous.RepresentationIdentity == representation &&
                 ReferenceEquals(previous.Target, target))
                 return true;
 
             if (!ActivityPlayerRelocationRuntime.TryApply(
-                    currentActivityRelocationContext, playerSlotId, handle.Request.ActorId,
+                    _currentActivityRelocationContext, playerSlotId, handle.Request.ActorId,
                     representation, target, out ActivityPlayerRelocationEvidence evidence, out issue))
             {
-                activityRelocationEvidenceBySlot.Remove(playerSlotId);
+                _activityRelocationEvidenceBySlot.Remove(playerSlotId);
                 return false;
             }
 
-            activityRelocationEvidenceBySlot[playerSlotId] = evidence;
+            _activityRelocationEvidenceBySlot[playerSlotId] = evidence;
             return true;
         }
     }

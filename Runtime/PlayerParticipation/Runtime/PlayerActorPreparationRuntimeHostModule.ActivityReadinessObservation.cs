@@ -5,7 +5,7 @@ namespace Immersive.Framework.PlayerParticipation
         internal bool TryGetActivityPlayerReadinessContributionSnapshot(
             out ActivityPlayerReadinessContributionRuntimeSnapshot snapshot)
         {
-            if (!IsReady || activityLifecycleParticipant == null)
+            if (!IsReady || _activityLifecycleParticipant == null)
             {
                 snapshot =
                     ActivityPlayerReadinessContributionRuntimeSnapshot
@@ -14,7 +14,7 @@ namespace Immersive.Framework.PlayerParticipation
                 return false;
             }
 
-            return activityLifecycleParticipant
+            return _activityLifecycleParticipant
                 .TryGetReadinessContributionSnapshot(out snapshot);
         }
     }

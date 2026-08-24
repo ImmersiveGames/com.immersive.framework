@@ -98,29 +98,29 @@ namespace Immersive.Framework.PlayerParticipation
         private string reason;
 
         [NonSerialized]
-        private PlayerParticipationOperationResult lastParticipationResult;
+        private PlayerParticipationOperationResult _lastParticipationResult;
 
         [NonSerialized]
-        private LocalPlayerJoinResult lastJoinResult;
+        private LocalPlayerJoinResult _lastJoinResult;
 
         [NonSerialized]
-        private PlayerActorSelectionResult lastActorSelectionResult;
+        private PlayerActorSelectionResult _lastActorSelectionResult;
 
         [NonSerialized]
-        private SessionPlayerLeaveResult lastLeaveResult;
+        private SessionPlayerLeaveResult _lastLeaveResult;
 
         [NonSerialized]
-        private SessionPlayerLeaveRequest lastLeaveRequest;
+        private SessionPlayerLeaveRequest _lastLeaveRequest;
 
         [NonSerialized]
-        private PlayerProvisioningCommandResultKind lastResultKind;
+        private PlayerProvisioningCommandResultKind _lastResultKind;
 
         [NonSerialized]
-        private string lastDiagnostic =
+        private string _lastDiagnostic =
             "No Player provisioning command has been invoked.";
 
         [NonSerialized]
-        private int invocationCount;
+        private int _invocationCount;
 
         public PlayerProvisioningCommandOperation Operation => operation;
         public LocalPlayerProvisioningConsumerAccessBinding ConsumerAccessBinding =>
@@ -132,19 +132,19 @@ namespace Immersive.Framework.PlayerParticipation
         public int ExpectedSelectionRevision => expectedSelectionRevision;
         public PlayerSlotProfile LeavePlayerSlot => leavePlayerSlot;
         public int ExpectedLeaveOccurrenceRevision => expectedLeaveOccurrenceRevision;
-        public SessionPlayerLeaveRequest LastLeaveRequest => lastLeaveRequest;
+        public SessionPlayerLeaveRequest LastLeaveRequest => _lastLeaveRequest;
         public string Reason => reason ?? string.Empty;
-        public int InvocationCount => invocationCount;
-        public PlayerProvisioningCommandResultKind LastResultKind => lastResultKind;
+        public int InvocationCount => _invocationCount;
+        public PlayerProvisioningCommandResultKind LastResultKind => _lastResultKind;
         public PlayerParticipationOperationResult LastParticipationResult =>
-            lastParticipationResult;
-        public LocalPlayerJoinResult LastJoinResult => lastJoinResult;
+            _lastParticipationResult;
+        public LocalPlayerJoinResult LastJoinResult => _lastJoinResult;
         public PlayerActorSelectionResult LastActorSelectionResult =>
-            lastActorSelectionResult;
-        public SessionPlayerLeaveResult LastLeaveResult => lastLeaveResult;
-        public bool HasLastTypedResult => lastResultKind !=
+            _lastActorSelectionResult;
+        public SessionPlayerLeaveResult LastLeaveResult => _lastLeaveResult;
+        public bool HasLastTypedResult => _lastResultKind !=
             PlayerProvisioningCommandResultKind.None;
-        public string LastDiagnostic => lastDiagnostic;
+        public string LastDiagnostic => _lastDiagnostic;
         public string LastResultSummary => BuildLastResultSummary();
         public bool IsScopedAccessAvailable => consumerAccessBinding != null &&
             consumerAccessBinding.IsBound;
@@ -162,7 +162,7 @@ namespace Immersive.Framework.PlayerParticipation
         [ContextMenu("Invoke Configured Player Provisioning Command")]
         public void InvokeConfiguredOperation()
         {
-            invocationCount++;
+            _invocationCount++;
             ClearLastResult();
             string resolvedReason = ResolveReason();
             LogCommandRequested(resolvedReason);
@@ -196,9 +196,9 @@ namespace Immersive.Framework.PlayerParticipation
                     return;
 
                 default:
-                    lastDiagnostic =
+                    _lastDiagnostic =
                         $"Player Provisioning Command Trigger operation '{operation}' is not supported.";
-                    LogCommandRejected(lastDiagnostic);
+                    LogCommandRejected(_lastDiagnostic);
                     return;
             }
         }
@@ -353,9 +353,9 @@ namespace Immersive.Framework.PlayerParticipation
 
             if (defaultActorSelectionRequest == null)
             {
-                lastDiagnostic =
+                _lastDiagnostic =
                     "Request Default Actor Selection was not submitted because its explicit Local Player Actor Selection Requests component is missing.";
-                LogCommandRejected(lastDiagnostic);
+                LogCommandRejected(_lastDiagnostic);
                 return;
             }
 
@@ -374,10 +374,10 @@ namespace Immersive.Framework.PlayerParticipation
                 leavePlayerSlot.TryGetPlayerSlotId(out playerSlotId, out _);
             }
 
-            if (lastLeaveRequest.IsValid &&
-                lastLeaveRequest.PlayerSlotId != playerSlotId)
+            if (_lastLeaveRequest.IsValid &&
+                _lastLeaveRequest.PlayerSlotId != playerSlotId)
             {
-                lastLeaveRequest = default;
+                _lastLeaveRequest = default;
             }
 
             if (!TryGetScopedAccess(out ILocalPlayerProvisioningConsumerAccess access,
@@ -423,10 +423,10 @@ namespace Immersive.Framework.PlayerParticipation
             if (expectedLeaveOccurrenceRevision < 0 &&
                 found &&
                 target.Slot.AllocationState == PlayerSlotAllocationState.Leaving &&
-                lastLeaveRequest.IsValid &&
-                lastLeaveRequest.PlayerSlotId == playerSlotId)
+                _lastLeaveRequest.IsValid &&
+                _lastLeaveRequest.PlayerSlotId == playerSlotId)
             {
-                occurrenceRevision = lastLeaveRequest.ExpectedOccurrenceRevision;
+                occurrenceRevision = _lastLeaveRequest.ExpectedOccurrenceRevision;
             }
 
             var request = new SessionPlayerLeaveRequest(
@@ -454,10 +454,10 @@ namespace Immersive.Framework.PlayerParticipation
 
         private void Complete(PlayerParticipationOperationResult result)
         {
-            lastParticipationResult = result;
-            lastResultKind =
+            _lastParticipationResult = result;
+            _lastResultKind =
                 PlayerProvisioningCommandResultKind.ParticipationOperation;
-            lastDiagnostic = result != null
+            _lastDiagnostic = result != null
                 ? result.ToDiagnosticString()
                 : "Player participation command returned no typed result.";
             LogCommandCompleted();
@@ -465,9 +465,9 @@ namespace Immersive.Framework.PlayerParticipation
 
         private void Complete(LocalPlayerJoinResult result)
         {
-            lastJoinResult = result;
-            lastResultKind = PlayerProvisioningCommandResultKind.LocalPlayerJoin;
-            lastDiagnostic = result != null
+            _lastJoinResult = result;
+            _lastResultKind = PlayerProvisioningCommandResultKind.LocalPlayerJoin;
+            _lastDiagnostic = result != null
                 ? result.ToDiagnosticString()
                 : "Local Player Join returned no typed result.";
             LogCommandCompleted();
@@ -475,9 +475,9 @@ namespace Immersive.Framework.PlayerParticipation
 
         private void Complete(PlayerActorSelectionResult result)
         {
-            lastActorSelectionResult = result;
-            lastResultKind = PlayerProvisioningCommandResultKind.ActorSelection;
-            lastDiagnostic = result != null
+            _lastActorSelectionResult = result;
+            _lastResultKind = PlayerProvisioningCommandResultKind.ActorSelection;
+            _lastDiagnostic = result != null
                 ? result.ToDiagnosticString()
                 : "Default Actor selection returned no typed result.";
             LogCommandCompleted();
@@ -485,14 +485,14 @@ namespace Immersive.Framework.PlayerParticipation
 
         private void Complete(SessionPlayerLeaveResult result)
         {
-            lastLeaveResult = result;
+            _lastLeaveResult = result;
             if (result != null && result.Request.IsValid)
             {
-                lastLeaveRequest = result.Request;
+                _lastLeaveRequest = result.Request;
             }
 
-            lastResultKind = PlayerProvisioningCommandResultKind.SessionPlayerLeave;
-            lastDiagnostic = result != null
+            _lastResultKind = PlayerProvisioningCommandResultKind.SessionPlayerLeave;
+            _lastDiagnostic = result != null
                 ? result.ToDiagnosticString()
                 : "Session Player Leave returned no typed result.";
             LogCommandCompleted();
@@ -500,11 +500,11 @@ namespace Immersive.Framework.PlayerParticipation
 
         private void ClearLastResult()
         {
-            lastParticipationResult = null;
-            lastJoinResult = null;
-            lastActorSelectionResult = null;
-            lastLeaveResult = null;
-            lastResultKind = PlayerProvisioningCommandResultKind.None;
+            _lastParticipationResult = null;
+            _lastJoinResult = null;
+            _lastActorSelectionResult = null;
+            _lastLeaveResult = null;
+            _lastResultKind = PlayerProvisioningCommandResultKind.None;
         }
 
         private string ResolveReason()
@@ -517,10 +517,10 @@ namespace Immersive.Framework.PlayerParticipation
         private string BuildLastResultSummary()
         {
             return HasLastTypedResult
-                ? lastDiagnostic
-                : string.IsNullOrWhiteSpace(lastDiagnostic)
+                ? _lastDiagnostic
+                : string.IsNullOrWhiteSpace(_lastDiagnostic)
                     ? "No Player provisioning command result is available."
-                    : lastDiagnostic;
+                    : _lastDiagnostic;
         }
 
         private void LogCommandRequested(string resolvedReason)
@@ -547,17 +547,17 @@ namespace Immersive.Framework.PlayerParticipation
                 LogFields.Field("component", name),
                 LogFields.Field("scene", gameObject.scene.name),
                 LogFields.Field("operation", operation),
-                LogFields.Field("invocation", invocationCount),
+                LogFields.Field("invocation", _invocationCount),
                 LogFields.Field("scope", GetConfiguredScopeLabel()),
                 LogFields.Field("bindingStatus", ScopeBindingStatus),
-                LogFields.Field("resultKind", lastResultKind),
+                LogFields.Field("resultKind", _lastResultKind),
                 LogFields.Field("resultStatus", resultStatus),
                 LogFields.Field("outcome", outcome),
                 LogFields.Field("playerSlot", GetLastResultPlayerSlot()),
                 LogFields.Field("selectedActor", GetLastResultSelectedActor()),
                 LogFields.Field("localPlayerHost", GetLastResultLocalPlayerHost()),
                 LogFields.Field("unityPlayerIndex", GetLastResultUnityPlayerIndex()),
-                LogFields.Field("message", lastDiagnostic ?? string.Empty));
+                LogFields.Field("message", _lastDiagnostic ?? string.Empty));
 
             FrameworkLogger logger =
                 FrameworkLogger.Create(typeof(PlayerProvisioningCommandTrigger));
@@ -573,23 +573,23 @@ namespace Immersive.Framework.PlayerParticipation
 
         private string GetLastResultStatus()
         {
-            return lastResultKind switch
+            return _lastResultKind switch
             {
                 PlayerProvisioningCommandResultKind.ParticipationOperation =>
-                    lastParticipationResult != null
-                        ? lastParticipationResult.Status.ToString()
+                    _lastParticipationResult != null
+                        ? _lastParticipationResult.Status.ToString()
                         : "Missing",
                 PlayerProvisioningCommandResultKind.LocalPlayerJoin =>
-                    lastJoinResult != null
-                        ? lastJoinResult.Status.ToString()
+                    _lastJoinResult != null
+                        ? _lastJoinResult.Status.ToString()
                         : "Missing",
                 PlayerProvisioningCommandResultKind.ActorSelection =>
-                    lastActorSelectionResult != null
-                        ? lastActorSelectionResult.Status.ToString()
+                    _lastActorSelectionResult != null
+                        ? _lastActorSelectionResult.Status.ToString()
                         : "Missing",
                 PlayerProvisioningCommandResultKind.SessionPlayerLeave =>
-                    lastLeaveResult != null
-                        ? lastLeaveResult.Status.ToString()
+                    _lastLeaveResult != null
+                        ? _lastLeaveResult.Status.ToString()
                         : "Missing",
                 _ => "None"
             };
@@ -597,36 +597,36 @@ namespace Immersive.Framework.PlayerParticipation
 
         private string GetLastResultOutcome()
         {
-            switch (lastResultKind)
+            switch (_lastResultKind)
             {
                 case PlayerProvisioningCommandResultKind.ParticipationOperation:
-                    if (lastParticipationResult == null) return "Missing";
-                    if (lastParticipationResult.Succeeded) return "Succeeded";
-                    if (lastParticipationResult.IgnoredNoChange) return "IgnoredNoChange";
-                    if (lastParticipationResult.Failed) return "Failed";
-                    if (lastParticipationResult.Rejected) return "Rejected";
+                    if (_lastParticipationResult == null) return "Missing";
+                    if (_lastParticipationResult.Succeeded) return "Succeeded";
+                    if (_lastParticipationResult.IgnoredNoChange) return "IgnoredNoChange";
+                    if (_lastParticipationResult.Failed) return "Failed";
+                    if (_lastParticipationResult.Rejected) return "Rejected";
                     return "Incomplete";
 
                 case PlayerProvisioningCommandResultKind.LocalPlayerJoin:
-                    if (lastJoinResult == null) return "Missing";
-                    if (lastJoinResult.Succeeded) return "Succeeded";
-                    if (lastJoinResult.Failed) return "Failed";
-                    if (lastJoinResult.Rejected) return "Rejected";
+                    if (_lastJoinResult == null) return "Missing";
+                    if (_lastJoinResult.Succeeded) return "Succeeded";
+                    if (_lastJoinResult.Failed) return "Failed";
+                    if (_lastJoinResult.Rejected) return "Rejected";
                     return "Incomplete";
 
                 case PlayerProvisioningCommandResultKind.ActorSelection:
-                    if (lastActorSelectionResult == null) return "Missing";
-                    return lastActorSelectionResult.Succeeded
+                    if (_lastActorSelectionResult == null) return "Missing";
+                    return _lastActorSelectionResult.Succeeded
                         ? "Succeeded"
-                        : lastActorSelectionResult.Rejected
+                        : _lastActorSelectionResult.Rejected
                             ? "Rejected"
                             : "Incomplete";
 
                 case PlayerProvisioningCommandResultKind.SessionPlayerLeave:
-                    if (lastLeaveResult == null) return "Missing";
-                    if (lastLeaveResult.Succeeded) return "Succeeded";
-                    if (lastLeaveResult.Failed) return "Failed";
-                    if (lastLeaveResult.Rejected) return "Rejected";
+                    if (_lastLeaveResult == null) return "Missing";
+                    if (_lastLeaveResult.Succeeded) return "Succeeded";
+                    if (_lastLeaveResult.Failed) return "Failed";
+                    if (_lastLeaveResult.Rejected) return "Rejected";
                     return "Incomplete";
 
                 default:
@@ -636,33 +636,33 @@ namespace Immersive.Framework.PlayerParticipation
 
         private string GetLastResultPlayerSlot()
         {
-            if (lastParticipationResult != null &&
-                lastParticipationResult.Slot.PlayerSlotId.IsValid)
+            if (_lastParticipationResult != null &&
+                _lastParticipationResult.Slot.PlayerSlotId.IsValid)
             {
-                return lastParticipationResult.Slot.PlayerSlotId.StableText;
+                return _lastParticipationResult.Slot.PlayerSlotId.StableText;
             }
 
-            if (lastJoinResult != null && lastJoinResult.Slot.PlayerSlotId.IsValid)
+            if (_lastJoinResult != null && _lastJoinResult.Slot.PlayerSlotId.IsValid)
             {
-                return lastJoinResult.Slot.PlayerSlotId.StableText;
+                return _lastJoinResult.Slot.PlayerSlotId.StableText;
             }
 
-            if (lastActorSelectionResult != null &&
-                lastActorSelectionResult.PlayerSlotId.IsValid)
+            if (_lastActorSelectionResult != null &&
+                _lastActorSelectionResult.PlayerSlotId.IsValid)
             {
-                return lastActorSelectionResult.PlayerSlotId.StableText;
+                return _lastActorSelectionResult.PlayerSlotId.StableText;
             }
 
-            if (lastLeaveResult != null)
+            if (_lastLeaveResult != null)
             {
-                if (lastLeaveResult.Slot.PlayerSlotId.IsValid)
+                if (_lastLeaveResult.Slot.PlayerSlotId.IsValid)
                 {
-                    return lastLeaveResult.Slot.PlayerSlotId.StableText;
+                    return _lastLeaveResult.Slot.PlayerSlotId.StableText;
                 }
 
-                if (lastLeaveResult.Request.PlayerSlotId.IsValid)
+                if (_lastLeaveResult.Request.PlayerSlotId.IsValid)
                 {
-                    return lastLeaveResult.Request.PlayerSlotId.StableText;
+                    return _lastLeaveResult.Request.PlayerSlotId.StableText;
                 }
             }
 
@@ -671,22 +671,22 @@ namespace Immersive.Framework.PlayerParticipation
 
         private string GetLastResultSelectedActor()
         {
-            return lastActorSelectionResult != null &&
-                lastActorSelectionResult.SelectedActorProfileId.IsValid
-                    ? lastActorSelectionResult.SelectedActorProfileId.StableText
+            return _lastActorSelectionResult != null &&
+                _lastActorSelectionResult.SelectedActorProfileId.IsValid
+                    ? _lastActorSelectionResult.SelectedActorProfileId.StableText
                     : string.Empty;
         }
 
         private string GetLastResultLocalPlayerHost()
         {
-            return lastJoinResult != null && lastJoinResult.LocalPlayerHost != null
-                ? lastJoinResult.LocalPlayerHost.name
+            return _lastJoinResult != null && _lastJoinResult.LocalPlayerHost != null
+                ? _lastJoinResult.LocalPlayerHost.name
                 : string.Empty;
         }
 
         private int GetLastResultUnityPlayerIndex()
         {
-            return lastJoinResult != null ? lastJoinResult.UnityPlayerIndex : -1;
+            return _lastJoinResult != null ? _lastJoinResult.UnityPlayerIndex : -1;
         }
 
         private LogField[] BuildCommandFields(string status, string message)
@@ -696,7 +696,7 @@ namespace Immersive.Framework.PlayerParticipation
                 LogFields.Field("scene", gameObject.scene.name),
                 LogFields.Field("status", status),
                 LogFields.Field("operation", operation),
-                LogFields.Field("invocation", invocationCount),
+                LogFields.Field("invocation", _invocationCount),
                 LogFields.Field("scope", GetConfiguredScopeLabel()),
                 LogFields.Field("bindingStatus", ScopeBindingStatus),
                 LogFields.Field("controlScheme", controlScheme ?? string.Empty),

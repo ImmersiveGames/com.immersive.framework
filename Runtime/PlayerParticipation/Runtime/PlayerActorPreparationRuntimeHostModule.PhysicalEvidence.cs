@@ -15,8 +15,8 @@ namespace Immersive.Framework.PlayerParticipation
         {
             preparation = default;
             issue = string.Empty;
-            if (preparationContext == null ||
-                !preparationContext.TryGetPreparationSummary(
+            if (_preparationContext == null ||
+                !_preparationContext.TryGetPreparationSummary(
                     playerSlotId,
                     out preparation))
             {
@@ -47,13 +47,13 @@ namespace Immersive.Framework.PlayerParticipation
             actorDeclaration = null;
             materialization = null;
             issue = string.Empty;
-            if (preparationContext == null)
+            if (_preparationContext == null)
             {
-                issue = diagnostic;
+                issue = _diagnostic;
                 return false;
             }
 
-            return preparationContext.TryGetPreparedPhysicalEvidence(
+            return _preparationContext.TryGetPreparedPhysicalEvidence(
                 playerSlotId,
                 expectedPreparation,
                 out host,
