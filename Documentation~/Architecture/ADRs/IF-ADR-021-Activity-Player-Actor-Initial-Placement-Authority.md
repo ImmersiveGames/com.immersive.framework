@@ -1,13 +1,16 @@
 # IF-ADR-021 — Route Spatial Entry and Activity Explicit Relocation
 
-Status: **Accepted / Reconciled — Model B; Route Spatial Entry and Activity Explicit Relocation IMPLEMENTED; QA PENDING**
+Status: **Accepted / Reconciled — Model B; IMPLEMENTED / CURRENT QA VERIFIED**
 Historical implementation QA: **ADR-021 Initial Placement 9/9**
-Route spatial-entry QA: **18/18 PASS (unchanged)**
-Historical Full Player certification: **25/25 mandatory contracts**
-Last updated: **2026-08-23**
+Route spatial-entry QA: **18/18 PASS**
+Activity relocation QA: **23/23 PASS**
+Current Full Player aggregate: **27/27 PASS — PLAYER CURRENT AGGREGATE COMPLETE**
+Historical Full Player certification: **25/25 preserved**
+Last updated: **2026-08-24**
 Type: architecture / spatial authority / player product direction
 Related decisions: IF-ADR-003, IF-ADR-007, IF-ADR-010, IF-ADR-012, IF-ADR-015, IF-ADR-016, IF-ADR-019, IF-ADR-020
 Reconciliation: [2026-08-23 Player Authority and Initial Placement](../Reconciliation/IF-ADR-021-Player-Authority-and-Initial-Placement-Reconciliation-2026-08-23.md)
+Current certification: [2026-08-24 Player Current Aggregate Recertification](../Reconciliation/IF-PLAYER-CURRENT-AGGREGATE-RECERTIFICATION-2026-08-24.md)
 
 ## Context
 
@@ -184,8 +187,9 @@ content, or have no `ActivityContentProfile`.
 ## Historical certification and superseded boundary
 
 The historical ADR-021 implementation and `9/9` QA remain valid evidence for the
-former Activity-owned-scene boundary. The Full Player `25/25` certification remains
-valid for Session physical lifetime and continuity claims it executed.
+former Activity-owned-scene boundary. The historical Full Player `25/25`
+certification remains valid for the 2026-08-15 Session physical-lifetime and
+continuity boundary it executed.
 
 The following historical scene/discovery clauses are superseded by Model B and are
 not evidence for the reconciled contract:
@@ -199,8 +203,7 @@ AnchorOutsideOwnedSceneRejected
 `ForeignSceneIgnored`, exact Slot matching, missing-binding failure, duplicate
 failure, no fallback, Scene-Provided pose preservation and physical-lifetime
 separation remain useful historical evidence only to the extent that their tested
-semantics were not replaced above. Replacement runtime implementation and QA are
-required for the Model B discovery boundary.
+semantics were not replaced above. They are not relabeled as current Model B QA.
 
 ## Current implementation coverage
 
@@ -216,15 +219,39 @@ explicit `ActivityId + PlayerSlotId` authoring, discovers only current Route sco
 plus current Activity content, applies to existing or subsequently prepared Session
 physical Players, and keys idempotence by Activity occurrence plus representation.
 No-relocation Activities request no relocation evidence and retain their pose.
-Route and Activity evidence remain separate. Replacement certification is pending;
-this cut is **not certified**.
+Route and Activity evidence remain separate.
 
-## Pending implementation
+## Current certification
 
-- Certify the implemented Route lifecycle cut (18/18 historical QA remains unchanged)
-  and the implemented Activity explicit-relocation cut for Primary, Route Content,
-  late admission, no-Activity and a new occurrence of the same physical Player.
-- Extend public readiness/evidence correlation for Route occurrence and optional Activity relocation.
-- Add replacement QA for Route Primary, Route Content, shared-scene Activity relocation,
-  zero/duplicate bindings, ineligible scenes, manager-provisioned active-Route join and
-  `ActivityContentProfile = null`.
+Replacement certification is complete for the implemented Model B boundary:
+
+```text
+Route Spatial Entry
+  18/18 PASS
+  ADR-021 MODEL B ROUTE SPATIAL ENTRY VERIFIED
+
+Activity Explicit Relocation
+  23/23 PASS
+  ADR-021 MODEL B ACTIVITY RELOCATION VERIFIED
+
+Full Player current aggregate
+  mandatoryContracts=27
+  executedContracts=27
+  passedContracts=27
+  PLAYER CURRENT AGGREGATE COMPLETE
+```
+
+The Full Player aggregate also passes Scene-Provided, Manager-Provisioned, Actor
+Lifecycle, public surface, Leave, Session termination, failed first-scene adoption,
+failed contextual reprojection and no-physical-handoff coverage under the current
+runtime composition.
+
+The bootstrap-order correction used by this certification preserves the authority
+model: Player Session core is composed first, canonical Game Flow/Route lifecycle
+authority next, Player Actor Preparation attaches after that authority exists, and
+Route startup follows. QA Play Mode synchronization was aligned to canonical Host
+readiness; that synchronization change does not create new runtime authority or alter
+this ADR's semantics.
+
+See the current certification record for the exact aggregate disposition and the
+preserved historical evidence boundary.
