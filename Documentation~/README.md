@@ -1,11 +1,12 @@
 # Immersive Framework Documentation
 
-Last updated: **2026-08-23**
+Last updated: **2026-08-24**
 
 ## Start here
 
 - [Stage A canonical package baseline](Architecture/Reconciliation/IMMERSIVE-FRAMEWORK-STAGE-A-CANONICAL-BASELINE-CLOSURE-2026-08-11.md)
 - [Current framework tracker](Architecture/Tracking/IF-TRACK-Framework.md)
+- [Player current aggregate recertification — 2026-08-24](Architecture/Reconciliation/IF-PLAYER-CURRENT-AGGREGATE-RECERTIFICATION-2026-08-24.md)
 - [Player physical lifetime recertification — 2026-08-15](Architecture/Reconciliation/IMMERSIVE-FRAMEWORK-PLAYER-PHYSICAL-LIFETIME-RECERTIFICATION-2026-08-15.md)
 - [Camera presentation technical certification — 2026-08-15](Architecture/Reconciliation/IMMERSIVE-FRAMEWORK-CAMERA-PRESENTATION-TECHNICAL-CERTIFICATION-2026-08-15.md)
 - [Camera Default output presentation authority — 2026-08-17](Architecture/Reconciliation/IF-ADR-004D-Camera-Default-Output-Presentation-Authority-2026-08-17.md)
@@ -50,18 +51,27 @@ Reverse audit
 Player Physical Lifetime Reconciliation
   CLOSED / RECERTIFIED 2026-08-15
 
-Full Player QA
+Player Current Aggregate
+  PLAYER CURRENT AGGREGATE COMPLETE
+  27/27
+
+Historical Full Player QA
   PLAYER QA CERTIFIED
   25/25
+  preserved for the 2026-08-15 boundary
 
 ADR-019
-  see current Tracker / ADR authority
+  current aggregate PASS; see current Tracker / ADR authority
 
 ADR-020
-  see current Tracker / ADR authority
+  current aggregate PASS; see current Tracker / ADR authority
 
 ADR-021
-  see current Tracker / ADR authority
+  Model B IMPLEMENTED / CURRENT QA VERIFIED
+  Route Spatial Entry 18/18 PASS
+  Activity Relocation 23/23 PASS
+  Full Player current aggregate 27/27 PASS
+  historical Initial Placement 9/9 preserved for superseded boundary
 
 ADR-004
   Accepted / Reconciled / Implemented
@@ -86,7 +96,7 @@ Post-004D Camera QA
   new focused/aggregate run NOT RECORDED
 
 Active consumer phase
-  Player real-game validation when scheduled
+  Player Stage B sample/integration proof
   ADR-013 Audio FIRSTGAME promotion
   ADR-022 broader Camera C6 promotion
 ```
@@ -159,13 +169,14 @@ Archive records preserve history without acting as current product truth.
 | [016](Architecture/ADRs/IF-ADR-016-Player-Session-Initial-Configuration-and-Provisioning-Profiles.md) | Player session initial configuration and provisioning profiles | Accepted / Reconciled |
 | [017](Architecture/ADRs/IF-ADR-017-Application-Frame-Rate-Project-Authority.md) | Application frame-rate project authority | Accepted |
 | [018](Architecture/ADRs/IF-ADR-018-Progression-Save-Backend-Independence-and-Persistence-Domain-Boundaries.md) | Progression Save backend independence and persistence boundaries | Accepted |
-| [019](Architecture/ADRs/IF-ADR-019-Session-Player-Lifetime-and-Activity-Representation-Authority.md) | Session Player lifetime and Activity representation authority | Accepted / Reconciled / Implemented / QA Recertified |
-| [020](Architecture/ADRs/IF-ADR-020-Session-Player-Leave-and-Resource-Release-Authority.md) | Session Player Leave and resource release authority | Accepted / Reconciled / Implemented / QA Recertified |
-| [021](Architecture/ADRs/IF-ADR-021-Activity-Player-Actor-Initial-Placement-Authority.md) | Route spatial entry and Activity explicit relocation | Accepted / Reconciled — Route Spatial Entry + Activity Explicit Relocation implemented; QA pending |
+| [019](Architecture/ADRs/IF-ADR-019-Session-Player-Lifetime-and-Activity-Representation-Authority.md) | Session Player lifetime and Activity representation authority | Accepted / Reconciled / Implemented / Current Aggregate PASS |
+| [020](Architecture/ADRs/IF-ADR-020-Session-Player-Leave-and-Resource-Release-Authority.md) | Session Player Leave and resource release authority | Accepted / Reconciled / Implemented / Current Aggregate PASS |
+| [021](Architecture/ADRs/IF-ADR-021-Activity-Player-Actor-Initial-Placement-Authority.md) | Route spatial entry and Activity explicit relocation | Accepted / Reconciled / Implemented / Current QA Verified |
 | [022](Architecture/ADRs/IF-ADR-022-Camera-Rig-Presentation-Models-and-Materialization-Authority.md) | Camera Rig presentation models and materialization authority | Accepted / Technical QA Certified |
 
 ## Current reconciliation / closure records
 
+- [Player Current Aggregate Recertification — 2026-08-24](Architecture/Reconciliation/IF-PLAYER-CURRENT-AGGREGATE-RECERTIFICATION-2026-08-24.md)
 - [Player Physical Lifetime Recertification — 2026-08-15](Architecture/Reconciliation/IMMERSIVE-FRAMEWORK-PLAYER-PHYSICAL-LIFETIME-RECERTIFICATION-2026-08-15.md)
 - [Camera Presentation Technical Certification — 2026-08-15](Architecture/Reconciliation/IMMERSIVE-FRAMEWORK-CAMERA-PRESENTATION-TECHNICAL-CERTIFICATION-2026-08-15.md)
 - [Camera Default Output Presentation Authority — 2026-08-17](Architecture/Reconciliation/IF-ADR-004D-Camera-Default-Output-Presentation-Authority-2026-08-17.md)
@@ -196,8 +207,24 @@ The current Player boundary is certified as one terminal matrix rather than
 disconnected local fixes.
 
 ```text
-PLAYER QA CERTIFIED
-25/25
+PLAYER CURRENT AGGREGATE COMPLETE
+mandatoryContracts=27
+executedContracts=27
+passedContracts=27
+```
+
+Focused IF-ADR-021 Model B evidence:
+
+```text
+Route Spatial Entry      18/18 PASS
+Activity Relocation      23/23 PASS
+```
+
+Historical evidence remains preserved without being relabeled:
+
+```text
+Full Player 2026-08-15       25/25
+ADR-021 Initial Placement     9/9
 ```
 
 ### Camera
