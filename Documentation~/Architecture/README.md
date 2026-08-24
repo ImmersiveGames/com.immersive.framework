@@ -64,7 +64,8 @@ IF-ADR-021 accepts Model B: Route owns baseline spatial entry for the current Ro
 occurrence; Activity owns only opt-in explicit contextual relocation. Route placement
 is exact by `RouteId + PlayerSlotId`; Activity relocation is exact by
 `ActivityId + PlayerSlotId`. The Primary Scene remains Route-owned. Historical
-implementation/QA is preserved, while the reconciled spatial delta remains pending
+implementation/QA is preserved; Route Spatial Entry and Activity Explicit Relocation
+are implemented, while replacement QA remains pending
 runtime implementation and replacement QA.
 
 ### Camera Presentation / materialization
@@ -234,7 +235,7 @@ an explicit migration decision for breaking changes to Stable consumer surfaces.
 - IF-ADR-016 — Accepted baseline / current Session initial configuration implemented.
 - IF-ADR-019 — Accepted / reconciled / implemented / QA recertified.
 - IF-ADR-020 — Accepted / reconciled / implemented / QA recertified.
-- IF-ADR-021 — Accepted / reconciled; Route lifecycle cut implemented; Activity relocation and replacement QA pending.
+- IF-ADR-021 — Accepted / reconciled; Route Spatial Entry and Activity Explicit Relocation implemented; replacement QA pending.
 
 ### Camera
 

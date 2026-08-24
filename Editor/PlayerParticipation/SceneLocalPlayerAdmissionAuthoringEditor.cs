@@ -25,11 +25,6 @@ namespace Immersive.Framework.Editor.PlayerParticipation
                 "Timing",
                 "Activity lifecycle moment in which this existing Scene Player requests admission.");
 
-        private static readonly GUIContent InitialPlacementLabel =
-            new GUIContent(
-                "Initial Placement",
-                "Preserve the authored Scene Actor pose, or apply the exact Activity-local Player Slot placement before adoption.");
-
         private static readonly GUIContent ApplyRebuildLabel =
             new GUIContent(
                 "Apply / Rebuild",
@@ -44,7 +39,6 @@ namespace Immersive.Framework.Editor.PlayerParticipation
         private SerializedProperty _actorProfile;
         private SerializedProperty _sceneLogicalPlayerActor;
         private SerializedProperty _admissionTiming;
-        private SerializedProperty _initialPlacementPolicy;
 
         private bool _showDebug;
 
@@ -62,9 +56,6 @@ namespace Immersive.Framework.Editor.PlayerParticipation
             _admissionTiming =
                 serializedObject.FindProperty(
                     "admissionTiming");
-            _initialPlacementPolicy =
-                serializedObject.FindProperty(
-                    "initialPlacementPolicy");
         }
 
         public override void OnInspectorGUI()
@@ -131,9 +122,6 @@ namespace Immersive.Framework.Editor.PlayerParticipation
                 _admissionTiming,
                 AdmissionTimingLabel);
 
-            EditorGUILayout.PropertyField(
-                _initialPlacementPolicy,
-                InitialPlacementLabel);
         }
 
         private static void DrawConfigurationStatus(

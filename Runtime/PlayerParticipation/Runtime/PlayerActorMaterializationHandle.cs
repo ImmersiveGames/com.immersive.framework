@@ -111,10 +111,10 @@ namespace Immersive.Framework.PlayerParticipation
                 return false;
             }
 
-            ActivityPlayerInitialPlacementRuntimeBinding placementBinding =
+            RoutePlayerSpatialEntryRuntimeBinding spatialEntryBinding =
                 LocalPlayerHost != null
                     ? LocalPlayerHost.GetComponent<
-                        ActivityPlayerInitialPlacementRuntimeBinding>()
+                        RoutePlayerSpatialEntryRuntimeBinding>()
                     : null;
 
             bool declarationBelongsToLogicalActor =
@@ -124,13 +124,13 @@ namespace Immersive.Framework.PlayerParticipation
                      LogicalActorHost.transform) ||
                  PlayerActorDeclaration.transform
                      .IsChildOf(LogicalActorHost.transform));
-            bool requiresInitialPlacement =
+            bool requiresRouteSpatialEntry =
                 declarationBelongsToLogicalActor && !hasEverActivated;
-            if (requiresInitialPlacement)
+            if (requiresRouteSpatialEntry)
             {
-                if (placementBinding != null)
+                if (spatialEntryBinding != null)
                 {
-                    if (!placementBinding.TryApplyBeforeActivation(
+                    if (!spatialEntryBinding.TryApplyBeforeActivation(
                             this,
                             out issue))
                     {

@@ -1,14 +1,14 @@
 # IF-ADR-021 — Player Authority and Initial Placement Reconciliation
 
-Status: **Accepted / Reconciled — Model B selected; Route lifecycle cut implemented, replacement QA pending**
+Status: **Accepted / Reconciled — Model B; Route Spatial Entry and Activity Explicit Relocation IMPLEMENTED; QA PENDING**
 Date: **2026-08-23**  
 Related decisions: IF-ADR-003, IF-ADR-015, IF-ADR-019, IF-ADR-020, IF-ADR-021
 
 ## Purpose
 
 This reconciliation preserves the 2026-08-23 authority matrix and closes its open
-model choice by accepting Model B. The original reconciliation was documentation
-only; the later Route lifecycle cut is recorded in the ADR implementation coverage.
+model choice by accepting Model B. Route Spatial Entry and Activity Explicit
+Relocation are implemented; replacement QA remains pending.
 
 ## Authority matrix
 
@@ -83,7 +83,7 @@ both modes retain the same Session-owned physical lifetime.
 
 ## Historical boundary and replacement evidence
 
-The runtime currently discovers Initial Placement only in ActivityOwnedScenes. That
+The former runtime discovered Initial Placement only in ActivityOwnedScenes. That
 implementation and ADR-021 9/9 result remain historical evidence for the former
 narrow boundary; they are not certification of Model B.
 
@@ -94,10 +94,13 @@ exclusively Activity-owned scene.
 The historical Full Player 25/25 certification remains intact for its Session
 physical-lifetime and continuity evidence. Nothing in Model B changes those claims.
 
-## Remaining runtime cut
+## Implemented runtime cut / pending QA
 
-- Activity relocation authoring/runtime contract and exact `ActivityId + PlayerSlotId` discovery.
-- Public occurrence-correlated readiness/evidence for Route entry and Activity relocation.
+- Activity relocation has explicit `ActivityId + PlayerSlotId` authoring and exact discovery
+  across current Route scope plus current Activity content only.
+- Existing physical Players are relocated at target-occurrence configuration; later
+  preparation applies the same occurrence gate without Join, Leave, recreation or Route re-entry.
+- Public occurrence-correlated readiness/evidence and replacement QA remain pending.
 - Replacement QA for Primary/Route Content, shared Activity relocation, duplicate and
   missing bindings, ineligible scenes, Scene-Provided pose preservation,
   Manager-Provisioned active-Route join and null Activity Content.

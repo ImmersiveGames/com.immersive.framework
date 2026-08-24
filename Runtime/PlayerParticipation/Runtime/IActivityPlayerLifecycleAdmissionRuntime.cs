@@ -24,7 +24,7 @@ namespace Immersive.Framework.PlayerParticipation
             string source,
             string reason);
 
-        bool TryConfigureInitialPlacementContext(
+        bool TryConfigureRelocationContext(
             ActivityTransitionPreparationContext context,
             string source,
             string reason,

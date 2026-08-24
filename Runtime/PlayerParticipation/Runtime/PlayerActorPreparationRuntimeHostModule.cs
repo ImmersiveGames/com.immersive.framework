@@ -315,7 +315,7 @@ namespace Immersive.Framework.PlayerParticipation
                 return false;
             }
 
-            PublishCurrentInitialPlacementGate(host);
+            PublishCurrentRouteSpatialEntryGate(host);
             RecordSuccessfulJoin(joinResult);
             RegisterActivityLifecycleSource();
             diagnostic =
@@ -573,7 +573,7 @@ namespace Immersive.Framework.PlayerParticipation
                     out LocalPlayerHostAuthoring preparedHost,
                     out _))
             {
-                PublishCurrentInitialPlacementGate(preparedHost);
+                PublishCurrentRouteSpatialEntryGate(preparedHost);
             }
 
             PlayerActorPreparationResult result =
@@ -632,7 +632,7 @@ namespace Immersive.Framework.PlayerParticipation
                     out LocalPlayerHostAuthoring ensuredHost,
                     out _))
             {
-                PublishCurrentInitialPlacementGate(ensuredHost);
+                PublishCurrentRouteSpatialEntryGate(ensuredHost);
             }
 
             PlayerActorPreparationResult result =

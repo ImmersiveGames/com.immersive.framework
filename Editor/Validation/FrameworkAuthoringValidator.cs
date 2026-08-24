@@ -9,6 +9,7 @@ using Immersive.Framework.CycleReset;
 using Immersive.Framework.Editor.Authoring;
 using Immersive.Framework.Loading;
 using Immersive.Framework.Pause;
+using Immersive.Framework.PlayerParticipation;
 using Immersive.Framework.RouteLifecycle;
 using Immersive.Framework.Transition;
 using Immersive.Framework.TransitionEffects;
@@ -75,6 +76,9 @@ namespace Immersive.Framework.Editor.Validation
                     report,
                     validationMode);
                 ValidateOpenSceneCycleResetTriggers(
+                    report,
+                    validationMode);
+                ValidateOpenSceneActivityPlayerRelocations(
                     report,
                     validationMode);
                 FrameworkLocalPlayerCameraPublicationValidator
@@ -1275,6 +1279,20 @@ namespace Immersive.Framework.Editor.Validation
                 report,
                 activity);
 
+            if (!activity.HasDefinedPlayerRelocationPolicy)
+            {
+                report.AddError(
+                    $"Activity '{activity.ActivityName}' has an invalid Player Relocation policy.",
+                    activity);
+            }
+            else if (activity.PlayerRelocationPolicy ==
+                     ActivityPlayerRelocationPolicy.NoRelocation)
+            {
+                report.AddInfo(
+                    "Activity Player Relocation is disabled. Route Spatial Entry remains the only spatial authority unless this Activity explicitly opts in.",
+                    activity);
+            }
+
             switch (activity.VisualTransitionMode)
             {
                 case ActivityVisualTransitionMode.Seamless:
@@ -1988,6 +2006,41 @@ namespace Immersive.Framework.Editor.Validation
             report.AddInfo(
                 $"Cycle Reset Trigger validation scanned routeTriggers='{routeTriggerCount}' activityTriggers='{activityTriggerCount}'.",
                 null);
+        }
+
+        private static void ValidateOpenSceneActivityPlayerRelocations(
+            FrameworkAuthoringValidationReport report,
+            FrameworkValidationMode validationMode)
+        {
+            ActivityPlayerRelocationAuthoring[] authorings =
+                Object.FindObjectsByType<ActivityPlayerRelocationAuthoring>(
+                    FindObjectsInactive.Include);
+            if (authorings == null || authorings.Length == 0)
+            {
+                report.AddInfo("No Activity Player Relocation components were found in open scenes.", null);
+                return;
+            }
+
+            for (int index = 0; index < authorings.Length; index++)
+            {
+                ActivityPlayerRelocationAuthoring authoring = authorings[index];
+                if (authoring == null || !authoring.gameObject.scene.IsValid() ||
+                    !authoring.gameObject.scene.isLoaded)
+                {
+                    continue;
+                }
+
+                if (!authoring.TryValidateBindings(out string issue))
+                {
+                    report.AddError(issue, authoring);
+                }
+                else
+                {
+                    report.AddInfo(
+                        $"Activity Player Relocation on '{authoring.gameObject.name}' has valid local Activity + Slot bindings.",
+                        authoring);
+                }
+            }
         }
 
         private static FrameworkValidationMode ResolveValidationMode(ImmersiveFrameworkSettingsAsset settings)

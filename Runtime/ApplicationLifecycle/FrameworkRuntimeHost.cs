@@ -548,6 +548,20 @@ namespace Immersive.Framework.ApplicationLifecycle
                 this,
                 this,
                 _sceneLifecycleRuntime);
+            if (_gameApplication.PlayerSessionEnabled &&
+                !PlayerActorPreparationRuntimeHostModule.TryAttach(
+                    this,
+                    out _,
+                    out string playerActorPreparationIssue))
+            {
+                var failed = FrameworkGameFlowStartResult.Failed(
+                    "Player Actor preparation lifecycle attachment failed. " +
+                    playerActorPreparationIssue);
+                _state = FrameworkRuntimeState.FromGameFlowResult(
+                    _gameApplication,
+                    failed);
+                return failed;
+            }
             ApplyRetainedActivityParticipantSources();
             _activityReadinessBinding = _gameFlowRuntime.SubscribeActivityReadinessUpdates(HandleActivityReadinessUpdate);
             ApplyPauseActivityBindingLifecycle();

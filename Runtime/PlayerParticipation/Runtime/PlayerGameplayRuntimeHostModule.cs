@@ -26,7 +26,7 @@ namespace Immersive.Framework.PlayerParticipation
         private PlayerGameplayCameraEligibilityRuntimeContext cameraContext;
         private PlayerGameplayAdmissionRuntimeContext admissionContext;
         private PlayerGameplayCurrentContextRuntime currentGameplayContext;
-        private IActivityPlayerLifecycleAdmissionRuntime initialPlacementContext;
+        private IActivityPlayerLifecycleAdmissionRuntime activityRelocationContext;
         private PlayerGameplayRuntimeOperationStatus lastOperationStatus;
         private string diagnostic =
             "Player gameplay runtime is not initialized.";
@@ -197,10 +197,10 @@ namespace Immersive.Framework.PlayerParticipation
             cameraContext = targetCamera;
             admissionContext = targetAdmission;
             currentGameplayContext = targetCurrentGameplay;
-            initialPlacementContext =
-                new ActivityPlayerInitialPlacementContextRuntime(targetPreparation);
+            activityRelocationContext =
+                new ActivityPlayerRelocationContextRuntime(targetPreparation);
             targetRuntimeHost.SetActivityPlayerLifecycleAdmissionRuntime(
-                initialPlacementContext);
+                activityRelocationContext);
 
             lastOperationStatus =
                 PlayerGameplayRuntimeOperationStatus.None;
@@ -622,7 +622,7 @@ namespace Immersive.Framework.PlayerParticipation
             {
                 runtimeHost.SetActivityPlayerLifecycleAdmissionRuntime(null);
             }
-            initialPlacementContext = null;
+            activityRelocationContext = null;
             admissionContext = null;
             cameraContext = null;
             inputContext = null;

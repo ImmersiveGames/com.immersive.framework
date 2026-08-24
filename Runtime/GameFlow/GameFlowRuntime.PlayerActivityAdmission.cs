@@ -121,7 +121,7 @@ namespace Immersive.Framework.GameFlow
 
             if (activityPlayerLifecycleAdmissionRuntime != null &&
                 !activityPlayerLifecycleAdmissionRuntime
-                    .TryConfigureInitialPlacementContext(
+                    .TryConfigureRelocationContext(
                         placementContext,
                         source,
                         reason,
@@ -130,7 +130,7 @@ namespace Immersive.Framework.GameFlow
                 return ActivityActivationGateResult.Blocked(
                     source,
                     reason,
-                    "Activity Player initial placement context was rejected. " +
+                    "Activity Player relocation context was rejected. " +
                     placementIssue);
             }
 
@@ -173,7 +173,7 @@ namespace Immersive.Framework.GameFlow
         }
 
         private ActivityActivationGateResult
-            ConfigureActivityPlayerInitialPlacement(
+            ConfigureActivityPlayerRelocation(
                 string source,
                 string reason)
         {
@@ -184,7 +184,7 @@ namespace Immersive.Framework.GameFlow
                 return ActivityActivationGateResult.Blocked(
                     source,
                     reason,
-                    "Target Activity has no valid pre-commit occurrence/discovery context for initial placement.");
+                    "Target Activity has no valid pre-commit occurrence/discovery context for relocation.");
             }
 
             if (activityPlayerLifecycleAdmissionRuntime == null)
@@ -192,11 +192,11 @@ namespace Immersive.Framework.GameFlow
                 return ActivityActivationGateResult.Allowed(
                     source,
                     reason,
-                    "Player lifecycle runtime is absent; no Player initial-placement authority is composed.");
+                    "Player lifecycle runtime is absent; no Activity Player relocation authority is composed.");
             }
 
             return activityPlayerLifecycleAdmissionRuntime
-                .TryConfigureInitialPlacementContext(
+                .TryConfigureRelocationContext(
                     context,
                     source,
                     reason,
@@ -204,11 +204,11 @@ namespace Immersive.Framework.GameFlow
                 ? ActivityActivationGateResult.Allowed(
                     source,
                     reason,
-                    "Activity Player initial-placement context configured for target occurrence.")
+                    "Activity Player relocation context configured for target occurrence.")
                 : ActivityActivationGateResult.Blocked(
                     source,
                     reason,
-                    "Activity Player initial-placement context configuration failed. " + issue);
+                    "Activity Player relocation context configuration failed. " + issue);
         }
 
         private void RollbackPendingActivityPlayerLifecycleAdmission(

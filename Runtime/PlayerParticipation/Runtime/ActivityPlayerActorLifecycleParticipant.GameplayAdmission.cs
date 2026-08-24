@@ -118,6 +118,18 @@ namespace Immersive.Framework.PlayerParticipation
                             : $"Session physical preparation returned no result for Slot '{slot.PlayerSlotId.StableText}'.");
                 }
 
+                if (!preparationModule.TryApplyCurrentActivityRelocation(
+                        owner,
+                        slot.PlayerSlotId,
+                        preparation.CurrentSummary.Token,
+                        out string relocationIssue))
+                {
+                    return RollbackGameplayReadyEnter(
+                        request, activity, owner, projectedSlots, gameplayRuntime,
+                        gameplay, prepared, selections,
+                        "Activity explicit Player relocation failed. " + relocationIssue);
+                }
+
                 PlayerActorPreparationToken preparationToken =
                     preparation.CurrentSummary.Token;
                 bool preparedNow = preparation.Status ==

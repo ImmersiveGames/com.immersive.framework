@@ -208,7 +208,7 @@ namespace Immersive.Framework.GameFlow
                         "GameApplication",
                         "startup",
                         NoOpFrameworkLoadingProgressReporter.Instance,
-                        () => ConfigureActivityPlayerInitialPlacement(
+                        () => ConfigureActivityPlayerRelocation(
                             "GameApplication",
                             "startup"))
                     : await StartRouteCoreAsync(
@@ -266,7 +266,7 @@ namespace Immersive.Framework.GameFlow
                     "GameApplication",
                     "startup",
                     NoOpFrameworkLoadingProgressReporter.Instance,
-                    () => ConfigureActivityPlayerInitialPlacement(
+                    () => ConfigureActivityPlayerRelocation(
                         "GameApplication",
                         "startup"));
                 if (!routeLifecycleResult.Started)

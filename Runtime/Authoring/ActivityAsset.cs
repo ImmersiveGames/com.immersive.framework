@@ -59,6 +59,11 @@ namespace Immersive.Framework.Authoring
         private ActivityContentProfileAsset activityContentProfile;
 
         [SerializeField]
+        [Tooltip("Optional contextual relocation for an already admitted Session Player. Route Spatial Entry remains independent and always occurs first for its Route occurrence.")]
+        private ActivityPlayerRelocationPolicy playerRelocationPolicy =
+            ActivityPlayerRelocationPolicy.NoRelocation;
+
+        [SerializeField]
         [Tooltip("Declares whether initial Activity readiness is observed after release, awaited while covered, or awaited while visible. ObserveOnly preserves existing behavior.")]
         private ActivityEntryReadinessPolicy activityEntryReadinessPolicy =
             ActivityEntryReadinessPolicy.ObserveOnly;
@@ -242,6 +247,14 @@ namespace Immersive.Framework.Authoring
 
         public bool HasActivityContentScenes =>
             activityContentProfile != null && activityContentProfile.HasScenes;
+
+        public ActivityPlayerRelocationPolicy PlayerRelocationPolicy =>
+            playerRelocationPolicy;
+
+        public bool HasDefinedPlayerRelocationPolicy =>
+            Enum.IsDefined(
+                typeof(ActivityPlayerRelocationPolicy),
+                playerRelocationPolicy);
 
         public ActivityEntryReadinessPolicy EntryReadinessPolicy =>
             activityEntryReadinessPolicy;

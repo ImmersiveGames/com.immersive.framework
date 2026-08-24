@@ -171,7 +171,7 @@ namespace Immersive.Framework.PlayerParticipation
                     issue);
             }
 
-            if (!TryApplySceneProvidedInitialPlacement(
+            if (!TryApplySceneProvidedRouteSpatialEntry(
                     authoring,
                     out issue))
             {
@@ -186,7 +186,7 @@ namespace Immersive.Framework.PlayerParticipation
                         false,
                         source,
                         reason,
-                        "Scene Player Actor initial placement gate failed. " +
+                        "Scene Player Actor Route spatial-entry gate failed. " +
                         issue);
                 authoring.SetActorAdoptionResult(placementFailure);
                 diagnostic = placementFailure.ToDiagnosticString();

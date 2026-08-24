@@ -1,7 +1,8 @@
 # IF-ADR-021 — Route Spatial Entry and Activity Explicit Relocation
 
-Status: **Accepted / Reconciled — Model B; Route spatial-entry lifecycle cut implemented, not certified**
+Status: **Accepted / Reconciled — Model B; Route Spatial Entry and Activity Explicit Relocation IMPLEMENTED; QA PENDING**
 Historical implementation QA: **ADR-021 Initial Placement 9/9**
+Route spatial-entry QA: **18/18 PASS (unchanged)**
 Historical Full Player certification: **25/25 mandatory contracts**
 Last updated: **2026-08-23**
 Type: architecture / spatial authority / player product direction
@@ -210,14 +211,19 @@ consumes it for prepared Players and late admissions. The Route policy is explic
 Route-owned discovery is restricted to Primary plus Route-owned content, and the
 per-Host guard is keyed by Route occurrence plus physical representation.
 
-Activity explicit relocation, public Route/Activity evidence/readiness correlation,
-and replacement certification remain pending. This cut is **not certified**.
+Activity explicit relocation is implemented as a separate optional pipeline. It uses
+explicit `ActivityId + PlayerSlotId` authoring, discovers only current Route scope
+plus current Activity content, applies to existing or subsequently prepared Session
+physical Players, and keys idempotence by Activity occurrence plus representation.
+No-relocation Activities request no relocation evidence and retain their pose.
+Route and Activity evidence remain separate. Replacement certification is pending;
+this cut is **not certified**.
 
 ## Pending implementation
 
-- Certify the Route lifecycle cut for Primary, Route Content, late admission,
-  no-Activity and a new occurrence of the same physical Player.
-- Implement opt-in Activity relocation and exact `ActivityId + PlayerSlotId` discovery.
+- Certify the implemented Route lifecycle cut (18/18 historical QA remains unchanged)
+  and the implemented Activity explicit-relocation cut for Primary, Route Content,
+  late admission, no-Activity and a new occurrence of the same physical Player.
 - Extend public readiness/evidence correlation for Route occurrence and optional Activity relocation.
 - Add replacement QA for Route Primary, Route Content, shared-scene Activity relocation,
   zero/duplicate bindings, ineligible scenes, manager-provisioned active-Route join and

@@ -6,12 +6,12 @@ namespace Immersive.Framework.ActivityFlow
 {
     /// <summary>
     /// Immutable target-Activity preparation context exposed only while ActivityFlow owns a
-    /// non-terminal pre-commit transition. It carries the canonical occurrence and the exact
-    /// Activity-owned discovery scope; it is not a global lookup surface.
+    /// non-terminal pre-commit transition. It carries the canonical occurrence plus its
+    /// Route-owned and Activity-owned discovery scopes; it is not a global lookup surface.
     /// </summary>
     [FrameworkApiStatus(
         FrameworkApiStatus.Internal,
-        "IF-ADR-021 transient target Activity occurrence/discovery context for Player initial placement.")]
+        "IF-ADR-021 transient target Activity occurrence/discovery context for explicit Player relocation.")]
     internal readonly struct ActivityTransitionPreparationContext
     {
         internal ActivityTransitionPreparationContext(

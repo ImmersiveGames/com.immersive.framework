@@ -491,6 +491,20 @@ namespace Immersive.Framework.PlayerParticipation
                             issue);
                     }
 
+                    if (!preparationModule.TryApplyCurrentActivityRelocation(
+                            request.Owner,
+                            slot.PlayerSlotId,
+                            preparation.CurrentSummary.Token,
+                            out string relocationIssue))
+                    {
+                        return FailEnterAndRollback(
+                            request, activity, owner, requirementLevel,
+                            projectedSlots.Count, prepared, appliedSelections,
+                            slotEvidence,
+                            ActivityPlayerActorLifecycleStatus.FailedPreparation,
+                            "Activity explicit Player relocation failed. " + relocationIssue);
+                    }
+
                     token = preparation.CurrentSummary.Token;
                     preparationApplied =
                         preparation.Status ==

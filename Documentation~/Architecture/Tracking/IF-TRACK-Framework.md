@@ -99,7 +99,7 @@ A real consumer can expose product/UX debt, an integration gap, future scope, or
 | [018](../ADRs/IF-ADR-018-Progression-Save-Backend-Independence-and-Persistence-Domain-Boundaries.md) | ACCEPTED / RECONCILED; A Stable, B JSON certified, C composition implemented | backend conformance; JSON 18/18; composition 12/12 CERTIFIED | FIRSTGAME persistence/backend usability proof remains. |
 | [019](../ADRs/IF-ADR-019-Session-Player-Lifetime-and-Activity-Representation-Authority.md) | ACCEPTED / RECONCILED / IMPLEMENTED | Full Player 25/25 RECERTIFIED | Closed for Session physical Player lifetime and contextual representation authority. |
 | [020](../ADRs/IF-ADR-020-Session-Player-Leave-and-Resource-Release-Authority.md) | ACCEPTED / RECONCILED / IMPLEMENTED | ADR020-H 26/26; Full Player 25/25 RECERTIFIED | Closed for Session Player Leave and resource release authority. |
-| [021](../ADRs/IF-ADR-021-Activity-Player-Actor-Initial-Placement-Authority.md) | ACCEPTED / RECONCILED — Model B; Route lifecycle cut IMPLEMENTED; Activity relocation/evidence pending | Historical ADR-021 9/9; Full Player 25/25 preserved; replacement QA pending | Route baseline spatial entry now has a Route-owned lifecycle port. Activity relocation remains a separate pending pipeline. |
+| [021](../ADRs/IF-ADR-021-Activity-Player-Actor-Initial-Placement-Authority.md) | ACCEPTED / RECONCILED — Model B; Route Spatial Entry + Activity Explicit Relocation IMPLEMENTED; QA PENDING | Route 18/18 unchanged; Full Player 25/25 preserved; replacement QA pending | Route baseline entry and optional Activity relocation are separate lifecycle-correct pipelines. |
 | [022](../ADRs/IF-ADR-022-Camera-Rig-Presentation-Models-and-Materialization-Authority.md) | ACCEPTED / IMPLEMENTED | Presentation 14/14; Full Camera 53/53 for 2026-08-15 boundary | C1-C5 closed; broader FIRSTGAME C6 remains pending. |
 
 ## Current scoped closures
@@ -477,7 +477,7 @@ ADR-022 presentation models are not future scope; Fixed/Follow/Mounted/Third Per
 - [IF-ADR-013 — Optional Audio BGM Adapter](../ADRs/IF-ADR-013-Optional-Audio-BGM-Adapter.md) — Accepted / Experimental / technically certified / consumer gate proven
 - [IF-ADR-019 — Session Player Lifetime and Activity Representation Authority](../ADRs/IF-ADR-019-Session-Player-Lifetime-and-Activity-Representation-Authority.md) — Accepted / reconciled / implemented / QA recertified
 - [IF-ADR-020 — Session Player Leave and Resource Release Authority](../ADRs/IF-ADR-020-Session-Player-Leave-and-Resource-Release-Authority.md) — Accepted / reconciled / implemented / QA recertified
-- [IF-ADR-021 — Route Spatial Entry and Activity Explicit Relocation](../ADRs/IF-ADR-021-Activity-Player-Actor-Initial-Placement-Authority.md) — Accepted / reconciled; Model B accepted; runtime and replacement QA pending
+- [IF-ADR-021 — Route Spatial Entry and Activity Explicit Relocation](../ADRs/IF-ADR-021-Activity-Player-Actor-Initial-Placement-Authority.md) — Accepted / reconciled; Route Spatial Entry + Activity Explicit Relocation implemented; QA pending
 - [IF-ADR-022 — Camera Rig Presentation Models and Materialization Authority](../ADRs/IF-ADR-022-Camera-Rig-Presentation-Models-and-Materialization-Authority.md) — Accepted / Implemented / Technical QA Certified
 
 ## Current reconciliation records

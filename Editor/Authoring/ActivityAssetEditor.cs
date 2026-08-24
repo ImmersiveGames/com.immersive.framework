@@ -47,6 +47,11 @@ namespace Immersive.Framework.Editor.Authoring
                 "Content Profile",
                 "Optional Activity-owned scenes composed and released with this Activity.");
 
+        private static readonly GUIContent PlayerRelocationLabel =
+            new GUIContent(
+                "Player Relocation",
+                "Optional contextual relocation of an already admitted Session Player. Route spatial entry remains Route-owned and independent.");
+
         private static readonly GUIContent EntryReadinessPolicyLabel =
             new GUIContent(
                 "Policy",
@@ -75,6 +80,7 @@ namespace Immersive.Framework.Editor.Authoring
         private SerializedProperty _playerParticipationExplicitSlotProfiles;
         private SerializedProperty _playerParticipationRequirementLevel;
         private SerializedProperty _activityContentProfile;
+        private SerializedProperty _playerRelocationPolicy;
         private SerializedProperty _activityEntryReadinessPolicy;
         private SerializedProperty _visualTransitionMode;
         private SerializedProperty _transitionGateMode;
@@ -113,6 +119,8 @@ namespace Immersive.Framework.Editor.Authoring
             _activityContentProfile =
                 serializedObject.FindProperty(
                     "activityContentProfile");
+            _playerRelocationPolicy =
+                serializedObject.FindProperty("playerRelocationPolicy");
             _activityEntryReadinessPolicy =
                 serializedObject.FindProperty(
                     "activityEntryReadinessPolicy");
@@ -194,6 +202,10 @@ namespace Immersive.Framework.Editor.Authoring
             EditorGUILayout.PropertyField(
                 _playerParticipationRequirementLevel,
                 ReadinessLabel);
+
+            EditorGUILayout.PropertyField(
+                _playerRelocationPolicy,
+                PlayerRelocationLabel);
         }
 
         private bool UsesExplicitSlots()

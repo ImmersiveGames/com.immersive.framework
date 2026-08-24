@@ -59,31 +59,6 @@ namespace Immersive.Framework.PlayerParticipation
                 actorSelectionDuplicatePolicy,
                 source,
                 reason);
-            if (result.Succeeded &&
-                !PlayerActorPreparationRuntimeHostModule.TryAttach(
-                    runtimeHost,
-                    out _,
-                    out string preparationIssue))
-            {
-                PlayerParticipationSnapshot snapshot = module.runtimeContext != null
-                    ? module.runtimeContext.CreateSnapshot()
-                    : PlayerParticipationSnapshot.Empty(
-                        PlayerParticipationOperationStatus.FailedInvalidConfiguration,
-                        preparationIssue);
-                result = new PlayerParticipationOperationResult(
-                    PlayerParticipationOperationStatus.FailedInvalidConfiguration,
-                    "InitializePlayerActorPreparationRuntime",
-                    source,
-                    reason,
-                    preparationIssue,
-                    snapshot.Revision,
-                    snapshot.Revision,
-                    default,
-                    default,
-                    snapshot);
-                module.initializationResult = result;
-            }
-
             return module;
         }
 

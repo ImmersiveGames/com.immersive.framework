@@ -570,6 +570,19 @@ namespace Immersive.Framework.PlayerParticipation
                                 : $"Logical Actor preparation returned no result for Slot '{slot.PlayerSlotId.StableText}'.");
                     }
 
+                    if (!preparationModule.TryApplyCurrentActivityRelocation(
+                            playerReadinessRecord.ScopeContext.Owner,
+                            slot.PlayerSlotId,
+                            preparation.CurrentSummary.Token,
+                            out string relocationIssue))
+                    {
+                        return FailAndRollbackReconcile(
+                            ActivityPlayerActorReconcileStatus.FailedPreparation,
+                            session.Revision, deltas, gameplayRuntime,
+                            resolvedSource, resolvedReason,
+                            "Activity explicit Player relocation failed. " + relocationIssue);
+                    }
+
                     bool preparationApplied =
                         preparation.Status ==
                         PlayerActorPreparationStatus.SucceededPrepared;
