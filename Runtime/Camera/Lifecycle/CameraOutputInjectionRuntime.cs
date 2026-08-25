@@ -12,10 +12,10 @@ namespace Immersive.Framework.Camera
     [FrameworkApiStatus(FrameworkApiStatus.Internal, "Runtime implementation detail; not game-facing API.")]
     internal sealed class CameraOutputInjectionRuntime : IDisposable
     {
-        private readonly CameraOutputSessionBinding _outputSession;
+        private readonly CameraOutputAuthoring _outputSession;
 
         internal CameraOutputInjectionRuntime(
-            CameraOutputSessionBinding outputSession)
+            CameraOutputAuthoring outputSession)
         {
             this._outputSession = outputSession ??
                 throw new ArgumentNullException(nameof(outputSession));

@@ -12,10 +12,10 @@ namespace Immersive.Framework.Camera
     [FrameworkApiStatus(FrameworkApiStatus.Internal, "Runtime implementation detail; not game-facing API.")]
     internal sealed class CameraOutputSessionInjectionRuntime : IDisposable
     {
-        private readonly SessionCameraOverrideBinding _sessionOverride;
+        private readonly SessionCameraOverride _sessionOverride;
 
         internal CameraOutputSessionInjectionRuntime(
-            SessionCameraOverrideBinding sessionOverride)
+            SessionCameraOverride sessionOverride)
         {
             this._sessionOverride = sessionOverride ?? throw new ArgumentNullException(nameof(sessionOverride));
             SceneManager.sceneLoaded += OnSceneLoaded;

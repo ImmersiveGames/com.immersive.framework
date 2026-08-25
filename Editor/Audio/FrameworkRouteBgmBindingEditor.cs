@@ -8,9 +8,9 @@ using UnityEngine;
 
 namespace Immersive.Framework.Editor.Audio
 {
-    [CustomEditor(typeof(FrameworkRouteBgmBinding))]
+    [CustomEditor(typeof(RouteBgmAuthoring))]
     [CanEditMultipleObjects]
-    internal sealed class FrameworkRouteBgmBindingEditor :
+    internal sealed class RouteBgmAuthoringEditor :
         UnityEditor.Editor
     {
         private SerializedProperty _routeBgm;
@@ -181,8 +181,8 @@ namespace Immersive.Framework.Editor.Audio
                 return;
             }
 
-            FrameworkRouteBgmBinding binding =
-                target as FrameworkRouteBgmBinding;
+            RouteBgmAuthoring binding =
+                target as RouteBgmAuthoring;
 
             if (binding == null)
             {
@@ -211,14 +211,14 @@ namespace Immersive.Framework.Editor.Audio
                 return;
             }
 
-            RouteContentBinding routeContent =
-                binding.GetComponentInParent<RouteContentBinding>(
+            RouteContentContribution routeContent =
+                binding.GetComponentInParent<RouteContentContribution>(
                     true);
 
             if (routeContent == null)
             {
                 EditorGUILayout.HelpBox(
-                    "Route BGM Binding must be on or below a Route Content Binding.",
+                    "Route BGM Binding must be on or below a Route Content Contribution.",
                     MessageType.Error);
                 return;
             }
@@ -226,7 +226,7 @@ namespace Immersive.Framework.Editor.Audio
             if (routeContent.Route == null)
             {
                 EditorGUILayout.HelpBox(
-                    "The owning Route Content Binding has no Route.",
+                    "The owning Route Content Contribution has no Route.",
                     MessageType.Error);
                 return;
             }
@@ -255,7 +255,7 @@ namespace Immersive.Framework.Editor.Audio
                         FrameworkBgmAuthoringValidator
                             .ValidateRouteBinding(
                                 targets[index]
-                                    as FrameworkRouteBgmBinding));
+                                    as RouteBgmAuthoring));
                 }
             }
 
@@ -267,7 +267,7 @@ namespace Immersive.Framework.Editor.Audio
         private void DrawAdvanced()
         {
             if (targets.Length != 1 ||
-                !(target is FrameworkRouteBgmBinding binding))
+                !(target is RouteBgmAuthoring binding))
             {
                 EditorGUILayout.LabelField(
                     new GUIContent("Runtime Evidence"),

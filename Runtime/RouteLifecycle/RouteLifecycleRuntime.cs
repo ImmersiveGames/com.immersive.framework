@@ -365,24 +365,24 @@ namespace Immersive.Framework.RouteLifecycle
                 return RouteLifecycleStartResult.Failed(routeSceneCompositionResult.ToDiagnosticString());
             }
 
-            RouteRequestTriggerBindingResult routeTriggerBinding =
-                RouteRequestTriggerBinding.TryBind(
+            RouteRequestTriggerBinderResult routeTriggerBinder =
+                RouteRequestTriggerBinder.TryBind(
                     ResolveMaterializedRouteSceneRoots(routeSceneCompositionResult),
                     _routeRuntime);
-            if (!routeTriggerBinding.Succeeded)
+            if (!routeTriggerBinder.Succeeded)
             {
                 return RouteLifecycleStartResult.Failed(
-                    routeTriggerBinding.Message);
+                    routeTriggerBinder.Message);
             }
 
-            ActivityRequestTriggerBindingResult activityTriggerBinding =
-                ActivityRequestTriggerBinding.TryBind(
+            ActivityRequestTriggerBinderResult activityTriggerBinder =
+                ActivityRequestTriggerBinder.TryBind(
                     ResolveMaterializedRouteSceneRoots(routeSceneCompositionResult),
                     _activityRuntime);
-            if (!activityTriggerBinding.Succeeded)
+            if (!activityTriggerBinder.Succeeded)
             {
                 return RouteLifecycleStartResult.Failed(
-                    activityTriggerBinding.Message);
+                    activityTriggerBinder.Message);
             }
 
             RouteCycleResetTriggerBindingResult routeCycleResetTriggerBinding =
@@ -395,24 +395,24 @@ namespace Immersive.Framework.RouteLifecycle
                     routeCycleResetTriggerBinding.Message);
             }
 
-            ActivityCycleResetTriggerBindingResult activityCycleResetTriggerBinding =
-                ActivityCycleResetTriggerBinding.TryBind(
+            ActivityCycleResetTriggerBinderResult activityCycleResetTriggerBinder =
+                ActivityCycleResetTriggerBinder.TryBind(
                     ResolveMaterializedRouteSceneRoots(routeSceneCompositionResult),
                     _activityCycleResetRuntime);
-            if (!activityCycleResetTriggerBinding.Succeeded)
+            if (!activityCycleResetTriggerBinder.Succeeded)
             {
                 return RouteLifecycleStartResult.Failed(
-                    activityCycleResetTriggerBinding.Message);
+                    activityCycleResetTriggerBinder.Message);
             }
 
-            ActivityRestartTriggerBindingResult activityRestartTriggerBinding =
-                ActivityRestartTriggerBinding.TryBind(
+            ActivityRestartTriggerBinderResult activityRestartTriggerBinder =
+                ActivityRestartTriggerBinder.TryBind(
                     ResolveMaterializedRouteSceneRoots(routeSceneCompositionResult),
                     _activityRestartRuntime);
-            if (!activityRestartTriggerBinding.Succeeded)
+            if (!activityRestartTriggerBinder.Succeeded)
             {
                 return RouteLifecycleStartResult.Failed(
-                    activityRestartTriggerBinding.Message);
+                    activityRestartTriggerBinder.Message);
             }
 
             var runtimeRouteEnterResult = CreateRouteScopeRoot(route, source, reason);

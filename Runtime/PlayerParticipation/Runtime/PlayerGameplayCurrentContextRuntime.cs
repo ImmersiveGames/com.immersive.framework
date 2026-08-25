@@ -38,9 +38,9 @@ namespace Immersive.Framework.PlayerParticipation
         private readonly PlayerGameplayCameraEligibilityRuntimeContext _cameraContext;
         private readonly PlayerGameplayAdmissionRuntimeContext _admissionContext;
         private readonly string _sessionContextId;
-        private readonly Dictionary<PlayerSlotId, PlayerGameplayInputConsumerBinding>
+        private readonly Dictionary<PlayerSlotId, PlayerGameplayInputReader>
             _gameplayInputConsumers =
-                new Dictionary<PlayerSlotId, PlayerGameplayInputConsumerBinding>();
+                new Dictionary<PlayerSlotId, PlayerGameplayInputReader>();
 
         private PlayerGameplayCurrentContextRuntime(
             PlayerActorPreparationRuntimeHostModule preparationModule,
@@ -237,7 +237,7 @@ namespace Immersive.Framework.PlayerParticipation
                     out PlayerActorDeclaration actor, out UnityPlayerInputGateAdapter gate,
                     out PlayerGameplayCameraAuthoring cameraAuthoring,
                     out PlayerGameplayCameraRequiredness cameraRequiredness,
-                    out CameraOutputSessionBinding outputSession, out issue))
+                    out CameraOutputAuthoring outputSession, out issue))
                 return false;
 
             PlayerGameplayInputBindingResult input = _inputContext.TryBind(
@@ -304,14 +304,14 @@ namespace Immersive.Framework.PlayerParticipation
         {
             issue = string.Empty;
             PlayerSlotId playerSlotId = input.PlayerSlotId;
-            PlayerGameplayInputConsumerBinding consumer =
-                actor != null ? actor.GetComponent<PlayerGameplayInputConsumerBinding>() : null;
+            PlayerGameplayInputReader consumer =
+                actor != null ? actor.GetComponent<PlayerGameplayInputReader>() : null;
 
             if (consumer == null)
             {
                 ReleaseInputConsumer(
                     playerSlotId,
-                    "Current Logical Actor has no authored gameplay input consumer binding.");
+                    "Current Logical Actor has no authored player gameplay input reader.");
                 return true;
             }
 

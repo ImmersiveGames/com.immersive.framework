@@ -6,7 +6,7 @@ namespace Immersive.Framework.RouteLifecycle
 {
     /// <summary>
     /// Scene-authored UnityEvent bridge for Route content lifecycle.
-    /// Use this under a RouteContentBinding root when no custom gameplay script is needed.
+    /// Use this under a RouteContentContribution root when no custom gameplay script is needed.
     /// </summary>
     [DisallowMultipleComponent]
     [AddComponentMenu("Immersive Framework/Route Content Lifecycle Events")]

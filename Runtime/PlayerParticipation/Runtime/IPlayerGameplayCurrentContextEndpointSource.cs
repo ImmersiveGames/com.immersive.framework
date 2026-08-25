@@ -13,7 +13,7 @@ namespace Immersive.Framework.PlayerParticipation
             out UnityPlayerInputGateAdapter gateAdapter,
             out PlayerGameplayCameraAuthoring cameraAuthoring,
             out PlayerGameplayCameraRequiredness cameraRequiredness,
-            out CameraOutputSessionBinding outputSession,
+            out CameraOutputAuthoring outputSession,
             out string issue);
     }
 }

@@ -44,12 +44,12 @@ namespace Immersive.Framework.Pause
             IReadOnlyList<GameObject> roots,
             out string diagnostic)
         {
-            List<PausePlayerInputBinding> playerBindings =
-                Collect<PausePlayerInputBinding>(roots);
+            List<PlayerPauseInput> playerBindings =
+                Collect<PlayerPauseInput>(roots);
             List<PauseRequestTrigger> requestTriggers =
                 Collect<PauseRequestTrigger>(roots);
             var newlyBoundPlayers =
-                new List<PausePlayerInputBinding>();
+                new List<PlayerPauseInput>();
             var newlyBoundTriggers =
                 new List<PauseRequestTrigger>();
 
@@ -57,7 +57,7 @@ namespace Immersive.Framework.Pause
                  index < playerBindings.Count;
                  index++)
             {
-                PausePlayerInputBinding binding =
+                PlayerPauseInput binding =
                     playerBindings[index];
                 bool wasBound = binding.HasActiveBinding;
                 if (!binding.TryInjectBindingPort(
@@ -155,8 +155,8 @@ namespace Immersive.Framework.Pause
         {
             List<PauseRequestTrigger> requestTriggers =
                 Collect<PauseRequestTrigger>(roots);
-            List<PausePlayerInputBinding> playerBindings =
-                Collect<PausePlayerInputBinding>(roots);
+            List<PlayerPauseInput> playerBindings =
+                Collect<PlayerPauseInput>(roots);
             var issues = new List<string>();
 
             for (int index = 0;
@@ -179,7 +179,7 @@ namespace Immersive.Framework.Pause
                  index >= 0;
                  index--)
             {
-                PausePlayerInputBinding binding =
+                PlayerPauseInput binding =
                     playerBindings[index];
                 if (!binding.ReleaseForSceneLifecycle(
                         reason,
@@ -224,7 +224,7 @@ namespace Immersive.Framework.Pause
 
         private string RollbackAvailable(
             IReadOnlyList<PauseRequestTrigger> triggers,
-            IReadOnlyList<PausePlayerInputBinding> players,
+            IReadOnlyList<PlayerPauseInput> players,
             string reason)
         {
             var issues = new List<string>();

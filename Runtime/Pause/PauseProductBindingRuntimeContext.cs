@@ -21,7 +21,7 @@ namespace Immersive.Framework.Pause
         private long _generation;
         private PauseProductBindingState _state;
         private PauseProductBindingToken _token;
-        private PausePlayerInputBinding _binding;
+        private PlayerPauseInput _binding;
         private PlayerInput _playerInput;
         private UnityPlayerInputGateAdapter _adapter;
         private InputAction _pauseAction;
@@ -63,7 +63,7 @@ namespace Immersive.Framework.Pause
             _token.IsValid;
 
         public bool TryRegister(
-            PausePlayerInputBinding binding,
+            PlayerPauseInput binding,
             out PauseProductBindingToken token,
             out string diagnostic)
         {

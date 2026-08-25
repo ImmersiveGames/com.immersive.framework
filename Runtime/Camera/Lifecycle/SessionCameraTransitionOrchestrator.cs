@@ -16,14 +16,14 @@ namespace Immersive.Framework.Camera
         private const string ForceDefaultOwner = "SessionCameraTransitionOrchestrator";
 
         private readonly ITransitionOrchestrator _inner;
-        private readonly CameraOutputSessionBinding _outputSessionBinding;
+        private readonly CameraOutputAuthoring _outputAuthoring;
 
         internal SessionCameraTransitionOrchestrator(
             ITransitionOrchestrator inner,
-            CameraOutputSessionBinding outputSessionBinding)
+            CameraOutputAuthoring outputAuthoring)
         {
             this._inner = inner ?? throw new ArgumentNullException(nameof(inner));
-            this._outputSessionBinding = outputSessionBinding ?? throw new ArgumentNullException(nameof(outputSessionBinding));
+            this._outputAuthoring = outputAuthoring ?? throw new ArgumentNullException(nameof(outputAuthoring));
         }
 
         public TransitionResult Execute(TransitionRequest request) => ExecuteAsync(request).GetAwaiter().GetResult();
@@ -67,14 +67,14 @@ namespace Immersive.Framework.Camera
             out CameraOutputSession session,
             out string diagnostic)
         {
-            if (_outputSessionBinding == null)
+            if (_outputAuthoring == null)
             {
                 session = null;
-                diagnostic = "Session Camera Transition Orchestrator has no explicit Camera Output Session Binding.";
+                diagnostic = "Session Camera Transition Orchestrator has no explicit Camera Output Authoring.";
                 return false;
             }
 
-            return _outputSessionBinding.TryGetSession(
+            return _outputAuthoring.TryGetSession(
                 out session,
                 out diagnostic);
         }

@@ -6,12 +6,12 @@ namespace Immersive.Framework.ApplicationLifecycle
 {
     internal sealed partial class FrameworkRuntimeHost : IPlayerActorSelectionRuntimePort
     {
-        private LocalPlayerActorSelectionRequestAuthoringBindingResult
+        private LocalPlayerActorSelectionRequestAuthoringBinderResult
             BindLocalPlayerActorSelectionRequests()
         {
             if (_globalUiSceneRuntime == null)
             {
-                return LocalPlayerActorSelectionRequestAuthoringBindingResult.Rejected(
+                return LocalPlayerActorSelectionRequestAuthoringBinderResult.Rejected(
                     "RejectedMissingGlobalUiRuntime",
                     "Local Player Actor Selection Request binding requires the initialized UIGlobal runtime.",
                     0,
@@ -22,7 +22,7 @@ namespace Immersive.Framework.ApplicationLifecycle
             }
 
             IPlayerActorSelectionRuntimePort selectionRuntime = this;
-            LocalPlayerActorSelectionRequestAuthoringBindingResult result =
+            LocalPlayerActorSelectionRequestAuthoringBinderResult result =
                 _globalUiSceneRuntime.TryBindLocalPlayerActorSelectionRequests(
                     selectionRuntime);
             if (result.Succeeded && result.Status == "OptionalAbsent")

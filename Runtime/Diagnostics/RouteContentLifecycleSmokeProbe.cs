@@ -9,7 +9,7 @@ namespace Immersive.Framework.Diagnostics
 {
     /// <summary>
     /// Development-only receiver for validating that Route Content local callbacks are actually dispatched.
-    /// Place this under a RouteContentBinding root in QA scenes. It is not product API.
+    /// Place this under a RouteContentContribution root in QA scenes. It is not product API.
     /// </summary>
     [DisallowMultipleComponent]
     [AddComponentMenu("Immersive Framework/QA/Route Content Lifecycle Smoke Probe")]

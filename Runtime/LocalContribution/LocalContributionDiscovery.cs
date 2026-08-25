@@ -68,8 +68,8 @@ namespace Immersive.Framework.LocalContribution
             List<LocalContributionDiscoveryIssue> issues)
         {
             RouteAsset route = scope.Route;
-            IReadOnlyList<RouteContentBinding> bindings =
-                SceneCompositionComponentQuery.GetComponents<RouteContentBinding>(
+            IReadOnlyList<RouteContentContribution> bindings =
+                SceneCompositionComponentQuery.GetComponents<RouteContentContribution>(
                     scope);
             if (bindings == null || bindings.Count == 0)
             {
@@ -93,7 +93,7 @@ namespace Immersive.Framework.LocalContribution
                 {
                     issues.Add(new LocalContributionDiscoveryIssue(
                         LocalContributionDiscoveryIssueKind.MissingLocalContentId,
-                        "RouteContentBinding requires an explicit Local Content Id. GameObject names and hierarchy paths are diagnostics only.",
+                        "RouteContentContribution requires an explicit Local Content Id. GameObject names and hierarchy paths are diagnostics only.",
                         sceneName: binding.SceneName,
                         objectName: binding.ObjectName));
                     continue;
@@ -106,11 +106,11 @@ namespace Immersive.Framework.LocalContribution
                     CreateRouteOwnerKey(route),
                     binding.LocalScopeKind,
                     localId,
-                    LocalContributionSourceKind.RouteContentBinding,
+                    LocalContributionSourceKind.RouteContentContribution,
                     binding.Requiredness,
                     binding.SceneName,
                     binding.ObjectName,
-                    nameof(RouteContentBinding));
+                    nameof(RouteContentContribution));
             }
         }
 

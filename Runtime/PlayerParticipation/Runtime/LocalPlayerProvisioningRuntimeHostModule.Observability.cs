@@ -20,7 +20,7 @@ namespace Immersive.Framework.PlayerParticipation
         /// <summary>
         /// The public provisioning observation contract is intentionally pull-only.
         /// Runtime observability therefore lives at the producer, not in the
-        /// scene-facing PlayerProvisioningStatusBinding. LateUpdate observes only
+        /// scene-facing PlayerSessionStatus. LateUpdate observes only
         /// immutable projections and deduplicates every emitted record.
         /// </summary>
         private void LateUpdate()

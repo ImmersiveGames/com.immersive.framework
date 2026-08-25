@@ -9,13 +9,13 @@ using UnityEngine;
 namespace Immersive.Framework.Audio
 {
     /// <summary>
-    /// API status: Experimental. Route content binding that publishes explicit BGM intent to the
+    /// API status: Experimental. Route content contribution that publishes explicit BGM intent to the
     /// persistent FrameworkBgmDirector injected by the Audio assembly runtime.
     /// </summary>
     [DisallowMultipleComponent]
     [AddComponentMenu("Immersive Framework/Audio/Route BGM Binding")]
     [FrameworkApiStatus(FrameworkApiStatus.Experimental, "BGM-CONTINUITY-1 Route BGM intent adapter.")]
-    public sealed class FrameworkRouteBgmBinding : RouteContentBehaviour, IFrameworkBgmDirectorConsumer, ISerializationCallbackReceiver
+    public sealed class RouteBgmAuthoring : RouteContentBehaviour, IFrameworkBgmDirectorConsumer, ISerializationCallbackReceiver
     {
         private const int CurrentRoutePolicySerializationVersion = 1;
 
@@ -125,7 +125,7 @@ namespace Immersive.Framework.Audio
 
         private void EnsureLogger()
         {
-            logger ??= FrameworkLogger.Create<FrameworkRouteBgmBinding>();
+            logger ??= FrameworkLogger.Create<RouteBgmAuthoring>();
         }
     }
 }

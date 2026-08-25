@@ -34,7 +34,7 @@ namespace Immersive.Framework.RouteLifecycle
                     resolvedReason);
             }
 
-            IReadOnlyList<RouteContentBinding> bindings = SceneCompositionComponentQuery.GetComponents<RouteContentBinding>(scope);
+            IReadOnlyList<RouteContentContribution> bindings = SceneCompositionComponentQuery.GetComponents<RouteContentContribution>(scope);
             int bindingCount = 0;
             int receiverCount = 0;
             int failedReceiverCount = 0;
@@ -90,7 +90,7 @@ namespace Immersive.Framework.RouteLifecycle
                     resolvedReason);
             }
 
-            IReadOnlyList<RouteContentBinding> bindings = SceneCompositionComponentQuery.GetComponents<RouteContentBinding>(scope);
+            IReadOnlyList<RouteContentContribution> bindings = SceneCompositionComponentQuery.GetComponents<RouteContentContribution>(scope);
             int bindingCount = 0;
             int receiverCount = 0;
             int failedReceiverCount = 0;
@@ -140,13 +140,13 @@ namespace Immersive.Framework.RouteLifecycle
             return reason.NormalizeTextOrFallback("None");
         }
 
-        private static bool IsValidBindingForRoute(RouteContentBinding binding, RouteAsset route)
+        private static bool IsValidBindingForRoute(RouteContentContribution binding, RouteAsset route)
         {
             return binding != null && binding.MatchesRoute(route);
         }
 
         private void DispatchRouteContentEntered(
-            RouteContentBinding binding,
+            RouteContentContribution binding,
             RouteAsset route,
             RouteAsset previousRoute,
             string source,
@@ -166,7 +166,7 @@ namespace Immersive.Framework.RouteLifecycle
         }
 
         private void DispatchRouteContentExited(
-            RouteContentBinding binding,
+            RouteContentContribution binding,
             RouteAsset route,
             RouteAsset nextRoute,
             string source,
@@ -186,7 +186,7 @@ namespace Immersive.Framework.RouteLifecycle
         }
 
         private void DispatchRouteContentLifecycle(
-            RouteContentBinding binding,
+            RouteContentContribution binding,
             string phase,
             RouteAsset route,
             bool parentFirst,
@@ -234,7 +234,7 @@ namespace Immersive.Framework.RouteLifecycle
         }
 
         private void LogRouteContentReceiverException(
-            RouteContentBinding binding,
+            RouteContentContribution binding,
             string phase,
             RouteAsset route,
             IRouteContentLifecycleReceiver receiver,

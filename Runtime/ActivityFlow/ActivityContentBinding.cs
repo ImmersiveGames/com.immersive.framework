@@ -15,7 +15,7 @@ namespace Immersive.Framework.ActivityFlow
     /// It is not canonical Activity materialization.
     /// </summary>
     [DisallowMultipleComponent]
-    [AddComponentMenu("Immersive Framework/ActivityContentBinding")]
+    [AddComponentMenu("Immersive Framework/Activity Content Binding")]
     [FrameworkApiStatus(FrameworkApiStatus.Experimental, "Baseline surface kept for development use until the owning roadmap phase stabilizes it.")]
     public sealed class ActivityContentBinding : MonoBehaviour
     {

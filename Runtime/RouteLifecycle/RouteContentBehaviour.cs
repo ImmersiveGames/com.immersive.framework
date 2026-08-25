@@ -5,7 +5,7 @@ using Immersive.Framework.ApiStatus;
 namespace Immersive.Framework.RouteLifecycle
 {
     /// <summary>
-    /// Optional base class for MonoBehaviours under a Route Content Binding root.
+    /// Optional base class for MonoBehaviours under a Route Content Contribution root.
     /// Prefer this for scene-authored Route content that needs lifecycle callbacks
     /// without manually implementing IRouteContentLifecycleReceiver.
     /// </summary>
@@ -22,7 +22,7 @@ namespace Immersive.Framework.RouteLifecycle
             ? LastRouteContentContext.Route
             : null;
 
-        public RouteContentBinding RouteContentBinding => LastRouteContentContext.Binding;
+        public RouteContentContribution RouteContentContribution => LastRouteContentContext.Binding;
 
         public string LifecycleSource => HasRouteContentContext
             ? LastRouteContentContext.Source

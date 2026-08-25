@@ -10,13 +10,13 @@ namespace Immersive.Framework.Camera
     [FrameworkApiStatus(FrameworkApiStatus.Stable, "Stable single-output Camera product surface. Multi-output/split-screen is out of scope.")]
     public interface ICameraOutputSessionConsumer
     {
-        void AttachOutputSession(CameraOutputSessionBinding binding);
+        void AttachOutputSession(CameraOutputAuthoring binding);
         void DetachOutputSession(string reason);
     }
 
     [FrameworkApiStatus(FrameworkApiStatus.Stable, "Stable single-output Camera product surface. Multi-output/split-screen is out of scope.")]
     public interface ISessionCameraOverrideConsumer
     {
-        void AttachSessionCameraOverride(SessionCameraOverrideBinding binding);
+        void AttachSessionCameraOverride(SessionCameraOverride binding);
     }
 }

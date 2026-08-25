@@ -53,7 +53,7 @@ namespace Immersive.Framework.Pause
             }
 
             PauseActivityBindingIntentResolution intent =
-                PauseActivityBindingAuthoringValidator.ResolveFromRoots(
+                ActivityPauseAuthoringValidator.ResolveFromRoots(
                     materializedRoots,
                     source);
             _preparedOwner = owner;

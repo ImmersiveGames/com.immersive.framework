@@ -36,7 +36,7 @@ namespace Immersive.Framework.Camera
         [SerializeField] private string requestId;
 
         [Header("Output and Rig")]
-        [SerializeField] private CameraOutputSessionBinding outputSession;
+        [SerializeField] private CameraOutputAuthoring outputSession;
         [SerializeField] private CameraRigComposer rigComposer;
 
         [Header("Arbitration")]
@@ -418,7 +418,7 @@ namespace Immersive.Framework.Camera
         }
 
         void ICameraOutputSessionConsumer.AttachOutputSession(
-            CameraOutputSessionBinding binding)
+            CameraOutputAuthoring binding)
         {
             outputSession = binding;
             if (binding == null)

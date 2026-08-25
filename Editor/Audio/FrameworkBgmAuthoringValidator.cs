@@ -4,14 +4,13 @@ using Immersive.Framework.Audio;
 using Immersive.Framework.Editor.Validation;
 using Immersive.Framework.RouteLifecycle;
 using UnityEditor;
-using UnityEngine;
 
 namespace Immersive.Framework.Editor.Audio
 {
     internal static class FrameworkBgmAuthoringValidator
     {
         internal static FrameworkAuthoringValidationReport ValidateRouteBinding(
-            FrameworkRouteBgmBinding binding)
+            RouteBgmAuthoring binding)
         {
             var report = new FrameworkAuthoringValidationReport();
 
@@ -23,13 +22,13 @@ namespace Immersive.Framework.Editor.Audio
                 return report;
             }
 
-            RouteContentBinding routeContent =
-                binding.GetComponentInParent<RouteContentBinding>(true);
+            RouteContentContribution routeContent =
+                binding.GetComponentInParent<RouteContentContribution>(true);
 
             if (routeContent == null)
             {
                 report.AddError(
-                    "Route BGM Binding must be placed on or below a Route Content Binding so Route lifecycle callbacks can reach it.",
+                    "Route BGM Binding must be placed on or below a Route Content Contribution so Route lifecycle callbacks can reach it.",
                     binding);
                 return report;
             }
@@ -37,7 +36,7 @@ namespace Immersive.Framework.Editor.Audio
             if (routeContent.Route == null)
             {
                 report.AddError(
-                    "The owning Route Content Binding has no Route assigned.",
+                    "The owning Route Content Contribution has no Route assigned.",
                     routeContent);
                 return report;
             }
@@ -62,25 +61,25 @@ namespace Immersive.Framework.Editor.Audio
         }
 
         internal static FrameworkAuthoringValidationReport ValidateActivityBinding(
-            FrameworkActivityBgmBinding binding)
+            ActivityBgmAuthoring authoring)
         {
             var report = new FrameworkAuthoringValidationReport();
 
-            if (binding == null)
+            if (authoring == null)
             {
                 report.AddError(
-                    "Activity BGM Binding is missing.",
+                    "Activity BGM Authoring is missing.",
                     null);
                 return report;
             }
 
             if (!Enum.IsDefined(
                     typeof(FrameworkBgmActivityPolicy),
-                    binding.Policy))
+                    authoring.Policy))
             {
                 report.AddError(
                     "Activity BGM Policy has an invalid serialized value.",
-                    binding);
+                    authoring);
             }
 
             return report;

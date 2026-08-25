@@ -480,8 +480,8 @@ namespace Immersive.Framework.ApplicationLifecycle
             }
 
             if (!_globalUiSceneRuntime.TryResolveCameraPresentation(
-                    out CameraOutputSessionBinding cameraOutputSession,
-                    out SessionCameraOverrideBinding sessionCameraOverride,
+                    out CameraOutputAuthoring cameraOutputSession,
+                    out SessionCameraOverride sessionCameraOverride,
                     out string cameraDiagnostic))
             {
                 var failed = FrameworkGameFlowStartResult.Failed(cameraDiagnostic);
@@ -516,24 +516,24 @@ namespace Immersive.Framework.ApplicationLifecycle
                 return failed;
             }
             IRouteRuntimePort routeRuntimePort = this;
-            RouteRequestTriggerBindingResult globalRouteTriggerBinding =
+            RouteRequestTriggerBinderResult globalRouteTriggerBinder =
                 _globalUiSceneRuntime.TryBindRouteRequestTriggers(
                     routeRuntimePort);
-            if (!globalRouteTriggerBinding.Succeeded)
+            if (!globalRouteTriggerBinder.Succeeded)
             {
                 var failed = FrameworkGameFlowStartResult.Failed(
-                    globalRouteTriggerBinding.Message);
+                    globalRouteTriggerBinder.Message);
                 _state = FrameworkRuntimeState.FromGameFlowResult(_gameApplication, failed);
                 return failed;
             }
             IActivityRuntimePort activityRuntimePort = this;
-            ActivityRequestTriggerBindingResult globalActivityTriggerBinding =
+            ActivityRequestTriggerBinderResult globalActivityTriggerBinder =
                 _globalUiSceneRuntime.TryBindActivityRequestTriggers(
                     activityRuntimePort);
-            if (!globalActivityTriggerBinding.Succeeded)
+            if (!globalActivityTriggerBinder.Succeeded)
             {
                 var failed = FrameworkGameFlowStartResult.Failed(
-                    globalActivityTriggerBinding.Message);
+                    globalActivityTriggerBinder.Message);
                 _state = FrameworkRuntimeState.FromGameFlowResult(_gameApplication, failed);
                 return failed;
             }
@@ -586,37 +586,37 @@ namespace Immersive.Framework.ApplicationLifecycle
                 return failed;
             }
             IActivityCycleResetRuntimePort activityCycleResetRuntimePort = this;
-            ActivityCycleResetTriggerBindingResult globalActivityCycleResetTriggerBinding =
+            ActivityCycleResetTriggerBinderResult globalActivityCycleResetTriggerBinder =
                 _globalUiSceneRuntime.TryBindActivityCycleResetTriggers(
                     activityCycleResetRuntimePort);
-            if (!globalActivityCycleResetTriggerBinding.Succeeded)
+            if (!globalActivityCycleResetTriggerBinder.Succeeded)
             {
                 var failed = FrameworkGameFlowStartResult.Failed(
-                    globalActivityCycleResetTriggerBinding.Message);
+                    globalActivityCycleResetTriggerBinder.Message);
                 _state = FrameworkRuntimeState.FromGameFlowResult(_gameApplication, failed);
                 return failed;
             }
             IActivityRestartRuntimePort activityRestartRuntimePort = this;
-            ActivityRestartTriggerBindingResult globalActivityRestartTriggerBinding =
+            ActivityRestartTriggerBinderResult globalActivityRestartTriggerBinder =
                 _globalUiSceneRuntime.TryBindActivityRestartTriggers(
                     activityRestartRuntimePort);
-            if (!globalActivityRestartTriggerBinding.Succeeded)
+            if (!globalActivityRestartTriggerBinder.Succeeded)
             {
                 var failed = FrameworkGameFlowStartResult.Failed(
-                    globalActivityRestartTriggerBinding.Message);
+                    globalActivityRestartTriggerBinder.Message);
                 _state = FrameworkRuntimeState.FromGameFlowResult(_gameApplication, failed);
                 return failed;
             }
             ApplyPlayerActivityLifecycleAdmissionRuntime();
             ApplySceneLocalPlayerAdmissionRuntime();
 
-            LocalPlayerActorSelectionRequestAuthoringBindingResult
-                playerActorSelectionBinding =
+            LocalPlayerActorSelectionRequestAuthoringBinderResult
+                playerActorSelectionBinder =
                     BindLocalPlayerActorSelectionRequests();
-            if (!playerActorSelectionBinding.Succeeded)
+            if (!playerActorSelectionBinder.Succeeded)
             {
                 var failed = FrameworkGameFlowStartResult.Failed(
-                    playerActorSelectionBinding.Message);
+                    playerActorSelectionBinder.Message);
                 _state = FrameworkRuntimeState.FromGameFlowResult(
                     _gameApplication,
                     failed);
@@ -1707,7 +1707,7 @@ namespace Immersive.Framework.ApplicationLifecycle
 
         private ITransitionOrchestrator CreateTransitionOrchestrator(
             GlobalUiSceneRuntime globalUiSceneRuntime,
-            CameraOutputSessionBinding cameraOutputSession)
+            CameraOutputAuthoring cameraOutputSession)
         {
             if (globalUiSceneRuntime == null)
             {

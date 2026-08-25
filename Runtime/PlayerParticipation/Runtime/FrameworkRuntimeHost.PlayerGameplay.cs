@@ -7,12 +7,12 @@ namespace Immersive.Framework.ApplicationLifecycle
 {
     internal sealed partial class FrameworkRuntimeHost
     {
-        private CameraOutputSessionBinding _playerGameplayCameraOutputSession;
+        private CameraOutputAuthoring _playerGameplayCameraOutputSession;
         private IActivityPlayerLifecycleAdmissionRuntime
             _playerActivityLifecycleAdmissionRuntime;
 
         internal void SetPlayerGameplayCameraOutputSession(
-            CameraOutputSessionBinding outputSession)
+            CameraOutputAuthoring outputSession)
         {
             _playerGameplayCameraOutputSession = outputSession;
         }
@@ -83,14 +83,14 @@ namespace Immersive.Framework.ApplicationLifecycle
         }
 
         internal bool TryGetPlayerGameplayCameraOutputSession(
-            out CameraOutputSessionBinding outputSession,
+            out CameraOutputAuthoring outputSession,
             out string issue)
         {
             outputSession = _playerGameplayCameraOutputSession;
             if (outputSession == null)
             {
                 issue =
-                    "FrameworkRuntimeHost has no current CameraOutputSessionBinding for Player gameplay camera publication.";
+                    "FrameworkRuntimeHost has no current CameraOutputAuthoring for Player gameplay camera publication.";
                 return false;
             }
 

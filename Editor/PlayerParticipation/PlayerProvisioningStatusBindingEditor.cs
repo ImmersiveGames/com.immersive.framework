@@ -5,7 +5,7 @@ using UnityEngine;
 
 namespace Immersive.Framework.Editor.PlayerParticipation
 {
-    [CustomEditor(typeof(PlayerProvisioningStatusBinding))]
+    [CustomEditor(typeof(PlayerSessionStatus))]
     internal sealed class PlayerProvisioningStatusBindingEditor : UnityEditor.Editor
     {
         private SerializedProperty _consumerAccessBinding;
@@ -25,10 +25,10 @@ namespace Immersive.Framework.Editor.PlayerParticipation
         {
             serializedObject.UpdateIfRequiredOrScript();
             EditorGUI.BeginChangeCheck();
-            var binding = (PlayerProvisioningStatusBinding)target;
+            var binding = (PlayerSessionStatus)target;
 
             FrameworkAuthoringInspectorGui.ProductHeader(
-                "Player Provisioning Status Binding",
+                "Player Session Status",
                 "Provides read-only access to the current scoped Player provisioning observation for presentation and diagnostics consumers.");
             FrameworkAuthoringInspectorGui.IntentSummary(
                 "The Inspector contains only authoring relationships. Runtime lifecycle observability is emitted by the provisioning runtime through structured Console logs.");
@@ -57,7 +57,7 @@ namespace Immersive.Framework.Editor.PlayerParticipation
             serializedObject.ApplyModifiedProperties();
         }
 
-        private void DrawValidation(PlayerProvisioningStatusBinding binding)
+        private void DrawValidation(PlayerSessionStatus binding)
         {
             FrameworkAuthoringInspectorGui.Section("Validation");
             if (GUILayout.Button("Validate"))

@@ -17,7 +17,7 @@ namespace Immersive.Framework.Pause
         private PauseActivityBindingScope _lastReleasedScope;
         private PauseActivityBindingIntentResolution _activeIntent;
         private LocalPlayerHostAuthoring _activeHost;
-        private PausePlayerInputBinding _activeBinding;
+        private PlayerPauseInput _active;
         private IPauseProductBindingPort _activePort;
         private string _lastDiagnostic = "Pause Activity binding is inactive.";
 
@@ -133,7 +133,7 @@ namespace Immersive.Framework.Pause
                     out result);
             }
 
-            if (!TryResolveCoLocatedBinding(host, out PausePlayerInputBinding binding, out string bindingDiagnostic))
+            if (!TryResolveCoLocatedBinding(host, out PlayerPauseInput binding, out string bindingDiagnostic))
             {
                 return Complete(
                     PauseActivityBindingOperationStatus.Failed,
@@ -179,7 +179,7 @@ namespace Immersive.Framework.Pause
             _activeScope = activityScope;
             _activeIntent = intentResolution;
             _activeHost = host;
-            _activeBinding = binding;
+            _active = binding;
             _activePort = bindingPort;
             _state = PauseActivityBindingRuntimeState.Active;
             return Complete(
@@ -251,7 +251,7 @@ namespace Immersive.Framework.Pause
             }
 
             _state = PauseActivityBindingRuntimeState.Releasing;
-            if (!_activeBinding.TryReleaseBinding(resolvedReason, out string releaseDiagnostic))
+            if (!_active.TryReleaseBinding(resolvedReason, out string releaseDiagnostic))
             {
                 _state = PauseActivityBindingRuntimeState.Failed;
                 return Complete(
@@ -374,15 +374,15 @@ namespace Immersive.Framework.Pause
 
         private static bool TryResolveCoLocatedBinding(
             LocalPlayerHostAuthoring host,
-            out PausePlayerInputBinding binding,
+            out PlayerPauseInput binding,
             out string diagnostic)
         {
             binding = null;
-            PausePlayerInputBinding[] bindings = host.GetComponents<PausePlayerInputBinding>();
+            PlayerPauseInput[] bindings = host.GetComponents<PlayerPauseInput>();
             if (bindings.Length != 1 || bindings[0] == null)
             {
-                PausePlayerInputBinding[] hierarchyBindings =
-                    host.GetComponentsInChildren<PausePlayerInputBinding>(true);
+                PlayerPauseInput[] hierarchyBindings =
+                    host.GetComponentsInChildren<PlayerPauseInput>(true);
                 diagnostic = hierarchyBindings.Length > 0
                     ? "binding-not-colocated: Pause PlayerInput Binding must be co-located on the admitted Local Player Host GameObject."
                     : "binding-missing: admitted Local Player Host requires exactly one co-located Pause PlayerInput Binding.";
@@ -418,7 +418,7 @@ namespace Immersive.Framework.Pause
         private bool HasActiveEvidence =>
             _activeScope.IsValid &&
             _activeHost != null &&
-            _activeBinding != null &&
+            _active != null &&
             _activePort != null;
 
         private void ClearActiveEvidence()
@@ -426,7 +426,7 @@ namespace Immersive.Framework.Pause
             _activeScope = default;
             _activeIntent = default;
             _activeHost = null;
-            _activeBinding = null;
+            _active = null;
             _activePort = null;
         }
 

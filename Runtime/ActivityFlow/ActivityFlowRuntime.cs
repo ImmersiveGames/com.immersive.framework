@@ -711,10 +711,10 @@ namespace Immersive.Framework.ActivityFlow
             return ActivitySceneCompositionResult.FromPlan(plan, source, reason);
         }
 
-        private ActivityRequestTriggerBindingResult TryBindActivityRequestTriggers(
+        private ActivityRequestTriggerBinderResult TryBindActivityRequestTriggers(
             ActivitySceneCompositionResult compositionResult)
         {
-            return ActivityRequestTriggerBinding.TryBind(
+            return ActivityRequestTriggerBinder.TryBind(
                 ResolveMaterializedActivitySceneRoots(compositionResult),
                 _activityRuntime);
         }
@@ -727,18 +727,18 @@ namespace Immersive.Framework.ActivityFlow
                 _routeCycleResetRuntime);
         }
 
-        private ActivityCycleResetTriggerBindingResult TryBindActivityCycleResetTriggers(
+        private ActivityCycleResetTriggerBinderResult TryBindActivityCycleResetTriggers(
             ActivitySceneCompositionResult compositionResult)
         {
-            return ActivityCycleResetTriggerBinding.TryBind(
+            return ActivityCycleResetTriggerBinder.TryBind(
                 ResolveMaterializedActivitySceneRoots(compositionResult),
                 _activityCycleResetRuntime);
         }
 
-        private ActivityRestartTriggerBindingResult TryBindActivityRestartTriggers(
+        private ActivityRestartTriggerBinderResult TryBindActivityRestartTriggers(
             ActivitySceneCompositionResult compositionResult)
         {
-            return ActivityRestartTriggerBinding.TryBind(
+            return ActivityRestartTriggerBinder.TryBind(
                 ResolveMaterializedActivitySceneRoots(compositionResult),
                 _activityRestartRuntime);
         }

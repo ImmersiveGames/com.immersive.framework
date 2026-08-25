@@ -208,9 +208,9 @@ namespace Immersive.Framework.ActivityFlow
                     resolvedSource,
                     resolvedReason);
 
-                ActivityRequestTriggerBindingResult activityTriggerBinding =
+                ActivityRequestTriggerBinderResult activityTriggerBinder =
                     TryBindActivityRequestTriggers(sceneCompositionResult);
-                if (!activityTriggerBinding.Succeeded)
+                if (!activityTriggerBinder.Succeeded)
                 {
                     return await FailBeforeCommitAsync(
                         transaction,
@@ -218,7 +218,7 @@ namespace Immersive.Framework.ActivityFlow
                         previousActivity,
                         resolvedSource,
                         resolvedReason,
-                        activityTriggerBinding.Message,
+                        activityTriggerBinder.Message,
                         activityOperationResult);
                 }
 
@@ -236,9 +236,9 @@ namespace Immersive.Framework.ActivityFlow
                         activityOperationResult);
                 }
 
-                ActivityCycleResetTriggerBindingResult activityCycleResetTriggerBinding =
+                ActivityCycleResetTriggerBinderResult activityCycleResetTriggerBinder =
                     TryBindActivityCycleResetTriggers(sceneCompositionResult);
-                if (!activityCycleResetTriggerBinding.Succeeded)
+                if (!activityCycleResetTriggerBinder.Succeeded)
                 {
                     return await FailBeforeCommitAsync(
                         transaction,
@@ -246,13 +246,13 @@ namespace Immersive.Framework.ActivityFlow
                         previousActivity,
                         resolvedSource,
                         resolvedReason,
-                        activityCycleResetTriggerBinding.Message,
+                        activityCycleResetTriggerBinder.Message,
                         activityOperationResult);
                 }
 
-                ActivityRestartTriggerBindingResult activityRestartTriggerBinding =
+                ActivityRestartTriggerBinderResult activityRestartTriggerBinder =
                     TryBindActivityRestartTriggers(sceneCompositionResult);
-                if (!activityRestartTriggerBinding.Succeeded)
+                if (!activityRestartTriggerBinder.Succeeded)
                 {
                     return await FailBeforeCommitAsync(
                         transaction,
@@ -260,7 +260,7 @@ namespace Immersive.Framework.ActivityFlow
                         previousActivity,
                         resolvedSource,
                         resolvedReason,
-                        activityRestartTriggerBinding.Message,
+                        activityRestartTriggerBinder.Message,
                         activityOperationResult);
                 }
 

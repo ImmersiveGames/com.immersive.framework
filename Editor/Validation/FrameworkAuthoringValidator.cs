@@ -72,7 +72,7 @@ namespace Immersive.Framework.Editor.Validation
                 ValidateOpenSceneActivityLocalVisibilityAdapters(
                     report,
                     validationMode);
-                ValidateOpenSceneRouteContentBindings(
+                ValidateOpenSceneRouteContentContributions(
                     report,
                     validationMode);
                 ValidateOpenSceneCycleResetTriggers(
@@ -185,10 +185,10 @@ namespace Immersive.Framework.Editor.Validation
         }
 
         internal static FrameworkAuthoringValidationReport
-            ValidateRouteContentBinding(
-                RouteContentBinding binding)
+            ValidateRouteContentContribution(
+                RouteContentContribution binding)
         {
-            return ValidateRouteContentBinding(
+            return ValidateRouteContentContribution(
                 binding,
                 FrameworkValidationMode.Standard);
         }
@@ -442,25 +442,25 @@ namespace Immersive.Framework.Editor.Validation
             GameObject[] roots =
                 scene.GetRootGameObjects();
 
-            ValidateExactSceneComponentCount<CameraOutputSessionBinding>(
+            ValidateExactSceneComponentCount<CameraOutputAuthoring>(
                 report,
                 owner,
                 scene,
-                nameof(CameraOutputSessionBinding));
-            ValidateMaximumSceneComponentCount<SessionCameraOverrideBinding>(
+                nameof(CameraOutputAuthoring));
+            ValidateMaximumSceneComponentCount<SessionCameraOverride>(
                 report,
                 owner,
                 scene,
-                nameof(SessionCameraOverrideBinding),
+                nameof(SessionCameraOverride),
                 1);
 
-            CameraOutputSessionBinding[] outputBindings =
-                GetSceneComponents<CameraOutputSessionBinding>(
+            CameraOutputAuthoring[] outputBindings =
+                GetSceneComponents<CameraOutputAuthoring>(
                     scene);
 
             if (outputBindings.Length == 1)
             {
-                CameraOutputSessionBinding binding =
+                CameraOutputAuthoring binding =
                     outputBindings[0];
 
                 if (string.IsNullOrWhiteSpace(
@@ -496,13 +496,13 @@ namespace Immersive.Framework.Editor.Validation
                 }
             }
 
-            SessionCameraOverrideBinding[] sessionBindings =
-                GetSceneComponents<SessionCameraOverrideBinding>(
+            SessionCameraOverride[] sessionBindings =
+                GetSceneComponents<SessionCameraOverride>(
                     scene);
 
             if (sessionBindings.Length == 1)
             {
-                ValidateSessionCameraOverrideBinding(
+                ValidateSessionCameraOverride(
                     report,
                     outputBindings.Length == 1
                         ? outputBindings[0]
@@ -782,10 +782,10 @@ namespace Immersive.Framework.Editor.Validation
             }
         }
 
-        private static void ValidateSessionCameraOverrideBinding(
+        private static void ValidateSessionCameraOverride(
             FrameworkAuthoringValidationReport report,
-            CameraOutputSessionBinding expectedOutput,
-            SessionCameraOverrideBinding binding)
+            CameraOutputAuthoring expectedOutput,
+            SessionCameraOverride binding)
         {
             if (binding == null)
             {
@@ -795,14 +795,14 @@ namespace Immersive.Framework.Editor.Validation
             if (binding.PersistentOutputSession == null)
             {
                 report.AddError(
-                    "Persistent Content Session Camera Override requires an explicit Camera Output Session Binding.",
+                    "Persistent Content Session Camera Override requires an explicit Camera Output Authoring.",
                     binding);
             }
             else if (expectedOutput != null &&
                      binding.PersistentOutputSession != expectedOutput)
             {
                 report.AddError(
-                    "Persistent Content Session Camera Override must reference the unique Camera Output Session Binding in the same Content Scene.",
+                    "Persistent Content Session Camera Override must reference the unique Camera Output Authoring in the same Content Scene.",
                     binding);
             }
 
@@ -1624,15 +1624,15 @@ namespace Immersive.Framework.Editor.Validation
             return report;
         }
 
-        private static FrameworkAuthoringValidationReport ValidateRouteContentBinding(
-            RouteContentBinding binding,
+        private static FrameworkAuthoringValidationReport ValidateRouteContentContribution(
+            RouteContentContribution binding,
             FrameworkValidationMode validationMode)
         {
             var report = new FrameworkAuthoringValidationReport(validationMode);
 
             if (binding == null)
             {
-                report.AddError("Route Content Binding is missing.", null);
+                report.AddError("Route Content Contribution is missing.", null);
                 return report;
             }
 
@@ -1641,34 +1641,34 @@ namespace Immersive.Framework.Editor.Validation
             if (binding.Route == null)
             {
                 report.AddError(
-                    $"Route Content Binding on GameObject '{objectName}' has no Route assigned.",
+                    $"Route Content Contribution on GameObject '{objectName}' has no Route assigned.",
                     binding);
             }
             else
             {
-                ValidateRouteContentBindingSceneRoute(report, binding, objectName);
+                ValidateRouteContentContributionSceneRoute(report, binding, objectName);
             }
 
             if (!binding.HasExplicitLocalContentId)
             {
                 report.AddError(
-                    $"Route Content Binding on GameObject '{objectName}' has no Local Content Id. F5 local identity requires an explicit id; GameObject names and hierarchy paths are diagnostics only.",
+                    $"Route Content Contribution on GameObject '{objectName}' has no Local Content Id. F5 local identity requires an explicit id; GameObject names and hierarchy paths are diagnostics only.",
                     binding);
             }
 
-            var parentBinding = FindParentRouteContentBinding(binding);
+            var parentBinding = FindParentRouteContentContribution(binding);
             if (parentBinding != null)
             {
                 report.AddWarning(
-                    $"Route Content Binding on GameObject '{objectName}' is nested under '{parentBinding.gameObject.name}'. Nested Route content policy is not defined in F3; keep Route content roots flat.",
+                    $"Route Content Contribution on GameObject '{objectName}' is nested under '{parentBinding.gameObject.name}'. Nested Route content policy is not defined in F3; keep Route content roots flat.",
                     binding);
             }
 
-            int childBindingCount = CountChildRouteContentBindings(binding);
+            int childBindingCount = CountChildRouteContentContributions(binding);
             if (childBindingCount > 0)
             {
                 report.AddWarning(
-                    $"Route Content Binding on GameObject '{objectName}' has {childBindingCount} child Route Content Binding component(s). Keep Route content roots flat for the F3 callback baseline.",
+                    $"Route Content Contribution on GameObject '{objectName}' has {childBindingCount} child Route Content Contribution component(s). Keep Route content roots flat for the F3 callback baseline.",
                     binding);
             }
 
@@ -1676,29 +1676,29 @@ namespace Immersive.Framework.Editor.Validation
             if (receiverCount == 0)
             {
                 report.AddWarning(
-                    $"Route Content Binding on GameObject '{objectName}' has no IRouteContentLifecycleReceiver in itself or its children. Route Content Runtime will dispatch with zero receivers, and Route Callback Smoke cannot use this binding as callback proof.",
+                    $"Route Content Contribution on GameObject '{objectName}' has no IRouteContentLifecycleReceiver in itself or its children. Route Content Runtime will dispatch with zero receivers, and Route Callback Smoke cannot use this binding as callback proof.",
                     binding);
             }
             else
             {
                 report.AddInfo(
-                    $"Route Content Binding on GameObject '{objectName}' has {receiverCount} Route content lifecycle receiver(s).",
+                    $"Route Content Contribution on GameObject '{objectName}' has {receiverCount} Route content lifecycle receiver(s).",
                     binding);
             }
 
             if (!report.HasIssues)
             {
                 report.AddInfo(
-                    $"Route Content Binding on GameObject '{objectName}' is valid for the F3 Route callback baseline.",
+                    $"Route Content Contribution on GameObject '{objectName}' is valid for the F3 Route callback baseline.",
                     binding);
             }
 
             return report;
         }
 
-        private static void ValidateRouteContentBindingSceneRoute(
+        private static void ValidateRouteContentContributionSceneRoute(
             FrameworkAuthoringValidationReport report,
-            RouteContentBinding binding,
+            RouteContentContribution binding,
             string objectName)
         {
             var route = binding.Route;
@@ -1707,7 +1707,7 @@ namespace Immersive.Framework.Editor.Validation
             if (!scene.IsValid())
             {
                 report.AddInfo(
-                    $"Route Content Binding on GameObject '{objectName}' is not in a valid scene. Scene-route validation is skipped for prefabs or disconnected objects.",
+                    $"Route Content Contribution on GameObject '{objectName}' is not in a valid scene. Scene-route validation is skipped for prefabs or disconnected objects.",
                     binding);
                 return;
             }
@@ -1715,7 +1715,7 @@ namespace Immersive.Framework.Editor.Validation
             if (!scene.isLoaded)
             {
                 report.AddInfo(
-                    $"Route Content Binding on GameObject '{objectName}' is in scene '{scene.name}', but the scene is not loaded. Scene-route validation only checks loaded scenes.",
+                    $"Route Content Contribution on GameObject '{objectName}' is in scene '{scene.name}', but the scene is not loaded. Scene-route validation only checks loaded scenes.",
                     binding);
                 return;
             }
@@ -1724,7 +1724,7 @@ namespace Immersive.Framework.Editor.Validation
             if (string.IsNullOrWhiteSpace(scenePath))
             {
                 report.AddWarning(
-                    $"Route Content Binding on GameObject '{objectName}' is in an unsaved scene. Save the scene so it can be compared against Route.PrimaryScenePath.",
+                    $"Route Content Contribution on GameObject '{objectName}' is in an unsaved scene. Save the scene so it can be compared against Route.PrimaryScenePath.",
                     binding);
                 return;
             }
@@ -1732,7 +1732,7 @@ namespace Immersive.Framework.Editor.Validation
             if (string.IsNullOrWhiteSpace(route.PrimaryScenePath))
             {
                 report.AddWarning(
-                    $"Route Content Binding on GameObject '{objectName}' points to Route '{GetRouteLabel(route)}', but that Route has no Primary Scene path.",
+                    $"Route Content Contribution on GameObject '{objectName}' points to Route '{GetRouteLabel(route)}', but that Route has no Primary Scene path.",
                     binding);
                 return;
             }
@@ -1740,7 +1740,7 @@ namespace Immersive.Framework.Editor.Validation
             if (!string.Equals(scenePath, route.PrimaryScenePath, System.StringComparison.OrdinalIgnoreCase))
             {
                 report.AddWarning(
-                    $"Route Content Binding on GameObject '{objectName}' points to Route '{GetRouteLabel(route)}', but it is authored in scene '{scenePath}'. The Route primary scene is '{route.PrimaryScenePath}'. This will cause Route callbacks and Route Callback Smoke to resolve the binding for the wrong Route.",
+                    $"Route Content Contribution on GameObject '{objectName}' points to Route '{GetRouteLabel(route)}', but it is authored in scene '{scenePath}'. The Route primary scene is '{route.PrimaryScenePath}'. This will cause Route callbacks and Route Callback Smoke to resolve the binding for the wrong Route.",
                     binding);
             }
         }
@@ -1923,14 +1923,14 @@ namespace Immersive.Framework.Editor.Validation
             }
         }
 
-        private static void ValidateOpenSceneRouteContentBindings(
+        private static void ValidateOpenSceneRouteContentContributions(
             FrameworkAuthoringValidationReport report,
             FrameworkValidationMode validationMode)
         {
-            RouteContentBinding[] bindings = Object.FindObjectsByType<RouteContentBinding>(FindObjectsInactive.Include);
+            RouteContentContribution[] bindings = Object.FindObjectsByType<RouteContentContribution>(FindObjectsInactive.Include);
             if (bindings == null || bindings.Length == 0)
             {
-                report.AddInfo("No Route Content Binding components were found in open scenes.", null);
+                report.AddInfo("No Route Content Contribution components were found in open scenes.", null);
                 return;
             }
 
@@ -1949,12 +1949,12 @@ namespace Immersive.Framework.Editor.Validation
                 }
 
                 sceneBindingCount++;
-                report.AddRange(ValidateRouteContentBinding(binding, validationMode));
+                report.AddRange(ValidateRouteContentContribution(binding, validationMode));
             }
 
             if (sceneBindingCount == 0)
             {
-                report.AddInfo("No scene-authored Route Content Binding components were found in loaded scenes.", null);
+                report.AddInfo("No scene-authored Route Content Contribution components were found in loaded scenes.", null);
             }
         }
 
@@ -2088,12 +2088,12 @@ namespace Immersive.Framework.Editor.Validation
             return count;
         }
 
-        private static RouteContentBinding FindParentRouteContentBinding(RouteContentBinding binding)
+        private static RouteContentContribution FindParentRouteContentContribution(RouteContentContribution binding)
         {
             var parent = binding.transform.parent;
             while (parent != null)
             {
-                if (parent.TryGetComponent<RouteContentBinding>(out var parentBinding))
+                if (parent.TryGetComponent<RouteContentContribution>(out var parentBinding))
                 {
                     return parentBinding;
                 }
@@ -2104,9 +2104,9 @@ namespace Immersive.Framework.Editor.Validation
             return null;
         }
 
-        private static int CountChildRouteContentBindings(RouteContentBinding binding)
+        private static int CountChildRouteContentContributions(RouteContentContribution binding)
         {
-            RouteContentBinding[] all = binding.GetComponentsInChildren<RouteContentBinding>(true);
+            RouteContentContribution[] all = binding.GetComponentsInChildren<RouteContentContribution>(true);
             int count = 0;
             for (int i = 0; i < all.Length; i++)
             {
@@ -2119,7 +2119,7 @@ namespace Immersive.Framework.Editor.Validation
             return count;
         }
 
-        private static int CountRouteContentLifecycleReceivers(RouteContentBinding binding)
+        private static int CountRouteContentLifecycleReceivers(RouteContentContribution binding)
         {
             MonoBehaviour[] behaviours = binding.GetComponentsInChildren<MonoBehaviour>(true);
             if (behaviours == null || behaviours.Length == 0)

@@ -5,7 +5,7 @@ namespace Immersive.Framework.Pause
     internal interface IPauseProductBindingPort
     {
         bool TryRegister(
-            PausePlayerInputBinding binding,
+            PlayerPauseInput binding,
             out PauseProductBindingToken token,
             out string diagnostic);
 

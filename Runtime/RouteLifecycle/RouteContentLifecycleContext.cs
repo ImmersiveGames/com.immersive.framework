@@ -17,7 +17,7 @@ namespace Immersive.Framework.RouteLifecycle
             RouteAsset route,
             RouteAsset previousRoute,
             RouteAsset nextRoute,
-            RouteContentBinding binding,
+            RouteContentContribution binding,
             GameObject contentRoot,
             string source,
             string reason)
@@ -40,7 +40,7 @@ namespace Immersive.Framework.RouteLifecycle
 
         public RouteAsset NextRoute { get; }
 
-        public RouteContentBinding Binding { get; }
+        public RouteContentContribution Binding { get; }
 
         public GameObject ContentRoot { get; }
 
@@ -61,7 +61,7 @@ namespace Immersive.Framework.RouteLifecycle
         internal static RouteContentLifecycleContext Entered(
             RouteAsset route,
             RouteAsset previousRoute,
-            RouteContentBinding binding,
+            RouteContentContribution binding,
             string source,
             string reason)
         {
@@ -79,7 +79,7 @@ namespace Immersive.Framework.RouteLifecycle
         internal static RouteContentLifecycleContext Exited(
             RouteAsset route,
             RouteAsset nextRoute,
-            RouteContentBinding binding,
+            RouteContentContribution binding,
             string source,
             string reason)
         {

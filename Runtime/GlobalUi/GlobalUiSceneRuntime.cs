@@ -112,20 +112,20 @@ namespace Immersive.Framework.GlobalUi
                 pauseProductRequest);
         }
 
-        internal RouteRequestTriggerBindingResult
+        internal RouteRequestTriggerBinderResult
             TryBindRouteRequestTriggers(
                 IRouteRuntimePort routeRuntime)
         {
-            return RouteRequestTriggerBinding.TryBind(
+            return RouteRequestTriggerBinder.TryBind(
                 _persistedRoots,
                 routeRuntime);
         }
 
-        internal ActivityRequestTriggerBindingResult
+        internal ActivityRequestTriggerBinderResult
             TryBindActivityRequestTriggers(
                 IActivityRuntimePort activityRuntime)
         {
-            return ActivityRequestTriggerBinding.TryBind(
+            return ActivityRequestTriggerBinder.TryBind(
                 _persistedRoots,
                 activityRuntime);
         }
@@ -139,29 +139,29 @@ namespace Immersive.Framework.GlobalUi
                 routeCycleResetRuntime);
         }
 
-        internal ActivityCycleResetTriggerBindingResult
+        internal ActivityCycleResetTriggerBinderResult
             TryBindActivityCycleResetTriggers(
                 IActivityCycleResetRuntimePort activityCycleResetRuntime)
         {
-            return ActivityCycleResetTriggerBinding.TryBind(
+            return ActivityCycleResetTriggerBinder.TryBind(
                 _persistedRoots,
                 activityCycleResetRuntime);
         }
 
-        internal ActivityRestartTriggerBindingResult
+        internal ActivityRestartTriggerBinderResult
             TryBindActivityRestartTriggers(
                 IActivityRestartRuntimePort activityRestartRuntime)
         {
-            return ActivityRestartTriggerBinding.TryBind(
+            return ActivityRestartTriggerBinder.TryBind(
                 _persistedRoots,
                 activityRestartRuntime);
         }
 
-        internal LocalPlayerActorSelectionRequestAuthoringBindingResult
+        internal LocalPlayerActorSelectionRequestAuthoringBinderResult
             TryBindLocalPlayerActorSelectionRequests(
                 IPlayerActorSelectionRuntimePort selectionRuntime)
         {
-            return LocalPlayerActorSelectionRequestAuthoringBinding.TryBind(
+            return LocalPlayerActorSelectionRequestAuthoringBinder.TryBind(
                 _persistedRoots,
                 selectionRuntime);
         }
@@ -170,7 +170,7 @@ namespace Immersive.Framework.GlobalUi
             TryReleaseLocalPlayerActorSelectionRequests(
                 IPlayerActorSelectionRuntimePort selectionRuntime)
         {
-            return LocalPlayerActorSelectionRequestAuthoringBinding.TryRelease(
+            return LocalPlayerActorSelectionRequestAuthoringBinder.TryRelease(
                 _persistedRoots,
                 selectionRuntime);
         }
@@ -302,14 +302,14 @@ namespace Immersive.Framework.GlobalUi
         }
 
         internal bool TryResolveCameraPresentation(
-            out CameraOutputSessionBinding outputSession,
-            out SessionCameraOverrideBinding sessionOverride,
+            out CameraOutputAuthoring outputSession,
+            out SessionCameraOverride sessionOverride,
             out string diagnostic)
         {
-            List<CameraOutputSessionBinding> outputCandidates =
-                FindAll<CameraOutputSessionBinding>();
-            List<SessionCameraOverrideBinding> overrideCandidates =
-                FindAll<SessionCameraOverrideBinding>();
+            List<CameraOutputAuthoring> outputCandidates =
+                FindAll<CameraOutputAuthoring>();
+            List<SessionCameraOverride> overrideCandidates =
+                FindAll<SessionCameraOverride>();
 
             outputSession = null;
             sessionOverride = null;
@@ -317,14 +317,14 @@ namespace Immersive.Framework.GlobalUi
             if (outputCandidates.Count != 1)
             {
                 diagnostic =
-                    $"Persistent Content requires exactly one CameraOutputSessionBinding. outputSessions='{outputCandidates.Count}'.";
+                    $"Persistent Content requires exactly one CameraOutputAuthoring. outputSessions='{outputCandidates.Count}'.";
                 return false;
             }
 
             if (overrideCandidates.Count > 1)
             {
                 diagnostic =
-                    $"Persistent Content permits zero or one SessionCameraOverrideBinding. sessionOverrides='{overrideCandidates.Count}'.";
+                    $"Persistent Content permits zero or one SessionCameraOverride. sessionOverrides='{overrideCandidates.Count}'.";
                 return false;
             }
 

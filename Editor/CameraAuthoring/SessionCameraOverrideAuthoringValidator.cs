@@ -27,7 +27,7 @@ namespace Immersive.Framework.Editor.CameraAuthoring
     internal static class SessionCameraOverrideAuthoringValidator
     {
         internal static SessionCameraOverrideAuthoringValidationResult Validate(
-            SessionCameraOverrideBinding binding)
+            SessionCameraOverride binding)
         {
             var issues = new List<string>();
 
@@ -52,7 +52,7 @@ namespace Immersive.Framework.Editor.CameraAuthoring
         }
 
         private static void ValidateIdentity(
-            SessionCameraOverrideBinding binding,
+            SessionCameraOverride binding,
             ICollection<string> issues)
         {
             if (string.IsNullOrWhiteSpace(binding.ScopeId))
@@ -75,13 +75,13 @@ namespace Immersive.Framework.Editor.CameraAuthoring
         }
 
         private static void ValidateOutput(
-            CameraOutputSessionBinding output,
+            CameraOutputAuthoring output,
             ICollection<string> issues)
         {
             if (output == null)
             {
                 issues.Add(
-                    "Assign the persistent Camera Output Session Binding.");
+                    "Assign the persistent Camera Output Authoring.");
                 return;
             }
 

@@ -6,12 +6,12 @@ using UnityEngine;
 
 namespace Immersive.Framework.Editor.Authoring
 {
-    [CustomEditor(typeof(RouteContentBinding))]
+    [CustomEditor(typeof(RouteContentContribution))]
     [CanEditMultipleObjects]
-    internal sealed class RouteContentBindingEditor : UnityEditor.Editor
+    internal sealed class RouteContentContributionEditor : UnityEditor.Editor
     {
         private static readonly GUIContent HeaderLabel = new GUIContent(
-            "Route Content Binding",
+            "Route Content Contribution",
             "Declares one scene-local Route content boundary. Route lifecycle callbacks are dispatched to receivers in this GameObject subtree.");
 
         private static readonly GUIContent RouteLabel = new GUIContent(
@@ -127,16 +127,16 @@ namespace Immersive.Framework.Editor.Authoring
             }
 
             if (serializedObject.isEditingMultipleObjects ||
-                !(target is RouteContentBinding binding))
+                !(target is RouteContentContribution binding))
             {
                 return;
             }
 
-            RouteContentBinding parent = FindParentBinding(binding);
+            RouteContentContribution parent = FindParentBinding(binding);
             if (parent != null)
             {
                 EditorGUILayout.HelpBox(
-                    $"Nested Route Content Binding detected under '{parent.gameObject.name}'. Keep content binding roots flat.",
+                    $"Nested Route Content Contribution detected under '{parent.gameObject.name}'. Keep content binding roots flat.",
                     MessageType.Warning);
             }
 
@@ -144,7 +144,7 @@ namespace Immersive.Framework.Editor.Authoring
             if (childCount > 0)
             {
                 EditorGUILayout.HelpBox(
-                    $"{childCount} child Route Content Binding component(s) detected. Keep content binding roots flat.",
+                    $"{childCount} child Route Content Contribution component(s) detected. Keep content binding roots flat.",
                     MessageType.Warning);
             }
         }
@@ -184,8 +184,8 @@ namespace Immersive.Framework.Editor.Authoring
             for (int index = 0; index < targets.Length; index++)
             {
                 _validationReport.AddRange(
-                    FrameworkAuthoringValidator.ValidateRouteContentBinding(
-                        targets[index] as RouteContentBinding));
+                    FrameworkAuthoringValidator.ValidateRouteContentContribution(
+                        targets[index] as RouteContentContribution));
             }
         }
 
@@ -212,7 +212,7 @@ namespace Immersive.Framework.Editor.Authoring
         private void DrawAdvanced()
         {
             if (targets.Length != 1 ||
-                !(target is RouteContentBinding binding))
+                !(target is RouteContentContribution binding))
             {
                 DrawLabelValue(
                     new GUIContent(
@@ -258,15 +258,15 @@ namespace Immersive.Framework.Editor.Authoring
                 new GUIContent(value ?? string.Empty));
         }
 
-        private static RouteContentBinding FindParentBinding(
-            RouteContentBinding binding)
+        private static RouteContentContribution FindParentBinding(
+            RouteContentContribution binding)
         {
             for (Transform parent = binding.transform.parent;
                  parent != null;
                  parent = parent.parent)
             {
                 if (parent.TryGetComponent(
-                        out RouteContentBinding parentBinding))
+                        out RouteContentContribution parentBinding))
                 {
                     return parentBinding;
                 }
@@ -276,10 +276,10 @@ namespace Immersive.Framework.Editor.Authoring
         }
 
         private static int CountChildBindings(
-            RouteContentBinding binding)
+            RouteContentContribution binding)
         {
-            RouteContentBinding[] bindings =
-                binding.GetComponentsInChildren<RouteContentBinding>(true);
+            RouteContentContribution[] bindings =
+                binding.GetComponentsInChildren<RouteContentContribution>(true);
 
             int count = 0;
             for (int index = 0; index < bindings.Length; index++)

@@ -10,7 +10,7 @@ namespace Immersive.Framework.LocalContribution
     internal enum LocalContributionSourceKind
     {
         Unknown = 0,
-        RouteContentBinding = 10,
+        RouteContentContribution = 10,
         ActivityLocalVisibilityAdapter = 20
     }
 }
