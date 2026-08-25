@@ -219,7 +219,14 @@ namespace Immersive.Framework.PlayerParticipation
                         RuntimeDefinitionToken.FromUnityObject(route));
                     AddBindings(
                         SceneCompositionComponentQuery.GetComponents<
-                            PlayerSessionScopedAccessConsumer>(
+                            PlayerSessionCommandTrigger>(
+                            routeScope),
+                        LocalPlayerProvisioningConsumerScope.Route,
+                        routeOwner,
+                        desired);
+                    AddBindings(
+                        SceneCompositionComponentQuery.GetComponents<
+                            PlayerSessionStatus>(
                             routeScope),
                         LocalPlayerProvisioningConsumerScope.Route,
                         routeOwner,
@@ -241,7 +248,15 @@ namespace Immersive.Framework.PlayerParticipation
                     RuntimeDefinitionToken.FromUnityObject(activity));
                 AddBindings(
                     SceneCompositionComponentQuery.GetComponents<
-                        PlayerSessionScopedAccessConsumer>(
+                        PlayerSessionCommandTrigger>(
+                        activityScope,
+                        activity),
+                    LocalPlayerProvisioningConsumerScope.Activity,
+                    activityOwner,
+                    desired);
+                AddBindings(
+                    SceneCompositionComponentQuery.GetComponents<
+                        PlayerSessionStatus>(
                         activityScope,
                         activity),
                     LocalPlayerProvisioningConsumerScope.Activity,
@@ -337,13 +352,14 @@ namespace Immersive.Framework.PlayerParticipation
             return false;
         }
 
-        private static void AddBindings(
-            IReadOnlyList<PlayerSessionScopedAccessConsumer>
+        private static void AddBindings<TConsumer>(
+            IReadOnlyList<TConsumer>
                 candidates,
             LocalPlayerProvisioningConsumerScope scope,
             RuntimeContentOwner owner,
             Dictionary<PlayerSessionScopedAccessConsumer,
                 RuntimeContentOwner> target)
+            where TConsumer : PlayerSessionScopedAccessConsumer
         {
             if (candidates == null)
             {

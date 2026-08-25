@@ -69,7 +69,10 @@ namespace Immersive.Framework.Editor.Validation
 
             if (includeOpenSceneBindings)
             {
-                ValidateOpenSceneActivityLocalVisibilityAdapters(
+                ValidateOpenSceneActivityContentContributions(
+                    report,
+                    validationMode);
+                ValidateOpenSceneActivityVisibilityRules(
                     report,
                     validationMode);
                 ValidateOpenSceneRouteContentContributions(
@@ -176,11 +179,20 @@ namespace Immersive.Framework.Editor.Validation
         }
 
         internal static FrameworkAuthoringValidationReport
-            ValidateActivityContentBinding(
-                ActivityContentBinding binding)
+            ValidateActivityContentContribution(
+                ActivityContentContribution contribution)
         {
-            return ValidateActivityContentBinding(
-                binding,
+            return ValidateActivityContentContribution(
+                contribution,
+                FrameworkValidationMode.Standard);
+        }
+
+        internal static FrameworkAuthoringValidationReport
+            ValidateActivityVisibilityRule(
+                ActivityVisibilityRule rule)
+        {
+            return ValidateActivityVisibilityRule(
+                rule,
                 FrameworkValidationMode.Standard);
         }
 
@@ -1568,57 +1580,89 @@ namespace Immersive.Framework.Editor.Validation
             }
         }
 
-        private static FrameworkAuthoringValidationReport ValidateActivityContentBinding(
-            ActivityContentBinding binding,
+        private static FrameworkAuthoringValidationReport ValidateActivityContentContribution(
+            ActivityContentContribution contribution,
             FrameworkValidationMode validationMode)
         {
             var report = new FrameworkAuthoringValidationReport(validationMode);
 
-            if (binding == null)
+            if (contribution == null)
             {
-                report.AddError("ActivityContentBinding is missing.", null);
+                report.AddError("Activity Content Contribution is missing.", null);
                 return report;
             }
 
-            string objectName = binding.gameObject != null ? binding.gameObject.name : "<missing>";
-
-            ActivityVisibilityEvaluation visibilityEvaluation =
-                binding.EvaluateVisibility(null);
-            if (!visibilityEvaluation.IsValid)
+            string objectName = contribution.gameObject != null ? contribution.gameObject.name : "<missing>";
+            if (contribution.Activity == null)
             {
                 report.AddError(
-                    $"ActivityContentBinding on GameObject '{objectName}' has an invalid Activity Rule: {visibilityEvaluation.DiagnosticReason}. Correct the indicated schema, list entry, enum or Activity identity without relying on automatic repair.",
-                    binding);
+                    $"Activity Content Contribution on GameObject '{objectName}' has no Activity assigned.",
+                    contribution);
             }
-
-            if (!binding.HasExplicitLocalContentId)
+            else if (!contribution.Activity.HasValidActivityId)
             {
                 report.AddError(
-                    $"ActivityContentBinding on GameObject '{objectName}' has no Local Content Id. F5 local identity requires an explicit id; GameObject names and hierarchy paths are diagnostics only.",
-                    binding);
+                    $"Activity Content Contribution on GameObject '{objectName}' has an Activity with an invalid identity.",
+                    contribution);
             }
 
-            var parentBinding = FindParentActivityLocalVisibilityAdapter(binding);
+            if (!contribution.HasExplicitLocalContentId)
+            {
+                report.AddError(
+                    $"Activity Content Contribution on GameObject '{objectName}' has no Local Content Id. F5 local identity requires an explicit id; GameObject names and hierarchy paths are diagnostics only.",
+                    contribution);
+            }
+
+            var parentBinding = FindParentActivityContentContribution(contribution);
             if (parentBinding != null)
             {
                 report.AddWarning(
-                    $"ActivityContentBinding on GameObject '{objectName}' is nested under '{parentBinding.gameObject.name}'. Nested Activity local visibility policy is not defined yet.",
-                    binding);
+                    $"Activity Content Contribution on GameObject '{objectName}' is nested under '{parentBinding.gameObject.name}'. Keep contribution roots flat.",
+                    contribution);
             }
 
-            int childBindingCount = CountChildActivityLocalVisibilityAdapters(binding);
+            int childBindingCount = CountChildActivityContentContributions(contribution);
             if (childBindingCount > 0)
             {
                 report.AddWarning(
-                    $"ActivityContentBinding on GameObject '{objectName}' has {childBindingCount} child ActivityContentBinding component(s). Keep ActivityContentBinding roots flat for now.",
-                    binding);
+                    $"Activity Content Contribution on GameObject '{objectName}' has {childBindingCount} child Activity Content Contribution component(s). Keep contribution roots flat.",
+                    contribution);
             }
 
             if (!report.HasIssues)
             {
                 report.AddInfo(
-                    $"ActivityContentBinding on GameObject '{objectName}' is valid for the current framework scope.",
-                    binding);
+                    $"Activity Content Contribution on GameObject '{objectName}' is valid for the current framework scope.",
+                    contribution);
+            }
+
+            return report;
+        }
+
+        private static FrameworkAuthoringValidationReport ValidateActivityVisibilityRule(
+            ActivityVisibilityRule rule,
+            FrameworkValidationMode validationMode)
+        {
+            var report = new FrameworkAuthoringValidationReport(validationMode);
+            if (rule == null)
+            {
+                report.AddError("Activity Visibility Rule is missing.", null);
+                return report;
+            }
+
+            string objectName = rule.gameObject != null ? rule.gameObject.name : "<missing>";
+            ActivityVisibilityEvaluation evaluation = rule.EvaluateVisibility(null);
+            if (!evaluation.IsValid)
+            {
+                report.AddError(
+                    $"Activity Visibility Rule on GameObject '{objectName}' is invalid: {evaluation.DiagnosticReason}. Correct the authored Activity list or visibility policy without relying on automatic repair.",
+                    rule);
+            }
+            else
+            {
+                report.AddInfo(
+                    $"Activity Visibility Rule on GameObject '{objectName}' is valid for the current framework scope.",
+                    rule);
             }
 
             return report;
@@ -1888,14 +1932,14 @@ namespace Immersive.Framework.Editor.Validation
             }
         }
 
-        private static void ValidateOpenSceneActivityLocalVisibilityAdapters(
+        private static void ValidateOpenSceneActivityContentContributions(
             FrameworkAuthoringValidationReport report,
             FrameworkValidationMode validationMode)
         {
-            ActivityContentBinding[] bindings = Object.FindObjectsByType<ActivityContentBinding>(FindObjectsInactive.Include);
+            ActivityContentContribution[] bindings = Object.FindObjectsByType<ActivityContentContribution>(FindObjectsInactive.Include);
             if (bindings == null || bindings.Length == 0)
             {
-                report.AddInfo("No ActivityContentBinding components were found in open scenes.", null);
+                report.AddInfo("No Activity Content Contribution components were found in open scenes.", null);
                 return;
             }
 
@@ -1914,12 +1958,33 @@ namespace Immersive.Framework.Editor.Validation
                 }
 
                 sceneBindingCount++;
-                report.AddRange(ValidateActivityContentBinding(binding, validationMode));
+                report.AddRange(ValidateActivityContentContribution(binding, validationMode));
             }
 
             if (sceneBindingCount == 0)
             {
-                report.AddInfo("No scene-authored ActivityContentBinding components were found in loaded scenes.", null);
+                report.AddInfo("No scene-authored Activity Content Contribution components were found in loaded scenes.", null);
+            }
+        }
+
+        private static void ValidateOpenSceneActivityVisibilityRules(
+            FrameworkAuthoringValidationReport report,
+            FrameworkValidationMode validationMode)
+        {
+            ActivityVisibilityRule[] rules = Object.FindObjectsByType<ActivityVisibilityRule>(FindObjectsInactive.Include);
+            if (rules == null || rules.Length == 0)
+            {
+                report.AddInfo("No Activity Visibility Rule components were found in open scenes.", null);
+                return;
+            }
+
+            for (int i = 0; i < rules.Length; i++)
+            {
+                ActivityVisibilityRule rule = rules[i];
+                if (rule != null && rule.gameObject.scene.IsValid() && rule.gameObject.scene.isLoaded)
+                {
+                    report.AddRange(ValidateActivityVisibilityRule(rule, validationMode));
+                }
             }
         }
 
@@ -2057,12 +2122,12 @@ namespace Immersive.Framework.Editor.Validation
                 : FrameworkValidationMode.Strict;
         }
 
-        private static ActivityContentBinding FindParentActivityLocalVisibilityAdapter(ActivityContentBinding binding)
+        private static ActivityContentContribution FindParentActivityContentContribution(ActivityContentContribution binding)
         {
             var parent = binding.transform.parent;
             while (parent != null)
             {
-                if (parent.TryGetComponent<ActivityContentBinding>(out var parentBinding))
+                if (parent.TryGetComponent<ActivityContentContribution>(out var parentBinding))
                 {
                     return parentBinding;
                 }
@@ -2073,9 +2138,9 @@ namespace Immersive.Framework.Editor.Validation
             return null;
         }
 
-        private static int CountChildActivityLocalVisibilityAdapters(ActivityContentBinding binding)
+        private static int CountChildActivityContentContributions(ActivityContentContribution binding)
         {
-            ActivityContentBinding[] all = binding.GetComponentsInChildren<ActivityContentBinding>(true);
+            ActivityContentContribution[] all = binding.GetComponentsInChildren<ActivityContentContribution>(true);
             int count = 0;
             for (int i = 0; i < all.Length; i++)
             {

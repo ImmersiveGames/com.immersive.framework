@@ -9,7 +9,7 @@ namespace Immersive.Framework.ActivityFlow
 {
     /// <summary>
     /// Immutable snapshot of scene-authored content currently registered for an Activity scope.
-    /// F4B records local visibility adapter content only; it does not load scenes, materialize prefabs, own release, or discover local contributions.
+    /// F4B records local Activity contribution content only; it does not load scenes, materialize prefabs, own release, or discover local contributions.
     /// </summary>
     [FrameworkApiStatus(FrameworkApiStatus.Experimental, "Minimal Activity content set introduced by F4B.")]
     internal readonly struct ActivityContentSet

@@ -267,7 +267,7 @@ Wait Visible -> Wait Covered
 
 The baseline is not a hidden readiness reset API. It is an ordinary Activity request whose authored content boundary causes the previous Activity-owned scene to release normally.
 
-A Route-owned menu may use `ActivityContentBinding` to show only the controls valid for the current demonstration state:
+A Route-owned menu may use `ActivityVisibilityRule` to show only the controls valid for the current demonstration state:
 
 ```text
 Baseline active
@@ -278,7 +278,7 @@ waiting Activity active
   show return-to-Baseline request
 ```
 
-`ActivityContentBinding` controls presentation only. `ActivityRequestTrigger` / Game Flow remains the request path and `ActivityFlowRuntime` remains readiness authority.
+`ActivityVisibilityRule` controls presentation only. `ActivityRequestTrigger` / Game Flow remains the request path and `ActivityFlowRuntime` remains readiness authority. It does not make the Route-owned menu Activity-owned.
 
 ## Advanced and runtime diagnostics
 

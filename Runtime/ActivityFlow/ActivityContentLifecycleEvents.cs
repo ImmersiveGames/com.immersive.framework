@@ -6,7 +6,7 @@ namespace Immersive.Framework.ActivityFlow
 {
     /// <summary>
     /// Scene-authored UnityEvent bridge for Activity content lifecycle.
-    /// Use this under an ActivityContentBinding root when no custom gameplay script is needed.
+    /// Use this under an ActivityContentContribution root when no custom gameplay script is needed.
     /// </summary>
     [DisallowMultipleComponent]
     [AddComponentMenu("Immersive Framework/Activity Content Lifecycle Events")]

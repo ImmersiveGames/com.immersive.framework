@@ -24,7 +24,7 @@ namespace Immersive.Framework.Editor.PlayerParticipation
         {
             serializedObject.UpdateIfRequiredOrScript();
             EditorGUI.BeginChangeCheck();
-            var binding = (PlayerSessionStatus)target;
+            var status = (PlayerSessionStatus)target;
 
             FrameworkAuthoringInspectorGui.ProductHeader(
                 "Player Session Status",
@@ -46,7 +46,7 @@ namespace Immersive.Framework.Editor.PlayerParticipation
                     "Command Trigger",
                     "Optional explicit command trigger declaring the same scope. It is the only Last Operation source."));
 
-            DrawValidation(binding);
+            DrawValidation(status);
 
             if (EditorGUI.EndChangeCheck())
             {
@@ -56,14 +56,14 @@ namespace Immersive.Framework.Editor.PlayerParticipation
             serializedObject.ApplyModifiedProperties();
         }
 
-        private void DrawValidation(PlayerSessionStatus binding)
+        private void DrawValidation(PlayerSessionStatus status)
         {
             FrameworkAuthoringInspectorGui.Section("Validation");
             if (GUILayout.Button("Validate"))
             {
                 serializedObject.ApplyModifiedProperties();
                 _hasValidation = true;
-                if (binding.TryValidateConfiguration(out _validationMessage))
+                if (status.TryValidateConfiguration(out _validationMessage))
                 {
                     _validationType = MessageType.Info;
                     _validationMessage =
@@ -79,10 +79,10 @@ namespace Immersive.Framework.Editor.PlayerParticipation
             {
                 EditorGUILayout.HelpBox(_validationMessage, _validationType);
             }
-            else if (binding.TryValidateConfiguration(out string issue))
+            else if (status.TryValidateConfiguration(out string issue))
             {
                 EditorGUILayout.HelpBox(
-                    "The authored binding relationship is structurally valid.",
+                    "The authored Player Session Status relationship is structurally valid.",
                     MessageType.None);
             }
             else

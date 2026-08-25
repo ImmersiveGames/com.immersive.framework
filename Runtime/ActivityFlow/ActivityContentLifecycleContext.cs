@@ -17,7 +17,7 @@ namespace Immersive.Framework.ActivityFlow
             ActivityAsset activity,
             ActivityAsset previousActivity,
             ActivityAsset nextActivity,
-            ActivityContentBinding binding,
+            ActivityContentContribution contribution,
             GameObject contentRoot,
             string source,
             string reason)
@@ -26,7 +26,7 @@ namespace Immersive.Framework.ActivityFlow
             Activity = activity;
             PreviousActivity = previousActivity;
             NextActivity = nextActivity;
-            Binding = binding;
+            Contribution = contribution;
             ContentRoot = contentRoot;
             Source = source.NormalizeTextOrFallback("Unknown");
             Reason = reason.NormalizeTextOrFallback("None");
@@ -40,7 +40,7 @@ namespace Immersive.Framework.ActivityFlow
 
         public ActivityAsset NextActivity { get; }
 
-        public ActivityContentBinding Binding { get; }
+        public ActivityContentContribution Contribution { get; }
 
         public GameObject ContentRoot { get; }
 
@@ -61,7 +61,7 @@ namespace Immersive.Framework.ActivityFlow
         internal static ActivityContentLifecycleContext Entered(
             ActivityAsset activity,
             ActivityAsset previousActivity,
-            ActivityContentBinding binding,
+            ActivityContentContribution contribution,
             string source,
             string reason)
         {
@@ -70,8 +70,8 @@ namespace Immersive.Framework.ActivityFlow
                 activity,
                 previousActivity,
                 activity,
-                binding,
-                binding != null ? binding.gameObject : null,
+                contribution,
+                contribution != null ? contribution.gameObject : null,
                 source,
                 reason);
         }
@@ -79,7 +79,7 @@ namespace Immersive.Framework.ActivityFlow
         internal static ActivityContentLifecycleContext Exited(
             ActivityAsset activity,
             ActivityAsset nextActivity,
-            ActivityContentBinding binding,
+            ActivityContentContribution contribution,
             string source,
             string reason)
         {
@@ -88,8 +88,8 @@ namespace Immersive.Framework.ActivityFlow
                 activity,
                 activity,
                 nextActivity,
-                binding,
-                binding != null ? binding.gameObject : null,
+                contribution,
+                contribution != null ? contribution.gameObject : null,
                 source,
                 reason);
         }

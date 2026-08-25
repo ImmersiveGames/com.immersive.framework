@@ -14,9 +14,9 @@ Each loaded instance receives `Available` at most once until it receives
 the callback again. Exceptions thrown by a receiver reject the lifecycle with
 an explicit diagnostic.
 
-For Route and Activity scopes, use the existing `RouteContentBinding` +
-`RouteContentLifecycleEvents` and `ActivityLocalVisibilityAdapter` +
-`ActivityContentLifecycleEvents` surfaces respectively.
+For Route and Activity scopes, use `RouteContentContribution` +
+`RouteContentLifecycleEvents` and `ActivityContentContribution` +
+`ActivityContentLifecycleEvents` respectively. Use `ActivityVisibilityRule` separately when presentation visibility is intended.
 
 ## Hierarchy and scope
 

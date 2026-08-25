@@ -1,23 +1,20 @@
-using UnityEngine;
 using System;
 using System.Collections.Generic;
-using Immersive.Framework.Authoring;
 using Immersive.Framework.ApiStatus;
-using Immersive.Framework.ContentFlow;
-using Immersive.Framework.LocalContribution;
+using Immersive.Framework.Authoring;
 using Immersive.Framework.Common;
+using UnityEngine;
 
 namespace Immersive.Framework.ActivityFlow
 {
     /// <summary>
-    /// Scene-authored local visibility rule for one GameObject.
-    /// Activity Flow evaluates this component against the canonical active Activity.
-    /// It is not canonical Activity materialization.
+    /// Scene-authored visibility rule for one GameObject.
+    /// Activity Flow evaluates this rule against the canonical active Activity; it does not declare Activity ownership or local content identity.
     /// </summary>
     [DisallowMultipleComponent]
-    [AddComponentMenu("Immersive Framework/Activity Content Binding")]
-    [FrameworkApiStatus(FrameworkApiStatus.Experimental, "Baseline surface kept for development use until the owning roadmap phase stabilizes it.")]
-    public sealed class ActivityContentBinding : MonoBehaviour
+    [AddComponentMenu("Immersive Framework/Activity Visibility Rule")]
+    [FrameworkApiStatus(FrameworkApiStatus.Experimental, "Activity visibility rule surface kept for development use until the owning roadmap phase stabilizes it.")]
+    public sealed class ActivityVisibilityRule : MonoBehaviour
     {
         [SerializeField]
         [Tooltip("Explicit Activities evaluated by the current visibility rule. Order is authored and preserved.")]
@@ -33,57 +30,11 @@ namespace Immersive.Framework.ActivityFlow
         private ActivityVisibilityNoActivePolicy noActiveActivityPolicy =
             ActivityVisibilityNoActivePolicy.Hidden;
 
-        [SerializeField]
-        [Tooltip("Explicit local content id for this scene-authored Activity contribution. Required for F5 local identity. GameObject names and hierarchy paths are diagnostics only and are not used as fallback.")]
-        private string localContentId = string.Empty;
-
-        [SerializeField]
-        [Tooltip("Declares whether this local Activity contribution blocks Activity entry when its visibility configuration is invalid. Optional invalid contributions remain diagnostic and do not block entry.")]
-        private FrameworkContentRequiredness requiredness = FrameworkContentRequiredness.Required;
-
         public IReadOnlyList<ActivityAsset> Activities => activities ?? Array.Empty<ActivityAsset>();
 
         public ActivityVisibilityMatchMode MatchMode => matchMode;
 
         public ActivityVisibilityNoActivePolicy NoActiveActivityPolicy => noActiveActivityPolicy;
-
-        public FrameworkContentRequiredness Requiredness => requiredness;
-
-        public LocalContentScopeKind LocalScopeKind => LocalContentScopeKind.SceneAuthored;
-
-        public string LocalContentIdText => !string.IsNullOrWhiteSpace(localContentId)
-            ? localContentId.NormalizeText()
-            : string.Empty;
-
-        public bool HasExplicitLocalContentId => !string.IsNullOrWhiteSpace(localContentId);
-
-        public bool TryGetSingleActivityOwner(out ActivityAsset singleActivity)
-        {
-            singleActivity = null;
-            ActivityVisibilityEvaluation evaluation = EvaluateVisibility(null);
-            if (!evaluation.IsValid ||
-                matchMode != ActivityVisibilityMatchMode.VisibleWhenAnyListedActivityIsActive ||
-                noActiveActivityPolicy != ActivityVisibilityNoActivePolicy.Hidden ||
-                activities == null || activities.Length != 1 || activities[0] == null)
-            {
-                return false;
-            }
-
-            singleActivity = activities[0];
-            return true;
-        }
-
-        public bool TryGetLocalContentId(out LocalContentId localId)
-        {
-            if (!HasExplicitLocalContentId)
-            {
-                localId = default;
-                return false;
-            }
-
-            localId = LocalContentId.From(localContentId);
-            return true;
-        }
 
         internal bool IsSceneBinding => gameObject.scene.IsValid() && gameObject.scene.isLoaded;
 
@@ -106,11 +57,6 @@ namespace Immersive.Framework.ActivityFlow
 
         public ActivityVisibilityEvaluation EvaluateVisibility(ActivityAsset activeActivity)
         {
-            if (!HasExplicitLocalContentId)
-            {
-                return Invalid(activeActivity, "MissingLocalContentId");
-            }
-
             if (activities == null || activities.Length == 0)
             {
                 return Invalid(activeActivity, "CurrentActivitiesEmpty");
@@ -124,11 +70,6 @@ namespace Immersive.Framework.ActivityFlow
             if (!IsSupported(noActiveActivityPolicy))
             {
                 return Invalid(activeActivity, "UnsupportedNoActiveActivityPolicy");
-            }
-
-            if (!IsSupported(requiredness))
-            {
-                return Invalid(activeActivity, "UnsupportedRequiredness");
             }
 
             ActivityAsset matchedActivity = null;
@@ -169,12 +110,10 @@ namespace Immersive.Framework.ActivityFlow
             bool hasMatch = matchedActivity != null;
             if (activeActivity == null)
             {
+                bool visible = noActiveActivityPolicy == ActivityVisibilityNoActivePolicy.Visible;
                 return new ActivityVisibilityEvaluation(
-                    true, null, null, false,
-                    noActiveActivityPolicy == ActivityVisibilityNoActivePolicy.Visible,
-                    noActiveActivityPolicy == ActivityVisibilityNoActivePolicy.Visible
-                        ? "NoActiveActivityVisible"
-                        : "NoActiveActivityHidden");
+                    true, null, null, false, visible,
+                    visible ? "NoActiveActivityVisible" : "NoActiveActivityHidden");
             }
 
             bool desiredVisibility = matchMode == ActivityVisibilityMatchMode.VisibleWhenAnyListedActivityIsActive
@@ -198,16 +137,9 @@ namespace Immersive.Framework.ActivityFlow
                    value == ActivityVisibilityNoActivePolicy.Visible;
         }
 
-        internal static bool IsSupported(FrameworkContentRequiredness value)
+        private static ActivityVisibilityEvaluation Invalid(ActivityAsset activeActivity, string reason)
         {
-            return value == FrameworkContentRequiredness.Required ||
-                   value == FrameworkContentRequiredness.Optional;
-        }
-
-        private ActivityVisibilityEvaluation Invalid(ActivityAsset activeActivity, string reason)
-        {
-            return new ActivityVisibilityEvaluation(
-                false, activeActivity, null, false, false, reason);
+            return new ActivityVisibilityEvaluation(false, activeActivity, null, false, false, reason);
         }
     }
 }

@@ -11,6 +11,6 @@ namespace Immersive.Framework.LocalContribution
     {
         Unknown = 0,
         RouteContentContribution = 10,
-        ActivityLocalVisibilityAdapter = 20
+        ActivityContentContribution = 20
     }
 }

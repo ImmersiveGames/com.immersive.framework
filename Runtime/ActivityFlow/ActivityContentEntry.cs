@@ -6,7 +6,7 @@ namespace Immersive.Framework.ActivityFlow
 {
     /// <summary>
     /// API status: Internal. One scene-authored Activity content handle known by the current Activity scope.
-    /// It records local visibility adapter content; it is not a materialization handle or release contract.
+    /// It records local Activity contribution content; it is not a materialization handle or release contract.
     /// </summary>
     [FrameworkApiStatus(FrameworkApiStatus.Internal, "Activity content entry introduced by F4B; not game-facing API.")]
     internal readonly struct ActivityContentEntry

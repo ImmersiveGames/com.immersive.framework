@@ -4,7 +4,7 @@ using Immersive.Framework.ApiStatus;
 namespace Immersive.Framework.ActivityFlow
 {
     /// <summary>
-    /// Diagnostics-only result for applying scene-authored Activity content bindings.
+    /// Diagnostics-only result for applying scene-authored Activity contributions and visibility rules.
     /// </summary>
     [FrameworkApiStatus(FrameworkApiStatus.Experimental, "Baseline surface kept for development use until the owning roadmap phase stabilizes it.")]
     internal readonly struct ActivityContentApplyResult
@@ -102,7 +102,7 @@ namespace Immersive.Framework.ActivityFlow
                 ? $"for Activity '{activeActivity.ActivityName}'"
                 : "with no active Activity";
 
-            string message = $"Activity Content applied {bindingCount} binding(s) {target}. activated='{activatedCount}' deactivated='{deactivatedCount}' unchanged='{unchangedCount}' activityContentHandles='{activityContentSet.Count}'.";
+            string message = $"Activity Content applied {bindingCount} component(s) {target}. activated='{activatedCount}' deactivated='{deactivatedCount}' unchanged='{unchangedCount}' activityContentHandles='{activityContentSet.Count}'.";
             if (lifecycleResult.Executed)
             {
                 message += $" activityContentLifecycle='{lifecycleResult.DiagnosticStatus}' activityContentEnterBindings='{lifecycleResult.EnterBindingCount}' activityContentEnterReceivers='{lifecycleResult.EnterReceiverCount}' activityContentEnterFailed='{lifecycleResult.EnterFailedReceiverCount}' activityContentExitBindings='{lifecycleResult.ExitBindingCount}' activityContentExitReceivers='{lifecycleResult.ExitReceiverCount}' activityContentExitFailed='{lifecycleResult.ExitFailedReceiverCount}'.";
@@ -115,7 +115,7 @@ namespace Immersive.Framework.ActivityFlow
 
             if (invalidBindingCount > 0)
             {
-                message += $" invalidBinding='{invalidBindingCount}' requiredInvalidBinding='{requiredInvalidBindingCount}' optionalInvalidBinding='{optionalInvalidBindingCount}'.";
+                message += $" invalidConfiguration='{invalidBindingCount}' requiredInvalidContribution='{requiredInvalidBindingCount}' optionalInvalidContribution='{optionalInvalidBindingCount}'.";
             }
 
             return new ActivityContentApplyResult(bindingCount,

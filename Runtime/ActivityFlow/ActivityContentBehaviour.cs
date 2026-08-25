@@ -5,7 +5,7 @@ using Immersive.Framework.ApiStatus;
 namespace Immersive.Framework.ActivityFlow
 {
     /// <summary>
-    /// Optional base class for MonoBehaviours under an ActivityContentBinding root.
+    /// Optional base class for MonoBehaviours under an ActivityContentContribution root.
     /// Prefer this for scene-authored Activity content that needs lifecycle callbacks
     /// without manually implementing IActivityContentLifecycleReceiver.
     /// </summary>
@@ -22,8 +22,8 @@ namespace Immersive.Framework.ActivityFlow
             ? LastActivityContentContext.Activity
             : null;
 
-        public ActivityContentBinding ActivityContentBinding =>
-            LastActivityContentContext.Binding;
+        public ActivityContentContribution ActivityContentContribution =>
+            LastActivityContentContext.Contribution;
 
         public string LifecycleSource => HasActivityContentContext
             ? LastActivityContentContext.Source

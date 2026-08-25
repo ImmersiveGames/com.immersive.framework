@@ -49,7 +49,7 @@ namespace Immersive.Framework.LocalContribution
 
         public int RouteContentContributionCount => CountBySource(LocalContributionSourceKind.RouteContentContribution);
 
-        public int ActivityLocalVisibilityAdapterCount => CountBySource(LocalContributionSourceKind.ActivityLocalVisibilityAdapter);
+        public int ActivityContentContributionCount => CountBySource(LocalContributionSourceKind.ActivityContentContribution);
 
         public int RequiredCount => CountByRequiredness(FrameworkContentRequiredness.Required);
 
@@ -202,7 +202,7 @@ namespace Immersive.Framework.LocalContribution
             int limit = Math.Max(0, maxHandles);
             int shown = Math.Min(limit, Count);
             var builder = new StringBuilder();
-            builder.Append($"handles='{Count}' session='{SessionCount}' route='{RouteCount}' activity='{ActivityCount}' routeBindings='{RouteContentContributionCount}' activityAdapters='{ActivityLocalVisibilityAdapterCount}' required='{RequiredCount}' optional='{OptionalCount}' details=[");
+            builder.Append($"handles='{Count}' session='{SessionCount}' route='{RouteCount}' activity='{ActivityCount}' routeContributions='{RouteContentContributionCount}' activityContributions='{ActivityContentContributionCount}' required='{RequiredCount}' optional='{OptionalCount}' details=[");
 
             for (int i = 0; i < shown; i++)
             {

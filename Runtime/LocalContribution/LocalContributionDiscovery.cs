@@ -55,7 +55,7 @@ namespace Immersive.Framework.LocalContribution
                 return new LocalContributionDiscoveryResult(LocalContributionSet.Empty(), issues);
             }
 
-            CollectActivityAdapters(scope, activity, handles, issues);
+            CollectActivityContributions(scope, activity, handles, issues);
             AddDuplicateIssues(handles, issues);
 
             SortHandles(handles);
@@ -114,62 +114,53 @@ namespace Immersive.Framework.LocalContribution
             }
         }
 
-        private static void CollectActivityAdapters(
+        private static void CollectActivityContributions(
             ActivityContentDiscoveryScope scope,
             ActivityAsset activityFilter,
             List<LocalContributionHandle> handles,
             List<LocalContributionDiscoveryIssue> issues)
         {
-            IReadOnlyList<ActivityContentBinding> adapters =
-                SceneCompositionComponentQuery.GetComponents<ActivityContentBinding>(
+            IReadOnlyList<ActivityContentContribution> contributions =
+                SceneCompositionComponentQuery.GetComponents<ActivityContentContribution>(
                     scope,
                     activityFilter);
-            if (adapters == null || adapters.Count == 0)
+            if (contributions == null || contributions.Count == 0)
             {
                 return;
             }
 
-            for (int i = 0; i < adapters.Count; i++)
+            for (int i = 0; i < contributions.Count; i++)
             {
-                var adapter = adapters[i];
-                if (adapter == null || !adapter.IsSceneBinding)
+                var contribution = contributions[i];
+                if (contribution == null || !contribution.IsSceneBinding)
                 {
                     continue;
                 }
 
-                if (!adapter.TryGetSingleActivityOwner(out ActivityAsset adapterActivity))
-                {
-                    issues.Add(new LocalContributionDiscoveryIssue(
-                        LocalContributionDiscoveryIssueKind.MissingOwner,
-                        "ActivityContentBinding has no singular Activity owner. Local contribution discovery requires one positive Activity with no-active hidden.",
-                        sceneName: adapter.SceneName,
-                        objectName: adapter.ObjectName));
-                    continue;
-                }
-
-                if (activityFilter != null && !ReferenceEquals(adapterActivity, activityFilter))
-                {
-                    continue;
-                }
-
-                var activity = activityFilter != null ? activityFilter : adapterActivity;
-                if (activity == null)
+                if (!contribution.TryValidate(out string validationReason))
                 {
                     issues.Add(new LocalContributionDiscoveryIssue(
                         LocalContributionDiscoveryIssueKind.MissingOwner,
-                        "ActivityContentBinding requires an explicit Activity owner before it can produce a LocalContentIdentity.",
-                        sceneName: adapter.SceneName,
-                        objectName: adapter.ObjectName));
+                        $"ActivityContentContribution is invalid: {validationReason}. Activity ownership and local identity must be explicit.",
+                        sceneName: contribution.SceneName,
+                        objectName: contribution.ObjectName));
                     continue;
                 }
 
-                if (!adapter.TryGetLocalContentId(out var localId))
+                if (!contribution.MatchesActivity(activityFilter))
+                {
+                    continue;
+                }
+
+                var activity = contribution.Activity;
+
+                if (!contribution.TryGetLocalContentId(out var localId))
                 {
                     issues.Add(new LocalContributionDiscoveryIssue(
                         LocalContributionDiscoveryIssueKind.MissingLocalContentId,
-                        "ActivityContentBinding requires an explicit Local Content Id. GameObject names and hierarchy paths are diagnostics only.",
-                        sceneName: adapter.SceneName,
-                        objectName: adapter.ObjectName));
+                        "ActivityContentContribution requires an explicit Local Content Id. GameObject names and hierarchy paths are diagnostics only.",
+                        sceneName: contribution.SceneName,
+                        objectName: contribution.ObjectName));
                     continue;
                 }
 
@@ -178,13 +169,13 @@ namespace Immersive.Framework.LocalContribution
                     issues,
                     FrameworkContentScope.Activity,
                     CreateActivityOwnerKey(activity),
-                    adapter.LocalScopeKind,
+                    contribution.LocalScopeKind,
                     localId,
-                    LocalContributionSourceKind.ActivityLocalVisibilityAdapter,
-                    adapter.Requiredness,
-                    adapter.SceneName,
-                    adapter.ObjectName,
-                    nameof(ActivityContentBinding));
+                    LocalContributionSourceKind.ActivityContentContribution,
+                    contribution.Requiredness,
+                    contribution.SceneName,
+                    contribution.ObjectName,
+                    nameof(ActivityContentContribution));
             }
         }
 

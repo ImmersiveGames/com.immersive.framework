@@ -6,22 +6,21 @@ using UnityEngine;
 namespace Immersive.Framework.PlayerParticipation
 {
     /// <summary>
-    /// Read-only availability classification for a Player Provisioning status
-    /// binding. It describes P1/P2 transport lifetime, never Player state.
+    /// Read-only availability classification for Player Session Status. It
+    /// describes P1/P2 transport lifetime, never Player state.
     /// </summary>
     [FrameworkApiStatus(
         FrameworkApiStatus.Experimental,
-        "IF-PLAYER-SURFACE-06 public status binding availability.")]
+        "IF-PLAYER-SURFACE-06 public Player Session Status availability.")]
     public enum PlayerProvisioningStatusAvailability
     {
-        MissingBinding = 0,
         Available = 10,
         Unavailable = 20,
         Stale = 30
     }
 
     /// <summary>
-    /// Dependency-neutral scene/prefab binding over the P1 scoped access and
+    /// Dependency-neutral scene/prefab status over the P1 scoped access and
     /// P2 immutable observation. It stores no Player truth and performs no
     /// automatic update; consumers explicitly pull current public evidence.
     /// </summary>
@@ -29,11 +28,11 @@ namespace Immersive.Framework.PlayerParticipation
     [AddComponentMenu("Immersive Framework/Player/Player Session Status")]
     [FrameworkApiStatus(
         FrameworkApiStatus.Experimental,
-        "IF-PLAYER-SURFACE-06 read-only designer status and diagnostics binding.")]
+        "IF-PLAYER-SURFACE-06 read-only designer Player Session status and diagnostics.")]
     public sealed class PlayerSessionStatus : PlayerSessionScopedAccessConsumer
     {
         [SerializeField]
-        [Tooltip("Optional explicit P3 command trigger in the same scoped consumer path. It is the only Last Operation source used by this binding.")]
+        [Tooltip("Optional explicit P3 command trigger in the same scoped consumer path. It is the only Last Operation source used by this status.")]
         private PlayerSessionCommandTrigger commandTrigger;
 
         public PlayerSessionCommandTrigger CommandTrigger => commandTrigger;
@@ -60,9 +59,8 @@ namespace Immersive.Framework.PlayerParticipation
         }
 
         /// <summary>
-        /// Current P2 observation when the explicitly configured P1 binding is
-        /// live. No unavailable snapshot is fabricated by this presentation
-        /// component.
+        /// Current P2 observation when this status has live P1 scoped access.
+        /// No unavailable snapshot is fabricated by this presentation component.
         /// </summary>
         public LocalPlayerProvisioningConsumerObservationSnapshot
             CurrentObservation
@@ -87,7 +85,7 @@ namespace Immersive.Framework.PlayerParticipation
 
         public string LastOperationSummary => commandTrigger != null
             ? commandTrigger.LastResultSummary
-            : "No Player Session Command Trigger is explicitly linked, so this binding has no Last Operation source.";
+            : "No Player Session Command Trigger is explicitly linked, so this status has no Last Operation source.";
 
         public PlayerParticipationOperationResult LastParticipationOperation =>
             commandTrigger != null
