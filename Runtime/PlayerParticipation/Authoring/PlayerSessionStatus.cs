@@ -30,18 +30,11 @@ namespace Immersive.Framework.PlayerParticipation
     [FrameworkApiStatus(
         FrameworkApiStatus.Experimental,
         "IF-PLAYER-SURFACE-06 read-only designer status and diagnostics binding.")]
-    public sealed class PlayerSessionStatus : MonoBehaviour
+    public sealed class PlayerSessionStatus : PlayerSessionScopedAccessConsumer
     {
-        [SerializeField]
-        [Tooltip("Explicit Route or Activity scoped P1 binding used to read the public P2 observation.")]
-        private LocalPlayerProvisioningConsumerAccessBinding consumerAccessBinding;
-
         [SerializeField]
         [Tooltip("Optional explicit P3 command trigger in the same scoped consumer path. It is the only Last Operation source used by this binding.")]
         private PlayerSessionCommandTrigger commandTrigger;
-
-        public LocalPlayerProvisioningConsumerAccessBinding ConsumerAccessBinding =>
-            consumerAccessBinding;
 
         public PlayerSessionCommandTrigger CommandTrigger => commandTrigger;
 
@@ -51,7 +44,7 @@ namespace Immersive.Framework.PlayerParticipation
         public bool IsAvailable => Availability ==
             PlayerProvisioningStatusAvailability.Available;
 
-        public string Diagnostic
+        public new string Diagnostic
         {
             get
             {
@@ -62,9 +55,7 @@ namespace Immersive.Framework.PlayerParticipation
                     return observation.Diagnostic;
                 }
 
-                return consumerAccessBinding != null
-                    ? consumerAccessBinding.Diagnostic
-                    : "Player Session Status requires an explicit Local Player Provisioning Consumer Access binding.";
+                return ScopedAccessDiagnostic;
             }
         }
 
@@ -130,8 +121,7 @@ namespace Immersive.Framework.PlayerParticipation
             out LocalPlayerProvisioningConsumerObservationSnapshot observation)
         {
             observation = null;
-            if (consumerAccessBinding == null ||
-                !consumerAccessBinding.TryGetAccess(
+            if (!TryGetAccess(
                     out ILocalPlayerProvisioningConsumerAccess access,
                     out _))
             {
@@ -148,29 +138,15 @@ namespace Immersive.Framework.PlayerParticipation
         /// </summary>
         public bool TryValidateConfiguration(out string issue)
         {
-            if (consumerAccessBinding == null)
+            if (!TryValidateScope(out issue))
             {
-                issue =
-                    "Player Session Status requires an explicit Local Player Provisioning Consumer Access binding.";
                 return false;
             }
 
-            LocalPlayerProvisioningConsumerScope scope =
-                consumerAccessBinding.Scope;
-            if (scope != LocalPlayerProvisioningConsumerScope.Route &&
-                scope != LocalPlayerProvisioningConsumerScope.Activity)
+            if (commandTrigger != null && commandTrigger.Scope != Scope)
             {
                 issue =
-                    "Player Session Status requires a binding with an explicit Route or Activity scope.";
-                return false;
-            }
-
-            if (commandTrigger != null && !ReferenceEquals(
-                    commandTrigger.ConsumerAccessBinding,
-                    consumerAccessBinding))
-            {
-                issue =
-                    "The optional Player Session Command Trigger must use this same Consumer Access Binding; otherwise Last Operation could describe a different scope.";
+                    "The optional Player Session Command Trigger must declare this same Route or Activity scope; otherwise Last Operation could describe a different scope.";
                 return false;
             }
 
@@ -251,14 +227,8 @@ namespace Immersive.Framework.PlayerParticipation
 
         private PlayerProvisioningStatusAvailability ResolveAvailability()
         {
-            if (consumerAccessBinding == null)
-            {
-                return PlayerProvisioningStatusAvailability.MissingBinding;
-            }
-
-            if (consumerAccessBinding.BindingState ==
-                LocalPlayerProvisioningConsumerBindingState.Released ||
-                consumerAccessBinding.Snapshot.IsDisposed)
+            if (ScopedAccessState == PlayerSessionScopedAccessState.Released ||
+                ScopedAccessSnapshot.IsDisposed)
             {
                 return PlayerProvisioningStatusAvailability.Stale;
             }

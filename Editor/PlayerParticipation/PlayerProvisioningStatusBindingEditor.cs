@@ -6,9 +6,9 @@ using UnityEngine;
 namespace Immersive.Framework.Editor.PlayerParticipation
 {
     [CustomEditor(typeof(PlayerSessionStatus))]
-    internal sealed class PlayerProvisioningStatusBindingEditor : UnityEditor.Editor
+    internal sealed class PlayerSessionStatusEditor : UnityEditor.Editor
     {
-        private SerializedProperty _consumerAccessBinding;
+        private SerializedProperty _scope;
         private SerializedProperty _commandTrigger;
         private bool _hasValidation;
         private string _validationMessage;
@@ -16,8 +16,7 @@ namespace Immersive.Framework.Editor.PlayerParticipation
 
         private void OnEnable()
         {
-            _consumerAccessBinding = serializedObject.FindProperty(
-                "consumerAccessBinding");
+            _scope = serializedObject.FindProperty("scope");
             _commandTrigger = serializedObject.FindProperty("commandTrigger");
         }
 
@@ -33,19 +32,19 @@ namespace Immersive.Framework.Editor.PlayerParticipation
             FrameworkAuthoringInspectorGui.IntentSummary(
                 "The Inspector contains only authoring relationships. Runtime lifecycle observability is emitted by the provisioning runtime through structured Console logs.");
 
-            FrameworkAuthoringInspectorGui.Section("Observation Source");
+            FrameworkAuthoringInspectorGui.Section("Lifecycle Scope");
             EditorGUILayout.PropertyField(
-                _consumerAccessBinding,
+                _scope,
                 new GUIContent(
-                    "Consumer Access Binding",
-                    "Explicit Route or Activity scoped binding used to read the public observation."));
+                    "Scope",
+                    "Explicit Route or Activity scope for this status. Framework Core injects observation access directly at runtime."));
 
             FrameworkAuthoringInspectorGui.Section("Last Command (Optional)");
             EditorGUILayout.PropertyField(
                 _commandTrigger,
                 new GUIContent(
                     "Command Trigger",
-                    "Optional explicit command trigger using the same Consumer Access Binding. It is the only Last Operation source."));
+                    "Optional explicit command trigger declaring the same scope. It is the only Last Operation source."));
 
             DrawValidation(binding);
 

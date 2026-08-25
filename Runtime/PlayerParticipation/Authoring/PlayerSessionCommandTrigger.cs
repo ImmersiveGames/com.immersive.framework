@@ -50,7 +50,8 @@ namespace Immersive.Framework.PlayerParticipation
     [FrameworkApiStatus(
         FrameworkApiStatus.Experimental,
         "IF-PLAYER-SURFACE-05 explicit designer command trigger over public Player surfaces.")]
-    public sealed class PlayerSessionCommandTrigger : MonoBehaviour
+    public sealed class PlayerSessionCommandTrigger :
+        PlayerSessionScopedAccessConsumer
     {
         private const string Source = nameof(PlayerSessionCommandTrigger);
 
@@ -58,10 +59,6 @@ namespace Immersive.Framework.PlayerParticipation
         [SerializeField]
         private PlayerProvisioningCommandOperation operation =
             PlayerProvisioningCommandOperation.OpenJoining;
-
-        [SerializeField]
-        [Tooltip("Explicit Route or Activity scoped access binding supplied by Framework Core.")]
-        private LocalPlayerProvisioningConsumerAccessBinding consumerAccessBinding;
 
         [Header("Request Join")]
         [SerializeField]
@@ -123,8 +120,6 @@ namespace Immersive.Framework.PlayerParticipation
         private int _invocationCount;
 
         public PlayerProvisioningCommandOperation Operation => operation;
-        public LocalPlayerProvisioningConsumerAccessBinding ConsumerAccessBinding =>
-            consumerAccessBinding;
         public string ControlScheme => controlScheme ?? string.Empty;
         public LocalPlayerActorSelectionRequestAuthoring DefaultActorSelectionRequest =>
             defaultActorSelectionRequest;
@@ -146,14 +141,10 @@ namespace Immersive.Framework.PlayerParticipation
             PlayerProvisioningCommandResultKind.None;
         public string LastDiagnostic => _lastDiagnostic;
         public string LastResultSummary => BuildLastResultSummary();
-        public bool IsScopedAccessAvailable => consumerAccessBinding != null &&
-            consumerAccessBinding.IsBound;
-        public string ScopeBindingStatus => consumerAccessBinding == null
-            ? "Missing"
-            : consumerAccessBinding.IsBound ? "Bound" : "Unavailable";
-        public string ScopeBindingDiagnostic => consumerAccessBinding == null
-            ? "Player Session Command Trigger requires an explicit Local Player Provisioning Consumer Access binding."
-            : consumerAccessBinding.Diagnostic;
+        public string ScopeBindingStatus => IsScopedAccessAvailable
+            ? "Bound"
+            : ScopedAccessState.ToString();
+        public string ScopeBindingDiagnostic => ScopedAccessDiagnostic;
 
         /// <summary>
         /// UnityEvent entry point. Commands run only when this method is
@@ -209,27 +200,15 @@ namespace Immersive.Framework.PlayerParticipation
         /// </summary>
         public bool TryValidateConfiguration(out string issue)
         {
+            if (!TryValidateScope(out issue))
+            {
+                return false;
+            }
+
             if (!IsDefinedOperation(operation))
             {
                 issue =
                     $"Player Session Command Trigger has unsupported operation '{operation}'.";
-                return false;
-            }
-
-            if (consumerAccessBinding == null)
-            {
-                issue =
-                    "Player Session Command Trigger requires an explicit Local Player Provisioning Consumer Access binding.";
-                return false;
-            }
-
-            LocalPlayerProvisioningConsumerScope scope =
-                consumerAccessBinding.Scope;
-            if (scope != LocalPlayerProvisioningConsumerScope.Route &&
-                scope != LocalPlayerProvisioningConsumerScope.Activity)
-            {
-                issue =
-                    "Player Session Command Trigger binding requires an explicit Route or Activity scope.";
                 return false;
             }
 
@@ -441,15 +420,7 @@ namespace Immersive.Framework.PlayerParticipation
             out ILocalPlayerProvisioningConsumerAccess access,
             out string issue)
         {
-            access = null;
-            if (consumerAccessBinding == null)
-            {
-                issue =
-                    "Player Session Command Trigger requires an explicit Local Player Provisioning Consumer Access binding.";
-                return false;
-            }
-
-            return consumerAccessBinding.TryGetAccess(out access, out issue);
+            return TryGetAccess(out access, out issue);
         }
 
         private void Complete(PlayerParticipationOperationResult result)
@@ -720,9 +691,7 @@ namespace Immersive.Framework.PlayerParticipation
 
         private string GetConfiguredScopeLabel()
         {
-            return consumerAccessBinding != null
-                ? consumerAccessBinding.Scope.ToString()
-                : "Missing";
+            return Scope.IsDefinedScope() ? Scope.ToString() : "Missing";
         }
 
         private static bool IsDefinedOperation(

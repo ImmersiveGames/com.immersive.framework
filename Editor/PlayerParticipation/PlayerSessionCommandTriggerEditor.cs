@@ -9,7 +9,7 @@ namespace Immersive.Framework.Editor.PlayerParticipation
     internal sealed class PlayerSessionCommandTriggerEditor : UnityEditor.Editor
     {
         private SerializedProperty _operation;
-        private SerializedProperty _consumerAccessBinding;
+        private SerializedProperty _scope;
         private SerializedProperty _controlScheme;
         private SerializedProperty _defaultActorSelectionRequest;
         private SerializedProperty _selectedPlayerSlot;
@@ -25,8 +25,7 @@ namespace Immersive.Framework.Editor.PlayerParticipation
         private void OnEnable()
         {
             _operation = serializedObject.FindProperty("operation");
-            _consumerAccessBinding = serializedObject.FindProperty(
-                "consumerAccessBinding");
+            _scope = serializedObject.FindProperty("scope");
             _controlScheme = serializedObject.FindProperty("controlScheme");
             _defaultActorSelectionRequest = serializedObject.FindProperty(
                 "defaultActorSelectionRequest");
@@ -58,12 +57,12 @@ namespace Immersive.Framework.Editor.PlayerParticipation
                     "Operation",
                     "Choose the supported Player command invoked by Invoke Configured Operation."));
 
-            FrameworkAuthoringInspectorGui.Section("Scoped Consumer Access");
+            FrameworkAuthoringInspectorGui.Section("Lifecycle Scope");
             EditorGUILayout.PropertyField(
-                _consumerAccessBinding,
+                _scope,
                 new GUIContent(
-                    "Consumer Access Binding",
-                    "Explicit Route or Activity scoped access. This is not a Player authority reference."));
+                    "Scope",
+                    "Explicit Route or Activity scope for this command. Framework Core injects access directly at runtime."));
 
             DrawOperationParameters();
 

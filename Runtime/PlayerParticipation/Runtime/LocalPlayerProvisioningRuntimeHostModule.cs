@@ -30,7 +30,7 @@ namespace Immersive.Framework.PlayerParticipation
         private LocalPlayerProvisioningAuthoring _authoring;
         private LocalPlayerProvisioningBridge _bridge;
         private readonly Dictionary<
-            LocalPlayerProvisioningConsumerAccessBinding,
+            PlayerSessionScopedAccessConsumer,
             LocalPlayerProvisioningConsumerAccess> _consumerAccesses = new();
         private string _diagnostic = "Local Player provisioning runtime is not initialized.";
         private int _requestCount;
@@ -200,7 +200,7 @@ namespace Immersive.Framework.PlayerParticipation
         private void RefreshConsumerAccessBindings()
         {
             var desired = new Dictionary<
-                LocalPlayerProvisioningConsumerAccessBinding,
+                PlayerSessionScopedAccessConsumer,
                 RuntimeContentOwner>();
             var flow = _runtimeHost.CurrentGameFlowRuntime;
             if (flow != null && flow.CurrentRoute != null)
@@ -219,7 +219,7 @@ namespace Immersive.Framework.PlayerParticipation
                         RuntimeDefinitionToken.FromUnityObject(route));
                     AddBindings(
                         SceneCompositionComponentQuery.GetComponents<
-                            LocalPlayerProvisioningConsumerAccessBinding>(
+                            PlayerSessionScopedAccessConsumer>(
                             routeScope),
                         LocalPlayerProvisioningConsumerScope.Route,
                         routeOwner,
@@ -241,7 +241,7 @@ namespace Immersive.Framework.PlayerParticipation
                     RuntimeDefinitionToken.FromUnityObject(activity));
                 AddBindings(
                     SceneCompositionComponentQuery.GetComponents<
-                        LocalPlayerProvisioningConsumerAccessBinding>(
+                        PlayerSessionScopedAccessConsumer>(
                         activityScope,
                         activity),
                     LocalPlayerProvisioningConsumerScope.Activity,
@@ -250,7 +250,7 @@ namespace Immersive.Framework.PlayerParticipation
             }
 
             var staleBindings = new List<
-                LocalPlayerProvisioningConsumerAccessBinding>();
+                PlayerSessionScopedAccessConsumer>();
             foreach (var pair in _consumerAccesses)
             {
                 if (pair.Key == null || !desired.TryGetValue(
@@ -264,15 +264,15 @@ namespace Immersive.Framework.PlayerParticipation
 
             for (int index = 0; index < staleBindings.Count; index++)
             {
-                LocalPlayerProvisioningConsumerAccessBinding binding =
+                PlayerSessionScopedAccessConsumer binding =
                     staleBindings[index];
                 if (_consumerAccesses.TryGetValue(binding, out var access))
                 {
                     access.Dispose();
                     if (binding != null)
                     {
-                        binding.Release(
-                            "Local Player provisioning consumer binding was released because its Route or Activity scope changed.",
+                        binding.ReleaseScopedAccess(
+                            "Player Session scoped access was released because its Route or Activity scope changed.",
                             true);
                     }
 
@@ -300,7 +300,7 @@ namespace Immersive.Framework.PlayerParticipation
                 if (!pair.Key.TryBind(access, actualScope, out string issue))
                 {
                     access.Dispose();
-                    pair.Key.Release(issue);
+                    pair.Key.ReleaseScopedAccess(issue);
                     continue;
                 }
 
@@ -338,11 +338,11 @@ namespace Immersive.Framework.PlayerParticipation
         }
 
         private static void AddBindings(
-            IReadOnlyList<LocalPlayerProvisioningConsumerAccessBinding>
+            IReadOnlyList<PlayerSessionScopedAccessConsumer>
                 candidates,
             LocalPlayerProvisioningConsumerScope scope,
             RuntimeContentOwner owner,
-            Dictionary<LocalPlayerProvisioningConsumerAccessBinding,
+            Dictionary<PlayerSessionScopedAccessConsumer,
                 RuntimeContentOwner> target)
         {
             if (candidates == null)
@@ -352,7 +352,7 @@ namespace Immersive.Framework.PlayerParticipation
 
             for (int index = 0; index < candidates.Count; index++)
             {
-                LocalPlayerProvisioningConsumerAccessBinding binding =
+                PlayerSessionScopedAccessConsumer binding =
                     candidates[index];
                 if (binding == null)
                 {
@@ -361,8 +361,8 @@ namespace Immersive.Framework.PlayerParticipation
 
                 if (!binding.Scope.IsDefinedScope())
                 {
-                    binding.Release(
-                        "Local Player provisioning consumer binding requires an explicit Route or Activity scope.");
+                    binding.ReleaseScopedAccess(
+                        "Player Session component requires an explicit Route or Activity scope.");
                     continue;
                 }
 
@@ -840,8 +840,8 @@ namespace Immersive.Framework.PlayerParticipation
                 pair.Value.Dispose();
                 if (pair.Key != null)
                 {
-                    pair.Key.Release(
-                        "Local Player provisioning consumer binding was released because the Session provisioning runtime was disposed.");
+                    pair.Key.ReleaseScopedAccess(
+                        "Player Session scoped access was released because the Session provisioning runtime was disposed.");
                 }
             }
 
@@ -877,7 +877,7 @@ namespace Immersive.Framework.PlayerParticipation
         private readonly LocalPlayerProvisioningAuthoring _authoring;
         private readonly LocalPlayerProvisioningConsumerScope _scope;
         private readonly RuntimeContentOwner _owner;
-        private readonly LocalPlayerProvisioningConsumerAccessBinding _binding;
+        private readonly PlayerSessionScopedAccessConsumer _consumer;
         private readonly Func<RuntimeContentOwner, bool> _isCurrentScope;
         private string _diagnostic;
         private bool _disposed;
@@ -886,15 +886,15 @@ namespace Immersive.Framework.PlayerParticipation
             LocalPlayerProvisioningAuthoring authoring,
             LocalPlayerProvisioningConsumerScope scope,
             RuntimeContentOwner owner,
-            LocalPlayerProvisioningConsumerAccessBinding binding,
+            PlayerSessionScopedAccessConsumer consumer,
             Func<RuntimeContentOwner, bool> isCurrentScope)
         {
             this._authoring = authoring ??
                 throw new ArgumentNullException(nameof(authoring));
             this._scope = scope;
             this._owner = owner;
-            this._binding = binding ??
-                throw new ArgumentNullException(nameof(binding));
+            this._consumer = consumer ??
+                throw new ArgumentNullException(nameof(consumer));
             this._isCurrentScope = isCurrentScope ??
                 throw new ArgumentNullException(nameof(isCurrentScope));
             _diagnostic = CreateReadyDiagnostic(owner);
@@ -1020,11 +1020,11 @@ namespace Immersive.Framework.PlayerParticipation
                 return false;
             }
 
-            if (_binding == null)
+            if (_consumer == null)
             {
                 _disposed = true;
                 _diagnostic =
-                    "Local Player provisioning consumer access was released because its scene-local binding was destroyed.";
+                    "Player Session scoped access was released because its consumer component was destroyed.";
                 return false;
             }
 

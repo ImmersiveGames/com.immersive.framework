@@ -1,0 +1,258 @@
+using System;
+using Immersive.Framework.ApiStatus;
+using Immersive.Framework.Diagnostics;
+using Immersive.Logging.Records;
+using UnityEngine;
+
+namespace Immersive.Framework.PlayerParticipation
+{
+    /// <summary>
+    /// Runtime lifetime state for a Player Session product consumer. It reports
+    /// only the Framework-injected scoped access transport, never Player state.
+    /// </summary>
+    [FrameworkApiStatus(
+        FrameworkApiStatus.Experimental,
+        "IF-PLAYER-SURFACE-06 direct scoped consumer access lifetime status.")]
+    public enum PlayerSessionScopedAccessState
+    {
+        Unbound = 0,
+        Bound = 10,
+        Unavailable = 20,
+        Released = 30
+    }
+
+    /// <summary>
+    /// Implementation detail shared by Player Session product components.
+    /// It is abstract and omitted from Add Component; only a concrete Command
+    /// or Status component may receive a Framework-owned scoped access port.
+    /// </summary>
+    [AddComponentMenu("")]
+    [FrameworkApiStatus(
+        FrameworkApiStatus.Internal,
+        "Internal direct lifecycle receiver for Player Session product consumers.")]
+    public abstract class PlayerSessionScopedAccessConsumer : MonoBehaviour
+    {
+        private const string UnboundDiagnostic =
+            "Player Session scoped access is not bound to a live framework scope.";
+
+        [SerializeField]
+        [Tooltip("The Framework lifecycle scope that owns this Player Session component. This does not configure Player Session state.")]
+        private LocalPlayerProvisioningConsumerScope scope =
+            LocalPlayerProvisioningConsumerScope.Activity;
+
+        [NonSerialized]
+        private ILocalPlayerProvisioningConsumerAccess _access;
+
+        [NonSerialized]
+        private string _diagnostic = UnboundDiagnostic;
+
+        [NonSerialized]
+        private PlayerSessionScopedAccessState _bindingState =
+            PlayerSessionScopedAccessState.Unbound;
+
+        public LocalPlayerProvisioningConsumerScope Scope => scope;
+
+        public bool IsScopedAccessAvailable => _bindingState ==
+            PlayerSessionScopedAccessState.Bound &&
+            _access != null && _access.Snapshot.IsAvailable;
+
+        public bool IsBound => IsScopedAccessAvailable;
+
+        public PlayerSessionScopedAccessState ScopedAccessState =>
+            _access != null && _access.Snapshot.IsDisposed
+                ? PlayerSessionScopedAccessState.Released
+                : _bindingState;
+
+        public PlayerSessionScopedAccessState BindingState => ScopedAccessState;
+
+        public string ScopedAccessDiagnostic => _access != null
+            ? _access.Snapshot.Diagnostic
+            : GetUnboundDiagnostic();
+
+        public string Diagnostic => ScopedAccessDiagnostic;
+
+        public LocalPlayerProvisioningConsumerAccessSnapshot ScopedAccessSnapshot =>
+            _access != null
+                ? _access.Snapshot
+                : LocalPlayerProvisioningConsumerAccessSnapshot.Unavailable(
+                    scope,
+                    default,
+                    GetUnboundDiagnostic());
+
+        public LocalPlayerProvisioningConsumerAccessSnapshot Snapshot =>
+            ScopedAccessSnapshot;
+
+        /// <summary>
+        /// Advanced typed access for consumers already holding this concrete
+        /// Player Session component. It does not resolve a global authority.
+        /// </summary>
+        public bool TryGetAccess(
+            out ILocalPlayerProvisioningConsumerAccess resolvedAccess,
+            out string issue)
+        {
+            resolvedAccess = _access;
+            if (resolvedAccess == null || !resolvedAccess.Snapshot.IsAvailable)
+            {
+                issue = ScopedAccessDiagnostic;
+                if (resolvedAccess != null && resolvedAccess.Snapshot.IsDisposed)
+                {
+                    _bindingState = PlayerSessionScopedAccessState.Released;
+                }
+
+                resolvedAccess = null;
+                return false;
+            }
+
+            issue = string.Empty;
+            return true;
+        }
+
+        internal bool TryBind(
+            ILocalPlayerProvisioningConsumerAccess scopedAccess,
+            LocalPlayerProvisioningConsumerScope actualScope,
+            out string issue)
+        {
+            if (!scope.IsDefinedScope())
+            {
+                issue = "Player Session component requires an explicit Route or Activity scope.";
+                SetUnavailable(issue, actualScope, "InvalidAuthoredScope", true);
+                return false;
+            }
+
+            if (scope != actualScope)
+            {
+                issue = $"Player Session component scope '{scope}' does not match the active '{actualScope}' scope.";
+                SetUnavailable(issue, actualScope, "ScopeMismatch", false);
+                return false;
+            }
+
+            if (scopedAccess == null || !scopedAccess.Snapshot.IsAvailable)
+            {
+                issue = scopedAccess != null
+                    ? scopedAccess.Snapshot.Diagnostic
+                    : "Player Session component received no scoped access.";
+                SetUnavailable(issue, actualScope, "AccessUnavailable", true);
+                return false;
+            }
+
+            if (_access != null && !ReferenceEquals(_access, scopedAccess))
+            {
+                issue = "Player Session component is already bound to a different live scope.";
+                _diagnostic = issue;
+                LogWarning("Player Session scoped access rejected.", "AlreadyBound", actualScope, issue);
+                return false;
+            }
+
+            bool wasAlreadyBound = ReferenceEquals(_access, scopedAccess) &&
+                _bindingState == PlayerSessionScopedAccessState.Bound;
+            _access = scopedAccess;
+            _diagnostic = scopedAccess.Snapshot.Diagnostic;
+            _bindingState = PlayerSessionScopedAccessState.Bound;
+            issue = string.Empty;
+
+            if (wasAlreadyBound)
+            {
+                LogTrace("Player Session scoped access is already current.", "Idempotent", actualScope, _diagnostic);
+            }
+            else
+            {
+                LogDebug("Player Session scoped access bound.", "Bound", actualScope, _diagnostic);
+            }
+
+            return true;
+        }
+
+        internal void ReleaseScopedAccess(string reason, bool isStale = false)
+        {
+            string resolvedReason = string.IsNullOrWhiteSpace(reason)
+                ? UnboundDiagnostic
+                : reason.Trim();
+            PlayerSessionScopedAccessState nextState = isStale
+                ? PlayerSessionScopedAccessState.Released
+                : PlayerSessionScopedAccessState.Unavailable;
+            bool changed = _access != null || _bindingState != nextState ||
+                !string.Equals(_diagnostic, resolvedReason, StringComparison.Ordinal);
+
+            _access = null;
+            _diagnostic = resolvedReason;
+            _bindingState = nextState;
+            if (changed)
+            {
+                LogDebug("Player Session scoped access released.", isStale ? "StaleReleased" : "Released", scope, resolvedReason);
+            }
+        }
+
+        internal bool TryValidateScope(out string issue)
+        {
+            if (scope.IsDefinedScope())
+            {
+                issue = string.Empty;
+                return true;
+            }
+
+            issue = "Player Session component requires an explicit Route or Activity scope.";
+            return false;
+        }
+
+        private string GetUnboundDiagnostic()
+        {
+            return !scope.IsDefinedScope()
+                ? "Player Session component requires an explicit Route or Activity scope."
+                : _diagnostic;
+        }
+
+        private void OnDestroy()
+        {
+            bool hadLiveBinding = _access != null ||
+                _bindingState == PlayerSessionScopedAccessState.Bound;
+            _access = null;
+            _diagnostic = "Player Session component was destroyed; any previous scoped access is invalid.";
+            _bindingState = PlayerSessionScopedAccessState.Released;
+            if (hadLiveBinding)
+            {
+                LogDebug("Player Session scoped access released because its consumer component was destroyed.", "Destroyed", scope, _diagnostic);
+            }
+        }
+
+        private void SetUnavailable(string issue, LocalPlayerProvisioningConsumerScope runtimeScope, string status, bool warning)
+        {
+            _diagnostic = issue;
+            _bindingState = PlayerSessionScopedAccessState.Unavailable;
+            if (warning)
+            {
+                LogWarning("Player Session scoped access rejected.", status, runtimeScope, issue);
+            }
+            else
+            {
+                LogDebug("Player Session scoped access skipped.", status, runtimeScope, issue);
+            }
+        }
+
+        private void LogTrace(string message, string status, LocalPlayerProvisioningConsumerScope runtimeScope, string reason)
+        {
+            FrameworkLogger.Create(GetType()).Trace(message, BuildFields(status, runtimeScope, reason));
+        }
+
+        private void LogDebug(string message, string status, LocalPlayerProvisioningConsumerScope runtimeScope, string reason)
+        {
+            FrameworkLogger.Create(GetType()).Debug(message, BuildFields(status, runtimeScope, reason));
+        }
+
+        private void LogWarning(string message, string status, LocalPlayerProvisioningConsumerScope runtimeScope, string reason)
+        {
+            FrameworkLogger.Create(GetType()).Warning(message, BuildFields(status, runtimeScope, reason));
+        }
+
+        private LogField[] BuildFields(string status, LocalPlayerProvisioningConsumerScope runtimeScope, string reason)
+        {
+            return LogFields.Of(
+                LogFields.Field("component", name),
+                LogFields.Field("scene", gameObject.scene.name),
+                LogFields.Field("status", status),
+                LogFields.Field("authoredScope", scope),
+                LogFields.Field("runtimeScope", runtimeScope),
+                LogFields.Field("bindingState", _bindingState),
+                LogFields.Field("message", reason ?? string.Empty));
+        }
+    }
+}
