@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Immersive.Framework.ActivityFlow;
 using Immersive.Framework.ActivityRestart;
 using Immersive.Framework.ApiStatus;
 using Immersive.Framework.Authoring;
@@ -172,6 +173,46 @@ namespace Immersive.Framework.GlobalUi
             return LocalPlayerActorSelectionRequestAuthoringBinding.TryRelease(
                 _persistedRoots,
                 selectionRuntime);
+        }
+
+        internal int AttachActivityEntryCompletionReceivers(
+            GameFlowRuntime gameFlowRuntime)
+        {
+            if (gameFlowRuntime == null)
+            {
+                throw new ArgumentNullException(nameof(gameFlowRuntime));
+            }
+
+            int attachedCount = 0;
+            for (int rootIndex = 0;
+                 rootIndex < _persistedRoots.Length;
+                 rootIndex++)
+            {
+                GameObject root = _persistedRoots[rootIndex];
+                if (root == null)
+                {
+                    continue;
+                }
+
+                MonoBehaviour[] behaviours =
+                    root.GetComponentsInChildren<MonoBehaviour>(true);
+                for (int behaviourIndex = 0;
+                     behaviourIndex < behaviours.Length;
+                     behaviourIndex++)
+                {
+                    if (behaviours[behaviourIndex] is not
+                        IActivityContentEntryCompletionReceiver receiver)
+                    {
+                        continue;
+                    }
+
+                    gameFlowRuntime.AttachActivityEntryCompletionReceiver(
+                        receiver);
+                    attachedCount++;
+                }
+            }
+
+            return attachedCount;
         }
 
         internal static GlobalUiPauseRequestTriggerBindingResult

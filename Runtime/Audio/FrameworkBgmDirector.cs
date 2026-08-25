@@ -1,6 +1,7 @@
 using Immersive.Audio.Authoring;
 using Immersive.Audio.Contracts;
 using Immersive.Audio.Unity.Hosts;
+using Immersive.Framework.ActivityFlow;
 using Immersive.Framework.ApiStatus;
 using Immersive.Framework.Diagnostics;
 using Immersive.Logging.Records;
@@ -18,7 +19,7 @@ namespace Immersive.Framework.Audio
     [DisallowMultipleComponent]
     [AddComponentMenu("Immersive Framework/Audio/BGM Director")]
     [FrameworkApiStatus(FrameworkApiStatus.Experimental, "BGM-CONTINUITY-1 persistent BGM intent authority.")]
-    public sealed class FrameworkBgmDirector : MonoBehaviour
+    public sealed class FrameworkBgmDirector : MonoBehaviour, IActivityContentEntryCompletionReceiver
     {
         [Header("Audio")]
         [SerializeField] private AudioRuntimeHost audioRuntimeHost;
@@ -41,6 +42,7 @@ namespace Immersive.Framework.Audio
         private FrameworkBgmDirectorInjectionRuntime injectionRuntime;
         private BgmIntent pendingIntent;
         private BgmIntent currentRouteIntent = BgmIntent.None("no-active-route");
+        private bool awaitingStartupActivityEntry;
 
         public AudioBgmCueAsset CurrentRouteBgm => currentRouteBgm;
 
@@ -130,6 +132,7 @@ namespace Immersive.Framework.Audio
             currentActivityPolicy = FrameworkBgmActivityPolicy.UseOwnOrRoute;
             currentRouteIntent = ResolveRouteIntent(currentRouteBgm, currentRoutePolicy);
             pendingIntent = currentRouteIntent;
+            awaitingStartupActivityEntry = deferRefreshForStartupActivity;
 
             Trace(
                 "Route BGM intent set.",
@@ -187,6 +190,7 @@ namespace Immersive.Framework.Audio
             hasActiveActivityBgmBinding = false;
             currentActivityPolicy = FrameworkBgmActivityPolicy.UseOwnOrRoute;
             pendingIntent = currentRouteIntent;
+            awaitingStartupActivityEntry = false;
 
             Trace("Route BGM owner cleared. Confirmed BGM presentation is preserved.");
             return RecordPreservedPresentation("Route owner exit does not mutate confirmed BGM.");
@@ -194,6 +198,7 @@ namespace Immersive.Framework.Audio
 
         public FrameworkBgmOperationResult SetActivityBgm(AudioBgmCueAsset cue, FrameworkBgmActivityPolicy policy)
         {
+            awaitingStartupActivityEntry = false;
             hasActiveActivityBgmBinding = true;
             currentActivityPolicy = NormalizeActivityPolicy(policy);
             currentActivityBgm = cue;
@@ -279,6 +284,23 @@ namespace Immersive.Framework.Audio
                     LogFields.Field("deferRefresh", deferRefreshForActivityTransition)));
 
             return RecordPreservedPresentation("Activity owner exit does not mutate confirmed BGM.");
+        }
+
+        void IActivityContentEntryCompletionReceiver.OnActivityContentEntryCompleted()
+        {
+            if (!awaitingStartupActivityEntry)
+            {
+                return;
+            }
+
+            awaitingStartupActivityEntry = false;
+            if (hasActiveActivityBgmBinding)
+            {
+                return;
+            }
+
+            Trace("Startup Activity published no BGM intent; resolving pending Route BGM intent.");
+            lastOperationResult = Refresh();
         }
 
         /// <summary>

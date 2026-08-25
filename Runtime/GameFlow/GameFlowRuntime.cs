@@ -132,6 +132,12 @@ namespace Immersive.Framework.GameFlow
             _routeLifecycleRuntime.SetActivityContentExecutionParticipantSource(participantSource);
         }
 
+        internal void AttachActivityEntryCompletionReceiver(
+            IActivityContentEntryCompletionReceiver receiver)
+        {
+            _routeLifecycleRuntime.AttachActivityEntryCompletionReceiver(receiver);
+        }
+
         internal bool SetRoutePlayerSpatialEntryParticipant(
             IRoutePlayerSpatialEntryLifecycleParticipant participant,
             out string issue)

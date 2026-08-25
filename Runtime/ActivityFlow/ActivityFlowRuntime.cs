@@ -1000,6 +1000,7 @@ namespace Immersive.Framework.ActivityFlow
             ActivityContentApplyResult result =
                 _activityContentRuntime.CompleteActivityContentTransition(
                     transition);
+            NotifyActivityEntryCompleted(nextActivity);
 
             // Events are completed facts. They no longer drive content mutation.
             PublishActivityTransition(

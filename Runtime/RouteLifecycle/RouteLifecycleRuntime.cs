@@ -99,6 +99,12 @@ namespace Immersive.Framework.RouteLifecycle
         internal int CurrentReadinessRevision =>
             _activityFlowRuntime.CurrentReadinessRevision;
 
+        internal void AttachActivityEntryCompletionReceiver(
+            IActivityContentEntryCompletionReceiver receiver)
+        {
+            _activityFlowRuntime.AttachActivityEntryCompletionReceiver(receiver);
+        }
+
         internal bool TryGetCurrentRouteResult(out RouteLifecycleStartResult result)
         {
             result = _currentRouteResult;

@@ -15,7 +15,6 @@ namespace Immersive.Framework.Editor.Audio
     {
         private SerializedProperty _routeBgm;
         private SerializedProperty _policy;
-        private SerializedProperty _startupActivityBgmBinding;
         private FrameworkAuthoringValidationReport _validationReport;
         private bool _showAdvanced;
 
@@ -27,9 +26,6 @@ namespace Immersive.Framework.Editor.Audio
             _policy =
                 serializedObject.FindProperty("policy");
 
-            _startupActivityBgmBinding =
-                serializedObject.FindProperty(
-                    "startupActivityBgmBinding");
         }
 
         public override void OnInspectorGUI()
@@ -89,12 +85,6 @@ namespace Immersive.Framework.Editor.Audio
             }
 
             DrawPolicyExplanation();
-
-            EditorGUILayout.PropertyField(
-                _startupActivityBgmBinding,
-                new GUIContent(
-                    "Startup Activity BGM",
-                    "Optional explicit Startup Activity BGM binding. None is valid."));
         }
 
         private bool ShouldShowRouteCue()
@@ -136,15 +126,13 @@ namespace Immersive.Framework.Editor.Audio
 
         private string BuildIntentSummary()
         {
-            if (_routeBgm == null || _policy == null ||
-                _startupActivityBgmBinding == null)
+            if (_routeBgm == null || _policy == null)
             {
                 return "Configure Route BGM intent.";
             }
 
             if (_routeBgm.hasMultipleDifferentValues ||
-                _policy.hasMultipleDifferentValues ||
-                _startupActivityBgmBinding.hasMultipleDifferentValues)
+                _policy.hasMultipleDifferentValues)
             {
                 return "Selected bindings contain mixed BGM intent.";
             }
@@ -153,21 +141,10 @@ namespace Immersive.Framework.Editor.Audio
                 _routeBgm.objectReferenceValue
                     as AudioBgmCueAsset;
 
-            FrameworkActivityBgmBinding startupBinding =
-                _startupActivityBgmBinding.objectReferenceValue
-                    as FrameworkActivityBgmBinding;
-
             FrameworkBgmRoutePolicy policy =
                 (FrameworkBgmRoutePolicy)_policy.intValue;
 
-            string routeIntent = BuildRouteIntentSummary(policy, routeCue);
-
-            string startupIntent =
-                startupBinding != null
-                    ? $"Startup '{startupBinding.name}'"
-                    : "No Startup Activity request";
-
-            return $"{routeIntent}; {startupIntent}.";
+            return BuildRouteIntentSummary(policy, routeCue) + ".";
         }
 
         private static string BuildRouteIntentSummary(
@@ -251,32 +228,6 @@ namespace Immersive.Framework.Editor.Audio
                 EditorGUILayout.HelpBox(
                     "The owning Route Content Binding has no Route.",
                     MessageType.Error);
-                return;
-            }
-
-            FrameworkActivityBgmBinding startupBinding =
-                binding.StartupActivityBgmBinding;
-
-            if (startupBinding != null &&
-                (!routeContent.Route.HasStartupActivity ||
-                 routeContent.Route.StartupActivity == null))
-            {
-                EditorGUILayout.HelpBox(
-                    "Startup Activity BGM is assigned, but this Route has no Startup Activity.",
-                    MessageType.Warning);
-                return;
-            }
-
-            if (startupBinding != null &&
-                routeContent.Route.StartupActivity != null &&
-                startupBinding.AssignedActivity != null &&
-                !ReferenceEquals(
-                    startupBinding.AssignedActivity,
-                    routeContent.Route.StartupActivity))
-            {
-                EditorGUILayout.HelpBox(
-                    "Startup Activity BGM targets a different Activity from the Route Startup Activity.",
-                    MessageType.Warning);
                 return;
             }
 

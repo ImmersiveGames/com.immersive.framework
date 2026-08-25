@@ -58,29 +58,6 @@ namespace Immersive.Framework.Editor.Audio
                     binding);
             }
 
-            FrameworkActivityBgmBinding startupBinding =
-                binding.StartupActivityBgmBinding;
-
-            if (startupBinding != null)
-            {
-                if (!routeContent.Route.HasStartupActivity ||
-                    routeContent.Route.StartupActivity == null)
-                {
-                    report.AddWarning(
-                        "Startup Activity BGM is assigned, but the owning Route has no Startup Activity. The reference will not be used on Route entry.",
-                        binding);
-                }
-                else if (startupBinding.AssignedActivity != null &&
-                         !ReferenceEquals(
-                             startupBinding.AssignedActivity,
-                             routeContent.Route.StartupActivity))
-                {
-                    report.AddWarning(
-                        $"Startup Activity BGM targets '{startupBinding.AssignedActivity.ActivityName}', but the owning Route starts '{routeContent.Route.StartupActivity.ActivityName}'. The explicit Startup Activity BGM intent will be ignored and the pending Route BGM intent will be evaluated.",
-                        startupBinding);
-                }
-            }
-
             return report;
         }
 

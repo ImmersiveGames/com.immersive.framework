@@ -371,6 +371,7 @@ namespace Immersive.Framework.ActivityFlow
                         contentTransition);
                 executionResult = CompleteActivityParticipantTransition(
                     participantTransition);
+                NotifyActivityEntryCompleted(nextActivity);
                 bool previousExitSucceeded = PreviousExitSucceeded(
                     previousActivity,
                     contentResult,

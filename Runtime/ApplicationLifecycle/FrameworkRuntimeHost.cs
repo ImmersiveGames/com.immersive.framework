@@ -548,6 +548,15 @@ namespace Immersive.Framework.ApplicationLifecycle
                 this,
                 this,
                 _sceneLifecycleRuntime);
+            int activityEntryCompletionReceiverCount =
+                _globalUiSceneRuntime
+                    .AttachActivityEntryCompletionReceivers(
+                        _gameFlowRuntime);
+            _logger.Debug(
+                "Persistent Content Activity entry completion receivers attached.",
+                LogFields.Field(
+                    "receiverCount",
+                    activityEntryCompletionReceiverCount));
             if (_gameApplication.PlayerSessionEnabled &&
                 !PlayerActorPreparationRuntimeHostModule.TryAttach(
                     this,

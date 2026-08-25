@@ -1,13 +1,13 @@
 # Audio BGM Usage
 
-Status: Current / Experimental
-Last updated: 2026-08-21
+Status: Current / Experimental  
+Last updated: 2026-08-24
 
 ## Dependency and boundary
 
-Install a compatible `com.immersive.audio` package. The optional `Immersive.Framework.Audio` assembly is enabled by version define; Framework Core remains independent from Audio.
+Install a compatible `com.immersive.audio` package when BGM integration is required. The optional `Immersive.Framework.Audio` assembly isolates the provider dependency; Framework Core remains independent from Audio.
 
-The Framework owns Route/Activity BGM intent. `com.immersive.audio` owns physical playback. Neither package introduces a global AudioManager, service locator, or hidden static authority.
+The Framework owns Route/Activity BGM intent and provider-confirmed presentation evidence. `com.immersive.audio` owns physical playback and transitions.
 
 ## Canonical composition
 
@@ -18,58 +18,71 @@ Persistent Content / Session lifetime
 └─ Audio Runtime
    ├─ AudioRuntimeHost
    └─ FrameworkBgmDirector
-          ↑ injected into loaded scene consumers
-          │
-Route / Activity scenes
-├─ FrameworkRouteBgmBinding
+          ↑ injected into loaded Route/Activity BGM consumers
+
+Route content, when Route intent is needed
+└─ FrameworkRouteBgmBinding
+
+Activity content, when Activity intent is needed
 └─ FrameworkActivityBgmBinding
 ```
 
-`FrameworkBgmDirector` does not make itself persistent. `AudioRuntimeHost` also does not make itself persistent. Persistence is explicit composition owned by the Framework Persistent Content scene or another deliberate application/session lifetime.
+`FrameworkBgmDirector` and `AudioRuntimeHost` do not make themselves persistent. Persistence is composition-owned.
 
-The director owns an internal scene-injection runtime that attaches itself to `IFrameworkBgmDirectorConsumer` instances in loaded scenes and on later scene loads. This is not a global/static authority and does not replace the persistent composition requirement.
-
-Do not serialize cross-scene references from transient Route/Activity bindings to the persistent director. Let the runtime injection attach the authority.
+Do not serialize cross-scene references from transient bindings to the persistent Director.
 
 ## Authoring
 
 1. In Framework Persistent Content, configure an `AudioRuntimeHost` with an explicit `AudioDefaultsAsset`.
 2. Add `FrameworkBgmDirector` and assign the `AudioRuntimeHost` explicitly.
-3. Add `FrameworkRouteBgmBinding` to Route content and choose its explicit Route BGM Policy. `PlayOwn` requires a Route cue; `PreserveCurrent` and `Silence` do not.
-4. Add `FrameworkActivityBgmBinding` to Activity content when that Activity has an explicit BGM policy.
-5. Assign `Assigned Activity`, cue when applicable, and one of the policies below.
-6. If a Route Startup Activity must publish an immediate Play/Silence intent during Route entry, assign its explicit `FrameworkActivityBgmBinding` to `FrameworkRouteBgmBinding.StartupActivityBgmBinding`.
+3. If the Route owns a BGM intent, add `FrameworkRouteBgmBinding` to Route-owned content and choose a Route policy.
+4. If an Activity owns a BGM intent, add `FrameworkActivityBgmBinding` to Activity-owned content, assign the Activity, and choose an Activity policy.
+5. Do not create Route -> Activity BGM references. They are not part of the current product surface.
+
+Canonical mental model:
+
+```text
+Want one/default BGM for a Route?
+  -> Route BGM Binding
+
+Want a particular Activity to change BGM?
+  -> Activity BGM Binding on that Activity
+
+Want an Activity to inherit Route intent?
+  -> UseRoute or UseOwnOrRoute
+
+Want no new intent?
+  -> omit the binding or use a No Request policy where applicable
+```
+
+`FrameworkActivityBgmBinding` works without a `FrameworkRouteBgmBinding`.
 
 ## Route policy
 
 | Policy | Published intent |
 |---|---|
 | `PlayOwn` | Play the required Route cue. |
-| `PreserveCurrent` | No Request; preserve the confirmed presentation. |
+| `PreserveCurrent` | No Request; preserve confirmed presentation. |
 | `Silence` | Explicitly request silence/stop. |
 
-The Route policy, rather than cue presence, is the complete Route intent. Existing
-bindings are migrated once: a serialized cue becomes `PlayOwn`; no serialized cue
-becomes `PreserveCurrent`.
+The policy is the complete Route intent. Cue presence alone is not the policy.
 
 ## Activity policies
 
 | Policy | Published intent |
 |---|---|
-| `UseOwnOrRoute` | Play Activity cue when authored; otherwise inherit the complete current Route intent. |
-| `UseOwnOrPreserveCurrent` | Play Activity cue when authored; otherwise publish no request and preserve the confirmed presentation. |
-| `UseRoute` | Inherit the complete current Route intent. |
+| `UseOwnOrRoute` | Play Activity cue when authored; otherwise inherit the complete Route intent. |
+| `UseOwnOrPreserveCurrent` | Play Activity cue when authored; otherwise No Request. |
+| `UseRoute` | Inherit the complete Route intent. |
 | `Silence` | Explicitly request silence/stop. |
 
-`UseOwnOrRetainActivityUntilRouteExit` is not the current contract. Sticky continuity is no longer based on automatic restoration at owner exit.
+Owner exit never automatically restores an older Route or Activity cue.
 
 ## Sticky confirmed presentation
 
-BGM-CONTINUITY-1 defines three semantic intents:
-
 ```text
 No Request / Unspecified  -> Preserve confirmed presentation
-Play(cue)                 -> Apply/transition to cue
+Play(cue)                 -> Apply / transition to cue
 Silence                    -> Explicitly release to silence
 ```
 
@@ -83,52 +96,143 @@ Explicit Silence  -> provider-controlled transition to silence
 Owner exit        -> Preserve / NoChange
 ```
 
-A confirmed BGM presentation remains active across Activity exit, Route exit, and transient scene lifetime changes until a new explicit Play or Silence intent is successfully applied.
+A confirmed presentation survives Activity exit, Route exit and transient scene lifetime changes until another explicit Play or Silence succeeds.
 
-Absence of a binding, an Activity cue absent under a preserve/no-request policy, owner exit, or absence of a new winner is not Silence. Route intent is always explicit: `PreserveCurrent` is No Request and `Silence` is an explicit Stop request.
+Absence of a binding is not Silence.
 
-Explicit Silence is also sticky: once silence is provider-confirmed, later no-request/owner-exit operations preserve that silence until a new Play succeeds.
+## Startup Activity behavior
 
-## Runtime flow
+When a Route has a Startup Activity, the Route BGM intent may be retained as pending until the Activity entry finishes.
+
+Current flow:
 
 ```text
-Route/Activity lifecycle
-        ↓
-Framework Route/Activity BGM binding
-        ↓
-FrameworkBgmDirector pending intent
-        ↓
-No Request? ────────────────> Preserve confirmed state / no provider call
-        │
-        └─ Play / Silence
-                ↓
-          AudioRuntimeHost
-                ↓
-          provider result
-                ↓
-        success -> commit confirmed presentation
-        failure -> preserve previous confirmed presentation
+Route Enter
+  -> Route binding publishes intent
+  -> Startup Activity exists
+  -> Route intent may be deferred
+
+Activity Enter
+  -> Activity binding publishes its own intent if one exists
+
+Activity Entry Completion
+  -> ActivityFlowRuntime emits deterministic completion
+  -> persistent FrameworkBgmDirector receives completion through explicit runtime wiring
 ```
 
-`Applied` and `Released` mean provider-confirmed execution. A rejected operation never commits the requested presentation and can be retried.
+Resolution:
+
+```text
+Activity published BGM intent
+  -> Activity intent wins
+  -> no transient Route playback
+
+Activity published no BGM intent
+  -> pending Route intent is evaluated
+
+No pending explicit intent
+  -> preserve confirmed presentation
+```
+
+This works even when the Startup Activity has no `ActivityContentProfile`, no Activity BGM binding and `activityContentHandles = 0`.
+
+Do **not** add a fake Activity BGM binding just to make Route BGM play.
+
+## Why there is no Startup Activity BGM field on Route
+
+The old product surface required a Route to reference a Startup Activity BGM binding. That created cross-authoring ownership and existed only to compensate for ordering.
+
+Current ownership is simpler:
+
+```text
+Route binding     -> Route intent only
+Activity binding  -> Activity intent only
+ActivityFlow      -> entry completion/order
+Director          -> resolves pending intent + confirmed presentation
+```
+
+Ordering is therefore solved by lifecycle, not by a Route Inspector reference.
+
+## Persistent completion wiring
+
+`FrameworkBgmDirector` belongs to Persistent Content, not Route/Activity content.
+
+The current completion path is explicitly wired:
+
+```text
+GlobalUiSceneRuntime / persistent roots
+  -> FrameworkRuntimeHost
+  -> GameFlowRuntime
+  -> RouteLifecycleRuntime
+  -> ActivityFlowRuntime
+  -> FrameworkBgmDirector completion receiver
+```
+
+This path does not use global scene search, `FindObjectOfType`, singleton/service locator, reflection, polling or frame delay.
+
+The normal scene-consumer injection path remains responsible for injecting the persistent Director into Route/Activity BGM bindings.
+
+## Common configurations
+
+### One BGM for the whole Route
+
+```text
+Route
+  FrameworkRouteBgmBinding
+    Policy = PlayOwn
+    Route BGM = RouteMusic
+
+Activities
+  no Activity BGM binding unless they need to override/inherit explicitly
+```
+
+A content-less Startup Activity does not block Route BGM. The pending Route intent is applied after Activity entry completion.
+
+### Activity-specific BGM
+
+```text
+Route
+  Route BGM binding optional
+
+Activity Combat
+  FrameworkActivityBgmBinding
+    Activity BGM = CombatMusic
+```
+
+If `CombatMusic` is published during Startup Activity entry, it is applied directly without first presenting a deferred Route cue.
+
+### Activity BGM with no Route BGM binding
+
+```text
+Route
+  no FrameworkRouteBgmBinding
+
+Activity
+  FrameworkActivityBgmBinding
+    Activity BGM = ActivityMusic
+```
+
+This is valid. Activity intent is independent from Route BGM authoring.
+
+### Inherit Route
+
+```text
+Route
+  Policy = PlayOwn / RouteMusic
+
+Activity
+  Policy = UseRoute
+```
+
+Result: `RouteMusic`.
 
 ## Route and Activity exit
 
-`FrameworkRouteBgmBinding` calls `ClearRouteBgm` on Route exit. `FrameworkActivityBgmBinding` calls `ClearActivityBgm` on Activity exit.
+`ClearRouteBgm` and `ClearActivityBgm` clear owner intent/evidence only. They do not physically stop confirmed BGM.
 
-Those clear operations clear owner intent/evidence only. They do not physically stop the confirmed BGM. The director records `FrameworkBgmOperation.Preserve` + `FrameworkBgmOperationOutcome.NoChange` and leaves the confirmed presentation unchanged.
+This is the central BGM-CONTINUITY-1 distinction:
 
-This is the central BGM-CONTINUITY-1 distinction: **owner lifetime is not playback-presentation lifetime**.
-
-## Startup Activity
-
-When a Route has a Startup Activity, Route BGM refresh is deferred so the Startup Activity can publish its explicit intent first.
-
-If `StartupActivityBgmBinding` is valid and matches the Route Startup Activity, it is applied immediately.
-
-If no valid explicit Startup Activity BGM binding is assigned, the current runtime emits a warning and evaluates the pending Route intent. This can still be semantically valid for an intentionally no-op Startup Activity where the Route publishes `PreserveCurrent`; the warning is diagnostic/product-surface debt, not an instruction to fabricate a cue or Silence intent.
-
-Do not add a fake BGM binding merely to suppress that warning.
+> owner lifetime is not playback-presentation lifetime.
 
 ## Diagnostics
 
@@ -136,95 +240,96 @@ Inspect:
 
 - `FrameworkBgmDirector.ConfirmedBgm`;
 - `FrameworkBgmDirector.ConfirmedExplicitSilence`;
-- `FrameworkBgmDirector.CurrentRoutePolicy` and `CurrentRouteBgm` (the cue only when Route policy is `PlayOwn`);
-- Route and Activity authored cues/policies;
-- `LastOperationResult` on director/bindings;
+- current Route policy / Route cue where applicable;
+- Route and Activity authored policies;
+- `LastOperationResult`;
 - requested cue / requested silence;
 - previous confirmed cue;
 - resulting confirmed cue/silence;
 - operation and outcome.
 
-Framework operation values:
+Framework outcomes:
 
 ```text
-Operation
-  Apply
-  Release
-  Preserve
-
-Outcome
-  Applied
-  Released
-  NoChange
-  OptionalAuthorityUnavailable
-  Rejected
+Applied
+Released
+NoChange
+OptionalAuthorityUnavailable
+Rejected
 ```
 
-A missing optional `AudioRuntimeHost` produces `OptionalAuthorityUnavailable`; do not solve this with scene search or a global audio manager.
+A missing optional `AudioRuntimeHost` produces `OptionalAuthorityUnavailable`; do not solve it with scene search or a global AudioManager.
 
-## Certified QA — BGM-CONTINUITY-1
+## Current certification
 
-Technical certification completed on 2026-08-19 through the canonical QAFramework Audio surface:
+Current canonical Audio QA result after the Startup Activity lifecycle cut:
 
 ```text
 Core Audio         7/7 PASS
-Framework BGM     14/14 PASS
+Framework BGM     28/28 PASS
 ADR-013A            5/5 PASS
 Audio continuity    4/4 PASS
-TOTAL              30/30 PASS
+TOTAL              44/44 PASS
 FAILED               0
 ```
 
-The historical suite proves BGM-CONTINUITY-1. `BGM-ROUTE-POLICY-1` extends that model and requires a new focused Play Mode run; the historical 30/30 result is not relabeled as certification of the Route policy matrix.
-
-The historical suite proves:
-
-- Route Play and same-confirmed cue NoChange;
-- Startup Activity Play;
-- Activity-own Play;
-- Activity exit preserves confirmed BGM;
-- Route exit preserves confirmed BGM;
-- Route no-request preserves;
-- Activity no-request preserves;
-- explicit Silence;
-- owner exit and no-request preserve confirmed Silence;
-- Play after Silence;
-- rejected Play/Release preserve previous confirmed state and can retry;
-- optional authority absence remains non-corrupting;
-- physical same-cue no-restart;
-- physical different-cue controlled transition;
-- explicit stop fade-to-silence.
-
-A separate real Framework lifecycle proof also completed:
+Focused Startup Activity proof:
 
 ```text
-QA Hub
-  -> Route A / QA_Audio
-  -> Own Activity BGM confirmed
-  -> Route A exit / QA_Audio unload
-  -> Route B / QA_AudioRouteB
-  -> Startup Activity = Retain Previous / NoRequest
-  -> Route B Ready
-  -> BGM remained playing
+startup-activity-neutral-baseline
+  PASS
+
+startup-route-is-deferred
+  PASS
+  provider remains without RouteCue presentation
+
+startup-activity-prevents-route-transient-play
+  PASS
+  ActivityCue Applied directly
 ```
 
-That closes the technical continuity boundary in QA. It is not FIRSTGAME promotion evidence.
+The earlier 2026-08-19 `30/30` certification remains historical evidence for BGM-CONTINUITY-1 and must not be relabeled as proof of this later lifecycle cut.
+
+## Consumer examples currently proven
+
+```text
+Getting Started / Minimal Game
+  Route PlayOwn / BGM_Floresta
+  Startup Activity has no Activity BGM
+  activityContentHandles = 0
+  completion -> BGM_Floresta Applied
+
+Player / Provisioning
+  no Route BGM binding
+  Activity BGM = BGM_Antiguidade
+  Activity enter -> BGM_Antiguidade Applied
+
+Game Flow
+  contextual Route/Activity Play
+  No Request / Preserve
+  owner-exit preservation
+  explicit Silence
+```
+
+Audio may be ambient/supporting in samples where it is natural. Optional dependency boundaries must remain explicit.
 
 ## Experimental status
 
-ADR-013 remains `Experimental` because the optional BGM boundary still requires real consumer integration/usability proof in Sample/FIRSTGAME before API-maturity promotion.
-
-Technical continuity is closed; the remaining promotion gate is consumer proof, not another synthetic BGM runtime redesign.
+ADR-013 remains `Experimental` as API maturity governance. Runtime behavior, current QA and consumer integration are closed for the present accepted contract.
 
 ## Validation checklist
 
-- Persistent `AudioRuntimeHost` + `FrameworkBgmDirector` are explicitly composed under the intended long-lived Framework content lifetime.
-- Transient Route/Activity bindings receive the director through runtime injection.
-- No cross-scene serialized director dependency is required.
-- `NoRequest` is never translated to Silence.
+- Persistent `AudioRuntimeHost` + `FrameworkBgmDirector` are explicitly composed.
+- Route and Activity BGM bindings are authored independently.
+- No Route -> Activity BGM binding reference exists.
+- Startup Activity ordering is closed by lifecycle completion.
+- A Startup Activity with zero content handles still allows pending Route intent to resolve.
+- Activity own BGM prevents transient Route playback.
+- Activity BGM works without a Route BGM binding.
+- No Request is never translated to Silence.
 - Owner exit does not call physical Stop.
 - Same confirmed cue does not restart provider playback.
 - Different cue transitions through the provider.
-- Explicit Silence is the only normal lifecycle intent that stops BGM.
+- Explicit Silence is the normal lifecycle intent that stops BGM.
 - Rejected provider operations preserve previous confirmed state.
-- Run canonical Audio QA from Framework bootstrap/QA Hub; do not treat `QA_Audio.unity` as a standalone application entrypoint.
+- Run canonical Audio QA from Framework bootstrap/QA Hub.

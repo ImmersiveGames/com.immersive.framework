@@ -28,7 +28,6 @@ namespace Immersive.Framework.Audio
         [HideInInspector]
         [SerializeField] private FrameworkBgmDirector director;
 
-        [SerializeField] private FrameworkActivityBgmBinding startupActivityBgmBinding;
         private FrameworkLogger logger;
 
         public FrameworkBgmOperationResult LastOperationResult { get; private set; }
@@ -39,8 +38,6 @@ namespace Immersive.Framework.Audio
 
         public FrameworkBgmDirector Director => director;
 
-        public FrameworkActivityBgmBinding StartupActivityBgmBinding => startupActivityBgmBinding;
-
         protected override void OnRouteContentEntered(RouteContentLifecycleContext context)
         {
             if (director == null)
@@ -49,30 +46,12 @@ namespace Immersive.Framework.Audio
                 return;
             }
 
-            ActivityAsset startupActivity = context.Route != null && context.Route.HasStartupActivity
-                ? context.Route.StartupActivity
-                : null;
-
-            bool hasStartupActivity = startupActivity != null;
-            LastOperationResult = director.SetRouteBgm(routeBgm, policy, hasStartupActivity);
-
-            if (!hasStartupActivity)
-            {
-                return;
-            }
-
-            if (startupActivityBgmBinding != null
-                && startupActivityBgmBinding.TryApplyStartupActivityBgm(director, startupActivity, context.RouteName))
-            {
-                return;
-            }
-
-            Debug(
-                "No explicit Startup Activity BGM intent was applied. Pending Route BGM intent will be evaluated.",
-                LogFields.Of(
-                    LogFields.Field("route", context.RouteName),
-                    LogFields.Field("startupActivity", FormatActivity(startupActivity))));
-            LastOperationResult = director.Refresh();
+            bool deferRefreshForStartupActivity =
+                context.Route != null && context.Route.HasStartupActivity;
+            LastOperationResult = director.SetRouteBgm(
+                routeBgm,
+                policy,
+                deferRefreshForStartupActivity);
         }
 
         protected override void OnRouteContentExited(RouteContentLifecycleContext context)
@@ -136,17 +115,6 @@ namespace Immersive.Framework.Audio
                 ? FrameworkBgmRoutePolicy.PlayOwn
                 : FrameworkBgmRoutePolicy.PreserveCurrent;
             routePolicySerializationVersion = CurrentRoutePolicySerializationVersion;
-        }
-
-        private static string FormatActivity(ActivityAsset activity)
-        {
-            return activity != null ? activity.ActivityName : "<none>";
-        }
-
-        private void Debug(string message, params LogField[] fields)
-        {
-            EnsureLogger();
-            logger.Debug(message, fields);
         }
 
         private void Error(string message, params LogField[] fields)

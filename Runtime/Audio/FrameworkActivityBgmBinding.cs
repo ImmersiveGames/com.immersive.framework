@@ -36,61 +36,6 @@ namespace Immersive.Framework.Audio
 
         public FrameworkBgmDirector Director => director;
 
-        public bool TryApplyStartupActivityBgm(
-            FrameworkBgmDirector expectedDirector,
-            ActivityAsset expectedActivity,
-            string routeName)
-        {
-            if (director == null)
-            {
-                Error("Activity BGM binding requires an injected FrameworkBgmDirector.");
-                return false;
-            }
-
-            if (expectedDirector != null && !ReferenceEquals(director, expectedDirector))
-            {
-                Warning(
-                    "Startup Activity BGM binding ignored because it targets a different director.",
-                    LogFields.Of(
-                        LogFields.Field("route", routeName),
-                        LogFields.Field("activityBgm", FormatCue(activityBgm))));
-                return false;
-            }
-
-            if (!MatchesExpectedActivity(expectedActivity, out string assignedActivityName, out bool hasActivityEvidence))
-            {
-                Warning(
-                    "Startup Activity BGM binding ignored because it does not match the Route Startup Activity.",
-                    LogFields.Of(
-                        LogFields.Field("route", routeName),
-                        LogFields.Field("expectedActivity", FormatActivity(expectedActivity)),
-                        LogFields.Field("assignedActivity", assignedActivityName),
-                        LogFields.Field("activityBgm", FormatCue(activityBgm))));
-                return false;
-            }
-
-            if (!hasActivityEvidence)
-            {
-                Warning(
-                    "Startup Activity BGM binding has no assigned Activity evidence. Explicit Route reference will be used.",
-                    LogFields.Of(
-                        LogFields.Field("route", routeName),
-                        LogFields.Field("expectedActivity", FormatActivity(expectedActivity)),
-                        LogFields.Field("activityBgm", FormatCue(activityBgm))));
-            }
-
-            LastOperationResult = director.SetActivityBgm(activityBgm, policy);
-            Debug(
-                "Startup Activity BGM intent dispatched from explicit Route binding.",
-                LogFields.Of(
-                    LogFields.Field("route", routeName),
-                    LogFields.Field("activity", FormatActivity(expectedActivity)),
-                    LogFields.Field("activityBgm", FormatCue(activityBgm)),
-                    LogFields.Field("policy", policy),
-                    LogFields.Field("operationOutcome", LastOperationResult.Outcome)));
-            return true;
-        }
-
         protected override void OnActivityContentEntered(ActivityContentLifecycleContext context)
         {
             if (director == null)
@@ -142,60 +87,6 @@ namespace Immersive.Framework.Audio
             {
                 director = null;
             }
-        }
-
-        private bool MatchesExpectedActivity(
-            ActivityAsset expectedActivity,
-            out string assignedActivityName,
-            out bool hasActivityEvidence)
-        {
-            ActivityAsset resolvedActivity = ResolveAssignedActivity();
-            assignedActivityName = FormatActivity(resolvedActivity);
-            hasActivityEvidence = resolvedActivity != null;
-
-            return expectedActivity == null
-                || resolvedActivity == null
-                || ReferenceEquals(resolvedActivity, expectedActivity);
-        }
-
-        private ActivityAsset ResolveAssignedActivity()
-        {
-            if (assignedActivity != null)
-            {
-                return assignedActivity;
-            }
-
-            ActivityContentBinding binding = GetComponent<ActivityContentBinding>();
-            if (binding == null)
-            {
-                binding = GetComponentInParent<ActivityContentBinding>();
-            }
-
-            return binding != null && binding.TryGetSingleActivityOwner(out ActivityAsset activity)
-                ? activity
-                : null;
-        }
-
-        private static string FormatCue(AudioBgmCueAsset cue)
-        {
-            return cue != null ? cue.name : "<none>";
-        }
-
-        private static string FormatActivity(ActivityAsset activity)
-        {
-            return activity != null ? activity.ActivityName : "<none>";
-        }
-
-        private void Debug(string message, params LogField[] fields)
-        {
-            EnsureLogger();
-            logger.Debug(message, fields);
-        }
-
-        private void Warning(string message, params LogField[] fields)
-        {
-            EnsureLogger();
-            logger.Warning(message, fields);
         }
 
         private void Error(string message, params LogField[] fields)

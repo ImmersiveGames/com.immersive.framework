@@ -435,7 +435,7 @@ FIRSTGAME / Sample gate      PROVEN
 ADR-013 maturity             EXPERIMENTAL pending explicit promotion cut
 ```
 
-The current warning emitted when a Startup Activity has no explicit Startup BGM binding can occur in an intentionally BGM-neutral Route. That is diagnostic/product-surface debt, not a continuity defect; do not invent Play/Silence intent only to silence the warning.
+Route and Startup Activity BGM intent ordering is now runtime-resolved: the Activity lifecycle closes the pending Route intent only after normal Activity BGM publication. No Route authoring reference or synthetic Activity binding is required.
 
 Certification record:
 
