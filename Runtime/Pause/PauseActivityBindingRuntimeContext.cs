@@ -393,7 +393,7 @@ namespace Immersive.Framework.Pause
             PlayerInput hostInput = host.PlayerInput;
             if (!ReferenceEquals(binding.PlayerInput, hostInput))
             {
-                diagnostic = "binding-playerinput-mismatch: Pause PlayerInput Binding must reference the admitted Local Player Host PlayerInput.";
+                diagnostic = "binding-playerinput-mismatch: the co-located UnityPlayerInputGateAdapter must reference the admitted Local Player Host PlayerInput.";
                 return false;
             }
 

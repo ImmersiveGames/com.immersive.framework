@@ -22,7 +22,7 @@ namespace Immersive.Framework.UnityInput
             nameof(UnityPlayerInputGateAdapter);
 
         [Header("Target")]
-        [Tooltip("Gameplay-owned PlayerInput to gate. If empty, the adapter looks on the same GameObject.")]
+        [Tooltip("Explicit gameplay-owned PlayerInput gated by this adapter.")]
         [SerializeField]
         private PlayerInput playerInput;
 
@@ -165,24 +165,11 @@ namespace Immersive.Framework.UnityInput
         private void Awake() =>
             EnsureLogger();
 
-        private void Reset()
-        {
-            playerInput =
-                GetComponent<PlayerInput>();
-
+        private void Reset() =>
             TryMigrateLegacyGameplayMap();
-        }
 
-        private void OnValidate()
-        {
-            if (playerInput == null)
-            {
-                playerInput =
-                    GetComponent<PlayerInput>();
-            }
-
+        private void OnValidate() =>
             TryMigrateLegacyGameplayMap();
-        }
 
         internal bool TryBindInputGateRuntime(
             IInputGateRuntimePort inputGateRuntime,
@@ -749,9 +736,7 @@ namespace Immersive.Framework.UnityInput
         }
 
         private PlayerInput ResolvePlayerInput() =>
-            playerInput != null
-                ? playerInput
-                : GetComponent<PlayerInput>();
+            playerInput;
 
         private void TryMigrateLegacyGameplayMap()
         {

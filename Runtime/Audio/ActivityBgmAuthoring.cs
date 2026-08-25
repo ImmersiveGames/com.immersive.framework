@@ -24,7 +24,7 @@ namespace Immersive.Framework.Audio
         [HideInInspector]
         [SerializeField] private FrameworkBgmDirector director;
 
-        private FrameworkLogger logger;
+        private FrameworkLogger _logger;
 
         public FrameworkBgmOperationResult LastOperationResult { get; private set; }
 
@@ -92,12 +92,12 @@ namespace Immersive.Framework.Audio
         private void Error(string message, params LogField[] fields)
         {
             EnsureLogger();
-            logger.Error(message, fields);
+            _logger.Error(message, fields);
         }
 
         private void EnsureLogger()
         {
-            logger ??= FrameworkLogger.Create<ActivityBgmAuthoring>();
+            _logger ??= FrameworkLogger.Create<ActivityBgmAuthoring>();
         }
     }
 }

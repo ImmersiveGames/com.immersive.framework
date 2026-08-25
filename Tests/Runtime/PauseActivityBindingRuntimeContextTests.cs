@@ -4,6 +4,7 @@ using System.Reflection;
 using Immersive.Framework.PlayerParticipation;
 using Immersive.Framework.PlayerSlots;
 using Immersive.Framework.RuntimeContent;
+using Immersive.Framework.UnityInput;
 using NUnit.Framework;
 using UnityEngine;
 using UnityEngine.InputSystem;
@@ -225,17 +226,19 @@ namespace Immersive.Framework.Pause.Tests
             LocalPlayerHostAuthoring childHost = CreateJoinedHost("Child", out _);
             GameObject child = CreateObject("Child Binding");
             child.transform.SetParent(childHost.transform);
-            PausePlayerInputBinding childBinding = child.AddComponent<PausePlayerInputBinding>();
-            SetPrivateField(childBinding, "playerInput", childHost.PlayerInput);
+            PlayerPauseInput childBinding = child.AddComponent<PlayerPauseInput>();
             var childContext = new PauseActivityBindingRuntimeContext();
             childContext.TryActivate(
                 CreateScope("activity.child", 1), RequiredIntent(), new[] { childHost },
                 new FakePauseProductBindingPort(), "test", "child", out PauseActivityBindingOperationResult childResult);
             Assert.That(childResult.Diagnostic, Does.Contain("binding-not-colocated"));
 
-            LocalPlayerHostAuthoring mismatchHost = CreateJoinedHost("Mismatch", out PausePlayerInputBinding mismatchBinding);
+            LocalPlayerHostAuthoring mismatchHost = CreateJoinedHost("Mismatch", out PlayerPauseInput mismatchBinding);
             PlayerInput otherInput = CreateObject("Other Input").AddComponent<PlayerInput>();
-            SetPrivateField(mismatchBinding, "playerInput", otherInput);
+            SetPrivateField(
+                mismatchHost.GetComponent<UnityPlayerInputGateAdapter>(),
+                "playerInput",
+                otherInput);
             var mismatchContext = new PauseActivityBindingRuntimeContext();
             mismatchContext.TryActivate(
                 CreateScope("activity.mismatch", 1), RequiredIntent(), new[] { mismatchHost },
@@ -246,7 +249,7 @@ namespace Immersive.Framework.Pause.Tests
         [Test]
         public void ValidCoLocatedBinding_RegistersOnceAndSameActivationIsIdempotent()
         {
-            LocalPlayerHostAuthoring host = CreateJoinedHost("Valid", out PausePlayerInputBinding binding);
+            LocalPlayerHostAuthoring host = CreateJoinedHost("Valid", out PlayerPauseInput binding);
             PauseActivityBindingScope scope = CreateScope("activity.valid", 1);
             PauseActivityBindingIntentResolution intent = RequiredIntent();
             var context = new PauseActivityBindingRuntimeContext();
@@ -306,7 +309,7 @@ namespace Immersive.Framework.Pause.Tests
         [Test]
         public void Release_RejectsForeignAndStaleScopesThenReleasesCorrectScope()
         {
-            LocalPlayerHostAuthoring host = CreateJoinedHost("Release", out PausePlayerInputBinding binding);
+            LocalPlayerHostAuthoring host = CreateJoinedHost("Release", out PlayerPauseInput binding);
             PauseActivityBindingScope scope = CreateScope("activity.release", 3);
             var context = new PauseActivityBindingRuntimeContext();
             var port = new FakePauseProductBindingPort();
@@ -330,7 +333,7 @@ namespace Immersive.Framework.Pause.Tests
         [Test]
         public void ReleaseFailure_PreservesEvidenceForRetry()
         {
-            LocalPlayerHostAuthoring host = CreateJoinedHost("Release Retry", out PausePlayerInputBinding binding);
+            LocalPlayerHostAuthoring host = CreateJoinedHost("Release Retry", out PlayerPauseInput binding);
             PauseActivityBindingScope scope = CreateScope("activity.release-retry", 1);
             var port = new FakePauseProductBindingPort { ReleaseSucceeds = false };
             var context = new PauseActivityBindingRuntimeContext();
@@ -356,7 +359,7 @@ namespace Immersive.Framework.Pause.Tests
         [Test]
         public void ComponentRegistrationAndRelease_AreTransactionalAndOnDisableDoesNotDoubleRelease()
         {
-            LocalPlayerHostAuthoring host = CreateJoinedHost("Component", out PausePlayerInputBinding binding);
+            LocalPlayerHostAuthoring host = CreateJoinedHost("Component", out PlayerPauseInput binding);
             var rejectedPort = new FakePauseProductBindingPort { RegisterSucceeds = false };
             var activePort = new FakePauseProductBindingPort { ReleaseSucceeds = false };
 
@@ -371,7 +374,7 @@ namespace Immersive.Framework.Pause.Tests
             Assert.That(binding.HasActiveBinding, Is.False);
             Assert.That(activePort.ReleaseCalls, Is.EqualTo(2));
 
-            typeof(PausePlayerInputBinding)
+            typeof(PlayerPauseInput)
                 .GetMethod("OnDisable", BindingFlags.Instance | BindingFlags.NonPublic)
                 .Invoke(binding, null);
             Assert.That(activePort.ReleaseCalls, Is.EqualTo(2));
@@ -405,14 +408,16 @@ namespace Immersive.Framework.Pause.Tests
             Assert.That(slotResult.Diagnostic, Does.Contain("host-slot-invalid"));
         }
 
-        private LocalPlayerHostAuthoring CreateJoinedHost(string name, out PausePlayerInputBinding binding)
+        private LocalPlayerHostAuthoring CreateJoinedHost(string name, out PlayerPauseInput binding)
         {
             LocalPlayerHostAuthoring host = CreateHost(name);
             SetAdmissionState(host, "Joined");
             string slotName = name.ToLowerInvariant().Replace(' ', '-');
             SetPrivateField(host, "joinedPlayerSlotId", new PlayerSlotId($"test.{slotName}"));
-            binding = host.gameObject.AddComponent<PausePlayerInputBinding>();
-            SetPrivateField(binding, "playerInput", host.PlayerInput);
+            UnityPlayerInputGateAdapter adapter =
+                host.gameObject.AddComponent<UnityPlayerInputGateAdapter>();
+            SetPrivateField(adapter, "playerInput", host.PlayerInput);
+            binding = host.gameObject.AddComponent<PlayerPauseInput>();
             return host;
         }
 
@@ -477,7 +482,7 @@ namespace Immersive.Framework.Pause.Tests
             public List<PauseProductBindingToken> ReleaseTokens { get; } = new();
 
             public bool TryRegister(
-                PausePlayerInputBinding binding,
+                PlayerPauseInput binding,
                 out PauseProductBindingToken token,
                 out string diagnostic)
             {

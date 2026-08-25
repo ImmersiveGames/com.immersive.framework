@@ -21,7 +21,7 @@ LocalPlayerProvisioningAuthoring -> Manager-Provisioned local Player join
 SceneLocalPlayerAdmissionAuthoring -> Scene-Provided local Player admission
 CameraRigComposer -> Validate / Apply/Rebuild (Unity Preset optional)
 FrameworkBgmDirector -> Route/Activity BGM bindings -> Immersive Audio
-PausePlayerInputBinding -> InputMode transaction -> PlayerInput state writer
+PlayerPauseInput -> InputMode transaction -> PlayerInput state writer
 Reset authoring -> explicit runtime ports -> ResetRegistry / ResetExecutor
 SceneLifecycleEvents -> SceneLifecycleRuntime callbacks -> explicit UnityEvents
 ```

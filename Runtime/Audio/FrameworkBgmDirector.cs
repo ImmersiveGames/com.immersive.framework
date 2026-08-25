@@ -27,52 +27,41 @@ namespace Immersive.Framework.Audio
         [Header("Diagnostics")]
         [SerializeField] private bool logTransitions = true;
 
-        private AudioBgmCueAsset currentRouteBgm;
-        private AudioBgmCueAsset currentActivityBgm;
-        private AudioBgmCueAsset retainedActivityBgmForCurrentRoute;
-        private AudioBgmCueAsset currentEffectiveBgm;
-        private AudioBgmCueAsset confirmedBgm;
-        private FrameworkBgmActivityPolicy currentActivityPolicy = FrameworkBgmActivityPolicy.UseOwnOrRoute;
-        private FrameworkBgmRoutePolicy currentRoutePolicy = FrameworkBgmRoutePolicy.PreserveCurrent;
-        private bool hasActiveActivityBgmBinding;
-        private bool currentEffectiveIsExplicitSilence;
-        private bool confirmedExplicitSilence;
-        private FrameworkBgmOperationResult lastOperationResult;
-        private FrameworkLogger logger;
-        private FrameworkBgmDirectorInjectionRuntime injectionRuntime;
-        private BgmIntent pendingIntent;
-        private BgmIntent currentRouteIntent = BgmIntent.None("no-active-route");
-        private bool awaitingStartupActivityEntry;
+        private FrameworkLogger _logger;
+        private FrameworkBgmDirectorInjectionRuntime _injectionRuntime;
+        private BgmIntent _pendingIntent;
+        private BgmIntent _currentRouteIntent = BgmIntent.None("no-active-route");
+        private bool _awaitingStartupActivityEntry;
 
-        public AudioBgmCueAsset CurrentRouteBgm => currentRouteBgm;
+        public AudioBgmCueAsset CurrentRouteBgm { get; private set; }
 
         /// <summary>
         /// The authored policy of the current Route. Together with CurrentRouteBgm, this is the
         /// complete Route intent; a cue is meaningful only for PlayOwn.
         /// </summary>
-        public FrameworkBgmRoutePolicy CurrentRoutePolicy => currentRoutePolicy;
+        public FrameworkBgmRoutePolicy CurrentRoutePolicy { get; private set; } = FrameworkBgmRoutePolicy.PreserveCurrent;
 
-        public AudioBgmCueAsset CurrentActivityBgm => currentActivityBgm;
+        public AudioBgmCueAsset CurrentActivityBgm { get; private set; }
 
         /// <summary>
         /// Diagnostic evidence for the last Activity cue confirmed under UseOwnOrPreserveCurrent.
         /// It does not own playback continuity; confirmed presentation remains sticky independently of Route scope.
         /// </summary>
-        public AudioBgmCueAsset RetainedActivityBgmForCurrentRoute => retainedActivityBgmForCurrentRoute;
+        public AudioBgmCueAsset RetainedActivityBgmForCurrentRoute { get; private set; }
 
-        public AudioBgmCueAsset CurrentEffectiveBgm => currentEffectiveBgm;
+        public AudioBgmCueAsset CurrentEffectiveBgm { get; private set; }
 
-        public AudioBgmCueAsset ConfirmedBgm => confirmedBgm;
+        public AudioBgmCueAsset ConfirmedBgm { get; private set; }
 
-        public bool ConfirmedExplicitSilence => confirmedExplicitSilence;
+        public bool ConfirmedExplicitSilence { get; private set; }
 
-        public FrameworkBgmActivityPolicy CurrentActivityPolicy => currentActivityPolicy;
+        public FrameworkBgmActivityPolicy CurrentActivityPolicy { get; private set; } = FrameworkBgmActivityPolicy.UseOwnOrRoute;
 
-        public bool HasActiveActivityBgmBinding => hasActiveActivityBgmBinding;
+        public bool HasActiveActivityBgmBinding { get; private set; }
 
-        public bool CurrentEffectiveIsExplicitSilence => currentEffectiveIsExplicitSilence;
+        public bool CurrentEffectiveIsExplicitSilence { get; private set; }
 
-        public FrameworkBgmOperationResult LastOperationResult => lastOperationResult;
+        public FrameworkBgmOperationResult LastOperationResult { get; private set; }
 
         private void OnEnable()
         {
@@ -81,13 +70,13 @@ namespace Immersive.Framework.Audio
                 return;
             }
 
-            injectionRuntime ??= new FrameworkBgmDirectorInjectionRuntime(this);
+            _injectionRuntime ??= new FrameworkBgmDirectorInjectionRuntime(this);
         }
 
         private void OnDisable()
         {
-            injectionRuntime?.Dispose();
-            injectionRuntime = null;
+            _injectionRuntime?.Dispose();
+            _injectionRuntime = null;
         }
 
         public FrameworkBgmOperationResult SetRouteBgm(AudioBgmCueAsset cue)
@@ -122,32 +111,32 @@ namespace Immersive.Framework.Audio
             FrameworkBgmRoutePolicy policy,
             bool deferRefreshForStartupActivity)
         {
-            currentRoutePolicy = NormalizeRoutePolicy(policy);
-            currentRouteBgm = currentRoutePolicy == FrameworkBgmRoutePolicy.PlayOwn
+            CurrentRoutePolicy = NormalizeRoutePolicy(policy);
+            CurrentRouteBgm = CurrentRoutePolicy == FrameworkBgmRoutePolicy.PlayOwn
                 ? cue
                 : null;
-            currentActivityBgm = null;
-            retainedActivityBgmForCurrentRoute = null;
-            hasActiveActivityBgmBinding = false;
-            currentActivityPolicy = FrameworkBgmActivityPolicy.UseOwnOrRoute;
-            currentRouteIntent = ResolveRouteIntent(currentRouteBgm, currentRoutePolicy);
-            pendingIntent = currentRouteIntent;
-            awaitingStartupActivityEntry = deferRefreshForStartupActivity;
+            CurrentActivityBgm = null;
+            RetainedActivityBgmForCurrentRoute = null;
+            HasActiveActivityBgmBinding = false;
+            CurrentActivityPolicy = FrameworkBgmActivityPolicy.UseOwnOrRoute;
+            _currentRouteIntent = ResolveRouteIntent(CurrentRouteBgm, CurrentRoutePolicy);
+            _pendingIntent = _currentRouteIntent;
+            _awaitingStartupActivityEntry = deferRefreshForStartupActivity;
 
             Trace(
                 "Route BGM intent set.",
                 LogFields.Of(
-                    LogFields.Field("routePolicy", currentRoutePolicy),
-                    LogFields.Field("routeBgm", FormatCue(currentRouteBgm)),
-                    LogFields.Field("intent", pendingIntent.Kind),
+                    LogFields.Field("routePolicy", CurrentRoutePolicy),
+                    LogFields.Field("routeBgm", FormatCue(CurrentRouteBgm)),
+                    LogFields.Field("intent", _pendingIntent.Kind),
                     LogFields.Field("deferRefreshForStartupActivity", deferRefreshForStartupActivity)));
 
             if (deferRefreshForStartupActivity)
             {
                 return RecordNoChange(
-                    OperationForIntent(currentRouteIntent),
-                    currentRouteIntent.Cue,
-                    currentRouteIntent.Kind == BgmIntentKind.Silence,
+                    OperationForIntent(_currentRouteIntent),
+                    _currentRouteIntent.Cue,
+                    _currentRouteIntent.Kind == BgmIntentKind.Silence,
                     "BGM intent refresh deferred for Startup Activity.");
             }
 
@@ -168,29 +157,29 @@ namespace Immersive.Framework.Audio
             FrameworkBgmRoutePolicy policy)
         {
             FrameworkBgmRoutePolicy normalizedPolicy = NormalizeRoutePolicy(policy);
-            if (normalizedPolicy != currentRoutePolicy
+            if (normalizedPolicy != CurrentRoutePolicy
                 || (normalizedPolicy == FrameworkBgmRoutePolicy.PlayOwn
-                    && !ReferenceEquals(currentRouteBgm, cue)))
+                    && !ReferenceEquals(CurrentRouteBgm, cue)))
             {
                 Trace(
                     "Route BGM clear ignored as stale.",
                     LogFields.Of(
                         LogFields.Field("requestedPolicy", normalizedPolicy),
-                        LogFields.Field("currentRoutePolicy", currentRoutePolicy),
+                        LogFields.Field("currentRoutePolicy", CurrentRoutePolicy),
                         LogFields.Field("requested", FormatCue(cue)),
-                        LogFields.Field("currentRouteBgm", FormatCue(currentRouteBgm))));
+                        LogFields.Field("currentRouteBgm", FormatCue(CurrentRouteBgm))));
                 return RecordPreservedPresentation("Stale Route BGM clear ignored.");
             }
 
-            currentRouteBgm = null;
-            currentRoutePolicy = FrameworkBgmRoutePolicy.PreserveCurrent;
-            currentRouteIntent = BgmIntent.None("route-owner-exit-no-request");
-            currentActivityBgm = null;
-            retainedActivityBgmForCurrentRoute = null;
-            hasActiveActivityBgmBinding = false;
-            currentActivityPolicy = FrameworkBgmActivityPolicy.UseOwnOrRoute;
-            pendingIntent = currentRouteIntent;
-            awaitingStartupActivityEntry = false;
+            CurrentRouteBgm = null;
+            CurrentRoutePolicy = FrameworkBgmRoutePolicy.PreserveCurrent;
+            _currentRouteIntent = BgmIntent.None("route-owner-exit-no-request");
+            CurrentActivityBgm = null;
+            RetainedActivityBgmForCurrentRoute = null;
+            HasActiveActivityBgmBinding = false;
+            CurrentActivityPolicy = FrameworkBgmActivityPolicy.UseOwnOrRoute;
+            _pendingIntent = _currentRouteIntent;
+            _awaitingStartupActivityEntry = false;
 
             Trace("Route BGM owner cleared. Confirmed BGM presentation is preserved.");
             return RecordPreservedPresentation("Route owner exit does not mutate confirmed BGM.");
@@ -198,59 +187,59 @@ namespace Immersive.Framework.Audio
 
         public FrameworkBgmOperationResult SetActivityBgm(AudioBgmCueAsset cue, FrameworkBgmActivityPolicy policy)
         {
-            awaitingStartupActivityEntry = false;
-            hasActiveActivityBgmBinding = true;
-            currentActivityPolicy = NormalizeActivityPolicy(policy);
-            currentActivityBgm = cue;
+            _awaitingStartupActivityEntry = false;
+            HasActiveActivityBgmBinding = true;
+            CurrentActivityPolicy = NormalizeActivityPolicy(policy);
+            CurrentActivityBgm = cue;
 
-            switch (currentActivityPolicy)
+            switch (CurrentActivityPolicy)
             {
                 case FrameworkBgmActivityPolicy.Silence:
-                    currentActivityBgm = null;
-                    retainedActivityBgmForCurrentRoute = null;
-                    pendingIntent = BgmIntent.Silence("activity-policy-silence");
+                    CurrentActivityBgm = null;
+                    RetainedActivityBgmForCurrentRoute = null;
+                    _pendingIntent = BgmIntent.Silence("activity-policy-silence");
                     Trace("Activity BGM explicit Silence intent applied.");
                     return Refresh();
 
                 case FrameworkBgmActivityPolicy.UseRoute:
-                    pendingIntent = currentRouteIntent.WithReason("activity-policy-use-route");
+                    _pendingIntent = _currentRouteIntent.WithReason("activity-policy-use-route");
                     Trace(
                         "Activity BGM policy UseRoute evaluated.",
                         LogFields.Of(
-                            LogFields.Field("routePolicy", currentRoutePolicy),
-                            LogFields.Field("routeBgm", FormatCue(currentRouteBgm)),
-                            LogFields.Field("intent", pendingIntent.Kind)));
+                            LogFields.Field("routePolicy", CurrentRoutePolicy),
+                            LogFields.Field("routeBgm", FormatCue(CurrentRouteBgm)),
+                            LogFields.Field("intent", _pendingIntent.Kind)));
                     return Refresh();
 
                 case FrameworkBgmActivityPolicy.UseOwnOrPreserveCurrent:
-                    pendingIntent = cue != null
+                    _pendingIntent = cue != null
                         ? BgmIntent.Play(cue, "activity-own")
                         : BgmIntent.None("activity-preserve-current");
                     Trace(
                         "Activity BGM preserve-current policy evaluated.",
                         LogFields.Of(
                             LogFields.Field("activityBgm", FormatCue(cue)),
-                            LogFields.Field("retainedActivityBgm", FormatCue(retainedActivityBgmForCurrentRoute))));
+                            LogFields.Field("retainedActivityBgm", FormatCue(RetainedActivityBgmForCurrentRoute))));
                     return Refresh();
 
                 default:
                     if (cue != null)
                     {
-                        pendingIntent = BgmIntent.Play(cue, "activity-own");
+                        _pendingIntent = BgmIntent.Play(cue, "activity-own");
                     }
                     else
                     {
-                        pendingIntent = currentRouteIntent.WithReason("activity-fallback-route");
+                        _pendingIntent = _currentRouteIntent.WithReason("activity-fallback-route");
                     }
 
                     Trace(
                         "Activity BGM intent evaluated.",
                         LogFields.Of(
                             LogFields.Field("activityBgm", FormatCue(cue)),
-                            LogFields.Field("policy", currentActivityPolicy),
-                            LogFields.Field("routePolicy", currentRoutePolicy),
-                            LogFields.Field("routeBgm", FormatCue(currentRouteBgm)),
-                            LogFields.Field("intent", pendingIntent.Kind)));
+                            LogFields.Field("policy", CurrentActivityPolicy),
+                            LogFields.Field("routePolicy", CurrentRoutePolicy),
+                            LogFields.Field("routeBgm", FormatCue(CurrentRouteBgm)),
+                            LogFields.Field("intent", _pendingIntent.Kind)));
                     return Refresh();
             }
         }
@@ -262,25 +251,25 @@ namespace Immersive.Framework.Audio
 
         public FrameworkBgmOperationResult ClearActivityBgm(AudioBgmCueAsset cue, bool deferRefreshForActivityTransition)
         {
-            if (currentActivityBgm != null && cue != null && !ReferenceEquals(currentActivityBgm, cue))
+            if (CurrentActivityBgm != null && cue != null && !ReferenceEquals(CurrentActivityBgm, cue))
             {
                 Trace(
                     "Activity BGM clear ignored as stale.",
                     LogFields.Of(
                         LogFields.Field("requested", FormatCue(cue)),
-                        LogFields.Field("currentActivityBgm", FormatCue(currentActivityBgm))));
+                        LogFields.Field("currentActivityBgm", FormatCue(CurrentActivityBgm))));
                 return RecordPreservedPresentation("Stale Activity BGM clear ignored.");
             }
 
-            currentActivityBgm = null;
-            hasActiveActivityBgmBinding = false;
-            currentActivityPolicy = FrameworkBgmActivityPolicy.UseOwnOrRoute;
-            pendingIntent = BgmIntent.None("activity-owner-exit-no-request");
+            CurrentActivityBgm = null;
+            HasActiveActivityBgmBinding = false;
+            CurrentActivityPolicy = FrameworkBgmActivityPolicy.UseOwnOrRoute;
+            _pendingIntent = BgmIntent.None("activity-owner-exit-no-request");
 
             Trace(
                 "Activity BGM owner cleared. Confirmed BGM presentation is preserved.",
                 LogFields.Of(
-                    LogFields.Field("retainedActivityBgm", FormatCue(retainedActivityBgmForCurrentRoute)),
+                    LogFields.Field("retainedActivityBgm", FormatCue(RetainedActivityBgmForCurrentRoute)),
                     LogFields.Field("deferRefresh", deferRefreshForActivityTransition)));
 
             return RecordPreservedPresentation("Activity owner exit does not mutate confirmed BGM.");
@@ -288,19 +277,19 @@ namespace Immersive.Framework.Audio
 
         void IActivityContentEntryCompletionReceiver.OnActivityContentEntryCompleted()
         {
-            if (!awaitingStartupActivityEntry)
+            if (!_awaitingStartupActivityEntry)
             {
                 return;
             }
 
-            awaitingStartupActivityEntry = false;
-            if (hasActiveActivityBgmBinding)
+            _awaitingStartupActivityEntry = false;
+            if (HasActiveActivityBgmBinding)
             {
                 return;
             }
 
             Trace("Startup Activity published no BGM intent; resolving pending Route BGM intent.");
-            lastOperationResult = Refresh();
+            LastOperationResult = Refresh();
         }
 
         /// <summary>
@@ -309,53 +298,53 @@ namespace Immersive.Framework.Audio
         /// </summary>
         public FrameworkBgmOperationResult Refresh()
         {
-            if (pendingIntent.Kind == BgmIntentKind.None)
+            if (_pendingIntent.Kind == BgmIntentKind.None)
             {
-                return RecordPreservedPresentation(pendingIntent.Reason ?? "No explicit BGM request.");
+                return RecordPreservedPresentation(_pendingIntent.Reason ?? "No explicit BGM request.");
             }
 
-            currentEffectiveBgm = pendingIntent.Cue;
-            currentEffectiveIsExplicitSilence = pendingIntent.Kind == BgmIntentKind.Silence;
+            CurrentEffectiveBgm = _pendingIntent.Cue;
+            CurrentEffectiveIsExplicitSilence = _pendingIntent.Kind == BgmIntentKind.Silence;
 
-            if (pendingIntent.Kind == BgmIntentKind.Play
-                && !confirmedExplicitSilence
-                && ReferenceEquals(confirmedBgm, pendingIntent.Cue))
+            if (_pendingIntent.Kind == BgmIntentKind.Play
+                && !ConfirmedExplicitSilence
+                && ReferenceEquals(ConfirmedBgm, _pendingIntent.Cue))
             {
-                RetainConfirmedActivityCueWhenApplicable(pendingIntent.Cue);
+                RetainConfirmedActivityCueWhenApplicable(_pendingIntent.Cue);
                 string reason = "Requested BGM is already the confirmed presentation.";
-                pendingIntent = BgmIntent.None("same-confirmed-cue");
-                return RecordNoChange(FrameworkBgmOperation.Apply, confirmedBgm, false, reason);
+                _pendingIntent = BgmIntent.None("same-confirmed-cue");
+                return RecordNoChange(FrameworkBgmOperation.Apply, ConfirmedBgm, false, reason);
             }
 
-            if (pendingIntent.Kind == BgmIntentKind.Silence && confirmedExplicitSilence)
+            if (_pendingIntent.Kind == BgmIntentKind.Silence && ConfirmedExplicitSilence)
             {
                 string reason = "Explicit silence is already the confirmed presentation.";
-                pendingIntent = BgmIntent.None("already-confirmed-silence");
+                _pendingIntent = BgmIntent.None("already-confirmed-silence");
                 return RecordNoChange(FrameworkBgmOperation.Release, null, true, reason);
             }
 
             if (audioRuntimeHost == null)
             {
                 EnsureLogger();
-                logger.Error(
+                _logger.Error(
                     "BGM intent could not be applied because AudioRuntimeHost is missing.",
                     LogFields.Of(
-                        LogFields.Field("requestedBgm", FormatCue(pendingIntent.Cue)),
-                        LogFields.Field("explicitSilence", pendingIntent.Kind == BgmIntentKind.Silence),
-                        LogFields.Field("reason", pendingIntent.Reason)));
+                        LogFields.Field("requestedBgm", FormatCue(_pendingIntent.Cue)),
+                        LogFields.Field("explicitSilence", _pendingIntent.Kind == BgmIntentKind.Silence),
+                        LogFields.Field("reason", _pendingIntent.Reason)));
 
                 return Record(
-                    pendingIntent.Kind == BgmIntentKind.Play ? FrameworkBgmOperation.Apply : FrameworkBgmOperation.Release,
+                    _pendingIntent.Kind == BgmIntentKind.Play ? FrameworkBgmOperation.Apply : FrameworkBgmOperation.Release,
                     FrameworkBgmOperationOutcome.OptionalAuthorityUnavailable,
-                    pendingIntent,
+                    _pendingIntent,
                     "framework_bgm_audio_runtime_host_missing",
-                    confirmedBgm,
-                    confirmedExplicitSilence);
+                    ConfirmedBgm,
+                    ConfirmedExplicitSilence);
             }
 
-            BgmIntent requested = pendingIntent;
-            AudioBgmCueAsset previousConfirmedBgm = confirmedBgm;
-            bool previousConfirmedSilence = confirmedExplicitSilence;
+            BgmIntent requested = _pendingIntent;
+            AudioBgmCueAsset previousConfirmedBgm = ConfirmedBgm;
+            bool previousConfirmedSilence = ConfirmedExplicitSilence;
             AudioPlaybackResult providerResult = requested.Kind == BgmIntentKind.Play
                 ? audioRuntimeHost.PlayBgm(requested.Cue)
                 : audioRuntimeHost.StopBgm();
@@ -368,20 +357,20 @@ namespace Immersive.Framework.Audio
             {
                 if (requested.Kind == BgmIntentKind.Play)
                 {
-                    confirmedBgm = requested.Cue;
-                    confirmedExplicitSilence = false;
+                    ConfirmedBgm = requested.Cue;
+                    ConfirmedExplicitSilence = false;
                     RetainConfirmedActivityCueWhenApplicable(requested.Cue);
                 }
                 else
                 {
-                    confirmedBgm = null;
-                    confirmedExplicitSilence = true;
-                    retainedActivityBgmForCurrentRoute = null;
+                    ConfirmedBgm = null;
+                    ConfirmedExplicitSilence = true;
+                    RetainedActivityBgmForCurrentRoute = null;
                 }
 
-                pendingIntent = BgmIntent.None("provider-confirmed");
-                currentEffectiveBgm = confirmedBgm;
-                currentEffectiveIsExplicitSilence = confirmedExplicitSilence;
+                _pendingIntent = BgmIntent.None("provider-confirmed");
+                CurrentEffectiveBgm = ConfirmedBgm;
+                CurrentEffectiveIsExplicitSilence = ConfirmedExplicitSilence;
 
                 return Record(
                     requested.Kind == BgmIntentKind.Play ? FrameworkBgmOperation.Apply : FrameworkBgmOperation.Release,
@@ -403,27 +392,27 @@ namespace Immersive.Framework.Audio
 
         private FrameworkBgmOperationResult RecordPreservedPresentation(string reason)
         {
-            currentEffectiveBgm = confirmedBgm;
-            currentEffectiveIsExplicitSilence = confirmedExplicitSilence;
+            CurrentEffectiveBgm = ConfirmedBgm;
+            CurrentEffectiveIsExplicitSilence = ConfirmedExplicitSilence;
             const FrameworkBgmOperation operation = FrameworkBgmOperation.Preserve;
 
-            lastOperationResult = FrameworkBgmOperationResult.Create(
+            LastOperationResult = FrameworkBgmOperationResult.Create(
                 operation,
                 FrameworkBgmOperationOutcome.NoChange,
-                confirmedBgm,
+                ConfirmedBgm,
                 null,
-                confirmedBgm,
+                ConfirmedBgm,
                 false,
-                confirmedExplicitSilence,
+                ConfirmedExplicitSilence,
                 reason);
 
             Debug(
                 "BGM presentation preserved because no explicit provider intent exists.",
                 LogFields.Of(
-                    LogFields.Field("confirmedBgm", FormatCue(confirmedBgm)),
-                    LogFields.Field("confirmedExplicitSilence", confirmedExplicitSilence),
+                    LogFields.Field("confirmedBgm", FormatCue(ConfirmedBgm)),
+                    LogFields.Field("confirmedExplicitSilence", ConfirmedExplicitSilence),
                     LogFields.Field("reason", reason)));
-            return lastOperationResult;
+            return LastOperationResult;
         }
 
         private FrameworkBgmOperationResult RecordNoChange(
@@ -438,14 +427,14 @@ namespace Immersive.Framework.Audio
                     ? BgmIntent.Play(requestedCue, reason)
                     : BgmIntent.None(reason);
 
-            lastOperationResult = FrameworkBgmOperationResult.Create(
+            LastOperationResult = FrameworkBgmOperationResult.Create(
                 operation,
                 FrameworkBgmOperationOutcome.NoChange,
-                confirmedBgm,
+                ConfirmedBgm,
                 requestedCue,
-                confirmedBgm,
+                ConfirmedBgm,
                 requestedExplicitSilence,
-                confirmedExplicitSilence,
+                ConfirmedExplicitSilence,
                 reason);
 
             Debug(
@@ -454,10 +443,10 @@ namespace Immersive.Framework.Audio
                     LogFields.Field("operation", operation),
                     LogFields.Field("requestedBgm", FormatCue(requested.Cue)),
                     LogFields.Field("requestedExplicitSilence", requestedExplicitSilence),
-                    LogFields.Field("confirmedBgm", FormatCue(confirmedBgm)),
-                    LogFields.Field("confirmedExplicitSilence", confirmedExplicitSilence),
+                    LogFields.Field("confirmedBgm", FormatCue(ConfirmedBgm)),
+                    LogFields.Field("confirmedExplicitSilence", ConfirmedExplicitSilence),
                     LogFields.Field("reason", reason)));
-            return lastOperationResult;
+            return LastOperationResult;
         }
 
         private FrameworkBgmOperationResult Record(
@@ -468,14 +457,14 @@ namespace Immersive.Framework.Audio
             AudioBgmCueAsset previousConfirmed,
             bool previousConfirmedSilence)
         {
-            lastOperationResult = FrameworkBgmOperationResult.Create(
+            LastOperationResult = FrameworkBgmOperationResult.Create(
                 operation,
                 outcome,
                 previousConfirmed,
                 requested.Cue,
-                confirmedBgm,
+                ConfirmedBgm,
                 requested.Kind == BgmIntentKind.Silence,
-                confirmedExplicitSilence,
+                ConfirmedExplicitSilence,
                 reason);
 
             Debug(
@@ -487,19 +476,19 @@ namespace Immersive.Framework.Audio
                     LogFields.Field("requestedExplicitSilence", requested.Kind == BgmIntentKind.Silence),
                     LogFields.Field("previousConfirmedBgm", FormatCue(previousConfirmed)),
                     LogFields.Field("previousConfirmedExplicitSilence", previousConfirmedSilence),
-                    LogFields.Field("confirmedBgm", FormatCue(confirmedBgm)),
-                    LogFields.Field("confirmedExplicitSilence", confirmedExplicitSilence),
+                    LogFields.Field("confirmedBgm", FormatCue(ConfirmedBgm)),
+                    LogFields.Field("confirmedExplicitSilence", ConfirmedExplicitSilence),
                     LogFields.Field("reason", reason)));
-            return lastOperationResult;
+            return LastOperationResult;
         }
 
         private void RetainConfirmedActivityCueWhenApplicable(AudioBgmCueAsset confirmedCue)
         {
             if (confirmedCue != null
-                && currentActivityPolicy == FrameworkBgmActivityPolicy.UseOwnOrPreserveCurrent
-                && ReferenceEquals(currentActivityBgm, confirmedCue))
+                && CurrentActivityPolicy == FrameworkBgmActivityPolicy.UseOwnOrPreserveCurrent
+                && ReferenceEquals(CurrentActivityBgm, confirmedCue))
             {
-                retainedActivityBgmForCurrentRoute = confirmedCue;
+                RetainedActivityBgmForCurrentRoute = confirmedCue;
             }
         }
 
@@ -518,7 +507,7 @@ namespace Immersive.Framework.Audio
             if (logTransitions)
             {
                 EnsureLogger();
-                logger.Trace(message, fields);
+                _logger.Trace(message, fields);
             }
         }
 
@@ -527,13 +516,13 @@ namespace Immersive.Framework.Audio
             if (logTransitions)
             {
                 EnsureLogger();
-                logger.Debug(message, fields);
+                _logger.Debug(message, fields);
             }
         }
 
         private void EnsureLogger()
         {
-            logger ??= FrameworkLogger.Create<FrameworkBgmDirector>();
+            _logger ??= FrameworkLogger.Create<FrameworkBgmDirector>();
         }
 
         private static FrameworkBgmActivityPolicy NormalizeActivityPolicy(FrameworkBgmActivityPolicy policy)

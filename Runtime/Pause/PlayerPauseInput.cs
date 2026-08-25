@@ -13,16 +13,7 @@ namespace Immersive.Framework.Pause
     {
         [Header("Pause PlayerInput Binding")]
         [SerializeField]
-        private PlayerInput playerInput;
-
-        [SerializeField]
         private InputActionReference pauseAction;
-
-        [SerializeField]
-        private PlayerInputActionMapReference gameplayActionMap;
-
-        [SerializeField, HideInInspector]
-        private string gameplayActionMapName = "Player";
 
         private IPauseProductBindingPort _port;
         private PauseProductBindingToken _token;
@@ -30,19 +21,28 @@ namespace Immersive.Framework.Pause
         private string _bindingDiagnostic =
             "Pause binding has not been composed by Scene Lifecycle.";
 
-        public PlayerInput PlayerInput => playerInput;
+        public PlayerInput PlayerInput =>
+            TryResolveGateAdapter(
+                out UnityPlayerInputGateAdapter adapter,
+                out _)
+                ? adapter.PlayerInput
+                : null;
 
         public InputActionReference PauseAction => pauseAction;
 
         public PlayerInputActionMapReference GameplayActionMapReference =>
-            gameplayActionMap;
+            TryResolveGateAdapter(
+                out UnityPlayerInputGateAdapter adapter,
+                out _)
+                ? adapter.GameplayActionMapReference
+                : default;
 
         public string GlobalActionMapName
         {
             get
             {
                 return TryResolvePauseAction(
-                        playerInput,
+                        PlayerInput,
                         out _,
                         out InputActionMap globalMap,
                         out _)
@@ -55,10 +55,10 @@ namespace Immersive.Framework.Pause
         {
             get
             {
-                return gameplayActionMap.TryResolve(
-                        playerInput != null
-                            ? playerInput.actions
-                            : null,
+                return TryResolveGateAdapter(
+                        out UnityPlayerInputGateAdapter adapter,
+                        out _) &&
+                    adapter.TryResolveGameplayActionMap(
                         out InputActionMap map,
                         out _)
                     ? map.name.NormalizeText()
@@ -229,19 +229,28 @@ namespace Immersive.Framework.Pause
             out UnityPlayerInputGateAdapter adapter,
             out string diagnostic)
         {
-            input = playerInput;
+            input = null;
             runtimeAction = null;
             globalMap = null;
             gameplayMap = null;
             adapter = null;
 
-            if (input == null ||
-                input.actions == null)
+            if (!TryResolveGateAdapter(
+                    out adapter,
+                    out diagnostic))
             {
-                diagnostic =
-                    "Pause PlayerInput Binding requires an explicit PlayerInput with actions.";
                 return false;
             }
+
+            if (!adapter.TryValidateAuthoring(
+                    out diagnostic))
+            {
+                diagnostic =
+                    $"Pause PlayerInput Binding requires a valid UnityPlayerInputGateAdapter. {diagnostic}";
+                return false;
+            }
+
+            input = adapter.PlayerInput;
 
             if (!TryResolvePauseAction(
                     input,
@@ -252,13 +261,12 @@ namespace Immersive.Framework.Pause
                 return false;
             }
 
-            if (!gameplayActionMap.TryResolve(
-                    input.actions,
+            if (!adapter.TryResolveGameplayActionMap(
                     out gameplayMap,
                     out diagnostic))
             {
                 diagnostic =
-                    $"Pause PlayerInput Binding Gameplay Action Map is invalid. {diagnostic}";
+                    $"Pause PlayerInput Binding requires a valid Gate Adapter Gameplay Action Map. {diagnostic}";
                 return false;
             }
 
@@ -270,35 +278,23 @@ namespace Immersive.Framework.Pause
                 return false;
             }
 
+            diagnostic = string.Empty;
+            return true;
+        }
+
+        private bool TryResolveGateAdapter(
+            out UnityPlayerInputGateAdapter adapter,
+            out string diagnostic)
+        {
+            adapter = null;
             UnityPlayerInputGateAdapter[] adapters =
-                GetComponents<
-                    UnityPlayerInputGateAdapter>();
+                GetComponents<UnityPlayerInputGateAdapter>();
 
             if (adapters.Length != 1 ||
-                adapters[0] == null ||
-                !ReferenceEquals(
-                    adapters[0].PlayerInput,
-                    input))
+                adapters[0] == null)
             {
                 diagnostic =
-                    "Pause PlayerInput Binding requires exactly one compatible UnityPlayerInputGateAdapter on the same GameObject.";
-                return false;
-            }
-
-            if (!adapters[0].TryResolveGameplayActionMap(
-                    out InputActionMap adapterGameplayMap,
-                    out string adapterDiagnostic))
-            {
-                diagnostic =
-                    $"Pause PlayerInput Binding requires a valid Gate Adapter Gameplay Action Map. {adapterDiagnostic}";
-                return false;
-            }
-
-            if (adapterGameplayMap.id !=
-                gameplayMap.id)
-            {
-                diagnostic =
-                    "Pause PlayerInput Binding and UnityPlayerInputGateAdapter must reference the same Gameplay Action Map GUID.";
+                    "Pause PlayerInput Binding requires exactly one UnityPlayerInputGateAdapter on the same GameObject.";
                 return false;
             }
 
@@ -375,42 +371,6 @@ namespace Immersive.Framework.Pause
 
             diagnostic = string.Empty;
             return true;
-        }
-
-        private void OnValidate()
-        {
-            TryMigrateLegacyGameplayMap();
-        }
-
-        private void TryMigrateLegacyGameplayMap()
-        {
-            if (gameplayActionMap.IsConfigured ||
-                playerInput == null ||
-                playerInput.actions == null)
-            {
-                return;
-            }
-
-            string legacyName =
-                gameplayActionMapName.NormalizeText();
-
-            if (string.IsNullOrEmpty(
-                    legacyName))
-            {
-                return;
-            }
-
-            InputActionMap legacyMap =
-                playerInput.actions.FindActionMap(
-                    legacyName,
-                    false);
-
-            if (legacyMap != null)
-            {
-                gameplayActionMap =
-                    PlayerInputActionMapReference.From(
-                        legacyMap);
-            }
         }
 
         private void OnDisable() =>

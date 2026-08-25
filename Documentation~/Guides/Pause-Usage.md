@@ -9,12 +9,12 @@ Last updated: 2026-08-06
 PauseRuntime
   owns logical Running / Paused state
 
-PausePlayerInputBinding
-  single-player physical Pause input and PlayerInput posture
-  designer-facing composition surface
+PlayerPauseInput
+  single-player physical Pause action and lifecycle registration
 
 UnityPlayerInputGateAdapter
-  materialized physical writer adapter
+  explicit PlayerInput and Gameplay Action Map authority
+  physical writer adapter for the Framework Gate
 
 PauseRequestTrigger
   exposes Pause / Resume / Toggle to UnityEvent and UI Button
@@ -40,7 +40,7 @@ Player Host:
 ```text
 PlayerInput
 LocalPlayerHostAuthoring
-PausePlayerInputBinding
+PlayerPauseInput
 UnityPlayerInputGateAdapter
 ```
 
@@ -48,7 +48,7 @@ Physical path:
 
 ```text
 Escape / Gamepad Start
-  -> PausePlayerInputBinding
+  -> PlayerPauseInput
   -> PauseProductBindingRuntimeContext
   -> logical Pause + InputMode transaction
 ```
@@ -73,7 +73,7 @@ PauseRequestTrigger.TogglePause
 ```
 
 The Trigger requires an injected `IPauseProductRequestPort`, but it does not
-require an active `PausePlayerInputBinding`.
+require an active `PlayerPauseInput`.
 
 Result:
 
@@ -88,10 +88,11 @@ surface. It does not create a Player and does not modify action maps.
 This is explicit product behavior, not a silent fallback. Failed or inconsistent
 Player binding evidence is rejected as `BindingUnavailable`.
 
-## Authoring PausePlayerInputBinding
+## Authoring PlayerPauseInput
 
-Add `PausePlayerInputBinding` to the same GameObject as the gameplay
-`PlayerInput`.
+Add `PlayerPauseInput` and exactly one `UnityPlayerInputGateAdapter` to the
+same GameObject. The Gate Adapter is the only authoring authority for the
+gameplay `PlayerInput` and Gameplay Action Map.
 
 ### References
 
@@ -104,9 +105,9 @@ Global Action Map
   derived from Pause Action.actionMap
   not separately typed by the designer
 
-Gameplay Action Map
-  PlayerInputActionMapReference
-  stores InputActionAsset + Action Map GUID
+Player Input and Gameplay Action Map
+  authored on UnityPlayerInputGateAdapter
+  Gameplay map stores InputActionAsset + Action Map GUID
 ```
 
 Runtime never falls back to Action Map names. The selected Gameplay map is
@@ -116,23 +117,13 @@ Inspector display and diagnostics.
 
 ### Authoring flow
 
-1. Add `PausePlayerInputBinding` to the same GameObject as `PlayerInput`.
-2. Assign the exact `PlayerInput`.
-3. Assign the Pause `InputActionReference` (for example `Global/Pause`).
-4. Select the Gameplay Action Map from the typed popup.
-5. Press **Apply / Rebuild**.
+1. Add exactly one `UnityPlayerInputGateAdapter` to the Local Player Host.
+2. Assign its exact `PlayerInput` and Gameplay Action Map.
+3. Add `PlayerPauseInput` to that same GameObject.
+4. Assign the Pause `InputActionReference` (for example `Global/Pause`).
 
-Apply / Rebuild:
-
-```text
-creates one missing UnityPlayerInputGateAdapter
-reuses one compatible adapter
-copies the same typed Gameplay map identity
-rejects duplicates
-rejects a different PlayerInput target
-validates the complete composition
-never removes adapters
-```
+`PlayerPauseInput` shows the Gate-owned target and Gameplay map read-only in
+its Inspector. It neither creates nor overwrites a Gate Adapter.
 
 Technical commands and verbose runtime evidence live in the collapsed
 `Advanced / Debug` foldout.
@@ -142,14 +133,13 @@ Technical commands and verbose runtime evidence live in the collapsed
 The composition fails explicitly when:
 
 ```text
-PlayerInput or actions are missing
+Gate Adapter is missing or duplicated
+Gate Adapter PlayerInput or actions are missing
 Pause Action is missing
 Pause Action GUID is absent from PlayerInput.actions
-Gameplay Action Map reference is missing or invalid
-Gameplay map GUID is absent from PlayerInput.actions
+Gate Adapter Gameplay Action Map reference is missing or invalid
+Gameplay map GUID is absent from the Gate Adapter PlayerInput.actions
 Global and Gameplay resolve to the same map
-Gate Adapter is missing, duplicated or targets another PlayerInput
-Pause binding and Gate Adapter use different Gameplay map GUIDs
 ```
 
 No runtime map-name fallback, hierarchy search, singleton or service locator is
@@ -157,18 +147,9 @@ used.
 
 ### Legacy migration
 
-Older serialized components may contain:
-
-```text
-globalActionMapName
-gameplayActionMapName
-```
-
-Those exact serialized field names are retained, hidden, as migration evidence.
-`OnValidate` materializes the typed Gameplay map reference from the exact legacy
-name when the GUID reference is still empty. After that materialization, runtime
-resolution uses only the GUID-backed reference. The Global map is always derived
-from the assigned Pause Action.
+Legacy Gameplay map migration remains owned by `UnityPlayerInputGateAdapter`.
+`PlayerPauseInput` no longer reads legacy PlayerInput or map fields; the Global
+map is always derived from the assigned Pause Action.
 
 ## Runtime ownership
 
@@ -256,7 +237,7 @@ The adapter only projects Pause state. It does not own Pause, input maps or
 
 ## Manual validation
 
-1. Enter gameplay with no `PausePlayerInputBinding`.
+1. Enter gameplay with no `PlayerPauseInput`.
 2. Confirm Route/Activity Trigger binding reports `Bound`.
 3. Press the authored Pause button.
 4. Confirm `AppliedWithoutPlayerInput`, paused TimeScale and visible surface.

@@ -11,12 +11,12 @@ namespace Immersive.Framework.Audio
     /// </summary>
     internal sealed class FrameworkBgmDirectorInjectionRuntime : IDisposable
     {
-        private readonly FrameworkBgmDirector director;
-        private bool disposed;
+        private readonly FrameworkBgmDirector _director;
+        private bool _disposed;
 
         internal FrameworkBgmDirectorInjectionRuntime(FrameworkBgmDirector director)
         {
-            this.director = director != null
+            this._director = director != null
                 ? director
                 : throw new ArgumentNullException(nameof(director));
 
@@ -26,12 +26,12 @@ namespace Immersive.Framework.Audio
 
         public void Dispose()
         {
-            if (disposed)
+            if (_disposed)
             {
                 return;
             }
 
-            disposed = true;
+            _disposed = true;
             SceneManager.sceneLoaded -= HandleSceneLoaded;
             DetachAllLoadedScenes();
         }
@@ -71,7 +71,7 @@ namespace Immersive.Framework.Audio
                 {
                     if (behaviours[i] is IFrameworkBgmDirectorConsumer consumer)
                     {
-                        consumer.AttachBgmDirector(director);
+                        consumer.AttachBgmDirector(_director);
                     }
                 }
             }
@@ -91,7 +91,7 @@ namespace Immersive.Framework.Audio
                 {
                     if (behaviours[i] is IFrameworkBgmDirectorConsumer consumer)
                     {
-                        consumer.DetachBgmDirector(director);
+                        consumer.DetachBgmDirector(_director);
                     }
                 }
             }

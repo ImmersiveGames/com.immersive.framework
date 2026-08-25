@@ -13,7 +13,7 @@ namespace Immersive.Framework.Editor.UnityInput
         private static readonly GUIContent PlayerInputLabel =
             new GUIContent(
                 "Player Input",
-                "Gameplay-owned PlayerInput gated by this adapter. If empty, runtime resolution uses PlayerInput on the same GameObject.");
+                "Explicit gameplay-owned PlayerInput gated by this adapter.");
 
         private static readonly GUIContent GameplayActionMapLabel =
             new GUIContent(

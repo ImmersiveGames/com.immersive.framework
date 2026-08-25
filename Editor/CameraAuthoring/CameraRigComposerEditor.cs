@@ -8,8 +8,7 @@ using UnityEngine;
 namespace Immersive.Framework.Editor.CameraAuthoring
 {
     [CustomEditor(typeof(CameraRigComposer))]
-    public sealed class CameraRigComposerEditor :
-        UnityEditor.Editor
+    public sealed class CameraRigComposerEditor : UnityEditor.Editor
     {
         private enum TargetAuthoringMode
         {
@@ -45,8 +44,10 @@ namespace Immersive.Framework.Editor.CameraAuthoring
         private SerializedProperty _lastResolvedFollowTarget;
         private SerializedProperty _lastResolvedLookAtTarget;
 
-        private CameraRigComposerApplyRebuildResult? _lastOperationResult;
-        private bool _lastOperationOutdated;
+        private CameraRigComposerApplyRebuildResult? _lastValidationResult;
+        private CameraRigComposerApplyRebuildResult? _lastApplyResult;
+        private bool _validationOutdated;
+        private bool _materializationOutdated;
         private bool _showAdvancedDebug;
 
         private void OnEnable()
@@ -114,27 +115,30 @@ namespace Immersive.Framework.Editor.CameraAuthoring
             DrawComposerHeader();
 
             EditorGUI.BeginChangeCheck();
-            DrawConfiguration();
+
+            DrawPresentation();
+
+            CameraRigPresentationIntent presentation =
+                ResolvePresentationIntent();
+
+            DrawTargets(presentation);
+            DrawModelSettings(presentation);
+
             bool authoringChanged =
                 EditorGUI.EndChangeCheck();
 
             bool modified =
                 serializedObject.ApplyModifiedProperties();
 
-            if ((authoringChanged || modified) &&
-                HasRecordedOperation())
+            if (authoringChanged || modified)
             {
-                _lastOperationOutdated = true;
+                MarkAuthoringChanged();
             }
 
-            CameraRigPresentationIntent presentation =
-                ResolvePresentationIntent();
+            presentation = ResolvePresentationIntent();
 
-            DrawConfigurationStatus();
-
-            DrawMaterializedState(presentation);
-            DrawActions(presentation);
-            DrawLastAuthoringResult();
+            DrawMaterialization(presentation);
+            DrawValidation();
             DrawAdvancedDebug();
         }
 
@@ -143,53 +147,33 @@ namespace Immersive.Framework.Editor.CameraAuthoring
             EditorGUILayout.LabelField(
                 new GUIContent(
                     "Camera Rig Composer",
-                    "Authors one local gameplay Camera rig. Apply / Rebuild materializes only the local Cinemachine Camera and Framework-owned pipeline controls; Camera Output selection and request arbitration are separate runtime authorities."),
+                    "Authors one local gameplay Camera rig. Apply / Rebuild materializes the local Cinemachine Camera and Framework-owned pipeline controls. Camera Output selection and request arbitration are separate runtime authorities."),
                 EditorStyles.boldLabel);
-        }
-
-        private void DrawConfiguration()
-        {
-            FrameworkAuthoringInspectorGui.Section(
-                "Configuration");
-
-            DrawPresentation();
-
-            CameraRigPresentationIntent presentation =
-                ResolvePresentationIntent();
-
-            EditorGUILayout.Space(5f);
-            DrawTargets(presentation);
-
-            EditorGUILayout.Space(5f);
-            DrawModelSettings(presentation);
         }
 
         private void DrawPresentation()
         {
-            EditorGUILayout.LabelField(
-                "Presentation",
-                EditorStyles.miniBoldLabel);
+            FrameworkAuthoringInspectorGui.Section(
+                "Presentation");
 
             EditorGUILayout.PropertyField(
                 _presentationIntent,
                 new GUIContent(
                     "Model",
-                    "Fixed preserves the local camera pose; Follow tracks one target with offset; Mounted locks to a Camera Mount and its rotation; Third Person tracks a rotating pivot using Cinemachine Third Person Follow. Presentation never decides runtime Camera Output arbitration."));
-
+                    "Fixed preserves the local camera pose; Follow tracks one target with offset; Mounted locks to a Camera Mount and its rotation; Third Person tracks a rotating pivot using Cinemachine Third Person Follow."));
         }
 
         private void DrawTargets(
             CameraRigPresentationIntent presentation)
         {
-            EditorGUILayout.LabelField(
-                "Targets",
-                EditorStyles.miniBoldLabel);
-
             if (presentation ==
                 CameraRigPresentationIntent.Undefined)
             {
                 return;
             }
+
+            FrameworkAuthoringInspectorGui.Section(
+                "Targets");
 
             CameraTargetRequirement effectiveFollow =
                 ResolveEffectiveFollowRequirement(
@@ -212,10 +196,6 @@ namespace Immersive.Framework.Editor.CameraAuthoring
             if (effectiveFollow == CameraTargetRequirement.NotUsed &&
                 effectiveLookAt == CameraTargetRequirement.NotUsed)
             {
-                DrawTargetContract(
-                    presentation,
-                    effectiveFollow,
-                    effectiveLookAt);
                 return;
             }
 
@@ -247,12 +227,6 @@ namespace Immersive.Framework.Editor.CameraAuthoring
             {
                 DrawTargetSourceComponent();
             }
-
-            EditorGUILayout.Space(3f);
-            DrawTargetContract(
-                presentation,
-                effectiveFollow,
-                effectiveLookAt);
         }
 
         private void DrawExplicitTargets(
@@ -298,7 +272,7 @@ namespace Immersive.Framework.Editor.CameraAuthoring
                 _targetSource,
                 new GUIContent(
                     "Target Source",
-                    "Component implementing ICameraTargetSource. The selected Presentation still defines which target roles are requested."));
+                    "Component implementing ICameraTargetSource. The selected Presentation defines which target roles are requested."));
 
             if (EditorGUI.EndChangeCheck())
             {
@@ -306,77 +280,28 @@ namespace Immersive.Framework.Editor.CameraAuthoring
             }
         }
 
-        private static void DrawTargetContract(
-            CameraRigPresentationIntent presentation,
-            CameraTargetRequirement effectiveFollow,
-            CameraTargetRequirement effectiveLookAt)
-        {
-            EditorGUILayout.LabelField(
-                "Effective Contract",
-                EditorStyles.miniBoldLabel);
-
-            using (new EditorGUI.DisabledScope(true))
-            {
-                EditorGUILayout.TextField(
-                    ResolveFollowRoleLabel(presentation),
-                    effectiveFollow.ToString());
-                EditorGUILayout.TextField(
-                    "Look At",
-                    effectiveLookAt.ToString());
-            }
-        }
-
         private void DrawModelSettings(
             CameraRigPresentationIntent presentation)
         {
-            EditorGUILayout.LabelField(
-                "Model Settings",
-                EditorStyles.miniBoldLabel);
-
             switch (presentation)
             {
-                case CameraRigPresentationIntent.Fixed:
-                    DrawFixedSettings();
-                    break;
-
                 case CameraRigPresentationIntent.Follow:
+                    FrameworkAuthoringInspectorGui.Section(
+                        "Model Settings");
                     DrawFollowSettings();
                     break;
 
                 case CameraRigPresentationIntent.Mounted:
+                    FrameworkAuthoringInspectorGui.Section(
+                        "Model Settings");
                     DrawMountedSettings();
                     break;
 
                 case CameraRigPresentationIntent.ThirdPerson:
+                    FrameworkAuthoringInspectorGui.Section(
+                        "Model Settings");
                     DrawThirdPersonSettings();
                     break;
-            }
-        }
-
-        private void DrawFixedSettings()
-        {
-            CinemachineCamera local =
-                ResolveLocalCinemachineCamera();
-
-            using (new EditorGUI.DisabledScope(true))
-            {
-                EditorGUILayout.ObjectField(
-                    new GUIContent(
-                        "Pose Camera",
-                        "Fixed uses the authored Transform pose of the local Cinemachine Camera. Apply / Rebuild preserves that pose and does not create a Position Control."),
-                    local,
-                    typeof(CinemachineCamera),
-                    true);
-
-                if (local != null)
-                {
-                    EditorGUILayout.Vector3Field(
-                        "World Position",
-                        local.transform.position);
-                    EditorGUILayout.Vector3Field(
-                        "World Rotation",
-                        local.transform.eulerAngles);
-                }
             }
         }
 
@@ -434,174 +359,43 @@ namespace Immersive.Framework.Editor.CameraAuthoring
                     "Per-axis tracking damping applied by Cinemachine Third Person Follow."));
         }
 
-        private void DrawConfigurationStatus()
-        {
-            CameraRigComposer composer =
-                (CameraRigComposer)target;
-
-            FrameworkAuthoringInspectorGui.Section(
-                "Configuration Status");
-
-            if (!composer.TryValidateForApply(
-                    out string diagnostic))
-            {
-                EditorGUILayout.LabelField(
-                    "Status",
-                    "Needs Attention");
-
-                EditorGUILayout.HelpBox(
-                    diagnostic,
-                    MessageType.Error);
-                return;
-            }
-
-            CameraRigPresentationIntent presentation =
-                ResolvePresentationIntent();
-            CameraTargetRequirement effectiveFollow =
-                ResolveEffectiveFollowRequirement(
-                    presentation);
-            CameraTargetRequirement effectiveLookAt =
-                ResolveEffectiveLookAtRequirement(
-                    presentation);
-
-            if (ResolveTargetAuthoringMode() ==
-                TargetAuthoringMode.ExplicitTransforms)
-            {
-                if (effectiveFollow ==
-                        CameraTargetRequirement.Required &&
-                    _explicitFollowTarget.objectReferenceValue == null)
-                {
-                    EditorGUILayout.LabelField(
-                        "Status",
-                        "Needs Attention");
-
-                    EditorGUILayout.HelpBox(
-                        $"{ResolveFollowRoleLabel(presentation)} is required for the selected Presentation.",
-                        MessageType.Error);
-                    return;
-                }
-
-                if (effectiveLookAt ==
-                        CameraTargetRequirement.Required &&
-                    _explicitLookAtTarget.objectReferenceValue == null)
-                {
-                    EditorGUILayout.LabelField(
-                        "Status",
-                        "Needs Attention");
-
-                    EditorGUILayout.HelpBox(
-                        "Look At Target is required for the selected Presentation.",
-                        MessageType.Error);
-                    return;
-                }
-
-                EditorGUILayout.LabelField(
-                    "Status",
-                    "Ready");
-                return;
-            }
-
-            EditorGUILayout.LabelField(
-                "Status",
-                "Ready for Validation");
-        }
-
-        private void DrawMaterializedState(
+        private void DrawMaterialization(
             CameraRigPresentationIntent presentation)
         {
             FrameworkAuthoringInspectorGui.Section(
-                "Materialized State");
+                "Materialization");
 
             CinemachineCamera local =
                 ResolveLocalCinemachineCamera();
             CameraRigPresentationIntent materialized =
                 ResolveMaterializedPresentationIntent();
-            string status;
-            string warning = string.Empty;
 
-            if (local == null)
-            {
-                status = "Not Materialized";
-            }
-            else if (materialized ==
-                     CameraRigPresentationIntent.Undefined)
-            {
-                status = "Local Camera Present";
-            }
-            else if (presentation ==
-                     CameraRigPresentationIntent.Undefined)
-            {
-                status = "Authored Configuration Incomplete";
-                warning =
-                    $"A local rig is materialized as '{materialized}', but the authored Presentation is Undefined.";
-            }
-            else if (materialized != presentation)
-            {
-                status = "Stale — Rebuild Required";
-                warning =
-                    $"Authored Presentation is '{presentation}' while materialized Presentation is '{materialized}'. Apply / Rebuild is required.";
-            }
-            else
-            {
-                status = "Current";
-            }
+            string status =
+                ResolveMaterializationStatus(
+                    presentation,
+                    materialized,
+                    local);
 
-            using (new EditorGUI.DisabledScope(true))
-            {
-                EditorGUILayout.LabelField(
-                    "Status",
-                    status);
+            EditorGUILayout.LabelField(
+                "Status",
+                status);
 
-                EditorGUILayout.ObjectField(
-                    new GUIContent(
-                        "Cinemachine Camera",
-                        "Local Cinemachine Camera resolved or materialized for this Composer. No Unity Camera, Brain, Audio Listener or persistent Camera Output is created here."),
-                    local,
-                    typeof(CinemachineCamera),
-                    true);
-
-                EditorGUILayout.TextField(
-                    "Materialized Presentation",
-                    materialized.ToString());
-            }
-
-            if (!string.IsNullOrWhiteSpace(warning))
-            {
-                EditorGUILayout.HelpBox(
-                    warning,
-                    MessageType.Warning);
-            }
-        }
-
-        private void DrawActions(
-            CameraRigPresentationIntent presentation)
-        {
-            FrameworkAuthoringInspectorGui.Section(
-                "Actions");
+            DrawMaterializationIssue(
+                presentation,
+                materialized,
+                local);
 
             using (new EditorGUI.DisabledScope(
-                       Application.isPlaying))
-            using (new EditorGUILayout.HorizontalScope())
+                       Application.isPlaying ||
+                       presentation ==
+                           CameraRigPresentationIntent.Undefined))
             {
                 if (GUILayout.Button(
                         new GUIContent(
-                            "Validate Configuration",
-                            "Validate authored Camera Rig configuration and target resolution without materializing or changing the Cinemachine pipeline.")))
+                            "Apply / Rebuild",
+                            "Preflight and reconcile the local Cinemachine Camera and only Framework-owned Position / Rotation controls. Unknown external conflicts block before mutation.")))
                 {
-                    RunValidation();
-                }
-
-                using (new EditorGUI.DisabledScope(
-                           presentation ==
-                           CameraRigPresentationIntent.Undefined))
-                {
-                    if (GUILayout.Button(
-                            new GUIContent(
-                                "Apply / Rebuild Rig",
-                                "Preflight and reconcile the local Cinemachine Camera and only Framework-owned Position / Rotation controls. Unknown external conflicts block before mutation.")))
-                    {
-                        RunApplyOrRebuild();
-                    }
+                    RunApplyOrRebuild();
                 }
             }
 
@@ -613,65 +407,372 @@ namespace Immersive.Framework.Editor.CameraAuthoring
             }
         }
 
-        private void DrawLastAuthoringResult()
+        private string ResolveMaterializationStatus(
+            CameraRigPresentationIntent presentation,
+            CameraRigPresentationIntent materialized,
+            CinemachineCamera local)
         {
-            string persistedStatus =
-                _lastApplyRebuildStatus != null
-                    ? _lastApplyRebuildStatus.stringValue ?? string.Empty
-                    : string.Empty;
+            if (_lastApplyResult.HasValue &&
+                !_materializationOutdated &&
+                !_lastApplyResult.Value.Succeeded)
+            {
+                return "Blocked";
+            }
 
-            if (!_lastOperationResult.HasValue &&
-                string.IsNullOrWhiteSpace(
-                    persistedStatus))
+            if (presentation ==
+                CameraRigPresentationIntent.Undefined)
+            {
+                return "Needs Setup";
+            }
+
+            if (local == null)
+            {
+                return "Not Materialized";
+            }
+
+            if (_materializationOutdated)
+            {
+                return "Needs Apply";
+            }
+
+            if (materialized ==
+                CameraRigPresentationIntent.Undefined)
+            {
+                return "Needs Apply";
+            }
+
+            if (materialized != presentation)
+            {
+                return "Needs Rebuild";
+            }
+
+            return "Current";
+        }
+
+        private void DrawMaterializationIssue(
+            CameraRigPresentationIntent presentation,
+            CameraRigPresentationIntent materialized,
+            CinemachineCamera local)
+        {
+            if (_lastApplyResult.HasValue &&
+                !_materializationOutdated &&
+                !_lastApplyResult.Value.Succeeded)
+            {
+                string issue =
+                    _lastApplyResult.Value.BlockingIssue;
+
+                if (!string.IsNullOrWhiteSpace(issue))
+                {
+                    EditorGUILayout.HelpBox(
+                        FormatBlockingIssueForInspector(issue),
+                        MessageType.Error);
+                }
+
+                return;
+            }
+
+            if (presentation ==
+                CameraRigPresentationIntent.Undefined)
+            {
+                EditorGUILayout.HelpBox(
+                    "Select a Presentation model before materializing this rig.",
+                    MessageType.Info);
+                return;
+            }
+
+            if (local == null)
             {
                 return;
             }
 
-            FrameworkAuthoringInspectorGui.Section(
-                "Last Authoring Result");
-
-            string status =
-                _lastOperationResult.HasValue
-                    ? _lastOperationResult.Value.Status
-                    : persistedStatus;
-
-            EditorGUILayout.LabelField(
-                "Status",
-                string.IsNullOrWhiteSpace(status)
-                    ? "Not Recorded"
-                    : status);
-
-            if (_lastOperationOutdated)
+            if (_materializationOutdated)
             {
                 EditorGUILayout.HelpBox(
-                    "The recorded result predates the current configuration. Validate or Apply / Rebuild again.",
+                    "Authored Camera Rig settings changed. Apply / Rebuild to reconcile the materialized rig.",
                     MessageType.Warning);
                 return;
             }
 
-            bool succeeded =
-                _lastOperationResult.HasValue
-                    ? _lastOperationResult.Value.Succeeded
-                    : string.IsNullOrWhiteSpace(
-                        _lastBlockingIssue != null
-                            ? _lastBlockingIssue.stringValue
-                            : string.Empty);
-
-            if (!succeeded)
+            if (materialized ==
+                CameraRigPresentationIntent.Undefined)
             {
                 EditorGUILayout.HelpBox(
-                    "The last authoring operation found a blocking issue. See Advanced / Debug for evidence.",
+                    "A local Cinemachine Camera exists, but no Framework materialization is recorded. Apply / Rebuild to reconcile the rig.",
+                    MessageType.Warning);
+                return;
+            }
+
+            if (materialized != presentation)
+            {
+                EditorGUILayout.HelpBox(
+                    $"Authored Presentation is '{presentation}' while materialized Presentation is '{materialized}'. Apply / Rebuild is required.",
+                    MessageType.Warning);
+            }
+        }
+
+        private void DrawValidation()
+        {
+            FrameworkAuthoringInspectorGui.Section(
+                "Validation");
+
+            using (new EditorGUILayout.HorizontalScope())
+            {
+                using (new EditorGUI.DisabledScope(
+                           Application.isPlaying))
+                {
+                    if (GUILayout.Button(
+                            new GUIContent(
+                                "Validate",
+                                "Validates the authored Camera Rig configuration and target resolution without changing the Cinemachine pipeline."),
+                            GUILayout.Width(96f)))
+                    {
+                        RunValidation();
+                    }
+                }
+
+                GUILayout.Space(8f);
+
+                EditorGUILayout.LabelField(
+                    ResolveValidationStatus(),
+                    EditorStyles.miniBoldLabel);
+
+                GUILayout.FlexibleSpace();
+            }
+
+            if (_lastValidationResult.HasValue &&
+                !_validationOutdated &&
+                !_lastValidationResult.Value.Succeeded &&
+                !string.IsNullOrWhiteSpace(
+                    _lastValidationResult.Value.BlockingIssue))
+            {
+                EditorGUILayout.HelpBox(
+                    FormatBlockingIssueForInspector(
+                        _lastValidationResult.Value.BlockingIssue),
                     MessageType.Error);
+            }
+        }
+
+        private string ResolveValidationStatus()
+        {
+            if (!_lastValidationResult.HasValue)
+            {
+                return "Not Validated";
+            }
+
+            if (_validationOutdated)
+            {
+                return "Outdated";
+            }
+
+            return _lastValidationResult.Value.Succeeded
+                ? "Valid"
+                : "Issue";
+        }
+
+        private static string FormatBlockingIssueForInspector(
+            string issue)
+        {
+            if (string.IsNullOrWhiteSpace(issue))
+            {
+                return "The operation is blocked. Open Advanced / Debug for the technical diagnostic.";
+            }
+
+            const string rotationConflictPrefix =
+                "cinemachine-rotation-control:external-or-unknown-conflict:";
+            const string positionConflictPrefix =
+                "cinemachine-position-control:external-or-unknown-conflict:";
+            const string rotationDuplicatePrefix =
+                "cinemachine-rotation-control:external-or-unknown-duplicate:";
+            const string positionDuplicatePrefix =
+                "cinemachine-position-control:external-or-unknown-duplicate:";
+
+            if (issue.StartsWith(
+                    rotationConflictPrefix,
+                    System.StringComparison.Ordinal))
+            {
+                return FormatExternalControlConflict(
+                    issue.Substring(rotationConflictPrefix.Length),
+                    "Rotation");
+            }
+
+            if (issue.StartsWith(
+                    positionConflictPrefix,
+                    System.StringComparison.Ordinal))
+            {
+                return FormatExternalControlConflict(
+                    issue.Substring(positionConflictPrefix.Length),
+                    "Position");
+            }
+
+            if (issue.StartsWith(
+                    rotationDuplicatePrefix,
+                    System.StringComparison.Ordinal))
+            {
+                return FormatExternalControlDuplicate(
+                    issue.Substring(rotationDuplicatePrefix.Length),
+                    "Rotation");
+            }
+
+            if (issue.StartsWith(
+                    positionDuplicatePrefix,
+                    System.StringComparison.Ordinal))
+            {
+                return FormatExternalControlDuplicate(
+                    issue.Substring(positionDuplicatePrefix.Length),
+                    "Position");
+            }
+
+            if (issue ==
+                "cinemachine-rotation-control:ownership-evidence-ambiguous")
+            {
+                return "Rotation Control ownership is ambiguous. The Framework cannot safely decide which control it owns. Review the recorded ownership and current pipeline in Advanced / Debug before applying.";
+            }
+
+            if (issue ==
+                "cinemachine-position-control:ownership-evidence-ambiguous")
+            {
+                return "Position Control ownership is ambiguous. The Framework cannot safely decide which control it owns. Review the recorded ownership and current pipeline in Advanced / Debug before applying.";
+            }
+
+            if (issue == "cinemachine-follow:create-disabled")
+            {
+                return "The selected Presentation requires a Follow Position Control, but creation of that control is disabled. Review the Camera Rig configuration in Advanced / Debug.";
+            }
+
+            if (issue == "follow-target:required-missing" ||
+                issue.EndsWith(
+                    ":follow-target-required",
+                    System.StringComparison.Ordinal))
+            {
+                return "A Tracking / Follow target is required for the selected Presentation. Assign the required target and try again.";
+            }
+
+            if (issue == "look-at-target:required-missing")
+            {
+                return "A Look At target is required for the selected Presentation. Assign the target and try again.";
+            }
+
+            if (issue.EndsWith(
+                    ":look-at-not-supported",
+                    System.StringComparison.Ordinal))
+            {
+                return "The selected Presentation does not support a Look At target. Remove that target or choose a compatible Presentation.";
+            }
+
+            if (issue.EndsWith(
+                    ":settings-invalid",
+                    System.StringComparison.Ordinal))
+            {
+                return "One or more settings for the selected Presentation are invalid. Review the Model Settings and try again.";
+            }
+
+            if (issue == "presentation:Undefined:not-supported")
+            {
+                return "Select a Presentation model before validating or materializing this rig.";
+            }
+
+            if (issue == "cinemachine-camera:missing")
+            {
+                return "No local Cinemachine Camera could be resolved or materialized for this rig. Review the Camera reference in Advanced / Debug.";
+            }
+
+            return "The operation is blocked by the current Camera Rig configuration. Open Advanced / Debug for the technical diagnostic.";
+        }
+
+        private static string FormatExternalControlConflict(
+            string detail,
+            string stageLabel)
+        {
+            const string desiredMarker = ":desired=";
+            int desiredIndex =
+                detail.IndexOf(
+                    desiredMarker,
+                    System.StringComparison.Ordinal);
+
+            string existingType = desiredIndex >= 0
+                ? detail.Substring(0, desiredIndex)
+                : detail;
+            string desired = desiredIndex >= 0
+                ? detail.Substring(
+                    desiredIndex + desiredMarker.Length)
+                : string.Empty;
+
+            string existingLabel =
+                ResolveTechnicalTypeLabel(existingType);
+            string desiredLabel =
+                ResolveDesiredControlLabel(
+                    desired,
+                    stageLabel);
+
+            return $"{stageLabel} Control conflict. This Camera already contains external or unrecognized '{existingLabel}'. The selected Presentation requires {desiredLabel}. Remove the conflicting control or review it in Advanced / Debug.";
+        }
+
+        private static string FormatExternalControlDuplicate(
+            string detail,
+            string stageLabel)
+        {
+            string existingLabel =
+                ResolveTechnicalTypeLabel(detail);
+
+            return $"{stageLabel} Control conflict. This Camera contains multiple external or unrecognized controls of type '{existingLabel}'. Resolve the duplicate controls before Apply / Rebuild. See Advanced / Debug for technical evidence.";
+        }
+
+        private static string ResolveTechnicalTypeLabel(
+            string technicalType)
+        {
+            if (string.IsNullOrWhiteSpace(technicalType))
+            {
+                return "control";
+            }
+
+            int separator =
+                technicalType.LastIndexOf('.');
+
+            return separator >= 0 &&
+                   separator < technicalType.Length - 1
+                ? technicalType.Substring(separator + 1)
+                : technicalType;
+        }
+
+        private static string ResolveDesiredControlLabel(
+            string desired,
+            string stageLabel)
+        {
+            switch (desired)
+            {
+                case "HardLookAt":
+                    return "a Look At rotation control";
+
+                case "RotateWithFollowTarget":
+                    return "rotation that follows the Camera Mount";
+
+                case "Follow":
+                    return "a Follow position control";
+
+                case "HardLockToTarget":
+                    return "a hard-lock position control";
+
+                case "ThirdPersonFollow":
+                    return "a Third Person Follow position control";
+
+                case "None":
+                    return $"no {stageLabel.ToLowerInvariant()} control";
+
+                default:
+                    return $"a different {stageLabel.ToLowerInvariant()} control";
             }
         }
 
         private void DrawAdvancedDebug()
         {
-            EditorGUILayout.Space(6f);
+            EditorGUILayout.Space(7f);
+
             _showAdvancedDebug =
                 EditorGUILayout.Foldout(
                     _showAdvancedDebug,
-                    "Advanced / Debug",
+                    new GUIContent(
+                        "Advanced / Debug",
+                        "Shows technical target contracts, Cinemachine materialization evidence, ownership provenance and the last recorded authoring operation."),
                     true);
 
             if (!_showAdvancedDebug)
@@ -679,29 +780,67 @@ namespace Immersive.Framework.Editor.CameraAuthoring
                 return;
             }
 
-            EditorGUI.BeginChangeCheck();
-            DrawTechnicalReference();
-            bool advancedChanged =
-                EditorGUI.EndChangeCheck();
+            EditorGUI.indentLevel++;
 
-            DrawOwnershipEvidence();
-            DrawPipelineEvidence();
+            DrawTargetContractEvidence();
+            DrawMaterializationEvidence();
             DrawLastOperationEvidence();
+            DrawDiagnostics();
 
-            bool advancedModified =
-                serializedObject.ApplyModifiedProperties();
-
-            if ((advancedChanged || advancedModified) &&
-                HasRecordedOperation())
-            {
-                _lastOperationOutdated = true;
-            }
+            EditorGUI.indentLevel--;
         }
 
-        private void DrawTechnicalReference()
+        private void DrawTargetContractEvidence()
         {
-            FrameworkAuthoringInspectorGui.Section(
-                "Technical Reference");
+            EditorGUILayout.LabelField(
+                "Target Contract",
+                EditorStyles.miniBoldLabel);
+
+            CameraRigPresentationIntent presentation =
+                ResolvePresentationIntent();
+            CameraTargetRequirement effectiveFollow =
+                ResolveEffectiveFollowRequirement(
+                    presentation);
+            CameraTargetRequirement effectiveLookAt =
+                ResolveEffectiveLookAtRequirement(
+                    presentation);
+
+            using (new EditorGUI.DisabledScope(true))
+            {
+                EditorGUILayout.TextField(
+                    ResolveFollowRoleLabel(presentation),
+                    effectiveFollow.ToString());
+
+                EditorGUILayout.TextField(
+                    "Look At",
+                    effectiveLookAt.ToString());
+
+                EditorGUILayout.PropertyField(
+                    _targetSourceKind,
+                    new GUIContent(
+                        "Target Source Kind"));
+
+                EditorGUILayout.PropertyField(
+                    _lastResolvedFollowTarget,
+                    new GUIContent(
+                        "Last Resolved Tracking Target"));
+
+                EditorGUILayout.PropertyField(
+                    _lastResolvedLookAtTarget,
+                    new GUIContent(
+                        "Last Resolved Look At Target"));
+            }
+
+            EditorGUILayout.Space(4f);
+        }
+
+        private void DrawMaterializationEvidence()
+        {
+            EditorGUILayout.LabelField(
+                "Materialization",
+                EditorStyles.miniBoldLabel);
+
+            EditorGUI.BeginChangeCheck();
 
             EditorGUILayout.PropertyField(
                 _cinemachineCamera,
@@ -709,71 +848,65 @@ namespace Immersive.Framework.Editor.CameraAuthoring
                     "Cinemachine Camera",
                     "Explicit local Cinemachine Camera reference used by this Composer. A missing reference may be materialized locally by Apply / Rebuild."));
 
-            EditorGUILayout.PropertyField(
-                _logApplyRebuildDiagnostics,
-                new GUIContent(
-                    "Log Apply / Rebuild Diagnostics"));
+            bool technicalAuthoringChanged =
+                EditorGUI.EndChangeCheck();
 
-            using (new EditorGUI.DisabledScope(true))
+            bool advancedModified =
+                serializedObject.ApplyModifiedProperties();
+
+            if (technicalAuthoringChanged)
             {
-                EditorGUILayout.PropertyField(
-                    _targetSourceKind,
-                    new GUIContent(
-                        "Resolved Target Source Kind"));
+                MarkAuthoringChanged();
             }
-        }
 
-        private void DrawOwnershipEvidence()
-        {
-            FrameworkAuthoringInspectorGui.Section(
-                "Materialization Provenance");
+            if (advancedModified)
+            {
+                serializedObject.UpdateIfRequiredOrScript();
+            }
+
+            CinemachineCamera local =
+                ResolveLocalCinemachineCamera();
 
             using (new EditorGUI.DisabledScope(true))
             {
                 EditorGUILayout.PropertyField(
                     _materializedPresentationIntent,
                     new GUIContent(
-                        "Materialized Presentation",
-                        "Presentation recorded by the last successful Framework materialization."));
-
-                EditorGUILayout.PropertyField(
-                    _frameworkOwnedCinemachineCamera,
-                    new GUIContent(
-                        "Owned Cinemachine Camera",
-                        "Exact serialized reference proving that this Cinemachine Camera was materialized by the Framework."));
-
-                EditorGUILayout.PropertyField(
-                    _frameworkOwnedPositionControl,
-                    new GUIContent(
-                        "Owned Position Control",
-                        "Exact serialized provenance for the Framework-owned Cinemachine Body / Position control."));
-
-                EditorGUILayout.PropertyField(
-                    _frameworkOwnedRotationControl,
-                    new GUIContent(
-                        "Owned Rotation Control",
-                        "Exact serialized provenance for the Framework-owned Cinemachine Aim / Rotation control."));
+                        "Materialized Presentation"));
 
                 EditorGUILayout.PropertyField(
                     _materializationRevision,
                     new GUIContent(
-                        "Materialization Revision",
-                        "Revision counter advanced by successful materialization."));
+                        "Materialization Revision"));
+
+                if (local != null)
+                {
+                    EditorGUILayout.Vector3Field(
+                        "World Position",
+                        local.transform.position);
+                    EditorGUILayout.Vector3Field(
+                        "World Rotation",
+                        local.transform.eulerAngles);
+                }
+
+                EditorGUILayout.PropertyField(
+                    _frameworkOwnedCinemachineCamera,
+                    new GUIContent(
+                        "Owned Cinemachine Camera"));
             }
+
+            DrawPipelineEvidence(local);
+
+            EditorGUILayout.Space(4f);
         }
 
-        private void DrawPipelineEvidence()
+        private void DrawPipelineEvidence(
+            CinemachineCamera local)
         {
-            FrameworkAuthoringInspectorGui.Section(
-                "Current Cinemachine Pipeline");
-
-            CinemachineCamera local =
-                ResolveLocalCinemachineCamera();
-
             if (local == null)
             {
                 EditorGUILayout.LabelField(
-                    "Status",
+                    "Pipeline",
                     "No local Cinemachine Camera");
                 return;
             }
@@ -789,6 +922,7 @@ namespace Immersive.Framework.Editor.CameraAuthoring
                 "Position Control",
                 body,
                 _frameworkOwnedPositionControl.objectReferenceValue as Component);
+
             DrawPipelineControl(
                 "Rotation Control",
                 aim,
@@ -827,33 +961,27 @@ namespace Immersive.Framework.Editor.CameraAuthoring
 
             EditorGUILayout.LabelField(
                 $"{label} Ownership",
-                ownership);
-
-            if (current != null &&
-                current != recordedFrameworkOwned)
-            {
-                EditorGUILayout.HelpBox(
-                    $"{label} is External / Unknown. Apply / Rebuild will not replace it unless ownership is proven.",
-                    MessageType.Warning);
-            }
+                ownership,
+                EditorStyles.miniLabel);
         }
 
         private void DrawLastOperationEvidence()
         {
-            FrameworkAuthoringInspectorGui.Section(
-                "Last Operation Evidence");
+            EditorGUILayout.LabelField(
+                "Last Operation",
+                EditorStyles.miniBoldLabel);
 
             using (new EditorGUI.DisabledScope(true))
             {
                 EditorGUILayout.PropertyField(
                     _lastApplyRebuildStatus,
                     new GUIContent(
-                        "Last Status"));
+                        "Status"));
 
                 EditorGUILayout.PropertyField(
                     _lastBlockingIssue,
                     new GUIContent(
-                        "Last Blocking Issue"));
+                        "Blocking Issue"));
 
                 EditorGUILayout.PropertyField(
                     _lastTargetResolutionSummary,
@@ -864,34 +992,33 @@ namespace Immersive.Framework.Editor.CameraAuthoring
                     _lastMaterializationSummary,
                     new GUIContent(
                         "Materialization Summary"));
-
-                EditorGUILayout.PropertyField(
-                    _lastResolvedFollowTarget,
-                    new GUIContent(
-                        "Resolved Tracking Target"));
-
-                EditorGUILayout.PropertyField(
-                    _lastResolvedLookAtTarget,
-                    new GUIContent(
-                        "Resolved Look At Target"));
             }
 
-            if (_lastOperationResult.HasValue &&
-                !_lastOperationOutdated &&
-                !_lastOperationResult.Value.Succeeded)
-            {
-                EditorGUILayout.HelpBox(
-                    _lastOperationResult.Value.BlockingIssue,
-                    MessageType.Error);
-            }
+            EditorGUILayout.Space(4f);
         }
 
-        private bool HasRecordedOperation()
+        private void DrawDiagnostics()
         {
-            return _lastOperationResult.HasValue ||
-                (_lastApplyRebuildStatus != null &&
-                 !string.IsNullOrWhiteSpace(
-                     _lastApplyRebuildStatus.stringValue));
+            EditorGUILayout.LabelField(
+                "Diagnostics",
+                EditorStyles.miniBoldLabel);
+
+            EditorGUILayout.PropertyField(
+                _logApplyRebuildDiagnostics,
+                new GUIContent(
+                    "Log Apply / Rebuild Diagnostics"));
+
+            serializedObject.ApplyModifiedProperties();
+        }
+
+        private void MarkAuthoringChanged()
+        {
+            _materializationOutdated = true;
+
+            if (_lastValidationResult.HasValue)
+            {
+                _validationOutdated = true;
+            }
         }
 
         private CameraRigPresentationIntent ResolvePresentationIntent()
@@ -1033,13 +1160,13 @@ namespace Immersive.Framework.Editor.CameraAuthoring
         {
             serializedObject.ApplyModifiedProperties();
 
-            _lastOperationResult =
+            _lastValidationResult =
                 CameraRigComposerApplyRebuildUtility
                     .Validate(
                         (CameraRigComposer)target,
                         false);
 
-            _lastOperationOutdated = false;
+            _validationOutdated = false;
 
             serializedObject
                 .UpdateIfRequiredOrScript();
@@ -1049,14 +1176,14 @@ namespace Immersive.Framework.Editor.CameraAuthoring
         {
             serializedObject.ApplyModifiedProperties();
 
-            _lastOperationResult =
+            _lastApplyResult =
                 CameraRigComposerApplyRebuildUtility
                     .ApplyOrRebuild(
                         (CameraRigComposer)target,
                         true,
                         true);
 
-            _lastOperationOutdated = false;
+            _materializationOutdated = false;
 
             serializedObject
                 .UpdateIfRequiredOrScript();

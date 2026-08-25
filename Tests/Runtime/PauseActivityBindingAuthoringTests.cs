@@ -115,7 +115,7 @@ namespace Immersive.Framework.Pause.Tests
         public void ResolvingIntent_DoesNotMaterializePausePlayerBindingOnAuthoringObject()
         {
             GameObject root = CreateObject("No Materialization");
-            int before = root.GetComponents<PausePlayerInputBinding>().Length;
+            int before = root.GetComponents<PlayerPauseInput>().Length;
             PauseActivityBindingAuthoring authoring =
                 root.AddComponent<PauseActivityBindingAuthoring>();
 
@@ -123,7 +123,7 @@ namespace Immersive.Framework.Pause.Tests
                 PauseActivityBindingAuthoringValidator.ResolveDeclarations(
                     new[] { authoring },
                     "test.no-materialization");
-            int after = root.GetComponents<PausePlayerInputBinding>().Length;
+            int after = root.GetComponents<PlayerPauseInput>().Length;
 
             Assert.That(result.HasIntent, Is.True, result.Diagnostic);
             Assert.That(after, Is.EqualTo(before));
