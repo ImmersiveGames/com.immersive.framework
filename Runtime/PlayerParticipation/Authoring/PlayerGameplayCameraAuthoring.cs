@@ -7,11 +7,14 @@ namespace Immersive.Framework.PlayerParticipation
 {
     /// <summary>
     /// Declares that one contextual Logical Player Actor participates in the
-    /// gameplay Camera product.
+    /// gameplay Camera product. This is the complete normal authoring surface:
+    /// the current gameplay admission materializes and releases the typed request
+    /// from this intent for the exact prepared Player occurrence.
     ///
     /// The referenced CameraRigComposer is the single authority for targets,
     /// target requirements and framing. This component carries only participation,
-    /// requiredness and arbitration intent.
+    /// requiredness and arbitration intent. Do not add a separate request
+    /// binding for ordinary Player gameplay Camera participation.
     /// </summary>
     [DisallowMultipleComponent]
     [AddComponentMenu(

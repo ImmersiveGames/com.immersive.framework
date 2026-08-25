@@ -533,6 +533,14 @@ precedence.
 Target resolution belongs to the assigned Composer/typed source and is not
 authored twice as an implicit output override.
 
+No second Camera request binding is part of this authoring path. During current
+Activity gameplay projection, the framework resolves the exact prepared Player,
+the explicit output and this component, then `PlayerGameplayCameraEligibilityRuntimeContext`
+creates and publishes the typed Local Player request. It releases that same
+request through its exact eligibility token when the gameplay context is retired
+or rolled back. This preserves the authored precedence, the Composer-resolved
+targets and the output's normal arbitration policy without a scene auto-publisher.
+
 Camera does not own Player Join, Actor creation, Initial Placement or Leave.
 
 ## 15. Lifecycle and abnormal component loss

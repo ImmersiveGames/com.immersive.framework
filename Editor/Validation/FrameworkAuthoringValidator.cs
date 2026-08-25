@@ -84,8 +84,6 @@ namespace Immersive.Framework.Editor.Validation
                 ValidateOpenSceneActivityPlayerRelocations(
                     report,
                     validationMode);
-                FrameworkLocalPlayerCameraPublicationValidator
-                    .ValidateOpenScenes(report);
                 FrameworkResetRestartAuthoringValidator
                     .ValidateOpenScenes(report);
             }
