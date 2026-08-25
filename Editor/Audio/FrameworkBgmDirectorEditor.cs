@@ -15,6 +15,7 @@ namespace Immersive.Framework.Editor.Audio
     {
         private SerializedProperty _audioRuntimeHost;
         private SerializedProperty _logTransitions;
+
         private FrameworkAuthoringValidationReport _validationReport;
         private bool _showAdvanced;
 
@@ -33,22 +34,10 @@ namespace Immersive.Framework.Editor.Audio
 
             FrameworkAuthoringInspectorGui.ProductHeader(
                 "BGM Director",
-                "Owns Framework BGM intent and confirmed sticky presentation.");
-
-            FrameworkAuthoringInspectorGui.IntentSummary(
-                BuildIntentSummary());
+                null);
 
             EditorGUI.BeginChangeCheck();
-
-            FrameworkAuthoringInspectorGui.Section(
-                "Audio Provider");
-
-            EditorGUILayout.PropertyField(
-                _audioRuntimeHost,
-                new GUIContent(
-                    "Audio Runtime Host",
-                    "Explicit physical playback authority used for BGM Play and Silence."));
-
+            DrawProvider();
             bool providerChanged =
                 EditorGUI.EndChangeCheck();
 
@@ -59,7 +48,6 @@ namespace Immersive.Framework.Editor.Audio
                 _validationReport = null;
             }
 
-            DrawConfigurationStatus();
             DrawValidation();
 
             _showAdvanced =
@@ -71,7 +59,13 @@ namespace Immersive.Framework.Editor.Audio
                 serializedObject.UpdateIfRequiredOrScript();
 
                 EditorGUI.BeginChangeCheck();
-                DrawAdvanced();
+
+                EditorGUILayout.PropertyField(
+                    _logTransitions,
+                    new GUIContent(
+                        "Log Transitions",
+                        "Emit BGM intent and provider transition diagnostics."));
+
                 bool advancedChanged =
                     EditorGUI.EndChangeCheck();
 
@@ -81,51 +75,30 @@ namespace Immersive.Framework.Editor.Audio
                 {
                     _validationReport = null;
                 }
+
+                DrawRuntimeEvidence();
             }
         }
 
-        private string BuildIntentSummary()
-        {
-            if (_audioRuntimeHost == null)
-            {
-                return "Configure the physical BGM provider.";
-            }
-
-            if (_audioRuntimeHost.hasMultipleDifferentValues)
-            {
-                return "Selected Directors use mixed providers.";
-            }
-
-            AudioRuntimeHost host =
-                _audioRuntimeHost.objectReferenceValue
-                    as AudioRuntimeHost;
-
-            return host != null
-                ? $"Physical provider: '{host.name}'."
-                : "Physical provider is missing.";
-        }
-
-        private void DrawConfigurationStatus()
+        private void DrawProvider()
         {
             FrameworkAuthoringInspectorGui.Section(
-                "Configuration");
+                "Audio Provider");
 
-            if (_audioRuntimeHost.hasMultipleDifferentValues)
-            {
-                FrameworkAuthoringInspectorGui.Status(
-                    "Mixed selection");
-                return;
-            }
+            EditorGUILayout.PropertyField(
+                _audioRuntimeHost,
+                new GUIContent(
+                    "Audio Runtime Host",
+                    "Explicit physical playback authority used for BGM Play and Silence."));
 
-            if (_audioRuntimeHost.objectReferenceValue == null)
+            if (_audioRuntimeHost != null &&
+                !_audioRuntimeHost.hasMultipleDifferentValues &&
+                _audioRuntimeHost.objectReferenceValue == null)
             {
                 EditorGUILayout.HelpBox(
                     "Audio Runtime Host is required.",
                     MessageType.Error);
-                return;
             }
-
-            FrameworkAuthoringInspectorGui.Status("Ready");
         }
 
         private void DrawValidation()
@@ -133,62 +106,81 @@ namespace Immersive.Framework.Editor.Audio
             FrameworkAuthoringInspectorGui.Section(
                 "Validation");
 
-            FrameworkAuthoringValidationGui.DrawSummary(
-                _validationReport);
-
-            if (GUILayout.Button("Validate Configuration"))
+            using (new EditorGUILayout.HorizontalScope())
             {
-                _validationReport =
-                    new FrameworkAuthoringValidationReport();
-
-                for (int index = 0;
-                     index < targets.Length;
-                     index++)
+                if (GUILayout.Button(
+                        new GUIContent(
+                            "Validate",
+                            "Validate the BGM Director authoring without changing runtime state."),
+                        GUILayout.Width(90f)))
                 {
-                    _validationReport.AddRange(
-                        FrameworkBgmAuthoringValidator
-                            .ValidateDirector(
-                                targets[index]
-                                    as FrameworkBgmDirector));
+                    RunValidation();
                 }
+
+                EditorGUILayout.LabelField(
+                    ValidationStatus(),
+                    EditorStyles.miniLabel);
             }
 
-            FrameworkAuthoringValidationGui.DrawIssues(
-                _validationReport,
-                false);
+            if (_validationReport != null &&
+                !_validationReport.IsValid &&
+                _validationReport.Issues.Count > 0)
+            {
+                FrameworkAuthoringValidationIssue issue =
+                    _validationReport.Issues[0];
+
+                EditorGUILayout.HelpBox(
+                    issue.Message,
+                    MessageType.Error);
+            }
         }
 
-        private void DrawAdvanced()
+        private string ValidationStatus()
         {
-            EditorGUILayout.PropertyField(
-                _logTransitions,
-                new GUIContent(
-                    "Log Transitions",
-                    "Emit BGM intent/provider transition diagnostics."));
+            if (_validationReport == null)
+            {
+                return "Not Validated";
+            }
 
+            return _validationReport.IsValid
+                ? "Valid"
+                : "Issue";
+        }
+
+        private void RunValidation()
+        {
+            _validationReport =
+                new FrameworkAuthoringValidationReport();
+
+            for (int index = 0;
+                 index < targets.Length;
+                 index++)
+            {
+                _validationReport.AddRange(
+                    FrameworkBgmAuthoringValidator
+                        .ValidateDirector(
+                            targets[index]
+                                as FrameworkBgmDirector));
+            }
+        }
+
+        private void DrawRuntimeEvidence()
+        {
             if (targets.Length != 1 ||
                 !(target is FrameworkBgmDirector director))
             {
-                EditorGUILayout.LabelField(
-                    "Runtime Evidence",
-                    "Single selection only");
                 return;
             }
-
-            EditorGUILayout.Space(3f);
-            EditorGUILayout.LabelField(
-                "Runtime Evidence",
-                EditorStyles.miniBoldLabel);
 
             if (!Application.isPlaying)
             {
-                EditorGUILayout.LabelField(
-                    "State",
-                    "Available in Play Mode");
                 return;
             }
 
-            EditorGUI.indentLevel++;
+            EditorGUILayout.Space(4f);
+            EditorGUILayout.LabelField(
+                "Runtime",
+                EditorStyles.miniBoldLabel);
 
             using (new EditorGUI.DisabledScope(true))
             {
@@ -197,19 +189,23 @@ namespace Immersive.Framework.Editor.Audio
                     director.CurrentRoutePolicy.ToString());
 
                 EditorGUILayout.ObjectField(
-                    "Current Route BGM",
+                    "Route BGM",
                     director.CurrentRouteBgm,
                     typeof(AudioBgmCueAsset),
                     false);
 
+                EditorGUILayout.TextField(
+                    "Activity Policy",
+                    director.CurrentActivityPolicy.ToString());
+
                 EditorGUILayout.ObjectField(
-                    "Current Activity BGM",
+                    "Activity BGM",
                     director.CurrentActivityBgm,
                     typeof(AudioBgmCueAsset),
                     false);
 
                 EditorGUILayout.ObjectField(
-                    "Current Effective BGM",
+                    "Effective BGM",
                     director.CurrentEffectiveBgm,
                     typeof(AudioBgmCueAsset),
                     false);
@@ -225,24 +221,6 @@ namespace Immersive.Framework.Editor.Audio
                     director.ConfirmedExplicitSilence);
 
                 EditorGUILayout.TextField(
-                    "Activity Policy",
-                    director.CurrentActivityPolicy.ToString());
-
-                EditorGUILayout.ObjectField(
-                    "Requested BGM",
-                    director.LastOperationResult.RequestedCue,
-                    typeof(AudioBgmCueAsset),
-                    false);
-
-                EditorGUILayout.Toggle(
-                    "Requested Silence",
-                    director.LastOperationResult.RequestedExplicitSilence);
-
-                EditorGUILayout.TextField(
-                    "Last Operation",
-                    director.LastOperationResult.Operation.ToString());
-
-                EditorGUILayout.TextField(
                     "Last Outcome",
                     director.LastOperationResult.Outcome.ToString());
 
@@ -253,8 +231,6 @@ namespace Immersive.Framework.Editor.Audio
                             ? "<none>"
                             : director.LastOperationResult.Reason);
             }
-
-            EditorGUI.indentLevel--;
         }
     }
 }
