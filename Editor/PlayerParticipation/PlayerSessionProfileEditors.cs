@@ -85,14 +85,14 @@ namespace Immersive.Framework.Editor.PlayerParticipation
                 new[] { "Closed", "Open" });
             _initialJoiningOpen.boolValue = nextJoiningIndex == 1;
 
-            DrawSection("Host Provisioning");
+            //DrawSection("Host Provisioning");
             EditorGUILayout.PropertyField(
                 _hostProvisioning,
                 new GUIContent(
                     "Mode",
                     "Host provisioning applied uniformly to every Supported Slot."));
 
-            DrawSection("Actor Resolution");
+            //DrawSection("Actor Resolution");
             EditorGUILayout.PropertyField(
                 _actorResolutionPolicy,
                 new GUIContent(

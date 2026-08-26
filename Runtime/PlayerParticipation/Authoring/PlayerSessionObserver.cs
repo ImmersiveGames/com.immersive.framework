@@ -1,4 +1,3 @@
-using System;
 using Immersive.Framework.ApiStatus;
 using Immersive.Framework.PlayerSlots;
 using UnityEngine;
@@ -6,12 +5,12 @@ using UnityEngine;
 namespace Immersive.Framework.PlayerParticipation
 {
     /// <summary>
-    /// Read-only availability classification for Player Session Status. It
-    /// describes P1/P2 transport lifetime, never Player state.
+    /// Read-only availability classification for a scoped Player Session observation.
+    /// It describes P1/P2 transport lifetime, never Player state.
     /// </summary>
     [FrameworkApiStatus(
         FrameworkApiStatus.Experimental,
-        "IF-PLAYER-SURFACE-06 public Player Session Status availability.")]
+        "IF-PLAYER-SURFACE-06 public Player Session observation availability.")]
     public enum PlayerProvisioningStatusAvailability
     {
         Available = 10,
@@ -20,25 +19,18 @@ namespace Immersive.Framework.PlayerParticipation
     }
 
     /// <summary>
-    /// Dependency-neutral scene/prefab status over the P1 scoped access and
-    /// P2 immutable observation. It stores no Player truth and performs no
-    /// automatic update; consumers explicitly pull current public evidence.
+    /// Read-only scoped observer of the current Player Session. It may be used
+    /// by Hub, UI, presentation or other scenes without requiring a reference
+    /// to the physically materialized Player.
     /// </summary>
     [DisallowMultipleComponent]
-    [AddComponentMenu("Immersive Framework/Player/Player Session Status")]
+    [AddComponentMenu("Immersive Framework/Player/Player Session Observer")]
     [FrameworkApiStatus(
         FrameworkApiStatus.Experimental,
-        "IF-PLAYER-SURFACE-06 read-only designer Player Session status and diagnostics.")]
-    public sealed class PlayerSessionStatus : PlayerSessionScopedAccessConsumer
+        "IF-PLAYER-SURFACE-06 read-only scoped Player Session observer.")]
+    public sealed class PlayerSessionObserver : PlayerSessionScopedAccessConsumer
     {
-        [SerializeField]
-        [Tooltip("Optional explicit P3 command trigger in the same scoped consumer path. It is the only Last Operation source used by this status.")]
-        private PlayerSessionCommandTrigger commandTrigger;
-
-        public PlayerSessionCommandTrigger CommandTrigger => commandTrigger;
-
-        public PlayerProvisioningStatusAvailability Availability =>
-            ResolveAvailability();
+        public PlayerProvisioningStatusAvailability Availability => ResolveAvailability();
 
         public bool IsAvailable => Availability ==
             PlayerProvisioningStatusAvailability.Available;
@@ -47,67 +39,24 @@ namespace Immersive.Framework.PlayerParticipation
         {
             get
             {
-                if (TryGetObservation(
-                        out LocalPlayerProvisioningConsumerObservationSnapshot
-                            observation))
-                {
-                    return observation.Diagnostic;
-                }
-
-                return ScopedAccessDiagnostic;
+                return TryGetObservation(
+                    out LocalPlayerProvisioningConsumerObservationSnapshot observation)
+                    ? observation.Diagnostic
+                    : ScopedAccessDiagnostic;
             }
         }
 
         /// <summary>
-        /// Current P2 observation when this status has live P1 scoped access.
+        /// Current P2 observation when this observer has live P1 scoped access.
         /// No unavailable snapshot is fabricated by this presentation component.
         /// </summary>
-        public LocalPlayerProvisioningConsumerObservationSnapshot
-            CurrentObservation
-        {
-            get
-            {
-                return TryGetObservation(
-                    out LocalPlayerProvisioningConsumerObservationSnapshot
-                        observation)
-                    ? observation
-                    : null;
-            }
-        }
-
-        public bool HasLastOperation => commandTrigger != null &&
-            commandTrigger.HasLastTypedResult;
-
-        public PlayerProvisioningCommandResultKind LastOperationResultKind =>
-            commandTrigger != null
-                ? commandTrigger.LastResultKind
-                : PlayerProvisioningCommandResultKind.None;
-
-        public string LastOperationSummary => commandTrigger != null
-            ? commandTrigger.LastResultSummary
-            : "No Player Session Command Trigger is explicitly linked, so this status has no Last Operation source.";
-
-        public PlayerParticipationOperationResult LastParticipationOperation =>
-            commandTrigger != null
-                ? commandTrigger.LastParticipationResult
+        public LocalPlayerProvisioningConsumerObservationSnapshot CurrentObservation =>
+            TryGetObservation(
+                out LocalPlayerProvisioningConsumerObservationSnapshot observation)
+                ? observation
                 : null;
 
-        public LocalPlayerJoinResult LastJoinOperation => commandTrigger != null
-            ? commandTrigger.LastJoinResult
-            : null;
-
-        public PlayerActorSelectionResult LastActorSelectionOperation =>
-            commandTrigger != null
-                ? commandTrigger.LastActorSelectionResult
-                : null;
-
-        public SessionPlayerLeaveResult LastLeaveOperation =>
-            commandTrigger != null
-                ? commandTrigger.LastLeaveResult
-                : null;
-
-        public string InitializationSummary =>
-            DescribeInitialization(CurrentObservation);
+        public string InitializationSummary => DescribeInitialization(CurrentObservation);
 
         public string ActivitySummary => DescribeActivity(CurrentObservation);
 
@@ -132,25 +81,10 @@ namespace Immersive.Framework.PlayerParticipation
 
         /// <summary>
         /// Validates authoring relationships only. It never resolves a runtime
-        /// authority, executes a command or changes the current observation.
+        /// authority or changes the current observation.
         /// </summary>
-        public bool TryValidateConfiguration(out string issue)
-        {
-            if (!TryValidateScope(out issue))
-            {
-                return false;
-            }
-
-            if (commandTrigger != null && commandTrigger.Scope != Scope)
-            {
-                issue =
-                    "The optional Player Session Command Trigger must declare this same Route or Activity scope; otherwise Last Operation could describe a different scope.";
-                return false;
-            }
-
-            issue = string.Empty;
-            return true;
-        }
+        public bool TryValidateConfiguration(out string issue) =>
+            TryValidateScope(out issue);
 
         /// <summary>
         /// Designer-facing lifecycle label derived only from the supplied P2

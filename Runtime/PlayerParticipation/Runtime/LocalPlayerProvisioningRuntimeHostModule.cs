@@ -219,14 +219,7 @@ namespace Immersive.Framework.PlayerParticipation
                         RuntimeDefinitionToken.FromUnityObject(route));
                     AddBindings(
                         SceneCompositionComponentQuery.GetComponents<
-                            PlayerSessionCommandTrigger>(
-                            routeScope),
-                        LocalPlayerProvisioningConsumerScope.Route,
-                        routeOwner,
-                        desired);
-                    AddBindings(
-                        SceneCompositionComponentQuery.GetComponents<
-                            PlayerSessionStatus>(
+                            PlayerSessionScopedAccessConsumer>(
                             routeScope),
                         LocalPlayerProvisioningConsumerScope.Route,
                         routeOwner,
@@ -248,15 +241,7 @@ namespace Immersive.Framework.PlayerParticipation
                     RuntimeDefinitionToken.FromUnityObject(activity));
                 AddBindings(
                     SceneCompositionComponentQuery.GetComponents<
-                        PlayerSessionCommandTrigger>(
-                        activityScope,
-                        activity),
-                    LocalPlayerProvisioningConsumerScope.Activity,
-                    activityOwner,
-                    desired);
-                AddBindings(
-                    SceneCompositionComponentQuery.GetComponents<
-                        PlayerSessionStatus>(
+                        PlayerSessionScopedAccessConsumer>(
                         activityScope,
                         activity),
                     LocalPlayerProvisioningConsumerScope.Activity,

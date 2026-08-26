@@ -346,7 +346,27 @@ If an Activity explicitly requires `GameplayReady` and the lifecycle still fails
 the first exact lifecycle/readiness prerequisite failure as the diagnostic boundary.
 Do not patch locomotion or fabricate readiness to hide that failure.
 
-## 12. Anti-patterns
+## 12. Player Session public surfaces
+
+Use the scoped public surface according to intent:
+
+```text
+PlayerSessionObserver = read
+Player Session Command Trigger = request/change
+```
+
+`PlayerSessionObserver` is read-only. It is appropriate for Hub, UI,
+presentation, other scenes than the physically materialized Player, and any
+consumer that must consult the current Player Session without locating a
+Player GameObject. It exposes only the published scoped observation and its
+derived presentation labels; it never executes commands or owns Player truth.
+
+Commands are separate explicit components: Open Joining, Close Joining, Join,
+Default Actor Selection and Leave. Assign the component matching the requested
+operation to a UnityEvent and invoke it explicitly. Each trigger owns only its
+own typed result; no Observer aggregates a last-command result.
+
+## 13. Anti-patterns
 
 Do not add:
 
@@ -363,7 +383,7 @@ Do not add:
 - a Local Player prefab that silently bakes project-specific Slot / Actor / Input intent
   and presents those values as framework defaults.
 
-## 13. Proposed Player expansions
+## 14. Proposed Player expansions
 
 The current Tracker is authoritative for delivery status beyond this accepted Stage B
 path.
