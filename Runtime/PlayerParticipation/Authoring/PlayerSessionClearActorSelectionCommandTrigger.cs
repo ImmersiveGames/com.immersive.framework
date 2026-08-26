@@ -5,15 +5,15 @@ using UnityEngine;
 namespace Immersive.Framework.PlayerParticipation
 {
     [DisallowMultipleComponent]
-    [AddComponentMenu("Immersive Framework/Player/Commands/Default Actor Selection")]
+    [AddComponentMenu("Immersive Framework/Player/Commands/Clear Actor Selection")]
     [FrameworkApiStatus(FrameworkApiStatus.Experimental,
-        "IF-PLAYER-SURFACE-07 explicit Player Session default Actor selection command.")]
-    public sealed class PlayerSessionDefaultActorSelectionCommandTrigger : PlayerSessionCommandTriggerBase
+        "IF-PLAYER-SURFACE-07 explicit Player Session Actor-selection clear command.")]
+    public sealed class PlayerSessionClearActorSelectionCommandTrigger : PlayerSessionCommandTriggerBase
     {
-        private const string Source = nameof(PlayerSessionDefaultActorSelectionCommandTrigger);
+        private const string Source = nameof(PlayerSessionClearActorSelectionCommandTrigger);
 
         [SerializeField]
-        [Tooltip("Slot whose configured default Actor will be selected. This does not select an arbitrary Actor.")]
+        [Tooltip("Slot whose Actor selection will be cleared.")]
         private PlayerSlotProfile playerSlot;
 
         [SerializeField]
@@ -24,11 +24,11 @@ namespace Immersive.Framework.PlayerParticipation
         public int ExpectedSelectionRevision => expectedSelectionRevision;
         public PlayerActorSelectionResult LastActorSelectionResult { get; private set; }
 
-        [ContextMenu("Invoke Default Actor Selection")]
+        [ContextMenu("Invoke Clear Actor Selection")]
         public override void Invoke()
         {
             LastActorSelectionResult = null;
-            string reason = BeginInvocation("DefaultActorSelection");
+            string reason = BeginInvocation("ClearActorSelection");
             PlayerSlotId playerSlotId = default;
             if (playerSlot != null)
             {
@@ -44,22 +44,18 @@ namespace Immersive.Framework.PlayerParticipation
             if (!TryGetAccess(out ILocalPlayerProvisioningConsumerAccess access, out string scopeIssue))
             {
                 CompleteResult(PlayerActorSelectionResult.RuntimeUnavailable(
-                    "SelectDefaultActor", request, scopeIssue));
+                    "ClearActorSelection", request, scopeIssue));
                 return;
             }
 
-            CompleteResult(access.RequestSelectDefaultActor(
-                playerSlotId,
-                expectedSelectionRevision,
-                Source,
-                reason));
+            CompleteResult(access.RequestClearActorSelection(request));
         }
 
         protected override bool TryValidateCommandConfiguration(out string issue)
         {
             if (playerSlot == null)
             {
-                issue = "Default Actor Selection requires a Player Slot Profile. It never accepts a raw Slot identity string.";
+                issue = "Clear Actor Selection requires a Player Slot Profile. It never accepts a raw Slot identity string.";
                 return false;
             }
 
@@ -75,7 +71,7 @@ namespace Immersive.Framework.PlayerParticipation
         private void CompleteResult(PlayerActorSelectionResult result)
         {
             LastActorSelectionResult = result;
-            Complete("DefaultActorSelection", Outcome(result), Describe(result));
+            Complete("ClearActorSelection", Outcome(result), Describe(result));
         }
     }
 }

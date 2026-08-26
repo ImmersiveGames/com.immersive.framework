@@ -513,6 +513,83 @@ namespace Immersive.Framework.PlayerParticipation
                 "Session Player Leave orchestration returned no result.");
         }
 
+        internal PlayerActorSelectionResult TrySelectActorProfile(
+            PlayerActorSelectionRequest request)
+        {
+            return TryGetActorSelectionRuntime(out IPlayerActorSelectionRuntimePort runtime)
+                ? runtime.TrySelectActorProfile(request)
+                : PlayerActorSelectionResult.RuntimeUnavailable(
+                    "SelectActorProfile",
+                    request,
+                    _diagnostic);
+        }
+
+        internal PlayerActorSelectionResult TrySelectDefaultActor(
+            PlayerSlotId playerSlotId,
+            int expectedSelectionRevision,
+            string source,
+            string reason)
+        {
+            var request = new PlayerActorSelectionRequest(
+                playerSlotId,
+                null,
+                source,
+                reason,
+                expectedSelectionRevision);
+            return TryGetActorSelectionRuntime(out IPlayerActorSelectionRuntimePort runtime)
+                ? runtime.TrySelectDefaultActor(
+                    playerSlotId,
+                    expectedSelectionRevision,
+                    source,
+                    reason)
+                : PlayerActorSelectionResult.RuntimeUnavailable(
+                    "SelectDefaultActor",
+                    request,
+                    _diagnostic);
+        }
+
+        internal PlayerActorSelectionResult TryReplaceActorSelection(
+            PlayerActorSelectionRequest request)
+        {
+            return TryGetActorSelectionRuntime(out IPlayerActorSelectionRuntimePort runtime)
+                ? runtime.TryReplaceActorSelection(request)
+                : PlayerActorSelectionResult.RuntimeUnavailable(
+                    "ReplaceActorSelection",
+                    request,
+                    _diagnostic);
+        }
+
+        internal PlayerActorSelectionResult TryClearActorSelection(
+            PlayerActorSelectionRequest request)
+        {
+            return TryGetActorSelectionRuntime(out IPlayerActorSelectionRuntimePort runtime)
+                ? runtime.TryClearActorSelection(request)
+                : PlayerActorSelectionResult.RuntimeUnavailable(
+                    "ClearActorSelection",
+                    request,
+                    _diagnostic);
+        }
+
+        private bool TryGetActorSelectionRuntime(
+            out IPlayerActorSelectionRuntimePort runtime)
+        {
+            runtime = null;
+            if (!IsReady || _runtimeHost == null)
+            {
+                return false;
+            }
+
+            runtime = _runtimeHost;
+            if (runtime.TryValidatePlayerActorSelectionRuntime(out string issue))
+            {
+                return true;
+            }
+
+            _diagnostic = issue;
+            runtime = null;
+            return false;
+        }
+
         internal LocalPlayerJoinResult RollbackCommittedJoin(
             LocalPlayerJoinResult joinResult,
             string reason)
@@ -979,6 +1056,63 @@ namespace Immersive.Framework.PlayerParticipation
             return TryGetAuthoring(out string issue)
                 ? _authoring.RequestLeave(request)
                 : SessionPlayerLeaveResult.RuntimeUnavailable(request, issue);
+        }
+
+        public PlayerActorSelectionResult RequestSelectActorProfile(
+            PlayerActorSelectionRequest request)
+        {
+            return TryGetAuthoring(out string issue)
+                ? _authoring.RequestSelectActorProfile(request)
+                : PlayerActorSelectionResult.RuntimeUnavailable(
+                    "SelectActorProfile",
+                    request,
+                    issue);
+        }
+
+        public PlayerActorSelectionResult RequestSelectDefaultActor(
+            PlayerSlotId playerSlotId,
+            int expectedSelectionRevision,
+            string source,
+            string reason)
+        {
+            var request = new PlayerActorSelectionRequest(
+                playerSlotId,
+                null,
+                source,
+                reason,
+                expectedSelectionRevision);
+            return TryGetAuthoring(out string issue)
+                ? _authoring.RequestSelectDefaultActor(
+                    playerSlotId,
+                    expectedSelectionRevision,
+                    source,
+                    reason)
+                : PlayerActorSelectionResult.RuntimeUnavailable(
+                    "SelectDefaultActor",
+                    request,
+                    issue);
+        }
+
+        public PlayerActorSelectionResult RequestReplaceActorSelection(
+            PlayerActorSelectionRequest request)
+        {
+            return TryGetAuthoring(out string issue)
+                ? _authoring.RequestReplaceActorSelection(request)
+                : PlayerActorSelectionResult.RuntimeUnavailable(
+                    "ReplaceActorSelection",
+                    request,
+                    issue);
+        }
+
+        public PlayerActorSelectionResult RequestClearActorSelection(
+            PlayerActorSelectionRequest request)
+        {
+            return TryGetAuthoring(out string issue)
+                ? _authoring.RequestClearActorSelection(request)
+                : PlayerActorSelectionResult.RuntimeUnavailable(
+                    "ClearActorSelection",
+                    request,
+                    issue);
         }
 
         public void Dispose()

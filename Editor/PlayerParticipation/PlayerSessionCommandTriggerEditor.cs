@@ -1,3 +1,4 @@
+using System;
 using Immersive.Framework.Editor.Common;
 using Immersive.Framework.PlayerParticipation;
 using UnityEditor;
@@ -8,61 +9,43 @@ namespace Immersive.Framework.Editor.PlayerParticipation
     [CustomEditor(typeof(PlayerSessionCommandTriggerBase), true)]
     internal sealed class PlayerSessionCommandTriggerEditor : UnityEditor.Editor
     {
-        private SerializedProperty _scope;
-        private SerializedProperty _reason;
-        private SerializedProperty _controlScheme;
-        private SerializedProperty _actorSelectionRequests;
-        private SerializedProperty _playerSlot;
-        private SerializedProperty _expectedSelectionRevision;
-        private SerializedProperty _expectedLeaveOccurrenceRevision;
         private bool _hasValidation;
         private bool _validationIsValid;
         private bool _validationOutdated;
         private string _validationIssue;
         private bool _showAdvanced;
 
-        private void OnEnable()
-        {
-            if (!HasLiveTargets())
-            {
-                return;
-            }
-
-            _scope = serializedObject.FindProperty("scope");
-            _reason = serializedObject.FindProperty("reason");
-            _controlScheme = serializedObject.FindProperty("controlScheme");
-            _actorSelectionRequests = serializedObject.FindProperty("actorSelectionRequests");
-            _playerSlot = serializedObject.FindProperty("playerSlot");
-            _expectedSelectionRevision = serializedObject.FindProperty("expectedSelectionRevision");
-            _expectedLeaveOccurrenceRevision = serializedObject.FindProperty("expectedLeaveOccurrenceRevision");
-        }
-
         public override void OnInspectorGUI()
         {
-            if (!HasLiveTargets())
+            if (!TryGetLiveEditorState(
+                    out PlayerSessionCommandTriggerBase trigger,
+                    out SerializedObject commandSerializedObject))
             {
                 return;
             }
 
-            serializedObject.UpdateIfRequiredOrScript();
+            commandSerializedObject.UpdateIfRequiredOrScript();
             EditorGUI.BeginChangeCheck();
-            var trigger = (PlayerSessionCommandTriggerBase)target;
 
             FrameworkAuthoringInspectorGui.ProductHeader(GetTitle(trigger), string.Empty);
             FrameworkAuthoringInspectorGui.Section("Scope");
-            EditorGUILayout.PropertyField(
-                _scope,
-                new GUIContent(
-                    "Scope",
-                    "Explicit Route or Activity scope for this command. Framework Core supplies scoped access directly at runtime."));
+            if (!DrawProperty(
+                    commandSerializedObject.FindProperty("scope"),
+                    new GUIContent(
+                        "Scope",
+                        "Explicit Route or Activity scope for this command. Framework Core supplies scoped access directly at runtime.")))
+            {
+                EditorGUI.EndChangeCheck();
+                return;
+            }
 
-            DrawCommandFields(trigger);
-            DrawValidation(trigger);
+            DrawCommandFields(trigger, commandSerializedObject);
+            DrawValidation(trigger, commandSerializedObject);
 
             _showAdvanced = FrameworkAuthoringInspectorGui.AdvancedFoldout(_showAdvanced);
             if (_showAdvanced)
             {
-                DrawAdvanced(trigger);
+                DrawAdvanced(trigger, commandSerializedObject);
             }
 
             if (EditorGUI.EndChangeCheck())
@@ -71,56 +54,99 @@ namespace Immersive.Framework.Editor.PlayerParticipation
                 _hasValidation = false;
             }
 
-            serializedObject.ApplyModifiedProperties();
+            commandSerializedObject.ApplyModifiedProperties();
         }
 
-        private void DrawCommandFields(PlayerSessionCommandTriggerBase trigger)
+        private static void DrawCommandFields(
+            PlayerSessionCommandTriggerBase trigger,
+            SerializedObject commandSerializedObject)
         {
             if (trigger is PlayerSessionJoinCommandTrigger)
             {
                 FrameworkAuthoringInspectorGui.Section("Control Scheme Hint");
-                EditorGUILayout.PropertyField(
-                    _controlScheme,
+                DrawProperty(
+                    commandSerializedObject.FindProperty("controlScheme"),
                     new GUIContent(
                         "Control Scheme Hint",
                         "Optional input hint forwarded to the Local Player Join request."));
                 return;
             }
 
+            if (trigger is PlayerSessionSelectActorCommandTrigger)
+            {
+                FrameworkAuthoringInspectorGui.Section("Player Slot Profile");
+                DrawProperty(
+                    commandSerializedObject.FindProperty("playerSlot"),
+                    new GUIContent(
+                        "Player Slot Profile",
+                        "Provides the typed Slot identity that receives the selected Actor."));
+                FrameworkAuthoringInspectorGui.Section("Actor Profile");
+                DrawProperty(
+                    commandSerializedObject.FindProperty("actorProfile"),
+                    new GUIContent(
+                        "Actor Profile",
+                        "Typed Actor identity to select for the Player Slot."));
+                return;
+            }
+
             if (trigger is PlayerSessionDefaultActorSelectionCommandTrigger)
             {
-                FrameworkAuthoringInspectorGui.Section("Actor Selection Requests");
-                EditorGUILayout.PropertyField(
-                    _actorSelectionRequests,
-                    new GUIContent(
-                        "Actor Selection Requests",
-                        "Existing public selection authoring surface; it owns the selection command boundary."));
                 FrameworkAuthoringInspectorGui.Section("Player Slot Profile");
-                EditorGUILayout.PropertyField(
-                    _playerSlot,
+                DrawProperty(
+                    commandSerializedObject.FindProperty("playerSlot"),
                     new GUIContent(
                         "Player Slot Profile",
                         "Provides the typed Slot identity. The Actor remains the Slot configured default."));
                 return;
             }
 
+            if (trigger is PlayerSessionReplaceActorSelectionCommandTrigger)
+            {
+                FrameworkAuthoringInspectorGui.Section("Player Slot Profile");
+                DrawProperty(
+                    commandSerializedObject.FindProperty("playerSlot"),
+                    new GUIContent(
+                        "Player Slot Profile",
+                        "Provides the typed Slot identity whose Actor selection will be replaced."));
+                FrameworkAuthoringInspectorGui.Section("Actor Profile");
+                DrawProperty(
+                    commandSerializedObject.FindProperty("actorProfile"),
+                    new GUIContent(
+                        "Actor Profile",
+                        "Typed Actor identity that replaces the current selection."));
+                return;
+            }
+
+            if (trigger is PlayerSessionClearActorSelectionCommandTrigger)
+            {
+                FrameworkAuthoringInspectorGui.Section("Player Slot Profile");
+                DrawProperty(
+                    commandSerializedObject.FindProperty("playerSlot"),
+                    new GUIContent(
+                        "Player Slot Profile",
+                        "Provides the typed Slot identity whose Actor selection will be cleared."));
+                return;
+            }
+
             if (trigger is PlayerSessionLeaveCommandTrigger)
             {
                 FrameworkAuthoringInspectorGui.Section("Player Slot Profile");
-                EditorGUILayout.PropertyField(
-                    _playerSlot,
+                DrawProperty(
+                    commandSerializedObject.FindProperty("playerSlot"),
                     new GUIContent(
                         "Player Slot Profile",
                         "Exact Player target. At -1, the occurrence revision is read from the same scoped observation when invoked."));
             }
         }
 
-        private void DrawValidation(PlayerSessionCommandTriggerBase trigger)
+        private void DrawValidation(
+            PlayerSessionCommandTriggerBase trigger,
+            SerializedObject commandSerializedObject)
         {
             FrameworkAuthoringInspectorGui.Section("Validation");
             if (GUILayout.Button("Validate"))
             {
-                serializedObject.ApplyModifiedProperties();
+                commandSerializedObject.ApplyModifiedProperties();
                 _hasValidation = true;
                 _validationOutdated = false;
                 _validationIsValid = trigger.TryValidateConfiguration(out _validationIssue);
@@ -139,18 +165,23 @@ namespace Immersive.Framework.Editor.PlayerParticipation
             }
         }
 
-        private void DrawAdvanced(PlayerSessionCommandTriggerBase trigger)
+        private void DrawAdvanced(
+            PlayerSessionCommandTriggerBase trigger,
+            SerializedObject commandSerializedObject)
         {
-            EditorGUILayout.PropertyField(
-                _reason,
+            DrawProperty(
+                commandSerializedObject.FindProperty("reason"),
                 new GUIContent(
                     "Reason",
                     "Optional diagnostic reason. The command name is used when left empty."));
 
-            if (trigger is PlayerSessionDefaultActorSelectionCommandTrigger)
+            if (trigger is PlayerSessionSelectActorCommandTrigger ||
+                trigger is PlayerSessionDefaultActorSelectionCommandTrigger ||
+                trigger is PlayerSessionReplaceActorSelectionCommandTrigger ||
+                trigger is PlayerSessionClearActorSelectionCommandTrigger)
             {
-                EditorGUILayout.PropertyField(
-                    _expectedSelectionRevision,
+                DrawProperty(
+                    commandSerializedObject.FindProperty("expectedSelectionRevision"),
                     new GUIContent(
                         "Expected Selection Revision",
                         "Use -1 when no optimistic revision check is required."));
@@ -158,8 +189,8 @@ namespace Immersive.Framework.Editor.PlayerParticipation
 
             if (trigger is PlayerSessionLeaveCommandTrigger)
             {
-                EditorGUILayout.PropertyField(
-                    _expectedLeaveOccurrenceRevision,
+                DrawProperty(
+                    commandSerializedObject.FindProperty("expectedLeaveOccurrenceRevision"),
                     new GUIContent(
                         "Expected Leave Occurrence Revision",
                         "Use -1 to read the current joined occurrence from scoped observation; a non-negative value sends that exact revision."));
@@ -184,10 +215,24 @@ namespace Immersive.Framework.Editor.PlayerParticipation
             {
                 if (GUILayout.Button("Invoke"))
                 {
-                    serializedObject.ApplyModifiedProperties();
+                    commandSerializedObject.ApplyModifiedProperties();
                     trigger.Invoke();
                 }
             }
+        }
+
+        private static bool DrawProperty(SerializedProperty property, GUIContent label)
+        {
+            if (property == null)
+            {
+                EditorGUILayout.HelpBox(
+                    $"The selected Player Session command does not expose the required '{label.text}' field.",
+                    MessageType.Error);
+                return false;
+            }
+
+            EditorGUILayout.PropertyField(property, label);
+            return true;
         }
 
         private static string GetTitle(PlayerSessionCommandTriggerBase trigger)
@@ -197,7 +242,10 @@ namespace Immersive.Framework.Editor.PlayerParticipation
                 PlayerSessionOpenJoiningCommandTrigger => "OPEN JOINING COMMAND",
                 PlayerSessionCloseJoiningCommandTrigger => "CLOSE JOINING COMMAND",
                 PlayerSessionJoinCommandTrigger => "JOIN COMMAND",
+                PlayerSessionSelectActorCommandTrigger => "SELECT ACTOR COMMAND",
                 PlayerSessionDefaultActorSelectionCommandTrigger => "DEFAULT ACTOR SELECTION COMMAND",
+                PlayerSessionReplaceActorSelectionCommandTrigger => "REPLACE ACTOR SELECTION COMMAND",
+                PlayerSessionClearActorSelectionCommandTrigger => "CLEAR ACTOR SELECTION COMMAND",
                 PlayerSessionLeaveCommandTrigger => "LEAVE COMMAND",
                 _ => "PLAYER SESSION COMMAND"
             };
@@ -215,7 +263,16 @@ namespace Immersive.Framework.Editor.PlayerParticipation
                     nameof(PlayerParticipationOperationResult),
                 PlayerSessionJoinCommandTrigger command when
                     command.LastJoinResult != null => nameof(LocalPlayerJoinResult),
+                PlayerSessionSelectActorCommandTrigger command when
+                    command.LastActorSelectionResult != null =>
+                    nameof(PlayerActorSelectionResult),
                 PlayerSessionDefaultActorSelectionCommandTrigger command when
+                    command.LastActorSelectionResult != null =>
+                    nameof(PlayerActorSelectionResult),
+                PlayerSessionReplaceActorSelectionCommandTrigger command when
+                    command.LastActorSelectionResult != null =>
+                    nameof(PlayerActorSelectionResult),
+                PlayerSessionClearActorSelectionCommandTrigger command when
                     command.LastActorSelectionResult != null =>
                     nameof(PlayerActorSelectionResult),
                 PlayerSessionLeaveCommandTrigger command when
@@ -225,8 +282,13 @@ namespace Immersive.Framework.Editor.PlayerParticipation
             };
         }
 
-        private bool HasLiveTargets()
+        private bool TryGetLiveEditorState(
+            out PlayerSessionCommandTriggerBase trigger,
+            out SerializedObject commandSerializedObject)
         {
+            trigger = null;
+            commandSerializedObject = null;
+
             if (target == null || targets == null || targets.Length == 0)
             {
                 return false;
@@ -234,13 +296,28 @@ namespace Immersive.Framework.Editor.PlayerParticipation
 
             for (int index = 0; index < targets.Length; index++)
             {
-                if (targets[index] == null)
+                if (targets[index] is not PlayerSessionCommandTriggerBase command ||
+                    command == null)
                 {
                     return false;
                 }
             }
 
-            return true;
+            trigger = target as PlayerSessionCommandTriggerBase;
+            if (trigger == null)
+            {
+                return false;
+            }
+
+            try
+            {
+                commandSerializedObject = serializedObject;
+                return commandSerializedObject != null;
+            }
+            catch (Exception)
+            {
+                return false;
+            }
         }
     }
 }

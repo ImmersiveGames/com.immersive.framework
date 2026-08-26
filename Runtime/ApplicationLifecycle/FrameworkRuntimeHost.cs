@@ -448,21 +448,6 @@ namespace Immersive.Framework.ApplicationLifecycle
 
             InvalidateObjectEntryRuntimeContextSnapshot("framework-start");
 
-            if (_globalUiSceneRuntime != null)
-            {
-                LocalPlayerActorSelectionRequestAuthoringReleaseResult previousRelease =
-                    ReleaseLocalPlayerActorSelectionRequests("framework-restart");
-                if (!previousRelease.Succeeded)
-                {
-                    var failed = FrameworkGameFlowStartResult.Failed(
-                        previousRelease.Message);
-                    _state = FrameworkRuntimeState.FromGameFlowResult(
-                        _gameApplication,
-                        failed);
-                    return failed;
-                }
-            }
-
             var startupPrimaryScenePreparation = await PrepareStartupPrimarySceneBeforeGlobalUiAsync();
             if (!startupPrimaryScenePreparation.Loaded)
             {
@@ -610,36 +595,8 @@ namespace Immersive.Framework.ApplicationLifecycle
             ApplyPlayerActivityLifecycleAdmissionRuntime();
             ApplySceneLocalPlayerAdmissionRuntime();
 
-            LocalPlayerActorSelectionRequestAuthoringBinderResult
-                playerActorSelectionBinder =
-                    BindLocalPlayerActorSelectionRequests();
-            if (!playerActorSelectionBinder.Succeeded)
-            {
-                var failed = FrameworkGameFlowStartResult.Failed(
-                    playerActorSelectionBinder.Message);
-                _state = FrameworkRuntimeState.FromGameFlowResult(
-                    _gameApplication,
-                    failed);
-                return failed;
-            }
-
-            FrameworkGameFlowStartResult result;
-            try
-            {
-                result = await StartGameFlowWithActivityEntryLoadingProgressAsync();
-            }
-            catch
-            {
-                ReleaseLocalPlayerActorSelectionRequests(
-                    "game-flow-start-exception");
-                throw;
-            }
-
-            if (!result.DestinationAuthoritative)
-            {
-                ReleaseLocalPlayerActorSelectionRequests(
-                    "game-flow-start-failed");
-            }
+            FrameworkGameFlowStartResult result =
+                await StartGameFlowWithActivityEntryLoadingProgressAsync();
 
             _state = FrameworkRuntimeState.FromGameFlowResult(_gameApplication, result);
             PublishCurrentActivityReadinessPresentation();
@@ -3008,8 +2965,6 @@ namespace Immersive.Framework.ApplicationLifecycle
             _gameFlowRuntime = null;
             _activityReadinessBinding?.Dispose();
             _activityReadinessBinding = null;
-            ReleaseLocalPlayerActorSelectionRequests(
-                "framework-runtime-host-destroy");
             _cameraOutputSessionInjectionRuntime?.Dispose();
             _cameraOutputSessionInjectionRuntime = null;
             _cameraOutputInjectionRuntime?.Dispose();

@@ -1,11 +1,12 @@
 using Immersive.Framework.ApiStatus;
+using Immersive.Framework.PlayerSlots;
 
 namespace Immersive.Framework.PlayerParticipation
 {
     /// <summary>
     /// Read/write consumer port bound by Framework Core to one live Route or
-    /// Activity scope. It forwards only the existing public provisioning
-    /// operations; it does not own Player, Slot or Activity state.
+    /// Activity scope. It forwards canonical provisioning and Actor-selection
+    /// requests; it does not own Player, Slot or Activity state.
     /// </summary>
     [FrameworkApiStatus(
         FrameworkApiStatus.Experimental,
@@ -28,5 +29,20 @@ namespace Immersive.Framework.PlayerParticipation
         LocalPlayerJoinResult RequestJoin(LocalPlayerJoinRequest request);
 
         SessionPlayerLeaveResult RequestLeave(SessionPlayerLeaveRequest request);
+
+        PlayerActorSelectionResult RequestSelectActorProfile(
+            PlayerActorSelectionRequest request);
+
+        PlayerActorSelectionResult RequestSelectDefaultActor(
+            PlayerSlotId playerSlotId,
+            int expectedSelectionRevision,
+            string source,
+            string reason);
+
+        PlayerActorSelectionResult RequestReplaceActorSelection(
+            PlayerActorSelectionRequest request);
+
+        PlayerActorSelectionResult RequestClearActorSelection(
+            PlayerActorSelectionRequest request);
     }
 }

@@ -114,7 +114,7 @@ namespace Immersive.Framework.PlayerParticipation
         {
             return result != null
                 ? result.ToDiagnosticString()
-                : "Default Actor selection returned no typed result.";
+                : "Actor selection returned no typed result.";
         }
 
         protected static string Describe(SessionPlayerLeaveResult result)

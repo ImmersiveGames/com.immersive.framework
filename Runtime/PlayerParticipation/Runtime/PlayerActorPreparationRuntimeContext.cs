@@ -1443,7 +1443,9 @@ namespace Immersive.Framework.PlayerParticipation
 
         private bool HasPreparedOrFailedRecord(PlayerSlotId playerSlotId)
         {
-            return playerSlotId.IsValid && _records.ContainsKey(playerSlotId);
+            return playerSlotId.IsValid &&
+                (_records.ContainsKey(playerSlotId) ||
+                    HasRetainedReleaseFailure(playerSlotId));
         }
 
         private PlayerActorSelectionResult CreatePreparedSelectionRejection(

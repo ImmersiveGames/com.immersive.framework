@@ -1,4 +1,3 @@
-using System;
 using Immersive.Framework.PlayerParticipation;
 using Immersive.Framework.PlayerSlots;
 
@@ -6,76 +5,26 @@ namespace Immersive.Framework.ApplicationLifecycle
 {
     internal sealed partial class FrameworkRuntimeHost : IPlayerActorSelectionRuntimePort
     {
-        private LocalPlayerActorSelectionRequestAuthoringBinderResult
-            BindLocalPlayerActorSelectionRequests()
-        {
-            if (_globalUiSceneRuntime == null)
-            {
-                return LocalPlayerActorSelectionRequestAuthoringBinderResult.Rejected(
-                    "RejectedMissingGlobalUiRuntime",
-                    "Local Player Actor Selection Request binding requires the initialized UIGlobal runtime.",
-                    0,
-                    0,
-                    0,
-                    0,
-                    0);
-            }
-
-            IPlayerActorSelectionRuntimePort selectionRuntime = this;
-            LocalPlayerActorSelectionRequestAuthoringBinderResult result =
-                _globalUiSceneRuntime.TryBindLocalPlayerActorSelectionRequests(
-                    selectionRuntime);
-            if (result.Succeeded && result.Status == "OptionalAbsent")
-            {
-                _logger?.Debug(result.Message);
-            }
-            else if (result.Succeeded)
-            {
-                _logger?.Info(result.Message);
-            }
-            else
-            {
-                _logger?.Error(result.Message);
-            }
-
-            return result;
-        }
-
-        private LocalPlayerActorSelectionRequestAuthoringReleaseResult
-            ReleaseLocalPlayerActorSelectionRequests(string reason)
-        {
-            if (_globalUiSceneRuntime == null)
-            {
-                return LocalPlayerActorSelectionRequestAuthoringReleaseResult
-                    .OptionalAbsent(0);
-            }
-
-            IPlayerActorSelectionRuntimePort selectionRuntime = this;
-            LocalPlayerActorSelectionRequestAuthoringReleaseResult result =
-                _globalUiSceneRuntime.TryReleaseLocalPlayerActorSelectionRequests(
-                    selectionRuntime);
-            string diagnostic =
-                $"{result.Message} reason='{(string.IsNullOrWhiteSpace(reason) ? "unspecified" : reason.Trim())}'.";
-            if (result.Succeeded && result.Status == "OptionalAbsent")
-            {
-                _logger?.Debug(diagnostic);
-            }
-            else if (result.Succeeded)
-            {
-                _logger?.Info(diagnostic);
-            }
-            else
-            {
-                _logger?.Error(diagnostic);
-            }
-
-            return result;
-        }
-
         bool IPlayerActorSelectionRuntimePort.TryValidatePlayerActorSelectionRuntime(
             out string issue)
         {
             return TryResolvePlayerActorSelectionRuntime(out _, out issue);
+        }
+
+        PlayerActorSelectionResult IPlayerActorSelectionRuntimePort.TrySelectActorProfile(
+            PlayerActorSelectionRequest request)
+        {
+            if (!TryResolvePlayerActorSelectionRuntime(
+                    out PlayerActorPreparationRuntimeHostModule preparationRuntime,
+                    out string issue))
+            {
+                return PlayerActorSelectionResult.RuntimeUnavailable(
+                    "SelectActorProfile",
+                    request,
+                    issue);
+            }
+
+            return preparationRuntime.TrySelectActorProfile(request);
         }
 
         PlayerActorSelectionResult IPlayerActorSelectionRuntimePort.TrySelectDefaultActor(
@@ -105,6 +54,38 @@ namespace Immersive.Framework.ApplicationLifecycle
                 expectedSelectionRevision,
                 source,
                 reason);
+        }
+
+        PlayerActorSelectionResult IPlayerActorSelectionRuntimePort.TryReplaceActorSelection(
+            PlayerActorSelectionRequest request)
+        {
+            if (!TryResolvePlayerActorSelectionRuntime(
+                    out PlayerActorPreparationRuntimeHostModule preparationRuntime,
+                    out string issue))
+            {
+                return PlayerActorSelectionResult.RuntimeUnavailable(
+                    "ReplaceActorSelection",
+                    request,
+                    issue);
+            }
+
+            return preparationRuntime.TryReplaceActorSelection(request);
+        }
+
+        PlayerActorSelectionResult IPlayerActorSelectionRuntimePort.TryClearActorSelection(
+            PlayerActorSelectionRequest request)
+        {
+            if (!TryResolvePlayerActorSelectionRuntime(
+                    out PlayerActorPreparationRuntimeHostModule preparationRuntime,
+                    out string issue))
+            {
+                return PlayerActorSelectionResult.RuntimeUnavailable(
+                    "ClearActorSelection",
+                    request,
+                    issue);
+            }
+
+            return preparationRuntime.TryClearActorSelection(request);
         }
 
         private bool TryResolvePlayerActorSelectionRuntime(

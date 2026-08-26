@@ -1,5 +1,6 @@
 using System;
 using Immersive.Framework.ApiStatus;
+using Immersive.Framework.PlayerSlots;
 using Immersive.Framework.RuntimeContent;
 using UnityEngine;
 using UnityEngine.InputSystem;
@@ -246,6 +247,62 @@ namespace Immersive.Framework.PlayerParticipation
             return RuntimeReady
                 ? _runtimeModule.TryLeave(request)
                 : SessionPlayerLeaveResult.RuntimeUnavailable(
+                    request,
+                    RuntimeDiagnostic);
+        }
+
+        internal PlayerActorSelectionResult RequestSelectActorProfile(
+            PlayerActorSelectionRequest request)
+        {
+            return RuntimeReady
+                ? _runtimeModule.TrySelectActorProfile(request)
+                : PlayerActorSelectionResult.RuntimeUnavailable(
+                    "SelectActorProfile",
+                    request,
+                    RuntimeDiagnostic);
+        }
+
+        internal PlayerActorSelectionResult RequestSelectDefaultActor(
+            PlayerSlotId playerSlotId,
+            int expectedSelectionRevision,
+            string source,
+            string reason)
+        {
+            return RuntimeReady
+                ? _runtimeModule.TrySelectDefaultActor(
+                    playerSlotId,
+                    expectedSelectionRevision,
+                    source,
+                    reason)
+                : PlayerActorSelectionResult.RuntimeUnavailable(
+                    "SelectDefaultActor",
+                    new PlayerActorSelectionRequest(
+                        playerSlotId,
+                        null,
+                        source,
+                        reason,
+                        expectedSelectionRevision),
+                    RuntimeDiagnostic);
+        }
+
+        internal PlayerActorSelectionResult RequestReplaceActorSelection(
+            PlayerActorSelectionRequest request)
+        {
+            return RuntimeReady
+                ? _runtimeModule.TryReplaceActorSelection(request)
+                : PlayerActorSelectionResult.RuntimeUnavailable(
+                    "ReplaceActorSelection",
+                    request,
+                    RuntimeDiagnostic);
+        }
+
+        internal PlayerActorSelectionResult RequestClearActorSelection(
+            PlayerActorSelectionRequest request)
+        {
+            return RuntimeReady
+                ? _runtimeModule.TryClearActorSelection(request)
+                : PlayerActorSelectionResult.RuntimeUnavailable(
+                    "ClearActorSelection",
                     request,
                     RuntimeDiagnostic);
         }

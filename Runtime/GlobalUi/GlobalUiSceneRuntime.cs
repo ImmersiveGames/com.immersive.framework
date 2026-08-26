@@ -157,24 +157,6 @@ namespace Immersive.Framework.GlobalUi
                 activityRestartRuntime);
         }
 
-        internal LocalPlayerActorSelectionRequestAuthoringBinderResult
-            TryBindLocalPlayerActorSelectionRequests(
-                IPlayerActorSelectionRuntimePort selectionRuntime)
-        {
-            return LocalPlayerActorSelectionRequestAuthoringBinder.TryBind(
-                _persistedRoots,
-                selectionRuntime);
-        }
-
-        internal LocalPlayerActorSelectionRequestAuthoringReleaseResult
-            TryReleaseLocalPlayerActorSelectionRequests(
-                IPlayerActorSelectionRuntimePort selectionRuntime)
-        {
-            return LocalPlayerActorSelectionRequestAuthoringBinder.TryRelease(
-                _persistedRoots,
-                selectionRuntime);
-        }
-
         internal int AttachActivityEntryCompletionReceivers(
             GameFlowRuntime gameFlowRuntime)
         {
