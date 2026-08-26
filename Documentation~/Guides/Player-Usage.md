@@ -1,11 +1,15 @@
 # Player Usage
 
-Status: **Accepted current Player baseline + current product authoring**  
+Status: **Accepted Stage B Player baseline + current Player product authoring**  
 Last updated: **2026-08-25**  
 Decision sources: IF-ADR-003, IF-ADR-007, IF-ADR-012, IF-ADR-015, IF-ADR-016, IF-ADR-019, IF-ADR-020, IF-ADR-021  
 Product-authoring record: [Scene-Provided Local Player Product Composition — 2026-08-17](../Architecture/Reconciliation/IMMERSIVE-FRAMEWORK-SCENE-PROVIDED-LOCAL-PLAYER-PRODUCT-COMPOSITION-2026-08-17.md)  
 Player Session public-surface record: [IF-ADR-015A — Player Session Observer and Explicit Command Surfaces — 2026-08-25](../Architecture/Reconciliation/IF-ADR-015A-Player-Session-Observer-and-Explicit-Command-Surfaces-2026-08-25.md)  
 Current delivery authority: [IF-TRACK — Immersive Framework](../Architecture/Tracking/IF-TRACK-Framework.md)
+
+> This guide describes the currently accepted Player path. Proposed command
+> extensions such as exact-Slot Join and arbitrary Actor Selection remain governed
+> by IF-ADR-015 and the current Tracker until their public contracts are implemented.
 
 ## 1. Product model
 
@@ -22,11 +26,8 @@ Activity Player participation policy
   which configured Players participate in the current Activity
   exact readiness level required by that Activity
 
-Scene Player
-  technical local Host already authored in a Scene
-
-Player Provisioning
-  Session-authorized authority that can create Local Player Hosts
+Scene-Provided Local Player
+  technical local Host product composition
 
 ActorProfile
   exact Logical Player prefab authority
@@ -39,7 +40,7 @@ Logical Player
 A Local Player product is a composition of existing authorities. It is not a new global
 Player manager or runtime service.
 
-## 2. Scene Player — canonical creation path
+## 2. Scene-Provided Local Player — canonical creation path
 
 For a Scene-Provided local Player using Unity Input, use the official Editor action:
 
@@ -47,17 +48,21 @@ For a Scene-Provided local Player using Unity Input, use the official Editor act
 GameObject
   > Immersive Framework
     > Player
-      > Scene
-        > Create Local Player
+      > Create Scene-Provided Local Player
 ```
 
-The action creates the deterministic technical Host shape used by the Scene Player path.
-Project-specific Slot, Actor and Input intent must still be authored explicitly.
-
-Typical composition:
+Package implementation:
 
 ```text
-Scene Player
+ImmersiveGames/com.immersive.framework
+5c9dab5661c95cf712d8cfce124a5d730d0dd1f1
+feat(player): replace development creator with canonical local player tool
+```
+
+The action creates this deterministic technical shape:
+
+```text
+Scene-Provided Local Player
 ├─ PlayerInput
 ├─ LocalPlayerHostAuthoring
 ├─ SceneLocalPlayerAdmissionAuthoring
@@ -65,10 +70,25 @@ Scene Player
 └─ ActorMount
 ```
 
+The action wires:
+
+```text
+LocalPlayerHostAuthoring.playerInput
+  -> same-root PlayerInput
+
+LocalPlayerHostAuthoring.actorMount
+  -> ActorMount
+
+UnityPlayerInputGateAdapter.playerInput
+  -> same-root PlayerInput
+```
+
 The operation is Editor-owned and Undo-aware. It does not start runtime admission or
 gameplay.
 
 ## 3. Configure explicit consumer intent
+
+The Create action intentionally leaves project-specific intent unassigned.
 
 Configure the exact project values after creation:
 
@@ -83,34 +103,76 @@ SceneLocalPlayerAdmissionAuthoring
   Player Slot Profile
   Actor Profile
   Admission Timing
-  Initial Placement policy when applicable
+  Initial Placement policy available in the accepted component surface
 ```
 
-Do not treat a particular action map, Input Action Asset, Slot or Actor Profile as a
-Framework default.
+Do not treat the action map name `Player`, a particular Input Action Asset, a Slot or an
+Actor Profile as a framework default.
 
-## 4. Local Player Host prefab and Logical Player prefab are different assets
+The canonical creator clears the legacy hidden gameplay-map name hint. Assigning an
+`InputActionAsset` later therefore does not implicitly select a Gameplay Action Map.
 
-The technical Local Player Host and the Logical Player representation are different
-assets and different authorities.
+## 4. Local Player prefab and Logical Player prefab are different assets
+
+FIRSTGAME Sample 00 now proves the intended asset separation.
+
+Current consumer evidence:
 
 ```text
-Local Player Host prefab
-  PlayerInput / Host / Actor Mount / technical admission evidence
+ImmersiveGames/planet-devourer
+facb6e2d9b763b7200e670a029c06100505d7c06
+Prefab localPlayer
+```
 
-Logical Player prefab
+The Sample uses two distinct prefab roles:
+
+```text
+Scene-Provided Local Player.prefab
+  technical Host product composition
+
+Scene-Provided Logical Player.prefab
   ActorProfile.LogicalActorHostPrefab
   gameplay / Actor representation
 ```
 
-`ActorProfile.LogicalActorHostPrefab` remains the single authored prefab authority for
-the Logical Player.
+The scene composes them as:
 
-`PlayerInput` belongs to the Local Player Host, not to the Logical Player prefab.
+```text
+Scene-Provided Local Player [prefab instance]
+└─ ActorMount
+   └─ Scene-Provided Logical Player [prefab instance]
+```
+
+`SceneLocalPlayerAdmissionAuthoring.sceneLogicalPlayerActor` must resolve to the exact
+`PlayerActorDeclaration` of that scene Logical Player instance.
+
+The two prefab names describe different responsibilities. Do not collapse them into one
+asset authority.
+
+### Reusable technical Local Player prefab
+
+A consumer may save a configured Local Player as a project prefab, as FIRSTGAME does.
+A future package-neutral prefab/template should instead preserve the reusable technical
+shape and leave project-specific intent empty.
+
+A neutral package product must not invent:
+
+```text
+Player Slot Profile
+Actor Profile
+InputActionAsset
+Gameplay Action Map
+Logical Player prefab
+```
+
+The official Create action remains the current canonical package creation path.
 
 ## 5. ActorProfile owns the Logical Player prefab
 
-Typical gameplay-owned Logical Player contents may include:
+`ActorProfile.LogicalActorHostPrefab` is the single authored prefab authority for the
+Logical Player.
+
+Typical gameplay-owned contents may include:
 
 ```text
 PlayerActorDeclaration
@@ -121,11 +183,29 @@ CameraMount or other gameplay-owned mounts
 representation objects
 ```
 
-Materialization remains fail-closed. Matching authored content may be preserved; missing
-required content may be materialized only through its accepted authoring path; conflicting
-consumer content must not be silently absorbed or replaced.
+`PlayerInput` does **not** belong on the Logical Player prefab. It belongs to the Local
+Player Host.
 
-## 6. Scene Player admission timing
+The existing Scene-Provided Actor `Apply / Rebuild` path may materialize or preserve the
+exact `ActorProfile.LogicalActorHostPrefab` instance under `ActorMount` and bind its
+`PlayerActorDeclaration`. That utility is Actor materialization/evidence tooling; it is
+not the owner of the complete Local Player product composition.
+
+Materialization remains fail-closed:
+
+```text
+Actor missing
+  -> materialize the exact ActorProfile prefab when the authoring path permits it
+
+matching Actor present
+  -> preserve and bind it
+
+mismatched / unpacked / conflicting Actor content
+  -> reject explicitly
+  -> do not silently replace consumer content
+```
+
+## 6. Scene-Provided admission timing
 
 `SceneLocalPlayerAdmissionAuthoring` defaults to:
 
@@ -134,12 +214,18 @@ OnActivityEnter
 ```
 
 For this path, automatic Scene-Provided admission is owned by the Activity lifecycle.
-Do not add a manual Join merely to make an ordinary Scene Player Activity entry work.
+Do not add a manual Join merely to make an ordinary Scene-Provided Activity entry work.
+
+The accepted baseline also distinguishes the dedicated Scene-Provided lifecycle path
+from dynamic/command Join policy. A closed general Joining posture is not, by itself,
+evidence that the dedicated Scene-Provided admission path should be bypassed.
 
 ## 7. Activity Player readiness level
 
 The authored Activity requirement is the exact Player lifecycle boundary required by
 that Activity.
+
+Current ordered levels are:
 
 ```text
 None
@@ -155,14 +241,30 @@ The important boundary is:
 LogicalActorsPrepared != GameplayReady
 ```
 
-If Activity gameplay code consumes current gameplay input/camera authority, author
-`GameplayReady` explicitly. Do not auto-promote readiness because a consumer happens to
-need a higher level.
+`LogicalActorsPrepared` means the current Logical Actor preparation requirement has been
+satisfied. It does not imply that current gameplay input/camera admission and consumer
+bindings exist.
+
+If Activity gameplay code consumes the current gameplay-input surface, request:
+
+```text
+GameplayReady
+```
+
+FIRSTGAME Sample 00 demonstrated this directly: authoring at
+`LogicalActorsPrepared` (`30`) legitimately produced no current gameplay binding;
+changing the Activity requirement to `GameplayReady` (`40`) caused the lifecycle to
+enter the gameplay admission/input/camera chain.
+
+Do not auto-promote readiness because a consumer happens to require a higher level.
+Activity intent must remain explicit.
 
 ## 8. Gameplay input consumption
 
 Gameplay-owned Logical Player code consumes the public current-gameplay surface rather
 than reading the Host's `PlayerInput` directly.
+
+Canonical consumer shape:
 
 ```text
 PlayerGameplayInputConsumerBinding
@@ -174,30 +276,44 @@ PlayerGameplayInputConsumerBinding
 `InputActionReference` identifies authored intent. The live value comes from the exact
 current runtime Player occurrence/binding.
 
-Do not bypass that contract with direct `InputActionReference.action.ReadValue<T>()`,
-scene scans, hierarchy guesses, names, tags or reflection.
+Gameplay code must not use the authored reference as a bypass such as:
+
+```text
+inputActionReference.action.ReadValue<T>()
+```
+
+and must not resolve a `PlayerInput` through scene scans, hierarchy guesses, names,
+tags, reflection or another fallback channel.
+
+When `GameplayReady == false`, gameplay consumers remain unavailable and should fail
+closed.
 
 ## 9. Unity Input Gate requirement
 
-For a Scene Player using Unity Input and an Activity requiring `GameplayReady`, the
-stable Local Player Host requires the canonical Unity Input Gate endpoint:
+For a Scene-Provided Local Player using Unity Input and an Activity requiring
+`GameplayReady`, the stable Local Player Host requires the canonical Unity Input Gate
+endpoint:
 
 ```text
 UnityPlayerInputGateAdapter
 ```
 
-It targets the same Host `PlayerInput` and carries the exact authored Gameplay Action Map
-intent.
+It targets the same Host `PlayerInput` and carries the exact authored Gameplay Action
+Map intent.
 
-## 10. Player Provisioning baseline
+This is why the canonical Create action includes the Gate adapter. Consumers should not
+have to infer this runtime prerequisite from framework internals.
 
-Player Provisioning and Scene Player are separate product compositions over the two
-Host Provisioning modes. Do not silently fall back from one to the other.
+## 10. Manager-Provisioned baseline
 
-For Manager-Provisioned flows, use the public Session/provisioning surfaces rather than
-copying the Scene Player object composition and reinterpreting it as provisioning.
+Manager-Provisioned and Scene-Provided are separate provisioning paths. Do not silently
+fallback from one to the other.
 
-The current explicit control surfaces are:
+For Manager-Provisioned flows, use the public provisioning/session surfaces defined by
+the accepted Player baseline. Do not copy the Scene-Provided scene-object composition
+and reinterpret it as Manager provisioning.
+
+The current explicit Player Session command components are:
 
 ```text
 PlayerSessionOpenJoiningCommandTrigger
@@ -207,8 +323,13 @@ PlayerSessionDefaultActorSelectionCommandTrigger
 PlayerSessionLeaveCommandTrigger
 ```
 
-Each component represents one command and owns only its own typed result evidence.
-There is no generic serialized command enum in the current product surface.
+Each component represents one request and owns only its own typed result. The former
+generic `PlayerSessionCommandTrigger` + `PlayerProvisioningCommandOperation` authoring
+model is superseded.
+
+Proposed exact-Slot Join and arbitrary Actor-selection commands remain separate extension
+scope; do not infer those capabilities from the existence of the current Join or Default
+Actor Selection components.
 
 ## 11. Diagnostics and fail-closed behavior
 
@@ -216,17 +337,29 @@ Useful diagnostics distinguish at least:
 
 ```text
 Activity Player requirement level
+Scene-Provided admission state
 exact Player Slot identity
 Actor Profile / exact Logical Player instance
 Local Player Host / PlayerInput evidence
-current scoped consumer binding
+Unity Input Gate endpoint
 current gameplay binding
 GameplayReady
-command outcome / diagnostic when a command was invoked
+binding revision / diagnostic
 ```
 
-If a scoped consumer has not yet bound, command invocation fails explicitly. Do not
-search globally for another Session or fabricate availability.
+For `PlayerGameplayInputConsumerBinding` in the current implementation:
+
+```text
+BindingRevision == 0
+```
+
+means that instance has not yet committed a runtime gameplay binding. Combined with
+`GameplayReady == false`, this is compatible with an Activity intentionally stopping at
+`LogicalActorsPrepared`; it is not by itself a package regression.
+
+If an Activity explicitly requires `GameplayReady` and the lifecycle still fails, use
+the first exact lifecycle/readiness prerequisite failure as the diagnostic boundary.
+Do not patch locomotion or fabricate readiness to hide that failure.
 
 ## 12. Player Session public surfaces
 
@@ -237,36 +370,17 @@ PlayerSessionObserver = read
 explicit Player Session Command Trigger = request/change
 ```
 
-### PlayerSessionObserver
+`PlayerSessionObserver` is read-only. It is appropriate for Hub, UI,
+presentation, other scenes than the physically materialized Player, and any
+consumer that must consult the current Player Session without locating a
+Player GameObject. It exposes only the published scoped observation and its
+derived presentation labels; it never executes commands or owns Player truth.
 
-`PlayerSessionObserver` is read-only. Use it when Hub, UI, presentation or another scene
-needs current Player Session information without locating the physically materialized
-Player GameObject.
+The former `PlayerSessionStatus` name was replaced by `PlayerSessionObserver` to make
+that read-only, cross-scene usage explicit. The Observer does not aggregate command
+results.
 
-Conceptually:
-
-```text
-Player Session authority
-        ↓
-scoped public observation
-        ↓
-PlayerSessionObserver
-        ↓
-Hub / UI / presentation / other scene
-```
-
-The Observer may expose published Session, Slot, Actor, preparation/materialization,
-gameplay-admission and Activity-occurrence evidence. It does not execute commands and
-does not own Player truth.
-
-The older `PlayerSessionStatus` name was replaced by `PlayerSessionObserver` so the
-component's cross-scene/read-only purpose is explicit.
-
-The Observer does not aggregate command results.
-
-### Explicit command components
-
-Use the component matching the requested operation:
+Commands are separate explicit components:
 
 ```text
 Open Joining
@@ -285,16 +399,15 @@ Leave
   -> PlayerSessionLeaveCommandTrigger.Invoke()
 ```
 
-The command component may live on a Button/control object or another explicit consumer.
-It uses the same scoped consumer access boundary as the Observer, but it is independent
-from the Observer.
+Assign the component matching the requested operation to a UnityEvent and invoke it
+explicitly. Each trigger owns only its own typed result.
 
-### Example Hub composition
+Example Hub composition:
 
 ```text
 Hub Scene
 ├─ PlayerSessionObserver
-│    read-only Session presentation
+│    read-only Session / Slot / Actor presentation
 │
 ├─ Join Button
 │    └─ PlayerSessionJoinCommandTrigger.Invoke()
@@ -303,86 +416,54 @@ Hub Scene
      └─ PlayerSessionLeaveCommandTrigger.Invoke()
 ```
 
-Rules:
+The Observer is not required for Join/Leave. Compose observation and commands
+independently according to consumer intent.
 
-```text
-need only observation
-  -> use PlayerSessionObserver
+### Deferred command-surface readiness
 
-need only a request
-  -> use the matching explicit command component
-
-need both
-  -> compose them independently
-```
-
-The Hub does not need a reference to the physical Player.
-
-## 13. Command Inspector contract
-
-The command and Observer Inspectors follow IF-ADR-010.
-
-Normal surface:
-
-```text
-Scope
-command-specific authored intent when applicable
-Validation
-Advanced / Debug
-```
-
-`Reason`, optimistic revisions, Leave occurrence correlation, detailed result evidence
-and manual Play Mode `Invoke` testing belong under `Advanced / Debug`.
-
-There is no Apply/Rebuild operation for these components.
-
-Validation is explicit and should not be treated as a hidden full-validation pass on
-every Inspector repaint.
-
-## 14. Deferred command-surface readiness follow-up
-
-A current Player Provisioning consumer run exposed a timing window where UI interaction
-can occur before scoped command access has bound:
+A current Manager-Provisioned consumer run exposed a non-blocking timing window:
 
 ```text
 first Join
   -> bindingStatus = Unbound
   -> RejectedRuntimeUnavailable
 
-binding completes
+scoped access binds
 
 subsequent Join
   -> bindingStatus = Bound
   -> SucceededJoined
 ```
 
-This is recorded as **PLAYER-COMMAND-SURFACE-READINESS / DEFERRED**.
+This is recorded as `PLAYER-COMMAND-SURFACE-READINESS / DEFERRED`. A future cut should
+make command availability distinguishable before normal interaction is enabled without
+adding global lookup, alternate Session authority or hidden fallback.
 
-It is not a reason to add global fallback or another authority. A future cut should make
-command availability distinguishable before normal interaction is enabled.
-
-## 15. Anti-patterns
+## 13. Anti-patterns
 
 Do not add:
 
 - direct `PlayerInput` reads from Logical Player gameplay code;
 - `InputActionReference.action.ReadValue<T>()` as a live-runtime bypass;
 - `PlayerInput` on the Logical Player prefab;
-- manual Join to compensate for ordinary `OnActivityEnter` Scene Player admission;
-- automatic readiness promotion;
+- manual Join to compensate for ordinary `OnActivityEnter` Scene-Provided admission;
+- automatic readiness promotion from `LogicalActorsPrepared` to `GameplayReady`;
 - hidden default Gameplay Action Map selection;
 - global Player manager/service locator;
 - scene scans or hierarchy/name/tag lookup as authority;
 - silent fallback between provisioning modes;
 - a second Logical Player prefab authority outside `ActorProfile`;
-- a second mutable Player Session state store in `PlayerSessionObserver`;
-- a generic enum-driven Player Session command MonoBehaviour that changes semantic identity by enum selection.
+- a Local Player prefab that silently bakes project-specific Slot / Actor / Input intent
+  and presents those values as framework defaults;
+- a mutable second Player Session state store inside `PlayerSessionObserver`;
+- one enum-driven command MonoBehaviour whose serialized operation changes its complete semantic identity.
 
-## 16. Future Player expansions
+## 14. Future Player expansions
 
-The current Tracker is authoritative for delivery status beyond the implemented surface.
+The current Tracker is authoritative for delivery status beyond this accepted Player
+path.
 
 Proposed exact-Slot Join and arbitrary Actor-selection commands remain separate from the
 current explicit command set until their public contracts are implemented and promoted.
-Do not infer their availability from the existence of `PlayerSessionJoinCommandTrigger`
-or `PlayerSessionDefaultActorSelectionCommandTrigger`.
+Do not infer their availability from `PlayerSessionJoinCommandTrigger` or
+`PlayerSessionDefaultActorSelectionCommandTrigger`.
