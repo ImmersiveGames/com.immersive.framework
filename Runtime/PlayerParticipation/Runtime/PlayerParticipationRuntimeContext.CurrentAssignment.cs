@@ -351,6 +351,7 @@ namespace Immersive.Framework.PlayerParticipation
                     default);
             }
 
+            PlayerSlotRuntimeSnapshot previousSlot = CreateSlotSnapshot(slot);
             bool actorSelectionCleared = slot.SelectedActorProfile != null;
             if (actorSelectionCleared)
             {
@@ -358,7 +359,8 @@ namespace Immersive.Framework.PlayerParticipation
                     slot,
                     null,
                     resolvedSource,
-                    resolvedReason);
+                    resolvedReason,
+                    false);
             }
 
             slot.AllocationState = PlayerSlotAllocationState.Available;
@@ -367,6 +369,13 @@ namespace Immersive.Framework.PlayerParticipation
             slot.Source = resolvedSource;
             slot.Reason = resolvedReason;
             _revision++;
+            PlayerSlotRuntimeSnapshot currentSlot = CreateSlotSnapshot(slot);
+            if (actorSelectionCleared)
+            {
+                PublishActorSelectionChange(previousSlot, currentSlot);
+            }
+
+            PublishSlotAllocationChange(previousSlot, currentSlot);
             return CreateResult(
                 PlayerParticipationOperationStatus.Succeeded,
                 "AbandonJoinedSlotAfterAssignmentFailure",
@@ -376,7 +385,7 @@ namespace Immersive.Framework.PlayerParticipation
                     ? "Persistent Actor selection cleared and Joined Slot admission rolled back after assignment failure."
                     : "Joined Slot admission rolled back after assignment failure.",
                 previousRevision,
-                CreateSlotSnapshot(slot),
+                currentSlot,
                 default);
         }
 
@@ -412,11 +421,14 @@ namespace Immersive.Framework.PlayerParticipation
                     default);
             }
 
+            PlayerSlotRuntimeSnapshot previousSlot = CreateSlotSnapshot(slot);
             slot.AllocationState = PlayerSlotAllocationState.Joined;
             slot.Revision++;
             slot.Source = resolvedSource;
             slot.Reason = resolvedReason;
             _revision++;
+            PlayerSlotRuntimeSnapshot currentSlot = CreateSlotSnapshot(slot);
+            PublishSlotAllocationChange(previousSlot, currentSlot);
             return CreateResult(
                 PlayerParticipationOperationStatus.Succeeded,
                 "RestoreJoinedSlotAfterAssignmentReleaseFailure",
@@ -424,7 +436,7 @@ namespace Immersive.Framework.PlayerParticipation
                 resolvedReason,
                 "Scene Slot restored to Joined after assignment release failure.",
                 previousRevision,
-                CreateSlotSnapshot(slot),
+                currentSlot,
                 default);
         }
 

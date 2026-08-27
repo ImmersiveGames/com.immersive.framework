@@ -9,6 +9,13 @@ namespace Immersive.Framework.Editor.PlayerParticipation
     internal sealed class PlayerSessionObserverEditor : UnityEditor.Editor
     {
         private SerializedProperty _scope;
+        private SerializedProperty _onJoiningOpened;
+        private SerializedProperty _onJoiningClosed;
+        private SerializedProperty _onPlayerJoined;
+        private SerializedProperty _onPlayerLeft;
+        private SerializedProperty _onActorSelected;
+        private SerializedProperty _onActorChanged;
+        private SerializedProperty _onActorCleared;
         private bool _hasValidation;
         private bool _validationIsValid;
         private bool _validationOutdated;
@@ -23,6 +30,13 @@ namespace Immersive.Framework.Editor.PlayerParticipation
             }
 
             _scope = serializedObject.FindProperty("scope");
+            _onJoiningOpened = serializedObject.FindProperty("onJoiningOpened");
+            _onJoiningClosed = serializedObject.FindProperty("onJoiningClosed");
+            _onPlayerJoined = serializedObject.FindProperty("onPlayerJoined");
+            _onPlayerLeft = serializedObject.FindProperty("onPlayerLeft");
+            _onActorSelected = serializedObject.FindProperty("onActorSelected");
+            _onActorChanged = serializedObject.FindProperty("onActorChanged");
+            _onActorCleared = serializedObject.FindProperty("onActorCleared");
         }
 
         public override void OnInspectorGUI()
@@ -46,6 +60,8 @@ namespace Immersive.Framework.Editor.PlayerParticipation
                     "Scope",
                     "Explicit Route or Activity scope for this read-only observer. Framework Core supplies scoped access directly at runtime."));
 
+            DrawEvents();
+
             DrawValidation(observer);
 
             if (Application.isPlaying && targets.Length == 1)
@@ -66,6 +82,46 @@ namespace Immersive.Framework.Editor.PlayerParticipation
             }
 
             serializedObject.ApplyModifiedProperties();
+        }
+
+        private void DrawEvents()
+        {
+            FrameworkAuthoringInspectorGui.Section("Events");
+            EditorGUILayout.LabelField("Joining", EditorStyles.miniBoldLabel);
+            using (new EditorGUI.IndentLevelScope())
+            {
+                EditorGUILayout.PropertyField(
+                    _onJoiningOpened,
+                    new GUIContent("On Joining Opened"));
+                EditorGUILayout.PropertyField(
+                    _onJoiningClosed,
+                    new GUIContent("On Joining Closed"));
+            }
+
+            EditorGUILayout.LabelField("Player", EditorStyles.miniBoldLabel);
+            using (new EditorGUI.IndentLevelScope())
+            {
+                EditorGUILayout.PropertyField(
+                    _onPlayerJoined,
+                    new GUIContent("On Player Joined"));
+                EditorGUILayout.PropertyField(
+                    _onPlayerLeft,
+                    new GUIContent("On Player Left"));
+            }
+
+            EditorGUILayout.LabelField("Actor", EditorStyles.miniBoldLabel);
+            using (new EditorGUI.IndentLevelScope())
+            {
+                EditorGUILayout.PropertyField(
+                    _onActorSelected,
+                    new GUIContent("On Actor Selected"));
+                EditorGUILayout.PropertyField(
+                    _onActorChanged,
+                    new GUIContent("On Actor Changed"));
+                EditorGUILayout.PropertyField(
+                    _onActorCleared,
+                    new GUIContent("On Actor Cleared"));
+            }
         }
 
         private void DrawValidation(PlayerSessionObserver observer)

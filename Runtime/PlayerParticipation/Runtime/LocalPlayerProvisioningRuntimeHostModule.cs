@@ -787,12 +787,12 @@ namespace Immersive.Framework.PlayerParticipation
             }
 
             PlayerParticipationSnapshot before = _participationContext.CreateSnapshot();
-            PlayerParticipationOperationResult result =
-                _participationContext.TryOpenJoining(source, reason);
-            if (!result.Completed || !result.Snapshot.JoiningOpen)
+            if (before.JoiningOpen)
             {
-                _diagnostic = result.ToDiagnosticString();
-                return result;
+                PlayerParticipationOperationResult noChangeResult =
+                    _participationContext.TryOpenJoining(source, reason);
+                _diagnostic = noChangeResult.ToDiagnosticString();
+                return noChangeResult;
             }
 
             PlayerInputManager manager = _authoring != null
@@ -800,26 +800,20 @@ namespace Immersive.Framework.PlayerParticipation
                 : null;
             if (manager == null || !manager.isActiveAndEnabled)
             {
-                PlayerParticipationOperationResult rollback =
-                    _participationContext.TryCloseJoining(
-                        nameof(LocalPlayerProvisioningRuntimeHostModule),
-                        "technical-joining-gate-unavailable");
-                PlayerParticipationSnapshot afterRollback = _participationContext.CreateSnapshot();
                 string message = manager == null
-                    ? "PlayerInputManager is missing after logical joining was opened."
-                    : $"PlayerInputManager '{manager.name}' is not active and enabled after logical joining was opened.";
+                    ? "PlayerInputManager is missing; logical joining was not opened."
+                    : $"PlayerInputManager '{manager.name}' is not active and enabled; logical joining was not opened.";
                 var failed = new PlayerParticipationOperationResult(
                     PlayerParticipationOperationStatus.FailedInvalidConfiguration,
                     "OpenJoining",
                     source.NormalizeTextOrFallback(nameof(LocalPlayerProvisioningRuntimeHostModule)),
                     reason.NormalizeTextOrFallback("technical-joining-gate-unavailable"),
-                    message + " Logical joining rollback status='" +
-                        (rollback != null ? rollback.Status.ToString() : "Missing") + "'.",
+                    message,
                     before.Revision,
-                    afterRollback.Revision,
+                    before.Revision,
                     default,
                     default,
-                    afterRollback);
+                    before);
                 _diagnostic = failed.ToDiagnosticString();
                 return failed;
             }
@@ -827,28 +821,24 @@ namespace Immersive.Framework.PlayerParticipation
             manager.EnableJoining();
             if (!manager.joiningEnabled)
             {
-                PlayerParticipationOperationResult rollback =
-                    _participationContext.TryCloseJoining(
-                        nameof(LocalPlayerProvisioningRuntimeHostModule),
-                        "technical-joining-gate-enable-failed");
-                PlayerParticipationSnapshot afterRollback = _participationContext.CreateSnapshot();
                 var failed = new PlayerParticipationOperationResult(
                     PlayerParticipationOperationStatus.FailedInvalidConfiguration,
                     "OpenJoining",
                     source.NormalizeTextOrFallback(nameof(LocalPlayerProvisioningRuntimeHostModule)),
                     reason.NormalizeTextOrFallback("technical-joining-gate-enable-failed"),
                     $"PlayerInputManager '{manager.name}' did not enable its technical joining gate. " +
-                        "Logical joining rollback status='" +
-                        (rollback != null ? rollback.Status.ToString() : "Missing") + "'.",
+                        "Logical joining was not opened.",
                     before.Revision,
-                    afterRollback.Revision,
+                    before.Revision,
                     default,
                     default,
-                    afterRollback);
+                    before);
                 _diagnostic = failed.ToDiagnosticString();
                 return failed;
             }
 
+            PlayerParticipationOperationResult result =
+                _participationContext.TryOpenJoining(source, reason);
             _diagnostic = result.ToDiagnosticString();
             return result;
         }
@@ -911,6 +901,30 @@ namespace Immersive.Framework.PlayerParticipation
             return true;
         }
 
+        internal void SubscribeSessionChanges(Action<PlayerSessionChange> listener)
+        {
+            if (listener == null)
+            {
+                throw new ArgumentNullException(nameof(listener));
+            }
+
+            if (_participationContext == null)
+            {
+                throw new InvalidOperationException(
+                    "Player Session change observation requires a live participation context.");
+            }
+
+            _participationContext.Changed += listener;
+        }
+
+        internal void UnsubscribeSessionChanges(Action<PlayerSessionChange> listener)
+        {
+            if (listener != null && _participationContext != null)
+            {
+                _participationContext.Changed -= listener;
+            }
+        }
+
         private void OnDestroy()
         {
             foreach (var pair in _consumerAccesses)
@@ -957,6 +971,7 @@ namespace Immersive.Framework.PlayerParticipation
         private readonly RuntimeContentOwner _owner;
         private readonly PlayerSessionScopedAccessConsumer _consumer;
         private readonly Func<RuntimeContentOwner, bool> _isCurrentScope;
+        private event Action<PlayerSessionChange> _changed;
         private string _diagnostic;
         private bool _disposed;
 
@@ -976,6 +991,13 @@ namespace Immersive.Framework.PlayerParticipation
             this._isCurrentScope = isCurrentScope ??
                 throw new ArgumentNullException(nameof(isCurrentScope));
             _diagnostic = CreateReadyDiagnostic(owner);
+            _authoring.SubscribeSessionChanges(ForwardChange);
+        }
+
+        public event Action<PlayerSessionChange> Changed
+        {
+            add => _changed += value;
+            remove => _changed -= value;
         }
 
         public LocalPlayerProvisioningConsumerAccessSnapshot Snapshot
@@ -1123,6 +1145,8 @@ namespace Immersive.Framework.PlayerParticipation
             }
 
             _disposed = true;
+            _authoring.UnsubscribeSessionChanges(ForwardChange);
+            _changed = null;
             _diagnostic =
                 "Local Player provisioning consumer access was released because its framework scope was replaced or disposed.";
         }
@@ -1146,6 +1170,14 @@ namespace Immersive.Framework.PlayerParticipation
 
             issue = string.Empty;
             return true;
+        }
+
+        private void ForwardChange(PlayerSessionChange change)
+        {
+            if (IsCurrent())
+            {
+                _changed?.Invoke(change);
+            }
         }
 
         private bool IsCurrent()

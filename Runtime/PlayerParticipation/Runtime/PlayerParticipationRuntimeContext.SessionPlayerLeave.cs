@@ -194,6 +194,7 @@ namespace Immersive.Framework.PlayerParticipation
                 new SessionPlayerLeaveRecord(token, record.Revision));
 
             PlayerSlotRuntimeSnapshot currentSlot = CreateSlotSnapshot(record);
+            PublishSlotAllocationChange(previousSlot, currentSlot);
             return CreateSessionPlayerLeaveResult(
                 SessionPlayerLeaveRuntimeStatus.SucceededLeaving,
                 operation,
@@ -390,6 +391,7 @@ namespace Immersive.Framework.PlayerParticipation
             _activeSessionPlayerLeaves.Remove(record.PlayerSlotId);
 
             PlayerSlotRuntimeSnapshot currentSlot = CreateSlotSnapshot(record);
+            PublishSlotAllocationChange(previousSlot, currentSlot);
             return CreateSessionPlayerLeaveResult(
                 SessionPlayerLeaveRuntimeStatus.SucceededCommitted,
                 operation,

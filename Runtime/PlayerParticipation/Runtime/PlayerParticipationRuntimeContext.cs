@@ -64,6 +64,8 @@ namespace Immersive.Framework.PlayerParticipation
         private PlayerParticipationOperationStatus _lastOperationStatus;
         private string _lastOperationMessage;
 
+        internal event Action<PlayerSessionChange> Changed;
+
         private PlayerParticipationRuntimeContext(
             List<SlotRecord> slots,
             bool initialJoiningOpen,
@@ -312,6 +314,7 @@ namespace Immersive.Framework.PlayerParticipation
                     default);
             }
 
+            PlayerSlotRuntimeSnapshot previousSlot = CreateSlotSnapshot(selected);
             selected.AllocationState = PlayerSlotAllocationState.Reserved;
             selected.Revision++;
             _reservationSequence++;
@@ -325,6 +328,7 @@ namespace Immersive.Framework.PlayerParticipation
             _revision++;
 
             PlayerSlotRuntimeSnapshot slotSnapshot = CreateSlotSnapshot(selected);
+            PublishSlotAllocationChange(previousSlot, slotSnapshot);
             return CreateResult(
                 PlayerParticipationOperationStatus.Succeeded,
                 "ReserveNextAvailableSlot",
@@ -783,14 +787,22 @@ namespace Immersive.Framework.PlayerParticipation
             SlotRecord record,
             ActorProfile actorProfile,
             string source,
-            string reason)
+            string reason,
+            bool publishChange = true)
         {
+            PlayerSlotRuntimeSnapshot previousSlot = CreateSlotSnapshot(record);
             record.SelectedActorProfile = actorProfile;
             record.SelectionRevision++;
             record.SelectionSource = source;
             record.SelectionReason = reason;
             record.Revision++;
             _revision++;
+            if (publishChange)
+            {
+                PublishActorSelectionChange(
+                    previousSlot,
+                    CreateSlotSnapshot(record));
+            }
         }
 
         private PlayerActorSelectionResult CreateActorSelectionResult(
@@ -929,8 +941,10 @@ namespace Immersive.Framework.PlayerParticipation
                     default);
             }
 
+            bool previousJoiningOpen = _joiningOpen;
             _joiningOpen = requestedOpen;
             _revision++;
+            PublishJoiningChange(previousJoiningOpen, _joiningOpen);
             return CreateResult(
                 PlayerParticipationOperationStatus.Succeeded,
                 requestedOpen ? "OpenJoining" : "CloseJoining",
@@ -985,12 +999,16 @@ namespace Immersive.Framework.PlayerParticipation
                     reservationToken);
             }
 
+            PlayerSlotRuntimeSnapshot previousSlot = CreateSlotSnapshot(record);
             record.AllocationState = targetState;
             record.ReservationToken = default;
             record.Revision++;
             record.Source = resolvedSource;
             record.Reason = resolvedReason;
             _revision++;
+
+            PlayerSlotRuntimeSnapshot currentSlot = CreateSlotSnapshot(record);
+            PublishSlotAllocationChange(previousSlot, currentSlot);
 
             return CreateResult(
                 PlayerParticipationOperationStatus.Succeeded,
@@ -999,7 +1017,7 @@ namespace Immersive.Framework.PlayerParticipation
                 resolvedReason,
                 successMessage,
                 previousRevision,
-                CreateSlotSnapshot(record),
+                currentSlot,
                 reservationToken);
         }
 
@@ -1027,6 +1045,36 @@ namespace Immersive.Framework.PlayerParticipation
                 slot,
                 reservationToken,
                 snapshot);
+        }
+
+        private void PublishJoiningChange(
+            bool previousJoiningOpen,
+            bool currentJoiningOpen)
+        {
+            Changed?.Invoke(PlayerSessionChange.Joining(
+                _revision,
+                previousJoiningOpen,
+                currentJoiningOpen));
+        }
+
+        private void PublishSlotAllocationChange(
+            PlayerSlotRuntimeSnapshot previousSlot,
+            PlayerSlotRuntimeSnapshot currentSlot)
+        {
+            Changed?.Invoke(PlayerSessionChange.SlotAllocation(
+                _revision,
+                previousSlot,
+                currentSlot));
+        }
+
+        private void PublishActorSelectionChange(
+            PlayerSlotRuntimeSnapshot previousSlot,
+            PlayerSlotRuntimeSnapshot currentSlot)
+        {
+            Changed?.Invoke(PlayerSessionChange.ActorSelection(
+                _revision,
+                previousSlot,
+                currentSlot));
         }
 
         private static PlayerParticipationOperationResult CreateInitializationFailure(

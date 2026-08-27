@@ -109,6 +109,7 @@ namespace Immersive.Framework.PlayerParticipation
                     default);
             }
 
+            PlayerSlotRuntimeSnapshot previousSlot = CreateSlotSnapshot(requested);
             requested.AllocationState = PlayerSlotAllocationState.Reserved;
             requested.Revision++;
             _reservationSequence++;
@@ -120,6 +121,8 @@ namespace Immersive.Framework.PlayerParticipation
             requested.Source = resolvedSource;
             requested.Reason = resolvedReason;
             _revision++;
+            PlayerSlotRuntimeSnapshot currentSlot = CreateSlotSnapshot(requested);
+            PublishSlotAllocationChange(previousSlot, currentSlot);
 
             return CreateResult(
                 PlayerParticipationOperationStatus.Succeeded,
@@ -128,7 +131,7 @@ namespace Immersive.Framework.PlayerParticipation
                 resolvedReason,
                 "Explicit Scene Local Player Slot reserved by configured order.",
                 previousRevision,
-                CreateSlotSnapshot(requested),
+                currentSlot,
                 requested.ReservationToken);
         }
 
@@ -201,12 +204,15 @@ namespace Immersive.Framework.PlayerParticipation
                     default);
             }
 
+            PlayerSlotRuntimeSnapshot previousSlot = CreateSlotSnapshot(record);
             int joinedRevision = record.Revision;
             record.AllocationState = PlayerSlotAllocationState.Leaving;
             record.Revision++;
             record.Source = resolvedSource;
             record.Reason = resolvedReason;
             _revision++;
+            PlayerSlotRuntimeSnapshot currentSlot = CreateSlotSnapshot(record);
+            PublishSlotAllocationChange(previousSlot, currentSlot);
             releaseToken = new SceneLocalPlayerAdmissionReleaseToken(
                 admissionToken,
                 joinedRevision,
@@ -219,7 +225,7 @@ namespace Immersive.Framework.PlayerParticipation
                 resolvedReason,
                 "Scene Local Player Slot entered Leaving state.",
                 previousRevision,
-                CreateSlotSnapshot(record),
+                currentSlot,
                 default);
         }
 
@@ -247,12 +253,15 @@ namespace Immersive.Framework.PlayerParticipation
                     default);
             }
 
+            PlayerSlotRuntimeSnapshot previousSlot = CreateSlotSnapshot(record);
             record.AllocationState = PlayerSlotAllocationState.Available;
             record.ReservationToken = default;
             record.Revision++;
             record.Source = resolvedSource;
             record.Reason = resolvedReason;
             _revision++;
+            PlayerSlotRuntimeSnapshot currentSlot = CreateSlotSnapshot(record);
+            PublishSlotAllocationChange(previousSlot, currentSlot);
 
             return CreateResult(
                 PlayerParticipationOperationStatus.Succeeded,
@@ -261,7 +270,7 @@ namespace Immersive.Framework.PlayerParticipation
                 resolvedReason,
                 "Scene Local Player Slot release committed and Slot returned to Available.",
                 previousRevision,
-                CreateSlotSnapshot(record),
+                currentSlot,
                 default);
         }
 
@@ -289,11 +298,14 @@ namespace Immersive.Framework.PlayerParticipation
                     default);
             }
 
+            PlayerSlotRuntimeSnapshot previousSlot = CreateSlotSnapshot(record);
             record.AllocationState = PlayerSlotAllocationState.Joined;
             record.Revision++;
             record.Source = resolvedSource;
             record.Reason = resolvedReason;
             _revision++;
+            PlayerSlotRuntimeSnapshot currentSlot = CreateSlotSnapshot(record);
+            PublishSlotAllocationChange(previousSlot, currentSlot);
 
             return CreateResult(
                 PlayerParticipationOperationStatus.Succeeded,
@@ -302,7 +314,7 @@ namespace Immersive.Framework.PlayerParticipation
                 resolvedReason,
                 "Scene Local Player Slot release rolled back to Joined.",
                 previousRevision,
-                CreateSlotSnapshot(record),
+                currentSlot,
                 default);
         }
 
@@ -348,12 +360,15 @@ namespace Immersive.Framework.PlayerParticipation
                     default);
             }
 
+            PlayerSlotRuntimeSnapshot previousSlot = CreateSlotSnapshot(record);
             record.AllocationState = PlayerSlotAllocationState.Available;
             record.ReservationToken = default;
             record.Revision++;
             record.Source = resolvedSource;
             record.Reason = resolvedReason;
             _revision++;
+            PlayerSlotRuntimeSnapshot currentSlot = CreateSlotSnapshot(record);
+            PublishSlotAllocationChange(previousSlot, currentSlot);
 
             return CreateResult(
                 PlayerParticipationOperationStatus.Succeeded,
@@ -362,7 +377,7 @@ namespace Immersive.Framework.PlayerParticipation
                 resolvedReason,
                 "Committed Scene Local Player admission was compensated and Slot returned to Available.",
                 previousRevision,
-                CreateSlotSnapshot(record),
+                currentSlot,
                 default);
         }
 

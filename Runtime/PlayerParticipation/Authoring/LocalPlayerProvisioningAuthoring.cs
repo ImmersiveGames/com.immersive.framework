@@ -170,6 +170,21 @@ namespace Immersive.Framework.PlayerParticipation
             return false;
         }
 
+        internal void SubscribeSessionChanges(Action<PlayerSessionChange> listener)
+        {
+            if (!RuntimeReady)
+            {
+                throw new InvalidOperationException(RuntimeDiagnostic);
+            }
+
+            _runtimeModule.SubscribeSessionChanges(listener);
+        }
+
+        internal void UnsubscribeSessionChanges(Action<PlayerSessionChange> listener)
+        {
+            _runtimeModule?.UnsubscribeSessionChanges(listener);
+        }
+
         /// <summary>
         /// Explicitly opens Session local joining. This never runs
         /// automatically from a Unity lifecycle callback.

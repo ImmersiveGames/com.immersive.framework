@@ -1,3 +1,4 @@
+using System;
 using Immersive.Framework.ApiStatus;
 using Immersive.Framework.PlayerSlots;
 
@@ -14,6 +15,8 @@ namespace Immersive.Framework.PlayerParticipation
     public interface ILocalPlayerProvisioningConsumerAccess
     {
         LocalPlayerProvisioningConsumerAccessSnapshot Snapshot { get; }
+
+        event Action<PlayerSessionChange> Changed;
 
         bool TryGetObservation(
             out LocalPlayerProvisioningConsumerObservationSnapshot observation);

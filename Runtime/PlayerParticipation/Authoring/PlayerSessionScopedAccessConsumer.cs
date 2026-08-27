@@ -156,6 +156,7 @@ namespace Immersive.Framework.PlayerParticipation
             }
             else
             {
+                OnScopedAccessBound(scopedAccess);
                 LogDebug("Player Session scoped access bound.", "Bound", actualScope, _diagnostic);
             }
 
@@ -173,7 +174,7 @@ namespace Immersive.Framework.PlayerParticipation
             bool changed = _access != null || _bindingState != nextState ||
                 !string.Equals(_diagnostic, resolvedReason, StringComparison.Ordinal);
 
-            _access = null;
+            ReleaseBoundScopedAccess();
             _diagnostic = resolvedReason;
             _bindingState = nextState;
             if (changed)
@@ -205,7 +206,7 @@ namespace Immersive.Framework.PlayerParticipation
         {
             bool hadLiveBinding = _access != null ||
                 _bindingState == PlayerSessionScopedAccessState.Bound;
-            _access = null;
+            ReleaseBoundScopedAccess();
             _diagnostic = "Player Session component was destroyed; any previous scoped access is invalid.";
             _bindingState = PlayerSessionScopedAccessState.Released;
             if (hadLiveBinding)
@@ -225,6 +226,25 @@ namespace Immersive.Framework.PlayerParticipation
             else
             {
                 LogDebug("Player Session scoped access skipped.", status, runtimeScope, issue);
+            }
+        }
+
+        protected virtual void OnScopedAccessBound(
+            ILocalPlayerProvisioningConsumerAccess scopedAccess)
+        {
+        }
+
+        protected virtual void OnScopedAccessReleasing(
+            ILocalPlayerProvisioningConsumerAccess scopedAccess)
+        {
+        }
+
+        private void ReleaseBoundScopedAccess()
+        {
+            if (_access != null)
+            {
+                OnScopedAccessReleasing(_access);
+                _access = null;
             }
         }
 

@@ -1,6 +1,8 @@
+using System;
 using Immersive.Framework.ApiStatus;
 using Immersive.Framework.PlayerSlots;
 using UnityEngine;
+using UnityEngine.Events;
 
 namespace Immersive.Framework.PlayerParticipation
 {
@@ -30,6 +32,31 @@ namespace Immersive.Framework.PlayerParticipation
         "IF-PLAYER-SURFACE-06 read-only scoped Player Session observer.")]
     public sealed class PlayerSessionObserver : PlayerSessionScopedAccessConsumer
     {
+        private ILocalPlayerProvisioningConsumerAccess _observedAccess;
+
+        [SerializeField] private UnityEvent onJoiningOpened = new UnityEvent();
+        [SerializeField] private UnityEvent onJoiningClosed = new UnityEvent();
+        [SerializeField] private UnityEvent onPlayerJoined = new UnityEvent();
+        [SerializeField] private UnityEvent onPlayerLeft = new UnityEvent();
+        [SerializeField] private UnityEvent onActorSelected = new UnityEvent();
+        [SerializeField] private UnityEvent onActorChanged = new UnityEvent();
+        [SerializeField] private UnityEvent onActorCleared = new UnityEvent();
+
+        /// <summary>
+        /// Raised after an authoritative Player Session mutation has committed.
+        /// Subscription remains valid only while this component has live scoped
+        /// access; it is released with that access.
+        /// </summary>
+        public event Action<PlayerSessionChange> Changed;
+
+        public UnityEvent OnJoiningOpened => onJoiningOpened;
+        public UnityEvent OnJoiningClosed => onJoiningClosed;
+        public UnityEvent OnPlayerJoined => onPlayerJoined;
+        public UnityEvent OnPlayerLeft => onPlayerLeft;
+        public UnityEvent OnActorSelected => onActorSelected;
+        public UnityEvent OnActorChanged => onActorChanged;
+        public UnityEvent OnActorCleared => onActorCleared;
+
         public PlayerProvisioningStatusAvailability Availability => ResolveAvailability();
 
         public bool IsAvailable => Availability ==
@@ -77,6 +104,25 @@ namespace Immersive.Framework.PlayerParticipation
 
             return access.TryGetObservation(out observation) &&
                 observation != null && observation.IsAvailable;
+        }
+
+        /// <summary>
+        /// Reads the current authoritative Player Session snapshot through the
+        /// live scoped observation. No unavailable snapshot is fabricated.
+        /// </summary>
+        public bool TryGetSnapshot(out PlayerParticipationSnapshot snapshot)
+        {
+            snapshot = null;
+            if (!TryGetObservation(
+                    out LocalPlayerProvisioningConsumerObservationSnapshot
+                        observation) ||
+                observation.Participation == null)
+            {
+                return false;
+            }
+
+            snapshot = observation.Participation;
+            return true;
         }
 
         /// <summary>
@@ -155,6 +201,96 @@ namespace Immersive.Framework.PlayerParticipation
             return slot.GameplayAdmission.GameplayReady
                 ? "Gameplay Ready"
                 : slot.GameplayAdmission.State.ToString();
+        }
+
+        protected override void OnScopedAccessBound(
+            ILocalPlayerProvisioningConsumerAccess scopedAccess)
+        {
+            if (_observedAccess != null)
+            {
+                _observedAccess.Changed -= ForwardChange;
+            }
+
+            _observedAccess = scopedAccess;
+            _observedAccess.Changed += ForwardChange;
+        }
+
+        protected override void OnScopedAccessReleasing(
+            ILocalPlayerProvisioningConsumerAccess scopedAccess)
+        {
+            if (_observedAccess != null)
+            {
+                _observedAccess.Changed -= ForwardChange;
+                _observedAccess = null;
+            }
+        }
+
+        private void ForwardChange(PlayerSessionChange change)
+        {
+            Changed?.Invoke(change);
+            ProjectDesignerFacingEvent(change);
+        }
+
+        private void ProjectDesignerFacingEvent(PlayerSessionChange change)
+        {
+            if (change == null)
+            {
+                return;
+            }
+
+            switch (change.Kind)
+            {
+                case PlayerSessionChangeKind.JoiningChanged:
+                    if (!change.PreviousJoiningOpen && change.CurrentJoiningOpen)
+                    {
+                        onJoiningOpened?.Invoke();
+                    }
+                    else if (change.PreviousJoiningOpen && !change.CurrentJoiningOpen)
+                    {
+                        onJoiningClosed?.Invoke();
+                    }
+
+                    break;
+
+                case PlayerSessionChangeKind.SlotAllocationChanged:
+                    if (change.CurrentSlot.AllocationState ==
+                            PlayerSlotAllocationState.Joined &&
+                        change.PreviousSlot.AllocationState !=
+                            PlayerSlotAllocationState.Joined)
+                    {
+                        onPlayerJoined?.Invoke();
+                    }
+                    else if (change.PreviousSlot.AllocationState ==
+                                 PlayerSlotAllocationState.Leaving &&
+                             change.CurrentSlot.AllocationState ==
+                                 PlayerSlotAllocationState.Available)
+                    {
+                        onPlayerLeft?.Invoke();
+                    }
+
+                    break;
+
+                case PlayerSessionChangeKind.ActorSelectionChanged:
+                    bool hadPreviousActor = change.PreviousSlot.SelectedActorProfile != null;
+                    bool hasCurrentActor = change.CurrentSlot.SelectedActorProfile != null;
+                    if (!hadPreviousActor && hasCurrentActor)
+                    {
+                        onActorSelected?.Invoke();
+                    }
+                    else if (hadPreviousActor && hasCurrentActor &&
+                             !ReferenceEquals(
+                                 change.PreviousSlot.SelectedActorProfile,
+                                 change.CurrentSlot.SelectedActorProfile))
+                    {
+                        onActorChanged?.Invoke();
+                    }
+                    else if (hadPreviousActor && !hasCurrentActor)
+                    {
+                        onActorCleared?.Invoke();
+                    }
+
+                    break;
+            }
         }
 
         private PlayerProvisioningStatusAvailability ResolveAvailability()
