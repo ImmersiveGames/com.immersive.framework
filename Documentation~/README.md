@@ -1,11 +1,12 @@
 # Immersive Framework Documentation
 
-Last updated: **2026-08-24**
+Last updated: **2026-08-26**
 
 ## Start here
 
 - [Stage A canonical package baseline](Architecture/Reconciliation/IMMERSIVE-FRAMEWORK-STAGE-A-CANONICAL-BASELINE-CLOSURE-2026-08-11.md)
 - [Current framework tracker](Architecture/Tracking/IF-TRACK-Framework.md)
+- [Player Actor Selection public surface certification — 2026-08-26](Architecture/Reconciliation/IF-ADR-015B-Player-Actor-Selection-Public-Surface-Certification-2026-08-26.md)
 - [Player current aggregate recertification — 2026-08-24](Architecture/Reconciliation/IF-PLAYER-CURRENT-AGGREGATE-RECERTIFICATION-2026-08-24.md)
 - [Player physical lifetime recertification — 2026-08-15](Architecture/Reconciliation/IMMERSIVE-FRAMEWORK-PLAYER-PHYSICAL-LIFETIME-RECERTIFICATION-2026-08-15.md)
 - [Camera presentation technical certification — 2026-08-15](Architecture/Reconciliation/IMMERSIVE-FRAMEWORK-CAMERA-PRESENTATION-TECHNICAL-CERTIFICATION-2026-08-15.md)
@@ -55,6 +56,14 @@ Player Current Aggregate
   PLAYER CURRENT AGGREGATE COMPLETE
   27/27
 
+Player Actor Selection public surface
+  CLOSED / IMPLEMENTED / INTEGRATED QA CERTIFIED 2026-08-26
+  Observer + 8 explicit command components
+  Actor Lifecycle PASS
+  Public Surface PASS
+  Full Player 27/27 PASS
+  Character Selection public-surface blocker CLOSED
+
 Historical Full Player QA
   PLAYER QA CERTIFIED
   25/25
@@ -96,8 +105,8 @@ Post-004D Camera QA
   new focused/aggregate run NOT RECORDED
 
 Active consumer phase
-  Player Stage B sample/integration proof
-  ADR-013 Audio FIRSTGAME promotion
+  Player Character Selection sample is next unblocked Player cut
+  Local Multiplayer remains blocked by public Slot/device/input contract
   ADR-022 broader Camera C6 promotion
 ```
 
@@ -105,22 +114,10 @@ The `53/53` Camera aggregate predates IF-ADR-004D. It remains valid historical
 certification for the boundary it executed, but it is not relabeled as proof of the later
 Default-output or force-default implementation.
 
-Sample 00 provides real-consumer evidence for the 004D Default authoring path:
-
-```text
-CameraOutputSessionBinding
-  Initialized
-  defaultRig = Session Camera Rig
-
-Activity
-  Ready
-  blockingIssues = 0
-
-MinimalFirstPersonLocomotion
-  READY
-  gameplayReady = true
-  Move / Look consumed
-```
+The public arbitrary Actor-selection surface is now delivered through explicit Player
+Session commands. Exact-Slot public Join, public Slot/device/InputUser/control-scheme
+ownership observation and consumer-facing physical Actor hot-swap are not implied by
+that closure.
 
 The canonical mutable status is recorded in the
 [Framework Tracker](Architecture/Tracking/IF-TRACK-Framework.md).
@@ -153,7 +150,7 @@ Archive records preserve history without acting as current product truth.
 |---|---|---|
 | [001](Architecture/ADRs/IF-ADR-001-Core-Lifecycle-and-Runtime-Authority.md) | Core lifecycle and runtime authority | Accepted |
 | [002](Architecture/ADRs/IF-ADR-002-Product-Authoring-Model.md) | Product authoring model | Accepted |
-| [003](Architecture/ADRs/IF-ADR-003-Player-Participation-and-Actor-Lifecycle.md) | Player participation and Actor lifecycle | Accepted / Reconciled |
+| [003](Architecture/ADRs/IF-ADR-003-Player-Participation-and-Actor-Lifecycle.md) | Player participation and Actor lifecycle | Accepted / Reconciled / Current QA PASS |
 | [004](Architecture/ADRs/IF-ADR-004-Camera-Requests-and-Output-Authority.md) | Camera requests and output authority | Accepted / Reconciled / 004D implemented |
 | [005](Architecture/ADRs/IF-ADR-005-Input-Pause-Gate-and-Reset.md) | Input, Pause, Gate and Reset | Accepted |
 | [006](Architecture/ADRs/IF-ADR-006-Loading-Transition-Persistence-and-Diagnostics.md) | Loading, transition, persistence and diagnostics | Accepted |
@@ -165,8 +162,8 @@ Archive records preserve history without acting as current product truth.
 | [012](Architecture/ADRs/IF-ADR-012-Activity-Player-Participation-Profile-and-Readiness-Compatibility.md) | Activity Player participation profile and readiness compatibility | Accepted / Reconciled |
 | [013](Architecture/ADRs/IF-ADR-013-Optional-Audio-BGM-Adapter.md) | Optional Audio/BGM adapter | Accepted / Experimental |
 | [014](Architecture/ADRs/IF-ADR-014-Authored-Definition-and-Stable-Identity-Authority.md) | Authored definition and stable identity authority | Accepted |
-| [015](Architecture/ADRs/IF-ADR-015-Player-Provisioning-Commands-and-Consumer-Observation-Surface.md) | Player provisioning commands and consumer observation surface | Accepted / Reconciled |
-| [016](Architecture/ADRs/IF-ADR-016-Player-Session-Initial-Configuration-and-Provisioning-Profiles.md) | Player session initial configuration and provisioning profiles | Accepted / Reconciled |
+| [015](Architecture/ADRs/IF-ADR-015-Player-Provisioning-Commands-and-Consumer-Observation-Surface.md) | Player provisioning commands and consumer observation surface | Accepted / Reconciled / Actor Selection delivered |
+| [016](Architecture/ADRs/IF-ADR-016-Player-Session-Initial-Configuration-and-Provisioning-Profiles.md) | Player session initial configuration and provisioning profiles | Accepted / Reconciled / Current QA PASS |
 | [017](Architecture/ADRs/IF-ADR-017-Application-Frame-Rate-Project-Authority.md) | Application frame-rate project authority | Accepted |
 | [018](Architecture/ADRs/IF-ADR-018-Progression-Save-Backend-Independence-and-Persistence-Domain-Boundaries.md) | Progression Save backend independence and persistence boundaries | Accepted |
 | [019](Architecture/ADRs/IF-ADR-019-Session-Player-Lifetime-and-Activity-Representation-Authority.md) | Session Player lifetime and Activity representation authority | Accepted / Reconciled / Implemented / Current Aggregate PASS |
@@ -176,6 +173,7 @@ Archive records preserve history without acting as current product truth.
 
 ## Current reconciliation / closure records
 
+- [Player Actor Selection Public Surface Certification — 2026-08-26](Architecture/Reconciliation/IF-ADR-015B-Player-Actor-Selection-Public-Surface-Certification-2026-08-26.md)
 - [Player Current Aggregate Recertification — 2026-08-24](Architecture/Reconciliation/IF-PLAYER-CURRENT-AGGREGATE-RECERTIFICATION-2026-08-24.md)
 - [Player Physical Lifetime Recertification — 2026-08-15](Architecture/Reconciliation/IMMERSIVE-FRAMEWORK-PLAYER-PHYSICAL-LIFETIME-RECERTIFICATION-2026-08-15.md)
 - [Camera Presentation Technical Certification — 2026-08-15](Architecture/Reconciliation/IMMERSIVE-FRAMEWORK-CAMERA-PRESENTATION-TECHNICAL-CERTIFICATION-2026-08-15.md)
@@ -203,14 +201,20 @@ Archive records preserve history without acting as current product truth.
 
 ### Player
 
-The current Player boundary is certified as one terminal matrix rather than
-disconnected local fixes.
+The current Player boundary is certified as one terminal matrix rather than disconnected local fixes.
 
 ```text
 PLAYER CURRENT AGGREGATE COMPLETE
 mandatoryContracts=27
 executedContracts=27
 passedContracts=27
+```
+
+The 2026-08-26 rerun additionally closes the delivered arbitrary Actor-selection public surface:
+
+```text
+Actor Lifecycle = PASS
+Public Surface  = PASS
 ```
 
 Focused IF-ADR-021 Model B evidence:
@@ -227,6 +231,8 @@ Full Player 2026-08-15       25/25
 ADR-021 Initial Placement     9/9
 ```
 
+Package-local Actor-selection Unity Test Framework Editor tests are not claimed as executed by this integrated QA result unless separately recorded.
+
 ### Camera
 
 The 2026-08-15 Camera aggregate combines presentation materialization and
@@ -235,19 +241,6 @@ non-regression of the request/output authority that existed at that time.
 ```text
 CAMERA QA CERTIFIED
 53/53
-```
-
-The aggregate proves:
-
-```text
-Presentation Models
-safe materialization ownership
-switching / idempotence
-external conflict protection
-no output-authority mutation under the tested boundary
-canonical request lifecycle
-negative transactional integrity
-owner lifetime integrity
 ```
 
 IF-ADR-004D is a later accepted implementation/reconciliation cut. Its current evidence
