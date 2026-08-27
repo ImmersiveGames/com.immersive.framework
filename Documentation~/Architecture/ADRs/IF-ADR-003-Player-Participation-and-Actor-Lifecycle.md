@@ -1,10 +1,12 @@
 # IF-ADR-003 — Player Participation and Actor Lifecycle
 
-Status: **Accepted / Reconciled / Player QA Recertified 2026-08-15**  
-Last updated: **2026-08-16**  
+Status: **Accepted / Reconciled / Implemented / Current Player QA PASS**  
+Last updated: **2026-08-26**  
 Related decisions: IF-ADR-001, IF-ADR-007, IF-ADR-012, IF-ADR-015, IF-ADR-016, IF-ADR-019, IF-ADR-020, IF-ADR-021  
 Reopen record: [2026-08-14 Player Physical Lifetime Reopen](../Reconciliation/IMMERSIVE-FRAMEWORK-PLAYER-PHYSICAL-LIFETIME-REOPEN-2026-08-14.md)  
-Closure record: [2026-08-15 Player Physical Lifetime Recertification](../Reconciliation/IMMERSIVE-FRAMEWORK-PLAYER-PHYSICAL-LIFETIME-RECERTIFICATION-2026-08-15.md)
+Historical closure record: [2026-08-15 Player Physical Lifetime Recertification](../Reconciliation/IMMERSIVE-FRAMEWORK-PLAYER-PHYSICAL-LIFETIME-RECERTIFICATION-2026-08-15.md)  
+Current aggregate record: [Player Current Aggregate Recertification — 2026-08-24](../Reconciliation/IF-PLAYER-CURRENT-AGGREGATE-RECERTIFICATION-2026-08-24.md)  
+Actor-selection public-surface closure: [IF-ADR-015B — 2026-08-26](../Reconciliation/IF-ADR-015B-Player-Actor-Selection-Public-Surface-Certification-2026-08-26.md)  
 Initial Placement reconciliation: [2026-08-23 Player Authority and Initial Placement](../Reconciliation/IF-ADR-021-Player-Authority-and-Initial-Placement-Reconciliation-2026-08-23.md)
 
 ## Context
@@ -18,6 +20,7 @@ Host Provisioning
 Slot Assignment
 Session Join
 Actor Selection
+Actor Preparation
 physical Player acquisition/adoption
 Activity projection / activation
 readiness
@@ -137,23 +140,65 @@ pose when the explicit Route policy chooses it.
 
 The Session remains the authority over Slot allocation and assignment.
 
+Current ordinary public Join uses the supported Slot order:
+
 ```text
 Untargeted Join
   -> first eligible vacant Supported Slot in authored order
-
-Targeted Join
-  -> exact requested Supported Slot when eligible
 ```
 
-Targeted Join has no fallback to another Slot. `PlayerSlotId` is domain identity and is not `PlayerInput.playerIndex`.
+The runtime domain can represent targeted Slot intent where applicable, but an exact-Slot designer-facing public Join command is not part of the current delivered command surface. A future exact-Slot consumer command must reject rather than silently fall back to another Slot.
+
+`PlayerSlotId` is domain identity and is not `PlayerInput.playerIndex`.
 
 ## Actor selection
 
-Actor selection is Session-scoped mutable intent for one exact Joined Slot.
+Actor selection is Session-scoped mutable logical intent for one exact Joined Slot.
 
-Direct Actor selection mutation is not an implicit physical hot-swap. Replacing a currently prepared/admitted physical Actor requires a separate explicit operation.
+The delivered public command surface now supports four explicit Actor-selection requests:
 
-Selection remains revision-aware and stale mutation rejects.
+```text
+Select Actor
+Select Default Actor
+Replace Actor Selection
+Clear Actor Selection
+```
+
+These operations are routed through the canonical Player Actor preparation boundary before the Session mutation authority.
+
+Actor selection is revision-aware and stale mutation rejects. Duplicate selection remains governed by Session policy. Repeating the same selection is idempotent and does not advance revisions.
+
+Direct Actor selection mutation is not an implicit physical hot-swap.
+
+### Preparation barrier
+
+Select / Replace / Clear are allowed only while logical selection can still change without replacing a prepared physical Actor.
+
+Once the canonical preparation context reports a prepared Actor or a retained preparation/release failure barrier, those mutations reject:
+
+```text
+RejectedLogicalActorAlreadyPrepared
+```
+
+The rejection does not change selection, Slot or Session revisions.
+
+Replacing a currently prepared/admitted physical Actor would require a separate explicit physical replacement workflow. The existing internal prepared-Actor replacement transaction remains internal and is not a public Player 1.0 command.
+
+## Actor Resolution policy
+
+Actor Resolution remains creation-time Session intent owned by `PlayerSessionProfile`:
+
+```text
+ResolveConfiguredDefault
+  -> configured DefaultActorProfile only
+
+LeaveUnresolved
+  -> Join may leave the Slot without a selected Actor
+```
+
+`LeaveUnresolved` is intentionally valid for flows such as Character Selection. A later public `Select Actor` request can commit the chosen Actor; the game owns presentation of choices while the Framework owns selection validity and commit.
+
+There is no silent default Actor fallback.
 
 ## Activity readiness boundary
 
@@ -191,6 +236,8 @@ No current Activity representation is also a valid Leave precondition when the S
 
 Physical truth must be observed from canonical Session/occurrence evidence. Hierarchy shape, scene membership or global lookup are not Actor-lifetime authority.
 
+The public `PlayerSessionObserver` remains read-only. Explicit command components request change; the Observer does not become a command router or mutable state store.
+
 ## Rejected behavior
 
 - Activity exit destroying/recreating the admitted physical Player by default.
@@ -200,7 +247,9 @@ Physical truth must be observed from canonical Session/occurrence evidence. Hier
 - Manager/Scene provisioning modes having divergent post-admission lifetime semantics.
 - Treating Activity-owned RuntimeContent as Player physical ownership.
 - Consumer direct Slot mutation.
+- Consumer direct Actor-selection state mutation outside the scoped public command surface.
 - Consumer direct materialization/reconcile authority.
+- Physical Actor hot-swap hidden behind logical `Replace Actor Selection`.
 - A second consumer-authored Scene Actor prefab authority beside `ActorProfile.LogicalActorHostPrefab`.
 - Silent replacement of mismatched or conflicting Scene-Provided Actor content during Editor materialization.
 - `playerIndex` as Slot identity.
@@ -209,7 +258,7 @@ Physical truth must be observed from canonical Session/occurrence evidence. Hier
 
 ## Certification
 
-The revised Player boundary is recertified by the 2026-08-15 Full Player QA terminal result:
+Historical Player physical-lifetime recertification on 2026-08-15 remains preserved:
 
 ```text
 PLAYER QA CERTIFIED
@@ -218,4 +267,26 @@ executedContracts = 25
 passedContracts = 25
 ```
 
-The certification includes exact SceneProvided physical identity continuity, no-Activity physical retention, occurrence-safe Leave, Manager and SceneProvided Session termination, public surface lifecycle, failed adoption/reprojection integrity and no physical handoff.
+The later current aggregate records the expanded Player boundary:
+
+```text
+PLAYER CURRENT AGGREGATE COMPLETE
+mandatoryContracts = 27
+executedContracts = 27
+passedContracts = 27
+```
+
+The 2026-08-26 integrated rerun after the explicit Actor-selection public-surface cut again completed all current mandatory contracts with:
+
+```text
+actor = PASS
+publicSurface = PASS
+managerProvisioned = PASS
+sceneProvided = PASS
+leave = PASS
+noPhysicalHandoff = PASS
+```
+
+This certification includes the public Actor-selection lifecycle and preparation barrier without rewriting the historical `25/25` evidence.
+
+The package-local Actor-selection Editor tests added with the runtime cut are a separate Unity Test Framework evidence lane and are not claimed as executed by this ADR unless a dedicated result is recorded.
