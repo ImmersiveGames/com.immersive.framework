@@ -6,10 +6,11 @@ Route spatial-entry QA: **18/18 PASS**
 Activity relocation QA: **23/23 PASS**
 Current Full Player aggregate: **27/27 PASS — PLAYER CURRENT AGGREGATE COMPLETE**
 Historical Full Player certification: **25/25 preserved**
-Last updated: **2026-08-24**
+Last updated: **2026-08-27**
 Type: architecture / spatial authority / player product direction
 Related decisions: IF-ADR-003, IF-ADR-007, IF-ADR-010, IF-ADR-012, IF-ADR-015, IF-ADR-016, IF-ADR-019, IF-ADR-020
 Reconciliation: [2026-08-23 Player Authority and Initial Placement](../Reconciliation/IF-ADR-021-Player-Authority-and-Initial-Placement-Reconciliation-2026-08-23.md)
+Runtime robustness reconciliation: [2026-08-27 Activity Player Relocation Fail-Fast and Readiness Recovery](../Reconciliation/IF-ADR-021A-Activity-Player-Relocation-Fail-Fast-and-Readiness-Recovery-2026-08-27.md)
 Current certification: [2026-08-24 Player Current Aggregate Recertification](../Reconciliation/IF-PLAYER-CURRENT-AGGREGATE-RECERTIFICATION-2026-08-24.md)
 
 ## Context
@@ -144,6 +145,27 @@ moves no Player and preserves pose. Relocation failure must remain observable an
 not silently lose the prior pose. Final API and readiness-level names remain an
 implementation decision.
 
+For a projected Slot that is not yet Joined, an Activity may legitimately remain
+`WaitingForJoin`; explicit relocation is not failed merely because a future Player may
+later require it. Once a projected Slot is Joined and is about to advance into Actor
+selection/preparation/materialization, the exact Activity relocation binding must be
+preflighted before the first Actor mutation.
+
+```text
+Slot not Joined
+  -> WaitingForJoin
+
+Slot Joined + ApplyExplicitRelocation
+  -> preflight exact ActivityId + PlayerSlotId
+  -> only then may Actor selection/preparation/materialization begin
+```
+
+Missing, duplicate or invalid exact bindings therefore fail the Activity Player
+reconcile before Actor mutation. The failure remains an Activity readiness/lifecycle
+failure; a Session Join that already succeeded remains a successful Session operation.
+The runtime diagnostic must identify the Activity, ActivityId, Player Slot, policy and
+matching-binding count so the authoring defect is directly actionable.
+
 ## Provisioning and transition consequences
 
 ```text
@@ -221,6 +243,15 @@ physical Players, and keys idempotence by Activity occurrence plus representatio
 No-relocation Activities request no relocation evidence and retain their pose.
 Route and Activity evidence remain separate.
 
+The 2026-08-27 robustness cut preflights Activity explicit relocation before Actor
+mutation for a Joined projected Slot. Invalid composition returns
+`FailedPreparation` with explicit diagnostics and leaves Actor selection, logical
+preparation and physical materialization untouched. When the cause later disappears
+—for example because the failed Joined Slot leaves—the canonical current readiness
+evaluation may recover within the same Activity occurrence according to IF-ADR-007.
+An unrelated Session revision does not clear the failure while the invalid Joined
+condition still exists.
+
 ## Current certification
 
 Replacement certification is complete for the implemented Model B boundary:
@@ -245,6 +276,11 @@ The Full Player aggregate also passes Scene-Provided, Manager-Provisioned, Actor
 Lifecycle, public surface, Leave, Session termination, failed first-scene adoption,
 failed contextual reprojection and no-physical-handoff coverage under the current
 runtime composition.
+
+The 2026-08-27 fail-fast/readiness-recovery sequence is additional manual Play Mode
+consumer/regression evidence. It does not increment, replace or relabel the technical
+QA counts above. See the dated runtime robustness reconciliation for the exact tested
+sequence and evidence boundary.
 
 The bootstrap-order correction used by this certification preserves the authority
 model: Player Session core is composed first, canonical Game Flow/Route lifecycle
