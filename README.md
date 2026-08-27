@@ -17,13 +17,28 @@ There is no support or test matrix for earlier Unity versions.
 ```text
 GameApplicationAsset -> bootstrap -> scoped Framework runtime
 PlayerSessionProfile -> Supported Slots / Joining / Host Provisioning / Actor Resolution
-LocalPlayerProvisioningAuthoring -> Manager-Provisioned local Player join
+PlayerSessionObserver -> scoped read-only Player Session evidence
+explicit Player Session commands -> Open / Close / Join / Actor Selection / Leave
+LocalPlayerProvisioningAuthoring -> Manager-Provisioned local Player authority
 SceneLocalPlayerAdmissionAuthoring -> Scene-Provided local Player admission
 CameraRigComposer -> Validate / Apply/Rebuild (Unity Preset optional)
 FrameworkBgmDirector -> Route/Activity BGM bindings -> Immersive Audio
 PlayerPauseInput -> InputMode transaction -> PlayerInput state writer
 Reset authoring -> explicit runtime ports -> ResetRegistry / ResetExecutor
 SceneLifecycleEvents -> SceneLifecycleRuntime callbacks -> explicit UnityEvents
+```
+
+The explicit Player Session command family currently contains:
+
+```text
+PlayerSessionOpenJoiningCommandTrigger
+PlayerSessionCloseJoiningCommandTrigger
+PlayerSessionJoinCommandTrigger
+PlayerSessionSelectActorCommandTrigger
+PlayerSessionDefaultActorSelectionCommandTrigger
+PlayerSessionReplaceActorSelectionCommandTrigger
+PlayerSessionClearActorSelectionCommandTrigger
+PlayerSessionLeaveCommandTrigger
 ```
 
 `FrameworkRuntimeHost` is an internal application/session composition root. It
@@ -63,31 +78,47 @@ Persistent Content workflow.
 
 ## Player technical QA status
 
-The current accepted Player model was technically certified by the canonical
-QAFramework Player orchestrator on 2026-08-09:
+The current integrated Player boundary is certified by the QAFramework Full Player orchestrator:
 
 ```text
-Player Session                         PASS
-Scene-Provided                        PASS
-Manager-Provisioned                   PASS
-Actor lifecycle                       PASS
-Public Player Surface                 PASS
-Activity Participation integration    PASS
+PLAYER CURRENT AGGREGATE COMPLETE
+mandatoryContracts = 27
+executedContracts = 27
+passedContracts = 27
 
-PLAYER QA CERTIFIED
+serialization                      PASS
+session                            PASS
+routeSpatialEntry                  PASS
+activityRelocation                 PASS
+sceneProvided                      PASS
+sceneProvidedLeave                 PASS
+sceneProvidedNoActivityLeave       PASS
+sceneProvidedNoActivityTermination PASS
+managerProvisioned                 PASS
+managerNoActivity                  PASS
+managerSessionTermination          PASS
+actor                              PASS
+publicSurface                      PASS
+leave                              PASS
+failedFirstSceneAdoption           PASS
+failedContextualReprojection       PASS
+noPhysicalHandoff                  PASS
 ```
 
-This certification covers the current `Supported Slots` Session model; it does
-not restore the removed Capacity, separate provisioning Profile or per-Slot
-Host Provisioning override model. FIRSTGAME remains the real-consumer/product
-usability proof.
+The 2026-08-26 rerun closes the public arbitrary Actor-selection surface through explicit Select / Default / Replace / Clear commands. Actor selection remains Session-owned logical intent; those commands do not grant physical Actor hot-swap authority.
+
+Historical `25/25` Player certification remains dated evidence for its earlier boundary and is not relabeled as coverage of the later Actor-selection command surface.
+
+The package-local Actor-selection Unity Test Framework Editor tests are a separate evidence lane and are not claimed as executed by this integrated QA result unless separately recorded.
+
+Current remaining Player product gaps include exact-Slot public Join, the public Slot/device/InputUser/control-scheme ownership/observation contract required for canonical Local Multiplayer, and the deferred command-availability/readiness product surface.
 
 ## Documentation
 
 - [Documentation index](Documentation~/README.md)
 - [Current tracker](Documentation~/Architecture/Tracking/IF-TRACK-Framework.md)
-- [ADR completion summary](Documentation~/Architecture/IMMERSIVE-FRAMEWORK-ADR-COMPLETION-SUMMARY-2026-08-08.md)
-- [Player QA certification](Documentation~/Architecture/IMMERSIVE-FRAMEWORK-PLAYER-QA-CERTIFICATION-2026-08-09.md)
+- [Player Actor Selection public surface certification](Documentation~/Architecture/Reconciliation/IF-ADR-015B-Player-Actor-Selection-Public-Surface-Certification-2026-08-26.md)
+- [Player current aggregate recertification](Documentation~/Architecture/Reconciliation/IF-PLAYER-CURRENT-AGGREGATE-RECERTIFICATION-2026-08-24.md)
 - [Framework usage](Documentation~/Guides/Framework-Usage.md)
 - [Player usage](Documentation~/Guides/Player-Usage.md)
 - [Activity readiness](Documentation~/Guides/Activity-Readiness.md)
@@ -96,6 +127,4 @@ usability proof.
 - [Reset usage](Documentation~/Guides/Reset-Usage.md)
 - [Scene lifecycle events](Documentation~/Guides/Scene-Lifecycle-Events.md)
 
-QAFramework owns synthetic technical validation. FIRSTGAME owns real-game
-integration proof. Consumer assets and the old Base/NewScripts architecture do
-not belong in this package.
+QAFramework owns synthetic technical validation. FIRSTGAME/Samples own real-consumer integration and product usability proof. Consumer assets and the old Base/NewScripts architecture do not belong in this package.
