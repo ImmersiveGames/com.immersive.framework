@@ -1,9 +1,10 @@
 # IF-ADR-007 — Activity Entry Readiness and Reveal Gating
 
 Status: **Accepted**  
-Last updated: 2026-08-17  
-Related decisions: IF-ADR-003, IF-ADR-005, IF-ADR-006, IF-ADR-009, IF-ADR-011, IF-ADR-012  
-Current reconciliation: [ADR-007 reconciliation](../Reconciliation/IMMERSIVE-FRAMEWORK-ADR-007-RECONCILIATION-2026-08-11.md)
+Last updated: 2026-08-27  
+Related decisions: IF-ADR-003, IF-ADR-005, IF-ADR-006, IF-ADR-009, IF-ADR-011, IF-ADR-012, IF-ADR-021  
+Current reconciliation: [ADR-007 reconciliation](../Reconciliation/IMMERSIVE-FRAMEWORK-ADR-007-RECONCILIATION-2026-08-11.md)  
+Player dynamic-recovery evidence: [2026-08-27 Activity Player Relocation Fail-Fast and Readiness Recovery](../Reconciliation/IF-ADR-021A-Activity-Player-Relocation-Fail-Fast-and-Readiness-Recovery-2026-08-27.md)
 
 > Current implementation, QA and FIRSTGAME integration status is tracked in
 > `../Tracking/IF-TRACK-Framework.md`. This ADR is normative and intentionally
@@ -88,13 +89,50 @@ Transition Gate and Activity Entry Readiness Recovery Gate remain distinct. A
 terminal readiness failure may leave readiness recovery active after the pure
 Transition Gate is clean.
 
+A package-managed readiness contribution whose represented condition is dynamic may
+be reevaluated during the same active Activity occurrence. In that case, `Failed` is
+the current contribution state, not a permanent historical latch. Recovery is allowed
+only when canonical current evidence proves that the failing condition no longer
+exists:
+
+```text
+current evaluation still fails
+  -> remain Failed
+
+current evaluation is pending
+  -> Preparing with the current pending reason
+
+current evaluation is satisfied
+  -> Completed
+```
+
+This does not authorize a generic clear-on-revision or clear-on-command rule. A
+revision that does not remove the failing condition must preserve `Failed`. The
+2026-08-27 Player relocation evidence proves both directions: `Leave` removes the
+Joined Slot condition and returns the Player contribution to
+`Preparing / WaitingForJoin`, while `CloseJoining` with the same invalid Joined Slot
+changes Session revision but correctly leaves readiness `Failed`.
+
+Recovery within the same occurrence preserves the occurrence identity. The internal
+resume transition publishes the canonical readiness state-change signal but does not
+represent a new Activity entry and must not fire the preparation-start callback a
+second time. Gate state remains derived from the canonical readiness participant; a
+feature-specific lifecycle does not set or clear the gate directly.
+
+This dynamic-contribution rule does not rewrite historical terminal results for an
+already completed, cancelled, invalidated or superseded Activity operation. It only
+allows the active occurrence's current contribution evidence to converge when the
+represented condition itself legitimately changes.
+
 ## Constraints
 
 - WaitCovered never reveals before Ready.
 - WaitVisible permits visible preparation while unsafe capabilities remain gated.
 - ObserveOnly does not become an accidental wait.
 - Stale/foreign occurrences cannot satisfy the active occurrence.
-- Required failure remains blocking and diagnostic.
+- Required failure remains blocking and diagnostic while its current cause persists.
+- Dynamic recovery is evidence-driven; command type or revision alone cannot clear a failure.
+- Recovery preserves the active occurrence and does not synthesize a second preparation-start event.
 - Optional participants do not silently become required or enter the progress
   denominator.
 - Validation does not auto-change policy, participation or Joining state.
