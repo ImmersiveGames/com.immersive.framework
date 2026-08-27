@@ -1,10 +1,11 @@
 # IF-ADR-016 — Player Session Initial Configuration
 
-Status: **Accepted / Reconciled / Implemented / QA Certified 2026-08-15**  
-Last updated: **2026-08-15**  
+Status: **Accepted / Reconciled / Implemented / Current Player QA PASS**  
+Last updated: **2026-08-26**  
 Related decisions: IF-ADR-001, IF-ADR-002, IF-ADR-003, IF-ADR-012, IF-ADR-015, IF-ADR-019, IF-ADR-020  
-Reopen record: [2026-08-14 Player Physical Lifetime Reopen](../Reconciliation/IMMERSIVE-FRAMEWORK-PLAYER-PHYSICAL-LIFETIME-REOPEN-2026-08-14.md)  
-Closure record: [2026-08-15 Player Physical Lifetime Recertification](../Reconciliation/IMMERSIVE-FRAMEWORK-PLAYER-PHYSICAL-LIFETIME-RECERTIFICATION-2026-08-15.md)
+Historical reopen record: [2026-08-14 Player Physical Lifetime Reopen](../Reconciliation/IMMERSIVE-FRAMEWORK-PLAYER-PHYSICAL-LIFETIME-REOPEN-2026-08-14.md)  
+Historical closure record: [2026-08-15 Player Physical Lifetime Recertification](../Reconciliation/IMMERSIVE-FRAMEWORK-PLAYER-PHYSICAL-LIFETIME-RECERTIFICATION-2026-08-15.md)  
+Current Actor-selection closure: [IF-ADR-015B — Player Actor Selection Public Surface Certification — 2026-08-26](../Reconciliation/IF-ADR-015B-Player-Actor-Selection-Public-Surface-Certification-2026-08-26.md)
 
 ## Context
 
@@ -45,14 +46,11 @@ An explicit creation-time Profile replaces the default completely. No field merg
 Untargeted Join
   Joining Open
   -> first eligible vacant Supported Slot
-
-Targeted Join
-  Joining Open
-  + exact supported vacant Slot
-  -> reserve/admit exact Slot
 ```
 
-Targeted Join has no fallback.
+The current designer-facing `PlayerSessionJoinCommandTrigger` uses this ordinary untargeted Join behavior. Exact-Slot public Join is not part of the delivered command surface.
+
+If a future public exact-Slot Join contract is introduced, it must target one exact eligible supported Slot and must not silently fall back to another Slot.
 
 Joining Open/Closed controls entry only. Explicit Leave remains possible for a current Joined Player even when Joining is Closed.
 
@@ -118,7 +116,80 @@ or
 Leave Unresolved
 ```
 
-Actor selection is Session mutable intent, not physical hot-swap authority.
+### Resolve Configured Default
+
+The Session may resolve only the configured `DefaultActorProfile` according to the accepted selection policy.
+
+```text
+configured default exists and is valid
+  -> may select that Actor
+
+configured default absent / invalid
+  -> reject explicitly
+```
+
+No implicit substitute Actor is selected.
+
+### Leave Unresolved
+
+`LeaveUnresolved` is a complete valid initial policy, not an error state and not a request for hidden fallback.
+
+It allows:
+
+```text
+Join
+  -> Slot Joined
+  -> Actor remains unresolved
+```
+
+A later consumer may issue the delivered public explicit Actor-selection command:
+
+```text
+PlayerSessionSelectActorCommandTrigger
+  -> exact Player Slot
+  -> exact ActorProfile
+  -> revision-aware Session validation/commit
+```
+
+This is the canonical initial configuration for a Character Selection flow in which game-owned UI presents the available Actor choices after Join.
+
+A `PlayerSessionDefaultActorSelectionCommandTrigger` request under `LeaveUnresolved` rejects with `RejectedDefaultResolutionDisabled`; it does not override the Profile intent.
+
+Actor selection remains Session mutable logical intent, not physical hot-swap authority.
+
+## Public Actor-selection continuation
+
+The delivered public Actor-selection family is:
+
+```text
+PlayerSessionSelectActorCommandTrigger
+PlayerSessionDefaultActorSelectionCommandTrigger
+PlayerSessionReplaceActorSelectionCommandTrigger
+PlayerSessionClearActorSelectionCommandTrigger
+```
+
+These operate on the already-created Session. They never mutate or reapply the Profile.
+
+Typical Character Selection continuation:
+
+```text
+PlayerSessionProfile
+  ActorResolution = LeaveUnresolved
+        ↓
+Join
+        ↓
+Joined Slot + unresolved Actor
+        ↓
+game-owned UI chooses ActorProfile
+        ↓
+Select Actor command
+        ↓
+Session commits selection
+        ↓
+existing Actor preparation / provisioning / Activity lifecycle
+```
+
+Replace/Clear remain logical pre-preparation operations. They do not authorize physical Actor hot-swap.
 
 ## Runtime authority
 
@@ -129,6 +200,7 @@ Joining state
 Slot occupancy
 Session Player occurrence/revision
 Actor selection
+Actor selection revision
 admitted physical Player ownership/state
 physical preparation evidence
 Leave state/result
@@ -156,12 +228,13 @@ Provisioning origin remains diagnostic and may require different acquisition/rel
 - Runtime Profile reapplication on Activity changes.
 - Treating no-Activity contextual absence as a request to reacquire/recreate physical state.
 - Silent fallback between provisioning modes.
+- Silent Actor fallback when the configured default is absent or when `LeaveUnresolved` is authored.
+- Treating `LeaveUnresolved` as invalid merely because no Actor is selected immediately after Join.
+- Consumer physical hot-swap through logical Actor-selection commands.
 
 ## Certification
 
-The implementation-reconciliation requirement opened on 2026-08-14 is closed.
-
-Current evidence includes:
+Historical 2026-08-15 evidence remains preserved for the Session-initialization boundary that existed at that time:
 
 ```text
 Player serialized command identity       5/5 PASS
@@ -174,4 +247,17 @@ Public Surface                           PASS
 Full Player mandatory contracts          25/25 PASS
 ```
 
-The certification confirms that provisioning origin remains initial acquisition policy while both successful modes converge on the same Session-owned physical lifetime.
+The later public Actor-selection extension and current Player surface are certified by the 2026-08-26 integrated Full Player result:
+
+```text
+PLAYER CURRENT AGGREGATE COMPLETE
+mandatoryContracts = 27
+executedContracts = 27
+passedContracts = 27
+actor = PASS
+publicSurface = PASS
+```
+
+The current result confirms that `ResolveConfiguredDefault` and `LeaveUnresolved` remain valid Session initial policies while explicit Actor-selection commands operate later through the same Session authority.
+
+The historical `5/5` serialized-command and `25/25` Full Player results are not relabeled as tests of the later eight-command Actor-selection surface.
