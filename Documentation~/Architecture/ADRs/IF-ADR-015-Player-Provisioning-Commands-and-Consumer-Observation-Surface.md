@@ -1,18 +1,18 @@
 # IF-ADR-015 — Player Provisioning Commands and Consumer Observation Surface
 
-Status: **Accepted**  
-Last updated: **2026-08-25**  
-Current public-surface reconciliation: **2026-08-25 — Player Session Observer + explicit command components**  
-Proposed extension draft: **2026-08-11 — R6 / R7 / R8**  
+Status: **Accepted / Reconciled / Implemented**  
+Last updated: **2026-08-26**  
+Current public-surface reconciliation: [IF-ADR-015B — Player Actor Selection Public Surface Certification — 2026-08-26](../Reconciliation/IF-ADR-015B-Player-Actor-Selection-Public-Surface-Certification-2026-08-26.md)  
+Previous public-surface reconciliation: [IF-ADR-015A — Player Session Observer and Explicit Command Surfaces — 2026-08-25](../Reconciliation/IF-ADR-015A-Player-Session-Observer-and-Explicit-Command-Surfaces-2026-08-25.md)  
 Related decisions: IF-ADR-002, IF-ADR-003, IF-ADR-006, IF-ADR-010, IF-ADR-012, IF-ADR-014, IF-ADR-016, IF-ADR-019, IF-ADR-020, IF-ADR-021
 
 > The current implemented authoring surface is the `PlayerSessionObserver` plus
-> explicit command components. The older enum-driven generic command trigger is
-> no longer the product surface.
+> eight explicit Player Session command components. The older enum-driven generic
+> command trigger is no longer the product surface.
 >
-> The R6/R7/R8 exact-Slot Join and arbitrary Actor-selection extensions remain
-> separate proposed scope unless and until their implementation status is
-> explicitly promoted by the current Framework Tracker.
+> Arbitrary Actor Selection is now delivered through explicit Select / Default /
+> Replace / Clear commands. Exact-Slot public Join and Local Multiplayer
+> Slot/device/input ownership remain separate future scope.
 
 > Current implementation, QA and FIRSTGAME integration status is tracked in
 > `../Tracking/IF-TRACK-Framework.md`. This ADR is normative and intentionally
@@ -72,7 +72,10 @@ The current designer-facing command components are:
 PlayerSessionOpenJoiningCommandTrigger
 PlayerSessionCloseJoiningCommandTrigger
 PlayerSessionJoinCommandTrigger
+PlayerSessionSelectActorCommandTrigger
 PlayerSessionDefaultActorSelectionCommandTrigger
+PlayerSessionReplaceActorSelectionCommandTrigger
+PlayerSessionClearActorSelectionCommandTrigger
 PlayerSessionLeaveCommandTrigger
 ```
 
@@ -93,28 +96,161 @@ PlayerSessionCommandTrigger
 is superseded. A serialized enum no longer changes the identity and complete semantic
 shape of one MonoBehaviour.
 
-### Open / Close Joining
+## Open / Close Joining
 
 Open and Close Joining mutate only the Session Joining posture through the canonical
 consumer access surface.
 
 They do not select a Slot, select an Actor or materialize Player representation.
 
-### Join
+## Join
 
 `PlayerSessionJoinCommandTrigger` requests the existing ordinary Join contract.
 
-It may carry the optional Control Scheme hint already supported by the Join request.
-It does not select an Actor directly and does not materialize Player representation.
+Current public Join behavior is untargeted with respect to Slot selection: it uses the
+Session's supported Slot order and current eligibility. It may carry the optional
+Control Scheme hint already supported by the Join request.
 
-### Default Actor Selection
+The current command does not expose exact-Slot Join and does not expose a public paired
+device/InputUser ownership contract.
+
+Join does not select an arbitrary Actor directly and does not materialize Player
+representation itself.
+
+## Actor Selection
+
+Actor selection is a Session-owned logical selection transaction for one exact Joined
+Player Slot.
+
+The four public Actor-selection commands are explicit and typed:
+
+```text
+Select Actor
+  PlayerSessionSelectActorCommandTrigger
+
+Select Default Actor
+  PlayerSessionDefaultActorSelectionCommandTrigger
+
+Replace Actor Selection
+  PlayerSessionReplaceActorSelectionCommandTrigger
+
+Clear Actor Selection
+  PlayerSessionClearActorSelectionCommandTrigger
+```
+
+All four return `PlayerActorSelectionResult` evidence and execute through the same scoped
+consumer-access boundary.
+
+### Select Actor
+
+`PlayerSessionSelectActorCommandTrigger` requests one explicit `ActorProfile` for one
+exact Joined `PlayerSlotId`.
+
+Typical authored intent:
+
+```text
+Player Slot
+Actor Profile
+Expected Selection Revision
+Reason
+```
+
+The game may own which Actor choices are presented to the user. It does not own the
+selection commit or Session mutation.
+
+### Select Default Actor
 
 `PlayerSessionDefaultActorSelectionCommandTrigger` requests the configured default Actor
-for one exact Player Slot through the existing Actor-selection authoring authority.
+for one exact Player Slot.
 
-It remains separate from Join.
+It is policy-aware:
 
-### Leave
+```text
+ResolveConfiguredDefault
+  -> use configured DefaultActorProfile only
+
+LeaveUnresolved
+  -> RejectedDefaultResolutionDisabled
+```
+
+There is no silent fallback to another Actor.
+
+### Replace Actor Selection
+
+`PlayerSessionReplaceActorSelectionCommandTrigger` replaces already selected logical
+Actor intent before the canonical preparation barrier.
+
+It does not hot-swap or tear down an already prepared/admitted physical Actor.
+
+### Clear Actor Selection
+
+`PlayerSessionClearActorSelectionCommandTrigger` clears logical Actor selection before
+the canonical preparation barrier.
+
+It does not tear down an already prepared/admitted physical Actor.
+
+## Actor-selection lifecycle barrier
+
+Actor selection remains separate from Actor preparation/materialization.
+
+The public Actor commands flow through the canonical preparation context before mutable
+Session selection authority:
+
+```text
+explicit Actor command
+  -> scoped consumer access
+  -> PlayerActorPreparationRuntimeContext
+  -> PlayerParticipationRuntimeContext
+```
+
+Select / Replace / Clear reject once a Logical Player Actor is already prepared or when a
+retained preparation/release failure is acting as the canonical barrier.
+
+The public rejection is:
+
+```text
+RejectedLogicalActorAlreadyPrepared
+```
+
+This prevents a selection command from becoming an implicit physical Actor hot-swap.
+The internal prepared-Actor replacement transaction remains internal and is not exposed
+as a consumer command.
+
+## Revision, idempotency and duplicate policy
+
+Selection is revision-aware.
+
+Canonical behavior includes:
+
+```text
+Select A with no selected Actor
+  -> SucceededSelected
+  -> Selection / Slot / Session revisions advance once
+
+Select A when A is already selected
+  -> idempotent success
+  -> revisions unchanged
+
+Select B while A is selected
+  -> reject; use Replace
+  -> no mutation
+
+Replace B before preparation
+  -> SucceededReplaced
+  -> revisions advance once
+
+Clear before preparation
+  -> SucceededCleared
+  -> revisions advance once
+
+stale expected selection revision
+  -> RejectedStaleSelectionRevision
+  -> no mutation
+```
+
+Duplicate Actor selection remains governed by the Session duplicate-selection policy.
+
+## Leave
 
 `PlayerSessionLeaveCommandTrigger` requests Leave for one explicit Player Slot and uses
 the current scoped observation to correlate the joined occurrence when the advanced
@@ -122,36 +258,20 @@ revision override is left at its default.
 
 Leave authority and release semantics remain governed by IF-ADR-020.
 
-## Proposed command extensions
+## Remaining proposed command extensions
 
-The following vocabulary remains proposed extension scope and must not be confused with
-the current implemented explicit component set:
+The following remains outside the current delivered command set:
 
 ```text
-Request Join To Slot
-Request Actor Selection (arbitrary ActorProfile)
+Request Join To Exact Slot
 ```
-
-### Request Join To Slot
 
 Exact-Slot Join would express an explicit target Slot plus optional Input System hints.
 The Session would validate and own the reservation/admission transaction. Failure must
 not silently fall back to another Slot.
 
-### Request Actor Selection
-
-Arbitrary Actor Selection would express:
-
-```text
-Player Slot
-ActorProfile
-optional expected selection revision
-source
-reason
-```
-
-The Session / Actor-selection authority remains mutable authority. The consumer must not
-prepare/materialize the Actor or hot-swap a prepared physical representation directly.
+Local Multiplayer additionally requires a sufficient public Slot/device/input ownership
+and observation contract; that is not implied by the current ordinary Join command.
 
 ## Initialization boundary
 
@@ -166,6 +286,9 @@ PlayerSessionProfile
 ```
 
 Commands operate on the created Session. They never mutate or reapply the Profile.
+
+`Actor Resolution = LeaveUnresolved` is an intentional valid policy for flows where Actor
+selection must remain pending after Join, including Character Selection.
 
 ## Scoped access
 
@@ -183,6 +306,25 @@ free of serialized cross-scene authority references
 Route- or Activity-scoped consumer lifetime is an access boundary only. It does not
 transfer provisioning, Slot, Actor or physical-lifetime authority from Session to the
 consumer scene.
+
+A valid authored component may temporarily have no live runtime binding. Therefore:
+
+```text
+TryValidateConfiguration()
+  = authoring/configuration validity
+
+BindingState / IsScopedAccessAvailable / TryGetAccess
+  = runtime scoped-access availability
+```
+
+These are separate contracts.
+
+Likewise, physical location in Route-discovered content does not force Route ownership.
+An Activity-scoped consumer may be discovered from Route content and bind later during
+the Activity lifecycle.
+
+`PlayerSessionScopedAccessConsumer.TryBind(...)` remains the canonical scope-match
+boundary and rejects actual/authored scope mismatch.
 
 No public static registry, service locator, reflection, scene-wide authority search or
 hierarchy/name inference is required.
@@ -260,7 +402,16 @@ Close Joining
 Join
   -> LocalPlayerJoinResult
 
-Default Actor Selection
+Select Actor
+  -> PlayerActorSelectionResult
+
+Select Default Actor
+  -> PlayerActorSelectionResult
+
+Replace Actor Selection
+  -> PlayerActorSelectionResult
+
+Clear Actor Selection
   -> PlayerActorSelectionResult
 
 Leave
@@ -270,8 +421,8 @@ Leave
 Current Session observation and the result of one transient command invocation are
 separate concepts.
 
-Therefore the Observer does not expose `LastOperation*` and no replacement global
-"last Player command" aggregator is introduced.
+Therefore the Observer does not expose a global `LastOperation*` aggregator and no
+replacement global "last Player command" store is introduced.
 
 ## Authoring boundary
 
@@ -331,6 +482,9 @@ The consumer surface must not collapse them into one opaque command such as:
 Join Player As Actor And Materialize
 ```
 
+Likewise, `Replace Actor Selection` is not equivalent to replacing a prepared physical
+Actor.
+
 This separation preserves diagnostics and avoids moving lifecycle authority into game UI.
 
 ## No-fallback rules
@@ -343,12 +497,13 @@ missing scoped access -> global lookup
 targeted Join -> choose another Slot
 Actor selection -> silently choose another Actor
 Actor selection -> prepare/materialize Actor directly
+Actor replacement intent -> hot-swap prepared Actor implicitly
 Leave -> infer a different Player Slot
 ```
 
 ## Serialization and migration reconciliation
 
-The 2026-08-25 public-surface cut records:
+The 2026-08-25 public-surface cut recorded:
 
 ```text
 PlayerSessionStatus
@@ -359,32 +514,33 @@ PlayerSessionCommandTrigger + PlayerProvisioningCommandOperation
 ```
 
 The `PlayerSessionStatus` script GUID was preserved for the Observer so existing serialized
-references to that script identity can migrate without inventing a parallel observation
+references to that script identity could migrate without inventing a parallel observation
 surface.
 
-Known serialized generic command usages in the Player sample were migrated explicitly to
-Join and Leave components and their UnityEvents now call the corresponding `Invoke()`.
-No automatic migrator was introduced because no additional local serialized usages were
-found that justified one.
+The 2026-08-26 Actor-selection cut added explicit Select / Replace / Clear command
+components, routed Default through the same scoped command surface, and removed the old
+public Actor-selection authoring/binder path after confirming no active serialized
+consumers required it.
 
-Detailed implementation/migration evidence is recorded in:
+Detailed records:
 
-`../Reconciliation/IF-ADR-015A-Player-Session-Observer-and-Explicit-Command-Surfaces-2026-08-25.md`.
+- [IF-ADR-015A — Player Session Observer and Explicit Command Surfaces — 2026-08-25](../Reconciliation/IF-ADR-015A-Player-Session-Observer-and-Explicit-Command-Surfaces-2026-08-25.md)
+- [IF-ADR-015B — Player Actor Selection Public Surface Certification — 2026-08-26](../Reconciliation/IF-ADR-015B-Player-Actor-Selection-Public-Surface-Certification-2026-08-26.md)
 
 ## Deferred command-surface readiness issue
 
 A consumer integration run exposed one non-blocking follow-up:
 
 ```text
-first Join interaction
-  -> scoped command access still Unbound
+first interaction
+  -> scoped command access may still be Unbound
   -> RejectedRuntimeUnavailable
 
 binding completes
 
-subsequent Join
+subsequent interaction
   -> Bound
-  -> SucceededJoined
+  -> command may proceed
 ```
 
 This is tracked as **PLAYER-COMMAND-SURFACE-READINESS / DEFERRED**.
@@ -409,20 +565,24 @@ This follow-up does not change the command/observer composition defined by this 
 - Observer dependency on physical Player GameObject lookup.
 - Reintroducing one serialized enum-driven command component for semantically distinct commands.
 
-## Integration and product improvement
+## Certification and product consequence
 
-The current explicit command composition is implemented in Framework commit:
+The public Actor-selection extension is certified by the 2026-08-26 Full Player aggregate:
 
 ```text
-08e1f655a344b71d0d5ef37c7e41ebb58807aa00
-PLAYER SESSION PUBLIC SURFACE
+PLAYER CURRENT AGGREGATE COMPLETE
+mandatoryContracts = 27
+executedContracts = 27
+passedContracts = 27
+actor = PASS
+publicSurface = PASS
 ```
 
-FIRSTGAME / Player Provisioning consumer integration is recorded independently from
-technical certification. The sample may compose an Observer when it needs read-only
-Session presentation and explicit command components when it needs requests; neither is
-a prerequisite for the other.
+The historical Full Player `25/25` remains dated evidence for its earlier boundary.
 
-Future exact-Slot Join or arbitrary Actor-selection work must preserve this same product
-principle: explicit consumer intent, typed scoped access, no parallel authority and no
-silent fallback.
+The public arbitrary Actor-selection blocker for the Character Selection sample is
+therefore closed. Character Selection may now proceed using normal game-owned UI plus the
+public explicit Actor-selection command surface.
+
+Exact-Slot Join and public Slot/device/input ownership remain separate future work and
+continue to block the canonical Local Multiplayer sample.
