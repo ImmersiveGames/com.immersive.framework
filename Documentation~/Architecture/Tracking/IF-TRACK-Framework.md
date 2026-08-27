@@ -1,7 +1,7 @@
 # IF-TRACK — Immersive Framework
 
 Status: **Active — Stage B baseline + proposed architecture expansion**  
-Last updated: **2026-08-24**
+Last updated: **2026-08-26**
 
 ## Authority and status model
 
@@ -63,6 +63,7 @@ Current closure records:
 - [Stage B — Game Flow Sample Consumer Evidence](../Reconciliation/IF-STAGE-B-GAMEFLOW-SAMPLE-EVIDENCE-2026-08-21.md)
 - [IF-ADR-021 — Player Authority and Initial Placement Reconciliation](../Reconciliation/IF-ADR-021-Player-Authority-and-Initial-Placement-Reconciliation-2026-08-23.md)
 - [Player Current Aggregate Recertification — 2026-08-24](../Reconciliation/IF-PLAYER-CURRENT-AGGREGATE-RECERTIFICATION-2026-08-24.md)
+- [IF-ADR-015B — Player Actor Selection Public Surface Certification — 2026-08-26](../Reconciliation/IF-ADR-015B-Player-Actor-Selection-Public-Surface-Certification-2026-08-26.md)
 
 ## Reconciliation sequence
 
@@ -82,7 +83,7 @@ A real consumer can expose product/UX debt, an integration gap, future scope, or
 |---|---|---|---|
 | [001](../ADRs/IF-ADR-001-Core-Lifecycle-and-Runtime-Authority.md) | ACCEPTED / RECONCILED / IMPLEMENTED; 001A Editor startup isolation implemented locally | Existing core certification preserved; 001A is scoped consumer/Play Mode regression evidence, not new broad QA certification | Both Editor startup policies proven: `FrameworkStartup` uses neutral bootstrap and prevents the reproduced EventSystem/listener contamination; `CurrentSceneOnly` executes the current scene with Framework boot explicitly skipped. |
 | [002](../ADRs/IF-ADR-002-Product-Authoring-Model.md) | ACCEPTED / RECONCILED / IMPLEMENTED | Feature-owned evidence | Stage A closed; product proof remains feature-owned. |
-| [003](../ADRs/IF-ADR-003-Player-Participation-and-Actor-Lifecycle.md) | ACCEPTED baseline / RECONCILED / IMPLEMENTED; R6/R7/R8 draft pending | CERTIFIED baseline; current Full Player aggregate 27/27 PASS | Existing Player proof remains valid; proposed deltas are not delivered baseline behavior. |
+| [003](../ADRs/IF-ADR-003-Player-Participation-and-Actor-Lifecycle.md) | ACCEPTED / RECONCILED / IMPLEMENTED; arbitrary Actor-selection lifecycle delivered; physical hot-swap remains future | Current Full Player aggregate 27/27 PASS, including Actor Lifecycle and Public Surface | Character Selection public Actor-selection blocker closed; exact-Slot/device/input work remains separate. |
 | [004](../ADRs/IF-ADR-004-Camera-Requests-and-Output-Authority.md) | ACCEPTED / RECONCILED / IMPLEMENTED; 004D Default-output cut merged | Full Camera 53/53 CERTIFIED for 2026-08-15 boundary | Sample 00 Default-output + gameplay readiness proof PASS; broader Camera consumer proof remains separate. |
 | [005](../ADRs/IF-ADR-005-Input-Pause-Gate-and-Reset.md) | ACCEPTED / RECONCILED / IMPLEMENTED | Input Gate 9/9; Restart 8/8; Pause 27/27 CERTIFIED | Stage A closed; Stage B may test authoring/usability. |
 | [006](../ADRs/IF-ADR-006-Loading-Transition-Persistence-and-Diagnostics.md) | ACCEPTED / RECONCILED / IMPLEMENTED | Focused 8/8; Progress 32/32; Terminal 34/34 CERTIFIED | **GAME FLOW CONSUMER PASS** — Game Flow Sample proves real persistent Transition/Loading authoring, Route Fade cover/reveal, Activity Fade/Seamless/FadeWithLoading selection and successful readiness-governed covered waiting. Negative/terminal robustness remains technical QA-owned and is not a FIRSTGAME/Sample completion gate. |
@@ -94,8 +95,8 @@ A real consumer can expose product/UX debt, an integration gap, future scope, or
 | [012](../ADRs/IF-ADR-012-Activity-Player-Participation-Profile-and-Readiness-Compatibility.md) | ACCEPTED / RECONCILED / IMPLEMENTED | CERTIFIED; current Full Player aggregate 27/27 PASS | FIRSTGAME participation proof required. |
 | [013](../ADRs/IF-ADR-013-Optional-Audio-BGM-Adapter.md) | ACCEPTED / EXPERIMENTAL / IMPLEMENTED — IF-ADR-013A + BGM-CONTINUITY-1 + BGM-ROUTE-POLICY-1 | CERTIFIED: Audio 30/30 = Core 7/7 + Framework BGM 14/14 + ADR-013A 5/5 + physical continuity 4/4; real Framework Route A->B continuity PASS | **FIRSTGAME/SAMPLE CONSUMER GATE PASS** — Game Flow Sample proves Play, no-request Preserve, owner-exit preservation and explicit Silence across transient Route/Activity scenes. API remains Experimental pending an explicit product-maturity promotion cut. |
 | [014](../ADRs/IF-ADR-014-Authored-Definition-and-Stable-Identity-Authority.md) | ACCEPTED / IMPLEMENTED | CERTIFIED | Current boundary closed and consumer-proven. |
-| [015](../ADRs/IF-ADR-015-Player-Provisioning-Commands-and-Consumer-Observation-Surface.md) | ACCEPTED baseline / IMPLEMENTED; R6/R7/R8 draft pending | CERTIFIED baseline; current Full Player aggregate 27/27 PASS | Targeted Join / Actor Selection draft deltas are not current delivered baseline. |
-| [016](../ADRs/IF-ADR-016-Player-Session-Initial-Configuration-and-Provisioning-Profiles.md) | ACCEPTED baseline / IMPLEMENTED; R6/R7/R8 draft pending | CERTIFIED baseline; current Full Player aggregate 27/27 PASS | Scene-/Manager-Provisioned baseline remains valid. |
+| [015](../ADRs/IF-ADR-015-Player-Provisioning-Commands-and-Consumer-Observation-Surface.md) | ACCEPTED / RECONCILED / IMPLEMENTED; Observer + 8 explicit commands, including Select / Default / Replace / Clear Actor Selection | Current Full Player aggregate 27/27 PASS; Actor Lifecycle PASS; Public Surface PASS | Character Selection public-surface blocker closed. Exact-Slot public Join and Local Multiplayer Slot/device/input contracts remain future work. |
+| [016](../ADRs/IF-ADR-016-Player-Session-Initial-Configuration-and-Provisioning-Profiles.md) | ACCEPTED / IMPLEMENTED; `ResolveConfiguredDefault` and `LeaveUnresolved` are current Actor-resolution policies | Current Full Player aggregate 27/27 PASS | `LeaveUnresolved` now has a delivered public arbitrary Actor-selection continuation path; Scene-/Manager-Provisioned baseline remains valid. |
 | [017](../ADRs/IF-ADR-017-Application-Frame-Rate-Project-Authority.md) | ACCEPTED / RECONCILED / IMPLEMENTED | Edit 13/13; Target 13/13; VSync 13/13; Defaults 13/13 CERTIFIED | Stage A closed. |
 | [018](../ADRs/IF-ADR-018-Progression-Save-Backend-Independence-and-Persistence-Domain-Boundaries.md) | ACCEPTED / RECONCILED; A Stable, B JSON certified, C composition implemented | backend conformance; JSON 18/18; composition 12/12 CERTIFIED | FIRSTGAME persistence/backend usability proof remains. |
 | [019](../ADRs/IF-ADR-019-Session-Player-Lifetime-and-Activity-Representation-Authority.md) | ACCEPTED / RECONCILED / IMPLEMENTED | Full Player current aggregate 27/27 PASS; historical 25/25 recertification preserved | Closed for Session physical Player lifetime and contextual representation authority. |
@@ -105,9 +106,59 @@ A real consumer can expose product/UX debt, an integration gap, future scope, or
 
 ## Current scoped closures
 
+### Player Actor Selection public surface — IF-ADR-015B — 2026-08-26
+
+Current delivered Player Session public command family:
+
+```text
+Open Joining
+Close Joining
+Join
+Select Actor
+Select Default Actor
+Replace Actor Selection
+Clear Actor Selection
+Leave
+```
+
+Actor Selection remains a logical Session transaction, not physical hot-swap authority.
+The public path is scoped and typed, selection is revision-aware, idempotent repeat
+selection does not advance revisions, and Select / Replace / Clear fail closed once the
+canonical preparation barrier is active.
+
+Current integrated certification:
+
+```text
+PLAYER CURRENT AGGREGATE COMPLETE
+mandatoryContracts=27
+executedContracts=27
+passedContracts=27
+actor=PASS
+publicSurface=PASS
+```
+
+The QA reconciliation also closed obsolete test assumptions that confused authoring
+validity with runtime binding availability or Route-content location with Route
+ownership. Production runtime was not changed to satisfy those QA corrections.
+
+Product consequence:
+
+```text
+Character Selection
+  public arbitrary Actor-selection blocker CLOSED
+  next Player sample cut may proceed
+
+Local Multiplayer
+  still blocked by public Slot/device/input ownership/observation contract
+```
+
+Certification record:
+
+[IF-ADR-015B — Player Actor Selection Public Surface Certification — 2026-08-26](../Reconciliation/IF-ADR-015B-Player-Actor-Selection-Public-Surface-Certification-2026-08-26.md)
+
 ### Player current aggregate — IF-ADR-019 / 020 / 021 — 2026-08-24
 
-Current technical Player certification:
+Current technical Player certification for that reconciliation boundary:
 
 ```text
 PLAYER CURRENT AGGREGATE COMPLETE
@@ -457,10 +508,11 @@ Generic Stage A task:     none
 ```
 
 The historical Stage A closure does not claim implementation/certification of later
-accepted cuts. IF-ADR-021 Model B is now separately implemented and certified by the
+accepted cuts. IF-ADR-021 Model B is separately implemented and certified by the
 2026-08-24 Player Current Aggregate Recertification. ADR-019 and ADR-020 retain their
 historical 2026-08-15 recertification and are also covered by the current 27/27
-aggregate.
+aggregate. IF-ADR-015B records the later 2026-08-26 public Actor-selection extension and
+its integrated 27/27 Full Player result without rewriting the earlier dated evidence.
 
 A new accepted contract or reproducible regression may open a new scoped technical cut without invalidating unrelated historical certification.
 
@@ -472,7 +524,7 @@ certification.
 
 Stage B is the real-consumer lane for accepted package boundaries.
 
-1. **Player** — current technical Player boundary is certified by the `27/27` aggregate, including Scene-/Manager-Provisioned flows, Actor Lifecycle, public surface, Leave and IF-ADR-021 Model B spatial semantics. Remaining Player work in Stage B is consumer/sample integration and usability proof; proposed future deltas remain separate until accepted.
+1. **Player** — current technical Player boundary is certified by the `27/27` aggregate, including Scene-/Manager-Provisioned flows, Actor Lifecycle, explicit Actor Selection, public surface, Leave and IF-ADR-021 Model B spatial semantics. Character Selection is the next unblocked Player sample cut. Local Multiplayer remains blocked by the public Slot/device/input ownership/observation contract; exact-Slot public Join is also not delivered.
 2. **Loading / Readiness** — **Game Flow consumer proof CLOSED** for valid product paths: Route Fade + Loading, Activity `FadeWithLoading`, `ObserveOnly`, `WaitVisible`, `WaitCovered`, one-Required participant-aware determinate progress, content release and fresh reentry are proven. Negative/invalid/interrupted/terminal failure semantics remain technical QA/certification and do not block FIRSTGAME.
 3. **Camera** — 004D Default-output integration is proven in Sample 00; broader ADR-022 C6 remains pending.
 4. **Pause** — consumer authoring/usability only; runtime contract is certified.
@@ -495,6 +547,8 @@ Do not reopen solely because a consumer exposes weak UX, because an API remains 
 
 These remain outside the current accepted baseline unless separately accepted:
 
+- exact-Slot public Join and richer consumer Join targeting semantics;
+- public Slot/device/InputUser/control-scheme ownership observation for canonical Local Multiplayer;
 - device disconnect/reconnect, reassignment and network reconnection semantics;
 - heterogeneous per-Slot Host Provisioning;
 - consumer-facing physical Actor hot-swap/replacement while represented;
@@ -507,12 +561,17 @@ These remain outside the current accepted baseline unless separately accepted:
 - persisted Frame Rate preference integration after relevant persistence/preferences architecture;
 - simultaneous dual-source BGM crossfade and AudioMixer binding unless separately accepted.
 
+`PLAYER-COMMAND-SURFACE-READINESS / DEFERRED` also remains open as a product-availability concern. Valid authored commands can be runtime-unbound and must reject without fallback; a future cut may expose availability more directly without introducing a second authority.
+
+Arbitrary Actor Selection is no longer future scope. Select / Default / Replace / Clear are delivered explicit public commands.
+
 ADR-022 presentation models are not future scope; Fixed/Follow/Mounted/Third Person are accepted/implemented. Multi-output/additional families remain future.
 
 ## Current architecture / governance records
 
 - [IF-GOV-001 — API Maturity and Validation Governance](../Governance/IF-GOV-001-API-MATURITY-AND-VALIDATION-GOVERNANCE.md)
 - [IF-ADR-013 — Optional Audio BGM Adapter](../ADRs/IF-ADR-013-Optional-Audio-BGM-Adapter.md) — Accepted / Experimental / technically certified / consumer gate proven
+- [IF-ADR-015 — Player Provisioning Commands and Consumer Observation Surface](../ADRs/IF-ADR-015-Player-Provisioning-Commands-and-Consumer-Observation-Surface.md) — Accepted / reconciled / implemented / explicit Actor Selection delivered
 - [IF-ADR-019 — Session Player Lifetime and Activity Representation Authority](../ADRs/IF-ADR-019-Session-Player-Lifetime-and-Activity-Representation-Authority.md) — Accepted / reconciled / implemented / current aggregate PASS
 - [IF-ADR-020 — Session Player Leave and Resource Release Authority](../ADRs/IF-ADR-020-Session-Player-Leave-and-Resource-Release-Authority.md) — Accepted / reconciled / implemented / current aggregate PASS
 - [IF-ADR-021 — Route Spatial Entry and Activity Explicit Relocation](../ADRs/IF-ADR-021-Activity-Player-Actor-Initial-Placement-Authority.md) — Accepted / reconciled / implemented / current QA verified
@@ -533,6 +592,7 @@ ADR-022 presentation models are not future scope; Fixed/Follow/Mounted/Third Per
 - [ADR-008](../Reconciliation/IMMERSIVE-FRAMEWORK-ADR-008-RECONCILIATION-2026-08-10.md)
 - [ADR-011](../Reconciliation/IMMERSIVE-FRAMEWORK-ADR-011-RECONCILIATION-2026-08-11.md)
 - [ADR-013 BGM Continuity Technical Certification](../Reconciliation/IF-ADR-013-BGM-Continuity-Technical-Certification-2026-08-19.md)
+- [IF-ADR-015B — Player Actor Selection Public Surface Certification](../Reconciliation/IF-ADR-015B-Player-Actor-Selection-Public-Surface-Certification-2026-08-26.md)
 - [Stage B — Game Flow Sample Consumer Evidence](../Reconciliation/IF-STAGE-B-GAMEFLOW-SAMPLE-EVIDENCE-2026-08-21.md)
 - [ADR-017](../Reconciliation/IMMERSIVE-FRAMEWORK-ADR-017-RECONCILIATION-2026-08-11.md)
 - [ADR-018](../Reconciliation/IMMERSIVE-FRAMEWORK-ADR-018-RECONCILIATION-2026-08-11.md)
