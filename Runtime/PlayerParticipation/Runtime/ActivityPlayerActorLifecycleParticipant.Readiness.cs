@@ -82,27 +82,42 @@ namespace Immersive.Framework.PlayerParticipation
             ApplyPlayerReadinessRecordTerminalState();
         }
 
-        private void ApplyPlayerReadinessRecordTerminalState()
+        private bool ApplyPlayerReadinessRecordTerminalState()
         {
             if (_playerReadinessRecord == null ||
                 _playerReadinessParticipant == null ||
-                _playerReadinessParticipant.State !=
-                    ActivityReadinessParticipantState.Preparing)
+                _playerReadinessParticipant.State ==
+                    ActivityReadinessParticipantState.Idle ||
+                _playerReadinessParticipant.State ==
+                    ActivityReadinessParticipantState.Released)
             {
-                return;
+                return false;
             }
 
             if (_playerReadinessRecord.failed)
             {
+                if (_playerReadinessParticipant.State ==
+                    ActivityReadinessParticipantState.Failed)
+                {
+                    return false;
+                }
+
                 _playerReadinessParticipant.FailPreparation(
                     _playerReadinessRecord.message);
-                return;
+                return true;
             }
 
+            bool resumed = _playerReadinessParticipant.ResumePreparation(
+                _playerReadinessRecord.completed
+                    ? "Preparing"
+                    : _playerReadinessRecord.readinessReason.ToString());
             if (_playerReadinessRecord.completed)
             {
                 _playerReadinessParticipant.CompletePreparation();
+                return true;
             }
+
+            return resumed;
         }
 
         private void OnPlayerReadinessPreparationReleased()
@@ -121,12 +136,12 @@ namespace Immersive.Framework.PlayerParticipation
                 ActivityPlayerActorReadinessReason.Released;
         }
 
-        private void CompletePlayerReadinessContribution(
+        private bool CompletePlayerReadinessContribution(
             string message)
         {
             if (_playerReadinessRecord == null)
             {
-                return;
+                return false;
             }
 
             _playerReadinessRecord.completed = true;
@@ -135,15 +150,15 @@ namespace Immersive.Framework.PlayerParticipation
                 ActivityPlayerActorReadinessReason.RequirementSatisfied;
             _playerReadinessRecord.message = message ?? string.Empty;
 
-            ApplyPlayerReadinessRecordTerminalState();
+            return ApplyPlayerReadinessRecordTerminalState();
         }
 
-        private void FailPlayerReadinessContribution(
+        private bool FailPlayerReadinessContribution(
             string message)
         {
             if (_playerReadinessRecord == null)
             {
-                return;
+                return false;
             }
 
             _playerReadinessRecord.completed = false;
@@ -154,7 +169,19 @@ namespace Immersive.Framework.PlayerParticipation
                 ? "Player Activity readiness failed."
                 : message.Trim();
 
-            ApplyPlayerReadinessRecordTerminalState();
+            return ApplyPlayerReadinessRecordTerminalState();
+        }
+
+        private bool ContinuePlayerReadinessContribution()
+        {
+            if (_playerReadinessRecord == null)
+            {
+                return false;
+            }
+
+            _playerReadinessRecord.completed = false;
+            _playerReadinessRecord.failed = false;
+            return ApplyPlayerReadinessRecordTerminalState();
         }
 
         private void ReleasePlayerReadinessRecord(string reason)

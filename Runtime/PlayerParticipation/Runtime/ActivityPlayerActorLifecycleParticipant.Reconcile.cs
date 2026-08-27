@@ -407,6 +407,18 @@ namespace Immersive.Framework.PlayerParticipation
                 return _lastReconcileResult;
             }
 
+            if (!TryPreflightReadinessActivityRelocation(
+                    session,
+                    out string relocationPreflightIssue))
+            {
+                return PublishReconcileFailure(
+                    ActivityPlayerActorReconcileStatus.FailedPreparation,
+                    session.Revision,
+                    relocationPreflightIssue,
+                    false,
+                    false);
+            }
+
             var deltas = new List<ReconcilePassDelta>();
             bool progressed = false;
             PlayerGameplayRuntimeHostModule gameplayRuntime = null;
@@ -724,7 +736,8 @@ namespace Immersive.Framework.PlayerParticipation
                       "blocked only by the current Activity entry gate; " +
                       "readiness may release that gate.";
                 MarkAllReadinessSlotsSatisfied(completionMessage);
-                CompletePlayerReadinessContribution(completionMessage);
+                bool completionReadinessStateChanged =
+                    CompletePlayerReadinessContribution(completionMessage);
                 UpdateLifecycleSnapshot(
                     ActivityPlayerActorLifecycleStatus
                         .SucceededReconciledReady,
@@ -735,7 +748,7 @@ namespace Immersive.Framework.PlayerParticipation
                     ActivityPlayerActorReconcileStatus.SucceededCompleted,
                     appliedSession.Revision,
                     _playerReadinessRecord.appliedSessionRevision,
-                    true,
+                    progressed || completionReadinessStateChanged,
                     false,
                     true,
                     _playerReadinessRecord.message);
@@ -755,6 +768,8 @@ namespace Immersive.Framework.PlayerParticipation
             }
 
             ApplyPendingEvaluation(evaluation);
+            bool readinessStateChanged =
+                ContinuePlayerReadinessContribution();
             UpdateLifecycleSnapshot(
                 ActivityPlayerActorLifecycleStatus
                     .SucceededReconciledPreparing,
@@ -762,12 +777,12 @@ namespace Immersive.Framework.PlayerParticipation
                 evaluation,
                 evaluation.Message);
             _lastReconcileResult = BuildReconcileResult(
-                progressed
+                progressed || readinessStateChanged
                     ? ActivityPlayerActorReconcileStatus.SucceededProgressed
                     : ActivityPlayerActorReconcileStatus.SucceededNoChange,
                 appliedSession.Revision,
                 _playerReadinessRecord.appliedSessionRevision,
-                progressed,
+                progressed || readinessStateChanged,
                 false,
                 true,
                 evaluation.Message);
@@ -1179,7 +1194,8 @@ namespace Immersive.Framework.PlayerParticipation
             bool rollbackAttempted,
             bool rollbackSucceeded)
         {
-            FailPlayerReadinessContribution(issue);
+            bool readinessStateChanged =
+                FailPlayerReadinessContribution(issue);
             _lastSnapshot = new ActivityPlayerActorLifecycleSnapshot(
                 status == ActivityPlayerActorReconcileStatus.FailedRollback
                     ? ActivityPlayerActorLifecycleStatus.FailedRollback
@@ -1204,7 +1220,7 @@ namespace Immersive.Framework.PlayerParticipation
                 status,
                 requestedSessionRevision,
                 _playerReadinessRecord?.appliedSessionRevision ?? 0,
-                true,
+                readinessStateChanged,
                 rollbackAttempted,
                 rollbackSucceeded,
                 issue);

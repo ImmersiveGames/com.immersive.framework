@@ -1,5 +1,6 @@
 using System;
 using Immersive.Framework.Authoring;
+using Immersive.Framework.Diagnostics;
 using Immersive.Framework.RuntimeContent;
 
 namespace Immersive.Framework.PlayerParticipation
@@ -18,6 +19,7 @@ namespace Immersive.Framework.PlayerParticipation
         private ActivityPlayerActorReconcileTargetStatus _observedTargetStatus;
         private bool _reconciling;
         private PlayerActivityReconciliationRuntimeHostSnapshot _lastSnapshot;
+        private FrameworkLogger _logger;
 
         internal PlayerActivityReconciliationRuntimeHostSnapshot LastSnapshot =>
             _lastSnapshot ??
@@ -153,6 +155,14 @@ namespace Immersive.Framework.PlayerParticipation
                 string message = result != null
                     ? result.ToDiagnosticString()
                     : "Active-Activity Player reconcile returned no result.";
+
+                if (result != null && result.Failed)
+                {
+                    (_logger ??= FrameworkLogger.Create<
+                        PlayerActivityReconciliationRuntimeHostModule>())
+                        .Error("Activity Player reconciliation failed. " +
+                            result.Message);
+                }
 
                 _lastSnapshot =
                     new PlayerActivityReconciliationRuntimeHostSnapshot(

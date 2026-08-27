@@ -4,6 +4,7 @@ using Immersive.Framework.ActivityFlow;
 using Immersive.Framework.Actors;
 using Immersive.Framework.ApiStatus;
 using Immersive.Framework.Authoring;
+using Immersive.Framework.Diagnostics;
 using Immersive.Framework.PlayerSlots;
 using Immersive.Framework.Pause;
 using Immersive.Framework.RuntimeContent;
@@ -303,6 +304,32 @@ namespace Immersive.Framework.PlayerParticipation
                     owner,
                     requirementLevel,
                     projectedSlots);
+            }
+
+            if ((int)requirementLevel >=
+                    (int)PlayerParticipationRequirementLevel.SelectedActors &&
+                !TryPreflightProjectedActivityRelocation(
+                    activity,
+                    owner,
+                    projectedSlots,
+                    out string relocationPreflightIssue))
+            {
+                _playerReadinessRecord = null;
+                _lastSnapshot = FailureSnapshot(
+                    ActivityPlayerActorLifecycleStatus.FailedPreparation,
+                    activity,
+                    owner,
+                    requirementLevel,
+                    projectedSlots,
+                    relocationPreflightIssue);
+                FrameworkLogger.Create<
+                    ActivityPlayerActorLifecycleParticipant>().Error(
+                    "Activity Player reconciliation failed. " +
+                    relocationPreflightIssue);
+                return Blocking(
+                    request,
+                    "activity-player-relocation-preflight-failed",
+                    relocationPreflightIssue);
             }
 
             if (requirementLevel ==
@@ -755,6 +782,75 @@ namespace Immersive.Framework.PlayerParticipation
                 out requirementLevel,
                 out projectedSlots,
                 out issue);
+        }
+
+        private bool TryPreflightProjectedActivityRelocation(
+            ActivityAsset activity,
+            RuntimeContentOwner owner,
+            IReadOnlyList<PlayerSlotRuntimeSnapshot> projectedSlots,
+            out string issue)
+        {
+            issue = string.Empty;
+            if (activity == null ||
+                activity.PlayerRelocationPolicy !=
+                    ActivityPlayerRelocationPolicy.ApplyExplicitRelocation)
+            {
+                return true;
+            }
+
+            for (int index = 0; index < projectedSlots.Count; index++)
+            {
+                if (!_preparationModule.TryPreflightCurrentActivityRelocation(
+                        owner,
+                        projectedSlots[index].PlayerSlotId,
+                        out issue))
+                {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+        private bool TryPreflightReadinessActivityRelocation(
+            PlayerParticipationSnapshot session,
+            out string issue)
+        {
+            issue = string.Empty;
+            if ((int)_playerReadinessRecord.requirementLevel <
+                    (int)PlayerParticipationRequirementLevel.SelectedActors ||
+                _playerReadinessRecord.activity == null ||
+                _playerReadinessRecord.activity.PlayerRelocationPolicy !=
+                    ActivityPlayerRelocationPolicy.ApplyExplicitRelocation)
+            {
+                return true;
+            }
+
+            for (int index = 0;
+                 index < _playerReadinessRecord.projectedSlots.Count;
+                 index++)
+            {
+                PlayerReadinessSlotRecord projectedSlot =
+                    _playerReadinessRecord.projectedSlots[index];
+                if (!TryFindSlot(
+                        session,
+                        projectedSlot.playerSlotId,
+                        out PlayerSlotRuntimeSnapshot slot) ||
+                    !slot.IsJoined)
+                {
+                    continue;
+                }
+
+                if (!_preparationModule.TryPreflightCurrentActivityRelocation(
+                        _playerReadinessRecord.owner,
+                        projectedSlot.playerSlotId,
+                        out issue))
+                {
+                    return false;
+                }
+            }
+
+            return true;
         }
 
         private ActivityContentExecutionResult FailEnterAndRollback(

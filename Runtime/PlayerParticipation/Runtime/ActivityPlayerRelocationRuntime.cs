@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using Immersive.Framework.ActivityFlow;
 using Immersive.Framework.Actors;
+using Immersive.Framework.Authoring;
 using Immersive.Framework.PlayerSlots;
 using Immersive.Framework.RouteLifecycle;
 using UnityEngine;
@@ -11,6 +12,29 @@ namespace Immersive.Framework.PlayerParticipation
 {
     internal static class ActivityPlayerRelocationRuntime
     {
+        internal static bool TryPreflight(
+            ActivityTransitionPreparationContext context,
+            PlayerSlotId playerSlotId,
+            out string issue)
+        {
+            issue = string.Empty;
+            if (!context.IsValid || !playerSlotId.IsValid ||
+                !context.Activity.HasDefinedPlayerRelocationPolicy ||
+                context.Activity.PlayerRelocationPolicy !=
+                    ActivityPlayerRelocationPolicy.ApplyExplicitRelocation)
+            {
+                issue =
+                    "Activity Player relocation preflight requires a valid explicit-relocation Activity occurrence and Player Slot.";
+                return false;
+            }
+
+            return TryResolveExactAnchor(
+                context,
+                playerSlotId,
+                out _,
+                out issue);
+        }
+
         internal static bool TryApply(
             ActivityTransitionPreparationContext context, PlayerSlotId playerSlotId,
             ActorId actorId, string representationIdentity, Transform target,
@@ -34,7 +58,11 @@ namespace Immersive.Framework.PlayerParticipation
                 return false;
             }
 
-            if (!TryResolveExactAnchor(context, playerSlotId, out Transform anchor, out issue))
+            if (!TryResolveExactAnchor(
+                    context,
+                    playerSlotId,
+                    out Transform anchor,
+                    out issue))
             {
                 evidence = Failure(context, playerSlotId, actorId, representationIdentity, target, null, issue);
                 return false;
@@ -75,6 +103,11 @@ namespace Immersive.Framework.PlayerParticipation
                         out Scene scene, out issue) ||
                     !TryInspectScene(scene, context, playerSlotId, ref matches, ref anchor, out issue))
                 {
+                    issue = BuildInvalidConfigurationDiagnostic(
+                        context,
+                        playerSlotId,
+                        matches,
+                        issue);
                     return false;
                 }
                 visitedScenes.Add(scene.handle.GetRawData());
@@ -93,6 +126,11 @@ namespace Immersive.Framework.PlayerParticipation
                 if (!TryResolveLoadedScene(discoveryScene.ScenePath, discoveryScene.SceneName,
                         out Scene scene, out issue))
                 {
+                    issue = BuildInvalidConfigurationDiagnostic(
+                        context,
+                        playerSlotId,
+                        matches,
+                        issue);
                     return false;
                 }
 
@@ -103,13 +141,47 @@ namespace Immersive.Framework.PlayerParticipation
 
                 if (!TryInspectScene(scene, context, playerSlotId, ref matches, ref anchor, out issue))
                 {
+                    issue = BuildInvalidConfigurationDiagnostic(
+                        context,
+                        playerSlotId,
+                        matches,
+                        issue);
                     return false;
                 }
             }
 
-            if (matches != 1 || anchor == null)
+            if (matches == 0)
             {
-                issue = $"Activity explicit relocation requires exactly one binding for Activity '{context.Activity.ActivityId.StableText}' + Slot '{playerSlotId.StableText}'. Found '{matches}'.";
+                issue = BuildInvalidConfigurationDiagnostic(
+                    context,
+                    playerSlotId,
+                    matches,
+                    "Exactly one Activity Player Relocation binding is required for this Activity + Player Slot.\n\n" +
+                    "Valid locations:\n" +
+                    "- Route Primary Scene\n" +
+                    "- Route Content\n" +
+                    "- Activity Content");
+                return false;
+            }
+
+            if (matches > 1)
+            {
+                issue = BuildInvalidConfigurationDiagnostic(
+                    context,
+                    playerSlotId,
+                    matches,
+                    "Exactly one Activity Player Relocation binding is required.\n" +
+                    "Remove the duplicate binding(s).");
+                return false;
+            }
+
+            if (anchor == null)
+            {
+                issue = BuildInvalidConfigurationDiagnostic(
+                    context,
+                    playerSlotId,
+                    matches,
+                    "The matching Activity Player Relocation binding is invalid.");
                 return false;
             }
 
@@ -128,13 +200,26 @@ namespace Immersive.Framework.PlayerParticipation
                     .GetComponentsInChildren<ActivityPlayerRelocationAuthoring>(true);
                 for (int authoringIndex = 0; authoringIndex < authorings.Length; authoringIndex++)
                 {
-                    if (!authorings[authoringIndex].TryValidateBindings(out issue))
+                    ActivityPlayerRelocationAuthoring authoring =
+                        authorings[authoringIndex];
+                    if (!authoring.TryValidateBindings(out issue))
                     {
+                        int matchingBindings = CountExactBindings(
+                            authoring,
+                            context.Activity.ActivityId,
+                            playerSlotId);
+                        matches += matchingBindings;
+                        if (matchingBindings > 1)
+                        {
+                            issue =
+                                "Exactly one Activity Player Relocation binding is required.\n" +
+                                "Remove the duplicate binding(s).";
+                        }
                         return false;
                     }
 
                     IReadOnlyList<ActivityPlayerRelocationAuthoring.Binding> bindings =
-                        authorings[authoringIndex].Bindings;
+                        authoring.Bindings;
                     for (int bindingIndex = 0; bindingIndex < bindings.Count; bindingIndex++)
                     {
                         ActivityPlayerRelocationAuthoring.Binding binding = bindings[bindingIndex];
@@ -152,16 +237,11 @@ namespace Immersive.Framework.PlayerParticipation
                         }
 
                         matches++;
-                        if (matches > 1)
-                        {
-                            issue = $"Activity explicit relocation has duplicate bindings for Activity '{bindingActivityId.StableText}' + Slot '{playerSlotId.StableText}'.";
-                            return false;
-                        }
-
                         if (binding.RelocationAnchor == null ||
                             binding.RelocationAnchor.gameObject.scene.handle != scene.handle)
                         {
-                            issue = $"Activity explicit relocation binding for Activity '{bindingActivityId.StableText}' + Slot '{playerSlotId.StableText}' requires an anchor in its discovered Route/Activity scene.";
+                            issue = "The matching Activity Player Relocation binding is invalid. " +
+                                "Its anchor must belong to the discovered Route or Activity scene.";
                             return false;
                         }
 
@@ -172,6 +252,34 @@ namespace Immersive.Framework.PlayerParticipation
             return true;
         }
 
+        private static int CountExactBindings(
+            ActivityPlayerRelocationAuthoring authoring,
+            ActivityId activityId,
+            PlayerSlotId playerSlotId)
+        {
+            int count = 0;
+            IReadOnlyList<ActivityPlayerRelocationAuthoring.Binding> bindings =
+                authoring.Bindings;
+            for (int index = 0; index < bindings.Count; index++)
+            {
+                ActivityPlayerRelocationAuthoring.Binding binding = bindings[index];
+                if (binding != null &&
+                    binding.TryGetActivityId(
+                        out ActivityId bindingActivityId,
+                        out _) &&
+                    binding.TryGetPlayerSlotId(
+                        out PlayerSlotId bindingSlotId,
+                        out _) &&
+                    bindingActivityId == activityId &&
+                    bindingSlotId == playerSlotId)
+                {
+                    count++;
+                }
+            }
+
+            return count;
+        }
+
         private static bool TryResolveLoadedScene(string path, string name, out Scene scene, out string issue)
         {
             scene = !string.IsNullOrEmpty(path) ? SceneManager.GetSceneByPath(path) : SceneManager.GetSceneByName(name);
@@ -179,6 +287,24 @@ namespace Immersive.Framework.PlayerParticipation
                 ? string.Empty
                 : $"Required relocation discovery scene '{path ?? name}' is not loaded.";
             return string.IsNullOrEmpty(issue);
+        }
+
+        private static string BuildInvalidConfigurationDiagnostic(
+            ActivityTransitionPreparationContext context,
+            PlayerSlotId playerSlotId,
+            int matchingBindings,
+            string detail)
+        {
+            return
+                "[Immersive.Framework][ActivityPlayerRelocation]\n\n" +
+                "Activity Player Relocation configuration is invalid.\n\n" +
+                $"Activity: '{context.Activity.ActivityName}'\n" +
+                $"ActivityId: '{context.Activity.ActivityId.StableText}'\n" +
+                $"Slot: '{playerSlotId.StableText}'\n" +
+                "Policy: 'ApplyExplicitRelocation'\n" +
+                $"Matching bindings: '{matchingBindings}'\n\n" +
+                detail +
+                "\n\nActivity Player reconciliation cannot continue.";
         }
 
         private static ActivityPlayerRelocationEvidence Failure(

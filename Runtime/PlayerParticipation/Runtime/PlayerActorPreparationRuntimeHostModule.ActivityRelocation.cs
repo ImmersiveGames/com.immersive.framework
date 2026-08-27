@@ -91,5 +91,32 @@ namespace Immersive.Framework.PlayerParticipation
             _activityRelocationEvidenceBySlot[playerSlotId] = evidence;
             return true;
         }
+
+        internal bool TryPreflightCurrentActivityRelocation(
+            RuntimeContentOwner owner,
+            PlayerSlotId playerSlotId,
+            out string issue)
+        {
+            issue = string.Empty;
+            if (!_currentActivityRelocationContext.IsValid ||
+                _currentActivityRelocationContext.Owner != owner)
+            {
+                issue =
+                    "Activity Player relocation preflight requires the current exact Activity occurrence context.";
+                return false;
+            }
+
+            if (_currentActivityRelocationContext.Activity
+                    .PlayerRelocationPolicy ==
+                ActivityPlayerRelocationPolicy.NoRelocation)
+            {
+                return true;
+            }
+
+            return ActivityPlayerRelocationRuntime.TryPreflight(
+                _currentActivityRelocationContext,
+                playerSlotId,
+                out issue);
+        }
     }
 }

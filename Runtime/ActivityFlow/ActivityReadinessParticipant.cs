@@ -113,6 +113,33 @@ namespace Immersive.Framework.ActivityFlow
             BeginPreparationCore(readinessOccurrence.TransitionSequence);
         }
 
+        internal bool ResumePreparation(string reason)
+        {
+            if (state == ActivityReadinessParticipantState.Idle ||
+                state == ActivityReadinessParticipantState.Released ||
+                occurrence <= 0)
+            {
+                throw new InvalidOperationException(
+                    "Activity readiness can resume only for an active occurrence.");
+            }
+
+            string resolvedReason = string.IsNullOrWhiteSpace(reason)
+                ? "Preparing"
+                : reason.Trim();
+            bool changed = state != ActivityReadinessParticipantState.Preparing ||
+                !string.Equals(lastReason, resolvedReason,
+                    StringComparison.Ordinal);
+            if (!changed)
+            {
+                return false;
+            }
+
+            state = ActivityReadinessParticipantState.Preparing;
+            lastReason = resolvedReason;
+            StateChanged?.Invoke(this);
+            return true;
+        }
+
         ActivityContentExecutionParticipantDescriptor
             IActivityContentExecutionParticipant
                 .GetActivityContentExecutionDescriptor()
