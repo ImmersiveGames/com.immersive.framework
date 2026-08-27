@@ -1,6 +1,6 @@
 # Immersive Framework Architecture Documentation
 
-Last updated: **2026-08-24**
+Last updated: **2026-08-26**
 
 ## Normative architecture
 
@@ -20,9 +20,47 @@ Reopened
 
 ## Current major technical closures
 
+### Player Actor Selection public surface
+
+Current public-surface certification authority:
+
+[IF-ADR-015B — Player Actor Selection Public Surface Certification — 2026-08-26](Reconciliation/IF-ADR-015B-Player-Actor-Selection-Public-Surface-Certification-2026-08-26.md)
+
+The delivered Player Session public surface is:
+
+```text
+PlayerSessionObserver
+  read-only scoped Session evidence
+
+explicit commands
+  Open Joining
+  Close Joining
+  Join
+  Select Actor
+  Select Default Actor
+  Replace Actor Selection
+  Clear Actor Selection
+  Leave
+```
+
+Actor Selection remains Session-owned logical intent and does not become physical Actor hot-swap authority.
+
+Current integrated certification:
+
+```text
+PLAYER CURRENT AGGREGATE COMPLETE
+mandatoryContracts = 27
+executedContracts = 27
+passedContracts = 27
+actor = PASS
+publicSurface = PASS
+```
+
+The public arbitrary Actor-selection blocker for the Character Selection sample is closed. Exact-Slot public Join and the public Slot/device/input ownership contract remain future Player scope.
+
 ### Player physical lifetime
 
-Current Player certification authority:
+Current Player certification authority for the 2026-08-24 Model B/lifetime boundary:
 
 [Player Current Aggregate Recertification — 2026-08-24](Reconciliation/IF-PLAYER-CURRENT-AGGREGATE-RECERTIFICATION-2026-08-24.md)
 
@@ -241,16 +279,35 @@ project-specific Slot / Actor / Input defaults.
 Stable public C# type renames are not implicit in this product cut; IF-GOV-001 requires
 an explicit migration decision for breaking changes to Stable consumer surfaces.
 
+### Player Session public commands and observation
+
+IF-ADR-015 now defines the implemented public consumer model:
+
+```text
+PlayerSessionObserver
+  = read
+
+8 explicit Player Session command components
+  = request/change
+```
+
+Arbitrary Actor Selection is delivered through explicit Select / Default / Replace /
+Clear commands. `PlayerSessionProfile.ActorResolution = LeaveUnresolved` is a valid
+initial policy for a flow where Join precedes Character Selection.
+
+Do not use Actor-selection commands as a bypass around Actor preparation/materialization,
+and do not interpret `Replace Actor Selection` as physical hot-swap.
+
 ## Current affected ADR disposition
 
 ### Player
 
-- IF-ADR-003 — Accepted baseline / reconciled / implemented; later R6/R7/R8 expansion remains separately tracked.
+- IF-ADR-003 — Accepted / reconciled / implemented; arbitrary Actor-selection lifecycle delivered and current aggregate PASS; physical hot-swap remains future.
 - IF-ADR-007 — Accepted baseline / readiness boundary implemented.
 - IF-ADR-011 — Accepted baseline for participant-aware readiness/loading interaction.
 - IF-ADR-012 — Accepted baseline / implemented; current aggregate PASS.
-- IF-ADR-015 — Accepted baseline / current public consumer surface implemented; current aggregate PASS.
-- IF-ADR-016 — Accepted baseline / current Session initial configuration implemented; current aggregate PASS.
+- IF-ADR-015 — Accepted / reconciled / implemented; Observer + eight explicit commands including Actor Select / Default / Replace / Clear; current aggregate PASS.
+- IF-ADR-016 — Accepted / implemented; `ResolveConfiguredDefault` and `LeaveUnresolved` current; `LeaveUnresolved` now has a delivered explicit Actor-selection continuation path.
 - IF-ADR-019 — Accepted / reconciled / implemented; current Full Player aggregate 27/27 PASS; historical 25/25 recertification preserved.
 - IF-ADR-020 — Accepted / reconciled / implemented; current Full Player aggregate 27/27 PASS; historical 25/25 recertification preserved.
 - IF-ADR-021 — Accepted / reconciled / implemented / current QA verified; Route Spatial Entry 18/18, Activity Relocation 23/23 and Full Player aggregate 27/27 PASS.
@@ -268,10 +325,14 @@ Dated certification/reconciliation records remain historical evidence.
 
 Do not rewrite an older record to imply it tested a later contract.
 
-The Full Player `25/25` certification remains the 2026-08-15 historical boundary. The current Player certification is the 2026-08-24 `27/27` aggregate. The historical ADR-021 Initial Placement `9/9` remains tied to the superseded Activity-owned discovery model.
+The Full Player `25/25` certification remains the 2026-08-15 historical boundary. The
+2026-08-24 current aggregate is the Model B/lifetime `27/27` reconciliation record. The
+2026-08-26 IF-ADR-015B record closes the later public Actor-selection extension with a
+fresh integrated `27/27` rerun. The historical ADR-021 Initial Placement `9/9` remains
+tied to the superseded Activity-owned discovery model.
 
-Current revised authorities and current proposed expansions must be interpreted through
-the mutable Tracker rather than by commit chronology alone.
+The package-local Actor-selection Unity Test Framework Editor tests are not claimed as
+executed by the integrated QA record unless a separate result is recorded.
 
 ## Current delivery state
 
