@@ -24,8 +24,10 @@ namespace Immersive.Framework.PlayerParticipation
         RejectedSlotMismatch = 170,
         RejectedProfileUnavailable = 180,
         RejectedInvalidProfile = 190,
-        RejectedMissingLogicalActorPrefab = 200,
-        RejectedInvalidLogicalActorPrefab = 210,
+        RejectedMissingPresentationPrefab = 200,
+        RejectedInvalidPresentationPrefab = 210,
+        RejectedMissingRuntimeHostPrefab = 220,
+        RejectedInvalidRuntimeHostPrefab = 230,
 
         FailedInstantiate = 300,
         FailedMissingPlayerActorDeclaration = 310,

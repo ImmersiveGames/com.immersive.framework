@@ -18,7 +18,7 @@ namespace Immersive.Framework.Editor.PlayerParticipation
         private static readonly GUIContent ActorProfileLabel =
             new GUIContent(
                 "Actor Profile",
-                "Player / Protagonist Actor Profile. Its Logical Actor Host prefab is the authored prefab authority for this Scene Local Player.");
+                "Player / Protagonist Actor Profile. Its Presentation prefab is the authored presentation authority for this Scene Local Player.");
 
         private static readonly GUIContent AdmissionTimingLabel =
             new GUIContent(
@@ -28,16 +28,17 @@ namespace Immersive.Framework.Editor.PlayerParticipation
         private static readonly GUIContent ApplyRebuildLabel =
             new GUIContent(
                 "Apply / Rebuild",
-                "Materializes the selected Actor Profile Logical Actor Host under Actor Mount, binds the exact Scene Actor instance and stores typed Actor evidence. Matching authored prefab instances are preserved; conflicting content is never replaced silently.");
+                "Materializes the configured Player Actor Runtime Host under Actor Mount and the selected Actor Profile Presentation under its Presentation Mount. Matching authored prefab instances are preserved; conflicting content is never replaced silently.");
 
         private static readonly GUIContent ValidateLabel =
             new GUIContent(
                 "Validate",
-                "Validates the authored composition, Scene Actor prefab provenance and stored typed Actor evidence without creating content or starting runtime admission.");
+                "Validates the authored composition, Runtime Host and Presentation provenance, and stored typed evidence without creating content or starting runtime admission.");
 
         private SerializedProperty _playerSlotProfile;
         private SerializedProperty _actorProfile;
-        private SerializedProperty _sceneLogicalPlayerActor;
+        private SerializedProperty _scenePlayerActorRuntimeHost;
+        private SerializedProperty _scenePresentation;
         private SerializedProperty _admissionTiming;
 
         private bool _showDebug;
@@ -50,9 +51,12 @@ namespace Immersive.Framework.Editor.PlayerParticipation
             _actorProfile =
                 serializedObject.FindProperty(
                     "actorProfile");
-            _sceneLogicalPlayerActor =
+            _scenePlayerActorRuntimeHost =
                 serializedObject.FindProperty(
-                    "sceneLogicalPlayerActor");
+                    "scenePlayerActorRuntimeHost");
+            _scenePresentation =
+                serializedObject.FindProperty(
+                    "scenePresentation");
             _admissionTiming =
                 serializedObject.FindProperty(
                     "admissionTiming");
@@ -68,7 +72,7 @@ namespace Immersive.Framework.Editor.PlayerParticipation
             EditorGUILayout.LabelField(
                 new GUIContent(
                     "Scene Local Player",
-                    "Authors one local Player already present in the Scene. Player Slot and Actor Profile define admission intent; Apply / Rebuild materializes the exact Actor composition under the same-root Local Player Host."),
+                    "Authors one local Player already present in the Scene. Player Slot and Actor Profile define admission intent; Apply / Rebuild materializes the generic Runtime Host and selected Presentation under the same-root Local Player Host."),
                 EditorStyles.boldLabel);
 
             EditorGUI.BeginChangeCheck();
@@ -107,8 +111,7 @@ namespace Immersive.Framework.Editor.PlayerParticipation
 
         private void DrawConfiguration()
         {
-            FrameworkAuthoringInspectorGui.Section(
-                "Configuration");
+            FrameworkAuthoringInspectorGui.Section("Player");
 
             EditorGUILayout.PropertyField(
                 _playerSlotProfile,
@@ -118,10 +121,54 @@ namespace Immersive.Framework.Editor.PlayerParticipation
                 _actorProfile,
                 ActorProfileLabel);
 
+            FrameworkAuthoringInspectorGui.Section("Local Player Host");
+            using (new EditorGUI.DisabledScope(true))
+            {
+                SceneLocalPlayerAdmissionAuthoring authoring =
+                    (SceneLocalPlayerAdmissionAuthoring)target;
+                EditorGUILayout.ObjectField(
+                    "Host",
+                    authoring.LocalPlayerHost,
+                    typeof(LocalPlayerHostAuthoring),
+                    true);
+                EditorGUILayout.LabelField(
+                    "Host Status",
+                    authoring.LocalPlayerHost == null
+                        ? "Missing"
+                        : "Assigned on this GameObject");
+            }
+
+            DrawActorRuntimeComposition(
+                (SceneLocalPlayerAdmissionAuthoring)target);
+
+            FrameworkAuthoringInspectorGui.Section("Initial Placement");
             EditorGUILayout.PropertyField(
                 _admissionTiming,
                 AdmissionTimingLabel);
+        }
 
+        private static void DrawActorRuntimeComposition(
+            SceneLocalPlayerAdmissionAuthoring authoring)
+        {
+            FrameworkAuthoringInspectorGui.Section("Actor Runtime");
+
+            using (new EditorGUI.DisabledScope(true))
+            {
+                EditorGUILayout.ObjectField(
+                    new GUIContent(
+                        "Player Actor Runtime Host",
+                        "Framework-owned generic runtime composition resolved or materialized by Apply / Rebuild."),
+                    authoring.ScenePlayerActorRuntimeHost,
+                    typeof(PlayerActorRuntimeHost),
+                    true);
+                EditorGUILayout.ObjectField(
+                    new GUIContent(
+                        "Presentation",
+                        "Actor-specific visual content selected by the Actor Profile and resolved or materialized by Apply / Rebuild."),
+                    authoring.ScenePresentation,
+                    typeof(GameObject),
+                    true);
+            }
         }
 
         private static void DrawConfigurationStatus(
@@ -147,7 +194,8 @@ namespace Immersive.Framework.Editor.PlayerParticipation
             {
                 bool materialized =
                     authoring.HasTypedActorEvidence &&
-                    authoring.SceneLogicalPlayerActor != null;
+                    authoring.ScenePlayerActorRuntimeHost != null &&
+                    authoring.ScenePresentation != null;
 
                 EditorGUILayout.LabelField(
                     "Status",
@@ -155,8 +203,8 @@ namespace Immersive.Framework.Editor.PlayerParticipation
 
                 EditorGUILayout.LabelField(
                     new GUIContent(
-                        "Materialization",
-                        "Ready requires the exact Scene Actor binding plus stored typed Actor provenance from Apply / Rebuild."),
+                    "Runtime Host + Presentation",
+                        "Ready requires the exact Runtime Host and Presentation binding plus stored typed provenance from Apply / Rebuild."),
                     new GUIContent(
                         materialized
                             ? "Ready"
@@ -165,7 +213,7 @@ namespace Immersive.Framework.Editor.PlayerParticipation
                 if (!materialized)
                 {
                     EditorGUILayout.HelpBox(
-                        "Materialized Actor evidence is incomplete. Run Apply / Rebuild and Validate.",
+                        "Runtime Host or Presentation evidence is incomplete. Run Apply / Rebuild and Validate.",
                         MessageType.Warning);
                 }
 
@@ -258,10 +306,10 @@ namespace Immersive.Framework.Editor.PlayerParticipation
 
                 EditorGUILayout.ObjectField(
                     new GUIContent(
-                        "Actor",
-                        "Resolved Scene logical Player Actor."),
-                    authoring.SceneLogicalPlayerActor,
-                    typeof(PlayerActorDeclaration),
+                        "Runtime Host",
+                        "Resolved Scene Player Actor Runtime Host."),
+                    authoring.ScenePlayerActorRuntimeHost,
+                    typeof(PlayerActorRuntimeHost),
                     true);
             }
 
@@ -310,9 +358,9 @@ namespace Immersive.Framework.Editor.PlayerParticipation
 
             ActorProfile selectedProfile =
                 _actorProfile.objectReferenceValue as ActorProfile;
-            GameObject logicalActorPrefab =
+            GameObject presentationPrefab =
                 selectedProfile != null
-                    ? selectedProfile.LogicalActorHostPrefab
+                    ? selectedProfile.PresentationPrefab
                     : null;
 
             using (new EditorGUI.DisabledScope(true))
@@ -332,15 +380,21 @@ namespace Immersive.Framework.Editor.PlayerParticipation
                     true);
 
                 EditorGUILayout.ObjectField(
-                    "Profile Actor Prefab",
-                    logicalActorPrefab,
+                    "Profile Presentation Prefab",
+                    presentationPrefab,
                     typeof(GameObject),
                     false);
 
                 EditorGUILayout.ObjectField(
-                    "Scene Actor",
-                    _sceneLogicalPlayerActor.objectReferenceValue,
-                    typeof(PlayerActorDeclaration),
+                    "Scene Runtime Host",
+                    _scenePlayerActorRuntimeHost.objectReferenceValue,
+                    typeof(PlayerActorRuntimeHost),
+                    true);
+
+                EditorGUILayout.ObjectField(
+                    "Scene Presentation",
+                    _scenePresentation.objectReferenceValue,
+                    typeof(GameObject),
                     true);
 
                 EditorGUILayout.TextField(
@@ -372,8 +426,8 @@ namespace Immersive.Framework.Editor.PlayerParticipation
                     false);
 
                 EditorGUILayout.ObjectField(
-                    "Actor Prefab",
-                    authoring.EvidenceLogicalActorHostPrefab,
+                    "Presentation Prefab",
+                    authoring.EvidencePresentationPrefab,
                     typeof(GameObject),
                     false);
             }

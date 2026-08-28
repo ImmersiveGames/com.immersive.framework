@@ -17,7 +17,7 @@ namespace Immersive.Framework.Editor.PlayerParticipation
         private SerializedProperty _icon;
         private SerializedProperty _actorKind;
         private SerializedProperty _actorRole;
-        private SerializedProperty _logicalActorHostPrefab;
+        private SerializedProperty _presentationPrefab;
 
         private bool _showAdvanced;
         private bool _hasValidationResult;
@@ -31,7 +31,7 @@ namespace Immersive.Framework.Editor.PlayerParticipation
             _icon = serializedObject.FindProperty("icon");
             _actorKind = serializedObject.FindProperty("actorKind");
             _actorRole = serializedObject.FindProperty("actorRole");
-            _logicalActorHostPrefab = serializedObject.FindProperty("logicalActorHostPrefab");
+            _presentationPrefab = serializedObject.FindProperty("presentationPrefab");
         }
 
         public override void OnInspectorGUI()
@@ -39,9 +39,8 @@ namespace Immersive.Framework.Editor.PlayerParticipation
             serializedObject.Update();
 
             EditorGUI.BeginChangeCheck();
-            DrawActor();
-            DrawClassification();
-            DrawLogicalComposition();
+            DrawIdentityAndMetadata();
+            DrawPresentation();
             bool normalAuthoringChanged = EditorGUI.EndChangeCheck();
 
             bool normalPropertiesApplied = serializedObject.ApplyModifiedProperties();
@@ -50,14 +49,13 @@ namespace Immersive.Framework.Editor.PlayerParticipation
                 ClearValidationResult();
             }
 
-            DrawProductActions();
-            DrawValidationSummary();
+            DrawConfigurationStatus();
             DrawAdvancedSection();
         }
 
-        private void DrawActor()
+        private void DrawIdentityAndMetadata()
         {
-            DrawSection("Actor");
+            DrawSection("Identity / Metadata");
 
             EditorGUILayout.PropertyField(
                 _displayName,
@@ -78,6 +76,17 @@ namespace Immersive.Framework.Editor.PlayerParticipation
                     "Optional Sprite used to recognize this Actor option."));
 
             DrawActorPreview();
+            EditorGUILayout.PropertyField(
+                _actorKind,
+                new GUIContent(
+                    "Actor Kind",
+                    "Broad framework Actor category. This is not a project-specific class taxonomy."));
+
+            EditorGUILayout.PropertyField(
+                _actorRole,
+                new GUIContent(
+                    "Actor Role",
+                    "Broad framework Actor role. This is not a loadout, team or character class."));
         }
 
         private void DrawActorPreview()
@@ -166,42 +175,27 @@ namespace Immersive.Framework.Editor.PlayerParticipation
             GUI.Label(rect, text, style);
         }
 
-        private void DrawClassification()
+        private void DrawPresentation()
         {
-            DrawSection("Classification");
+            DrawSection("Presentation");
 
             EditorGUILayout.PropertyField(
-                _actorKind,
+                _presentationPrefab,
                 new GUIContent(
-                    "Actor Kind",
-                    "Broad framework Actor category. This is not a project-specific class taxonomy."));
-
-            EditorGUILayout.PropertyField(
-                _actorRole,
-                new GUIContent(
-                    "Actor Role",
-                    "Broad framework Actor role. This is not a loadout, team or character class."));
+                    "Presentation Prefab",
+                    "Actor-specific presentation materialized below the generic Player Actor Runtime Host Presentation Mount."));
         }
 
-        private void DrawLogicalComposition()
+        private void DrawConfigurationStatus()
         {
-            DrawSection("Logical Composition");
-
-            EditorGUILayout.PropertyField(
-                _logicalActorHostPrefab,
-                new GUIContent(
-                    "Logical Actor Host Prefab",
-                    "Canonical prefab used when a workflow materializes or verifies this Logical Actor. The Actor Profile does not instantiate it by itself."));
-        }
-
-        private void DrawProductActions()
-        {
-            DrawSection("Product Actions");
+            DrawSection("Configuration Status");
 
             if (GUILayout.Button("Validate"))
             {
                 RunValidation();
             }
+
+            DrawValidationSummary();
         }
 
         private void RunValidation()
@@ -222,13 +216,11 @@ namespace Immersive.Framework.Editor.PlayerParticipation
 
         private void DrawValidationSummary()
         {
-            DrawSection("Validation Summary");
-
             if (!_hasValidationResult || _validationReport == null)
             {
                 EditorGUILayout.LabelField(
-                    "Not Validated",
-                    EditorStyles.miniLabel);
+                    "Status",
+                    "Not Validated");
                 return;
             }
 
@@ -295,11 +287,11 @@ namespace Immersive.Framework.Editor.PlayerParticipation
                     "Typed ActorProfileId",
                     typedIdentity);
 
-                GameObject logicalHost = profile.LogicalActorHostPrefab;
+                GameObject presentation = profile.PresentationPrefab;
                 EditorGUILayout.TextField(
-                    "Logical Host Asset Path",
-                    logicalHost != null
-                        ? AssetDatabase.GetAssetPath(logicalHost)
+                    "Presentation Asset Path",
+                    presentation != null
+                        ? AssetDatabase.GetAssetPath(presentation)
                         : string.Empty);
                 EditorGUILayout.Toggle(
                     "Defined Actor Kind",
@@ -308,8 +300,8 @@ namespace Immersive.Framework.Editor.PlayerParticipation
                     "Defined Actor Role",
                     profile.HasDefinedActorRole);
                 EditorGUILayout.Toggle(
-                    "Logical Host Assigned",
-                    profile.HasLogicalActorHostPrefab);
+                    "Presentation Assigned",
+                    profile.HasPresentationPrefab);
             }
         }
 

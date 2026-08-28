@@ -1,5 +1,6 @@
 using Immersive.Framework.Editor.Validation;
 using Immersive.Framework.PlayerParticipation;
+using UnityEditor;
 using UnityEngine.InputSystem;
 namespace Immersive.Framework.Editor.PlayerParticipation
 {
@@ -77,8 +78,29 @@ namespace Immersive.Framework.Editor.PlayerParticipation
                 return report;
             }
 
+            if (host.PlayerActorRuntimeHostPrefab != null)
+            {
+                if (!PrefabUtility.IsPartOfPrefabAsset(
+                        host.PlayerActorRuntimeHostPrefab.gameObject))
+                {
+                    report.AddError(
+                        "Player Actor Runtime Host Prefab must reference a prefab asset.",
+                        host);
+                    return report;
+                }
+
+                if (!host.PlayerActorRuntimeHostPrefab.TryValidateConfiguration(
+                        out string runtimeHostIssue))
+                {
+                    report.AddError(
+                        runtimeHostIssue,
+                        host.PlayerActorRuntimeHostPrefab);
+                    return report;
+                }
+            }
+
             report.AddInfo(
-                $"Local Player Host technical structure is valid. playerInput='{host.PlayerInput.name}' actorMount='{host.ActorMount.name}' logicalActorPrepared='{host.HasLogicalActor}'. Source-specific composition remains validated by its owning product surface.",
+                $"Local Player Host technical structure is valid. playerInput='{host.PlayerInput.name}' actorMount='{host.ActorMount.name}' actorRuntimePresent='{host.HasPlayerActorRuntime}'. Source-specific composition remains validated by its owning product surface.",
                 host);
             return report;
         }

@@ -62,7 +62,7 @@ namespace Immersive.Framework.PlayerParticipation
 
             Transform declaration = handle.PlayerActorDeclaration != null
                 ? handle.PlayerActorDeclaration.transform : null;
-            Transform root = handle.LogicalActorHost != null ? handle.LogicalActorHost.transform : null;
+            Transform root = handle.PlayerActorRuntimeHost != null ? handle.PlayerActorRuntimeHost.transform : null;
             Transform target = declaration != null && root != null &&
                 (ReferenceEquals(declaration, root) || declaration.IsChildOf(root)) ? root : declaration;
             if (target == null)

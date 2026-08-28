@@ -120,7 +120,7 @@ namespace Immersive.Framework.PlayerParticipation
                 $"playerInput='{(PlayerInput != null ? PlayerInput.name : string.Empty)}' " +
                 $"localPlayerHost='{(LocalPlayerHost != null ? LocalPlayerHost.name : string.Empty)}' " +
                 $"actorMount='{(LocalPlayerHost != null && LocalPlayerHost.ActorMount != null ? LocalPlayerHost.ActorMount.name : string.Empty)}' " +
-                $"logicalActorPrepared='{(LocalPlayerHost != null && LocalPlayerHost.HasLogicalActor)}' " +
+                $"actorRuntimePrepared='{(LocalPlayerHost != null && LocalPlayerHost.HasPlayerActorRuntime)}' " +
                 $"message='{Message}'";
         }
     }

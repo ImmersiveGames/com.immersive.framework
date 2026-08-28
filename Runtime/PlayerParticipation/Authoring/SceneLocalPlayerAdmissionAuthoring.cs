@@ -1,17 +1,16 @@
 using System;
 using Immersive.Framework.Actors;
+using Immersive.Framework.ApiStatus;
 using Immersive.Framework.PlayerSlots;
 using Immersive.Framework.RuntimeContent;
-using Immersive.Framework.ApiStatus;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
 namespace Immersive.Framework.PlayerParticipation
 {
     /// <summary>
-    /// Designer-facing composer for one local Player that already exists in a scene.
-    /// The Local Player Host is resolved from this same GameObject; the selected Logical
-    /// Player Actor remains explicit under that Host's Actor Mount.
+    /// Designer-facing admission composition for one Local Player already authored in a scene.
+    /// The scene supplies an exact Runtime Host and Presentation; ActorProfile supplies only Presentation intent.
     /// </summary>
     [DisallowMultipleComponent]
     [RequireComponent(typeof(LocalPlayerHostAuthoring))]
@@ -19,372 +18,145 @@ namespace Immersive.Framework.PlayerParticipation
     [FrameworkApiStatus(FrameworkApiStatus.Stable, "Stable Scene Local Player admission surface. Manager provisioning and Session-Persistent remain Experimental.")]
     public sealed class SceneLocalPlayerAdmissionAuthoring : MonoBehaviour
     {
-        [SerializeField]
-        [Tooltip("Exact configured Player Slot to admit. Runtime never allocates a fallback Slot.")]
-        private PlayerSlotProfile playerSlotProfile;
+        [SerializeField] private PlayerSlotProfile playerSlotProfile;
+        [SerializeField] private ActorProfile actorProfile;
+        [SerializeField] private PlayerActorRuntimeHost scenePlayerActorRuntimeHost;
+        [SerializeField] private GameObject scenePresentation;
+        [SerializeField] private SceneLocalPlayerAdmissionTiming admissionTiming = SceneLocalPlayerAdmissionTiming.OnActivityEnter;
 
-        [SerializeField]
-        [Tooltip("Exact Actor Profile selected for this Scene Local Player.")]
-        private ActorProfile actorProfile;
+        [SerializeField, HideInInspector] private ActorProfile evidenceActorProfile;
+        [SerializeField, HideInInspector] private GameObject evidencePresentationPrefab;
+        [SerializeField, HideInInspector] private string evidenceDiagnostic = string.Empty;
+        [SerializeField, HideInInspector] private SceneLocalPlayerAdmissionAuthoringStatus lastAuthoringStatus = SceneLocalPlayerAdmissionAuthoringStatus.NotValidated;
+        [SerializeField, HideInInspector] private string lastAuthoringDiagnostic = "Scene Local Player has not been validated.";
 
-        [SerializeField]
-        [Tooltip("Exact authored Logical Player Actor under this Host's Actor Mount.")]
-        private PlayerActorDeclaration sceneLogicalPlayerActor;
+        [NonSerialized] private SceneLocalPlayerAdmissionRuntimeHostModule _runtimeModule;
+        [NonSerialized] private SceneLocalPlayerAdmissionRuntimeResult _lastRuntimeResult;
+        [NonSerialized] private string _runtimeDiagnostic = "Scene Local Player runtime is not bound.";
+        [NonSerialized] private ScenePlayerActorAdoptionResult _lastActorAdoptionResult;
 
-        [SerializeField]
-        private SceneLocalPlayerAdmissionTiming admissionTiming =
-            SceneLocalPlayerAdmissionTiming.OnActivityEnter;
+        public PlayerSlotProfile PlayerSlotProfile => playerSlotProfile;
+        public LocalPlayerHostAuthoring LocalPlayerHost => GetComponent<LocalPlayerHostAuthoring>();
+        public ActorProfile ActorProfile => actorProfile;
+        public PlayerActorRuntimeHost ScenePlayerActorRuntimeHost => scenePlayerActorRuntimeHost;
+        public GameObject ScenePresentation => scenePresentation;
+        public PlayerActorDeclaration ScenePlayerActorDeclaration => scenePlayerActorRuntimeHost != null ? scenePlayerActorRuntimeHost.PlayerActorDeclaration : null;
+        internal PlayerActorDeclaration SceneLogicalPlayerActor => ScenePlayerActorDeclaration;
+        public SceneLocalPlayerAdmissionTiming AdmissionTiming => admissionTiming;
+        public SceneLocalPlayerAdmissionAuthoringStatus LastAuthoringStatus => lastAuthoringStatus;
+        public string LastAuthoringDiagnostic => lastAuthoringDiagnostic ?? string.Empty;
+        public bool RuntimeReady => _runtimeModule != null && _runtimeModule.IsReadyFor(this);
+        public string RuntimeDiagnostic => RuntimeReady ? _runtimeModule.Diagnostic : _runtimeDiagnostic ?? string.Empty;
+        public SceneLocalPlayerAdmissionRuntimeResult LastRuntimeResult => _lastRuntimeResult;
+        public ScenePlayerActorAdoptionResult LastActorAdoptionResult => _lastActorAdoptionResult;
+        public bool HasActiveAdmission => RuntimeReady && _runtimeModule.TryGetActiveToken(this, out _);
+        public PlayerActorPhysicalOwnership ActorPhysicalOwnership => _lastActorAdoptionResult != null && _lastActorAdoptionResult.Succeeded && _lastActorAdoptionResult.Status != ScenePlayerActorAdoptionStatus.SucceededReleased ? PlayerActorPhysicalOwnership.FrameworkOwned : PlayerActorPhysicalOwnership.ExternalSceneOwned;
+        public bool HasTypedActorEvidence => evidenceActorProfile != null && evidencePresentationPrefab != null;
+        public ActorProfile EvidenceActorProfile => evidenceActorProfile;
+        public GameObject EvidencePresentationPrefab => evidencePresentationPrefab;
+        public string EvidenceDiagnostic => evidenceDiagnostic ?? string.Empty;
+        public bool HasCompleteReferences => playerSlotProfile != null && LocalPlayerHost != null && actorProfile != null && scenePlayerActorRuntimeHost != null && scenePresentation != null;
 
-        [SerializeField, HideInInspector]
-        private ActorProfile evidenceActorProfile;
-
-        [SerializeField, HideInInspector]
-        private GameObject evidenceLogicalActorHostPrefab;
-
-        [SerializeField, HideInInspector]
-        private string evidenceDiagnostic = string.Empty;
-
-        [SerializeField, HideInInspector]
-        private SceneLocalPlayerAdmissionAuthoringStatus lastAuthoringStatus =
-            SceneLocalPlayerAdmissionAuthoringStatus.NotValidated;
-
-        [SerializeField, HideInInspector]
-        private string lastAuthoringDiagnostic =
-            "Scene Local Player has not been validated.";
-
-        [NonSerialized]
-        private SceneLocalPlayerAdmissionRuntimeHostModule _runtimeModule;
-
-        [NonSerialized]
-        private SceneLocalPlayerAdmissionRuntimeResult _lastRuntimeResult;
-
-        [NonSerialized]
-        private string _runtimeDiagnostic =
-            "Scene Local Player runtime is not bound.";
-
-        [NonSerialized]
-        private ScenePlayerActorAdoptionResult _lastActorAdoptionResult;
-
-        public PlayerSlotProfile PlayerSlotProfile =>
-            playerSlotProfile;
-
-        public LocalPlayerHostAuthoring LocalPlayerHost =>
-            GetComponent<LocalPlayerHostAuthoring>();
-
-        public ActorProfile ActorProfile =>
-            actorProfile;
-
-        public PlayerActorDeclaration SceneLogicalPlayerActor =>
-            sceneLogicalPlayerActor;
-
-        public SceneLocalPlayerAdmissionTiming AdmissionTiming =>
-            admissionTiming;
-
-        public PlayerActorPhysicalOwnership ActorPhysicalOwnership =>
-            _lastActorAdoptionResult != null &&
-            _lastActorAdoptionResult.Succeeded &&
-            _lastActorAdoptionResult.Status !=
-                ScenePlayerActorAdoptionStatus.SucceededReleased
-                ? PlayerActorPhysicalOwnership.FrameworkOwned
-                : PlayerActorPhysicalOwnership.ExternalSceneOwned;
-
-        public SceneLocalPlayerAdmissionAuthoringStatus LastAuthoringStatus =>
-            lastAuthoringStatus;
-
-        public string LastAuthoringDiagnostic =>
-            lastAuthoringDiagnostic ?? string.Empty;
-
-        public bool RuntimeReady =>
-            _runtimeModule != null &&
-            _runtimeModule.IsReadyFor(this);
-
-        public string RuntimeDiagnostic =>
-            RuntimeReady
-                ? _runtimeModule.Diagnostic
-                : _runtimeDiagnostic ?? string.Empty;
-
-        public SceneLocalPlayerAdmissionRuntimeResult LastRuntimeResult =>
-            _lastRuntimeResult;
-
-        public ScenePlayerActorAdoptionResult LastActorAdoptionResult =>
-            _lastActorAdoptionResult;
-
-        public bool HasActiveAdmission =>
-            RuntimeReady &&
-            _runtimeModule.TryGetActiveToken(this, out _);
-
-        public bool HasTypedActorEvidence =>
-            evidenceActorProfile != null &&
-            evidenceLogicalActorHostPrefab != null;
-
-        public ActorProfile EvidenceActorProfile =>
-            evidenceActorProfile;
-
-        public GameObject EvidenceLogicalActorHostPrefab =>
-            evidenceLogicalActorHostPrefab;
-
-        public string EvidenceDiagnostic =>
-            evidenceDiagnostic ?? string.Empty;
-
-        public bool HasCompleteReferences =>
-            playerSlotProfile != null &&
-            LocalPlayerHost != null &&
-            actorProfile != null &&
-            sceneLogicalPlayerActor != null;
-
-        public bool IsTypedActorEvidenceCompatibleWith(
-            ActorProfile expectedProfile)
+        public bool IsTypedActorEvidenceCompatibleWith(ActorProfile expectedProfile)
         {
-            return expectedProfile != null &&
-                evidenceActorProfile == expectedProfile &&
-                expectedProfile.LogicalActorHostPrefab != null &&
-                evidenceLogicalActorHostPrefab == expectedProfile.LogicalActorHostPrefab;
+            return expectedProfile != null && evidenceActorProfile == expectedProfile && expectedProfile.PresentationPrefab != null && evidencePresentationPrefab == expectedProfile.PresentationPrefab;
         }
 
-        public bool TryGetPlayerSlotId(
-            out PlayerSlotId playerSlotId,
-            out string issue)
+        public bool TryGetPlayerSlotId(out PlayerSlotId playerSlotId, out string issue)
         {
             if (playerSlotProfile == null)
             {
                 playerSlotId = default;
-                issue =
-                    "Scene Local Player requires an explicit Player Slot Profile.";
+                issue = "Scene Local Player requires an explicit Player Slot Profile.";
                 return false;
             }
-
-            return playerSlotProfile.TryGetPlayerSlotId(
-                out playerSlotId,
-                out issue);
+            return playerSlotProfile.TryGetPlayerSlotId(out playerSlotId, out issue);
         }
 
-        public bool TryValidateRuntimeEvidence(
-            out string issue)
+        public bool TryValidateRuntimeEvidence(out string issue)
         {
-            LocalPlayerHostAuthoring localPlayerHost =
-                LocalPlayerHost;
-
+            issue = string.Empty;
+            LocalPlayerHostAuthoring localPlayerHost = LocalPlayerHost;
             if (!HasCompleteReferences)
             {
-                issue =
-                    "Scene Local Player requires Player Slot Profile, same-root Local Player Host, Actor Profile and Scene Logical Player Actor.";
+                issue = "Scene Local Player requires Player Slot Profile, same-root Local Player Host, Actor Profile, Player Actor Runtime Host and Presentation.";
                 return false;
             }
-
-            if (!Enum.IsDefined(
-                    typeof(SceneLocalPlayerAdmissionTiming),
-                    admissionTiming))
-            {
-                issue =
-                    $"Scene Local Player has invalid Admission Timing '{admissionTiming}'.";
-                return false;
-            }
-
-            if (!TryGetPlayerSlotId(out _, out issue))
+            if (!Enum.IsDefined(typeof(SceneLocalPlayerAdmissionTiming), admissionTiming) || !TryGetPlayerSlotId(out _, out issue) || !actorProfile.TryGetActorProfileId(out _, out issue))
             {
                 return false;
             }
-
-            if (!actorProfile.TryGetActorProfileId(
-                    out _,
-                    out issue))
+            if (actorProfile.ActorKind != ActorKind.Player || actorProfile.ActorRole != ActorRole.Protagonist || actorProfile.PresentationPrefab == null)
             {
+                issue = $"Actor Profile '{actorProfile.name}' must define a Player Protagonist Presentation prefab.";
                 return false;
             }
-
-            if (actorProfile.ActorKind != ActorKind.Player ||
-                actorProfile.ActorRole != ActorRole.Protagonist ||
-                actorProfile.LogicalActorHostPrefab == null)
+            if (!localPlayerHost.TryValidateAdmissionConfiguration(scenePlayerActorRuntimeHost, true, out issue)) return false;
+            if (scenePresentation.transform.parent != scenePlayerActorRuntimeHost.PresentationMount ||
+                scenePresentation.GetComponentInChildren<PlayerInput>(true) != null ||
+                scenePresentation.GetComponentInChildren<ActorDeclaration>(true) != null ||
+                scenePresentation.GetComponentInChildren<PlayerActorRuntimeHost>(true) != null)
             {
-                issue =
-                    $"Actor Profile '{actorProfile.name}' must define a Player Protagonist Logical Actor Host prefab.";
+                issue = "Scene Presentation must be the direct child of the exact Presentation Mount and contain no PlayerInput or Framework Actor runtime infrastructure.";
                 return false;
             }
-
-            if (!localPlayerHost.TryValidateAdmissionConfiguration(
-                    sceneLogicalPlayerActor,
-                    allowExistingLogicalActor: true,
-                    out issue))
+            if (!HasTypedActorEvidence || !IsTypedActorEvidenceCompatibleWith(actorProfile))
             {
+                issue = "Scene Local Player evidence does not match the selected Actor Profile Presentation prefab. Run Apply / Rebuild in the Inspector.";
                 return false;
             }
-
-            if (sceneLogicalPlayerActor
-                    .GetComponentInChildren<PlayerInput>(true) != null)
-            {
-                issue =
-                    "Scene Logical Player Actor must not contain PlayerInput. PlayerInput belongs to the Local Player Host.";
-                return false;
-            }
-
-            if (!HasTypedActorEvidence)
-            {
-                issue =
-                    "Scene Local Player requires serialized Actor Profile evidence. Run Apply / Rebuild in the Inspector.";
-                return false;
-            }
-
-            if (!IsTypedActorEvidenceCompatibleWith(actorProfile))
-            {
-                issue =
-                    "Scene Local Player evidence does not match the selected Actor Profile and its Logical Actor Host prefab.";
-                return false;
-            }
-
             issue = string.Empty;
             return true;
         }
 
-        /// <summary>
-        /// Explicit manual admission request. Automatic execution is owned by the scoped
-        /// lifecycle participant; this component never self-admits from Awake, Start or OnEnable.
-        /// </summary>
-        public SceneLocalPlayerAdmissionRuntimeResult RequestAdmission(
-            RuntimeContentOwner assignmentOwner,
-            string source,
-            string reason)
+        public SceneLocalPlayerAdmissionRuntimeResult RequestAdmission(RuntimeContentOwner assignmentOwner, string source, string reason)
         {
-            if (!RuntimeReady)
-            {
-                _lastRuntimeResult =
-                    SceneLocalPlayerAdmissionRuntimeResult.RuntimeUnavailable(
-                        "AdmitSceneLocalPlayer",
-                        this,
-                        source,
-                        reason,
-                        RuntimeDiagnostic);
-                return _lastRuntimeResult;
-            }
-
-            return _runtimeModule.TryAdmit(
-                this,
-                assignmentOwner,
-                source,
-                reason);
+            if (!RuntimeReady) return _lastRuntimeResult = SceneLocalPlayerAdmissionRuntimeResult.RuntimeUnavailable("AdmitSceneLocalPlayer", this, source, reason, RuntimeDiagnostic);
+            return _runtimeModule.TryAdmit(this, assignmentOwner, source, reason);
         }
 
-        public SceneLocalPlayerAdmissionRuntimeResult RequestRelease(
-            string source,
-            string reason)
+        public SceneLocalPlayerAdmissionRuntimeResult RequestRelease(string source, string reason)
         {
-            if (!RuntimeReady)
-            {
-                _lastRuntimeResult =
-                    SceneLocalPlayerAdmissionRuntimeResult.RuntimeUnavailable(
-                        "ReleaseSceneLocalPlayer",
-                        this,
-                        source,
-                        reason,
-                        RuntimeDiagnostic);
-                return _lastRuntimeResult;
-            }
-
-            return _runtimeModule.TryRelease(
-                this,
-                source,
-                reason);
+            if (!RuntimeReady) return _lastRuntimeResult = SceneLocalPlayerAdmissionRuntimeResult.RuntimeUnavailable("ReleaseSceneLocalPlayer", this, source, reason, RuntimeDiagnostic);
+            return _runtimeModule.TryRelease(this, source, reason);
         }
 
-        public SceneLocalPlayerAdmissionRuntimeResult RequestRelease(
-            SceneLocalPlayerAdmissionToken expectedToken,
-            string source,
-            string reason)
+        public SceneLocalPlayerAdmissionRuntimeResult RequestRelease(SceneLocalPlayerAdmissionToken expectedToken, string source, string reason)
         {
-            if (!RuntimeReady)
-            {
-                _lastRuntimeResult =
-                    SceneLocalPlayerAdmissionRuntimeResult.RuntimeUnavailable(
-                        "ReleaseSceneLocalPlayer",
-                        this,
-                        source,
-                        reason,
-                        RuntimeDiagnostic);
-                return _lastRuntimeResult;
-            }
-
-            return _runtimeModule.TryRelease(
-                this,
-                expectedToken,
-                source,
-                reason);
+            if (!RuntimeReady) return _lastRuntimeResult = SceneLocalPlayerAdmissionRuntimeResult.RuntimeUnavailable("ReleaseSceneLocalPlayer", this, source, reason, RuntimeDiagnostic);
+            return _runtimeModule.TryRelease(this, expectedToken, source, reason);
         }
 
-        internal void BindRuntime(
-            SceneLocalPlayerAdmissionRuntimeHostModule module)
+        internal void BindRuntime(SceneLocalPlayerAdmissionRuntimeHostModule module)
         {
-            if (module == null)
-            {
-                throw new ArgumentNullException(
-                    nameof(module));
-            }
-
-            if (_runtimeModule != null &&
-                !ReferenceEquals(_runtimeModule, module))
-            {
-                throw new InvalidOperationException(
-                    "Scene Local Player is already bound to another Session runtime module.");
-            }
-
+            if (module == null) throw new ArgumentNullException(nameof(module));
+            if (_runtimeModule != null && !ReferenceEquals(_runtimeModule, module)) throw new InvalidOperationException("Scene Local Player is already bound to another Session runtime module.");
             _runtimeModule = module;
             _runtimeDiagnostic = module.Diagnostic;
         }
 
-        internal void UnbindRuntime(
-            SceneLocalPlayerAdmissionRuntimeHostModule module,
-            string diagnostic)
+        internal void UnbindRuntime(SceneLocalPlayerAdmissionRuntimeHostModule module, string diagnostic)
         {
-            if (_runtimeModule != null &&
-                ReferenceEquals(_runtimeModule, module))
-            {
-                _runtimeModule = null;
-            }
-
-            _runtimeDiagnostic =
-                string.IsNullOrWhiteSpace(diagnostic)
-                    ? "Scene Local Player runtime is not bound."
-                    : diagnostic.Trim();
+            if (_runtimeModule != null && ReferenceEquals(_runtimeModule, module)) _runtimeModule = null;
+            _runtimeDiagnostic = string.IsNullOrWhiteSpace(diagnostic) ? "Scene Local Player runtime is not bound." : diagnostic.Trim();
         }
 
-        internal void SetActorAdoptionResult(
-            ScenePlayerActorAdoptionResult result)
-        {
-            _lastActorAdoptionResult = result;
-        }
-
-        internal void SetRuntimeResult(
-            SceneLocalPlayerAdmissionRuntimeResult result,
-            string diagnostic)
-        {
-            _lastRuntimeResult = result;
-            _runtimeDiagnostic =
-                diagnostic ?? string.Empty;
-        }
-
-        private void OnDestroy()
-        {
-            _runtimeModule?.HandleAuthoringDestroyed(this);
-        }
+        internal void SetActorAdoptionResult(ScenePlayerActorAdoptionResult result) => _lastActorAdoptionResult = result;
+        internal void SetRuntimeResult(SceneLocalPlayerAdmissionRuntimeResult result, string diagnostic) { _lastRuntimeResult = result; _runtimeDiagnostic = diagnostic ?? string.Empty; }
+        private void OnDestroy() => _runtimeModule?.HandleAuthoringDestroyed(this);
 
 #if UNITY_EDITOR
-        public void EditorSetAuthoringResult(
-            SceneLocalPlayerAdmissionAuthoringStatus status,
-            string diagnostic)
+        public void EditorSetAuthoringResult(SceneLocalPlayerAdmissionAuthoringStatus status, string diagnostic) { lastAuthoringStatus = status; lastAuthoringDiagnostic = diagnostic ?? string.Empty; }
+        public void EditorSetCompositionReferences(PlayerActorRuntimeHost runtimeHost, GameObject presentation)
         {
-            lastAuthoringStatus = status;
-            lastAuthoringDiagnostic =
-                diagnostic ?? string.Empty;
+            scenePlayerActorRuntimeHost = runtimeHost;
+            scenePresentation = presentation;
         }
-
-        public void EditorSetProfileEvidence(
-            ActorProfile sourceProfile,
-            GameObject sourceLogicalActorHostPrefab,
-            string diagnostic)
+        public void EditorSetProfileEvidence(ActorProfile sourceProfile, GameObject sourcePresentationPrefab, string diagnostic)
         {
             evidenceActorProfile = sourceProfile;
-            evidenceLogicalActorHostPrefab =
-                sourceLogicalActorHostPrefab;
-            evidenceDiagnostic =
-                diagnostic ?? string.Empty;
+            evidencePresentationPrefab = sourcePresentationPrefab;
+            evidenceDiagnostic = diagnostic ?? string.Empty;
         }
 #endif
     }

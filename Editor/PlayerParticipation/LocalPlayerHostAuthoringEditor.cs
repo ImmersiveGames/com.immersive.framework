@@ -9,6 +9,7 @@ namespace Immersive.Framework.Editor.PlayerParticipation
     {
         private SerializedProperty _playerInput;
         private SerializedProperty _actorMount;
+        private SerializedProperty _playerActorRuntimeHostPrefab;
 
         private FrameworkAuthoringValidationReport _lastValidationReport;
         private bool _validationOutdated;
@@ -20,6 +21,8 @@ namespace Immersive.Framework.Editor.PlayerParticipation
                 serializedObject.FindProperty("playerInput");
             _actorMount =
                 serializedObject.FindProperty("actorMount");
+            _playerActorRuntimeHostPrefab =
+                serializedObject.FindProperty("playerActorRuntimeHostPrefab");
         }
 
         public override void OnInspectorGUI()
@@ -42,8 +45,7 @@ namespace Immersive.Framework.Editor.PlayerParticipation
                 _validationOutdated = true;
             }
 
-            DrawActions(host);
-            DrawValidationSummary();
+            DrawConfigurationStatus(host);
 
             if (Application.isPlaying)
             {
@@ -55,7 +57,7 @@ namespace Immersive.Framework.Editor.PlayerParticipation
 
         private void DrawConfiguration()
         {
-            DrawSection("Host Configuration");
+            DrawSection("Player / Input");
 
             EditorGUILayout.PropertyField(
                 _playerInput,
@@ -67,13 +69,21 @@ namespace Immersive.Framework.Editor.PlayerParticipation
                 _actorMount,
                 new GUIContent(
                     "Actor Mount",
-                    "Child transform that contains or receives the contextual Logical Actor. Scene-Provided hosts may already contain an authored Actor; Manager-Provisioned hosts begin with an empty mount."));
+                    "Child transform that contains or receives the contextual Player Actor Runtime Host. Scene-Provided hosts may already contain an authored Runtime Host; Manager-Provisioned hosts begin with an empty mount."));
+
+            DrawSection("Actor Runtime");
+
+            EditorGUILayout.PropertyField(
+                _playerActorRuntimeHostPrefab,
+                new GUIContent(
+                    "Player Actor Runtime Host Prefab",
+                    "Generic Framework-owned Actor runtime host supplied by this Local Player Host composition. It is materialized after Actor selection and receives the selected Actor Profile Presentation."));
         }
 
-        private void DrawActions(
+        private void DrawConfigurationStatus(
             LocalPlayerHostAuthoring host)
         {
-            DrawSection("Actions");
+            DrawSection("Configuration Status");
 
             if (GUILayout.Button(
                     new GUIContent(
@@ -85,12 +95,12 @@ namespace Immersive.Framework.Editor.PlayerParticipation
                     LocalPlayerHostAuthoringValidator.Validate(host);
                 _validationOutdated = false;
             }
+
+            DrawValidationSummary();
         }
 
         private void DrawValidationSummary()
         {
-            DrawSection("Validation Summary");
-
             if (_lastValidationReport == null)
             {
                 EditorGUILayout.LabelField(
@@ -148,8 +158,8 @@ namespace Immersive.Framework.Editor.PlayerParticipation
                         : string.Empty);
 
                 EditorGUILayout.LabelField(
-                    "Logical Actor",
-                    host.HasLogicalActor
+                    "Actor Runtime",
+                    host.HasPlayerActorRuntime
                         ? "Present"
                         : "Not Present");
 
@@ -187,8 +197,8 @@ namespace Immersive.Framework.Editor.PlayerParticipation
                     "Actor Mount Assigned",
                     host.HasActorMount);
                 EditorGUILayout.Toggle(
-                    "Logical Actor Present",
-                    host.HasLogicalActor);
+                    "Actor Runtime Present",
+                    host.HasPlayerActorRuntime);
             }
 
             DrawSection("Participation Evidence");

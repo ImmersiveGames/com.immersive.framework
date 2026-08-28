@@ -899,9 +899,9 @@ namespace Immersive.Framework.PlayerParticipation
                 return false;
             }
 
-            if (!actorProfile.HasLogicalActorHostPrefab)
+            if (!actorProfile.HasPresentationPrefab)
             {
-                issue = $"ActorProfile '{actorProfile.name}' requires a Logical Actor Host prefab.";
+                issue = $"ActorProfile '{actorProfile.name}' requires a Presentation prefab.";
                 return false;
             }
 

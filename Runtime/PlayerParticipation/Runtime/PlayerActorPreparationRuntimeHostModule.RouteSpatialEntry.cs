@@ -49,16 +49,17 @@ namespace Immersive.Framework.PlayerParticipation
         {
             issue = string.Empty;
             if (!_currentRouteSpatialEntryContext.IsValid || authoring == null ||
-                authoring.SceneLogicalPlayerActor == null ||
+                authoring.ScenePlayerActorRuntimeHost == null ||
+                authoring.ScenePlayerActorDeclaration == null ||
                 !authoring.TryGetPlayerSlotId(out PlayerSlotId slot, out issue))
             {
                 if (string.IsNullOrEmpty(issue)) issue = "Scene-Provided spatial entry requires current Route occurrence context and complete authoring.";
                 return false;
             }
             return RoutePlayerSpatialEntryRuntime.TryApply(
-                _currentRouteSpatialEntryContext, slot, authoring.SceneLogicalPlayerActor.ActorId,
-                $"scene-provided:{slot.StableText}:{authoring.SceneLogicalPlayerActor.ActorId.StableText}",
-                authoring.SceneLogicalPlayerActor.transform, out issue);
+                _currentRouteSpatialEntryContext, slot, authoring.ScenePlayerActorDeclaration.ActorId,
+                $"scene-provided:{slot.StableText}:{authoring.ScenePlayerActorDeclaration.ActorId.StableText}",
+                authoring.ScenePlayerActorRuntimeHost.transform, out issue);
         }
 
         internal bool ShouldRetainPhysicalActorPresentationForIncomingActivity(

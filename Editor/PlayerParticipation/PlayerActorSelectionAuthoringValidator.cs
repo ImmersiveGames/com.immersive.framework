@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using Immersive.Framework.Actors;
 using Immersive.Framework.Authoring;
 using Immersive.Framework.Editor.Validation;
+using Immersive.Framework.PlayerParticipation;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.InputSystem;
@@ -62,7 +63,7 @@ namespace Immersive.Framework.Editor.PlayerParticipation
                     profile);
             }
 
-            ValidateLogicalActorHost(profile, report);
+            ValidatePresentation(profile, report);
 
             if (includeProjectDuplicateScan)
             {
@@ -89,7 +90,7 @@ namespace Immersive.Framework.Editor.PlayerParticipation
             if (report.IsValid)
             {
                 report.AddInfo(
-                    $"Actor Profile is valid. actorProfileId='{actorProfileId}' kind='{profile.ActorKind}' role='{profile.ActorRole}' logicalHost='{profile.LogicalActorHostPrefab.name}'.",
+                    $"Actor Profile is valid. actorProfileId='{actorProfileId}' kind='{profile.ActorKind}' role='{profile.ActorRole}' presentation='{profile.PresentationPrefab.name}'.",
                     profile);
             }
 
@@ -149,111 +150,34 @@ namespace Immersive.Framework.Editor.PlayerParticipation
             return report;
         }
 
-        private static void ValidateLogicalActorHost(
+        private static void ValidatePresentation(
             ActorProfile profile,
             FrameworkAuthoringValidationReport report)
         {
-            GameObject logicalHost = profile.LogicalActorHostPrefab;
-            if (logicalHost == null)
+            GameObject presentation = profile.PresentationPrefab;
+            if (presentation == null)
             {
                 report.AddError(
-                    $"ActorProfile '{profile.name}' requires an explicit Logical Actor Host Prefab. No fallback host is inferred.",
+                    $"ActorProfile '{profile.name}' requires an explicit Presentation Prefab. No fallback presentation is inferred.",
                     profile);
                 return;
             }
 
-            if (!PrefabUtility.IsPartOfPrefabAsset(logicalHost))
+            if (!PrefabUtility.IsPartOfPrefabAsset(presentation))
             {
                 report.AddError(
-                    $"ActorProfile '{profile.name}' Logical Actor Host '{logicalHost.name}' is not a prefab asset.",
+                    $"ActorProfile '{profile.name}' Presentation '{presentation.name}' is not a prefab asset.",
                     profile);
                 return;
             }
 
-            ActorDeclaration[] actorDeclarations =
-                logicalHost.GetComponentsInChildren<ActorDeclaration>(true);
-            PlayerActorDeclaration[] playerDeclarations =
-                logicalHost.GetComponentsInChildren<PlayerActorDeclaration>(true);
-            var uniqueDeclarations = new HashSet<Component>();
-            for (int index = 0; index < actorDeclarations.Length; index++)
-            {
-                uniqueDeclarations.Add(actorDeclarations[index]);
-            }
-
-            for (int index = 0; index < playerDeclarations.Length; index++)
-            {
-                uniqueDeclarations.Add(playerDeclarations[index]);
-            }
-
-            int declarationCount = uniqueDeclarations.Count;
-
-            if (declarationCount == 0)
+            if (presentation.GetComponentInChildren<ActorDeclaration>(true) != null ||
+                presentation.GetComponentInChildren<PlayerActorRuntimeHost>(true) != null ||
+                presentation.GetComponentInChildren<PlayerInput>(true) != null)
             {
                 report.AddError(
-                    $"Logical Actor Host Prefab '{logicalHost.name}' has no ActorDeclaration or PlayerActorDeclaration.",
-                    logicalHost);
-                return;
-            }
-
-            if (declarationCount > 1)
-            {
-                report.AddError(
-                    $"Logical Actor Host Prefab '{logicalHost.name}' contains '{declarationCount}' Actor declarations. Exactly one declaration is required.",
-                    logicalHost);
-                return;
-            }
-
-            if (profile.ActorKind == ActorKind.Player)
-            {
-                if (playerDeclarations.Length != 1)
-                {
-                    report.AddError(
-                        $"Player ActorProfile '{profile.name}' requires a Logical Actor Host with one PlayerActorDeclaration.",
-                        logicalHost);
-                    return;
-                }
-
-                PlayerInput[] playerInputs =
-                    logicalHost.GetComponentsInChildren<PlayerInput>(true);
-                PlayerActorDeclaration declaration = playerDeclarations[0];
-                if (playerInputs.Length != 0 || declaration.HasPlayerInputEvidence)
-                {
-                    report.AddError(
-                        $"Player Logical Actor Host '{logicalHost.name}' must not contain PlayerInput evidence. PlayerInput belongs to LocalPlayerHostAuthoring and is bound later by explicit composition.",
-                        logicalHost);
-                }
-
-                if (profile.ActorRole != declaration.ActorRole)
-                {
-                    report.AddError(
-                        $"ActorProfile '{profile.name}' role '{profile.ActorRole}' does not match its PlayerActorDeclaration role '{declaration.ActorRole}'.",
-                        profile);
-                }
-            }
-            else
-            {
-                if (actorDeclarations.Length != 1 || playerDeclarations.Length != 0)
-                {
-                    report.AddError(
-                        $"Non-Player ActorProfile '{profile.name}' requires a Logical Actor Host with one ActorDeclaration.",
-                        logicalHost);
-                    return;
-                }
-
-                ActorDeclaration declaration = actorDeclarations[0];
-                if (profile.ActorKind != declaration.ActorKind)
-                {
-                    report.AddError(
-                        $"ActorProfile '{profile.name}' kind '{profile.ActorKind}' does not match its ActorDeclaration kind '{declaration.ActorKind}'.",
-                        profile);
-                }
-
-                if (profile.ActorRole != declaration.ActorRole)
-                {
-                    report.AddError(
-                        $"ActorProfile '{profile.name}' role '{profile.ActorRole}' does not match its ActorDeclaration role '{declaration.ActorRole}'.",
-                        profile);
-                }
+                    $"Presentation Prefab '{presentation.name}' must not contain PlayerInput, Framework Actor declarations or Player Actor Runtime Host infrastructure.",
+                    presentation);
             }
         }
     }

@@ -101,12 +101,20 @@ namespace Immersive.Framework.Editor.PlayerParticipation
                 if (prefabHost == null)
                 {
                     report.AddError(
-                        $"Local Player Host Prefab '{localPlayerHostPrefab.name}' has no LocalPlayerHostAuthoring. The provisioning prefab must declare a stable technical host rather than a Logical Actor.",
+                        $"Local Player Host Prefab '{localPlayerHostPrefab.name}' has no LocalPlayerHostAuthoring. The provisioning prefab must declare the stable Player/Input host and its Actor Runtime composition.",
                         localPlayerHostPrefab);
                 }
                 else
                 {
                     report.AddRange(LocalPlayerHostAuthoringValidator.Validate(prefabHost));
+
+                    if (!prefabHost.HasPlayerActorRuntimeHostPrefab)
+                    {
+                        report.AddError(
+                            $"Local Player Host Prefab '{localPlayerHostPrefab.name}' is missing its Player Actor Runtime Host Prefab. Manager-Provisioned Players require the generic runtime composition after Actor selection.",
+                            prefabHost);
+                    }
+
                     if (prefabPlayerInput != null &&
                         prefabHost.PlayerInput != prefabPlayerInput)
                     {

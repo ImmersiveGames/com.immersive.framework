@@ -9,33 +9,25 @@ using UnityEngine.InputSystem;
 namespace Immersive.Framework.PlayerParticipation
 {
     /// <summary>
-    /// Unity adapter that stages one ActorProfile Logical Actor Host below an explicit
-    /// LocalPlayerHostAuthoring.ActorMount. It does not choose the Profile, own Session
-    /// selection, apply occupancy, enable gameplay input or publish camera requests.
+    /// Stages the Local Player Host supplied Runtime Host and the selected Actor Presentation.
+    /// It does not choose Actor Profiles or own gameplay, input, camera or Session authority.
     /// </summary>
-    [FrameworkApiStatus(
-        FrameworkApiStatus.Internal,
-        "P3J.3/P3J.4 attached Unity Logical Player Actor materialization and release adapter.")]
+    [FrameworkApiStatus(FrameworkApiStatus.Internal, "ADR-023 attached Player Actor Runtime Host and Presentation materialization adapter.")]
     internal sealed class AttachedPlayerActorMaterializationAdapter
     {
-        private const string ResourceType = "PlayerLogicalActorHost";
+        private const string ResourceType = "PlayerActorRuntimeHost";
 
         private readonly RuntimeContentRuntime _runtimeContentRuntime;
         private readonly string _sessionContextId;
         private int _materializationSequence;
 
-        internal AttachedPlayerActorMaterializationAdapter(
-            RuntimeContentRuntime runtimeContentRuntime,
-            string sessionContextId)
+        internal AttachedPlayerActorMaterializationAdapter(RuntimeContentRuntime runtimeContentRuntime, string sessionContextId)
         {
-            this._runtimeContentRuntime = runtimeContentRuntime ??
-                throw new ArgumentNullException(nameof(runtimeContentRuntime));
-            this._sessionContextId = sessionContextId.NormalizeText();
-            if (string.IsNullOrEmpty(this._sessionContextId))
+            _runtimeContentRuntime = runtimeContentRuntime ?? throw new ArgumentNullException(nameof(runtimeContentRuntime));
+            _sessionContextId = sessionContextId.NormalizeText();
+            if (string.IsNullOrEmpty(_sessionContextId))
             {
-                throw new ArgumentException(
-                    "Attached Player Actor materialization adapter requires a non-empty Session context identity.",
-                    nameof(sessionContextId));
+                throw new ArgumentException("Attached Player Actor materialization adapter requires a non-empty Session context identity.", nameof(sessionContextId));
             }
         }
 
@@ -49,63 +41,22 @@ namespace Immersive.Framework.PlayerParticipation
             string source,
             string reason)
         {
-            string resolvedSource = source.NormalizeTextOrFallback(
-                nameof(AttachedPlayerActorMaterializationAdapter));
-            string resolvedReason = reason.NormalizeTextOrFallback(
-                "logical-player-actor-materialization");
+            string resolvedSource = source.NormalizeTextOrFallback(nameof(AttachedPlayerActorMaterializationAdapter));
+            string resolvedReason = reason.NormalizeTextOrFallback("player-actor-runtime-materialization");
 
-            if (!scopeContext.IsValid)
+            if (!scopeContext.IsValid || !slot.IsValid || !slot.IsJoined || localPlayerHost == null)
             {
-                return Failure(
-                    PlayerActorMaterializationStatus.RejectedInvalidRequest,
-                    default,
-                    localPlayerHost,
-                    null,
-                    "Logical Player Actor materialization requires a valid Runtime Scope Context.");
-            }
-
-            if (!slot.IsValid || !slot.IsJoined)
-            {
-                return Failure(
-                    PlayerActorMaterializationStatus.RejectedInvalidRequest,
-                    default,
-                    localPlayerHost,
-                    localPlayerHost != null ? localPlayerHost.PlayerInput : null,
-                    "Logical Player Actor materialization requires a valid Joined Player Slot snapshot.");
-            }
-
-            if (localPlayerHost == null)
-            {
-                return Failure(
-                    PlayerActorMaterializationStatus.RejectedHostUnavailable,
-                    default,
-                    null,
-                    null,
-                    "Logical Player Actor materialization requires an explicit Local Player Host.");
+                return Failure(PlayerActorMaterializationStatus.RejectedInvalidRequest, default, localPlayerHost, localPlayerHost != null ? localPlayerHost.PlayerInput : null, "Player Actor materialization requires a valid scope, Joined Slot and explicit Local Player Host.");
             }
 
             if (!TryValidateHost(localPlayerHost, slot, out PlayerActorMaterializationStatus hostStatus, out string hostIssue))
             {
-                return Failure(
-                    hostStatus,
-                    default,
-                    localPlayerHost,
-                    localPlayerHost.PlayerInput,
-                    hostIssue);
+                return Failure(hostStatus, default, localPlayerHost, localPlayerHost.PlayerInput, hostIssue);
             }
 
-            if (!TryValidateProfile(
-                    actorProfile,
-                    out ActorProfileId actorProfileId,
-                    out PlayerActorMaterializationStatus profileStatus,
-                    out string profileIssue))
+            if (!TryValidateProfile(actorProfile, out ActorProfileId actorProfileId, out PlayerActorMaterializationStatus profileStatus, out string profileIssue))
             {
-                return Failure(
-                    profileStatus,
-                    default,
-                    localPlayerHost,
-                    localPlayerHost.PlayerInput,
-                    profileIssue);
+                return Failure(profileStatus, default, localPlayerHost, localPlayerHost.PlayerInput, profileIssue);
             }
 
             _materializationSequence++;
@@ -118,12 +69,7 @@ namespace Immersive.Framework.PlayerParticipation
                     out PlayerActorMaterializationOperationId operationId,
                     out string operationIssue))
             {
-                return Failure(
-                    PlayerActorMaterializationStatus.FailedActorIdentity,
-                    default,
-                    localPlayerHost,
-                    localPlayerHost.PlayerInput,
-                    operationIssue);
+                return Failure(PlayerActorMaterializationStatus.FailedActorIdentity, default, localPlayerHost, localPlayerHost.PlayerInput, operationIssue);
             }
 
             if (!TryCreateRuntimeIdentities(
@@ -134,241 +80,93 @@ namespace Immersive.Framework.PlayerParticipation
                     out RuntimeContentId runtimeContentId,
                     out string identityIssue))
             {
-                return Failure(
-                    PlayerActorMaterializationStatus.FailedActorIdentity,
-                    default,
-                    localPlayerHost,
-                    localPlayerHost.PlayerInput,
-                    identityIssue);
+                return Failure(PlayerActorMaterializationStatus.FailedActorIdentity, default, localPlayerHost, localPlayerHost.PlayerInput, identityIssue);
             }
 
-            var request = new PlayerActorMaterializationRequest(
-                operationId,
-                _sessionContextId,
-                scopeContext,
-                slot,
-                actorProfile,
-                localPlayerHost,
-                actorId,
-                runtimeContentId,
-                materializationRevision,
-                resolvedSource,
-                resolvedReason);
-
-            var resource = new RuntimeMaterializationResource(
-                ResourceType,
-                actorProfileId.Value.Value,
-                actorProfile.DisplayName,
-                string.Empty);
-
-            if (!_runtimeContentRuntime.TryCreateMaterializationRequest(
-                    scopeContext,
-                    runtimeContentId,
-                    resource,
-                    resolvedSource,
-                    resolvedReason,
-                    out RuntimeMaterializationRequest runtimeRequest,
-                    out RuntimeScopeTransitionGuardResult guardResult))
+            var request = new PlayerActorMaterializationRequest(operationId, _sessionContextId, scopeContext, slot, actorProfile, localPlayerHost, actorId, runtimeContentId, materializationRevision, resolvedSource, resolvedReason);
+            var resource = new RuntimeMaterializationResource(ResourceType, actorProfileId.Value.Value, actorProfile.DisplayName, string.Empty);
+            if (!_runtimeContentRuntime.TryCreateMaterializationRequest(scopeContext, runtimeContentId, resource, resolvedSource, resolvedReason, out RuntimeMaterializationRequest runtimeRequest, out RuntimeScopeTransitionGuardResult guardResult))
             {
-                return PlayerActorMaterializationResult.Failure(
-                    MapGuardStatus(guardResult),
-                    request,
-                    default,
-                    default,
-                    false,
-                    localPlayerHost,
-                    localPlayerHost.PlayerInput,
-                    null,
-                    null,
-                    guardResult.Message);
+                return PlayerActorMaterializationResult.Failure(MapGuardStatus(guardResult), request, default, default, false, localPlayerHost, localPlayerHost.PlayerInput, null, null, guardResult.Message);
             }
 
             GameObject stagingRoot = null;
-            GameObject logicalActorHost = null;
-            PlayerActorDeclaration declaration = null;
+            PlayerActorRuntimeHost runtimeHost = null;
+            GameObject presentation = null;
             try
             {
-                stagingRoot = new GameObject(
-                    $"[{operationId.StableText}] Staging");
+                stagingRoot = new GameObject($"[{operationId.StableText}] Player Actor Staging");
                 stagingRoot.SetActive(false);
                 stagingRoot.transform.SetParent(localPlayerHost.ActorMount, false);
 
-                logicalActorHost = UnityEngine.Object.Instantiate(
-                    actorProfile.LogicalActorHostPrefab,
-                    stagingRoot.transform,
-                    false);
-                if (logicalActorHost == null)
+                runtimeHost = UnityEngine.Object.Instantiate(localPlayerHost.PlayerActorRuntimeHostPrefab, stagingRoot.transform, false);
+                if (runtimeHost == null)
                 {
-                    return MaterializerFailure(
-                        PlayerActorMaterializationStatus.FailedInstantiate,
-                        request,
-                        runtimeRequest,
-                        localPlayerHost,
-                        localPlayerHost.PlayerInput,
-                        null,
-                        null,
-                        "Logical Player Actor prefab instantiation returned null.");
+                    return MaterializerFailure(PlayerActorMaterializationStatus.FailedInstantiate, request, runtimeRequest, localPlayerHost, localPlayerHost.PlayerInput, null, null, "Player Actor Runtime Host prefab instantiation returned null.");
                 }
 
-                logicalActorHost.name =
-                    $"Player {slot.ConfiguredIndex + 1} [{slot.PlayerSlotId.StableText}] — {actorProfile.DisplayName}";
-                logicalActorHost.SetActive(false);
-                logicalActorHost.transform.SetParent(localPlayerHost.ActorMount, false);
+                runtimeHost.gameObject.SetActive(false);
+                if (!runtimeHost.TryValidateConfiguration(out string runtimeHostIssue))
+                {
+                    return RollbackFailure(PlayerActorMaterializationStatus.RejectedInvalidRuntimeHostPrefab, request, runtimeRequest, localPlayerHost, localPlayerHost.PlayerInput, runtimeHost, null, runtimeHostIssue, resolvedSource, resolvedReason);
+                }
+
+                presentation = UnityEngine.Object.Instantiate(actorProfile.PresentationPrefab, runtimeHost.PresentationMount, false);
+                if (presentation == null)
+                {
+                    return RollbackFailure(PlayerActorMaterializationStatus.FailedInstantiate, request, runtimeRequest, localPlayerHost, localPlayerHost.PlayerInput, runtimeHost, null, "Actor Presentation prefab instantiation returned null.", resolvedSource, resolvedReason);
+                }
+
+                presentation.SetActive(false);
+                if (!TryValidatePresentation(presentation, runtimeHost.PresentationMount, out PlayerActorMaterializationStatus presentationStatus, out string presentationIssue))
+                {
+                    return RollbackFailure(presentationStatus, request, runtimeRequest, localPlayerHost, localPlayerHost.PlayerInput, runtimeHost, presentation, presentationIssue, resolvedSource, resolvedReason);
+                }
+
+                runtimeHost.name = $"Player {slot.ConfiguredIndex + 1} [{slot.PlayerSlotId.StableText}] Runtime Host";
+                presentation.name = actorProfile.DisplayName;
+                runtimeHost.transform.SetParent(localPlayerHost.ActorMount, false);
                 DestroyObject(stagingRoot);
                 stagingRoot = null;
 
-                if (!TryValidateInstance(
-                        logicalActorHost,
-                        out declaration,
-                        out PlayerActorMaterializationStatus instanceStatus,
-                        out string instanceIssue))
+                PlayerActorDeclaration declaration = runtimeHost.PlayerActorDeclaration;
+                declaration.ConfigureForDiagnostics(actorId.Value.Value, actorProfile.DisplayName, localPlayerHost.PlayerInput, $"{resolvedReason}; profile='{actorProfileId.StableText}'; slot='{slot.PlayerSlotId.StableText}'; owner='{scopeContext.Owner.StableText}'.");
+                if (!declaration.HasPlayerInputEvidence || !ReferenceEquals(declaration.PlayerInput, localPlayerHost.PlayerInput) || declaration.ActorId != actorId)
                 {
-                    return RollbackFailureOrOriginal(
-                        instanceStatus,
-                        request,
-                        runtimeRequest,
-                        localPlayerHost,
-                        localPlayerHost.PlayerInput,
-                        declaration,
-                        logicalActorHost,
-                        instanceIssue,
-                        resolvedSource,
-                        resolvedReason);
+                    return RollbackFailure(PlayerActorMaterializationStatus.FailedActorIdentity, request, runtimeRequest, localPlayerHost, localPlayerHost.PlayerInput, runtimeHost, presentation, "Player Actor Runtime Host identity or PlayerInput evidence did not match the generated materialization request.", resolvedSource, resolvedReason);
                 }
 
-                declaration.ConfigureForDiagnostics(
-                    actorId.Value.Value,
-                    actorProfile.DisplayName,
-                    localPlayerHost.PlayerInput,
-                    $"{resolvedReason}; profile='{actorProfileId.StableText}'; " +
-                    $"slot='{slot.PlayerSlotId.StableText}'; owner='{scopeContext.Owner.StableText}'.");
-
-                if (!declaration.HasPlayerInputEvidence ||
-                    !ReferenceEquals(declaration.PlayerInput, localPlayerHost.PlayerInput) ||
-                    declaration.ActorId != actorId)
-                {
-                    return RollbackFailureOrOriginal(
-                        PlayerActorMaterializationStatus.FailedActorIdentity,
-                        request,
-                        runtimeRequest,
-                        localPlayerHost,
-                        localPlayerHost.PlayerInput,
-                        declaration,
-                        logicalActorHost,
-                        "Logical Player Actor identity or PlayerInput evidence did not match the generated materialization request.",
-                        resolvedSource,
-                        resolvedReason);
-                }
-
-                RuntimeContentHandle runtimeHandle = RuntimeContentHandle.Materialized(
-                    runtimeRequest.Identity,
-                    resolvedSource,
-                    resolvedReason);
-                RuntimeMaterializationResult physicalResult = RuntimeMaterializationResult.Success(
-                    runtimeRequest,
-                    runtimeHandle,
-                    resolvedSource,
-                    resolvedReason,
-                    "Attached Logical Player Actor instance staged inactive.");
-                RuntimeMaterializationResult appliedResult =
-                    _runtimeContentRuntime.ApplyMaterializationResult(
-                        physicalResult,
-                        resolvedSource,
-                        resolvedReason);
-
+                RuntimeContentHandle runtimeHandle = RuntimeContentHandle.Materialized(runtimeRequest.Identity, resolvedSource, resolvedReason);
+                RuntimeMaterializationResult appliedResult = _runtimeContentRuntime.ApplyMaterializationResult(RuntimeMaterializationResult.Success(runtimeRequest, runtimeHandle, resolvedSource, resolvedReason, "Player Actor Runtime Host and Presentation staged inactive."), resolvedSource, resolvedReason);
                 if (!appliedResult.Succeeded)
                 {
-                    return RollbackFailureOrOriginal(
-                        PlayerActorMaterializationStatus.FailedRuntimeContentRegistration,
-                        request,
-                        runtimeRequest,
-                        localPlayerHost,
-                        localPlayerHost.PlayerInput,
-                        declaration,
-                        logicalActorHost,
-                        appliedResult.Message,
-                        resolvedSource,
-                        resolvedReason,
-                        appliedResult,
-                        true);
+                    return RollbackFailure(PlayerActorMaterializationStatus.FailedRuntimeContentRegistration, request, runtimeRequest, localPlayerHost, localPlayerHost.PlayerInput, runtimeHost, presentation, appliedResult.Message, resolvedSource, resolvedReason, appliedResult, true);
                 }
 
-                var typedHandle = new PlayerActorMaterializationHandle(
-                    request,
-                    runtimeRequest,
-                    runtimeHandle,
-                    localPlayerHost,
-                    localPlayerHost.PlayerInput,
-                    declaration,
-                    logicalActorHost,
-                    resolvedSource,
-                    resolvedReason);
-
-                return PlayerActorMaterializationResult.Success(
-                    request,
-                    runtimeRequest,
-                    appliedResult,
-                    typedHandle,
-                    "Logical Player Actor materialized under the explicit Actor Mount and staged inactive.");
+                var handle = new PlayerActorMaterializationHandle(request, runtimeRequest, runtimeHandle, localPlayerHost, localPlayerHost.PlayerInput, runtimeHost, presentation, null, false, resolvedSource, resolvedReason);
+                return PlayerActorMaterializationResult.Success(request, runtimeRequest, appliedResult, handle, "Player Actor Runtime Host and selected Presentation materialized under the explicit Actor Mount and staged inactive.");
             }
             catch (Exception exception)
             {
-                return RollbackFailureOrOriginal(
-                    PlayerActorMaterializationStatus.FailedInstantiate,
-                    request,
-                    runtimeRequest,
-                    localPlayerHost,
-                    localPlayerHost.PlayerInput,
-                    declaration,
-                    logicalActorHost,
-                    $"Logical Player Actor materialization threw '{exception.GetType().Name}'. {exception.Message}",
-                    resolvedSource,
-                    resolvedReason);
+                return RollbackFailure(PlayerActorMaterializationStatus.FailedInstantiate, request, runtimeRequest, localPlayerHost, localPlayerHost.PlayerInput, runtimeHost, presentation, $"Player Actor materialization threw '{exception.GetType().Name}'. {exception.Message}", resolvedSource, resolvedReason);
             }
             finally
             {
-                if (stagingRoot != null)
-                {
-                    DestroyObject(stagingRoot);
-                }
+                if (stagingRoot != null) DestroyObject(stagingRoot);
             }
         }
 
-        internal bool TryRollbackMaterialization(
-            PlayerActorMaterializationHandle handle,
-            string source,
-            string reason,
-            out string issue)
-        {
-            return TryReleaseMaterialization(handle, source, reason, out issue);
-        }
+        internal bool TryRollbackMaterialization(PlayerActorMaterializationHandle handle, string source, string reason, out string issue) => TryReleaseMaterialization(handle, source, reason, out issue);
 
-        internal bool TryReleaseMaterialization(
-            PlayerActorMaterializationHandle handle,
-            string source,
-            string reason,
-            out string issue)
+        internal bool TryReleaseMaterialization(PlayerActorMaterializationHandle handle, string source, string reason, out string issue)
         {
-            string resolvedSource = source.NormalizeTextOrFallback(
-                nameof(AttachedPlayerActorMaterializationAdapter));
-            string resolvedReason = reason.NormalizeTextOrFallback(
-                "logical-player-actor-rollback");
-
-            if (handle == null)
+            string resolvedSource = source.NormalizeTextOrFallback(nameof(AttachedPlayerActorMaterializationAdapter));
+            string resolvedReason = reason.NormalizeTextOrFallback("player-actor-runtime-release");
+            if (handle == null || !string.Equals(handle.Request.SessionContextId, _sessionContextId, StringComparison.Ordinal))
             {
-                issue = "Logical Player Actor rollback requires a typed materialization handle.";
+                issue = "Player Actor release requires a typed materialization handle from this Session.";
                 return false;
             }
-
-            if (!string.Equals(
-                    handle.Request.SessionContextId,
-                    _sessionContextId,
-                    StringComparison.Ordinal))
-            {
-                issue = "Logical Player Actor rollback rejected a foreign Session materialization handle.";
-                return false;
-            }
-
             if (handle.State == PlayerActorMaterializationState.Released)
             {
                 issue = string.Empty;
@@ -378,259 +176,145 @@ namespace Immersive.Framework.PlayerParticipation
             handle.MarkReleaseRequested(resolvedSource, resolvedReason);
             try
             {
-                bool adoptedScenePhysicalComposition =
-                    handle.PlayerActorDeclaration != null &&
-                    handle.LogicalActorHost != null &&
-                    !ReferenceEquals(
-                        handle.PlayerActorDeclaration.transform,
-                        handle.LogicalActorHost.transform) &&
-                    !handle.PlayerActorDeclaration.transform.IsChildOf(
-                        handle.LogicalActorHost.transform);
+                if (handle.PlayerActorRuntimeHost != null) handle.PlayerActorRuntimeHost.gameObject.SetActive(false);
+                handle.PlayerActorDeclaration?.ClearPlayerInputEvidence(handle.PlayerInput);
 
-                if (handle.LogicalActorHost != null)
+                if (handle.DestroyLocalPlayerHostOnRelease)
                 {
-                    handle.LogicalActorHost.SetActive(false);
+                    if (handle.ReleaseProxy != null) DestroyObject(handle.ReleaseProxy);
+                    if (handle.LocalPlayerHost != null) DestroyObject(handle.LocalPlayerHost.gameObject);
+                }
+                else
+                {
+                    if (handle.Presentation != null)
+                    {
+                        handle.Presentation.transform.SetParent(null, true);
+                        DestroyObject(handle.Presentation);
+                    }
+                    if (handle.PlayerActorRuntimeHost != null)
+                    {
+                        handle.PlayerActorRuntimeHost.transform.SetParent(null, true);
+                        DestroyObject(handle.PlayerActorRuntimeHost.gameObject);
+                    }
                 }
 
-                if (handle.PlayerActorDeclaration != null)
-                {
-                    handle.PlayerActorDeclaration.ClearPlayerInputEvidence(handle.PlayerInput);
-                }
-
-                if (handle.LogicalActorHost != null)
-                {
-                    // Activity-scoped hierarchy authority must end synchronously before
-                    // Unity's deferred Destroy so Session Host release sees current ownership truth.
-                    handle.LogicalActorHost.transform.SetParent(null, true);
-                    DestroyObject(handle.LogicalActorHost);
-                }
-
-                if (adoptedScenePhysicalComposition &&
-                    handle.LocalPlayerHost != null)
-                {
-                    // A Scene-Provided composition becomes Session-owned only after
-                    // adoption. Terminal release therefore destroys the promoted
-                    // original Host/Actor composition, never an unadopted candidate.
-                    DestroyObject(handle.LocalPlayerHost.gameObject);
-                }
-
-                RuntimeReleaseResult releaseResult =
-                    _runtimeContentRuntime.ReleaseHandleLogically(
-                        handle.RuntimeContentRequest.Context,
-                        handle.RuntimeContentRequest.Identity,
-                        RuntimeReleasePolicy.MarkReleasedAndUnregister,
-                        resolvedSource,
-                        resolvedReason);
+                RuntimeReleaseResult releaseResult = _runtimeContentRuntime.ReleaseHandleLogically(handle.RuntimeContentRequest.Context, handle.RuntimeContentRequest.Identity, RuntimeReleasePolicy.MarkReleasedAndUnregister, resolvedSource, resolvedReason);
                 if (!releaseResult.Succeeded)
                 {
-                    handle.MarkReleaseFailed(
-                        resolvedSource,
-                        resolvedReason,
-                        releaseResult.Message);
+                    handle.MarkReleaseFailed(resolvedSource, resolvedReason, releaseResult.Message);
                     issue = releaseResult.Message;
                     return false;
                 }
-
                 handle.MarkReleased(resolvedSource, resolvedReason);
                 issue = string.Empty;
                 return true;
             }
             catch (Exception exception)
             {
-                handle.MarkReleaseFailed(
-                    resolvedSource,
-                    resolvedReason,
-                    exception.Message);
-                issue = $"Logical Player Actor rollback failed. {exception.Message}";
+                handle.MarkReleaseFailed(resolvedSource, resolvedReason, exception.Message);
+                issue = $"Player Actor Runtime Host release failed. {exception.Message}";
                 return false;
             }
         }
 
-        private static bool TryValidateHost(
-            LocalPlayerHostAuthoring host,
-            PlayerSlotRuntimeSnapshot slot,
-            out PlayerActorMaterializationStatus status,
-            out string issue)
+        private static bool TryValidateHost(LocalPlayerHostAuthoring host, PlayerSlotRuntimeSnapshot slot, out PlayerActorMaterializationStatus status, out string issue)
         {
             if (!host.IsJoined || !host.HasJoinedSlot)
             {
                 status = PlayerActorMaterializationStatus.RejectedHostNotJoined;
-                issue = "Logical Player Actor materialization requires a joined Local Player Host.";
+                issue = "Player Actor materialization requires a joined Local Player Host.";
                 return false;
             }
-
-            if (host.JoinedPlayerSlotId != slot.PlayerSlotId ||
-                host.JoinedConfiguredIndex != slot.ConfiguredIndex)
+            if (host.JoinedPlayerSlotId != slot.PlayerSlotId || host.JoinedConfiguredIndex != slot.ConfiguredIndex)
             {
                 status = PlayerActorMaterializationStatus.RejectedSlotMismatch;
                 issue = "Local Player Host joined Slot identity does not match the requested Session Slot snapshot.";
                 return false;
             }
-
+            if (!host.HasPlayerActorRuntimeHostPrefab)
+            {
+                status = PlayerActorMaterializationStatus.RejectedMissingRuntimeHostPrefab;
+                issue = "Local Player Host requires an explicit Player Actor Runtime Host prefab. No Actor Profile fallback is available.";
+                return false;
+            }
             if (host.PlayerInput == null || host.ActorMount == null)
             {
                 status = PlayerActorMaterializationStatus.RejectedHostUnavailable;
                 issue = "Local Player Host requires explicit PlayerInput and Actor Mount evidence.";
                 return false;
             }
-
-            if (!ReferenceEquals(host.PlayerInput.gameObject, host.gameObject) ||
-                ReferenceEquals(host.ActorMount, host.transform) ||
-                !host.ActorMount.IsChildOf(host.transform))
+            if (!host.PlayerActorRuntimeHostPrefab.TryValidateConfiguration(out issue))
             {
-                status = PlayerActorMaterializationStatus.RejectedHostUnavailable;
-                issue = "Local Player Host PlayerInput or Actor Mount evidence is not attached to the declared technical host.";
+                status = PlayerActorMaterializationStatus.RejectedInvalidRuntimeHostPrefab;
                 return false;
             }
-
             PlayerInput[] playerInputs = host.GetComponentsInChildren<PlayerInput>(true);
-            if (playerInputs.Length != 1 || !ReferenceEquals(playerInputs[0], host.PlayerInput))
+            if (playerInputs.Length != 1 || !ReferenceEquals(playerInputs[0], host.PlayerInput) || host.ActorMount.GetComponentInChildren<PlayerInput>(true) != null)
             {
                 status = PlayerActorMaterializationStatus.RejectedHostUnavailable;
-                issue = $"Local Player Host requires exactly one PlayerInput authority. Found '{playerInputs.Length}'.";
+                issue = "Local Player Host must retain exactly one PlayerInput outside Actor Mount.";
                 return false;
             }
-
-            if (host.ActorMount.GetComponentInChildren<PlayerInput>(true) != null)
-            {
-                status = PlayerActorMaterializationStatus.RejectedHostUnavailable;
-                issue = "Local Player Host Actor Mount must not contain a second PlayerInput.";
-                return false;
-            }
-
             status = PlayerActorMaterializationStatus.SucceededStaged;
             issue = string.Empty;
             return true;
         }
 
-        private static bool TryValidateProfile(
-            ActorProfile actorProfile,
-            out ActorProfileId actorProfileId,
-            out PlayerActorMaterializationStatus status,
-            out string issue)
+        private static bool TryValidateProfile(ActorProfile actorProfile, out ActorProfileId actorProfileId, out PlayerActorMaterializationStatus status, out string issue)
         {
             actorProfileId = default;
             if (actorProfile == null)
             {
                 status = PlayerActorMaterializationStatus.RejectedProfileUnavailable;
-                issue = "Logical Player Actor materialization requires an explicit Actor Profile.";
+                issue = "Player Actor materialization requires an explicit Actor Profile.";
                 return false;
             }
-
-            if (!actorProfile.TryGetActorProfileId(out actorProfileId, out issue))
+            if (!actorProfile.TryGetActorProfileId(out actorProfileId, out issue) || actorProfile.ActorKind != ActorKind.Player || actorProfile.ActorRole != ActorRole.Protagonist)
             {
                 status = PlayerActorMaterializationStatus.RejectedInvalidProfile;
                 return false;
             }
-
-            if (actorProfile.ActorKind != ActorKind.Player ||
-                actorProfile.ActorRole != ActorRole.Protagonist)
+            if (actorProfile.PresentationPrefab == null)
             {
-                status = PlayerActorMaterializationStatus.RejectedInvalidProfile;
-                issue = $"Actor Profile '{actorProfile.name}' must classify a Player Protagonist Logical Actor.";
+                status = PlayerActorMaterializationStatus.RejectedMissingPresentationPrefab;
+                issue = $"Actor Profile '{actorProfile.name}' has no Presentation prefab.";
                 return false;
             }
-
-            if (actorProfile.LogicalActorHostPrefab == null)
-            {
-                status = PlayerActorMaterializationStatus.RejectedMissingLogicalActorPrefab;
-                issue = $"Actor Profile '{actorProfile.name}' has no Logical Actor Host prefab.";
-                return false;
-            }
-
-            return TryValidateActorObject(
-                actorProfile.LogicalActorHostPrefab,
-                out _,
-                out status,
-                out issue,
-                "Actor Profile Logical Actor Host prefab");
+            return TryValidatePresentation(actorProfile.PresentationPrefab, null, out status, out issue);
         }
 
-        private static bool TryValidateInstance(
-            GameObject logicalActorHost,
-            out PlayerActorDeclaration declaration,
-            out PlayerActorMaterializationStatus status,
-            out string issue)
+        private static bool TryValidatePresentation(GameObject presentation, Transform expectedMount, out PlayerActorMaterializationStatus status, out string issue)
         {
-            return TryValidateActorObject(
-                logicalActorHost,
-                out declaration,
-                out status,
-                out issue,
-                "Materialized Logical Actor Host instance");
-        }
-
-        private static bool TryValidateActorObject(
-            GameObject actorObject,
-            out PlayerActorDeclaration declaration,
-            out PlayerActorMaterializationStatus status,
-            out string issue,
-            string label)
-        {
-            declaration = null;
-            if (actorObject == null)
+            if (presentation == null)
             {
-                status = PlayerActorMaterializationStatus.RejectedInvalidLogicalActorPrefab;
-                issue = $"{label} is missing.";
+                status = PlayerActorMaterializationStatus.RejectedInvalidPresentationPrefab;
+                issue = "Actor Presentation is missing.";
                 return false;
             }
-
-            if (actorObject.GetComponentInChildren<PlayerInput>(true) != null)
+            if (expectedMount != null && presentation.transform.parent != expectedMount)
             {
-                status = PlayerActorMaterializationStatus.FailedUnexpectedPlayerInput;
-                issue = $"{label} must not contain PlayerInput. PlayerInput belongs to the stable Local Player Host.";
+                status = PlayerActorMaterializationStatus.FailedInstantiate;
+                issue = "Actor Presentation must be materialized directly under the exact Player Actor Runtime Host Presentation Mount.";
                 return false;
             }
-
-            PlayerActorDeclaration[] playerDeclarations =
-                actorObject.GetComponentsInChildren<PlayerActorDeclaration>(true);
-            if (playerDeclarations.Length == 0)
-            {
-                status = PlayerActorMaterializationStatus.FailedMissingPlayerActorDeclaration;
-                issue = $"{label} requires exactly one PlayerActorDeclaration.";
-                return false;
-            }
-
-            if (playerDeclarations.Length > 1)
-            {
-                status = PlayerActorMaterializationStatus.FailedMultiplePlayerActorDeclarations;
-                issue = $"{label} requires exactly one PlayerActorDeclaration. Found '{playerDeclarations.Length}'.";
-                return false;
-            }
-
-            ActorDeclaration[] actorDeclarations =
-                actorObject.GetComponentsInChildren<ActorDeclaration>(true);
-            if (actorDeclarations.Length != 1 ||
-                !ReferenceEquals(actorDeclarations[0], playerDeclarations[0]))
+            if (presentation.GetComponentInChildren<PlayerInput>(true) != null || presentation.GetComponentInChildren<ActorDeclaration>(true) != null || presentation.GetComponentInChildren<PlayerActorRuntimeHost>(true) != null)
             {
                 status = PlayerActorMaterializationStatus.FailedUnexpectedActorDeclaration;
-                issue = $"{label} requires one canonical PlayerActorDeclaration and no additional ActorDeclaration. Found '{actorDeclarations.Length}'.";
+                issue = "Actor Presentation must not contain PlayerInput, Framework Actor declarations or Player Actor Runtime Host infrastructure.";
                 return false;
             }
-
-            declaration = playerDeclarations[0];
             status = PlayerActorMaterializationStatus.SucceededStaged;
             issue = string.Empty;
             return true;
         }
 
-        private bool TryCreateRuntimeIdentities(
-            RuntimeScopeContext scopeContext,
-            PlayerSlotRuntimeSnapshot slot,
-            int sequence,
-            out ActorId actorId,
-            out RuntimeContentId runtimeContentId,
-            out string issue)
+        private bool TryCreateRuntimeIdentities(RuntimeScopeContext scopeContext, PlayerSlotRuntimeSnapshot slot, int sequence, out ActorId actorId, out RuntimeContentId runtimeContentId, out string issue)
         {
             try
             {
-                string identitySuffix =
-                    $"{_sessionContextId}:{scopeContext.Owner.Scope}:" +
-                    $"{scopeContext.Owner.OwnerIdentity.Value.Value}:" +
-                    $"{slot.PlayerSlotId.Value.Value}:{sequence}";
-                actorId = ActorId.From($"player-actor:{identitySuffix}");
-                runtimeContentId = RuntimeContentId.From(
-                    $"player-actor-content:{identitySuffix}");
+                string suffix = $"{_sessionContextId}:{scopeContext.Owner.Scope}:{scopeContext.Owner.OwnerIdentity.Value.Value}:{slot.PlayerSlotId.Value.Value}:{sequence}";
+                actorId = ActorId.From($"player-actor:{suffix}");
+                runtimeContentId = RuntimeContentId.From($"player-actor-content:{suffix}");
                 issue = string.Empty;
                 return true;
             }
@@ -638,232 +322,51 @@ namespace Immersive.Framework.PlayerParticipation
             {
                 actorId = default;
                 runtimeContentId = default;
-                issue = $"Framework-generated Logical Player Actor identity failed. {exception.Message}";
+                issue = $"Framework-generated Player Actor identity failed. {exception.Message}";
                 return false;
             }
         }
 
-        private PlayerActorMaterializationResult RollbackFailureOrOriginal(
-            PlayerActorMaterializationStatus originalStatus,
-            PlayerActorMaterializationRequest request,
-            RuntimeMaterializationRequest runtimeRequest,
-            LocalPlayerHostAuthoring host,
-            PlayerInput playerInput,
-            PlayerActorDeclaration declaration,
-            GameObject logicalActorHost,
-            string message,
-            string source,
-            string reason,
-            RuntimeMaterializationResult runtimeResult = default,
-            bool hasRuntimeResult = false)
+        private PlayerActorMaterializationResult RollbackFailure(PlayerActorMaterializationStatus status, PlayerActorMaterializationRequest request, RuntimeMaterializationRequest runtimeRequest, LocalPlayerHostAuthoring host, PlayerInput playerInput, PlayerActorRuntimeHost runtimeHost, GameObject presentation, string message, string source, string reason, RuntimeMaterializationResult runtimeResult = default, bool hasRuntimeResult = false)
         {
-            bool physicalRollbackSucceeded = TryRollbackUncommitted(
-                declaration,
-                playerInput,
-                logicalActorHost,
-                out string physicalRollbackIssue);
-            bool runtimeRollbackSucceeded = TryRollbackRegisteredRuntimeContent(
-                runtimeRequest,
-                source,
-                reason,
-                out string runtimeRollbackIssue);
-            if (!physicalRollbackSucceeded || !runtimeRollbackSucceeded)
+            if (runtimeHost != null)
             {
-                string rollbackIssue = string.Join(
-                    " ",
-                    new[] { physicalRollbackIssue, runtimeRollbackIssue })
-                        .NormalizeText();
-                return PlayerActorMaterializationResult.Failure(
-                    PlayerActorMaterializationStatus.FailedRollback,
-                    request,
-                    runtimeRequest,
-                    runtimeResult,
-                    hasRuntimeResult,
-                    host,
-                    playerInput,
-                    declaration,
-                    logicalActorHost,
-                    $"{message} Rollback failed. {rollbackIssue}",
-                    originalStatus);
+                runtimeHost.PlayerActorDeclaration?.ClearPlayerInputEvidence(playerInput);
+                DestroyObject(runtimeHost.gameObject);
             }
-
-            RuntimeMaterializationResult effectiveRuntimeResult = runtimeResult;
-            bool effectiveHasRuntimeResult = hasRuntimeResult;
-            if (!effectiveHasRuntimeResult && runtimeRequest.IsValid)
+            if (runtimeRequest.IsValid && _runtimeContentRuntime.TryGetHandle(runtimeRequest.Context, runtimeRequest.Identity, out _))
             {
-                effectiveRuntimeResult = RuntimeMaterializationResult.Failure(
-                    runtimeRequest,
-                    RuntimeMaterializationStatus.FailedMaterializer,
-                    source,
-                    reason,
-                    message);
-                effectiveHasRuntimeResult = true;
+                _runtimeContentRuntime.ReleaseHandleLogically(runtimeRequest.Context, runtimeRequest.Identity, RuntimeReleasePolicy.MarkReleasedAndUnregister, source, reason);
             }
-
-            return PlayerActorMaterializationResult.Failure(
-                originalStatus,
-                request,
-                runtimeRequest,
-                effectiveRuntimeResult,
-                effectiveHasRuntimeResult,
-                host,
-                playerInput,
-                null,
-                null,
-                message);
+            return PlayerActorMaterializationResult.Failure(status, request, runtimeRequest, runtimeResult, hasRuntimeResult, host, playerInput, runtimeHost, presentation, message);
         }
 
-
-        private bool TryRollbackRegisteredRuntimeContent(
-            RuntimeMaterializationRequest runtimeRequest,
-            string source,
-            string reason,
-            out string issue)
+        private static PlayerActorMaterializationResult MaterializerFailure(PlayerActorMaterializationStatus status, PlayerActorMaterializationRequest request, RuntimeMaterializationRequest runtimeRequest, LocalPlayerHostAuthoring host, PlayerInput playerInput, PlayerActorRuntimeHost runtimeHost, GameObject presentation, string message)
         {
-            issue = string.Empty;
-            if (!runtimeRequest.IsValid)
-            {
-                return true;
-            }
-
-            if (!_runtimeContentRuntime.TryGetHandle(
-                    runtimeRequest.Context,
-                    runtimeRequest.Identity,
-                    out RuntimeContentHandle registeredHandle))
-            {
-                return true;
-            }
-
-            RuntimeReleaseResult releaseResult = _runtimeContentRuntime.ReleaseHandleLogically(
-                runtimeRequest.Context,
-                runtimeRequest.Identity,
-                RuntimeReleasePolicy.MarkReleasedAndUnregister,
-                source,
-                reason);
-            if (releaseResult.Succeeded)
-            {
-                return true;
-            }
-
-            issue = $"RuntimeContent rollback failed for '{registeredHandle.Identity.StableText}'. {releaseResult.Message}";
-            return false;
+            return PlayerActorMaterializationResult.Failure(status, request, runtimeRequest, RuntimeMaterializationResult.Failure(runtimeRequest, RuntimeMaterializationStatus.FailedMaterializer, request.Source, request.Reason, message), true, host, playerInput, runtimeHost, presentation, message);
         }
 
-        private static bool TryRollbackUncommitted(
-            PlayerActorDeclaration declaration,
-            PlayerInput playerInput,
-            GameObject logicalActorHost,
-            out string issue)
+        private static PlayerActorMaterializationResult Failure(PlayerActorMaterializationStatus status, PlayerActorMaterializationRequest request, LocalPlayerHostAuthoring host, PlayerInput playerInput, string message)
         {
-            try
-            {
-                if (logicalActorHost != null)
-                {
-                    logicalActorHost.SetActive(false);
-                }
-
-                if (declaration != null)
-                {
-                    declaration.ClearPlayerInputEvidence(playerInput);
-                }
-
-                if (logicalActorHost != null)
-                {
-                    DestroyObject(logicalActorHost);
-                }
-
-                issue = string.Empty;
-                return true;
-            }
-            catch (Exception exception)
-            {
-                issue = exception.Message;
-                return false;
-            }
+            return PlayerActorMaterializationResult.Failure(status, request, default, default, false, host, playerInput, null, null, message);
         }
 
-        private static PlayerActorMaterializationResult MaterializerFailure(
-            PlayerActorMaterializationStatus status,
-            PlayerActorMaterializationRequest request,
-            RuntimeMaterializationRequest runtimeRequest,
-            LocalPlayerHostAuthoring host,
-            PlayerInput playerInput,
-            PlayerActorDeclaration declaration,
-            GameObject logicalActorHost,
-            string message)
+        private static PlayerActorMaterializationStatus MapGuardStatus(RuntimeScopeTransitionGuardResult guardResult)
         {
-            RuntimeMaterializationResult runtimeResult = RuntimeMaterializationResult.Failure(
-                runtimeRequest,
-                RuntimeMaterializationStatus.FailedMaterializer,
-                request.Source,
-                request.Reason,
-                message);
-            return PlayerActorMaterializationResult.Failure(
-                status,
-                request,
-                runtimeRequest,
-                runtimeResult,
-                true,
-                host,
-                playerInput,
-                declaration,
-                logicalActorHost,
-                message);
-        }
-
-        private static PlayerActorMaterializationResult Failure(
-            PlayerActorMaterializationStatus status,
-            PlayerActorMaterializationRequest request,
-            LocalPlayerHostAuthoring host,
-            PlayerInput playerInput,
-            string message)
-        {
-            return PlayerActorMaterializationResult.Failure(
-                status,
-                request,
-                default,
-                default,
-                false,
-                host,
-                playerInput,
-                null,
-                null,
-                message);
-        }
-
-        private static PlayerActorMaterializationStatus MapGuardStatus(
-            RuntimeScopeTransitionGuardResult guardResult)
-        {
-            switch (guardResult.Status)
+            return guardResult.Status switch
             {
-                case RuntimeScopeTransitionGuardStatus.RejectedScopeCancelling:
-                    return PlayerActorMaterializationStatus.RejectedScopeCancellation;
-                case RuntimeScopeTransitionGuardStatus.RejectedStaleToken:
-                    return PlayerActorMaterializationStatus.RejectedStaleScope;
-                case RuntimeScopeTransitionGuardStatus.RejectedMissingScope:
-                case RuntimeScopeTransitionGuardStatus.RejectedScopeRemoved:
-                case RuntimeScopeTransitionGuardStatus.RejectedMismatchedOwner:
-                    return PlayerActorMaterializationStatus.RejectedScopeTransition;
-                default:
-                    return PlayerActorMaterializationStatus.RejectedInvalidRequest;
-            }
+                RuntimeScopeTransitionGuardStatus.RejectedScopeCancelling => PlayerActorMaterializationStatus.RejectedScopeCancellation,
+                RuntimeScopeTransitionGuardStatus.RejectedStaleToken => PlayerActorMaterializationStatus.RejectedStaleScope,
+                RuntimeScopeTransitionGuardStatus.RejectedMissingScope or RuntimeScopeTransitionGuardStatus.RejectedScopeRemoved or RuntimeScopeTransitionGuardStatus.RejectedMismatchedOwner => PlayerActorMaterializationStatus.RejectedScopeTransition,
+                _ => PlayerActorMaterializationStatus.RejectedInvalidRequest
+            };
         }
 
         private static void DestroyObject(UnityEngine.Object value)
         {
-            if (value == null)
-            {
-                return;
-            }
-
-            if (Application.isPlaying)
-            {
-                UnityEngine.Object.Destroy(value);
-            }
-            else
-            {
-                UnityEngine.Object.DestroyImmediate(value);
-            }
+            if (value == null) return;
+            if (Application.isPlaying) UnityEngine.Object.Destroy(value);
+            else UnityEngine.Object.DestroyImmediate(value);
         }
     }
 }

@@ -9,12 +9,9 @@ using UnityEngine.InputSystem;
 namespace Immersive.Framework.PlayerParticipation
 {
     /// <summary>
-    /// Typed physical handle for one attached Logical Player Actor instance.
-    /// The generic RuntimeContentHandle remains the ownership/registry evidence.
+    /// Typed physical handle for one Player Actor Runtime Host and its selected Presentation.
     /// </summary>
-    [FrameworkApiStatus(
-        FrameworkApiStatus.Internal,
-        "P3J.3 typed physical handle for attached Logical Player Actor materialization.")]
+    [FrameworkApiStatus(FrameworkApiStatus.Internal, "ADR-023 Player Actor Runtime Host and Presentation materialization handle.")]
     internal sealed class PlayerActorMaterializationHandle
     {
         private PlayerActorMaterializationState _state;
@@ -29,54 +26,41 @@ namespace Immersive.Framework.PlayerParticipation
             RuntimeContentHandle runtimeContentHandle,
             LocalPlayerHostAuthoring localPlayerHost,
             PlayerInput playerInput,
-            PlayerActorDeclaration playerActorDeclaration,
-            GameObject logicalActorHost,
+            PlayerActorRuntimeHost playerActorRuntimeHost,
+            GameObject presentation,
+            GameObject releaseProxy,
+            bool destroyLocalPlayerHostOnRelease,
             string source,
             string reason)
         {
             if (!request.IsValid)
             {
-                throw new ArgumentException(
-                    "Player Actor materialization handle requires a valid typed request.",
-                    nameof(request));
+                throw new ArgumentException("Player Actor materialization handle requires a valid typed request.", nameof(request));
             }
 
-            if (!runtimeContentRequest.IsValid ||
-                runtimeContentRequest.Identity != request.RuntimeContentIdentity)
+            if (!runtimeContentRequest.IsValid || runtimeContentRequest.Identity != request.RuntimeContentIdentity)
             {
-                throw new ArgumentException(
-                    "Player Actor materialization handle Runtime Content request must match the typed request identity.",
-                    nameof(runtimeContentRequest));
+                throw new ArgumentException("Player Actor materialization handle Runtime Content request must match the typed request identity.", nameof(runtimeContentRequest));
             }
 
-            if (runtimeContentHandle == null ||
-                runtimeContentHandle.Identity != runtimeContentRequest.Identity ||
-                !runtimeContentHandle.IsMaterialized)
+            if (runtimeContentHandle == null || runtimeContentHandle.Identity != runtimeContentRequest.Identity || !runtimeContentHandle.IsMaterialized)
             {
-                throw new ArgumentException(
-                    "Player Actor materialization handle requires matching materialized Runtime Content evidence.",
-                    nameof(runtimeContentHandle));
+                throw new ArgumentException("Player Actor materialization handle requires matching materialized Runtime Content evidence.", nameof(runtimeContentHandle));
             }
 
             Request = request;
             RuntimeContentRequest = runtimeContentRequest;
             RuntimeContentHandle = runtimeContentHandle;
-            LocalPlayerHost = localPlayerHost != null
-                ? localPlayerHost
-                : throw new ArgumentNullException(nameof(localPlayerHost));
-            PlayerInput = playerInput != null
-                ? playerInput
-                : throw new ArgumentNullException(nameof(playerInput));
-            PlayerActorDeclaration = playerActorDeclaration != null
-                ? playerActorDeclaration
-                : throw new ArgumentNullException(nameof(playerActorDeclaration));
-            LogicalActorHost = logicalActorHost != null
-                ? logicalActorHost
-                : throw new ArgumentNullException(nameof(logicalActorHost));
+            LocalPlayerHost = localPlayerHost ?? throw new ArgumentNullException(nameof(localPlayerHost));
+            PlayerInput = playerInput ?? throw new ArgumentNullException(nameof(playerInput));
+            PlayerActorRuntimeHost = playerActorRuntimeHost ?? throw new ArgumentNullException(nameof(playerActorRuntimeHost));
+            Presentation = presentation ?? throw new ArgumentNullException(nameof(presentation));
+            ReleaseProxy = releaseProxy;
+            DestroyLocalPlayerHostOnRelease = destroyLocalPlayerHostOnRelease;
             _state = PlayerActorMaterializationState.StagedInactive;
-            this._source = source.NormalizeText();
-            this._reason = reason.NormalizeText();
-            _message = "Logical Player Actor is staged inactive.";
+            _source = source.NormalizeText();
+            _reason = reason.NormalizeText();
+            _message = "Player Actor Runtime Host and Presentation are staged inactive.";
         }
 
         internal PlayerActorMaterializationRequest Request { get; }
@@ -84,8 +68,12 @@ namespace Immersive.Framework.PlayerParticipation
         internal RuntimeContentHandle RuntimeContentHandle { get; }
         internal LocalPlayerHostAuthoring LocalPlayerHost { get; }
         internal PlayerInput PlayerInput { get; }
-        internal PlayerActorDeclaration PlayerActorDeclaration { get; }
-        internal GameObject LogicalActorHost { get; }
+        internal PlayerActorRuntimeHost PlayerActorRuntimeHost { get; }
+        internal PlayerActorDeclaration PlayerActorDeclaration => PlayerActorRuntimeHost != null ? PlayerActorRuntimeHost.PlayerActorDeclaration : null;
+        internal GameObject Presentation { get; }
+        internal GameObject ReleaseProxy { get; }
+        internal bool DestroyLocalPlayerHostOnRelease { get; }
+        internal bool RequiresRouteSpatialEntryOnFirstActivation => !DestroyLocalPlayerHostOnRelease;
         internal PlayerActorMaterializationState State => _state;
         internal string Source => _source ?? string.Empty;
         internal string Reason => _reason ?? string.Empty;
@@ -93,6 +81,7 @@ namespace Immersive.Framework.PlayerParticipation
 
         internal bool TryActivate(string operationSource, string operationReason, out string issue)
         {
+            issue = string.Empty;
             if (_state == PlayerActorMaterializationState.Active)
             {
                 issue = string.Empty;
@@ -101,56 +90,34 @@ namespace Immersive.Framework.PlayerParticipation
 
             if (_state != PlayerActorMaterializationState.StagedInactive)
             {
-                issue = $"Logical Player Actor cannot activate from state '{_state}'.";
+                issue = $"Player Actor Runtime Host cannot activate from state '{_state}'.";
                 return false;
             }
 
-            if (LogicalActorHost == null)
+            if (PlayerActorRuntimeHost == null || PlayerActorDeclaration == null || Presentation == null)
             {
-                issue = "Logical Player Actor instance is missing before activation.";
+                issue = "Player Actor Runtime Host or selected Presentation is missing before activation.";
                 return false;
             }
 
-            RoutePlayerSpatialEntryRuntimeBinding spatialEntryBinding =
-                LocalPlayerHost != null
-                    ? LocalPlayerHost.GetComponent<
-                        RoutePlayerSpatialEntryRuntimeBinding>()
-                    : null;
-
-            bool declarationBelongsToLogicalActor =
-                PlayerActorDeclaration != null &&
-                (ReferenceEquals(
-                     PlayerActorDeclaration.transform,
-                     LogicalActorHost.transform) ||
-                 PlayerActorDeclaration.transform
-                     .IsChildOf(LogicalActorHost.transform));
-            bool requiresRouteSpatialEntry =
-                declarationBelongsToLogicalActor && !_hasEverActivated;
-            if (requiresRouteSpatialEntry)
+            RoutePlayerSpatialEntryRuntimeBinding spatialEntryBinding = LocalPlayerHost != null
+                ? LocalPlayerHost.GetComponent<RoutePlayerSpatialEntryRuntimeBinding>()
+                : null;
+            if (RequiresRouteSpatialEntryOnFirstActivation && !_hasEverActivated &&
+                (spatialEntryBinding == null || !spatialEntryBinding.TryApplyBeforeActivation(this, out issue)))
             {
-                if (spatialEntryBinding != null)
-                {
-                    if (!spatialEntryBinding.TryApplyBeforeActivation(
-                            this,
-                            out issue))
-                    {
-                        return false;
-                    }
-                }
-                else if (!_hasEverActivated)
-                {
-                    issue =
-                        "Session-owned framework Logical Player Actor cannot perform its first activation without the current Route spatial-entry occurrence gate.";
-                    return false;
-                }
+                issue = string.IsNullOrEmpty(issue)
+                    ? "Session-owned Player Actor Runtime Host cannot perform its first activation without the current Route spatial-entry occurrence gate."
+                    : issue;
+                return false;
             }
 
-            LogicalActorHost.SetActive(true);
+            PlayerActorRuntimeHost.gameObject.SetActive(true);
             _hasEverActivated = true;
             _state = PlayerActorMaterializationState.Active;
             _source = operationSource.NormalizeTextOrFallback(Source);
             _reason = operationReason.NormalizeTextOrFallback(Reason);
-            _message = "Logical Player Actor activated.";
+            _message = "Player Actor Runtime Host and Presentation activated.";
             issue = string.Empty;
             return true;
         }
@@ -163,23 +130,17 @@ namespace Immersive.Framework.PlayerParticipation
                 return true;
             }
 
-            if (_state != PlayerActorMaterializationState.Active)
+            if (_state != PlayerActorMaterializationState.Active || PlayerActorRuntimeHost == null)
             {
-                issue = $"Logical Player Actor cannot deactivate from state '{_state}'.";
+                issue = "Player Actor Runtime Host cannot deactivate from its current state.";
                 return false;
             }
 
-            if (LogicalActorHost == null)
-            {
-                issue = "Logical Player Actor instance is missing before deactivation.";
-                return false;
-            }
-
-            LogicalActorHost.SetActive(false);
+            PlayerActorRuntimeHost.gameObject.SetActive(false);
             _state = PlayerActorMaterializationState.StagedInactive;
             _source = operationSource.NormalizeTextOrFallback(Source);
             _reason = operationReason.NormalizeTextOrFallback(Reason);
-            _message = "Logical Player Actor deactivated.";
+            _message = "Player Actor Runtime Host and Presentation deactivated.";
             issue = string.Empty;
             return true;
         }
@@ -189,7 +150,7 @@ namespace Immersive.Framework.PlayerParticipation
             _state = PlayerActorMaterializationState.ReleaseRequested;
             _source = operationSource.NormalizeTextOrFallback(Source);
             _reason = operationReason.NormalizeTextOrFallback(Reason);
-            _message = "Logical Player Actor physical release requested.";
+            _message = "Player Actor Runtime Host physical release requested.";
         }
 
         internal void MarkReleased(string operationSource, string operationReason)
@@ -197,33 +158,20 @@ namespace Immersive.Framework.PlayerParticipation
             _state = PlayerActorMaterializationState.Released;
             _source = operationSource.NormalizeTextOrFallback(Source);
             _reason = operationReason.NormalizeTextOrFallback(Reason);
-            _message = "Logical Player Actor physical instance released.";
+            _message = "Player Actor Runtime Host physical instances released.";
         }
 
-        internal void MarkReleaseFailed(
-            string operationSource,
-            string operationReason,
-            string failureMessage)
+        internal void MarkReleaseFailed(string operationSource, string operationReason, string failureMessage)
         {
             _state = PlayerActorMaterializationState.ReleaseFailed;
             _source = operationSource.NormalizeTextOrFallback(Source);
             _reason = operationReason.NormalizeTextOrFallback(Reason);
-            _message = failureMessage.NormalizeTextOrFallback(
-                "Logical Player Actor physical release failed.");
+            _message = failureMessage.NormalizeTextOrFallback("Player Actor Runtime Host physical release failed.");
         }
 
         internal PlayerActorMaterializationSnapshot CreateSnapshot()
         {
-            return new PlayerActorMaterializationSnapshot(
-                Request.OperationId,
-                RuntimeContentRequest.Identity,
-                Request.Slot.PlayerSlotId,
-                Request.ActorProfileId,
-                Request.ActorId,
-                Request.MaterializationRevision,
-                _state,
-                Source,
-                Reason);
+            return new PlayerActorMaterializationSnapshot(Request.OperationId, RuntimeContentRequest.Identity, Request.Slot.PlayerSlotId, Request.ActorProfileId, Request.ActorId, Request.MaterializationRevision, _state, Source, Reason);
         }
     }
 }

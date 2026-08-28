@@ -35,8 +35,13 @@ namespace Immersive.Framework.PlayerParticipation
         private PlayerInput playerInput;
 
         [SerializeField]
-        [Tooltip("Explicit child transform where a contextual Logical Actor Host is materialized or scene-authored.")]
+        [Tooltip("Explicit child transform where a contextual Player Actor Runtime Host is materialized or scene-authored.")]
         private Transform actorMount;
+
+        [Header("Actor Runtime Foundation")]
+        [SerializeField]
+        [Tooltip("Generic Player Actor Runtime Host prefab provided by this Local Player Host composition. Manager-Provisioned Players materialize it after Actor selection; Scene-Provided Players use the same shape as composition evidence.")]
+        private PlayerActorRuntimeHost playerActorRuntimeHostPrefab;
 
         [NonSerialized] private AdmissionState _admissionState;
         [NonSerialized] private PlayerSlotId _joinedPlayerSlotId;
@@ -46,8 +51,10 @@ namespace Immersive.Framework.PlayerParticipation
 
         public PlayerInput PlayerInput => playerInput;
         public Transform ActorMount => actorMount;
+        public PlayerActorRuntimeHost PlayerActorRuntimeHostPrefab => playerActorRuntimeHostPrefab;
         public bool HasPlayerInputEvidence => playerInput != null;
         public bool HasActorMount => actorMount != null;
+        public bool HasPlayerActorRuntimeHostPrefab => playerActorRuntimeHostPrefab != null;
         public bool IsAdmissionStaged => _admissionState == AdmissionState.Staged;
         public bool IsJoined => _admissionState == AdmissionState.Joined;
         public bool IsReleaseStaged => _admissionState == AdmissionState.ReleaseStaged;
@@ -58,19 +65,19 @@ namespace Immersive.Framework.PlayerParticipation
         public int JoinedConfiguredIndex => IsJoined ? _joinedConfiguredIndex : -1;
         public string AdmissionSource => _admissionSource.NormalizeText();
         public string AdmissionReason => _admissionReason.NormalizeText();
-        public bool HasLogicalActor =>
+        public bool HasPlayerActorRuntime =>
             actorMount != null &&
             actorMount.GetComponentInChildren<ActorDeclaration>(true) != null;
 
         /// <summary>
         /// Validates the reusable PlayerInputManager provisioning shape. The Actor Mount must be
-        /// empty because the contextual Logical Actor is materialized after join.
+        /// empty because the contextual Player Actor Runtime is materialized after join.
         /// </summary>
         public bool TryValidateConfiguration(out string issue)
         {
             return TryValidateConfiguration(
                 requireEmptyActorMount: true,
-                expectedSceneActor: null,
+                expectedSceneRuntimeHost: null,
                 out issue);
         }
 
@@ -78,14 +85,14 @@ namespace Immersive.Framework.PlayerParticipation
         /// Validates the Scene Local Player Admission shape without changing runtime state.
         /// </summary>
         public bool TryValidateAdmissionConfiguration(
-            PlayerActorDeclaration sceneLogicalPlayerActor,
-            bool allowExistingLogicalActor,
+            PlayerActorRuntimeHost scenePlayerActorRuntimeHost,
+            bool allowExistingActorRuntime,
             out string issue)
         {
             return TryValidateConfiguration(
-                requireEmptyActorMount: !allowExistingLogicalActor,
-                expectedSceneActor: allowExistingLogicalActor
-                    ? sceneLogicalPlayerActor
+                requireEmptyActorMount: !allowExistingActorRuntime,
+                expectedSceneRuntimeHost: allowExistingActorRuntime
+                    ? scenePlayerActorRuntimeHost
                     : null,
                 out issue);
         }
@@ -100,8 +107,8 @@ namespace Immersive.Framework.PlayerParticipation
                 reservedSlot,
                 source,
                 reason,
-                allowExistingLogicalActor: false,
-                expectedSceneActor: null,
+                allowExistingActorRuntime: false,
+                expectedSceneRuntimeHost: null,
                 out issue);
         }
 
@@ -109,8 +116,8 @@ namespace Immersive.Framework.PlayerParticipation
             PlayerSlotRuntimeSnapshot reservedSlot,
             string source,
             string reason,
-            bool allowExistingLogicalActor,
-            PlayerActorDeclaration expectedSceneActor,
+            bool allowExistingActorRuntime,
+            PlayerActorRuntimeHost expectedSceneRuntimeHost,
             out string issue)
         {
             issue = string.Empty;
@@ -122,8 +129,8 @@ namespace Immersive.Framework.PlayerParticipation
             }
 
             if (!TryValidateConfiguration(
-                    requireEmptyActorMount: !allowExistingLogicalActor,
-                    expectedSceneActor: expectedSceneActor,
+                    requireEmptyActorMount: !allowExistingActorRuntime,
+                    expectedSceneRuntimeHost: expectedSceneRuntimeHost,
                     out issue))
             {
                 return false;
@@ -253,8 +260,8 @@ namespace Immersive.Framework.PlayerParticipation
             PlayerSlotRuntimeSnapshot joinedSlot,
             string source,
             string reason,
-            bool allowExistingLogicalActor,
-            PlayerActorDeclaration expectedSceneActor,
+            bool allowExistingActorRuntime,
+            PlayerActorRuntimeHost expectedSceneRuntimeHost,
             out string issue)
         {
             issue = string.Empty;
@@ -266,8 +273,8 @@ namespace Immersive.Framework.PlayerParticipation
             }
 
             if (!TryValidateConfiguration(
-                    requireEmptyActorMount: !allowExistingLogicalActor,
-                    expectedSceneActor: expectedSceneActor,
+                    requireEmptyActorMount: !allowExistingActorRuntime,
+                    expectedSceneRuntimeHost: expectedSceneRuntimeHost,
                     out issue))
             {
                 return false;
@@ -302,7 +309,7 @@ namespace Immersive.Framework.PlayerParticipation
 
         private bool TryValidateConfiguration(
             bool requireEmptyActorMount,
-            PlayerActorDeclaration expectedSceneActor,
+            PlayerActorRuntimeHost expectedSceneRuntimeHost,
             out string issue)
         {
             issue = string.Empty;
@@ -344,42 +351,48 @@ namespace Immersive.Framework.PlayerParticipation
                 return false;
             }
 
-            ActorDeclaration[] actorDeclarations =
-                actorMount.GetComponentsInChildren<ActorDeclaration>(true);
-
             if (requireEmptyActorMount)
             {
-                if (actorDeclarations.Length != 0)
+                if (actorMount.GetComponentInChildren<ActorDeclaration>(true) != null ||
+                    actorMount.GetComponentInChildren<PlayerActorRuntimeHost>(true) != null)
                 {
-                    issue = "Local Player provisioning host must not contain an ActorDeclaration. Logical Actors are materialized contextually after join.";
+                    issue = "Local Player provisioning host must not contain Player Actor Runtime infrastructure. Actor runtime is materialized contextually after Actor selection.";
                     return false;
                 }
 
                 return true;
             }
 
-            if (expectedSceneActor == null)
+            if (expectedSceneRuntimeHost == null)
             {
-                issue = "Scene Local Player admission requires an explicit Scene Logical Player Actor.";
+                issue = "Scene Local Player admission requires an explicit Player Actor Runtime Host.";
                 return false;
             }
 
-            if (expectedSceneActor.transform != actorMount &&
-                !expectedSceneActor.transform.IsChildOf(actorMount))
+            if (expectedSceneRuntimeHost.transform != actorMount &&
+                !expectedSceneRuntimeHost.transform.IsChildOf(actorMount))
             {
-                issue = "Scene Logical Player Actor must exist under the exact Local Player Host Actor Mount.";
+                issue = "Scene Player Actor Runtime Host must exist under the exact Local Player Host Actor Mount.";
                 return false;
             }
 
-            PlayerActorDeclaration[] playerDeclarations =
-                actorMount.GetComponentsInChildren<PlayerActorDeclaration>(true);
-            if (playerDeclarations.Length != 1 ||
-                playerDeclarations[0] != expectedSceneActor)
+            PlayerActorRuntimeHost[] runtimeHosts =
+                actorMount.GetComponentsInChildren<PlayerActorRuntimeHost>(true);
+            if (runtimeHosts.Length != 1 || runtimeHosts[0] != expectedSceneRuntimeHost)
             {
-                issue = $"Scene Local Player admission requires exactly one PlayerActorDeclaration under Actor Mount. Found '{playerDeclarations.Length}'.";
+                issue = $"Scene Local Player admission requires exactly one PlayerActorRuntimeHost under Actor Mount. Found '{runtimeHosts.Length}'.";
                 return false;
             }
 
+            if (!expectedSceneRuntimeHost.TryValidateConfiguration(out issue))
+            {
+                return false;
+            }
+
+            PlayerActorDeclaration expectedSceneActor =
+                expectedSceneRuntimeHost.PlayerActorDeclaration;
+            ActorDeclaration[] actorDeclarations =
+                actorMount.GetComponentsInChildren<ActorDeclaration>(true);
             if (actorDeclarations.Length != 1 ||
                 actorDeclarations[0] != expectedSceneActor)
             {

@@ -34,8 +34,8 @@ namespace Immersive.Framework.Actors
         [Tooltip("Broad framework Actor role. This is not a loadout, team or character class.")]
         [SerializeField] private ActorRole actorRole = ActorRole.Protagonist;
 
-        [Tooltip("Canonical Logical Actor Host prefab. ActorProfile never instantiates it by itself.")]
-        [SerializeField] private GameObject logicalActorHostPrefab;
+        [Tooltip("Actor-specific Presentation prefab. It is materialized only beneath the Player Actor Runtime Host Presentation Mount.")]
+        [SerializeField] private GameObject presentationPrefab;
 
         public string ActorProfileIdText => actorProfileId.NormalizeText();
 
@@ -51,7 +51,7 @@ namespace Immersive.Framework.Actors
 
         public ActorRole ActorRole => actorRole;
 
-        public GameObject LogicalActorHostPrefab => logicalActorHostPrefab;
+        public GameObject PresentationPrefab => presentationPrefab;
 
         public bool HasDefinedActorKind =>
             Enum.IsDefined(typeof(ActorKind), actorKind) && actorKind != ActorKind.Unknown;
@@ -59,7 +59,7 @@ namespace Immersive.Framework.Actors
         public bool HasDefinedActorRole =>
             Enum.IsDefined(typeof(ActorRole), actorRole) && actorRole != ActorRole.Unknown;
 
-        public bool HasLogicalActorHostPrefab => logicalActorHostPrefab != null;
+        public bool HasPresentationPrefab => presentationPrefab != null;
 
         public bool TryGetActorProfileId(
             out ActorProfileId resolvedActorProfileId,

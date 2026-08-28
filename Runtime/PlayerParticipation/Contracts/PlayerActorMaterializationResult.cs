@@ -25,8 +25,8 @@ namespace Immersive.Framework.PlayerParticipation
             PlayerActorMaterializationSnapshot snapshot,
             LocalPlayerHostAuthoring localPlayerHost,
             PlayerInput playerInput,
-            PlayerActorDeclaration playerActorDeclaration,
-            GameObject logicalActorHost,
+            PlayerActorRuntimeHost playerActorRuntimeHost,
+            GameObject presentation,
             PlayerActorMaterializationHandle handle,
             string message)
         {
@@ -41,8 +41,8 @@ namespace Immersive.Framework.PlayerParticipation
             Snapshot = snapshot;
             LocalPlayerHost = localPlayerHost;
             PlayerInput = playerInput;
-            PlayerActorDeclaration = playerActorDeclaration;
-            LogicalActorHost = logicalActorHost;
+            PlayerActorRuntimeHost = playerActorRuntimeHost;
+            Presentation = presentation;
             Handle = handle;
             Message = message ?? string.Empty;
         }
@@ -56,8 +56,12 @@ namespace Immersive.Framework.PlayerParticipation
         public PlayerActorMaterializationSnapshot Snapshot { get; }
         public LocalPlayerHostAuthoring LocalPlayerHost { get; }
         public PlayerInput PlayerInput { get; }
-        public PlayerActorDeclaration PlayerActorDeclaration { get; }
-        public GameObject LogicalActorHost { get; }
+        public PlayerActorRuntimeHost PlayerActorRuntimeHost { get; }
+        public PlayerActorDeclaration PlayerActorDeclaration =>
+            PlayerActorRuntimeHost != null
+                ? PlayerActorRuntimeHost.PlayerActorDeclaration
+                : null;
+        public GameObject Presentation { get; }
         public string Message { get; }
 
         internal PlayerActorMaterializationHandle Handle { get; }
@@ -79,8 +83,9 @@ namespace Immersive.Framework.PlayerParticipation
         public bool HasPhysicalEvidence =>
             LocalPlayerHost != null &&
             PlayerInput != null &&
+            PlayerActorRuntimeHost != null &&
             PlayerActorDeclaration != null &&
-            LogicalActorHost != null;
+            Presentation != null;
 
         public string ToDiagnosticString()
         {
@@ -88,9 +93,10 @@ namespace Immersive.Framework.PlayerParticipation
                 $"request=({Request.ToDiagnosticString()}) " +
                 $"runtimeStatus='{(HasRuntimeContentResult ? RuntimeContentResult.Status.ToString() : string.Empty)}' " +
                 $"host='{(LocalPlayerHost != null ? LocalPlayerHost.name : string.Empty)}' " +
-                $"logicalActor='{(LogicalActorHost != null ? LogicalActorHost.name : string.Empty)}' " +
+                $"runtimeHost='{(PlayerActorRuntimeHost != null ? PlayerActorRuntimeHost.name : string.Empty)}' " +
+                $"presentation='{(Presentation != null ? Presentation.name : string.Empty)}' " +
                 $"declaration='{(PlayerActorDeclaration != null ? PlayerActorDeclaration.name : string.Empty)}' " +
-                $"stagedInactive='{(LogicalActorHost != null && !LogicalActorHost.activeSelf)}' " +
+                $"stagedInactive='{(PlayerActorRuntimeHost != null && !PlayerActorRuntimeHost.gameObject.activeSelf)}' " +
                 $"message='{Message}'";
         }
 
@@ -102,8 +108,8 @@ namespace Immersive.Framework.PlayerParticipation
             bool hasRuntimeContentResult,
             LocalPlayerHostAuthoring localPlayerHost,
             PlayerInput playerInput,
-            PlayerActorDeclaration playerActorDeclaration,
-            GameObject logicalActorHost,
+            PlayerActorRuntimeHost playerActorRuntimeHost,
+            GameObject presentation,
             string message,
             PlayerActorMaterializationStatus originalStatus = PlayerActorMaterializationStatus.None)
         {
@@ -117,8 +123,8 @@ namespace Immersive.Framework.PlayerParticipation
                 default,
                 localPlayerHost,
                 playerInput,
-                playerActorDeclaration,
-                logicalActorHost,
+                playerActorRuntimeHost,
+                presentation,
                 null,
                 message);
         }
@@ -140,8 +146,8 @@ namespace Immersive.Framework.PlayerParticipation
                 handle.CreateSnapshot(),
                 handle.LocalPlayerHost,
                 handle.PlayerInput,
-                handle.PlayerActorDeclaration,
-                handle.LogicalActorHost,
+                handle.PlayerActorRuntimeHost,
+                handle.Presentation,
                 handle,
                 message);
         }

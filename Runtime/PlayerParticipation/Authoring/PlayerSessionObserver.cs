@@ -161,7 +161,7 @@ namespace Immersive.Framework.PlayerParticipation
 
             if (!slot.IsLogicalActorPrepared)
             {
-                return "Preparing Logical Actor";
+                return "Preparing Actor Runtime";
             }
 
             if (!slot.IsPhysicallyMaterialized)

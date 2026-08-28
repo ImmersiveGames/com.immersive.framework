@@ -39,7 +39,7 @@ namespace Immersive.Framework.Editor.PlayerParticipation
             EditorGUILayout.LabelField(
                 new GUIContent(
                     "Player Gameplay Camera",
-                    "Declares gameplay Camera participation for this Logical Player Actor and selects its Actor-owned Camera Rig. Targets and framing remain authored on Camera Rig Composer."),
+                    "Declares gameplay Camera participation for this Player Actor Runtime and selects its Actor-owned Camera Rig. Targets and framing remain authored on Camera Rig Composer."),
                 EditorStyles.boldLabel);
 
             DrawConfiguration();

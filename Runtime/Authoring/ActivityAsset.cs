@@ -50,7 +50,7 @@ namespace Immersive.Framework.Authoring
             Array.Empty<PlayerSlotProfile>();
 
         [SerializeField]
-        [Tooltip("Progressive readiness required from every projected Logical Player. For a Scene-Provided Logical Player, Logical Actors Prepared is the recommended baseline when the scene already provides the Actor.")]
+        [Tooltip("Progressive readiness required from every projected Player. For a Scene-Provided Player, Logical Actors Prepared is the recommended baseline when the scene already provides the Actor Runtime.")]
         private PlayerParticipationRequirementLevel playerParticipationRequirementLevel =
             PlayerParticipationRequirementLevel.None;
 

@@ -68,7 +68,7 @@ namespace Immersive.Framework.Editor.PlayerParticipation
                 _localPlayerHostPrefab,
                 new GUIContent(
                     "Local Player Host Prefab",
-                    "Technical Host prefab used for future Manager-Provisioned Players. It must contain PlayerInput and LocalPlayerHostAuthoring. It is not a Logical Actor prefab."));
+                    "Technical Host prefab used for future Manager-Provisioned Players. It owns PlayerInput and the generic Player Actor Runtime Host composition; Actor Profiles provide only Presentation."));
         }
 
         private void DrawExplicitMigrationAction()

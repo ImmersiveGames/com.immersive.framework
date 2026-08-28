@@ -66,7 +66,7 @@ namespace Immersive.Framework.Editor.PlayerParticipation
                         ? "Player Actor Declaration"
                         : "Actor Declaration",
                     isPlayer
-                        ? "Declares the stable identity of one contextual Logical Player Actor. PlayerInput remains owned by the Local Player Host and is shown here only as runtime evidence."
+                        ? "Declares the stable identity of one Player Actor Runtime. PlayerInput remains owned by the Local Player Host and is shown here only as runtime evidence."
                         : "Declares stable framework identity and classification for one Actor. Lifetime, movement, input, reset, snapshot and save behavior are owned elsewhere."),
                 EditorStyles.boldLabel);
         }

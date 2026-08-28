@@ -347,8 +347,8 @@ namespace Immersive.Framework.PlayerParticipation
                         currentSessionSlot,
                         resolvedSource,
                         $"{resolvedReason}:reproject",
-                        allowExistingLogicalActor: true,
-                        expectedSceneActor: authoring.SceneLogicalPlayerActor,
+                        allowExistingActorRuntime: true,
+                        expectedSceneRuntimeHost: authoring.ScenePlayerActorRuntimeHost,
                         out string hostIssue))
                 {
                     PlayerSlotAssignmentResult assignmentCompensation =
@@ -446,8 +446,8 @@ namespace Immersive.Framework.PlayerParticipation
                     reservation.Slot,
                     resolvedSource,
                     resolvedReason,
-                    allowExistingLogicalActor: true,
-                    expectedSceneActor: authoring.SceneLogicalPlayerActor,
+                    allowExistingActorRuntime: true,
+                    expectedSceneRuntimeHost: authoring.ScenePlayerActorRuntimeHost,
                     out string hostStageIssue))
             {
                 PlayerParticipationOperationResult rollback =
@@ -941,8 +941,8 @@ namespace Immersive.Framework.PlayerParticipation
                     currentSessionSlot,
                     resolvedSource,
                     "scene-assignment-release-failed",
-                    allowExistingLogicalActor: true,
-                    expectedSceneActor: authoring.SceneLogicalPlayerActor,
+                    allowExistingActorRuntime: true,
+                    expectedSceneRuntimeHost: authoring.ScenePlayerActorRuntimeHost,
                     out string hostRestoreIssue);
 
                 return Result(

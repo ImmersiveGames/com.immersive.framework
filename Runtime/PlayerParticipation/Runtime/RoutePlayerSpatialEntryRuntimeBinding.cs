@@ -22,7 +22,7 @@ namespace Immersive.Framework.PlayerParticipation
         internal bool TryApplyBeforeActivation(PlayerActorMaterializationHandle handle, out string issue)
         {
             issue = string.Empty;
-            if (handle == null || handle.PlayerActorDeclaration == null || handle.LogicalActorHost == null)
+            if (handle == null || handle.PlayerActorDeclaration == null || handle.PlayerActorRuntimeHost == null)
             {
                 issue = "Route Player spatial entry requires a complete materialization handle.";
                 return false;
@@ -39,7 +39,7 @@ namespace Immersive.Framework.PlayerParticipation
                 return true;
 
             Transform declaration = handle.PlayerActorDeclaration.transform;
-            Transform root = handle.LogicalActorHost.transform;
+            Transform root = handle.PlayerActorRuntimeHost.transform;
             Transform target = ReferenceEquals(declaration, root) || declaration.IsChildOf(root)
                 ? root : declaration;
             if (!RoutePlayerSpatialEntryRuntime.TryApply(

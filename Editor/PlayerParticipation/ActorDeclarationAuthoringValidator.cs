@@ -85,7 +85,7 @@ namespace Immersive.Framework.Editor.PlayerParticipation
                 if (authoredPlayerInputs.Length > 0)
                 {
                     report.AddError(
-                        $"Logical Player Actor must not contain PlayerInput. PlayerInput belongs to the Local Player Host. Found '{authoredPlayerInputs.Length}' PlayerInput component(s) in this Actor hierarchy.",
+                        $"Player Actor Runtime must not contain PlayerInput. PlayerInput belongs to the Local Player Host. Found '{authoredPlayerInputs.Length}' PlayerInput component(s) in this Actor hierarchy.",
                         player);
                 }
             }

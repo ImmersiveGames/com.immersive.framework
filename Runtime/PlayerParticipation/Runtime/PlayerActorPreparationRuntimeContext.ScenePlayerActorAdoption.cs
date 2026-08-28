@@ -11,7 +11,7 @@ namespace Immersive.Framework.PlayerParticipation
 {
     internal sealed partial class PlayerActorPreparationRuntimeContext
     {
-        private const string SceneAdoptionResourceType = "ScenePlayerLogicalActorHost";
+        private const string SceneAdoptionResourceType = "ScenePlayerActorRuntimeHost";
 
         private sealed class SceneAdoptionRecord
         {
@@ -140,7 +140,9 @@ namespace Immersive.Framework.PlayerParticipation
             }
 
             LocalPlayerHostAuthoring host = authoring.LocalPlayerHost;
-            PlayerActorDeclaration sceneActor = authoring.SceneLogicalPlayerActor;
+            PlayerActorRuntimeHost sceneRuntimeHost = authoring.ScenePlayerActorRuntimeHost;
+            PlayerActorDeclaration sceneActor = authoring.ScenePlayerActorDeclaration;
+            GameObject scenePresentation = authoring.ScenePresentation;
             if (host == null ||
                 !host.IsJoined ||
                 !host.HasJoinedSlot ||
@@ -194,10 +196,12 @@ namespace Immersive.Framework.PlayerParticipation
                     issue);
             }
 
-            if (sceneActor == null ||
+            if (sceneRuntimeHost == null ||
+                sceneActor == null ||
+                scenePresentation == null ||
                 host.ActorMount == null ||
-                (!ReferenceEquals(sceneActor.transform, host.ActorMount) &&
-                 !sceneActor.transform.IsChildOf(host.ActorMount)))
+                !ReferenceEquals(sceneRuntimeHost.transform.parent, host.ActorMount) ||
+                !ReferenceEquals(scenePresentation.transform.parent, sceneRuntimeHost.PresentationMount))
             {
                 return SceneAdoptionResult(
                     ScenePlayerActorAdoptionStatus.RejectedActorMismatch,
@@ -208,7 +212,7 @@ namespace Immersive.Framework.PlayerParticipation
                     false,
                     resolvedSource,
                     resolvedReason,
-                    "Scene Logical Player Actor must remain under the exact Local Player Host Actor Mount.");
+                    "Scene Player Actor Runtime Host and Presentation must remain under their exact authored mounts.");
             }
 
             if (_sceneAdoptions.TryGetValue(playerSlotId, out SceneAdoptionRecord existingAdoption))
@@ -458,8 +462,10 @@ namespace Immersive.Framework.PlayerParticipation
                     runtimeHandle,
                     host,
                     host.PlayerInput,
-                    sceneActor,
+                    sceneRuntimeHost,
+                    scenePresentation,
                     releaseProxy,
+                    true,
                     resolvedSource,
                     resolvedReason);
                 if (!handle.TryActivate(

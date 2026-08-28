@@ -272,12 +272,12 @@ namespace Immersive.Framework.Editor.PlayerParticipation
                 case ManagerProvisionedPlayerLifecycleStatus
                     .WaitingForActorSelection:
                     return
-                        "A joined Player is waiting for Logical Actor selection.";
+                        "A joined Player is waiting for Actor selection.";
 
                 case ManagerProvisionedPlayerLifecycleStatus
                     .PreparingLogicalActor:
                     return
-                        "Preparing the selected Logical Actor for the current Activity.";
+                        "Preparing the selected Actor Runtime for the current Activity.";
 
                 case ManagerProvisionedPlayerLifecycleStatus
                     .MaterializingPhysicalActor:
@@ -368,7 +368,7 @@ namespace Immersive.Framework.Editor.PlayerParticipation
                         .LogicalActorsPrepared) &&
                 !slot.LogicalActorPrepared)
             {
-                return "Preparing Logical Actor";
+                return "Preparing Actor Runtime";
             }
 
             if (Requires(

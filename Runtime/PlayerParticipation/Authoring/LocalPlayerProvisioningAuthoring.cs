@@ -29,7 +29,7 @@ namespace Immersive.Framework.PlayerParticipation
 
         [SerializeField]
         [Tooltip(
-            "Technical Local Player Host prefab created by this provisioning authority when a ManagerProvisioned join is requested. This must contain PlayerInput and LocalPlayerHostAuthoring; it is not a Logical Actor prefab.")]
+            "Technical Local Player Host prefab created by this provisioning authority when a ManagerProvisioned join is requested. It owns PlayerInput and the generic Player Actor Runtime Host composition; Actor Profiles provide only Presentation.")]
         private GameObject localPlayerHostPrefab;
 
         [NonSerialized]

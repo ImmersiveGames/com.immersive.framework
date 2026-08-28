@@ -170,7 +170,7 @@ namespace Immersive.Framework.PlayerParticipation
                     "Released Manager-Provisioned Host evidence no longer references a live technical Host before physical release began.");
             }
 
-            if (host.HasLogicalActor)
+            if (host.HasPlayerActorRuntime)
             {
                 return Result(
                     ManagerProvisionedSessionPlayerLeaveReleaseStatus.RejectedActivityRepresentationActive,
@@ -184,7 +184,7 @@ namespace Immersive.Framework.PlayerParticipation
                     physicalPlayerReleased: false,
                     resolvedSource,
                     resolvedReason,
-                    "Manager-Provisioned technical Host cannot be released while its Actor Mount still contains a Logical Actor representation.");
+                    "Manager-Provisioned technical Host cannot be released while its Actor Mount still contains Player Actor Runtime composition.");
             }
 
             PlayerInput playerInput = host.PlayerInput;

@@ -19,7 +19,7 @@ namespace Immersive.Framework.Actors
     public sealed class PlayerActorDeclaration : ActorDeclaration
     {
         [SerializeField, HideInInspector]
-        [Tooltip("Optional runtime evidence injected from a bound Local Player Host. This is not authored on the Logical Actor Host prefab.")]
+        [Tooltip("Optional runtime evidence injected from a bound Local Player Host. This is not authored on the Player Actor Runtime Host prefab.")]
         private PlayerInput playerInput;
 
         public override ActorKind ActorKind => ActorKind.Player;
