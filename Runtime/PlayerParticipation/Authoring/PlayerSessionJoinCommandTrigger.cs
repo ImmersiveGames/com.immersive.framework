@@ -24,7 +24,7 @@ namespace Immersive.Framework.PlayerParticipation
             LastJoinResult = null;
             string reason = BeginInvocation("Join");
             var request = new LocalPlayerJoinRequest(Source, reason, null, ControlScheme);
-            if (!TryGetAccess(out ILocalPlayerProvisioningConsumerAccess access, out string issue))
+            if (!TryGetJoinAccess(out ILocalPlayerJoinAccess access, out string issue))
             {
                 CompleteResult(LocalPlayerJoinResult.RuntimeUnavailable(request, issue));
                 return;

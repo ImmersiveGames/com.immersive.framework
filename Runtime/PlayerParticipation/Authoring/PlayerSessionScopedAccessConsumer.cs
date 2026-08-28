@@ -41,7 +41,7 @@ namespace Immersive.Framework.PlayerParticipation
             LocalPlayerProvisioningConsumerScope.Activity;
 
         [NonSerialized]
-        private ILocalPlayerProvisioningConsumerAccess _access;
+        private IPlayerSessionScopedAccess _access;
 
         [NonSerialized]
         private string _diagnostic = UnboundDiagnostic;
@@ -71,15 +71,15 @@ namespace Immersive.Framework.PlayerParticipation
 
         public string Diagnostic => ScopedAccessDiagnostic;
 
-        public LocalPlayerProvisioningConsumerAccessSnapshot ScopedAccessSnapshot =>
+        public PlayerSessionScopedAccessSnapshot ScopedAccessSnapshot =>
             _access != null
                 ? _access.Snapshot
-                : LocalPlayerProvisioningConsumerAccessSnapshot.Unavailable(
+                : PlayerSessionScopedAccessSnapshot.Unavailable(
                     scope,
                     default,
                     GetUnboundDiagnostic());
 
-        public LocalPlayerProvisioningConsumerAccessSnapshot Snapshot =>
+        public PlayerSessionScopedAccessSnapshot Snapshot =>
             ScopedAccessSnapshot;
 
         /// <summary>
@@ -87,7 +87,7 @@ namespace Immersive.Framework.PlayerParticipation
         /// Player Session component. It does not resolve a global authority.
         /// </summary>
         public bool TryGetAccess(
-            out ILocalPlayerProvisioningConsumerAccess resolvedAccess,
+            out IPlayerSessionScopedAccess resolvedAccess,
             out string issue)
         {
             resolvedAccess = _access;
@@ -107,8 +107,63 @@ namespace Immersive.Framework.PlayerParticipation
             return true;
         }
 
+        /// <summary>
+        /// Obsolete Manager-Provisioned endpoint retained only so existing
+        /// consumers can migrate independently to IPlayerSessionScopedAccess
+        /// and the optional ILocalPlayerJoinAccess capability.
+        /// </summary>
+        [Obsolete(
+            "Use TryGetAccess(out IPlayerSessionScopedAccess, out issue) and " +
+            "TryGetJoinAccess only when a Manager-Provisioned join is required.")]
+        public bool TryGetAccess(
+            out ILocalPlayerProvisioningConsumerAccess resolvedAccess,
+            out string issue)
+        {
+            resolvedAccess = null;
+            if (!TryGetAccess(out IPlayerSessionScopedAccess access, out issue))
+            {
+                return false;
+            }
+
+            if (access is ManagerPlayerSessionScopedAccess managerAccess)
+            {
+                resolvedAccess = new LegacyManagerProvisioningConsumerAccess(
+                    managerAccess);
+                issue = string.Empty;
+                return true;
+            }
+
+            issue = "Manager-Provisioned Player access is unavailable for this Player Session scope.";
+            return false;
+        }
+
+        /// <summary>
+        /// Returns the explicit Manager-Provisioned join capability when the
+        /// current scoped provider can create a Local Player Host.
+        /// </summary>
+        public bool TryGetJoinAccess(
+            out ILocalPlayerJoinAccess joinAccess,
+            out string issue)
+        {
+            joinAccess = null;
+            if (!TryGetAccess(out IPlayerSessionScopedAccess access, out issue))
+            {
+                return false;
+            }
+
+            if (access is ILocalPlayerJoinAccess resolvedJoinAccess)
+            {
+                joinAccess = resolvedJoinAccess;
+                issue = string.Empty;
+                return true;
+            }
+
+            issue = "Manager-Provisioned Player join capability is unavailable for this Player Session scope.";
+            return false;
+        }
+
         internal bool TryBind(
-            ILocalPlayerProvisioningConsumerAccess scopedAccess,
+            IPlayerSessionScopedAccess scopedAccess,
             LocalPlayerProvisioningConsumerScope actualScope,
             out string issue)
         {
@@ -165,6 +220,14 @@ namespace Immersive.Framework.PlayerParticipation
 
         internal void ReleaseScopedAccess(string reason, bool isStale = false)
         {
+            // A scene consumer may be destroyed before the persistent Runtime Host.
+            // OnDestroy already releases the bound access on the consumer side, so a
+            // later owner-side release must treat a Unity-destroyed wrapper as done.
+            if (this == null)
+            {
+                return;
+            }
+
             string resolvedReason = string.IsNullOrWhiteSpace(reason)
                 ? UnboundDiagnostic
                 : reason.Trim();
@@ -230,12 +293,12 @@ namespace Immersive.Framework.PlayerParticipation
         }
 
         protected virtual void OnScopedAccessBound(
-            ILocalPlayerProvisioningConsumerAccess scopedAccess)
+            IPlayerSessionScopedAccess scopedAccess)
         {
         }
 
         protected virtual void OnScopedAccessReleasing(
-            ILocalPlayerProvisioningConsumerAccess scopedAccess)
+            IPlayerSessionScopedAccess scopedAccess)
         {
         }
 
@@ -265,9 +328,19 @@ namespace Immersive.Framework.PlayerParticipation
 
         private LogField[] BuildFields(string status, LocalPlayerProvisioningConsumerScope runtimeScope, string reason)
         {
+            // Diagnostics must remain side-effect free during Unity teardown. A
+            // managed wrapper can outlive its native Unity object, so never read
+            // Unity-backed properties after the object has become fake-null.
+            string componentName = this != null
+                ? name
+                : GetType().Name;
+            string sceneName = this != null && gameObject != null
+                ? gameObject.scene.name
+                : string.Empty;
+
             return LogFields.Of(
-                LogFields.Field("component", name),
-                LogFields.Field("scene", gameObject.scene.name),
+                LogFields.Field("component", componentName),
+                LogFields.Field("scene", sceneName),
                 LogFields.Field("status", status),
                 LogFields.Field("authoredScope", scope),
                 LogFields.Field("runtimeScope", runtimeScope),

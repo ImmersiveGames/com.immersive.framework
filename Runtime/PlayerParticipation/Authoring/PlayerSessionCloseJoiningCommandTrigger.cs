@@ -17,7 +17,7 @@ namespace Immersive.Framework.PlayerParticipation
         {
             LastCloseJoiningResult = null;
             string reason = BeginInvocation("CloseJoining");
-            if (!TryGetAccess(out ILocalPlayerProvisioningConsumerAccess access, out string issue))
+            if (!TryGetAccess(out IPlayerSessionScopedAccess access, out string issue))
             {
                 CompleteResult(PlayerParticipationOperationResult.RuntimeUnavailable(
                     "CloseJoining", Source, reason, issue));

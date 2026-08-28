@@ -32,7 +32,7 @@ namespace Immersive.Framework.PlayerParticipation
         "IF-PLAYER-SURFACE-06 read-only scoped Player Session observer.")]
     public sealed class PlayerSessionObserver : PlayerSessionScopedAccessConsumer
     {
-        private ILocalPlayerProvisioningConsumerAccess _observedAccess;
+        private IPlayerSessionScopedAccess _observedAccess;
 
         [SerializeField] private UnityEvent onJoiningOpened = new UnityEvent();
         [SerializeField] private UnityEvent onJoiningClosed = new UnityEvent();
@@ -67,7 +67,7 @@ namespace Immersive.Framework.PlayerParticipation
             get
             {
                 return TryGetObservation(
-                    out LocalPlayerProvisioningConsumerObservationSnapshot observation)
+                    out PlayerSessionScopedObservationSnapshot observation)
                     ? observation.Diagnostic
                     : ScopedAccessDiagnostic;
             }
@@ -77,9 +77,9 @@ namespace Immersive.Framework.PlayerParticipation
         /// Current P2 observation when this observer has live P1 scoped access.
         /// No unavailable snapshot is fabricated by this presentation component.
         /// </summary>
-        public LocalPlayerProvisioningConsumerObservationSnapshot CurrentObservation =>
+        public PlayerSessionScopedObservationSnapshot CurrentObservation =>
             TryGetObservation(
-                out LocalPlayerProvisioningConsumerObservationSnapshot observation)
+                out PlayerSessionScopedObservationSnapshot observation)
                 ? observation
                 : null;
 
@@ -92,17 +92,34 @@ namespace Immersive.Framework.PlayerParticipation
         /// cache, subscribe to, mutate or reconcile Player state.
         /// </summary>
         public bool TryGetObservation(
-            out LocalPlayerProvisioningConsumerObservationSnapshot observation)
+            out PlayerSessionScopedObservationSnapshot observation)
         {
             observation = null;
             if (!TryGetAccess(
-                    out ILocalPlayerProvisioningConsumerAccess access,
+                    out IPlayerSessionScopedAccess access,
                     out _))
             {
                 return false;
             }
 
             return access.TryGetObservation(out observation) &&
+                observation != null && observation.IsAvailable;
+        }
+
+        /// <summary>
+        /// Obsolete Manager-Provisioned observation overload retained for
+        /// existing presentation consumers during ACCESS-2 migration.
+        /// </summary>
+        [Obsolete(
+            "Use TryGetObservation(out PlayerSessionScopedObservationSnapshot).")]
+        public bool TryGetObservation(
+            out LocalPlayerProvisioningConsumerObservationSnapshot observation)
+        {
+            observation = null;
+            return TryGetAccess(
+                    out ILocalPlayerProvisioningConsumerAccess access,
+                    out _) &&
+                access.TryGetObservation(out observation) &&
                 observation != null && observation.IsAvailable;
         }
 
@@ -114,7 +131,7 @@ namespace Immersive.Framework.PlayerParticipation
         {
             snapshot = null;
             if (!TryGetObservation(
-                    out LocalPlayerProvisioningConsumerObservationSnapshot
+                    out PlayerSessionScopedObservationSnapshot
                         observation) ||
                 observation.Participation == null)
             {
@@ -137,7 +154,7 @@ namespace Immersive.Framework.PlayerParticipation
         /// Slot observation. It is presentation text, not a lifecycle state.
         /// </summary>
         public string DescribeSlotLifecycle(
-            LocalPlayerProvisioningConsumerSlotObservation slot)
+            PlayerSessionScopedSlotObservation slot)
         {
             if (!slot.Slot.PlayerSlotId.IsValid)
             {
@@ -178,7 +195,7 @@ namespace Immersive.Framework.PlayerParticipation
         }
 
         public string DescribeSelectedActor(
-            LocalPlayerProvisioningConsumerSlotObservation slot)
+            PlayerSessionScopedSlotObservation slot)
         {
             if (!slot.HasSelectedActor)
             {
@@ -191,7 +208,7 @@ namespace Immersive.Framework.PlayerParticipation
         }
 
         public string DescribeGameplay(
-            LocalPlayerProvisioningConsumerSlotObservation slot)
+            PlayerSessionScopedSlotObservation slot)
         {
             if (!slot.HasGameplayAdmissionEvidence)
             {
@@ -204,7 +221,7 @@ namespace Immersive.Framework.PlayerParticipation
         }
 
         protected override void OnScopedAccessBound(
-            ILocalPlayerProvisioningConsumerAccess scopedAccess)
+            IPlayerSessionScopedAccess scopedAccess)
         {
             if (_observedAccess != null)
             {
@@ -216,7 +233,7 @@ namespace Immersive.Framework.PlayerParticipation
         }
 
         protected override void OnScopedAccessReleasing(
-            ILocalPlayerProvisioningConsumerAccess scopedAccess)
+            IPlayerSessionScopedAccess scopedAccess)
         {
             if (_observedAccess != null)
             {
@@ -302,13 +319,13 @@ namespace Immersive.Framework.PlayerParticipation
             }
 
             return TryGetObservation(
-                out LocalPlayerProvisioningConsumerObservationSnapshot _)
+                out PlayerSessionScopedObservationSnapshot _)
                 ? PlayerProvisioningStatusAvailability.Available
                 : PlayerProvisioningStatusAvailability.Unavailable;
         }
 
         private static string DescribeInitialization(
-            LocalPlayerProvisioningConsumerObservationSnapshot observation)
+            PlayerSessionScopedObservationSnapshot observation)
         {
             if (observation == null || !observation.IsAvailable)
             {
@@ -326,7 +343,7 @@ namespace Immersive.Framework.PlayerParticipation
         }
 
         private static string DescribeActivity(
-            LocalPlayerProvisioningConsumerObservationSnapshot observation)
+            PlayerSessionScopedObservationSnapshot observation)
         {
             if (observation == null || !observation.IsAvailable)
             {

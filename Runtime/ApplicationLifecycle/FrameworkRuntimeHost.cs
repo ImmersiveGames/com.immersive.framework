@@ -556,6 +556,20 @@ namespace Immersive.Framework.ApplicationLifecycle
                     failed);
                 return failed;
             }
+            if (_gameApplication.PlayerSessionEnabled &&
+                !PlayerSessionScopedAccessRuntimeHostModule.TryAttach(
+                    this,
+                    out _,
+                    out string playerSessionScopedAccessIssue))
+            {
+                var failed = FrameworkGameFlowStartResult.Failed(
+                    "Player Session scoped access lifecycle attachment failed. " +
+                    playerSessionScopedAccessIssue);
+                _state = FrameworkRuntimeState.FromGameFlowResult(
+                    _gameApplication,
+                    failed);
+                return failed;
+            }
             ApplyRetainedActivityParticipantSources();
             _activityReadinessBinding = _gameFlowRuntime.SubscribeActivityReadinessUpdates(HandleActivityReadinessUpdate);
             ApplyPauseActivityBindingLifecycle();

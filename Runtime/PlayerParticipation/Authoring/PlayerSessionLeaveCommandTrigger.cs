@@ -41,14 +41,14 @@ namespace Immersive.Framework.PlayerParticipation
                 LastLeaveRequest = default;
             }
 
-            if (!TryGetAccess(out ILocalPlayerProvisioningConsumerAccess access, out string scopeIssue))
+            if (!TryGetAccess(out IPlayerSessionScopedAccess access, out string scopeIssue))
             {
                 CompleteResult(SessionPlayerLeaveResult.RuntimeUnavailable(default, scopeIssue));
                 return;
             }
 
             if (!access.TryGetObservation(
-                    out LocalPlayerProvisioningConsumerObservationSnapshot observation) ||
+                    out PlayerSessionScopedObservationSnapshot observation) ||
                 observation == null || !observation.IsAvailable)
             {
                 CompleteResult(SessionPlayerLeaveResult.RuntimeUnavailable(
@@ -57,11 +57,11 @@ namespace Immersive.Framework.PlayerParticipation
                 return;
             }
 
-            LocalPlayerProvisioningConsumerSlotObservation target = default;
+            PlayerSessionScopedSlotObservation target = default;
             bool found = false;
             for (int index = 0; index < observation.Slots.Count; index++)
             {
-                LocalPlayerProvisioningConsumerSlotObservation candidate = observation.Slots[index];
+                PlayerSessionScopedSlotObservation candidate = observation.Slots[index];
                 if (candidate.Slot.PlayerSlotId != playerSlotId)
                 {
                     continue;

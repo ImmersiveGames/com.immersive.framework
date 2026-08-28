@@ -174,7 +174,7 @@ namespace Immersive.Framework.Editor.PlayerParticipation
                 "Binding",
                 observer.ScopedAccessState.ToString());
 
-            LocalPlayerProvisioningConsumerObservationSnapshot observation =
+            PlayerSessionScopedObservationSnapshot observation =
                 observer.CurrentObservation;
             if (observation == null || observation.Participation == null)
             {
@@ -207,7 +207,7 @@ namespace Immersive.Framework.Editor.PlayerParticipation
                 observer.InitializationSummary,
                 EditorStyles.wordWrappedMiniLabel);
 
-            LocalPlayerProvisioningConsumerObservationSnapshot observation =
+            PlayerSessionScopedObservationSnapshot observation =
                 observer.CurrentObservation;
             if (observation == null)
             {
@@ -217,7 +217,6 @@ namespace Immersive.Framework.Editor.PlayerParticipation
             EditorGUILayout.LabelField("Scope Owner", observation.ScopeOwner.StableText);
             EditorGUILayout.LabelField("Activity Occurrence", observation.ActivityOccurrence.ToString());
             EditorGUILayout.LabelField("Session Revision", observation.SessionRevision.ToString());
-            EditorGUILayout.LabelField("Applied Session Revision", observation.AppliedSessionRevision.ToString());
         }
 
         private void InvalidateConfigurationStatus()

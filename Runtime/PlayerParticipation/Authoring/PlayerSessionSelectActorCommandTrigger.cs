@@ -47,7 +47,7 @@ namespace Immersive.Framework.PlayerParticipation
                 Source,
                 reason,
                 expectedSelectionRevision);
-            if (!TryGetAccess(out ILocalPlayerProvisioningConsumerAccess access, out string scopeIssue))
+            if (!TryGetAccess(out IPlayerSessionScopedAccess access, out string scopeIssue))
             {
                 CompleteResult(PlayerActorSelectionResult.RuntimeUnavailable(
                     "SelectActorProfile", request, scopeIssue));

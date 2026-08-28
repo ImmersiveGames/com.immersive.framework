@@ -17,7 +17,7 @@ namespace Immersive.Framework.PlayerParticipation
         {
             LastOpenJoiningResult = null;
             string reason = BeginInvocation("OpenJoining");
-            if (!TryGetAccess(out ILocalPlayerProvisioningConsumerAccess access, out string issue))
+            if (!TryGetAccess(out IPlayerSessionScopedAccess access, out string issue))
             {
                 CompleteResult(PlayerParticipationOperationResult.RuntimeUnavailable(
                     "OpenJoining", Source, reason, issue));
