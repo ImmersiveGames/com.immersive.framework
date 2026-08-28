@@ -64,6 +64,9 @@ namespace Immersive.Framework.PlayerParticipation
         private PlayerParticipationOperationStatus _lastOperationStatus;
         private string _lastOperationMessage;
 
+        internal PlayerActorResolutionPolicy ActorResolutionPolicy =>
+            _actorResolutionPolicy;
+
         internal event Action<PlayerSessionChange> Changed;
 
         private PlayerParticipationRuntimeContext(

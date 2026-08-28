@@ -18,7 +18,7 @@ namespace Immersive.Framework.Editor.PlayerParticipation
         private SerializedProperty _onActorCleared;
         private bool _hasValidation;
         private bool _validationIsValid;
-        private bool _validationOutdated;
+        private LocalPlayerProvisioningConsumerScope _validatedScope;
         private string _validationIssue;
         private bool _showAdvanced;
 
@@ -47,27 +47,19 @@ namespace Immersive.Framework.Editor.PlayerParticipation
             }
 
             serializedObject.UpdateIfRequiredOrScript();
-            EditorGUI.BeginChangeCheck();
             var observer = (PlayerSessionObserver)target;
 
             FrameworkAuthoringInspectorGui.ProductHeader(
                 "PLAYER SESSION OBSERVER",
                 string.Empty);
-            FrameworkAuthoringInspectorGui.Section("Scope");
-            EditorGUILayout.PropertyField(
-                _scope,
-                new GUIContent(
-                    "Scope",
-                    "Explicit Route or Activity scope for this read-only observer. Framework Core supplies scoped access directly at runtime."));
+
+            DrawConfiguration();
 
             DrawEvents();
 
-            DrawValidation(observer);
+            DrawConfigurationStatus(observer);
 
-            if (Application.isPlaying && targets.Length == 1)
-            {
-                DrawRuntimeObservation(observer);
-            }
+            DrawRuntimeStatus(observer);
 
             _showAdvanced = FrameworkAuthoringInspectorGui.AdvancedFoldout(_showAdvanced);
             if (_showAdvanced)
@@ -75,13 +67,26 @@ namespace Immersive.Framework.Editor.PlayerParticipation
                 DrawAdvanced(observer);
             }
 
-            if (EditorGUI.EndChangeCheck())
+            serializedObject.ApplyModifiedProperties();
+        }
+
+        private void DrawConfiguration()
+        {
+            FrameworkAuthoringInspectorGui.Section("Configuration");
+            EditorGUI.BeginChangeCheck();
+            EditorGUILayout.PropertyField(
+                _scope,
+                new GUIContent(
+                    "Scope",
+                    "Explicit Route or Activity scope for this read-only observer. Framework Core supplies scoped access directly at runtime."));
+
+            if (!EditorGUI.EndChangeCheck())
             {
-                _validationOutdated = _hasValidation;
-                _hasValidation = false;
+                return;
             }
 
             serializedObject.ApplyModifiedProperties();
+            InvalidateConfigurationStatus();
         }
 
         private void DrawEvents()
@@ -124,66 +129,75 @@ namespace Immersive.Framework.Editor.PlayerParticipation
             }
         }
 
-        private void DrawValidation(PlayerSessionObserver observer)
+        private void DrawConfigurationStatus(PlayerSessionObserver observer)
         {
-            FrameworkAuthoringInspectorGui.Section("Validation");
-            if (GUILayout.Button("Validate"))
+            FrameworkAuthoringInspectorGui.Section("Configuration Status");
+            if (_hasValidation && observer.Scope != _validatedScope)
+            {
+                InvalidateConfigurationStatus();
+            }
+
+            if (GUILayout.Button("Validate Scope"))
             {
                 serializedObject.ApplyModifiedProperties();
                 _hasValidation = true;
-                _validationOutdated = false;
                 _validationIsValid = observer.TryValidateConfiguration(
                     out _validationIssue);
+                _validatedScope = observer.Scope;
             }
 
             string state = !_hasValidation
-                ? _validationOutdated ? "Outdated" : "Not Validated"
-                : _validationIsValid ? "Valid" : "Issue";
+                ? "Not Checked"
+                : _validationIsValid ? "Valid" : "Invalid";
             EditorGUILayout.LabelField("Status", state);
             if (_hasValidation && !_validationIsValid)
             {
                 EditorGUILayout.LabelField(
-                    "Issue",
+                    "Diagnostic",
                     _validationIssue,
                     EditorStyles.wordWrappedMiniLabel);
             }
         }
 
-        private static void DrawRuntimeObservation(PlayerSessionObserver observer)
+        private static void DrawRuntimeStatus(PlayerSessionObserver observer)
         {
-            FrameworkAuthoringInspectorGui.Section("Session");
-            EditorGUILayout.LabelField("Availability", observer.Availability.ToString());
-            EditorGUILayout.LabelField("Activity", observer.ActivitySummary);
-
-            FrameworkAuthoringInspectorGui.Section("Players");
-            LocalPlayerProvisioningConsumerObservationSnapshot observation =
-                observer.CurrentObservation;
-            if (observation == null || observation.Slots.Count == 0)
+            FrameworkAuthoringInspectorGui.Section("Runtime Status");
+            if (!Application.isPlaying)
             {
-                EditorGUILayout.LabelField("No Player Slot evidence is published.");
+                EditorGUILayout.LabelField(
+                    "Runtime Evidence",
+                    "Available in Play Mode.");
                 return;
             }
 
-            for (int index = 0; index < observation.Slots.Count; index++)
+            EditorGUILayout.LabelField(
+                "Binding",
+                observer.ScopedAccessState.ToString());
+
+            LocalPlayerProvisioningConsumerObservationSnapshot observation =
+                observer.CurrentObservation;
+            if (observation == null || observation.Participation == null)
             {
-                LocalPlayerProvisioningConsumerSlotObservation slot =
-                    observation.Slots[index];
-                string title = slot.Slot.PlayerSlotId.IsValid
-                    ? slot.Slot.PlayerSlotId.StableText
-                    : "Unavailable Slot";
-                EditorGUILayout.LabelField(title, EditorStyles.miniBoldLabel);
-                using (new EditorGUI.IndentLevelScope())
-                {
-                    EditorGUILayout.LabelField("Lifecycle", observer.DescribeSlotLifecycle(slot));
-                    EditorGUILayout.LabelField("Selected Actor", observer.DescribeSelectedActor(slot));
-                    EditorGUILayout.LabelField("Gameplay", observer.DescribeGameplay(slot));
-                }
+                EditorGUILayout.LabelField(
+                    "Session",
+                    observer.Availability.ToString());
+                EditorGUILayout.LabelField("Joining", "Unavailable");
+                EditorGUILayout.LabelField("Players", "Unavailable");
+                return;
             }
+
+            PlayerParticipationSnapshot participation = observation.Participation;
+            EditorGUILayout.LabelField("Session", "Available");
+            EditorGUILayout.LabelField(
+                "Joining",
+                participation.JoiningOpen ? "Open" : "Closed");
+            EditorGUILayout.LabelField(
+                "Players",
+                $"{participation.JoinedCount} joined / {participation.ConfiguredSlotCount} configured");
         }
 
         private static void DrawAdvanced(PlayerSessionObserver observer)
         {
-            EditorGUILayout.LabelField("Scoped Access State", observer.ScopedAccessState.ToString());
             EditorGUILayout.LabelField(
                 "Diagnostic",
                 observer.Diagnostic,
@@ -204,6 +218,13 @@ namespace Immersive.Framework.Editor.PlayerParticipation
             EditorGUILayout.LabelField("Activity Occurrence", observation.ActivityOccurrence.ToString());
             EditorGUILayout.LabelField("Session Revision", observation.SessionRevision.ToString());
             EditorGUILayout.LabelField("Applied Session Revision", observation.AppliedSessionRevision.ToString());
+        }
+
+        private void InvalidateConfigurationStatus()
+        {
+            _hasValidation = false;
+            _validationIsValid = false;
+            _validationIssue = string.Empty;
         }
 
         private bool HasLiveTargets()

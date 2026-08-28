@@ -504,6 +504,17 @@ namespace Immersive.Framework.PlayerParticipation
                         slotRecord.readinessReason =
                             ActivityPlayerActorReadinessReason
                                 .WaitingForActorSelection;
+
+                        if (_participationContext.ActorResolutionPolicy ==
+                            PlayerActorResolutionPolicy.LeaveUnresolved)
+                        {
+                            slotRecord.message =
+                                "Player Session explicitly requires Actor selection; " +
+                                "Activity Player readiness remains Preparing until a " +
+                                "future explicit selection changes the Session revision.";
+                            continue;
+                        }
+
                         PlayerActorSelectionResult selection =
                             _preparationModule.TrySelectDefaultActor(
                                 slot.PlayerSlotId,
