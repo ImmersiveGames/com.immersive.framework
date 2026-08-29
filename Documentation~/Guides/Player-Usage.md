@@ -1,50 +1,73 @@
 # Player Usage
 
-Status: **Accepted Stage B Player baseline + current Player public product surface**  
-Last updated: **2026-08-26**  
-Decision sources: IF-ADR-003, IF-ADR-007, IF-ADR-012, IF-ADR-015, IF-ADR-016, IF-ADR-019, IF-ADR-020, IF-ADR-021  
-Product-authoring record: [Scene-Provided Local Player Product Composition — 2026-08-17](../Architecture/Reconciliation/IMMERSIVE-FRAMEWORK-SCENE-PROVIDED-LOCAL-PLAYER-PRODUCT-COMPOSITION-2026-08-17.md)  
-Player Session public-surface record: [IF-ADR-015A — Player Session Observer and Explicit Command Surfaces — 2026-08-25](../Architecture/Reconciliation/IF-ADR-015A-Player-Session-Observer-and-Explicit-Command-Surfaces-2026-08-25.md)  
-Actor-selection closure: [IF-ADR-015B — Player Actor Selection Public Surface Certification — 2026-08-26](../Architecture/Reconciliation/IF-ADR-015B-Player-Actor-Selection-Public-Surface-Certification-2026-08-26.md)  
+Status: **Current Player product/runtime surface — ADR-023 composition certified**  
+Last updated: **2026-08-29**  
+Decision sources: IF-ADR-003, IF-ADR-007, IF-ADR-012, IF-ADR-015, IF-ADR-016, IF-ADR-019, IF-ADR-020, IF-ADR-021, IF-ADR-023  
+Actor-selection closure: [IF-ADR-015B — 2026-08-26](../Architecture/Reconciliation/IF-ADR-015B-Player-Actor-Selection-Public-Surface-Certification-2026-08-26.md)  
+Actor-runtime certification: [IF-ADR-023 — 2026-08-29](../Architecture/Reconciliation/IF-ADR-023-PLAYER-ACTOR-RUNTIME-TECHNICAL-CERTIFICATION-2026-08-29.md)  
 Current delivery authority: [IF-TRACK — Immersive Framework](../Architecture/Tracking/IF-TRACK-Framework.md)
-
-> This guide describes the currently accepted Player path. Arbitrary Actor Selection is
-> now part of the delivered public surface. Exact-Slot public Join and the Local
-> Multiplayer Slot/device/input contract remain future scope.
 
 ## 1. Product model
 
-Keep authored intent, Session authority, physical Player lifetime and Activity context
-separate.
+Keep Session intent, Slot identity, Local Player Host, Actor selection, Actor runtime composition and Activity context separate.
 
 ```text
 PlayerSessionProfile
-  initial Session Player configuration / provisioning policy
+  Session initialization / provisioning policy
 
-Player Slot Profile
-  exact authored logical Slot identity
+PlayerSlotProfile
+  authored Slot identity/configuration
 
-Activity Player participation policy
-  which configured Players participate in the current Activity
-  exact readiness level required by that Activity
+LocalPlayerHostAuthoring
+  technical Player host
+  PlayerInput boundary
+  ActorMount
 
-Local Player Host
-  technical host for one local Player
+PlayerActorRuntimeHost
+  reusable Actor-independent runtime shell
+  PlayerActorDeclaration
+  PresentationMount
 
 ActorProfile
-  exact Logical Player prefab authority
+  Actor identity/classification
+  PresentationPrefab
 
-Logical Player
-  gameplay-owned representation / Actor
-  consumes current gameplay authority after it exists
+Activity Player participation policy
+  projection
+  readiness requirement
+  optional relocation
 ```
 
-A Local Player product is a composition of existing authorities. It is not a new global
-Player manager or runtime service.
+Canonical transaction split:
 
-## 2. Scene Player — canonical Scene-Provided creation path
+```text
+Join
+!= Actor Selection
+!= Activity Actor Preparation
+!= Physical Materialization
+```
 
-For a Scene-Provided local Player using Unity Input, use the official Editor action:
+## 2. Current Actor composition — IF-ADR-023
+
+```text
+Local Player Host
+├── PlayerInput
+└── ActorMount
+    └── PlayerActorRuntimeHost
+        ├── PlayerActorDeclaration
+        └── PresentationMount
+            └── ActorProfile.PresentationPrefab
+```
+
+The Local Player Host composition owns reusable runtime infrastructure. `ActorProfile` owns Actor-specific presentation.
+
+Do not restore `ActorProfile.LogicalActorHostPrefab`, a second Actor runtime prefab authority, or fallback from `PresentationPrefab` to removed serialization.
+
+`LogicalActorsPrepared` remains valid current readiness terminology. It does not mean the old `LogicalActorHost` hierarchy is current.
+
+## 3. Scene Player / Scene-Provided
+
+Use the official Editor action:
 
 ```text
 GameObject
@@ -53,84 +76,57 @@ GameObject
       > Create Scene-Provided Local Player
 ```
 
-The action creates the deterministic technical shape:
+Canonical technical shape:
 
 ```text
 Scene-Provided Local Player
-├─ PlayerInput
-├─ LocalPlayerHostAuthoring
-├─ SceneLocalPlayerAdmissionAuthoring
-├─ UnityPlayerInputGateAdapter
-└─ ActorMount
+├── PlayerInput
+├── LocalPlayerHostAuthoring
+├── SceneLocalPlayerAdmissionAuthoring
+├── UnityPlayerInputGateAdapter
+└── ActorMount
 ```
 
-The operation is Editor-owned and Undo-aware. It does not start runtime admission or
-gameplay.
+The Scene-Provided composition may author the candidate `PlayerActorRuntimeHost` and selected Presentation. Runtime validates/adopts the exact deterministic composition and transfers successful physical Player lifetime to the Session occurrence.
 
-Configure project-specific intent after creation:
+`SceneLocalPlayerAdmissionAuthoring` normally uses Activity lifecycle admission. Do not add a manual Join merely to compensate for ordinary Scene-Provided Activity entry.
+
+Scene-Provided and Manager-Provisioned are separate provisioning origins. They converge after successful admission; there is no silent fallback between modes.
+
+## 4. Manager-Provisioned
+
+Manager-Provisioned uses Session-authorized provisioning rather than a pre-authored Local Player Host instance.
 
 ```text
-PlayerInput
-  InputActionAsset
-
-UnityPlayerInputGateAdapter
-  Gameplay Action Map
-
-SceneLocalPlayerAdmissionAuthoring
-  Player Slot Profile
-  Actor Profile
-  Admission Timing
-  Initial Placement policy
+PlayerSessionProfile
+  HostProvisioning = ManagerProvisioned
+        ↓
+Player provisioning authority
+        ↓
+Join
+        ↓
+Local Player Host + PlayerInput
+        ↓
+Slot Joined / technical Host evidence
+        ↓
+Actor selection
+        ↓
+Activity requires Actor preparation
+        ↓
+PlayerActorRuntimeHost
+        ↓
+ActorProfile.PresentationPrefab
+        ↓
+Activity preparation / relocation
+        ↓
+GameplayReady
 ```
 
-Do not treat a particular Slot, Actor, Input Action Asset or action-map name as a
-framework default.
-
-## 3. Local Player Host and Logical Player are different responsibilities
-
-Scene-Provided consumer composition keeps the technical Host and Logical Player Actor
-separate.
-
-```text
-Scene-Provided Local Player.prefab
-  technical Host product composition
-
-Scene-Provided Logical Player.prefab
-  ActorProfile.LogicalActorHostPrefab
-  gameplay / Actor representation
-```
-
-The scene composes them through the Actor mount:
-
-```text
-Scene-Provided Local Player [prefab instance]
-└─ ActorMount
-   └─ Scene-Provided Logical Player [prefab instance]
-```
-
-`ActorProfile.LogicalActorHostPrefab` remains the single authored prefab authority for
-the Logical Player.
-
-`PlayerInput` belongs to the Local Player Host, not to the Logical Player prefab.
-
-## 4. Scene-Provided admission timing
-
-`SceneLocalPlayerAdmissionAuthoring` defaults to:
-
-```text
-OnActivityEnter
-```
-
-For this path, automatic Scene-Provided admission is owned by the Activity lifecycle.
-Do not add a manual Join merely to make ordinary Scene-Provided Activity entry work.
-
-Scene-Provided and Manager-Provisioned are separate provisioning origins. They converge
-on the same Session/Slot/Actor authority after successful admission; do not silently
-fallback from one mode to the other.
+Immediate Join is not Actor materialization. A newly joined Manager Player may legitimately expose `AssignmentOrigin=None` before contextual Activity preparation/reprojection.
 
 ## 5. Activity Player readiness
 
-Current ordered Player readiness levels are:
+Current ordered levels remain:
 
 ```text
 None
@@ -140,27 +136,13 @@ LogicalActorsPrepared
 GameplayReady
 ```
 
-The important boundary is:
+`LogicalActorsPrepared != GameplayReady`.
 
-```text
-LogicalActorsPrepared != GameplayReady
-```
-
-If Activity gameplay consumes current gameplay input/camera authority, request:
-
-```text
-GameplayReady
-```
-
-Do not auto-promote readiness because a consumer happens to require a higher level.
-Activity intent must remain explicit.
+If gameplay consumes current gameplay input/camera authority, request `GameplayReady`. Do not auto-promote readiness because a consumer happens to require a higher level.
 
 ## 6. Gameplay input consumption
 
-Gameplay-owned Logical Player code consumes the public current-gameplay surface rather
-than reading the Host's `PlayerInput` directly.
-
-Canonical shape:
+Gameplay-owned Actor code consumes the public current-gameplay binding:
 
 ```text
 PlayerGameplayInputConsumerBinding
@@ -169,58 +151,20 @@ PlayerGameplayInputConsumerBinding
   -> TryReadValue<T>(InputActionReference, out value)
 ```
 
-Do not bypass the runtime binding with direct reads such as:
+Do not bypass that binding with direct `InputActionReference.action.ReadValue<T>()`, Host hierarchy guesses, scene scans, names, tags, reflection or another fallback channel.
 
-```text
-inputActionReference.action.ReadValue<T>()
-```
+`PlayerInput` belongs to the Local Player Host. It is not Presentation authority.
 
-and do not resolve `PlayerInput` through scene scans, hierarchy guesses, names, tags,
-reflection or another fallback channel.
+## 7. Player Session public surface
 
-## 7. Manager-Provisioned baseline
-
-Manager-Provisioned uses Session-authorized provisioning authority rather than a
-scene-authored Local Player Host instance.
-
-Typical high-level flow:
-
-```text
-PlayerSessionProfile
-  HostProvisioning = ManagerProvisioned
-        ↓
-Local Player Provisioning authority
-        ↓
-explicit Join
-        ↓
-Local Player Host created/admitted
-        ↓
-Actor selection / preparation
-        ↓
-Activity representation
-        ↓
-GameplayReady
-```
-
-The provisioning authority is not itself a Player Host.
-
-## 8. Player Session public surface
-
-Use the scoped public surface according to intent:
+Use:
 
 ```text
 PlayerSessionObserver = read
-explicit Player Session Command Trigger = request/change
+explicit Player Session command component = request/change
 ```
 
-`PlayerSessionObserver` is read-only. It is appropriate for Hub, UI, presentation,
-prefabs and another scene than the physically materialized Player.
-
-It exposes published scoped evidence such as Session state, Slot occupancy, selected
-Actor, selection revision, preparation/materialization/admission and gameplay readiness.
-It does not execute commands or own Player truth.
-
-The current explicit public command family is:
+Current explicit command family:
 
 ```text
 PlayerSessionOpenJoiningCommandTrigger
@@ -233,33 +177,11 @@ PlayerSessionClearActorSelectionCommandTrigger
 PlayerSessionLeaveCommandTrigger
 ```
 
-Each component represents exactly one request and owns only its own typed result.
+Observation and requests are independently composable. The Observer is immutable presentation evidence, not a second Session state store.
 
-Example composition:
-
-```text
-Hub / UI
-├─ optional PlayerSessionObserver
-│    read-only Session / Slot / Actor presentation
-│
-├─ Join Button
-│    └─ PlayerSessionJoinCommandTrigger.Invoke()
-│
-├─ Character choice A
-│    └─ PlayerSessionSelectActorCommandTrigger.Invoke()
-│
-└─ Leave Button
-     └─ PlayerSessionLeaveCommandTrigger.Invoke()
-```
-
-The Observer is not required for commands to work. Compose observation and requests
-independently according to consumer intent.
-
-## 9. Actor Selection
+## 8. Actor Selection
 
 Actor selection is Session-owned logical intent for one exact Joined Slot.
-
-Public operations are:
 
 ```text
 Select Actor
@@ -268,222 +190,138 @@ Replace Actor Selection
 Clear Actor Selection
 ```
 
-All four return `PlayerActorSelectionResult` evidence.
+All return typed `PlayerActorSelectionResult` evidence.
 
-### Select Actor
+`Replace` and `Clear` are logical selection operations before the preparation barrier. They are not prepared physical Actor hot-swap commands.
 
-Use `PlayerSessionSelectActorCommandTrigger` when game-owned UI chooses an explicit
-`ActorProfile`.
+`LeaveUnresolved` is a valid Session policy for Character Selection. The game owns which choices are presented; the Framework owns validation, revision and commit.
 
-The command may author:
+## 9. Scoped access
 
-```text
-Player Slot
-Actor Profile
-Expected Selection Revision
-Reason
-```
-
-The game owns the presented choice set. The Framework owns validation and the selection
-commit.
-
-### Select Default Actor
-
-Use `PlayerSessionDefaultActorSelectionCommandTrigger` only when the Session policy
-allows default resolution.
+Route and Activity are Framework lifecycle scopes:
 
 ```text
-ActorResolution = ResolveConfiguredDefault
-  -> configured DefaultActorProfile only
-
-ActorResolution = LeaveUnresolved
-  -> default request rejects
+Route scope     = Route lifecycle ownership
+Activity scope  = Activity lifecycle ownership
+scene location  != scope authority
 ```
 
-There is no silent Actor fallback.
+A component physically present in Route-discovered content may legitimately be Activity-scoped and bind while the Activity lifecycle is active.
 
-### Replace / Clear
+Keep authoring validity separate from runtime access availability:
 
-`Replace Actor Selection` and `Clear Actor Selection` operate only before the canonical
-Actor preparation barrier.
+```text
+TryValidateConfiguration()
+  = authored configuration validity
 
-They are **not** physical hot-swap commands.
+BindingState / TryGetAccess
+  = current runtime scoped-access availability
+```
 
-Once a Logical Player Actor is prepared, or a retained preparation/release failure is
-holding the preparation barrier, Select / Replace / Clear reject with canonical Actor
-selection failure evidence rather than mutating physical state.
+A valid authored consumer may temporarily be unbound and must fail closed without global fallback.
 
-## 10. Character Selection flow
+### Teardown
 
-The public arbitrary Actor-selection blocker is closed.
+Unity teardown order is not access authority.
 
-A canonical Character Selection application may now use:
+```text
+consumer OnDestroy
+  -> releases its local binding
+
+persistent runtime owner destroyed later
+  -> destroyed Unity consumer wrapper is tolerated
+  -> no second release-side MissingReferenceException
+  -> diagnostics do not dereference destroyed Unity objects
+```
+
+## 10. Spatial intent
+
+IF-ADR-021 keeps spatial intent separate from Session lifetime:
+
+```text
+RoutePlayerSpatialEntryAuthoring
+  RouteId + PlayerSlotId -> baseline anchor
+
+ActivityPlayerRelocationAuthoring
+  ActivityId + PlayerSlotId -> optional contextual anchor
+```
+
+Route spatial entry and Activity relocation do not Join, recreate or transfer Player lifetime.
+
+## 11. Character Selection
+
+Canonical public flow:
 
 ```text
 PlayerSessionProfile
   ActorResolution = LeaveUnresolved
         ↓
 Join
-  Slot Joined
-  Actor unresolved
+  Slot Joined / Actor unresolved
         ↓
-game-owned Character Selection UI
+game-owned UI
         ↓
 PlayerSessionSelectActorCommandTrigger
         ↓
-PlayerActorSelectionResult
+Session Actor selection
         ↓
-existing Framework Actor preparation
+Activity Actor preparation
         ↓
-Manager-Provisioned materialization / Activity lifecycle
+PlayerActorRuntimeHost + selected Presentation
         ↓
 GameplayReady
 ```
 
-The sample/game must not:
+FIRSTGAME FG-ADR-002 Revision 4 records Character Selection as Play Mode proven.
+
+## 12. Current certification
+
+Current evidence is layered:
 
 ```text
-mutate Session state directly
-call internal Actor-selection runtime ports
-prepare/materialize the Actor itself
-perform global Player discovery
-add a fallback Actor
-turn Replace into hot swap
+Historical Full Player            25/25 preserved
+Current aggregate                 27/27 PASS
+Manager functional Player QA      14/14 PASS
+Pause/Input/Gate composition       8/8 PASS
 ```
 
-Character Selection is a consumer of the public Player surface, not a second Player
-architecture.
-
-## 11. Revision and idempotency
-
-Actor selection is revision-aware.
-
-Expected behavior includes:
+The 14-case consolidated functional run covers:
 
 ```text
-Select A first time
-  -> selection succeeds
-  -> revisions advance once
-
-Select A again
-  -> idempotent success
-  -> revisions unchanged
-
-Select B while A selected
-  -> reject; use Replace
-
-Replace B before preparation
-  -> succeeds
-  -> revisions advance once
-
-Clear before preparation
-  -> succeeds
-  -> revisions advance once
-
-stale expected revision
-  -> reject
-  -> no mutation
+access
+join
+observation
+actor-default
+actor-replace
+actor-lifecycle
+joining-control
+second-player
+commands
+leave
+rejoin
+negatives
+spatial
+relocation
 ```
 
-Duplicate Actor selection remains governed by Session policy.
+The QA harness explicitly shares the Editor keyboard for P2 Join/Rejoin. That proves deterministic technical provisioning in the one-keyboard Editor environment; it does not certify a production Local Multiplayer Slot/device/InputUser/control-scheme contract.
 
-## 12. Authoring validation vs runtime binding
-
-For `PlayerSessionObserver` and explicit command components, keep these concepts separate:
-
-```text
-TryValidateConfiguration()
-  authoring/configuration validity
-
-BindingState / IsScopedAccessAvailable / TryGetAccess
-  current runtime scoped-access availability
-```
-
-A valid `Route`- or `Activity`-authored component may temporarily be runtime-unbound.
-That does not make the authored configuration invalid.
-
-Likewise, a component physically present in Route-discovered content may legitimately be
-`Activity` scoped and bind only during the Activity lifecycle.
-
-Do not infer runtime ownership from GameObject location alone.
-
-## 13. Deferred command-surface readiness
-
-A valid authored command can still be invoked before its scoped runtime access becomes
-available.
-
-Current fail-closed behavior is:
-
-```text
-valid authoring
-+ no live scoped access
-  -> runtime command rejects
-  -> no fallback
-  -> no Session mutation
-```
-
-This remains tracked as:
-
-```text
-PLAYER-COMMAND-SURFACE-READINESS / DEFERRED
-```
-
-A future product cut may expose command availability more directly for UI gating. It must
-not add a second Session authority or global lookup.
-
-## 14. Diagnostics
-
-Useful Player diagnostics distinguish at least:
-
-```text
-Session availability / revisions
-Joining posture
-exact Player Slot identity
-selected Actor / selection revision
-Actor preparation state
-physical materialization
-Activity owner / occurrence
-Local Player Host / PlayerInput evidence
-GameplayReady
-scoped consumer binding state / scope / owner
-last command-specific typed result
-```
-
-Do not use an Observer as a global last-command aggregator.
-
-## 15. Anti-patterns
+## 13. Anti-patterns
 
 Do not add:
 
-- direct `PlayerInput` reads from Logical Player gameplay code;
-- `InputActionReference.action.ReadValue<T>()` as a live-runtime bypass;
-- `PlayerInput` on the Logical Player prefab;
-- manual Join to compensate for ordinary `OnActivityEnter` Scene-Provided admission;
-- automatic readiness promotion;
-- hidden default Gameplay Action Map selection;
 - global Player manager/service locator;
-- scene scans or hierarchy/name/tag lookup as authority;
-- silent fallback between provisioning modes;
-- a second Logical Player prefab authority outside `ActorProfile`;
-- a mutable second Player Session state store inside `PlayerSessionObserver`;
-- one enum-driven command MonoBehaviour whose serialized operation changes its semantic identity;
-- sample/game-owned Actor selection commit authority;
-- physical Actor hot-swap hidden behind `Replace Actor Selection`.
+- scene/hierarchy/name/tag lookup as authority;
+- direct Session mutation from game UI;
+- direct PlayerInput reads that bypass current gameplay binding;
+- manual Join as fallback for normal Scene-Provided admission;
+- hidden default Actor fallback;
+- a second Player Actor runtime/presentation prefab authority;
+- Presentation-owned Session/Slot/lifetime state;
+- physical hot-swap hidden behind logical Replace;
+- sample-owned Slot/device/input authority to bypass Local Multiplayer product gaps.
 
-## 16. Current certification and future Player expansions
-
-The current integrated Player public/runtime boundary is certified by:
-
-```text
-PLAYER CURRENT AGGREGATE COMPLETE
-mandatoryContracts=27
-executedContracts=27
-passedContracts=27
-actor=PASS
-publicSurface=PASS
-```
-
-The historical Full Player `25/25` remains dated evidence for its earlier boundary.
+## 14. Future Player scope
 
 Still outside the delivered public Player surface:
 
@@ -494,5 +332,4 @@ canonical Local Multiplayer device/input contract
 consumer-facing prepared physical Actor hot-swap
 ```
 
-Arbitrary Actor Selection is **not** future scope anymore. Character Selection may
-proceed using the delivered public command surface.
+Arbitrary Actor Selection is delivered and consumer-proven. Local Multiplayer remains a separate future product contract.
