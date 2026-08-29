@@ -1,13 +1,16 @@
 # IF-ADR-023 — Player Actor Runtime Host and Presentation Authority
 
-Status: **Accepted / Implementation Pending**  
-Last updated: **2026-08-28**  
+Status: **Accepted / Implemented / Technical QA Certified**  
+Accepted: **2026-08-28**  
+Implemented / reconciled: **2026-08-29**  
+Last updated: **2026-08-29**  
 Type: architecture / Player Actor composition / runtime host / presentation authority  
-Related decisions: IF-ADR-003, IF-ADR-007, IF-ADR-015, IF-ADR-016, IF-ADR-019, IF-ADR-020, IF-ADR-021
+Related decisions: IF-ADR-003, IF-ADR-007, IF-ADR-015, IF-ADR-016, IF-ADR-019, IF-ADR-020, IF-ADR-021  
+Technical certification: [IF-ADR-023 Player Actor Runtime Technical Certification — 2026-08-29](../Reconciliation/IF-ADR-023-PLAYER-ACTOR-RUNTIME-TECHNICAL-CERTIFICATION-2026-08-29.md)
 
 ## Context
 
-The current Player implementation correctly separates the stable Local Player Host from Actor selection:
+The stable Local Player Host and Actor selection are separate responsibilities.
 
 ```text
 LocalPlayerHostAuthoring
@@ -15,26 +18,16 @@ LocalPlayerHostAuthoring
 └── ActorMount
 ```
 
-Scene-Provided supplies/adopts that technical Host from a consumer scene. Manager-Provisioned creates the same technical Host through the existing provisioning authority. After successful admission both modes converge on the same Session-owned Player occurrence.
+Scene-Provided supplies/adopts that technical Host from consumer composition. Manager-Provisioned creates the same technical Host through Session provisioning authority. After successful admission both modes converge on the same Session-owned Player occurrence.
 
-The current Actor composition, however, gives `ActorProfile` a broader responsibility:
+The previous composition placed too much authority in `ActorProfile`:
 
 ```text
 ActorProfile
 └── LogicalActorHostPrefab
 ```
 
-That prefab is materialized or adopted under `ActorMount` and currently carries a mixture of concerns:
-
-```text
-framework Actor declaration/runtime evidence
-gameplay-owned composition
-Actor-specific presentation
-```
-
-The concrete FIRSTGAME Character Selection composition demonstrates the problem. Farmer and Cow use the same underlying logical/gameplay composition and differ primarily by the visual content placed under the visual mount. The selected `ActorProfile` therefore does not need to select a different framework/runtime Host merely to select a different character presentation.
-
-The architecture audit also found no evidence that `PlayerSlotProfile` should become the owner of an Actor or Player runtime prefab. Slot identity/configuration and physical/runtime composition remain separate concerns.
+That monolithic prefab mixed framework Actor infrastructure, gameplay-owned composition and Actor-specific presentation. The structure also encouraged separate framework/runtime Actor Hosts merely to represent different character visuals.
 
 ## Decision
 
@@ -42,85 +35,78 @@ The architecture audit also found no evidence that `PlayerSlotProfile` should be
 
 `LocalPlayerHostAuthoring` remains the stable technical Host for one local Player.
 
-It continues to own the technical Player boundary, including:
+It owns the Player/Input boundary and the `ActorMount`. It is not an Actor, does not execute gameplay and does not become Actor selection authority.
 
-```text
-PlayerInput
-ActorMount
-Slot admission evidence
-```
+Scene-Provided and Manager-Provisioned continue to differ only in how the Local Player Host is acquired before successful admission.
 
-It is not an Actor, does not select an `ActorProfile`, and does not execute gameplay.
+### 2. PlayerSlotProfile remains Slot authority
 
-Scene-Provided and Manager-Provisioned continue to differ only in how this technical Host is acquired before successful admission.
-
-### 2. PlayerSlotProfile does not provide Actor runtime infrastructure
-
-`PlayerSlotProfile` remains Slot configuration/identity authority.
-
-It may continue to reference the configured `DefaultActorProfile` as Actor-selection intent, but it does not become the source of:
+`PlayerSlotProfile` remains Slot configuration and identity authority. It may reference a configured `DefaultActorProfile`, but it does not provide:
 
 ```text
 Local Player Host prefab
-Actor Runtime Host prefab
-presentation prefab
+Player Actor Runtime Host prefab
+Presentation prefab
 ```
 
-Moving the current `LogicalActorHostPrefab` from `ActorProfile` to `PlayerSlotProfile` is rejected.
+### 3. Player Actor Runtime Host is Actor-independent
 
-### 3. Introduce an Actor-independent Player Actor Runtime Host
-
-The physical/runtime Actor composition is split into an Actor-independent runtime shell and Actor-specific presentation.
-
-Target model:
+The implemented composition is:
 
 ```text
 LocalPlayerHostAuthoring
 ├── PlayerInput
 └── ActorMount
     └── PlayerActorRuntimeHost
-        ├── framework-required Actor runtime infrastructure
+        ├── PlayerActorDeclaration
         └── PresentationMount
             └── ActorProfile.PresentationPrefab
 ```
 
-The exact public type/serialized field names may be finalized by the implementation cut, but the ownership boundary in this ADR is normative:
+Ownership is explicit:
 
 ```text
 Local Player Host composition
-  -> supplies the reusable Actor Runtime Host shape
+  -> supplies reusable Player Actor Runtime Host infrastructure
 
 ActorProfile
-  -> supplies Actor-specific Presentation
+  -> supplies Actor-specific PresentationPrefab
+
+gameplay-owned composition
+  -> remains gameplay-owned unless another accepted contract says otherwise
 ```
 
-There is one reusable runtime Host shape per authored Player Host composition, not one framework/runtime Host per selectable Actor merely because presentation differs.
+There is no longer one framework/runtime Host per selectable Actor merely because presentation differs.
 
-### 4. Actor Runtime Host is materialized only after Actor selection
+### 4. Actor runtime materialization remains separate from Join
 
-This decision preserves the accepted `LeaveUnresolved` behavior.
-
-Canonical flow:
+Canonical transaction order is:
 
 ```text
 Join
 → Slot Joined
-→ Actor unresolved
-→ WaitingForActorSelection
-→ Select ActorProfile
-→ materialize/adopt Player Actor Runtime Host
-→ materialize/adopt selected Presentation
-→ Actor preparation satisfied
-→ GameplayReady when the remaining Activity requirements are satisfied
+→ Actor selection
+→ Activity Actor preparation when required
+→ PlayerActorRuntimeHost materialization/adoption
+→ selected Presentation materialization/adoption
+→ preparation evidence
+→ GameplayReady when remaining Activity requirements are satisfied
 ```
 
-For Manager-Provisioned composition, `ActorMount` therefore remains free of a prepared Actor runtime before selection.
+Therefore:
 
-This ADR does not move Actor runtime creation to Player Join and does not require a permanently pre-authored Actor shell inside every Local Player Host.
+```text
+Session Join
+!= Actor Selection
+!= Activity Actor Preparation
+!= Physical Materialization
+```
 
-### 5. ActorProfile becomes presentation authority, not runtime-host authority
+Manager-Provisioned Join may expose complete technical/session Host evidence while contextual Activity assignment is still absent. `AssignmentOrigin=None` is valid at that boundary.
 
-The intended minimum `ActorProfile` responsibility is:
+### 5. ActorProfile is presentation authority
+
+Current minimum responsibility:
 
 ```text
 ActorProfile
@@ -133,99 +119,43 @@ ActorProfile
 └── PresentationPrefab
 ```
 
-`LogicalActorHostPrefab` is removed from the target model.
+`PresentationPrefab` is intentionally broader than a model. It may contain presentation-owned visuals, Animator, VFX anchors, audio emitters and presentation behaviours.
 
-`PresentationPrefab` is intentionally broader than `ModelPrefab`. It may represent a complete presentation composition such as:
+It must not become authority for Session state, Slot state, Player lifetime, admission, authoritative gameplay state or framework Player authority.
 
-```text
-visual root / model
-Animator
-presentation-specific VFX anchors
-presentation-specific audio emitters
-presentation-owned behaviours
-```
+### 6. No ActorPresentationProfile is introduced
 
-It must not become authority for:
-
-```text
-Session state
-Slot state
-Player lifetime
-Player admission
-authoritative gameplay state
-framework Player authority
-```
-
-### 6. Do not introduce ActorPresentationProfile yet
-
-No intermediate `ActorPresentationProfile` asset is required by this cut.
-
-The minimum accepted authoring surface is:
+The accepted public authoring surface remains:
 
 ```text
 ActorProfile.PresentationPrefab : GameObject
 ```
 
-A future asset abstraction may be introduced only when concrete reusable presentation requirements justify it.
+A separate presentation asset requires a future concrete reuse/configuration need.
 
-### 7. Skills, stats and character-sheet systems are outside this decision
+### 7. Gameplay composition is distinct from Presentation
 
-This ADR does not add framework fields or dependencies for:
+Locomotion, character controllers, gameplay input consumers and gameplay camera authoring are not Presentation merely because they are Actor-specific.
 
-```text
-Skills
-Abilities
-Stats
-Character Sheet
-Inventory
-Progression
-```
+Likewise, sample/gameplay components do not become mandatory framework runtime infrastructure because they happen to live beside `PlayerActorDeclaration`.
 
-Those systems may later integrate with or extend Actor definition outside this Player runtime/presentation split. They are not used to justify a broader `ActorProfile` in the current cut.
+### 8. Scene-Provided validates/adopts Runtime Host + Presentation
 
-### 8. Gameplay composition is distinct from Presentation
-
-The current monolithic Logical Actor prefabs also contain sample/gameplay-owned components such as character controllers, locomotion and gameplay camera authoring.
-
-Those components must not be reclassified as Presentation merely to complete the split.
-
-Likewise, they must not automatically become mandatory framework infrastructure merely because they currently live beside `PlayerActorDeclaration`.
-
-The implementation cut must classify the current prefab contents into:
-
-```text
-framework-required Actor runtime infrastructure
-gameplay-owned composition
-presentation-owned composition
-```
-
-Only the first category belongs intrinsically to the generic Player Actor Runtime Host.
-
-The exact sample-owned gameplay composition mechanism may remain explicit authoring and does not require a new `GameplayProfile` in this ADR.
-
-### 9. Scene-Provided must adopt runtime Host + Presentation, not monolithic Profile-owned Actor prefab
-
-The current Scene-Provided evidence requires the authored Scene Actor to correspond to the exact `ActorProfile.LogicalActorHostPrefab`.
-
-That evidence model is superseded by this decision and must be migrated with the implementation.
-
-Target authority:
+Current Scene-Provided authority is:
 
 ```text
 Scene-Provided Local Player
 ├── exact Local Player Host
-├── exact Player Actor Runtime Host / declaration evidence
+├── exact PlayerActorRuntimeHost / declaration evidence
 └── selected ActorProfile
-    └── matching Presentation under the Actor runtime presentation boundary
+    └── matching Presentation under PresentationMount
 ```
 
-The consumer scene may author the candidate composition, but the `ActorProfile` no longer owns the entire runtime Actor hierarchy.
+The consumer scene may author the candidate composition. The Framework validates/adopts it deterministically and rejects mismatched or ambiguous evidence rather than silently repairing/replacing content.
 
-Scene-Provided remains deterministic, explicit and conflict-safe. Mismatched or ambiguous Actor/runtime/presentation evidence must reject rather than silently repair or replace consumer content.
+The old `ActorProfile.LogicalActorHostPrefab` evidence model is removed.
 
-### 10. Manager-Provisioned Host provisioning remains unchanged up to Actor materialization
-
-Manager-Provisioned continues to use the existing technical Host provisioning path:
+### 9. Manager-Provisioned provisioning remains unchanged up to Actor preparation
 
 ```text
 LocalPlayerProvisioningAuthoring
@@ -234,170 +164,146 @@ LocalPlayerProvisioningAuthoring
 → Slot admission
 ```
 
-The change begins only at Actor preparation/materialization:
+The ADR-023 change begins at Actor preparation:
 
 ```text
 selected ActorProfile
-→ reusable Player Actor Runtime Host
+→ reusable PlayerActorRuntimeHost
 → selected ActorProfile.PresentationPrefab
 ```
 
-`ActorProfile` does not become Player Host provisioning authority.
+### 10. Session physical lifetime remains unchanged
 
-### 11. Session physical lifetime remains unchanged
+IF-ADR-019 remains authoritative for Session-owned admitted physical Player lifetime. Ordinary Activity transitions do not implicitly recreate the Session Player occurrence.
 
-IF-ADR-019 remains authoritative for physical Player lifetime.
+IF-ADR-020 remains authoritative for explicit Leave/resource release.
 
-After successful admission/preparation, ordinary Activity transitions do not implicitly recreate the Session-owned physical Player occurrence.
+IF-ADR-021 remains authoritative for Route Spatial Entry and optional Activity Explicit Relocation.
 
-This ADR changes composition ownership, not the Session-vs-Activity lifetime boundary.
+### 11. Readiness terminology remains semantic
 
-### 12. Readiness semantics are preserved before any rename
+`LogicalActorsPrepared` remains a valid current readiness/requirement term.
 
-The current `LogicalActorsPrepared` readiness condition remains unchanged during the first structural cut unless implementation proves that a semantic rename is required.
+Its name describes the semantic prepared-Actor condition; it does **not** imply that the removed `LogicalActorHost` structural architecture is still current.
 
-No isolated cosmetic rename is authorized by this ADR.
+No cosmetic readiness rename is part of this ADR.
 
-The accepted product guarantee remains that an Actor-dependent prepared representation exists and matches the current Actor selection/revision before the corresponding readiness condition is satisfied.
+### 12. Scoped consumer access remains lifecycle-scoped
 
-A later rename such as `ActorRuntimePrepared` requires an explicit follow-up decision or reconciliation after the new structure is implemented and observed.
+IF-ADR-015 remains authoritative for scoped Player consumer access.
 
-## Ownership model
-
-### Current
+Current rule:
 
 ```text
-Local Player Host
-└── ActorMount
-    └── ActorProfile.LogicalActorHostPrefab
-        ├── framework Actor infrastructure
-        ├── gameplay composition
-        └── presentation
+Route scope     = Route lifecycle ownership
+Activity scope  = Activity lifecycle ownership
+scene location  != scope authority
 ```
 
-### Accepted target
+An Activity-scoped consumer may be discovered from Route content and bind while the Activity lifecycle scope is active.
+
+## Removed structural API / evidence
+
+The following are no longer current Player Actor composition authorities:
 
 ```text
-Local Player Host
-└── ActorMount
-    └── Player Actor Runtime Host
-        ├── framework Actor infrastructure
-        ├── explicit gameplay composition where authored
-        └── PresentationMount
-            └── ActorProfile.PresentationPrefab
+ActorProfile.LogicalActorHostPrefab
+logicalActorHostPrefab
+LogicalActorHost
+SceneLogicalPlayerActorEvidence
+HasLogicalActor
 ```
 
-The important invariant is not a specific hierarchy depth. It is the authority separation:
+No silent compatibility fallback reinterprets legacy serialized values as `PresentationPrefab`.
+
+## Implemented provisioning chains
+
+### Manager-Provisioned
 
 ```text
-Player Host composition owns reusable Actor runtime infrastructure.
-ActorProfile owns Actor-specific presentation.
-Gameplay remains explicitly gameplay-owned.
+PlayerSessionProfile
+→ Manager-Provisioned Join
+→ Local Player Host under Session authority
+→ Actor selection
+→ Activity preparation requirement
+→ PlayerActorRuntimeHost under ActorMount
+→ ActorProfile.PresentationPrefab under PresentationMount
+→ PlayerActorDeclaration/runtime evidence
+→ contextual Activity evidence
+```
+
+### Scene-Provided
+
+```text
+Scene-authored Local Player Host
+→ authored/adopted PlayerActorRuntimeHost
+→ authored/adopted Presentation
+→ exact Profile + Presentation evidence
+→ validate/adopt deterministic composition
+→ Session-owned admitted Player occurrence
 ```
 
 ## Rejected alternatives
 
-- `PlayerSlotProfile` as provider of the Actor Runtime Host prefab.
-- `ActorProfile` continuing to provide the entire Logical Actor/runtime prefab.
-- Treating Actor-specific visual differences as justification for different framework Actor Hosts.
-- Pre-instantiating an Actor runtime shell on every Manager-Provisioned Local Player Host before Actor selection.
-- Folding locomotion, `CharacterController`, gameplay input consumers or gameplay camera authoring into Presentation by default.
-- Promoting sample-specific gameplay components to mandatory framework Actor infrastructure by default.
-- Naming the new Actor-specific asset reference `ModelPrefab` when the supported composition is broader than a single model.
-- Introducing `ActorPresentationProfile` without a concrete reuse/configuration requirement.
-- Introducing Skills/Stats/Abilities dependencies as part of this restructuring.
-- Silent compatibility fallback from `PresentationPrefab` to the legacy `LogicalActorHostPrefab`.
-- Maintaining two competing prefab authorities during migration.
+- `PlayerSlotProfile` as Player Actor Runtime Host provider.
+- `ActorProfile` continuing to provide the complete runtime Actor hierarchy.
+- one framework Actor Host per visual character variant.
+- pre-instantiating a prepared Actor shell merely because a Local Player Host exists.
+- folding gameplay code into Presentation by default.
+- promoting sample gameplay components to mandatory framework infrastructure.
+- introducing `ActorPresentationProfile` without a concrete requirement.
+- silent fallback from `PresentationPrefab` to legacy Logical Actor Host fields.
+- maintaining two competing prefab authorities.
 
-## Migration requirements
+## Certification
 
-The implementation cut is breaking by design and must reconcile, at minimum:
+Current technical evidence includes:
 
 ```text
-ActorProfile serialization/public surface
-Player Actor materialization adapter
-Player Actor preparation evidence
-LocalPlayerHostAuthoring authoring surface
-SceneLocalPlayerAdmissionAuthoring
-Scene-Provided Editor materialization/validation/evidence
-Manager-Provisioned Actor materialization
-FIRSTGAME Player prefabs and ActorProfiles
-QA fixtures/assertions that encode ActorProfile → LogicalActorHostPrefab
-diagnostics/documentation
+[P0_PAUSE_INPUT_GATE_COMPOSITION]
+status='Passed'
+verdict='StaticContractComplete'
+cases='8/8'
+
+[QA_PLAYER_FULL]
+status='Passed'
+verdict='PLAYER QA CERTIFIED'
+cases='14/14'
+completed='access,join,observation,actor-default,actor-replace,actor-lifecycle,joining-control,second-player,commands,leave,rejoin,negatives,spatial,relocation'
 ```
 
-No silent legacy compatibility layer is required.
+The dedicated `actor-lifecycle` case requests the Relocate Activity and crosses the Actor selection → preparation/materialization boundary instead of treating Join as materialization.
 
-QA must preserve behavioral contracts rather than the superseded structural detail. In particular:
+The same QA run also reconciles the current Route/Activity scoped-access semantics. A subsequent exit-Play defect in destroyed-consumer teardown was corrected in the Framework consumer boundary and confirmed clean on rerun.
+
+Historical Full Player `25/25`, current aggregate `27/27` and focused Player regressions remain dated evidence for the matrices they executed. They are not mechanically relabeled as the 14-case consolidated functional run.
+
+## FIRSTGAME disposition
+
+FG-ADR-002 Revision 4 records the current Player sample state:
 
 ```text
-LeaveUnresolved waits for explicit selection
-Actor selection is Session-owned and Slot-specific
-Local Player Host remains separate from Actor
-Manager-Provisioned creates the Player Host before Actor materialization
-Scene-Provided and Manager-Provisioned converge after admission
-prepared Actor evidence matches the selected Actor/revision
-Leave and Session termination release the correct runtime/presentation resources
-ordinary Activity transitions do not duplicate or replace the Session physical Player
+Getting Started / Minimal Game   Scene Player / PROVEN
+Player Provisioning              Manager-Provisioned / PLAY MODE PROVEN
+Character Selection              LeaveUnresolved / PLAY MODE PROVEN
+Local Multiplayer                PLANNED / BLOCKED by public Slot/device/input contract
 ```
 
-## Relationship to existing ADRs
+That sample evidence is consumer-owned and does not create a second runtime architecture.
 
-### IF-ADR-003
-
-IF-ADR-003 continues to describe the **currently implemented** Player Actor composition until this ADR is implemented.
-
-The specific structural rule:
+## Final disposition
 
 ```text
-ActorProfile.LogicalActorHostPrefab
-= single authored prefab authority for the entire Scene-Provided Logical Actor
+Architecture decision             ACCEPTED
+Runtime composition                IMPLEMENTED
+ActorProfile Presentation authority IMPLEMENTED
+Scene-Provided migration           IMPLEMENTED
+Manager-Provisioned migration       IMPLEMENTED
+Scoped access semantics             RECONCILED
+Scoped access teardown              HARDENED
+Manager functional Player QA        CERTIFIED 14/14
+Pause/Input/Gate composition         CERTIFIED 8/8
+FIRSTGAME Player Provisioning        PROVEN
+FIRSTGAME Character Selection        PROVEN
+Local Multiplayer device contract    FUTURE / separate scope
 ```
-
-is superseded as the accepted forward architecture by IF-ADR-023.
-
-Until implementation lands, this difference must be reported as:
-
-```text
-Accepted architecture: IF-ADR-023
-Current implementation: legacy IF-ADR-003 structural composition
-```
-
-It must not be represented as already migrated or QA-certified.
-
-### IF-ADR-016
-
-Session initial configuration, Host Provisioning and Actor Resolution remain unchanged. `LeaveUnresolved` remains a complete valid initial policy.
-
-### IF-ADR-019
-
-Session ownership of the admitted physical Player remains unchanged. This ADR only separates internal Actor runtime/presentation composition authority.
-
-## Implementation status
-
-At acceptance time:
-
-```text
-Architecture decision       ACCEPTED
-Runtime implementation      NOT IMPLEMENTED
-Scene-Provided migration    NOT IMPLEMENTED
-Manager-Provisioned migration NOT IMPLEMENTED
-FIRSTGAME migration         NOT IMPLEMENTED
-QA recertification          NOT RUN
-```
-
-Existing Player QA evidence remains historical/current evidence for the pre-IF-ADR-023 implementation boundary. It is not evidence that this ADR has been implemented.
-
-## Acceptance criteria for closure
-
-IF-ADR-023 may move to Implemented/Certified only when:
-
-1. `ActorProfile` no longer owns the monolithic Logical Actor Host prefab.
-2. the reusable Player Actor Runtime Host authority is explicit and inspectable from the Local Player Host composition;
-3. Actor-specific Presentation is authored through the selected `ActorProfile`;
-4. Manager-Provisioned preserves `LeaveUnresolved` and materializes Actor runtime only after selection;
-5. Scene-Provided validates/adopts runtime Host + Presentation without a second competing Actor prefab authority;
-6. FIRSTGAME Getting Started, Manager-Provisioned and Character Selection are migrated;
-7. Farmer and Cow select distinct Presentations without duplicating framework Actor runtime infrastructure;
-8. behavioral Player QA is reconciled and passes on the new boundary;
-9. documentation no longer describes `ActorProfile.LogicalActorHostPrefab` as current authority after the implementation is complete.
