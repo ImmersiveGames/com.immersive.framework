@@ -97,6 +97,9 @@ namespace Immersive.Framework.Editor.PlayerParticipation
                 ConfigureInputGate(
                     inputGate,
                     playerInput);
+                ConfigureAdmission(
+                    admission,
+                    host);
 
                 Selection.activeGameObject = root;
                 EditorGUIUtility.PingObject(root);
@@ -176,6 +179,31 @@ namespace Immersive.Framework.Editor.PlayerParticipation
 
             serializedInputGate.ApplyModifiedProperties();
             EditorUtility.SetDirty(inputGate);
+        }
+
+        private static void ConfigureAdmission(
+            SceneLocalPlayerAdmissionAuthoring admission,
+            LocalPlayerHostAuthoring host)
+        {
+            Undo.RecordObject(
+                admission,
+                UndoName);
+
+            var serializedAdmission =
+                new SerializedObject(admission);
+            serializedAdmission.Update();
+
+            SerializedProperty hostProperty =
+                serializedAdmission.FindProperty("localPlayerHost");
+            if (hostProperty == null)
+            {
+                throw new InvalidOperationException(
+                    "Scene Local Player Admission serialized Host field could not be resolved.");
+            }
+
+            hostProperty.objectReferenceValue = host;
+            serializedAdmission.ApplyModifiedProperties();
+            EditorUtility.SetDirty(admission);
         }
     }
 }

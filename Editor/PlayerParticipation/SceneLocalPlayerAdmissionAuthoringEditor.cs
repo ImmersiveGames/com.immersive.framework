@@ -36,6 +36,7 @@ namespace Immersive.Framework.Editor.PlayerParticipation
                 "Validates the authored composition, Runtime Host and Presentation provenance, and stored typed evidence without creating content or starting runtime admission.");
 
         private SerializedProperty _playerSlotProfile;
+        private SerializedProperty _localPlayerHost;
         private SerializedProperty _actorProfile;
         private SerializedProperty _scenePlayerActorRuntimeHost;
         private SerializedProperty _scenePresentation;
@@ -45,6 +46,9 @@ namespace Immersive.Framework.Editor.PlayerParticipation
 
         private void OnEnable()
         {
+            _localPlayerHost =
+                serializedObject.FindProperty(
+                    "localPlayerHost");
             _playerSlotProfile =
                 serializedObject.FindProperty(
                     "playerSlotProfile");
@@ -122,21 +126,11 @@ namespace Immersive.Framework.Editor.PlayerParticipation
                 ActorProfileLabel);
 
             FrameworkAuthoringInspectorGui.Section("Local Player Host");
-            using (new EditorGUI.DisabledScope(true))
-            {
-                SceneLocalPlayerAdmissionAuthoring authoring =
-                    (SceneLocalPlayerAdmissionAuthoring)target;
-                EditorGUILayout.ObjectField(
+            EditorGUILayout.PropertyField(
+                _localPlayerHost,
+                new GUIContent(
                     "Host",
-                    authoring.LocalPlayerHost,
-                    typeof(LocalPlayerHostAuthoring),
-                    true);
-                EditorGUILayout.LabelField(
-                    "Host Status",
-                    authoring.LocalPlayerHost == null
-                        ? "Missing"
-                        : "Assigned on this GameObject");
-            }
+                    "Explicit Local Player Host that owns this Admission component. It must be the nearest Local Player Host in the parent hierarchy."));
 
             DrawActorRuntimeComposition(
                 (SceneLocalPlayerAdmissionAuthoring)target);

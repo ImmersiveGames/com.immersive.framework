@@ -114,7 +114,16 @@ namespace Immersive.Framework.Editor.PlayerParticipation
         {
             if (authoring == null) return Failure(SceneLocalPlayerAdmissionAuthoringStatus.InvalidReferences, "Scene-Provided Player validation requires a target component.");
             LocalPlayerHostAuthoring host = authoring.LocalPlayerHost;
-            if (host == null || host.gameObject != authoring.gameObject) return Failure(SceneLocalPlayerAdmissionAuthoringStatus.InvalidHost, "Scene-Provided Player composer and Local Player Host must exist on the same GameObject.");
+            if (host == null ||
+                !ReferenceEquals(
+                    authoring.GetComponentInParent<LocalPlayerHostAuthoring>(
+                        true),
+                    host))
+            {
+                return Failure(
+                    SceneLocalPlayerAdmissionAuthoringStatus.InvalidHost,
+                    "Scene-Provided Player requires an explicit reference to the nearest Local Player Host that owns its hierarchy.");
+            }
             if (authoring.PlayerSlotProfile == null)
             {
                 return Failure(

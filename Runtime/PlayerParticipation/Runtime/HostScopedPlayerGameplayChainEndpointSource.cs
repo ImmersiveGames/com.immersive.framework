@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using Immersive.Framework.Actors;
 using Immersive.Framework.ApiStatus;
 using Immersive.Framework.ApplicationLifecycle;
@@ -74,14 +75,14 @@ namespace Immersive.Framework.PlayerParticipation
                 return false;
             }
 
-            UnityPlayerInputGateAdapter[] gateAdapters =
-                host.GetComponents<UnityPlayerInputGateAdapter>();
-            if (gateAdapters.Length != 1 ||
+            IReadOnlyList<UnityPlayerInputGateAdapter> gateAdapters =
+                ResolveHostOwnedGateAdapters(host);
+            if (gateAdapters.Count != 1 ||
                 gateAdapters[0] == null ||
                 !ReferenceEquals(gateAdapters[0].PlayerInput, host.PlayerInput))
             {
                 issue =
-                    $"Stable Local Player Host '{host.name}' requires exactly one UnityPlayerInputGateAdapter targeting its own PlayerInput. Found '{gateAdapters.Length}'.";
+                    $"Stable Local Player Host '{host.name}' requires exactly one host-owned UnityPlayerInputGateAdapter targeting its own PlayerInput. Found '{gateAdapters.Count}'.";
                 return false;
             }
 
@@ -128,6 +129,36 @@ namespace Immersive.Framework.PlayerParticipation
             }
 
             return true;
+        }
+
+        private static IReadOnlyList<UnityPlayerInputGateAdapter>
+            ResolveHostOwnedGateAdapters(LocalPlayerHostAuthoring host)
+        {
+            var ownedGateAdapters =
+                new List<UnityPlayerInputGateAdapter>();
+            UnityPlayerInputGateAdapter[] hierarchyGateAdapters =
+                host.GetComponentsInChildren<UnityPlayerInputGateAdapter>(
+                    true);
+
+            for (int index = 0;
+                 index < hierarchyGateAdapters.Length;
+                 index++)
+            {
+                UnityPlayerInputGateAdapter gateAdapter =
+                    hierarchyGateAdapters[index];
+                if (gateAdapter == null ||
+                    !ReferenceEquals(
+                        gateAdapter.GetComponentInParent<
+                            LocalPlayerHostAuthoring>(true),
+                        host))
+                {
+                    continue;
+                }
+
+                ownedGateAdapters.Add(gateAdapter);
+            }
+
+            return ownedGateAdapters;
         }
     }
 }

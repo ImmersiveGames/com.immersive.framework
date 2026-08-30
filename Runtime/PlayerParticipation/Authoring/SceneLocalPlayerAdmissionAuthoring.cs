@@ -13,11 +13,11 @@ namespace Immersive.Framework.PlayerParticipation
     /// The scene supplies an exact Runtime Host and Presentation; ActorProfile supplies only Presentation intent.
     /// </summary>
     [DisallowMultipleComponent]
-    [RequireComponent(typeof(LocalPlayerHostAuthoring))]
     [AddComponentMenu("Immersive Framework/Player/Scene/Admission")]
     [FrameworkApiStatus(FrameworkApiStatus.Stable, "Stable Scene Local Player admission surface. Manager provisioning and Session-Persistent remain Experimental.")]
     public sealed class SceneLocalPlayerAdmissionAuthoring : MonoBehaviour
     {
+        [SerializeField] private LocalPlayerHostAuthoring localPlayerHost;
         [SerializeField] private PlayerSlotProfile playerSlotProfile;
         [SerializeField] private ActorProfile actorProfile;
         [SerializeField] private PlayerActorRuntimeHost scenePlayerActorRuntimeHost;
@@ -36,7 +36,7 @@ namespace Immersive.Framework.PlayerParticipation
         [NonSerialized] private ScenePlayerActorAdoptionResult _lastActorAdoptionResult;
 
         public PlayerSlotProfile PlayerSlotProfile => playerSlotProfile;
-        public LocalPlayerHostAuthoring LocalPlayerHost => GetComponent<LocalPlayerHostAuthoring>();
+        public LocalPlayerHostAuthoring LocalPlayerHost => localPlayerHost;
         public ActorProfile ActorProfile => actorProfile;
         public PlayerActorRuntimeHost ScenePlayerActorRuntimeHost => scenePlayerActorRuntimeHost;
         public GameObject ScenePresentation => scenePresentation;
@@ -79,7 +79,14 @@ namespace Immersive.Framework.PlayerParticipation
             LocalPlayerHostAuthoring localPlayerHost = LocalPlayerHost;
             if (!HasCompleteReferences)
             {
-                issue = "Scene Local Player requires Player Slot Profile, same-root Local Player Host, Actor Profile, Player Actor Runtime Host and Presentation.";
+                issue = "Scene Local Player requires explicit Player Slot Profile, Local Player Host, Actor Profile, Player Actor Runtime Host and Presentation references.";
+                return false;
+            }
+            if (!ReferenceEquals(
+                    GetComponentInParent<LocalPlayerHostAuthoring>(true),
+                    localPlayerHost))
+            {
+                issue = "Scene Local Player must reference the nearest Local Player Host that owns its hierarchy.";
                 return false;
             }
             if (!Enum.IsDefined(typeof(SceneLocalPlayerAdmissionTiming), admissionTiming) || !TryGetPlayerSlotId(out _, out issue) || !actorProfile.TryGetActorProfileId(out _, out issue))

@@ -118,8 +118,11 @@ namespace Immersive.Framework.PlayerParticipation.Editor.Tests
                     sceneRuntimeHost.PresentationMount,
                     false);
             }
+            var provisioning =
+                new GameObject("Provisioning - Scene Provided");
+            provisioning.transform.SetParent(sceneHost.transform);
             SceneLocalPlayerAdmissionAuthoring authoring =
-                sceneHost.AddComponent<SceneLocalPlayerAdmissionAuthoring>();
+                provisioning.AddComponent<SceneLocalPlayerAdmissionAuthoring>();
 
             SetProperty(host, "playerInput", playerInput);
             SetProperty(host, "actorMount", actorMount);
@@ -127,6 +130,7 @@ namespace Immersive.Framework.PlayerParticipation.Editor.Tests
                 host,
                 "playerActorRuntimeHostPrefab",
                 runtimeHostPrefab.GetComponent<PlayerActorRuntimeHost>());
+            SetProperty(authoring, "localPlayerHost", host);
             SetProperty(authoring, "playerSlotProfile", playerSlotProfile);
             SetProperty(authoring, "actorProfile", actorProfile);
             SetProperty(authoring, "scenePlayerActorRuntimeHost", sceneRuntimeHost);
