@@ -3,7 +3,7 @@
 `com.immersive.framework` is the official Unity package for framework runtime,
 authoring, diagnostics and validation.
 
-Current version: `1.0.0-preview.17`.
+Current version: `v1.0.1-preview`.
 
 ## Supported Unity version
 
@@ -117,6 +117,7 @@ Current remaining Player product gaps include exact-Slot public Join, the public
 
 - [Documentation index](Documentation~/README.md)
 - [Current tracker](Documentation~/Architecture/Tracking/IF-TRACK-Framework.md)
+- [Player Actor runtime and presentation authority](Documentation~/Architecture/ADRs/IF-ADR-023-Player-Actor-Runtime-Host-and-Presentation-Authority.md)
 - [Player Actor Selection public surface certification](Documentation~/Architecture/Reconciliation/IF-ADR-015B-Player-Actor-Selection-Public-Surface-Certification-2026-08-26.md)
 - [Player current aggregate recertification](Documentation~/Architecture/Reconciliation/IF-PLAYER-CURRENT-AGGREGATE-RECERTIFICATION-2026-08-24.md)
 - [Framework usage](Documentation~/Guides/Framework-Usage.md)

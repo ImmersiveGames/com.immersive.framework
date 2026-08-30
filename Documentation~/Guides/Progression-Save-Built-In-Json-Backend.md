@@ -2,7 +2,7 @@
 
 Status: **Official built-in minimum backend — ADR018-B technically certified**  
 Backend: `JsonProgressionSaveStore`  
-Concrete API maturity: **Experimental pending ADR018-C product composition**
+Concrete API maturity: **Experimental; ADR018-C product composition is certified**
 
 ## Purpose
 

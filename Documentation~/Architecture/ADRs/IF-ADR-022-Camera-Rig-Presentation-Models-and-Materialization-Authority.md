@@ -35,7 +35,7 @@ CameraOutputContext
 CameraOutputRigApplicator
   physical projection
         ↓
-CameraOutputSessionBinding
+CameraOutputAuthoring
         ↓
 one explicit Unity Camera + CinemachineBrain
 ```
@@ -97,7 +97,7 @@ request precedence
 request lifetime
 CameraOutputSession
 CameraOutputRigApplicator authority
-CameraOutputSessionBinding
+CameraOutputAuthoring
 one persistent Session output
 transactional logical/physical mutation
 rollback guarantees

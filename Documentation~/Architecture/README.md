@@ -183,7 +183,7 @@ Current reconciliation authority:
 Frozen model:
 
 ```text
-CameraOutputSessionBinding
+CameraOutputAuthoring
   owns one explicit persistent Default Camera Rig
 
 CameraOutputContext
@@ -195,7 +195,7 @@ CameraOutputSession
   normal winner -> winner
   force-default owner active -> Default
 
-SessionCameraOverrideBinding
+SessionCameraOverride
   optional real Session Camera request
   never the Default Camera
 ```
@@ -208,7 +208,7 @@ Transition only; it does not introduce Pause-to-Camera authority.
 Sample 00 real-consumer evidence after explicit Default authoring:
 
 ```text
-CameraOutputSessionBinding
+CameraOutputAuthoring
   Initialized
   defaultRig = Session Camera Rig
 
@@ -227,57 +227,32 @@ not been recorded.
 
 ## Current product-authoring decisions
 
-### Scene-Provided Local Player
+### Player Actor runtime and Scene-Provided composition
 
-FIRSTGAME Sample 00 established a concrete Player product-composition gap: a
-Scene-Provided Local Player could appear correctly authored while still omit the Unity
-Input Gate endpoint required to reach `GameplayReady`.
-
-Current product decision:
-
-[Scene-Provided Local Player Product Composition — 2026-08-17](Reconciliation/IMMERSIVE-FRAMEWORK-SCENE-PROVIDED-LOCAL-PLAYER-PRODUCT-COMPOSITION-2026-08-17.md)
-
-Current implementation/evidence:
+Current product authority: [IF-ADR-023 — Player Actor Runtime Host and Presentation
+Authority](ADRs/IF-ADR-023-Player-Actor-Runtime-Host-and-Presentation-Authority.md).
 
 ```text
-Package
-  5c9dab5661c95cf712d8cfce124a5d730d0dd1f1
-  -> canonical Create Scene-Provided Local Player action implemented
-
-FIRSTGAME
-  facb6e2d9b763b7200e670a029c06100505d7c06
-  -> Scene-Provided Local Player prefab created
-  -> Scene-Provided Logical Player prefab kept as separate ActorProfile authority
-  -> scene composes the Logical Player under the Local Player ActorMount
+LocalPlayerHostAuthoring
+├── PlayerInput
+└── ActorMount
+    └── PlayerActorRuntimeHost
+        ├── PlayerActorDeclaration
+        └── PresentationMount
+            └── ActorProfile.PresentationPrefab
 ```
 
-Current product split:
+`LocalPlayerHostAuthoring` owns the reusable runtime infrastructure. `ActorProfile`
+owns the selected presentation only. Scene-Provided composition may author the exact
+candidate runtime Host and presentation; `SceneLocalPlayerAdmissionAuthoring`
+validates/adopts that exact composition and rejects mismatched or ambiguous evidence.
 
-```text
-Scene-Provided Local Player
-  technical Host product
-  PlayerInput
-  LocalPlayerHostAuthoring
-  SceneLocalPlayerAdmissionAuthoring
-  UnityPlayerInputGateAdapter
-  ActorMount
+The official **Create Scene-Provided Local Player** action creates only the deterministic
+technical Host shape. Player Slot, Actor Profile, `InputActionAsset` and Gameplay Action
+Map remain explicit consumer intent.
 
-Scene-Provided Logical Player
-  consumer/example ActorProfile.LogicalActorHostPrefab
-  gameplay representation
-  separate asset authority
-```
-
-The official Create action owns deterministic technical composition only. Player Slot,
-Actor Profile, `InputActionAsset`, Gameplay Action Map and the exact Logical Player
-remain explicit consumer intent.
-
-A neutral inspectable package prefab/template for the technical Local Player shape is
-still a product artifact to add. It must match the Create action and must not embed
-project-specific Slot / Actor / Input defaults.
-
-Stable public C# type renames are not implicit in this product cut; IF-GOV-001 requires
-an explicit migration decision for breaking changes to Stable consumer surfaces.
+The 2026-08-17 Scene-Provided composition record remains historical pre-ADR-023 context;
+it is not current architecture authority.
 
 ### Player Session public commands and observation
 

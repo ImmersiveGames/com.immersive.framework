@@ -1,11 +1,12 @@
 # Immersive Framework Documentation
 
-Last updated: **2026-08-26**
+Last updated: **2026-08-30**
 
 ## Start here
 
 - [Stage A canonical package baseline](Architecture/Reconciliation/IMMERSIVE-FRAMEWORK-STAGE-A-CANONICAL-BASELINE-CLOSURE-2026-08-11.md)
 - [Current framework tracker](Architecture/Tracking/IF-TRACK-Framework.md)
+- [Player Actor runtime and presentation authority — IF-ADR-023](Architecture/ADRs/IF-ADR-023-Player-Actor-Runtime-Host-and-Presentation-Authority.md)
 - [Player Actor Selection public surface certification — 2026-08-26](Architecture/Reconciliation/IF-ADR-015B-Player-Actor-Selection-Public-Surface-Certification-2026-08-26.md)
 - [Player current aggregate recertification — 2026-08-24](Architecture/Reconciliation/IF-PLAYER-CURRENT-AGGREGATE-RECERTIFICATION-2026-08-24.md)
 - [Player physical lifetime recertification — 2026-08-15](Architecture/Reconciliation/IMMERSIVE-FRAMEWORK-PLAYER-PHYSICAL-LIFETIME-RECERTIFICATION-2026-08-15.md)
@@ -63,6 +64,10 @@ Player Actor Selection public surface
   Public Surface PASS
   Full Player 27/27 PASS
   Character Selection public-surface blocker CLOSED
+
+Player Actor runtime and presentation
+   ACCEPTED / IMPLEMENTED / TECHNICAL QA CERTIFIED
+   PlayerActorRuntimeHost + ActorProfile.PresentationPrefab
 
 Historical Full Player QA
   PLAYER QA CERTIFIED
@@ -170,6 +175,7 @@ Archive records preserve history without acting as current product truth.
 | [020](Architecture/ADRs/IF-ADR-020-Session-Player-Leave-and-Resource-Release-Authority.md) | Session Player Leave and resource release authority | Accepted / Reconciled / Implemented / Current Aggregate PASS |
 | [021](Architecture/ADRs/IF-ADR-021-Activity-Player-Actor-Initial-Placement-Authority.md) | Route spatial entry and Activity explicit relocation | Accepted / Reconciled / Implemented / Current QA Verified |
 | [022](Architecture/ADRs/IF-ADR-022-Camera-Rig-Presentation-Models-and-Materialization-Authority.md) | Camera Rig presentation models and materialization authority | Accepted / Technical QA Certified |
+| [023](Architecture/ADRs/IF-ADR-023-Player-Actor-Runtime-Host-and-Presentation-Authority.md) | Player Actor runtime Host and presentation authority | Accepted / Implemented / Technical QA Certified |
 
 ## Current reconciliation / closure records
 
@@ -192,7 +198,7 @@ Archive records preserve history without acting as current product truth.
 - [ADR-018 reconciliation](Architecture/Reconciliation/IMMERSIVE-FRAMEWORK-ADR-018-RECONCILIATION-2026-08-11.md)
 - [ADR-019 historical reconciliation](Architecture/Reconciliation/IMMERSIVE-FRAMEWORK-ADR-019-RECONCILIATION-2026-08-12.md)
 - [ADR-020 historical reconciliation](Architecture/Reconciliation/IMMERSIVE-FRAMEWORK-ADR-020-RECONCILIATION-2026-08-13.md)
-- [ADR-021 Player authority and Initial Placement reconciliation](Architecture/Reconciliation/IF-ADR-021-Player-Authority-and-Initial-Placement-Reconciliation-2026-08-23.md)
+- [ADR-021 pre-certification reconciliation — 2026-08-23 (historical)](Architecture/Reconciliation/IF-ADR-021-Player-Authority-and-Initial-Placement-Reconciliation-2026-08-23.md)
 - [RA-03 Object Entry ownership](Architecture/Reconciliation/IMMERSIVE-FRAMEWORK-RA-03-OBJECT-ENTRY-OWNERSHIP-RECONCILIATION-2026-08-11.md)
 - [RA-04 Architecture Governance Hygiene](Architecture/Reconciliation/IMMERSIVE-FRAMEWORK-RA-04-ARCHITECTURE-GOVERNANCE-HYGIENE-2026-08-11.md)
 - [Stage A Canonical Package Baseline Closure](Architecture/Reconciliation/IMMERSIVE-FRAMEWORK-STAGE-A-CANONICAL-BASELINE-CLOSURE-2026-08-11.md)

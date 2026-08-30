@@ -1,7 +1,7 @@
 # Progression Save Backend Adapter Contract
 
-Status: ADR018-A implementation candidate  
-API maturity: Experimental until focused conformance QA passes
+Status: ADR018-A implemented / technically certified
+API maturity: Experimental; the Stable core contract is certified, while the remaining public runtime/catalog surfaces await an explicit promotion decision
 
 ## Purpose
 

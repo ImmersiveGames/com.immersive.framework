@@ -1,7 +1,7 @@
 # IF-TRACK — Immersive Framework
 
 Status: **Active — current implemented baseline + Stage B consumer evidence**  
-Last updated: **2026-08-29**
+Last updated: **2026-08-30**
 
 ## Authority and status model
 
@@ -86,7 +86,7 @@ Local Multiplayer remains blocked by public Slot/device/InputUser/control-scheme
 | 020 | ACCEPTED / RECONCILED / IMPLEMENTED | ADR020-H + aggregate + historical certification | closed |
 | 021 | ACCEPTED / RECONCILED / IMPLEMENTED | Route 18/18 + Activity 23/23 + aggregate 27/27 | Model B current |
 | 022 | ACCEPTED / IMPLEMENTED | presentation 14/14; Camera aggregate boundary certified | broader FIRSTGAME C6 remains separate |
-| 023 | ACCEPTED / IMPLEMENTED | Manager functional 14/14 + Pause/Input/Gate 8/8 | PlayerActorRuntimeHost + PresentationPrefab current; FIRSTGAME Player Provisioning/Character Selection proven |
+| 023 | ACCEPTED / IMPLEMENTED / TECHNICAL QA CERTIFIED | Manager functional 14/14 + Pause/Input/Gate 8/8 | PlayerActorRuntimeHost + PresentationPrefab current; FIRSTGAME Player Provisioning/Character Selection proven |
 
 ## Current Player scoped closure — IF-ADR-023 — 2026-08-29
 

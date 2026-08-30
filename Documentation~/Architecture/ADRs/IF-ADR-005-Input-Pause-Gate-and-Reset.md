@@ -80,7 +80,7 @@ including:
 ```text
 PauseRuntime
 PauseProductBindingRuntimeContext
-PausePlayerInputBinding
+PlayerPauseInput
 PauseRequestTrigger
 UnityPlayerInputGateAdapter
 UnityPlayerInputStateWriter
@@ -141,7 +141,7 @@ adapter/writer restore path, cleared on successful Resume and binding cleanup,
 and never reused across binding lifetimes.
 
 This receipt is intentionally distinct from the binding-time posture captured by
-`PausePlayerInputBinding` registration and later restored by `ReleaseBinding`.
+`PlayerPauseInput` registration and later restored by `ReleaseBinding`.
 
 No Pause Gate policy, Activity Restart semantic, public API or QA assertion was
 changed to accommodate the defect.

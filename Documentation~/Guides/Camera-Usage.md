@@ -51,7 +51,7 @@ PlayerGameplayCameraAuthoring
 Session / Route / Activity Camera Override bindings
   explicit scoped normal Camera publication
 
-CameraOutputSessionBinding
+CameraOutputAuthoring
   persistent physical Unity Camera + CinemachineBrain
   explicit persistent Default Camera Rig
 
@@ -122,7 +122,7 @@ It never creates:
 persistent Unity Camera
 CinemachineBrain
 AudioListener
-CameraOutputSessionBinding
+CameraOutputAuthoring
 ```
 
 The current accepted relationship is:
@@ -397,7 +397,7 @@ partially removing the existing valid Framework-owned pipeline.
 
 ## 11. Persistent Camera output
 
-`CameraOutputSessionBinding` is the explicit persistent physical output authoring
+`CameraOutputAuthoring` is the explicit persistent physical output authoring
 surface.
 
 It requires:
@@ -482,13 +482,13 @@ Presentation Model does not affect precedence.
 
 ### Session Camera Override is not Default
 
-`SessionCameraOverrideBinding` remains a valid optional **normal Session request**.
+`SessionCameraOverride` remains a valid optional **normal Session request**.
 
 Use it only when the game actually needs a Session-scoped request to compete in the
 normal arbitration ladder.
 
 Do not use it to represent the persistent Default. The Default belongs to
-`CameraOutputSessionBinding` and has no precedence or tie-break identity.
+`CameraOutputAuthoring` and has no precedence or tie-break identity.
 
 Removing or omitting a Session override does not remove the output Default.
 
@@ -502,7 +502,7 @@ only its own ownership, so overlapping system presentation cannot accidentally c
 another caller's force-default state.
 
 The current implementation wires this behavior for Transition through
-`SessionCameraTransitionOrchestrator`, which receives `CameraOutputSessionBinding`
+`SessionCameraTransitionOrchestrator`, which receives `CameraOutputAuthoring`
 directly.
 
 This cut does **not** create a Pause-to-Camera authority. Do not infer unwired system
@@ -556,11 +556,11 @@ It does not synthesize Route/Activity exit.
 
 Re-enable does not silently publish another request.
 
-Session override differs because `SessionCameraOverrideBinding` itself owns its normal
+Session override differs because `SessionCameraOverride` itself owns its normal
 Session-request availability.
 
 The output Default has a different lifetime: it belongs to the persistent
-`CameraOutputSessionBinding` / `CameraOutputSession`.
+`CameraOutputAuthoring` / `CameraOutputSession`.
 
 Repeated cleanup is idempotent.
 
@@ -651,14 +651,14 @@ Typical migration:
 
 ```text
 Camera Output
-  CameraOutputSessionBinding
+  CameraOutputAuthoring
     Default Camera Rig -> existing persistent Session Camera Rig
 ```
 
 Then save the consumer scene, close/reopen it and verify the reference persists before
 running Play Mode.
 
-`SessionCameraOverrideBinding` may stay only if it represents a real Session override.
+`SessionCameraOverride` may stay only if it represents a real Session override.
 Do not keep it merely to emulate Default behavior.
 
 The package `PersistentContentTemplateSource.unity` present at the implementation merge
@@ -696,7 +696,7 @@ master
 Sample 00 consumer proof after assigning `Session Camera Rig` as the explicit Default:
 
 ```text
-CameraOutputSessionBinding
+CameraOutputAuthoring
   Initialized
   defaultRig = Session Camera Rig
 

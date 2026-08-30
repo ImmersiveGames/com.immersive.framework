@@ -27,8 +27,8 @@ The current certified provider is `com.immersive.audio`. Concrete provider types
 The Framework exposes optional Route/Activity BGM intent through:
 
 - `FrameworkBgmDirector`;
-- `FrameworkRouteBgmBinding`;
-- `FrameworkActivityBgmBinding`;
+- `RouteBgmAuthoring`;
+- `ActivityBgmAuthoring`;
 - `FrameworkBgmRoutePolicy`;
 - `FrameworkBgmActivityPolicy`;
 - `FrameworkBgmOperationResult`.
@@ -50,10 +50,10 @@ Only an explicit Play or Silence intent may mutate the provider presentation.
 Route and Activity authoring are independent authorities.
 
 ```text
-FrameworkRouteBgmBinding
+RouteBgmAuthoring
   owns only Route BGM intent
 
-FrameworkActivityBgmBinding
+ActivityBgmAuthoring
   owns only the intent of its Activity
 ```
 
@@ -73,10 +73,10 @@ Canonical authoring rule:
 
 ```text
 Want Route music?
-  -> author FrameworkRouteBgmBinding
+  -> author RouteBgmAuthoring
 
 Want Activity-specific music?
-  -> author FrameworkActivityBgmBinding for that Activity
+  -> author ActivityBgmAuthoring for that Activity
 
 Want Activity to inherit Route intent?
   -> use the Activity policy
@@ -85,7 +85,7 @@ Want no new intent?
   -> omit the binding or choose a No Request policy where applicable
 ```
 
-A `FrameworkActivityBgmBinding` does not require a `FrameworkRouteBgmBinding`. An Activity may publish its own BGM when the Route has no BGM binding at all.
+A `ActivityBgmAuthoring` does not require a `RouteBgmAuthoring`. An Activity may publish its own BGM when the Route has no BGM binding at all.
 
 ## Sticky confirmed presentation — BGM-CONTINUITY-1
 
@@ -154,12 +154,12 @@ The current flow is:
 
 ```text
 Route Enter
-  -> FrameworkRouteBgmBinding publishes Route intent
+  -> RouteBgmAuthoring publishes Route intent
   -> Startup Activity exists
   -> Route intent is retained as pending
 
 Startup Activity Enter
-  -> FrameworkActivityBgmBinding publishes Activity intent if authored
+  -> ActivityBgmAuthoring publishes Activity intent if authored
 
 Activity entry completes
   -> ActivityFlowRuntime emits one typed entry-completion notification
@@ -186,7 +186,7 @@ This completion is a lifecycle fact, not an authoring lookup. It must work even 
 ```text
 ActivityContentProfile = null
 activityContentHandles = 0
-no FrameworkActivityBgmBinding
+no ActivityBgmAuthoring
 ```
 
 That case is valid and, with a Route `PlayOwn`, resolves to the Route cue after Activity entry completion.
@@ -262,8 +262,8 @@ Framework Persistent Content / Session lifetime
         │ explicit consumer injection
         │
 Transient Route / Activity content
-  FrameworkRouteBgmBinding
-  FrameworkActivityBgmBinding
+  RouteBgmAuthoring
+  ActivityBgmAuthoring
         ↓
 explicit Play / Silence / No Request intent
         ↓
@@ -294,10 +294,10 @@ Persistent Content
   FrameworkBgmDirector
 
 Route content, when Route intent is needed
-  FrameworkRouteBgmBinding
+  RouteBgmAuthoring
 
 Activity content, when Activity intent is needed
-  FrameworkActivityBgmBinding
+  ActivityBgmAuthoring
 ```
 
 No Startup Activity BGM reference appears in the Route Inspector.
@@ -391,7 +391,7 @@ Activity BGM = BGM_Antiguidade
 Activity enter -> BGM_Antiguidade Applied / confirmed
 ```
 
-This is consumer evidence that `FrameworkActivityBgmBinding` is independently useful and does not require a Route BGM binding.
+This is consumer evidence that `ActivityBgmAuthoring` is independently useful and does not require a Route BGM binding.
 
 ## Experimental promotion
 

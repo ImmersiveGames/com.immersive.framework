@@ -1,6 +1,6 @@
 # Application Frame Rate
 
-Status: Current Stage A product surface; ADR-017 QA certification pending  
+Status: Current Stage A product surface; ADR017-A5 technically certified
 Architecture: `IF-ADR-017 — Application Frame Rate Project Authority`
 
 ## Purpose

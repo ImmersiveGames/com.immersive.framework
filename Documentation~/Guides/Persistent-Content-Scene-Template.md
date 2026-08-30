@@ -14,7 +14,7 @@ Transition are expected future product work; they are not part of the current
 baseline and are not required by the Persistent Content contract.
 
 The 2026-08-17 Camera Default-output authority cut adds one required Camera authoring
-reference to the runtime contract: `CameraOutputSessionBinding` must explicitly reference
+reference to the runtime contract: `CameraOutputAuthoring` must explicitly reference
 its persistent Default `CameraRigComposer`.
 
 ## Authority
@@ -81,9 +81,9 @@ Persistent Camera
 ├── Camera Output
 │   ├── Camera
 │   ├── CinemachineBrain
-│   ├── CameraOutputSessionBinding
+│   ├── CameraOutputAuthoring
 │   │   └── Default Camera Rig -> Session Camera Rig / CameraRigComposer
-│   └── SessionCameraOverrideBinding [optional real Session request]
+│   └── SessionCameraOverride [optional real Session request]
 ├── Session Camera Target
 └── Session Camera Rig
     ├── CinemachineCamera
@@ -102,7 +102,7 @@ camera.output.main
 ```
 
 The Default Camera Rig is not a request and is not derived from
-`SessionCameraOverrideBinding`.
+`SessionCameraOverride`.
 
 The current baseline does **not** require:
 
@@ -124,11 +124,11 @@ allows it.
 The minimal template contract requires:
 
 ```text
-exactly one CameraOutputSessionBinding
+exactly one CameraOutputAuthoring
 exactly one explicit Default Camera Rig on that binding
 exactly one EventSystem
 exactly one InputSystemUIInputModule
-zero or one SessionCameraOverrideBinding
+zero or one SessionCameraOverride
 ```
 
 The Camera Output contains its explicit Output ID and references to:
@@ -139,12 +139,12 @@ Cinemachine Brain
 persistent Default Camera Rig
 ```
 
-`SessionCameraOverrideBinding` remains optional. Omit it when Persistent Content
+`SessionCameraOverride` remains optional. Omit it when Persistent Content
 does not need a real Session-scoped Camera request. Player, Activity and Route Camera
 publication continue to use the explicit output without requiring an implicit Session
 request.
 
-When authored, `SessionCameraOverrideBinding` intentionally does not reference a
+When authored, `SessionCameraOverride` intentionally does not reference a
 consumer application asset. Session ownership is explicit through its Scope ID,
 which keeps the template reusable across projects.
 
@@ -169,7 +169,7 @@ Consequences for Persistent Content authoring:
 
 - the Default is required even when no Session override exists;
 - the Default has no precedence or tie-break ID;
-- `SessionCameraOverrideBinding` must never be authored merely to keep a baseline Camera
+- `SessionCameraOverride` must never be authored merely to keep a baseline Camera
   visible;
 - normal no-winner state does not clear the physical output;
 - missing Default must block validation rather than trigger discovery/repair.
@@ -183,7 +183,7 @@ Typical migration:
 
 ```text
 Camera Output
-  CameraOutputSessionBinding
+  CameraOutputAuthoring
     Default Camera Rig -> existing Session Camera Rig / CameraRigComposer
 ```
 
@@ -410,7 +410,7 @@ contract and exercised in Play Mode.
 Observed evidence:
 
 ```text
-CameraOutputSessionBinding
+CameraOutputAuthoring
   Initialized
   defaultRig = Session Camera Rig
 

@@ -145,7 +145,7 @@ If gameplay consumes current gameplay input/camera authority, request `GameplayR
 Gameplay-owned Actor code consumes the public current-gameplay binding:
 
 ```text
-PlayerGameplayInputConsumerBinding
+PlayerGameplayInputReader
   -> IPlayerGameplayInputReader
   -> GameplayReady
   -> TryReadValue<T>(InputActionReference, out value)

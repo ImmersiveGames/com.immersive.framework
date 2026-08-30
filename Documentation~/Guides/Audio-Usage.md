@@ -21,10 +21,10 @@ Persistent Content / Session lifetime
           ↑ injected into loaded Route/Activity BGM consumers
 
 Route content, when Route intent is needed
-└─ FrameworkRouteBgmBinding
+└─ RouteBgmAuthoring
 
 Activity content, when Activity intent is needed
-└─ FrameworkActivityBgmBinding
+└─ ActivityBgmAuthoring
 ```
 
 `FrameworkBgmDirector` and `AudioRuntimeHost` do not make themselves persistent. Persistence is composition-owned.
@@ -35,8 +35,8 @@ Do not serialize cross-scene references from transient bindings to the persisten
 
 1. In Framework Persistent Content, configure an `AudioRuntimeHost` with an explicit `AudioDefaultsAsset`.
 2. Add `FrameworkBgmDirector` and assign the `AudioRuntimeHost` explicitly.
-3. If the Route owns a BGM intent, add `FrameworkRouteBgmBinding` to Route-owned content and choose a Route policy.
-4. If an Activity owns a BGM intent, add `FrameworkActivityBgmBinding` to Activity-owned content, assign the Activity, and choose an Activity policy.
+3. If the Route owns a BGM intent, add `RouteBgmAuthoring` to Route-owned content and choose a Route policy.
+4. If an Activity owns a BGM intent, add `ActivityBgmAuthoring` to Activity-owned content, assign the Activity, and choose an Activity policy.
 5. Do not create Route -> Activity BGM references. They are not part of the current product surface.
 
 Canonical mental model:
@@ -55,7 +55,7 @@ Want no new intent?
   -> omit the binding or use a No Request policy where applicable
 ```
 
-`FrameworkActivityBgmBinding` works without a `FrameworkRouteBgmBinding`.
+`ActivityBgmAuthoring` works without a `RouteBgmAuthoring`.
 
 ## Route policy
 
@@ -178,7 +178,7 @@ The normal scene-consumer injection path remains responsible for injecting the p
 
 ```text
 Route
-  FrameworkRouteBgmBinding
+  RouteBgmAuthoring
     Policy = PlayOwn
     Route BGM = RouteMusic
 
@@ -195,7 +195,7 @@ Route
   Route BGM binding optional
 
 Activity Combat
-  FrameworkActivityBgmBinding
+  ActivityBgmAuthoring
     Activity BGM = CombatMusic
 ```
 
@@ -205,10 +205,10 @@ If `CombatMusic` is published during Startup Activity entry, it is applied direc
 
 ```text
 Route
-  no FrameworkRouteBgmBinding
+  no RouteBgmAuthoring
 
 Activity
-  FrameworkActivityBgmBinding
+  ActivityBgmAuthoring
     Activity BGM = ActivityMusic
 ```
 

@@ -58,7 +58,7 @@ CameraOutputContext
 CameraOutputRigApplicator
   physical projection
         ↓
-CameraOutputSessionBinding
+CameraOutputAuthoring
         ↓
 explicit Unity Camera + CinemachineBrain + Default Camera Rig
 ```
@@ -72,7 +72,7 @@ Responsibilities:
 - `CameraOutputSession` is the transactional mutation boundary between logical
   request state and physical projection and also owns output-level Default / force-default
   presentation state;
-- `CameraOutputSessionBinding` owns the scene-authored physical output, its
+- `CameraOutputAuthoring` owns the scene-authored physical output, its
   explicit Unity Camera/CinemachineBrain references and one explicit persistent
   Default `CameraRigComposer`;
 - request publishers translate one already-owned scope into publish/release;
@@ -86,7 +86,7 @@ No global Camera manager, service locator, static request registry,
 
 For the single-output product boundary:
 
-- exactly one persistent `CameraOutputSessionBinding` is authored in Session
+- exactly one persistent `CameraOutputAuthoring` is authored in Session
   composition;
 - it references exactly one explicit Unity `Camera` and one explicit
   `CinemachineBrain` on the same physical output GameObject;
@@ -100,7 +100,7 @@ A local Camera rig must never create or claim:
 ```text
 persistent Unity Camera
 CinemachineBrain
-CameraOutputSessionBinding
+CameraOutputAuthoring
 AudioListener
 global Camera authority
 ```
@@ -127,7 +127,7 @@ Therefore:
 - the Default has no `CameraRequestId`;
 - the Default has no precedence;
 - the Default has no tie-break identity;
-- `SessionCameraOverrideBinding` is not the Default and must not be used as a
+- `SessionCameraOverride` is not the Default and must not be used as a
   synthetic default request;
 - `CameraOutputContext` remains exclusively the admitted normal-request set;
 - normal absence of a winner does not clear the physical output;
@@ -143,9 +143,9 @@ system presentation can temporarily present Default without mutating normal requ
 arbitration.
 
 The 2026-08-17 cut wires `SessionCameraTransitionOrchestrator` directly to
-`CameraOutputSessionBinding` and forces/releases Default around Transition
+`CameraOutputAuthoring` and forces/releases Default around Transition
 presentation. The application composition root does not require a
-`SessionCameraOverrideBinding` for this behavior.
+`SessionCameraOverride` for this behavior.
 
 The owner model permits overlapping force-default callers without one caller
 releasing another caller's state. The current cut wires Transition only; this ADR
@@ -360,13 +360,13 @@ Activity
   -> canonical Activity enter/exit lifecycle
 
 Session normal override
-  -> SessionCameraOverrideBinding component availability
+  -> SessionCameraOverride component availability
 
 Local Player
   -> explicit Player eligibility/publication boundary
 
 Output Default
-  -> persistent CameraOutputSessionBinding / CameraOutputSession lifetime
+  -> persistent CameraOutputAuthoring / CameraOutputSession lifetime
 ```
 
 Route/Activity binding owner identity follows the exact authored `RouteAsset` or
@@ -375,29 +375,29 @@ do not replace authored-definition identity authority.
 
 ### 9.2 Publication/component lifetime
 
-`ScopedCameraOverrideBinding` owns the publication object and active publication
+`ScopedCameraOverride` owns the publication object and active publication
 state. Abnormal Unity component lifetime must not leave an admitted request
 orphaned.
 
 Accepted behavior:
 
 ```text
-ScopedCameraOverrideBinding.OnDisable
+ScopedCameraOverride.OnDisable
   -> release owned publication only
 
-ScopedCameraOverrideBinding.OnDestroy
+ScopedCameraOverride.OnDestroy
   -> final idempotent publication release
 ```
 
 For Route and Activity this does not synthesize a Route/Activity exit and does
 not clear their logical-owner state. Re-enable does not silently re-publish.
 
-`SessionCameraOverrideBinding` is intentionally different: the component itself
+`SessionCameraOverride` is intentionally different: the component itself
 owns Session override availability, so disable/destroy ends that owner scope through
 `EndOwnerScope(...)`.
 
 This Session override lifetime is independent from persistent Default output lifetime.
-Removing or omitting `SessionCameraOverrideBinding` does not remove the Default.
+Removing or omitting `SessionCameraOverride` does not remove the Default.
 
 Normal lifecycle exit, abnormal component loss, repeated cleanup and re-enable
 without silent republish remain certified by IF-ADR-004C for normal requests.
@@ -502,7 +502,7 @@ hierarchy location
 Supported product-facing surfaces include:
 
 - `CameraRigComposer`;
-- `CameraOutputSessionBinding` with explicit required Default Camera Rig;
+- `CameraOutputAuthoring` with explicit required Default Camera Rig;
 - Session / Route / Activity Camera override bindings;
 - typed Local Player Camera publication;
 - authoring/composition validation;
@@ -512,7 +512,7 @@ Supported product-facing surfaces include:
 The Composer Inspector is model-specific rather than a generic Cinemachine graph
 editor.
 
-The `CameraOutputSessionBinding` Inspector exposes primary output authoring as:
+The `CameraOutputAuthoring` Inspector exposes primary output authoring as:
 
 ```text
 Unity Camera
@@ -657,7 +657,7 @@ Real Sample 00 evidence after assigning the existing `Session Camera Rig` as the
 explicit output Default:
 
 ```text
-CameraOutputSessionBinding
+CameraOutputAuthoring
   status = Initialized
   defaultRig = Session Camera Rig
 
