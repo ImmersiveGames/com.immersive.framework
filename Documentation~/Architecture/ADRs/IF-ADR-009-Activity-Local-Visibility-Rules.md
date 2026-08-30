@@ -1,229 +1,106 @@
 # IF-ADR-009 — Activity Local Visibility Rules
 
-Status: **Accepted — CLOSED for current accepted boundary**  
-Last updated: 2026-08-10  
-Package implementation: **Implemented**  
-Technical QA: **Certified**  
-FIRSTGAME: **Not required for current accepted boundary**  
-Related decisions: IF-ADR-001, IF-ADR-002, IF-ADR-006, IF-ADR-007, IF-ADR-010, IF-ADR-014  
-Current reconciliation: [ADR-002 / ADR-009 reconciliation](../Reconciliation/IMMERSIVE-FRAMEWORK-ADR-002-009-RECONCILIATION-2026-08-10.md)
-Historical QA evidence: [ADR-009 QA certification](../Archive/IMMERSIVE-FRAMEWORK-ADR-009-QA-CERTIFICATION-2026-08-10.md)
+Status: **Accepted / Implemented — current contract certification pending**
+Last updated: **2026-08-30**
+Historical reconciliation: [ADR-002 / ADR-009 reconciliation — 2026-08-10](../Reconciliation/IMMERSIVE-FRAMEWORK-ADR-002-009-RECONCILIATION-2026-08-10.md)
+Historical QA evidence: [ADR-009 QA certification — 2026-08-10](../Archive/IMMERSIVE-FRAMEWORK-ADR-009-QA-CERTIFICATION-2026-08-10.md)
+Related decisions: IF-ADR-001, IF-ADR-002, IF-ADR-006, IF-ADR-007, IF-ADR-010, IF-ADR-014
 
 ## Context
 
-Activity-owned content may need to remain hidden, disabled or
-presentation-gated until lifecycle/readiness conditions are satisfied.
+The earlier combined local-visibility component mixed two independent concerns:
+Activity-owned content and presentation visibility. The current framework separates
+them so a GameObject may be shown or hidden for an Activity without becoming
+Activity-owned content.
 
-Visibility must be explicit and scoped rather than inferred from scene load,
-hierarchy position or object naming.
+Visibility remains explicit, scoped and lifecycle-aware. It must never be inferred
+from scene load, object names or hierarchy paths.
 
 ## Decision
 
-Activity local visibility is expressed through explicit authored/adapted
-configuration bound to Activity lifecycle/readiness.
-
-Visibility authority is contextual and occurrence-aware.
-
-Required visibility failures are blocking and diagnostic.
-
-Optional presentation behavior must not silently weaken required readiness.
-
-Stable authored identity identifies authored definitions; it is not by itself
-runtime occurrence, ownership, release or restoration authority.
-
-## Architectural constraints
-
-- Runtime authority is scoped, typed and lifetime-explicit.
-- Required invalid configuration fails explicitly before commit.
-- Optional invalid visibility configuration remains non-mutating and diagnostic.
-- Visibility is not inferred from scene load.
-- Object names and hierarchy paths are not fallback identity.
-- Lifecycle occurrence/replacement semantics remain explicit.
-- Stale occurrences cannot apply, release or restore state owned by the current occurrence.
-- Release/restoration affects only context-owned state.
-- Editor authoring does not become gameplay authority.
-- Distinct authored definitions colliding on the same stable `ActivityId` are invalid.
-
-## Accepted runtime model
-
-The package uses `ActivityLocalVisibilityAdapter` with Activity lifecycle and
-framework-owned discovery scoped to supplied framework roots.
-
-The accepted model is:
-
 ```text
-authored/local visibility intent
-        ↓
-Activity occurrence/lifecycle
-        ↓
-scoped visibility application
-        ↓
-release/restoration/disposal evidence
+ActivityContentContribution
+  = explicit Activity-owned content contract
+  = Activity identity + Local Content Id + Required / Optional
+  = content lifecycle participation
+  = invalid Required contribution may block an Activity transition
+
+ActivityVisibilityRule
+  = presentation-only Activity-conditioned show / hide rule
+  = no Activity ownership or Local Content Id
+  = no Required / Optional semantics
+  = invalid rule is diagnostic, ignored and non-mutating
+  = never transition-blocking authority
 ```
 
-Occurrence/revision, replacement and disposal are governed by the existing
-serialized transaction model and `RuntimeDefinitionToken`. Events are
-post-transition facts and do not independently apply visibility.
+`ActivityContentRuntime` discovers both component types only from framework-supplied
+scope roots. It evaluates an `ActivityVisibilityRule` against the canonical active
+Activity and applies only the rule GameObject's active state.
 
-No global scene search is part of the authority model.
+An `ActivityVisibilityRule` may live on Route-owned or otherwise externally owned
+content. Its scene location does not transfer content ownership to an Activity.
 
-## Closure audit — 2026-08-10
+## Accepted scope
 
-The focused audit identified two concrete gaps.
+- `ActivityContentContribution` owns explicit Activity content participation,
+  requiredness and lifecycle callbacks.
+- Invalid Required contributions are diagnostic and may reject the incoming Activity
+  before commit; Optional invalid contributions remain non-mutating.
+- `ActivityVisibilityRule` owns only presentation visibility through its explicit
+  Activity list, match mode and no-active policy.
+- An invalid visibility rule produces diagnostics and leaves its GameObject unchanged.
+- Visibility consumes lifecycle facts; it does not own Activity identity, readiness,
+  transition outcome, RuntimeContent lifetime or restoration policy.
+- Stable authored identity remains definition identity, never runtime occurrence or
+  ownership authority.
 
-### Gap 1 — invalid Required binding could proceed
+## Rejected scope
 
-Previously, an invalid `Required` visibility binding could be diagnosed as a
-warning and still continue toward commit.
+- Restoring `ActivityLocalVisibilityAdapter` or a combined content/visibility model.
+- Adding Required / Optional or transition-blocking semantics to
+  `ActivityVisibilityRule`.
+- Treating visibility as Activity-owned content, readiness authority or lifecycle
+  callback ownership.
+- Global scene lookup, hierarchy/name-derived identity or silent fallback.
+- A visibility-specific manager, Profile, Composer, Wizard or Apply/Rebuild layer
+  without separately demonstrated product need.
 
-The package now rejects the transition before commit. The previous Activity
-retains authority when the incoming Activity contains an invalid required
-visibility binding.
+## Consequences
 
-Invalid `Optional` bindings remain non-mutating and diagnostic and do not weaken
-required behavior.
+Authoring and diagnostics must present the two components as separate contracts.
+`ActivityContentContribution` validation explains ownership, local identity and
+requiredness. `ActivityVisibilityRule` validation explains only presentation-rule
+configuration and never changes transition authority.
 
-Application results distinguish invalid required and optional bindings, with
-diagnostics that include the target, `LocalContentId`, requiredness, configured
-list and failure reason.
+IF-ADR-001 continues to own scoped runtime/lifecycle authority; IF-ADR-006 and
+IF-ADR-007 own transition and readiness authority; IF-ADR-010 owns the Inspector
+product-surface rules. This ADR does not create another owner.
 
-### Gap 2 — stable ActivityId collision
+## Current implementation coverage
 
-Two distinct authored definitions using the same stable `ActivityId` were not
-rejected.
+Current implementation matches this split:
 
-The package now treats this collision as invalid. Stable ID remains authored
-identity and does not become runtime occurrence or ownership authority.
+- `Runtime/ActivityFlow/ActivityContentContribution.cs` supplies the Activity-owned
+  Required / Optional content contract.
+- `Runtime/ActivityFlow/ActivityVisibilityRule.cs` supplies presentation-only
+  visibility evaluation.
+- `Runtime/ActivityFlow/ActivityContentRuntime.Transaction.cs` validates required
+  contributions separately, while invalid visibility rules are diagnostic and skipped.
+- The corresponding Editor validators and Inspectors are distinct:
+  `ActivityContentContributionEditor` and `ActivityVisibilityRuleEditor`.
 
-## Cross-ADR relationship
+## Historical evidence
 
-The accepted boundary is intentionally split across existing authorities rather
-than creating a visibility-specific manager or authoring system.
+The 2026-08-10 ADR-009 reconciliation and its `46` focused QA cases certify the
+previous combined boundary. They remain historical evidence and do not certify this
+later Contribution versus Visibility split.
 
-```text
-IF-ADR-001
-  owns scoped runtime/lifecycle authority; visibility cannot become global scene authority
+No post-split focused QA or certification record was found in the package
+documentation or package-local tests at this cut.
 
-IF-ADR-002
-  permits the accepted direct component authoring shape and rejects unnecessary
-  Recipe/Composer/Wizard/Apply-Rebuild layers
+## Pending decisions
 
-IF-ADR-006
-  owns transition/persistence/diagnostic discipline; required visibility failure
-  rejects before commit and remains diagnosable
-
-IF-ADR-007
-  owns Activity entry/readiness/reveal gating; local visibility can consume lifecycle
-  facts but does not replace readiness authority
-
-IF-ADR-010
-  owns the minimum product-surface contract used by the visibility adapter Inspector
-
-IF-ADR-014
-  owns authored definition/stable identity authority; the ADR-009 collision fix
-  explicitly preserves exact-definition and occurrence-scoped ownership
-```
-
-ADR-003, ADR-011 and ADR-012 are adjacent through Activity/readiness composition,
-but they do not own the current ADR-009 visibility contract and are therefore not
-listed as direct related decisions.
-
-## Product surface
-
-No new Profile, Composer, Wizard or Apply/Rebuild layer is required for the
-current accepted boundary.
-
-Direct component authoring remains valid because consumers do not need to
-reconstruct hidden runtime authority manually.
-
-The product requirement is therefore:
-
-```text
-Add Component
-    ↓
-clear target configuration
-    ↓
-explicit required/optional semantics
-    ↓
-validation and actionable diagnostics
-    ↓
-runtime occurrence-owned behavior
-```
-
-Additional authoring layers remain conditional on future demonstrated consumer
-friction, not on ADR-009 technical closure.
-
-## Technical QA certification
-
-The corrected boundary was executed in Unity and certified by QAFramework.
-
-```text
-QA_ACTIVITY_LOCAL_VISIBILITY_RULE
-status='Passed'
-cases='28'
-completed='positive,negative,no-active,invalid,idempotent,single-owner'
-
-QA_ACTIVITY_LOCAL_VISIBILITY_LIFECYCLE
-status='Passed'
-cases='18'
-completed='positive-single,positive-multiple,negative-single,negative-multiple,no-active-visible,required-invalid-blocks,optional-invalid-diagnostic,clear,idempotence'
-```
-
-The certification proves the current accepted boundary for:
-
-```text
-positive and negative rule evaluation
-no-active behavior
-invalid configuration handling
-idempotence
-single-owner authority
-required-invalid pre-commit blocking
-optional-invalid non-mutating diagnostics
-clear/release lifecycle
-single and multiple target lifecycle behavior
-```
-
-## FIRSTGAME
-
-FIRSTGAME is not required to close the technical ADR-009 boundary.
-
-Future real-game use may still reveal UX friction around discoverability,
-terminology or debugging. Such findings are Consumer UX Evidence and may justify
-a separate product improvement without reopening the current technical contract.
-
-## Completion criteria
-
-The current accepted boundary is closed because evidence now confirms:
-
-```text
-visibility never becomes implicit scene-load authority
-required invalid targets fail explicitly before commit
-optional invalid targets remain non-mutating and diagnostic
-stable-ID collisions between distinct definitions are rejected
-occurrence ownership remains runtime-scoped and diagnosable
-release/restoration affects only context-owned state
-replacement/disposal does not leak visibility authority
-normal authoring does not require hidden internal contracts
-negative lifecycle regressions are covered in QAFramework
-```
-
-## Current disposition
-
-```text
-Architecture: Accepted
-Package: Implemented
-QA: Certified
-FIRSTGAME: Not Applicable for current accepted boundary
-Status: CLOSED — current accepted boundary
-```
-
-## Normative summary
-
-```text
-Keep visibility explicit, scoped and occurrence-aware.
-Required invalid configuration blocks before commit.
-Optional invalid configuration is non-mutating and diagnostic.
-Stable authored identity is not runtime ownership authority.
-Do not add authoring layers without demonstrated product need.
-Technical closure is established by package behavior plus QA evidence.
-```
+The architecture is decided. The remaining work is evidence only: add and record
+focused validation for presentation-only invalid-rule behavior and for the separate
+Required / Optional contribution path before claiming certification of this current
+contract.
