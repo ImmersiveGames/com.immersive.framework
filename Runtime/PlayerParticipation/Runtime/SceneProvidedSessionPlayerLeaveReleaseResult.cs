@@ -23,7 +23,7 @@ namespace Immersive.Framework.PlayerParticipation
             SessionPlayerLeaveRuntimeResult leaveConfirmation,
             PlayerHostEvidenceResult hostEvidenceRelease,
             PlayerSlotAssignmentResult assignmentResult,
-            SceneLocalPlayerAdmissionAuthoring authoring,
+            SceneProvidedLocalPlayerAuthoring authoring,
             LocalPlayerHostAuthoring localPlayerHost,
             PlayerActorDeclaration sceneLogicalPlayerActor,
             bool hostEvidenceReleased,
@@ -58,7 +58,7 @@ namespace Immersive.Framework.PlayerParticipation
         internal SessionPlayerLeaveRuntimeResult LeaveConfirmation { get; }
         internal PlayerHostEvidenceResult HostEvidenceRelease { get; }
         internal PlayerSlotAssignmentResult AssignmentResult { get; }
-        internal SceneLocalPlayerAdmissionAuthoring Authoring { get; }
+        internal SceneProvidedLocalPlayerAuthoring Authoring { get; }
         internal LocalPlayerHostAuthoring LocalPlayerHost { get; }
         internal PlayerActorDeclaration SceneLogicalPlayerActor { get; }
         internal bool HostEvidenceReleased { get; }

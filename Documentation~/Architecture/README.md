@@ -244,7 +244,7 @@ LocalPlayerHostAuthoring
 
 `LocalPlayerHostAuthoring` owns the reusable runtime infrastructure. `ActorProfile`
 owns the selected presentation only. Scene-Provided composition may author the exact
-candidate runtime Host and presentation; `SceneLocalPlayerAdmissionAuthoring`
+candidate runtime Host and presentation; `SceneProvidedLocalPlayerAuthoring`
 validates/adopts that exact composition and rejects mismatched or ambiguous evidence.
 
 The official **Create Scene-Provided Local Player** action creates only the deterministic

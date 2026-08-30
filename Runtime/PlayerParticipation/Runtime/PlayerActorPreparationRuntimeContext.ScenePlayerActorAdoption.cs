@@ -58,7 +58,7 @@ namespace Immersive.Framework.PlayerParticipation
             RuntimeContentRuntime runtimeContentRuntime,
             RuntimeScopeContext activityScopeContext,
             RuntimeScopeContext physicalScopeContext,
-            SceneLocalPlayerAdmissionAuthoring authoring,
+            SceneProvidedLocalPlayerAuthoring authoring,
             string source,
             string reason)
         {
@@ -596,7 +596,7 @@ namespace Immersive.Framework.PlayerParticipation
         }
 
         internal ScenePlayerActorAdoptionResult TryReleaseScenePlayerActorAdoption(
-            SceneLocalPlayerAdmissionAuthoring authoring,
+            SceneProvidedLocalPlayerAuthoring authoring,
             ScenePlayerActorAdoptionToken expectedToken,
             string source,
             string reason)
@@ -809,7 +809,7 @@ namespace Immersive.Framework.PlayerParticipation
             ScenePlayerActorAdoptionStatus status,
             string operation,
             PlayerSlotId playerSlotId,
-            SceneLocalPlayerAdmissionAuthoring authoring,
+            SceneProvidedLocalPlayerAuthoring authoring,
             ScenePlayerActorAdoptionToken token,
             bool stateChanged,
             string source,

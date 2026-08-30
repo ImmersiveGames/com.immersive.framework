@@ -327,8 +327,8 @@ namespace Immersive.Framework.GlobalUi
             authoring = null;
             isConfigured = false;
 
-            List<LocalPlayerProvisioningHostRegistration> registrations =
-                FindAll<LocalPlayerProvisioningHostRegistration>();
+            List<LocalPlayerProvisioningEndpointRegistration> registrations =
+                FindAll<LocalPlayerProvisioningEndpointRegistration>();
 
             if (registrations.Count == 0)
             {

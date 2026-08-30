@@ -6,9 +6,9 @@ namespace Immersive.Framework.Editor.PlayerParticipation
 {
     [CustomEditor(
         typeof(
-            LocalPlayerProvisioningHostRegistration))]
+            LocalPlayerProvisioningEndpointRegistration))]
     internal sealed class
-        LocalPlayerProvisioningHostRegistrationEditor :
+        LocalPlayerProvisioningEndpointRegistrationEditor :
             UnityEditor.Editor
     {
         private SerializedProperty _provisioningAuthoring;
@@ -25,6 +25,10 @@ namespace Immersive.Framework.Editor.PlayerParticipation
         {
             serializedObject.UpdateIfRequiredOrScript();
 
+            EditorGUILayout.LabelField(
+                "Provisioning Endpoint Registration",
+                EditorStyles.boldLabel);
+
             DrawRegistrationSetup();
 
             serializedObject.ApplyModifiedProperties();
@@ -34,19 +38,19 @@ namespace Immersive.Framework.Editor.PlayerParticipation
 
         private void DrawRegistrationSetup()
         {
-            DrawSection("Provisioning Registration");
+            DrawSection("Provisioning Endpoint Registration");
 
             EditorGUILayout.PropertyField(
                 _provisioningAuthoring,
                 new GUIContent(
-                    "Provisioning Authoring",
-                    "Explicit Local Player Provisioning Authoring exposed by this Game Application's UIGlobal composition."));
+                    "Local Player Provisioning",
+                    "Explicit Local Player Provisioning exposed by this Game Application's UIGlobal composition."));
 
             if (_provisioningAuthoring == null ||
                 _provisioningAuthoring.objectReferenceValue == null)
             {
                 EditorGUILayout.HelpBox(
-                    "Assign the Local Player Provisioning Authoring exposed by this Game Application's UIGlobal composition.",
+                    "Assign the Local Player Provisioning exposed by this Game Application's UIGlobal composition.",
                     MessageType.Error);
             }
         }
@@ -78,7 +82,7 @@ namespace Immersive.Framework.Editor.PlayerParticipation
             using (new EditorGUI.DisabledScope(true))
             {
                 EditorGUILayout.ObjectField(
-                    "Provisioning Authoring",
+                    "Local Player Provisioning",
                     authoring,
                     typeof(
                         LocalPlayerProvisioningAuthoring),

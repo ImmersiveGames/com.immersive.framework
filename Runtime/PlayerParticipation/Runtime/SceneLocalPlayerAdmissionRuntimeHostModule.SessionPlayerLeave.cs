@@ -13,7 +13,7 @@ namespace Immersive.Framework.PlayerParticipation
         {
             internal SceneProvidedSessionPlayerLeaveProgress(
                 SessionPlayerLeaveToken leaveToken,
-                SceneLocalPlayerAdmissionAuthoring authoring,
+                SceneProvidedLocalPlayerAuthoring authoring,
                 LocalPlayerHostAuthoring host,
                 LocalPlayerHostAuthoring sessionPhysicalHost,
                 PlayerActorDeclaration sceneLogicalPlayerActor,
@@ -34,7 +34,7 @@ namespace Immersive.Framework.PlayerParticipation
             }
 
             internal SessionPlayerLeaveToken LeaveToken { get; }
-            internal SceneLocalPlayerAdmissionAuthoring Authoring { get; }
+            internal SceneProvidedLocalPlayerAuthoring Authoring { get; }
             internal LocalPlayerHostAuthoring Host { get; }
             internal LocalPlayerHostAuthoring SessionPhysicalHost { get; }
             internal PlayerActorDeclaration SceneLogicalPlayerActor { get; }
@@ -216,7 +216,7 @@ namespace Immersive.Framework.PlayerParticipation
             {
                 if (!_runtime.TryGetSessionPlayerLeaveRepresentation(
                         leaveToken.PlayerSlotId,
-                        out SceneLocalPlayerAdmissionAuthoring authoring,
+                        out SceneProvidedLocalPlayerAuthoring authoring,
                         out LocalPlayerHostAuthoring host,
                         out SceneLocalPlayerAdmissionToken sceneAdmissionToken,
                         out PlayerSlotAssignmentSnapshot assignment))
@@ -572,7 +572,7 @@ namespace Immersive.Framework.PlayerParticipation
             SessionPlayerLeaveRuntimeResult leaveConfirmation,
             PlayerHostEvidenceResult hostEvidenceRelease,
             PlayerSlotAssignmentResult assignmentResult,
-            SceneLocalPlayerAdmissionAuthoring authoring,
+            SceneProvidedLocalPlayerAuthoring authoring,
             LocalPlayerHostAuthoring localPlayerHost,
             PlayerActorDeclaration sceneLogicalPlayerActor,
             bool hostEvidenceReleased,

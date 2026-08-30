@@ -108,7 +108,7 @@ namespace Immersive.Framework.PlayerParticipation
 
         internal ScenePlayerActorAdoptionResult TryAdoptSceneLocalPlayerActor(
             RuntimeScopeContext scopeContext,
-            SceneLocalPlayerAdmissionAuthoring authoring,
+            SceneProvidedLocalPlayerAuthoring authoring,
             string source,
             string reason)
         {
@@ -210,7 +210,7 @@ namespace Immersive.Framework.PlayerParticipation
         }
 
         internal ScenePlayerActorAdoptionResult TryReleaseSceneLocalPlayerActor(
-            SceneLocalPlayerAdmissionAuthoring authoring,
+            SceneProvidedLocalPlayerAuthoring authoring,
             ScenePlayerActorAdoptionToken expectedToken,
             string source,
             string reason)

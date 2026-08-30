@@ -45,7 +45,7 @@ namespace Immersive.Framework.PlayerParticipation
             if (_currentRouteSpatialEntryContext.Matches(context)) _currentRouteSpatialEntryContext = default;
         }
 
-        internal bool TryApplySceneProvidedRouteSpatialEntry(SceneLocalPlayerAdmissionAuthoring authoring, out string issue)
+        internal bool TryApplySceneProvidedRouteSpatialEntry(SceneProvidedLocalPlayerAuthoring authoring, out string issue)
         {
             issue = string.Empty;
             if (!_currentRouteSpatialEntryContext.IsValid || authoring == null ||

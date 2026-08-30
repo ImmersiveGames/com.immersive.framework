@@ -10,7 +10,7 @@ namespace Immersive.Framework.PlayerParticipation
         /// </summary>
         internal bool TryGetSessionPlayerLeaveRepresentation(
             PlayerSlotId playerSlotId,
-            out SceneLocalPlayerAdmissionAuthoring authoring,
+            out SceneProvidedLocalPlayerAuthoring authoring,
             out LocalPlayerHostAuthoring host,
             out SceneLocalPlayerAdmissionToken sceneAdmissionToken,
             out PlayerSlotAssignmentSnapshot assignment)

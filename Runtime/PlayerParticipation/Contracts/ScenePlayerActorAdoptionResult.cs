@@ -88,7 +88,7 @@ namespace Immersive.Framework.PlayerParticipation
 
         internal static ScenePlayerActorAdoptionResult RuntimeUnavailable(
             string operation,
-            SceneLocalPlayerAdmissionAuthoring authoring,
+            SceneProvidedLocalPlayerAuthoring authoring,
             string source,
             string reason,
             string message)

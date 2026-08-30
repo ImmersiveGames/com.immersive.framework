@@ -7,10 +7,10 @@ using UnityEngine.InputSystem;
 
 namespace Immersive.Framework.PlayerParticipation.Editor.Tests
 {
-    public sealed class SceneLocalPlayerAdmissionAuthoringUtilityTests
+    public sealed class SceneProvidedLocalPlayerAuthoringUtilityTests
     {
         private const string TestRootFolder = "Assets/ImmersiveFrameworkEditorTests";
-        private const string AssetFolder = TestRootFolder + "/SceneLocalPlayerAdmission";
+        private const string AssetFolder = TestRootFolder + "/SceneProvidedLocalPlayer";
 
         private GameObject sceneHost;
         private ActorProfile actorProfile;
@@ -32,17 +32,17 @@ namespace Immersive.Framework.PlayerParticipation.Editor.Tests
         public void ApplyOrRebuild_SamePrefabSource_CreatesCompatibleEvidenceAndRemainsIdempotent()
         {
             GameObject prefab = CreatePresentationPrefab("Presentation_A");
-            SceneLocalPlayerAdmissionAuthoring authoring = CreateAuthoring(prefab, prefab);
+            SceneProvidedLocalPlayerAuthoring authoring = CreateAuthoring(prefab, prefab);
 
-            SceneLocalPlayerAdmissionAuthoringResult first =
-                SceneLocalPlayerAdmissionAuthoringUtility.ApplyOrRebuild(authoring, false, false);
-            SceneLocalPlayerAdmissionAuthoringResult validation =
-                SceneLocalPlayerAdmissionAuthoringUtility.Validate(authoring, false);
-            SceneLocalPlayerAdmissionAuthoringResult second =
-                SceneLocalPlayerAdmissionAuthoringUtility.ApplyOrRebuild(authoring, false, false);
+            SceneProvidedLocalPlayerAuthoringResult first =
+                SceneProvidedLocalPlayerAuthoringUtility.ApplyOrRebuild(authoring, false, false);
+            SceneProvidedLocalPlayerAuthoringResult validation =
+                SceneProvidedLocalPlayerAuthoringUtility.Validate(authoring, false);
+            SceneProvidedLocalPlayerAuthoringResult second =
+                SceneProvidedLocalPlayerAuthoringUtility.ApplyOrRebuild(authoring, false, false);
 
             Assert.That(first.Succeeded, Is.True, first.Message);
-            Assert.That(first.Status, Is.EqualTo(SceneLocalPlayerAdmissionAuthoringStatus.Valid));
+            Assert.That(first.Status, Is.EqualTo(SceneProvidedLocalPlayerAuthoringStatus.Valid));
             Assert.That(first.EvidenceCreated, Is.True);
             Assert.That(authoring.HasTypedActorEvidence, Is.True);
             Assert.That(authoring.IsTypedActorEvidenceCompatibleWith(actorProfile), Is.True);
@@ -57,13 +57,13 @@ namespace Immersive.Framework.PlayerParticipation.Editor.Tests
         {
             GameObject profilePrefab = CreatePresentationPrefab("Presentation_A");
             GameObject scenePrefab = CreatePresentationPrefab("Presentation_B");
-            SceneLocalPlayerAdmissionAuthoring authoring = CreateAuthoring(profilePrefab, scenePrefab);
+            SceneProvidedLocalPlayerAuthoring authoring = CreateAuthoring(profilePrefab, scenePrefab);
 
-            SceneLocalPlayerAdmissionAuthoringResult result =
-                SceneLocalPlayerAdmissionAuthoringUtility.ApplyOrRebuild(authoring, false, false);
+            SceneProvidedLocalPlayerAuthoringResult result =
+                SceneProvidedLocalPlayerAuthoringUtility.ApplyOrRebuild(authoring, false, false);
 
             Assert.That(result.Succeeded, Is.False);
-            Assert.That(result.Status, Is.EqualTo(SceneLocalPlayerAdmissionAuthoringStatus.IncompatibleProfileEvidence));
+            Assert.That(result.Status, Is.EqualTo(SceneProvidedLocalPlayerAuthoringStatus.IncompatibleProfileEvidence));
             Assert.That(authoring.HasTypedActorEvidence, Is.False);
         }
 
@@ -71,17 +71,17 @@ namespace Immersive.Framework.PlayerParticipation.Editor.Tests
         public void ApplyOrRebuild_ActorWithoutPrefabSource_RejectsWithoutWritingEvidence()
         {
             GameObject profilePrefab = CreatePresentationPrefab("Presentation_A");
-            SceneLocalPlayerAdmissionAuthoring authoring = CreateAuthoring(profilePrefab, null);
+            SceneProvidedLocalPlayerAuthoring authoring = CreateAuthoring(profilePrefab, null);
 
-            SceneLocalPlayerAdmissionAuthoringResult result =
-                SceneLocalPlayerAdmissionAuthoringUtility.ApplyOrRebuild(authoring, false, false);
+            SceneProvidedLocalPlayerAuthoringResult result =
+                SceneProvidedLocalPlayerAuthoringUtility.ApplyOrRebuild(authoring, false, false);
 
             Assert.That(result.Succeeded, Is.False);
-            Assert.That(result.Status, Is.EqualTo(SceneLocalPlayerAdmissionAuthoringStatus.IncompatibleProfileEvidence));
+            Assert.That(result.Status, Is.EqualTo(SceneProvidedLocalPlayerAuthoringStatus.IncompatibleProfileEvidence));
             Assert.That(authoring.HasTypedActorEvidence, Is.False);
         }
 
-        private SceneLocalPlayerAdmissionAuthoring CreateAuthoring(
+        private SceneProvidedLocalPlayerAuthoring CreateAuthoring(
             GameObject profilePrefab,
             GameObject scenePrefab)
         {
@@ -98,7 +98,7 @@ namespace Immersive.Framework.PlayerParticipation.Editor.Tests
             SetProperty(playerSlotProfile, "playerSlotId", "player.1");
             AssetDatabase.SaveAssets();
 
-            sceneHost = new GameObject("Scene Local Player Host");
+            sceneHost = new GameObject("Scene-Provided Local Player Host");
             PlayerInput playerInput = sceneHost.AddComponent<PlayerInput>();
             LocalPlayerHostAuthoring host = sceneHost.AddComponent<LocalPlayerHostAuthoring>();
             Transform actorMount = new GameObject("Actor Mount").transform;
@@ -119,10 +119,10 @@ namespace Immersive.Framework.PlayerParticipation.Editor.Tests
                     false);
             }
             var provisioning =
-                new GameObject("Provisioning - Scene Provided");
+                new GameObject("Scene-Provided Local Player");
             provisioning.transform.SetParent(sceneHost.transform);
-            SceneLocalPlayerAdmissionAuthoring authoring =
-                provisioning.AddComponent<SceneLocalPlayerAdmissionAuthoring>();
+            SceneProvidedLocalPlayerAuthoring authoring =
+                provisioning.AddComponent<SceneProvidedLocalPlayerAuthoring>();
 
             SetProperty(host, "playerInput", playerInput);
             SetProperty(host, "actorMount", actorMount);
@@ -176,7 +176,7 @@ namespace Immersive.Framework.PlayerParticipation.Editor.Tests
 
             if (!AssetDatabase.IsValidFolder(AssetFolder))
             {
-                AssetDatabase.CreateFolder(TestRootFolder, "SceneLocalPlayerAdmission");
+                AssetDatabase.CreateFolder(TestRootFolder, "SceneProvidedLocalPlayer");
             }
         }
 

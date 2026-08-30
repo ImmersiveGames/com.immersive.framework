@@ -32,7 +32,7 @@ namespace Immersive.Framework.PlayerParticipation
         private sealed class ResolvedAutomaticAuthoring
         {
             internal ResolvedAutomaticAuthoring(
-                SceneLocalPlayerAdmissionAuthoring authoring,
+                SceneProvidedLocalPlayerAuthoring authoring,
                 PlayerSlotId playerSlotId,
                 int configuredIndex)
             {
@@ -41,12 +41,12 @@ namespace Immersive.Framework.PlayerParticipation
                 ConfiguredIndex = configuredIndex;
             }
 
-            internal SceneLocalPlayerAdmissionAuthoring Authoring { get; }
+            internal SceneProvidedLocalPlayerAuthoring Authoring { get; }
             internal PlayerSlotId PlayerSlotId { get; }
             internal int ConfiguredIndex { get; }
         }
 
-        private readonly List<SceneLocalPlayerAdmissionAuthoring> _boundAuthoring = new();
+        private readonly List<SceneProvidedLocalPlayerAuthoring> _boundAuthoring = new();
         private FrameworkRuntimeHost _runtimeHost;
         private PlayerParticipationRuntimeContext _participationContext;
         private PlayerActorPreparationRuntimeHostModule _hostEvidenceOwner;
@@ -156,7 +156,7 @@ namespace Immersive.Framework.PlayerParticipation
             return true;
         }
 
-        internal bool IsReadyFor(SceneLocalPlayerAdmissionAuthoring authoring)
+        internal bool IsReadyFor(SceneProvidedLocalPlayerAuthoring authoring)
         {
             if (!IsReady || authoring == null)
             {
@@ -172,7 +172,7 @@ namespace Immersive.Framework.PlayerParticipation
         }
 
         internal SceneLocalPlayerAdmissionRuntimeResult TryAdmit(
-            SceneLocalPlayerAdmissionAuthoring authoring,
+            SceneProvidedLocalPlayerAuthoring authoring,
             RuntimeContentOwner assignmentOwner,
             string source,
             string reason)
@@ -253,7 +253,7 @@ namespace Immersive.Framework.PlayerParticipation
         }
 
         internal SceneLocalPlayerAdmissionRuntimeResult TryRelease(
-            SceneLocalPlayerAdmissionAuthoring authoring,
+            SceneProvidedLocalPlayerAuthoring authoring,
             string source,
             string reason)
         {
@@ -284,7 +284,7 @@ namespace Immersive.Framework.PlayerParticipation
         }
 
         internal SceneLocalPlayerAdmissionRuntimeResult TryRetireContextualRepresentation(
-            SceneLocalPlayerAdmissionAuthoring authoring,
+            SceneProvidedLocalPlayerAuthoring authoring,
             SceneLocalPlayerAdmissionToken expectedToken,
             string source,
             string reason)
@@ -300,7 +300,7 @@ namespace Immersive.Framework.PlayerParticipation
 
         internal SceneLocalPlayerAdmissionRuntimeResult
             TryRetireContextualRepresentationForSessionPlayerLeave(
-                SceneLocalPlayerAdmissionAuthoring authoring,
+                SceneProvidedLocalPlayerAuthoring authoring,
                 SceneLocalPlayerAdmissionToken expectedToken,
                 SessionPlayerLeaveToken leaveToken,
                 string source,
@@ -317,7 +317,7 @@ namespace Immersive.Framework.PlayerParticipation
 
         internal SceneLocalPlayerAdmissionRuntimeResult
             TryRetireContextualRepresentationForSessionTermination(
-                SceneLocalPlayerAdmissionAuthoring authoring,
+                SceneProvidedLocalPlayerAuthoring authoring,
                 SceneLocalPlayerAdmissionToken expectedToken,
                 string source,
                 string reason)
@@ -333,7 +333,7 @@ namespace Immersive.Framework.PlayerParticipation
 
         private SceneLocalPlayerAdmissionRuntimeResult
             TryRetireContextualRepresentationWithHostEvidence(
-                SceneLocalPlayerAdmissionAuthoring authoring,
+                SceneProvidedLocalPlayerAuthoring authoring,
                 SceneLocalPlayerAdmissionToken expectedToken,
                 ContextualReleaseAuthority authority,
                 SessionPlayerLeaveToken leaveToken,
@@ -465,7 +465,7 @@ namespace Immersive.Framework.PlayerParticipation
         }
 
         internal SceneLocalPlayerAdmissionRuntimeResult TryRelease(
-            SceneLocalPlayerAdmissionAuthoring authoring,
+            SceneProvidedLocalPlayerAuthoring authoring,
             SceneLocalPlayerAdmissionToken expectedToken,
             string source,
             string reason)
@@ -496,7 +496,7 @@ namespace Immersive.Framework.PlayerParticipation
         }
 
         internal SceneLocalPlayerAdmissionRuntimeResult TryReleaseForSessionPlayerLeave(
-            SceneLocalPlayerAdmissionAuthoring authoring,
+            SceneProvidedLocalPlayerAuthoring authoring,
             SceneLocalPlayerAdmissionToken expectedToken,
             SessionPlayerLeaveToken leaveToken,
             string source,
@@ -539,7 +539,7 @@ namespace Immersive.Framework.PlayerParticipation
         }
 
         private bool TryConfirmSessionPlayerLeaveContextualRelease(
-            SceneLocalPlayerAdmissionAuthoring authoring,
+            SceneProvidedLocalPlayerAuthoring authoring,
             SceneLocalPlayerAdmissionToken expectedToken,
             SessionPlayerLeaveToken leaveToken,
             string source,
@@ -580,7 +580,7 @@ namespace Immersive.Framework.PlayerParticipation
         }
 
         internal SceneLocalPlayerAdmissionRuntimeResult TryReleaseForSessionTermination(
-            SceneLocalPlayerAdmissionAuthoring authoring,
+            SceneProvidedLocalPlayerAuthoring authoring,
             SceneLocalPlayerAdmissionToken expectedToken,
             string source,
             string reason)
@@ -611,7 +611,7 @@ namespace Immersive.Framework.PlayerParticipation
         }
 
         private SceneLocalPlayerAdmissionRuntimeResult TryReleaseWithHostEvidence(
-            SceneLocalPlayerAdmissionAuthoring authoring,
+            SceneProvidedLocalPlayerAuthoring authoring,
             SceneLocalPlayerAdmissionToken expectedToken,
             ContextualReleaseAuthority authority,
             SessionPlayerLeaveToken leaveToken,
@@ -731,7 +731,7 @@ namespace Immersive.Framework.PlayerParticipation
         }
 
         private SceneLocalPlayerAdmissionRuntimeResult ReleaseRuntimeContextualRepresentation(
-            SceneLocalPlayerAdmissionAuthoring authoring,
+            SceneProvidedLocalPlayerAuthoring authoring,
             SceneLocalPlayerAdmissionToken expectedToken,
             ContextualReleaseAuthority authority,
             SessionPlayerLeaveToken leaveToken,
@@ -758,7 +758,7 @@ namespace Immersive.Framework.PlayerParticipation
             SceneLocalPlayerAdmissionRuntimeStatus status,
             string source,
             string reason,
-            SceneLocalPlayerAdmissionAuthoring authoring = null,
+            SceneProvidedLocalPlayerAuthoring authoring = null,
             SceneLocalPlayerAdmissionToken token = default)
         {
             SceneLocalPlayerAdmissionRuntimeResult basis = primary ?? compensation;
@@ -790,7 +790,7 @@ namespace Immersive.Framework.PlayerParticipation
         }
 
         internal bool TryGetActiveToken(
-            SceneLocalPlayerAdmissionAuthoring authoring,
+            SceneProvidedLocalPlayerAuthoring authoring,
             out SceneLocalPlayerAdmissionToken token)
         {
             token = default;
@@ -831,11 +831,11 @@ namespace Immersive.Framework.PlayerParticipation
 
         internal bool TryResolveAutomaticActivityAuthoring(
             ActivityAsset activity,
-            out IReadOnlyList<SceneLocalPlayerAdmissionAuthoring> authoring,
+            out IReadOnlyList<SceneProvidedLocalPlayerAuthoring> authoring,
             out string issue)
         {
             var resolved = new List<ResolvedAutomaticAuthoring>();
-            authoring = Array.Empty<SceneLocalPlayerAdmissionAuthoring>();
+            authoring = Array.Empty<SceneProvidedLocalPlayerAuthoring>();
             issue = string.Empty;
 
             if (!IsReady)
@@ -868,7 +868,7 @@ namespace Immersive.Framework.PlayerParticipation
 
             for (int index = 0; index < _boundAuthoring.Count; index++)
             {
-                SceneLocalPlayerAdmissionAuthoring candidate = _boundAuthoring[index];
+                SceneProvidedLocalPlayerAuthoring candidate = _boundAuthoring[index];
                 if (candidate == null ||
                     candidate.AdmissionTiming != SceneLocalPlayerAdmissionTiming.OnActivityEnter ||
                     !IsDeclaredByActivityOrRoute(
@@ -937,7 +937,7 @@ namespace Immersive.Framework.PlayerParticipation
 
             resolved.Sort((left, right) =>
                 left.ConfiguredIndex.CompareTo(right.ConfiguredIndex));
-            var ordered = new SceneLocalPlayerAdmissionAuthoring[resolved.Count];
+            var ordered = new SceneProvidedLocalPlayerAuthoring[resolved.Count];
             for (int index = 0; index < resolved.Count; index++)
             {
                 ordered[index] = resolved[index].Authoring;
@@ -947,7 +947,7 @@ namespace Immersive.Framework.PlayerParticipation
             return true;
         }
 
-        internal void HandleAuthoringDestroyed(SceneLocalPlayerAdmissionAuthoring authoring)
+        internal void HandleAuthoringDestroyed(SceneProvidedLocalPlayerAuthoring authoring)
         {
             if (_shuttingDown || ReferenceEquals(authoring, null))
             {
@@ -1020,8 +1020,8 @@ namespace Immersive.Framework.PlayerParticipation
             GameObject[] roots = scene.GetRootGameObjects();
             for (int rootIndex = 0; rootIndex < roots.Length; rootIndex++)
             {
-                SceneLocalPlayerAdmissionAuthoring[] declarations =
-                    roots[rootIndex].GetComponentsInChildren<SceneLocalPlayerAdmissionAuthoring>(true);
+                SceneProvidedLocalPlayerAuthoring[] declarations =
+                    roots[rootIndex].GetComponentsInChildren<SceneProvidedLocalPlayerAuthoring>(true);
                 for (int declarationIndex = 0; declarationIndex < declarations.Length; declarationIndex++)
                 {
                     BindAuthoring(declarations[declarationIndex]);
@@ -1029,7 +1029,7 @@ namespace Immersive.Framework.PlayerParticipation
             }
         }
 
-        private void BindAuthoring(SceneLocalPlayerAdmissionAuthoring authoring)
+        private void BindAuthoring(SceneProvidedLocalPlayerAuthoring authoring)
         {
             if (authoring == null)
             {
@@ -1048,7 +1048,7 @@ namespace Immersive.Framework.PlayerParticipation
             TryRestoreCompositeLifecycleSource(out _);
         }
 
-        private bool ContainsAuthoring(SceneLocalPlayerAdmissionAuthoring authoring)
+        private bool ContainsAuthoring(SceneProvidedLocalPlayerAuthoring authoring)
         {
             for (int index = 0; index < _boundAuthoring.Count; index++)
             {
@@ -1061,7 +1061,7 @@ namespace Immersive.Framework.PlayerParticipation
             return false;
         }
 
-        private void RemoveAuthoring(SceneLocalPlayerAdmissionAuthoring authoring)
+        private void RemoveAuthoring(SceneProvidedLocalPlayerAuthoring authoring)
         {
             for (int index = _boundAuthoring.Count - 1; index >= 0; index--)
             {
@@ -1088,7 +1088,7 @@ namespace Immersive.Framework.PlayerParticipation
         }
 
         private static bool IsDeclaredByActivityOrRoute(
-            SceneLocalPlayerAdmissionAuthoring authoring,
+            SceneProvidedLocalPlayerAuthoring authoring,
             ActivityAsset activity,
             RouteAsset route)
         {
@@ -1097,7 +1097,7 @@ namespace Immersive.Framework.PlayerParticipation
         }
 
         private static bool IsDeclaredByRoutePrimaryScene(
-            SceneLocalPlayerAdmissionAuthoring authoring,
+            SceneProvidedLocalPlayerAuthoring authoring,
             RouteAsset route)
         {
             if (authoring == null ||
@@ -1122,7 +1122,7 @@ namespace Immersive.Framework.PlayerParticipation
         }
 
         private static bool IsDeclaredByActivity(
-            SceneLocalPlayerAdmissionAuthoring authoring,
+            SceneProvidedLocalPlayerAuthoring authoring,
             ActivityAsset activity)
         {
             if (authoring == null || activity == null ||
@@ -1236,10 +1236,10 @@ namespace Immersive.Framework.PlayerParticipation
             _shuttingDown = true;
             SceneManager.sceneLoaded -= HandleSceneLoaded;
 
-            var snapshot = new List<SceneLocalPlayerAdmissionAuthoring>(_boundAuthoring);
+            var snapshot = new List<SceneProvidedLocalPlayerAuthoring>(_boundAuthoring);
             for (int index = snapshot.Count - 1; index >= 0; index--)
             {
-                SceneLocalPlayerAdmissionAuthoring authoring = snapshot[index];
+                SceneProvidedLocalPlayerAuthoring authoring = snapshot[index];
                 if (authoring == null)
                 {
                     continue;

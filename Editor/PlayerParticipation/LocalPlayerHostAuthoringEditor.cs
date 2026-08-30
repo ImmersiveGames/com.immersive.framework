@@ -29,6 +29,10 @@ namespace Immersive.Framework.Editor.PlayerParticipation
         {
             serializedObject.UpdateIfRequiredOrScript();
 
+            EditorGUILayout.LabelField(
+                "Local Player Host",
+                EditorStyles.boldLabel);
+
             LocalPlayerHostAuthoring host =
                 (LocalPlayerHostAuthoring)target;
 

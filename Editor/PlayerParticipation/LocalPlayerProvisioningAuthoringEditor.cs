@@ -31,6 +31,10 @@ namespace Immersive.Framework.Editor.PlayerParticipation
         {
             serializedObject.UpdateIfRequiredOrScript();
 
+            EditorGUILayout.LabelField(
+                "Local Player Provisioning",
+                EditorStyles.boldLabel);
+
             LocalPlayerProvisioningAuthoring authoring =
                 (LocalPlayerProvisioningAuthoring)target;
 

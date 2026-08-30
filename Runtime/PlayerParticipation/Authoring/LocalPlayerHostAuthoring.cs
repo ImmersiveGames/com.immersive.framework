@@ -10,13 +10,13 @@ namespace Immersive.Framework.PlayerParticipation
 {
     /// <summary>
     /// Stable technical host for one local Player. PlayerInputManager may provision it, or a
-    /// Scene Local Player Admission surface may reference an externally owned scene instance.
+    /// Scene-Provided Local Player authoring may reference an externally owned scene instance.
     /// It owns PlayerInput evidence, an explicit Actor Mount and typed Slot admission evidence.
     /// It is not an Actor, does not select an ActorProfile and does not execute gameplay.
     /// </summary>
     [DisallowMultipleComponent]
     [RequireComponent(typeof(PlayerInput))]
-    [AddComponentMenu("Immersive Framework/Player/Local Player Host Authoring")]
+    [AddComponentMenu("Immersive Framework/Player/Local Player Host")]
     [FrameworkApiStatus(FrameworkApiStatus.Stable, "Stable Local Player Host surface. Scene-authored admission is Stable; manager provisioning and Session-Persistent remain Experimental.")]
     public sealed class LocalPlayerHostAuthoring : MonoBehaviour
     {
@@ -40,7 +40,7 @@ namespace Immersive.Framework.PlayerParticipation
 
         [Header("Actor Runtime Foundation")]
         [SerializeField]
-        [Tooltip("Generic Player Actor Runtime Host prefab provided by this Local Player Host composition. Manager-Provisioned Players materialize it after Actor selection; Scene-Provided Players use the same shape as composition evidence.")]
+        [Tooltip("Generic Player Actor Runtime Host prefab provided by this Local Player Host composition. Manager-Provisioned Local Players materialize it after Actor selection; Scene-Provided Local Players use the same shape as composition evidence.")]
         private PlayerActorRuntimeHost playerActorRuntimeHostPrefab;
 
         [NonSerialized] private AdmissionState _admissionState;
@@ -82,7 +82,7 @@ namespace Immersive.Framework.PlayerParticipation
         }
 
         /// <summary>
-        /// Validates the Scene Local Player Admission shape without changing runtime state.
+        /// Validates the Scene-Provided Local Player shape without changing runtime state.
         /// </summary>
         public bool TryValidateAdmissionConfiguration(
             PlayerActorRuntimeHost scenePlayerActorRuntimeHost,
@@ -365,14 +365,14 @@ namespace Immersive.Framework.PlayerParticipation
 
             if (expectedSceneRuntimeHost == null)
             {
-                issue = "Scene Local Player admission requires an explicit Player Actor Runtime Host.";
+                issue = "Scene-Provided Local Player admission requires an explicit Player Actor Runtime Host.";
                 return false;
             }
 
             if (expectedSceneRuntimeHost.transform != actorMount &&
                 !expectedSceneRuntimeHost.transform.IsChildOf(actorMount))
             {
-                issue = "Scene Player Actor Runtime Host must exist under the exact Local Player Host Actor Mount.";
+                issue = "Scene-Provided Local Player Actor Runtime Host must exist under the exact Local Player Host Actor Mount.";
                 return false;
             }
 
@@ -380,7 +380,7 @@ namespace Immersive.Framework.PlayerParticipation
                 actorMount.GetComponentsInChildren<PlayerActorRuntimeHost>(true);
             if (runtimeHosts.Length != 1 || runtimeHosts[0] != expectedSceneRuntimeHost)
             {
-                issue = $"Scene Local Player admission requires exactly one PlayerActorRuntimeHost under Actor Mount. Found '{runtimeHosts.Length}'.";
+                issue = $"Scene-Provided Local Player admission requires exactly one PlayerActorRuntimeHost under Actor Mount. Found '{runtimeHosts.Length}'.";
                 return false;
             }
 
@@ -396,7 +396,7 @@ namespace Immersive.Framework.PlayerParticipation
             if (actorDeclarations.Length != 1 ||
                 actorDeclarations[0] != expectedSceneActor)
             {
-                issue = $"Scene Local Player admission requires one canonical PlayerActorDeclaration and no additional ActorDeclaration. Found '{actorDeclarations.Length}'.";
+                issue = $"Scene-Provided Local Player admission requires one canonical PlayerActorDeclaration and no additional ActorDeclaration. Found '{actorDeclarations.Length}'.";
                 return false;
             }
 

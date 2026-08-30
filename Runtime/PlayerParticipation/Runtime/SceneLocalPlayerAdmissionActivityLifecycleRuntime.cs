@@ -29,7 +29,7 @@ namespace Immersive.Framework.PlayerParticipation
         private sealed class Entry
         {
             internal Entry(
-                SceneLocalPlayerAdmissionAuthoring authoring,
+                SceneProvidedLocalPlayerAuthoring authoring,
                 PlayerSlotId playerSlotId,
                 ActorProfile actorProfile,
                 SceneLocalPlayerAdmissionToken admissionToken,
@@ -49,7 +49,7 @@ namespace Immersive.Framework.PlayerParticipation
                 AdmissionActive = true;
             }
 
-            internal SceneLocalPlayerAdmissionAuthoring Authoring { get; }
+            internal SceneProvidedLocalPlayerAuthoring Authoring { get; }
             internal PlayerSlotId PlayerSlotId { get; }
             internal ActorProfile ActorProfile { get; }
             internal SceneLocalPlayerAdmissionToken AdmissionToken { get; set; }
@@ -144,7 +144,7 @@ namespace Immersive.Framework.PlayerParticipation
 
             if (!_module.TryResolveAutomaticActivityAuthoring(
                     activity,
-                    out IReadOnlyList<SceneLocalPlayerAdmissionAuthoring> authoring,
+                    out IReadOnlyList<SceneProvidedLocalPlayerAuthoring> authoring,
                     out string resolveIssue))
             {
                 return Failure(
@@ -199,7 +199,7 @@ namespace Immersive.Framework.PlayerParticipation
             var entries = new List<Entry>(authoring.Count);
             for (int index = 0; index < authoring.Count; index++)
             {
-                SceneLocalPlayerAdmissionAuthoring surface = authoring[index];
+                SceneProvidedLocalPlayerAuthoring surface = authoring[index];
                 SceneLocalPlayerAdmissionRuntimeResult admission = _module.TryAdmit(
                     surface,
                     owner,
@@ -962,7 +962,7 @@ namespace Immersive.Framework.PlayerParticipation
         }
 
         private string RollbackCurrentSelectionAndAdmission(
-            SceneLocalPlayerAdmissionAuthoring surface,
+            SceneProvidedLocalPlayerAuthoring surface,
             PlayerSlotId playerSlotId,
             int selectionRevision,
             bool selectionApplied,
@@ -1030,7 +1030,7 @@ namespace Immersive.Framework.PlayerParticipation
         }
 
         private bool TryReleaseAdmissionOnly(
-            SceneLocalPlayerAdmissionAuthoring authoring,
+            SceneProvidedLocalPlayerAuthoring authoring,
             SceneLocalPlayerAdmissionToken token,
             string source,
             string reason,

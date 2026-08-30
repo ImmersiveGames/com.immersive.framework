@@ -7,8 +7,8 @@ namespace Immersive.Framework.PlayerParticipation
     /// </summary>
     [FrameworkApiStatus(
         FrameworkApiStatus.Experimental,
-        "P3M4 scene local Player admission authoring status.")]
-    public enum SceneLocalPlayerAdmissionAuthoringStatus
+        "Scene-Provided Local Player authoring composition status.")]
+    public enum SceneProvidedLocalPlayerAuthoringStatus
     {
         NotValidated = 0,
         Valid = 10,

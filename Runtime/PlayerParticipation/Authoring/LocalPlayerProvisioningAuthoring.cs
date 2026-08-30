@@ -16,10 +16,10 @@ namespace Immersive.Framework.PlayerParticipation
     /// </summary>
     [DisallowMultipleComponent]
     [AddComponentMenu(
-        "Immersive Framework/Player/Provisioning/Authoring")]
+        "Immersive Framework/Player/Provisioning/Local Player Provisioning")]
     [FrameworkApiStatus(
         FrameworkApiStatus.Experimental,
-        "P3G/P3J local Player provisioning authoring, preparation and lifecycle observation surface.")]
+        "P3G/P3J Local Player Provisioning setup, preparation and lifecycle observation surface.")]
     public sealed class LocalPlayerProvisioningAuthoring : MonoBehaviour
     {
         [SerializeField]
@@ -63,12 +63,6 @@ namespace Immersive.Framework.PlayerParticipation
             localPlayerHostPrefab;
 
         /// <summary>
-        /// Compatibility alias for existing consumers. New code should use
-        /// LocalPlayerHostPrefab.
-        /// </summary>
-        public GameObject PlayerPrefab =>
-            LocalPlayerHostPrefab;
-
         public bool IsManagerPrefabMaterialized =>
             playerInputManager != null &&
             localPlayerHostPrefab != null &&

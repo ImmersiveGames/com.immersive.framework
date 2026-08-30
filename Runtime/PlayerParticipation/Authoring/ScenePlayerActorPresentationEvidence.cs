@@ -8,7 +8,7 @@ namespace Immersive.Framework.PlayerParticipation
     /// Serialized Scene-Provided proof that an authored Presentation corresponds to an ActorProfile Presentation prefab.
     /// </summary>
     [DisallowMultipleComponent]
-    [FrameworkApiStatus(FrameworkApiStatus.Stable, "Stable Scene-Provided Player presentation provenance.")]
+    [FrameworkApiStatus(FrameworkApiStatus.Stable, "Stable Scene-Provided Local Player presentation provenance.")]
     public sealed class ScenePlayerActorPresentationEvidence : MonoBehaviour
     {
         [SerializeField] private ActorProfile actorProfile;

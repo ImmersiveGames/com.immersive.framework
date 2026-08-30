@@ -9,13 +9,13 @@ using UnityEngine.InputSystem;
 namespace Immersive.Framework.PlayerParticipation
 {
     /// <summary>
-    /// Designer-facing admission composition for one Local Player already authored in a scene.
+    /// Designer-facing Scene-Provided Local Player composition.
     /// The scene supplies an exact Runtime Host and Presentation; ActorProfile supplies only Presentation intent.
     /// </summary>
     [DisallowMultipleComponent]
-    [AddComponentMenu("Immersive Framework/Player/Scene/Admission")]
-    [FrameworkApiStatus(FrameworkApiStatus.Stable, "Stable Scene Local Player admission surface. Manager provisioning and Session-Persistent remain Experimental.")]
-    public sealed class SceneLocalPlayerAdmissionAuthoring : MonoBehaviour
+    [AddComponentMenu("Immersive Framework/Player/Scene-Provided/Local Player")]
+    [FrameworkApiStatus(FrameworkApiStatus.Stable, "Stable Scene-Provided Local Player authoring surface. Manager-Provisioned and Session-Persistent remain Experimental.")]
+    public sealed class SceneProvidedLocalPlayerAuthoring : MonoBehaviour
     {
         [SerializeField] private LocalPlayerHostAuthoring localPlayerHost;
         [SerializeField] private PlayerSlotProfile playerSlotProfile;
@@ -27,12 +27,12 @@ namespace Immersive.Framework.PlayerParticipation
         [SerializeField, HideInInspector] private ActorProfile evidenceActorProfile;
         [SerializeField, HideInInspector] private GameObject evidencePresentationPrefab;
         [SerializeField, HideInInspector] private string evidenceDiagnostic = string.Empty;
-        [SerializeField, HideInInspector] private SceneLocalPlayerAdmissionAuthoringStatus lastAuthoringStatus = SceneLocalPlayerAdmissionAuthoringStatus.NotValidated;
-        [SerializeField, HideInInspector] private string lastAuthoringDiagnostic = "Scene Local Player has not been validated.";
+        [SerializeField, HideInInspector] private SceneProvidedLocalPlayerAuthoringStatus lastAuthoringStatus = SceneProvidedLocalPlayerAuthoringStatus.NotValidated;
+        [SerializeField, HideInInspector] private string lastAuthoringDiagnostic = "Scene-Provided Local Player has not been validated.";
 
         [NonSerialized] private SceneLocalPlayerAdmissionRuntimeHostModule _runtimeModule;
         [NonSerialized] private SceneLocalPlayerAdmissionRuntimeResult _lastRuntimeResult;
-        [NonSerialized] private string _runtimeDiagnostic = "Scene Local Player runtime is not bound.";
+        [NonSerialized] private string _runtimeDiagnostic = "Scene-Provided Local Player runtime is not bound.";
         [NonSerialized] private ScenePlayerActorAdoptionResult _lastActorAdoptionResult;
 
         public PlayerSlotProfile PlayerSlotProfile => playerSlotProfile;
@@ -43,7 +43,7 @@ namespace Immersive.Framework.PlayerParticipation
         public PlayerActorDeclaration ScenePlayerActorDeclaration => scenePlayerActorRuntimeHost != null ? scenePlayerActorRuntimeHost.PlayerActorDeclaration : null;
         internal PlayerActorDeclaration SceneLogicalPlayerActor => ScenePlayerActorDeclaration;
         public SceneLocalPlayerAdmissionTiming AdmissionTiming => admissionTiming;
-        public SceneLocalPlayerAdmissionAuthoringStatus LastAuthoringStatus => lastAuthoringStatus;
+        public SceneProvidedLocalPlayerAuthoringStatus LastAuthoringStatus => lastAuthoringStatus;
         public string LastAuthoringDiagnostic => lastAuthoringDiagnostic ?? string.Empty;
         public bool RuntimeReady => _runtimeModule != null && _runtimeModule.IsReadyFor(this);
         public string RuntimeDiagnostic => RuntimeReady ? _runtimeModule.Diagnostic : _runtimeDiagnostic ?? string.Empty;
@@ -67,7 +67,7 @@ namespace Immersive.Framework.PlayerParticipation
             if (playerSlotProfile == null)
             {
                 playerSlotId = default;
-                issue = "Scene Local Player requires an explicit Player Slot Profile.";
+                issue = "Scene-Provided Local Player requires an explicit Player Slot Profile.";
                 return false;
             }
             return playerSlotProfile.TryGetPlayerSlotId(out playerSlotId, out issue);
@@ -79,14 +79,14 @@ namespace Immersive.Framework.PlayerParticipation
             LocalPlayerHostAuthoring localPlayerHost = LocalPlayerHost;
             if (!HasCompleteReferences)
             {
-                issue = "Scene Local Player requires explicit Player Slot Profile, Local Player Host, Actor Profile, Player Actor Runtime Host and Presentation references.";
+                issue = "Scene-Provided Local Player requires explicit Player Slot Profile, Local Player Host, Actor Profile, Player Actor Runtime Host and Presentation references.";
                 return false;
             }
             if (!ReferenceEquals(
                     GetComponentInParent<LocalPlayerHostAuthoring>(true),
                     localPlayerHost))
             {
-                issue = "Scene Local Player must reference the nearest Local Player Host that owns its hierarchy.";
+                issue = "Scene-Provided Local Player must reference the nearest ancestral Local Player Host that owns its hierarchy.";
                 return false;
             }
             if (!Enum.IsDefined(typeof(SceneLocalPlayerAdmissionTiming), admissionTiming) || !TryGetPlayerSlotId(out _, out issue) || !actorProfile.TryGetActorProfileId(out _, out issue))
@@ -109,7 +109,7 @@ namespace Immersive.Framework.PlayerParticipation
             }
             if (!HasTypedActorEvidence || !IsTypedActorEvidenceCompatibleWith(actorProfile))
             {
-                issue = "Scene Local Player evidence does not match the selected Actor Profile Presentation prefab. Run Apply / Rebuild in the Inspector.";
+                issue = "Scene-Provided Local Player evidence does not match the selected Actor Profile Presentation prefab. Run Apply / Rebuild in the Inspector.";
                 return false;
             }
             issue = string.Empty;
@@ -137,7 +137,7 @@ namespace Immersive.Framework.PlayerParticipation
         internal void BindRuntime(SceneLocalPlayerAdmissionRuntimeHostModule module)
         {
             if (module == null) throw new ArgumentNullException(nameof(module));
-            if (_runtimeModule != null && !ReferenceEquals(_runtimeModule, module)) throw new InvalidOperationException("Scene Local Player is already bound to another Session runtime module.");
+            if (_runtimeModule != null && !ReferenceEquals(_runtimeModule, module)) throw new InvalidOperationException("Scene-Provided Local Player is already bound to another Session runtime module.");
             _runtimeModule = module;
             _runtimeDiagnostic = module.Diagnostic;
         }
@@ -145,7 +145,7 @@ namespace Immersive.Framework.PlayerParticipation
         internal void UnbindRuntime(SceneLocalPlayerAdmissionRuntimeHostModule module, string diagnostic)
         {
             if (_runtimeModule != null && ReferenceEquals(_runtimeModule, module)) _runtimeModule = null;
-            _runtimeDiagnostic = string.IsNullOrWhiteSpace(diagnostic) ? "Scene Local Player runtime is not bound." : diagnostic.Trim();
+            _runtimeDiagnostic = string.IsNullOrWhiteSpace(diagnostic) ? "Scene-Provided Local Player runtime is not bound." : diagnostic.Trim();
         }
 
         internal void SetActorAdoptionResult(ScenePlayerActorAdoptionResult result) => _lastActorAdoptionResult = result;
@@ -153,7 +153,7 @@ namespace Immersive.Framework.PlayerParticipation
         private void OnDestroy() => _runtimeModule?.HandleAuthoringDestroyed(this);
 
 #if UNITY_EDITOR
-        public void EditorSetAuthoringResult(SceneLocalPlayerAdmissionAuthoringStatus status, string diagnostic) { lastAuthoringStatus = status; lastAuthoringDiagnostic = diagnostic ?? string.Empty; }
+        public void EditorSetAuthoringResult(SceneProvidedLocalPlayerAuthoringStatus status, string diagnostic) { lastAuthoringStatus = status; lastAuthoringDiagnostic = diagnostic ?? string.Empty; }
         public void EditorSetCompositionReferences(PlayerActorRuntimeHost runtimeHost, GameObject presentation)
         {
             scenePlayerActorRuntimeHost = runtimeHost;

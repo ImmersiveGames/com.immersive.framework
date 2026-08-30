@@ -9,20 +9,20 @@ using UnityEngine.InputSystem;
 namespace Immersive.Framework.Editor.PlayerParticipation
 {
     /// <summary>
-    /// Canonical Editor creation surface for one Scene Local Player.
+    /// Canonical Editor creation surface for one Scene-Provided Local Player.
     /// It creates and wires only the deterministic technical composition required
     /// before consumer-authored Slot, Actor and Input Action intent is assigned.
     /// </summary>
     [FrameworkApiStatus(
         FrameworkApiStatus.DevelopmentTooling,
-        "Canonical Editor create action for the Scene Local Player composition.")]
+        "Canonical Editor create action for the Scene-Provided Local Player composition.")]
     public static class SceneProvidedLocalPlayerCreator
     {
         private const string MenuPath =
-            "GameObject/Immersive Framework/Player/Scene/Create Local Player";
+            "GameObject/Immersive Framework/Player/Scene-Provided/Create Local Player";
 
         private const string UndoName =
-            "Create Scene Local Player";
+            "Create Scene-Provided Local Player";
 
         [MenuItem(MenuPath, false, 10)]
         private static void CreateFromMenu(MenuCommand command)
@@ -38,13 +38,13 @@ namespace Immersive.Framework.Editor.PlayerParticipation
         private static bool ValidateCreateFromMenu() =>
             !EditorApplication.isPlayingOrWillChangePlaymode;
 
-        public static SceneLocalPlayerAdmissionAuthoring Create(
+        public static SceneProvidedLocalPlayerAuthoring Create(
             GameObject parent = null)
         {
             if (EditorApplication.isPlayingOrWillChangePlaymode)
             {
                 throw new InvalidOperationException(
-                    "Scene Local Player authoring is unavailable while entering or running Play Mode.");
+                    "Scene-Provided Local Player authoring is unavailable while entering or running Play Mode.");
             }
 
             Undo.IncrementCurrentGroup();
@@ -54,7 +54,7 @@ namespace Immersive.Framework.Editor.PlayerParticipation
             try
             {
                 var root =
-                    new GameObject("Scene Local Player");
+                    new GameObject("Scene-Provided Local Player");
 
                 if (parent != null)
                 {
@@ -78,8 +78,8 @@ namespace Immersive.Framework.Editor.PlayerParticipation
                 UnityPlayerInputGateAdapter inputGate =
                     Undo.AddComponent<UnityPlayerInputGateAdapter>(root);
 
-                SceneLocalPlayerAdmissionAuthoring admission =
-                    Undo.AddComponent<SceneLocalPlayerAdmissionAuthoring>(root);
+                SceneProvidedLocalPlayerAuthoring sceneProvidedLocalPlayer =
+                    Undo.AddComponent<SceneProvidedLocalPlayerAuthoring>(root);
 
                 var actorMount =
                     new GameObject("ActorMount");
@@ -97,15 +97,15 @@ namespace Immersive.Framework.Editor.PlayerParticipation
                 ConfigureInputGate(
                     inputGate,
                     playerInput);
-                ConfigureAdmission(
-                    admission,
+                ConfigureSceneProvidedLocalPlayer(
+                    sceneProvidedLocalPlayer,
                     host);
 
                 Selection.activeGameObject = root;
                 EditorGUIUtility.PingObject(root);
 
                 Undo.CollapseUndoOperations(undoGroup);
-                return admission;
+                return sceneProvidedLocalPlayer;
             }
             catch
             {
@@ -181,16 +181,16 @@ namespace Immersive.Framework.Editor.PlayerParticipation
             EditorUtility.SetDirty(inputGate);
         }
 
-        private static void ConfigureAdmission(
-            SceneLocalPlayerAdmissionAuthoring admission,
+        private static void ConfigureSceneProvidedLocalPlayer(
+            SceneProvidedLocalPlayerAuthoring sceneProvidedLocalPlayer,
             LocalPlayerHostAuthoring host)
         {
             Undo.RecordObject(
-                admission,
+                sceneProvidedLocalPlayer,
                 UndoName);
 
             var serializedAdmission =
-                new SerializedObject(admission);
+                new SerializedObject(sceneProvidedLocalPlayer);
             serializedAdmission.Update();
 
             SerializedProperty hostProperty =
@@ -198,12 +198,12 @@ namespace Immersive.Framework.Editor.PlayerParticipation
             if (hostProperty == null)
             {
                 throw new InvalidOperationException(
-                    "Scene Local Player Admission serialized Host field could not be resolved.");
+                    "Scene-Provided Local Player serialized Host field could not be resolved.");
             }
 
             hostProperty.objectReferenceValue = host;
             serializedAdmission.ApplyModifiedProperties();
-            EditorUtility.SetDirty(admission);
+            EditorUtility.SetDirty(sceneProvidedLocalPlayer);
         }
     }
 }

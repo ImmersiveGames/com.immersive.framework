@@ -37,7 +37,7 @@ namespace Immersive.Framework.PlayerParticipation
         private sealed class AdmissionRecord
         {
             internal AdmissionRecord(
-                SceneLocalPlayerAdmissionAuthoring authoring,
+                SceneProvidedLocalPlayerAuthoring authoring,
                 LocalPlayerHostAuthoring host,
                 PlayerSlotRuntimeSnapshot joinedSlot,
                 SceneLocalPlayerAdmissionToken token,
@@ -50,7 +50,7 @@ namespace Immersive.Framework.PlayerParticipation
                 Assignment = assignment;
             }
 
-            internal SceneLocalPlayerAdmissionAuthoring Authoring { get; }
+            internal SceneProvidedLocalPlayerAuthoring Authoring { get; }
             internal LocalPlayerHostAuthoring Host { get; }
             internal PlayerSlotRuntimeSnapshot JoinedSlot { get; set; }
             internal SceneLocalPlayerAdmissionToken Token { get; set; }
@@ -82,7 +82,7 @@ namespace Immersive.Framework.PlayerParticipation
         internal int ActiveAdmissionCount => _records.Count;
 
         internal SceneLocalPlayerAdmissionRuntimeResult TryAdmit(
-            SceneLocalPlayerAdmissionAuthoring authoring,
+            SceneProvidedLocalPlayerAuthoring authoring,
             RuntimeContentOwner assignmentOwner,
             string source,
             string reason)
@@ -645,7 +645,7 @@ namespace Immersive.Framework.PlayerParticipation
         }
 
         internal SceneLocalPlayerAdmissionRuntimeResult TryRelease(
-            SceneLocalPlayerAdmissionAuthoring authoring,
+            SceneProvidedLocalPlayerAuthoring authoring,
             SceneLocalPlayerAdmissionToken expectedToken,
             string source,
             string reason)
@@ -660,7 +660,7 @@ namespace Immersive.Framework.PlayerParticipation
         }
 
         internal SceneLocalPlayerAdmissionRuntimeResult TryReleaseForSessionPlayerLeave(
-            SceneLocalPlayerAdmissionAuthoring authoring,
+            SceneProvidedLocalPlayerAuthoring authoring,
             SceneLocalPlayerAdmissionToken expectedToken,
             SessionPlayerLeaveToken leaveToken,
             string source,
@@ -676,7 +676,7 @@ namespace Immersive.Framework.PlayerParticipation
         }
 
         internal SceneLocalPlayerAdmissionRuntimeResult TryReleaseForSessionTermination(
-            SceneLocalPlayerAdmissionAuthoring authoring,
+            SceneProvidedLocalPlayerAuthoring authoring,
             SceneLocalPlayerAdmissionToken expectedToken,
             string source,
             string reason)
@@ -691,7 +691,7 @@ namespace Immersive.Framework.PlayerParticipation
         }
 
         private SceneLocalPlayerAdmissionRuntimeResult TryReleaseCore(
-            SceneLocalPlayerAdmissionAuthoring authoring,
+            SceneProvidedLocalPlayerAuthoring authoring,
             SceneLocalPlayerAdmissionToken expectedToken,
             ContextualReleaseAuthorization authorization,
             SessionPlayerLeaveToken leaveToken,
@@ -996,7 +996,7 @@ namespace Immersive.Framework.PlayerParticipation
         /// and Host evidence deliberately remain outside this operation.
         /// </summary>
         internal SceneLocalPlayerAdmissionRuntimeResult TryRetireContextualRepresentation(
-            SceneLocalPlayerAdmissionAuthoring authoring,
+            SceneProvidedLocalPlayerAuthoring authoring,
             SceneLocalPlayerAdmissionToken expectedToken,
             string source,
             string reason)
@@ -1012,7 +1012,7 @@ namespace Immersive.Framework.PlayerParticipation
 
         internal SceneLocalPlayerAdmissionRuntimeResult
             TryRetireContextualRepresentationForSessionPlayerLeave(
-                SceneLocalPlayerAdmissionAuthoring authoring,
+                SceneProvidedLocalPlayerAuthoring authoring,
                 SceneLocalPlayerAdmissionToken expectedToken,
                 SessionPlayerLeaveToken leaveToken,
                 string source,
@@ -1029,7 +1029,7 @@ namespace Immersive.Framework.PlayerParticipation
 
         internal SceneLocalPlayerAdmissionRuntimeResult
             TryRetireContextualRepresentationForSessionTermination(
-                SceneLocalPlayerAdmissionAuthoring authoring,
+                SceneProvidedLocalPlayerAuthoring authoring,
                 SceneLocalPlayerAdmissionToken expectedToken,
                 string source,
                 string reason)
@@ -1044,7 +1044,7 @@ namespace Immersive.Framework.PlayerParticipation
         }
 
         private SceneLocalPlayerAdmissionRuntimeResult TryRetireContextualRepresentationCore(
-            SceneLocalPlayerAdmissionAuthoring authoring,
+            SceneProvidedLocalPlayerAuthoring authoring,
             SceneLocalPlayerAdmissionToken expectedToken,
             ContextualReleaseAuthorization authorization,
             SessionPlayerLeaveToken leaveToken,
@@ -1226,7 +1226,7 @@ namespace Immersive.Framework.PlayerParticipation
         }
 
         internal bool TryGetActiveToken(
-            SceneLocalPlayerAdmissionAuthoring authoring,
+            SceneProvidedLocalPlayerAuthoring authoring,
             out SceneLocalPlayerAdmissionToken token)
         {
             AdmissionRecord record = authoring != null
@@ -1243,7 +1243,7 @@ namespace Immersive.Framework.PlayerParticipation
         }
 
         private AdmissionRecord FindRecordByAuthoring(
-            SceneLocalPlayerAdmissionAuthoring authoring)
+            SceneProvidedLocalPlayerAuthoring authoring)
         {
             for (int index = 0; index < _records.Count; index++)
             {
@@ -1312,7 +1312,7 @@ namespace Immersive.Framework.PlayerParticipation
         private static SceneLocalPlayerAdmissionRuntimeResult Result(
             SceneLocalPlayerAdmissionRuntimeStatus status,
             string operation,
-            SceneLocalPlayerAdmissionAuthoring authoring,
+            SceneProvidedLocalPlayerAuthoring authoring,
             SceneLocalPlayerAdmissionToken token,
             PlayerParticipationOperationResult reservationResult,
             PlayerParticipationOperationResult slotOperationResult,

@@ -266,7 +266,7 @@ Designer-first views may summarize this evidence. Advanced / Debug must preserve
 
 Cross-scene access must be typed, scoped and lifetime-explicit.
 
-Existing `LocalPlayerProvisioningHostRegistration`, bridge/runtime-host infrastructure must be reused when it already supplies the correct lifetime. A second registry must not be created merely to make UI buttons convenient.
+Existing `LocalPlayerProvisioningEndpointRegistration`, bridge/runtime-host infrastructure must be reused when it already supplies the correct lifetime. A second registry must not be created merely to make UI buttons convenient.
 
 ## FIRSTGAME
 
@@ -524,7 +524,7 @@ Provide a canonical way for scene/Route/Activity consumers to reach the existing
 First inspect and reuse:
 
 ```text
-LocalPlayerProvisioningHostRegistration
+LocalPlayerProvisioningEndpointRegistration
 LocalPlayerProvisioningBridge
 FrameworkRuntimeHost scoped infrastructure
 ```
@@ -564,7 +564,7 @@ Expected existing package areas:
 
 ```text
 Runtime/PlayerParticipation/Runtime/
-  LocalPlayerProvisioningHostRegistration.cs
+  LocalPlayerProvisioningEndpointRegistration.cs
   LocalPlayerProvisioningBridge.cs
   related runtime-host integration
 
@@ -1117,7 +1117,7 @@ Preserve real existing composition:
 LocalPlayerProvisioning prefab
 PlayerInputManager
 LocalPlayerProvisioningAuthoring
-LocalPlayerProvisioningHostRegistration
+LocalPlayerProvisioningEndpointRegistration
 Manager-Provisioned Host prefab
 PlayerInput
 LocalPlayerHostAuthoring
@@ -1265,7 +1265,7 @@ It may materialize existing technical composition such as:
 ```text
 PlayerInputManager
 LocalPlayerProvisioningAuthoring
-LocalPlayerProvisioningHostRegistration
+LocalPlayerProvisioningEndpointRegistration
 command/status authoring when selected by the workflow
 ```
 

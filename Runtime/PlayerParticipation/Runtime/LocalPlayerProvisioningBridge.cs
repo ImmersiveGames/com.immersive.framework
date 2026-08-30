@@ -819,15 +819,15 @@ namespace Immersive.Framework.PlayerParticipation
             GameObject[] roots = scene.GetRootGameObjects();
             for (int rootIndex = 0; rootIndex < roots.Length; rootIndex++)
             {
-                SceneLocalPlayerAdmissionAuthoring[] declarations =
+                SceneProvidedLocalPlayerAuthoring[] declarations =
                     roots[rootIndex]
                         .GetComponentsInChildren<
-                            SceneLocalPlayerAdmissionAuthoring>(true);
+                            SceneProvidedLocalPlayerAuthoring>(true);
                 for (int declarationIndex = 0;
                      declarationIndex < declarations.Length;
                      declarationIndex++)
                 {
-                    SceneLocalPlayerAdmissionAuthoring declaration =
+                    SceneProvidedLocalPlayerAuthoring declaration =
                         declarations[declarationIndex];
                     if (declaration != null &&
                         ReferenceEquals(

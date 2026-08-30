@@ -17,7 +17,7 @@ namespace Immersive.Framework.Editor.PlayerParticipation
     [FrameworkApiStatus(
         FrameworkApiStatus.DevelopmentTooling,
         "Canonical Editor create action for the Local Player provisioning setup.")]
-    public static class ManagerProvisionedLocalPlayerCreator
+    public static class LocalPlayerProvisioningSetupCreator
     {
         private const string MenuPath =
             "GameObject/Immersive Framework/Player/Provisioning/Create Setup";
@@ -76,15 +76,15 @@ namespace Immersive.Framework.Editor.PlayerParticipation
                 LocalPlayerProvisioningAuthoring provisioningAuthoring =
                     Undo.AddComponent<LocalPlayerProvisioningAuthoring>(root);
 
-                LocalPlayerProvisioningHostRegistration hostRegistration =
-                    Undo.AddComponent<LocalPlayerProvisioningHostRegistration>(root);
+                LocalPlayerProvisioningEndpointRegistration endpointRegistration =
+                    Undo.AddComponent<LocalPlayerProvisioningEndpointRegistration>(root);
 
                 ConfigurePlayerInputManager(playerInputManager);
                 ConfigureProvisioningAuthoring(
                     provisioningAuthoring,
                     playerInputManager);
-                ConfigureHostRegistration(
-                    hostRegistration,
+                ConfigureEndpointRegistration(
+                    endpointRegistration,
                     provisioningAuthoring);
 
                 Selection.activeGameObject = root;
@@ -150,16 +150,16 @@ namespace Immersive.Framework.Editor.PlayerParticipation
             EditorUtility.SetDirty(provisioningAuthoring);
         }
 
-        private static void ConfigureHostRegistration(
-            LocalPlayerProvisioningHostRegistration hostRegistration,
+        private static void ConfigureEndpointRegistration(
+            LocalPlayerProvisioningEndpointRegistration endpointRegistration,
             LocalPlayerProvisioningAuthoring provisioningAuthoring)
         {
             Undo.RecordObject(
-                hostRegistration,
+                endpointRegistration,
                 UndoName);
 
             var serializedRegistration =
-                new SerializedObject(hostRegistration);
+                new SerializedObject(endpointRegistration);
             serializedRegistration.Update();
 
             SerializedProperty provisioningAuthoringProperty =
@@ -168,14 +168,14 @@ namespace Immersive.Framework.Editor.PlayerParticipation
             if (provisioningAuthoringProperty == null)
             {
                 throw new InvalidOperationException(
-                    "Local Player Provisioning Host Registration serialized composition field could not be resolved.");
+                    "Local Player Provisioning Endpoint Registration serialized composition field could not be resolved.");
             }
 
             provisioningAuthoringProperty.objectReferenceValue =
                 provisioningAuthoring;
 
             serializedRegistration.ApplyModifiedProperties();
-            EditorUtility.SetDirty(hostRegistration);
+            EditorUtility.SetDirty(endpointRegistration);
         }
     }
 }

@@ -19,7 +19,7 @@ namespace Immersive.Framework.Editor.PlayerParticipation
             if (host == null)
             {
                 report.AddError(
-                    "Local Player Host Authoring is missing.",
+                    "Local Player Host is missing.",
                     null);
                 return report;
             }

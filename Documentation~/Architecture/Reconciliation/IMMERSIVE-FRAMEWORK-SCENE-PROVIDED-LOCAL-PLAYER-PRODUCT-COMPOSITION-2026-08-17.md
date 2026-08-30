@@ -6,6 +6,14 @@ Runtime authority change: **None**
 Primary related decisions: IF-ADR-002, IF-ADR-003, IF-ADR-005, IF-ADR-010, IF-ADR-012, IF-ADR-015, IF-ADR-016  
 Governance: IF-GOV-001
 
+> Current-name note (2026-08-30): this historical record predates the canonical
+> vocabulary migration. The current Runtime type is
+> `SceneProvidedLocalPlayerAuthoring`; the Unity path is
+> `Immersive Framework/Player/Scene-Provided/Local Player`; and the Creator path
+> is `GameObject/Immersive Framework/Player/Scene-Provided/Create Local Player`.
+> Earlier type and menu names below are preserved where they document the state at
+> the time of this record.
+
 ## 1. Trigger
 
 FIRSTGAME Sample 00 exposed a concrete product-composition gap while integrating a

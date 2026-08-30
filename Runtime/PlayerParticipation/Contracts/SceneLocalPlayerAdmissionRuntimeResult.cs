@@ -15,7 +15,7 @@ namespace Immersive.Framework.PlayerParticipation
             SceneLocalPlayerAdmissionRuntimeStatus status,
             SceneLocalPlayerAdmissionRuntimeStatus originalStatus,
             string operation,
-            SceneLocalPlayerAdmissionAuthoring authoring,
+            SceneProvidedLocalPlayerAuthoring authoring,
             SceneLocalPlayerAdmissionToken token,
             PlayerParticipationOperationResult reservationResult,
             PlayerParticipationOperationResult slotOperationResult,
@@ -50,7 +50,7 @@ namespace Immersive.Framework.PlayerParticipation
         public SceneLocalPlayerAdmissionRuntimeStatus Status { get; }
         public SceneLocalPlayerAdmissionRuntimeStatus OriginalStatus { get; }
         public string Operation { get; }
-        public SceneLocalPlayerAdmissionAuthoring Authoring { get; }
+        public SceneProvidedLocalPlayerAuthoring Authoring { get; }
         public SceneLocalPlayerAdmissionToken Token { get; }
         public PlayerParticipationOperationResult ReservationResult { get; }
         public PlayerParticipationOperationResult SlotOperationResult { get; }
@@ -102,7 +102,7 @@ namespace Immersive.Framework.PlayerParticipation
 
         internal static SceneLocalPlayerAdmissionRuntimeResult RuntimeUnavailable(
             string operation,
-            SceneLocalPlayerAdmissionAuthoring authoring,
+            SceneProvidedLocalPlayerAuthoring authoring,
             string source,
             string reason,
             string message)

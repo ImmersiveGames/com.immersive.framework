@@ -21,7 +21,7 @@ namespace Immersive.Framework.Editor.PlayerParticipation
 
             if (authoring == null)
             {
-                report.AddError("Local Player Provisioning Authoring is missing.", null);
+                report.AddError("Local Player Provisioning is missing.", null);
                 return report;
             }
 

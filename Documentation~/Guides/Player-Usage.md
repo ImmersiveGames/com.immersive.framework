@@ -65,7 +65,7 @@ Do not restore `ActorProfile.LogicalActorHostPrefab`, a second Actor runtime pre
 
 `LogicalActorsPrepared` remains valid current readiness terminology. It does not mean the old `LogicalActorHost` hierarchy is current.
 
-## 3. Scene Player / Scene-Provided
+## 3. Scene-Provided Local Player
 
 Use the official Editor action:
 
@@ -73,7 +73,8 @@ Use the official Editor action:
 GameObject
   > Immersive Framework
     > Player
-      > Create Scene-Provided Local Player
+      > Scene-Provided
+        > Create Local Player
 ```
 
 Canonical technical shape:
@@ -82,14 +83,28 @@ Canonical technical shape:
 Scene-Provided Local Player
 ├── PlayerInput
 ├── LocalPlayerHostAuthoring
-├── SceneLocalPlayerAdmissionAuthoring
+├── SceneProvidedLocalPlayerAuthoring
 ├── UnityPlayerInputGateAdapter
 └── ActorMount
 ```
 
 The Scene-Provided composition may author the candidate `PlayerActorRuntimeHost` and selected Presentation. Runtime validates/adopts the exact deterministic composition and transfers successful physical Player lifetime to the Session occurrence.
 
-`SceneLocalPlayerAdmissionAuthoring` normally uses Activity lifecycle admission. Do not add a manual Join merely to compensate for ordinary Scene-Provided Activity entry.
+`SceneProvidedLocalPlayerAuthoring` normally uses Activity lifecycle admission. Do not add a manual Join merely to compensate for ordinary Scene-Provided Activity entry.
+
+For direct component authoring, use:
+
+```text
+Add Component
+  > Immersive Framework
+    > Player
+      > Scene-Provided
+        > Local Player
+```
+
+Framework authoring uses `LocalPlayerProvisioningAuthoring.LocalPlayerHostPrefab`.
+`PlayerInputManager.playerPrefab` remains the Unity Input System property materialized
+from that explicit framework intent; it is not a second framework prefab authority.
 
 Scene-Provided and Manager-Provisioned are separate provisioning origins. They converge after successful admission; there is no silent fallback between modes.
 

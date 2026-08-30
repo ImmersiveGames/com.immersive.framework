@@ -19,8 +19,8 @@ GameApplicationAsset -> bootstrap -> scoped Framework runtime
 PlayerSessionProfile -> Supported Slots / Joining / Host Provisioning / Actor Resolution
 PlayerSessionObserver -> scoped read-only Player Session evidence
 explicit Player Session commands -> Open / Close / Join / Actor Selection / Leave
-LocalPlayerProvisioningAuthoring -> Manager-Provisioned local Player authority
-SceneLocalPlayerAdmissionAuthoring -> Scene-Provided local Player admission
+LocalPlayerProvisioningAuthoring -> Local Player Provisioning authority
+SceneProvidedLocalPlayerAuthoring -> Scene-Provided Local Player authoring
 CameraRigComposer -> Validate / Apply/Rebuild (Unity Preset optional)
 FrameworkBgmDirector -> Route/Activity BGM bindings -> Immersive Audio
 PlayerPauseInput -> InputMode transaction -> PlayerInput state writer

@@ -6,24 +6,24 @@ using UnityEngine;
 
 namespace Immersive.Framework.Editor.PlayerParticipation
 {
-    [CustomEditor(typeof(SceneLocalPlayerAdmissionAuthoring))]
-    public sealed class SceneLocalPlayerAdmissionAuthoringEditor :
+    [CustomEditor(typeof(SceneProvidedLocalPlayerAuthoring))]
+    public sealed class SceneProvidedLocalPlayerAuthoringEditor :
         UnityEditor.Editor
     {
         private static readonly GUIContent PlayerSlotLabel =
             new GUIContent(
                 "Player Slot",
-                "Exact configured Session Player Slot admitted by this Scene Local Player.");
+                "Exact configured Session Player Slot admitted by this Scene-Provided Local Player.");
 
         private static readonly GUIContent ActorProfileLabel =
             new GUIContent(
                 "Actor Profile",
-                "Player / Protagonist Actor Profile. Its Presentation prefab is the authored presentation authority for this Scene Local Player.");
+                "Player / Protagonist Actor Profile. Its Presentation prefab is the authored presentation authority for this Scene-Provided Local Player.");
 
         private static readonly GUIContent AdmissionTimingLabel =
             new GUIContent(
                 "Timing",
-                "Activity lifecycle moment in which this existing Scene Player requests admission.");
+                "Activity lifecycle moment in which this Scene-Provided Local Player requests admission.");
 
         private static readonly GUIContent ApplyRebuildLabel =
             new GUIContent(
@@ -70,13 +70,13 @@ namespace Immersive.Framework.Editor.PlayerParticipation
         {
             serializedObject.UpdateIfRequiredOrScript();
 
-            SceneLocalPlayerAdmissionAuthoring authoring =
-                (SceneLocalPlayerAdmissionAuthoring)target;
+            SceneProvidedLocalPlayerAuthoring authoring =
+                (SceneProvidedLocalPlayerAuthoring)target;
 
             EditorGUILayout.LabelField(
                 new GUIContent(
-                    "Scene Local Player",
-                    "Authors one local Player already present in the Scene. Player Slot and Actor Profile define admission intent; Apply / Rebuild materializes the generic Runtime Host and selected Presentation under the same-root Local Player Host."),
+                    "Scene-Provided Local Player",
+                    "Authors one Local Player already present in Scene content. Player Slot and Actor Profile define admission intent; Apply / Rebuild materializes the generic Runtime Host and selected Presentation under the nearest ancestral Local Player Host."),
                 EditorStyles.boldLabel);
 
             EditorGUI.BeginChangeCheck();
@@ -91,11 +91,11 @@ namespace Immersive.Framework.Editor.PlayerParticipation
             {
                 Undo.RecordObject(
                     authoring,
-                    "Invalidate Scene Local Player Configuration");
+                    "Invalidate Scene-Provided Local Player Configuration");
 
                 authoring.EditorSetAuthoringResult(
-                    SceneLocalPlayerAdmissionAuthoringStatus.NotValidated,
-                    "Scene Local Player configuration changed. Run Apply / Rebuild and Validate.");
+                    SceneProvidedLocalPlayerAuthoringStatus.NotValidated,
+                    "Scene-Provided Local Player configuration changed. Run Apply / Rebuild and Validate.");
 
                 EditorUtility.SetDirty(authoring);
                 PrefabUtility.RecordPrefabInstancePropertyModifications(
@@ -130,10 +130,10 @@ namespace Immersive.Framework.Editor.PlayerParticipation
                 _localPlayerHost,
                 new GUIContent(
                     "Host",
-                    "Explicit Local Player Host that owns this Admission component. It must be the nearest Local Player Host in the parent hierarchy."));
+                    "Explicit Local Player Host that owns this Scene-Provided Local Player. It must be the nearest ancestral Local Player Host."));
 
             DrawActorRuntimeComposition(
-                (SceneLocalPlayerAdmissionAuthoring)target);
+                (SceneProvidedLocalPlayerAuthoring)target);
 
             FrameworkAuthoringInspectorGui.Section("Initial Placement");
             EditorGUILayout.PropertyField(
@@ -142,7 +142,7 @@ namespace Immersive.Framework.Editor.PlayerParticipation
         }
 
         private static void DrawActorRuntimeComposition(
-            SceneLocalPlayerAdmissionAuthoring authoring)
+            SceneProvidedLocalPlayerAuthoring authoring)
         {
             FrameworkAuthoringInspectorGui.Section("Actor Runtime");
 
@@ -166,16 +166,16 @@ namespace Immersive.Framework.Editor.PlayerParticipation
         }
 
         private static void DrawConfigurationStatus(
-            SceneLocalPlayerAdmissionAuthoring authoring)
+            SceneProvidedLocalPlayerAuthoring authoring)
         {
             FrameworkAuthoringInspectorGui.Section(
                 "Configuration Status");
 
-            SceneLocalPlayerAdmissionAuthoringStatus status =
+            SceneProvidedLocalPlayerAuthoringStatus status =
                 authoring.LastAuthoringStatus;
 
             if (status ==
-                SceneLocalPlayerAdmissionAuthoringStatus.NotValidated)
+                SceneProvidedLocalPlayerAuthoringStatus.NotValidated)
             {
                 EditorGUILayout.LabelField(
                     "Status",
@@ -184,7 +184,7 @@ namespace Immersive.Framework.Editor.PlayerParticipation
             }
 
             if (status ==
-                SceneLocalPlayerAdmissionAuthoringStatus.Valid)
+                SceneProvidedLocalPlayerAuthoringStatus.Valid)
             {
                 bool materialized =
                     authoring.HasTypedActorEvidence &&
@@ -221,13 +221,13 @@ namespace Immersive.Framework.Editor.PlayerParticipation
             EditorGUILayout.HelpBox(
                 string.IsNullOrWhiteSpace(
                     authoring.LastAuthoringDiagnostic)
-                    ? "The Scene Local Player configuration is invalid."
+                    ? "The Scene-Provided Local Player configuration is invalid."
                     : authoring.LastAuthoringDiagnostic,
                 MessageType.Error);
         }
 
         private static void DrawActions(
-            SceneLocalPlayerAdmissionAuthoring authoring)
+            SceneProvidedLocalPlayerAuthoring authoring)
         {
             FrameworkAuthoringInspectorGui.Section(
                 "Actions");
@@ -239,7 +239,7 @@ namespace Immersive.Framework.Editor.PlayerParticipation
                 if (GUILayout.Button(
                         ApplyRebuildLabel))
                 {
-                    SceneLocalPlayerAdmissionAuthoringUtility
+                    SceneProvidedLocalPlayerAuthoringUtility
                         .ApplyOrRebuild(
                             authoring,
                             true,
@@ -249,7 +249,7 @@ namespace Immersive.Framework.Editor.PlayerParticipation
                 if (GUILayout.Button(
                         ValidateLabel))
                 {
-                    SceneLocalPlayerAdmissionAuthoringUtility
+                    SceneProvidedLocalPlayerAuthoringUtility
                         .Validate(
                             authoring,
                             true);
@@ -265,7 +265,7 @@ namespace Immersive.Framework.Editor.PlayerParticipation
         }
 
         private static void DrawRuntimeStatus(
-            SceneLocalPlayerAdmissionAuthoring authoring)
+            SceneProvidedLocalPlayerAuthoring authoring)
         {
             FrameworkAuthoringInspectorGui.Section(
                 "Runtime Status");
@@ -275,7 +275,7 @@ namespace Immersive.Framework.Editor.PlayerParticipation
                 EditorGUILayout.LabelField(
                     new GUIContent(
                         "Admission",
-                        "Whether this Scene Local Player currently owns an active admission."),
+                        "Whether this Scene-Provided Local Player currently owns an active admission."),
                     new GUIContent(
                         authoring.HasActiveAdmission
                             ? "Admitted"
@@ -293,7 +293,7 @@ namespace Immersive.Framework.Editor.PlayerParticipation
                 EditorGUILayout.ObjectField(
                     new GUIContent(
                         "Host",
-                        "Resolved same-root Local Player Host."),
+                        "Resolved nearest ancestral Local Player Host."),
                     authoring.LocalPlayerHost,
                     typeof(LocalPlayerHostAuthoring),
                     true);
@@ -301,7 +301,7 @@ namespace Immersive.Framework.Editor.PlayerParticipation
                 EditorGUILayout.ObjectField(
                     new GUIContent(
                         "Runtime Host",
-                        "Resolved Scene Player Actor Runtime Host."),
+                        "Resolved Player Actor Runtime Host."),
                     authoring.ScenePlayerActorRuntimeHost,
                     typeof(PlayerActorRuntimeHost),
                     true);
@@ -318,7 +318,7 @@ namespace Immersive.Framework.Editor.PlayerParticipation
         }
 
         private void DrawDebug(
-            SceneLocalPlayerAdmissionAuthoring authoring)
+            SceneProvidedLocalPlayerAuthoring authoring)
         {
             EditorGUILayout.Space(7f);
             _showDebug =
@@ -345,7 +345,7 @@ namespace Immersive.Framework.Editor.PlayerParticipation
         }
 
         private void DrawResolvedComposition(
-            SceneLocalPlayerAdmissionAuthoring authoring)
+            SceneProvidedLocalPlayerAuthoring authoring)
         {
             FrameworkAuthoringInspectorGui.Section(
                 "Resolved Composition");
@@ -380,13 +380,13 @@ namespace Immersive.Framework.Editor.PlayerParticipation
                     false);
 
                 EditorGUILayout.ObjectField(
-                    "Scene Runtime Host",
+                    "Player Actor Runtime Host",
                     _scenePlayerActorRuntimeHost.objectReferenceValue,
                     typeof(PlayerActorRuntimeHost),
                     true);
 
                 EditorGUILayout.ObjectField(
-                    "Scene Presentation",
+                    "Presentation",
                     _scenePresentation.objectReferenceValue,
                     typeof(GameObject),
                     true);
@@ -402,7 +402,7 @@ namespace Immersive.Framework.Editor.PlayerParticipation
         }
 
         private static void DrawTypedActorEvidence(
-            SceneLocalPlayerAdmissionAuthoring authoring)
+            SceneProvidedLocalPlayerAuthoring authoring)
         {
             FrameworkAuthoringInspectorGui.Section(
                 "Typed Actor Evidence");
@@ -432,7 +432,7 @@ namespace Immersive.Framework.Editor.PlayerParticipation
         }
 
         private static void DrawRuntimeEvidence(
-            SceneLocalPlayerAdmissionAuthoring authoring)
+            SceneProvidedLocalPlayerAuthoring authoring)
         {
             FrameworkAuthoringInspectorGui.Section(
                 "Runtime Evidence");
@@ -459,7 +459,7 @@ namespace Immersive.Framework.Editor.PlayerParticipation
         }
 
         private static void DrawActorAdoption(
-            SceneLocalPlayerAdmissionAuthoring authoring)
+            SceneProvidedLocalPlayerAuthoring authoring)
         {
             FrameworkAuthoringInspectorGui.Section(
                 "Actor Adoption");
