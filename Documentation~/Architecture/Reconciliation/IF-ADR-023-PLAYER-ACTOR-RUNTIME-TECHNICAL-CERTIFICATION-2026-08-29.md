@@ -2,9 +2,13 @@
 
 Status: **TECHNICAL QA CERTIFIED**
 
+> Post-certification reconciliation: [IF-ADR-023A — Player Actor Occurrence Identity Boundary — 2026-08-31](./IF-ADR-023A-PLAYER-ACTOR-OCCURRENCE-IDENTITY-BOUNDARY-2026-08-31.md) records the runtime occurrence-identity boundary correction and subsequent FIRSTGAME Scene-Provided `LogicalActorsPrepared` / `GameplayReady` Play Mode proof. This certification remains historical evidence; IF-ADR-023A is the current clarification for `PlayerActorDeclaration.ActorId` authoring/runtime semantics.
+
 ## Scope
 
-This record certifies the current package implementation of IF-ADR-023 at the Framework/QA boundary and reconciles the latest FIRSTGAME Player evidence.
+This record certifies the package implementation of IF-ADR-023 at the Framework/QA boundary and reconciles the FIRSTGAME Player evidence available on 2026-08-29.
+
+The later IF-ADR-023A reconciliation does not invalidate the composition certified here. It corrects a post-certification runtime ordering defect in occurrence identity establishment while preserving this Player Actor composition authority.
 
 ## Implemented composition
 
@@ -54,6 +58,12 @@ Session Join
 
 Manager-Provisioned Join first establishes the technical/session Player occurrence. Immediate Join does not require contextual Activity assignment; `AssignmentOrigin=None` is valid before Activity reprojection/preparation.
 
+### Player Actor occurrence identity clarification
+
+The reusable authored `PlayerActorDeclaration` does not carry a persistent physical occurrence identity. Its authored template `ActorId` is empty; physical Player Actor preparation establishes the runtime occurrence identity before typed `ActorId` consumers may use it.
+
+This boundary is formally reconciled by IF-ADR-023A. Ordinary persistent `ActorDeclaration` identity rules are unchanged.
+
 ## Manager-Provisioned chain
 
 ```text
@@ -65,6 +75,7 @@ PlayerSessionProfile
 → Activity preparation requirement
 → PlayerActorRuntimeHost under ActorMount
 → ActorProfile.PresentationPrefab under PresentationMount
+→ establish PlayerActorDeclaration runtime occurrence identity
 → PlayerActorDeclaration/runtime evidence
 → contextual Activity evidence
 ```
@@ -76,7 +87,9 @@ Scene-authored Local Player Host
 → authored/adopted PlayerActorRuntimeHost
 → authored/adopted Presentation
 → exact Profile + Presentation evidence
-→ validate/adopt deterministic composition
+→ validate deterministic composition
+→ establish runtime Player Actor occurrence identity during physical adoption
+→ retain successful physical preparation/adoption evidence
 → Session-owned admitted Player occurrence
 ```
 
@@ -151,7 +164,9 @@ cases='14/14'
 completed='access,join,observation,actor-default,actor-replace,actor-lifecycle,joining-control,second-player,commands,leave,rejoin,negatives,spatial,relocation'
 ```
 
-The dedicated `actor-lifecycle` Activity transition reached `Active + Ready` with `blockingIssues=0` and proved Actor preparation/materialization under the current composition.
+The dedicated `actor-lifecycle` Activity transition reached `Active + Ready` with `blockingIssues=0` and proved Actor preparation/materialization under the composition certified on 2026-08-29.
+
+Post-certification Scene-Provided evidence is recorded separately in IF-ADR-023A rather than being retroactively merged into this dated QA result.
 
 ## What 14/14 proves
 
@@ -207,7 +222,7 @@ P2 Join/Rejoin explicitly shares the Editor keyboard. This avoids depending on a
 
 Historical Full Player `25/25`, aggregate `27/27` and focused regressions remain dated evidence for their own matrices.
 
-## FIRSTGAME evidence
+## FIRSTGAME evidence available at certification time
 
 FG-ADR-002 Revision 4 records:
 
@@ -219,6 +234,8 @@ Local Multiplayer                PLANNED / BLOCKED
 ```
 
 The remaining Local Multiplayer blocker is the public Slot/device/input ownership and observation contract, not ADR-023 Actor composition.
+
+Later Scene-Provided occurrence identity and readiness evidence belongs to IF-ADR-023A.
 
 ## Verdict
 
@@ -236,3 +253,5 @@ FIRSTGAME Player Provisioning            PROVEN
 FIRSTGAME Character Selection            PROVEN
 Production Local Multiplayer device model NOT CERTIFIED
 ```
+
+Current occurrence-identity semantics and post-certification Scene-Provided readiness evidence: **see IF-ADR-023A**.
