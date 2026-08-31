@@ -1,10 +1,11 @@
 # Player Usage
 
-Status: **Current Player product/runtime surface — ADR-023 composition certified**  
-Last updated: **2026-08-29**  
-Decision sources: IF-ADR-003, IF-ADR-007, IF-ADR-012, IF-ADR-015, IF-ADR-016, IF-ADR-019, IF-ADR-020, IF-ADR-021, IF-ADR-023  
+Status: **Current Player product/runtime surface — ADR-023 composition certified / ADR-023A identity boundary reconciled**  
+Last updated: **2026-08-31**  
+Decision sources: IF-ADR-003, IF-ADR-007, IF-ADR-012, IF-ADR-015, IF-ADR-016, IF-ADR-019, IF-ADR-020, IF-ADR-021, IF-ADR-023, IF-ADR-023A  
 Actor-selection closure: [IF-ADR-015B — 2026-08-26](../Architecture/Reconciliation/IF-ADR-015B-Player-Actor-Selection-Public-Surface-Certification-2026-08-26.md)  
 Actor-runtime certification: [IF-ADR-023 — 2026-08-29](../Architecture/Reconciliation/IF-ADR-023-PLAYER-ACTOR-RUNTIME-TECHNICAL-CERTIFICATION-2026-08-29.md)  
+Occurrence-identity reconciliation: [IF-ADR-023A — 2026-08-31](../Architecture/Reconciliation/IF-ADR-023A-PLAYER-ACTOR-OCCURRENCE-IDENTITY-BOUNDARY-2026-08-31.md)  
 Current delivery authority: [IF-TRACK — Immersive Framework](../Architecture/Tracking/IF-TRACK-Framework.md)
 
 ## 1. Product model
@@ -47,7 +48,7 @@ Join
 != Physical Materialization
 ```
 
-## 2. Current Actor composition — IF-ADR-023
+## 2. Current Actor composition — IF-ADR-023 / IF-ADR-023A
 
 ```text
 Local Player Host
@@ -65,9 +66,52 @@ Do not restore `ActorProfile.LogicalActorHostPrefab`, a second Actor runtime pre
 
 `LogicalActorsPrepared` remains valid current readiness terminology. It does not mean the old `LogicalActorHost` hierarchy is current.
 
+### Player Actor occurrence identity
+
+`PlayerActorDeclaration.ActorId` is a runtime physical occurrence identity, not a persistent prefab/template identity.
+
+Canonical states:
+
+```text
+AUTHORED / UNPREPARED
+  PlayerActorDeclaration.actorId = empty
+  no valid typed occurrence ActorId
+
+        ↓ physical preparation
+
+IDENTITY ESTABLISHED / PREPARING
+  runtime generates one occurrence ActorId
+  PlayerActorDeclaration receives it
+  typed ActorId becomes valid
+
+        ↓ commit
+
+PREPARED / COMMITTED
+  physical preparation evidence is retained
+  downstream runtime/gameplay may consume ActorId
+```
+
+For reusable Player Actor prefabs:
+
+```text
+PlayerActorDeclaration.ActorId
+  authored template value = empty
+  runtime value = physical occurrence identity
+```
+
+Do not generate a persistent Player Actor ID in the prefab. Do not use `ActorProfileId`, `PlayerSlotId`, GameObject name or another identity as a substitute.
+
+`ActorId` and `FrameworkIdentityValue` remain strict: empty typed identity is invalid. Runtime consumers must not request typed Player Actor occurrence identity before physical preparation establishes it.
+
+This rule is specific to `PlayerActorDeclaration`. Ordinary persistent `ActorDeclaration` keeps its existing persistent authored-ID requirement.
+
 ## 3. Scene-Provided Local Player
 
-Use the official Editor action:
+Two Editor operations serve different authoring jobs and must not be confused.
+
+### Create a complete Scene-Provided Local Player
+
+Use:
 
 ```text
 GameObject
@@ -77,7 +121,9 @@ GameObject
         > Create Local Player
 ```
 
-Canonical technical shape:
+This action creates a complete Scene-Provided Local Player composition. Use it when starting from no existing Local Player Host.
+
+Canonical full-creator shape:
 
 ```text
 Scene-Provided Local Player
@@ -88,9 +134,7 @@ Scene-Provided Local Player
 └── ActorMount
 ```
 
-The Scene-Provided composition may author the candidate `PlayerActorRuntimeHost` and selected Presentation. Runtime validates/adopts the exact deterministic composition and transfers successful physical Player lifetime to the Session occurrence.
-
-`SceneProvidedLocalPlayerAuthoring` normally uses Activity lifecycle admission. Do not add a manual Join merely to compensate for ordinary Scene-Provided Activity entry.
+### Add Scene-Provided behavior to an existing Local Player Host
 
 For direct component authoring, use:
 
@@ -101,6 +145,28 @@ Add Component
       > Scene-Provided
         > Local Player
 ```
+
+When a reusable Local Player Host already exists, the Scene-Provided module may be authored on a child object and reference the ancestor Host.
+
+Canonical reusable-variant shape:
+
+```text
+SceneProvidedPlayer
+├── PlayerInput
+├── LocalPlayerHostAuthoring
+├── UnityPlayerInputGateAdapter
+├── ActorMount
+└── Scene-Provided Local Player
+    └── SceneProvidedLocalPlayerAuthoring
+```
+
+Do not invoke the full `Create Local Player` action inside an existing Local Player Host merely to add Scene-Provided behavior; that creates another full Player composition instead of the module boundary.
+
+The Scene-Provided composition may author the candidate `PlayerActorRuntimeHost` and selected Presentation. Runtime validates/adopts the exact deterministic composition and transfers successful physical Player lifetime to the Session occurrence.
+
+`SceneProvidedLocalPlayerAuthoring` normally uses Activity lifecycle admission. Do not add a manual Join merely to compensate for ordinary Scene-Provided Activity entry.
+
+During physical adoption, the authored `PlayerActorDeclaration` may still have an empty stored ActorId. The Scene-Provided physical preparation owner establishes the runtime occurrence identity before any consumer is allowed to require typed `ActorId`.
 
 Framework authoring uses `LocalPlayerProvisioningAuthoring.LocalPlayerHostPrefab`.
 `PlayerInputManager.playerPrefab` remains the Unity Input System property materialized
@@ -132,12 +198,16 @@ PlayerActorRuntimeHost
         ↓
 ActorProfile.PresentationPrefab
         ↓
+physical Player Actor occurrence identity established
+        ↓
 Activity preparation / relocation
         ↓
 GameplayReady
 ```
 
 Immediate Join is not Actor materialization. A newly joined Manager Player may legitimately expose `AssignmentOrigin=None` before contextual Activity preparation/reprojection.
+
+Manager-Provisioned and Scene-Provided use different physical origins but obey the same identity invariant: typed `PlayerActorDeclaration.ActorId` is unavailable before occurrence establishment and valid after it.
 
 ## 5. Activity Player readiness
 
@@ -153,7 +223,21 @@ GameplayReady
 
 `LogicalActorsPrepared != GameplayReady`.
 
-If gameplay consumes current gameplay input/camera authority, request `GameplayReady`. Do not auto-promote readiness because a consumer happens to require a higher level.
+Current meaning:
+
+```text
+LogicalActorsPrepared
+  required physical Player Actor occurrences are selected/prepared for the Activity projection
+
+GameplayReady
+  current contextual gameplay projection is established over retained prepared Session Players
+```
+
+`GameplayReady` does **not** by itself certify game-specific Presentation functionality such as locomotion, a concrete gameplay input consumer, camera composition or character visuals. Those remain gameplay-owned composition concerns.
+
+If gameplay consumes current gameplay input/camera authority, request `GameplayReady`. Do not auto-promote readiness because a consumer happens to require a higher level, and do not treat readiness success as proof that every game-owned gameplay feature has been authored.
+
+FIRSTGAME Scene-Provided Play Mode evidence on 2026-08-31 reached `Ready` with both `LogicalActorsPrepared` and `GameplayReady`, with one projected, selected and prepared Player and zero failures. That certifies the framework lifecycle/preparation contract, not the completeness of a game-owned First Person Presentation.
 
 ## 6. Gameplay input consumption
 
@@ -169,6 +253,8 @@ PlayerGameplayInputReader
 Do not bypass that binding with direct `InputActionReference.action.ReadValue<T>()`, Host hierarchy guesses, scene scans, names, tags, reflection or another fallback channel.
 
 `PlayerInput` belongs to the Local Player Host. It is not Presentation authority.
+
+The existence of `GameplayReady` does not create a concrete gameplay consumer automatically. The game still owns the Presentation/gameplay components that consume the public binding.
 
 ## 7. Player Session public surface
 
@@ -263,6 +349,8 @@ ActivityPlayerRelocationAuthoring
 
 Route spatial entry and Activity relocation do not Join, recreate or transfer Player lifetime.
 
+Route spatial entry is resolved by Slot identity and applies pose to the physical Player Actor Transform. It does not require a pre-existing Player Actor occurrence `ActorId` merely to resolve/apply the authored spatial intent.
+
 ## 11. Character Selection
 
 Canonical public flow:
@@ -298,6 +386,7 @@ Historical Full Player            25/25 preserved
 Current aggregate                 27/27 PASS
 Manager functional Player QA      14/14 PASS
 Pause/Input/Gate composition       8/8 PASS
+Scene-Provided identity boundary  FIRSTGAME Play Mode PASS
 ```
 
 The 14-case consolidated functional run covers:
@@ -321,6 +410,8 @@ relocation
 
 The QA harness explicitly shares the Editor keyboard for P2 Join/Rejoin. That proves deterministic technical provisioning in the one-keyboard Editor environment; it does not certify a production Local Multiplayer Slot/device/InputUser/control-scheme contract.
 
+On 2026-08-31, FIRSTGAME Scene-Provided evidence additionally proved the post-IF-ADR-023A occurrence-identity boundary at both `LogicalActorsPrepared` and `GameplayReady` with `blockingIssues=0`.
+
 ## 13. Anti-patterns
 
 Do not add:
@@ -332,6 +423,8 @@ Do not add:
 - manual Join as fallback for normal Scene-Provided admission;
 - hidden default Actor fallback;
 - a second Player Actor runtime/presentation prefab authority;
+- persistent authored `PlayerActorDeclaration.ActorId` for reusable Player Actor templates;
+- pre-preparation typed `PlayerActorDeclaration.ActorId` reads;
 - Presentation-owned Session/Slot/lifetime state;
 - physical hot-swap hidden behind logical Replace;
 - sample-owned Slot/device/input authority to bypass Local Multiplayer product gaps.
