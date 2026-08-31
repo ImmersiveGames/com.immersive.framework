@@ -1243,7 +1243,7 @@ namespace Immersive.Framework.GameFlow
                         await afterActivityLifecycle();
                     }
 
-                    TransitionResult transitionAfter = await ExecuteActivityTransitionAsync(
+                    TransitionResult failedTransitionAfter = await ExecuteActivityTransitionAsync(
                         TransitionRequest.After(
                             operationId,
                             TransitionScope.Activity,
@@ -1255,18 +1255,18 @@ namespace Immersive.Framework.GameFlow
                             activityFlowResult.Activity),
                         activityTransitionMode);
                     transitionGateDiagnostics = ReleaseTransitionGate(transitionGateMode, transitionGateSnapshot);
-                    FrameworkTransitionDiagnostics transitionDiagnostics =
+                    FrameworkTransitionDiagnostics failedTransitionDiagnostics =
                         FrameworkTransitionDiagnostics.Completed(
                             TransitionScope.Activity,
                             transitionBefore,
-                            transitionAfter);
+                            failedTransitionAfter);
                     return FrameworkActivityRequestResult.FailedInvalidConfig(
                         activityFlowResult.Message,
                         targetActivity,
                         resolvedSource,
                         resolvedReason,
                         activityFlowResult,
-                        transitionDiagnostics,
+                        failedTransitionDiagnostics,
                         transitionGateDiagnostics,
                         activityTransitionMode,
                         GameFlowRequestOperationKind.Activity);
