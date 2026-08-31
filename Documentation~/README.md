@@ -1,12 +1,14 @@
 # Immersive Framework Documentation
 
-Last updated: **2026-08-30**
+Last updated: **2026-08-31**
 
 ## Start here
 
 - [Stage A canonical package baseline](Architecture/Reconciliation/IMMERSIVE-FRAMEWORK-STAGE-A-CANONICAL-BASELINE-CLOSURE-2026-08-11.md)
 - [Current framework tracker](Architecture/Tracking/IF-TRACK-Framework.md)
 - [Player Actor runtime and presentation authority — IF-ADR-023](Architecture/ADRs/IF-ADR-023-Player-Actor-Runtime-Host-and-Presentation-Authority.md)
+- [Player Actor occurrence identity boundary — IF-ADR-023A — 2026-08-31](Architecture/Reconciliation/IF-ADR-023A-PLAYER-ACTOR-OCCURRENCE-IDENTITY-BOUNDARY-2026-08-31.md)
+- [Player Actor runtime technical certification — 2026-08-29](Architecture/Reconciliation/IF-ADR-023-PLAYER-ACTOR-RUNTIME-TECHNICAL-CERTIFICATION-2026-08-29.md)
 - [Player Actor Selection public surface certification — 2026-08-26](Architecture/Reconciliation/IF-ADR-015B-Player-Actor-Selection-Public-Surface-Certification-2026-08-26.md)
 - [Player current aggregate recertification — 2026-08-24](Architecture/Reconciliation/IF-PLAYER-CURRENT-AGGREGATE-RECERTIFICATION-2026-08-24.md)
 - [Player physical lifetime recertification — 2026-08-15](Architecture/Reconciliation/IMMERSIVE-FRAMEWORK-PLAYER-PHYSICAL-LIFETIME-RECERTIFICATION-2026-08-15.md)
@@ -66,8 +68,15 @@ Player Actor Selection public surface
   Character Selection public-surface blocker CLOSED
 
 Player Actor runtime and presentation
-   ACCEPTED / IMPLEMENTED / TECHNICAL QA CERTIFIED
-   PlayerActorRuntimeHost + ActorProfile.PresentationPrefab
+  ACCEPTED / IMPLEMENTED / TECHNICAL QA CERTIFIED
+  PlayerActorRuntimeHost + ActorProfile.PresentationPrefab
+
+Player Actor occurrence identity boundary
+  RECONCILED / FIRSTGAME PLAY MODE PROVEN 2026-08-31
+  PlayerActorDeclaration template ActorId = empty
+  runtime occurrence ActorId established by physical preparation
+  Scene-Provided LogicalActorsPrepared = READY / PASS
+  Scene-Provided GameplayReady = READY / PASS
 
 Historical Full Player QA
   PLAYER QA CERTIFIED
@@ -110,7 +119,9 @@ Post-004D Camera QA
   new focused/aggregate run NOT RECORDED
 
 Active consumer phase
-  Player Character Selection sample is next unblocked Player cut
+  Getting Started Scene Player framework lifecycle is proven through GameplayReady
+  remaining Getting Started work = game-owned Presentation/gameplay completeness
+  Player Provisioning and Character Selection are proven
   Local Multiplayer remains blocked by public Slot/device/input contract
   ADR-022 broader Camera C6 promotion
 ```
@@ -123,6 +134,10 @@ The public arbitrary Actor-selection surface is now delivered through explicit P
 Session commands. Exact-Slot public Join, public Slot/device/InputUser/control-scheme
 ownership observation and consumer-facing physical Actor hot-swap are not implied by
 that closure.
+
+`PlayerActorDeclaration.ActorId` is a runtime physical occurrence identity. Reusable Player Actor templates keep the authored occurrence ID empty; the physical preparation owner establishes the typed runtime identity before downstream consumers may require it. This post-certification boundary is documented by IF-ADR-023A.
+
+`GameplayReady` proves the current contextual gameplay projection over retained prepared Session Players. It does not by itself certify game-owned locomotion, camera composition, concrete gameplay input consumers or Presentation completeness.
 
 The canonical mutable status is recorded in the
 [Framework Tracker](Architecture/Tracking/IF-TRACK-Framework.md).
@@ -175,10 +190,12 @@ Archive records preserve history without acting as current product truth.
 | [020](Architecture/ADRs/IF-ADR-020-Session-Player-Leave-and-Resource-Release-Authority.md) | Session Player Leave and resource release authority | Accepted / Reconciled / Implemented / Current Aggregate PASS |
 | [021](Architecture/ADRs/IF-ADR-021-Activity-Player-Actor-Initial-Placement-Authority.md) | Route spatial entry and Activity explicit relocation | Accepted / Reconciled / Implemented / Current QA Verified |
 | [022](Architecture/ADRs/IF-ADR-022-Camera-Rig-Presentation-Models-and-Materialization-Authority.md) | Camera Rig presentation models and materialization authority | Accepted / Technical QA Certified |
-| [023](Architecture/ADRs/IF-ADR-023-Player-Actor-Runtime-Host-and-Presentation-Authority.md) | Player Actor runtime Host and presentation authority | Accepted / Implemented / Technical QA Certified |
+| [023](Architecture/ADRs/IF-ADR-023-Player-Actor-Runtime-Host-and-Presentation-Authority.md) | Player Actor runtime Host and presentation authority | Accepted / Implemented / Technical QA Certified / 023A identity boundary reconciled |
 
 ## Current reconciliation / closure records
 
+- [Player Actor Occurrence Identity Boundary — 2026-08-31](Architecture/Reconciliation/IF-ADR-023A-PLAYER-ACTOR-OCCURRENCE-IDENTITY-BOUNDARY-2026-08-31.md)
+- [Player Actor Runtime Technical Certification — 2026-08-29](Architecture/Reconciliation/IF-ADR-023-PLAYER-ACTOR-RUNTIME-TECHNICAL-CERTIFICATION-2026-08-29.md)
 - [Player Actor Selection Public Surface Certification — 2026-08-26](Architecture/Reconciliation/IF-ADR-015B-Player-Actor-Selection-Public-Surface-Certification-2026-08-26.md)
 - [Player Current Aggregate Recertification — 2026-08-24](Architecture/Reconciliation/IF-PLAYER-CURRENT-AGGREGATE-RECERTIFICATION-2026-08-24.md)
 - [Player Physical Lifetime Recertification — 2026-08-15](Architecture/Reconciliation/IMMERSIVE-FRAMEWORK-PLAYER-PHYSICAL-LIFETIME-RECERTIFICATION-2026-08-15.md)
@@ -228,6 +245,17 @@ Focused IF-ADR-021 Model B evidence:
 ```text
 Route Spatial Entry      18/18 PASS
 Activity Relocation      23/23 PASS
+```
+
+Post-certification Scene-Provided occurrence-identity evidence:
+
+```text
+LogicalActorsPrepared = READY / PASS
+GameplayReady         = READY / PASS
+projected             = 1
+selected              = 1
+prepared              = 1
+failed                = 0
 ```
 
 Historical evidence remains preserved without being relabeled:
