@@ -137,7 +137,10 @@ namespace Immersive.Framework.ActivityFlow
                         request,
                         sourceText,
                         reasonText,
-                        $"Activity content execution participant threw an exception: {exception.GetType().Name}."));
+                        $"Activity content execution participant threw an exception: " +
+                        $"exceptionType='{exception.GetType().Name}' " +
+                        $"exceptionMessage='{exception.Message.ToDiagnosticText()}' " +
+                        $"participantType='{entry.Participant.GetType().Name}'."));
                 }
             }
 

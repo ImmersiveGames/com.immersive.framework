@@ -1285,10 +1285,7 @@ namespace Immersive.Framework.PlayerParticipation
                 : result.CurrentSlot.PlayerSlotId.IsValid
                     ? result.CurrentSlot.PlayerSlotId
                     : result.PreviousSlot.PlayerSlotId;
-            ActorId actor = result.Authoring != null &&
-                result.Authoring.SceneLogicalPlayerActor != null
-                    ? result.Authoring.SceneLogicalPlayerActor.ActorId
-                    : default;
+            ActorId actor = default;
             bool hostEvidencePresent = slot.IsValid &&
                 _hostEvidenceOwner != null &&
                 _hostEvidenceOwner.TryGetRetainedHostEvidence(slot, out _);

@@ -78,7 +78,7 @@ namespace Immersive.Framework.Actors
             }
         }
 
-        internal void ConfigureForDiagnostics(
+        private void ConfigureForDiagnostics(
             string id,
             string label,
             PlayerInput inputReference,
@@ -91,6 +91,39 @@ namespace Immersive.Framework.Actors
                 label,
                 declarationReason);
             playerInput = inputReference;
+        }
+
+        internal void EstablishRuntimeOccurrenceIdentity(
+            ActorId occurrenceActorId,
+            string label,
+            PlayerInput inputReference,
+            string declarationReason)
+        {
+            if (!occurrenceActorId.IsValid)
+            {
+                throw new ArgumentException(
+                    "Player Actor runtime occurrence identity must be valid.",
+                    nameof(occurrenceActorId));
+            }
+
+            ConfigureForDiagnostics(
+                occurrenceActorId.Value.Value,
+                label,
+                inputReference,
+                declarationReason);
+        }
+
+        internal void RestoreRuntimeOccurrenceState(
+            string storedActorId,
+            string label,
+            PlayerInput inputReference,
+            string declarationReason)
+        {
+            ConfigureForDiagnostics(
+                storedActorId,
+                label,
+                inputReference,
+                declarationReason);
         }
 
         internal void BindPlayerInputEvidence(PlayerInput inputReference)

@@ -86,8 +86,8 @@ namespace Immersive.Framework.Diagnostics
             {
                 PlayerInput playerInput = actorObject.AddComponent<PlayerInput>();
                 var declaration = actorObject.AddComponent<PlayerActorDeclaration>();
-                declaration.ConfigureForDiagnostics(
-                    "qa.actor.player.valid",
+                declaration.EstablishRuntimeOccurrenceIdentity(
+                    ActorId.From("qa.actor.player.valid"),
                     "QA PlayerActor Valid",
                     playerInput,
                     "qa.playeractor.valid");

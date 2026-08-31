@@ -43,8 +43,10 @@ namespace Immersive.Framework.PlayerParticipation
             Transform target = ReferenceEquals(declaration, root) || declaration.IsChildOf(root)
                 ? root : declaration;
             if (!RoutePlayerSpatialEntryRuntime.TryApply(
-                    _context, handle.Request.Slot.PlayerSlotId, handle.Request.ActorId,
-                    representation, target, out issue)) return false;
+                    _context,
+                    handle.Request.Slot.PlayerSlotId,
+                    target,
+                    out issue)) return false;
 
             _lastOccurrenceSequence = _context.OccurrenceSequence;
             _lastRepresentationIdentity = representation;

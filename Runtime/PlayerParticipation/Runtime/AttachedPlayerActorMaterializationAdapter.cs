@@ -130,7 +130,7 @@ namespace Immersive.Framework.PlayerParticipation
                 stagingRoot = null;
 
                 PlayerActorDeclaration declaration = runtimeHost.PlayerActorDeclaration;
-                declaration.ConfigureForDiagnostics(actorId.Value.Value, actorProfile.DisplayName, localPlayerHost.PlayerInput, $"{resolvedReason}; profile='{actorProfileId.StableText}'; slot='{slot.PlayerSlotId.StableText}'; owner='{scopeContext.Owner.StableText}'.");
+                declaration.EstablishRuntimeOccurrenceIdentity(actorId, actorProfile.DisplayName, localPlayerHost.PlayerInput, $"{resolvedReason}; profile='{actorProfileId.StableText}'; slot='{slot.PlayerSlotId.StableText}'; owner='{scopeContext.Owner.StableText}'.");
                 if (!declaration.HasPlayerInputEvidence || !ReferenceEquals(declaration.PlayerInput, localPlayerHost.PlayerInput) || declaration.ActorId != actorId)
                 {
                     return RollbackFailure(PlayerActorMaterializationStatus.FailedActorIdentity, request, runtimeRequest, localPlayerHost, localPlayerHost.PlayerInput, runtimeHost, presentation, "Player Actor Runtime Host identity or PlayerInput evidence did not match the generated materialization request.", resolvedSource, resolvedReason);

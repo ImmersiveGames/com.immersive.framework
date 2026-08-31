@@ -57,9 +57,10 @@ namespace Immersive.Framework.PlayerParticipation
                 return false;
             }
             return RoutePlayerSpatialEntryRuntime.TryApply(
-                _currentRouteSpatialEntryContext, slot, authoring.ScenePlayerActorDeclaration.ActorId,
-                $"scene-provided:{slot.StableText}:{authoring.ScenePlayerActorDeclaration.ActorId.StableText}",
-                authoring.ScenePlayerActorRuntimeHost.transform, out issue);
+                _currentRouteSpatialEntryContext,
+                slot,
+                authoring.ScenePlayerActorRuntimeHost.transform,
+                out issue);
         }
 
         internal bool ShouldRetainPhysicalActorPresentationForIncomingActivity(

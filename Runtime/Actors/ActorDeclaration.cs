@@ -34,6 +34,8 @@ namespace Immersive.Framework.Actors
 
         public ActorId ActorId => new ActorId(actorId.NormalizeText());
 
+        internal string StoredActorIdText => actorId.NormalizeText();
+
         public virtual ActorKind ActorKind => actorKind;
 
         public virtual ActorRole ActorRole => actorRole;
@@ -86,7 +88,7 @@ namespace Immersive.Framework.Actors
             }
         }
 
-        internal void ConfigureForDiagnostics(
+        protected void ConfigureForDiagnostics(
             string id,
             ActorKind kind,
             ActorRole role,

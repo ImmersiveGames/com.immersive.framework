@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using Immersive.Framework.Actors;
 using Immersive.Framework.Editor.PlayerParticipation;
@@ -63,6 +64,17 @@ namespace Immersive.Framework.Authoring.Editor.Tests
                     report,
                     "Actor Declaration requires an explicit Actor ID."),
                 Is.False);
+        }
+
+        [Test]
+        public void PlayerActorDeclaration_EmptyRuntimeId_DoesNotExposeTypedOccurrenceIdentity()
+        {
+            PlayerActorDeclaration declaration =
+                Create<PlayerActorDeclaration>();
+
+            Assert.That(
+                () => _ = declaration.ActorId,
+                Throws.TypeOf<ArgumentException>());
         }
 
         [Test]

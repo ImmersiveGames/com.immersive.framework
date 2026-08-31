@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using Immersive.Framework.Actors;
 using Immersive.Framework.PlayerSlots;
 using Immersive.Framework.RouteLifecycle;
 using UnityEngine;
@@ -13,8 +12,6 @@ namespace Immersive.Framework.PlayerParticipation
         internal static bool TryApply(
             RoutePlayerSpatialEntryContext context,
             PlayerSlotId playerSlotId,
-            ActorId actorId,
-            string representationIdentity,
             Transform target,
             out string issue)
         {

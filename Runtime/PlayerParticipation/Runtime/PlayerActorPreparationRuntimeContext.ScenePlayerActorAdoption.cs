@@ -369,14 +369,14 @@ namespace Immersive.Framework.PlayerParticipation
 
             GameObject releaseProxy = null;
             RuntimeContentHandle runtimeHandle = null;
-            string previousActorId = sceneActor.ActorId.Value.Value;
+            string previousActorId = sceneActor.StoredActorIdText;
             string previousDisplayName = sceneActor.ActorDisplayName;
             string previousReason = sceneActor.Reason;
             PlayerInput previousPlayerInput = sceneActor.PlayerInput;
             try
             {
-                sceneActor.ConfigureForDiagnostics(
-                    actorId.Value.Value,
+                sceneActor.EstablishRuntimeOccurrenceIdentity(
+                    actorId,
                     authoring.ActorProfile.DisplayName,
                     host.PlayerInput,
                     $"{resolvedReason}; ownership='SessionOwned'; origin='SceneProvided'; profile='{actorProfileId.StableText}'; " +
@@ -502,11 +502,6 @@ namespace Immersive.Framework.PlayerParticipation
                             : $"{activationIssue} Rollback failed. {rollbackIssue}");
                 }
 
-                // The Session record below remains the authority. This Unity scene
-                // migration only prevents the adopted original object from being
-                // unloaded with the supplying Activity scene.
-                UnityEngine.Object.DontDestroyOnLoad(host.gameObject);
-
                 PlayerActorPreparationSummary prepared = CreatePreparedSummary(
                     slot,
                     handle,
@@ -544,6 +539,11 @@ namespace Immersive.Framework.PlayerParticipation
                 _lastOperationStatus = PlayerActorPreparationStatus.SucceededPrepared;
                 _lastOperationMessage =
                     "Original Scene Logical Player Actor adopted by the Session physical representation authority.";
+
+                // The Session record remains the authority. Promote the Unity object only
+                // after all transaction records are committed, so every earlier failure can
+                // restore the authored Scene state without a persistent ownership side effect.
+                UnityEngine.Object.DontDestroyOnLoad(host.gameObject);
 
                 return SceneAdoptionResult(
                     ScenePlayerActorAdoptionStatus.SucceededAdopted,
@@ -798,7 +798,7 @@ namespace Immersive.Framework.PlayerParticipation
                 return;
             }
 
-            sceneActor.ConfigureForDiagnostics(
+            sceneActor.RestoreRuntimeOccurrenceState(
                 previousActorId,
                 previousDisplayName,
                 previousPlayerInput,
