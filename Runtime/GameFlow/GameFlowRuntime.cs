@@ -1243,7 +1243,7 @@ namespace Immersive.Framework.GameFlow
                         await afterActivityLifecycle();
                     }
 
-                    await ExecuteActivityTransitionAsync(
+                    TransitionResult transitionAfter = await ExecuteActivityTransitionAsync(
                         TransitionRequest.After(
                             operationId,
                             TransitionScope.Activity,
@@ -1255,14 +1255,21 @@ namespace Immersive.Framework.GameFlow
                             activityFlowResult.Activity),
                         activityTransitionMode);
                     transitionGateDiagnostics = ReleaseTransitionGate(transitionGateMode, transitionGateSnapshot);
+                    FrameworkTransitionDiagnostics transitionDiagnostics =
+                        FrameworkTransitionDiagnostics.Completed(
+                            TransitionScope.Activity,
+                            transitionBefore,
+                            transitionAfter);
                     return FrameworkActivityRequestResult.FailedInvalidConfig(
                         activityFlowResult.Message,
                         targetActivity,
                         resolvedSource,
                         resolvedReason,
+                        activityFlowResult,
+                        transitionDiagnostics,
+                        transitionGateDiagnostics,
                         activityTransitionMode,
-                        GameFlowRequestOperationKind.Activity,
-                        transitionGateDiagnostics);
+                        GameFlowRequestOperationKind.Activity);
                 }
 
                 if (!TryPrepareActivityEntryReadinessExecution(
@@ -1670,9 +1677,11 @@ namespace Immersive.Framework.GameFlow
                         null,
                         resolvedSource,
                         resolvedReason,
+                        activityFlowResult,
+                        transitionDiagnostics,
+                        transitionGateDiagnostics,
                         activityTransitionMode,
-                        GameFlowRequestOperationKind.ActivityClear,
-                        transitionGateDiagnostics);
+                        GameFlowRequestOperationKind.ActivityClear);
                 }
 
                 if (!TryAcceptTransitionPhase(

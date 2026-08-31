@@ -107,6 +107,32 @@ namespace Immersive.Framework.GameFlow
                 operationKind);
         }
 
+        internal static FrameworkActivityRequestResult FailedInvalidConfig(
+            string message,
+            ActivityAsset targetActivity,
+            string source,
+            string reason,
+            ActivityFlowStartResult activityFlowResult,
+            FrameworkTransitionDiagnostics transitionDiagnostics = default,
+            TransitionGateDiagnostics transitionGateDiagnostics = default,
+            ActivityVisualTransitionMode activityTransitionMode =
+                ActivityVisualTransitionMode.Seamless,
+            GameFlowRequestOperationKind operationKind =
+                GameFlowRequestOperationKind.Activity)
+        {
+            return new FrameworkActivityRequestResult(
+                FrameworkActivityRequestKind.FailedInvalidConfig,
+                message,
+                targetActivity,
+                source,
+                reason,
+                activityFlowResult,
+                transitionDiagnostics,
+                transitionGateDiagnostics,
+                activityTransitionMode,
+                operationKind);
+        }
+
         public static FrameworkActivityRequestResult FailedRuntimeUnavailable(
             string message,
             ActivityAsset targetActivity = null,
