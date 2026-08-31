@@ -1,7 +1,7 @@
 # IF-TRACK — Immersive Framework
 
 Status: **Active — current implemented baseline + Stage B consumer evidence**  
-Last updated: **2026-08-30**
+Last updated: **2026-08-31**
 
 ## Authority and status model
 
@@ -18,7 +18,7 @@ A dated certification remains evidence for the boundary it executed. Later cuts 
 
 ## Current Player state
 
-The Player architecture is now reconciled through IF-ADR-023.
+The Player architecture is reconciled through IF-ADR-023 plus the post-certification occurrence-identity boundary in IF-ADR-023A.
 
 ```text
 Local Player Host
@@ -38,6 +38,25 @@ Join
 != Physical Materialization
 ```
 
+Current Player Actor identity boundary:
+
+```text
+AUTHORED / UNPREPARED
+  PlayerActorDeclaration.actorId = empty
+
+→ physical preparation establishes runtime occurrence identity
+
+IDENTITY ESTABLISHED / PREPARING
+  typed PlayerActorDeclaration.ActorId is valid
+
+→ commit
+
+PREPARED / COMMITTED
+  physical preparation evidence retained
+```
+
+`PlayerActorDeclaration.ActorId` is runtime occurrence identity. It is not a persistent prefab/template identity. Ordinary persistent `ActorDeclaration` identity rules remain separate.
+
 Current Player evidence:
 
 ```text
@@ -47,16 +66,21 @@ Manager functional Player QA    14/14 PASS
 Pause/Input/Gate                 8/8 PASS
 Route Spatial Entry             18/18 PASS
 Activity Relocation             23/23 PASS
+Scene-Provided occurrence ID    FIRSTGAME Play Mode PASS
 ```
 
-Current Player sample evidence from FIRSTGAME FG-ADR-002 Revision 4:
+Current Player sample evidence from FIRSTGAME FG-ADR-002 Revision 4 plus the 2026-08-31 Scene-Provided reconciliation run:
 
 ```text
 Getting Started / Scene Player  PROVEN
+  LogicalActorsPrepared         READY / PASS
+  GameplayReady                 READY / PASS
 Player Provisioning             PLAY MODE PROVEN
 Character Selection             PLAY MODE PROVEN
 Local Multiplayer               PLANNED / BLOCKED
 ```
+
+`GameplayReady` proves the current contextual gameplay projection over retained prepared Session Players. It does not by itself certify game-owned locomotion, camera composition, concrete gameplay input consumers or Presentation completeness.
 
 Local Multiplayer remains blocked by public Slot/device/InputUser/control-scheme ownership/observation semantics. Arbitrary Actor Selection is delivered and is not a blocker.
 
@@ -86,7 +110,7 @@ Local Multiplayer remains blocked by public Slot/device/InputUser/control-scheme
 | 020 | ACCEPTED / RECONCILED / IMPLEMENTED | ADR020-H + aggregate + historical certification | closed |
 | 021 | ACCEPTED / RECONCILED / IMPLEMENTED | Route 18/18 + Activity 23/23 + aggregate 27/27 | Model B current |
 | 022 | ACCEPTED / IMPLEMENTED | presentation 14/14; Camera aggregate boundary certified | broader FIRSTGAME C6 remains separate |
-| 023 | ACCEPTED / IMPLEMENTED / TECHNICAL QA CERTIFIED | Manager functional 14/14 + Pause/Input/Gate 8/8 | PlayerActorRuntimeHost + PresentationPrefab current; FIRSTGAME Player Provisioning/Character Selection proven |
+| 023 | ACCEPTED / IMPLEMENTED / TECHNICAL QA CERTIFIED; ADR-023A occurrence identity boundary current | Manager functional 14/14 + Pause/Input/Gate 8/8 + FIRSTGAME Scene-Provided readiness PASS | PlayerActorRuntimeHost + PresentationPrefab current; runtime occurrence identity boundary reconciled |
 
 ## Current Activity content / visibility closure — IF-ADR-009 — 2026-08-30
 
@@ -128,7 +152,7 @@ Certification record:
 
 [IF-ADR-009 Contribution / Visibility Technical Certification — 2026-08-30](../Reconciliation/IF-ADR-009-CONTRIBUTION-VISIBILITY-TECHNICAL-CERTIFICATION-2026-08-30.md)
 
-## Current Player scoped closure — IF-ADR-023 — 2026-08-29
+## Current Player scoped closure — IF-ADR-023 / IF-ADR-023A — 2026-08-31
 
 Current architecture:
 
@@ -138,6 +162,10 @@ Local Player Host composition
 
 ActorProfile
   -> Actor-specific PresentationPrefab
+
+PlayerActorDeclaration
+  -> authored occurrence ID empty
+  -> runtime occurrence identity established by physical preparation
 ```
 
 Removed current authority:
@@ -147,9 +175,41 @@ ActorProfile.LogicalActorHostPrefab
 LogicalActorHost
 SceneLogicalPlayerActorEvidence
 HasLogicalActor
+persistent authored PlayerActorDeclaration occurrence IDs
 ```
 
 `LogicalActorsPrepared` remains semantic readiness terminology.
+
+Current occurrence-identity invariant:
+
+```text
+before physical preparation boundary
+  typed Player Actor occurrence ActorId unavailable
+
+after identity establishment boundary
+  typed Player Actor occurrence ActorId valid
+
+after preparation commit
+  retained physical evidence is authoritative
+```
+
+Current Scene-Provided Play Mode proof:
+
+```text
+LogicalActorsPrepared
+  Activity readiness = Ready
+  projected = 1
+  selected = 1
+  prepared = 1
+  failed = 0
+
+GameplayReady
+  Activity readiness = Ready
+  projected = 1
+  selected = 1
+  prepared = 1
+  failed = 0
+```
 
 Current scoped-access reconciliation:
 
@@ -168,13 +228,14 @@ consumer may die before persistent runtime owner
 → diagnostics do not dereference destroyed object
 ```
 
-Certification record:
+Certification and reconciliation records:
 
-[IF-ADR-023 Player Actor Runtime Technical Certification — 2026-08-29](../Reconciliation/IF-ADR-023-PLAYER-ACTOR-RUNTIME-TECHNICAL-CERTIFICATION-2026-08-29.md)
+- [IF-ADR-023 Player Actor Runtime Technical Certification — 2026-08-29](../Reconciliation/IF-ADR-023-PLAYER-ACTOR-RUNTIME-TECHNICAL-CERTIFICATION-2026-08-29.md)
+- [IF-ADR-023A Player Actor Occurrence Identity Boundary — 2026-08-31](../Reconciliation/IF-ADR-023A-PLAYER-ACTOR-OCCURRENCE-IDENTITY-BOUNDARY-2026-08-31.md)
 
 ## Current Stage B / FIRSTGAME priorities
 
-1. **Player** — Scene Player, Player Provisioning and Character Selection are proven. Local Multiplayer is next planned but blocked by the public Slot/device/input contract.
+1. **Player** — Scene Player physical/contextual lifecycle is proven through `GameplayReady`; Player Provisioning and Character Selection are proven. Remaining Getting Started work is game-owned Presentation/gameplay completeness, not Framework Player readiness. Local Multiplayer remains blocked by the public Slot/device/input contract.
 2. **Loading / Readiness** — positive Game Flow consumer lane proven; negative/terminal robustness remains QA-owned.
 3. **Camera** — Default-output integration proven; broader ADR-022 consumer coverage remains feature-owned.
 4. **Pause** — runtime certified; remaining work is consumer authoring/usability only.
@@ -209,8 +270,9 @@ Certification record:
 - [IF-ADR-023 — Player Actor Runtime Host and Presentation Authority](../ADRs/IF-ADR-023-Player-Actor-Runtime-Host-and-Presentation-Authority.md)
 - [IF-ADR-009 Contribution / Visibility Technical Certification — 2026-08-30](../Reconciliation/IF-ADR-009-CONTRIBUTION-VISIBILITY-TECHNICAL-CERTIFICATION-2026-08-30.md)
 - [Player Current Aggregate Recertification — 2026-08-24](../Reconciliation/IF-PLAYER-CURRENT-AGGREGATE-RECERTIFICATION-2026-08-24.md)
-- [IF-ADR-015B — Player Actor Selection Public Surface Certification — 2026-08-26](../Reconciliation/IF-ADR-015B-Player-Actor-Selection-Public-Surface-Certification-2026-08-26.md)
+- [IF-ADR-015B — Player Actor Selection Public Surface Certification — 2026-08-26](../Reconciliation/IF-ADR-015B-Player-Actor-Selection-Public-Surface-CertIFICATION-2026-08-26.md)
 - [IF-ADR-023 Player Actor Runtime Technical Certification — 2026-08-29](../Reconciliation/IF-ADR-023-PLAYER-ACTOR-RUNTIME-TECHNICAL-CERTIFICATION-2026-08-29.md)
+- [IF-ADR-023A Player Actor Occurrence Identity Boundary — 2026-08-31](../Reconciliation/IF-ADR-023A-PLAYER-ACTOR-OCCURRENCE-IDENTITY-BOUNDARY-2026-08-31.md)
 
 ## Documentation maintenance
 
