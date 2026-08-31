@@ -1,6 +1,6 @@
 # Activity Readiness
 
-Last updated: **2026-08-22**
+Last updated: **2026-08-31**
 
 Activity readiness is the occurrence-scoped post-materialization contract used to decide when an Activity is safe to reveal and release for normal use.
 
@@ -199,6 +199,45 @@ Player contextual admission succeeded
 physical Player handed off
 ```
 
+## Player readiness levels and limits
+
+Player-specific readiness levels are ordered:
+
+```text
+None
+JoinedSlots
+SelectedActors
+LogicalActorsPrepared
+GameplayReady
+```
+
+Keep these meanings distinct:
+
+```text
+LogicalActorsPrepared
+  required physical Player Actor occurrences are selected/prepared for the Activity projection
+
+GameplayReady
+  current contextual gameplay projection is established over retained prepared Session Players
+```
+
+`GameplayReady` is a Framework lifecycle/readiness contract. It does **not** by itself prove that game-owned Presentation content is functionally complete.
+
+For example, readiness success alone does not certify:
+
+```text
+locomotion implemented
+concrete gameplay input consumer authored
+camera rig/provider authored
+character visuals complete
+```
+
+Those remain gameplay-owned composition requirements. A game may require `GameplayReady` before using those systems without redefining `GameplayReady` as proof that the systems exist.
+
+FIRSTGAME Scene-Provided evidence on 2026-08-31 reached `Ready` at both `LogicalActorsPrepared` and `GameplayReady` with one projected/selected/prepared Player and zero failures. That evidence proves the Framework Player lifecycle contract and physical/contextual projection; it does not certify the completeness of a game-owned First Person Presentation.
+
+Player Actor occurrence identity is likewise a preparation concern: reusable `PlayerActorDeclaration` templates may have an empty authored occurrence ID, and typed runtime `ActorId` becomes valid only when physical Player Actor preparation establishes the occurrence identity. See [IF-ADR-023A](../Architecture/Reconciliation/IF-ADR-023A-PLAYER-ACTOR-OCCURRENCE-IDENTITY-BOUNDARY-2026-08-31.md).
+
 ## Failure and interruption
 
 The following never publish successful `100%`:
@@ -303,7 +342,12 @@ blockingIssues
 Activity RuntimeContent owner
 Player contextual admission evidence
 Session physical preparation evidence
+activityContentExecution
+activityContentExecutionEnter
+activityContentEnterDiagnostic
 ```
+
+`activityContentEnterDiagnostic` is the canonical detailed Activity Content Enter projection used by Boot/Route/Activity request diagnostics. It preserves the participant result details needed to distinguish typed lifecycle failure from an exception thrown by a participant.
 
 Expected successful terminal evidence for a four-Required/one-Optional case:
 
@@ -342,6 +386,8 @@ Old occurrence updates must not advance the replacement occurrence.
 ## Player certification reference
 
 The 2026-08-15 Full Player QA completed `25/25` mandatory contracts. Its public-surface, failed-first-adoption, failed-contextual-reprojection and no-physical-handoff cases certify the Player/readiness separation described above.
+
+Post-certification Player Actor occurrence-identity reconciliation is recorded in [IF-ADR-023A — Player Actor Occurrence Identity Boundary — 2026-08-31](../Architecture/Reconciliation/IF-ADR-023A-PLAYER-ACTOR-OCCURRENCE-IDENTITY-BOUNDARY-2026-08-31.md).
 
 ## Game Flow Showcase consumer proof — 2026-08-22
 
