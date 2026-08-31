@@ -1,6 +1,6 @@
 # Immersive Framework Architecture Documentation
 
-Last updated: **2026-08-30**
+Last updated: **2026-08-31**
 
 ## Normative architecture
 
@@ -129,6 +129,54 @@ PLAYER CURRENT AGGREGATE COMPLETE
 
 Historical Full Player `25/25` remains valid dated evidence for the 2026-08-15 boundary and is not relabeled as the current aggregate.
 
+### Player Actor occurrence identity boundary
+
+Current post-certification reconciliation authority:
+
+[IF-ADR-023A — Player Actor Occurrence Identity Boundary — 2026-08-31](Reconciliation/IF-ADR-023A-PLAYER-ACTOR-OCCURRENCE-IDENTITY-BOUNDARY-2026-08-31.md)
+
+The IF-ADR-023 composition remains current, but reusable `PlayerActorDeclaration` templates intentionally do not carry a persistent physical occurrence ID.
+
+Frozen identity rule:
+
+```text
+AUTHORED / UNPREPARED
+  PlayerActorDeclaration.actorId = empty
+  typed Player Actor occurrence ActorId unavailable
+
+→ physical preparation establishes occurrence identity
+
+IDENTITY ESTABLISHED / PREPARING
+  typed PlayerActorDeclaration.ActorId valid
+
+→ commit
+
+PREPARED / COMMITTED
+  physical preparation evidence retained
+```
+
+`ActorProfileId`, `PlayerSlotId` and Player Actor occurrence `ActorId` remain separate identities. `ActorId` / `FrameworkIdentityValue` remain strict and do not accept empty typed identity.
+
+FIRSTGAME Scene-Provided proof after the reconciliation:
+
+```text
+LogicalActorsPrepared
+  readiness = Ready
+  projected = 1
+  selected = 1
+  prepared = 1
+  failed = 0
+
+GameplayReady
+  readiness = Ready
+  projected = 1
+  selected = 1
+  prepared = 1
+  failed = 0
+```
+
+`GameplayReady` proves the current contextual gameplay projection over retained prepared Session Players. It does not by itself prove that game-owned locomotion, camera composition, concrete gameplay input consumers or Presentation content are complete.
+
 ### Initial Placement discovery / scene authority
 
 Current reconciliation authority:
@@ -163,6 +211,8 @@ Full Player aggregate    27/27 PASS
 
 Historical ADR-021 Initial Placement `9/9` remains evidence for the superseded
 Activity-owned discovery model only.
+
+Route spatial entry does not require a Player Actor occurrence `ActorId` to resolve or apply baseline pose; it uses Route/Slot spatial intent and the physical Transform. This keeps spatial authoring outside the pre-preparation occurrence identity boundary.
 
 ### Camera Presentation / materialization
 
@@ -272,6 +322,8 @@ not been recorded.
 Current product authority: [IF-ADR-023 — Player Actor Runtime Host and Presentation
 Authority](ADRs/IF-ADR-023-Player-Actor-Runtime-Host-and-Presentation-Authority.md).
 
+Post-certification occurrence identity authority: [IF-ADR-023A — Player Actor Occurrence Identity Boundary — 2026-08-31](Reconciliation/IF-ADR-023A-PLAYER-ACTOR-OCCURRENCE-IDENTITY-BOUNDARY-2026-08-31.md).
+
 ```text
 LocalPlayerHostAuthoring
 ├── PlayerInput
@@ -287,9 +339,21 @@ owns the selected presentation only. Scene-Provided composition may author the e
 candidate runtime Host and presentation; `SceneProvidedLocalPlayerAuthoring`
 validates/adopts that exact composition and rejects mismatched or ambiguous evidence.
 
-The official **Create Scene-Provided Local Player** action creates only the deterministic
-technical Host shape. Player Slot, Actor Profile, `InputActionAsset` and Gameplay Action
-Map remain explicit consumer intent.
+Keep the two Scene-Provided Editor operations distinct:
+
+```text
+GameObject > Immersive Framework > Player > Scene-Provided > Create Local Player
+  creates a complete Scene-Provided Local Player composition
+
+Add Component > Immersive Framework > Player > Scene-Provided > Local Player
+  adds the Scene-Provided module to an existing Local Player Host composition
+```
+
+For a reusable Host/prefab variant, the Scene-Provided module may be a child object that references the ancestor `LocalPlayerHostAuthoring`. Do not invoke the full creator inside an already-authored Host merely to add Scene-Provided behavior.
+
+Player Slot, Actor Profile, `InputActionAsset` and Gameplay Action Map remain explicit consumer intent.
+
+For reusable `PlayerActorDeclaration` templates, authored occurrence `ActorId` remains empty. Physical preparation establishes the runtime occurrence identity before typed `ActorId` consumers are valid.
 
 The 2026-08-17 Scene-Provided composition record remains historical pre-ADR-023 context;
 it is not current architecture authority.
@@ -330,6 +394,8 @@ and do not interpret `Replace Actor Selection` as physical hot-swap.
 - IF-ADR-019 — Accepted / reconciled / implemented; current Full Player aggregate 27/27 PASS; historical 25/25 recertification preserved.
 - IF-ADR-020 — Accepted / reconciled / implemented; current Full Player aggregate 27/27 PASS; historical 25/25 recertification preserved.
 - IF-ADR-021 — Accepted / reconciled / implemented / current QA verified; Route Spatial Entry 18/18, Activity Relocation 23/23 and Full Player aggregate 27/27 PASS.
+- IF-ADR-023 — Accepted / implemented / technical QA certified; composition authority preserved.
+- IF-ADR-023A — Runtime occurrence identity boundary reconciled; Scene-Provided `LogicalActorsPrepared` and `GameplayReady` FIRSTGAME proof PASS.
 
 ### Camera
 
@@ -353,6 +419,8 @@ The Full Player `25/25` certification remains the 2026-08-15 historical boundary
 2026-08-26 IF-ADR-015B record closes the later public Actor-selection extension with a
 fresh integrated `27/27` rerun. The historical ADR-021 Initial Placement `9/9` remains
 tied to the superseded Activity-owned discovery model.
+
+The 2026-08-29 IF-ADR-023 certification remains dated evidence for the composition/QA boundary it executed. IF-ADR-023A records the later occurrence-identity correction and Scene-Provided readiness proof instead of rewriting the earlier certification as if it had executed the later cut.
 
 The package-local Actor-selection Unity Test Framework Editor tests are not claimed as
 executed by the integrated QA record unless a separate result is recorded.
