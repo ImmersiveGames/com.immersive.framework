@@ -3,10 +3,11 @@
 Status: **Accepted / Implemented / Technical QA Certified**  
 Accepted: **2026-08-28**  
 Implemented / reconciled: **2026-08-29**  
-Last updated: **2026-08-29**  
+Last updated: **2026-08-31**  
 Type: architecture / Player Actor composition / runtime host / presentation authority  
 Related decisions: IF-ADR-003, IF-ADR-007, IF-ADR-015, IF-ADR-016, IF-ADR-019, IF-ADR-020, IF-ADR-021  
-Technical certification: [IF-ADR-023 Player Actor Runtime Technical Certification — 2026-08-29](../Reconciliation/IF-ADR-023-PLAYER-ACTOR-RUNTIME-TECHNICAL-CERTIFICATION-2026-08-29.md)
+Technical certification: [IF-ADR-023 Player Actor Runtime Technical Certification — 2026-08-29](../Reconciliation/IF-ADR-023-PLAYER-ACTOR-RUNTIME-TECHNICAL-CERTIFICATION-2026-08-29.md)  
+Post-certification occurrence-identity reconciliation: [IF-ADR-023A — 2026-08-31](../Reconciliation/IF-ADR-023A-PLAYER-ACTOR-OCCURRENCE-IDENTITY-BOUNDARY-2026-08-31.md)
 
 ## Context
 
@@ -104,6 +105,47 @@ Session Join
 
 Manager-Provisioned Join may expose complete technical/session Host evidence while contextual Activity assignment is still absent. `AssignmentOrigin=None` is valid at that boundary.
 
+### 4A. PlayerActorDeclaration identity is runtime occurrence identity
+
+A reusable authored `PlayerActorDeclaration` does not carry a persistent physical Player Actor occurrence identity.
+
+Canonical authored state:
+
+```text
+PlayerActorDeclaration.actorId = empty
+```
+
+The physical Player Actor preparation owner establishes the runtime occurrence identity during materialization/adoption. Typed `PlayerActorDeclaration.ActorId` is valid only after that boundary.
+
+Canonical semantic states:
+
+```text
+AUTHORED / UNPREPARED
+  stored PlayerActorDeclaration ActorId may be empty
+  typed occurrence ActorId is unavailable
+
+        ↓ physical preparation
+
+IDENTITY ESTABLISHED / PREPARING
+  occurrence ActorId generated and applied
+  typed ActorId is valid
+  preparation transaction may still roll back
+
+        ↓ commit
+
+PREPARED / COMMITTED
+  physical preparation evidence retained
+  downstream lifecycle/gameplay may consume ActorId
+```
+
+This does not weaken typed identity rules. `ActorId` and `FrameworkIdentityValue` continue to reject empty typed identities.
+
+`ActorProfileId`, `PlayerSlotId` and Player Actor occurrence `ActorId` remain separate authorities and must not substitute for one another.
+
+Ordinary persistent `ActorDeclaration` keeps its persistent authored identity contract.
+
+The exact runtime ordering correction and FIRSTGAME proof are recorded in IF-ADR-023A.
+
 ### 5. ActorProfile is presentation authority
 
 Current minimum responsibility:
@@ -139,6 +181,8 @@ Locomotion, character controllers, gameplay input consumers and gameplay camera 
 
 Likewise, sample/gameplay components do not become mandatory framework runtime infrastructure because they happen to live beside `PlayerActorDeclaration`.
 
+`GameplayReady` is a framework lifecycle/readiness state for the current contextual gameplay projection over retained prepared Session Players. It does not, by itself, certify that game-owned locomotion, camera composition, concrete gameplay input consumers or Presentation content have been authored or are functionally complete.
+
 ### 8. Scene-Provided validates/adopts Runtime Host + Presentation
 
 Current Scene-Provided authority is:
@@ -152,6 +196,8 @@ Scene-Provided Local Player
 ```
 
 The consumer scene may author the candidate composition. The Framework validates/adopts it deterministically and rejects mismatched or ambiguous evidence rather than silently repairing/replacing content.
+
+During physical Scene-Provided adoption, the authored `PlayerActorDeclaration` may still have an empty stored occurrence ID. The physical preparation transaction establishes runtime occurrence identity before typed ActorId consumers are valid.
 
 The old `ActorProfile.LogicalActorHostPrefab` evidence model is removed.
 
@@ -170,6 +216,7 @@ The ADR-023 change begins at Actor preparation:
 selected ActorProfile
 → reusable PlayerActorRuntimeHost
 → selected ActorProfile.PresentationPrefab
+→ establish PlayerActorDeclaration runtime occurrence identity
 ```
 
 ### 10. Session physical lifetime remains unchanged
@@ -180,11 +227,23 @@ IF-ADR-020 remains authoritative for explicit Leave/resource release.
 
 IF-ADR-021 remains authoritative for Route Spatial Entry and optional Activity Explicit Relocation.
 
+Route Spatial Entry resolves baseline spatial intent from Route/Slot authority and applies pose to the physical Transform. It does not require a pre-existing Player Actor occurrence `ActorId` merely to resolve/apply that intent.
+
 ### 11. Readiness terminology remains semantic
 
 `LogicalActorsPrepared` remains a valid current readiness/requirement term.
 
 Its name describes the semantic prepared-Actor condition; it does **not** imply that the removed `LogicalActorHost` structural architecture is still current.
+
+Current distinction:
+
+```text
+LogicalActorsPrepared
+  required physical Player Actor occurrences are selected/prepared for the Activity projection
+
+GameplayReady
+  current contextual gameplay projection is established over retained prepared Session Players
+```
 
 No cosmetic readiness rename is part of this ADR.
 
@@ -212,6 +271,7 @@ logicalActorHostPrefab
 LogicalActorHost
 SceneLogicalPlayerActorEvidence
 HasLogicalActor
+persistent authored PlayerActorDeclaration occurrence IDs
 ```
 
 No silent compatibility fallback reinterprets legacy serialized values as `PresentationPrefab`.
@@ -228,6 +288,7 @@ PlayerSessionProfile
 → Activity preparation requirement
 → PlayerActorRuntimeHost under ActorMount
 → ActorProfile.PresentationPrefab under PresentationMount
+→ establish PlayerActorDeclaration runtime occurrence identity
 → PlayerActorDeclaration/runtime evidence
 → contextual Activity evidence
 ```
@@ -239,7 +300,9 @@ Scene-authored Local Player Host
 → authored/adopted PlayerActorRuntimeHost
 → authored/adopted Presentation
 → exact Profile + Presentation evidence
-→ validate/adopt deterministic composition
+→ validate deterministic composition
+→ establish runtime Player Actor occurrence identity during physical adoption
+→ retain successful physical preparation/adoption evidence
 → Session-owned admitted Player occurrence
 ```
 
@@ -249,6 +312,9 @@ Scene-authored Local Player Host
 - `ActorProfile` continuing to provide the complete runtime Actor hierarchy.
 - one framework Actor Host per visual character variant.
 - pre-instantiating a prepared Actor shell merely because a Local Player Host exists.
+- persistent authored Player Actor occurrence ID in a reusable `PlayerActorDeclaration` template.
+- weakening typed `ActorId` so empty values become valid.
+- substituting ActorProfileId, PlayerSlotId or GameObject identity for Player Actor occurrence identity.
 - folding gameplay code into Presentation by default.
 - promoting sample gameplay components to mandatory framework infrastructure.
 - introducing `ActorPresentationProfile` without a concrete requirement.
@@ -257,7 +323,7 @@ Scene-authored Local Player Host
 
 ## Certification
 
-Current technical evidence includes:
+Current technical evidence at the 2026-08-29 certification boundary includes:
 
 ```text
 [P0_PAUSE_INPUT_GATE_COMPOSITION]
@@ -278,6 +344,8 @@ The same QA run also reconciles the current Route/Activity scoped-access semanti
 
 Historical Full Player `25/25`, current aggregate `27/27` and focused Player regressions remain dated evidence for the matrices they executed. They are not mechanically relabeled as the 14-case consolidated functional run.
 
+Post-certification Scene-Provided occurrence-identity and readiness proof is recorded in IF-ADR-023A rather than being retroactively attributed to the 2026-08-29 QA run.
+
 ## FIRSTGAME disposition
 
 FG-ADR-002 Revision 4 records the current Player sample state:
@@ -289,21 +357,27 @@ Character Selection              LeaveUnresolved / PLAY MODE PROVEN
 Local Multiplayer                PLANNED / BLOCKED by public Slot/device/input contract
 ```
 
+Post-certification FIRSTGAME evidence recorded by IF-ADR-023A additionally proves the Scene-Provided framework lifecycle at both `LogicalActorsPrepared` and `GameplayReady` with one projected, selected and prepared Player and zero failures.
+
+That readiness evidence does not certify completeness of a game-owned First Person Presentation.
+
 That sample evidence is consumer-owned and does not create a second runtime architecture.
 
 ## Final disposition
 
 ```text
-Architecture decision             ACCEPTED
-Runtime composition                IMPLEMENTED
-ActorProfile Presentation authority IMPLEMENTED
-Scene-Provided migration           IMPLEMENTED
-Manager-Provisioned migration       IMPLEMENTED
-Scoped access semantics             RECONCILED
-Scoped access teardown              HARDENED
-Manager functional Player QA        CERTIFIED 14/14
-Pause/Input/Gate composition         CERTIFIED 8/8
-FIRSTGAME Player Provisioning        PROVEN
-FIRSTGAME Character Selection        PROVEN
-Local Multiplayer device contract    FUTURE / separate scope
+Architecture decision                       ACCEPTED
+Runtime composition                         IMPLEMENTED
+ActorProfile Presentation authority         IMPLEMENTED
+Player Actor occurrence identity boundary   RECONCILED / IF-ADR-023A
+Scene-Provided migration                    IMPLEMENTED
+Manager-Provisioned migration               IMPLEMENTED
+Scoped access semantics                     RECONCILED
+Scoped access teardown                      HARDENED
+Manager functional Player QA                CERTIFIED 14/14
+Pause/Input/Gate composition                 CERTIFIED 8/8
+FIRSTGAME Scene-Provided readiness           PROVEN
+FIRSTGAME Player Provisioning                PROVEN
+FIRSTGAME Character Selection                PROVEN
+Local Multiplayer device contract            FUTURE / separate scope
 ```
