@@ -1,7 +1,8 @@
 # IF-ADR-009 — Activity Local Visibility Rules
 
-Status: **Accepted / Implemented — current contract certification pending**
+Status: **Accepted / Implemented / Technical QA Certified**
 Last updated: **2026-08-30**
+Current certification: [IF-ADR-009 — Contribution / Visibility Technical Certification — 2026-08-30](../Reconciliation/IF-ADR-009-CONTRIBUTION-VISIBILITY-TECHNICAL-CERTIFICATION-2026-08-30.md)
 Historical reconciliation: [ADR-002 / ADR-009 reconciliation — 2026-08-10](../Reconciliation/IMMERSIVE-FRAMEWORK-ADR-002-009-RECONCILIATION-2026-08-10.md)
 Historical QA evidence: [ADR-009 QA certification — 2026-08-10](../Archive/IMMERSIVE-FRAMEWORK-ADR-009-QA-CERTIFICATION-2026-08-10.md)
 Related decisions: IF-ADR-001, IF-ADR-002, IF-ADR-006, IF-ADR-007, IF-ADR-010, IF-ADR-014
@@ -89,18 +90,54 @@ Current implementation matches this split:
 - The corresponding Editor validators and Inspectors are distinct:
   `ActivityContentContributionEditor` and `ActivityVisibilityRuleEditor`.
 
+The current lifecycle/presentation order is:
+
+```text
+validate / collect
+-> Exit previous Contribution
+-> lifecycle participants
+-> apply target Visibility Rules
+-> Enter target Contribution
+```
+
+This ordering does not couple the authorities. A visibility change may occur with no
+Contribution callback, and a Contribution callback may observe presentation state that
+was already changed by the target Visibility Rule.
+
+## Current technical certification
+
+The post-split contract is technically certified by three focused Unity QA runners:
+
+```text
+Contribution Authority     3/3  PASS
+Visibility Isolation       2/2  PASS
+Lifecycle regression      16/16 PASS
+------------------------------------
+Current post-split evidence 21/21 PASS
+```
+
+The Contribution runner proves Required-invalid pre-commit rejection, Optional-invalid
+non-blocking behavior and valid Activity-owned lifecycle independently of visibility.
+The Visibility runner proves invalid-rule diagnostic/non-mutating/non-blocking behavior
+and valid presentation-only behavior without Contribution ownership. The 16-case
+lifecycle regression proves that Visibility membership does not broaden Contribution
+membership and that presentation/lifecycle changes remain independent across positive,
+negative, no-active, clear and idempotence cases.
+
+See the dated certification record for the exact scope and evidence matrix.
+
 ## Historical evidence
 
 The 2026-08-10 ADR-009 reconciliation and its `46` focused QA cases certify the
-previous combined boundary. They remain historical evidence and do not certify this
+previous combined boundary. They remain historical evidence and do not certify the
 later Contribution versus Visibility split.
 
-No post-split focused QA or certification record was found in the package
-documentation or package-local tests at this cut.
+They are not rewritten or reclassified as current post-split evidence.
 
-## Pending decisions
+## Certification state
 
-The architecture is decided. The remaining work is evidence only: add and record
-focused validation for presentation-only invalid-rule behavior and for the separate
-Required / Optional contribution path before claiming certification of this current
-contract.
+The architecture and current technical QA boundary are closed for the implemented
+Contribution / Visibility split.
+
+Future work, if any, must be justified as a new product, runtime, Editor or consumer
+requirement rather than as missing certification of this contract.

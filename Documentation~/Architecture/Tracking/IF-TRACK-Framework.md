@@ -72,7 +72,7 @@ Local Multiplayer remains blocked by public Slot/device/InputUser/control-scheme
 | 006 | ACCEPTED / RECONCILED / IMPLEMENTED | technical Transition/Loading certified | Game Flow consumer PASS |
 | 007 | ACCEPTED / RECONCILED / IMPLEMENTED | readiness policies certified | Game Flow consumer PASS |
 | 008 | ACCEPTED / RECONCILED / IMPLEMENTED | feature-owned | persistent composition consumer evidence present |
-| 009 | ACCEPTED / RECONCILED / IMPLEMENTED | certified | current |
+| 009 | ACCEPTED / RECONCILED / IMPLEMENTED / TECHNICAL QA CERTIFIED | Contribution 3/3 + Visibility 2/2 + lifecycle 16/16 | current post-split contract |
 | 010 | ACCEPTED / IMPLEMENTED | feature-owned | current |
 | 011 | ACCEPTED / RECONCILED / IMPLEMENTED | readiness/progress certified | consumer proof PASS |
 | 012 | ACCEPTED / RECONCILED / IMPLEMENTED | Player aggregate 27/27 | current |
@@ -87,6 +87,46 @@ Local Multiplayer remains blocked by public Slot/device/InputUser/control-scheme
 | 021 | ACCEPTED / RECONCILED / IMPLEMENTED | Route 18/18 + Activity 23/23 + aggregate 27/27 | Model B current |
 | 022 | ACCEPTED / IMPLEMENTED | presentation 14/14; Camera aggregate boundary certified | broader FIRSTGAME C6 remains separate |
 | 023 | ACCEPTED / IMPLEMENTED / TECHNICAL QA CERTIFIED | Manager functional 14/14 + Pause/Input/Gate 8/8 | PlayerActorRuntimeHost + PresentationPrefab current; FIRSTGAME Player Provisioning/Character Selection proven |
+
+## Current Activity content / visibility closure — IF-ADR-009 — 2026-08-30
+
+Current architecture:
+
+```text
+ActivityContentContribution
+  -> Activity ownership
+  -> Local Content Id
+  -> Required / Optional
+  -> Activity content lifecycle
+
+ActivityVisibilityRule
+  -> presentation only
+  -> no ownership
+  -> no Requiredness
+  -> no Activity content lifecycle authority
+```
+
+Current post-split QA:
+
+```text
+Contribution Authority     3/3  PASS
+Visibility Isolation       2/2  PASS
+Lifecycle regression      16/16 PASS
+------------------------------------
+Current post-split evidence 21/21 PASS
+```
+
+The lifecycle regression explicitly proves that Visibility membership does not broaden
+Contribution ownership. Presentation may change with zero Contribution callbacks, and
+Contribution lifecycle may exit while presentation remains visible for another listed
+Activity.
+
+The historical ADR-009 `46`-case certification remains dated evidence for the earlier
+combined boundary only.
+
+Certification record:
+
+[IF-ADR-009 Contribution / Visibility Technical Certification — 2026-08-30](../Reconciliation/IF-ADR-009-CONTRIBUTION-VISIBILITY-TECHNICAL-CERTIFICATION-2026-08-30.md)
 
 ## Current Player scoped closure — IF-ADR-023 — 2026-08-29
 
@@ -160,12 +200,14 @@ Certification record:
 
 ## Current architecture / reconciliation records
 
+- [IF-ADR-009 — Activity Local Visibility Rules](../ADRs/IF-ADR-009-Activity-Local-Visibility-Rules.md)
 - [IF-ADR-015 — Player Provisioning Commands and Consumer Observation Surface](../ADRs/IF-ADR-015-Player-Provisioning-Commands-and-Consumer-Observation-Surface.md)
 - [IF-ADR-019 — Session Player Lifetime and Activity Representation Authority](../ADRs/IF-ADR-019-Session-Player-Lifetime-and-Activity-Representation-Authority.md)
 - [IF-ADR-020 — Session Player Leave and Resource Release Authority](../ADRs/IF-ADR-020-Session-Player-Leave-and-Resource-Release-Authority.md)
 - [IF-ADR-021 — Route Spatial Entry and Activity Explicit Relocation](../ADRs/IF-ADR-021-Activity-Player-Actor-Initial-Placement-Authority.md)
 - [IF-ADR-022 — Camera Rig Presentation Models](../ADRs/IF-ADR-022-Camera-Rig-Presentation-Models-and-Materialization-Authority.md)
 - [IF-ADR-023 — Player Actor Runtime Host and Presentation Authority](../ADRs/IF-ADR-023-Player-Actor-Runtime-Host-and-Presentation-Authority.md)
+- [IF-ADR-009 Contribution / Visibility Technical Certification — 2026-08-30](../Reconciliation/IF-ADR-009-CONTRIBUTION-VISIBILITY-TECHNICAL-CERTIFICATION-2026-08-30.md)
 - [Player Current Aggregate Recertification — 2026-08-24](../Reconciliation/IF-PLAYER-CURRENT-AGGREGATE-RECERTIFICATION-2026-08-24.md)
 - [IF-ADR-015B — Player Actor Selection Public Surface Certification — 2026-08-26](../Reconciliation/IF-ADR-015B-Player-Actor-Selection-Public-Surface-Certification-2026-08-26.md)
 - [IF-ADR-023 Player Actor Runtime Technical Certification — 2026-08-29](../Reconciliation/IF-ADR-023-PLAYER-ACTOR-RUNTIME-TECHNICAL-CERTIFICATION-2026-08-29.md)

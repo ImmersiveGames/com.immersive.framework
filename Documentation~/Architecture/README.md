@@ -1,6 +1,6 @@
 # Immersive Framework Architecture Documentation
 
-Last updated: **2026-08-26**
+Last updated: **2026-08-30**
 
 ## Normative architecture
 
@@ -19,6 +19,46 @@ Reopened
 ```
 
 ## Current major technical closures
+
+### Activity content contribution / visibility split
+
+Current technical certification authority:
+
+[IF-ADR-009 — Contribution / Visibility Technical Certification — 2026-08-30](Reconciliation/IF-ADR-009-CONTRIBUTION-VISIBILITY-TECHNICAL-CERTIFICATION-2026-08-30.md)
+
+Frozen model:
+
+```text
+ActivityContentContribution
+  owns Activity content participation
+  owns Local Content Id
+  owns Required / Optional authority
+  owns Activity content Enter / Exit lifecycle
+
+ActivityVisibilityRule
+  owns presentation only
+  does not own Activity content
+  does not own Requiredness
+  does not own Activity content lifecycle
+```
+
+Current post-split certification:
+
+```text
+Contribution Authority     3/3  PASS
+Visibility Isolation       2/2  PASS
+Lifecycle regression      16/16 PASS
+------------------------------------
+Current post-split evidence 21/21 PASS
+```
+
+The lifecycle regression proves that visibility membership does not broaden
+Contribution ownership. Presentation changes may occur with zero Contribution
+callbacks, and Contribution lifecycle may exit while presentation remains visible for
+another Activity listed only by the Rule.
+
+The historical 2026-08-10 ADR-009 `46`-case record remains valid dated evidence for
+the previous combined boundary; it is not current post-split certification.
 
 ### Player Actor Selection public surface
 
@@ -275,6 +315,10 @@ and do not interpret `Replace Actor Selection` as physical hot-swap.
 
 ## Current affected ADR disposition
 
+### Activity / content
+
+- IF-ADR-009 — Accepted / reconciled / implemented / technical QA certified; current post-split evidence is Contribution 3/3, Visibility 2/2 and lifecycle 16/16. Historical 46-case evidence remains tied to the previous combined boundary.
+
 ### Player
 
 - IF-ADR-003 — Accepted / reconciled / implemented; arbitrary Actor-selection lifecycle delivered and current aggregate PASS; physical hot-swap remains future.
@@ -299,6 +343,10 @@ and do not interpret `Replace Actor Selection` as physical hot-swap.
 Dated certification/reconciliation records remain historical evidence.
 
 Do not rewrite an older record to imply it tested a later contract.
+
+The historical ADR-009 `46`-case certification remains tied to the previous combined
+local-visibility boundary. The 2026-08-30 Contribution / Visibility certification is
+the current post-split authority.
 
 The Full Player `25/25` certification remains the 2026-08-15 historical boundary. The
 2026-08-24 current aggregate is the Model B/lifetime `27/27` reconciliation record. The
