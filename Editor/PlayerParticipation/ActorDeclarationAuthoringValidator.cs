@@ -3,6 +3,7 @@ using Immersive.Framework.Actors;
 using Immersive.Framework.Authoring;
 using Immersive.Framework.Editor.Validation;
 using UnityEditor;
+using UnityEngine;
 using UnityEngine.InputSystem;
 namespace Immersive.Framework.Editor.PlayerParticipation
 {
@@ -12,6 +13,23 @@ namespace Immersive.Framework.Editor.PlayerParticipation
     internal static class ActorDeclarationAuthoringValidator
     {
         private const string LegacyQaActorId = "qa.actor.generic";
+        internal const string RuntimeActorIdentityWarning =
+            "Actor ID is assigned at runtime when this Player Actor occurrence is prepared.";
+        internal const string AuthoredPlayerActorIdentityError =
+            "Player Actor declarations must not author an Actor ID. " +
+            "Actor identity is assigned per runtime occurrence.";
+
+        internal static bool CanGenerateAuthoredActorId(
+            ActorDeclaration declaration,
+            string currentActorId)
+        {
+            return declaration is not PlayerActorDeclaration &&
+                (string.IsNullOrWhiteSpace(currentActorId) ||
+                 string.Equals(
+                     currentActorId.Trim(),
+                     LegacyQaActorId,
+                     StringComparison.Ordinal));
+        }
 
         internal static FrameworkAuthoringValidationReport Validate(
             ActorDeclaration declaration)
@@ -35,33 +53,19 @@ namespace Immersive.Framework.Editor.PlayerParticipation
                     ? actorIdProperty.stringValue ?? string.Empty
                     : string.Empty;
 
-            if (string.IsNullOrWhiteSpace(rawActorId))
+            if (declaration is PlayerActorDeclaration)
             {
-                report.AddError(
-                    "Actor Declaration requires an explicit Actor ID. Open Advanced / Debug and generate one.",
-                    declaration);
-            }
-            else if (string.Equals(
-                         rawActorId.Trim(),
-                         LegacyQaActorId,
-                         StringComparison.Ordinal))
-            {
-                report.AddError(
-                    "Actor Declaration still uses the legacy QA placeholder 'qa.actor.generic'. Open Advanced / Debug and replace it with a generated project identity.",
-                    declaration);
+                ValidatePlayerActorIdentity(
+                    declaration,
+                    rawActorId,
+                    report);
             }
             else
             {
-                try
-                {
-                    _ = new ActorId(rawActorId);
-                }
-                catch (Exception exception)
-                {
-                    report.AddError(
-                        $"Actor Declaration has an invalid Actor ID. {exception.Message}",
-                        declaration);
-                }
+                ValidateAuthoredActorIdentity(
+                    declaration,
+                    rawActorId,
+                    report);
             }
 
             if (!Enum.IsDefined(typeof(ActorKind), declaration.ActorKind))
@@ -98,6 +102,65 @@ namespace Immersive.Framework.Editor.PlayerParticipation
             }
 
             return report;
+        }
+
+        private static void ValidatePlayerActorIdentity(
+            ActorDeclaration declaration,
+            string rawActorId,
+            FrameworkAuthoringValidationReport report)
+        {
+            if (Application.isPlaying)
+            {
+                return;
+            }
+
+            if (string.IsNullOrWhiteSpace(rawActorId))
+            {
+                report.AddWarning(
+                    RuntimeActorIdentityWarning,
+                    declaration);
+                return;
+            }
+
+            report.AddError(
+                AuthoredPlayerActorIdentityError,
+                declaration);
+        }
+
+        private static void ValidateAuthoredActorIdentity(
+            ActorDeclaration declaration,
+            string rawActorId,
+            FrameworkAuthoringValidationReport report)
+        {
+            if (string.IsNullOrWhiteSpace(rawActorId))
+            {
+                report.AddError(
+                    "Actor Declaration requires an explicit Actor ID. Open Advanced / Debug and generate one.",
+                    declaration);
+                return;
+            }
+
+            if (string.Equals(
+                    rawActorId.Trim(),
+                    LegacyQaActorId,
+                    StringComparison.Ordinal))
+            {
+                report.AddError(
+                    "Actor Declaration still uses the legacy QA placeholder 'qa.actor.generic'. Open Advanced / Debug and replace it with a generated project identity.",
+                    declaration);
+                return;
+            }
+
+            try
+            {
+                _ = new ActorId(rawActorId);
+            }
+            catch (Exception exception)
+            {
+                report.AddError(
+                    $"Actor Declaration has an invalid Actor ID. {exception.Message}",
+                    declaration);
+            }
         }
     }
 }

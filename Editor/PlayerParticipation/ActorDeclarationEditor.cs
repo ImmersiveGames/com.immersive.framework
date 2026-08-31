@@ -8,7 +8,7 @@ namespace Immersive.Framework.Editor.PlayerParticipation
 {
     /// <summary>
     /// Designer-first Inspector shared by ActorDeclaration and specialized declarations.
-    /// Stable identity and technical evidence remain available under Advanced / Debug.
+    /// Authored identity and runtime identity evidence remain available under Advanced / Debug.
     /// </summary>
     [CustomEditor(typeof(ActorDeclaration), true)]
     internal sealed class ActorDeclarationEditor : UnityEditor.Editor
@@ -66,7 +66,7 @@ namespace Immersive.Framework.Editor.PlayerParticipation
                         ? "Player Actor Declaration"
                         : "Actor Declaration",
                     isPlayer
-                        ? "Declares the stable identity of one Player Actor Runtime. PlayerInput remains owned by the Local Player Host and is shown here only as runtime evidence."
+                        ? "Declares one Player Actor Runtime occurrence. Actor ID is assigned during runtime preparation; PlayerInput remains owned by the Local Player Host and is shown here only as runtime evidence."
                         : "Declares stable framework identity and classification for one Actor. Lifetime, movement, input, reset, snapshot and save behavior are owned elsewhere."),
                 EditorStyles.boldLabel);
         }
@@ -131,11 +131,6 @@ namespace Immersive.Framework.Editor.PlayerParticipation
                 report.IsValid
                     ? "Ready"
                     : "Needs Attention");
-
-            if (report.IsValid)
-            {
-                return;
-            }
 
             DrawFirstActionableIssue(report);
         }
@@ -221,24 +216,16 @@ namespace Immersive.Framework.Editor.PlayerParticipation
         private void DrawStableIdentity(
             ActorDeclaration declaration)
         {
+            bool isPlayer = declaration is PlayerActorDeclaration;
             FrameworkAuthoringInspectorGui.Section(
-                "Stable Identity");
+                isPlayer
+                    ? "Runtime Identity"
+                    : "Stable Identity");
 
             string currentActorId =
                 _actorId != null
                     ? _actorId.stringValue ?? string.Empty
                     : string.Empty;
-
-            bool isLegacyPlaceholder =
-                string.Equals(
-                    currentActorId.Trim(),
-                    LegacyQaActorId,
-                    StringComparison.Ordinal);
-
-            bool canGenerate =
-                string.IsNullOrWhiteSpace(currentActorId) ||
-                isLegacyPlaceholder;
-
 
             using (new EditorGUILayout.HorizontalScope())
             {
@@ -247,24 +234,40 @@ namespace Immersive.Framework.Editor.PlayerParticipation
                     EditorGUILayout.TextField(
                         new GUIContent(
                             "Actor ID",
-                            "Stable functional identity. It must not change when the GameObject, prefab or Display Name changes."),
+                            isPlayer
+                                ? "Runtime occurrence identity. It is assigned when the Player Actor is prepared and is not authored on the generic runtime-host prefab."
+                                : "Stable functional identity. It must not change when the GameObject, prefab or Display Name changes."),
                         currentActorId);
                 }
 
-                using (new EditorGUI.DisabledScope(!canGenerate))
+                if (!isPlayer)
                 {
-                    string buttonLabel =
-                        isLegacyPlaceholder
-                            ? "Replace ID"
-                            : "Generate ID";
+                    bool isLegacyPlaceholder =
+                        string.Equals(
+                            currentActorId.Trim(),
+                            LegacyQaActorId,
+                            StringComparison.Ordinal);
+                    bool canGenerate =
+                        ActorDeclarationAuthoringValidator
+                            .CanGenerateAuthoredActorId(
+                                declaration,
+                                currentActorId);
 
-                    if (GUILayout.Button(
-                            buttonLabel,
-                            GUILayout.Width(90f)))
+                    using (new EditorGUI.DisabledScope(!canGenerate))
                     {
-                        GenerateActorId(declaration);
-                        currentActorId =
-                            _actorId.stringValue ?? string.Empty;
+                        string buttonLabel =
+                            isLegacyPlaceholder
+                                ? "Replace ID"
+                                : "Generate ID";
+
+                        if (GUILayout.Button(
+                                buttonLabel,
+                                GUILayout.Width(90f)))
+                        {
+                            GenerateActorId(declaration);
+                            currentActorId =
+                                _actorId.stringValue ?? string.Empty;
+                        }
                     }
                 }
 

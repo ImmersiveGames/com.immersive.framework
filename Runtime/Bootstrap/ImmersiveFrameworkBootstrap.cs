@@ -172,7 +172,7 @@ namespace Immersive.Framework.Bootstrap
                 runtimeHost.TryGetLocalPlayerProvisioningRuntime(
                     out localPlayerProvisioning);
 
-            return LogFields.Of(
+            LogField[] fields = LogFields.Of(
                 LogFields.Field("gameApplication", result.GameApplication != null ? result.GameApplication.ApplicationName : null),
                 LogFields.Field("startupRoute", result.StartupRoute != null ? result.StartupRoute.RouteName : null),
                 LogFields.Field("primaryScene", result.StartupRoute != null ? result.StartupRoute.PrimarySceneName : null),
@@ -204,26 +204,6 @@ namespace Immersive.Framework.Bootstrap
                 LogFields.Field("localPlayerProvisioningManager", hasLocalPlayerProvisioning && localPlayerProvisioning.Authoring.PlayerInputManager != null ? localPlayerProvisioning.Authoring.PlayerInputManager.name : string.Empty),
                 LogFields.Field("localPlayerProvisioningRequests", hasLocalPlayerProvisioning ? localPlayerProvisioning.RequestCount : 0),
                 LogFields.Field("localPlayerProvisioningDiagnostic", hasLocalPlayerProvisioning ? localPlayerProvisioning.Diagnostic : "NotConfigured"),
-                LogFields.Field("activityContentExecution", activityFlowResult.ActivityContentExecutionResult.DiagnosticStatus),
-                LogFields.Field("activityContentExecutionParticipantSource", activityFlowResult.ActivityContentExecutionResult.ParticipantSourceStatus),
-                LogFields.Field("activityContentExecutionParticipantSourceIssues", activityFlowResult.ActivityContentExecutionResult.ParticipantSourceIssueCount),
-                LogFields.Field("activityContentExecutionParticipants", activityFlowResult.ActivityContentExecutionResult.ParticipantCount),
-                LogFields.Field("activityContentExecutionEnter", activityFlowResult.ActivityContentExecutionResult.EnterResult.Status),
-                LogFields.Field("activityContentExecutionEnterRequests", activityFlowResult.ActivityContentExecutionResult.EnterRequestCount),
-                LogFields.Field("activityContentExecutionExit", activityFlowResult.ActivityContentExecutionResult.ExitResult.Status),
-                LogFields.Field("activityContentExecutionExitRequests", activityFlowResult.ActivityContentExecutionResult.ExitRequestCount),
-                LogFields.Field("activityContentExecutionBlockingIssues", activityFlowResult.ActivityContentExecutionResult.BlockingIssueCount),
-                LogFields.Field("activityContentExecutionBlocksReadiness", activityFlowResult.ActivityContentExecutionResult.BlocksReadiness),
-                LogFields.Field("activityContentParticipantExecution", activityFlowResult.ActivityContentExecutionResult.DiagnosticStatus),
-                LogFields.Field("activityContentParticipantSource", activityFlowResult.ActivityContentExecutionResult.ParticipantSourceStatus),
-                LogFields.Field("activityContentParticipantSourceIssues", activityFlowResult.ActivityContentExecutionResult.ParticipantSourceIssueCount),
-                LogFields.Field("activityContentParticipantCount", activityFlowResult.ActivityContentExecutionResult.ParticipantCount),
-                LogFields.Field("activityContentParticipantEnter", activityFlowResult.ActivityContentExecutionResult.EnterResult.Status),
-                LogFields.Field("activityContentParticipantEnterRequests", activityFlowResult.ActivityContentExecutionResult.EnterRequestCount),
-                LogFields.Field("activityContentParticipantExit", activityFlowResult.ActivityContentExecutionResult.ExitResult.Status),
-                LogFields.Field("activityContentParticipantExitRequests", activityFlowResult.ActivityContentExecutionResult.ExitRequestCount),
-                LogFields.Field("activityContentParticipantBlockingIssues", activityFlowResult.ActivityContentExecutionResult.BlockingIssueCount),
-                LogFields.Field("activityContentParticipantBlocksReadiness", activityFlowResult.ActivityContentExecutionResult.BlocksReadiness),
                 LogFields.Field("routeContentEnterReceivers", routeLifecycleResult.RouteContentEnterResult.ReceiverCount),
                 LogFields.Field("activity", FormatDiagnosticValue(activityFlowResult.ActivityState.ActivityName)),
                 LogFields.Field("activityState", activityFlowResult.ActivityState.DiagnosticStatus),
@@ -238,6 +218,9 @@ namespace Immersive.Framework.Bootstrap
                 LogFields.Field("activitySceneLedgerLoaded", activityFlowResult.ActivitySceneLedgerSnapshot.LoadedCount),
                 LogFields.Field("activitySceneLedgerReleased", activityFlowResult.ActivitySceneLedgerSnapshot.ReleasedCount),
                 LogFields.Field("activitySceneLedgerStale", activityFlowResult.ActivitySceneLedgerSnapshot.StaleCount));
+            return ActivityContentExecutionDiagnosticProjection.AppendTo(
+                fields,
+                activityFlowResult.ActivityContentExecutionResult);
         }
 
         private static bool TryInitializeLocalPlayerProvisioning(

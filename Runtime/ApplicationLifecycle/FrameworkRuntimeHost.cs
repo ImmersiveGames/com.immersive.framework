@@ -2047,7 +2047,7 @@ namespace Immersive.Framework.ApplicationLifecycle
                 loadingDiagnostics.FailedAdapterEvidenceCount,
                 loadingDiagnostics.AdapterEvidenceBlockingIssueCount);
 
-            return LogFields.Of(
+            LogField[] fields = LogFields.Of(
                 LogFields.Field("kind", result.Kind),
                 LogFields.Field("source", result.Source),
                 LogFields.Field("reason", result.Reason),
@@ -2161,26 +2161,6 @@ namespace Immersive.Framework.ApplicationLifecycle
                 LogFields.Field("runtimeRouteContext", routeLifecycle.RuntimeRouteScopeResult.ContextStatus),
                 LogFields.Field("runtimeRootCount", routeLifecycle.RuntimeRouteScopeResult.RootCount),
                 LogFields.Field("routeContentHandles", routeLifecycle.RouteContentSet.Count),
-                LogFields.Field("activityContentExecution", activityFlow.ActivityContentExecutionResult.DiagnosticStatus),
-                LogFields.Field("activityContentExecutionParticipantSource", activityFlow.ActivityContentExecutionResult.ParticipantSourceStatus),
-                LogFields.Field("activityContentExecutionParticipantSourceIssues", activityFlow.ActivityContentExecutionResult.ParticipantSourceIssueCount),
-                LogFields.Field("activityContentExecutionParticipants", activityFlow.ActivityContentExecutionResult.ParticipantCount),
-                LogFields.Field("activityContentExecutionEnter", activityFlow.ActivityContentExecutionResult.EnterResult.Status),
-                LogFields.Field("activityContentExecutionEnterRequests", activityFlow.ActivityContentExecutionResult.EnterRequestCount),
-                LogFields.Field("activityContentExecutionExit", activityFlow.ActivityContentExecutionResult.ExitResult.Status),
-                LogFields.Field("activityContentExecutionExitRequests", activityFlow.ActivityContentExecutionResult.ExitRequestCount),
-                LogFields.Field("activityContentExecutionBlockingIssues", activityFlow.ActivityContentExecutionResult.BlockingIssueCount),
-                LogFields.Field("activityContentExecutionBlocksReadiness", activityFlow.ActivityContentExecutionResult.BlocksReadiness),
-                LogFields.Field("activityContentParticipantExecution", activityFlow.ActivityContentExecutionResult.DiagnosticStatus),
-                LogFields.Field("activityContentParticipantSource", activityFlow.ActivityContentExecutionResult.ParticipantSourceStatus),
-                LogFields.Field("activityContentParticipantSourceIssues", activityFlow.ActivityContentExecutionResult.ParticipantSourceIssueCount),
-                LogFields.Field("activityContentParticipantCount", activityFlow.ActivityContentExecutionResult.ParticipantCount),
-                LogFields.Field("activityContentParticipantEnter", activityFlow.ActivityContentExecutionResult.EnterResult.Status),
-                LogFields.Field("activityContentParticipantEnterRequests", activityFlow.ActivityContentExecutionResult.EnterRequestCount),
-                LogFields.Field("activityContentParticipantExit", activityFlow.ActivityContentExecutionResult.ExitResult.Status),
-                LogFields.Field("activityContentParticipantExitRequests", activityFlow.ActivityContentExecutionResult.ExitRequestCount),
-                LogFields.Field("activityContentParticipantBlockingIssues", activityFlow.ActivityContentExecutionResult.BlockingIssueCount),
-                LogFields.Field("activityContentParticipantBlocksReadiness", activityFlow.ActivityContentExecutionResult.BlocksReadiness),
                 LogFields.Field("routeContentEnterReceivers", routeLifecycle.RouteContentEnterResult.ReceiverCount),
                 LogFields.Field("routeContentExitReceivers", routeLifecycle.RouteContentExitResult.ReceiverCount),
                 LogFields.Field("activity", FormatDiagnosticValue(currentActivity != null ? currentActivity.ActivityName : string.Empty)),
@@ -2246,6 +2226,9 @@ namespace Immersive.Framework.ApplicationLifecycle
                 LogFields.Field("loadingProgressPhase", loadingDiagnostics.ProgressPhaseText),
                 LogFields.Field("loadingProgressMessage", loadingDiagnostics.ProgressMessageText),
                 LogFields.Field("loadingProgress", loadingDiagnostics.ProgressText));
+            return ActivityContentExecutionDiagnosticProjection.AppendTo(
+                fields,
+                activityFlow.ActivityContentExecutionResult);
         }
 
         private LogField[] BuildActivityRequestSummaryFields(
@@ -2320,7 +2303,7 @@ namespace Immersive.Framework.ApplicationLifecycle
                 loadingDiagnostics.FailedAdapterEvidenceCount,
                 loadingDiagnostics.AdapterEvidenceBlockingIssueCount);
 
-            return LogFields.Of(
+            LogField[] fields = LogFields.Of(
                 LogFields.Field("kind", result.Kind),
                 LogFields.Field("source", result.Source),
                 LogFields.Field("reason", result.Reason),
@@ -2423,26 +2406,6 @@ namespace Immersive.Framework.ApplicationLifecycle
                 LogFields.Field("runtimeRootCount", activityFlow.RuntimeActivityScopeResult.RootCount),
                 LogFields.Field("activityReadinessIssues", activityFlow.ActivityReadinessState.BlockingIssueCount),
                 LogFields.Field("activityContentBindings", activityContent.BindingCount),
-                LogFields.Field("activityContentExecution", activityFlow.ActivityContentExecutionResult.DiagnosticStatus),
-                LogFields.Field("activityContentExecutionParticipantSource", activityFlow.ActivityContentExecutionResult.ParticipantSourceStatus),
-                LogFields.Field("activityContentExecutionParticipantSourceIssues", activityFlow.ActivityContentExecutionResult.ParticipantSourceIssueCount),
-                LogFields.Field("activityContentExecutionParticipants", activityFlow.ActivityContentExecutionResult.ParticipantCount),
-                LogFields.Field("activityContentExecutionEnter", activityFlow.ActivityContentExecutionResult.EnterResult.Status),
-                LogFields.Field("activityContentExecutionEnterRequests", activityFlow.ActivityContentExecutionResult.EnterRequestCount),
-                LogFields.Field("activityContentExecutionExit", activityFlow.ActivityContentExecutionResult.ExitResult.Status),
-                LogFields.Field("activityContentExecutionExitRequests", activityFlow.ActivityContentExecutionResult.ExitRequestCount),
-                LogFields.Field("activityContentExecutionBlockingIssues", activityFlow.ActivityContentExecutionResult.BlockingIssueCount),
-                LogFields.Field("activityContentExecutionBlocksReadiness", activityFlow.ActivityContentExecutionResult.BlocksReadiness),
-                LogFields.Field("activityContentParticipantExecution", activityFlow.ActivityContentExecutionResult.DiagnosticStatus),
-                LogFields.Field("activityContentParticipantSource", activityFlow.ActivityContentExecutionResult.ParticipantSourceStatus),
-                LogFields.Field("activityContentParticipantSourceIssues", activityFlow.ActivityContentExecutionResult.ParticipantSourceIssueCount),
-                LogFields.Field("activityContentParticipantCount", activityFlow.ActivityContentExecutionResult.ParticipantCount),
-                LogFields.Field("activityContentParticipantEnter", activityFlow.ActivityContentExecutionResult.EnterResult.Status),
-                LogFields.Field("activityContentParticipantEnterRequests", activityFlow.ActivityContentExecutionResult.EnterRequestCount),
-                LogFields.Field("activityContentParticipantExit", activityFlow.ActivityContentExecutionResult.ExitResult.Status),
-                LogFields.Field("activityContentParticipantExitRequests", activityFlow.ActivityContentExecutionResult.ExitRequestCount),
-                LogFields.Field("activityContentParticipantBlockingIssues", activityFlow.ActivityContentExecutionResult.BlockingIssueCount),
-                LogFields.Field("activityContentParticipantBlocksReadiness", activityFlow.ActivityContentExecutionResult.BlocksReadiness),
                 LogFields.Field("activityContentHandles", activityContent.ActivityContentCount),
                 LogFields.Field("activitySceneComposition", activityFlow.ActivitySceneCompositionResult.DiagnosticStatus),
                 LogFields.Field("activitySceneCompositionProfile", activityFlow.ActivitySceneCompositionResult.ProfileId),
@@ -2492,6 +2455,9 @@ namespace Immersive.Framework.ApplicationLifecycle
                 LogFields.Field("loadingProgressPhase", loadingDiagnostics.ProgressPhaseText),
                 LogFields.Field("loadingProgressMessage", loadingDiagnostics.ProgressMessageText),
                 LogFields.Field("loadingProgress", loadingDiagnostics.ProgressText));
+            return ActivityContentExecutionDiagnosticProjection.AppendTo(
+                fields,
+                activityFlow.ActivityContentExecutionResult);
         }
 
         private static FrameworkLifecycleOperationEvidence BuildRouteLifecycleOperationEvidence(
