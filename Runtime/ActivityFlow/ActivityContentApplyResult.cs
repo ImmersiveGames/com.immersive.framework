@@ -78,6 +78,62 @@ namespace Immersive.Framework.ActivityFlow
                 string.Empty);
         }
 
+        internal static ActivityContentApplyResult Inspected(
+            ActivityAsset previousActivity,
+            ActivityAsset activeActivity,
+            int bindingCount,
+            int missingActivityCount,
+            int invalidBindingCount,
+            int requiredInvalidBindingCount,
+            int optionalInvalidBindingCount,
+            string source,
+            string reason,
+            string detailMessage,
+            string warningMessage)
+        {
+            if (bindingCount <= 0 &&
+                missingActivityCount <= 0 &&
+                invalidBindingCount <= 0)
+            {
+                return Empty(activeActivity);
+            }
+
+            string target = activeActivity != null
+                ? $"for Activity '{activeActivity.ActivityName}'"
+                : "with no active Activity";
+            string message =
+                $"Activity Content inspected {bindingCount} component(s) {target}. " +
+                "No Activity Content lifecycle was executed.";
+            if (missingActivityCount > 0)
+            {
+                message += $" missingActivity='{missingActivityCount}'.";
+            }
+
+            if (invalidBindingCount > 0)
+            {
+                message +=
+                    $" invalidConfiguration='{invalidBindingCount}' " +
+                    $"requiredInvalidContribution='{requiredInvalidBindingCount}' " +
+                    $"optionalInvalidContribution='{optionalInvalidBindingCount}'.";
+            }
+
+            return new ActivityContentApplyResult(
+                bindingCount,
+                missingActivityCount,
+                invalidBindingCount,
+                requiredInvalidBindingCount,
+                optionalInvalidBindingCount,
+                ActivityContentSet.Empty(activeActivity),
+                ActivityContentLifecycleResult.Skipped(
+                    previousActivity,
+                    activeActivity,
+                    source,
+                    reason),
+                message,
+                detailMessage,
+                warningMessage);
+        }
+
         public static ActivityContentApplyResult Applied(
             ActivityAsset activeActivity,
             int bindingCount,

@@ -133,6 +133,27 @@ namespace Immersive.Framework.ActivityFlow
             return result;
         }
 
+        internal ActivityContentApplyResult InspectPreparedActivityContentTransition(
+            ActivityContentTransitionContext context)
+        {
+            if (context == null) throw new ArgumentNullException(nameof(context));
+            return ActivityContentApplyResult.Inspected(
+                context.PreviousActivity,
+                context.ActiveActivity,
+                context.ComponentCount,
+                context.MissingActivityCount,
+                context.InvalidBindingCount,
+                context.RequiredInvalidBindingCount,
+                context.OptionalInvalidBindingCount,
+                context.Source,
+                context.Reason,
+                BuildDetailMessage(
+                    context.ActiveActivity,
+                    context.Observations,
+                    context.OmittedObservationCount),
+                BuildWarningMessage(context.Warnings));
+        }
+
         internal string BuildRequiredInvalidBindingDiagnostic(ActivityContentTransitionContext context)
         {
             return context == null || context.RequiredInvalidBindingCount <= 0

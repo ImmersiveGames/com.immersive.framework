@@ -266,6 +266,25 @@ namespace Immersive.Framework.ActivityFlow
                 activityOperationResult: activityOperationResult);
         }
 
+        internal static ActivityFlowStartResult Failed(
+            string message,
+            ActivityContentApplyResult activityContentResult,
+            ActivityOperationResult activityOperationResult =
+                default(ActivityOperationResult))
+        {
+            return new ActivityFlowStartResult(
+                false,
+                false,
+                false,
+                false,
+                message,
+                default,
+                null,
+                activityContentResult,
+                default,
+                activityOperationResult: activityOperationResult);
+        }
+
         public static ActivityFlowStartResult SkippedNoStartupActivity(
             ActivityRuntimeState activityState,
             ActivityAsset previousActivity,

@@ -303,7 +303,8 @@ namespace Immersive.Framework.ActivityFlow
                         resolvedReason,
                         _activityContentRuntime
                             .BuildRequiredInvalidBindingDiagnostic(contentTransition),
-                        activityOperationResult);
+                        activityOperationResult,
+                        contentTransition);
                 }
 
                 transaction.MarkReadyToCommit(
@@ -790,7 +791,9 @@ namespace Immersive.Framework.ActivityFlow
             string source,
             string reason,
             string issue,
-            ActivityOperationResult activityOperationResult)
+            ActivityOperationResult activityOperationResult,
+            ActivityContentRuntime.ActivityContentTransitionContext
+                contentTransition = null)
         {
             InvalidatePendingAuthorableReadiness(
                 "activity-transition-failed-before-commit");
@@ -869,10 +872,19 @@ namespace Immersive.Framework.ActivityFlow
             ActivityTransitionSnapshot snapshot =
                 transaction.FailBeforeCommit(diagnostic);
             FinishActivityTransition(transaction);
-            return ActivityFlowStartResult.Failed(
+            ActivityContentApplyResult contentResult = contentTransition == null
+                ? default
+                : _activityContentRuntime
+                    .InspectPreparedActivityContentTransition(contentTransition);
+            ActivityFlowStartResult failedResult = contentTransition == null
+                ? ActivityFlowStartResult.Failed(
                     diagnostic,
                     activityOperationResult)
-                .WithActivityTransition(snapshot);
+                : ActivityFlowStartResult.Failed(
+                    diagnostic,
+                    contentResult,
+                    activityOperationResult);
+            return failedResult.WithActivityTransition(snapshot);
         }
 
         private async Task<ActivityFlowStartResult>
@@ -903,7 +915,8 @@ namespace Immersive.Framework.ActivityFlow
                     source,
                     reason,
                     diagnostic,
-                    activityOperationResult);
+                    activityOperationResult,
+                    contentTransition);
             }
 
             InvalidatePendingAuthorableReadiness(
