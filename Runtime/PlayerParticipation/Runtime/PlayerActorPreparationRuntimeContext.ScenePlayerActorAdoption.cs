@@ -11,7 +11,7 @@ namespace Immersive.Framework.PlayerParticipation
 {
     internal sealed partial class PlayerActorPreparationRuntimeContext
     {
-        private const string SceneAdoptionResourceType = "ScenePlayerActorRuntimeHost";
+        private const string SceneAdoptionResourceType = "SceneProvidedPlayerActor";
 
         private sealed class SceneAdoptionRecord
         {
@@ -91,7 +91,10 @@ namespace Immersive.Framework.PlayerParticipation
                         : issue);
             }
 
-            if (!authoring.TryValidateRuntimeEvidence(out issue))
+            if (!SceneProvidedLocalPlayerCompositionResolver.TryResolve(
+                    authoring,
+                    out SceneProvidedLocalPlayerComposition composition,
+                    out issue))
             {
                 return SceneAdoptionResult(
                     ScenePlayerActorAdoptionStatus.RejectedActorMismatch,
@@ -139,10 +142,10 @@ namespace Immersive.Framework.PlayerParticipation
                     "Scene Player Actor adoption requires the authored Actor Profile to be the current Session selection.");
             }
 
-            LocalPlayerHostAuthoring host = authoring.LocalPlayerHost;
-            PlayerActorRuntimeHost sceneRuntimeHost = authoring.ScenePlayerActorRuntimeHost;
-            PlayerActorDeclaration sceneActor = authoring.ScenePlayerActorDeclaration;
-            GameObject scenePresentation = authoring.ScenePresentation;
+            LocalPlayerHostAuthoring host = composition.LocalPlayerHost;
+            PlayerActorRuntimeHost sceneRuntimeHost = composition.PlayerActorRuntimeHost;
+            PlayerActorDeclaration sceneActor = composition.PlayerActorDeclaration;
+            GameObject presentation = composition.Presentation;
             if (host == null ||
                 !host.IsJoined ||
                 !host.HasJoinedSlot ||
@@ -198,10 +201,10 @@ namespace Immersive.Framework.PlayerParticipation
 
             if (sceneRuntimeHost == null ||
                 sceneActor == null ||
-                scenePresentation == null ||
+                presentation == null ||
                 host.ActorMount == null ||
                 !ReferenceEquals(sceneRuntimeHost.transform.parent, host.ActorMount) ||
-                !ReferenceEquals(scenePresentation.transform.parent, sceneRuntimeHost.PresentationMount))
+                !ReferenceEquals(presentation.transform.parent, sceneRuntimeHost.PresentationMount))
             {
                 return SceneAdoptionResult(
                     ScenePlayerActorAdoptionStatus.RejectedActorMismatch,
@@ -463,7 +466,7 @@ namespace Immersive.Framework.PlayerParticipation
                     host,
                     host.PlayerInput,
                     sceneRuntimeHost,
-                    scenePresentation,
+                    presentation,
                     releaseProxy,
                     true,
                     resolvedSource,
@@ -613,8 +616,7 @@ namespace Immersive.Framework.PlayerParticipation
                 expectedToken.SessionContextId != _sessionContextId ||
                 !_sceneAdoptions.TryGetValue(playerSlotId, out SceneAdoptionRecord adoption) ||
                 adoption.Token != expectedToken ||
-                !ReferenceEquals(adoption.Host, authoring.LocalPlayerHost) ||
-                !ReferenceEquals(adoption.SceneActor, authoring.SceneLogicalPlayerActor))
+                !ReferenceEquals(adoption.Host, authoring.LocalPlayerHost))
             {
                 return SceneAdoptionResult(
                     ScenePlayerActorAdoptionStatus.RejectedForeignOrStaleAdoption,
@@ -816,12 +818,17 @@ namespace Immersive.Framework.PlayerParticipation
             string reason,
             string message)
         {
+            PlayerActorDeclaration sceneActor =
+                playerSlotId.IsValid &&
+                _sceneAdoptions.TryGetValue(playerSlotId, out SceneAdoptionRecord record)
+                    ? record.SceneActor
+                    : null;
             return new ScenePlayerActorAdoptionResult(
                 status,
                 operation,
                 playerSlotId,
                 authoring != null ? authoring.ActorProfile : null,
-                authoring != null ? authoring.SceneLogicalPlayerActor : null,
+                sceneActor,
                 token,
                 stateChanged,
                 source,

@@ -42,7 +42,7 @@ namespace Immersive.Framework.PlayerParticipation
             AssignmentResult = assignmentResult;
             Authoring = authoring;
             LocalPlayerHost = localPlayerHost;
-            SceneLogicalPlayerActor = sceneLogicalPlayerActor;
+            PreparedPlayerActor = sceneLogicalPlayerActor;
             HostEvidenceReleased = hostEvidenceReleased;
             HostAdmissionReleased = hostAdmissionReleased;
             AssignmentReleased = assignmentReleased;
@@ -60,7 +60,7 @@ namespace Immersive.Framework.PlayerParticipation
         internal PlayerSlotAssignmentResult AssignmentResult { get; }
         internal SceneProvidedLocalPlayerAuthoring Authoring { get; }
         internal LocalPlayerHostAuthoring LocalPlayerHost { get; }
-        internal PlayerActorDeclaration SceneLogicalPlayerActor { get; }
+        internal PlayerActorDeclaration PreparedPlayerActor { get; }
         internal bool HostEvidenceReleased { get; }
         internal bool HostAdmissionReleased { get; }
         internal bool AssignmentReleased { get; }
@@ -82,7 +82,7 @@ namespace Immersive.Framework.PlayerParticipation
             return $"status='{Status}' leaveToken='{LeaveToken.StableText}' " +
                 $"sceneAdmission='{SceneAdmissionToken.StableText}' " +
                 $"authoring='{UnityObjectText(Authoring)}' host='{UnityObjectText(LocalPlayerHost)}' " +
-                $"sceneActor='{UnityObjectText(SceneLogicalPlayerActor)}' " +
+                $"preparedActor='{UnityObjectText(PreparedPlayerActor)}' " +
                 $"hostEvidenceReleased='{HostEvidenceReleased}' hostAdmissionReleased='{HostAdmissionReleased}' " +
                 $"assignmentReleased='{AssignmentReleased}' contextualRecordReleased='{ContextualRecordReleased}' " +
                 $"assignment='{AssignmentText(AssignmentResult)}' hostEvidence='{HostEvidenceText(HostEvidenceRelease)}' " +

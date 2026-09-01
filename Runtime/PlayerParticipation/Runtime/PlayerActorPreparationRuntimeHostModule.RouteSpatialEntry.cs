@@ -49,8 +49,10 @@ namespace Immersive.Framework.PlayerParticipation
         {
             issue = string.Empty;
             if (!_currentRouteSpatialEntryContext.IsValid || authoring == null ||
-                authoring.ScenePlayerActorRuntimeHost == null ||
-                authoring.ScenePlayerActorDeclaration == null ||
+                !SceneProvidedLocalPlayerCompositionResolver.TryResolve(
+                    authoring,
+                    out SceneProvidedLocalPlayerComposition composition,
+                    out issue) ||
                 !authoring.TryGetPlayerSlotId(out PlayerSlotId slot, out issue))
             {
                 if (string.IsNullOrEmpty(issue)) issue = "Scene-Provided spatial entry requires current Route occurrence context and complete authoring.";
@@ -59,7 +61,7 @@ namespace Immersive.Framework.PlayerParticipation
             return RoutePlayerSpatialEntryRuntime.TryApply(
                 _currentRouteSpatialEntryContext,
                 slot,
-                authoring.ScenePlayerActorRuntimeHost.transform,
+                composition.PlayerActorRuntimeHost.transform,
                 out issue);
         }
 

@@ -103,7 +103,7 @@ namespace Immersive.Framework.PlayerParticipation
                 operation,
                 playerSlotId,
                 authoring != null ? authoring.ActorProfile : null,
-                authoring != null ? authoring.SceneLogicalPlayerActor : null,
+                null,
                 default,
                 false,
                 source,

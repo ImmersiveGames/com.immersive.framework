@@ -239,9 +239,20 @@ namespace Immersive.Framework.PlayerParticipation
                         reason);
                 }
                 else if (hasRetainedPhysicalHost &&
-                         authoring.SceneLogicalPlayerActor != null)
+                         _hostEvidenceOwner.TryGetCurrentPreparation(
+                             result.Token.PlayerSlotId,
+                             out PlayerActorPreparationSummary preparation,
+                             out _) &&
+                         _hostEvidenceOwner.TryGetPreparedPhysicalEvidence(
+                             result.Token.PlayerSlotId,
+                             preparation.Token,
+                             out _,
+                             out _,
+                             out PlayerActorDeclaration preparedActor,
+                             out _,
+                             out _))
                 {
-                    authoring.SceneLogicalPlayerActor.BindPlayerInputEvidence(
+                    preparedActor.BindPlayerInputEvidence(
                         authoring.LocalPlayerHost.PlayerInput);
                 }
             }
@@ -879,7 +890,10 @@ namespace Immersive.Framework.PlayerParticipation
                     continue;
                 }
 
-                if (!candidate.TryValidateRuntimeEvidence(out string candidateIssue))
+                if (!SceneProvidedLocalPlayerCompositionResolver.TryResolve(
+                        candidate,
+                        out SceneProvidedLocalPlayerComposition composition,
+                        out string candidateIssue))
                 {
                     issue = $"Scene Local Player Admission '{candidate.name}' is invalid. {candidateIssue}";
                     return false;
@@ -921,14 +935,14 @@ namespace Immersive.Framework.PlayerParticipation
                     return false;
                 }
 
-                if (ContainsReference(actors, candidate.SceneLogicalPlayerActor))
+                if (ContainsReference(actors, composition.PlayerActorDeclaration))
                 {
-                    issue = $"Activity '{activity.ActivityName}' reuses Scene Logical Player Actor '{candidate.SceneLogicalPlayerActor.name}' across automatic admission surfaces.";
+                    issue = $"Activity '{activity.ActivityName}' reuses Scene Player Actor '{composition.PlayerActorDeclaration.name}' across automatic admission surfaces.";
                     return false;
                 }
 
                 hosts.Add(candidate.LocalPlayerHost);
-                actors.Add(candidate.SceneLogicalPlayerActor);
+                actors.Add(composition.PlayerActorDeclaration);
                 resolved.Add(new ResolvedAutomaticAuthoring(
                     candidate,
                     playerSlotId,

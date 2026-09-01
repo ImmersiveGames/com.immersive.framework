@@ -68,8 +68,9 @@ Player Actor Selection public surface
   Character Selection public-surface blocker CLOSED
 
 Player Actor runtime and presentation
-  ACCEPTED / IMPLEMENTED / TECHNICAL QA CERTIFIED
+  ACCEPTED / Scene-Provided authored-composition implementation complete
   PlayerActorRuntimeHost + ActorProfile.PresentationPrefab
+  authoring validation, transient resolution and runtime adoption implemented
 
 Player Actor occurrence identity boundary
   RECONCILED / FIRSTGAME PLAY MODE PROVEN 2026-08-31
@@ -190,7 +191,7 @@ Archive records preserve history without acting as current product truth.
 | [020](Architecture/ADRs/IF-ADR-020-Session-Player-Leave-and-Resource-Release-Authority.md) | Session Player Leave and resource release authority | Accepted / Reconciled / Implemented / Current Aggregate PASS |
 | [021](Architecture/ADRs/IF-ADR-021-Activity-Player-Actor-Initial-Placement-Authority.md) | Route spatial entry and Activity explicit relocation | Accepted / Reconciled / Implemented / Current QA Verified |
 | [022](Architecture/ADRs/IF-ADR-022-Camera-Rig-Presentation-Models-and-Materialization-Authority.md) | Camera Rig presentation models and materialization authority | Accepted / Technical QA Certified |
-| [023](Architecture/ADRs/IF-ADR-023-Player-Actor-Runtime-Host-and-Presentation-Authority.md) | Player Actor runtime Host and presentation authority | Accepted / Implemented / Technical QA Certified / 023A identity boundary reconciled |
+| [023](Architecture/ADRs/IF-ADR-023-Player-Actor-Runtime-Host-and-Presentation-Authority.md) | Player Actor runtime Host and presentation authority | Accepted / Scene-Provided authored-composition implementation complete / 023A identity boundary reconciled |
 
 ## Current reconciliation / closure records
 

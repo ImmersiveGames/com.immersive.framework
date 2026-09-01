@@ -300,7 +300,30 @@ namespace Immersive.Framework.PlayerParticipation
                         // The existing adoption is Session-owned physical state. This Activity
                         // contributes only its scene-local PlayerInput evidence; it must not
                         // attempt a second adoption for the same Slot.
-                        surface.SceneLogicalPlayerActor.BindPlayerInputEvidence(
+                        if (!_preparationModule.TryGetCurrentPreparation(
+                                playerSlotId,
+                                out PlayerActorPreparationSummary preparation,
+                                out string preparationIssue) ||
+                            !_preparationModule.TryGetPreparedPhysicalEvidence(
+                                playerSlotId,
+                                preparation.Token,
+                                out _,
+                                out _,
+                                out PlayerActorDeclaration preparedActor,
+                                out _,
+                                out preparationIssue))
+                        {
+                            return FailEnterAndRollback(
+                                activity,
+                                owner,
+                                entries,
+                                resolvedSource,
+                                resolvedReason,
+                                SceneLocalPlayerAdmissionActivityLifecycleStatus.FailedActorAdoption,
+                                "Retained Scene-Provided physical Actor evidence is unavailable. " + preparationIssue);
+                        }
+
+                        preparedActor.BindPlayerInputEvidence(
                             surface.LocalPlayerHost.PlayerInput);
                     }
                     else

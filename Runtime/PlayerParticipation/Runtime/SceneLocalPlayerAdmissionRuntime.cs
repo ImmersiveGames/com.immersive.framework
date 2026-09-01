@@ -187,7 +187,10 @@ namespace Immersive.Framework.PlayerParticipation
                     "Scene Local Player authoring identity already owns a conflicting admission record.");
             }
 
-            if (!authoring.TryValidateRuntimeEvidence(out string authoringIssue))
+            if (!SceneProvidedLocalPlayerCompositionResolver.TryResolve(
+                    authoring,
+                    out SceneProvidedLocalPlayerComposition composition,
+                    out string authoringIssue))
             {
                 return Result(
                     SceneLocalPlayerAdmissionRuntimeStatus.RejectedInvalidRequest,
@@ -221,7 +224,7 @@ namespace Immersive.Framework.PlayerParticipation
                     slotIssue);
             }
 
-            LocalPlayerHostAuthoring host = authoring.LocalPlayerHost;
+            LocalPlayerHostAuthoring host = composition.LocalPlayerHost;
             bool hasSlotConflict =
                 _recordsBySlot.TryGetValue(playerSlotId, out AdmissionRecord conflictingSlotRecord);
             AdmissionRecord conflictingHostRecord = FindRecordByHost(host);
@@ -348,7 +351,7 @@ namespace Immersive.Framework.PlayerParticipation
                         resolvedSource,
                         $"{resolvedReason}:reproject",
                         allowExistingActorRuntime: true,
-                        expectedSceneRuntimeHost: authoring.ScenePlayerActorRuntimeHost,
+                        expectedSceneRuntimeHost: composition.PlayerActorRuntimeHost,
                         out string hostIssue))
                 {
                     PlayerSlotAssignmentResult assignmentCompensation =
@@ -447,7 +450,7 @@ namespace Immersive.Framework.PlayerParticipation
                     resolvedSource,
                     resolvedReason,
                     allowExistingActorRuntime: true,
-                    expectedSceneRuntimeHost: authoring.ScenePlayerActorRuntimeHost,
+                    expectedSceneRuntimeHost: composition.PlayerActorRuntimeHost,
                     out string hostStageIssue))
             {
                 PlayerParticipationOperationResult rollback =
@@ -937,13 +940,19 @@ namespace Immersive.Framework.PlayerParticipation
                         assignmentRelease);
                 }
 
-                bool hostRestored = record.Host.TryRestoreCommittedAdmission(
-                    currentSessionSlot,
-                    resolvedSource,
-                    "scene-assignment-release-failed",
-                    allowExistingActorRuntime: true,
-                    expectedSceneRuntimeHost: authoring.ScenePlayerActorRuntimeHost,
-                    out string hostRestoreIssue);
+                bool resolvedForRestore =
+                    SceneProvidedLocalPlayerCompositionResolver.TryResolve(
+                        authoring,
+                        out SceneProvidedLocalPlayerComposition restoreComposition,
+                        out string hostRestoreIssue);
+                bool hostRestored = resolvedForRestore &&
+                    record.Host.TryRestoreCommittedAdmission(
+                        currentSessionSlot,
+                        resolvedSource,
+                        "scene-assignment-release-failed",
+                        allowExistingActorRuntime: true,
+                        expectedSceneRuntimeHost: restoreComposition.PlayerActorRuntimeHost,
+                        out hostRestoreIssue);
 
                 return Result(
                     hostRestored

@@ -15,6 +15,10 @@ namespace Immersive.Framework.PlayerParticipation.Editor.Tests
         private GameObject sceneHost;
         private ActorProfile actorProfile;
         private PlayerSlotProfile playerSlotProfile;
+        private GameObject runtimeHostPrefab;
+        private PlayerActorRuntimeHost sceneRuntimeHost;
+        private GameObject authoredPresentation;
+        private Transform actorMount;
 
         [TearDown]
         public void TearDown()
@@ -29,56 +33,161 @@ namespace Immersive.Framework.PlayerParticipation.Editor.Tests
         }
 
         [Test]
-        public void ApplyOrRebuild_SamePrefabSource_CreatesCompatibleEvidenceAndRemainsIdempotent()
+        public void Validate_AuthoredComposition_SucceedsWithoutMaterialization()
         {
             GameObject prefab = CreatePresentationPrefab("Presentation_A");
             SceneProvidedLocalPlayerAuthoring authoring = CreateAuthoring(prefab, prefab);
 
-            SceneProvidedLocalPlayerAuthoringResult first =
-                SceneProvidedLocalPlayerAuthoringUtility.ApplyOrRebuild(authoring, false, false);
             SceneProvidedLocalPlayerAuthoringResult validation =
                 SceneProvidedLocalPlayerAuthoringUtility.Validate(authoring, false);
-            SceneProvidedLocalPlayerAuthoringResult second =
-                SceneProvidedLocalPlayerAuthoringUtility.ApplyOrRebuild(authoring, false, false);
 
-            Assert.That(first.Succeeded, Is.True, first.Message);
-            Assert.That(first.Status, Is.EqualTo(SceneProvidedLocalPlayerAuthoringStatus.Valid));
-            Assert.That(first.EvidenceCreated, Is.True);
-            Assert.That(authoring.HasTypedActorEvidence, Is.True);
-            Assert.That(authoring.IsTypedActorEvidenceCompatibleWith(actorProfile), Is.True);
             Assert.That(validation.Succeeded, Is.True, validation.Message);
-            Assert.That(second.Succeeded, Is.True, second.Message);
-            Assert.That(second.EvidenceCreated, Is.False);
-            Assert.That(second.EvidenceUpdated, Is.False);
+            Assert.That(validation.Status, Is.EqualTo(SceneProvidedLocalPlayerAuthoringStatus.Valid));
         }
 
         [Test]
-        public void ApplyOrRebuild_DifferentPrefabSource_RejectsWithoutWritingEvidence()
+        public void Resolve_ExactDirectRuntimeHostAndPresentation_Succeeds()
+        {
+            GameObject prefab = CreatePresentationPrefab("Presentation_A");
+            SceneProvidedLocalPlayerAuthoring authoring = CreateAuthoring(prefab, prefab);
+
+            bool resolved = SceneProvidedLocalPlayerCompositionResolver.TryResolve(
+                authoring,
+                out SceneProvidedLocalPlayerComposition composition,
+                out string issue);
+
+            Assert.That(resolved, Is.True, issue);
+            Assert.That(composition.PlayerActorRuntimeHost, Is.SameAs(sceneRuntimeHost));
+            Assert.That(composition.Presentation, Is.SameAs(authoredPresentation));
+        }
+
+        [Test]
+        public void Resolve_ZeroRuntimeHost_IsRejected()
+        {
+            GameObject prefab = CreatePresentationPrefab("Presentation_A");
+            SceneProvidedLocalPlayerAuthoring authoring = CreateAuthoring(prefab, prefab);
+            Object.DestroyImmediate(sceneRuntimeHost.gameObject);
+
+            Assert.That(
+                SceneProvidedLocalPlayerCompositionResolver.TryResolve(
+                    authoring,
+                    out _,
+                    out _),
+                Is.False);
+        }
+
+        [Test]
+        public void Resolve_MultipleRuntimeHosts_IsRejected()
+        {
+            GameObject prefab = CreatePresentationPrefab("Presentation_A");
+            SceneProvidedLocalPlayerAuthoring authoring = CreateAuthoring(prefab, prefab);
+            PrefabUtility.InstantiatePrefab(runtimeHostPrefab, actorMount);
+
+            Assert.That(
+                SceneProvidedLocalPlayerCompositionResolver.TryResolve(
+                    authoring,
+                    out _,
+                    out _),
+                Is.False);
+        }
+
+        [Test]
+        public void Resolve_NestedRuntimeHost_IsRejected()
+        {
+            GameObject prefab = CreatePresentationPrefab("Presentation_A");
+            SceneProvidedLocalPlayerAuthoring authoring = CreateAuthoring(prefab, prefab);
+            Transform intermediary = new GameObject("Intermediary").transform;
+            intermediary.SetParent(actorMount, false);
+            sceneRuntimeHost.transform.SetParent(intermediary, false);
+
+            Assert.That(
+                SceneProvidedLocalPlayerCompositionResolver.TryResolve(
+                    authoring,
+                    out _,
+                    out _),
+                Is.False);
+        }
+
+        [Test]
+        public void Resolve_ZeroPresentation_IsRejected()
+        {
+            GameObject prefab = CreatePresentationPrefab("Presentation_A");
+            SceneProvidedLocalPlayerAuthoring authoring = CreateAuthoring(prefab, prefab);
+            Object.DestroyImmediate(authoredPresentation);
+
+            Assert.That(
+                SceneProvidedLocalPlayerCompositionResolver.TryResolve(
+                    authoring,
+                    out _,
+                    out _),
+                Is.False);
+        }
+
+        [Test]
+        public void Resolve_NestedPresentationMount_IsRejected()
+        {
+            GameObject prefab = CreatePresentationPrefab("Presentation_A");
+            SceneProvidedLocalPlayerAuthoring authoring = CreateAuthoring(prefab, prefab);
+            Transform intermediary = new GameObject("Presentation Intermediary").transform;
+            intermediary.SetParent(sceneRuntimeHost.transform, false);
+            sceneRuntimeHost.PresentationMount.SetParent(intermediary, false);
+
+            Assert.That(
+                SceneProvidedLocalPlayerCompositionResolver.TryResolve(
+                    authoring,
+                    out _,
+                    out _),
+                Is.False);
+        }
+
+        [Test]
+        public void Resolve_MultiplePresentations_IsRejected()
+        {
+            GameObject prefab = CreatePresentationPrefab("Presentation_A");
+            SceneProvidedLocalPlayerAuthoring authoring = CreateAuthoring(prefab, prefab);
+            PrefabUtility.InstantiatePrefab(prefab, sceneRuntimeHost.PresentationMount);
+
+            Assert.That(
+                SceneProvidedLocalPlayerCompositionResolver.TryResolve(
+                    authoring,
+                    out _,
+                    out _),
+                Is.False);
+        }
+
+        [Test]
+        public void Validate_WrongRuntimeHostPrefab_IsRejectedByEditorProvenance()
+        {
+            GameObject prefab = CreatePresentationPrefab("Presentation_A");
+            SceneProvidedLocalPlayerAuthoring authoring = CreateAuthoring(prefab, prefab);
+            GameObject unexpectedRuntimeHostPrefab = CreateRuntimeHostPrefab("UnexpectedRuntimeHost");
+            Object.DestroyImmediate(sceneRuntimeHost.gameObject);
+            sceneRuntimeHost =
+                ((GameObject)PrefabUtility.InstantiatePrefab(unexpectedRuntimeHostPrefab, actorMount))
+                    .GetComponent<PlayerActorRuntimeHost>();
+            authoredPresentation = (GameObject)PrefabUtility.InstantiatePrefab(
+                prefab,
+                sceneRuntimeHost.PresentationMount);
+
+            SceneProvidedLocalPlayerAuthoringResult result =
+                SceneProvidedLocalPlayerAuthoringUtility.Validate(authoring, false);
+
+            Assert.That(result.Succeeded, Is.False);
+            Assert.That(result.Status, Is.EqualTo(SceneProvidedLocalPlayerAuthoringStatus.InvalidHost));
+        }
+
+        [Test]
+        public void Validate_WrongPresentationPrefab_IsRejectedByEditorProvenance()
         {
             GameObject profilePrefab = CreatePresentationPrefab("Presentation_A");
             GameObject scenePrefab = CreatePresentationPrefab("Presentation_B");
             SceneProvidedLocalPlayerAuthoring authoring = CreateAuthoring(profilePrefab, scenePrefab);
 
             SceneProvidedLocalPlayerAuthoringResult result =
-                SceneProvidedLocalPlayerAuthoringUtility.ApplyOrRebuild(authoring, false, false);
+                SceneProvidedLocalPlayerAuthoringUtility.Validate(authoring, false);
 
             Assert.That(result.Succeeded, Is.False);
-            Assert.That(result.Status, Is.EqualTo(SceneProvidedLocalPlayerAuthoringStatus.IncompatibleProfileEvidence));
-            Assert.That(authoring.HasTypedActorEvidence, Is.False);
-        }
-
-        [Test]
-        public void ApplyOrRebuild_ActorWithoutPrefabSource_RejectsWithoutWritingEvidence()
-        {
-            GameObject profilePrefab = CreatePresentationPrefab("Presentation_A");
-            SceneProvidedLocalPlayerAuthoring authoring = CreateAuthoring(profilePrefab, null);
-
-            SceneProvidedLocalPlayerAuthoringResult result =
-                SceneProvidedLocalPlayerAuthoringUtility.ApplyOrRebuild(authoring, false, false);
-
-            Assert.That(result.Succeeded, Is.False);
-            Assert.That(result.Status, Is.EqualTo(SceneProvidedLocalPlayerAuthoringStatus.IncompatibleProfileEvidence));
-            Assert.That(authoring.HasTypedActorEvidence, Is.False);
+            Assert.That(result.Status, Is.EqualTo(SceneProvidedLocalPlayerAuthoringStatus.InvalidActorProfile));
         }
 
         private SceneProvidedLocalPlayerAuthoring CreateAuthoring(
@@ -101,23 +210,15 @@ namespace Immersive.Framework.PlayerParticipation.Editor.Tests
             sceneHost = new GameObject("Scene-Provided Local Player Host");
             PlayerInput playerInput = sceneHost.AddComponent<PlayerInput>();
             LocalPlayerHostAuthoring host = sceneHost.AddComponent<LocalPlayerHostAuthoring>();
-            Transform actorMount = new GameObject("Actor Mount").transform;
+            actorMount = new GameObject("Actor Mount").transform;
             actorMount.SetParent(sceneHost.transform);
-            GameObject runtimeHostPrefab = CreateRuntimeHostPrefab("PlayerRuntimeHost");
-            PlayerActorRuntimeHost sceneRuntimeHost =
+            runtimeHostPrefab = CreateRuntimeHostPrefab("PlayerRuntimeHost");
+            sceneRuntimeHost =
                 ((GameObject)PrefabUtility.InstantiatePrefab(runtimeHostPrefab, actorMount))
                     .GetComponent<PlayerActorRuntimeHost>();
-            GameObject scenePresentation = scenePrefab == null
-                ? new GameObject("Unconnected Presentation")
-                : PrefabUtility.InstantiatePrefab(
-                    scenePrefab,
-                    sceneRuntimeHost.PresentationMount) as GameObject;
-            if (scenePrefab == null)
-            {
-                scenePresentation.transform.SetParent(
-                    sceneRuntimeHost.PresentationMount,
-                    false);
-            }
+            authoredPresentation = PrefabUtility.InstantiatePrefab(
+                scenePrefab,
+                sceneRuntimeHost.PresentationMount) as GameObject;
             var provisioning =
                 new GameObject("Scene-Provided Local Player");
             provisioning.transform.SetParent(sceneHost.transform);
@@ -133,8 +234,6 @@ namespace Immersive.Framework.PlayerParticipation.Editor.Tests
             SetProperty(authoring, "localPlayerHost", host);
             SetProperty(authoring, "playerSlotProfile", playerSlotProfile);
             SetProperty(authoring, "actorProfile", actorProfile);
-            SetProperty(authoring, "scenePlayerActorRuntimeHost", sceneRuntimeHost);
-            SetProperty(authoring, "scenePresentation", scenePresentation);
             return authoring;
         }
 

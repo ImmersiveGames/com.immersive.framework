@@ -334,10 +334,28 @@ LocalPlayerHostAuthoring
             └── ActorProfile.PresentationPrefab
 ```
 
-`LocalPlayerHostAuthoring` owns the reusable runtime infrastructure. `ActorProfile`
-owns the selected presentation only. Scene-Provided composition may author the exact
-candidate runtime Host and presentation; `SceneProvidedLocalPlayerAuthoring`
-validates/adopts that exact composition and rejects mismatched or ambiguous evidence.
+`LocalPlayerHostAuthoring` owns the reusable runtime infrastructure and
+`ActorProfile` owns the selected presentation. Scene-Provided physically authors the
+exact Runtime Host and Presentation, then the Framework validates, deterministically
+resolves and adopts that composition. Derived serialized references/evidence are not
+composition authority.
+
+```text
+Scene-Provided
+  authored physical composition
+  → authoring validation
+  → deterministic runtime resolution
+  → runtime adoption
+
+Manager-Provisioned
+  provisioning intent
+  → runtime Host/Actor/Presentation materialization
+  → runtime preparation
+```
+
+Scene-Provided does not require Player Apply / Rebuild. It validates authoring,
+resolves the current physical composition and adopts it at runtime without derived
+evidence or runtime dependence on Editor-generated state.
 
 Keep the two Scene-Provided Editor operations distinct:
 
@@ -394,7 +412,9 @@ and do not interpret `Replace Actor Selection` as physical hot-swap.
 - IF-ADR-019 — Accepted / reconciled / implemented; current Full Player aggregate 27/27 PASS; historical 25/25 recertification preserved.
 - IF-ADR-020 — Accepted / reconciled / implemented; current Full Player aggregate 27/27 PASS; historical 25/25 recertification preserved.
 - IF-ADR-021 — Accepted / reconciled / implemented / current QA verified; Route Spatial Entry 18/18, Activity Relocation 23/23 and Full Player aggregate 27/27 PASS.
-- IF-ADR-023 — Accepted / implemented / technical QA certified; composition authority preserved.
+- IF-ADR-023 — Accepted / authored-composition implementation complete; physical
+  Scene-Provided validation, resolution and adoption are current without derived
+  evidence, runtime evidence validation or Player Apply/Rebuild.
 - IF-ADR-023A — Runtime occurrence identity boundary reconciled; Scene-Provided `LogicalActorsPrepared` and `GameplayReady` FIRSTGAME proof PASS.
 
 ### Camera

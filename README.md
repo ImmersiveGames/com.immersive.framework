@@ -20,7 +20,7 @@ PlayerSessionProfile -> Supported Slots / Joining / Host Provisioning / Actor Re
 PlayerSessionObserver -> scoped read-only Player Session evidence
 explicit Player Session commands -> Open / Close / Join / Actor Selection / Leave
 LocalPlayerProvisioningAuthoring -> Local Player Provisioning authority
-SceneProvidedLocalPlayerAuthoring -> Scene-Provided Local Player authoring
+SceneProvidedLocalPlayerAuthoring -> Scene-Provided Local Player validation / deterministic runtime adoption
 CameraRigComposer -> Validate / Apply/Rebuild (Unity Preset optional)
 FrameworkBgmDirector -> Route/Activity BGM bindings -> Immersive Audio
 PlayerPauseInput -> InputMode transaction -> PlayerInput state writer
@@ -113,11 +113,16 @@ The package-local Actor-selection Unity Test Framework Editor tests are a separa
 
 Current remaining Player product gaps include exact-Slot public Join, the public Slot/device/InputUser/control-scheme ownership/observation contract required for canonical Local Multiplayer, and the deferred command-availability/readiness product surface.
 
+Scene-Provided is physically authored, authoring-validated, deterministically
+resolved and adopted at runtime. It does not require Player Apply / Rebuild,
+serialized provenance evidence or related Editor-generated state.
+
 ## Documentation
 
 - [Documentation index](Documentation~/README.md)
 - [Current tracker](Documentation~/Architecture/Tracking/IF-TRACK-Framework.md)
 - [Player Actor runtime and presentation authority](Documentation~/Architecture/ADRs/IF-ADR-023-Player-Actor-Runtime-Host-and-Presentation-Authority.md)
+- [Player Actor occurrence identity boundary](Documentation~/Architecture/Reconciliation/IF-ADR-023A-PLAYER-ACTOR-OCCURRENCE-IDENTITY-BOUNDARY-2026-08-31.md)
 - [Player Actor Selection public surface certification](Documentation~/Architecture/Reconciliation/IF-ADR-015B-Player-Actor-Selection-Public-Surface-Certification-2026-08-26.md)
 - [Player current aggregate recertification](Documentation~/Architecture/Reconciliation/IF-PLAYER-CURRENT-AGGREGATE-RECERTIFICATION-2026-08-24.md)
 - [Framework usage](Documentation~/Guides/Framework-Usage.md)

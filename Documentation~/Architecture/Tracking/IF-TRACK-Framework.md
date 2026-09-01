@@ -18,7 +18,10 @@ A dated certification remains evidence for the boundary it executed. Later cuts 
 
 ## Current Player state
 
-The Player architecture is reconciled through IF-ADR-023 plus the post-certification occurrence-identity boundary in IF-ADR-023A.
+The Player target architecture is reconciled through IF-ADR-023 plus the
+post-certification occurrence-identity boundary in IF-ADR-023A. Scene-Provided
+authoring validation, transient resolution and runtime adoption are implemented;
+derived evidence and Player Apply / Rebuild are removed.
 
 ```text
 Local Player Host
@@ -110,7 +113,7 @@ Local Multiplayer remains blocked by public Slot/device/InputUser/control-scheme
 | 020 | ACCEPTED / RECONCILED / IMPLEMENTED | ADR020-H + aggregate + historical certification | closed |
 | 021 | ACCEPTED / RECONCILED / IMPLEMENTED | Route 18/18 + Activity 23/23 + aggregate 27/27 | Model B current |
 | 022 | ACCEPTED / IMPLEMENTED | presentation 14/14; Camera aggregate boundary certified | broader FIRSTGAME C6 remains separate |
-| 023 | ACCEPTED / IMPLEMENTED / TECHNICAL QA CERTIFIED; ADR-023A occurrence identity boundary current | Manager functional 14/14 + Pause/Input/Gate 8/8 + FIRSTGAME Scene-Provided readiness PASS | PlayerActorRuntimeHost + PresentationPrefab current; runtime occurrence identity boundary reconciled |
+| 023 | ACCEPTED / authored composition implementation complete; ADR-023A occurrence identity boundary current | Manager functional 14/14 + Pause/Input/Gate 8/8 + FIRSTGAME Scene-Provided readiness PASS | Physical Scene-Provided validation/resolution/adoption is canonical; derived evidence, runtime evidence validation, Player Apply/Rebuild and the obsolete evidence type are removed |
 
 ## Current Activity content / visibility closure — IF-ADR-009 — 2026-08-30
 

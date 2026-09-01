@@ -26,7 +26,7 @@ namespace Immersive.Framework.PlayerParticipation
                 Authoring = authoring;
                 Host = host;
                 SessionPhysicalHost = sessionPhysicalHost;
-                SceneLogicalPlayerActor = sceneLogicalPlayerActor;
+                PreparedPlayerActor = sceneLogicalPlayerActor;
                 SceneAdmissionToken = sceneAdmissionToken;
                 Assignment = assignment;
                 EvidenceAssignmentToken = evidenceAssignmentToken;
@@ -37,7 +37,7 @@ namespace Immersive.Framework.PlayerParticipation
             internal SceneProvidedLocalPlayerAuthoring Authoring { get; }
             internal LocalPlayerHostAuthoring Host { get; }
             internal LocalPlayerHostAuthoring SessionPhysicalHost { get; }
-            internal PlayerActorDeclaration SceneLogicalPlayerActor { get; }
+            internal PlayerActorDeclaration PreparedPlayerActor { get; }
             internal SceneLocalPlayerAdmissionToken SceneAdmissionToken { get; }
             internal PlayerSlotAssignmentSnapshot Assignment { get; }
             internal PlayerSlotAssignmentToken EvidenceAssignmentToken { get; }
@@ -299,6 +299,23 @@ namespace Immersive.Framework.PlayerParticipation
                     }
                 }
 
+                PlayerActorDeclaration preparedActor = null;
+                if (_hostEvidenceOwner.TryGetCurrentPreparation(
+                        leaveToken.PlayerSlotId,
+                        out PlayerActorPreparationSummary preparation,
+                        out _) &&
+                    _hostEvidenceOwner.TryGetPreparedPhysicalEvidence(
+                        leaveToken.PlayerSlotId,
+                        preparation.Token,
+                        out _,
+                        out _,
+                        out PlayerActorDeclaration resolvedPreparedActor,
+                        out _,
+                        out _))
+                {
+                    preparedActor = resolvedPreparedActor;
+                }
+
                 if (progress == null && (authoring == null ||
                     host == null ||
                     sceneAdmissionToken.AssignmentToken != assignment.AssignmentToken ||
@@ -314,7 +331,7 @@ namespace Immersive.Framework.PlayerParticipation
                         null,
                         authoring,
                         host,
-                        authoring != null ? authoring.SceneLogicalPlayerActor : null,
+                        preparedActor,
                         false,
                         false,
                         false,
@@ -331,7 +348,7 @@ namespace Immersive.Framework.PlayerParticipation
                         authoring,
                         host,
                         sessionPhysicalHost,
-                        authoring.SceneLogicalPlayerActor,
+                        preparedActor,
                         sceneAdmissionToken,
                         assignment,
                         assignment.AssignmentToken,
@@ -555,7 +572,7 @@ namespace Immersive.Framework.PlayerParticipation
                 progress.AssignmentResult,
                 progress.Authoring,
                 progress.Host,
-                progress.SceneLogicalPlayerActor,
+                progress.PreparedPlayerActor,
                 progress.HostEvidenceReleased,
                 progress.HostAdmissionReleased,
                 progress.AssignmentReleased,

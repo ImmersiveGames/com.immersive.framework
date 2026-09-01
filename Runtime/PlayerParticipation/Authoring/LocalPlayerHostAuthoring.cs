@@ -85,14 +85,14 @@ namespace Immersive.Framework.PlayerParticipation
         /// Validates the Scene-Provided Local Player shape without changing runtime state.
         /// </summary>
         public bool TryValidateAdmissionConfiguration(
-            PlayerActorRuntimeHost scenePlayerActorRuntimeHost,
+            PlayerActorRuntimeHost expectedRuntimeHost,
             bool allowExistingActorRuntime,
             out string issue)
         {
             return TryValidateConfiguration(
                 requireEmptyActorMount: !allowExistingActorRuntime,
                 expectedSceneRuntimeHost: allowExistingActorRuntime
-                    ? scenePlayerActorRuntimeHost
+                    ? expectedRuntimeHost
                     : null,
                 out issue);
         }
@@ -369,18 +369,20 @@ namespace Immersive.Framework.PlayerParticipation
                 return false;
             }
 
-            if (expectedSceneRuntimeHost.transform != actorMount &&
-                !expectedSceneRuntimeHost.transform.IsChildOf(actorMount))
+            if (expectedSceneRuntimeHost.transform.parent != actorMount)
             {
-                issue = "Scene-Provided Local Player Actor Runtime Host must exist under the exact Local Player Host Actor Mount.";
+                issue = "Scene-Provided Local Player Actor Runtime Host must be the exact direct child of the Local Player Host Actor Mount.";
                 return false;
             }
 
             PlayerActorRuntimeHost[] runtimeHosts =
                 actorMount.GetComponentsInChildren<PlayerActorRuntimeHost>(true);
-            if (runtimeHosts.Length != 1 || runtimeHosts[0] != expectedSceneRuntimeHost)
+            if (actorMount.childCount != 1 ||
+                actorMount.GetChild(0) != expectedSceneRuntimeHost.transform ||
+                runtimeHosts.Length != 1 ||
+                runtimeHosts[0] != expectedSceneRuntimeHost)
             {
-                issue = $"Scene-Provided Local Player admission requires exactly one PlayerActorRuntimeHost under Actor Mount. Found '{runtimeHosts.Length}'.";
+                issue = $"Scene-Provided Local Player admission requires exactly one direct PlayerActorRuntimeHost under Actor Mount. Found '{runtimeHosts.Length}'.";
                 return false;
             }
 
