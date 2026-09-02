@@ -41,6 +41,7 @@ namespace Immersive.Framework.PlayerParticipation
             out LocalPlayerHostAuthoring host,
             out PlayerActorDeclaration actorDeclaration,
             out UnityPlayerInputGateAdapter gateAdapter,
+            out PlayerGameplayInputReader gameplayInputReader,
             out PlayerGameplayCameraAuthoring cameraAuthoring,
             out PlayerGameplayCameraRequiredness cameraRequiredness,
             out CameraOutputAuthoring outputSession,
@@ -49,6 +50,7 @@ namespace Immersive.Framework.PlayerParticipation
             host = null;
             actorDeclaration = null;
             gateAdapter = null;
+            gameplayInputReader = null;
             cameraAuthoring = null;
             cameraRequiredness = _missingCameraRequiredness;
             outputSession = null;
@@ -96,6 +98,20 @@ namespace Immersive.Framework.PlayerParticipation
                 gateAdapter = null;
                 return false;
             }
+
+            PlayerGameplayInputReader[] gameplayInputReaders =
+                actorDeclaration.GetComponentsInChildren<PlayerGameplayInputReader>(
+                    true);
+            if (gameplayInputReaders.Length > 1)
+            {
+                issue =
+                    $"Prepared Actor '{actorDeclaration.ActorId.StableText}' requires at most one PlayerGameplayInputReader. Found '{gameplayInputReaders.Length}'.";
+                return false;
+            }
+
+            gameplayInputReader = gameplayInputReaders.Length == 1
+                ? gameplayInputReaders[0]
+                : null;
 
             PlayerGameplayCameraAuthoring[] cameraAuthorings =
                 actorDeclaration.GetComponentsInChildren<PlayerGameplayCameraAuthoring>(

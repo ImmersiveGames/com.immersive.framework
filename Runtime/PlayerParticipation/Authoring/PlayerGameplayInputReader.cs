@@ -14,7 +14,6 @@ namespace Immersive.Framework.PlayerParticipation
     /// or global discovery.
     /// </summary>
     [DisallowMultipleComponent]
-    [RequireComponent(typeof(PlayerActorDeclaration))]
     [AddComponentMenu("Immersive Framework/Player/Player Gameplay Input Reader")]
     [FrameworkApiStatus(
         FrameworkApiStatus.Experimental,
@@ -126,12 +125,10 @@ namespace Immersive.Framework.PlayerParticipation
         {
             issue = string.Empty;
 
-            PlayerActorDeclaration localActor = GetComponent<PlayerActorDeclaration>();
-            if (resolvedActorDeclaration == null ||
-                !ReferenceEquals(localActor, resolvedActorDeclaration))
+            if (resolvedActorDeclaration == null)
             {
                 issue =
-                    "Player gameplay input reader requires the PlayerActorDeclaration on the same Logical Actor.";
+                    "Player gameplay input reader requires the canonical PlayerActorDeclaration supplied by Player Actor composition.";
                 return false;
             }
 

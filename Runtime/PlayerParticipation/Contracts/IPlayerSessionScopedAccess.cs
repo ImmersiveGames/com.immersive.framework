@@ -26,6 +26,9 @@ namespace Immersive.Framework.PlayerParticipation
 
         SessionPlayerLeaveResult RequestLeave(SessionPlayerLeaveRequest request);
 
+        PlayerPreparedActorReplacementResult RequestReplacePreparedActor(
+            PlayerPreparedActorReplacementRequest request);
+
         PlayerActorSelectionResult RequestSelectActorProfile(
             PlayerActorSelectionRequest request);
 

@@ -815,7 +815,8 @@ namespace Immersive.Framework.PlayerParticipation
         }
 
         internal PlayerActorPreparationResult TryReplacePreparedActor(
-            RuntimeScopeContext scopeContext,
+            RuntimeScopeContext activityScopeContext,
+            RuntimeScopeContext physicalScopeContext,
             PlayerActorSelectionRequest replacementRequest,
             PlayerActorPreparationToken expectedPreparation,
             string source,
@@ -828,8 +829,10 @@ namespace Immersive.Framework.PlayerParticipation
                 "replace-prepared-player-actor");
             PlayerSlotId playerSlotId = replacementRequest.PlayerSlotId;
 
-            if (!scopeContext.IsValid || !replacementRequest.IsValid ||
-                replacementRequest.ActorProfile == null)
+            if (!activityScopeContext.IsValid ||
+                !physicalScopeContext.IsValid ||
+                physicalScopeContext.Scope != RuntimeContentScope.Session ||
+                !replacementRequest.IsValid || replacementRequest.ActorProfile == null)
             {
                 return CreateResult(
                     PlayerActorPreparationStatus.RejectedInvalidRequest,
@@ -845,7 +848,7 @@ namespace Immersive.Framework.PlayerParticipation
                     false,
                     false,
                     string.Empty,
-                    "Replace Prepared Actor requires a valid scope, Slot, replacement ActorProfile, source and reason.");
+                    "Replace Prepared Actor requires valid Activity contextual and Session physical scope contexts plus a Slot, replacement ActorProfile, source and reason.");
             }
 
             if (!_participationContext.TryGetActorSelection(
@@ -941,7 +944,7 @@ namespace Immersive.Framework.PlayerParticipation
                     "Expected preparation token is foreign or stale for the current prepared Actor.");
             }
 
-            if (currentRecord.Handle.Request.Owner != scopeContext.Owner)
+            if (currentRecord.Handle.Request.Owner != physicalScopeContext.Owner)
             {
                 return CreateResult(
                     PlayerActorPreparationStatus.RejectedScopeMismatch,
@@ -957,7 +960,7 @@ namespace Immersive.Framework.PlayerParticipation
                     false,
                     false,
                     string.Empty,
-                    "Prepared Actor replacement must use the same Runtime Content owner scope as the current Actor.");
+                    "Prepared Actor replacement must use the same Session physical Runtime Content owner as the current Actor.");
             }
 
             if (!currentSlot.HasSelectedActor ||
@@ -1031,7 +1034,7 @@ namespace Immersive.Framework.PlayerParticipation
             }
 
             if (!TryResolveCurrentActorCorrelation(
-                    scopeContext,
+                    activityScopeContext,
                     playerSlotId,
                     ToAssignmentOrigin(currentRecord.Summary.ActorEvidence.ProvisioningOrigin),
                     currentRecord.Host,
@@ -1058,7 +1061,7 @@ namespace Immersive.Framework.PlayerParticipation
 
             PlayerActorMaterializationResult replacementMaterialization =
                 _materializationAdapter.TryMaterialize(
-                    scopeContext,
+                    physicalScopeContext,
                     currentSlot,
                     replacementRequest.ActorProfile,
                     currentRecord.Handle.LocalPlayerHost,

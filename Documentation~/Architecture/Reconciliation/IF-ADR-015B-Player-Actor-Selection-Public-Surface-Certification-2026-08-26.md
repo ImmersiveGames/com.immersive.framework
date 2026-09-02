@@ -91,7 +91,11 @@ selectionRevision='4'
 
 The rejection is correct and non-mutating.
 
-The internal `TryReplacePreparedActor` transaction remains internal and is not exposed as a consumer hot-swap command.
+The internal `TryReplacePreparedActor` transaction remains internal and is not
+exposed as a consumer hot-swap command. The distinct public prepared-Actor
+replacement capability is specified by
+[IF-ADR-024](../ADRs/IF-ADR-024-Prepared-Actor-Replacement-Public-Contract.md);
+it does not alter this delivered selection contract.
 
 ## 5. Revision and idempotency contract
 

@@ -1,12 +1,13 @@
 # Immersive Framework Documentation
 
-Last updated: **2026-08-31**
+Last updated: **2026-09-02**
 
 ## Start here
 
 - [Stage A canonical package baseline](Architecture/Reconciliation/IMMERSIVE-FRAMEWORK-STAGE-A-CANONICAL-BASELINE-CLOSURE-2026-08-11.md)
 - [Current framework tracker](Architecture/Tracking/IF-TRACK-Framework.md)
 - [Player Actor runtime and presentation authority — IF-ADR-023](Architecture/ADRs/IF-ADR-023-Player-Actor-Runtime-Host-and-Presentation-Authority.md)
+- [Prepared Actor replacement public contract — IF-ADR-024](Architecture/ADRs/IF-ADR-024-Prepared-Actor-Replacement-Public-Contract.md)
 - [Player Actor occurrence identity boundary — IF-ADR-023A — 2026-08-31](Architecture/Reconciliation/IF-ADR-023A-PLAYER-ACTOR-OCCURRENCE-IDENTITY-BOUNDARY-2026-08-31.md)
 - [Player Actor runtime technical certification — 2026-08-29](Architecture/Reconciliation/IF-ADR-023-PLAYER-ACTOR-RUNTIME-TECHNICAL-CERTIFICATION-2026-08-29.md)
 - [Player Actor Selection public surface certification — 2026-08-26](Architecture/Reconciliation/IF-ADR-015B-Player-Actor-Selection-Public-Surface-Certification-2026-08-26.md)
@@ -132,9 +133,10 @@ certification for the boundary it executed, but it is not relabeled as proof of 
 Default-output or force-default implementation.
 
 The public arbitrary Actor-selection surface is now delivered through explicit Player
-Session commands. Exact-Slot public Join, public Slot/device/InputUser/control-scheme
-ownership observation and consumer-facing physical Actor hot-swap are not implied by
-that closure.
+Session commands. Exact-Slot public Join and public Slot/device/InputUser/control-scheme
+ownership observation are not implied by that closure. Manager-Provisioned prepared-
+Actor replacement is accepted but unimplemented under IF-ADR-024; Scene-Provided
+replacement remains outside its V1 scope.
 
 `PlayerActorDeclaration.ActorId` is a runtime physical occurrence identity. Reusable Player Actor templates keep the authored occurrence ID empty; the physical preparation owner establishes the typed runtime identity before downstream consumers may require it. This post-certification boundary is documented by IF-ADR-023A.
 

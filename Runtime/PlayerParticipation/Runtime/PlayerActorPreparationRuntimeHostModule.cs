@@ -754,7 +754,7 @@ namespace Immersive.Framework.PlayerParticipation
         }
 
         internal PlayerActorPreparationResult TryReplacePreparedActor(
-            RuntimeScopeContext scopeContext,
+            RuntimeScopeContext activityScopeContext,
             PlayerActorSelectionRequest replacementRequest,
             PlayerActorPreparationToken expectedPreparation,
             string source,
@@ -780,7 +780,8 @@ namespace Immersive.Framework.PlayerParticipation
 
             PlayerActorPreparationResult result =
                 _preparationContext.TryReplacePreparedActor(
-                    scopeContext,
+                    activityScopeContext,
+                    _sessionPhysicalScopeContext,
                     replacementRequest,
                     expectedPreparation,
                     source,

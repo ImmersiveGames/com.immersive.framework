@@ -235,6 +235,7 @@ namespace Immersive.Framework.PlayerParticipation
 
             if (!_endpointSource.TryResolveGameplayEndpoints(preparation, out LocalPlayerHostAuthoring host,
                     out PlayerActorDeclaration actor, out UnityPlayerInputGateAdapter gate,
+                    out PlayerGameplayInputReader gameplayInputReader,
                     out PlayerGameplayCameraAuthoring cameraAuthoring,
                     out PlayerGameplayCameraRequiredness cameraRequiredness,
                     out CameraOutputAuthoring outputSession, out issue))
@@ -290,7 +291,12 @@ namespace Immersive.Framework.PlayerParticipation
             chain.admissionCreated = !admission.PreviousSummary.IsAdmitted &&
                 admission.CurrentSummary.IsAdmitted;
 
-            if (!TryBindInputConsumer(actor, chain.input, chain.admission, out issue))
+            if (!TryBindInputConsumer(
+                    actor,
+                    gameplayInputReader,
+                    chain.input,
+                    chain.admission,
+                    out issue))
                 return false;
 
             return true;
@@ -298,20 +304,19 @@ namespace Immersive.Framework.PlayerParticipation
 
         private bool TryBindInputConsumer(
             PlayerActorDeclaration actor,
+            PlayerGameplayInputReader consumer,
             PlayerGameplayInputBindingSummary input,
             PlayerGameplayAdmissionSummary admission,
             out string issue)
         {
             issue = string.Empty;
             PlayerSlotId playerSlotId = input.PlayerSlotId;
-            PlayerGameplayInputReader consumer =
-                actor != null ? actor.GetComponent<PlayerGameplayInputReader>() : null;
 
             if (consumer == null)
             {
                 ReleaseInputConsumer(
                     playerSlotId,
-                    "Current Logical Actor has no authored player gameplay input reader.");
+                    "Current Player Actor composition has no authored player gameplay input reader.");
                 return true;
             }
 

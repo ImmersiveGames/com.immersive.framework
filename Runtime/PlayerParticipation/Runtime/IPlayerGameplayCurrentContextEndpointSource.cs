@@ -11,6 +11,7 @@ namespace Immersive.Framework.PlayerParticipation
             out LocalPlayerHostAuthoring host,
             out PlayerActorDeclaration actorDeclaration,
             out UnityPlayerInputGateAdapter gateAdapter,
+            out PlayerGameplayInputReader gameplayInputReader,
             out PlayerGameplayCameraAuthoring cameraAuthoring,
             out PlayerGameplayCameraRequiredness cameraRequiredness,
             out CameraOutputAuthoring outputSession,

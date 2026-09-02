@@ -44,10 +44,9 @@ namespace Immersive.Framework.PlayerParticipation
                 return false;
             }
 
-            if (playerActorDeclaration.transform != transform &&
-                !playerActorDeclaration.transform.IsChildOf(transform))
+            if (playerActorDeclaration.gameObject != gameObject)
             {
-                issue = "Player Actor Runtime Host PlayerActorDeclaration must exist on this host or one of its children.";
+                issue = "Player Actor Runtime Host PlayerActorDeclaration must exist on the canonical Player Actor root.";
                 return false;
             }
 
@@ -66,6 +65,12 @@ namespace Immersive.Framework.PlayerParticipation
                 actorDeclarations[0] != playerActorDeclaration)
             {
                 issue = $"Player Actor Runtime Host requires one canonical PlayerActorDeclaration and no additional ActorDeclaration. Found '{actorDeclarations.Length}'.";
+                return false;
+            }
+
+            if (GetComponent<CharacterController>() == null)
+            {
+                issue = "Player Actor Runtime Host requires a CharacterController on the canonical Player Actor root.";
                 return false;
             }
 

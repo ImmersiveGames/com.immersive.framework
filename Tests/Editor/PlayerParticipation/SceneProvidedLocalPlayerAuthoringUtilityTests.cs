@@ -1,5 +1,7 @@
 using Immersive.Framework.Actors;
 using Immersive.Framework.Editor.PlayerParticipation;
+using Immersive.Framework.PlayerSlots;
+using Immersive.Framework.RuntimeContent;
 using NUnit.Framework;
 using UnityEditor;
 using UnityEngine;
@@ -59,6 +61,20 @@ namespace Immersive.Framework.PlayerParticipation.Editor.Tests
             Assert.That(resolved, Is.True, issue);
             Assert.That(composition.PlayerActorRuntimeHost, Is.SameAs(sceneRuntimeHost));
             Assert.That(composition.Presentation, Is.SameAs(authoredPresentation));
+        }
+
+        [Test]
+        public void Validate_RuntimeHostWithoutRootCharacterController_IsRejected()
+        {
+            GameObject prefab = CreatePresentationPrefab("Presentation_A");
+            CreateAuthoring(prefab, prefab);
+            Object.DestroyImmediate(
+                sceneRuntimeHost.GetComponent<CharacterController>());
+
+            bool valid = sceneRuntimeHost.TryValidateConfiguration(out string issue);
+
+            Assert.That(valid, Is.False);
+            Assert.That(issue, Does.Contain("CharacterController"));
         }
 
         [Test]
@@ -190,6 +206,64 @@ namespace Immersive.Framework.PlayerParticipation.Editor.Tests
             Assert.That(result.Status, Is.EqualTo(SceneProvidedLocalPlayerAuthoringStatus.InvalidActorProfile));
         }
 
+        [Test]
+        public void MaterializeThenActivate_ReactivatesStagedPresentationAndRuntimeHost()
+        {
+            GameObject presentationPrefab = CreatePresentationPrefab("Presentation_A");
+            SceneProvidedLocalPlayerAuthoring authoring = CreateAuthoring(
+                presentationPrefab,
+                presentationPrefab);
+            LocalPlayerHostAuthoring host = authoring.LocalPlayerHost;
+
+            Assert.That(presentationPrefab.activeSelf, Is.True);
+            Object.DestroyImmediate(sceneRuntimeHost.gameObject);
+            sceneRuntimeHost = null;
+            authoredPresentation = null;
+
+            PlayerSlotRuntimeSnapshot joinedSlot = JoinHostForMaterialization(host);
+            var runtimeContent = new RuntimeContentRuntime();
+            RuntimeContentOwner owner = RuntimeContentOwner.Session(
+                "session.materialization-activation",
+                nameof(SceneProvidedLocalPlayerAuthoringUtilityTests));
+            Assert.That(
+                runtimeContent.CreateScopeRoot(
+                    owner,
+                    nameof(SceneProvidedLocalPlayerAuthoringUtilityTests),
+                    "test").Applied,
+                Is.True);
+            Assert.That(
+                runtimeContent.TryCreateScopeContext(
+                    owner,
+                    nameof(SceneProvidedLocalPlayerAuthoringUtilityTests),
+                    "test",
+                    out RuntimeScopeContext scopeContext),
+                Is.True);
+
+            var adapter = new AttachedPlayerActorMaterializationAdapter(
+                runtimeContent,
+                "session.materialization-activation");
+            PlayerActorMaterializationResult materialization = adapter.TryMaterialize(
+                scopeContext,
+                joinedSlot,
+                actorProfile,
+                host,
+                nameof(SceneProvidedLocalPlayerAuthoringUtilityTests),
+                "test");
+
+            Assert.That(materialization.Succeeded, Is.True, materialization.Message);
+            Assert.That(materialization.Presentation.activeSelf, Is.False);
+            Assert.That(materialization.PlayerActorRuntimeHost.gameObject.activeSelf, Is.False);
+            Assert.That(
+                materialization.Handle.TryActivate(
+                    nameof(SceneProvidedLocalPlayerAuthoringUtilityTests),
+                    "test",
+                    out string activationIssue),
+                Is.True,
+                activationIssue);
+            Assert.That(materialization.Presentation.activeSelf, Is.True);
+            Assert.That(materialization.PlayerActorRuntimeHost.gameObject.activeSelf, Is.True);
+        }
+
         private SceneProvidedLocalPlayerAuthoring CreateAuthoring(
             GameObject profilePrefab,
             GameObject scenePrefab)
@@ -247,6 +321,63 @@ namespace Immersive.Framework.PlayerParticipation.Editor.Tests
             return prefab;
         }
 
+        private PlayerSlotRuntimeSnapshot JoinHostForMaterialization(LocalPlayerHostAuthoring host)
+        {
+            var configuration = new EffectivePlayerSessionConfiguration(
+                new[]
+                {
+                    new EffectivePlayerSlotProvisioning(
+                        playerSlotProfile,
+                        PlayerHostProvisioningMode.ManagerProvisioned)
+                },
+                true,
+                PlayerHostProvisioningMode.ManagerProvisioned,
+                PlayerActorResolutionPolicy.ResolveConfiguredDefault);
+            PlayerParticipationOperationResult created =
+                PlayerParticipationRuntimeContext.TryCreateWithEffectiveConfiguration(
+                    configuration,
+                    PlayerActorSelectionDuplicatePolicy.AllowDuplicates,
+                    nameof(SceneProvidedLocalPlayerAuthoringUtilityTests),
+                    "test",
+                    out PlayerParticipationRuntimeContext context);
+            Assert.That(created.Succeeded, Is.True, created.Message);
+
+            PlayerParticipationOperationResult reserved = context.TryReserveNextAvailableSlot(
+                PlayerHostProvisioningMode.ManagerProvisioned,
+                nameof(SceneProvidedLocalPlayerAuthoringUtilityTests),
+                "test");
+            Assert.That(reserved.Succeeded, Is.True, reserved.Message);
+            Assert.That(
+                context.TryGetActorSelection(
+                    reserved.ReservationToken.PlayerSlotId,
+                    out PlayerSlotRuntimeSnapshot reservedSlot),
+                Is.True);
+            Assert.That(
+                host.TryStageAdmission(
+                    reservedSlot,
+                    nameof(SceneProvidedLocalPlayerAuthoringUtilityTests),
+                    "test",
+                    out string stagingIssue),
+                Is.True,
+                stagingIssue);
+
+            PlayerParticipationOperationResult joined = context.TryMarkJoined(
+                reserved.ReservationToken,
+                nameof(SceneProvidedLocalPlayerAuthoringUtilityTests),
+                "test");
+            Assert.That(joined.Succeeded, Is.True, joined.Message);
+            Assert.That(
+                context.TryGetActorSelection(
+                    reserved.ReservationToken.PlayerSlotId,
+                    out PlayerSlotRuntimeSnapshot joinedSlot),
+                Is.True);
+            host.CommitStagedAdmission(
+                joinedSlot,
+                nameof(SceneProvidedLocalPlayerAuthoringUtilityTests),
+                "test");
+            return joinedSlot;
+        }
+
         private static GameObject CreateRuntimeHostPrefab(string name)
         {
             EnsureAssetFolder();
@@ -255,6 +386,7 @@ namespace Immersive.Framework.PlayerParticipation.Editor.Tests
                 source.AddComponent<PlayerActorDeclaration>();
             PlayerActorRuntimeHost runtimeHost =
                 source.AddComponent<PlayerActorRuntimeHost>();
+            source.AddComponent<CharacterController>();
             Transform presentationMount =
                 new GameObject("Presentation Mount").transform;
             presentationMount.SetParent(source.transform);

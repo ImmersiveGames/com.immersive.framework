@@ -5,7 +5,7 @@ Previous technical certification: **Historical for superseded Activity-owned phy
 Current recertification: **Full Player QA 25/25 mandatory contracts**  
 Last updated: **2026-08-15**  
 Type: architecture / runtime authority / player product direction  
-Related decisions: IF-ADR-001, IF-ADR-003, IF-ADR-007, IF-ADR-011, IF-ADR-012, IF-ADR-015, IF-ADR-016, IF-ADR-020, IF-ADR-021  
+Related decisions: IF-ADR-001, IF-ADR-003, IF-ADR-007, IF-ADR-011, IF-ADR-012, IF-ADR-015, IF-ADR-016, IF-ADR-020, IF-ADR-021, IF-ADR-024
 Reopen record: [2026-08-14 Player Physical Lifetime Reopen](../Reconciliation/IMMERSIVE-FRAMEWORK-PLAYER-PHYSICAL-LIFETIME-REOPEN-2026-08-14.md)  
 Closure record: [2026-08-15 Player Physical Lifetime Recertification](../Reconciliation/IMMERSIVE-FRAMEWORK-PLAYER-PHYSICAL-LIFETIME-RECERTIFICATION-2026-08-15.md)
 Initial Placement reconciliation: [2026-08-23 Player Authority and Initial Placement](../Reconciliation/IF-ADR-021-Player-Authority-and-Initial-Placement-Reconciliation-2026-08-23.md)
@@ -239,7 +239,9 @@ Actor selection remains Session mutable intent.
 
 Because physical representation also persists, ordinary Activity transition does not implicitly re-resolve or rematerialize the selected Actor.
 
-Explicit physical Actor replacement/hot-swap remains a separate contract.
+Explicit physical Actor replacement/hot-swap is defined separately by
+[IF-ADR-024](IF-ADR-024-Prepared-Actor-Replacement-Public-Contract.md). It is not
+an ordinary Activity transition or Actor-selection mutation.
 
 ### 11. Readiness remains Activity-occurrence scoped
 
@@ -268,7 +270,7 @@ Canonical terminal boundaries are:
 ```text
 Session Player Leave
 Session termination
-explicit future physical Actor replacement/hot-swap operation
+explicit Manager-Provisioned prepared-Actor replacement under IF-ADR-024
 ```
 
 Exceptional unrecoverable failures may require defensive cleanup, but may not redefine normal Activity semantics.

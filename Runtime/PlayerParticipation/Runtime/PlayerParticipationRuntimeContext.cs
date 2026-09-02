@@ -67,6 +67,21 @@ namespace Immersive.Framework.PlayerParticipation
         internal PlayerActorResolutionPolicy ActorResolutionPolicy =>
             _actorResolutionPolicy;
 
+        internal bool TryGetHostProvisioningMode(PlayerSlotId playerSlotId,
+            out PlayerHostProvisioningMode provisioningMode)
+        {
+            for (int index = 0; index < _slots.Count; index++)
+            {
+                if (_slots[index].PlayerSlotId == playerSlotId)
+                {
+                    provisioningMode = _slots[index].HostProvisioningMode;
+                    return true;
+                }
+            }
+            provisioningMode = default;
+            return false;
+        }
+
         internal event Action<PlayerSessionChange> Changed;
 
         private PlayerParticipationRuntimeContext(

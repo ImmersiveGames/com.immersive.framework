@@ -112,6 +112,7 @@ namespace Immersive.Framework.PlayerParticipation
                 return false;
             }
 
+            Presentation.SetActive(true);
             PlayerActorRuntimeHost.gameObject.SetActive(true);
             _hasEverActivated = true;
             _state = PlayerActorMaterializationState.Active;

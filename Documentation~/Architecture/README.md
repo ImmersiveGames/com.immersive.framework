@@ -1,6 +1,6 @@
 # Immersive Framework Architecture Documentation
 
-Last updated: **2026-08-31**
+Last updated: **2026-09-02**
 
 ## Normative architecture
 
@@ -83,7 +83,9 @@ explicit commands
   Leave
 ```
 
-Actor Selection remains Session-owned logical intent and does not become physical Actor hot-swap authority.
+Actor Selection remains Session-owned logical intent and does not become physical
+Actor hot-swap authority. The accepted but unimplemented Manager-Provisioned
+prepared-Actor replacement contract is [IF-ADR-024](ADRs/IF-ADR-024-Prepared-Actor-Replacement-Public-Contract.md).
 
 Current integrated certification:
 
@@ -113,7 +115,8 @@ Frozen model:
 ```text
 Session
   owns admitted physical Player after successful admission
-  retains physical preparation until Leave / Session termination
+  retains physical preparation until Leave / Session termination or the accepted
+  Manager-Provisioned replacement transaction in IF-ADR-024
 
 Activity
   owns contextual projection / activation / gameplay / camera / readiness
@@ -403,7 +406,7 @@ and do not interpret `Replace Actor Selection` as physical hot-swap.
 
 ### Player
 
-- IF-ADR-003 — Accepted / reconciled / implemented; arbitrary Actor-selection lifecycle delivered and current aggregate PASS; physical hot-swap remains future.
+- IF-ADR-003 — Accepted / reconciled / implemented; arbitrary Actor-selection lifecycle delivered and current aggregate PASS; physical replacement is defined separately by IF-ADR-024.
 - IF-ADR-007 — Accepted baseline / readiness boundary implemented.
 - IF-ADR-011 — Accepted baseline for participant-aware readiness/loading interaction.
 - IF-ADR-012 — Accepted baseline / implemented; current aggregate PASS.
@@ -416,6 +419,7 @@ and do not interpret `Replace Actor Selection` as physical hot-swap.
   Scene-Provided validation, resolution and adoption are current without derived
   evidence, runtime evidence validation or Player Apply/Rebuild.
 - IF-ADR-023A — Runtime occurrence identity boundary reconciled; Scene-Provided `LogicalActorsPrepared` and `GameplayReady` FIRSTGAME proof PASS.
+- IF-ADR-024 — Accepted public prepared-Actor replacement contract; Manager-Provisioned V1 only; runtime implementation and QA pending.
 
 ### Camera
 

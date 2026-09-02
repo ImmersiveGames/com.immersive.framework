@@ -198,19 +198,6 @@ namespace Immersive.Framework.PlayerParticipation
                         : "Activity gameplay release returned no result.");
             }
 
-            if (!progress.hadActivityRepresentation)
-            {
-                progress.completed = true;
-                return Result(
-                    SessionPlayerActivityRepresentationReleaseStatus.SucceededNoCurrentRepresentation,
-                    leaveToken,
-                    leaveConfirmation,
-                    progress,
-                    resolvedSource,
-                    resolvedReason,
-                    "The exact Leaving Session Player has no current Activity representation; Stage C performed only terminal cleanup of retained Session gameplay occupancy when present and did not create contextual state.");
-            }
-
             if (!_preparationModule.TryReleaseManagerContextualProjection(
                     progress.activityOwner,
                     leaveToken.PlayerSlotId,
@@ -226,6 +213,19 @@ namespace Immersive.Framework.PlayerParticipation
                     resolvedSource,
                     resolvedReason,
                     contextualReleaseIssue);
+            }
+
+            if (!progress.hadActivityRepresentation)
+            {
+                progress.completed = true;
+                return Result(
+                    SessionPlayerActivityRepresentationReleaseStatus.SucceededNoCurrentRepresentation,
+                    leaveToken,
+                    leaveConfirmation,
+                    progress,
+                    resolvedSource,
+                    resolvedReason,
+                    "The exact Leaving Session Player has no current Activity representation; Stage C retired retained Session gameplay occupancy and Manager contextual projection when present without creating contextual state.");
             }
 
             // Stage C deliberately ends at contextual retirement. The prepared Actor and its

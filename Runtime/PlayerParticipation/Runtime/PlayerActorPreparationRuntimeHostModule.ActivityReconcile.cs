@@ -123,6 +123,22 @@ namespace Immersive.Framework.PlayerParticipation
                     source,
                     reason);
         }
+
+        internal PlayerPreparedActorReplacementResult
+            TryReplacePreparedActorForCurrentActivity(
+                PlayerPreparedActorReplacementRequest request)
+        {
+            if (_activityLifecycleParticipant == null)
+            {
+                return new PlayerPreparedActorReplacementResult(
+                    PlayerPreparedActorReplacementStatus.RejectedNoActiveActivity,
+                    request.PlayerSlotId, default, default, default, default, 0,
+                    false, false, false,
+                    "No active Activity Player lifecycle is available for prepared Actor replacement.");
+            }
+
+            return _activityLifecycleParticipant.TryReplacePreparedActor(request);
+        }
     }
 
     /// <summary>

@@ -114,6 +114,7 @@ Local Multiplayer remains blocked by public Slot/device/InputUser/control-scheme
 | 021 | ACCEPTED / RECONCILED / IMPLEMENTED | Route 18/18 + Activity 23/23 + aggregate 27/27 | Model B current |
 | 022 | ACCEPTED / IMPLEMENTED | presentation 14/14; Camera aggregate boundary certified | broader FIRSTGAME C6 remains separate |
 | 023 | ACCEPTED / authored composition implementation complete; ADR-023A occurrence identity boundary current | Manager functional 14/14 + Pause/Input/Gate 8/8 + FIRSTGAME Scene-Provided readiness PASS | Physical Scene-Provided validation/resolution/adoption is canonical; derived evidence, runtime evidence validation, Player Apply/Rebuild and the obsolete evidence type are removed |
+| 024 | ACCEPTED / implementation pending | no implementation or positive QA yet | Manager-Provisioned public prepared-Actor replacement contract frozen; scoped orchestration, typed observability and QA remain pending |
 
 ## Current Activity content / visibility closure — IF-ADR-009 — 2026-08-30
 
@@ -252,7 +253,8 @@ Certification and reconciliation records:
 - public Slot/device/InputUser/control-scheme ownership observation;
 - device disconnect/reconnect and reassignment semantics;
 - heterogeneous per-Slot Host Provisioning;
-- consumer-facing prepared physical Actor hot-swap;
+- implementation and QA of the accepted Manager-Provisioned prepared physical Actor replacement contract (IF-ADR-024);
+- Scene-Provided prepared Actor replacement, pending an explicit physical-ownership contract;
 - generic respawn/checkpoint/dynamic Spawn beyond ADR-021;
 - additional Camera families / split-screen / multiple outputs;
 - application-scoped stable-ID resolver;

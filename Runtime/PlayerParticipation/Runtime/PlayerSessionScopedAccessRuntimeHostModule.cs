@@ -342,6 +342,25 @@ namespace Immersive.Framework.PlayerParticipation
                 : SessionPlayerLeaveResult.RuntimeUnavailable(request, issue);
         }
 
+        public PlayerPreparedActorReplacementResult RequestReplacePreparedActor(
+            PlayerPreparedActorReplacementRequest request)
+        {
+            if (!TryGetContext(out string issue) ||
+                !_runtimeHost.TryGetPlayerActorPreparationRuntime(
+                    out PlayerActorPreparationRuntimeHostModule preparation))
+            {
+                return new PlayerPreparedActorReplacementResult(
+                    PlayerPreparedActorReplacementStatus.RejectedRuntimeUnavailable,
+                    request.PlayerSlotId, default, default, default, default, 0,
+                    false, false, false,
+                    string.IsNullOrWhiteSpace(issue)
+                        ? "Prepared Actor replacement runtime is unavailable."
+                        : issue);
+            }
+
+            return preparation.TryReplacePreparedActorForCurrentActivity(request);
+        }
+
         public PlayerActorSelectionResult RequestSelectActorProfile(
             PlayerActorSelectionRequest request)
         {
@@ -592,6 +611,10 @@ namespace Immersive.Framework.PlayerParticipation
 
         public SessionPlayerLeaveResult RequestLeave(SessionPlayerLeaveRequest request) =>
             _access.RequestLeave(request);
+
+        public PlayerPreparedActorReplacementResult RequestReplacePreparedActor(
+            PlayerPreparedActorReplacementRequest request) =>
+            _access.RequestReplacePreparedActor(request);
 
         public PlayerActorSelectionResult RequestSelectActorProfile(
             PlayerActorSelectionRequest request) =>

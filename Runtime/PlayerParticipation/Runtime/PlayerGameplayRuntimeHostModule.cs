@@ -414,6 +414,56 @@ namespace Immersive.Framework.PlayerParticipation
                     release.ToDiagnosticString());
         }
 
+        internal bool TryReleaseCurrentOccupancyForPreparation(
+            PlayerSlotId playerSlotId,
+            PlayerActorPreparationToken expectedPreparation,
+            string source,
+            string reason,
+            out string issue)
+        {
+            issue = string.Empty;
+            if (!IsReady || !playerSlotId.IsValid || !expectedPreparation.IsValid ||
+                expectedPreparation.PlayerSlotId != playerSlotId)
+            {
+                issue =
+                    "Gameplay occupancy release requires a ready runtime plus exact Slot and prepared Actor evidence.";
+                return false;
+            }
+
+            if (!_occupancyContext.TryGetSummary(
+                    playerSlotId,
+                    out PlayerGameplayOccupancySummary occupancy) ||
+                !occupancy.IsOccupied)
+            {
+                issue =
+                    "Prepared Actor replacement requires the current prepared Actor to own gameplay occupancy before physical replacement.";
+                return false;
+            }
+
+            if (occupancy.PreparationToken != expectedPreparation)
+            {
+                issue =
+                    "Current gameplay occupancy belongs to another prepared Actor occurrence.";
+                return false;
+            }
+
+            PlayerGameplayOccupancyResult release =
+                _occupancyContext.TryReleaseOccupancy(
+                    playerSlotId,
+                    occupancy.Token,
+                    source,
+                    reason);
+            if (release == null || !release.Succeeded)
+            {
+                issue = release != null
+                    ? release.ToDiagnosticString()
+                    : "Gameplay occupancy release returned no result.";
+                return false;
+            }
+
+            return true;
+        }
+
         internal bool TryGetCurrentAdmission(
             PlayerSlotId playerSlotId,
             out PlayerGameplayAdmissionSummary admission)
