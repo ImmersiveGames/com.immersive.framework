@@ -4,6 +4,7 @@ using Immersive.Framework.CameraAuthoring;
 using Immersive.Framework.Editor.Common;
 using Immersive.Framework.PlayerParticipation;
 using UnityEditor;
+using UnityEditor.SceneManagement;
 using UnityEngine;
 
 namespace Immersive.Framework.Editor.PlayerParticipation
@@ -184,10 +185,24 @@ namespace Immersive.Framework.Editor.PlayerParticipation
                     PlayerActorDeclaration>(
                     true);
 
-            if (actor == null)
+            bool standalonePrefabAuthoring = false;
+            Transform ownershipRoot;
+
+            if (actor != null)
+            {
+                ownershipRoot =
+                    actor.transform;
+            }
+            else if (TryResolveStandalonePrefabBoundary(
+                         authoring,
+                         out ownershipRoot))
+            {
+                standalonePrefabAuthoring = true;
+            }
+            else
             {
                 diagnostic =
-                    "Player Gameplay Camera must belong to a PlayerActorDeclaration hierarchy.";
+                    "Player Gameplay Camera must belong to a PlayerActorDeclaration hierarchy or be authored inside an isolated prefab boundary that will be mounted as Actor Presentation.";
                 return false;
             }
 
@@ -202,11 +217,13 @@ namespace Immersive.Framework.Editor.PlayerParticipation
             }
 
             if (!IsOwnedBy(
-                    actor.transform,
+                    ownershipRoot,
                     rig.transform))
             {
                 diagnostic =
-                    "The Camera Rig Composer must belong to the same Player Actor hierarchy.";
+                    standalonePrefabAuthoring
+                        ? "The Camera Rig Composer must belong to the same isolated Presentation prefab."
+                        : "The Camera Rig Composer must belong to the same Player Actor hierarchy.";
                 return false;
             }
 
@@ -233,26 +250,74 @@ namespace Immersive.Framework.Editor.PlayerParticipation
             }
 
             if (!IsOwnedBy(
-                    actor.transform,
+                    ownershipRoot,
                     targets.FollowTarget))
             {
                 diagnostic =
-                    "The resolved Follow target must belong to the same Player Actor hierarchy.";
+                    standalonePrefabAuthoring
+                        ? "The resolved Follow target must belong to the same isolated Presentation prefab."
+                        : "The resolved Follow target must belong to the same Player Actor hierarchy.";
                 return false;
             }
 
             if (targets.LookAtTarget != null &&
                 !IsOwnedBy(
-                    actor.transform,
+                    ownershipRoot,
                     targets.LookAtTarget))
             {
                 diagnostic =
-                    "The resolved Look At target must belong to the same Player Actor hierarchy.";
+                    standalonePrefabAuthoring
+                        ? "The resolved Look At target must belong to the same isolated Presentation prefab."
+                        : "The resolved Look At target must belong to the same Player Actor hierarchy.";
                 return false;
             }
 
             diagnostic =
-                "Camera Rig and Actor-owned targets are coherent.";
+                standalonePrefabAuthoring
+                    ? "Camera Rig and prefab-local targets are coherent. Player Actor ownership will be established when the Presentation is mounted."
+                    : "Camera Rig and Actor-owned targets are coherent.";
+
+            return true;
+        }
+
+        private static bool TryResolveStandalonePrefabBoundary(
+            PlayerGameplayCameraAuthoring authoring,
+            out Transform prefabRoot)
+        {
+            prefabRoot = null;
+
+            PrefabStage prefabStage =
+                PrefabStageUtility.GetCurrentPrefabStage();
+
+            if (prefabStage == null ||
+                prefabStage.prefabContentsRoot == null)
+            {
+                return false;
+            }
+
+            Transform candidateRoot =
+                prefabStage.prefabContentsRoot.transform;
+
+            if (!IsOwnedBy(
+                    candidateRoot,
+                    authoring.transform))
+            {
+                return false;
+            }
+
+            PlayerActorDeclaration[] declarations =
+                prefabStage.prefabContentsRoot
+                    .GetComponentsInChildren<
+                        PlayerActorDeclaration>(
+                        true);
+
+            if (declarations.Length != 0)
+            {
+                return false;
+            }
+
+            prefabRoot =
+                candidateRoot;
 
             return true;
         }
