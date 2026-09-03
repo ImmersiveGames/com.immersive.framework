@@ -84,10 +84,10 @@ explicit commands
 ```
 
 Actor Selection remains Session-owned logical intent and does not become physical
-Actor hot-swap authority. The accepted but unimplemented Manager-Provisioned
-prepared-Actor replacement contract is [IF-ADR-024](ADRs/IF-ADR-024-Prepared-Actor-Replacement-Public-Contract.md).
+Actor hot-swap authority. Manager-Provisioned prepared physical Actor replacement is
+a separate public capability defined by [IF-ADR-024](ADRs/IF-ADR-024-Prepared-Actor-Replacement-Public-Contract.md).
 
-Current integrated certification:
+Current integrated Actor-selection certification:
 
 ```text
 PLAYER CURRENT AGGREGATE COMPLETE
@@ -99,6 +99,52 @@ publicSurface = PASS
 ```
 
 The public arbitrary Actor-selection blocker for the Character Selection sample is closed. Exact-Slot public Join and the public Slot/device/input ownership contract remain future Player scope.
+
+### Player prepared Actor replacement
+
+Current technical certification authority:
+
+[IF-ADR-024 — Prepared Actor Replacement Technical Certification — 2026-09-02](Reconciliation/IF-ADR-024-PREPARED-ACTOR-REPLACEMENT-TECHNICAL-CERTIFICATION-2026-09-02.md)
+
+Implemented public operation:
+
+```text
+IPlayerSessionScopedAccess.RequestReplacePreparedActor(...)
+```
+
+Current V1 boundary:
+
+```text
+Manager-Provisioned only
+same Player Slot
+same LocalPlayerHost
+same PlayerInput
+same Session
+same Activity occurrence
+
+Actor A Prepared + GameplayReady
+  -> release contextual gameplay A
+  -> release A occupancy by exact preparation ownership
+  -> replace physical prepared Actor A -> B
+  -> establish gameplay B
+  -> reconcile readiness
+```
+
+Recoverable failures before B commits restore A through the canonical gameplay
+projection path. After B commits, a gameplay reprojection failure keeps B
+selected/prepared and reports the committed degraded terminal rather than
+reconstructing A.
+
+Current executed certification:
+
+```text
+PLAYER QA CERTIFIED
+16/16 PASS
+```
+
+The `16/16` run includes the positive `actor-replace` proof and continues through
+second Player, Joining, commands, Leave/Rejoin, negatives, spatial entry and
+relocation. It does not certify Scene-Provided prepared physical replacement.
 
 ### Player physical lifetime
 
@@ -115,7 +161,7 @@ Frozen model:
 ```text
 Session
   owns admitted physical Player after successful admission
-  retains physical preparation until Leave / Session termination or the accepted
+  retains physical preparation until Leave / Session termination or the implemented
   Manager-Provisioned replacement transaction in IF-ADR-024
 
 Activity
@@ -123,14 +169,14 @@ Activity
   does not own terminal physical Player lifetime
 ```
 
-Current terminal certification:
+Current terminal certification for the 2026-08-24 aggregate boundary:
 
 ```text
 PLAYER CURRENT AGGREGATE COMPLETE
 27/27
 ```
 
-Historical Full Player `25/25` remains valid dated evidence for the 2026-08-15 boundary and is not relabeled as the current aggregate.
+Historical Full Player `25/25` remains valid dated evidence for the 2026-08-15 boundary and is not relabeled as the current aggregate or as ADR-024 proof.
 
 ### Player Actor occurrence identity boundary
 
@@ -396,7 +442,9 @@ Clear commands. `PlayerSessionProfile.ActorResolution = LeaveUnresolved` is a va
 initial policy for a flow where Join precedes Character Selection.
 
 Do not use Actor-selection commands as a bypass around Actor preparation/materialization,
-and do not interpret `Replace Actor Selection` as physical hot-swap.
+and do not interpret `Replace Actor Selection` as physical hot-swap. Prepared
+physical replacement is the separate Manager-Provisioned IF-ADR-024 operation
+`IPlayerSessionScopedAccess.RequestReplacePreparedActor(...)`.
 
 ## Current affected ADR disposition
 
@@ -419,7 +467,7 @@ and do not interpret `Replace Actor Selection` as physical hot-swap.
   Scene-Provided validation, resolution and adoption are current without derived
   evidence, runtime evidence validation or Player Apply/Rebuild.
 - IF-ADR-023A — Runtime occurrence identity boundary reconciled; Scene-Provided `LogicalActorsPrepared` and `GameplayReady` FIRSTGAME proof PASS.
-- IF-ADR-024 — Accepted public prepared-Actor replacement contract; Manager-Provisioned V1 only; runtime implementation and QA pending.
+- IF-ADR-024 — Accepted / reconciled / implemented for Manager-Provisioned V1; public `RequestReplacePreparedActor(...)` positive path certified by Full Player QA 16/16. Scene-Provided prepared physical replacement remains deferred.
 
 ### Camera
 
@@ -445,6 +493,11 @@ fresh integrated `27/27` rerun. The historical ADR-021 Initial Placement `9/9` r
 tied to the superseded Activity-owned discovery model.
 
 The 2026-08-29 IF-ADR-023 certification remains dated evidence for the composition/QA boundary it executed. IF-ADR-023A records the later occurrence-identity correction and Scene-Provided readiness proof instead of rewriting the earlier certification as if it had executed the later cut.
+
+The 2026-09-02 IF-ADR-024 certification is the current evidence for
+Manager-Provisioned prepared physical Actor replacement and its integrated Full
+Player QA `16/16` run. Older Player aggregate/certification counts are preserved for
+their own executed boundaries and are not relabeled as ADR-024 proof.
 
 The package-local Actor-selection Unity Test Framework Editor tests are not claimed as
 executed by the integrated QA record unless a separate result is recorded.
