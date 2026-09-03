@@ -1,6 +1,6 @@
 # IF-ADR-024 — Prepared Actor Replacement Public Contract
 
-Status: **Accepted — runtime implementation and QA pending**  
+Status: **Accepted — Manager-Provisioned V1 implemented and Player QA certified**  
 Accepted: **2026-09-02**  
 Last updated: **2026-09-02**  
 Type: architecture / Player public capability / runtime orchestration  
@@ -12,11 +12,11 @@ The delivered `RequestReplaceActorSelection` command changes only Session Actor
 intent before preparation. It correctly rejects mutation once a prepared Actor
 exists; it must not become physical hot-replacement.
 
-The internal `TryReplacePreparedActor` primitive already materializes, selects,
-activates and retires a Framework-owned prepared Actor. It does not own Activity
-gameplay teardown, reprojection or readiness. Promoting that primitive directly
-would expose internal staging and can leave Actor A gameplay authority current
-after Actor B becomes prepared.
+The internal `TryReplacePreparedActor` primitive materializes, selects, activates
+and retires a Framework-owned prepared Actor. It does not own Activity gameplay
+teardown, reprojection or readiness. Promoting that primitive directly would expose
+internal staging and can leave Actor A gameplay authority current after Actor B
+becomes prepared.
 
 ## Decision
 
@@ -27,6 +27,7 @@ a Framework-owned orchestration operation.
 ```text
 Prepared A
   → release A contextual gameplay authority
+  → release A physical gameplay occupancy when A will be replaced
   → canonical prepared-Actor replacement A → B
   → establish B contextual gameplay authority
   → reconcile readiness for the same Activity occurrence
@@ -51,6 +52,10 @@ prepared-Actor replacement or gameplay ensure stages itself. The orchestration
 uses the existing ownership paths and must not duplicate input-consumer release,
 camera/admission/occupancy release, reader resolution, or Actor materialization.
 
+The implemented public operation is `RequestReplacePreparedActor(...)`; its request
+and result surfaces are `PlayerPreparedActorReplacementRequest` and
+`PlayerPreparedActorReplacementResult`.
+
 ### V1 provisioning boundary
 
 V1 supports **Manager-Provisioned only**. The Framework owns that physical Actor
@@ -70,10 +75,13 @@ A successful or physically committed replacement preserves:
 - `LocalPlayerHost`, `PlayerInput` and Manager-Provisioned Host assignment;
 - current Activity identity and current Activity occurrence.
 
-It changes the selection revision, prepared Actor identity and preparation token,
-Actor Runtime Host/Presentation, gameplay admission/input/camera evidence, and the
-readiness evidence needed to prove B. No gameplay authority for A may remain
-current after B is committed.
+It changes the selection revision, general Slot revision, prepared Actor identity
+and preparation token, Actor Runtime Host/Presentation, gameplay
+admission/input/camera evidence, and the readiness evidence needed to prove B. No
+gameplay authority for A may remain current after B is committed.
+
+The general Slot revision is mutable revision evidence. It must not be treated as
+immutable Player occurrence identity across Actor selection/replacement.
 
 ### Readiness and input gate
 
@@ -88,14 +96,44 @@ Activity occurrence. A blocked input gate does not bypass this rule: B may be
 selected/prepared with the existing blocked-admission state, but replacement never
 forces the gate open or equates preparation with `GameplayReady`.
 
+### Occupancy transition
+
+Activity exit and prepared Actor replacement have different physical-lifetime
+semantics.
+
+Activity exit may release contextual admission, camera, input and reader evidence
+while preserving the physical Session-owned Actor and its occupancy. Prepared Actor
+replacement retires that physical Actor; therefore A's occupancy must end before B
+can confirm occupancy for the same Slot.
+
+The replacement orchestration releases only the occupancy correlated to A's exact
+prepared-Actor evidence. Foreign or stale occupancy remains a conflict and is not
+silently overwritten.
+
 ### Failure semantics
 
-Before B commits, stale/invalid correlation rejects without mutation. A gameplay
-release failure rejects replacement while A remains current according to the
-existing release transaction. Materialization or selection-commit failure retains
-A and retires B when materialized. Activation failure restores A only where the
-canonical primitive safely guarantees it; failed restoration is reported as a
-rollback failure.
+Before B commits, stale/invalid correlation rejects without mutation. Once release
+of A's gameplay authority has started, any pre-commit failure that leaves A as the
+current prepared Actor must restore A through the canonical gameplay projection
+path before returning the original failure.
+
+Materialization or selection-commit failure retains A and retires B when
+materialized. Activation failure restores A only where the canonical physical
+primitive safely guarantees it. If physical rollback is ambiguous, or if A's
+GameplayReady authority cannot be safely restored, the public operation reports a
+rollback failure rather than forcing stale authority.
+
+The pre-commit invariant is:
+
+```text
+before
+  A Prepared + GameplayReady
+
+replacement fails before B commit
+
+after successful restoration
+  A Prepared + GameplayReady
+```
 
 After B has been selected, activated and registered as the current prepared Actor,
 the operation is physically committed. A later gameplay reprojection failure does
@@ -117,21 +155,18 @@ gameplay simply because B failed after commit.
 ### Public correlation and observability
 
 The request rejects stale public intent using only correlation consumers may
-legitimately observe, such as Slot, current occurrence evidence and public revision
+legitimately observe, including Slot identity and public Session/selection revision
 evidence. Internal preparation and lifecycle tokens remain Framework-owned unless a
-separate API design establishes them as public contract evidence. The orchestration
-resolves internal correlations from the validated scoped context.
+separate API design establishes them as public request correlation.
 
-The typed result and/or scoped observation must prove, without parsing a message:
+The orchestration resolves internal correlations from the validated scoped context.
+The typed result and scoped observation prove, without parsing a message:
 
 - rejected, rolled back, physically committed, reprojected, degraded, or cleanup-pending outcome;
 - previous and current Actor;
-- preservation of the same Player occurrence;
+- preservation of the same Player/Activity ownership boundary;
 - gameplay reprojection success/failure and current readiness evidence;
 - retained old-Actor cleanup when applicable.
-
-Exact public type, enum and member names are implementation design work and are not
-frozen by this ADR.
 
 ## Accepted scope
 
@@ -139,6 +174,8 @@ frozen by this ADR.
 - Manager-Provisioned prepared Actor replacement in the same occurrence.
 - Typed outcome and observation sufficient for consumer and QA proof.
 - Reuse of existing internal replacement and gameplay ownership paths.
+- Exact old-preparation occupancy release before B assumes the same Slot.
+- Canonical restoration of A gameplay after recoverable pre-commit failures.
 
 ## Rejected scope
 
@@ -146,32 +183,62 @@ frozen by this ADR.
 - Changing `RequestReplaceActorSelection` semantics after preparation.
 - Leave/Join, Host replacement, Session reassignment or synthetic Activity occurrence.
 - Scene-Provided replacement in V1.
-- Input-gate bypass, fallback reader fabrication, or free-form diagnostic-only evidence.
+- Input-gate bypass, fallback reader fabrication, foreign occupancy overwrite, or free-form diagnostic-only evidence.
 
 ## Consequences
 
-Implementation must add a dedicated orchestration wrapper, not a generic manager.
-The wrapper belongs with the current Activity lifecycle/readiness authority and is
-reached through scoped access. Existing selection commands and their rejection
-contract remain unchanged.
+Implementation uses a dedicated orchestration wrapper with the current Activity
+lifecycle/readiness authority rather than a generic manager. Existing selection
+commands and their rejection contract remain unchanged.
 
-The eventual canonical QA uses `QA_DefaultActor` as A and `QA_AlternateActor` as B.
-It proves same P1/Slot/Host/Input/Activity occurrence, B selected/prepared/current,
-A non-authoritative, reader A unbound, B admission/token/reader/camera evidence, and
-correct readiness reconciliation. It also covers stale public correlation,
-materialization/activation failures, old-release cleanup pending, ambiguous readers,
-re-admission failure, blocked input gate, Scene-Provided rejection, and P2/Joining
-non-interference.
+The canonical QA uses `QA_DefaultActor` as A and `QA_AlternateActor` as B. Its
+positive same-occurrence proof verifies same P1/Slot/Host/Input/Activity occurrence,
+B selected/prepared/current, A non-authoritative, reader A unbound, B
+admission/token/reader evidence, correct readiness reconciliation, P2 availability
+and Joining non-interference.
+
+The positive proof must not substitute Leave + Join, call internal replacement
+primitives, manually release gameplay on behalf of the caller, or weaken occupancy
+conflict detection.
 
 ## Current implementation coverage
 
-The internal physical/logical replacement primitive exists. The public
-orchestration, typed public result/observation extension, runtime implementation and
-positive QA are **not implemented**. The current QA blocker that expects
-`RequestReplaceActorSelection` rejection after preparation remains correct.
+Manager-Provisioned V1 is implemented on the public scoped-access surface.
 
-## Pending decisions
+The implemented runtime transaction:
 
-- Exact request/result/status naming and the minimal public correlation fields.
-- Exact typed status for Scene-Provided rejection and committed-but-not-ready outcome.
-- Scene-Provided physical ownership contract for a future capability.
+```text
+release contextual gameplay A
+→ release occupancy A by exact preparation ownership
+→ replace physical prepared Actor A → B
+→ ensure current gameplay B
+→ reconcile readiness for the same Activity occurrence
+```
+
+Recoverable failures after gameplay release but before B's physical commit restore
+A through canonical `TryEnsureCurrentGameplay`. Post-commit gameplay reprojection
+failure keeps B authoritative and returns a typed committed/degraded result. Old-A
+physical cleanup remains separately observable through cleanup-pending evidence.
+
+The current Full Player QA positive path is certified:
+
+```text
+[QA_PLAYER_FULL]
+status='Passed'
+verdict='PLAYER QA CERTIFIED'
+cases='16/16'
+completed='access,join,observation,actor-default,actor-lifecycle,gameplay-ready-reader,reader-cardinality,actor-replace,second-player,joining-control,commands,leave,rejoin,negatives,spatial,relocation'
+```
+
+Current dated technical evidence:
+
+[IF-ADR-024 — Prepared Actor Replacement Technical Certification — 2026-09-02](../Reconciliation/IF-ADR-024-PREPARED-ACTOR-REPLACEMENT-TECHNICAL-CERTIFICATION-2026-09-02.md)
+
+The `16/16` record proves the Manager-Provisioned positive replacement and the
+immediately dependent Player suite boundary executed in that run. It does not
+claim Scene-Provided prepared Actor replacement.
+
+## Deferred decisions
+
+- Scene-Provided physical ownership and replacement contract for a future capability.
+- Additional focused negative certification for failure branches beyond the current integrated Player QA evidence, where separately required.
