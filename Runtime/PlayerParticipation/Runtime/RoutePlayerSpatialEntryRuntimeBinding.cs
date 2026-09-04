@@ -8,21 +8,21 @@ namespace Immersive.Framework.PlayerParticipation
     internal sealed class RoutePlayerSpatialEntryRuntimeBinding : MonoBehaviour
     {
         private RoutePlayerSpatialEntryContext _context;
+        private bool _hasAppliedForCurrentOccurrence;
         private int _lastOccurrenceSequence;
-        private string _lastRepresentationIdentity;
 
         internal void Configure(RoutePlayerSpatialEntryContext value)
         {
             if (_context.Matches(value)) return;
             _context = value;
+            _hasAppliedForCurrentOccurrence = false;
             _lastOccurrenceSequence = 0;
-            _lastRepresentationIdentity = string.Empty;
         }
 
         internal bool TryApplyBeforeActivation(PlayerActorMaterializationHandle handle, out string issue)
         {
             issue = string.Empty;
-            if (handle == null || handle.PlayerActorDeclaration == null || handle.PlayerActorRuntimeHost == null)
+            if (handle == null || handle.Presentation == null)
             {
                 issue = "Route Player spatial entry requires a complete materialization handle.";
                 return false;
@@ -33,23 +33,18 @@ namespace Immersive.Framework.PlayerParticipation
                 return false;
             }
 
-            string representation = handle.Request.RuntimeContentIdentity.StableText;
-            if (_lastOccurrenceSequence == _context.OccurrenceSequence &&
-                string.Equals(_lastRepresentationIdentity, representation, System.StringComparison.Ordinal))
+            if (_hasAppliedForCurrentOccurrence &&
+                _lastOccurrenceSequence == _context.OccurrenceSequence)
                 return true;
 
-            Transform declaration = handle.PlayerActorDeclaration.transform;
-            Transform root = handle.PlayerActorRuntimeHost.transform;
-            Transform target = ReferenceEquals(declaration, root) || declaration.IsChildOf(root)
-                ? root : declaration;
             if (!RoutePlayerSpatialEntryRuntime.TryApply(
                     _context,
                     handle.Request.Slot.PlayerSlotId,
-                    target,
+                    handle.Presentation.transform,
                     out issue)) return false;
 
             _lastOccurrenceSequence = _context.OccurrenceSequence;
-            _lastRepresentationIdentity = representation;
+            _hasAppliedForCurrentOccurrence = true;
             return true;
         }
     }

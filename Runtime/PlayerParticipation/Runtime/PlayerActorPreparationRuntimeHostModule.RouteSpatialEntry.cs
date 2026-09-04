@@ -61,7 +61,7 @@ namespace Immersive.Framework.PlayerParticipation
             return RoutePlayerSpatialEntryRuntime.TryApply(
                 _currentRouteSpatialEntryContext,
                 slot,
-                composition.PlayerActorRuntimeHost.transform,
+                composition.Presentation.transform,
                 out issue);
         }
 

@@ -270,17 +270,13 @@ namespace Immersive.Framework.PlayerParticipation.Editor.Tests
         }
 
         [Test]
-        public void Validate_RuntimeHostWithoutRootCharacterController_IsRejected()
+        public void Validate_RuntimeHostWithoutRootCharacterController_IsValid()
         {
             GameObject prefab = CreatePresentationPrefab("Presentation_A");
             CreateAuthoring(prefab, prefab);
-            Object.DestroyImmediate(
-                sceneRuntimeHost.GetComponent<CharacterController>());
-
             bool valid = sceneRuntimeHost.TryValidateConfiguration(out string issue);
 
-            Assert.That(valid, Is.False);
-            Assert.That(issue, Does.Contain("CharacterController"));
+            Assert.That(valid, Is.True, issue);
         }
 
         [Test]
@@ -653,7 +649,6 @@ namespace Immersive.Framework.PlayerParticipation.Editor.Tests
                 source.AddComponent<PlayerActorDeclaration>();
             PlayerActorRuntimeHost runtimeHost =
                 source.AddComponent<PlayerActorRuntimeHost>();
-            source.AddComponent<CharacterController>();
             Transform presentationMount =
                 new GameObject("Presentation Mount").transform;
             presentationMount.SetParent(source.transform);

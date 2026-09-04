@@ -66,6 +66,35 @@ PlayerActorDeclaration.ActorId = EMPTY
 Physical preparation/adoption creates the runtime occurrence identity. Do not write
 a persistent authored Player Actor occurrence ID to a reusable prefab.
 
+### Embodiment and spatial authority
+
+The generic Player Actor prefab contains only:
+
+```text
+<Prefix>_PlayerActor
+├── PlayerActorRuntimeHost
+├── PlayerActorDeclaration
+└── PresentationMount
+```
+
+It has no mandatory `CharacterController`, `Rigidbody`, or Actor-specific
+locomotion technology. The Presentation prefab owns its Actor-specific embodiment:
+
+```text
+<Prefix>_<ActorName>Presentation
+├── optional physical body
+├── optional locomotion
+├── visual/model and animator/rig
+├── camera targets
+└── Actor-specific presentation/gameplay behavior
+```
+
+The exact root Transform of the materialized Actor Presentation is the concrete
+spatial authority for that Player Actor embodiment. `PlayerActorRuntimeHost` is the
+generic runtime occurrence container; it is not the canonical locomotion body.
+`CharacterController` is not an invariant of either Player Actor or Presentation;
+it is an optional Presentation implementation choice.
+
 ## Scene-Provided
 
 Scene-Provided is a physical consumer composition, not an Editor materialization

@@ -80,6 +80,12 @@ and preparation token, Actor Runtime Host/Presentation, gameplay
 admission/input/camera evidence, and the readiness evidence needed to prove B. No
 gameplay authority for A may remain current after B is committed.
 
+Before physical replacement commits, the Framework captures A's exact Presentation
+world position and rotation. B's exact Presentation receives that pose. A
+representation change is not a new Route spatial occurrence and does not reapply
+Route entry or invent Activity relocation; a new Route occurrence or an explicit
+new Activity relocation remains authoritative under its own contract.
+
 The general Slot revision is mutable revision evidence. It must not be treated as
 immutable Player occurrence identity across Actor selection/replacement.
 

@@ -68,12 +68,6 @@ namespace Immersive.Framework.PlayerParticipation
                 return false;
             }
 
-            if (GetComponent<CharacterController>() == null)
-            {
-                issue = "Player Actor Runtime Host requires a CharacterController on the canonical Player Actor root.";
-                return false;
-            }
-
             if (GetComponentInChildren<PlayerInput>(true) != null)
             {
                 issue = "Player Actor Runtime Host must not contain PlayerInput. PlayerInput belongs to the Local Player Host.";

@@ -234,13 +234,13 @@ baseline cut is implemented: `RouteLifecycleRuntime` publishes an occurrence onl
 after Route composition yields `RouteContentDiscoveryScope`; Player preparation
 consumes it for prepared Players and late admissions. The Route policy is explicit,
 Route-owned discovery is restricted to Primary plus Route-owned content, and the
-per-Host guard is keyed by Route occurrence plus physical representation.
+per-Host guard is keyed by Route occurrence rather than representation identity.
 
 Activity explicit relocation is implemented as a separate optional pipeline. It uses
 explicit `ActivityId + PlayerSlotId` authoring, discovers only current Route scope
 plus current Activity content, applies to existing or subsequently prepared Session
-physical Players, and keys idempotence by Activity occurrence plus representation.
-No-relocation Activities request no relocation evidence and retain their pose.
+physical Players, and keys idempotence by Activity occurrence. No-relocation
+Activities request no relocation evidence and retain their pose.
 Route and Activity evidence remain separate.
 
 The 2026-08-27 robustness cut preflights Activity explicit relocation before Actor

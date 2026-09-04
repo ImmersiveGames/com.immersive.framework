@@ -60,29 +60,23 @@ namespace Immersive.Framework.PlayerParticipation
                     out _, out _, out _, out PlayerActorMaterializationHandle handle, out issue))
                 return false;
 
-            Transform declaration = handle.PlayerActorDeclaration != null
-                ? handle.PlayerActorDeclaration.transform : null;
-            Transform root = handle.PlayerActorRuntimeHost != null ? handle.PlayerActorRuntimeHost.transform : null;
-            Transform target = declaration != null && root != null &&
-                (ReferenceEquals(declaration, root) || declaration.IsChildOf(root)) ? root : declaration;
+            Transform target = handle.Presentation != null ? handle.Presentation.transform : null;
             if (target == null)
             {
                 issue = "Activity Player relocation requires a complete prepared physical Actor target.";
                 return false;
             }
 
-            string representation = handle.Request.RuntimeContentIdentity.StableText;
             if (_activityRelocationEvidenceBySlot.TryGetValue(playerSlotId, out ActivityPlayerRelocationEvidence previous) &&
                 previous.IsApplied && previous.Owner == _currentActivityRelocationContext.Owner &&
                 previous.Occurrence.Matches(_currentActivityRelocationContext.Activity,
-                    _currentActivityRelocationContext.Occurrence.TransitionSequence) &&
-                previous.RepresentationIdentity == representation &&
-                ReferenceEquals(previous.Target, target))
+                    _currentActivityRelocationContext.Occurrence.TransitionSequence))
                 return true;
 
             if (!ActivityPlayerRelocationRuntime.TryApply(
                     _currentActivityRelocationContext, playerSlotId, handle.Request.ActorId,
-                    representation, target, out ActivityPlayerRelocationEvidence evidence, out issue))
+                    handle.Request.RuntimeContentIdentity.StableText, target,
+                    out ActivityPlayerRelocationEvidence evidence, out issue))
             {
                 _activityRelocationEvidenceBySlot.Remove(playerSlotId);
                 return false;

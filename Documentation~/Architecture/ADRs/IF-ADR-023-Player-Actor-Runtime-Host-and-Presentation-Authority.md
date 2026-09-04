@@ -38,6 +38,12 @@ Host reference. `ActorProfile.PresentationPrefab` remains the canonical
 Presentation reference. `PlayerSlotProfile`, `ActorProfile`, `LocalPlayerHost`,
 admission timing and the physically authored hierarchy remain authoring authority.
 
+`PlayerActorRuntimeHost` is the generic runtime occurrence container. The exact
+root Transform of the selected Presentation is the concrete spatial authority for
+that Actor embodiment. The Runtime Host does not require or own a
+`CharacterController`, `Rigidbody`, locomotion body, or transform synchronization
+with the Presentation.
+
 Root GameObject names match their prefab filenames without `.prefab`.
 
 ### Scene-Provided target contract
@@ -150,4 +156,5 @@ certification remains evidence only for the boundary it executed.
 
 ## Pending decisions
 
-- Concrete Camera/Input/Locomotion composition inside a Presentation.
+- Concrete Camera/Input/Locomotion composition inside a Presentation remains
+  consumer-owned.

@@ -5,6 +5,7 @@ using Immersive.Framework.ApiStatus;
 using Immersive.Framework.Common;
 using Immersive.Framework.PlayerSlots;
 using Immersive.Framework.RuntimeContent;
+using UnityEngine;
 
 namespace Immersive.Framework.PlayerParticipation
 {
@@ -1059,6 +1060,31 @@ namespace Immersive.Framework.PlayerParticipation
                     correlationIssue);
             }
 
+            Transform previousPresentation = currentRecord.Handle.Presentation != null
+                ? currentRecord.Handle.Presentation.transform
+                : null;
+            if (previousPresentation == null)
+            {
+                return CreateResult(
+                    PlayerActorPreparationStatus.RejectedPreparedActorConflict,
+                    operation,
+                    playerSlotId,
+                    currentRecord.Summary,
+                    currentRecord.Summary,
+                    null,
+                    null,
+                    false,
+                    false,
+                    string.Empty,
+                    false,
+                    false,
+                    string.Empty,
+                    "Prepared Actor replacement requires exact current Presentation spatial evidence.");
+            }
+
+            Vector3 previousPresentationPosition = previousPresentation.position;
+            Quaternion previousPresentationRotation = previousPresentation.rotation;
+
             PlayerActorMaterializationResult replacementMaterialization =
                 _materializationAdapter.TryMaterialize(
                     physicalScopeContext,
@@ -1092,6 +1118,43 @@ namespace Immersive.Framework.PlayerParticipation
 
             PlayerActorMaterializationHandle replacementHandle =
                 replacementMaterialization.Handle;
+            if (replacementHandle.Presentation == null)
+            {
+                bool rollbackSucceeded = _materializationAdapter.TryReleaseMaterialization(
+                    replacementHandle,
+                    resolvedSource,
+                    "replacement-presentation-evidence-rollback",
+                    out string rollbackIssue);
+                if (!rollbackSucceeded)
+                {
+                    RetainReleaseFailure(replacementHandle, rollbackIssue);
+                }
+
+                return CreateResult(
+                    rollbackSucceeded
+                        ? PlayerActorPreparationStatus.FailedMaterialization
+                        : PlayerActorPreparationStatus.FailedRollback,
+                    operation,
+                    playerSlotId,
+                    currentRecord.Summary,
+                    currentRecord.Summary,
+                    replacementMaterialization,
+                    null,
+                    true,
+                    rollbackSucceeded,
+                    rollbackIssue,
+                    false,
+                    false,
+                    string.Empty,
+                    "Replacement materialization returned no exact Presentation spatial evidence.",
+                    rollbackSucceeded
+                        ? PlayerActorPreparationStatus.None
+                        : PlayerActorPreparationStatus.FailedMaterialization);
+            }
+
+            replacementHandle.Presentation.transform.SetPositionAndRotation(
+                previousPresentationPosition,
+                previousPresentationRotation);
             var canonicalSelectionRequest = new PlayerActorSelectionRequest(
                 playerSlotId,
                 replacementRequest.ActorProfile,
