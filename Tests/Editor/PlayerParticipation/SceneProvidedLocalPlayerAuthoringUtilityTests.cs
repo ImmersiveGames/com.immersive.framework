@@ -35,7 +35,7 @@ namespace Immersive.Framework.PlayerParticipation.Editor.Tests
         }
 
         [Test]
-        public void Validate_AuthoredComposition_SucceedsWithoutMaterialization()
+        public void Validate_ExactNestedRegularRuntimeHostAndPresentationInOuterPrefab_Succeeds()
         {
             GameObject prefab = CreatePresentationPrefab("Presentation_A");
             SceneProvidedLocalPlayerAuthoring authoring = CreateAuthoring(prefab, prefab);
@@ -45,6 +45,212 @@ namespace Immersive.Framework.PlayerParticipation.Editor.Tests
 
             Assert.That(validation.Succeeded, Is.True, validation.Message);
             Assert.That(validation.Status, Is.EqualTo(SceneProvidedLocalPlayerAuthoringStatus.Valid));
+        }
+
+        [Test]
+        public void Validate_ExactNestedRegularRuntimeHostInOuterPrefabVariant_Succeeds()
+        {
+            GameObject runtimeHost = CreateRuntimeHostPrefab("RuntimeHost_A");
+            GameObject presentation = CreatePresentationPrefab("Presentation_A");
+            SceneProvidedLocalPlayerAuthoring authoring = CreateAuthoredOuterPrefab(
+                runtimeHost,
+                runtimeHost,
+                presentation,
+                presentation,
+                true);
+
+            Assert.That(
+                PrefabUtility.GetPrefabAssetType(
+                    AssetDatabase.LoadAssetAtPath<GameObject>(
+                        PrefabUtility.GetPrefabAssetPathOfNearestInstanceRoot(sceneHost))),
+                Is.EqualTo(PrefabAssetType.Variant));
+
+            SceneProvidedLocalPlayerAuthoringResult validation =
+                SceneProvidedLocalPlayerAuthoringUtility.Validate(authoring, false);
+
+            Assert.That(validation.Succeeded, Is.True, validation.Message);
+        }
+
+        [Test]
+        public void Validate_ExactPresentationVariantNestedInOuterPrefabVariant_Succeeds()
+        {
+            GameObject runtimeHost = CreateRuntimeHostPrefab("RuntimeHost_A");
+            GameObject presentationBase = CreatePresentationPrefab("Presentation_Base");
+            GameObject presentationVariant = CreatePrefabVariant(
+                presentationBase,
+                "Presentation_Variant_B");
+            Assert.That(
+                PrefabUtility.GetPrefabAssetType(presentationVariant),
+                Is.EqualTo(PrefabAssetType.Variant));
+            SceneProvidedLocalPlayerAuthoring authoring = CreateAuthoredOuterPrefab(
+                runtimeHost,
+                runtimeHost,
+                presentationVariant,
+                presentationVariant,
+                true);
+
+            SceneProvidedLocalPlayerAuthoringResult validation =
+                SceneProvidedLocalPlayerAuthoringUtility.Validate(authoring, false);
+
+            Assert.That(validation.Succeeded, Is.True, validation.Message);
+        }
+
+        [Test]
+        public void Validate_PresentationVariantDoesNotMatchItsExpectedBasePrefab()
+        {
+            GameObject runtimeHost = CreateRuntimeHostPrefab("RuntimeHost_A");
+            GameObject presentationBase = CreatePresentationPrefab("Presentation_Base");
+            GameObject presentationVariant = CreatePrefabVariant(
+                presentationBase,
+                "Presentation_Variant_B");
+            Assert.That(
+                PrefabUtility.GetPrefabAssetType(presentationVariant),
+                Is.EqualTo(PrefabAssetType.Variant));
+            SceneProvidedLocalPlayerAuthoring authoring = CreateAuthoredOuterPrefab(
+                runtimeHost,
+                runtimeHost,
+                presentationBase,
+                presentationVariant,
+                true);
+
+            SceneProvidedLocalPlayerAuthoringResult validation =
+                SceneProvidedLocalPlayerAuthoringUtility.Validate(authoring, false);
+
+            Assert.That(validation.Succeeded, Is.False);
+            Assert.That(
+                validation.Status,
+                Is.EqualTo(SceneProvidedLocalPlayerAuthoringStatus.InvalidActorProfile));
+        }
+
+        [Test]
+        public void Validate_AuthoredInstanceOfExactPresentationVariant_Succeeds()
+        {
+            GameObject basePrefab = CreatePresentationPrefab("Presentation_Base");
+            GameObject expectedVariant = CreatePrefabVariant(
+                basePrefab,
+                "Presentation_Variant_B");
+            Assert.That(
+                PrefabUtility.GetPrefabAssetType(expectedVariant),
+                Is.EqualTo(PrefabAssetType.Variant));
+            SceneProvidedLocalPlayerAuthoring authoring = CreateAuthoring(
+                expectedVariant,
+                expectedVariant);
+
+            SceneProvidedLocalPlayerAuthoringResult validation =
+                SceneProvidedLocalPlayerAuthoringUtility.Validate(authoring, false);
+
+            Assert.That(validation.Succeeded, Is.True, validation.Message);
+            Assert.That(validation.Status, Is.EqualTo(SceneProvidedLocalPlayerAuthoringStatus.Valid));
+        }
+
+        [Test]
+        public void Validate_WrongSiblingPresentationVariant_IsRejectedByEditorProvenance()
+        {
+            GameObject basePrefab = CreatePresentationPrefab("Presentation_Base");
+            GameObject expectedVariant = CreatePrefabVariant(
+                basePrefab,
+                "Presentation_Variant_B");
+            GameObject siblingVariant = CreatePrefabVariant(
+                basePrefab,
+                "Presentation_Variant_C");
+            Assert.That(
+                PrefabUtility.GetPrefabAssetType(expectedVariant),
+                Is.EqualTo(PrefabAssetType.Variant));
+            Assert.That(
+                PrefabUtility.GetPrefabAssetType(siblingVariant),
+                Is.EqualTo(PrefabAssetType.Variant));
+            GameObject runtimeHost = CreateRuntimeHostPrefab("RuntimeHost_A");
+            SceneProvidedLocalPlayerAuthoring authoring = CreateAuthoredOuterPrefab(
+                runtimeHost,
+                runtimeHost,
+                expectedVariant,
+                siblingVariant,
+                true);
+
+            SceneProvidedLocalPlayerAuthoringResult validation =
+                SceneProvidedLocalPlayerAuthoringUtility.Validate(authoring, false);
+
+            Assert.That(validation.Succeeded, Is.False);
+            Assert.That(
+                validation.Status,
+                Is.EqualTo(SceneProvidedLocalPlayerAuthoringStatus.InvalidActorProfile));
+        }
+
+        [Test]
+        public void Validate_RuntimeHostVariantDoesNotMatchItsExpectedBasePrefab()
+        {
+            GameObject runtimeHostBase = CreateRuntimeHostPrefab("RuntimeHost_Base");
+            GameObject runtimeHostVariant = CreatePrefabVariant(
+                runtimeHostBase,
+                "RuntimeHost_Variant_B");
+            Assert.That(
+                PrefabUtility.GetPrefabAssetType(runtimeHostVariant),
+                Is.EqualTo(PrefabAssetType.Variant));
+            GameObject presentation = CreatePresentationPrefab("Presentation_A");
+            SceneProvidedLocalPlayerAuthoring authoring = CreateAuthoredOuterPrefab(
+                runtimeHostBase,
+                runtimeHostVariant,
+                presentation,
+                presentation,
+                true);
+
+            SceneProvidedLocalPlayerAuthoringResult validation =
+                SceneProvidedLocalPlayerAuthoringUtility.Validate(authoring, false);
+
+            Assert.That(validation.Succeeded, Is.False);
+            Assert.That(validation.Status, Is.EqualTo(SceneProvidedLocalPlayerAuthoringStatus.InvalidHost));
+        }
+
+        [Test]
+        public void Validate_ExactNestedRuntimeHostVariant_Succeeds()
+        {
+            GameObject runtimeHostBase = CreateRuntimeHostPrefab("RuntimeHost_Base");
+            GameObject runtimeHostVariant = CreatePrefabVariant(
+                runtimeHostBase,
+                "RuntimeHost_Variant_B");
+            Assert.That(
+                PrefabUtility.GetPrefabAssetType(runtimeHostVariant),
+                Is.EqualTo(PrefabAssetType.Variant));
+            GameObject presentation = CreatePresentationPrefab("Presentation_A");
+            SceneProvidedLocalPlayerAuthoring authoring = CreateAuthoredOuterPrefab(
+                runtimeHostVariant,
+                runtimeHostVariant,
+                presentation,
+                presentation,
+                true);
+
+            SceneProvidedLocalPlayerAuthoringResult validation =
+                SceneProvidedLocalPlayerAuthoringUtility.Validate(authoring, false);
+
+            Assert.That(validation.Succeeded, Is.True, validation.Message);
+        }
+
+        [Test]
+        public void Validate_MissingPresentation_IsRejected()
+        {
+            GameObject prefab = CreatePresentationPrefab("Presentation_A");
+            SceneProvidedLocalPlayerAuthoring authoring = CreateAuthoring(prefab, prefab);
+            Object.DestroyImmediate(authoredPresentation);
+
+            SceneProvidedLocalPlayerAuthoringResult validation =
+                SceneProvidedLocalPlayerAuthoringUtility.Validate(authoring, false);
+
+            Assert.That(validation.Succeeded, Is.False);
+            Assert.That(validation.Status, Is.EqualTo(SceneProvidedLocalPlayerAuthoringStatus.InvalidHost));
+        }
+
+        [Test]
+        public void Validate_MissingActorProfile_IsRejected()
+        {
+            GameObject prefab = CreatePresentationPrefab("Presentation_A");
+            SceneProvidedLocalPlayerAuthoring authoring = CreateAuthoring(prefab, prefab);
+            SetProperty(authoring, "actorProfile", (Object)null);
+
+            SceneProvidedLocalPlayerAuthoringResult validation =
+                SceneProvidedLocalPlayerAuthoringUtility.Validate(authoring, false);
+
+            Assert.That(validation.Succeeded, Is.False);
+            Assert.That(validation.Status, Is.EqualTo(SceneProvidedLocalPlayerAuthoringStatus.InvalidHost));
         }
 
         [Test]
@@ -197,7 +403,13 @@ namespace Immersive.Framework.PlayerParticipation.Editor.Tests
         {
             GameObject profilePrefab = CreatePresentationPrefab("Presentation_A");
             GameObject scenePrefab = CreatePresentationPrefab("Presentation_B");
-            SceneProvidedLocalPlayerAuthoring authoring = CreateAuthoring(profilePrefab, scenePrefab);
+            GameObject runtimeHost = CreateRuntimeHostPrefab("RuntimeHost_A");
+            SceneProvidedLocalPlayerAuthoring authoring = CreateAuthoredOuterPrefab(
+                runtimeHost,
+                runtimeHost,
+                profilePrefab,
+                scenePrefab,
+                true);
 
             SceneProvidedLocalPlayerAuthoringResult result =
                 SceneProvidedLocalPlayerAuthoringUtility.Validate(authoring, false);
@@ -268,34 +480,50 @@ namespace Immersive.Framework.PlayerParticipation.Editor.Tests
             GameObject profilePrefab,
             GameObject scenePrefab)
         {
+            GameObject defaultRuntimeHostPrefab =
+                CreateRuntimeHostPrefab("PlayerRuntimeHost");
+            return CreateAuthoredOuterPrefab(
+                defaultRuntimeHostPrefab,
+                defaultRuntimeHostPrefab,
+                profilePrefab,
+                scenePrefab,
+                false);
+        }
+
+        private SceneProvidedLocalPlayerAuthoring CreateAuthoredOuterPrefab(
+            GameObject expectedRuntimeHostPrefab,
+            GameObject authoredRuntimeHostPrefab,
+            GameObject expectedPresentationPrefab,
+            GameObject authoredPresentationPrefab,
+            bool outerPrefabVariant)
+        {
             EnsureAssetFolder();
             actorProfile = ScriptableObject.CreateInstance<ActorProfile>();
             AssetDatabase.CreateAsset(actorProfile, AssetFolder + "/ActorProfile.asset");
             SetProperty(actorProfile, "actorProfileId", "actor-profile.scene-provided");
             SetProperty(actorProfile, "actorKind", (int)ActorKind.Player);
             SetProperty(actorProfile, "actorRole", (int)ActorRole.Protagonist);
-            SetProperty(actorProfile, "presentationPrefab", profilePrefab);
+            SetProperty(actorProfile, "presentationPrefab", expectedPresentationPrefab);
 
             playerSlotProfile = ScriptableObject.CreateInstance<PlayerSlotProfile>();
             AssetDatabase.CreateAsset(playerSlotProfile, AssetFolder + "/PlayerSlotProfile.asset");
             SetProperty(playerSlotProfile, "playerSlotId", "player.1");
             AssetDatabase.SaveAssets();
 
-            sceneHost = new GameObject("Scene-Provided Local Player Host");
-            PlayerInput playerInput = sceneHost.AddComponent<PlayerInput>();
-            LocalPlayerHostAuthoring host = sceneHost.AddComponent<LocalPlayerHostAuthoring>();
+            var outerSource = new GameObject("Scene-Provided Local Player Host");
+            PlayerInput playerInput = outerSource.AddComponent<PlayerInput>();
+            LocalPlayerHostAuthoring host = outerSource.AddComponent<LocalPlayerHostAuthoring>();
             actorMount = new GameObject("Actor Mount").transform;
-            actorMount.SetParent(sceneHost.transform);
-            runtimeHostPrefab = CreateRuntimeHostPrefab("PlayerRuntimeHost");
+            actorMount.SetParent(outerSource.transform);
             sceneRuntimeHost =
-                ((GameObject)PrefabUtility.InstantiatePrefab(runtimeHostPrefab, actorMount))
+                ((GameObject)PrefabUtility.InstantiatePrefab(authoredRuntimeHostPrefab, actorMount))
                     .GetComponent<PlayerActorRuntimeHost>();
             authoredPresentation = PrefabUtility.InstantiatePrefab(
-                scenePrefab,
+                authoredPresentationPrefab,
                 sceneRuntimeHost.PresentationMount) as GameObject;
             var provisioning =
                 new GameObject("Scene-Provided Local Player");
-            provisioning.transform.SetParent(sceneHost.transform);
+            provisioning.transform.SetParent(outerSource.transform);
             SceneProvidedLocalPlayerAuthoring authoring =
                 provisioning.AddComponent<SceneProvidedLocalPlayerAuthoring>();
 
@@ -304,11 +532,37 @@ namespace Immersive.Framework.PlayerParticipation.Editor.Tests
             SetProperty(
                 host,
                 "playerActorRuntimeHostPrefab",
-                runtimeHostPrefab.GetComponent<PlayerActorRuntimeHost>());
+                expectedRuntimeHostPrefab.GetComponent<PlayerActorRuntimeHost>());
             SetProperty(authoring, "localPlayerHost", host);
             SetProperty(authoring, "playerSlotProfile", playerSlotProfile);
             SetProperty(authoring, "actorProfile", actorProfile);
-            return authoring;
+
+            string outerPrefabPath = AssetFolder + "/OuterSceneProvided.prefab";
+            GameObject outerPrefab = PrefabUtility.SaveAsPrefabAsset(
+                outerSource,
+                outerPrefabPath);
+            Object.DestroyImmediate(outerSource);
+
+            if (outerPrefabVariant)
+            {
+                GameObject outerVariantSource =
+                    PrefabUtility.InstantiatePrefab(outerPrefab) as GameObject;
+                outerVariantSource.name = "OuterSceneProvidedVariant";
+                outerPrefab = PrefabUtility.SaveAsPrefabAsset(
+                    outerVariantSource,
+                    AssetFolder + "/OuterSceneProvidedVariant.prefab");
+                Object.DestroyImmediate(outerVariantSource);
+            }
+
+            sceneHost = PrefabUtility.InstantiatePrefab(outerPrefab) as GameObject;
+            LocalPlayerHostAuthoring instantiatedHost =
+                sceneHost.GetComponent<LocalPlayerHostAuthoring>();
+            actorMount = instantiatedHost.ActorMount;
+            sceneRuntimeHost =
+                sceneHost.GetComponentInChildren<PlayerActorRuntimeHost>(true);
+            authoredPresentation = sceneRuntimeHost.PresentationMount.GetChild(0).gameObject;
+            runtimeHostPrefab = expectedRuntimeHostPrefab;
+            return sceneHost.GetComponentInChildren<SceneProvidedLocalPlayerAuthoring>(true);
         }
 
         private static GameObject CreatePresentationPrefab(string name)
@@ -319,6 +573,19 @@ namespace Immersive.Framework.PlayerParticipation.Editor.Tests
             GameObject prefab = PrefabUtility.SaveAsPrefabAsset(source, path);
             Object.DestroyImmediate(source);
             return prefab;
+        }
+
+        private static GameObject CreatePrefabVariant(
+            GameObject basePrefab,
+            string name)
+        {
+            EnsureAssetFolder();
+            GameObject instance = PrefabUtility.InstantiatePrefab(basePrefab) as GameObject;
+            instance.name = name;
+            string path = AssetFolder + "/" + name + ".prefab";
+            GameObject variant = PrefabUtility.SaveAsPrefabAsset(instance, path);
+            Object.DestroyImmediate(instance);
+            return variant;
         }
 
         private PlayerSlotRuntimeSnapshot JoinHostForMaterialization(LocalPlayerHostAuthoring host)

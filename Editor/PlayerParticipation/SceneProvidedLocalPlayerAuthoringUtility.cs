@@ -85,11 +85,11 @@ namespace Immersive.Framework.Editor.PlayerParticipation
                 return null;
             }
 
-            GameObject root = PrefabUtility.GetNearestPrefabInstanceRoot(instance);
-            GameObject source = root != null
-                ? PrefabUtility.GetCorrespondingObjectFromOriginalSource(root)
-                : PrefabUtility.GetCorrespondingObjectFromOriginalSource(instance);
-            return source != null ? source.transform.root.gameObject : null;
+            string assetPath =
+                PrefabUtility.GetPrefabAssetPathOfNearestInstanceRoot(instance);
+            return string.IsNullOrWhiteSpace(assetPath)
+                ? null
+                : AssetDatabase.LoadAssetAtPath<GameObject>(assetPath);
         }
 
         private static bool AreSamePrefabAsset(GameObject first, GameObject second)
