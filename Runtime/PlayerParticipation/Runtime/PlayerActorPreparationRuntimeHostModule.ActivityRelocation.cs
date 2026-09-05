@@ -42,6 +42,14 @@ namespace Immersive.Framework.PlayerParticipation
             return true;
         }
 
+        internal void RetireCurrentActivityRelocationEvidence(PlayerSlotId playerSlotId)
+        {
+            if (playerSlotId.IsValid)
+            {
+                _activityRelocationEvidenceBySlot.Remove(playerSlotId);
+            }
+        }
+
         internal bool TryApplyCurrentActivityRelocation(
             RuntimeContentOwner owner, PlayerSlotId playerSlotId,
             PlayerActorPreparationToken preparationToken, out string issue)

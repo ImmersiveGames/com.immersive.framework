@@ -254,6 +254,8 @@ namespace Immersive.Framework.PlayerParticipation
                     "Prepare Selected Actor requires an explicit ActorProfile selection for the Joined Slot.");
             }
 
+            _hostEvidenceProjection.LogContextDiagnostic("before", "TryEnsureManagerContextualProjection",
+                playerSlotId, activityScopeContext.Owner, resolvedSource, resolvedReason);
             if (!TryEnsureManagerContextualProjection(
                     activityScopeContext,
                     slot,
@@ -278,6 +280,8 @@ namespace Immersive.Framework.PlayerParticipation
                     contextualProjectionIssue);
             }
 
+            _hostEvidenceProjection.LogContextDiagnostic("after", "TryEnsureManagerContextualProjection",
+                playerSlotId, activityScopeContext.Owner, resolvedSource, resolvedReason, "succeeded");
             if (_records.TryGetValue(playerSlotId, out PreparationRecord existing))
             {
                 PlayerActorCorrelationEvidence actorEvidence =
@@ -545,6 +549,8 @@ namespace Immersive.Framework.PlayerParticipation
             out string issue)
         {
             issue = string.Empty;
+            _hostEvidenceProjection.LogContextDiagnostic("before", "TryReleaseManagerContextualProjection",
+                playerSlotId, activityOwner, source, reason);
             if (!activityOwner.IsValid || !playerSlotId.IsValid ||
                 !_participationContext.TryGetCurrentAssignment(
                     playerSlotId,
@@ -552,6 +558,8 @@ namespace Immersive.Framework.PlayerParticipation
                 !assignment.IsAssigned ||
                 assignment.AssignmentOrigin != PlayerSlotAssignmentOrigin.ManagerProvisioned)
             {
+                _hostEvidenceProjection.LogContextDiagnostic("after", "TryReleaseManagerContextualProjection",
+                    playerSlotId, activityOwner, source, reason, "succeeded-or-no-op", issue);
                 return true;
             }
 
@@ -563,6 +571,8 @@ namespace Immersive.Framework.PlayerParticipation
                 hostEvidence.AssignmentToken != assignment.AssignmentToken)
             {
                 issue = "Manager contextual projection does not match the exiting Activity occurrence.";
+                _hostEvidenceProjection.LogContextDiagnostic("after", "TryReleaseManagerContextualProjection",
+                    playerSlotId, activityOwner, source, reason, "failed", issue);
                 return false;
             }
 
@@ -579,6 +589,8 @@ namespace Immersive.Framework.PlayerParticipation
                 issue = projectionRelease != null
                     ? projectionRelease.ToDiagnosticString()
                     : "Manager contextual Host projection release returned no result.";
+                _hostEvidenceProjection.LogContextDiagnostic("after", "TryReleaseManagerContextualProjection",
+                    playerSlotId, activityOwner, source, reason, "failed", issue);
                 return false;
             }
 
@@ -593,8 +605,13 @@ namespace Immersive.Framework.PlayerParticipation
                 issue = assignmentRelease != null
                     ? assignmentRelease.ToDiagnosticString()
                     : "Manager contextual assignment release returned no result.";
+                _hostEvidenceProjection.LogContextDiagnostic("after", "TryReleaseManagerContextualProjection",
+                    playerSlotId, activityOwner, source, reason, "failed", issue);
                 return false;
             }
+
+            _hostEvidenceProjection.LogContextDiagnostic("after", "TryReleaseManagerContextualProjection",
+                playerSlotId, activityOwner, source, reason, "succeeded", issue);
 
             return true;
         }
@@ -1600,6 +1617,9 @@ namespace Immersive.Framework.PlayerParticipation
             {
                 issue =
                     "Logical Player Actor preparation requires an explicit Activity or Route Runtime Content owner.";
+                _hostEvidenceProjection.LogContextDiagnostic("correlation", "TryResolveCurrentActorCorrelation",
+                    playerSlotId, scopeContext.Owner, nameof(PlayerActorPreparationRuntimeContext),
+                    "expected-origin=" + expectedOrigin, "failed", issue, expectedHost);
                 return false;
             }
 
@@ -1611,6 +1631,9 @@ namespace Immersive.Framework.PlayerParticipation
             {
                 issue =
                     $"Player Slot '{playerSlotId.StableText}' has no current '{expectedOrigin}' assignment.";
+                _hostEvidenceProjection.LogContextDiagnostic("correlation", "TryResolveCurrentActorCorrelation",
+                    playerSlotId, scopeContext.Owner, nameof(PlayerActorPreparationRuntimeContext),
+                    "expected-origin=" + expectedOrigin, "failed", issue, expectedHost);
                 return false;
             }
 
@@ -1627,6 +1650,9 @@ namespace Immersive.Framework.PlayerParticipation
                 issue = confirmation != null
                     ? confirmation.ToDiagnosticString()
                     : "Physical Host evidence confirmation returned no result.";
+                _hostEvidenceProjection.LogContextDiagnostic("correlation", "TryResolveCurrentActorCorrelation",
+                    playerSlotId, scopeContext.Owner, nameof(PlayerActorPreparationRuntimeContext),
+                    "expected-origin=" + expectedOrigin, "failed", issue, expectedHost);
                 return false;
             }
 
@@ -1643,8 +1669,15 @@ namespace Immersive.Framework.PlayerParticipation
             {
                 issue =
                     "Physical Host evidence does not match the current assignment, binding, origin or expected Host.";
+                _hostEvidenceProjection.LogContextDiagnostic("correlation", "TryResolveCurrentActorCorrelation",
+                    playerSlotId, scopeContext.Owner, nameof(PlayerActorPreparationRuntimeContext),
+                    "expected-origin=" + expectedOrigin, "failed", issue, expectedHost);
                 return false;
             }
+
+            _hostEvidenceProjection.LogContextDiagnostic("correlation", "TryResolveCurrentActorCorrelation",
+                playerSlotId, scopeContext.Owner, nameof(PlayerActorPreparationRuntimeContext),
+                "expected-origin=" + expectedOrigin, "succeeded", issue, expectedHost);
 
             return true;
         }

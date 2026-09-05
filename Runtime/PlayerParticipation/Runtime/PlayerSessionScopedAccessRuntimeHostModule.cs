@@ -573,6 +573,8 @@ namespace Immersive.Framework.PlayerParticipation
     /// Source-compatible facade for the retired combined Manager endpoint.
     /// It owns no state and delegates to the same live ACCESS-2 transport.
     /// </summary>
+    [Obsolete(
+        "Use IPlayerSessionScopedAccess and request ILocalPlayerJoinAccess only when Manager-Provisioned join is required.")]
     internal sealed class LegacyManagerProvisioningConsumerAccess :
         ILocalPlayerProvisioningConsumerAccess
     {
@@ -746,10 +748,53 @@ namespace Immersive.Framework.PlayerParticipation
                 IsCurrentGameplayAdmission(gameplayAdmission, currentActivityOwner);
             if (!hasGameplayAdmissionEvidence) gameplayAdmission = default;
 
+            bool hasInputOwnershipEvidence = TryCreateInputOwnership(
+                slot, preparation, out LocalPlayerInputOwnershipSummary inputOwnership);
+
             return new PlayerSessionScopedSlotObservation(slot, hostEvidence,
                 hasHostEvidence, preparationSummary, hasPreparationEvidence,
                 currentActor, hasCurrentActorEvidence, gameplayAdmission,
-                hasGameplayAdmissionEvidence);
+                hasGameplayAdmissionEvidence,
+                inputOwnership, hasInputOwnershipEvidence);
+        }
+
+        private static bool TryCreateInputOwnership(
+            PlayerSlotRuntimeSnapshot slot,
+            PlayerActorPreparationRuntimeHostModule preparation,
+            out LocalPlayerInputOwnershipSummary summary)
+        {
+            summary = default;
+            if (!slot.IsValid || !slot.IsJoined || preparation == null ||
+                !preparation.TryGetRegisteredHost(slot.PlayerSlotId,
+                    out LocalPlayerHostAuthoring host, out _))
+            {
+                return false;
+            }
+
+            // O Host físico da Session pode existir sem assignment ou Actor de Activity.
+            var playerInput = host.PlayerInput;
+            if (playerInput == null || playerInput.gameObject != host.gameObject)
+            {
+                return false;
+            }
+
+            var pairedDevices = playerInput.devices;
+            var devices = new LocalPlayerInputDeviceSummary[pairedDevices.Count];
+            for (int index = 0; index < pairedDevices.Count; index++)
+            {
+                var device = pairedDevices[index];
+                if (device == null)
+                {
+                    return false;
+                }
+
+                devices[index] = new LocalPlayerInputDeviceSummary(
+                    device.deviceId, device.layout, device.displayName);
+            }
+
+            summary = new LocalPlayerInputOwnershipSummary(
+                playerInput.playerIndex, playerInput.currentControlScheme, devices);
+            return true;
         }
 
         private static bool TryGetPreparation(PlayerActorPreparationSnapshot snapshot,

@@ -155,6 +155,8 @@ namespace Immersive.Framework.PlayerParticipation
                 }
             }
 
+            _preparationModule.RetireCurrentActivityRelocationEvidence(leaveToken.PlayerSlotId);
+
             PlayerGameplayRuntimeHostModule.SessionPlayerLeaveGameplayReleaseResult
                 gameplay = gameplayRuntime.TryReleaseActivityGameplayForSessionPlayerLeave(
                     leaveToken,

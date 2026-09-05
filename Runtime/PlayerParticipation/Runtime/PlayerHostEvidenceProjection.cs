@@ -194,6 +194,43 @@ namespace Immersive.Framework.PlayerParticipation
         internal int RetainedEvidenceCount => _records.Count;
         internal string SessionContextId => _sessionContextId;
 
+        private static string EscapeContextDiagnosticValue(string value) =>
+            (value ?? "<none>").Replace("\r", " ").Replace("\n", " ").Replace("'", "\"");
+
+        internal void LogContextDiagnostic(
+            string phase, string operation, PlayerSlotId playerSlotId,
+            Immersive.Framework.RuntimeContent.RuntimeContentOwner activityOwner,
+            string source, string reason, string result = "not-evaluated",
+            string issue = "", LocalPlayerHostAuthoring expectedHost = null,
+            PlayerHostEvidenceSnapshot? previous = null)
+        {
+            bool assigned = _participationContext.TryGetCurrentAssignment(playerSlotId, out var assignment);
+            bool projected = TryGetRetainedEvidence(playerSlotId, out var evidence);
+            string host = evidence.Host != null
+                ? $"{EscapeContextDiagnosticValue(evidence.Host.name)}#{evidence.Host.GetEntityId()}"
+                : ReferenceEquals(evidence.Host, null) ? "null" : "destroyed";
+            string expected = expectedHost != null
+                ? $"{EscapeContextDiagnosticValue(expectedHost.name)}#{expectedHost.GetEntityId()}"
+                : ReferenceEquals(expectedHost, null) ? "not-specified" : "destroyed";
+            string previousText = previous.HasValue
+                ? $" previousOrigin='{previous.Value.AssignmentOrigin}' previousToken='{previous.Value.AssignmentToken.StableText}' " +
+                  $"previousBinding='{previous.Value.HostBindingIdentity.StableText}'"
+                : string.Empty;
+            Debug.Log(
+                $"[FRAMEWORK_PLAYER_CONTEXT_DIAG] phase='{phase}' operation='{operation}' " +
+                $"slot='{playerSlotId.StableText}' activity='{EscapeContextDiagnosticValue(activityOwner.StableText)}' occurrence='unavailable' " +
+                $"projectionInstance='{System.Runtime.CompilerServices.RuntimeHelpers.GetHashCode(this)}' " +
+                $"session='{EscapeContextDiagnosticValue(_sessionContextId)}' frame='{Time.frameCount}' " +
+                $"canonicalExists='{assigned}' canonicalOrigin='{assignment.AssignmentOrigin}' " +
+                $"canonicalOwner='{EscapeContextDiagnosticValue(assignment.AssignmentOwner.StableText)}' canonicalToken='{assignment.AssignmentToken.StableText}' " +
+                $"canonicalBinding='{assignment.HostBindingIdentity.StableText}' projectedExists='{projected}' " +
+                $"hasContextualProjection='{evidence.HasContextualProjection}' projectedOrigin='{evidence.AssignmentOrigin}' " +
+                $"projectedToken='{evidence.AssignmentToken.StableText}' projectedBinding='{evidence.HostBindingIdentity.StableText}' " +
+                $"host='{host}' expectedHost='{expected}' bindingMatch='{assigned && evidence.HasContextualProjection && assignment.HostBindingIdentity == evidence.HostBindingIdentity}' " +
+                $"hostMatch='{(ReferenceEquals(expectedHost, null) ? "not-evaluated" : ReferenceEquals(expectedHost, evidence.Host).ToString())}' " +
+                $"result='{result}' issue='{EscapeContextDiagnosticValue(issue)}' source='{EscapeContextDiagnosticValue(source)}' reason='{EscapeContextDiagnosticValue(reason)}'" + previousText);
+        }
+
         internal PlayerHostEvidenceResult RegisterSessionPhysicalHost(
             PlayerSlotId playerSlotId,
             LocalPlayerHostAuthoring host,
@@ -552,6 +589,9 @@ namespace Immersive.Framework.PlayerParticipation
             existing.HostBindingIdentity = hostBindingIdentity;
             existing.Source = resolvedSource;
             existing.Reason = resolvedReason;
+            LogContextDiagnostic("mutation", operation, playerSlotId,
+                assignment.CurrentAssignment.AssignmentOwner, resolvedSource, resolvedReason,
+                "SucceededReprojected", previous: previous);
             return Result(
                 PlayerHostEvidenceStatus.SucceededReprojected,
                 operation,
@@ -738,6 +778,10 @@ namespace Immersive.Framework.PlayerParticipation
             record.HostBindingIdentity = default;
             record.Source = resolvedSource;
             record.Reason = resolvedReason;
+            LogContextDiagnostic("mutation", operation, playerSlotId,
+                confirmation.AssignmentResult != null ? confirmation.AssignmentResult.CurrentAssignment.AssignmentOwner : default,
+                resolvedSource, resolvedReason,
+                "SucceededReleased", expectedHost: expectedHost, previous: previous);
             return Result(
                 PlayerHostEvidenceStatus.SucceededReleased,
                 operation,

@@ -20,7 +20,9 @@ namespace Immersive.Framework.PlayerParticipation
             CurrentPlayerSlotActorSnapshot currentActor,
             bool hasCurrentActorEvidence,
             PlayerGameplayAdmissionSummary gameplayAdmission,
-            bool hasGameplayAdmissionEvidence)
+            bool hasGameplayAdmissionEvidence,
+            LocalPlayerInputOwnershipSummary inputOwnership,
+            bool hasInputOwnershipEvidence)
         {
             Slot = slot;
             HostEvidence = hostEvidence;
@@ -31,6 +33,8 @@ namespace Immersive.Framework.PlayerParticipation
             HasCurrentActorEvidence = hasCurrentActorEvidence;
             GameplayAdmission = gameplayAdmission;
             HasGameplayAdmissionEvidence = hasGameplayAdmissionEvidence;
+            InputOwnership = inputOwnership;
+            HasInputOwnershipEvidence = hasInputOwnershipEvidence;
         }
 
         public PlayerSlotRuntimeSnapshot Slot { get; }
@@ -42,6 +46,13 @@ namespace Immersive.Framework.PlayerParticipation
         public bool HasCurrentActorEvidence { get; }
         public PlayerGameplayAdmissionSummary GameplayAdmission { get; }
         public bool HasGameplayAdmissionEvidence { get; }
+
+        /// <summary>
+        /// Só representa evidência quando HasInputOwnershipEvidence é true.
+        /// </summary>
+        public LocalPlayerInputOwnershipSummary InputOwnership { get; }
+
+        public bool HasInputOwnershipEvidence { get; }
         public bool IsJoined => Slot.IsJoined;
         public bool HasSelectedActor => Slot.HasSelectedActor;
         public bool IsLogicalActorPrepared =>

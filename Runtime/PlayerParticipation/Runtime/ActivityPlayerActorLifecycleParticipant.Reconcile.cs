@@ -371,15 +371,11 @@ namespace Immersive.Framework.PlayerParticipation
                     false);
             }
 
-            if (_playerReadinessRecord.completed)
+            if (_playerReadinessRecord.completed &&
+                !HasProjectedSlotRevisionDelta(session))
             {
-                bool projectedSlotRevisionChanged =
-                    HasProjectedSlotRevisionDelta(session);
-                if (!projectedSlotRevisionChanged)
-                {
-                    _playerReadinessRecord.appliedSessionRevision =
-                        session.Revision;
-                }
+                _playerReadinessRecord.appliedSessionRevision =
+                    session.Revision;
 
                 _lastReconcileResult = BuildReconcileResult(
                     ActivityPlayerActorReconcileStatus.SucceededNoChange,
@@ -388,9 +384,7 @@ namespace Immersive.Framework.PlayerParticipation
                     false,
                     false,
                     true,
-                    projectedSlotRevisionChanged
-                        ? "Activity Player readiness is already complete; the completed occurrence retains its existing applied revision because a projected Slot changed."
-                        : "Activity Player readiness is already complete; the Session revision changed only outside the frozen Activity projection and was acknowledged without lifecycle mutation.");
+                    "Activity Player readiness is already complete; the Session revision changed only outside the frozen Activity projection and was acknowledged without lifecycle mutation.");
                 return _lastReconcileResult;
             }
 
