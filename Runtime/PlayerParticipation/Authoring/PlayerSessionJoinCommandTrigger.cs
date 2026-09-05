@@ -1,5 +1,6 @@
 using Immersive.Framework.ApiStatus;
 using UnityEngine;
+using UnityEngine.InputSystem;
 
 namespace Immersive.Framework.PlayerParticipation
 {
@@ -21,9 +22,42 @@ namespace Immersive.Framework.PlayerParticipation
         [ContextMenu("Invoke Join")]
         public override void Invoke()
         {
+            InvokeCore(pairWithDevice: null, explicitDeviceRequired: false);
+        }
+
+        /// <summary>
+        /// Encaminha o dispositivo de origem ao mesmo Join, rejeitando referência ausente ou removida.
+        /// </summary>
+        public void InvokeFromDevice(InputDevice device)
+        {
+            InvokeCore(pairWithDevice: device, explicitDeviceRequired: true);
+        }
+
+        private void InvokeCore(InputDevice pairWithDevice, bool explicitDeviceRequired)
+        {
             LastJoinResult = null;
             string reason = BeginInvocation("Join");
-            var request = new LocalPlayerJoinRequest(Source, reason, null, ControlScheme);
+            var request = new LocalPlayerJoinRequest(Source, reason, pairWithDevice, ControlScheme);
+            if (explicitDeviceRequired && (pairWithDevice == null || !pairWithDevice.added))
+            {
+                CompleteResult(new LocalPlayerJoinResult(
+                    status: LocalPlayerJoinStatus.RejectedInvalidRequest,
+                    operationId: default,
+                    request: request,
+                    reservationResult: null,
+                    commitResult: null,
+                    rollbackResult: null,
+                    slot: default,
+                    playerInput: null,
+                    localPlayerHost: null,
+                    unityPlayerIndex: -1,
+                    callbackConfirmation: LocalPlayerJoinCallbackConfirmation.None,
+                    message: pairWithDevice == null
+                        ? "Device-aware Join requires an explicit InputDevice."
+                        : "Device-aware Join requires an InputDevice currently added to the Input System."));
+                return;
+            }
+
             if (!TryGetJoinAccess(out ILocalPlayerJoinAccess access, out string issue))
             {
                 CompleteResult(LocalPlayerJoinResult.RuntimeUnavailable(request, issue));
