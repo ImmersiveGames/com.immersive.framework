@@ -31,9 +31,12 @@ namespace Immersive.Framework.PlayerParticipation
                     $"Activity participation projection. {projectionIssue}");
             }
 
+            bool keepsDynamicProjection =
+                activity.PlayerParticipationProjectionMode ==
+                    ActivityParticipationProjectionMode.AllJoinedSlots;
             if (requirementLevel ==
                     PlayerParticipationRequirementLevel.None ||
-                projectedSlots.Count == 0)
+                (projectedSlots.Count == 0 && !keepsDynamicProjection))
             {
                 return Array.Empty<ActivityReadinessParticipant>();
             }
@@ -80,6 +83,7 @@ namespace Immersive.Framework.PlayerParticipation
             _playerReadinessRecord.occurrence =
                 _playerReadinessParticipant.Occurrence;
             ApplyPlayerReadinessRecordTerminalState();
+            _preparationModule.RequestActiveActivityReconciliation();
         }
 
         private bool ApplyPlayerReadinessRecordTerminalState()

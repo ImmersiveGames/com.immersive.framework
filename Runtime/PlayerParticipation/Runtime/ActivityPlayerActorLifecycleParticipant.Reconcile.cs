@@ -236,6 +236,7 @@ namespace Immersive.Framework.PlayerParticipation
                 0,
                 evidence,
                 _playerReadinessRecord.message);
+            _preparationModule.RequestActiveActivityReconciliation();
             return ActivityContentExecutionResult.Success(
                 request,
                 nameof(ActivityPlayerActorLifecycleParticipant),
@@ -251,10 +252,14 @@ namespace Immersive.Framework.PlayerParticipation
             IReadOnlyList<PlayerSlotRuntimeSnapshot> projectedSlots,
             ActivityContentExecutionResult result)
         {
+            bool keepsDynamicProjection =
+                activity != null &&
+                activity.PlayerParticipationProjectionMode ==
+                    ActivityParticipationProjectionMode.AllJoinedSlots;
             if (!result.Succeeded ||
                 requirementLevel == PlayerParticipationRequirementLevel.None ||
                 projectedSlots == null ||
-                projectedSlots.Count == 0)
+                (projectedSlots.Count == 0 && !keepsDynamicProjection))
             {
                 _playerReadinessRecord = null;
                 return;
@@ -320,6 +325,7 @@ namespace Immersive.Framework.PlayerParticipation
                     "Activity Player lifecycle requirement was satisfied during Activity enter."
             };
             SynchronizePlayerReadinessContributionAfterRecordCreated();
+            _preparationModule.RequestActiveActivityReconciliation();
         }
 
         internal ActivityPlayerActorReconcileResult
@@ -371,7 +377,35 @@ namespace Immersive.Framework.PlayerParticipation
                     false);
             }
 
+            if (!TrySynchronizeDynamicProjection(
+                    session,
+                    out bool projectionChanged,
+                    out string projectionIssue))
+            {
+                return PublishReconcileFailure(
+                    ActivityPlayerActorReconcileStatus.FailedProjection,
+                    session.Revision,
+                    projectionIssue,
+                    false,
+                    false);
+            }
+
+            bool projectionReadinessStateChanged = false;
+            if (projectionChanged)
+            {
+                _playerReadinessRecord.completed = false;
+                _playerReadinessRecord.failed = false;
+                _playerReadinessRecord.readinessReason =
+                    ResolveAggregateReadinessReason(
+                        _playerReadinessRecord.projectedSlots);
+                _playerReadinessRecord.message =
+                    "Dynamic AllJoinedSlots projection changed; the current Activity occurrence is reconciling exact Session Player occurrences.";
+                projectionReadinessStateChanged =
+                    ContinuePlayerReadinessContribution();
+            }
+
             if (_playerReadinessRecord.completed &&
+                !projectionChanged &&
                 !HasProjectedSlotRevisionDelta(session))
             {
                 _playerReadinessRecord.appliedSessionRevision =
@@ -388,7 +422,8 @@ namespace Immersive.Framework.PlayerParticipation
                 return _lastReconcileResult;
             }
 
-            if (!HasReconcileRevisionDelta(session))
+            if (!projectionChanged &&
+                !HasReconcileRevisionDelta(session))
             {
                 _lastReconcileResult = BuildReconcileResult(
                     ActivityPlayerActorReconcileStatus.SucceededNoChange,
@@ -414,7 +449,8 @@ namespace Immersive.Framework.PlayerParticipation
             }
 
             var deltas = new List<ReconcilePassDelta>();
-            bool progressed = false;
+            bool progressed =
+                projectionChanged || projectionReadinessStateChanged;
             PlayerGameplayRuntimeHostModule gameplayRuntime = null;
             string gameplayRuntimeIssue = string.Empty;
 
@@ -862,6 +898,92 @@ namespace Immersive.Framework.PlayerParticipation
             }
 
             return null;
+        }
+
+        private bool TrySynchronizeDynamicProjection(
+            PlayerParticipationSnapshot session,
+            out bool changed,
+            out string issue)
+        {
+            changed = false;
+            issue = string.Empty;
+            if (_playerReadinessRecord == null ||
+                _playerReadinessRecord.activity == null ||
+                _playerReadinessRecord.activity
+                    .PlayerParticipationProjectionMode !=
+                    ActivityParticipationProjectionMode.AllJoinedSlots)
+            {
+                return true;
+            }
+
+            if (session == null || !session.IsInitialized)
+            {
+                issue =
+                    "Dynamic AllJoinedSlots reconciliation requires an initialized Session snapshot.";
+                return false;
+            }
+
+            var synchronized = new List<PlayerReadinessSlotRecord>();
+            for (int index = 0; index < session.Slots.Count; index++)
+            {
+                PlayerSlotRuntimeSnapshot slot = session.Slots[index];
+                if (!slot.IsJoined)
+                {
+                    continue;
+                }
+
+                PlayerReadinessSlotRecord existing =
+                    FindReadinessSlot(slot.PlayerSlotId);
+                if (existing != null && existing.joined)
+                {
+                    synchronized.Add(existing);
+                    continue;
+                }
+
+                synchronized.Add(new PlayerReadinessSlotRecord
+                {
+                    playerSlotId = slot.PlayerSlotId,
+                    slotRevision = slot.Revision,
+                    selectionRevision = slot.SelectionRevision,
+                    joined = true,
+                    selected = slot.HasSelectedActor,
+                    prepared = false,
+                    gameplayAdmitted = false,
+                    gameplayReady = false,
+                    selectionCreatedByLifecycle = false,
+                    preparationCreatedByLifecycle = false,
+                    gameplayCreatedByLifecycle = false,
+                    preparationToken = default,
+                    gameplayAdmissionToken = default,
+                    readinessReason = ResolveNextReadinessReason(
+                        _playerReadinessRecord.requirementLevel,
+                        slot),
+                    message =
+                        "Joined Session Player entered the active dynamic Activity projection and awaits canonical lifecycle reconciliation."
+                });
+            }
+
+            List<PlayerReadinessSlotRecord> previous =
+                _playerReadinessRecord.projectedSlots;
+            changed = previous.Count != synchronized.Count;
+            if (!changed)
+            {
+                for (int index = 0; index < synchronized.Count; index++)
+                {
+                    if (!ReferenceEquals(previous[index], synchronized[index]))
+                    {
+                        changed = true;
+                        break;
+                    }
+                }
+            }
+
+            if (changed)
+            {
+                _playerReadinessRecord.projectedSlots = synchronized;
+            }
+
+            return true;
         }
 
         private bool HasProjectedSlotRevisionDelta(

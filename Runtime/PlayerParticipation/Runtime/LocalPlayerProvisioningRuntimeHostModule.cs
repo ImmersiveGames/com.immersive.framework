@@ -551,12 +551,7 @@ namespace Immersive.Framework.PlayerParticipation
                     slotId,
                     out PlayerGameplayInputBindingSummary input) &&
                 input.IsBound;
-            bool cameraEligible = snapshot?.CameraEligibility != null &&
-                snapshot.CameraEligibility.TryGetSummary(
-                    slotId,
-                    out PlayerGameplayCameraEligibilitySummary camera) &&
-                camera.IsEligible;
-            return admitted || occupied || inputBound || cameraEligible;
+            return admitted || occupied || inputBound;
         }
 
         private static LocalPlayerJoinResult CreateRollbackFailure(

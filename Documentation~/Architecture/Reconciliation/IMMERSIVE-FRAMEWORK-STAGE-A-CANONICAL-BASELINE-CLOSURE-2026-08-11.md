@@ -1,5 +1,10 @@
 # Immersive Framework — Stage A Canonical Package Baseline Closure
 
+> Historical boundary notice — 2026-09-07: the Camera single-output item in this Stage A
+> record describes the then-current consumer baseline. IF-ADR-026 later accepted Camera
+> Subject/Assignment separation and explicit `1..N` output composition; implementation
+> and proof remain pending.
+
 Date: **2026-08-11**  
 Status: **CLOSED / APPROVED FOR FIRSTGAME STAGE B**  
 Type: **Documentation / certification / real-consumer handoff**

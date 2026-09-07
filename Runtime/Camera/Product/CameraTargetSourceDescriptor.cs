@@ -8,7 +8,7 @@ namespace Immersive.Framework.Camera
     /// Explicit target-source descriptor used by camera product authoring and diagnostics.
     /// A descriptor may include a logical source id for future runtime scopes, but it must not use object names or hierarchy paths as functional identity.
     /// </summary>
-    [FrameworkApiStatus(FrameworkApiStatus.Stable, "Stable single-output Camera product surface. Multi-output/split-screen is out of scope.")]
+    [FrameworkApiStatus(FrameworkApiStatus.Stable, "Stable per-Output Camera product surface for explicit Session 1..N topology; split-screen remains out of scope.")]
     public readonly struct CameraTargetSourceDescriptor
     {
         public CameraTargetSourceDescriptor(

@@ -206,6 +206,7 @@ namespace Immersive.Framework.PlayerParticipation
             _diagnostic = result != null
                 ? result.ToDiagnosticString()
                 : "Scene Player Actor adoption returned no result.";
+            ReconcileCameraSubjectAvailability(playerSlotId);
             return result;
         }
 
@@ -239,6 +240,7 @@ namespace Immersive.Framework.PlayerParticipation
             _diagnostic = result != null
                 ? result.ToDiagnosticString()
                 : "Scene Player Actor adoption release returned no result.";
+            ReconcileCameraSubjectAvailability(expectedToken.PlayerSlotId);
             return result;
         }
 

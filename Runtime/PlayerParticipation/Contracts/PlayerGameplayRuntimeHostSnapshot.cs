@@ -16,7 +16,6 @@ namespace Immersive.Framework.PlayerParticipation
             string sessionContextId,
             PlayerGameplayOccupancySnapshot occupancy,
             PlayerGameplayInputBindingSnapshot inputBinding,
-            PlayerGameplayCameraEligibilitySnapshot cameraEligibility,
             PlayerGameplayAdmissionSnapshot admission,
             PlayerGameplayRuntimeOperationStatus lastOperationStatus,
             string diagnostic)
@@ -25,7 +24,6 @@ namespace Immersive.Framework.PlayerParticipation
             SessionContextId = sessionContextId ?? string.Empty;
             Occupancy = occupancy;
             InputBinding = inputBinding;
-            CameraEligibility = cameraEligibility;
             Admission = admission;
             LastOperationStatus = lastOperationStatus;
             Diagnostic = diagnostic ?? string.Empty;
@@ -35,7 +33,6 @@ namespace Immersive.Framework.PlayerParticipation
         public string SessionContextId { get; }
         public PlayerGameplayOccupancySnapshot Occupancy { get; }
         public PlayerGameplayInputBindingSnapshot InputBinding { get; }
-        public PlayerGameplayCameraEligibilitySnapshot CameraEligibility { get; }
         public PlayerGameplayAdmissionSnapshot Admission { get; }
         public PlayerGameplayRuntimeOperationStatus LastOperationStatus { get; }
         public string Diagnostic { get; }
@@ -43,7 +40,6 @@ namespace Immersive.Framework.PlayerParticipation
         public int ConfiguredSlotCount => Occupancy?.ConfiguredSlotCount ?? 0;
         public int OccupiedCount => Occupancy?.OccupiedCount ?? 0;
         public int BoundInputCount => InputBinding?.BoundCount ?? 0;
-        public int CameraDecisionCount => (CameraEligibility?.EligibleCount ?? 0) + (CameraEligibility?.SkippedOptionalCount ?? 0);
         public int GameplayReadyCount => Admission?.ReadyCount ?? 0;
 
         internal static PlayerGameplayRuntimeHostSnapshot Unavailable(
@@ -52,7 +48,6 @@ namespace Immersive.Framework.PlayerParticipation
             return new PlayerGameplayRuntimeHostSnapshot(
                 false,
                 string.Empty,
-                null,
                 null,
                 null,
                 null,
@@ -65,7 +60,7 @@ namespace Immersive.Framework.PlayerParticipation
             return
                 $"initialized='{IsInitialized}' session='{SessionContextId}' " +
                 $"configured='{ConfiguredSlotCount}' occupied='{OccupiedCount}' " +
-                $"inputBound='{BoundInputCount}' cameraDecisions='{CameraDecisionCount}' " +
+                $"inputBound='{BoundInputCount}' " +
                 $"gameplayReady='{GameplayReadyCount}' " +
                 $"lastStatus='{LastOperationStatus}' diagnostic='{Diagnostic}'";
         }

@@ -7,13 +7,12 @@ namespace Immersive.Framework.Camera
     /// Declares the domain owner publishing camera intent.
     /// The owner does not directly control Cinemachine or an output.
     /// </summary>
-    [FrameworkApiStatus(FrameworkApiStatus.Stable, "Stable single-output Camera product surface. Multi-output/split-screen is out of scope.")]
+    [FrameworkApiStatus(FrameworkApiStatus.Stable, "Stable per-Output Camera product surface for explicit Session 1..N topology; split-screen remains out of scope.")]
     public enum CameraRequestOwnerKind
     {
         Undefined = 0,
         Route = 1,
         Activity = 2,
-        LocalPlayer = 3,
         Cutscene = 4,
         ModalPresentation = 5,
         Spectator = 6,

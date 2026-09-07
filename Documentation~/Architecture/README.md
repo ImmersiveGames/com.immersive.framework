@@ -1,6 +1,6 @@
 # Immersive Framework Architecture Documentation
 
-Last updated: **2026-09-02**
+Last updated: **2026-09-07**
 
 ## Normative architecture
 
@@ -265,11 +265,39 @@ Route spatial entry does not require a Player Actor occurrence `ActorId` to reso
 
 ### Camera Presentation / materialization
 
+Current normative Camera topology and assignment authority:
+
+[IF-ADR-026 — Camera Subjects, Assignment and Multi-Output Topology](ADRs/IF-ADR-026-Camera-Subjects-Assignment-and-Multi-Output-Topology.md)
+
+```text
+Player / Actor -> Camera Subject(s)
+Camera Assignment -> 0..N Subjects per View
+Camera Rig / Presentation -> how resolved Subjects are observed
+Camera Output -> explicit physical rendering destination
+Session -> 1..N explicitly composed outputs
+```
+
+Player count does not determine output count. CAMERA-026-A through H implement Subject
+availability, View/Assignment, shared multi-target composition, explicit 1..N Outputs
+and View-to-Output viewport policy.
+
+Current IF-ADR-026 validation state:
+
+```text
+A-H implementation      COMPLETE
+Shared runtime proof    PASS — 2026-09-09
+Split runtime proof     PENDING
+Full Camera aggregate  PENDING
+FIRSTGAME proof         PENDING
+```
+
+[IF-ADR-026 Shared Camera Technical Certification — 2026-09-09](Reconciliation/IF-ADR-026-SHARED-CAMERA-TECHNICAL-CERTIFICATION-2026-09-09.md)
+
 Current technical closure authority:
 
 [Camera Presentation Technical Certification — 2026-08-15](Reconciliation/IMMERSIVE-FRAMEWORK-CAMERA-PRESENTATION-TECHNICAL-CERTIFICATION-2026-08-15.md)
 
-Frozen model:
+Implemented and historically certified presentation model:
 
 ```text
 IF-ADR-004
@@ -472,9 +500,10 @@ physical replacement is the separate Manager-Provisioned IF-ADR-024 operation
 ### Camera
 
 - IF-ADR-004 — Accepted / reconciled / implemented; 004D is the current Default-output presentation correction.
+- IF-ADR-026 — Accepted architecture; CAMERA-026-A through H implemented. Shared Camera technical QA certified 2026-09-09; Split, Full Camera aggregate and FIRSTGAME proof pending.
 - IF-ADR-004D — Implemented on `master`; Sample 00 consumer proof PASS; focused post-cut Camera QA not yet recorded.
 - IF-ADR-010 — Accepted / reconciled for the implemented Camera Class C surface, including explicit required Default authoring in the output Inspector.
-- IF-ADR-022 — Accepted / implemented / technical QA certified for local presentation models; broader FIRSTGAME C6 promotion remains separate.
+- IF-ADR-022 — Presentation family/materialization accepted, implemented and technically certified; target selection is reopened by IF-ADR-026.
 
 ## Historical certification records
 

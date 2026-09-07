@@ -7,6 +7,11 @@ Primary system: **Camera**
 Normative target: **IF-ADR-004 — Camera Requests and Output Authority**  
 Product-surface governance: **IF-ADR-010 — Editor and Inspector Product Surface Authority**
 
+> Historical boundary notice — 2026-09-07: IF-ADR-026 preserves explicit Default
+> presentation semantics per output while accepting `1..N` explicitly composed outputs.
+> This record proves the former one-output consumer cut only; multi-output implementation,
+> QA and FIRSTGAME proof remain pending.
+
 ## Purpose
 
 004D closes a real-consumer Camera authority defect found while validating Sample 00.

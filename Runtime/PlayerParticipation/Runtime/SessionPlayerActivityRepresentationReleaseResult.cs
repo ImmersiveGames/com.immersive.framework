@@ -24,7 +24,6 @@ namespace Immersive.Framework.PlayerParticipation
             bool hadActivityRepresentation,
             bool hadPreparedActor,
             bool gameplayAdmissionReleased,
-            bool cameraReleased,
             bool inputReleased,
             bool occupancyReleased,
             bool preparedActorReleased,
@@ -45,7 +44,6 @@ namespace Immersive.Framework.PlayerParticipation
             HadActivityRepresentation = hadActivityRepresentation;
             HadPreparedActor = hadPreparedActor;
             GameplayAdmissionReleased = gameplayAdmissionReleased;
-            CameraReleased = cameraReleased;
             InputReleased = inputReleased;
             OccupancyReleased = occupancyReleased;
             PreparedActorReleased = preparedActorReleased;
@@ -67,7 +65,6 @@ namespace Immersive.Framework.PlayerParticipation
         internal bool HadActivityRepresentation { get; }
         internal bool HadPreparedActor { get; }
         internal bool GameplayAdmissionReleased { get; }
-        internal bool CameraReleased { get; }
         internal bool InputReleased { get; }
         internal bool OccupancyReleased { get; }
         internal bool PreparedActorReleased { get; }
@@ -93,7 +90,7 @@ namespace Immersive.Framework.PlayerParticipation
                 $"activity='{ActivityName}' owner='{(ActivityOwner.IsValid ? ActivityOwner.StableText : string.Empty)}' " +
                 $"preparation='{PreparationToken.StableText}' hadRepresentation='{HadActivityRepresentation}' " +
                 $"hadPreparedActor='{HadPreparedActor}' admissionReleased='{GameplayAdmissionReleased}' " +
-                $"cameraReleased='{CameraReleased}' inputReleased='{InputReleased}' occupancyReleased='{OccupancyReleased}' " +
+                $"inputReleased='{InputReleased}' occupancyReleased='{OccupancyReleased}' " +
                 $"preparedActorReleased='{PreparedActorReleased}' retainedActorCleanupPending='{ActorRetainedCleanupPending}' " +
                 $"activityLedgerRetired='{ActivityLedgerRetired}' " +
                 $"readinessContributionRetired='{ReadinessContributionRetired}' " +
@@ -115,7 +112,6 @@ namespace Immersive.Framework.PlayerParticipation
                 default,
                 default,
                 null,
-                false,
                 false,
                 false,
                 false,

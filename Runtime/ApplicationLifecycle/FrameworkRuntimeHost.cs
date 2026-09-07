@@ -67,7 +67,9 @@ namespace Immersive.Framework.ApplicationLifecycle
         private LoadingSurfaceRuntime _loadingSurfaceRuntime;
         private GlobalUiSceneRuntime _globalUiSceneRuntime;
         private CameraOutputInjectionRuntime _cameraOutputInjectionRuntime;
-        private CameraOutputSessionInjectionRuntime _cameraOutputSessionInjectionRuntime;
+        private CameraOutputSessionTopology _cameraOutputTopology;
+        private CameraViewOutputRuntime _cameraViewOutputRuntime;
+        private CameraSubjectAvailabilityInjectionRuntime _cameraSubjectAvailabilityInjectionRuntime;
         private int _objectEntryRuntimeContextRevision;
         private int _objectEntryRuntimeContextInvalidationCount;
         private string _lastObjectEntryRuntimeContextInvalidationReason = string.Empty;
@@ -465,9 +467,41 @@ namespace Immersive.Framework.ApplicationLifecycle
             }
 
             if (!_globalUiSceneRuntime.TryResolveCameraPresentation(
-                    out CameraOutputAuthoring cameraOutputSession,
-                    out SessionCameraOverride sessionCameraOverride,
+                    out IReadOnlyList<CameraOutputAuthoring> cameraOutputs,
+                    out CameraViewOutputPolicyAuthoring cameraViewOutputPolicy,
                     out string cameraDiagnostic))
+            {
+                var failed = FrameworkGameFlowStartResult.Failed(cameraDiagnostic);
+                _state = FrameworkRuntimeState.FromGameFlowResult(_gameApplication, failed);
+                return failed;
+            }
+
+            _cameraOutputTopology?.Dispose();
+            if (!CameraOutputSessionTopology.TryCreate(
+                    cameraOutputs,
+                    out _cameraOutputTopology,
+                    out cameraDiagnostic))
+            {
+                var failed = FrameworkGameFlowStartResult.Failed(cameraDiagnostic);
+                _state = FrameworkRuntimeState.FromGameFlowResult(_gameApplication, failed);
+                return failed;
+            }
+
+            if (!cameraViewOutputPolicy.TryBuildTopology(
+                    out CameraViewOutputTopology cameraViewOutputTopology,
+                    out cameraDiagnostic))
+            {
+                var failed = FrameworkGameFlowStartResult.Failed(cameraDiagnostic);
+                _state = FrameworkRuntimeState.FromGameFlowResult(_gameApplication, failed);
+                return failed;
+            }
+
+            _cameraViewOutputRuntime?.Dispose();
+            if (!CameraViewOutputRuntime.TryCreate(
+                    _cameraOutputTopology,
+                    cameraViewOutputTopology,
+                    out _cameraViewOutputRuntime,
+                    out cameraDiagnostic))
             {
                 var failed = FrameworkGameFlowStartResult.Failed(cameraDiagnostic);
                 _state = FrameworkRuntimeState.FromGameFlowResult(_gameApplication, failed);
@@ -476,17 +510,12 @@ namespace Immersive.Framework.ApplicationLifecycle
 
             _cameraOutputInjectionRuntime?.Dispose();
             _cameraOutputInjectionRuntime = new CameraOutputInjectionRuntime(
-                cameraOutputSession);
-            _cameraOutputSessionInjectionRuntime?.Dispose();
-            _cameraOutputSessionInjectionRuntime = null;
-            SetPlayerGameplayCameraOutputSession(cameraOutputSession);
-
-            if (sessionCameraOverride != null)
-            {
-                _cameraOutputSessionInjectionRuntime =
-                    new CameraOutputSessionInjectionRuntime(
-                        sessionCameraOverride);
-            }
+                _cameraOutputTopology,
+                cameraViewOutputTopology);
+            _cameraOutputInjectionRuntime.AttachRoots(
+                _globalUiSceneRuntime.PersistedRoots);
+            _cameraSubjectAvailabilityInjectionRuntime?.Dispose();
+            _cameraSubjectAvailabilityInjectionRuntime = null;
 
             _loadingSurfaceRuntime = CreateLoadingSurfaceRuntime(_globalUiSceneRuntime);
             _pauseSurfaceRuntime = CreatePauseSurfaceRuntime(_globalUiSceneRuntime);
@@ -523,7 +552,9 @@ namespace Immersive.Framework.ApplicationLifecycle
                 return failed;
             }
             ApplyPauseSurfaceSnapshot("FrameworkRuntimeHost", "framework-start");
-            var transitionOrchestrator = CreateTransitionOrchestrator(_globalUiSceneRuntime, cameraOutputSession);
+            var transitionOrchestrator = CreateTransitionOrchestrator(
+                _globalUiSceneRuntime,
+                _cameraOutputTopology);
             _gameFlowRuntime = new GameFlowRuntime(
                 _runtimeContentRuntime,
                 transitionOrchestrator,
@@ -555,6 +586,25 @@ namespace Immersive.Framework.ApplicationLifecycle
                     _gameApplication,
                     failed);
                 return failed;
+            }
+            if (_gameApplication.PlayerSessionEnabled)
+            {
+                if (!this.TryGetCameraSubjectAvailabilitySource(
+                        out ICameraSubjectAvailabilitySource cameraSubjectAvailability))
+                {
+                    var failed = FrameworkGameFlowStartResult.Failed(
+                        "Session Camera Subject availability could not be exposed to Camera composition.");
+                    _state = FrameworkRuntimeState.FromGameFlowResult(
+                        _gameApplication,
+                        failed);
+                    return failed;
+                }
+
+                _cameraSubjectAvailabilityInjectionRuntime =
+                    new CameraSubjectAvailabilityInjectionRuntime(
+                        cameraSubjectAvailability);
+                _cameraSubjectAvailabilityInjectionRuntime.AttachRoots(
+                    _globalUiSceneRuntime.PersistedRoots);
             }
             if (_gameApplication.PlayerSessionEnabled &&
                 !PlayerSessionScopedAccessRuntimeHostModule.TryAttach(
@@ -1678,7 +1728,7 @@ namespace Immersive.Framework.ApplicationLifecycle
 
         private ITransitionOrchestrator CreateTransitionOrchestrator(
             GlobalUiSceneRuntime globalUiSceneRuntime,
-            CameraOutputAuthoring cameraOutputSession)
+            CameraOutputSessionTopology cameraOutputTopology)
         {
             if (globalUiSceneRuntime == null)
             {
@@ -1713,7 +1763,7 @@ namespace Immersive.Framework.ApplicationLifecycle
 
             return new SessionCameraTransitionOrchestrator(
                 transitionOrchestrator,
-                cameraOutputSession);
+                cameraOutputTopology);
         }
 
 
@@ -2945,10 +2995,14 @@ namespace Immersive.Framework.ApplicationLifecycle
             _gameFlowRuntime = null;
             _activityReadinessBinding?.Dispose();
             _activityReadinessBinding = null;
-            _cameraOutputSessionInjectionRuntime?.Dispose();
-            _cameraOutputSessionInjectionRuntime = null;
+            _cameraSubjectAvailabilityInjectionRuntime?.Dispose();
+            _cameraSubjectAvailabilityInjectionRuntime = null;
             _cameraOutputInjectionRuntime?.Dispose();
             _cameraOutputInjectionRuntime = null;
+            _cameraViewOutputRuntime?.Dispose();
+            _cameraViewOutputRuntime = null;
+            _cameraOutputTopology?.Dispose();
+            _cameraOutputTopology = null;
             _pauseTimeScaleRuntime?.RestoreIfCaptured("framework-runtime-host-destroy");
 
 

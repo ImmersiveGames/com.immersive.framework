@@ -6,6 +6,11 @@ Type: **Architecture / Documentation**
 Primary system: **Camera**  
 Normative target: **IF-ADR-004 — Camera Requests and Output Authority**
 
+> Historical boundary notice — 2026-09-07: IF-ADR-026 reopened the single-output and
+> Player-owned presentation assumptions. This record remains valid evidence of the
+> 2026-08-10 baseline; it does not certify Camera Subjects, Assignment, shared
+> multi-target composition or multiple outputs.
+
 ## Purpose
 
 004A reconciled the normative Camera ADR with the package architecture that was

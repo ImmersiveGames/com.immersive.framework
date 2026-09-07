@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using Immersive.Framework.Actors;
-using Immersive.Framework.Camera;
 using Immersive.Framework.PlayerSlots;
 using Immersive.Framework.RuntimeContent;
 using Immersive.Framework.UnityInput;
@@ -11,7 +10,7 @@ namespace Immersive.Framework.PlayerParticipation
 {
     /// <summary>
     /// Session-scoped authority for the current Activity gameplay context. It projects
-    /// the already prepared Session physical Player into Activity-owned input, camera
+    /// the already prepared Session physical Player into Activity-owned input
     /// and gameplay admission capabilities; it never stages or replaces physical state.
     /// </summary>
     internal sealed class PlayerGameplayCurrentContextRuntime
@@ -20,11 +19,9 @@ namespace Immersive.Framework.PlayerParticipation
         {
             internal PlayerGameplayOccupancySummary occupancy;
             internal PlayerGameplayInputBindingSummary input;
-            internal PlayerGameplayCameraEligibilitySummary camera;
             internal PlayerGameplayAdmissionSummary admission;
             internal bool occupancyCreated;
             internal bool inputCreated;
-            internal bool cameraCreated;
             internal bool admissionCreated;
             internal bool nestedRollbackAttempted;
             internal bool nestedRollbackSucceeded;
@@ -35,7 +32,6 @@ namespace Immersive.Framework.PlayerParticipation
         private readonly IPlayerGameplayCurrentContextEndpointSource _endpointSource;
         private readonly PlayerGameplayOccupancyRuntimeContext _occupancyContext;
         private readonly PlayerGameplayInputBindingRuntimeContext _inputContext;
-        private readonly PlayerGameplayCameraEligibilityRuntimeContext _cameraContext;
         private readonly PlayerGameplayAdmissionRuntimeContext _admissionContext;
         private readonly string _sessionContextId;
         private readonly Dictionary<PlayerSlotId, PlayerGameplayInputReader>
@@ -47,7 +43,6 @@ namespace Immersive.Framework.PlayerParticipation
             IPlayerGameplayCurrentContextEndpointSource endpointSource,
             PlayerGameplayOccupancyRuntimeContext occupancyContext,
             PlayerGameplayInputBindingRuntimeContext inputContext,
-            PlayerGameplayCameraEligibilityRuntimeContext cameraContext,
             PlayerGameplayAdmissionRuntimeContext admissionContext,
             string sessionContextId)
         {
@@ -55,7 +50,6 @@ namespace Immersive.Framework.PlayerParticipation
             this._endpointSource = endpointSource;
             this._occupancyContext = occupancyContext;
             this._inputContext = inputContext;
-            this._cameraContext = cameraContext;
             this._admissionContext = admissionContext;
             this._sessionContextId = sessionContextId;
         }
@@ -65,7 +59,6 @@ namespace Immersive.Framework.PlayerParticipation
             IPlayerGameplayCurrentContextEndpointSource endpointSource,
             PlayerGameplayOccupancyRuntimeContext occupancyContext,
             PlayerGameplayInputBindingRuntimeContext inputContext,
-            PlayerGameplayCameraEligibilityRuntimeContext cameraContext,
             PlayerGameplayAdmissionRuntimeContext admissionContext,
             out PlayerGameplayCurrentContextRuntime context,
             out string issue)
@@ -74,8 +67,7 @@ namespace Immersive.Framework.PlayerParticipation
             issue = string.Empty;
             if (preparationModule == null || !preparationModule.IsReady ||
                 endpointSource == null || occupancyContext == null ||
-                inputContext == null || cameraContext == null ||
-                admissionContext == null ||
+                inputContext == null || admissionContext == null ||
                 !preparationModule.TryGetSnapshot(
                     out PlayerActorPreparationRuntimeHostSnapshot preparationHost) ||
                 preparationHost == null || !preparationHost.IsInitialized ||
@@ -90,7 +82,6 @@ namespace Immersive.Framework.PlayerParticipation
             if (string.IsNullOrEmpty(session) ||
                 !string.Equals(session, occupancyContext.SessionContextId, StringComparison.Ordinal) ||
                 !string.Equals(session, inputContext.SessionContextId, StringComparison.Ordinal) ||
-                !string.Equals(session, cameraContext.SessionContextId, StringComparison.Ordinal) ||
                 !string.Equals(session, admissionContext.SessionContextId, StringComparison.Ordinal))
             {
                 issue = "Current gameplay authorities belong to different or uninitialized Session identities.";
@@ -99,7 +90,7 @@ namespace Immersive.Framework.PlayerParticipation
 
             context = new PlayerGameplayCurrentContextRuntime(
                 preparationModule, endpointSource, occupancyContext, inputContext,
-                cameraContext, admissionContext, session);
+                admissionContext, session);
             return true;
         }
 
@@ -154,7 +145,7 @@ namespace Immersive.Framework.PlayerParticipation
 
             string buildIssue = issue;
             rollbackAttempted = chain.nestedRollbackAttempted || chain.admissionCreated ||
-                chain.cameraCreated || chain.inputCreated || chain.occupancyCreated;
+                chain.inputCreated || chain.occupancyCreated;
             if (rollbackAttempted)
             {
                 bool contextualRollback = TryReleaseContextualChain(
@@ -194,11 +185,6 @@ namespace Immersive.Framework.PlayerParticipation
             if (!released.Succeeded)
                 return released;
 
-            PlayerGameplayCameraEligibilityResult camera = _cameraContext.TryRelease(
-                playerSlotId, current.CameraEligibilityToken, source, reason);
-            if (!camera.Succeeded)
-                return released;
-
             _inputContext.TryRelease(playerSlotId, current.InputBindingToken, source, reason);
             return released;
         }
@@ -236,9 +222,7 @@ namespace Immersive.Framework.PlayerParticipation
             if (!_endpointSource.TryResolveGameplayEndpoints(preparation, out LocalPlayerHostAuthoring host,
                     out PlayerActorDeclaration actor, out UnityPlayerInputGateAdapter gate,
                     out PlayerGameplayInputReader gameplayInputReader,
-                    out PlayerGameplayCameraAuthoring cameraAuthoring,
-                    out PlayerGameplayCameraRequiredness cameraRequiredness,
-                    out CameraOutputAuthoring outputSession, out issue))
+                    out issue))
                 return false;
 
             PlayerGameplayInputBindingResult input = _inputContext.TryBind(
@@ -254,26 +238,8 @@ namespace Immersive.Framework.PlayerParticipation
             chain.input = input.CurrentSummary;
             chain.inputCreated = !input.PreviousSummary.IsBound && input.CurrentSummary.IsBound;
 
-            PlayerGameplayCameraEligibilityResult camera = cameraAuthoring != null
-                ? _cameraContext.TryConfirmEligibility(preparation, chain.occupancy, chain.input,
-                    outputSession, actor, cameraAuthoring, source, reason)
-                : cameraRequiredness == PlayerGameplayCameraRequiredness.Optional
-                    ? _cameraContext.TrySkipOptional(preparation, chain.occupancy, chain.input,
-                        outputSession, cameraRequiredness, source, reason)
-                    : null;
-            if (camera == null || !camera.Succeeded)
-            {
-                issue = camera == null
-                    ? "Required Player camera has no explicit authoring endpoint during current gameplay projection."
-                    : camera.ToDiagnosticString();
-                return false;
-            }
-            chain.camera = camera.CurrentSummary;
-            chain.cameraCreated = !camera.PreviousSummary.HasCurrentDecision &&
-                camera.CurrentSummary.HasCurrentDecision;
-
             PlayerGameplayAdmissionResult admission = _admissionContext.TryAdmit(
-                owner, chain.occupancy, chain.input, chain.camera, source, reason);
+                owner, chain.occupancy, chain.input, source, reason);
             if (!admission.Succeeded)
             {
                 chain.nestedRollbackAttempted = admission.RollbackAttempted;
@@ -407,13 +373,6 @@ namespace Immersive.Framework.PlayerParticipation
                     issue = "Could not release contextual gameplay admission after projection failure.";
                     return false;
                 }
-            }
-            if (chain.cameraCreated && chain.camera.Token.IsValid &&
-                !_cameraContext.TryRelease(chain.camera.PlayerSlotId, chain.camera.Token,
-                    source, reason).Succeeded)
-            {
-                issue = "Could not release contextual camera evidence after projection failure.";
-                return false;
             }
             if (chain.inputCreated && chain.input.Token.IsValid &&
                 !_inputContext.TryRelease(chain.input.PlayerSlotId, chain.input.Token,

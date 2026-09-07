@@ -1,24 +1,29 @@
 # IF-ADR-004 — Camera Requests and Output Authority
 
-Status: **Accepted / Reconciled / Implemented — Default Output cut consumer-proven 2026-08-17**  
-Last updated: **2026-08-17**  
-Package implementation: **Implemented**  
-Technical QA: **Full Camera QA 53/53 remains certified for the 2026-08-15 boundary; post-004D aggregate rerun not recorded**  
+Status: **Accepted / Reopened by IF-ADR-026 — implemented baseline is narrower than accepted architecture**
+Last updated: **2026-09-09**
+Package implementation: **Prior single-output baseline and IF-ADR-026 A-H implemented**
+Technical QA: **Full Camera QA 53/53 remains historical evidence for the 2026-08-15 boundary; IF-ADR-026 Shared runtime certified 2026-09-09; Split/full aggregate pending**  
 FIRSTGAME integration: **Partial PASS — Default output + gameplay readiness proven in Sample 00; broader ADR-022 C6 remains separate**  
-Related decisions: IF-ADR-001, IF-ADR-002, IF-ADR-003, IF-ADR-004A, IF-ADR-004B, IF-ADR-004C, IF-ADR-004D, IF-ADR-005, IF-ADR-006, IF-ADR-008, IF-ADR-010, IF-ADR-014, IF-ADR-021, IF-ADR-022  
+Related decisions: IF-ADR-001, IF-ADR-002, IF-ADR-003, IF-ADR-004A, IF-ADR-004B, IF-ADR-004C, IF-ADR-004D, IF-ADR-005, IF-ADR-006, IF-ADR-008, IF-ADR-010, IF-ADR-014, IF-ADR-021, IF-ADR-022, IF-ADR-026
 Current reconciliation: [IF-ADR-004A](../Reconciliation/IF-ADR-004A-Camera-Authority-Normative-Reconciliation-2026-08-10.md), [IF-ADR-004B](../Reconciliation/IF-ADR-004B-Camera-Negative-Integrity-Certification-2026-08-10.md), [IF-ADR-004C](IF-ADR-004C-Camera-Owner-Lifetime-Integrity-2026-08-10.md), [IF-ADR-004D](../Reconciliation/IF-ADR-004D-Camera-Default-Output-Presentation-Authority-2026-08-17.md), and [Camera Presentation Technical Certification — 2026-08-15](../Reconciliation/IMMERSIVE-FRAMEWORK-CAMERA-PRESENTATION-TECHNICAL-CERTIFICATION-2026-08-15.md).
 
 > This ADR remains the normative Camera **request/output authority**.
 > IF-ADR-022 extends local Camera rig presentation/materialization only.
 > IF-ADR-004D separates persistent Default output presentation from normal Camera request arbitration.
 > Presentation Model and Default presentation never become request precedence policy.
+> IF-ADR-026 reopens output cardinality and separates Camera Subject, Assignment,
+> Rig/Presentation and Output. Where this ADR says the product has exactly one output or
+> treats ordinary Local Player participation as a complete Player-owned request, that is
+> the implemented historical baseline, not the accepted target architecture.
 
 ## 1. Context
 
-Camera presentation requires one explicit physical output authority while Session,
-Route, Activity and eligible Local Player scopes may request Camera presentation
-without directly mutating the shared output or discovering an implicit current
-Camera.
+Each Camera Output requires one explicit physical output authority. Session, Route,
+Activity and specialized Local Player scopes may request Camera presentation without
+directly mutating an output or discovering an implicit current Camera. Ordinary Player
+participation contributes Camera Subjects under IF-ADR-026 and does not intrinsically
+own a request, rig or output.
 
 The accepted pipeline is:
 
@@ -34,9 +39,10 @@ The output also owns one explicit persistent **Default Camera Rig**. That Defaul
 is the physical presentation used when no normal request wins and when explicit
 system presentation temporarily forces Default.
 
-The accepted product supports **one persistent Camera output per Session**.
-Multi-output, split-screen and concurrent per-player physical outputs are separate
-future contracts.
+The accepted product supports **one or more explicitly composed Camera Outputs per
+Session**. One output remains the common/default composition. Multi-output and
+split-screen are accepted architecture but remain unimplemented. Player count never
+determines output count.
 
 ## 2. Decision — authority chain
 
@@ -44,7 +50,7 @@ Normal Camera request authority remains:
 
 ```text
 Camera request source
-  Session / Route / Activity / eligible Local Player
+  Session / Route / Activity / specialized Local Player policy
         ↓
 typed CameraRequest + explicit ownership/lifetime evidence
         ↓
@@ -84,16 +90,20 @@ No global Camera manager, service locator, static request registry,
 
 ## 3. Physical output authority
 
-For the single-output product boundary:
+For every explicitly composed output:
 
-- exactly one persistent `CameraOutputAuthoring` is authored in Session
+- exactly one `CameraOutputAuthoring` represents that `CameraOutputId` in Session
   composition;
 - it references exactly one explicit Unity `Camera` and one explicit
   `CinemachineBrain` on the same physical output GameObject;
 - it references exactly one explicit persistent Default `CameraRigComposer`;
 - it exposes one explicit `CameraOutputId`;
 - consumers receive that output through explicit typed composition/injection;
-- duplicate persistent outputs are invalid composition and must block.
+- duplicate `CameraOutputId` or ambiguous output bindings are invalid and must block.
+
+Session composition accepts `1..N` such outputs. The existing validator/runtime host
+still enforce exactly one persistent output and therefore require migration. Multiple
+outputs must be explicit composition; they are never synthesized from Player count.
 
 A local Camera rig must never create or claim:
 
@@ -348,7 +358,9 @@ IF-ADR-022 materialization does not change this transactional boundary.
 
 ## 9. Scope ownership and component lifetime
 
-Camera ownership has two distinct lifetime layers.
+The implemented request-publication baseline has two lifetime layers. IF-ADR-026 adds
+independent Subject, Assignment, Rig/View and Output lifetimes; the rules below remain
+valid only for request ownership/publication.
 
 ### 9.1 Logical owner lifetime
 
@@ -362,7 +374,7 @@ Activity
 Session normal override
   -> SessionCameraOverride component availability
 
-Local Player
+Specialized Local Player request
   -> explicit Player eligibility/publication boundary
 
 Output Default
@@ -406,7 +418,7 @@ without silent republish remain certified by IF-ADR-004C for normal requests.
 
 Target resolution remains explicit and typed.
 
-Current target-source architecture may resolve:
+Current target-source vocabulary declares:
 
 ```text
 Explicit Transform
@@ -416,6 +428,12 @@ Route
 Activity
 Player Group
 ```
+
+Only explicit Transform authoring is implemented in the package today; `PlayerGroup` is
+an enum value without an implemented provider or multi-target resolved contract.
+IF-ADR-026 generalizes the future model to Camera Subjects and non-Player-specific
+Subject Sets. Assignment selects Subjects; `CameraRigComposer` consumes resolved target
+evidence for presentation.
 
 Required target failures block.
 
@@ -725,14 +743,12 @@ rewritten to pretend they tested later contracts.
 
 ## 16. Non-goals / deferred work
 
-This ADR does not authorize:
+This ADR continues to reject:
 
 - global `CameraManager` / service locator / static request registry;
 - timing-based priority;
 - persistent Default represented by a synthetic Camera request;
 - magic precedence for Default/system presentation;
-- multiple simultaneous physical outputs;
-- split-screen;
 - concurrent per-player physical output ownership;
 - generic cross-feature request broker;
 - second Composer around the same local rig intent;
@@ -745,8 +761,10 @@ This ADR does not authorize:
 Presentation features deliberately deferred by IF-ADR-022 include Orbital /
 Free Look input authority, spline/dolly, group framing product models, 2D framed
 follow, shake/noise/impulse product authoring, Third Person Aim, advanced camera
-collision policy, cinematic sequencing, advanced blend policy, multi-output,
-split-screen and XR Camera authority.
+collision policy, cinematic sequencing, advanced blend policy and XR Camera authority.
+Group framing, multi-output and split-screen are implemented through IF-ADR-026 A-H and
+are no longer architecturally rejected. Shared runtime is certified; Split remains
+runtime-pending.
 
 ## 17. Current disposition
 
@@ -754,8 +772,11 @@ split-screen and XR Camera authority.
 Architecture
   ACCEPTED
 
-Package — current single-output authority
-  IMPLEMENTED
+Package — prior single-output authority
+  IMPLEMENTED HISTORICAL BASELINE
+
+Package — IF-ADR-026 Subject / Assignment / explicit multi-output topology
+  CAMERA-026-A THROUGH H IMPLEMENTED
 
 Package — explicit Default output authority / IF-ADR-004D
   IMPLEMENTED ON MASTER
@@ -778,15 +799,18 @@ Technical QA — pre-004D boundary
 Post-004D focused/aggregate Camera QA
   NOT YET RECORDED
 
+IF-ADR-026 Shared Camera technical QA
+  CERTIFIED — 2026-09-09
+
+IF-ADR-026 Split / Full Camera aggregate
+  PENDING
+
 FIRSTGAME / Sample 00
   Default-output authoring PASS
   Activity Ready
   Gameplay input bound
   Move / Look consumed
   broader ADR-022 C6 still separate
-
-Current runtime architecture blocker
-  NONE for the accepted 004D Default/request authority split
 
 Current authoring artifact follow-up
   Persistent Content source/template predates serialized Default field and must be refreshed

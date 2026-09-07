@@ -1,7 +1,7 @@
 # IF-TRACK — Immersive Framework
 
 Status: **Active — current implemented baseline + Stage B consumer evidence**  
-Last updated: **2026-09-02**
+Last updated: **2026-09-08**
 
 ## Authority and status model
 
@@ -116,7 +116,7 @@ Local Multiplayer remains blocked by public Slot/device/InputUser/control-scheme
 | 001 | ACCEPTED / RECONCILED / IMPLEMENTED | core evidence preserved; Editor startup isolation proven | current |
 | 002 | ACCEPTED / RECONCILED / IMPLEMENTED | feature-owned | current |
 | 003 | ACCEPTED / RECONCILED / IMPLEMENTED; ADR-023 structural reconciliation current | Player aggregate 27/27 + Manager functional 14/14 | current |
-| 004 | ACCEPTED / RECONCILED / IMPLEMENTED | Camera 53/53 for certified boundary | current; broader consumer proof feature-owned |
+| 004 | ACCEPTED / REOPENED BY 026; prior single-output baseline implemented; 026 A-H implemented | Camera 53/53 remains historical; IF-ADR-026 Shared runtime certified 2026-09-09 | Split/full aggregate and FIRSTGAME proof pending |
 | 005 | ACCEPTED / RECONCILED / IMPLEMENTED | Input Gate / Restart / Pause certified | current |
 | 006 | ACCEPTED / RECONCILED / IMPLEMENTED | technical Transition/Loading certified | Game Flow consumer PASS |
 | 007 | ACCEPTED / RECONCILED / IMPLEMENTED | readiness policies certified | Game Flow consumer PASS |
@@ -134,9 +134,11 @@ Local Multiplayer remains blocked by public Slot/device/InputUser/control-scheme
 | 019 | ACCEPTED / RECONCILED / IMPLEMENTED | current aggregate + historical physical-lifetime certification | closed |
 | 020 | ACCEPTED / RECONCILED / IMPLEMENTED | ADR020-H + aggregate + historical certification | closed |
 | 021 | ACCEPTED / RECONCILED / IMPLEMENTED | Route 18/18 + Activity 23/23 + aggregate 27/27 | Model B current |
-| 022 | ACCEPTED / IMPLEMENTED | presentation 14/14; Camera aggregate boundary certified | broader FIRSTGAME C6 remains separate |
+| 022 | PRESENTATION FAMILY ACCEPTED / IMPLEMENTED; target selection reopened and implemented by 026 | presentation 14/14 historical; IF-ADR-026 Shared runtime certified | Split/full aggregate and FIRSTGAME proof pending |
 | 023 | ACCEPTED / authored composition implementation complete; ADR-023A occurrence identity boundary current | Manager functional 14/14 + Pause/Input/Gate 8/8 + FIRSTGAME Scene-Provided readiness PASS | Physical Scene-Provided validation/resolution/adoption is canonical; derived evidence, runtime evidence validation, Player Apply/Rebuild and the obsolete evidence type are removed |
 | 024 | ACCEPTED / RECONCILED / IMPLEMENTED — Manager-Provisioned V1 | Full Player QA 16/16 PASS including positive `actor-replace` | public `RequestReplacePreparedActor(...)` current; Scene-Provided prepared physical replacement deferred |
+| 025 | ACCEPTED / IMPLEMENTATION STATUS OWNED BY PLAYER TRACK | feature-owned | Camera remains outside the Player input contract |
+| 026 | ACCEPTED / CAMERA-026-A–H IMPLEMENTED | Shared Camera runtime CERTIFIED — 2026-09-09 | Split/full aggregate and FIRSTGAME pending; explicit topology remains independent from Player count |
 
 ## Current Activity content / visibility closure — IF-ADR-009 — 2026-08-30
 
@@ -289,7 +291,7 @@ Certification and reconciliation records:
 
 1. **Player** — Scene Player physical/contextual lifecycle is proven through `GameplayReady`; Player Provisioning and Character Selection are proven. Manager-Provisioned prepared Actor replacement is technically certified in QA. Remaining Getting Started work is game-owned Presentation/gameplay completeness, not Framework Player readiness. Local Multiplayer remains blocked by the public Slot/device/input contract.
 2. **Loading / Readiness** — positive Game Flow consumer lane proven; negative/terminal robustness remains QA-owned.
-3. **Camera** — Default-output integration proven; broader ADR-022 consumer coverage remains feature-owned.
+3. **Camera** — IF-ADR-026 architecture accepted; CAMERA-026-A through H implement Subject availability, logical View/Assignment, the explicit presentation seam, shared multi-Subject Follow, event-driven shared composition, removal of ordinary per-Player requests, the explicit Session 1..N Output topology and explicit View→Output normalized viewport policy. Shared Camera runtime proof is certified as of 2026-09-09. Split runtime, Full Camera aggregate and FIRSTGAME proof remain pending. Existing Default-output and ADR-022 evidence remains historical baseline proof only.
 4. **Pause** — runtime certified; remaining work is consumer authoring/usability only.
 5. **Audio** — BGM technical + consumer integration proven; API maturity promotion is separate.
 6. **Progression Save** — real consumer persistence/usability proof remains.
@@ -303,7 +305,7 @@ Certification and reconciliation records:
 - heterogeneous per-Slot Host Provisioning;
 - Scene-Provided prepared Actor replacement, pending an explicit physical-ownership contract;
 - generic respawn/checkpoint/dynamic Spawn beyond ADR-021;
-- additional Camera families / split-screen / multiple outputs;
+- IF-ADR-026 Camera after Shared certification: Split runtime, Full Camera aggregate and FIRSTGAME shared/split-screen certification;
 - application-scoped stable-ID resolver;
 - Session-scoped frame-rate override;
 - persisted frame-rate preference integration;
@@ -319,6 +321,8 @@ Certification and reconciliation records:
 - [IF-ADR-020 — Session Player Leave and Resource Release Authority](../ADRs/IF-ADR-020-Session-Player-Leave-and-Resource-Release-Authority.md)
 - [IF-ADR-021 — Route Spatial Entry and Activity Explicit Relocation](../ADRs/IF-ADR-021-Activity-Player-Actor-Initial-Placement-Authority.md)
 - [IF-ADR-022 — Camera Rig Presentation Models](../ADRs/IF-ADR-022-Camera-Rig-Presentation-Models-and-Materialization-Authority.md)
+- [IF-ADR-026 — Camera Subjects, Assignment and Multi-Output Topology](../ADRs/IF-ADR-026-Camera-Subjects-Assignment-and-Multi-Output-Topology.md)
+- [IF-ADR-026 Shared Camera Technical Certification — 2026-09-09](../Reconciliation/IF-ADR-026-SHARED-CAMERA-TECHNICAL-CERTIFICATION-2026-09-09.md)
 - [IF-ADR-023 — Player Actor Runtime Host and Presentation Authority](../ADRs/IF-ADR-023-Player-Actor-Runtime-Host-and-Presentation-Authority.md)
 - [IF-ADR-024 — Prepared Actor Replacement Public Contract](../ADRs/IF-ADR-024-Prepared-Actor-Replacement-Public-Contract.md)
 - [IF-ADR-009 Contribution / Visibility Technical Certification — 2026-08-30](../Reconciliation/IF-ADR-009-CONTRIBUTION-VISIBILITY-TECHNICAL-CERTIFICATION-2026-08-30.md)

@@ -18,10 +18,11 @@ namespace Immersive.Framework.Editor.CameraAuthoring
                 MessageType.Info);
 
             DrawPropertiesExcluding(serializedObject,
-                "m_Script", "scopeId", "requestId", "rigComposer", "targetSource", "precedence", "tieBreakerId",
+                "m_Script", "outputId", "scopeId", "requestId", "rigComposer", "targetSource", "precedence", "tieBreakerId",
                 "logDiagnostics", "overrideActive", "ownerActive", "lastStatus", "lastDiagnostic", "outputSession");
 
             EditorGUILayout.LabelField("Override", EditorStyles.boldLabel);
+            EditorGUILayout.PropertyField(serializedObject.FindProperty("outputId"));
             EditorGUILayout.PropertyField(serializedObject.FindProperty("scopeId"));
             EditorGUILayout.PropertyField(serializedObject.FindProperty("requestId"));
             EditorGUILayout.PropertyField(serializedObject.FindProperty("rigComposer"));
@@ -37,7 +38,7 @@ namespace Immersive.Framework.Editor.CameraAuthoring
                     "Camera Output",
                     inspectedBinding.OutputSession != null
                         ? inspectedBinding.OutputSession.OutputIdText
-                        : "Injected at runtime");
+                        : $"Awaiting '{inspectedBinding.OutputIdText}'");
                 EditorGUILayout.PropertyField(serializedObject.FindProperty("logDiagnostics"));
             }
 

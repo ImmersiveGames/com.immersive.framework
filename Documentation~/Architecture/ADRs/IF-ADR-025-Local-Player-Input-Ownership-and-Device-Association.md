@@ -435,7 +435,10 @@ per-device Camera
 per-Slot Camera output
 ```
 
-The current Camera product remains single-output unless a separate Camera ADR changes that boundary.
+IF-ADR-026 changes the Camera boundary to explicit `1..N` output composition and separates
+Player Subject contribution from Camera ownership. CAMERA-026-A through H are implemented;
+the Shared runtime boundary is certified while Split/full aggregate and FIRSTGAME remain
+pending.
 
 A Local Multiplayer Sample may therefore use one Activity-owned shared Camera while independently proving multiple Player input ownership.
 
@@ -710,7 +713,7 @@ Clearing the Framework technical gate does **not** itself certify the FIRSTGAME 
 - Silent fallback from explicit device Join to device-less Join.
 - Reusing old input ownership after Slot reuse.
 - Duplicating gameplay input authority outside the existing binding/reader chain.
-- Split-screen or multi-output Camera work.
+- implementation of split-screen or multi-output Camera work (owned by IF-ADR-026).
 - Treating device disconnect by itself as Session Player Leave.
 
 ## Consequences
@@ -787,4 +790,4 @@ Remaining work is consumer/sample work:
 - Device reassignment during a still-current Player occurrence.
 - Device disconnect/reconnect policy beyond current Unity Input System behavior.
 - Scene-Provided device acquisition/rebinding semantics beyond observable adopted `PlayerInput` evidence.
-- Split-screen or multi-output Camera architecture.
+- Split-screen or multi-output Camera implementation details under IF-ADR-026.

@@ -1,4 +1,3 @@
-using Immersive.Framework.Camera;
 using Immersive.Framework.PlayerParticipation;
 using Immersive.Framework.GameFlow.Diagnostics;
 using Immersive.Framework.RouteLifecycle;
@@ -7,15 +6,8 @@ namespace Immersive.Framework.ApplicationLifecycle
 {
     internal sealed partial class FrameworkRuntimeHost
     {
-        private CameraOutputAuthoring _playerGameplayCameraOutputSession;
         private IActivityPlayerLifecycleAdmissionRuntime
             _playerActivityLifecycleAdmissionRuntime;
-
-        internal void SetPlayerGameplayCameraOutputSession(
-            CameraOutputAuthoring outputSession)
-        {
-            _playerGameplayCameraOutputSession = outputSession;
-        }
 
 
         internal void SetActivityPlayerLifecycleAdmissionRuntime(
@@ -82,20 +74,5 @@ namespace Immersive.Framework.ApplicationLifecycle
                 _playerActivityLifecycleAdmissionRuntime);
         }
 
-        internal bool TryGetPlayerGameplayCameraOutputSession(
-            out CameraOutputAuthoring outputSession,
-            out string issue)
-        {
-            outputSession = _playerGameplayCameraOutputSession;
-            if (outputSession == null)
-            {
-                issue =
-                    "FrameworkRuntimeHost has no current CameraOutputAuthoring for Player gameplay camera publication.";
-                return false;
-            }
-
-            issue = string.Empty;
-            return true;
-        }
     }
 }

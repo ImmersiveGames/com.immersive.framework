@@ -7,7 +7,7 @@ namespace Immersive.Framework.Camera
     /// <summary>
     /// Result emitted when a camera product surface resolves follow/look-at targets from an explicit source.
     /// </summary>
-    [FrameworkApiStatus(FrameworkApiStatus.Stable, "Stable single-output Camera product surface. Multi-output/split-screen is out of scope.")]
+    [FrameworkApiStatus(FrameworkApiStatus.Stable, "Stable per-Output Camera product surface for explicit Session 1..N topology; split-screen remains out of scope.")]
     public readonly struct CameraTargetResolveResult
     {
         public CameraTargetResolveResult(

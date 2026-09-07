@@ -14,7 +14,7 @@ namespace Immersive.Framework.Camera
     /// </summary>
     [DisallowMultipleComponent]
     [AddComponentMenu("Immersive Framework/Camera/Camera Output Authoring")]
-    [FrameworkApiStatus(FrameworkApiStatus.Stable, "Stable single-output Camera product surface. Multi-output/split-screen is out of scope.")]
+    [FrameworkApiStatus(FrameworkApiStatus.Stable, "Stable explicit Camera Output authoring for a Session 1..N topology.")]
     public sealed class CameraOutputAuthoring : MonoBehaviour
     {
         [SerializeField] private string outputId;
@@ -62,14 +62,7 @@ namespace Immersive.Framework.Camera
 
         private void OnDestroy()
         {
-            if (_session != null)
-            {
-                _session.Teardown();
-            }
-
-            _session = null;
-            _applicator = null;
-            _context = null;
+            TeardownSession("AuthoringDestroyed");
         }
 
         public bool TryInitialize(out string diagnostic)
@@ -178,6 +171,21 @@ namespace Immersive.Framework.Camera
 
             resolvedSession = _session;
             return true;
+        }
+
+        internal void TeardownSession(string reason)
+        {
+            if (_session != null)
+            {
+                _session.Teardown();
+            }
+            _session = null;
+            _applicator = null;
+            _context = null;
+            SetDiagnostic(
+                "TornDown",
+                $"Camera output session torn down. output='{OutputIdText}' reason='{reason.NormalizeTextOrFallback("Unspecified")}'.",
+                false);
         }
 
         private void SetDiagnostic(

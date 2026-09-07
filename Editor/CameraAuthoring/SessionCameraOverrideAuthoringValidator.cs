@@ -39,7 +39,10 @@ namespace Immersive.Framework.Editor.CameraAuthoring
             }
 
             ValidateIdentity(binding, issues);
-            ValidateOutput(binding.PersistentOutputSession, issues);
+            if (!binding.RequestedOutputId.IsValid)
+            {
+                issues.Add("Assign the exact Camera Output ID that receives this request.");
+            }
             ValidateRig(binding.RigComposer, issues);
 
             if (binding.TargetSource == null)
@@ -71,44 +74,6 @@ namespace Immersive.Framework.Editor.CameraAuthoring
             {
                 issues.Add(
                     "Generate or assign a Tie Breaker ID.");
-            }
-        }
-
-        private static void ValidateOutput(
-            CameraOutputAuthoring output,
-            ICollection<string> issues)
-        {
-            if (output == null)
-            {
-                issues.Add(
-                    "Assign the persistent Camera Output Authoring.");
-                return;
-            }
-
-            if (string.IsNullOrWhiteSpace(output.OutputIdText))
-            {
-                issues.Add(
-                    "The assigned Camera Output requires an explicit Output ID.");
-            }
-
-            if (output.UnityCamera == null)
-            {
-                issues.Add(
-                    "The assigned Camera Output requires a Unity Camera reference.");
-            }
-
-            if (output.CinemachineBrain == null)
-            {
-                issues.Add(
-                    "The assigned Camera Output requires a Cinemachine Brain reference.");
-            }
-
-            if (output.UnityCamera != null &&
-                output.CinemachineBrain != null &&
-                output.UnityCamera.gameObject != output.CinemachineBrain.gameObject)
-            {
-                issues.Add(
-                    "The assigned Unity Camera and Cinemachine Brain must be on the same GameObject.");
             }
         }
 

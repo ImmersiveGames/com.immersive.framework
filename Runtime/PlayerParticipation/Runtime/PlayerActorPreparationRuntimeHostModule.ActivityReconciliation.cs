@@ -4,22 +4,27 @@ namespace Immersive.Framework.PlayerParticipation
     {
         private PlayerActivityReconciliationRuntimeHostModule
             _activityReconciliationRuntime;
+        private bool _activityReconciliationPending;
+        private bool _sessionChangeReconciliationBound;
 
         /// <summary>
-        /// Observes only committed Session snapshots. A revision produced by
-        /// default Actor selection during reconcile is handled on the next
-        /// LateUpdate pass, preventing recursive reconciliation.
+        /// Processes only explicitly queued Session/Activity changes after the
+        /// frame's synchronous Player operations have completed. A revision
+        /// produced by default Actor selection queues a later pass instead of
+        /// recursively reconciling.
         /// </summary>
         private void LateUpdate()
         {
             if (_shuttingDown ||
                 !IsReady ||
                 _participationContext == null ||
-                _activityLifecycleParticipant == null)
+                _activityLifecycleParticipant == null ||
+                !_activityReconciliationPending)
             {
                 return;
             }
 
+            _activityReconciliationPending = false;
             if (_activityReconciliationRuntime == null)
             {
                 _activityReconciliationRuntime =
@@ -31,6 +36,51 @@ namespace Immersive.Framework.PlayerParticipation
                 _activityLifecycleParticipant,
                 nameof(PlayerActorPreparationRuntimeHostModule),
                 "stable-session-revision-or-activity-occurrence");
+        }
+
+        internal void BindActivityReconciliation()
+        {
+            if (_sessionChangeReconciliationBound ||
+                _participationContext == null)
+            {
+                return;
+            }
+
+            _participationContext.Changed += OnSessionChangedForActivity;
+            _sessionChangeReconciliationBound = true;
+            _activityReconciliationPending = true;
+        }
+
+        internal void UnbindActivityReconciliation()
+        {
+            if (_sessionChangeReconciliationBound &&
+                _participationContext != null)
+            {
+                _participationContext.Changed -= OnSessionChangedForActivity;
+            }
+
+            _sessionChangeReconciliationBound = false;
+            _activityReconciliationPending = false;
+        }
+
+        internal void RequestActiveActivityReconciliation()
+        {
+            if (!_shuttingDown && IsReady)
+            {
+                _activityReconciliationPending = true;
+            }
+        }
+
+        private void OnSessionChangedForActivity(PlayerSessionChange change)
+        {
+            if (change == null ||
+                (change.Kind != PlayerSessionChangeKind.SlotAllocationChanged &&
+                 change.Kind != PlayerSessionChangeKind.ActorSelectionChanged))
+            {
+                return;
+            }
+
+            _activityReconciliationPending = true;
         }
 
         internal bool TryGetActivityReconciliationSnapshot(

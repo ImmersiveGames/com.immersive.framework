@@ -7,7 +7,7 @@ namespace Immersive.Framework.Camera
     /// Resolved follow/look-at targets for a camera rig.
     /// These are explicit targets; there is no Camera.main or hierarchy fallback.
     /// </summary>
-    [FrameworkApiStatus(FrameworkApiStatus.Stable, "Stable single-output Camera product surface. Multi-output/split-screen is out of scope.")]
+    [FrameworkApiStatus(FrameworkApiStatus.Stable, "Stable per-Output Camera product surface for explicit Session 1..N topology; split-screen remains out of scope.")]
     public readonly struct CameraResolvedTargets
     {
         public CameraResolvedTargets(Transform followTarget, Transform lookAtTarget)

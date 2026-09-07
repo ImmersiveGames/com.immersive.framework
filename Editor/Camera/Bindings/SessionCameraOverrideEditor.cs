@@ -7,7 +7,7 @@ namespace Immersive.Framework.Editor.Camera.Bindings
     [CustomEditor(typeof(SessionCameraOverride))]
     public sealed class SessionCameraOverrideEditor : UnityEditor.Editor
     {
-        private SerializedProperty _persistentOutputSession;
+        private SerializedProperty _outputId;
         private SerializedProperty _scopeId;
         private SerializedProperty _requestId;
         private SerializedProperty _rigComposer;
@@ -27,8 +27,7 @@ namespace Immersive.Framework.Editor.Camera.Bindings
 
         private void OnEnable()
         {
-            _persistentOutputSession =
-                serializedObject.FindProperty("persistentOutputSession");
+            _outputId = serializedObject.FindProperty("outputId");
             _scopeId = serializedObject.FindProperty("scopeId");
             _requestId = serializedObject.FindProperty("requestId");
             _rigComposer = serializedObject.FindProperty("rigComposer");
@@ -83,10 +82,10 @@ namespace Immersive.Framework.Editor.Camera.Bindings
                 EditorStyles.boldLabel);
 
             EditorGUILayout.PropertyField(
-                _persistentOutputSession,
+                _outputId,
                 new GUIContent(
-                    "Camera Output",
-                    "Persistent Camera Output Authoring that receives this request."));
+                    "Camera Output ID",
+                    "Exact persistent Camera Output ID that receives this request."));
             EditorGUILayout.PropertyField(
                 _rigComposer,
                 new GUIContent(

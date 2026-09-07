@@ -23,7 +23,6 @@ namespace Immersive.Framework.PlayerParticipation
         private PlayerActorPreparationRuntimeHostModule _preparationModule;
         private PlayerGameplayOccupancyRuntimeContext _occupancyContext;
         private PlayerGameplayInputBindingRuntimeContext _inputContext;
-        private PlayerGameplayCameraEligibilityRuntimeContext _cameraContext;
         private PlayerGameplayAdmissionRuntimeContext _admissionContext;
         private PlayerGameplayCurrentContextRuntime _currentGameplayContext;
         private IActivityPlayerLifecycleAdmissionRuntime _activityRelocationContext;
@@ -38,7 +37,6 @@ namespace Immersive.Framework.PlayerParticipation
             _preparationModule != null &&
             _occupancyContext != null &&
             _inputContext != null &&
-            _cameraContext != null &&
             _admissionContext != null &&
             _currentGameplayContext != null;
 
@@ -146,21 +144,9 @@ namespace Immersive.Framework.PlayerParticipation
                 return false;
             }
 
-            if (!PlayerGameplayCameraEligibilityRuntimeContext.TryCreate(
-                    targetOccupancy,
-                    targetInput,
-                    out PlayerGameplayCameraEligibilityRuntimeContext targetCamera,
-                    out issue))
-            {
-                _diagnostic = "P3K.4 composition failed. " + issue;
-                issue = _diagnostic;
-                return false;
-            }
-
             if (!PlayerGameplayAdmissionRuntimeContext.TryCreate(
                     targetOccupancy,
                     targetInput,
-                    targetCamera,
                     out PlayerGameplayAdmissionRuntimeContext targetAdmission,
                     out issue))
             {
@@ -179,7 +165,6 @@ namespace Immersive.Framework.PlayerParticipation
                     endpointSource,
                     targetOccupancy,
                     targetInput,
-                    targetCamera,
                     targetAdmission,
                     out PlayerGameplayCurrentContextRuntime targetCurrentGameplay,
                     out issue))
@@ -194,7 +179,6 @@ namespace Immersive.Framework.PlayerParticipation
             _preparationModule = targetPreparation;
             _occupancyContext = targetOccupancy;
             _inputContext = targetInput;
-            _cameraContext = targetCamera;
             _admissionContext = targetAdmission;
             _currentGameplayContext = targetCurrentGameplay;
             _activityRelocationContext =
@@ -583,7 +567,6 @@ namespace Immersive.Framework.PlayerParticipation
                 _occupancyContext.SessionContextId,
                 _occupancyContext.CreateSnapshot(),
                 _inputContext.CreateSnapshot(),
-                _cameraContext.CreateSnapshot(),
                 _admissionContext.CreateSnapshot(),
                 _lastOperationStatus,
                 _diagnostic);
@@ -674,7 +657,6 @@ namespace Immersive.Framework.PlayerParticipation
             }
             _activityRelocationContext = null;
             _admissionContext = null;
-            _cameraContext = null;
             _inputContext = null;
             _occupancyContext = null;
             _preparationModule = null;

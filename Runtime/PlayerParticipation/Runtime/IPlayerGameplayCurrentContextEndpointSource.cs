@@ -1,5 +1,4 @@
 using Immersive.Framework.Actors;
-using Immersive.Framework.Camera;
 using Immersive.Framework.UnityInput;
 
 namespace Immersive.Framework.PlayerParticipation
@@ -12,9 +11,6 @@ namespace Immersive.Framework.PlayerParticipation
             out PlayerActorDeclaration actorDeclaration,
             out UnityPlayerInputGateAdapter gateAdapter,
             out PlayerGameplayInputReader gameplayInputReader,
-            out PlayerGameplayCameraAuthoring cameraAuthoring,
-            out PlayerGameplayCameraRequiredness cameraRequiredness,
-            out CameraOutputAuthoring outputSession,
             out string issue);
     }
 }

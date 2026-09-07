@@ -14,7 +14,6 @@ namespace Immersive.Framework.PlayerParticipation
             RejectedLeaveCorrelation = 110,
             RejectedPreparationCorrelation = 120,
             FailedAdmissionRelease = 200,
-            FailedCameraRelease = 210,
             FailedInputRelease = 220,
             FailedOccupancyRelease = 230,
             FailedInvariant = 240
@@ -27,7 +26,6 @@ namespace Immersive.Framework.PlayerParticipation
                 SessionPlayerLeaveToken leaveToken,
                 bool hadGameplayChain,
                 bool admissionReleased,
-                bool cameraReleased,
                 bool inputReleased,
                 bool occupancyReleased,
                 string message)
@@ -36,7 +34,6 @@ namespace Immersive.Framework.PlayerParticipation
                 LeaveToken = leaveToken;
                 HadGameplayChain = hadGameplayChain;
                 AdmissionReleased = admissionReleased;
-                CameraReleased = cameraReleased;
                 InputReleased = inputReleased;
                 OccupancyReleased = occupancyReleased;
                 Message = message ?? string.Empty;
@@ -46,7 +43,6 @@ namespace Immersive.Framework.PlayerParticipation
             internal SessionPlayerLeaveToken LeaveToken { get; }
             internal bool HadGameplayChain { get; }
             internal bool AdmissionReleased { get; }
-            internal bool CameraReleased { get; }
             internal bool InputReleased { get; }
             internal bool OccupancyReleased { get; }
             internal string Message { get; }
@@ -63,11 +59,9 @@ namespace Immersive.Framework.PlayerParticipation
             internal PlayerActorPreparationToken preparationToken;
             internal bool hadGameplayChain;
             internal PlayerGameplayAdmissionToken admissionToken;
-            internal PlayerGameplayCameraEligibilityToken cameraToken;
             internal PlayerGameplayInputBindingToken inputToken;
             internal PlayerGameplayOccupancyToken occupancyToken;
             internal bool admissionReleased;
-            internal bool cameraReleased;
             internal bool inputReleased;
             internal bool occupancyReleased;
             internal bool completed;
@@ -228,27 +222,6 @@ namespace Immersive.Framework.PlayerParticipation
                 progress.admissionReleased = true;
             }
 
-            if (!progress.cameraReleased)
-            {
-                PlayerGameplayCameraEligibilityResult result = _cameraContext.TryRelease(
-                    leaveToken.PlayerSlotId,
-                    progress.cameraToken,
-                    source,
-                    reason);
-                if (result == null || !result.Succeeded)
-                {
-                    return GameplayLeaveResult(
-                        SessionPlayerLeaveGameplayReleaseStatus.FailedCameraRelease,
-                        leaveToken,
-                        progress,
-                        result != null
-                            ? result.ToDiagnosticString()
-                            : "Gameplay Camera eligibility release returned no result.");
-                }
-
-                progress.cameraReleased = true;
-            }
-
             if (!progress.inputReleased)
             {
                 PlayerGameplayInputBindingResult result = _inputContext.TryRelease(
@@ -300,7 +273,7 @@ namespace Immersive.Framework.PlayerParticipation
                 leaveToken,
                 progress,
                 progress.hadGameplayChain
-                    ? "Exact Activity gameplay Admission, Camera and Input capabilities plus retained Session occupancy were released for Session Player Leave."
+                    ? "Exact Activity gameplay Admission and Input capabilities plus retained Session occupancy were released for Session Player Leave."
                     : "The Leaving Session Player has no current Activity gameplay capability chain; retained Session occupancy was terminally released when present.");
         }
 
@@ -316,11 +289,6 @@ namespace Immersive.Framework.PlayerParticipation
                     leaveToken.PlayerSlotId,
                     out PlayerGameplayAdmissionSummary admission) &&
                 admission.IsAdmitted;
-            bool hasCamera =
-                _cameraContext.CreateSnapshot().TryGetSummary(
-                    leaveToken.PlayerSlotId,
-                    out PlayerGameplayCameraEligibilitySummary camera) &&
-                camera.HasCurrentDecision;
             bool hasInput =
                 _inputContext.TryGetRetainedInputBinding(
                     leaveToken.PlayerSlotId,
@@ -330,8 +298,7 @@ namespace Immersive.Framework.PlayerParticipation
                     leaveToken.PlayerSlotId,
                     out PlayerGameplayOccupancySummary occupancy) &&
                 occupancy.IsOccupied;
-            bool hadActivityGameplayChain =
-                hasAdmission || hasCamera || hasInput;
+            bool hadActivityGameplayChain = hasAdmission || hasInput;
             bool hasAnyGameplayEvidence =
                 hadActivityGameplayChain || hasOccupancy;
 
@@ -364,7 +331,6 @@ namespace Immersive.Framework.PlayerParticipation
             if (expectedPreparation.IsValid)
             {
                 if ((hasAdmission && admission.PreparationToken != expectedPreparation) ||
-                    (hasCamera && camera.PreparationToken != expectedPreparation) ||
                     (hasInput && input.PreparationToken != expectedPreparation) ||
                     (hasOccupancy && occupancy.PreparationToken != expectedPreparation))
                 {
@@ -377,8 +343,7 @@ namespace Immersive.Framework.PlayerParticipation
             }
 
             if (hasAdmission &&
-                (!hasCamera || !hasInput || !hasOccupancy ||
-                 admission.CameraEligibilityToken != camera.Token ||
+                (!hasInput || !hasOccupancy ||
                  admission.InputBindingToken != input.Token ||
                  admission.OccupancyToken != occupancy.Token))
             {
@@ -386,7 +351,7 @@ namespace Immersive.Framework.PlayerParticipation
                     SessionPlayerLeaveGameplayReleaseStatus.FailedInvariant,
                     leaveToken,
                     null,
-                    "Current Gameplay Admission does not resolve to one exact Camera/Input/Occupancy capability chain.");
+                    "Current Gameplay Admission does not resolve to one exact Input/Occupancy capability chain.");
             }
 
             progress = new SessionPlayerLeaveGameplayReleaseProgress
@@ -395,11 +360,9 @@ namespace Immersive.Framework.PlayerParticipation
                 preparationToken = expectedPreparation,
                 hadGameplayChain = hadActivityGameplayChain,
                 admissionToken = hasAdmission ? admission.Token : default,
-                cameraToken = hasCamera ? camera.Token : default,
                 inputToken = hasInput ? input.Token : default,
                 occupancyToken = hasOccupancy ? occupancy.Token : default,
                 admissionReleased = !hasAdmission,
-                cameraReleased = !hasCamera,
                 inputReleased = !hasInput,
                 occupancyReleased = !hasOccupancy,
                 completed = !hasAnyGameplayEvidence
@@ -418,7 +381,6 @@ namespace Immersive.Framework.PlayerParticipation
                 leaveToken,
                 progress != null && progress.hadGameplayChain,
                 progress != null && progress.admissionReleased,
-                progress != null && progress.cameraReleased,
                 progress != null && progress.inputReleased,
                 progress != null && progress.occupancyReleased,
                 message);

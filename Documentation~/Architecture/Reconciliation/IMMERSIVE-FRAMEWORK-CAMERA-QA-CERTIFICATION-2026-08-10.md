@@ -2,8 +2,12 @@
 
 Date: **2026-08-10**  
 System: **Camera**  
-Scope: **current Stable single-output Camera authority**  
+Scope: **historical Stable single-output Camera authority**
 Result: **TECHNICALLY CERTIFIED**
+
+> Boundary reopened 2026-09-07 by IF-ADR-026. The result remains evidence for the
+> per-output request/arbitration/lifetime baseline; Camera Subject assignment, shared
+> multi-target composition and multiple outputs are not covered.
 
 ## Source state
 

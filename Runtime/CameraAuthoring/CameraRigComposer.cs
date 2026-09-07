@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using Immersive.Framework.Camera;
 using Immersive.Framework.Common;
 using Immersive.Framework.ApiStatus;
@@ -11,8 +12,9 @@ namespace Immersive.Framework.CameraAuthoring
     /// Designer-facing authoring surface that owns one concrete Camera rig
     /// configuration and materializes one local Cinemachine Camera.
     ///
-    /// The Composer is the single authority for target source, Follow/Look At
-    /// requirements and framing. Reusable authoring values should use Unity Presets.
+    /// The Composer is the presentation authority for Follow/Look At requirements and
+    /// framing. Legacy authored target-source resolution remains available, while the
+    /// explicit View-input seam receives already resolved Subject evidence.
     ///
     /// It does not create or own a Unity Camera, CinemachineBrain, AudioListener
     /// or runtime Camera Output. It does not select an active camera or arbitrate
@@ -20,11 +22,13 @@ namespace Immersive.Framework.CameraAuthoring
     /// </summary>
     [DisallowMultipleComponent]
     [AddComponentMenu("Immersive Framework/Camera/Camera Rig Composer")]
-    [FrameworkApiStatus(FrameworkApiStatus.Stable, "Stable single-output Camera product surface. Multi-output/split-screen is out of scope.")]
+    [FrameworkApiStatus(FrameworkApiStatus.Stable, "Stable per-Output Camera product surface for explicit Session 1..N topology; split-screen remains out of scope.")]
     public sealed class CameraRigComposer : MonoBehaviour
     {
         private const string DefaultCinemachineCameraObjectName =
             "Cinemachine Camera";
+        private const string DefaultSharedFollowTargetGroupObjectName =
+            "Shared Follow Target Group";
 
         [Header("Camera Behavior")]
         [SerializeField]
@@ -58,6 +62,28 @@ namespace Immersive.Framework.CameraAuthoring
         [SerializeField]
         private Vector3 followOffset =
             new Vector3(0f, 5f, -8f);
+
+        [Header("Shared Follow Settings")]
+        [SerializeField, Min(0.0001f)]
+        private float sharedFollowMemberWeight = 1f;
+
+        [SerializeField, Min(0.0001f)]
+        private float sharedFollowMemberRadius = 0.5f;
+
+        [SerializeField, Range(0.01f, 2f)]
+        private float sharedFollowFramingSize = 0.8f;
+
+        [SerializeField, Range(0f, 20f)]
+        private float sharedFollowDamping = 2f;
+
+        [SerializeField]
+        private Vector2 sharedFollowFovRange = new Vector2(1f, 100f);
+
+        [SerializeField]
+        private Vector2 sharedFollowDollyRange = new Vector2(-100f, 100f);
+
+        [SerializeField]
+        private Vector2 sharedFollowOrthoSizeRange = new Vector2(1f, 1000f);
 
         [Header("Mounted Settings")]
         [SerializeField, Min(0f)]
@@ -104,6 +130,24 @@ namespace Immersive.Framework.CameraAuthoring
 
         [SerializeField, HideInInspector]
         private Component frameworkOwnedRotationControl;
+
+        [SerializeField, HideInInspector]
+        private CinemachineTargetGroup frameworkOwnedSharedFollowTargetGroup;
+
+        [SerializeField, HideInInspector]
+        private CinemachineGroupFraming frameworkOwnedSharedFollowGroupFraming;
+
+        [SerializeField, HideInInspector]
+        private string appliedViewAssignmentContextId;
+
+        [SerializeField, HideInInspector]
+        private int appliedViewAssignmentRevision = -1;
+
+        [SerializeField, HideInInspector]
+        private string appliedViewAvailabilityContextId;
+
+        [SerializeField, HideInInspector]
+        private int appliedViewAvailabilityRevision = -1;
 
         [SerializeField, HideInInspector]
         private int materializationRevision;
@@ -156,6 +200,14 @@ namespace Immersive.Framework.CameraAuthoring
 
         public Vector3 FollowOffset =>
             followOffset;
+
+        public float SharedFollowMemberWeight => sharedFollowMemberWeight;
+        public float SharedFollowMemberRadius => sharedFollowMemberRadius;
+        public float SharedFollowFramingSize => sharedFollowFramingSize;
+        public float SharedFollowDamping => sharedFollowDamping;
+        public Vector2 SharedFollowFovRange => sharedFollowFovRange;
+        public Vector2 SharedFollowDollyRange => sharedFollowDollyRange;
+        public Vector2 SharedFollowOrthoSizeRange => sharedFollowOrthoSizeRange;
 
         public float MountedPositionDamping =>
             mountedPositionDamping;
@@ -230,6 +282,12 @@ namespace Immersive.Framework.CameraAuthoring
 
         public Component FrameworkOwnedRotationControl =>
             frameworkOwnedRotationControl;
+
+        public CinemachineTargetGroup FrameworkOwnedSharedFollowTargetGroup =>
+            frameworkOwnedSharedFollowTargetGroup;
+
+        public CinemachineGroupFraming FrameworkOwnedSharedFollowGroupFraming =>
+            frameworkOwnedSharedFollowGroupFraming;
 
         public int MaterializationRevision =>
             materializationRevision;
@@ -442,6 +500,145 @@ namespace Immersive.Framework.CameraAuthoring
                 EffectiveLookAtRequirement);
         }
 
+        /// <summary>
+        /// Explicit CAMERA-026-C path for already resolved View input. This operation
+        /// never reads or merges the legacy target-source authoring fields.
+        /// </summary>
+        public CameraViewTargetProjectionResult ResolveViewPresentationTargets(
+            CameraViewPresentationInput input)
+        {
+            return CameraViewTargetProjector.Project(
+                input,
+                PresentationIntent,
+                EffectiveFollowRequirement,
+                EffectiveLookAtRequirement);
+        }
+
+        /// <summary>
+        /// Physically applies one current View input to the existing local Cinemachine
+        /// Camera. This explicit operation never resolves or merges legacy target sources.
+        /// </summary>
+        public CameraViewPresentationApplyResult ApplyViewPresentation(
+            CameraViewPresentationInput input,
+            CameraViewAssignmentSnapshot currentSnapshot)
+        {
+            if (input == null || currentSnapshot == null || !input.IsValid)
+            {
+                return ViewApplyResult(
+                    CameraViewPresentationApplyStatus.RejectedInvalidInput,
+                    input,
+                    "View presentation apply requires valid input and its current logical snapshot.");
+            }
+
+            if (!input.IsCurrentFor(currentSnapshot) || IsOlderThanAppliedEvidence(input))
+            {
+                return ViewApplyResult(
+                    CameraViewPresentationApplyStatus.RejectedStaleInput,
+                    input,
+                    "Stale View presentation input cannot overwrite newer applied membership.");
+            }
+
+            if (PresentationIntent == CameraRigPresentationIntent.Follow &&
+                !TryValidateSharedFollowSettings(out string settingsIssue))
+            {
+                return ViewApplyResult(
+                    CameraViewPresentationApplyStatus.RejectedInvalidSettings,
+                    input,
+                    settingsIssue);
+            }
+
+            if (cinemachineCamera == null)
+            {
+                return ViewApplyResult(
+                    CameraViewPresentationApplyStatus.RejectedMissingCinemachineCamera,
+                    input,
+                    "View presentation requires the Composer's existing materialized Cinemachine Camera.");
+            }
+
+            CameraViewTargetProjectionResult projection =
+                ResolveViewPresentationTargets(input);
+
+            if (projection.Status == CameraViewTargetProjectionStatus.SucceededSharedFollow)
+            {
+                if (!TryEnsureSharedFollowProjection(out string ownershipIssue))
+                {
+                    return ViewApplyResult(
+                        CameraViewPresentationApplyStatus.RejectedOwnershipConflict,
+                        input,
+                        ownershipIssue);
+                }
+
+                ReconcileSharedFollowMembers(input);
+                ConfigureSharedFollowFraming();
+                frameworkOwnedSharedFollowGroupFraming.enabled = true;
+                cinemachineCamera.Follow = frameworkOwnedSharedFollowTargetGroup.transform;
+                cinemachineCamera.LookAt =
+                    EffectiveLookAtRequirement == CameraTargetRequirement.NotUsed
+                        ? null
+                        : frameworkOwnedSharedFollowTargetGroup.transform;
+                RecordAppliedEvidence(input);
+                return ViewApplyResult(
+                    CameraViewPresentationApplyStatus.SucceededSharedFollow,
+                    input,
+                    $"Applied shared Follow presentation with '{input.SubjectCount}' ordered Subjects.");
+            }
+
+            if (projection.Status == CameraViewTargetProjectionStatus.SucceededSingleSubject)
+            {
+                ClearOwnedSharedFollowProjection();
+                cinemachineCamera.Follow = projection.Targets.FollowTarget;
+                cinemachineCamera.LookAt = projection.Targets.LookAtTarget;
+                RecordAppliedEvidence(input);
+                return ViewApplyResult(
+                    CameraViewPresentationApplyStatus.SucceededSingleSubject,
+                    input,
+                    "Applied direct single-Subject presentation to the existing Cinemachine Camera.");
+            }
+
+            ClearOwnedSharedFollowProjection();
+            cinemachineCamera.Follow = null;
+            cinemachineCamera.LookAt = null;
+            RecordAppliedEvidence(input);
+
+            if (projection.Status == CameraViewTargetProjectionStatus.SucceededNoTargets)
+            {
+                return ViewApplyResult(
+                    CameraViewPresentationApplyStatus.SucceededFixedNoTargets,
+                    input,
+                    "Applied target-independent Fixed presentation.");
+            }
+
+            return ViewApplyResult(
+                projection.Status == CameraViewTargetProjectionStatus.BlockedRequiredSubjectMissing
+                    ? CameraViewPresentationApplyStatus.BlockedRequiredSubjectMissing
+                    : CameraViewPresentationApplyStatus.BlockedUnsupportedPresentation,
+                input,
+                projection.BlockingIssue);
+        }
+
+        /// <summary>
+        /// Clears only presentation state applied through the explicit View seam. Rig,
+        /// Cinemachine Camera and Camera Output lifetime remain with their current owners.
+        /// </summary>
+        public CameraViewPresentationApplyResult ClearViewPresentation()
+        {
+            ClearOwnedSharedFollowProjection();
+            if (cinemachineCamera != null)
+            {
+                cinemachineCamera.Follow = null;
+                cinemachineCamera.LookAt = null;
+            }
+
+            appliedViewAssignmentContextId = string.Empty;
+            appliedViewAssignmentRevision = -1;
+            appliedViewAvailabilityContextId = string.Empty;
+            appliedViewAvailabilityRevision = -1;
+            return ViewApplyResult(
+                CameraViewPresentationApplyStatus.SucceededCleared,
+                null,
+                "Cleared explicit View presentation without releasing the Composer, Cinemachine Camera or output.");
+        }
+
         public CameraRigComposerDebugSnapshot CreateDebugSnapshot()
         {
             CameraTargetResolveResult resolution =
@@ -479,6 +676,179 @@ namespace Immersive.Framework.CameraAuthoring
             return requirement == CameraTargetRequirement.NotUsed ||
                    requirement == CameraTargetRequirement.Optional ||
                    requirement == CameraTargetRequirement.Required;
+        }
+
+        private bool TryEnsureSharedFollowProjection(out string issue)
+        {
+            issue = string.Empty;
+
+            if (frameworkOwnedSharedFollowTargetGroup != null &&
+                !IsChildOrSelf(frameworkOwnedSharedFollowTargetGroup.transform, transform))
+            {
+                issue = "Recorded shared Follow Target Group is outside this Composer rig.";
+                return false;
+            }
+
+            CinemachineGroupFraming[] framings =
+                cinemachineCamera.GetComponents<CinemachineGroupFraming>();
+            for (int index = 0; index < framings.Length; index++)
+            {
+                if (framings[index] != frameworkOwnedSharedFollowGroupFraming)
+                {
+                    issue = "Author-owned or unproven Cinemachine Group Framing conflicts with shared Follow materialization.";
+                    return false;
+                }
+            }
+
+            if (frameworkOwnedSharedFollowGroupFraming != null &&
+                frameworkOwnedSharedFollowGroupFraming.gameObject != cinemachineCamera.gameObject)
+            {
+                issue = "Recorded shared Follow Group Framing does not belong to this Composer's Cinemachine Camera.";
+                return false;
+            }
+
+            if (frameworkOwnedSharedFollowTargetGroup == null)
+            {
+                var groupObject = new GameObject(DefaultSharedFollowTargetGroupObjectName);
+                groupObject.transform.SetParent(transform, false);
+                frameworkOwnedSharedFollowTargetGroup =
+                    groupObject.AddComponent<CinemachineTargetGroup>();
+            }
+
+            if (frameworkOwnedSharedFollowGroupFraming == null)
+            {
+                frameworkOwnedSharedFollowGroupFraming =
+                    cinemachineCamera.gameObject.AddComponent<CinemachineGroupFraming>();
+            }
+
+            return true;
+        }
+
+        private void ReconcileSharedFollowMembers(CameraViewPresentationInput input)
+        {
+            frameworkOwnedSharedFollowTargetGroup.Targets ??=
+                new List<CinemachineTargetGroup.Target>();
+            frameworkOwnedSharedFollowTargetGroup.Targets.Clear();
+            for (int index = 0; index < input.SubjectCount; index++)
+            {
+                frameworkOwnedSharedFollowTargetGroup.Targets.Add(
+                    new CinemachineTargetGroup.Target
+                    {
+                        Object = input.Subjects[index].Subject.Observation,
+                        Weight = sharedFollowMemberWeight,
+                        Radius = sharedFollowMemberRadius
+                    });
+            }
+
+            frameworkOwnedSharedFollowTargetGroup.PositionMode =
+                CinemachineTargetGroup.PositionModes.GroupCenter;
+            frameworkOwnedSharedFollowTargetGroup.RotationMode =
+                CinemachineTargetGroup.RotationModes.Manual;
+            frameworkOwnedSharedFollowTargetGroup.UpdateMethod =
+                CinemachineTargetGroup.UpdateMethods.LateUpdate;
+        }
+
+        private void ConfigureSharedFollowFraming()
+        {
+            frameworkOwnedSharedFollowGroupFraming.FramingMode =
+                CinemachineGroupFraming.FramingModes.HorizontalAndVertical;
+            frameworkOwnedSharedFollowGroupFraming.SizeAdjustment =
+                CinemachineGroupFraming.SizeAdjustmentModes.DollyThenZoom;
+            frameworkOwnedSharedFollowGroupFraming.LateralAdjustment =
+                CinemachineGroupFraming.LateralAdjustmentModes.ChangePosition;
+            frameworkOwnedSharedFollowGroupFraming.FramingSize =
+                sharedFollowFramingSize;
+            frameworkOwnedSharedFollowGroupFraming.Damping =
+                sharedFollowDamping;
+            frameworkOwnedSharedFollowGroupFraming.FovRange =
+                sharedFollowFovRange;
+            frameworkOwnedSharedFollowGroupFraming.DollyRange =
+                sharedFollowDollyRange;
+            frameworkOwnedSharedFollowGroupFraming.OrthoSizeRange =
+                sharedFollowOrthoSizeRange;
+        }
+
+        private void ClearOwnedSharedFollowProjection()
+        {
+            if (frameworkOwnedSharedFollowTargetGroup != null)
+            {
+                frameworkOwnedSharedFollowTargetGroup.Targets?.Clear();
+            }
+
+            if (frameworkOwnedSharedFollowGroupFraming != null)
+            {
+                frameworkOwnedSharedFollowGroupFraming.enabled = false;
+            }
+        }
+
+        private bool IsOlderThanAppliedEvidence(CameraViewPresentationInput input)
+        {
+            if (!string.Equals(
+                    appliedViewAssignmentContextId,
+                    input.AssignmentContextId,
+                    StringComparison.Ordinal))
+            {
+                return false;
+            }
+
+            return input.AssignmentRevision < appliedViewAssignmentRevision ||
+                   (string.Equals(
+                        appliedViewAvailabilityContextId,
+                        input.AvailabilityContextId,
+                        StringComparison.Ordinal) &&
+                    input.AvailabilityRevision < appliedViewAvailabilityRevision);
+        }
+
+        private void RecordAppliedEvidence(CameraViewPresentationInput input)
+        {
+            appliedViewAssignmentContextId = input.AssignmentContextId;
+            appliedViewAssignmentRevision = input.AssignmentRevision;
+            appliedViewAvailabilityContextId = input.AvailabilityContextId;
+            appliedViewAvailabilityRevision = input.AvailabilityRevision;
+        }
+
+        private CameraViewPresentationApplyResult ViewApplyResult(
+            CameraViewPresentationApplyStatus status,
+            CameraViewPresentationInput input,
+            string diagnostic)
+        {
+            return new CameraViewPresentationApplyResult(
+                status,
+                input,
+                cinemachineCamera,
+                frameworkOwnedSharedFollowTargetGroup,
+                frameworkOwnedSharedFollowGroupFraming,
+                diagnostic);
+        }
+
+        private bool TryValidateSharedFollowSettings(out string issue)
+        {
+            issue = string.Empty;
+            if (!IsFinite(sharedFollowMemberWeight) || sharedFollowMemberWeight <= 0f ||
+                !IsFinite(sharedFollowMemberRadius) || sharedFollowMemberRadius <= 0f ||
+                !IsFinite(sharedFollowFramingSize) || sharedFollowFramingSize < 0.01f || sharedFollowFramingSize > 2f ||
+                !IsFinite(sharedFollowDamping) || sharedFollowDamping < 0f || sharedFollowDamping > 20f ||
+                !IsOrderedRange(sharedFollowFovRange, 1f, 179f) ||
+                !IsOrderedRange(sharedFollowDollyRange, float.MinValue, float.MaxValue) ||
+                !IsOrderedRange(sharedFollowOrthoSizeRange, 0.01f, float.MaxValue))
+            {
+                issue = "Shared Follow settings require finite positive Weight/Radius, valid Framing Size/Damping and ordered FOV, Dolly and Orthographic ranges.";
+                return false;
+            }
+
+            return true;
+        }
+
+        private static bool IsOrderedRange(Vector2 range, float minimum, float maximum)
+        {
+            return IsFinite(range.x) && IsFinite(range.y) &&
+                   range.x >= minimum && range.y <= maximum && range.x <= range.y;
+        }
+
+        private static bool IsChildOrSelf(Transform candidate, Transform root)
+        {
+            return candidate != null && root != null &&
+                   (candidate == root || candidate.IsChildOf(root));
         }
 
         private static bool IsFinite(float value)
@@ -595,6 +965,14 @@ namespace Immersive.Framework.CameraAuthoring
             followOffset =
                 new Vector3(0f, 5f, -8f);
 
+            sharedFollowMemberWeight = 1f;
+            sharedFollowMemberRadius = 0.5f;
+            sharedFollowFramingSize = 0.8f;
+            sharedFollowDamping = 2f;
+            sharedFollowFovRange = new Vector2(1f, 100f);
+            sharedFollowDollyRange = new Vector2(-100f, 100f);
+            sharedFollowOrthoSizeRange = new Vector2(1f, 1000f);
+
             mountedPositionDamping = 0f;
             mountedRotationDamping = 0f;
 
@@ -615,6 +993,12 @@ namespace Immersive.Framework.CameraAuthoring
             frameworkOwnedCinemachineCamera = null;
             frameworkOwnedPositionControl = null;
             frameworkOwnedRotationControl = null;
+            frameworkOwnedSharedFollowTargetGroup = null;
+            frameworkOwnedSharedFollowGroupFraming = null;
+            appliedViewAssignmentContextId = string.Empty;
+            appliedViewAssignmentRevision = -1;
+            appliedViewAvailabilityContextId = string.Empty;
+            appliedViewAvailabilityRevision = -1;
             materializationRevision = 0;
         }
 #endif

@@ -6,7 +6,7 @@ namespace Immersive.Framework.Camera
     /// <summary>
     /// Typed publisher identity for a camera request.
     /// </summary>
-    [FrameworkApiStatus(FrameworkApiStatus.Stable, "Stable single-output Camera product surface. Multi-output/split-screen is out of scope.")]
+    [FrameworkApiStatus(FrameworkApiStatus.Stable, "Stable per-Output Camera product surface for explicit Session 1..N topology; split-screen remains out of scope.")]
     public readonly struct CameraRequestOwner
     {
         public CameraRequestOwner(CameraRequestOwnerKind kind, string logicalOwnerId)

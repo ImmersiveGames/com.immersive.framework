@@ -1,7 +1,6 @@
 using Immersive.Framework.Actors;
 using Immersive.Framework.ApiStatus;
 using Immersive.Framework.Authoring;
-using Immersive.Framework.Camera;
 using Immersive.Framework.PlayerSlots;
 using Immersive.Framework.UnityInput;
 
@@ -50,9 +49,6 @@ namespace Immersive.Framework.PlayerParticipation
             out LocalPlayerHostAuthoring host,
             out PlayerActorDeclaration actorDeclaration,
             out UnityPlayerInputGateAdapter gateAdapter,
-            out PlayerGameplayCameraAuthoring cameraAuthoring,
-            out PlayerGameplayCameraRequiredness cameraRequiredness,
-            out CameraOutputAuthoring outputSession,
             out string issue);
 
         bool TryReleasePreparation(

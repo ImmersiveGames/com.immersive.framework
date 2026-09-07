@@ -7,7 +7,7 @@ namespace Immersive.Framework.Camera
     /// Declarative arbitration evidence carried by a request.
     /// Winner selection belongs exclusively to CameraOutputContext.
     /// </summary>
-    [FrameworkApiStatus(FrameworkApiStatus.Stable, "Stable single-output Camera product surface. Multi-output/split-screen is out of scope.")]
+    [FrameworkApiStatus(FrameworkApiStatus.Stable, "Stable per-Output Camera product surface for explicit Session 1..N topology; split-screen remains out of scope.")]
     public readonly struct CameraRequestPolicy
     {
         public CameraRequestPolicy(int precedence, string deterministicTieBreakerId = "")

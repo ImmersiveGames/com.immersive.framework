@@ -6,7 +6,7 @@ namespace Immersive.Framework.Camera
     /// <summary>
     /// Diagnostic item emitted by camera product contracts, target resolution and materialization.
     /// </summary>
-    [FrameworkApiStatus(FrameworkApiStatus.Stable, "Stable single-output Camera product surface. Multi-output/split-screen is out of scope.")]
+    [FrameworkApiStatus(FrameworkApiStatus.Stable, "Stable per-Output Camera product surface for explicit Session 1..N topology; split-screen remains out of scope.")]
     public readonly struct CameraIssue
     {
         public CameraIssue(CameraIssueSeverity severity, string code, string message)

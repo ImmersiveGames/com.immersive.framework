@@ -23,6 +23,13 @@ namespace Immersive.Framework.Editor.CameraAuthoring
         private SerializedProperty _explicitLookAtTarget;
         private SerializedProperty _lookAtRequirement;
         private SerializedProperty _followOffset;
+        private SerializedProperty _sharedFollowMemberWeight;
+        private SerializedProperty _sharedFollowMemberRadius;
+        private SerializedProperty _sharedFollowFramingSize;
+        private SerializedProperty _sharedFollowDamping;
+        private SerializedProperty _sharedFollowFovRange;
+        private SerializedProperty _sharedFollowDollyRange;
+        private SerializedProperty _sharedFollowOrthoSizeRange;
         private SerializedProperty _mountedPositionDamping;
         private SerializedProperty _mountedRotationDamping;
         private SerializedProperty _thirdPersonShoulderOffset;
@@ -35,6 +42,8 @@ namespace Immersive.Framework.Editor.CameraAuthoring
         private SerializedProperty _frameworkOwnedCinemachineCamera;
         private SerializedProperty _frameworkOwnedPositionControl;
         private SerializedProperty _frameworkOwnedRotationControl;
+        private SerializedProperty _frameworkOwnedSharedFollowTargetGroup;
+        private SerializedProperty _frameworkOwnedSharedFollowGroupFraming;
         private SerializedProperty _materializationRevision;
         private SerializedProperty _logApplyRebuildDiagnostics;
         private SerializedProperty _lastApplyRebuildStatus;
@@ -66,6 +75,20 @@ namespace Immersive.Framework.Editor.CameraAuthoring
                 serializedObject.FindProperty("lookAtRequirement");
             _followOffset =
                 serializedObject.FindProperty("followOffset");
+            _sharedFollowMemberWeight =
+                serializedObject.FindProperty("sharedFollowMemberWeight");
+            _sharedFollowMemberRadius =
+                serializedObject.FindProperty("sharedFollowMemberRadius");
+            _sharedFollowFramingSize =
+                serializedObject.FindProperty("sharedFollowFramingSize");
+            _sharedFollowDamping =
+                serializedObject.FindProperty("sharedFollowDamping");
+            _sharedFollowFovRange =
+                serializedObject.FindProperty("sharedFollowFovRange");
+            _sharedFollowDollyRange =
+                serializedObject.FindProperty("sharedFollowDollyRange");
+            _sharedFollowOrthoSizeRange =
+                serializedObject.FindProperty("sharedFollowOrthoSizeRange");
             _mountedPositionDamping =
                 serializedObject.FindProperty("mountedPositionDamping");
             _mountedRotationDamping =
@@ -90,6 +113,10 @@ namespace Immersive.Framework.Editor.CameraAuthoring
                 serializedObject.FindProperty("frameworkOwnedPositionControl");
             _frameworkOwnedRotationControl =
                 serializedObject.FindProperty("frameworkOwnedRotationControl");
+            _frameworkOwnedSharedFollowTargetGroup =
+                serializedObject.FindProperty("frameworkOwnedSharedFollowTargetGroup");
+            _frameworkOwnedSharedFollowGroupFraming =
+                serializedObject.FindProperty("frameworkOwnedSharedFollowGroupFraming");
             _materializationRevision =
                 serializedObject.FindProperty("materializationRevision");
             _logApplyRebuildDiagnostics =
@@ -312,6 +339,30 @@ namespace Immersive.Framework.Editor.CameraAuthoring
                 new GUIContent(
                     "Follow Offset",
                     "Camera offset used by the Framework-owned Cinemachine Follow Position Control."));
+
+            EditorGUILayout.Space(4f);
+            EditorGUILayout.LabelField("Shared Follow", EditorStyles.miniBoldLabel);
+            EditorGUILayout.PropertyField(
+                _sharedFollowMemberWeight,
+                new GUIContent("Subject Weight", "Uniform weight for every current View Subject."));
+            EditorGUILayout.PropertyField(
+                _sharedFollowMemberRadius,
+                new GUIContent("Subject Radius", "Uniform framing radius for every current View Subject."));
+            EditorGUILayout.PropertyField(
+                _sharedFollowFramingSize,
+                new GUIContent("Frame Fill", "Target-group screen occupancy. Valid range: 0.01 to 2."));
+            EditorGUILayout.PropertyField(
+                _sharedFollowDamping,
+                new GUIContent("Framing Damping"));
+            EditorGUILayout.PropertyField(
+                _sharedFollowFovRange,
+                new GUIContent("Field Of View Range"));
+            EditorGUILayout.PropertyField(
+                _sharedFollowDollyRange,
+                new GUIContent("Dolly Range"));
+            EditorGUILayout.PropertyField(
+                _sharedFollowOrthoSizeRange,
+                new GUIContent("Orthographic Size Range"));
         }
 
         private void DrawMountedSettings()
@@ -893,6 +944,14 @@ namespace Immersive.Framework.Editor.CameraAuthoring
                     _frameworkOwnedCinemachineCamera,
                     new GUIContent(
                         "Owned Cinemachine Camera"));
+
+                EditorGUILayout.PropertyField(
+                    _frameworkOwnedSharedFollowTargetGroup,
+                    new GUIContent("Owned Shared Follow Target Group"));
+
+                EditorGUILayout.PropertyField(
+                    _frameworkOwnedSharedFollowGroupFraming,
+                    new GUIContent("Owned Shared Follow Group Framing"));
             }
 
             DrawPipelineEvidence(local);

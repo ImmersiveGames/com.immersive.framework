@@ -180,7 +180,7 @@ namespace Immersive.Framework.Editor.PlayerParticipation
             {
                 report.AddInfo($"  {index + 1}. {PlayerParticipationReadinessRequirements.GetDisplayName(required[index])}", activity);
             }
-            report.AddInfo("Runtime-dependent evidence: joined Slot, Actor selection, Logical Actor preparation, input eligibility, Camera eligibility and gameplay eligibility require runtime evidence. They are not provable from this ActivityAsset alone.", activity);
+            report.AddInfo("Runtime-dependent evidence: joined Slot, Actor selection, Logical Actor preparation, input eligibility and gameplay eligibility require runtime evidence. They are not provable from this ActivityAsset alone.", activity);
         }
     }
 }

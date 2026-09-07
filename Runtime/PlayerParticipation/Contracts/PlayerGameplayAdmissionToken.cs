@@ -28,7 +28,6 @@ namespace Immersive.Framework.PlayerParticipation
             int materializationRevision,
             int occupancyRevision,
             int inputBindingRevision,
-            int cameraEligibilityRevision,
             int admissionRevision)
         {
             SessionContextId = sessionContextId.NormalizeText();
@@ -40,7 +39,6 @@ namespace Immersive.Framework.PlayerParticipation
             MaterializationRevision = materializationRevision;
             OccupancyRevision = occupancyRevision;
             InputBindingRevision = inputBindingRevision;
-            CameraEligibilityRevision = cameraEligibilityRevision;
             AdmissionRevision = admissionRevision;
         }
 
@@ -53,7 +51,6 @@ namespace Immersive.Framework.PlayerParticipation
         public int MaterializationRevision { get; }
         public int OccupancyRevision { get; }
         public int InputBindingRevision { get; }
-        public int CameraEligibilityRevision { get; }
         public int AdmissionRevision { get; }
 
         public bool IsValid =>
@@ -66,7 +63,6 @@ namespace Immersive.Framework.PlayerParticipation
             MaterializationRevision > 0 &&
             OccupancyRevision > 0 &&
             InputBindingRevision > 0 &&
-            CameraEligibilityRevision > 0 &&
             AdmissionRevision > 0;
 
         public string StableText => IsValid
@@ -74,7 +70,7 @@ namespace Immersive.Framework.PlayerParticipation
               $"{Owner.Scope}:{Owner.OwnerIdentity.Value.Value}:" +
               $"{PlayerSlotId.Value.Value}:{ActorId.Value.Value}:" +
               $"{MaterializationRevision}:{OccupancyRevision}:" +
-              $"{InputBindingRevision}:{CameraEligibilityRevision}:" +
+              $"{InputBindingRevision}:" +
               $"{AdmissionRevision}"
             : string.Empty;
 
@@ -92,7 +88,6 @@ namespace Immersive.Framework.PlayerParticipation
                 MaterializationRevision == other.MaterializationRevision &&
                 OccupancyRevision == other.OccupancyRevision &&
                 InputBindingRevision == other.InputBindingRevision &&
-                CameraEligibilityRevision == other.CameraEligibilityRevision &&
                 AdmissionRevision == other.AdmissionRevision;
         }
 
@@ -113,7 +108,6 @@ namespace Immersive.Framework.PlayerParticipation
                 hash = hash * 397 ^ MaterializationRevision;
                 hash = hash * 397 ^ OccupancyRevision;
                 hash = hash * 397 ^ InputBindingRevision;
-                hash = hash * 397 ^ CameraEligibilityRevision;
                 hash = hash * 397 ^ AdmissionRevision;
                 return hash;
             }

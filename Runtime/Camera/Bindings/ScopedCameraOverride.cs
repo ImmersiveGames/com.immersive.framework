@@ -11,9 +11,12 @@ namespace Immersive.Framework.Camera
     /// Shared explicit-request behavior for camera overrides owned by a lifecycle scope.
     /// Derived bindings validate their own owner identity and decide when the scope is available.
     /// </summary>
-    [FrameworkApiStatus(FrameworkApiStatus.Stable, "Stable single-output Camera product surface. Multi-output/split-screen is out of scope.")]
+    [FrameworkApiStatus(FrameworkApiStatus.Stable, "Explicit scoped request bound to one Camera Output ID.")]
     public abstract class ScopedCameraOverride : MonoBehaviour, ICameraOutputSessionConsumer
     {
+        [Header("Camera Output")]
+        [SerializeField] private string outputId;
+
         [Header("Override Identity")]
         [SerializeField] private string scopeId;
         [SerializeField] private string requestId;
@@ -38,6 +41,8 @@ namespace Immersive.Framework.Camera
         private FrameworkLogger _logger;
 
         public string ScopeId => scopeId.NormalizeText();
+        public string OutputIdText => outputId.NormalizeText();
+        public CameraOutputId RequestedOutputId => new CameraOutputId(OutputIdText);
         public string RequestIdText => requestId.NormalizeText();
         public CameraRigComposer RigComposer => rigComposer;
         public Transform TargetSource => targetSource;
@@ -60,6 +65,11 @@ namespace Immersive.Framework.Camera
             if (string.IsNullOrWhiteSpace(scopeId))
             {
                 scopeId = Guid.NewGuid().ToString("N");
+            }
+
+            if (string.IsNullOrWhiteSpace(outputId))
+            {
+                outputId = CameraOutputId.Main.Value;
             }
 
             if (string.IsNullOrWhiteSpace(requestId))
@@ -189,6 +199,11 @@ namespace Immersive.Framework.Camera
 
         protected void SetOutputSession(CameraOutputAuthoring binding)
         {
+            if (binding != null && new CameraOutputId(binding.OutputIdText) != RequestedOutputId)
+            {
+                throw new InvalidOperationException(
+                    $"Camera override requested output '{RequestedOutputId}' but received '{binding.OutputIdText}'.");
+            }
             _outputSession = binding;
             SetDiagnostic("OutputAttached", binding == null
                 ? "Camera output injection was empty."
@@ -222,6 +237,7 @@ namespace Immersive.Framework.Camera
         private bool TryValidateConfiguration(out string diagnostic)
         {
             if (string.IsNullOrWhiteSpace(ScopeId)) { diagnostic = "Camera override requires an explicit scope id."; return false; }
+            if (!RequestedOutputId.IsValid) { diagnostic = "Camera override requires an explicit valid Camera Output ID."; return false; }
             if (string.IsNullOrWhiteSpace(RequestIdText)) { diagnostic = "Camera override requires an explicit request id."; return false; }
             if (_outputSession == null) { diagnostic = "Camera override requires an injected CameraOutputAuthoring."; return false; }
             if (rigComposer == null) { diagnostic = "Camera override requires a CameraRigComposer."; return false; }

@@ -15,6 +15,7 @@ using Immersive.Framework.PlayerParticipation;
 using Immersive.Framework.TransitionEffects;
 using Immersive.Logging.Records;
 using UnityEngine;
+using UnityEngine.InputSystem;
 using UnityEngine.SceneManagement;
 
 namespace Immersive.Framework.GlobalUi
@@ -38,6 +39,7 @@ namespace Immersive.Framework.GlobalUi
         private readonly ILoadingSurfaceAdapter[] _loadingAdapters;
         private readonly IPauseSurfaceAdapter[] _pauseAdapters;
         private readonly GameObject[] _persistedRoots;
+        private readonly IReadOnlyList<GameObject> _persistedRootsView;
 
         private GlobalUiSceneRuntime(
             UnityEngine.Object containerScene,
@@ -58,6 +60,8 @@ namespace Immersive.Framework.GlobalUi
             PersistedRootCount = persistedRoots?.Count ?? 0;
             _persistedRoots =
                 FrameworkCollectionCopy.ToArrayOrEmpty(persistedRoots);
+            _persistedRootsView =
+                Array.AsReadOnly(_persistedRoots);
             _transitionAdapters =
                 FrameworkCollectionCopy.ToArrayOrEmpty(transitionAdapters);
             _loadingAdapters =
@@ -102,6 +106,9 @@ namespace Immersive.Framework.GlobalUi
 
         public IReadOnlyList<IPauseSurfaceAdapter> PauseAdapters =>
             _pauseAdapters;
+
+        internal IReadOnlyList<GameObject> PersistedRoots =>
+            _persistedRootsView;
 
         internal GlobalUiPauseRequestTriggerBindingResult
             TryBindPauseRequestTriggers(
@@ -284,37 +291,45 @@ namespace Immersive.Framework.GlobalUi
         }
 
         internal bool TryResolveCameraPresentation(
-            out CameraOutputAuthoring outputSession,
-            out SessionCameraOverride sessionOverride,
+            out IReadOnlyList<CameraOutputAuthoring> outputSessions,
+            out CameraViewOutputPolicyAuthoring viewOutputPolicy,
             out string diagnostic)
         {
+            viewOutputPolicy = null;
             List<CameraOutputAuthoring> outputCandidates =
                 FindAll<CameraOutputAuthoring>();
-            List<SessionCameraOverride> overrideCandidates =
-                FindAll<SessionCameraOverride>();
 
-            outputSession = null;
-            sessionOverride = null;
-
-            if (outputCandidates.Count != 1)
+            if (outputCandidates.Count == 0)
             {
                 diagnostic =
-                    $"Persistent Content requires exactly one CameraOutputAuthoring. outputSessions='{outputCandidates.Count}'.";
+                    "Persistent Content requires at least one explicit CameraOutputAuthoring.";
+                outputSessions = Array.Empty<CameraOutputAuthoring>();
                 return false;
             }
 
-            if (overrideCandidates.Count > 1)
+            List<CameraViewOutputPolicyAuthoring> policyCandidates =
+                FindAll<CameraViewOutputPolicyAuthoring>();
+            if (policyCandidates.Count != 1)
             {
                 diagnostic =
-                    $"Persistent Content permits zero or one SessionCameraOverride. sessionOverrides='{overrideCandidates.Count}'.";
+                    $"Persistent Content requires exactly one explicit Camera View Output Policy, but found '{policyCandidates.Count}'.";
+                outputSessions = Array.Empty<CameraOutputAuthoring>();
                 return false;
             }
 
-            outputSession = outputCandidates[0];
-            sessionOverride = overrideCandidates.Count == 1
-                ? overrideCandidates[0]
-                : null;
+            List<PlayerInputManager> playerInputManagers = FindAll<PlayerInputManager>();
+            for (int index = 0; index < playerInputManagers.Count; index++)
+            {
+                if (!playerInputManagers[index].splitScreen) continue;
+                diagnostic =
+                    $"PlayerInputManager '{playerInputManagers[index].name}' has automatic split-screen enabled. " +
+                    "Disable it because Camera View Output Policy is the viewport authority.";
+                outputSessions = Array.Empty<CameraOutputAuthoring>();
+                return false;
+            }
 
+            outputSessions = outputCandidates.AsReadOnly();
+            viewOutputPolicy = policyCandidates[0];
             diagnostic = string.Empty;
             return true;
         }

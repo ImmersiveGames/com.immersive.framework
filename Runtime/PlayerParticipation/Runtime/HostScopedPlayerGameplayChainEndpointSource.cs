@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using Immersive.Framework.Actors;
 using Immersive.Framework.ApiStatus;
 using Immersive.Framework.ApplicationLifecycle;
-using Immersive.Framework.Camera;
 using Immersive.Framework.UnityInput;
 
 namespace Immersive.Framework.PlayerParticipation
@@ -21,19 +20,14 @@ namespace Immersive.Framework.PlayerParticipation
     {
         private readonly FrameworkRuntimeHost _runtimeHost;
         private readonly PlayerActorPreparationRuntimeHostModule _preparationModule;
-        private readonly PlayerGameplayCameraRequiredness _missingCameraRequiredness;
-
         internal HostScopedPlayerGameplayChainEndpointSource(
             FrameworkRuntimeHost runtimeHost,
-            PlayerActorPreparationRuntimeHostModule preparationModule,
-            PlayerGameplayCameraRequiredness missingCameraRequiredness =
-                PlayerGameplayCameraRequiredness.Optional)
+            PlayerActorPreparationRuntimeHostModule preparationModule)
         {
             this._runtimeHost = runtimeHost ??
                 throw new ArgumentNullException(nameof(runtimeHost));
             this._preparationModule = preparationModule ??
                 throw new ArgumentNullException(nameof(preparationModule));
-            this._missingCameraRequiredness = missingCameraRequiredness;
         }
 
         public bool TryResolveGameplayEndpoints(
@@ -42,18 +36,12 @@ namespace Immersive.Framework.PlayerParticipation
             out PlayerActorDeclaration actorDeclaration,
             out UnityPlayerInputGateAdapter gateAdapter,
             out PlayerGameplayInputReader gameplayInputReader,
-            out PlayerGameplayCameraAuthoring cameraAuthoring,
-            out PlayerGameplayCameraRequiredness cameraRequiredness,
-            out CameraOutputAuthoring outputSession,
             out string issue)
         {
             host = null;
             actorDeclaration = null;
             gateAdapter = null;
             gameplayInputReader = null;
-            cameraAuthoring = null;
-            cameraRequiredness = _missingCameraRequiredness;
-            outputSession = null;
             issue = string.Empty;
 
             if (!preparation.IsValid ||
@@ -112,37 +100,6 @@ namespace Immersive.Framework.PlayerParticipation
             gameplayInputReader = gameplayInputReaders.Length == 1
                 ? gameplayInputReaders[0]
                 : null;
-
-            PlayerGameplayCameraAuthoring[] cameraAuthorings =
-                actorDeclaration.GetComponentsInChildren<PlayerGameplayCameraAuthoring>(
-                    true);
-            if (cameraAuthorings.Length > 1)
-            {
-                issue =
-                    $"Prepared Actor '{actorDeclaration.ActorId.StableText}' requires at most one PlayerGameplayCameraAuthoring. Found '{cameraAuthorings.Length}'.";
-                return false;
-            }
-
-            cameraAuthoring =
-                cameraAuthorings.Length == 1 ? cameraAuthorings[0] : null;
-            cameraRequiredness = cameraAuthoring != null
-                ? cameraAuthoring.Requiredness
-                : _missingCameraRequiredness;
-
-            if (cameraAuthoring != null &&
-                !_runtimeHost.TryGetPlayerGameplayCameraOutputSession(
-                    out outputSession,
-                    out issue))
-            {
-                return false;
-            }
-
-            if (cameraAuthoring == null)
-            {
-                _runtimeHost.TryGetPlayerGameplayCameraOutputSession(
-                    out outputSession,
-                    out _);
-            }
 
             return true;
         }

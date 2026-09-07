@@ -6,6 +6,11 @@ Type: **Technical QA**
 Primary repository: **QAFramework**  
 Normative target: **IF-ADR-004 — Camera Requests and Output Authority**
 
+> Historical boundary notice — 2026-09-07: the 18/18 result certifies the former
+> single-output request/output integrity boundary. IF-ADR-026 preserves those per-output
+> guarantees but introduces unimplemented Subject, Assignment and multi-output contracts
+> that this run did not test.
+
 ## Objective
 
 Attempt to break the accepted Camera single-output architecture across:

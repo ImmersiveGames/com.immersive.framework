@@ -16,14 +16,14 @@ namespace Immersive.Framework.Camera
         private const string ForceDefaultOwner = "SessionCameraTransitionOrchestrator";
 
         private readonly ITransitionOrchestrator _inner;
-        private readonly CameraOutputAuthoring _outputAuthoring;
+        private readonly CameraOutputSessionTopology _topology;
 
         internal SessionCameraTransitionOrchestrator(
             ITransitionOrchestrator inner,
-            CameraOutputAuthoring outputAuthoring)
+            CameraOutputSessionTopology topology)
         {
             this._inner = inner ?? throw new ArgumentNullException(nameof(inner));
-            this._outputAuthoring = outputAuthoring ?? throw new ArgumentNullException(nameof(outputAuthoring));
+            _topology = topology ?? throw new ArgumentNullException(nameof(topology));
         }
 
         public TransitionResult Execute(TransitionRequest request) => ExecuteAsync(request).GetAwaiter().GetResult();
@@ -32,15 +32,9 @@ namespace Immersive.Framework.Camera
         {
             if (request.Phase == TransitionPhase.OperationClosed)
             {
-                if (!TryResolveOutputSession(out CameraOutputSession session, out string diagnostic))
+                if (!TryApplyAllOutputs(false, out string diagnostic))
                 {
-                    return Blocked(request, "Default camera release could not resolve the Camera Output Session.", diagnostic);
-                }
-
-                CameraOutputApplyResult release = session.ReleaseForceDefault(ForceDefaultOwner);
-                if (!release.Succeeded)
-                {
-                    return Blocked(request, "Default camera release blocked transition opening.", release.DiagnosticSummary);
+                    return Blocked(request, "Default camera release blocked transition opening.", diagnostic);
                 }
 
                 return await _inner.ExecuteAsync(request);
@@ -52,31 +46,50 @@ namespace Immersive.Framework.Camera
                 return result;
             }
 
-            if (!TryResolveOutputSession(out CameraOutputSession outputSession, out string outputDiagnostic))
-            {
-                return Blocked(request, "Default camera forcing could not resolve the Camera Output Session.", outputDiagnostic);
-            }
-
-            CameraOutputApplyResult force = outputSession.ForceDefault(ForceDefaultOwner);
-            return force.Succeeded
+            return TryApplyAllOutputs(true, out string outputDiagnostic)
                 ? result
-                : Blocked(request, "Default camera forcing blocked transition after the visual surface closed.", force.DiagnosticSummary);
+                : Blocked(request, "Default camera forcing blocked transition after the visual surface closed.", outputDiagnostic);
         }
 
-        private bool TryResolveOutputSession(
-            out CameraOutputSession session,
+        private bool TryApplyAllOutputs(
+            bool forceDefault,
             out string diagnostic)
         {
-            if (_outputAuthoring == null)
+            CameraOutputTopologySnapshot snapshot = _topology.CaptureSnapshot();
+            var applied = new List<CameraOutputSession>();
+            for (int index = 0; index < snapshot.Outputs.Count; index++)
             {
-                session = null;
-                diagnostic = "Session Camera Transition Orchestrator has no explicit Camera Output Authoring.";
-                return false;
+                CameraOutputId outputId = snapshot.Outputs[index].OutputId;
+                if (!_topology.TryGetOutput(outputId, out CameraOutputAuthoring output, out diagnostic) ||
+                    !output.TryGetSession(out CameraOutputSession session, out diagnostic))
+                {
+                    Rollback(applied, forceDefault);
+                    return false;
+                }
+                CameraOutputApplyResult mutation = forceDefault
+                    ? session.ForceDefault(ForceDefaultOwner)
+                    : session.ReleaseForceDefault(ForceDefaultOwner);
+                if (!mutation.Succeeded)
+                {
+                    Rollback(applied, forceDefault);
+                    diagnostic = $"Output '{outputId}' rejected transition default mutation. {mutation.DiagnosticSummary}";
+                    return false;
+                }
+                applied.Add(session);
             }
+            diagnostic = string.Empty;
+            return true;
+        }
 
-            return _outputAuthoring.TryGetSession(
-                out session,
-                out diagnostic);
+        private static void Rollback(
+            IReadOnlyList<CameraOutputSession> applied,
+            bool forced)
+        {
+            for (int index = applied.Count - 1; index >= 0; index--)
+            {
+                if (forced) applied[index].ReleaseForceDefault(ForceDefaultOwner);
+                else applied[index].ForceDefault(ForceDefaultOwner);
+            }
         }
 
         private static TransitionResult Blocked(TransitionRequest request, string message, string diagnostic)

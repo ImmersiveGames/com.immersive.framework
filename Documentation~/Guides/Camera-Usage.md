@@ -1,9 +1,13 @@
 # Camera Usage
 
-Status: **Current — explicit Default output authority implemented**  
-Last updated: **2026-08-17**
+Status: **Current implementation guide — CAMERA-026-A through H implemented; Shared runtime certified**
+Last updated: **2026-09-09**
 
-The current Camera product is **single-output**.
+The current runtime implementation supports **1..N explicitly authored Camera Outputs per
+Session**. IF-ADR-026 separates Camera Subject, Assignment, Rig/Presentation and Output.
+Shared composition, exact per-Output injection and explicit normalized viewport policy
+are implemented. Shared runtime technical QA is certified as of 2026-09-09; Split,
+Full Camera aggregate and FIRSTGAME visual proof remain pending.
 
 Supported local Presentation Models are:
 
@@ -14,7 +18,12 @@ Mounted
 Third Person
 ```
 
-Split-screen and multiple simultaneous physical outputs remain out of scope.
+Multiple simultaneous Outputs are supported when each has a unique `CameraOutputId`,
+Unity `Camera`, `CinemachineBrain` and Default Camera Rig. Add exactly one
+`CameraViewOutputPolicyAuthoring` to Persistent Content and bind every Output explicitly.
+For shared presentation use a full-screen viewport `(0,0,1,1)`. For a two-way horizontal
+split use `(0,0,0.5,1)` for Output A and `(0.5,0,0.5,1)` for Output B. Disable
+`PlayerInputManager.splitScreen`; Framework Camera composition owns these rectangles.
 
 Technical certification before the 2026-08-17 Default-output cut:
 
@@ -36,17 +45,15 @@ Unity Preset
 CameraRigComposer
   one local rig
   Presentation Model
-  typed targets / model-valid requirements
+  consumes resolved View/Subject assignment evidence for shared composition
   model-specific settings
   Cinemachine materialization
   materialization provenance
   diagnostics
 
-PlayerGameplayCameraAuthoring
-  Player Camera participation
-  requiredness
-  Camera Rig reference
-  arbitration precedence
+CameraSharedComposition
+  one persistent shared View and CameraRigComposer
+  reconciles all current Camera Subjects without per-Player requests
 
 Session / Route / Activity Camera Override bindings
   explicit scoped normal Camera publication
@@ -60,8 +67,25 @@ CameraOutputSession
   Default presentation state
   independent force-default owners
 
+CameraOutputSessionTopology
+  Session-owned ordered collection of 1..N outputs
+  exact CameraOutputId lookup and consumer injection
+  deterministic snapshots and teardown
+
+CameraViewOutputPolicyAuthoring
+  explicit CameraViewId -> CameraOutputId bindings
+  finite normalized viewport per physical Output
+  deterministic shared or split-screen topology
+
 CameraOutputContext
   admitted normal-request set + deterministic winner
+
+Current shared-composition model
+  Player / Actor contributes Camera Subject(s)
+  Camera Assignment assigns 0..N Subjects to Views
+  Camera Rig defines how resolved Subjects are observed
+  Camera Output defines the physical destination
+  each explicit output uses its own Default Camera Rig and arbitration context
 ```
 
 `CameraRigRecipe` remains removed.
@@ -77,6 +101,12 @@ Keep these layers separate:
 Presentation Model
   how one local rig behaves
 
+Camera Subject
+  something that may be observed
+
+Camera Assignment
+  which Subjects a composed View observes
+
 Camera Request
   when that rig participates in normal arbitration
 
@@ -86,6 +116,11 @@ Camera Output Default
 Camera Output
   physical projection of Default or the current normal winner
 ```
+
+CAMERA-026-A through H now implement Subject availability, logical View/Assignment,
+shared presentation, explicit 1..N Outputs and View-to-Output viewport policy. Typed
+requests remain a separate arbitration path for scoped overrides. A Player does not own
+a View, Rig, Output or viewport merely by participating.
 
 Changing:
 
@@ -299,7 +334,7 @@ The accepted first contract does not add a competing generic Aim stage.
 
 ## 8. Typed target sources
 
-The supported typed target architecture includes:
+The current enum vocabulary includes:
 
 ```text
 Explicit Transform
@@ -309,6 +344,11 @@ Route
 Activity
 Player Group
 ```
+
+Only the explicit Transform authoring provider is implemented in the package. The other
+kinds are extension vocabulary; notably, `PlayerGroup` does not yet provide a concrete
+multi-target `ICameraTargetSource`. IF-ADR-026 requires a general Camera Subject/Subject
+Set contract rather than treating `PlayerGroup` as the universal abstraction.
 
 Required target resolution failures block.
 
@@ -431,8 +471,10 @@ Camera Output Session Binding requires an explicit Default Camera Rig.
 
 There is no automatic discovery or synthetic fallback.
 
-The current application composition must contain exactly one persistent Camera output.
-Duplicate persistent outputs are invalid.
+The current implementation and validator require exactly one persistent Camera output.
+The accepted target composition contains `1..N` explicit outputs; duplicate
+`CameraOutputId` or ambiguous bindings remain invalid. Player count never creates
+outputs implicitly.
 
 ### Output selection
 
@@ -462,6 +504,11 @@ Route Camera Override
 Activity Camera Override
 eligible Local Player Camera publication
 ```
+
+The Local Player publisher is a current specialized/legacy policy, not the canonical
+target model for ordinary Player participation. Under IF-ADR-026, ordinary Players
+contribute Subjects while an Activity/Route/Session composition may select the shared
+View.
 
 Current precedence convention:
 
@@ -508,40 +555,36 @@ directly.
 This cut does **not** create a Pause-to-Camera authority. Do not infer unwired system
 presentation from the existence of the generic owner mechanism.
 
-## 14. Player Camera authoring
+## 14. Ordinary Player Camera participation
 
-Inside the Logical Player Actor hierarchy a game may use:
+Ordinary Player gameplay contributes Camera Subject availability from the prepared
+physical Actor. It does not own a Camera rig or publish a Camera request:
 
 ```text
 Actor
   PlayerActorDeclaration
-  PlayerGameplayCameraAuthoring
+  Camera Subject availability
 
-  Anchors
-    CameraTarget
-    LookAtTarget / CameraPivot / CameraMount
+independently:
 
-  Player Camera Rig
-    CameraRigComposer
+CameraSharedComposition
+  Camera View
+  CameraRigComposer
+  existing CinemachineCamera
+  CameraOutputAuthoring Default presentation
 ```
 
-The exact target Transform depends on Presentation.
-
-Configure `PlayerGameplayCameraAuthoring` with Requiredness, Camera Rig and
-precedence.
-
-Target resolution belongs to the assigned Composer/typed source and is not
-authored twice as an implicit output override.
-
-No second Camera request binding is part of this authoring path. During current
-Activity gameplay projection, the framework resolves the exact prepared Player,
-the explicit output and this component, then `PlayerGameplayCameraEligibilityRuntimeContext`
-creates and publishes the typed Local Player request. It releases that same
-request through its exact eligibility token when the gameplay context is retired
-or rolled back. This preserves the authored precedence, the Composer-resolved
-targets and the output's normal arbitration policy without a scene auto-publisher.
+`PlayerGameplayCameraAuthoring` and Player Camera eligibility/request evidence are
+removed. Gameplay admission requires occupancy plus input only. The shared Composer
+stays active because it is the output's explicit Default Camera Rig; Subject membership
+updates only its targets. Ordinary Player join, leave, rollback and rejoin keep the
+ordinary Local Player Camera request count at zero.
 
 Camera does not own Player Join, Actor creation, Initial Placement or Leave.
+
+Joining/leaving adds/removes Subject availability and assignments without intrinsically
+creating/destroying the shared Rig or Output. Explicit Route, Activity, Session,
+Cutscene, Modal Presentation, Spectator and Debug requests remain valid arbitration.
 
 ## 15. Lifecycle and abnormal component loss
 
@@ -725,7 +768,7 @@ Sample 00 now provides real-consumer proof for:
 ```text
 persistent output Default authoring
 Camera output initialization
-Player gameplay Camera eligibility continuation
+prepared Player Camera Subject availability
 Activity readiness
 input consumer binding
 Move / Look consumption
@@ -745,7 +788,19 @@ broken-configuration diagnostics across the presentation family
 Consumer friction may justify later product refinement. It does not by itself
 invalidate historical technical certification.
 
-## 22. Deliberately deferred Camera features
+## 22. Implemented topology versus deferred presentation features
+
+Implemented through CAMERA-026-H:
+
+```text
+Camera Assignment / Subject Set assignment
+shared multi-target / Group Framing projection
+multi-output
+explicit shared and split-screen viewport topology
+```
+
+Secondary-view product presets such as minimap and picture-in-picture remain deferred,
+although the View-to-multiple-Outputs cardinality is supported by the binding contract.
 
 Not part of the current accepted presentation family:
 
@@ -753,17 +808,16 @@ Not part of the current accepted presentation family:
 Orbital / Free Look
 camera input-axis authority / recenter
 Spline / Dolly
-Group Framing
 2D Framed Follow
 noise / shake / impulse product authoring
 Third Person Aim
 advanced collision policy
 Timeline/cinematic sequencing
 advanced blend policy
-multi-output
-split-screen
 per-player physical output
 XR Camera authority
 ```
 
-These require separate product requirements.
+These presentation capabilities require separate product decisions. The implemented
+IF-ADR-026 Shared topology/assignment boundary is technically certified. Split runtime,
+the Full Camera aggregate and FIRSTGAME certification remain pending.

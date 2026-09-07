@@ -13,16 +13,10 @@ namespace Immersive.Framework.Camera
     /// </summary>
     [DisallowMultipleComponent]
     [AddComponentMenu("Immersive Framework/Camera/Session Camera Override")]
-    [FrameworkApiStatus(FrameworkApiStatus.Stable, "Stable single-output Camera product surface. Multi-output/split-screen is out of scope.")]
+    [FrameworkApiStatus(FrameworkApiStatus.Stable, "Session request bound to one explicit Camera Output ID.")]
     public sealed class SessionCameraOverride :
         ScopedCameraOverride
     {
-        [SerializeField]
-        private CameraOutputAuthoring persistentOutputSession;
-
-        public CameraOutputAuthoring PersistentOutputSession =>
-            persistentOutputSession;
-
         protected override CameraRequestOwnerKind OwnerKind =>
             CameraRequestOwnerKind.Session;
 
@@ -41,8 +35,6 @@ namespace Immersive.Framework.Camera
 
         private void OnEnable()
         {
-            SetOutputSession(persistentOutputSession);
-
             SetOwnerActive(
                 $"Session camera override is available. " +
                 $"scope='{OwnerDiagnosticName}'.");

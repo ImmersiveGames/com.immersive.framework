@@ -21,10 +21,8 @@ namespace Immersive.Framework.PlayerParticipation
         RejectedSlotNotConfigured = 102,
         RejectedOccupancyNotReady = 103,
         RejectedInputBindingNotReady = 104,
-        RejectedCameraDecisionNotReady = 105,
         RejectedForeignOrStaleOccupancy = 106,
         RejectedForeignOrStaleInputBinding = 107,
-        RejectedForeignOrStaleCameraEligibility = 108,
         RejectedSlotAlreadyAdmitted = 109,
         RejectedForeignOrStaleAdmission = 110,
 

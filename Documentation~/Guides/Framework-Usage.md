@@ -105,9 +105,11 @@ Transition, Loading, Pause presentation, Player provisioning and Audio integrati
 are added only when the game needs them; they are not silently materialized by the
 template pipeline.
 
-Exactly one physical Camera Output is required for the current single-output
-Camera product boundary. The current minimal template also carries one `EventSystem`
-with `InputSystemUIInputModule`.
+The minimal template requires one physical Camera Output. IF-ADR-026 implements explicit
+Session composition of `1..N` outputs; the Shared one-Output runtime boundary is certified,
+while Split runtime remains pending. Player count never creates outputs implicitly. The
+current minimal template also carries one `EventSystem` with
+`InputSystemUIInputModule`.
 
 ### 4.1 Game Application Inspector workflow
 

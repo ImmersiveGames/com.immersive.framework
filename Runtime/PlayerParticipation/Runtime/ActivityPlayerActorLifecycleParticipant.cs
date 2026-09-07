@@ -265,7 +265,6 @@ namespace Immersive.Framework.PlayerParticipation
 
             if (projectedSlots.Count == 0)
             {
-                _playerReadinessRecord = null;
                 _activeRecord = new ActiveActivityRecord(
                     activity,
                     owner,
@@ -287,11 +286,20 @@ namespace Immersive.Framework.PlayerParticipation
                     0,
                     Array.Empty<ActivityPlayerActorSlotLifecycleSnapshot>(),
                     "Activity Player Actor lifecycle entered with no projected Player Slots.");
-                return ActivityContentExecutionResult.SucceededNoOp(
+                ActivityContentExecutionResult noParticipantsResult =
+                    ActivityContentExecutionResult.SucceededNoOp(
                     request,
                     nameof(ActivityPlayerActorLifecycleParticipant),
                     "activity-player-actor-enter-no-participants",
                     _lastSnapshot.Message);
+                CaptureImmediateActivityPlayerReadiness(
+                    request,
+                    activity,
+                    owner,
+                    requirementLevel,
+                    projectedSlots,
+                    noParticipantsResult);
+                return noParticipantsResult;
             }
 
             if (ShouldDeferActivityPlayerReadiness(

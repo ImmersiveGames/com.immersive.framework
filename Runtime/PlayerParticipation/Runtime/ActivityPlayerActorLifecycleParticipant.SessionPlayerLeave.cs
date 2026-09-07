@@ -18,7 +18,6 @@ namespace Immersive.Framework.PlayerParticipation
             internal bool hadPreparedActor;
             internal bool hadGameplayChain;
             internal bool gameplayAdmissionReleased;
-            internal bool cameraReleased;
             internal bool inputReleased;
             internal bool occupancyReleased;
             internal bool preparedActorReleased;
@@ -167,7 +166,6 @@ namespace Immersive.Framework.PlayerParticipation
             {
                 progress.hadGameplayChain |= gameplay.HadGameplayChain;
                 progress.gameplayAdmissionReleased = gameplay.AdmissionReleased;
-                progress.cameraReleased = gameplay.CameraReleased;
                 progress.inputReleased = gameplay.InputReleased;
                 progress.occupancyReleased = gameplay.OccupancyReleased;
             }
@@ -412,7 +410,6 @@ namespace Immersive.Framework.PlayerParticipation
                 hadPreparedActor = hasPreparedActor,
                 hadGameplayChain = hadGameplayChain,
                 gameplayAdmissionReleased = !hadGameplayChain,
-                cameraReleased = !hadGameplayChain,
                 inputReleased = !hadGameplayChain,
                 occupancyReleased = !hadGameplayChain,
                 preparedActorReleased = !hasPreparedActor,
@@ -433,6 +430,11 @@ namespace Immersive.Framework.PlayerParticipation
             readinessContributionRetired = false;
             if (_playerReadinessRecord != null)
             {
+                bool dynamicJoinedProjection =
+                    _playerReadinessRecord.activity != null &&
+                    _playerReadinessRecord.activity
+                        .PlayerParticipationProjectionMode ==
+                        ActivityParticipationProjectionMode.AllJoinedSlots;
                 for (int index = _playerReadinessRecord.projectedSlots.Count - 1;
                      index >= 0;
                      index--)
@@ -441,6 +443,13 @@ namespace Immersive.Framework.PlayerParticipation
                         _playerReadinessRecord.projectedSlots[index];
                     if (slot.playerSlotId == playerSlotId)
                     {
+                        if (dynamicJoinedProjection)
+                        {
+                            _playerReadinessRecord.projectedSlots.RemoveAt(index);
+                            readinessContributionRetired = true;
+                            continue;
+                        }
+
                         // A projeção configurada permanece na Activity atual, mas nenhuma
                         // evidência da ocorrência que saiu pode continuar autoritativa.
                         slot.joined = false;
@@ -673,7 +682,6 @@ namespace Immersive.Framework.PlayerParticipation
                 progress != null && progress.hadActivityRepresentation,
                 progress != null && progress.hadPreparedActor,
                 progress != null && progress.gameplayAdmissionReleased,
-                progress != null && progress.cameraReleased,
                 progress != null && progress.inputReleased,
                 progress != null && progress.occupancyReleased,
                 progress != null && progress.preparedActorReleased,

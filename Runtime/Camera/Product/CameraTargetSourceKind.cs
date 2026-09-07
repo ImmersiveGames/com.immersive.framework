@@ -7,7 +7,7 @@ namespace Immersive.Framework.Camera
     /// Declares where a camera target source is expected to come from.
     /// Sources must be explicit; this contract does not permit Camera.main or hierarchy-name fallback.
     /// </summary>
-    [FrameworkApiStatus(FrameworkApiStatus.Stable, "Stable single-output Camera product surface. Multi-output/split-screen is out of scope.")]
+    [FrameworkApiStatus(FrameworkApiStatus.Stable, "Stable per-Output Camera product surface for explicit Session 1..N topology; split-screen remains out of scope.")]
     public enum CameraTargetSourceKind
     {
         None = 0,

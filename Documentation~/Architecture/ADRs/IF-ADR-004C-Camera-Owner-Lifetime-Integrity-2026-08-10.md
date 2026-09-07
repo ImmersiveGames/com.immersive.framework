@@ -1,11 +1,17 @@
 # IF-ADR-004C — Camera Owner Lifetime Integrity
 
-Status: **ACCEPTED — IMPLEMENTED — CERTIFIED 10/10**  
+Status: **ACCEPTED HISTORICAL REQUEST-PUBLISHER BOUNDARY — IMPLEMENTED — CERTIFIED 10/10**
 Date: **2026-08-10**  
 Type: **Narrow package hardening + technical QA**  
 Primary system: **Camera**  
 Triggered by: **IF-ADR-004B case 16**  
 Normative parent: **IF-ADR-004 — Camera Requests and Output Authority**
+
+> Reconciled 2026-09-07: IF-ADR-026 preserves this publication cleanup contract but
+> supersedes its use as the whole Camera lifetime model. Player eligibility may govern
+> Player Subject availability or a specialized Player-owned request; it does not
+> intrinsically govern Assignment, Rig/View or Output lifetime. The 10/10 result is
+> historical evidence for request-owner cleanup and did not test IF-ADR-026.
 
 ## 1. Trigger
 
@@ -25,7 +31,9 @@ abnormal Unity component-lifetime boundary rather than Game Flow ownership.
 
 ## 2. Ownership analysis
 
-The package has two distinct lifetimes that must not be conflated.
+The implemented request publication path has two distinct lifetimes that must not be
+conflated. They are a subset of the four independent lifetime domains accepted by
+IF-ADR-026: Subject, Assignment, Rig/View and Output.
 
 ### Logical owner lifetime
 
@@ -172,7 +180,7 @@ authority/restoration lifecycle.
 - hidden hierarchy discovery;
 - automatic request publication on enable;
 - synthetic Route/Activity exit on component disable;
-- multi-output/split-screen architecture;
+- implementation of multi-output/split-screen architecture;
 - changes to CameraRigComposer authoring intent.
 
 ## 10. Result
@@ -197,5 +205,8 @@ QA
   CERTIFIED 18/18
 
 Current blocker
-  NONE for accepted single-output owner lifetime
+  NONE for the historically certified request-owner cleanup boundary
+
+Target architecture
+  IF-ADR-026 IMPLEMENTATION / QA / FIRSTGAME PROOF PENDING
 ```

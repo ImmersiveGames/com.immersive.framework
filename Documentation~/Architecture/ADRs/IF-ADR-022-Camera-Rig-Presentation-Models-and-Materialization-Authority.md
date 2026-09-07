@@ -1,19 +1,23 @@
 # IF-ADR-022 — Camera Rig Presentation Models and Materialization Authority
 
-Status: **Accepted / Implemented / Technical QA Certified — FIRSTGAME promotion pending**  
+Status: **Accepted presentation family / Implemented / Technical QA Certified — target-selection boundary reopened by IF-ADR-026**
 Proposed: **2026-08-11**  
 Accepted / technically certified: **2026-08-15**  
 Type: architecture / product authoring / editor materialization  
 Primary decision extended: IF-ADR-004 — Camera Requests and Output Authority  
 Product-surface governance: IF-ADR-010 — Editor and Inspector Product Surface Authority  
 Related Player spatial authority: IF-ADR-021 — Activity Player Actor Initial Placement Authority  
+Camera Subject / Assignment / multi-output authority: IF-ADR-026
 Source finding: pre-FIRSTGAME architecture review — R4 Camera Presentation Model beyond Follow  
 Package implementation baseline: `b645f8db57673cbdc3531ce12b6d399225a4d0cb` (`ADR22`)  
 Technical closure record: [Camera Presentation Technical Certification — 2026-08-15](../Reconciliation/IMMERSIVE-FRAMEWORK-CAMERA-PRESENTATION-TECHNICAL-CERTIFICATION-2026-08-15.md)
 
-> This ADR expands the local Camera rig product surface beyond `Follow` without
-> reopening Camera output authority, request arbitration, Session output
-> lifetime or multi-output architecture.
+> This ADR's `Fixed`, `Follow`, `Mounted` and `Third Person` presentation family and
+> materialization rules remain accepted. IF-ADR-026 later reopened target-selection and
+> output-cardinality boundaries: presentation no longer owns the decision about which
+> Subjects a View observes, and multi-output is implemented by IF-ADR-026 A-H. Shared
+> runtime is certified; Split/full aggregate remain pending. Historical certification
+> below remains scoped to the former baseline.
 
 ## 1. Context
 
@@ -21,7 +25,7 @@ IF-ADR-004 already defines the Camera authority chain:
 
 ```text
 Camera request source
-  Session / Route / Activity / eligible Local Player
+  Session / Route / Activity / specialized Local Player policy
         ↓
 typed CameraRequest + ownership/lifetime evidence
         ↓
@@ -37,10 +41,11 @@ CameraOutputRigApplicator
         ↓
 CameraOutputAuthoring
         ↓
-one explicit Unity Camera + CinemachineBrain
+one explicit Unity Camera + CinemachineBrain per output
 ```
 
-The accepted product has one persistent Camera output per Session.
+The implemented baseline has one persistent Camera output per Session. IF-ADR-026 accepts
+one or more explicitly composed outputs; Player count does not determine output count.
 
 `CameraRigComposer` is deliberately **not** that authority.
 
@@ -85,7 +90,7 @@ That would fragment the product surface.
 The solution must also avoid the opposite failure: turning the Framework into a
 generic Cinemachine graph editor.
 
-## 3. Decision — Camera authority remains unchanged
+## 3. Decision — presentation authority remains unchanged
 
 IF-ADR-022 does not change:
 
@@ -98,12 +103,12 @@ request lifetime
 CameraOutputSession
 CameraOutputRigApplicator authority
 CameraOutputAuthoring
-one persistent Session output
+one persistent Session output in the implemented baseline
 transactional logical/physical mutation
 rollback guarantees
 ```
 
-A Presentation Model never decides which Camera wins.
+A Presentation Model never decides which Camera wins or which Subjects are assigned.
 
 A Presentation Model only determines how one local rig behaves when its
 `CinemachineCamera` is selected by the existing request system.
@@ -373,9 +378,9 @@ but that choice is explicit.
 Apply/Rebuild must not leave two competing Framework-owned controls for the same
 pipeline stage.
 
-## 9. Typed target resolution is retained
+## 9. Typed target resolution is retained and assignment is externalized
 
-The existing target architecture remains:
+The existing target-source vocabulary is:
 
 ```text
 Explicit Transform
@@ -386,7 +391,10 @@ Activity
 Player Group
 ```
 
-through typed `ICameraTargetSource` contracts.
+through typed `ICameraTargetSource` contracts. The package currently implements only
+explicit Transform authoring; `PlayerGroup` has no concrete provider and
+`CameraResolvedTargets` is a single Follow/Look At pair. IF-ADR-026 therefore treats
+`PlayerGroup` as reusable prior vocabulary, not a completed Subject Set abstraction.
 
 IF-ADR-022 does not add:
 
@@ -400,10 +408,14 @@ nearest Actor
 global target registry
 ```
 
-Flow:
+Target flow after IF-ADR-026 migration:
 
 ```text
-CameraRigComposer intent
+Camera Assignment
+        ↓
+resolved Camera Subject / Subject Set target evidence
+        ↓
+CameraRigComposer presentation intent
         ↓
 resolve typed targets
         ↓
@@ -736,8 +748,9 @@ It does not branch on Presentation Model.
 A model does not publish/release its own Camera request automatically from
 `Awake`, `Start` or `OnEnable`.
 
-Request lifetime remains owned by existing Session / Route / Activity / Player
-publishing surfaces.
+Request lifetime remains owned by existing Session / Route / Activity or specialized
+Player publishing surfaces. Ordinary Player participation contributes Subjects; it does
+not intrinsically publish or own a Camera request.
 
 ## 23. Presentation does not own Player lifecycle
 
@@ -854,8 +867,7 @@ guessing ownership.
 Rejected:
 
 - reopening request arbitration for each Presentation Model;
-- creating another persistent Camera output for a local model;
-- split-screen under IF-ADR-022;
+- creating another persistent Camera output merely from a local model or Player count;
 - one top-level Composer class per model;
 - exposing arbitrary Cinemachine component types as normal product intent;
 - runtime reflection to discover presentation handlers;
@@ -880,7 +892,7 @@ Orbital / Free Look
 camera input-axis authority
 recenter policy
 Spline / Dolly
-Group Framing product model
+Group Framing implementation
 2D Framed Follow product model
 camera shake/noise product authoring
 Cinemachine impulse product authoring
@@ -888,13 +900,16 @@ Third Person Aim extension
 advanced camera collision policy
 Timeline/cinematic sequence authoring
 advanced blend policy
-multi-output
-split-screen
+multi-output implementation
+split-screen implementation
 per-Player physical output
 XR camera authority
 ```
 
-These require demonstrated product requirements and separate cuts.
+IF-ADR-026 now accepts Group Framing, multi-output and split-screen at the architectural
+boundary and implements them through CAMERA-026-A through H. Shared runtime is certified;
+Split runtime, the Full Camera aggregate and FIRSTGAME proof remain pending. The other
+items remain deferred architecture/product decisions.
 
 ## 29. Implementation closure
 
@@ -1117,7 +1132,9 @@ reopen the successful technical certification.
 
 ## 33. Product maturity / promotion boundary
 
-Architecture is accepted.
+The presentation/materialization architecture is accepted. Subject assignment and
+multi-output are implemented under IF-ADR-026; Shared runtime is certified and Split
+runtime remains pending.
 
 C1-C5 package/editor/QA work is complete.
 
@@ -1137,6 +1154,11 @@ Acceptance requires:
 IF-ADR-004
   recognize IF-ADR-022 presentation family
   preserve request/output authority
+
+IF-ADR-026
+  separate Subject assignment from presentation
+  accept explicit 1..N output composition
+  preserve this ADR's materialization authority
 
 IF-ADR-010
   register Camera model-specific Class C Inspector/materialization

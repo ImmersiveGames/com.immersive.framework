@@ -6,6 +6,11 @@ Primary ADRs: IF-ADR-004, IF-ADR-010, IF-ADR-022
 Package implementation baseline: `b645f8db57673cbdc3531ce12b6d399225a4d0cb` (`ADR22`)  
 Consumer validation: **FIRSTGAME C6 pending**
 
+> Historical boundary notice — 2026-09-07: IF-ADR-026 preserves the certified
+> Fixed/Follow/Mounted/Third Person materialization family but externalizes Subject
+> assignment and accepts explicit multi-output topology. This record did not test those
+> new contracts and must not be presented as their certification.
+
 ## 1. Purpose
 
 This record closes the technical implementation/certification portion of

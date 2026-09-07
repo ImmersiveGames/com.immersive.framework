@@ -124,11 +124,11 @@ allows it.
 The minimal template contract requires:
 
 ```text
-exactly one CameraOutputAuthoring
-exactly one explicit Default Camera Rig on that binding
+one or more CameraOutputAuthoring components with unique Output IDs
+exactly one explicit Default Camera Rig on each binding
 exactly one EventSystem
 exactly one InputSystemUIInputModule
-zero or one SessionCameraOverride
+zero or more SessionCameraOverride components, each targeting an exact Output ID
 ```
 
 The Camera Output contains its explicit Output ID and references to:
