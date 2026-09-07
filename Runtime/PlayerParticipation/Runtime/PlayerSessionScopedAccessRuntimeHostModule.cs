@@ -3,12 +3,15 @@ using System.Collections.Generic;
 using Immersive.Framework.ActivityFlow;
 using Immersive.Framework.ApplicationLifecycle;
 using Immersive.Framework.Authoring;
+using Immersive.Framework.Diagnostics;
 using Immersive.Framework.Identity;
 using Immersive.Framework.PlayerSlots;
 using Immersive.Framework.RouteLifecycle;
 using Immersive.Framework.RuntimeContent;
 using Immersive.Framework.SceneLifecycle;
+using Immersive.Logging.Records;
 using UnityEngine;
+using UnityEngine.InputSystem;
 
 namespace Immersive.Framework.PlayerParticipation
 {
@@ -22,6 +25,7 @@ namespace Immersive.Framework.PlayerParticipation
     {
         private readonly Dictionary<PlayerSessionScopedAccessConsumer,
             PlayerSessionScopedAccess> _accesses = new();
+        private readonly HashSet<string> _inputOwnershipDiagnosticKeys = new();
         private FrameworkRuntimeHost _runtimeHost;
         private PlayerParticipationRuntimeContext _participationContext;
 
@@ -234,8 +238,174 @@ namespace Immersive.Framework.PlayerParticipation
             }
 
             _accesses.Clear();
+            _inputOwnershipDiagnosticKeys.Clear();
             _participationContext = null;
             _runtimeHost = null;
+        }
+
+        internal void LogInputOwnershipDiagnosticOnce(
+            PlayerSlotRuntimeSnapshot slot,
+            string status,
+            string stage,
+            string issue,
+            bool hasHostEvidence,
+            PlayerHostEvidenceSnapshot retainedHost,
+            LocalPlayerHostAuthoring resolvedHost,
+            PlayerInput resolvedPlayerInput)
+        {
+            string slotId = slot.PlayerSlotId.IsValid
+                ? slot.PlayerSlotId.StableText
+                : "<invalid>";
+            string diagnosticIssue = issue ?? string.Empty;
+            string registeredHostIssue = stage.StartsWith(
+                    "RegisteredHost.", StringComparison.Ordinal)
+                ? diagnosticIssue
+                : string.Empty;
+            string key =
+                $"{slotId}|{slot.Revision}|{stage}|{diagnosticIssue}";
+            if (!_inputOwnershipDiagnosticKeys.Add(key))
+            {
+                return;
+            }
+
+            LocalPlayerHostAuthoring diagnosticHost =
+                !ReferenceEquals(resolvedHost, null)
+                    ? resolvedHost
+                    : retainedHost.Host;
+            bool hostReferenceExists = !ReferenceEquals(diagnosticHost, null);
+            bool hostAlive = hostReferenceExists && diagnosticHost != null;
+            PlayerInput diagnosticPlayerInput =
+                !ReferenceEquals(resolvedPlayerInput, null)
+                    ? resolvedPlayerInput
+                    : hostAlive
+                        ? diagnosticHost.PlayerInput
+                        : null;
+            bool playerInputReferenceExists =
+                !ReferenceEquals(diagnosticPlayerInput, null);
+            bool playerInputAlive =
+                playerInputReferenceExists && diagnosticPlayerInput != null;
+            bool sameGameObject = hostAlive && playerInputAlive &&
+                ReferenceEquals(diagnosticHost.gameObject,
+                    diagnosticPlayerInput.gameObject);
+
+            var fields = LogFields.Of(
+                LogFields.Field("status", status),
+                LogFields.Field("stage", stage),
+                LogFields.Field("slot", slotId),
+                LogFields.Field("slotRevision", slot.Revision),
+                LogFields.Field("slotState", slot.AllocationState),
+                LogFields.Field("issue", diagnosticIssue),
+                LogFields.Field("registeredHostIssue", registeredHostIssue),
+                LogFields.Field("hasHostEvidence", hasHostEvidence),
+                LogFields.Field("retainedHostSlot",
+                    retainedHost.PlayerSlotId.IsValid
+                        ? retainedHost.PlayerSlotId.StableText
+                        : "<invalid>"),
+                LogFields.Field("retainedHostAvailable",
+                    retainedHost.HostIsAvailable),
+                LogFields.Field("assignmentOrigin",
+                    retainedHost.AssignmentOrigin),
+                LogFields.Field("assignmentToken",
+                    retainedHost.AssignmentToken.IsValid
+                        ? retainedHost.AssignmentToken.StableText
+                        : "<invalid>"),
+                LogFields.Field("hostBinding",
+                    retainedHost.HostBindingIdentity.IsValid
+                        ? retainedHost.HostBindingIdentity.StableText
+                        : "<invalid>"),
+                LogFields.Field("runtimeOwnerCorrelation",
+                    "not-exposed-by-registered-host-resolver"),
+                LogFields.Field("hostExists", hostReferenceExists),
+                LogFields.Field("hostAlive", hostAlive),
+                LogFields.Field("hostIsJoined",
+                    hostAlive && diagnosticHost.IsJoined),
+                LogFields.Field("hostHasJoinedSlot",
+                    hostAlive && diagnosticHost.HasJoinedSlot),
+                LogFields.Field("hostJoinedSlot",
+                    hostAlive && diagnosticHost.HasJoinedSlot &&
+                    diagnosticHost.JoinedPlayerSlotId.IsValid
+                        ? diagnosticHost.JoinedPlayerSlotId.StableText
+                        : "<invalid>"),
+                LogFields.Field("hostGameObject",
+                    hostAlive
+                        ? $"{diagnosticHost.gameObject.name}#{diagnosticHost.gameObject.GetEntityId()}"
+                        : "<unavailable>"),
+                LogFields.Field("playerInputExists",
+                    playerInputReferenceExists),
+                LogFields.Field("playerInputAlive", playerInputAlive),
+                LogFields.Field("playerInputGameObject",
+                    playerInputAlive
+                        ? $"{diagnosticPlayerInput.gameObject.name}#{diagnosticPlayerInput.gameObject.GetEntityId()}"
+                        : "<unavailable>"),
+                LogFields.Field("sameHostGameObject", sameGameObject),
+                LogFields.Field("playerIndex",
+                    playerInputAlive ? diagnosticPlayerInput.playerIndex : -1),
+                LogFields.Field("deviceCount",
+                    playerInputAlive ? diagnosticPlayerInput.devices.Count : 0),
+                LogFields.Field("deviceIds",
+                    DescribeInputDeviceIds(diagnosticPlayerInput)),
+                LogFields.Field("deviceNames",
+                    DescribeInputDeviceNames(diagnosticPlayerInput)));
+
+            FrameworkLogger logger = FrameworkLogger.Create(
+                typeof(PlayerSessionScopedAccessRuntimeHostModule));
+            if (string.Equals(status, "Succeeded", StringComparison.Ordinal))
+            {
+                logger.Info("[FRAMEWORK_PLAYER_INPUT_OWNERSHIP_DIAG]", fields);
+                return;
+            }
+
+            logger.Warning("[FRAMEWORK_PLAYER_INPUT_OWNERSHIP_DIAG]", fields);
+        }
+
+        private static string DescribeInputDeviceIds(PlayerInput playerInput)
+        {
+            if (playerInput == null)
+            {
+                return "<unavailable>";
+            }
+
+            var devices = playerInput.devices;
+            if (devices.Count == 0)
+            {
+                return "<none>";
+            }
+
+            var descriptions = new string[devices.Count];
+            for (int index = 0; index < devices.Count; index++)
+            {
+                InputDevice device = devices[index];
+                descriptions[index] = ReferenceEquals(device, null)
+                    ? $"[{index}]=<null>"
+                    : device.deviceId.ToString();
+            }
+
+            return string.Join(",", descriptions);
+        }
+
+        private static string DescribeInputDeviceNames(PlayerInput playerInput)
+        {
+            if (playerInput == null)
+            {
+                return "<unavailable>";
+            }
+
+            var devices = playerInput.devices;
+            if (devices.Count == 0)
+            {
+                return "<none>";
+            }
+
+            var descriptions = new string[devices.Count];
+            for (int index = 0; index < devices.Count; index++)
+            {
+                InputDevice device = devices[index];
+                descriptions[index] = ReferenceEquals(device, null)
+                    ? $"[{index}]=<null>"
+                    : $"{device.displayName} ({device.layout})";
+            }
+
+            return string.Join(",", descriptions);
         }
     }
 
@@ -694,11 +864,14 @@ namespace Immersive.Framework.PlayerParticipation
 
             var slots = new List<PlayerSessionScopedSlotObservation>(
                 participation.Slots.Count);
+            PlayerSessionScopedAccessRuntimeHostModule diagnostics =
+                runtimeHost.GetComponent<PlayerSessionScopedAccessRuntimeHostModule>();
             for (int index = 0; index < participation.Slots.Count; index++)
             {
                 slots.Add(CreateSlotObservation(participation.Slots[index], preparation,
                     preparationAvailable ? preparationSnapshot : null,
-                    gameplayAvailable ? gameplaySnapshot : null, activityOwner));
+                    gameplayAvailable ? gameplaySnapshot : null, activityOwner,
+                    diagnostics));
             }
 
             observation = new PlayerSessionScopedObservationSnapshot(
@@ -713,7 +886,8 @@ namespace Immersive.Framework.PlayerParticipation
             PlayerActorPreparationRuntimeHostModule preparation,
             PlayerActorPreparationRuntimeHostSnapshot preparationSnapshot,
             PlayerGameplayRuntimeHostSnapshot gameplaySnapshot,
-            RuntimeContentOwner currentActivityOwner)
+            RuntimeContentOwner currentActivityOwner,
+            PlayerSessionScopedAccessRuntimeHostModule diagnostics)
         {
             PlayerHostEvidenceSummary hostEvidence = default;
             PlayerHostEvidenceSnapshot retainedHost = default;
@@ -749,7 +923,8 @@ namespace Immersive.Framework.PlayerParticipation
             if (!hasGameplayAdmissionEvidence) gameplayAdmission = default;
 
             bool hasInputOwnershipEvidence = TryCreateInputOwnership(
-                slot, preparation, out LocalPlayerInputOwnershipSummary inputOwnership);
+                slot, preparation, hasHostEvidence, retainedHost, diagnostics,
+                out LocalPlayerInputOwnershipSummary inputOwnership);
 
             return new PlayerSessionScopedSlotObservation(slot, hostEvidence,
                 hasHostEvidence, preparationSummary, hasPreparationEvidence,
@@ -761,20 +936,55 @@ namespace Immersive.Framework.PlayerParticipation
         private static bool TryCreateInputOwnership(
             PlayerSlotRuntimeSnapshot slot,
             PlayerActorPreparationRuntimeHostModule preparation,
+            bool hasHostEvidence,
+            PlayerHostEvidenceSnapshot retainedHost,
+            PlayerSessionScopedAccessRuntimeHostModule diagnostics,
             out LocalPlayerInputOwnershipSummary summary)
         {
             summary = default;
-            if (!slot.IsValid || !slot.IsJoined || preparation == null ||
-                !preparation.TryGetRegisteredHost(slot.PlayerSlotId,
-                    out LocalPlayerHostAuthoring host, out _))
+            if (!slot.IsValid || !slot.IsJoined)
             {
+                return false;
+            }
+
+            if (preparation == null)
+            {
+                diagnostics?.LogInputOwnershipDiagnosticOnce(
+                    slot, "Failed", "Preparation.Unavailable",
+                    "Player Actor preparation runtime is unavailable.",
+                    hasHostEvidence, retainedHost, null, null);
+                return false;
+            }
+
+            if (!preparation.TryGetRegisteredHost(slot.PlayerSlotId,
+                    out LocalPlayerHostAuthoring host, out string hostIssue))
+            {
+                diagnostics?.LogInputOwnershipDiagnosticOnce(
+                    slot, "Failed",
+                    RegisteredHostFailureStage(
+                        slot.PlayerSlotId, hasHostEvidence, retainedHost),
+                    hostIssue,
+                    hasHostEvidence, retainedHost, host, null);
                 return false;
             }
 
             // O Host físico da Session pode existir sem assignment ou Actor de Activity.
             var playerInput = host.PlayerInput;
-            if (playerInput == null || playerInput.gameObject != host.gameObject)
+            if (playerInput == null)
             {
+                diagnostics?.LogInputOwnershipDiagnosticOnce(
+                    slot, "Failed", "PlayerInput.Unavailable",
+                    "Registered Local Player Host has no live PlayerInput.",
+                    hasHostEvidence, retainedHost, host, playerInput);
+                return false;
+            }
+
+            if (playerInput.gameObject != host.gameObject)
+            {
+                diagnostics?.LogInputOwnershipDiagnosticOnce(
+                    slot, "Failed", "PlayerInput.GameObjectMismatch",
+                    "Registered Local Player Host and PlayerInput do not share the same GameObject.",
+                    hasHostEvidence, retainedHost, host, playerInput);
                 return false;
             }
 
@@ -785,6 +995,10 @@ namespace Immersive.Framework.PlayerParticipation
                 var device = pairedDevices[index];
                 if (device == null)
                 {
+                    diagnostics?.LogInputOwnershipDiagnosticOnce(
+                        slot, "Failed", "Devices.NullReference",
+                        $"Paired device at index '{index}' is null.",
+                        hasHostEvidence, retainedHost, host, playerInput);
                     return false;
                 }
 
@@ -794,7 +1008,39 @@ namespace Immersive.Framework.PlayerParticipation
 
             summary = new LocalPlayerInputOwnershipSummary(
                 playerInput.playerIndex, playerInput.currentControlScheme, devices);
+            diagnostics?.LogInputOwnershipDiagnosticOnce(
+                slot, "Succeeded", "Succeeded", string.Empty,
+                hasHostEvidence, retainedHost, host, playerInput);
             return true;
+        }
+
+        private static string RegisteredHostFailureStage(
+            PlayerSlotId expectedSlot,
+            bool hasHostEvidence,
+            PlayerHostEvidenceSnapshot retainedHost)
+        {
+            if (!hasHostEvidence || !retainedHost.HasRetainedHostReference)
+            {
+                return "RegisteredHost.NotRegistered";
+            }
+
+            if (!retainedHost.HostIsAvailable)
+            {
+                return "RegisteredHost.Destroyed";
+            }
+
+            LocalPlayerHostAuthoring host = retainedHost.Host;
+            if (!host.IsJoined)
+            {
+                return "RegisteredHost.NotJoined";
+            }
+
+            if (!host.HasJoinedSlot || host.JoinedPlayerSlotId != expectedSlot)
+            {
+                return "RegisteredHost.SlotMismatch";
+            }
+
+            return "RegisteredHost.Other";
         }
 
         private static bool TryGetPreparation(PlayerActorPreparationSnapshot snapshot,

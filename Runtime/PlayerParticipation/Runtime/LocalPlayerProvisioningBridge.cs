@@ -174,6 +174,29 @@ namespace Immersive.Framework.PlayerParticipation
                     backendIssue));
             }
 
+            if (request.PairWithDevice != null && request.PairWithDevice.added)
+            {
+                foreach (PlayerInput admittedPlayer in _admittedPlayers)
+                {
+                    if (admittedPlayer == null)
+                    {
+                        continue;
+                    }
+
+                    foreach (InputDevice pairedDevice in admittedPlayer.devices)
+                    {
+                        if (ReferenceEquals(pairedDevice, request.PairWithDevice))
+                        {
+                            return Complete(CreateRejected(
+                                LocalPlayerJoinStatus.RejectedDeviceAlreadyOwned,
+                                default,
+                                request,
+                                "Explicit input device already belongs to a current admitted Local Player."));
+                        }
+                    }
+                }
+            }
+
             PlayerParticipationSnapshot initialSnapshot = _participationContext.CreateSnapshot();
 
             _operationSequence++;

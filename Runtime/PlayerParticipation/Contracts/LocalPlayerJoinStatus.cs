@@ -21,6 +21,7 @@ namespace Immersive.Framework.PlayerParticipation
         RejectedMissingLocalPlayerHost = 21,
         RejectedForeignOrStaleReservation = 22,
         RejectedInvalidLocalPlayerHost = 23,
+        RejectedDeviceAlreadyOwned = 24,
         FailedAdmission = 30,
         FailedRollback = 31
     }
