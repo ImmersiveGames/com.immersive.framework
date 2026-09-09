@@ -1,7 +1,7 @@
 # IF-TRACK — Immersive Framework
 
 Status: **Active — current implemented baseline + Stage B consumer evidence**  
-Last updated: **2026-09-08**
+Last updated: **2026-09-09**
 
 ## Authority and status model
 
