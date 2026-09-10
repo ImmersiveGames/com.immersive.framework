@@ -35,7 +35,6 @@ namespace Immersive.Framework.CameraAuthoring
 
         [Header("Presentation")]
         [SerializeField] private string outputId;
-        [SerializeField] private CameraRigComposer composer;
 
         private ICameraSubjectAvailabilitySource _availability;
         private CameraViewAssignmentContext _assignments;
@@ -53,15 +52,13 @@ namespace Immersive.Framework.CameraAuthoring
         public string OutputIdText => outputId.NormalizeText();
         public CameraOutputId RequestedOutputId => new CameraOutputId(OutputIdText);
         public CameraOutputAuthoring Output => _output;
-        public CameraRigComposer Composer => composer;
         public CameraSharedCompositionSnapshot Snapshot { get; private set; }
 
         public void Configure(
             CameraView view,
-            string contextId,
+            ViewAssignmentContextId contextId,
             CameraSubjectAssignmentOwnerId ownerId,
             CameraOutputId targetOutputId,
-            CameraRigComposer targetComposer,
             CameraSharedCompositionSubjectPolicyKind policy)
         {
             if (_assignments != null || _subscribed)
@@ -72,10 +69,9 @@ namespace Immersive.Framework.CameraAuthoring
 
             viewId = view.ViewId.Value;
             viewDescription = view.Description;
-            assignmentContextId = contextId.NormalizeText();
+            assignmentContextId = contextId.Value;
             assignmentOwnerId = ownerId.Value;
             outputId = targetOutputId.Value;
-            composer = targetComposer;
             subjectPolicy = policy;
             _view = view;
             _ownerId = ownerId;
@@ -132,6 +128,7 @@ namespace Immersive.Framework.CameraAuthoring
                     CameraViewPresentationApplyStatus.None,
                     "Shared Camera composition has no valid active View.");
             }
+            CameraRigComposer composer = _output != null ? _output.DefaultCameraRig : null;
             if (composer == null)
             {
                 return Record(
@@ -140,13 +137,10 @@ namespace Immersive.Framework.CameraAuthoring
                     0,
                     0,
                     CameraViewPresentationApplyStatus.None,
-                    "Shared Camera composition requires one explicitly bound CameraRigComposer.");
+                    "Shared Camera composition requires an explicit Default Camera Rig on its bound Camera Output.");
             }
             if (availability == null ||
-                !string.Equals(
-                    availability.ContextId,
-                    _availability.ContextId,
-                    StringComparison.Ordinal))
+                availability.ContextId != _availability.ContextId)
             {
                 return Record(
                     CameraSharedCompositionReconcileStatus.RejectedForeignAvailabilityContext,
@@ -355,7 +349,7 @@ namespace Immersive.Framework.CameraAuthoring
                     "Shared Camera composition requires an explicit valid View id.");
                 return;
             }
-            if (string.IsNullOrEmpty(assignmentContextId.NormalizeText()) ||
+            if (!new ViewAssignmentContextId(assignmentContextId).IsValid ||
                 !_ownerId.IsValid)
             {
                 Record(
@@ -388,6 +382,7 @@ namespace Immersive.Framework.CameraAuthoring
                     "Shared Camera composition requires one explicit Camera Output ID and its exact injected Output.");
                 return;
             }
+            CameraRigComposer composer = _output != null ? _output.DefaultCameraRig : null;
             if (composer == null)
             {
                 Record(
@@ -396,21 +391,11 @@ namespace Immersive.Framework.CameraAuthoring
                     0,
                     0,
                     CameraViewPresentationApplyStatus.None,
-                    "Shared Camera composition requires one explicitly bound CameraRigComposer.");
+                    "Shared Camera composition requires an explicit Default Camera Rig on its bound Camera Output.");
                 return;
             }
-            if (!ReferenceEquals(_output.DefaultCameraRig, composer))
-            {
-                Record(
-                    CameraSharedCompositionReconcileStatus.BlockedInvalidComposer,
-                    _availability.CreateSnapshot(), 0, 0,
-                    CameraViewPresentationApplyStatus.None,
-                    $"Shared Camera composition Output '{RequestedOutputId}' must use its explicitly authored Default Camera Rig as composer.");
-                return;
-            }
-
             _assignments = new CameraViewAssignmentContext(
-                assignmentContextId,
+                new ViewAssignmentContextId(assignmentContextId),
                 _availability.ContextId,
                 _view);
             CameraViewAssignmentResult initial =
@@ -447,6 +432,7 @@ namespace Immersive.Framework.CameraAuthoring
             }
             CameraViewPresentationApplyStatus clearStatus =
                 CameraViewPresentationApplyStatus.None;
+            CameraRigComposer composer = _output != null ? _output.DefaultCameraRig : null;
             if (hadActiveView && composer != null)
             {
                 clearStatus = composer.ClearViewPresentation().Status;
@@ -513,11 +499,11 @@ namespace Immersive.Framework.CameraAuthoring
                     CameraSharedCompositionReconcileStatus.SucceededNoChange or
                     CameraSharedCompositionReconcileStatus.SucceededAwaitingSubjects,
                 _view.ViewId.Value,
-                _availability?.ContextId ?? availability?.ContextId,
+                _availability?.ContextId ?? availability?.ContextId ?? default,
                 status == CameraSharedCompositionReconcileStatus.RejectedStaleAvailabilitySnapshot
                     ? _lastConsumedAvailabilityRevision
                     : availability?.Revision ?? _lastConsumedAvailabilityRevision,
-                assignmentContextId,
+                new ViewAssignmentContextId(assignmentContextId),
                 assignmentRevision,
                 subjectCount,
                 addedCount,

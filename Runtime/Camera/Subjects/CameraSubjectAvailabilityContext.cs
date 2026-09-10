@@ -13,16 +13,16 @@ namespace Immersive.Framework.Camera
         private readonly Dictionary<CameraSubjectId, CameraSubjectAvailabilityEntry> _entries = new Dictionary<CameraSubjectId, CameraSubjectAvailabilityEntry>();
         private int _revision;
 
-        public CameraSubjectAvailabilityContext(string contextId)
+        public CameraSubjectAvailabilityContext(SubjectAvailabilityContextId contextId)
         {
-            ContextId = contextId.NormalizeText();
-            if (string.IsNullOrEmpty(ContextId))
+            ContextId = contextId;
+            if (!ContextId.IsValid)
             {
                 throw new ArgumentException("Camera Subject availability requires an explicit context id.", nameof(contextId));
             }
         }
 
-        public string ContextId { get; }
+        public SubjectAvailabilityContextId ContextId { get; }
         public int Revision => _revision;
         public int AvailableCount => _entries.Count;
 
@@ -60,7 +60,7 @@ namespace Immersive.Framework.Camera
 
         public CameraSubjectAvailabilityResult TryMakeUnavailable(CameraSubjectAvailabilityToken expectedToken)
         {
-            if (!expectedToken.IsValid || !string.Equals(expectedToken.ContextId, ContextId, StringComparison.Ordinal))
+            if (!expectedToken.IsValid || expectedToken.ContextId != ContextId)
             {
                 return Result(CameraSubjectAvailabilityStatus.RejectedForeignOrStaleToken, default, expectedToken, "Camera Subject removal rejected a foreign or invalid availability token.");
             }

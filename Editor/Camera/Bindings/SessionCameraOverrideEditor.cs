@@ -8,6 +8,7 @@ namespace Immersive.Framework.Editor.Camera.Bindings
     public sealed class SessionCameraOverrideEditor : UnityEditor.Editor
     {
         private SerializedProperty _outputId;
+        private readonly CameraOutputReferenceGUI _outputs = new CameraOutputReferenceGUI();
         private SerializedProperty _scopeId;
         private SerializedProperty _requestId;
         private SerializedProperty _rigComposer;
@@ -81,11 +82,8 @@ namespace Immersive.Framework.Editor.Camera.Bindings
                 "Camera Request",
                 EditorStyles.boldLabel);
 
-            EditorGUILayout.PropertyField(
-                _outputId,
-                new GUIContent(
-                    "Camera Output ID",
-                    "Exact persistent Camera Output ID that receives this request."));
+            _outputs.DrawTopology(serializedObject);
+            _outputs.DrawReference(_outputId);
             EditorGUILayout.PropertyField(
                 _rigComposer,
                 new GUIContent(

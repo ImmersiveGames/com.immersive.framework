@@ -1,7 +1,7 @@
 # IF-TRACK — Immersive Framework
 
 Status: **Active — current implemented baseline + Stage B consumer evidence**  
-Last updated: **2026-09-09**
+Last updated: **2026-09-10**
 
 ## Authority and status model
 
@@ -138,7 +138,7 @@ Local Multiplayer remains blocked by public Slot/device/InputUser/control-scheme
 | 023 | ACCEPTED / authored composition implementation complete; ADR-023A occurrence identity boundary current | Manager functional 14/14 + Pause/Input/Gate 8/8 + FIRSTGAME Scene-Provided readiness PASS | Physical Scene-Provided validation/resolution/adoption is canonical; derived evidence, runtime evidence validation, Player Apply/Rebuild and the obsolete evidence type are removed |
 | 024 | ACCEPTED / RECONCILED / IMPLEMENTED — Manager-Provisioned V1 | Full Player QA 16/16 PASS including positive `actor-replace` | public `RequestReplacePreparedActor(...)` current; Scene-Provided prepared physical replacement deferred |
 | 025 | ACCEPTED / IMPLEMENTATION STATUS OWNED BY PLAYER TRACK | feature-owned | Camera remains outside the Player input contract |
-| 026 | ACCEPTED / CAMERA-026-A–H IMPLEMENTED | Shared Camera runtime CERTIFIED — 2026-09-09 | Split/full aggregate and FIRSTGAME pending; explicit topology remains independent from Player count |
+| 026 | ACCEPTED / CAMERA-026-A–H IMPLEMENTED; explicit Actor Presentation observation Transform implemented | Shared Camera runtime CERTIFIED — 2026-09-09; new child-Transform/Mounted lifecycle proof pending fresh Unity execution | Split/full aggregate and FIRSTGAME pending; explicit topology remains independent from Player count |
 
 ## Current Activity content / visibility closure — IF-ADR-009 — 2026-08-30
 
@@ -291,7 +291,7 @@ Certification and reconciliation records:
 
 1. **Player** — Scene Player physical/contextual lifecycle is proven through `GameplayReady`; Player Provisioning and Character Selection are proven. Manager-Provisioned prepared Actor replacement is technically certified in QA. Remaining Getting Started work is game-owned Presentation/gameplay completeness, not Framework Player readiness. Local Multiplayer remains blocked by the public Slot/device/input contract.
 2. **Loading / Readiness** — positive Game Flow consumer lane proven; negative/terminal robustness remains QA-owned.
-3. **Camera** — IF-ADR-026 architecture accepted; CAMERA-026-A through H implement Subject availability, logical View/Assignment, the explicit presentation seam, shared multi-Subject Follow, event-driven shared composition, removal of ordinary per-Player requests, the explicit Session 1..N Output topology and explicit View→Output normalized viewport policy. Shared Camera runtime proof is certified as of 2026-09-09. Split runtime, Full Camera aggregate and FIRSTGAME proof remain pending. Existing Default-output and ADR-022 evidence remains historical baseline proof only.
+3. **Camera** — IF-ADR-026 architecture accepted; CAMERA-026-A through H implement Subject availability, logical View/Assignment, the explicit presentation seam, shared multi-Subject Follow, event-driven shared composition, removal of ordinary per-Player requests, the explicit Session 1..N Output topology and explicit View→Output normalized viewport policy. `ActorCameraSubjectAuthoring` now lets an Actor Presentation publish an exact child observation mount without changing occurrence identity or Camera ownership; invalid explicit authoring blocks without root fallback. Shared Camera runtime proof remains certified as of 2026-09-09, while the new child-Transform/Mounted join, replacement and leave QA requires a fresh Unity run. Split runtime, Full Camera aggregate and FIRSTGAME proof remain pending. Existing Default-output and ADR-022 evidence remains historical baseline proof only.
 4. **Pause** — runtime certified; remaining work is consumer authoring/usability only.
 5. **Audio** — BGM technical + consumer integration proven; API maturity promotion is separate.
 6. **Progression Save** — real consumer persistence/usability proof remains.

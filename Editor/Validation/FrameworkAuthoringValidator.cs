@@ -470,8 +470,7 @@ namespace Immersive.Framework.Editor.Validation
             {
                 CameraOutputAuthoring binding = outputBindings[outputIndex];
 
-                if (string.IsNullOrWhiteSpace(
-                        binding.OutputIdText))
+                if (!new CameraOutputId(binding.OutputIdText).IsValid)
                 {
                     report.AddError(
                         "Persistent Content Camera Output requires an explicit Output ID.",
@@ -604,6 +603,10 @@ namespace Immersive.Framework.Editor.Validation
             for (int compositionIndex = 0; compositionIndex < sharedCompositions.Length; compositionIndex++)
             {
                 CameraSharedComposition composition = sharedCompositions[compositionIndex];
+                if (!new CameraViewId(composition.ViewIdText).IsValid)
+                {
+                    report.AddError("Shared Camera Composition requires a valid View Id.", composition);
+                }
                 if (!composition.RequestedOutputId.IsValid ||
                     !outputIds.TryGetValue(composition.OutputIdText, out CameraOutputAuthoring output))
                 {
@@ -611,10 +614,10 @@ namespace Immersive.Framework.Editor.Validation
                         $"Shared Camera Composition references unknown Camera Output ID '{composition.OutputIdText}'.",
                         composition);
                 }
-                else if (!ReferenceEquals(output.DefaultCameraRig, composition.Composer))
+                else if (output.DefaultCameraRig == null)
                 {
                     report.AddError(
-                        "Shared Camera Composition must use the Default Camera Rig of its explicitly identified Output.",
+                        "Shared Camera Composition requires a Default Camera Rig on its explicitly identified Output.",
                         composition);
                 }
                 else if (viewOutputTopology != null &&
@@ -993,28 +996,6 @@ namespace Immersive.Framework.Editor.Validation
                     composer);
             }
 
-            if (composer.TargetSourceBehaviour == null &&
-                composer.TargetSourceKind ==
-                CameraTargetSourceKind.ExplicitTransform)
-            {
-                if (composer.FollowRequirement ==
-                        CameraTargetRequirement.Required &&
-                    composer.ExplicitFollowTarget == null)
-                {
-                    report.AddError(
-                        "Persistent Content Session Camera Rig requires an explicit Follow Target.",
-                        composer);
-                }
-
-                if (composer.LookAtRequirement ==
-                        CameraTargetRequirement.Required &&
-                    composer.ExplicitLookAtTarget == null)
-                {
-                    report.AddError(
-                        "Persistent Content Session Camera Rig requires an explicit Look At Target.",
-                        composer);
-                }
-            }
         }
 
         private static int CountMissingScripts(

@@ -39,10 +39,11 @@ namespace Immersive.Framework.Editor.CameraAuthoring
             }
 
             ValidateIdentity(binding, issues);
-            if (!binding.RequestedOutputId.IsValid)
-            {
-                issues.Add("Assign the exact Camera Output ID that receives this request.");
-            }
+            CameraOutputAuthoringTopology topology = CameraOutputAuthoringResolver.Resolve();
+            string outputIssue = CameraIdentityAuthoringValidation.OutputReferenceIssue(binding.OutputIdText, topology);
+            if (outputIssue != null) issues.Add(outputIssue);
+            if (!topology.IsResolved)
+                issues.Add($"Active Output topology validation unavailable: {topology.Diagnostic}");
             ValidateRig(binding.RigComposer, issues);
 
             if (binding.TargetSource == null)
@@ -95,16 +96,7 @@ namespace Immersive.Framework.Editor.CameraAuthoring
                 return;
             }
 
-            CameraTargetResolveResult targets =
-                composer.ResolveCameraTargets(
-                    composer.FollowRequirement,
-                    composer.LookAtRequirement);
 
-            if (targets.IsBlocked)
-            {
-                issues.Add(
-                    $"Camera Rig Composer target resolution is blocked: {targets.BlockingIssue}");
-            }
         }
     }
 }

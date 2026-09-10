@@ -312,6 +312,16 @@ namespace Immersive.Framework.Editor.Settings
                 : "Assets";
         }
 
+        internal static bool TryLoadExistingSettingsAsset(
+            out ImmersiveFrameworkSettingsAsset settings, out string diagnostic)
+        {
+            var existing = FindExistingSettingsAssets();
+            settings = existing.Count == 1 ? existing[0] : null;
+            diagnostic = existing.Count == 1 ? string.Empty :
+                $"Expected exactly one Framework Settings asset in Resources; found {existing.Count}.";
+            return settings != null;
+        }
+
         private static List<ImmersiveFrameworkSettingsAsset> FindExistingSettingsAssets()
         {
             return AssetDatabase.FindAssets($"t:{nameof(ImmersiveFrameworkSettingsAsset)}")

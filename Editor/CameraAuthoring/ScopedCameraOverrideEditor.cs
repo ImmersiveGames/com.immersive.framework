@@ -8,6 +8,7 @@ namespace Immersive.Framework.Editor.CameraAuthoring
     public sealed class ScopedCameraOverrideEditor : UnityEditor.Editor
     {
         private bool _showAdvanced;
+        private readonly CameraOutputReferenceGUI _outputs = new CameraOutputReferenceGUI();
         private bool _showDebug = true;
 
         public override void OnInspectorGUI()
@@ -22,7 +23,8 @@ namespace Immersive.Framework.Editor.CameraAuthoring
                 "logDiagnostics", "overrideActive", "ownerActive", "lastStatus", "lastDiagnostic", "outputSession");
 
             EditorGUILayout.LabelField("Override", EditorStyles.boldLabel);
-            EditorGUILayout.PropertyField(serializedObject.FindProperty("outputId"));
+            _outputs.DrawTopology(serializedObject);
+            _outputs.DrawReference(serializedObject.FindProperty("outputId"));
             EditorGUILayout.PropertyField(serializedObject.FindProperty("scopeId"));
             EditorGUILayout.PropertyField(serializedObject.FindProperty("requestId"));
             EditorGUILayout.PropertyField(serializedObject.FindProperty("rigComposer"));

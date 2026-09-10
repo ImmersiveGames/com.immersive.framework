@@ -6,7 +6,7 @@ namespace Immersive.Framework.Editor.Camera.Cinemachine
 {
     /// <summary>
     /// Editor-only request for creating or repairing one supported Cinemachine rig.
-    /// Target resolution is completed by the caller; this request never authorizes
+    /// Structural presentation configuration only; this request never authorizes
     /// scene/global lookup or Camera output arbitration.
     /// </summary>
     public sealed class CinemachineRigMaterializationRequest
@@ -27,13 +27,11 @@ namespace Immersive.Framework.Editor.Camera.Cinemachine
 
         public CinemachineCamera CinemachineCamera { get; set; }
 
-        public Transform FollowTarget { get; set; }
 
-        public Transform LookAtTarget { get; set; }
 
-        public bool RequireFollowTarget { get; set; } = true;
 
-        public bool RequireLookAtTarget { get; set; }
+
+        public CameraTargetRequirement LookAtRequirement { get; set; } = CameraTargetRequirement.Optional;
 
         public bool CreateUnityCameraIfMissing { get; set; }
 

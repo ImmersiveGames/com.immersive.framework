@@ -298,6 +298,40 @@ Gameplay owns motion/rotation of the supplied mount.
 
 Camera Presentation does not read Player input directly.
 
+### Actor Presentation Camera Subject
+
+When a prepared Player Actor must expose a child pivot instead of its Actor root, add
+`ActorCameraSubjectAuthoring` to the **root of the Actor Presentation prefab**.
+
+Inspector contract:
+
+```text
+Camera Subject
+  Source = Actor Presentation
+  Role = Observation / Camera Mount
+  Transform = exact authored child/pivot Transform
+```
+
+The canonical first-person chain is:
+
+```text
+gameplay moves/rotates the observation mount
+  -> ActorCameraSubjectAuthoring exposes that exact Transform
+  -> prepared Actor occurrence publishes CameraSubject.Observation
+  -> Camera Assignment assigns the Subject to a Camera View
+  -> CameraRigComposer / Mounted consumes the resolved Transform
+  -> Camera Output presents the rig
+```
+
+The component is optional for Actors whose root Transform is intentionally the observation
+pose. Once the component is authored, its `Transform` is required. A missing reference,
+component outside the Presentation root, foreign Transform or duplicate authored Subject
+blocks publication with diagnostics; the runtime never falls back to the Actor root.
+
+Actor replacement publishes a new occurrence identity and the replacement Presentation's
+exact observation Transform. Leave releases the Subject and clears stale assignments while
+the Camera View, rig and output retain their independent lifetimes.
+
 ## 7. Third Person
 
 Use Third Person for an over-the-shoulder / third-person base presentation.

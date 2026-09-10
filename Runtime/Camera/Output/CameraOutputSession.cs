@@ -16,8 +16,8 @@ namespace Immersive.Framework.Camera
         private readonly CameraOutputContext _context;
         private readonly CameraOutputRigApplicator _applicator;
         private readonly CameraRigReference _defaultRig;
-        private readonly HashSet<string> _forceDefaultOwners =
-            new HashSet<string>(StringComparer.Ordinal);
+        private readonly HashSet<CameraOutputForceDefaultOwnerId> _forceDefaultOwners =
+            new HashSet<CameraOutputForceDefaultOwnerId>();
 
         public CameraOutputSession(
             CameraOutputContext context,
@@ -138,17 +138,16 @@ namespace Immersive.Framework.Camera
                 requestId);
         }
 
-        public CameraOutputApplyResult ForceDefault(string owner)
+        public CameraOutputApplyResult ForceDefault(CameraOutputForceDefaultOwnerId ownerId)
         {
-            string normalizedOwner = owner.NormalizeText();
-            if (string.IsNullOrWhiteSpace(normalizedOwner))
+            if (!ownerId.IsValid)
             {
                 return BlockedForceDefaultOwner(
                     "camera.output-session.force-default.owner-missing",
                     "Camera output force-default requires an explicit owner.");
             }
 
-            bool added = _forceDefaultOwners.Add(normalizedOwner);
+            bool added = _forceDefaultOwners.Add(ownerId);
             CameraOutputApplyResult applyResult =
                 ApplyEffectivePresentation();
 
@@ -157,22 +156,21 @@ namespace Immersive.Framework.Camera
                 return applyResult;
             }
 
-            _forceDefaultOwners.Remove(normalizedOwner);
+            _forceDefaultOwners.Remove(ownerId);
             ApplyEffectivePresentation();
             return applyResult;
         }
 
-        public CameraOutputApplyResult ReleaseForceDefault(string owner)
+        public CameraOutputApplyResult ReleaseForceDefault(CameraOutputForceDefaultOwnerId ownerId)
         {
-            string normalizedOwner = owner.NormalizeText();
-            if (string.IsNullOrWhiteSpace(normalizedOwner))
+            if (!ownerId.IsValid)
             {
                 return BlockedForceDefaultOwner(
                     "camera.output-session.force-default.owner-missing",
                     "Camera output force-default release requires an explicit owner.");
             }
 
-            bool removed = _forceDefaultOwners.Remove(normalizedOwner);
+            bool removed = _forceDefaultOwners.Remove(ownerId);
             CameraOutputApplyResult applyResult =
                 ApplyEffectivePresentation();
 
@@ -181,7 +179,7 @@ namespace Immersive.Framework.Camera
                 return applyResult;
             }
 
-            _forceDefaultOwners.Add(normalizedOwner);
+            _forceDefaultOwners.Add(ownerId);
             ApplyEffectivePresentation();
             return applyResult;
         }

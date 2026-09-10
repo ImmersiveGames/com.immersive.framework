@@ -67,11 +67,6 @@ namespace Immersive.Framework.Camera
                 scopeId = Guid.NewGuid().ToString("N");
             }
 
-            if (string.IsNullOrWhiteSpace(outputId))
-            {
-                outputId = CameraOutputId.Main.Value;
-            }
-
             if (string.IsNullOrWhiteSpace(requestId))
             {
                 requestId = Guid.NewGuid().ToString("N");
@@ -110,8 +105,8 @@ namespace Immersive.Framework.Camera
             CameraRequestCreateResult requestResult = CameraRequestCreateResult.Create(
                 new CameraRequestId(RequestIdText),
                 session.OutputId,
-                new CameraRequestOwner(OwnerKind, ScopeId),
-                new CameraRequestLifetime(LifetimeKind, ScopeId),
+                new CameraRequestOwner(OwnerKind, new CameraRequestOwnerScopeId(ScopeId)),
+                new CameraRequestLifetime(LifetimeKind, new CameraRequestLifetimeScopeId(ScopeId)),
                 CameraRigReference.FromComposer(rigComposer),
                 CameraTargetSourceDescriptor.ExplicitTransform(targetSource, OwnerDiagnosticName),
                 new CameraRequestPolicy(precedence, TieBreakerId),

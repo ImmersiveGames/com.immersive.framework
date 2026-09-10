@@ -12,7 +12,7 @@ namespace Immersive.Framework.Camera
         "CAMERA-026-E read-only Camera Subject availability source.")]
     public interface ICameraSubjectAvailabilitySource
     {
-        string ContextId { get; }
+        SubjectAvailabilityContextId ContextId { get; }
         event Action<CameraSubjectAvailabilitySnapshot> AvailabilityChanged;
         CameraSubjectAvailabilitySnapshot CreateSnapshot();
     }

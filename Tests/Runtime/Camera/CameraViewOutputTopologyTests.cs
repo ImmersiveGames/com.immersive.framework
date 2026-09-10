@@ -99,10 +99,9 @@ namespace Immersive.Framework.Camera.Tests
             CameraSharedComposition composition = root.AddComponent<CameraSharedComposition>();
             composition.Configure(
                 new CameraView(new CameraViewId("view.shared"), "Shared"),
-                "shared-context",
+                new ViewAssignmentContextId("shared-context"),
                 new CameraSubjectAssignmentOwnerId("shared-owner"),
                 new CameraOutputId("output.a"),
-                output.DefaultCameraRig,
                 CameraSharedCompositionSubjectPolicyKind.AllAvailableSubjects);
 
             using var injection = new CameraOutputInjectionRuntime(outputs, policy);

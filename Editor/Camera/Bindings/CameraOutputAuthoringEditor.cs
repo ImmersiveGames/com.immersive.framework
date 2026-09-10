@@ -27,11 +27,6 @@ namespace Immersive.Framework.Editor.Camera.Bindings
                 "Validate",
                 "Validates this Camera Output configuration without initializing runtime services, creating components, discovering references or repairing the scene.");
 
-        private static readonly GUIContent OutputIdLabel =
-            new GUIContent(
-                "Camera Output ID",
-                "Stable identity for this persistent Camera Output. Existing IDs are preserved and never replaced automatically.");
-
         private static readonly GUIContent InitializeOnAwakeLabel =
             new GUIContent(
                 "Initialize On Awake",
@@ -78,6 +73,7 @@ namespace Immersive.Framework.Editor.Camera.Bindings
                     "Configures one persistent physical Camera Output. Camera request arbitration and Camera Rig authoring remain separate authorities."),
                 EditorStyles.boldLabel);
 
+            CameraIdentityAuthoringGUI.DrawDefinition(_outputId, false);
             DrawConfiguration();
             DrawValidation();
 
@@ -210,7 +206,7 @@ namespace Immersive.Framework.Editor.Camera.Bindings
                 _showAdvancedDebug,
                 new GUIContent(
                     "Advanced / Debug",
-                    "Shows stable identity, technical initialization options, runtime diagnostics and the complete validation report."),
+                    "Shows technical initialization options, runtime diagnostics and the complete validation report."),
                 true);
 
             if (!_showAdvancedDebug)
@@ -219,8 +215,6 @@ namespace Immersive.Framework.Editor.Camera.Bindings
             }
 
             EditorGUI.indentLevel++;
-
-            DrawStableIdentity();
 
             EditorGUILayout.Space(5f);
             DrawTechnicalConfiguration();
@@ -232,53 +226,6 @@ namespace Immersive.Framework.Editor.Camera.Bindings
             DrawValidationReport();
 
             EditorGUI.indentLevel--;
-        }
-
-        private void DrawStableIdentity()
-        {
-            EditorGUILayout.LabelField(
-                "Stable Identity",
-                EditorStyles.miniBoldLabel);
-
-            string id = _outputId != null
-                ? _outputId.stringValue ?? string.Empty
-                : string.Empty;
-
-            using (new EditorGUILayout.HorizontalScope())
-            {
-                using (new EditorGUI.DisabledScope(true))
-                {
-                    EditorGUILayout.TextField(
-                        OutputIdLabel,
-                        id);
-                }
-
-                using (new EditorGUI.DisabledScope(
-                           !string.IsNullOrWhiteSpace(id)))
-                {
-                    if (GUILayout.Button(
-                            new GUIContent(
-                                "Generate",
-                                "Generates a stable Camera Output ID only when the field is empty."),
-                            GUILayout.Width(72f)))
-                    {
-                        GenerateOutputId();
-                    }
-                }
-
-                using (new EditorGUI.DisabledScope(
-                           string.IsNullOrWhiteSpace(id)))
-                {
-                    if (GUILayout.Button(
-                            new GUIContent(
-                                "Copy",
-                                "Copies the current Camera Output ID to the clipboard."),
-                            GUILayout.Width(48f)))
-                    {
-                        EditorGUIUtility.systemCopyBuffer = id;
-                    }
-                }
-            }
         }
 
         private void DrawTechnicalConfiguration()
@@ -350,33 +297,6 @@ namespace Immersive.Framework.Editor.Camera.Bindings
             }
         }
 
-        private void GenerateOutputId()
-        {
-            serializedObject.UpdateIfRequiredOrScript();
-            if (HasText(_outputId))
-            {
-                return;
-            }
-
-            Undo.RecordObject(
-                target,
-                "Generate Camera Output ID");
-
-            _outputId.stringValue =
-                CameraAuthoringIdUtility.GenerateIdText();
-
-            serializedObject.ApplyModifiedProperties();
-            EditorUtility.SetDirty(target);
-            PrefabUtility.RecordPrefabInstancePropertyModifications(target);
-
-            if (_lastValidationResult != null)
-            {
-                _validationOutdated = true;
-            }
-
-            serializedObject.UpdateIfRequiredOrScript();
-        }
-
         private void RunValidation()
         {
             serializedObject.ApplyModifiedProperties();
@@ -397,11 +317,5 @@ namespace Immersive.Framework.Editor.Camera.Bindings
                 EditorStyles.boldLabel);
         }
 
-        private static bool HasText(
-            SerializedProperty property)
-        {
-            return property != null &&
-                   !string.IsNullOrWhiteSpace(property.stringValue);
-        }
     }
 }

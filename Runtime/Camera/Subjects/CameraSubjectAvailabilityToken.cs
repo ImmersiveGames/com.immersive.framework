@@ -7,23 +7,23 @@ namespace Immersive.Framework.Camera
     [FrameworkApiStatus(FrameworkApiStatus.Experimental, "CAMERA-026-A foreign/stale-safe Camera Subject availability token.")]
     public readonly struct CameraSubjectAvailabilityToken : IEquatable<CameraSubjectAvailabilityToken>
     {
-        internal CameraSubjectAvailabilityToken(string contextId, CameraSubjectId subjectId, CameraSubjectAvailabilityOwnerId ownerId, int revision)
+        internal CameraSubjectAvailabilityToken(SubjectAvailabilityContextId contextId, CameraSubjectId subjectId, CameraSubjectAvailabilityOwnerId ownerId, int revision)
         {
-            ContextId = contextId ?? string.Empty;
+            ContextId = contextId;
             SubjectId = subjectId;
             OwnerId = ownerId;
             Revision = revision;
         }
 
-        public string ContextId { get; }
+        public SubjectAvailabilityContextId ContextId { get; }
         public CameraSubjectId SubjectId { get; }
         public CameraSubjectAvailabilityOwnerId OwnerId { get; }
         public int Revision { get; }
-        public bool IsValid => !string.IsNullOrEmpty(ContextId) && SubjectId.IsValid && OwnerId.IsValid && Revision > 0;
+        public bool IsValid => ContextId.IsValid && SubjectId.IsValid && OwnerId.IsValid && Revision > 0;
         public string StableText => IsValid ? $"camera-subject-availability:{ContextId}:{SubjectId.Value}:{OwnerId.Value}:{Revision}" : string.Empty;
 
         public bool Equals(CameraSubjectAvailabilityToken other) =>
-            string.Equals(ContextId, other.ContextId, StringComparison.Ordinal) &&
+            (ContextId == other.ContextId) &&
             SubjectId == other.SubjectId && OwnerId == other.OwnerId && Revision == other.Revision;
 
         public override bool Equals(object obj) => obj is CameraSubjectAvailabilityToken other && Equals(other);
@@ -31,7 +31,7 @@ namespace Immersive.Framework.Camera
         {
             unchecked
             {
-                int hashCode = StringComparer.Ordinal.GetHashCode(ContextId ?? string.Empty);
+                int hashCode = ContextId.GetHashCode();
                 hashCode = hashCode * 397 ^ SubjectId.GetHashCode();
                 hashCode = hashCode * 397 ^ OwnerId.GetHashCode();
                 hashCode = hashCode * 397 ^ Revision;

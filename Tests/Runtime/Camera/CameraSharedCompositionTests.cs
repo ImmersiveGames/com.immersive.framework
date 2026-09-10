@@ -95,7 +95,7 @@ namespace Immersive.Framework.Camera.Tests
                 Is.EqualTo(CameraSharedCompositionReconcileStatus.RejectedStaleAvailabilitySnapshot));
             Assert.That(stale.AvailabilityRevisionConsumed, Is.EqualTo(availability.Revision));
 
-            var foreign = new CameraSubjectAvailabilityContext("foreign-subjects");
+            var foreign = new CameraSubjectAvailabilityContext(new SubjectAvailabilityContextId("foreign-subjects"));
             foreign.TryMakeAvailable(Subject("same-looking-id"), AvailabilityOwner());
             CameraSharedCompositionSnapshot rejected =
                 composition.Reconcile(foreign.CreateSnapshot());
@@ -189,6 +189,64 @@ namespace Immersive.Framework.Camera.Tests
         }
 
         [Test]
+        public void RebindingOutputClearsOldRigAndUsesOnlyNewOutputsDefaultRig()
+        {
+            CameraSubjectAvailabilityContext availability = Availability();
+            CameraRigComposer first = Composer(out CinemachineCamera firstCamera);
+            CameraSharedComposition composition = Composition(availability, first);
+            CameraSubject subject = Subject("p1");
+            MakeAvailable(availability, subject);
+            Assert.That(firstCamera.Follow, Is.SameAs(subject.Observation));
+
+            CameraRigComposer second = Composer(out CinemachineCamera secondCamera);
+            CameraOutputAuthoring nextOutput = Output(second);
+            composition.AttachOutputSession(nextOutput);
+
+            Assert.That(composition.Output, Is.SameAs(nextOutput));
+            Assert.That(nextOutput.DefaultCameraRig, Is.SameAs(second));
+            Assert.That(firstCamera.Follow, Is.Null);
+            Assert.That(secondCamera.Follow, Is.SameAs(subject.Observation));
+            Assert.That(composition.Snapshot.LastReconcileStatus,
+                Is.EqualTo(CameraSharedCompositionReconcileStatus.SucceededApplied));
+            composition.DetachOutputSession("test teardown");
+            Assert.That(secondCamera.Follow, Is.Null);
+            Assert.That(availability.AvailableCount, Is.EqualTo(1));
+        }
+
+#if UNITY_EDITOR
+        [Test]
+        public void MissingOutputDefaultRigBlocksCompositionExplicitly()
+        {
+            CameraSubjectAvailabilityContext availability = Availability();
+            var root = new GameObject("missing-default-rig");
+            root.SetActive(false);
+            _created.Add(root);
+            CameraOutputAuthoring output = root.AddComponent<CameraOutputAuthoring>();
+            CameraSharedComposition composition = root.AddComponent<CameraSharedComposition>();
+            var serializedOutput = new UnityEditor.SerializedObject(output);
+            serializedOutput.FindProperty("outputId").stringValue = CameraOutputId.Main.Value;
+            serializedOutput.FindProperty("initializeOnAwake").boolValue = false;
+            serializedOutput.ApplyModifiedPropertiesWithoutUndo();
+            composition.Configure(
+                new CameraView(new CameraViewId("shared-view"), "Shared View"),
+                new ViewAssignmentContextId("shared-assignments"),
+                new CameraSubjectAssignmentOwnerId("owner"),
+                CameraOutputId.Main,
+                CameraSharedCompositionSubjectPolicyKind.AllAvailableSubjects);
+            composition.AttachOutputSession(output);
+            composition.AttachCameraSubjectAvailability(availability);
+            root.SetActive(true);
+
+            Assert.That(output.DefaultCameraRig, Is.Null);
+            Assert.That(composition.Snapshot.IsReady, Is.False);
+            Assert.That(composition.Snapshot.LastReconcileStatus,
+                Is.EqualTo(CameraSharedCompositionReconcileStatus.BlockedInvalidComposer));
+            Assert.That(composition.Snapshot.LastBlockingIssue, Does.Contain("Default Camera Rig"));
+            Assert.That(composition.Snapshot.AssignmentRevision, Is.Zero);
+        }
+#endif
+
+        [Test]
         public void DestroyedExplicitComposerBlocksWithoutChangingAvailability()
         {
             CameraSubjectAvailabilityContext availability = Availability();
@@ -274,10 +332,9 @@ namespace Immersive.Framework.Camera.Tests
                 root.AddComponent<CameraSharedComposition>();
             composition.Configure(
                 new CameraView(new CameraViewId("shared-view"), "Shared View"),
-                "shared-assignments",
+                new ViewAssignmentContextId("shared-assignments"),
                 new CameraSubjectAssignmentOwnerId("shared-composition-owner"),
                 CameraOutputId.Main,
-                composer,
                 CameraSharedCompositionSubjectPolicyKind.AllAvailableSubjects);
             CameraOutputAuthoring output = Output(composer);
             composition.AttachOutputSession(output);
@@ -309,6 +366,14 @@ namespace Immersive.Framework.Camera.Tests
             cameraObject.transform.SetParent(root.transform, false);
             camera = cameraObject.AddComponent<CinemachineCamera>();
             SetField(composer, "cinemachineCamera", camera);
+            var groupObject = new GameObject("materialized-shared-follow");
+            groupObject.transform.SetParent(composer.transform, false);
+            var group = groupObject.AddComponent<CinemachineTargetGroup>();
+            var framing = camera.gameObject.AddComponent<CinemachineGroupFraming>();
+            framing.enabled = false;
+            SetField(composer, "frameworkOwnedSharedFollowTargetGroup", group);
+            SetField(composer, "frameworkOwnedSharedFollowGroupFraming", framing);
+
             return composer;
         }
 
@@ -320,7 +385,7 @@ namespace Immersive.Framework.Camera.Tests
         }
 
         private static CameraSubjectAvailabilityContext Availability() =>
-            new CameraSubjectAvailabilityContext("session-subjects");
+            new CameraSubjectAvailabilityContext(new SubjectAvailabilityContextId("session-subjects"));
 
         private static CameraSubjectAvailabilityOwnerId AvailabilityOwner() =>
             new CameraSubjectAvailabilityOwnerId("subject-producer");

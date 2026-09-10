@@ -37,11 +37,13 @@ namespace Immersive.Framework.Editor.CameraAuthoring
                 return new CameraOutputSessionAuthoringValidationResult(issues);
             }
 
-            if (string.IsNullOrWhiteSpace(binding.OutputIdText))
-            {
-                issues.Add(
-                    "Generate or assign a Camera Output ID.");
-            }
+            string identityIssue = CameraIdentityAuthoringValidation.OutputIdIssue(binding.OutputIdText);
+            if (identityIssue != null) issues.Add(identityIssue);
+            CameraOutputAuthoringTopology topology = CameraOutputAuthoringResolver.Resolve();
+            if (topology.IsResolved)
+                issues.AddRange(topology.Issues);
+            else
+                issues.Add($"Active Output topology validation unavailable: {topology.Diagnostic}");
 
             if (binding.UnityCamera == null)
             {

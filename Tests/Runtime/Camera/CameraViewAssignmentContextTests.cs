@@ -19,6 +19,36 @@ namespace Immersive.Framework.Camera.Tests
         }
 
         [Test]
+        public void AssignmentIdentityUsesOrdinalValueEquality()
+        {
+            var id = new ViewAssignmentContextId(" assignments ");
+            var same = new ViewAssignmentContextId("assignments");
+            Assert.That(id == same, Is.True);
+            Assert.That(id.GetHashCode(), Is.EqualTo(same.GetHashCode()));
+            Assert.That(id != new ViewAssignmentContextId("Assignments"), Is.True);
+            Assert.That(id.ToString(), Is.EqualTo("assignments"));
+            Assert.That(id.Equals((object)new SubjectAvailabilityContextId("assignments")), Is.False);
+            var values = new Dictionary<ViewAssignmentContextId, int> { [id] = 1 };
+            Assert.That(values[same], Is.EqualTo(1));
+        }
+
+        [TestCase(null)]
+        [TestCase("")]
+        [TestCase(" \t ")]
+        public void InvalidAssignmentOrAvailabilityContextIsRejected(string value)
+        {
+            var id = new ViewAssignmentContextId(value);
+            Assert.That(id.IsValid, Is.False);
+            Assert.That(id, Is.EqualTo(default(ViewAssignmentContextId)));
+            Assert.That(id.GetHashCode(), Is.EqualTo(default(ViewAssignmentContextId).GetHashCode()));
+            Assert.That(id.ToString(), Is.Empty);
+            var availability = new SubjectAvailabilityContextId("subjects");
+            Assert.Throws<System.ArgumentException>(() => new CameraViewAssignmentContext(id, availability));
+            Assert.Throws<System.ArgumentException>(() => new CameraViewAssignmentContext(default, availability));
+            Assert.Throws<System.ArgumentException>(() => new CameraViewAssignmentContext(new ViewAssignmentContextId("views"), default));
+        }
+
+        [Test]
         public void ViewCanExistWithZeroSubjects()
         {
             CameraSubjectAvailabilityContext availability = Availability();
@@ -338,7 +368,7 @@ namespace Immersive.Framework.Camera.Tests
 
         private CameraSubjectAvailabilityContext Availability()
         {
-            return new CameraSubjectAvailabilityContext("subjects-session-a");
+            return new CameraSubjectAvailabilityContext(new SubjectAvailabilityContextId("subjects-session-a"));
         }
 
         private CameraSubject Subject(string id)
@@ -381,7 +411,7 @@ namespace Immersive.Framework.Camera.Tests
             params CameraView[] views)
         {
             return new CameraViewAssignmentContext(
-                contextId,
+                new ViewAssignmentContextId(contextId),
                 availability.ContextId,
                 views);
         }

@@ -18,16 +18,16 @@ namespace Immersive.Framework.Camera
 
         internal CameraViewPresentationInput(
             CameraView view,
-            string assignmentContextId,
+            ViewAssignmentContextId assignmentContextId,
             int assignmentRevision,
-            string availabilityContextId,
+            SubjectAvailabilityContextId availabilityContextId,
             int availabilityRevision,
             CameraSubjectAvailabilityEntry[] subjects)
         {
             View = view;
-            AssignmentContextId = assignmentContextId ?? string.Empty;
+            AssignmentContextId = assignmentContextId;
             AssignmentRevision = assignmentRevision;
-            AvailabilityContextId = availabilityContextId ?? string.Empty;
+            AvailabilityContextId = availabilityContextId;
             AvailabilityRevision = availabilityRevision;
             _subjects = subjects != null
                 ? (CameraSubjectAvailabilityEntry[])subjects.Clone()
@@ -37,9 +37,9 @@ namespace Immersive.Framework.Camera
 
         public CameraView View { get; }
         public CameraViewId ViewId => View.ViewId;
-        public string AssignmentContextId { get; }
+        public ViewAssignmentContextId AssignmentContextId { get; }
         public int AssignmentRevision { get; }
-        public string AvailabilityContextId { get; }
+        public SubjectAvailabilityContextId AvailabilityContextId { get; }
         public int AvailabilityRevision { get; }
         public IReadOnlyList<CameraSubjectAvailabilityEntry> Subjects => _subjectView;
         public int SubjectCount => _subjects.Length;
@@ -52,24 +52,18 @@ namespace Immersive.Framework.Camera
 
         public bool IsValid =>
             View.IsValid &&
-            !string.IsNullOrEmpty(AssignmentContextId) &&
+            AssignmentContextId.IsValid &&
             AssignmentRevision >= 0 &&
-            !string.IsNullOrEmpty(AvailabilityContextId) &&
+            AvailabilityContextId.IsValid &&
             AvailabilityRevision >= 0 &&
             AllSubjectsAreValid();
 
         public bool IsCurrentFor(CameraViewAssignmentSnapshot snapshot)
         {
             if (snapshot == null ||
-                !string.Equals(
-                    AssignmentContextId,
-                    snapshot.ContextId,
-                    StringComparison.Ordinal) ||
+                AssignmentContextId != snapshot.ContextId ||
                 AssignmentRevision != snapshot.Revision ||
-                !string.Equals(
-                    AvailabilityContextId,
-                    snapshot.AvailabilityContextId,
-                    StringComparison.Ordinal) ||
+                AvailabilityContextId != snapshot.AvailabilityContextId ||
                 AvailabilityRevision != snapshot.AvailabilityRevision ||
                 !snapshot.TryGetView(ViewId, out CameraViewSubjectSnapshot current) ||
                 current.ResolvedSubjectCount != SubjectCount)
@@ -93,10 +87,7 @@ namespace Immersive.Framework.Camera
             for (int index = 0; index < _subjects.Length; index++)
             {
                 if (!_subjects[index].IsValid ||
-                    !string.Equals(
-                        _subjects[index].Token.ContextId,
-                        AvailabilityContextId,
-                        StringComparison.Ordinal) ||
+                    _subjects[index].Token.ContextId != AvailabilityContextId ||
                     (index > 0 &&
                      string.CompareOrdinal(
                          _subjects[index - 1].Subject.SubjectId.Value,

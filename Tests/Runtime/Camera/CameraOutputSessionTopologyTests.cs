@@ -139,7 +139,7 @@ namespace Immersive.Framework.Camera.Tests
             CameraViewOutputTopology viewOutputs = ViewOutputs(
                 "unused-view",
                 CameraOutputId.Main.Value);
-            var availability = new CameraSubjectAvailabilityContext("session-subjects");
+            var availability = new CameraSubjectAvailabilityContext(new SubjectAvailabilityContextId("session-subjects"));
             using var outputInjection =
                 new CameraOutputInjectionRuntime(topology, viewOutputs);
             using var availabilityInjection =
@@ -172,7 +172,7 @@ namespace Immersive.Framework.Camera.Tests
             CameraViewOutputTopology viewOutputs = ViewOutputs(
                 "shared-view",
                 CameraOutputId.Main.Value);
-            var availability = new CameraSubjectAvailabilityContext("session-subjects");
+            var availability = new CameraSubjectAvailabilityContext(new SubjectAvailabilityContextId("session-subjects"));
             using var outputInjection =
                 new CameraOutputInjectionRuntime(topology, viewOutputs);
             using var availabilityInjection =
@@ -183,10 +183,9 @@ namespace Immersive.Framework.Camera.Tests
                 root.AddComponent<CameraSharedComposition>();
             composition.Configure(
                 new CameraView(new CameraViewId("shared-view"), "Shared View"),
-                "shared-assignments",
+                new ViewAssignmentContextId("shared-assignments"),
                 new CameraSubjectAssignmentOwnerId("shared-composition-owner"),
                 CameraOutputId.Main,
-                output.DefaultCameraRig,
                 CameraSharedCompositionSubjectPolicyKind.AllAvailableSubjects);
 
             outputInjection.AttachRoots(new[] { root });
@@ -244,7 +243,7 @@ namespace Immersive.Framework.Camera.Tests
                 topology,
                 ViewOutputs("unused-view", "camera.output.route"));
             var availability = new CameraSubjectAvailabilityContext(
-                "session-subjects");
+                new SubjectAvailabilityContextId("session-subjects"));
             using var availabilityInjection =
                 new CameraSubjectAvailabilityInjectionRuntime(availability);
             var root = new GameObject("future-route-consumer");
@@ -270,7 +269,7 @@ namespace Immersive.Framework.Camera.Tests
             CameraOutputAuthoring outputB = Output("camera.output.b");
             Assert.That(CameraOutputSessionTopology.TryCreate(
                 new[] { outputA, outputB }, out CameraOutputSessionTopology topology, out _), Is.True);
-            var availability = new CameraSubjectAvailabilityContext("session-subjects");
+            var availability = new CameraSubjectAvailabilityContext(new SubjectAvailabilityContextId("session-subjects"));
             var subjectObject = new GameObject("player-subject");
             _created.Add(subjectObject);
             var subject = new CameraSubject(new CameraSubjectId("player-1"), subjectObject.transform, "Player 1");
@@ -375,8 +374,8 @@ namespace Immersive.Framework.Camera.Tests
             CameraRequestCreateResult result = CameraRequestCreateResult.Create(
                 new CameraRequestId(requestId),
                 new CameraOutputId(output.OutputIdText),
-                new CameraRequestOwner(ownerKind, $"{requestId}-owner"),
-                new CameraRequestLifetime(CameraRequestLifetimeKind.Session, "session"),
+                new CameraRequestOwner(ownerKind, new CameraRequestOwnerScopeId($"{requestId}-owner")),
+                new CameraRequestLifetime(CameraRequestLifetimeKind.Session, new CameraRequestLifetimeScopeId("session")),
                 CameraRigReference.FromComposer(composer),
                 CameraTargetSourceDescriptor.ExplicitTransform(targetObject.transform, requestId),
                 new CameraRequestPolicy(precedence, requestId),

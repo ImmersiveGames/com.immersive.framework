@@ -14,14 +14,14 @@ namespace Immersive.Framework.Camera
         private readonly IReadOnlyList<CameraViewSubjectSnapshot> _view;
 
         internal CameraViewAssignmentSnapshot(
-            string contextId,
-            string availabilityContextId,
+            ViewAssignmentContextId contextId,
+            SubjectAvailabilityContextId availabilityContextId,
             int availabilityRevision,
             int revision,
             CameraViewSubjectSnapshot[] views)
         {
-            ContextId = contextId ?? string.Empty;
-            AvailabilityContextId = availabilityContextId ?? string.Empty;
+            ContextId = contextId;
+            AvailabilityContextId = availabilityContextId;
             AvailabilityRevision = availabilityRevision;
             Revision = revision;
             _views = views != null
@@ -30,8 +30,8 @@ namespace Immersive.Framework.Camera
             _view = Array.AsReadOnly(_views);
         }
 
-        public string ContextId { get; }
-        public string AvailabilityContextId { get; }
+        public ViewAssignmentContextId ContextId { get; }
+        public SubjectAvailabilityContextId AvailabilityContextId { get; }
         public int AvailabilityRevision { get; }
         public int Revision { get; }
         public IReadOnlyList<CameraViewSubjectSnapshot> Views => _view;

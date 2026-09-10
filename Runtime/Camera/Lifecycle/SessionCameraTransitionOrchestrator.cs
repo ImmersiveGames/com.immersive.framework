@@ -13,7 +13,8 @@ namespace Immersive.Framework.Camera
     [FrameworkApiStatus(FrameworkApiStatus.Internal, "Runtime implementation detail; not game-facing API.")]
     internal sealed class SessionCameraTransitionOrchestrator : ITransitionOrchestrator
     {
-        private const string ForceDefaultOwner = "SessionCameraTransitionOrchestrator";
+        private static readonly CameraOutputForceDefaultOwnerId ForceDefaultOwnerId =
+            new CameraOutputForceDefaultOwnerId("SessionCameraTransitionOrchestrator");
 
         private readonly ITransitionOrchestrator _inner;
         private readonly CameraOutputSessionTopology _topology;
@@ -67,8 +68,8 @@ namespace Immersive.Framework.Camera
                     return false;
                 }
                 CameraOutputApplyResult mutation = forceDefault
-                    ? session.ForceDefault(ForceDefaultOwner)
-                    : session.ReleaseForceDefault(ForceDefaultOwner);
+                    ? session.ForceDefault(ForceDefaultOwnerId)
+                    : session.ReleaseForceDefault(ForceDefaultOwnerId);
                 if (!mutation.Succeeded)
                 {
                     Rollback(applied, forceDefault);
@@ -87,8 +88,8 @@ namespace Immersive.Framework.Camera
         {
             for (int index = applied.Count - 1; index >= 0; index--)
             {
-                if (forced) applied[index].ReleaseForceDefault(ForceDefaultOwner);
-                else applied[index].ForceDefault(ForceDefaultOwner);
+                if (forced) applied[index].ReleaseForceDefault(ForceDefaultOwnerId);
+                else applied[index].ForceDefault(ForceDefaultOwnerId);
             }
         }
 

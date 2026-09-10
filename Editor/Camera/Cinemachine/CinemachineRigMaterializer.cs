@@ -171,10 +171,6 @@ namespace Immersive.Framework.Editor.Camera.Cinemachine
                 request,
                 report);
 
-            ApplyTargets(
-                cinemachineCamera,
-                request,
-                report);
 
             MarkDirty(unityCamera);
             MarkDirty(brain);
@@ -200,8 +196,6 @@ namespace Immersive.Framework.Editor.Camera.Cinemachine
                     request.FrameworkOwnedRotationControl);
             report.Evidence.CinemachineFollow =
                 positionControl as CinemachineFollow;
-            report.Evidence.FollowTarget = cinemachineCamera.Follow;
-            report.Evidence.LookAtTarget = cinemachineCamera.LookAt;
             report.Evidence.MaterializationRevision =
                 NextRevision(request.PreviousMaterializationRevision);
 
@@ -218,34 +212,17 @@ namespace Immersive.Framework.Editor.Camera.Cinemachine
                 return;
             }
 
-            if (request.RequireFollowTarget &&
-                request.FollowTarget == null)
-            {
-                report.MarkBlocked("follow-target:required-missing");
-            }
-
-            if (request.RequireLookAtTarget &&
-                request.LookAtTarget == null)
-            {
-                report.MarkBlocked("look-at-target:required-missing");
-            }
+            if (request.LookAtRequirement != CameraTargetRequirement.NotUsed &&
+                request.LookAtRequirement != CameraTargetRequirement.Optional &&
+                request.LookAtRequirement != CameraTargetRequirement.Required)
+                report.MarkBlocked("look-at-policy:invalid");
 
             switch (request.PresentationIntent)
             {
                 case CameraRigPresentationIntent.Fixed:
-                    if (request.FollowTarget != null)
-                    {
-                        report.MarkBlocked(
-                            "presentation:Fixed:follow-target-must-be-null");
-                    }
                     break;
 
                 case CameraRigPresentationIntent.Follow:
-                    if (request.FollowTarget == null)
-                    {
-                        report.MarkBlocked(
-                            "presentation:Follow:follow-target-required");
-                    }
 
                     if (!IsFinite(request.FollowOffset))
                     {
@@ -255,17 +232,7 @@ namespace Immersive.Framework.Editor.Camera.Cinemachine
                     break;
 
                 case CameraRigPresentationIntent.Mounted:
-                    if (request.FollowTarget == null)
-                    {
-                        report.MarkBlocked(
-                            "presentation:Mounted:follow-target-required");
-                    }
 
-                    if (request.LookAtTarget != null)
-                    {
-                        report.MarkBlocked(
-                            "presentation:Mounted:look-at-not-supported");
-                    }
 
                     if (!IsFiniteNonNegative(
                             request.MountedPositionDamping) ||
@@ -278,17 +245,7 @@ namespace Immersive.Framework.Editor.Camera.Cinemachine
                     break;
 
                 case CameraRigPresentationIntent.ThirdPerson:
-                    if (request.FollowTarget == null)
-                    {
-                        report.MarkBlocked(
-                            "presentation:ThirdPerson:follow-target-required");
-                    }
 
-                    if (request.LookAtTarget != null)
-                    {
-                        report.MarkBlocked(
-                            "presentation:ThirdPerson:look-at-not-supported");
-                    }
 
                     if (!IsFinite(request.ThirdPersonShoulderOffset) ||
                         !IsFinite(request.ThirdPersonVerticalArmLength) ||
@@ -326,14 +283,12 @@ namespace Immersive.Framework.Editor.Camera.Cinemachine
             {
                 case CameraRigPresentationIntent.Fixed:
                     position = PositionControlKind.None;
-                    rotation = request.LookAtTarget != null
-                        ? RotationControlKind.HardLookAt
-                        : RotationControlKind.None;
+                    rotation = RotationControlKind.None;
                     return;
 
                 case CameraRigPresentationIntent.Follow:
                     position = PositionControlKind.Follow;
-                    rotation = request.LookAtTarget != null
+                    rotation = request.LookAtRequirement != CameraTargetRequirement.NotUsed
                         ? RotationControlKind.HardLookAt
                         : RotationControlKind.None;
                     return;
@@ -998,36 +953,6 @@ namespace Immersive.Framework.Editor.Camera.Cinemachine
                 CinemachineRigMaterializationOwnership.FrameworkOwned;
             report.MarkCreated("cinemachine-camera");
             return createdCamera;
-        }
-
-        private static void ApplyTargets(
-            CinemachineCamera cinemachineCamera,
-            CinemachineRigMaterializationRequest request,
-            CinemachineRigMaterializationReport report)
-        {
-            if (cinemachineCamera.Follow != request.FollowTarget)
-            {
-                cinemachineCamera.Follow = request.FollowTarget;
-                report.MarkRepaired(
-                    "cinemachine-camera:follow-target");
-            }
-            else
-            {
-                report.MarkAlreadyValid(
-                    "cinemachine-camera:follow-target");
-            }
-
-            if (cinemachineCamera.LookAt != request.LookAtTarget)
-            {
-                cinemachineCamera.LookAt = request.LookAtTarget;
-                report.MarkRepaired(
-                    "cinemachine-camera:look-at-target");
-            }
-            else
-            {
-                report.MarkAlreadyValid(
-                    "cinemachine-camera:look-at-target");
-            }
         }
 
         private static CinemachineRigMaterializationOwnership

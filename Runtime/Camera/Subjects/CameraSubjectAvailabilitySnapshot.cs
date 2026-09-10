@@ -11,15 +11,15 @@ namespace Immersive.Framework.Camera
         private readonly CameraSubjectAvailabilityEntry[] _entries;
         private readonly IReadOnlyList<CameraSubjectAvailabilityEntry> _view;
 
-        internal CameraSubjectAvailabilitySnapshot(string contextId, int revision, CameraSubjectAvailabilityEntry[] entries)
+        internal CameraSubjectAvailabilitySnapshot(SubjectAvailabilityContextId contextId, int revision, CameraSubjectAvailabilityEntry[] entries)
         {
-            ContextId = contextId ?? string.Empty;
+            ContextId = contextId;
             Revision = revision;
             _entries = entries != null ? (CameraSubjectAvailabilityEntry[])entries.Clone() : Array.Empty<CameraSubjectAvailabilityEntry>();
             _view = Array.AsReadOnly(_entries);
         }
 
-        public string ContextId { get; }
+        public SubjectAvailabilityContextId ContextId { get; }
         public int Revision { get; }
         public IReadOnlyList<CameraSubjectAvailabilityEntry> Entries => _view;
         public int Count => _entries.Length;

@@ -44,9 +44,7 @@ namespace Immersive.Framework.Editor.Camera.Cinemachine
 
         public CinemachineFollow CinemachineFollow { get; internal set; }
 
-        public Transform FollowTarget { get; internal set; }
 
-        public Transform LookAtTarget { get; internal set; }
 
         public CinemachineCamera FrameworkOwnedCinemachineCamera =>
             CinemachineCameraOwnership ==

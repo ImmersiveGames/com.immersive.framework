@@ -158,7 +158,7 @@ namespace Immersive.Framework.PlayerParticipation
             _hostEvidenceProjection = targetHostEvidenceProjection;
             _preparationContext = targetPreparationContext;
             _cameraSubjectAvailability = new CameraSubjectAvailabilityContext(
-                $"camera-subjects:{participationSnapshot.ContextId}");
+                new SubjectAvailabilityContextId($"camera-subjects:{participationSnapshot.ContextId}"));
             _cameraSubjectProjection = new PlayerCameraSubjectAvailabilityProjection(
                 participationSnapshot.ContextId,
                 _cameraSubjectAvailability);
@@ -847,7 +847,7 @@ namespace Immersive.Framework.PlayerParticipation
                         out _,
                         out _,
                         out PlayerActorDeclaration actor,
-                        out _,
+                        out PlayerActorMaterializationHandle materialization,
                         out string evidenceIssue))
                 {
                     _diagnostic +=
@@ -859,6 +859,7 @@ namespace Immersive.Framework.PlayerParticipation
                 if (!_cameraSubjectProjection.TryPublishCurrent(
                         preparation,
                         actor,
+                        materialization.Presentation,
                         out string publicationIssue))
                 {
                     _diagnostic +=

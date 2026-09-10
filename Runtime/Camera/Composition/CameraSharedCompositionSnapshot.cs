@@ -16,9 +16,9 @@ namespace Immersive.Framework.Camera
         public CameraSharedCompositionSnapshot(
             bool isReady,
             string viewId,
-            string availabilityContextId,
+            SubjectAvailabilityContextId availabilityContextId,
             int availabilityRevisionConsumed,
-            string assignmentContextId,
+            ViewAssignmentContextId assignmentContextId,
             int assignmentRevision,
             int subjectCount,
             int addedAssignmentCount,
@@ -29,9 +29,9 @@ namespace Immersive.Framework.Camera
         {
             IsReady = isReady;
             ViewId = viewId.NormalizeText();
-            AvailabilityContextId = availabilityContextId.NormalizeText();
+            AvailabilityContextId = availabilityContextId;
             AvailabilityRevisionConsumed = availabilityRevisionConsumed;
-            AssignmentContextId = assignmentContextId.NormalizeText();
+            AssignmentContextId = assignmentContextId;
             AssignmentRevision = assignmentRevision;
             SubjectCount = subjectCount;
             AddedAssignmentCount = addedAssignmentCount;
@@ -43,9 +43,9 @@ namespace Immersive.Framework.Camera
 
         public bool IsReady { get; }
         public string ViewId { get; }
-        public string AvailabilityContextId { get; }
+        public SubjectAvailabilityContextId AvailabilityContextId { get; }
         public int AvailabilityRevisionConsumed { get; }
-        public string AssignmentContextId { get; }
+        public ViewAssignmentContextId AssignmentContextId { get; }
         public int AssignmentRevision { get; }
         public int SubjectCount { get; }
         public int AddedAssignmentCount { get; }

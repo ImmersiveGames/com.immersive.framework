@@ -3,7 +3,8 @@
   "rootNamespace": "Immersive.Framework.Authoring.Editor.Tests",
   "references": [
     "Immersive.Framework.Runtime",
-    "Immersive.Framework.Editor"
+    "Immersive.Framework.Editor",
+    "Unity.Cinemachine"
   ],
   "includePlatforms": [
     "Editor"

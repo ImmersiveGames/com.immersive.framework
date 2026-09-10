@@ -2,149 +2,40 @@ using Immersive.Framework.Camera;
 using Immersive.Framework.CameraAuthoring;
 using Immersive.Framework.Diagnostics;
 using Immersive.Framework.Editor.Camera.Cinemachine;
-using Immersive.Logging.Records;
 using UnityEditor;
 
 namespace Immersive.Framework.Editor.CameraAuthoring
 {
     public static class CameraRigComposerApplyRebuildUtility
     {
-        public static CameraRigComposerApplyRebuildResult Validate(
-            CameraRigComposer composer,
-            bool logDiagnostics = true)
+        public static CameraRigComposerApplyRebuildResult Validate(CameraRigComposer composer, bool logDiagnostics = true)
         {
-            if (composer == null)
-            {
-                return CameraRigComposerApplyRebuildResult.Failed(
-                    "ValidationFailed",
-                    "CameraRigComposer validation requires a target composer.");
-            }
-
-            if (!composer.TryValidateForApply(out string issue))
-            {
-                composer.EditorSetApplyRebuildResult(
-                    "ValidationFailed",
-                    issue,
-                    string.Empty,
-                    string.Empty,
-                    null,
-                    null);
-                EditorUtility.SetDirty(composer);
-
-                if (logDiagnostics)
-                {
-                    LogValidationFailed(composer, issue, string.Empty);
-                }
-
-                return CameraRigComposerApplyRebuildResult.Failed(
-                    "ValidationFailed",
-                    issue);
-            }
-
-            CameraTargetResolveResult targets =
-                composer.ResolveCameraTargets(
-                    composer.EffectiveFollowRequirement,
-                    composer.EffectiveLookAtRequirement);
-
-            if (targets.IsBlocked)
-            {
-                composer.EditorSetApplyRebuildResult(
-                    "ValidationFailed",
-                    targets.BlockingIssue,
-                    targets.DiagnosticSummary,
-                    string.Empty,
-                    null,
-                    null);
-                EditorUtility.SetDirty(composer);
-
-                if (logDiagnostics)
-                {
-                    LogValidationFailed(
-                        composer,
-                        targets.BlockingIssue,
-                        targets.DiagnosticSummary);
-                }
-
-                return CameraRigComposerApplyRebuildResult.Failed(
-                    "ValidationFailed",
-                    targets.BlockingIssue,
-                    targets.DiagnosticSummary);
-            }
-
-            composer.EditorSetApplyRebuildResult(
-                "ValidationSucceeded",
-                string.Empty,
-                targets.DiagnosticSummary,
-                "Validation completed. No rig was changed.",
-                targets.Targets.FollowTarget,
-                targets.Targets.LookAtTarget);
-            EditorUtility.SetDirty(composer);
-
-            if (logDiagnostics)
-            {
-                CreateLogger().Info(
-                    "CameraRigComposer validation succeeded.",
-                    LogFields.Of(
-                        LogFields.Field("rig", composer.name),
-                        LogFields.Field("intent", composer.PresentationIntent),
-                        LogFields.Field("source", composer.TargetSourceKind),
-                        LogFields.Field("targetSummary", targets.DiagnosticSummary)));
-            }
-
-            return CameraRigComposerApplyRebuildResult
-                .ValidationSucceeded(targets.DiagnosticSummary);
+            if (composer == null) return CameraRigComposerApplyRebuildResult.Failed("ValidationFailed", "Composer is missing.");
+            string issue;
+            bool valid = composer.TryValidateForApply(out issue);
+            if (valid && composer.PresentationIntent == CameraRigPresentationIntent.Follow)
+                valid = CameraSharedFollowProvenance.Validate(composer, false, out issue);
+            var result = valid
+                ? CameraRigComposerApplyRebuildResult.ValidationSucceeded("Presentation settings and shared Follow provenance are valid; Apply / Rebuild preflights pipeline ownership.")
+                : CameraRigComposerApplyRebuildResult.Failed("ValidationFailed", issue);
+            Record(composer, result, logDiagnostics);
+            return result;
         }
 
-        public static CameraRigComposerApplyRebuildResult ApplyOrRebuild(
-            CameraRigComposer composer,
-            bool logDiagnostics = true,
-            bool useUndo = true)
+        public static CameraRigComposerApplyRebuildResult ApplyOrRebuild(CameraRigComposer composer, bool logDiagnostics = true, bool useUndo = true)
         {
-            if (composer == null)
-            {
-                return CameraRigComposerApplyRebuildResult.Failed(
-                    "ApplyFailed",
-                    "CameraRigComposer Apply/Rebuild requires a target composer.");
-            }
-
-            int undoGroup = -1;
-
+            if (EditorApplication.isPlayingOrWillChangePlaymode)
+                return CameraRigComposerApplyRebuildResult.Failed("ApplyFailed", "Rig materialization requires Edit Mode.");
+            var validation = Validate(composer, false);
+            if (!validation.Succeeded) return validation;
+            int group = -1;
             if (useUndo)
             {
-                Undo.SetCurrentGroupName(
-                    "Apply Camera Rig Composer");
-                undoGroup = Undo.GetCurrentGroup();
+                Undo.IncrementCurrentGroup();
+                group = Undo.GetCurrentGroup();
+                Undo.SetCurrentGroupName("Apply Camera Rig Composer");
+                Undo.RecordObject(composer, "Apply Camera Rig Composer");
             }
-
-            if (!composer.TryValidateForApply(out string issue))
-            {
-                return Fail(
-                    composer,
-                    "ApplyFailed",
-                    issue,
-                    string.Empty,
-                    useUndo,
-                    undoGroup,
-                    logDiagnostics);
-            }
-
-            CameraTargetResolveResult targets =
-                composer.ResolveCameraTargets(
-                    composer.EffectiveFollowRequirement,
-                    composer.EffectiveLookAtRequirement);
-
-            if (targets.IsBlocked)
-            {
-                return Fail(
-                    composer,
-                    "ApplyFailed",
-                    targets.BlockingIssue,
-                    targets.DiagnosticSummary,
-                    useUndo,
-                    undoGroup,
-                    logDiagnostics);
-            }
-
             var request =
                 new CinemachineRigMaterializationRequest
                 {
@@ -155,22 +46,7 @@ namespace Immersive.Framework.Editor.CameraAuthoring
                     UnityCamera = null,
                     CinemachineCamera =
                         composer.CinemachineCamera,
-                    FollowTarget =
-                        composer.EffectiveFollowRequirement ==
-                        CameraTargetRequirement.NotUsed
-                            ? null
-                            : targets.Targets.FollowTarget,
-                    LookAtTarget =
-                        composer.EffectiveLookAtRequirement ==
-                        CameraTargetRequirement.NotUsed
-                            ? null
-                            : targets.Targets.LookAtTarget,
-                    RequireFollowTarget =
-                        composer.EffectiveFollowRequirement ==
-                        CameraTargetRequirement.Required,
-                    RequireLookAtTarget =
-                        composer.EffectiveLookAtRequirement ==
-                        CameraTargetRequirement.Required,
+                    LookAtRequirement = composer.EffectiveLookAtRequirement,
                     CreateUnityCameraIfMissing = false,
                     CreateCinemachineCameraIfMissing =
                         composer.CreateCinemachineCameraIfMissing,
@@ -203,158 +79,42 @@ namespace Immersive.Framework.Editor.CameraAuthoring
                         composer.CinemachineCameraObjectName
                 };
 
-            CinemachineRigMaterializationReport report =
-                CinemachineRigMaterializer.ApplyOrRebuild(request);
 
-            string materializationSummary =
-                report.CreateSummary();
-            string status = report.Succeeded
-                ? "ApplySucceeded"
-                : "ApplyCompletedWithBlockingIssues";
-            string blockingIssue = report.Succeeded
-                ? string.Empty
-                : report.FirstBlockingIssue;
-
+            CinemachineRigMaterializationReport report = CinemachineRigMaterializer.ApplyOrRebuild(request);
             if (report.Succeeded)
             {
-                composer.EditorSetGeneratedReference(
-                    report.Evidence.CinemachineCamera);
+                composer.EditorSetGeneratedReference(report.Evidence.CinemachineCamera);
                 composer.EditorCommitMaterializationEvidence(
-                    report.Evidence.PresentationIntent,
-                    report.Evidence.CinemachineCamera,
-                    report.Evidence.CinemachineCameraOwnership ==
-                    CinemachineRigMaterializationOwnership.FrameworkOwned,
+                    report.Evidence.PresentationIntent, report.Evidence.CinemachineCamera,
+                    report.Evidence.CinemachineCameraOwnership == CinemachineRigMaterializationOwnership.FrameworkOwned,
                     report.Evidence.PositionControl,
-                    report.Evidence.PositionControlOwnership ==
-                    CinemachineRigMaterializationOwnership.FrameworkOwned,
+                    report.Evidence.PositionControlOwnership == CinemachineRigMaterializationOwnership.FrameworkOwned,
                     report.Evidence.RotationControl,
-                    report.Evidence.RotationControlOwnership ==
-                    CinemachineRigMaterializationOwnership.FrameworkOwned,
+                    report.Evidence.RotationControlOwnership == CinemachineRigMaterializationOwnership.FrameworkOwned,
                     report.Evidence.MaterializationRevision);
-            }
-
-            composer.EditorSetApplyRebuildResult(
-                status,
-                blockingIssue,
-                targets.DiagnosticSummary,
-                materializationSummary,
-                targets.Targets.FollowTarget,
-                targets.Targets.LookAtTarget);
-
-            EditorUtility.SetDirty(composer);
-            EditorUtility.SetDirty(composer.gameObject);
-
-            if (useUndo && undoGroup >= 0)
-            {
-                Undo.CollapseUndoOperations(undoGroup);
-            }
-
-            if (logDiagnostics &&
-                composer.LogApplyRebuildDiagnostics)
-            {
-                LogField[] fields = LogFields.Of(
-                    LogFields.Field("rig", composer.name),
-                    LogFields.Field("status", status),
-                    LogFields.Field("created", report.CreatedCount),
-                    LogFields.Field("repaired", report.RepairedCount),
-                    LogFields.Field("alreadyValid", report.AlreadyValidCount),
-                    LogFields.Field("skipped", report.SkippedCount),
-                    LogFields.Field("blocked", report.BlockedCount),
-                    LogFields.Field("presentation", report.Evidence.PresentationIntent),
-                    LogFields.Field("cameraOwnership", report.Evidence.CinemachineCameraOwnership),
-                    LogFields.Field("positionOwnership", report.Evidence.PositionControlOwnership),
-                    LogFields.Field("rotationOwnership", report.Evidence.RotationControlOwnership),
-                    LogFields.Field("materializationRevision", report.Evidence.MaterializationRevision),
-                    LogFields.Field("targetSummary", targets.DiagnosticSummary),
-                    LogFields.Field("materializationSummary", materializationSummary),
-                    LogFields.Field("blockingIssue", blockingIssue));
-
-                FrameworkLogger logger = CreateLogger();
-                if (report.Succeeded)
+                if (composer.PresentationIntent == CameraRigPresentationIntent.Follow)
                 {
-                    logger.Info(
-                        "CameraRigComposer Apply/Rebuild completed.",
-                        fields);
-                }
-                else
-                {
-                    logger.Warning(
-                        "CameraRigComposer Apply/Rebuild completed with blocking issues.",
-                        fields);
+                    CameraSharedFollowMaterializer.Materialize(composer, useUndo, report);
                 }
             }
-
-            return CameraRigComposerApplyRebuildResult.Applied(
-                report.Succeeded,
-                status,
-                blockingIssue,
-                targets.DiagnosticSummary,
-                materializationSummary,
-                report.CreatedCount,
-                report.RepairedCount,
-                report.AlreadyValidCount,
-                report.SkippedCount,
-                report.BlockedCount);
+            var result = CameraRigComposerApplyRebuildResult.Applied(
+                report.Succeeded, report.Succeeded ? "ApplySucceeded" : "ApplyCompletedWithBlockingIssues",
+                report.Succeeded ? string.Empty : report.FirstBlockingIssue, report.CreateSummary(),
+                report.CreatedCount, report.RepairedCount, report.AlreadyValidCount, report.SkippedCount, report.BlockedCount);
+            Record(composer, result, logDiagnostics);
+            PrefabUtility.RecordPrefabInstancePropertyModifications(composer);
+            if (group >= 0) Undo.CollapseUndoOperations(group);
+            return result;
         }
 
-        private static CameraRigComposerApplyRebuildResult Fail(
-            CameraRigComposer composer,
-            string status,
-            string issue,
-            string targetSummary,
-            bool useUndo,
-            int undoGroup,
-            bool logDiagnostics)
+        private static void Record(CameraRigComposer composer, CameraRigComposerApplyRebuildResult result, bool log)
         {
-            composer.EditorSetApplyRebuildResult(
-                status,
-                issue,
-                targetSummary,
-                string.Empty,
-                null,
-                null);
+            composer.EditorSetApplyRebuildResult(result.Status, result.BlockingIssue, result.MaterializationSummary);
             EditorUtility.SetDirty(composer);
-
-            if (useUndo && undoGroup >= 0)
-            {
-                Undo.CollapseUndoOperations(undoGroup);
-            }
-
-            if (logDiagnostics)
-            {
-                CreateLogger().Error(
-                    "CameraRigComposer Apply/Rebuild failed.",
-                    LogFields.Of(
-                        LogFields.Field("rig", composer != null ? composer.name : "<none>"),
-                        LogFields.Field("status", status),
-                        LogFields.Field("issue", issue),
-                        LogFields.Field("targetSummary", targetSummary)));
-            }
-
-            return CameraRigComposerApplyRebuildResult.Failed(
-                status,
-                issue,
-                targetSummary);
-        }
-
-        private static void LogValidationFailed(
-            CameraRigComposer composer,
-            string issue,
-            string targetSummary)
-        {
-            CreateLogger().Error(
-                "CameraRigComposer validation failed.",
-                LogFields.Of(
-                    LogFields.Field("rig", composer != null ? composer.name : "<none>"),
-                    LogFields.Field("intent", composer != null ? composer.PresentationIntent.ToString() : string.Empty),
-                    LogFields.Field("source", composer != null ? composer.TargetSourceKind.ToString() : string.Empty),
-                    LogFields.Field("issue", issue),
-                    LogFields.Field("targetSummary", targetSummary)));
-        }
-
-        private static FrameworkLogger CreateLogger()
-        {
-            return FrameworkLogger.Create(typeof(CameraRigComposerApplyRebuildUtility));
+            if (!log || !composer.LogApplyRebuildDiagnostics) return;
+            var logger = FrameworkLogger.Create(typeof(CameraRigComposerApplyRebuildUtility));
+            string message = $"Camera rig '{composer.name}': {result.Status}. {result.BlockingIssue} {result.MaterializationSummary}";
+            if (result.Succeeded) logger.Info(message); else logger.Error(message);
         }
     }
 }

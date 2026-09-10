@@ -10,17 +10,8 @@ namespace Immersive.Framework.Editor.CameraAuthoring
     [CustomEditor(typeof(CameraRigComposer))]
     public sealed class CameraRigComposerEditor : UnityEditor.Editor
     {
-        private enum TargetAuthoringMode
-        {
-            ExplicitTransforms = 0,
-            TargetSourceComponent = 1
-        }
 
         private SerializedProperty _presentationIntent;
-        private SerializedProperty _targetSourceKind;
-        private SerializedProperty _targetSource;
-        private SerializedProperty _explicitFollowTarget;
-        private SerializedProperty _explicitLookAtTarget;
         private SerializedProperty _lookAtRequirement;
         private SerializedProperty _followOffset;
         private SerializedProperty _sharedFollowMemberWeight;
@@ -48,10 +39,7 @@ namespace Immersive.Framework.Editor.CameraAuthoring
         private SerializedProperty _logApplyRebuildDiagnostics;
         private SerializedProperty _lastApplyRebuildStatus;
         private SerializedProperty _lastBlockingIssue;
-        private SerializedProperty _lastTargetResolutionSummary;
         private SerializedProperty _lastMaterializationSummary;
-        private SerializedProperty _lastResolvedFollowTarget;
-        private SerializedProperty _lastResolvedLookAtTarget;
 
         private CameraRigComposerApplyRebuildResult? _lastValidationResult;
         private CameraRigComposerApplyRebuildResult? _lastApplyResult;
@@ -63,14 +51,6 @@ namespace Immersive.Framework.Editor.CameraAuthoring
         {
             _presentationIntent =
                 serializedObject.FindProperty("presentationIntent");
-            _targetSourceKind =
-                serializedObject.FindProperty("targetSourceKind");
-            _targetSource =
-                serializedObject.FindProperty("targetSource");
-            _explicitFollowTarget =
-                serializedObject.FindProperty("explicitFollowTarget");
-            _explicitLookAtTarget =
-                serializedObject.FindProperty("explicitLookAtTarget");
             _lookAtRequirement =
                 serializedObject.FindProperty("lookAtRequirement");
             _followOffset =
@@ -125,14 +105,8 @@ namespace Immersive.Framework.Editor.CameraAuthoring
                 serializedObject.FindProperty("lastApplyRebuildStatus");
             _lastBlockingIssue =
                 serializedObject.FindProperty("lastBlockingIssue");
-            _lastTargetResolutionSummary =
-                serializedObject.FindProperty("lastTargetResolutionSummary");
             _lastMaterializationSummary =
                 serializedObject.FindProperty("lastMaterializationSummary");
-            _lastResolvedFollowTarget =
-                serializedObject.FindProperty("lastResolvedFollowTarget");
-            _lastResolvedLookAtTarget =
-                serializedObject.FindProperty("lastResolvedLookAtTarget");
         }
 
         public override void OnInspectorGUI()
@@ -148,7 +122,9 @@ namespace Immersive.Framework.Editor.CameraAuthoring
             CameraRigPresentationIntent presentation =
                 ResolvePresentationIntent();
 
-            DrawTargets(presentation);
+            if (presentation == CameraRigPresentationIntent.Follow)
+                EditorGUILayout.PropertyField(_lookAtRequirement, new GUIContent("Look At", "View-derived orientation policy; no authored target is required for materialization."));
+            EditorGUILayout.HelpBox("Targets are supplied by View / Subject composition at runtime. Apply / Rebuild creates the rig structure without Subjects.", MessageType.Info);
             DrawModelSettings(presentation);
 
             bool authoringChanged =
@@ -190,122 +166,11 @@ namespace Immersive.Framework.Editor.CameraAuthoring
                     "Fixed preserves the local camera pose; Follow tracks one target with offset; Mounted locks to a Camera Mount and its rotation; Third Person tracks a rotating pivot using Cinemachine Third Person Follow."));
         }
 
-        private void DrawTargets(
-            CameraRigPresentationIntent presentation)
-        {
-            if (presentation ==
-                CameraRigPresentationIntent.Undefined)
-            {
-                return;
-            }
 
-            FrameworkAuthoringInspectorGui.Section(
-                "Targets");
 
-            CameraTargetRequirement effectiveFollow =
-                ResolveEffectiveFollowRequirement(
-                    presentation);
 
-            if (presentation == CameraRigPresentationIntent.Fixed ||
-                presentation == CameraRigPresentationIntent.Follow)
-            {
-                EditorGUILayout.PropertyField(
-                    _lookAtRequirement,
-                    new GUIContent(
-                        "Look At",
-                        "Not Used disables the Look At role. Optional permits a missing target. Required blocks validation when missing."));
-            }
 
-            CameraTargetRequirement effectiveLookAt =
-                ResolveEffectiveLookAtRequirement(
-                    presentation);
 
-            if (effectiveFollow == CameraTargetRequirement.NotUsed &&
-                effectiveLookAt == CameraTargetRequirement.NotUsed)
-            {
-                return;
-            }
-
-            TargetAuthoringMode currentMode =
-                ResolveTargetAuthoringMode();
-
-            TargetAuthoringMode selectedMode =
-                (TargetAuthoringMode)EditorGUILayout.EnumPopup(
-                    new GUIContent(
-                        "Target Mode",
-                        "Use direct Transform references or one typed ICameraTargetSource component. No scene lookup is performed by materialization."),
-                    currentMode);
-
-            if (selectedMode != currentMode)
-            {
-                SetTargetAuthoringMode(
-                    selectedMode);
-            }
-
-            if (selectedMode ==
-                TargetAuthoringMode.ExplicitTransforms)
-            {
-                DrawExplicitTargets(
-                    presentation,
-                    effectiveFollow,
-                    effectiveLookAt);
-            }
-            else
-            {
-                DrawTargetSourceComponent();
-            }
-        }
-
-        private void DrawExplicitTargets(
-            CameraRigPresentationIntent presentation,
-            CameraTargetRequirement effectiveFollow,
-            CameraTargetRequirement effectiveLookAt)
-        {
-            if (effectiveFollow !=
-                CameraTargetRequirement.NotUsed)
-            {
-                string label =
-                    presentation == CameraRigPresentationIntent.Mounted
-                        ? "Camera Mount"
-                        : presentation == CameraRigPresentationIntent.ThirdPerson
-                            ? "Tracking Pivot"
-                            : "Tracking Target";
-
-                EditorGUILayout.PropertyField(
-                    _explicitFollowTarget,
-                    new GUIContent(
-                        label,
-                        "Explicit Transform used as the model's Tracking / Follow target."));
-            }
-
-            if ((presentation == CameraRigPresentationIntent.Fixed ||
-                 presentation == CameraRigPresentationIntent.Follow) &&
-                effectiveLookAt !=
-                    CameraTargetRequirement.NotUsed)
-            {
-                EditorGUILayout.PropertyField(
-                    _explicitLookAtTarget,
-                    new GUIContent(
-                        "Look At Target",
-                        "Explicit target consumed by the model's supported rotation behavior."));
-            }
-        }
-
-        private void DrawTargetSourceComponent()
-        {
-            EditorGUI.BeginChangeCheck();
-
-            EditorGUILayout.PropertyField(
-                _targetSource,
-                new GUIContent(
-                    "Target Source",
-                    "Component implementing ICameraTargetSource. The selected Presentation defines which target roles are requested."));
-
-            if (EditorGUI.EndChangeCheck())
-            {
-                SyncSerializedTargetSourceKind();
-            }
-        }
 
         private void DrawModelSettings(
             CameraRigPresentationIntent presentation)
@@ -574,7 +439,7 @@ namespace Immersive.Framework.Editor.CameraAuthoring
                     if (GUILayout.Button(
                             new GUIContent(
                                 "Validate",
-                                "Validates the authored Camera Rig configuration and target resolution without changing the Cinemachine pipeline."),
+                                "Validates structural Camera Rig settings and shared Follow provenance without requiring runtime Subjects."),
                             GUILayout.Width(96f)))
                     {
                         RunValidation();
@@ -690,25 +555,6 @@ namespace Immersive.Framework.Editor.CameraAuthoring
                 return "The selected Presentation requires a Follow Position Control, but creation of that control is disabled. Review the Camera Rig configuration in Advanced / Debug.";
             }
 
-            if (issue == "follow-target:required-missing" ||
-                issue.EndsWith(
-                    ":follow-target-required",
-                    System.StringComparison.Ordinal))
-            {
-                return "A Tracking / Follow target is required for the selected Presentation. Assign the required target and try again.";
-            }
-
-            if (issue == "look-at-target:required-missing")
-            {
-                return "A Look At target is required for the selected Presentation. Assign the target and try again.";
-            }
-
-            if (issue.EndsWith(
-                    ":look-at-not-supported",
-                    System.StringComparison.Ordinal))
-            {
-                return "The selected Presentation does not support a Look At target. Remove that target or choose a compatible Presentation.";
-            }
 
             if (issue.EndsWith(
                     ":settings-invalid",
@@ -866,20 +712,8 @@ namespace Immersive.Framework.Editor.CameraAuthoring
                     "Look At",
                     effectiveLookAt.ToString());
 
-                EditorGUILayout.PropertyField(
-                    _targetSourceKind,
-                    new GUIContent(
-                        "Target Source Kind"));
 
-                EditorGUILayout.PropertyField(
-                    _lastResolvedFollowTarget,
-                    new GUIContent(
-                        "Last Resolved Tracking Target"));
 
-                EditorGUILayout.PropertyField(
-                    _lastResolvedLookAtTarget,
-                    new GUIContent(
-                        "Last Resolved Look At Target"));
             }
 
             EditorGUILayout.Space(4f);
@@ -1042,10 +876,6 @@ namespace Immersive.Framework.Editor.CameraAuthoring
                     new GUIContent(
                         "Blocking Issue"));
 
-                EditorGUILayout.PropertyField(
-                    _lastTargetResolutionSummary,
-                    new GUIContent(
-                        "Target Resolution"));
 
                 EditorGUILayout.PropertyField(
                     _lastMaterializationSummary,
@@ -1097,7 +927,6 @@ namespace Immersive.Framework.Editor.CameraAuthoring
         {
             switch (presentation)
             {
-                case CameraRigPresentationIntent.Fixed:
                 case CameraRigPresentationIntent.Follow:
                     return (CameraTargetRequirement)
                         _lookAtRequirement.intValue;
@@ -1159,61 +988,11 @@ namespace Immersive.Framework.Editor.CameraAuthoring
                     true);
         }
 
-        private TargetAuthoringMode ResolveTargetAuthoringMode()
-        {
-            CameraTargetSourceKind kind =
-                (CameraTargetSourceKind)
-                    _targetSourceKind.intValue;
 
-            return
-                _targetSource.objectReferenceValue == null &&
-                kind ==
-                    CameraTargetSourceKind.ExplicitTransform
-                    ? TargetAuthoringMode.ExplicitTransforms
-                    : TargetAuthoringMode.TargetSourceComponent;
-        }
 
-        private void SetTargetAuthoringMode(
-            TargetAuthoringMode mode)
-        {
-            if (mode ==
-                TargetAuthoringMode.ExplicitTransforms)
-            {
-                _targetSource.objectReferenceValue =
-                    null;
 
-                _targetSourceKind.intValue =
-                    (int)CameraTargetSourceKind
-                        .ExplicitTransform;
 
-                return;
-            }
 
-            if ((CameraTargetSourceKind)
-                    _targetSourceKind.intValue ==
-                CameraTargetSourceKind.ExplicitTransform)
-            {
-                _targetSourceKind.intValue =
-                    (int)CameraTargetSourceKind.None;
-            }
-        }
-
-        private void SyncSerializedTargetSourceKind()
-        {
-            Object assigned =
-                _targetSource.objectReferenceValue;
-
-            if (assigned is
-                ICameraTargetSource provider)
-            {
-                _targetSourceKind.intValue =
-                    (int)provider.TargetSourceKind;
-                return;
-            }
-
-            _targetSourceKind.intValue =
-                (int)CameraTargetSourceKind.None;
-        }
 
         private void RunValidation()
         {

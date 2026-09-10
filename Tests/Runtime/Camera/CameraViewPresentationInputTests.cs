@@ -56,6 +56,13 @@ namespace Immersive.Framework.Camera.Tests
             Assert.That(input.Cardinality, Is.EqualTo(CameraViewSubjectCardinality.One));
             Assert.That(input.Subjects[0].Subject.SubjectId, Is.EqualTo(subject.SubjectId));
             Assert.That(input.Subjects[0].Subject.Observation, Is.SameAs(subject.Observation));
+            ViewAssignmentContextId assignmentContext = input.AssignmentContextId;
+            SubjectAvailabilityContextId availabilityContext = input.AvailabilityContextId;
+            Assert.That(assignmentContext, Is.EqualTo(snapshot.ContextId));
+            Assert.That(availabilityContext, Is.EqualTo(availability.ContextId));
+            Assert.That(snapshot.TryGetView(ViewId("main"), out CameraViewSubjectSnapshot view), Is.True);
+            ViewAssignmentContextId tokenContext = view.Assignments[0].Token.ContextId;
+            Assert.That(tokenContext, Is.EqualTo(assignmentContext));
         }
 
         [Test]
@@ -315,7 +322,7 @@ namespace Immersive.Framework.Camera.Tests
             CameraView[] views)
         {
             return new CameraViewAssignmentContext(
-                "view-assignments",
+                new ViewAssignmentContextId("view-assignments"),
                 availability.ContextId,
                 views).Reconcile(availability.CreateSnapshot()).Snapshot;
         }
@@ -326,7 +333,7 @@ namespace Immersive.Framework.Camera.Tests
             params (string viewId, CameraSubjectId subjectId)[] relations)
         {
             CameraViewAssignmentContext context = new CameraViewAssignmentContext(
-                "view-assignments",
+                new ViewAssignmentContextId("view-assignments"),
                 availability.ContextId,
                 views);
             CameraViewAssignmentResult result = context.Reconcile(
@@ -347,14 +354,14 @@ namespace Immersive.Framework.Camera.Tests
             params CameraView[] views)
         {
             return new CameraViewAssignmentContext(
-                "view-assignments",
+                new ViewAssignmentContextId("view-assignments"),
                 availability.ContextId,
                 views);
         }
 
         private CameraSubjectAvailabilityContext Availability()
         {
-            return new CameraSubjectAvailabilityContext("subjects-session-a");
+            return new CameraSubjectAvailabilityContext(new SubjectAvailabilityContextId("subjects-session-a"));
         }
 
         private CameraSubject Subject(string id)

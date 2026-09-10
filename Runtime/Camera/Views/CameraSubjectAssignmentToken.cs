@@ -11,27 +11,27 @@ namespace Immersive.Framework.Camera
         IEquatable<CameraSubjectAssignmentToken>
     {
         internal CameraSubjectAssignmentToken(
-            string contextId,
+            ViewAssignmentContextId contextId,
             CameraViewId viewId,
             CameraSubjectId subjectId,
             CameraSubjectAssignmentOwnerId ownerId,
             int revision)
         {
-            ContextId = contextId ?? string.Empty;
+            ContextId = contextId;
             ViewId = viewId;
             SubjectId = subjectId;
             OwnerId = ownerId;
             Revision = revision;
         }
 
-        public string ContextId { get; }
+        public ViewAssignmentContextId ContextId { get; }
         public CameraViewId ViewId { get; }
         public CameraSubjectId SubjectId { get; }
         public CameraSubjectAssignmentOwnerId OwnerId { get; }
         public int Revision { get; }
 
         public bool IsValid =>
-            !string.IsNullOrEmpty(ContextId) &&
+            ContextId.IsValid &&
             ViewId.IsValid &&
             SubjectId.IsValid &&
             OwnerId.IsValid &&
@@ -44,7 +44,7 @@ namespace Immersive.Framework.Camera
 
         public bool Equals(CameraSubjectAssignmentToken other)
         {
-            return string.Equals(ContextId, other.ContextId, StringComparison.Ordinal) &&
+            return (ContextId == other.ContextId) &&
                 ViewId == other.ViewId &&
                 SubjectId == other.SubjectId &&
                 OwnerId == other.OwnerId &&
@@ -60,7 +60,7 @@ namespace Immersive.Framework.Camera
         {
             unchecked
             {
-                int hashCode = StringComparer.Ordinal.GetHashCode(ContextId ?? string.Empty);
+                int hashCode = ContextId.GetHashCode();
                 hashCode = hashCode * 397 ^ ViewId.GetHashCode();
                 hashCode = hashCode * 397 ^ SubjectId.GetHashCode();
                 hashCode = hashCode * 397 ^ OwnerId.GetHashCode();

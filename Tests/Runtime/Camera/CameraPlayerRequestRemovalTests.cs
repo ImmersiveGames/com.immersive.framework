@@ -25,7 +25,7 @@ namespace Immersive.Framework.Camera.Tests
         {
             CameraRigComposer composer = Composer("shared-composer", out CinemachineCamera camera);
             CameraOutputAuthoring output = Output(composer);
-            var availability = new CameraSubjectAvailabilityContext("session-subjects");
+            var availability = new CameraSubjectAvailabilityContext(new SubjectAvailabilityContextId("session-subjects"));
             CameraSharedComposition composition = Composition(availability, output, composer);
 
             AssertStableOutput(output, composition, composer, camera, 0);
@@ -67,8 +67,8 @@ namespace Immersive.Framework.Camera.Tests
             CameraRequestCreateResult request = CameraRequestCreateResult.Create(
                 new CameraRequestId("route-request"),
                 CameraOutputId.Main,
-                new CameraRequestOwner(CameraRequestOwnerKind.Route, "route-owner"),
-                new CameraRequestLifetime(CameraRequestLifetimeKind.Route, "route-occurrence"),
+                new CameraRequestOwner(CameraRequestOwnerKind.Route, new CameraRequestOwnerScopeId("route-owner")),
+                new CameraRequestLifetime(CameraRequestLifetimeKind.Route, new CameraRequestLifetimeScopeId("route-occurrence")),
                 CameraRigReference.FromComposer(routeComposer),
                 CameraTargetSourceDescriptor.ExplicitTransform(target, "Route target"),
                 new CameraRequestPolicy(100, "route-request"),
@@ -103,10 +103,9 @@ namespace Immersive.Framework.Camera.Tests
             CameraSharedComposition composition = root.AddComponent<CameraSharedComposition>();
             composition.Configure(
                 new CameraView(new CameraViewId("shared-view"), "Shared View"),
-                "shared-assignments",
+                new ViewAssignmentContextId("shared-assignments"),
                 new CameraSubjectAssignmentOwnerId("shared-composition-owner"),
                 CameraOutputId.Main,
-                composer,
                 CameraSharedCompositionSubjectPolicyKind.AllAvailableSubjects);
             composition.AttachOutputSession(output);
             composition.AttachCameraSubjectAvailability(availability);
@@ -122,6 +121,14 @@ namespace Immersive.Framework.Camera.Tests
             cameraObject.transform.SetParent(root.transform, false);
             camera = cameraObject.AddComponent<CinemachineCamera>();
             SetField(composer, "cinemachineCamera", camera);
+            var groupObject = new GameObject("materialized-shared-follow");
+            groupObject.transform.SetParent(composer.transform, false);
+            var group = groupObject.AddComponent<CinemachineTargetGroup>();
+            var framing = camera.gameObject.AddComponent<CinemachineGroupFraming>();
+            framing.enabled = false;
+            SetField(composer, "frameworkOwnedSharedFollowTargetGroup", group);
+            SetField(composer, "frameworkOwnedSharedFollowGroupFraming", framing);
+
             return composer;
         }
 

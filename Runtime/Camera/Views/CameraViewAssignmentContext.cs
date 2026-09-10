@@ -52,14 +52,14 @@ namespace Immersive.Framework.Camera
         private int _lastAvailabilityRevision;
 
         public CameraViewAssignmentContext(
-            string contextId,
-            string subjectAvailabilityContextId,
+            ViewAssignmentContextId contextId,
+            SubjectAvailabilityContextId subjectAvailabilityContextId,
             params CameraView[] views)
         {
-            ContextId = contextId.NormalizeText();
-            SubjectAvailabilityContextId = subjectAvailabilityContextId.NormalizeText();
-            if (string.IsNullOrEmpty(ContextId) ||
-                string.IsNullOrEmpty(SubjectAvailabilityContextId))
+            ContextId = contextId;
+            SubjectAvailabilityContextId = subjectAvailabilityContextId;
+            if (!ContextId.IsValid ||
+                !SubjectAvailabilityContextId.IsValid)
             {
                 throw new ArgumentException(
                     "Camera View Assignment requires explicit context and Subject availability context ids.");
@@ -85,8 +85,8 @@ namespace Immersive.Framework.Camera
             }
         }
 
-        public string ContextId { get; }
-        public string SubjectAvailabilityContextId { get; }
+        public ViewAssignmentContextId ContextId { get; }
+        public SubjectAvailabilityContextId SubjectAvailabilityContextId { get; }
         public int Revision => _revision;
         public int ViewCount => _views.Count;
         public int AssignmentCount => _assignments.Count;
@@ -190,7 +190,7 @@ namespace Immersive.Framework.Camera
             }
 
             if (!expectedToken.IsValid ||
-                !string.Equals(expectedToken.ContextId, ContextId, StringComparison.Ordinal))
+                expectedToken.ContextId != ContextId)
             {
                 return Result(
                     CameraViewAssignmentStatus.RejectedForeignOrStaleToken,
@@ -300,10 +300,7 @@ namespace Immersive.Framework.Camera
             out CameraViewAssignmentResult rejected)
         {
             if (availability == null ||
-                !string.Equals(
-                    availability.ContextId,
-                    SubjectAvailabilityContextId,
-                    StringComparison.Ordinal))
+                availability.ContextId != SubjectAvailabilityContextId)
             {
                 rejected = new CameraViewAssignmentResult(
                     CameraViewAssignmentStatus.RejectedAvailabilityContextMismatch,

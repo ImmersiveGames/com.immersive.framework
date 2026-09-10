@@ -25,7 +25,7 @@ namespace Immersive.Framework.Camera.Tests
         }
 
         [Test]
-        public void FollowManyMaterializesOneOwnedGroupAndFramingIdempotently()
+        public void FollowManyUsesMaterializedGroupAndFramingIdempotently()
         {
             CameraSubjectAvailabilityContext availability = Availability();
             CameraSubject p1 = Subject("p1");
@@ -142,13 +142,13 @@ namespace Immersive.Framework.Camera.Tests
             Assign(assignments, availability, p1);
             CameraViewAssignmentSnapshot many = Assign(assignments, availability, p2).Snapshot;
 
-            CameraRigComposer mounted = Composer(out _);
+            CameraRigComposer mounted = Composer(out _, false);
             SetField(mounted, "presentationIntent", CameraRigPresentationIntent.Mounted);
             Assert.That(
                 mounted.ApplyViewPresentation(Input(many), many).Status,
                 Is.EqualTo(CameraViewPresentationApplyStatus.BlockedUnsupportedPresentation));
 
-            CameraRigComposer thirdPerson = Composer(out _);
+            CameraRigComposer thirdPerson = Composer(out _, false);
             SetField(thirdPerson, "presentationIntent", CameraRigPresentationIntent.ThirdPerson);
             Assert.That(
                 thirdPerson.ApplyViewPresentation(Input(many), many).Status,
@@ -157,7 +157,7 @@ namespace Immersive.Framework.Camera.Tests
             CameraViewAssignmentContext fixedAssignments = Assignments(availability, "fixed");
             CameraViewAssignmentSnapshot empty = fixedAssignments.Reconcile(
                 availability.CreateSnapshot()).Snapshot;
-            CameraRigComposer fixedComposer = Composer(out _);
+            CameraRigComposer fixedComposer = Composer(out _, false);
             SetField(fixedComposer, "presentationIntent", CameraRigPresentationIntent.Fixed);
             Assert.That(
                 fixedComposer.ApplyViewPresentation(Input(empty, "fixed"), empty).Status,
@@ -176,14 +176,14 @@ namespace Immersive.Framework.Camera.Tests
             Assign(assignments, availability, p1);
             CameraViewAssignmentSnapshot many = Assign(assignments, availability, p2).Snapshot;
 
-            CameraRigComposer invalid = Composer(out _);
+            CameraRigComposer invalid = Composer(out _, false);
             SetField(invalid, "sharedFollowMemberWeight", 0f);
             Assert.That(
                 invalid.ApplyViewPresentation(Input(many), many).Status,
                 Is.EqualTo(CameraViewPresentationApplyStatus.RejectedInvalidSettings));
             Assert.That(invalid.FrameworkOwnedSharedFollowTargetGroup, Is.Null);
 
-            CameraRigComposer conflicted = Composer(out CinemachineCamera camera);
+            CameraRigComposer conflicted = Composer(out CinemachineCamera camera, false);
             var authoredGroupObject = new GameObject("author-group");
             _created.Add(authoredGroupObject);
             authoredGroupObject.transform.SetParent(conflicted.transform, false);
@@ -223,6 +223,22 @@ namespace Immersive.Framework.Camera.Tests
             AssertInvalidSetting(composer, input, many, "sharedFollowOrthoSizeRange", new Vector2(0f, 100f), new Vector2(1f, 1000f));
         }
 
+        [Test]
+        public void MissingSharedStructureIsRejectedWithoutRuntimeCreation()
+        {
+            var availability = Availability();
+            var assignments = Assignments(availability);
+            Assign(assignments, availability, Available(availability, "p1"));
+            var snapshot = Assign(assignments, availability, Available(availability, "p2")).Snapshot;
+            var composer = Composer(out CinemachineCamera camera, false);
+            var result = composer.ApplyViewPresentation(Input(snapshot), snapshot);
+            Assert.That(result.Status, Is.EqualTo(CameraViewPresentationApplyStatus.RejectedOwnershipConflict));
+            Assert.That(composer.GetComponentsInChildren<CinemachineTargetGroup>(true), Is.Empty);
+            Assert.That(camera.GetComponents<CinemachineGroupFraming>(), Is.Empty);
+            Assert.That(camera.Follow, Is.Null);
+            Assert.That(camera.LookAt, Is.Null);
+        }
+
         private void AssertStatus(
             CameraRigComposer composer,
             CameraViewAssignmentSnapshot snapshot,
@@ -246,7 +262,7 @@ namespace Immersive.Framework.Camera.Tests
             }
         }
 
-        private CameraRigComposer Composer(out CinemachineCamera camera)
+        private CameraRigComposer Composer(out CinemachineCamera camera, bool materializeShared = true)
         {
             var root = new GameObject("composer");
             _created.Add(root);
@@ -255,6 +271,17 @@ namespace Immersive.Framework.Camera.Tests
             cameraObject.transform.SetParent(root.transform, false);
             camera = cameraObject.AddComponent<CinemachineCamera>();
             SetField(composer, "cinemachineCamera", camera);
+            if (materializeShared)
+            {
+                var groupObject = new GameObject("materialized-shared-follow");
+                groupObject.transform.SetParent(composer.transform, false);
+                var group = groupObject.AddComponent<CinemachineTargetGroup>();
+                var framing = camera.gameObject.AddComponent<CinemachineGroupFraming>();
+                framing.enabled = false;
+                SetField(composer, "frameworkOwnedSharedFollowTargetGroup", group);
+                SetField(composer, "frameworkOwnedSharedFollowGroupFraming", framing);
+            }
+
             return composer;
         }
 
@@ -279,7 +306,7 @@ namespace Immersive.Framework.Camera.Tests
             string viewId = "main")
         {
             return new CameraViewAssignmentContext(
-                "assignments-" + viewId,
+                new ViewAssignmentContextId("assignments-" + viewId),
                 availability.ContextId,
                 new CameraView(new CameraViewId(viewId), viewId));
         }
@@ -309,7 +336,7 @@ namespace Immersive.Framework.Camera.Tests
 
         private static CameraSubjectAvailabilityContext Availability()
         {
-            return new CameraSubjectAvailabilityContext("subjects");
+            return new CameraSubjectAvailabilityContext(new SubjectAvailabilityContextId("subjects"));
         }
 
         private static CameraSubjectAvailabilityOwnerId AvailabilityOwner(string id)
