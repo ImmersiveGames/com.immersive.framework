@@ -1,13 +1,14 @@
 # IF-ADR-026 — Camera Subjects, Assignment and Multi-Output Topology
 
-Status: **Accepted architecture — CAMERA-026-A/B/C/D/E/F/G/H implemented; Shared Camera technical QA certified; Split/full aggregate and FIRSTGAME certification pending**
+Status: **Accepted architecture — CAMERA-026-A/B/C/D/E/F/G/H implemented and full Camera technical QA certified; FIRSTGAME/Samples consumer proof pending**
 Accepted: **2026-09-07**
 Implementation: **CAMERA-026-A Subject availability, CAMERA-026-B logical View/Assignment, CAMERA-026-C View-to-presentation seam, CAMERA-026-D shared Follow presentation, CAMERA-026-E shared composition orchestration, CAMERA-026-F ordinary Player-request removal, CAMERA-026-G explicit 1..N Output topology and CAMERA-026-H explicit View-to-Output viewport policy implemented**
-Technical QA: **Partial — Shared Camera certified 2026-09-09; Split and Full Camera aggregate pending**
-FIRSTGAME proof: **Pending**
+Technical QA: **Certified — Full Camera QA 2026-09-12: 39/39 mandatory cases, ADR-026 phases 2/2, certified dimensions 9/9**
+FIRSTGAME / official Samples proof: **Pending under CAMERA-027-F consumer migration**
 Supersedes: the single-output and canonical Local-Player-owned presentation assumptions in IF-ADR-004, IF-ADR-004C and IF-ADR-022; their implemented and certified historical boundaries remain evidence for the old baseline.
-Related decisions: IF-ADR-003, IF-ADR-004, IF-ADR-004C, IF-ADR-010, IF-ADR-019, IF-ADR-020, IF-ADR-022, IF-ADR-023, IF-ADR-025
-Current certification: [Shared Camera Technical Certification — 2026-09-09](../Reconciliation/IF-ADR-026-SHARED-CAMERA-TECHNICAL-CERTIFICATION-2026-09-09.md)
+Related decisions: IF-ADR-003, IF-ADR-004, IF-ADR-004C, IF-ADR-010, IF-ADR-019, IF-ADR-020, IF-ADR-022, IF-ADR-023, IF-ADR-025, IF-ADR-027
+Current certification: [Camera Full Technical Certification — 2026-09-12](../Reconciliation/IF-CAMERA-FULL-TECHNICAL-CERTIFICATION-2026-09-12.md)
+Previous focused certification: [Shared Camera Technical Certification — 2026-09-09](../Reconciliation/IF-ADR-026-SHARED-CAMERA-TECHNICAL-CERTIFICATION-2026-09-09.md)
 
 ## Context
 
@@ -107,7 +108,7 @@ product invariant. Output count comes from explicit Camera Composition policy, n
 from Player count.
 
 ```text
-2 Players + shared composition      -> 1 output
+2 Players + shared composition       -> 1 output
 2 Players + split-screen composition -> 2 outputs
 ```
 
@@ -159,8 +160,8 @@ Implementations must represent and validate at least these lifetimes independent
 | Output | explicit rendering destination scope | Subject or Player eligibility |
 
 When a Subject disappears, its assignments are removed transactionally. Required-target
-views must expose explicit unresolved/waiting/failure evidence according to their future
-runtime contract. Stale references and silent fallback are rejected.
+views must expose explicit unresolved/waiting/failure evidence according to their runtime
+contract. Stale references and silent fallback are rejected.
 
 The existing IF-ADR-004C publication cleanup remains valid for request publishers. It
 does not define Subject, Assignment, View/Rig or Output lifetime.
@@ -171,9 +172,9 @@ The accepted `Fixed`, `Follow`, `Mounted` and `Third Person` family remains pres
 semantics. In particular, `Follow` describes camera movement behavior; it does not mean
 that a Camera belongs to one Player.
 
-`CameraRigComposer` remains the designer-facing owner of local presentation intent and
-safe Cinemachine materialization. The target-selection responsibility moves outside the
-Composer:
+`CameraRigComposer` remains the designer-facing owner of local presentation materialization.
+Reusable model/tuning intent is now definition-backed by IF-ADR-027, while target-selection
+responsibility remains outside the Composer:
 
 ```text
 Camera Assignment
@@ -184,21 +185,15 @@ CameraRigComposer
   materializes how Cinemachine observes it
 ```
 
-The exact runtime projection contract from Subject Set to Cinemachine targets remains an
-implementation decision. `CinemachineTargetGroup` and Group Framing may be adapters or
-projection mechanisms; they are never assignment or composition authority.
+`CinemachineTargetGroup` and Group Framing may be adapters or projection mechanisms; they
+are never assignment or composition authority.
 
 ### 8. Player Group and multi-target
 
-`CameraTargetSourceKind.PlayerGroup` is useful prior vocabulary, but the current package
-only declares the enum member. There is no implemented `ICameraTargetSource` for a
-Player Group and `CameraResolvedTargets` currently carries only one Follow and one Look
-At `Transform`.
-
-The future Subject Set contract may reuse `PlayerGroup` as one Player-specific source or
-selector. It must not make the general Subject Set abstraction Player-specific, because
-vehicles, world objects, Activity targets and replay/spectator sources may also form
-multi-target sets.
+`CameraTargetSourceKind.PlayerGroup` remains historical/extension vocabulary and must not
+be treated as a universal Player-specific authority. The general Subject Set abstraction
+must continue to support vehicles, world objects, Activity targets and replay/spectator
+sources as well as Players.
 
 Multi-target framing is valid:
 
@@ -270,70 +265,76 @@ Player may exist but is not necessarily a Camera Subject for that view
 - multi-output, split-screen and group framing being architecturally out of scope.
 
 These superseded constraints are not compatibility rules. The accepted replacement
-topology is implemented through CAMERA-026-H; certification remains separate.
+topology is implemented through CAMERA-026-H and is technically certified by the
+2026-09-12 full Camera run.
 
 ## Current implementation coverage
 
-The repository implements eight IF-ADR-026 runtime slices, including explicit 1..N Output and viewport topology.
-CAMERA-026-A provides typed Camera Subject identity/description, scoped
-availability with exact stale-safe tokens, immutable snapshots and projection from the
-current Session physical Player Actor occurrence. CAMERA-026-B provides logical Views,
-explicit View-to-Subject Assignments, assignment ownership/tokens, deterministic
-0..N/0..N snapshots and reconciliation that removes unavailable occurrence assignments
-without ending View lifetime. CAMERA-026-C projects one explicitly selected logical View
-to an immutable presentation input that retains its complete ordered resolved Subject
-collection and assignment/availability revision evidence. `CameraRigComposer` can consume
-that external input through a separate explicit operation without reading or merging its
-legacy authored target source.
+The repository implements all eight IF-ADR-026 runtime slices, including explicit 1..N
+Output and viewport topology.
 
-The ordinary Player-owned `CameraRequest` path is removed. Player gameplay admission now
+CAMERA-026-A provides typed Camera Subject identity/description, scoped availability with
+exact stale-safe tokens, immutable snapshots and projection from the current Session
+physical Player Actor occurrence. CAMERA-026-B provides logical Views, explicit
+View-to-Subject Assignments, assignment ownership/tokens, deterministic 0..N/0..N snapshots
+and reconciliation that removes unavailable occurrence assignments without ending View
+lifetime. CAMERA-026-C projects one explicitly selected logical View to an immutable
+presentation input that retains its complete ordered resolved Subject collection and
+assignment/availability revision evidence. `CameraRigComposer` consumes that external input
+through a separate explicit operation without selecting Players.
+
+The ordinary Player-owned `CameraRequest` path is removed. Player gameplay admission
 aggregates occupancy and input only; prepared physical Actor lifetime independently
 projects Camera Subject availability.
-The current adapter supports Fixed presentation with zero Subjects and existing
-single-target presentation with exactly one Subject. A sole role-neutral observation is
-used for each active Follow/Look At role; this is a terminal compatibility projection,
-not a claim that those roles are semantically identical. Multiple Subjects remain valid
-logical input. CAMERA-026-D materializes multiple Subjects only for Follow as one
-Composer-owned `CinemachineTargetGroup` plus one Composer-owned
-`CinemachineGroupFraming` on the existing `CinemachineCamera`. Membership is rebuilt
-deterministically from the current View input; transitions to one or zero Subjects clear
-the technical group without destroying the rig. Mounted and Third Person remain
-explicitly unsupported for multiple Subjects. CAMERA-026-E adds one explicitly authored
-shared composition that owns its View and exact Assignments, consumes immutable changes
-from one bound Camera Subject availability context, selects all currently available
-Subjects by explicit local policy, and applies the resulting A→B→C→D chain to one exact
-`CameraRigComposer`. Empty membership is a valid dormant state, occurrence/revision
-evidence is preserved, and teardown releases only owned relations while clearing targets
-without destroying the rig or output. `CameraOutputAuthoring` keeps that same Composer as
-its Default presentation, so zero ordinary Player requests are required. CAMERA-026-G
-adds `CameraOutputSessionTopology`: it validates and initializes 1..N explicitly authored
-Outputs, rejects missing/invalid/duplicate `CameraOutputId`, provides ordinal lookup and
-snapshots, injects each consumer only into its requested Output, applies transition Default
-forcing across all Outputs transactionally and tears the Session topology down deterministically.
-Each Output retains an independent Context, Default, request set, winner, Unity Camera and
-Cinemachine Brain. CAMERA-026-H adds an immutable, deterministic `CameraViewId` to
-`CameraOutputId` binding topology with a finite normalized viewport. One View may feed
-multiple Outputs, but each physical Output has one binding in a policy snapshot. The
-Session runtime applies only the exact Output Camera, restores authored viewports when a
-binding is removed or the policy ends, and never changes Output arbitration or lifetime.
-`PlayerInputManager.splitScreen` is rejected while Framework Camera composition is active;
-Player join/leave remains outside Camera topology authority.
-Framework-local tests were added. The Shared Camera composition boundary is technically
-certified by the 2026-09-09 runtime proof. Split runtime, the Full Camera aggregate and
-FIRSTGAME proof remain pending; historical Camera certification must not be relabeled as
-proof of IF-ADR-026.
 
-## Future implementation cuts
+CAMERA-026-D materializes multiple Subjects for Follow as one Composer-owned
+`CinemachineTargetGroup` plus one Composer-owned `CinemachineGroupFraming` on the existing
+`CinemachineCamera`. Membership is rebuilt deterministically from the current View input;
+transitions to one or zero Subjects clear the technical group without destroying the rig.
+Mounted and Third Person remain explicitly unsupported for multiple Subjects.
+
+CAMERA-026-E adds one explicitly authored shared composition that owns its View and exact
+Assignments, consumes immutable changes from one bound Camera Subject availability context,
+selects all currently available Subjects by explicit local policy, and applies the resulting
+A→B→C→D chain to one exact `CameraRigComposer`. Empty membership is a valid dormant state,
+occurrence/revision evidence is preserved, and teardown releases only owned relations while
+clearing targets without destroying the rig or output.
+
+CAMERA-026-G adds `CameraOutputSessionTopology`: it validates and initializes 1..N explicitly
+authored Outputs, rejects missing/invalid/duplicate `CameraOutputId`, provides ordinal lookup
+and snapshots, injects each consumer only into its requested Output, applies transition
+Default forcing across all Outputs transactionally and tears the Session topology down
+deterministically. Each Output retains an independent Context, Default, request set, winner,
+Unity Camera and Cinemachine Brain.
+
+CAMERA-026-H adds an immutable, deterministic `CameraViewId` to `CameraOutputId` binding
+topology with a finite normalized viewport. One View may feed multiple Outputs, but each
+physical Output has one binding in a policy snapshot. The Session runtime applies only the
+exact Output Camera, restores authored viewports when a binding is removed or the policy
+ends, and never changes Output arbitration or lifetime. `PlayerInputManager.splitScreen` is
+rejected while Framework Camera composition is active; Player join/leave remains outside
+Camera topology authority.
+
+IF-ADR-027 A-D later improve the product authoring surface for the same runtime topology by
+using typed View/Output/Behavior definitions and projecting simple authored View→Output
+associations without requiring copied stable IDs or a hand-authored technical binding.
+
+Framework-local tests and runtime QA cover these boundaries. The 2026-09-12 full Camera
+certification now includes Shared and Split ADR-026 phases, exact Actor Presentation child
+observation Transform / Mounted consumption, Player replacement and stale-occurrence safety,
+explicit multi-output isolation, View→Output binding/viewport topology, generic arbitration
+and negative validation.
+
+## Implementation cuts
 
 1. **Subject contracts (CAMERA-026-A implemented)** — typed identity, availability,
    provider observation, stale removal and additive ordinary Player Subject contribution.
-   The old Player-owned request path intentionally remains until the later migration cut.
 2. **Assignment/View contracts (CAMERA-026-B implemented)** — explicit scoped Views,
    exact owned Assignments, 0..N/0..N cardinality, deterministic resolved snapshots and
    stale Subject reconciliation; request selection remains separate.
 3. **Rig target-input seam (CAMERA-026-C implemented)** — immutable View-scoped input
    preserves 0..N resolved Subjects and source revisions; `CameraRigComposer` consumes it
-   through an explicit path without selecting Players or merging legacy target sources.
+   through an explicit path without selecting Players.
 4. **Shared multi-target projection (CAMERA-026-D implemented for Follow)** — one
    Framework-owned Cinemachine Target Group and Group Framing extension project the
    current ordered View Subjects onto the existing rig; other multi-Subject presentation
@@ -344,8 +345,7 @@ proof of IF-ADR-026.
    the selection policy.
 6. **Migration/removal (CAMERA-026-F implemented)** — ordinary Player gameplay no longer
    resolves Camera authoring/output endpoints, owns Camera eligibility evidence or
-   publishes/releases per-Player requests. No specialized Local Player request policy had
-   an active consumer, so its unused publisher and enum members were removed.
+   publishes/releases per-Player requests.
 7. **Output composition (CAMERA-026-G implemented)** — explicit Session collection of 1..N
    outputs, identity validation, exact per-output injection, snapshots, deterministic teardown
    and transactional independence.
@@ -353,35 +353,65 @@ proof of IF-ADR-026.
    normalized viewport binding, exact Output application, isolated restoration and
    fail-fast rejection of `PlayerInputManager` automatic split-screen.
 
-CAMERA-026-A through CAMERA-026-H are implemented. Shared Camera technical QA is
-certified as of 2026-09-09. Split runtime, the Full Camera aggregate and FIRSTGAME proof
-remain pending; the package does not infer or automatically generate multiplayer layout.
+CAMERA-026-A through CAMERA-026-H are implemented and technically certified for the current
+boundary by the 2026-09-12 Full Camera QA. The package does not infer or automatically
+generate multiplayer layout.
 
-## Future validation contracts
+## Technical validation closure and remaining consumer proof
 
-Shared Camera runtime QA has proven:
+The current Full Camera certification records:
 
-- single-player subject join preserves one output/rig;
-- shared two-or-more-Player join/leave mutates only the Subject Set;
-- disappearing Subjects cannot leave stale target references;
-- Player leave/rejoin creates a new Subject occurrence without reviving the stale one;
-- Player count does not create outputs or ordinary Player-owned Camera requests.
+```text
+[QA_CAMERA_FULL]
+status='Completed'
+verdict='CAMERA QA CERTIFIED'
+mandatoryEstablishedCases='39'
+executedEstablishedCases='39'
+passedEstablishedCases='39'
+adr026Phases='2/2'
+dimensions='9/9'
+missing='<none>'
+```
 
-Remaining technical QA must prove:
+Certified dimensions:
 
-- Fixed Activity views need no Player target;
-- one Subject can feed main, minimap, spectator, replay or picture-in-picture views;
-- explicit split-screen composition creates and isolates two outputs;
-- per-output arbitration, rollback, Default and teardown remain isolated;
-- duplicate `CameraOutputId` and ambiguous composition block;
-- `PlayerInputManager` evidence cannot override Framework composition.
+```text
+subjectsOccurrenceSafety = PASS
+sharedCamera             = PASS
+playerCameraDecoupling   = PASS
+multiOutput              = PASS
+outputIsolation          = PASS
+viewOutputBinding        = PASS
+viewportSplitTopology    = PASS
+genericArbitration       = PASS
+negativeValidation       = PASS
+```
 
-FIRSTGAME must eventually prove the four canonical examples above, then add one secondary
-view scenario (minimap or picture-in-picture) to prove Subject-to-many-Views cardinality.
+Focused ADR-026 runtime evidence in the same run includes:
+
+- shared membership changes across P1 join, prepared Actor replacement, P2 join, P1 leave,
+  P1 rejoin and cleanup without reviving stale P1-A;
+- exact authored Actor Presentation child observation Transform consumed by Mounted;
+- zero ordinary per-Player Camera requests;
+- explicit two-Output split with left/right viewports and isolated physical Outputs;
+- missing Output rejection;
+- `PlayerInputManager` automatic split-screen rejection while Framework composition owns
+  viewport topology;
+- deterministic generic arbitration and lifecycle cleanup;
+- negative integrity and owner-lifetime regression coverage.
+
+There is no remaining technical-certification blocker for the accepted IF-ADR-026 runtime
+boundary represented by this matrix.
+
+Remaining proof is consumer/product scope. CAMERA-027-F must migrate official
+Samples/FIRSTGAME to the current definition-backed authoring surface and visually/operationally
+prove representative compositions. Richer scenarios such as minimap, picture-in-picture,
+spectator or one Subject feeding multiple Views may be added as consumer demonstrations;
+they are not required to reopen this accepted runtime architecture unless new evidence
+shows a missing contract.
 
 ## Rejected scope
 
-- multi-output or split-screen implementation in CAMERA-026-F;
 - automatic output creation from Player join;
 - global Camera manager, singleton, service locator or target registry;
 - `Camera.main`, hierarchy/name/tag discovery or implicit first-Player selection;
@@ -391,8 +421,11 @@ view scenario (minimap or picture-in-picture) to prove Subject-to-many-Views car
 
 ## Consequences
 
-The target architecture supports shared cameras, split-screen, fixed Activity/Route
+The accepted architecture supports shared cameras, split-screen, fixed Activity/Route
 cameras, vehicle, spectator and replay cameras, minimap and picture-in-picture without a
-Player/Camera ownership assumption. The remaining cost is explicit output composition,
-validators, QA and consumer authoring. The obsolete ordinary Player Camera
-eligibility/request runtime is no longer an executable baseline.
+Player/Camera ownership assumption.
+
+The runtime topology and arbitration boundary is technically certified. Remaining work is
+consumer migration, authoring usability and representative Sample/FIRSTGAME proof under
+CAMERA-027-F. The obsolete ordinary Player Camera eligibility/request runtime is no longer
+an executable baseline.

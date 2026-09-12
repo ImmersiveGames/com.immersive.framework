@@ -1,6 +1,6 @@
 # Immersive Framework Architecture Documentation
 
-Last updated: **2026-09-09**
+Last updated: **2026-09-12**
 
 ## Normative architecture
 
@@ -263,11 +263,15 @@ Activity-owned discovery model only.
 
 Route spatial entry does not require a Player Actor occurrence `ActorId` to resolve or apply baseline pose; it uses Route/Slot spatial intent and the physical Transform. This keeps spatial authoring outside the pre-preparation occurrence identity boundary.
 
-### Camera Presentation / materialization
+### Camera topology, presentation and authoring
 
-Current normative Camera topology and assignment authority:
+Current normative Camera runtime topology and assignment authority:
 
 [IF-ADR-026 — Camera Subjects, Assignment and Multi-Output Topology](ADRs/IF-ADR-026-Camera-Subjects-Assignment-and-Multi-Output-Topology.md)
+
+Current normative Camera product-authoring authority:
+
+[IF-ADR-027 — Camera Authoring Definitions and Composition Authority](ADRs/IF-ADR-027-Camera-Authoring-Definitions-and-Composition-Authority.md)
 
 ```text
 Player / Actor -> Camera Subject(s)
@@ -277,69 +281,51 @@ Camera Output -> explicit physical rendering destination
 Session -> 1..N explicitly composed outputs
 ```
 
-Player count does not determine output count. CAMERA-026-A through H implement Subject
-availability, View/Assignment, shared multi-target composition, explicit 1..N Outputs
-and View-to-Output viewport policy.
-
-Current IF-ADR-026 validation state:
+Normal authoring uses:
 
 ```text
-A-H implementation      COMPLETE
-Shared runtime proof    PASS — 2026-09-09
-Split runtime proof     PENDING
-Full Camera aggregate  PENDING
-FIRSTGAME proof         PENDING
+Camera Subject
+Camera View Definition
+Camera Rig Behavior Definition
+Camera Output Definition
+Viewport / View→Output association
 ```
+
+Player count does not determine output count. Stable View/Output IDs remain runtime and
+diagnostic evidence; typed definition references are the normal authored links.
+
+Current Camera closure state:
+
+```text
+CAMERA-026-A..H   IMPLEMENTED
+CAMERA-027-A..D   IMPLEMENTED
+CAMERA-027-E      DEFERRED / OPTIONAL
+CAMERA-027-F      NEXT — official Samples/FIRSTGAME migration
+
+Full Camera QA    CERTIFIED — 2026-09-12
+mandatory cases   39/39
+ADR-026 phases    2/2
+certified dims    9/9
+FIRSTGAME/Samples consumer proof  PENDING under 027-F
+```
+
+Current technical certification authority:
+
+[Camera Full Technical Certification — 2026-09-12](Reconciliation/IF-CAMERA-FULL-TECHNICAL-CERTIFICATION-2026-09-12.md)
+
+Previous focused Shared Camera evidence:
 
 [IF-ADR-026 Shared Camera Technical Certification — 2026-09-09](Reconciliation/IF-ADR-026-SHARED-CAMERA-TECHNICAL-CERTIFICATION-2026-09-09.md)
 
-Current technical closure authority:
+The 2026-09-12 run proves Subject occurrence safety, Shared Camera behavior,
+Player/Camera decoupling, multi-output, Output isolation, View→Output binding, split
+viewport topology, generic arbitration and negative validation. It includes exact Actor
+Presentation child observation Transform / Mounted consumption, Player Actor replacement,
+stale occurrence rejection, zero ordinary per-Player Camera requests, explicit two-Output
+split, missing-Output rejection and rejection of automatic `PlayerInputManager` split-screen.
 
-[Camera Presentation Technical Certification — 2026-08-15](Reconciliation/IMMERSIVE-FRAMEWORK-CAMERA-PRESENTATION-TECHNICAL-CERTIFICATION-2026-08-15.md)
-
-Implemented and historically certified presentation model:
-
-```text
-IF-ADR-004
-  owns Camera request/output authority
-
-CameraRigComposer
-  owns one local rig's Presentation/materialization
-
-Presentation
-  Fixed
-  Follow
-  Mounted
-  Third Person
-
-Materialization
-  Editor-owned
-  exact-reference ownership evidence
-  external/unknown conflicts block
-  preflight before mutation
-
-CameraOutputRigApplicator
-  remains presentation-agnostic
-```
-
-Terminal certification:
-
-```text
-CAMERA QA CERTIFIED
-53/53
-```
-
-Breakdown:
-
-```text
-ADR-022 Presentation  14/14
-C9R                   11/11
-ADR-004B              18/18
-ADR-004C              10/10
-```
-
-The `53/53` run predates the later Default-output authority correction below and
-must not be read as certification of that later cut.
+The historical 2026-08-15 `53/53` Camera presentation aggregate remains valid dated
+evidence for the older boundary it executed; it is not relabeled as the current aggregate.
 
 ### Camera Default output presentation
 
@@ -367,30 +353,13 @@ SessionCameraOverride
   never the Default Camera
 ```
 
-Transition presentation now forces/releases Default directly through the output
-session rather than publishing a fake Session request or depending on one existing.
-The force-default surface is owner-based and idempotent. The 2026-08-17 cut wires
-Transition only; it does not introduce Pause-to-Camera authority.
+Transition presentation forces/releases Default directly through the output session rather
+than publishing a fake Session request. The force-default surface is owner-based and
+idempotent.
 
-Sample 00 real-consumer evidence after explicit Default authoring:
-
-```text
-CameraOutputAuthoring
-  Initialized
-  defaultRig = Session Camera Rig
-
-Activity
-  Ready
-  blockingIssues = 0
-
-MinimalFirstPersonLocomotion
-  READY
-  gameplayReady = true
-  Move / Look consumed
-```
-
-This is Stage B consumer evidence. A new aggregate Camera QA run covering 004D has
-not been recorded.
+Sample 00 real-consumer evidence after explicit Default authoring remains historical Stage B
+consumer evidence. The later 2026-09-12 Full Camera aggregate is now the current integrated
+technical certification for the evolved Camera boundary.
 
 ## Current product-authoring decisions
 
@@ -455,7 +424,7 @@ it is not current architecture authority.
 
 ### Player Session public commands and observation
 
-IF-ADR-015 now defines the implemented public consumer model:
+IF-ADR-015 defines the implemented public consumer model:
 
 ```text
 PlayerSessionObserver
@@ -491,19 +460,18 @@ physical replacement is the separate Manager-Provisioned IF-ADR-024 operation
 - IF-ADR-019 — Accepted / reconciled / implemented; current Full Player aggregate 27/27 PASS; historical 25/25 recertification preserved.
 - IF-ADR-020 — Accepted / reconciled / implemented; current Full Player aggregate 27/27 PASS; historical 25/25 recertification preserved.
 - IF-ADR-021 — Accepted / reconciled / implemented / current QA verified; Route Spatial Entry 18/18, Activity Relocation 23/23 and Full Player aggregate 27/27 PASS.
-- IF-ADR-023 — Accepted / authored-composition implementation complete; physical
-  Scene-Provided validation, resolution and adoption are current without derived
-  evidence, runtime evidence validation or Player Apply/Rebuild.
+- IF-ADR-023 — Accepted / authored-composition implementation complete; physical Scene-Provided validation, resolution and adoption are current without derived evidence, runtime evidence validation or Player Apply/Rebuild.
 - IF-ADR-023A — Runtime occurrence identity boundary reconciled; Scene-Provided `LogicalActorsPrepared` and `GameplayReady` FIRSTGAME proof PASS.
 - IF-ADR-024 — Accepted / reconciled / implemented for Manager-Provisioned V1; public `RequestReplacePreparedActor(...)` positive path certified by Full Player QA 16/16. Scene-Provided prepared physical replacement remains deferred.
 
 ### Camera
 
-- IF-ADR-004 — Accepted / reconciled / implemented; 004D is the current Default-output presentation correction.
-- IF-ADR-026 — Accepted architecture; CAMERA-026-A through H implemented. Shared Camera technical QA certified 2026-09-09; Split, Full Camera aggregate and FIRSTGAME proof pending.
-- IF-ADR-004D — Implemented on `master`; Sample 00 consumer proof PASS; focused post-cut Camera QA not yet recorded.
-- IF-ADR-010 — Accepted / reconciled for the implemented Camera Class C surface, including explicit required Default authoring in the output Inspector.
-- IF-ADR-022 — Presentation family/materialization accepted, implemented and technically certified; target selection is reopened by IF-ADR-026.
+- IF-ADR-004 — Accepted / reconciled / implemented; current multi-output/request integrity is covered by the 2026-09-12 Full Camera certification.
+- IF-ADR-004D — Implemented; Default-output presentation remains current and participates in the current integrated Camera boundary.
+- IF-ADR-010 — Accepted / reconciled for the implemented Camera product surface.
+- IF-ADR-022 — Presentation family/materialization accepted and preserved; target selection is owned by IF-ADR-026 and reusable behavior authoring is refined by IF-ADR-027.
+- IF-ADR-026 — Accepted / CAMERA-026-A through H implemented / Full Camera technical QA certified 2026-09-12 (`39/39`, ADR-026 `2/2`, dimensions `9/9`). Consumer/sample proof is separate.
+- IF-ADR-027 — Accepted 2026-09-12 / CAMERA-027-A through D implemented. CAMERA-027-E is deferred/optional. CAMERA-027-F is the next official Samples/FIRSTGAME migration and stale-surface-removal cut.
 
 ## Historical certification records
 
@@ -521,15 +489,23 @@ The Full Player `25/25` certification remains the 2026-08-15 historical boundary
 fresh integrated `27/27` rerun. The historical ADR-021 Initial Placement `9/9` remains
 tied to the superseded Activity-owned discovery model.
 
-The 2026-08-29 IF-ADR-023 certification remains dated evidence for the composition/QA boundary it executed. IF-ADR-023A records the later occurrence-identity correction and Scene-Provided readiness proof instead of rewriting the earlier certification as if it had executed the later cut.
+The 2026-08-29 IF-ADR-023 certification remains dated evidence for the composition/QA
+boundary it executed. IF-ADR-023A records the later occurrence-identity correction and
+Scene-Provided readiness proof instead of rewriting the earlier certification as if it had
+executed the later cut.
 
-The 2026-09-02 IF-ADR-024 certification is the current evidence for
-Manager-Provisioned prepared physical Actor replacement and its integrated Full
-Player QA `16/16` run. Older Player aggregate/certification counts are preserved for
-their own executed boundaries and are not relabeled as ADR-024 proof.
+The 2026-09-02 IF-ADR-024 certification is the current evidence for Manager-Provisioned
+prepared physical Actor replacement and its integrated Full Player QA `16/16` run. Older
+Player aggregate/certification counts are preserved for their own executed boundaries and
+are not relabeled as ADR-024 proof.
 
-The package-local Actor-selection Unity Test Framework Editor tests are not claimed as
-executed by the integrated QA record unless a separate result is recorded.
+For Camera, the 2026-08-15 `53/53` presentation certification and the 2026-09-09 focused
+Shared Camera certification remain dated evidence. The 2026-09-12 Full Camera technical
+certification is the current integrated technical authority for the post-IF-ADR-026 and
+CAMERA-027-A..D boundary.
+
+The package-local Unity Test Framework tests are not claimed as executed by integrated QA
+unless the relevant certification record states that execution.
 
 ## Current delivery state
 
