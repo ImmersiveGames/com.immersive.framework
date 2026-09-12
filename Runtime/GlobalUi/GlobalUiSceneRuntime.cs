@@ -5,6 +5,7 @@ using Immersive.Framework.ActivityRestart;
 using Immersive.Framework.ApiStatus;
 using Immersive.Framework.Authoring;
 using Immersive.Framework.Camera;
+using Immersive.Framework.CameraAuthoring;
 using Immersive.Framework.Common;
 using Immersive.Framework.CycleReset;
 using Immersive.Framework.Diagnostics;
@@ -292,10 +293,12 @@ namespace Immersive.Framework.GlobalUi
 
         internal bool TryResolveCameraPresentation(
             out IReadOnlyList<CameraOutputAuthoring> outputSessions,
-            out CameraViewOutputPolicyAuthoring viewOutputPolicy,
+            out IReadOnlyList<CameraSharedComposition> compositions,
+            out IReadOnlyList<CameraViewOutputPolicyAuthoring> viewOutputPolicies,
             out string diagnostic)
         {
-            viewOutputPolicy = null;
+            compositions = Array.Empty<CameraSharedComposition>();
+            viewOutputPolicies = Array.Empty<CameraViewOutputPolicyAuthoring>();
             List<CameraOutputAuthoring> outputCandidates =
                 FindAll<CameraOutputAuthoring>();
 
@@ -309,10 +312,10 @@ namespace Immersive.Framework.GlobalUi
 
             List<CameraViewOutputPolicyAuthoring> policyCandidates =
                 FindAll<CameraViewOutputPolicyAuthoring>();
-            if (policyCandidates.Count != 1)
+            if (policyCandidates.Count > 1)
             {
                 diagnostic =
-                    $"Persistent Content requires exactly one explicit Camera View Output Policy, but found '{policyCandidates.Count}'.";
+                    $"Persistent Content requires at most one Camera View Output Policy, but found '{policyCandidates.Count}'.";
                 outputSessions = Array.Empty<CameraOutputAuthoring>();
                 return false;
             }
@@ -323,13 +326,14 @@ namespace Immersive.Framework.GlobalUi
                 if (!playerInputManagers[index].splitScreen) continue;
                 diagnostic =
                     $"PlayerInputManager '{playerInputManagers[index].name}' has automatic split-screen enabled. " +
-                    "Disable it because Camera View Output Policy is the viewport authority.";
+                    "Disable it because Framework Camera View-to-Output topology is the viewport authority.";
                 outputSessions = Array.Empty<CameraOutputAuthoring>();
                 return false;
             }
 
             outputSessions = outputCandidates.AsReadOnly();
-            viewOutputPolicy = policyCandidates[0];
+            compositions = FindAll<CameraSharedComposition>().AsReadOnly();
+            viewOutputPolicies = policyCandidates.AsReadOnly();
             diagnostic = string.Empty;
             return true;
         }

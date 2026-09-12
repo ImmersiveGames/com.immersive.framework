@@ -33,6 +33,7 @@ namespace Immersive.Framework.Authoring.Editor.Tests
             Assert.That(composition.OutputDefinition, Is.SameAs(output));
             Assert.That(composition.ViewId, Is.EqualTo(view.ViewId));
             Assert.That(composition.RequestedOutputId, Is.EqualTo(output.OutputId));
+            Assert.That(composition.Viewport, Is.EqualTo(new CameraViewport(0f, 0f, 1f, 1f)));
             Assert.That(composition.TryValidateDefinitions(out _), Is.True);
         }
 
@@ -195,6 +196,261 @@ namespace Immersive.Framework.Authoring.Editor.Tests
         }
 
         [Test]
+        public void SharedComposition_ProjectsFullscreenBindingWithoutPolicy()
+        {
+            var view = Definition<CameraViewDefinition>();
+            var output = Definition<CameraOutputDefinition>();
+            var composition = Component<CameraSharedComposition>();
+            composition.Configure(view, output, CameraSharedCompositionSubjectPolicyKind.AllAvailableSubjects);
+            Assert.That(composition.TryCreateAssociationBinding(out var binding, out string diagnostic), Is.True, diagnostic);
+            Assert.That(binding.ViewId, Is.EqualTo(view.ViewId));
+            Assert.That(binding.OutputId, Is.EqualTo(output.OutputId));
+            Assert.That(binding.Viewport, Is.EqualTo(new CameraViewport(0f, 0f, 1f, 1f)));
+            Assert.That(CameraViewOutputAssociationProjection.TryCreate(
+                new[] { composition }, Array.Empty<CameraViewOutputPolicyAuthoring>(),
+                new[] { Physical(output) }, out var topology, out var views, out diagnostic), Is.True, diagnostic);
+            Assert.That(topology.BindingCount, Is.EqualTo(1));
+            Assert.That(views[0], Is.SameAs(view));
+            Assert.That(new SerializedObject(composition).FindProperty("viewId"), Is.Null);
+            Assert.That(new SerializedObject(composition).FindProperty("outputId"), Is.Null);
+        }
+
+        [Test]
+        public void SharedComposition_ProjectsExactNonFullscreenViewport()
+        {
+            var view = Definition<CameraViewDefinition>();
+            var output = Definition<CameraOutputDefinition>();
+            var composition = Component<CameraSharedComposition>();
+            var viewport = new CameraViewport(0f, 0f, 0.5f, 1f);
+            composition.Configure(view, output, CameraSharedCompositionSubjectPolicyKind.AllAvailableSubjects, viewport);
+            Assert.That(composition.TryCreateAssociationBinding(out var binding, out _), Is.True);
+            Assert.That(binding.Viewport, Is.EqualTo(viewport));
+        }
+
+        [Test]
+        public void InvalidViewport_BlocksTopologyAdmission()
+        {
+            var view = Definition<CameraViewDefinition>();
+            var output = Definition<CameraOutputDefinition>();
+            var composition = Component<CameraSharedComposition>();
+            SetReference(composition, "viewDefinition", view);
+            SetReference(composition, "outputDefinition", output);
+            SetViewport(composition, new Rect(0.5f, 0f, 0.75f, 1f));
+            Assert.That(composition.TryCreateAssociationBinding(out _, out string diagnostic), Is.False);
+            Assert.That(diagnostic, Does.Contain("invalid normalized viewport"));
+            Assert.That(CameraViewOutputAssociationProjection.TryCreate(
+                new[] { composition }, Array.Empty<CameraViewOutputPolicyAuthoring>(),
+                new[] { Physical(output) }, out _, out _, out diagnostic), Is.False);
+            Assert.That(diagnostic, Does.Contain("invalid normalized viewport"));
+        }
+
+        [Test]
+        public void MissingCompositionDefinition_BlocksAssociationProjection()
+        {
+            var output = Definition<CameraOutputDefinition>();
+            var composition = Component<CameraSharedComposition>();
+            SetReference(composition, "outputDefinition", output);
+            Assert.That(CameraViewOutputAssociationProjection.TryCreate(
+                new[] { composition }, Array.Empty<CameraViewOutputPolicyAuthoring>(),
+                new[] { Physical(output) }, out _, out _, out string diagnostic), Is.False);
+            Assert.That(diagnostic, Does.Contain("View definition"));
+        }
+
+        [Test]
+        public void MissingCompositionOutputDefinition_BlocksAssociationProjection()
+        {
+            var view = Definition<CameraViewDefinition>();
+            var composition = Component<CameraSharedComposition>();
+            SetReference(composition, "viewDefinition", view);
+            Assert.That(CameraViewOutputAssociationProjection.TryCreate(
+                new[] { composition }, Array.Empty<CameraViewOutputPolicyAuthoring>(),
+                new[] { Physical(Definition<CameraOutputDefinition>()) }, out _, out _, out string diagnostic), Is.False);
+            Assert.That(diagnostic, Does.Contain("Output definition"));
+        }
+
+        [Test]
+        public void CollidingViewDefinitions_BlockAcrossSimpleAndAdvancedSources()
+        {
+            var simpleView = Definition<CameraViewDefinition>();
+            var policyView = Definition<CameraViewDefinition>();
+            SetId(policyView, simpleView.ViewId.Value);
+            var outputA = Definition<CameraOutputDefinition>();
+            var outputB = Definition<CameraOutputDefinition>();
+            var composition = Component<CameraSharedComposition>();
+            composition.Configure(simpleView, outputA, CameraSharedCompositionSubjectPolicyKind.AllAvailableSubjects);
+            var authored = new CameraViewOutputBindingAuthoring();
+            authored.Configure(policyView, outputB, new CameraViewport(0.5f, 0f, 0.5f, 1f));
+            var policy = Component<CameraViewOutputPolicyAuthoring>();
+            policy.Configure(new[] { authored });
+            Assert.That(CameraViewOutputAssociationProjection.TryCreate(
+                new[] { composition }, new[] { policy },
+                new[] { Physical(outputA), Physical(outputB) },
+                out _, out _, out string diagnostic), Is.False);
+            Assert.That(diagnostic, Does.Contain("collision"));
+        }
+
+        [Test]
+        public void CollidingOutputDefinitions_BlockAcrossSimpleAndAdvancedSources()
+        {
+            var viewA = Definition<CameraViewDefinition>();
+            var viewB = Definition<CameraViewDefinition>();
+            var outputA = Definition<CameraOutputDefinition>();
+            var outputB = Definition<CameraOutputDefinition>();
+            SetId(outputB, outputA.OutputId.Value);
+            var composition = Component<CameraSharedComposition>();
+            composition.Configure(viewA, outputA, CameraSharedCompositionSubjectPolicyKind.AllAvailableSubjects);
+            var authored = new CameraViewOutputBindingAuthoring();
+            authored.Configure(viewB, outputB, new CameraViewport(0.5f, 0f, 0.5f, 1f));
+            var policy = Component<CameraViewOutputPolicyAuthoring>();
+            policy.Configure(new[] { authored });
+            Assert.That(CameraViewOutputAssociationProjection.TryCreate(
+                new[] { composition }, new[] { policy },
+                new[] { Physical(outputA) }, out _, out _, out string diagnostic), Is.False);
+            Assert.That(diagnostic, Does.Contain("collision"));
+        }
+
+        [Test]
+        public void TwoSimpleAssociations_ProjectDistinctOutputsDeterministically()
+        {
+            var viewA = Definition<CameraViewDefinition>();
+            var viewB = Definition<CameraViewDefinition>();
+            var outputA = Definition<CameraOutputDefinition>();
+            var outputB = Definition<CameraOutputDefinition>();
+            var first = Component<CameraSharedComposition>();
+            var second = Component<CameraSharedComposition>();
+            first.Configure(viewA, outputA, CameraSharedCompositionSubjectPolicyKind.AllAvailableSubjects);
+            second.Configure(viewB, outputB, CameraSharedCompositionSubjectPolicyKind.AllAvailableSubjects,
+                new CameraViewport(0.5f, 0f, 0.5f, 1f));
+            Assert.That(CameraViewOutputAssociationProjection.TryCreate(
+                new[] { second, first }, Array.Empty<CameraViewOutputPolicyAuthoring>(),
+                new[] { Physical(outputB), Physical(outputA) },
+                out var topology, out _, out string diagnostic), Is.True, diagnostic);
+            Assert.That(topology.BindingCount, Is.EqualTo(2));
+            Assert.That(topology.TryGetBinding(viewA.ViewId, outputA.OutputId, out var a), Is.True);
+            Assert.That(topology.TryGetBinding(viewB.ViewId, outputB.OutputId, out var b), Is.True);
+            Assert.That(a.Viewport, Is.EqualTo(new CameraViewport(0f, 0f, 1f, 1f)));
+            Assert.That(b.Viewport, Is.EqualTo(new CameraViewport(0.5f, 0f, 0.5f, 1f)));
+        }
+
+        [Test]
+        public void TwoAssociations_SameOutput_BlockWithoutPrecedence()
+        {
+            var viewA = Definition<CameraViewDefinition>();
+            var viewB = Definition<CameraViewDefinition>();
+            var output = Definition<CameraOutputDefinition>();
+            var first = Component<CameraSharedComposition>();
+            var second = Component<CameraSharedComposition>();
+            first.Configure(viewA, output, CameraSharedCompositionSubjectPolicyKind.AllAvailableSubjects);
+            second.Configure(viewB, output, CameraSharedCompositionSubjectPolicyKind.AllAvailableSubjects);
+            Assert.That(CameraViewOutputAssociationProjection.TryCreate(
+                new[] { first, second }, Array.Empty<CameraViewOutputPolicyAuthoring>(),
+                new[] { Physical(output) }, out _, out _, out string diagnostic), Is.False);
+            Assert.That(diagnostic, Does.Contain("conflicting bindings"));
+        }
+
+        [Test]
+        public void AdvancedPolicyOnly_RemainsSupported()
+        {
+            var view = Definition<CameraViewDefinition>();
+            var output = Definition<CameraOutputDefinition>();
+            var authored = new CameraViewOutputBindingAuthoring();
+            authored.Configure(view, output, new CameraViewport(0f, 0f, 1f, 1f));
+            var policy = Component<CameraViewOutputPolicyAuthoring>();
+            policy.Configure(new[] { authored });
+            Assert.That(CameraViewOutputAssociationProjection.TryCreate(
+                Array.Empty<CameraSharedComposition>(), new[] { policy },
+                new[] { Physical(output) }, out var topology, out var views, out string diagnostic), Is.True, diagnostic);
+            Assert.That(topology.BindingCount, Is.EqualTo(1));
+            Assert.That(views[0], Is.SameAs(view));
+        }
+
+        [Test]
+        public void SimpleAndAdvanced_DistinctOutputs_Coexist()
+        {
+            var viewA = Definition<CameraViewDefinition>();
+            var viewB = Definition<CameraViewDefinition>();
+            var outputA = Definition<CameraOutputDefinition>();
+            var outputB = Definition<CameraOutputDefinition>();
+            var composition = Component<CameraSharedComposition>();
+            composition.Configure(viewA, outputA, CameraSharedCompositionSubjectPolicyKind.AllAvailableSubjects);
+            var authored = new CameraViewOutputBindingAuthoring();
+            authored.Configure(viewB, outputB, new CameraViewport(0.5f, 0f, 0.5f, 1f));
+            var policy = Component<CameraViewOutputPolicyAuthoring>();
+            policy.Configure(new[] { authored });
+            Assert.That(CameraViewOutputAssociationProjection.TryCreate(
+                new[] { composition }, new[] { policy },
+                new[] { Physical(outputA), Physical(outputB) },
+                out var topology, out _, out string diagnostic), Is.True, diagnostic);
+            Assert.That(topology.BindingCount, Is.EqualTo(2));
+            Assert.That(topology.TryGetBinding(viewA.ViewId, outputA.OutputId, out _), Is.True);
+            Assert.That(topology.TryGetBinding(viewB.ViewId, outputB.OutputId, out _), Is.True);
+        }
+
+        [Test]
+        public void SimpleAndAdvanced_SameOutput_BlockWithoutPrecedence()
+        {
+            var viewA = Definition<CameraViewDefinition>();
+            var viewB = Definition<CameraViewDefinition>();
+            var output = Definition<CameraOutputDefinition>();
+            var composition = Component<CameraSharedComposition>();
+            composition.Configure(viewA, output, CameraSharedCompositionSubjectPolicyKind.AllAvailableSubjects);
+            var authored = new CameraViewOutputBindingAuthoring();
+            authored.Configure(viewB, output, new CameraViewport(0.5f, 0f, 0.5f, 1f));
+            var policy = Component<CameraViewOutputPolicyAuthoring>();
+            policy.Configure(new[] { authored });
+            Assert.That(CameraViewOutputAssociationProjection.TryCreate(
+                new[] { composition }, new[] { policy },
+                new[] { Physical(output) }, out _, out _, out string diagnostic), Is.False);
+            Assert.That(diagnostic, Does.Contain("conflicting bindings"));
+        }
+
+        [Test]
+        public void ZeroAssociationSources_Block()
+        {
+            Assert.That(CameraViewOutputAssociationProjection.TryCreate(
+                Array.Empty<CameraSharedComposition>(),
+                Array.Empty<CameraViewOutputPolicyAuthoring>(),
+                new[] { Physical(Definition<CameraOutputDefinition>()) },
+                out _, out _, out string diagnostic), Is.False);
+            Assert.That(diagnostic, Does.Contain("at least one explicit Camera View-to-Output association"));
+        }
+
+        [Test]
+        public void MoreThanOneAdvancedPolicy_Blocks()
+        {
+            var view = Definition<CameraViewDefinition>();
+            var output = Definition<CameraOutputDefinition>();
+            var first = new CameraViewOutputBindingAuthoring();
+            var second = new CameraViewOutputBindingAuthoring();
+            first.Configure(view, output, new CameraViewport(0f, 0f, 1f, 1f));
+            second.Configure(Definition<CameraViewDefinition>(), Definition<CameraOutputDefinition>(),
+                new CameraViewport(0f, 0f, 1f, 1f));
+            var policyA = Component<CameraViewOutputPolicyAuthoring>();
+            var policyB = Component<CameraViewOutputPolicyAuthoring>();
+            policyA.Configure(new[] { first });
+            policyB.Configure(new[] { second });
+            Assert.That(CameraViewOutputAssociationProjection.TryCreate(
+                Array.Empty<CameraSharedComposition>(), new[] { policyA, policyB },
+                new[] { Physical(output) }, out _, out _, out string diagnostic), Is.False);
+            Assert.That(diagnostic, Does.Contain("at most one Camera View Output Policy"));
+        }
+
+        [Test]
+        public void UnboundPhysicalOutput_BlocksCoverage()
+        {
+            var view = Definition<CameraViewDefinition>();
+            var outputA = Definition<CameraOutputDefinition>();
+            var outputB = Definition<CameraOutputDefinition>();
+            var composition = Component<CameraSharedComposition>();
+            composition.Configure(view, outputA, CameraSharedCompositionSubjectPolicyKind.AllAvailableSubjects);
+            Assert.That(CameraViewOutputAssociationProjection.TryCreate(
+                new[] { composition }, Array.Empty<CameraViewOutputPolicyAuthoring>(),
+                new[] { Physical(outputA), Physical(outputB) },
+                out _, out _, out string diagnostic), Is.False);
+            Assert.That(diagnostic, Does.Contain("bind every active Output exactly once"));
+        }
+
+        [Test]
         public void Override_RequiresExactOutputDefinitionWithoutRawIdFallback()
         {
             var output = Definition<CameraOutputDefinition>();
@@ -241,6 +497,20 @@ namespace Immersive.Framework.Authoring.Editor.Tests
             var serialized = new SerializedObject(definition);
             serialized.FindProperty("stableId").stringValue = value;
             serialized.ApplyModifiedPropertiesWithoutUndo();
+        }
+
+        private static void SetViewport(CameraSharedComposition composition, Rect viewport)
+        {
+            var serialized = new SerializedObject(composition);
+            serialized.FindProperty("viewport").rectValue = viewport;
+            serialized.ApplyModifiedPropertiesWithoutUndo();
+        }
+
+        private CameraOutputAuthoring Physical(CameraOutputDefinition definition)
+        {
+            var output = Component<CameraOutputAuthoring>();
+            SetReference(output, "outputDefinition", definition);
+            return output;
         }
     }
 }

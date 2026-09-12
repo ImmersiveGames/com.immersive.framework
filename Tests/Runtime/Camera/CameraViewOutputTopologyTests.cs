@@ -1,9 +1,11 @@
+using System;
 using System.Collections.Generic;
 using System.Reflection;
 using Immersive.Framework.CameraAuthoring;
 using NUnit.Framework;
 using Unity.Cinemachine;
 using UnityEngine;
+using Object = UnityEngine.Object;
 
 namespace Immersive.Framework.Camera.Tests
 {
@@ -86,6 +88,27 @@ namespace Immersive.Framework.Camera.Tests
             Assert.That(CameraViewOutputTopology.TryCreate(
                 new[] { Binding("view.a", "10000000000000000000000000000002", .8f, 0f, .3f, 1f) },
                 out _, out _), Is.False);
+        }
+
+        [Test]
+        public void SimpleAssociation_InjectsWithoutAdvancedPolicy()
+        {
+            CameraOutputAuthoring output = Output("10000000000000000000000000000002", new Rect(0f, 0f, 1f, 1f));
+            Assert.That(CameraOutputSessionTopology.TryCreate(
+                new[] { output }, out CameraOutputSessionTopology outputs, out _), Is.True);
+            var root = new GameObject("simple-association");
+            _created.Add(root);
+            CameraSharedComposition composition = root.AddComponent<CameraSharedComposition>();
+            composition.Configure(
+                _definitions.View("20000000000000000000000000000002"),
+                output.OutputDefinition,
+                CameraSharedCompositionSubjectPolicyKind.AllAvailableSubjects);
+            Assert.That(CameraViewOutputAssociationProjection.TryCreate(
+                new[] { composition }, Array.Empty<CameraViewOutputPolicyAuthoring>(),
+                new[] { output }, out var topology, out var views, out string diagnostic), Is.True, diagnostic);
+            using var injection = new CameraOutputInjectionRuntime(outputs, topology, views);
+            Assert.That(injection.AttachExact(composition, out diagnostic), Is.True, diagnostic);
+            Assert.That(composition.Output, Is.SameAs(output));
         }
 
         [Test]

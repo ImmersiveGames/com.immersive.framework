@@ -10,7 +10,7 @@ using System.Runtime.CompilerServices;
 [assembly: InternalsVisibleTo("Immersive.Framework.Pause.Tests")]
 [assembly: InternalsVisibleTo("Immersive.Framework.GameFlow.Tests")]
 [assembly: InternalsVisibleTo("Immersive.Framework.Authoring.Tests")]
-[assembly: InternalsVisibleTo("Immersive.Framework.Camera.Tests")]
+[assembly: InternalsVisibleTo("Immersive.Framework.Authoring.Editor.Tests")]
 [assembly: InternalsVisibleTo("Immersive.Framework.PlayerParticipation.Editor.Tests")]
 [assembly: InternalsVisibleTo("Immersive.Framework.PlayerParticipation.Tests")]
 [assembly: InternalsVisibleTo("Immersive.Framework.Camera.Tests")]

@@ -12,6 +12,9 @@ namespace Immersive.Framework.Editor.CameraAuthoring
         public override void OnInspectorGUI()
         {
             serializedObject.UpdateIfRequiredOrScript();
+            EditorGUILayout.HelpBox(
+                "Advanced explicit multi-binding surface. A simple one View / one Output association can be authored on Shared Camera Composition instead.",
+                MessageType.Info);
             _outputs.DrawTopology(serializedObject);
             SerializedProperty bindings = serializedObject.FindProperty("bindings");
             if (bindings.arraySize == 0)

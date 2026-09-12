@@ -542,36 +542,30 @@ namespace Immersive.Framework.Editor.Validation
 
             CameraViewOutputPolicyAuthoring[] viewOutputPolicies =
                 GetSceneComponents<CameraViewOutputPolicyAuthoring>(scene);
+            CameraSharedComposition[] sharedCompositions =
+                GetSceneComponents<CameraSharedComposition>(scene);
             CameraViewOutputTopology viewOutputTopology = null;
-            if (viewOutputPolicies.Length != 1)
+            if (!CameraViewOutputAssociationProjection.TryCreate(
+                    sharedCompositions,
+                    viewOutputPolicies,
+                    outputBindings,
+                    out viewOutputTopology,
+                    out _,
+                    out string viewOutputIssue))
             {
-                report.AddError(
-                    $"Persistent Content Scene requires exactly one Camera View Output Policy, but found '{viewOutputPolicies.Length}'.",
-                    owner);
-            }
-            else if (!viewOutputPolicies[0].TryBuildTopology(
-                         out viewOutputTopology,
-                         out string viewOutputIssue))
-            {
-                report.AddError(viewOutputIssue, viewOutputPolicies[0]);
+                report.AddError(viewOutputIssue, owner);
             }
             else
             {
                 CameraViewOutputTopologySnapshot snapshot = viewOutputTopology.CaptureSnapshot();
-                if (snapshot.BindingCount != outputBindings.Length)
-                {
-                    report.AddError(
-                        $"Camera View Output Policy must bind every explicit Camera Output exactly once. outputs='{outputBindings.Length}' bindings='{snapshot.BindingCount}'.",
-                        viewOutputPolicies[0]);
-                }
                 for (int bindingIndex = 0; bindingIndex < snapshot.BindingCount; bindingIndex++)
                 {
                     CameraViewOutputBinding binding = snapshot.Bindings[bindingIndex];
                     if (!outputIds.ContainsKey(binding.OutputId.Value))
                     {
                         report.AddError(
-                            $"Camera View Output Policy references unknown Camera Output ID '{binding.OutputId}'.",
-                            viewOutputPolicies[0]);
+                            $"Camera View-to-Output association references unknown Camera Output ID '{binding.OutputId}'.",
+                            owner);
                     }
                 }
             }
@@ -582,7 +576,7 @@ namespace Immersive.Framework.Editor.Validation
             {
                 if (!playerInputManagers[managerIndex].splitScreen) continue;
                 report.AddError(
-                    "PlayerInputManager automatic split-screen must be disabled. Camera View Output Policy exclusively owns Camera viewport layout.",
+                    "PlayerInputManager automatic split-screen must be disabled. Framework Camera View-to-Output topology exclusively owns Camera viewport layout.",
                     playerInputManagers[managerIndex]);
             }
 
@@ -598,14 +592,18 @@ namespace Immersive.Framework.Editor.Validation
                     sessionBindings[sessionIndex]);
             }
 
-            CameraSharedComposition[] sharedCompositions =
-                GetSceneComponents<CameraSharedComposition>(scene);
             for (int compositionIndex = 0; compositionIndex < sharedCompositions.Length; compositionIndex++)
             {
                 CameraSharedComposition composition = sharedCompositions[compositionIndex];
-                if (!new CameraViewId(composition.ViewIdText).IsValid)
+                if (!composition.TryValidateDefinitions(out string compositionIssue))
                 {
-                    report.AddError("Shared Camera Composition requires a valid View Id.", composition);
+                    report.AddError(compositionIssue, composition);
+                }
+                if (!composition.Viewport.IsValid)
+                {
+                    report.AddError(
+                        "Shared Camera Composition requires a valid normalized viewport.",
+                        composition);
                 }
                 if (!composition.RequestedOutputId.IsValid ||
                     !outputIds.TryGetValue(composition.OutputIdText, out CameraOutputAuthoring output))
@@ -622,12 +620,12 @@ namespace Immersive.Framework.Editor.Validation
                 }
                 else if (viewOutputTopology != null &&
                          !viewOutputTopology.TryGetBinding(
-                             new CameraViewId(composition.ViewIdText),
+                             composition.ViewId,
                              composition.RequestedOutputId,
                              out _))
                 {
                     report.AddError(
-                        $"Shared Camera Composition View '{composition.ViewIdText}' is not explicitly bound to Output '{composition.OutputIdText}' by Camera View Output Policy.",
+                        $"Shared Camera Composition View '{composition.ViewIdText}' is not present in the admitted Camera View-to-Output topology.",
                         composition);
                 }
             }

@@ -33,7 +33,10 @@ namespace Immersive.Framework.Camera
         }
     }
 
-    /// <summary>Designer-facing explicit View-to-Output and normalized viewport policy.</summary>
+    /// <summary>
+    /// Advanced explicit multi-binding View-to-Output policy. Simple one View / one Output
+    /// associations are authored on CameraSharedComposition instead.
+    /// </summary>
     [DisallowMultipleComponent]
     [AddComponentMenu("Immersive Framework/Camera/Camera View Output Policy")]
     [FrameworkApiStatus(FrameworkApiStatus.Experimental, "CAMERA-026-H explicit Camera composition policy.")]

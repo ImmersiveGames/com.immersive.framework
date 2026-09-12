@@ -740,6 +740,8 @@ Cinemachine pipeline.
 
 ### CAMERA-027-D — Authoring association → runtime binding projection
 
+Status: **implemented in package** (2026-09-12). Consumer/sample migration remains CAMERA-027-F.
+
 Allow normal Camera View composition to express:
 
 ```text
@@ -756,6 +758,8 @@ technical Binding component.
 
 Explicit advanced multi-binding authoring remains supported through the same typed
 references.
+
+Package evidence: `CameraDefinitionBackedAuthoringTests`, `CameraViewOutputTopologyTests`.
 
 ### CAMERA-027-E — Optional reusable Camera Composition definition
 

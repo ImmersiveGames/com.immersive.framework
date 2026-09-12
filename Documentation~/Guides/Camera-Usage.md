@@ -1,7 +1,7 @@
 # Camera Usage
 
-Status: **Current implementation guide — IF-ADR-026 CAMERA-026-A through H implemented**  
-Last updated: **2026-09-11**
+Status: **Current implementation guide — IF-ADR-026 CAMERA-026-A through H and IF-ADR-027 CAMERA-027-A through D implemented**
+Last updated: **2026-09-12**
 
 This guide describes the current Camera product surface on `master`.
 
@@ -82,34 +82,42 @@ Persistent Content
     Unity Camera
     CinemachineBrain
     CameraOutputAuthoring
-      Output ID
+      Output Definition
       Default Camera Rig
 
   Default Camera Rig
     CameraRigComposer
+      Behavior Definition
 
   Shared Camera Composition
     CameraSharedComposition
-
-  Camera View Output Policy
-    CameraViewOutputPolicyAuthoring
+      View Definition
+      Subject Policy
+      Output Definition
+      Viewport
 ```
 
-For more than one physical Output, author additional explicit Outputs. Every Output must
-have its own unique `CameraOutputId`, Unity `Camera`, `CinemachineBrain` and explicit
-Default Camera Rig.
+The normal one View / one Output association is authored on
+`CameraSharedComposition`. Viewport defaults to normalized fullscreen
+`(0, 0, 1, 1)`. The Framework projects that association into the Session
+`CameraViewOutputTopology`. A separate `CameraViewOutputPolicyAuthoring` is not
+required for this simple case.
 
-Add exactly one `CameraViewOutputPolicyAuthoring` to the persistent composition and bind
-each logical View explicitly to an Output and normalized viewport.
+For more than one physical Output, author additional explicit Outputs. Every Output must
+have its own unique Output Definition, Unity `Camera`, `CinemachineBrain` and explicit
+Default Camera Rig. Each Output must have exactly one View → Output binding.
 
 Typical full-screen binding:
 
 ```text
-View -> Output A
-Viewport = (0, 0, 1, 1)
+Shared Camera Composition
+  View Definition  = Gameplay View
+  Output Definition = Main Output
+  Viewport = (0, 0, 1, 1)
 ```
 
-Typical two-way horizontal split:
+Typical two-way horizontal split may use two Shared Camera Composition associations
+or the advanced policy surface:
 
 ```text
 View A -> Output A
@@ -474,13 +482,30 @@ lifetimes.
 
 ## 10. Camera View Output Policy
 
-`CameraViewOutputPolicyAuthoring` defines the explicit mapping:
+`CameraViewOutputPolicyAuthoring` is the **advanced explicit multi-binding surface**.
+
+Use it when several View → Output → viewport relations need to be authored together,
+for example split or spectator layouts. Do not use it for the normal simple case:
 
 ```text
-CameraViewId
-  -> CameraOutputId
+Shared Camera Composition
+  View Definition
+  Subject Policy
+  Output Definition
+  Viewport
+```
+
+Advanced bindings still use typed definition references:
+
+```text
+View Definition
+  -> Output Definition
   -> normalized viewport
 ```
+
+Persistent Content may include **0 or 1** advanced policy. More than one policy is
+ambiguous and blocked. Simple associations and advanced bindings are aggregated with
+**no precedence**. Two associations targeting the same Output are a conflict.
 
 Every binding is explicit. The Framework does not infer the physical destination from:
 
@@ -492,9 +517,9 @@ hierarchy
 active Camera
 ```
 
-A policy requires at least one valid binding. Duplicate/ambiguous topology is invalid.
-
-This is the authority used for both full-screen and multi-viewport composition.
+A present policy requires at least one valid binding. Duplicate/ambiguous topology is
+invalid. The Session still requires every active physical Output to be bound exactly
+once.
 
 ---
 
@@ -975,8 +1000,9 @@ Before Play Mode, verify:
 [ ] Every Output has an explicit Default Camera Rig
 [ ] Every CameraRigComposer validates
 [ ] Apply / Rebuild Rig succeeds for every authored rig
-[ ] CameraSharedComposition has explicit View / assignment / Output identity
-[ ] CameraViewOutputPolicyAuthoring binds every intended View explicitly
+[ ] CameraSharedComposition has View Definition, Subject Policy, Output Definition and Viewport
+[ ] Simple View → Output associations are complete, or one advanced Camera View Output Policy covers the remaining Outputs
+[ ] CameraViewOutputPolicyAuthoring is used only as the advanced multi-binding surface
 [ ] Viewports are finite normalized rectangles
 [ ] Ordinary Players are treated as Camera Subjects, not implicit Camera owners
 [ ] ActorCameraSubjectAuthoring is used when an exact child observation pivot is required

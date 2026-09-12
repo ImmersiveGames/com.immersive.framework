@@ -34,8 +34,9 @@ namespace Immersive.Framework.CameraAuthoring
         private CameraSharedCompositionSubjectPolicyKind subjectPolicy =
             CameraSharedCompositionSubjectPolicyKind.AllAvailableSubjects;
 
-        [Header("Presentation")]
+        [Header("Presentation / Output Association")]
         [SerializeField] private CameraOutputDefinition outputDefinition;
+        [SerializeField] private Rect viewport = new Rect(0f, 0f, 1f, 1f);
 
         private ICameraSubjectAvailabilitySource _availability;
         private CameraViewAssignmentContext _assignments;
@@ -48,6 +49,8 @@ namespace Immersive.Framework.CameraAuthoring
 
         public CameraViewDefinition ViewDefinition => viewDefinition;
         public CameraOutputDefinition OutputDefinition => outputDefinition;
+        public CameraViewport Viewport =>
+            new CameraViewport(viewport.x, viewport.y, viewport.width, viewport.height);
         public string AssignmentContextIdText => assignmentContextId;
         public string AssignmentOwnerIdText => assignmentOwnerId;
         public CameraViewId ViewId => viewDefinition != null && viewDefinition.HasValidId
@@ -64,7 +67,14 @@ namespace Immersive.Framework.CameraAuthoring
         public void Configure(
             CameraViewDefinition view,
             CameraOutputDefinition output,
-            CameraSharedCompositionSubjectPolicyKind policy)
+            CameraSharedCompositionSubjectPolicyKind policy) =>
+            Configure(view, output, policy, new CameraViewport(0f, 0f, 1f, 1f));
+
+        public void Configure(
+            CameraViewDefinition view,
+            CameraOutputDefinition output,
+            CameraSharedCompositionSubjectPolicyKind policy,
+            CameraViewport targetViewport)
         {
             if (_assignments != null || _subscribed)
             {
@@ -74,13 +84,46 @@ namespace Immersive.Framework.CameraAuthoring
 
             CameraDefinitionValidation.ValidateViews(new[] { view });
             CameraDefinitionValidation.ValidateOutputs(new[] { output });
+            if (!targetViewport.IsValid)
+            {
+                throw new InvalidOperationException(
+                    $"Shared Camera composition '{name}' has an invalid normalized viewport.");
+            }
             if (!ReferenceEquals(outputDefinition, output)) _output = null;
             viewDefinition = view;
             outputDefinition = output;
             subjectPolicy = policy;
+            viewport = targetViewport.ToRect();
             _view = new CameraView(view.ViewId, view.Description);
             _ownerId = new CameraSubjectAssignmentOwnerId(assignmentOwnerId);
             TryStartComposition();
+        }
+
+        public bool TryCreateAssociationBinding(
+            out CameraViewOutputBinding binding,
+            out string diagnostic)
+        {
+            if (!TryValidateDefinitions(out diagnostic))
+            {
+                binding = default;
+                return false;
+            }
+
+            CameraViewport projected = Viewport;
+            if (!projected.IsValid)
+            {
+                binding = default;
+                diagnostic =
+                    $"Shared Camera composition '{name}' has an invalid normalized viewport.";
+                return false;
+            }
+
+            binding = new CameraViewOutputBinding(
+                viewDefinition.ViewId,
+                outputDefinition.OutputId,
+                projected);
+            diagnostic = string.Empty;
+            return true;
         }
 
         public void AttachCameraSubjectAvailability(
