@@ -17,7 +17,7 @@ namespace Immersive.Framework.Camera
     [FrameworkApiStatus(FrameworkApiStatus.Stable, "Stable explicit Camera Output authoring for a Session 1..N topology.")]
     public sealed class CameraOutputAuthoring : MonoBehaviour
     {
-        [SerializeField] private string outputId;
+        [SerializeField] private CameraOutputDefinition outputDefinition;
         [SerializeField] private UnityEngine.Camera unityCamera;
         [SerializeField] private CinemachineBrain cinemachineBrain;
         [SerializeField] private CameraRigComposer defaultCameraRig;
@@ -31,9 +31,31 @@ namespace Immersive.Framework.Camera
         private CameraOutputContext _context;
         private CameraOutputRigApplicator _applicator;
         private CameraOutputSession _session;
+        private CameraOutputDefinition _initializedDefinition;
         private FrameworkLogger _logger;
 
-        public string OutputIdText => outputId.NormalizeText();
+        public CameraOutputDefinition OutputDefinition => outputDefinition;
+        public CameraOutputId OutputId => outputDefinition != null && outputDefinition.HasValidId
+            ? outputDefinition.OutputId : default;
+        public string OutputIdText => OutputId.Value ?? string.Empty;
+        public bool TryValidateDefinition(out string diagnostic)
+        {
+            try
+            {
+                CameraDefinitionValidation.ValidateOutputs(new[] { outputDefinition });
+                if (_session != null &&
+                    (!ReferenceEquals(outputDefinition, _initializedDefinition) || _session.OutputId != OutputId))
+                    throw new InvalidOperationException(
+                        "Output definition changed while its physical Session is initialized. Teardown is required before reconfiguration.");
+                diagnostic = string.Empty;
+                return true;
+            }
+            catch (InvalidOperationException exception)
+            {
+                diagnostic = $"Camera Output '{name}': {exception.Message}";
+                return false;
+            }
+        }
         public UnityEngine.Camera UnityCamera => unityCamera;
         public CinemachineBrain CinemachineBrain => cinemachineBrain;
         public CameraRigComposer DefaultCameraRig => defaultCameraRig;
@@ -43,14 +65,6 @@ namespace Immersive.Framework.Camera
         public CameraOutputSession Session => _session;
         public string LastStatus => lastStatus ?? string.Empty;
         public string LastDiagnostic => lastDiagnostic ?? string.Empty;
-
-        private void Reset()
-        {
-            if (string.IsNullOrWhiteSpace(outputId))
-            {
-                outputId = Guid.NewGuid().ToString("N");
-            }
-        }
 
         private void Awake()
         {
@@ -67,6 +81,12 @@ namespace Immersive.Framework.Camera
 
         public bool TryInitialize(out string diagnostic)
         {
+            if (!TryValidateDefinition(out diagnostic))
+            {
+                SetDiagnostic("Blocked", diagnostic, true);
+                return false;
+            }
+
             if (_session != null)
             {
                 diagnostic = "Camera output session is already initialized.";
@@ -74,14 +94,8 @@ namespace Immersive.Framework.Camera
                 return true;
             }
 
-            string normalizedOutputId = outputId.NormalizeText();
+            string normalizedOutputId = OutputIdText;
 
-            if (string.IsNullOrWhiteSpace(normalizedOutputId))
-            {
-                diagnostic = "Camera Output Authoring requires an explicit output id.";
-                SetDiagnostic("Blocked", diagnostic, true);
-                return false;
-            }
 
             if (unityCamera == null)
             {
@@ -141,6 +155,7 @@ namespace Immersive.Framework.Camera
                 _context = resolvedContext;
                 _applicator = resolvedApplicator;
                 _session = resolvedSession;
+                _initializedDefinition = outputDefinition;
             }
             catch (Exception exception)
             {
@@ -180,6 +195,7 @@ namespace Immersive.Framework.Camera
                 _session.Teardown();
             }
             _session = null;
+            _initializedDefinition = null;
             _applicator = null;
             _context = null;
             SetDiagnostic(

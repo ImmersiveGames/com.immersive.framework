@@ -10,6 +10,7 @@ namespace Immersive.Framework.Camera.Tests
     public sealed class CameraSharedFollowPresentationTests
     {
         private readonly List<GameObject> _created = new List<GameObject>();
+        private readonly List<ScriptableObject> _definitions = new List<ScriptableObject>();
 
         [TearDown]
         public void TearDown()
@@ -22,6 +23,9 @@ namespace Immersive.Framework.Camera.Tests
                 }
             }
             _created.Clear();
+            foreach (ScriptableObject definition in _definitions)
+                Object.DestroyImmediate(definition);
+            _definitions.Clear();
         }
 
         [Test]
@@ -37,6 +41,10 @@ namespace Immersive.Framework.Camera.Tests
             CameraViewAssignmentSnapshot snapshot = Assign(assignments, availability, p2).Snapshot;
             CameraViewPresentationInput input = Input(snapshot);
             CameraRigComposer composer = Composer(out CinemachineCamera camera);
+            SetField(composer.BehaviorDefinition, "sharedFollowMemberWeight", 2.5f);
+            SetField(composer.BehaviorDefinition, "sharedFollowMemberRadius", 1.25f);
+            SetField(composer.BehaviorDefinition, "sharedFollowFramingSize", 1.1f);
+            SetField(composer.BehaviorDefinition, "sharedFollowDamping", 3.5f);
 
             CameraViewPresentationApplyResult first =
                 composer.ApplyViewPresentation(input, snapshot);
@@ -58,8 +66,30 @@ namespace Immersive.Framework.Camera.Tests
             Assert.That(first.GroupFraming.FovRange, Is.EqualTo(composer.SharedFollowFovRange));
             Assert.That(first.GroupFraming.DollyRange, Is.EqualTo(composer.SharedFollowDollyRange));
             Assert.That(first.GroupFraming.OrthoSizeRange, Is.EqualTo(composer.SharedFollowOrthoSizeRange));
-            Assert.That(first.TargetGroup.Targets[0].Weight, Is.GreaterThan(0f));
-            Assert.That(first.TargetGroup.Targets[0].Radius, Is.GreaterThan(0f));
+            Assert.That(first.TargetGroup.Targets[0].Weight, Is.EqualTo(2.5f));
+            Assert.That(first.TargetGroup.Targets[0].Radius, Is.EqualTo(1.25f));
+            Assert.That(first.GroupFraming.FramingSize, Is.EqualTo(1.1f));
+            Assert.That(first.GroupFraming.Damping, Is.EqualTo(3.5f));
+        }
+
+        [Test]
+        public void ClearViewPresentationClearsRuntimeTargetsWithoutChangingBehavior()
+        {
+            CameraSubjectAvailabilityContext availability = Availability();
+            CameraSubject subject = Available(availability, "subject");
+            CameraViewAssignmentContext assignments = Assignments(availability);
+            CameraViewAssignmentSnapshot snapshot = Assign(assignments, availability, subject).Snapshot;
+            CameraRigComposer composer = Composer(out CinemachineCamera camera);
+            CameraRigBehaviorDefinition behavior = composer.BehaviorDefinition;
+            Assert.That(composer.ApplyViewPresentation(Input(snapshot), snapshot).Succeeded, Is.True);
+
+            CameraViewPresentationApplyResult cleared = composer.ClearViewPresentation();
+
+            Assert.That(cleared.Status, Is.EqualTo(CameraViewPresentationApplyStatus.SucceededCleared));
+            Assert.That(composer.BehaviorDefinition, Is.SameAs(behavior));
+            Assert.That(camera.Follow, Is.Null);
+            Assert.That(camera.LookAt, Is.Null);
+            Assert.That(composer.FrameworkOwnedSharedFollowGroupFraming.enabled, Is.False);
         }
 
         [Test]
@@ -143,13 +173,13 @@ namespace Immersive.Framework.Camera.Tests
             CameraViewAssignmentSnapshot many = Assign(assignments, availability, p2).Snapshot;
 
             CameraRigComposer mounted = Composer(out _, false);
-            SetField(mounted, "presentationIntent", CameraRigPresentationIntent.Mounted);
+            SetBehavior(mounted, Behavior<MountedCameraRigBehaviorDefinition>());
             Assert.That(
                 mounted.ApplyViewPresentation(Input(many), many).Status,
                 Is.EqualTo(CameraViewPresentationApplyStatus.BlockedUnsupportedPresentation));
 
             CameraRigComposer thirdPerson = Composer(out _, false);
-            SetField(thirdPerson, "presentationIntent", CameraRigPresentationIntent.ThirdPerson);
+            SetBehavior(thirdPerson, Behavior<ThirdPersonCameraRigBehaviorDefinition>());
             Assert.That(
                 thirdPerson.ApplyViewPresentation(Input(many), many).Status,
                 Is.EqualTo(CameraViewPresentationApplyStatus.BlockedUnsupportedPresentation));
@@ -158,7 +188,7 @@ namespace Immersive.Framework.Camera.Tests
             CameraViewAssignmentSnapshot empty = fixedAssignments.Reconcile(
                 availability.CreateSnapshot()).Snapshot;
             CameraRigComposer fixedComposer = Composer(out _, false);
-            SetField(fixedComposer, "presentationIntent", CameraRigPresentationIntent.Fixed);
+            SetBehavior(fixedComposer, Behavior<FixedCameraRigBehaviorDefinition>());
             Assert.That(
                 fixedComposer.ApplyViewPresentation(Input(empty, "fixed"), empty).Status,
                 Is.EqualTo(CameraViewPresentationApplyStatus.SucceededFixedNoTargets));
@@ -177,7 +207,7 @@ namespace Immersive.Framework.Camera.Tests
             CameraViewAssignmentSnapshot many = Assign(assignments, availability, p2).Snapshot;
 
             CameraRigComposer invalid = Composer(out _, false);
-            SetField(invalid, "sharedFollowMemberWeight", 0f);
+            SetField(invalid.BehaviorDefinition, "sharedFollowMemberWeight", 0f);
             Assert.That(
                 invalid.ApplyViewPresentation(Input(many), many).Status,
                 Is.EqualTo(CameraViewPresentationApplyStatus.RejectedInvalidSettings));
@@ -267,6 +297,7 @@ namespace Immersive.Framework.Camera.Tests
             var root = new GameObject("composer");
             _created.Add(root);
             CameraRigComposer composer = root.AddComponent<CameraRigComposer>();
+            SetBehavior(composer, Behavior<FollowCameraRigBehaviorDefinition>());
             var cameraObject = new GameObject("cinemachine-camera");
             cameraObject.transform.SetParent(root.transform, false);
             camera = cameraObject.AddComponent<CinemachineCamera>();
@@ -351,6 +382,18 @@ namespace Immersive.Framework.Camera.Tests
                 .SetValue(target, value);
         }
 
+        private T Behavior<T>() where T : CameraRigBehaviorDefinition
+        {
+            T definition = ScriptableObject.CreateInstance<T>();
+            _definitions.Add(definition);
+            return definition;
+        }
+
+        private static void SetBehavior(CameraRigComposer composer, CameraRigBehaviorDefinition definition)
+        {
+            SetField(composer, "behaviorDefinition", definition);
+        }
+
         private static void AssertInvalidSetting<T>(
             CameraRigComposer composer,
             CameraViewPresentationInput input,
@@ -359,12 +402,12 @@ namespace Immersive.Framework.Camera.Tests
             T invalid,
             T valid)
         {
-            SetField(composer, field, invalid);
+            SetField(composer.BehaviorDefinition, field, invalid);
             Assert.That(
                 composer.ApplyViewPresentation(input, snapshot).Status,
                 Is.EqualTo(CameraViewPresentationApplyStatus.RejectedInvalidSettings),
                 field);
-            SetField(composer, field, valid);
+            SetField(composer.BehaviorDefinition, field, valid);
         }
     }
 }

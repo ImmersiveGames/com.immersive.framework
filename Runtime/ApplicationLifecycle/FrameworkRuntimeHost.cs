@@ -477,6 +477,12 @@ namespace Immersive.Framework.ApplicationLifecycle
             }
 
             _cameraOutputTopology?.Dispose();
+            if (!cameraViewOutputPolicy.TryValidateOutputs(cameraOutputs, out cameraDiagnostic))
+            {
+                var failed = FrameworkGameFlowStartResult.Failed(cameraDiagnostic);
+                _state = FrameworkRuntimeState.FromGameFlowResult(_gameApplication, failed);
+                return failed;
+            }
             if (!CameraOutputSessionTopology.TryCreate(
                     cameraOutputs,
                     out _cameraOutputTopology,
@@ -511,7 +517,8 @@ namespace Immersive.Framework.ApplicationLifecycle
             _cameraOutputInjectionRuntime?.Dispose();
             _cameraOutputInjectionRuntime = new CameraOutputInjectionRuntime(
                 _cameraOutputTopology,
-                cameraViewOutputTopology);
+                cameraViewOutputTopology,
+                cameraViewOutputPolicy.ViewDefinitions);
             _cameraOutputInjectionRuntime.AttachRoots(
                 _globalUiSceneRuntime.PersistedRoots);
             _cameraSubjectAvailabilityInjectionRuntime?.Dispose();

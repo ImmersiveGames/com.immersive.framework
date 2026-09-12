@@ -25,7 +25,7 @@ namespace Immersive.Framework.Pause.Tests
         [Test]
         public void ValidAuthoring_CreatesRequiredIntent()
         {
-            PauseActivityBindingAuthoring authoring = CreateAuthoring("Valid");
+            ActivityPauseAuthoring authoring = CreateAuthoring("Valid");
 
             bool createdIntent = authoring.TryCreateIntent(
                 out PauseActivityBindingIntent intent,
@@ -40,7 +40,7 @@ namespace Immersive.Framework.Pause.Tests
         [Test]
         public void InvalidAuthoring_ReturnsActionableDiagnostic()
         {
-            PauseActivityBindingAuthoring authoring = CreateAuthoring("Invalid");
+            ActivityPauseAuthoring authoring = CreateAuthoring("Invalid");
             JsonUtility.FromJsonOverwrite("{\"requiredness\":0}", authoring);
 
             bool createdIntent = authoring.TryCreateIntent(
@@ -57,8 +57,8 @@ namespace Immersive.Framework.Pause.Tests
         public void ResolveDeclarations_ZeroIsValidIntentAbsence()
         {
             PauseActivityBindingIntentResolution result =
-                PauseActivityBindingAuthoringValidator.ResolveDeclarations(
-                    Array.Empty<PauseActivityBindingAuthoring>(),
+                ActivityPauseAuthoringValidator.ResolveDeclarations(
+                    Array.Empty<ActivityPauseAuthoring>(),
                     "test.zero");
 
             Assert.That(result.Succeeded, Is.True);
@@ -71,11 +71,11 @@ namespace Immersive.Framework.Pause.Tests
         public void ResolveFromRoots_OneInactiveDeclarationIsIncludedAndAccepted()
         {
             GameObject root = CreateObject("Inactive Root");
-            PauseActivityBindingAuthoring authoring = root.AddComponent<PauseActivityBindingAuthoring>();
+            ActivityPauseAuthoring authoring = root.AddComponent<ActivityPauseAuthoring>();
             root.SetActive(false);
 
             PauseActivityBindingIntentResolution result =
-                PauseActivityBindingAuthoringValidator.ResolveFromRoots(
+                ActivityPauseAuthoringValidator.ResolveFromRoots(
                     new[] { root },
                     "test.inactive");
 
@@ -89,16 +89,16 @@ namespace Immersive.Framework.Pause.Tests
         public void ResolveFromRoots_DuplicatesFailIndependentlyOfRootOrder()
         {
             GameObject first = CreateObject("First");
-            first.AddComponent<PauseActivityBindingAuthoring>();
+            first.AddComponent<ActivityPauseAuthoring>();
             GameObject second = CreateObject("Second");
-            second.AddComponent<PauseActivityBindingAuthoring>();
+            second.AddComponent<ActivityPauseAuthoring>();
 
             PauseActivityBindingIntentResolution forward =
-                PauseActivityBindingAuthoringValidator.ResolveFromRoots(
+                ActivityPauseAuthoringValidator.ResolveFromRoots(
                     new[] { first, second },
                     "test.duplicate");
             PauseActivityBindingIntentResolution reverse =
-                PauseActivityBindingAuthoringValidator.ResolveFromRoots(
+                ActivityPauseAuthoringValidator.ResolveFromRoots(
                     new[] { second, first },
                     "test.duplicate");
 
@@ -116,11 +116,11 @@ namespace Immersive.Framework.Pause.Tests
         {
             GameObject root = CreateObject("No Materialization");
             int before = root.GetComponents<PlayerPauseInput>().Length;
-            PauseActivityBindingAuthoring authoring =
-                root.AddComponent<PauseActivityBindingAuthoring>();
+            ActivityPauseAuthoring authoring =
+                root.AddComponent<ActivityPauseAuthoring>();
 
             PauseActivityBindingIntentResolution result =
-                PauseActivityBindingAuthoringValidator.ResolveDeclarations(
+                ActivityPauseAuthoringValidator.ResolveDeclarations(
                     new[] { authoring },
                     "test.no-materialization");
             int after = root.GetComponents<PlayerPauseInput>().Length;
@@ -129,9 +129,9 @@ namespace Immersive.Framework.Pause.Tests
             Assert.That(after, Is.EqualTo(before));
         }
 
-        private PauseActivityBindingAuthoring CreateAuthoring(string name)
+        private ActivityPauseAuthoring CreateAuthoring(string name)
         {
-            return CreateObject(name).AddComponent<PauseActivityBindingAuthoring>();
+            return CreateObject(name).AddComponent<ActivityPauseAuthoring>();
         }
 
         private GameObject CreateObject(string name)

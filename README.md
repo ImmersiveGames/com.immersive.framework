@@ -21,7 +21,7 @@ PlayerSessionObserver -> scoped read-only Player Session evidence
 explicit Player Session commands -> Open / Close / Join / Actor Selection / Leave
 LocalPlayerProvisioningAuthoring -> Local Player Provisioning authority
 SceneProvidedLocalPlayerAuthoring -> Scene-Provided Local Player validation / deterministic runtime adoption
-CameraRigComposer -> Validate / Apply/Rebuild (Unity Preset optional)
+CameraRigBehaviorDefinition -> CameraRigComposer -> Validate / Apply/Rebuild
 FrameworkBgmDirector -> Route/Activity BGM bindings -> Immersive Audio
 PlayerPauseInput -> InputMode transaction -> PlayerInput state writer
 Reset authoring -> explicit runtime ports -> ResetRegistry / ResetExecutor

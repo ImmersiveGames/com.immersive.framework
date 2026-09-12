@@ -85,7 +85,7 @@ namespace Immersive.Framework.Pause.Tests
         public void LifecycleModule_RequiredIntentWithoutOfficialEvidence_BlocksBeforeRunning()
         {
             GameObject root = CreateObject("Activity Root");
-            root.AddComponent<PauseActivityBindingAuthoring>();
+            root.AddComponent<ActivityPauseAuthoring>();
             PauseActivityBindingScope scope = CreateScope("activity.lifecycle.required", 8);
             var module = new PauseActivityBindingRuntimeHostModule(
                 new PauseActivityBindingRuntimeContext(),

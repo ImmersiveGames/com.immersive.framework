@@ -1,5 +1,6 @@
 using Immersive.Framework.CameraAuthoring;
 using UnityEditor;
+using UnityEngine;
 
 namespace Immersive.Framework.Editor.CameraAuthoring
 {
@@ -7,14 +8,26 @@ namespace Immersive.Framework.Editor.CameraAuthoring
     public sealed class CameraSharedCompositionEditor : UnityEditor.Editor
     {
         private readonly CameraOutputReferenceGUI _outputs = new CameraOutputReferenceGUI();
+        private bool _advanced;
 
         public override void OnInspectorGUI()
         {
             serializedObject.UpdateIfRequiredOrScript();
-            CameraIdentityAuthoringGUI.DrawDefinition(serializedObject.FindProperty("viewId"), true);
-            _outputs.DrawTopology(serializedObject);
-            _outputs.DrawReference(serializedObject.FindProperty("outputId"));
-            DrawPropertiesExcluding(serializedObject, "m_Script", "viewId", "outputId");
+            CameraOutputReferenceGUI.DrawDefinitionReference(serializedObject.FindProperty("viewDefinition"), "View Definition");
+            EditorGUILayout.PropertyField(serializedObject.FindProperty("subjectPolicy"));
+            _outputs.DrawReference(serializedObject.FindProperty("outputDefinition"));
+            _advanced = EditorGUILayout.Foldout(_advanced, "Advanced / Debug", true);
+            if (_advanced)
+            {
+                var composition = (CameraSharedComposition)target;
+                using (new EditorGUI.DisabledScope(true))
+                {
+                    EditorGUILayout.TextField("View ID", composition.ViewIdText);
+                    EditorGUILayout.TextField("Output ID", composition.OutputIdText);
+                    EditorGUILayout.TextField("Assignment Context ID", composition.AssignmentContextIdText);
+                    EditorGUILayout.TextField("Assignment Owner ID", composition.AssignmentOwnerIdText);
+                }
+            }
             serializedObject.ApplyModifiedProperties();
         }
     }

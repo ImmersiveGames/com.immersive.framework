@@ -11,8 +11,9 @@ namespace Immersive.Framework.CameraAuthoring
     /// Designer-facing authoring surface that owns one concrete Camera rig
     /// configuration and materializes one local Cinemachine Camera.
     ///
-    /// The Composer is the presentation authority for Follow/Look At requirements and
-    /// framing. The explicit View-input seam receives resolved Subject evidence.
+    /// The assigned Behavior definition owns reusable presentation intent and tuning.
+    /// The Composer validates and materializes that intent on this concrete local rig.
+    /// The explicit View-input seam receives resolved Subject evidence.
     ///
     /// It does not create or own a Unity Camera, CinemachineBrain, AudioListener
     /// or runtime Camera Output. It does not select an active camera or arbitrate
@@ -28,63 +29,7 @@ namespace Immersive.Framework.CameraAuthoring
 
         [Header("Camera Behavior")]
         [SerializeField]
-        private CameraRigPresentationIntent presentationIntent =
-            CameraRigPresentationIntent.Follow;
-
-        [SerializeField]
-        private CameraTargetRequirement lookAtRequirement =
-            CameraTargetRequirement.Optional;
-
-        [SerializeField]
-        private Vector3 followOffset =
-            new Vector3(0f, 5f, -8f);
-
-        [Header("Shared Follow Settings")]
-        [SerializeField, Min(0.0001f)]
-        private float sharedFollowMemberWeight = 1f;
-
-        [SerializeField, Min(0.0001f)]
-        private float sharedFollowMemberRadius = 0.5f;
-
-        [SerializeField, Range(0.01f, 2f)]
-        private float sharedFollowFramingSize = 0.8f;
-
-        [SerializeField, Range(0f, 20f)]
-        private float sharedFollowDamping = 2f;
-
-        [SerializeField]
-        private Vector2 sharedFollowFovRange = new Vector2(1f, 100f);
-
-        [SerializeField]
-        private Vector2 sharedFollowDollyRange = new Vector2(-100f, 100f);
-
-        [SerializeField]
-        private Vector2 sharedFollowOrthoSizeRange = new Vector2(1f, 1000f);
-
-        [Header("Mounted Settings")]
-        [SerializeField, Min(0f)]
-        private float mountedPositionDamping;
-
-        [SerializeField, Min(0f)]
-        private float mountedRotationDamping;
-
-        [Header("Third Person Settings")]
-        [SerializeField]
-        private Vector3 thirdPersonShoulderOffset =
-            new Vector3(0.5f, -0.4f, 0f);
-
-        [SerializeField]
-        private float thirdPersonVerticalArmLength = 0.4f;
-
-        [SerializeField, Range(0f, 1f)]
-        private float thirdPersonCameraSide = 1f;
-
-        [SerializeField, Min(0f)]
-        private float thirdPersonCameraDistance = 2f;
-
-        [SerializeField]
-        private Vector3 thirdPersonDamping =
-            new Vector3(0.1f, 0.5f, 0.3f);
+        private CameraRigBehaviorDefinition behaviorDefinition;
 
         [Header("Technical Materialization")]
         [SerializeField]
@@ -131,80 +76,33 @@ namespace Immersive.Framework.CameraAuthoring
         [SerializeField]
         private string lastMaterializationSummary;
 
+        public CameraRigBehaviorDefinition BehaviorDefinition => behaviorDefinition;
+
         public CameraRigPresentationIntent PresentationIntent =>
-            presentationIntent;
+            behaviorDefinition != null
+                ? behaviorDefinition.PresentationIntent
+                : CameraRigPresentationIntent.Undefined;
 
-        public CameraTargetRequirement LookAtRequirement =>
-            lookAtRequirement;
-
-        public Vector3 FollowOffset =>
-            followOffset;
-
-        public float SharedFollowMemberWeight => sharedFollowMemberWeight;
-        public float SharedFollowMemberRadius => sharedFollowMemberRadius;
-        public float SharedFollowFramingSize => sharedFollowFramingSize;
-        public float SharedFollowDamping => sharedFollowDamping;
-        public Vector2 SharedFollowFovRange => sharedFollowFovRange;
-        public Vector2 SharedFollowDollyRange => sharedFollowDollyRange;
-        public Vector2 SharedFollowOrthoSizeRange => sharedFollowOrthoSizeRange;
-
-        public float MountedPositionDamping =>
-            mountedPositionDamping;
-
-        public float MountedRotationDamping =>
-            mountedRotationDamping;
-
-        public Vector3 ThirdPersonShoulderOffset =>
-            thirdPersonShoulderOffset;
-
-        public float ThirdPersonVerticalArmLength =>
-            thirdPersonVerticalArmLength;
-
-        public float ThirdPersonCameraSide =>
-            thirdPersonCameraSide;
-
-        public float ThirdPersonCameraDistance =>
-            thirdPersonCameraDistance;
-
-        public Vector3 ThirdPersonDamping =>
-            thirdPersonDamping;
-
-        public CameraTargetRequirement EffectiveFollowRequirement
-        {
-            get
-            {
-                switch (presentationIntent)
-                {
-                    case CameraRigPresentationIntent.Follow:
-                    case CameraRigPresentationIntent.Mounted:
-                    case CameraRigPresentationIntent.ThirdPerson:
-                        return CameraTargetRequirement.Required;
-
-                    case CameraRigPresentationIntent.Fixed:
-                    case CameraRigPresentationIntent.Undefined:
-                    default:
-                        return CameraTargetRequirement.NotUsed;
-                }
-            }
-        }
-
-        public CameraTargetRequirement EffectiveLookAtRequirement
-        {
-            get
-            {
-                switch (presentationIntent)
-                {
-                    case CameraRigPresentationIntent.Follow:
-                        return lookAtRequirement;
-
-                    case CameraRigPresentationIntent.Mounted:
-                    case CameraRigPresentationIntent.ThirdPerson:
-                    case CameraRigPresentationIntent.Undefined:
-                    default:
-                        return CameraTargetRequirement.NotUsed;
-                }
-            }
-        }
+        public CameraTargetRequirement LookAtRequirement => EffectiveLookAtRequirement;
+        public Vector3 FollowOffset => RequireFollowBehavior().FollowOffset;
+        public float SharedFollowMemberWeight => RequireFollowBehavior().SharedFollowMemberWeight;
+        public float SharedFollowMemberRadius => RequireFollowBehavior().SharedFollowMemberRadius;
+        public float SharedFollowFramingSize => RequireFollowBehavior().SharedFollowFramingSize;
+        public float SharedFollowDamping => RequireFollowBehavior().SharedFollowDamping;
+        public Vector2 SharedFollowFovRange => RequireFollowBehavior().SharedFollowFovRange;
+        public Vector2 SharedFollowDollyRange => RequireFollowBehavior().SharedFollowDollyRange;
+        public Vector2 SharedFollowOrthoSizeRange => RequireFollowBehavior().SharedFollowOrthoSizeRange;
+        public float MountedPositionDamping => RequireMountedBehavior().PositionDamping;
+        public float MountedRotationDamping => RequireMountedBehavior().RotationDamping;
+        public Vector3 ThirdPersonShoulderOffset => RequireThirdPersonBehavior().ShoulderOffset;
+        public float ThirdPersonVerticalArmLength => RequireThirdPersonBehavior().VerticalArmLength;
+        public float ThirdPersonCameraSide => RequireThirdPersonBehavior().CameraSide;
+        public float ThirdPersonCameraDistance => RequireThirdPersonBehavior().CameraDistance;
+        public Vector3 ThirdPersonDamping => RequireThirdPersonBehavior().Damping;
+        public CameraTargetRequirement EffectiveFollowRequirement =>
+            behaviorDefinition != null ? behaviorDefinition.FollowRequirement : CameraTargetRequirement.NotUsed;
+        public CameraTargetRequirement EffectiveLookAtRequirement =>
+            behaviorDefinition != null ? behaviorDefinition.LookAtRequirement : CameraTargetRequirement.NotUsed;
 
         public CinemachineCamera CinemachineCamera =>
             cinemachineCamera;
@@ -268,67 +166,22 @@ namespace Immersive.Framework.CameraAuthoring
         public bool TryValidateForApply(
             out string issue)
         {
-            issue = string.Empty;
-
-            if (!IsDefinedRequirement(EffectiveLookAtRequirement))
+            if (behaviorDefinition == null)
             {
-                issue =
-                    $"CameraRigComposer has invalid Look At requirement '{lookAtRequirement}' for presentation '{presentationIntent}'.";
+                issue = "CameraRigComposer requires a Camera Rig Behavior Definition.";
                 return false;
             }
 
-            switch (presentationIntent)
+            if (behaviorDefinition.PresentationIntent != CameraRigPresentationIntent.Fixed &&
+                behaviorDefinition.PresentationIntent != CameraRigPresentationIntent.Follow &&
+                behaviorDefinition.PresentationIntent != CameraRigPresentationIntent.Mounted &&
+                behaviorDefinition.PresentationIntent != CameraRigPresentationIntent.ThirdPerson)
             {
-                case CameraRigPresentationIntent.Fixed:
-                    return true;
-
-                case CameraRigPresentationIntent.Follow:
-                    if (!IsFinite(followOffset))
-                    {
-                        issue =
-                            "Follow presentation requires a finite Follow Offset.";
-                        return false;
-                    }
-
-                    return TryValidateSharedFollowSettings(out issue);
-
-                case CameraRigPresentationIntent.Mounted:
-                    if (!IsFiniteNonNegative(mountedPositionDamping) ||
-                        !IsFiniteNonNegative(mountedRotationDamping))
-                    {
-                        issue =
-                            "Mounted presentation damping values must be finite and non-negative.";
-                        return false;
-                    }
-
-                    return true;
-
-                case CameraRigPresentationIntent.ThirdPerson:
-                    if (!IsFinite(thirdPersonShoulderOffset) ||
-                        !IsFinite(thirdPersonVerticalArmLength) ||
-                        !IsFinite(thirdPersonCameraSide) ||
-                        thirdPersonCameraSide < 0f ||
-                        thirdPersonCameraSide > 1f ||
-                        !IsFiniteNonNegative(thirdPersonCameraDistance) ||
-                        !IsFiniteNonNegative(thirdPersonDamping))
-                    {
-                        issue =
-                            "Third Person presentation settings contain invalid, non-finite or out-of-range values.";
-                        return false;
-                    }
-
-                    return true;
-
-                case CameraRigPresentationIntent.Undefined:
-                    issue =
-                        "CameraRigComposer requires an explicit Presentation intent.";
-                    return false;
-
-                default:
-                    issue =
-                        $"CameraRigComposer does not support Presentation intent '{presentationIntent}'.";
-                    return false;
+                issue = $"Camera Rig Behavior Definition '{behaviorDefinition.name}' has unsupported Presentation model '{behaviorDefinition.PresentationIntent}'.";
+                return false;
             }
+
+            return behaviorDefinition.TryValidate(out issue);
         }
 
         /// <summary>
@@ -344,64 +197,28 @@ namespace Immersive.Framework.CameraAuthoring
                 EffectiveLookAtRequirement);
         }
 
-        private static bool IsDefinedRequirement(
-            CameraTargetRequirement requirement)
-        {
-            return requirement == CameraTargetRequirement.NotUsed ||
-                   requirement == CameraTargetRequirement.Optional ||
-                   requirement == CameraTargetRequirement.Required;
-        }
-
         internal bool TryValidateSharedFollowSettings(out string issue)
         {
-            issue = string.Empty;
-            if (!IsFinite(sharedFollowMemberWeight) || sharedFollowMemberWeight <= 0f ||
-                !IsFinite(sharedFollowMemberRadius) || sharedFollowMemberRadius <= 0f ||
-                !IsFinite(sharedFollowFramingSize) || sharedFollowFramingSize < 0.01f || sharedFollowFramingSize > 2f ||
-                !IsFinite(sharedFollowDamping) || sharedFollowDamping < 0f || sharedFollowDamping > 20f ||
-                !IsOrderedRange(sharedFollowFovRange, 1f, 179f) ||
-                !IsOrderedRange(sharedFollowDollyRange, float.MinValue, float.MaxValue) ||
-                !IsOrderedRange(sharedFollowOrthoSizeRange, 0.01f, float.MaxValue))
+            if (!(behaviorDefinition is FollowCameraRigBehaviorDefinition follow))
             {
-                issue = "Shared Follow settings require finite positive Weight/Radius, valid Framing Size/Damping and ordered FOV, Dolly and Orthographic ranges.";
+                issue = $"CameraRigComposer requires a Follow Camera Rig Behavior Definition for Presentation model '{PresentationIntent}'.";
                 return false;
             }
 
-            return true;
+            return follow.TryValidate(out issue);
         }
 
-        private static bool IsOrderedRange(Vector2 range, float minimum, float maximum)
-        {
-            return IsFinite(range.x) && IsFinite(range.y) &&
-                   range.x >= minimum && range.y <= maximum && range.x <= range.y;
-        }
+        private FollowCameraRigBehaviorDefinition RequireFollowBehavior() =>
+            behaviorDefinition as FollowCameraRigBehaviorDefinition ??
+            throw new InvalidOperationException("The assigned Camera Rig Behavior Definition is not Follow.");
 
-        private static bool IsFinite(float value)
-        {
-            return !float.IsNaN(value) &&
-                   !float.IsInfinity(value);
-        }
+        private MountedCameraRigBehaviorDefinition RequireMountedBehavior() =>
+            behaviorDefinition as MountedCameraRigBehaviorDefinition ??
+            throw new InvalidOperationException("The assigned Camera Rig Behavior Definition is not Mounted.");
 
-        private static bool IsFinite(Vector3 value)
-        {
-            return IsFinite(value.x) &&
-                   IsFinite(value.y) &&
-                   IsFinite(value.z);
-        }
-
-        private static bool IsFiniteNonNegative(float value)
-        {
-            return IsFinite(value) &&
-                   value >= 0f;
-        }
-
-        private static bool IsFiniteNonNegative(Vector3 value)
-        {
-            return IsFinite(value) &&
-                   value.x >= 0f &&
-                   value.y >= 0f &&
-                   value.z >= 0f;
-        }
+        private ThirdPersonCameraRigBehaviorDefinition RequireThirdPersonBehavior() =>
+            behaviorDefinition as ThirdPersonCameraRigBehaviorDefinition ??
+            throw new InvalidOperationException("The assigned Camera Rig Behavior Definition is not Third Person.");
 
 #if UNITY_EDITOR
         public void EditorSetGeneratedReference(
@@ -461,33 +278,7 @@ namespace Immersive.Framework.CameraAuthoring
 
         private void Reset()
         {
-            presentationIntent =
-                CameraRigPresentationIntent.Follow;
-
-            lookAtRequirement =
-                CameraTargetRequirement.Optional;
-
-            followOffset =
-                new Vector3(0f, 5f, -8f);
-
-            sharedFollowMemberWeight = 1f;
-            sharedFollowMemberRadius = 0.5f;
-            sharedFollowFramingSize = 0.8f;
-            sharedFollowDamping = 2f;
-            sharedFollowFovRange = new Vector2(1f, 100f);
-            sharedFollowDollyRange = new Vector2(-100f, 100f);
-            sharedFollowOrthoSizeRange = new Vector2(1f, 1000f);
-
-            mountedPositionDamping = 0f;
-            mountedRotationDamping = 0f;
-
-            thirdPersonShoulderOffset =
-                new Vector3(0.5f, -0.4f, 0f);
-            thirdPersonVerticalArmLength = 0.4f;
-            thirdPersonCameraSide = 1f;
-            thirdPersonCameraDistance = 2f;
-            thirdPersonDamping =
-                new Vector3(0.1f, 0.5f, 0.3f);
+            behaviorDefinition = null;
 
             cinemachineCamera =
                 GetComponentInChildren<CinemachineCamera>(

@@ -37,7 +37,9 @@ namespace Immersive.Framework.Editor.CameraAuthoring
                 return new CameraOutputSessionAuthoringValidationResult(issues);
             }
 
-            string identityIssue = CameraIdentityAuthoringValidation.OutputIdIssue(binding.OutputIdText);
+            string identityIssue = binding.OutputDefinition == null
+                ? "Assign an Output Definition asset."
+                : CameraDefinitionIdentityEditorUtility.Validate(binding.OutputDefinition);
             if (identityIssue != null) issues.Add(identityIssue);
             CameraOutputAuthoringTopology topology = CameraOutputAuthoringResolver.Resolve();
             if (topology.IsResolved)

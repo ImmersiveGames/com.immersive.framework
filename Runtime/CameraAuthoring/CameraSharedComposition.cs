@@ -20,13 +20,14 @@ namespace Immersive.Framework.CameraAuthoring
     public sealed class CameraSharedComposition : MonoBehaviour,
         ICameraSubjectAvailabilityConsumer,
         ICameraOutputSessionConsumer,
+        ICameraOutputDefinitionConsumer,
         ICameraViewOutputBindingConsumer
     {
         [Header("Logical View")]
-        [SerializeField] private string viewId;
-        [SerializeField] private string viewDescription;
-        [SerializeField] private string assignmentContextId;
-        [SerializeField] private string assignmentOwnerId;
+        [SerializeField] private CameraViewDefinition viewDefinition;
+        // Identidade da instância carregada; não é persistência da definição nem configuração do designer.
+        private readonly string assignmentContextId = Guid.NewGuid().ToString("N");
+        private readonly string assignmentOwnerId = Guid.NewGuid().ToString("N");
 
         [Header("Subject Selection")]
         [SerializeField]
@@ -34,7 +35,7 @@ namespace Immersive.Framework.CameraAuthoring
             CameraSharedCompositionSubjectPolicyKind.AllAvailableSubjects;
 
         [Header("Presentation")]
-        [SerializeField] private string outputId;
+        [SerializeField] private CameraOutputDefinition outputDefinition;
 
         private ICameraSubjectAvailabilitySource _availability;
         private CameraViewAssignmentContext _assignments;
@@ -45,20 +46,24 @@ namespace Immersive.Framework.CameraAuthoring
         private bool _subscribed;
         private CameraOutputAuthoring _output;
 
-        public CameraViewId ViewId => _view.ViewId;
-        public string ViewIdText => viewId.NormalizeText();
+        public CameraViewDefinition ViewDefinition => viewDefinition;
+        public CameraOutputDefinition OutputDefinition => outputDefinition;
+        public string AssignmentContextIdText => assignmentContextId;
+        public string AssignmentOwnerIdText => assignmentOwnerId;
+        public CameraViewId ViewId => viewDefinition != null && viewDefinition.HasValidId
+            ? viewDefinition.ViewId : default;
+        public string ViewIdText => ViewId.Value ?? string.Empty;
         CameraViewId ICameraViewOutputBindingConsumer.RequestedViewId =>
             new CameraViewId(ViewIdText);
-        public string OutputIdText => outputId.NormalizeText();
+        public string OutputIdText => outputDefinition != null && outputDefinition.HasValidId
+            ? outputDefinition.OutputId.Value : string.Empty;
         public CameraOutputId RequestedOutputId => new CameraOutputId(OutputIdText);
         public CameraOutputAuthoring Output => _output;
         public CameraSharedCompositionSnapshot Snapshot { get; private set; }
 
         public void Configure(
-            CameraView view,
-            ViewAssignmentContextId contextId,
-            CameraSubjectAssignmentOwnerId ownerId,
-            CameraOutputId targetOutputId,
+            CameraViewDefinition view,
+            CameraOutputDefinition output,
             CameraSharedCompositionSubjectPolicyKind policy)
         {
             if (_assignments != null || _subscribed)
@@ -67,14 +72,14 @@ namespace Immersive.Framework.CameraAuthoring
                     "An active shared Camera composition cannot be reconfigured.");
             }
 
-            viewId = view.ViewId.Value;
-            viewDescription = view.Description;
-            assignmentContextId = contextId.Value;
-            assignmentOwnerId = ownerId.Value;
-            outputId = targetOutputId.Value;
+            CameraDefinitionValidation.ValidateViews(new[] { view });
+            CameraDefinitionValidation.ValidateOutputs(new[] { output });
+            if (!ReferenceEquals(outputDefinition, output)) _output = null;
+            viewDefinition = view;
+            outputDefinition = output;
             subjectPolicy = policy;
-            _view = view;
-            _ownerId = ownerId;
+            _view = new CameraView(view.ViewId, view.Description);
+            _ownerId = new CameraSubjectAssignmentOwnerId(assignmentOwnerId);
             TryStartComposition();
         }
 
@@ -99,10 +104,13 @@ namespace Immersive.Framework.CameraAuthoring
         public void AttachOutputSession(CameraOutputAuthoring binding)
         {
             if (binding == null) throw new ArgumentNullException(nameof(binding));
-            if (new CameraOutputId(binding.OutputIdText) != RequestedOutputId)
+            if (!TryValidateDefinitions(out string diagnostic))
+                throw new InvalidOperationException(diagnostic);
+            if (!ReferenceEquals(binding.OutputDefinition, outputDefinition) ||
+                binding.OutputId != RequestedOutputId)
             {
                 throw new InvalidOperationException(
-                    $"Shared Camera composition requested output '{RequestedOutputId}' but received '{binding.OutputIdText}'.");
+                    $"Shared Camera composition '{name}' requires its exact Output definition '{outputDefinition.name}'; the injected physical Output references a different definition.");
             }
             StopComposition();
             _output = binding;
@@ -320,9 +328,25 @@ namespace Immersive.Framework.CameraAuthoring
                 string.Empty);
         }
 
+        public bool TryValidateDefinitions(out string diagnostic)
+        {
+            try
+            {
+                CameraDefinitionValidation.ValidateViews(new[] { viewDefinition });
+                CameraDefinitionValidation.ValidateOutputs(new[] { outputDefinition });
+                diagnostic = string.Empty;
+                return true;
+            }
+            catch (InvalidOperationException exception)
+            {
+                diagnostic = $"Shared Camera composition '{name}': {exception.Message}";
+                return false;
+            }
+        }
+
         private void OnEnable()
         {
-            _view = new CameraView(new CameraViewId(viewId), viewDescription);
+            _view = new CameraView(ViewId, viewDefinition != null ? viewDefinition.Description : string.Empty);
             _ownerId = new CameraSubjectAssignmentOwnerId(assignmentOwnerId);
             TryStartComposition();
         }
@@ -335,10 +359,10 @@ namespace Immersive.Framework.CameraAuthoring
         {
             if (!isActiveAndEnabled || _subscribed) return;
 
-            _view = new CameraView(new CameraViewId(viewId), viewDescription);
+            _view = new CameraView(ViewId, viewDefinition != null ? viewDefinition.Description : string.Empty);
             _ownerId = new CameraSubjectAssignmentOwnerId(assignmentOwnerId);
             if (_availability == null) return;
-            if (!_view.IsValid)
+            if (!TryValidateDefinitions(out string definitionDiagnostic))
             {
                 Record(
                     CameraSharedCompositionReconcileStatus.BlockedInvalidView,
@@ -346,7 +370,7 @@ namespace Immersive.Framework.CameraAuthoring
                     0,
                     0,
                     CameraViewPresentationApplyStatus.None,
-                    "Shared Camera composition requires an explicit valid View id.");
+                    definitionDiagnostic);
                 return;
             }
             if (!new ViewAssignmentContextId(assignmentContextId).IsValid ||
@@ -373,13 +397,15 @@ namespace Immersive.Framework.CameraAuthoring
                     "Shared Camera composition requires an explicitly supported Subject selection policy.");
                 return;
             }
-            if (!RequestedOutputId.IsValid || _output == null)
+            if (!RequestedOutputId.IsValid || _output == null ||
+                !ReferenceEquals(_output.OutputDefinition, outputDefinition) ||
+                _output.OutputId != RequestedOutputId)
             {
                 Record(
                     CameraSharedCompositionReconcileStatus.BlockedInvalidComposer,
                     _availability.CreateSnapshot(), 0, 0,
                     CameraViewPresentationApplyStatus.None,
-                    "Shared Camera composition requires one explicit Camera Output ID and its exact injected Output.");
+                    "Shared Camera composition requires its Output definition and exact injected physical Output.");
                 return;
             }
             CameraRigComposer composer = _output != null ? _output.DefaultCameraRig : null;

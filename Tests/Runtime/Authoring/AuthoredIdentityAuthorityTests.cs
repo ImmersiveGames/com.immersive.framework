@@ -7,6 +7,7 @@ using Immersive.Framework.RuntimeContent;
 using Immersive.Framework.Transition;
 using NUnit.Framework;
 using UnityEngine;
+using Object = UnityEngine.Object;
 
 namespace Immersive.Framework.Authoring.Tests
 {

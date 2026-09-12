@@ -11,23 +11,7 @@ namespace Immersive.Framework.Editor.CameraAuthoring
     public sealed class CameraRigComposerEditor : UnityEditor.Editor
     {
 
-        private SerializedProperty _presentationIntent;
-        private SerializedProperty _lookAtRequirement;
-        private SerializedProperty _followOffset;
-        private SerializedProperty _sharedFollowMemberWeight;
-        private SerializedProperty _sharedFollowMemberRadius;
-        private SerializedProperty _sharedFollowFramingSize;
-        private SerializedProperty _sharedFollowDamping;
-        private SerializedProperty _sharedFollowFovRange;
-        private SerializedProperty _sharedFollowDollyRange;
-        private SerializedProperty _sharedFollowOrthoSizeRange;
-        private SerializedProperty _mountedPositionDamping;
-        private SerializedProperty _mountedRotationDamping;
-        private SerializedProperty _thirdPersonShoulderOffset;
-        private SerializedProperty _thirdPersonVerticalArmLength;
-        private SerializedProperty _thirdPersonCameraSide;
-        private SerializedProperty _thirdPersonCameraDistance;
-        private SerializedProperty _thirdPersonDamping;
+        private SerializedProperty _behaviorDefinition;
         private SerializedProperty _cinemachineCamera;
         private SerializedProperty _materializedPresentationIntent;
         private SerializedProperty _frameworkOwnedCinemachineCamera;
@@ -49,40 +33,8 @@ namespace Immersive.Framework.Editor.CameraAuthoring
 
         private void OnEnable()
         {
-            _presentationIntent =
-                serializedObject.FindProperty("presentationIntent");
-            _lookAtRequirement =
-                serializedObject.FindProperty("lookAtRequirement");
-            _followOffset =
-                serializedObject.FindProperty("followOffset");
-            _sharedFollowMemberWeight =
-                serializedObject.FindProperty("sharedFollowMemberWeight");
-            _sharedFollowMemberRadius =
-                serializedObject.FindProperty("sharedFollowMemberRadius");
-            _sharedFollowFramingSize =
-                serializedObject.FindProperty("sharedFollowFramingSize");
-            _sharedFollowDamping =
-                serializedObject.FindProperty("sharedFollowDamping");
-            _sharedFollowFovRange =
-                serializedObject.FindProperty("sharedFollowFovRange");
-            _sharedFollowDollyRange =
-                serializedObject.FindProperty("sharedFollowDollyRange");
-            _sharedFollowOrthoSizeRange =
-                serializedObject.FindProperty("sharedFollowOrthoSizeRange");
-            _mountedPositionDamping =
-                serializedObject.FindProperty("mountedPositionDamping");
-            _mountedRotationDamping =
-                serializedObject.FindProperty("mountedRotationDamping");
-            _thirdPersonShoulderOffset =
-                serializedObject.FindProperty("thirdPersonShoulderOffset");
-            _thirdPersonVerticalArmLength =
-                serializedObject.FindProperty("thirdPersonVerticalArmLength");
-            _thirdPersonCameraSide =
-                serializedObject.FindProperty("thirdPersonCameraSide");
-            _thirdPersonCameraDistance =
-                serializedObject.FindProperty("thirdPersonCameraDistance");
-            _thirdPersonDamping =
-                serializedObject.FindProperty("thirdPersonDamping");
+            _behaviorDefinition =
+                serializedObject.FindProperty("behaviorDefinition");
             _cinemachineCamera =
                 serializedObject.FindProperty("cinemachineCamera");
             _materializedPresentationIntent =
@@ -122,10 +74,7 @@ namespace Immersive.Framework.Editor.CameraAuthoring
             CameraRigPresentationIntent presentation =
                 ResolvePresentationIntent();
 
-            if (presentation == CameraRigPresentationIntent.Follow)
-                EditorGUILayout.PropertyField(_lookAtRequirement, new GUIContent("Look At", "View-derived orientation policy; no authored target is required for materialization."));
             EditorGUILayout.HelpBox("Targets are supplied by View / Subject composition at runtime. Apply / Rebuild creates the rig structure without Subjects.", MessageType.Info);
-            DrawModelSettings(presentation);
 
             bool authoringChanged =
                 EditorGUI.EndChangeCheck();
@@ -157,13 +106,13 @@ namespace Immersive.Framework.Editor.CameraAuthoring
         private void DrawPresentation()
         {
             FrameworkAuthoringInspectorGui.Section(
-                "Presentation");
+                "Behavior");
 
             EditorGUILayout.PropertyField(
-                _presentationIntent,
+                _behaviorDefinition,
                 new GUIContent(
-                    "Model",
-                    "Fixed preserves the local camera pose; Follow tracks one target with offset; Mounted locks to a Camera Mount and its rotation; Third Person tracks a rotating pivot using Cinemachine Third Person Follow."));
+                    "Definition",
+                    "Reusable typed presentation intent. The asset owns model tuning; this Composer owns the concrete local rig and its materialization."));
         }
 
 
@@ -171,109 +120,6 @@ namespace Immersive.Framework.Editor.CameraAuthoring
 
 
 
-
-        private void DrawModelSettings(
-            CameraRigPresentationIntent presentation)
-        {
-            switch (presentation)
-            {
-                case CameraRigPresentationIntent.Follow:
-                    FrameworkAuthoringInspectorGui.Section(
-                        "Model Settings");
-                    DrawFollowSettings();
-                    break;
-
-                case CameraRigPresentationIntent.Mounted:
-                    FrameworkAuthoringInspectorGui.Section(
-                        "Model Settings");
-                    DrawMountedSettings();
-                    break;
-
-                case CameraRigPresentationIntent.ThirdPerson:
-                    FrameworkAuthoringInspectorGui.Section(
-                        "Model Settings");
-                    DrawThirdPersonSettings();
-                    break;
-            }
-        }
-
-        private void DrawFollowSettings()
-        {
-            EditorGUILayout.PropertyField(
-                _followOffset,
-                new GUIContent(
-                    "Follow Offset",
-                    "Camera offset used by the Framework-owned Cinemachine Follow Position Control."));
-
-            EditorGUILayout.Space(4f);
-            EditorGUILayout.LabelField("Shared Follow", EditorStyles.miniBoldLabel);
-            EditorGUILayout.PropertyField(
-                _sharedFollowMemberWeight,
-                new GUIContent("Subject Weight", "Uniform weight for every current View Subject."));
-            EditorGUILayout.PropertyField(
-                _sharedFollowMemberRadius,
-                new GUIContent("Subject Radius", "Uniform framing radius for every current View Subject."));
-            EditorGUILayout.PropertyField(
-                _sharedFollowFramingSize,
-                new GUIContent("Frame Fill", "Target-group screen occupancy. Valid range: 0.01 to 2."));
-            EditorGUILayout.PropertyField(
-                _sharedFollowDamping,
-                new GUIContent("Framing Damping"));
-            EditorGUILayout.PropertyField(
-                _sharedFollowFovRange,
-                new GUIContent("Field Of View Range"));
-            EditorGUILayout.PropertyField(
-                _sharedFollowDollyRange,
-                new GUIContent("Dolly Range"));
-            EditorGUILayout.PropertyField(
-                _sharedFollowOrthoSizeRange,
-                new GUIContent("Orthographic Size Range"));
-        }
-
-        private void DrawMountedSettings()
-        {
-            EditorGUILayout.PropertyField(
-                _mountedPositionDamping,
-                new GUIContent(
-                    "Position Damping",
-                    "Damping used by Cinemachine Hard Lock to Target. Zero is a hard positional lock."));
-
-            EditorGUILayout.PropertyField(
-                _mountedRotationDamping,
-                new GUIContent(
-                    "Rotation Damping",
-                    "Damping used by Cinemachine Rotate With Follow Target. Zero matches mount rotation immediately."));
-        }
-
-        private void DrawThirdPersonSettings()
-        {
-            EditorGUILayout.PropertyField(
-                _thirdPersonShoulderOffset,
-                new GUIContent(
-                    "Shoulder Offset"));
-
-            EditorGUILayout.PropertyField(
-                _thirdPersonVerticalArmLength,
-                new GUIContent(
-                    "Vertical Arm Length"));
-
-            EditorGUILayout.PropertyField(
-                _thirdPersonCameraSide,
-                new GUIContent(
-                    "Camera Side",
-                    "0 = left shoulder, 1 = right shoulder, intermediate values blend between sides."));
-
-            EditorGUILayout.PropertyField(
-                _thirdPersonCameraDistance,
-                new GUIContent(
-                    "Camera Distance"));
-
-            EditorGUILayout.PropertyField(
-                _thirdPersonDamping,
-                new GUIContent(
-                    "Damping",
-                    "Per-axis tracking damping applied by Cinemachine Third Person Follow."));
-        }
 
         private void DrawMaterialization(
             CameraRigPresentationIntent presentation)
@@ -391,7 +237,7 @@ namespace Immersive.Framework.Editor.CameraAuthoring
                 CameraRigPresentationIntent.Undefined)
             {
                 EditorGUILayout.HelpBox(
-                    "Select a Presentation model before materializing this rig.",
+                    "Assign a Camera Rig Behavior Definition before materializing this rig.",
                     MessageType.Info);
                 return;
             }
@@ -565,7 +411,7 @@ namespace Immersive.Framework.Editor.CameraAuthoring
 
             if (issue == "presentation:Undefined:not-supported")
             {
-                return "Select a Presentation model before validating or materializing this rig.";
+                return "Assign a Camera Rig Behavior Definition before validating or materializing this rig.";
             }
 
             if (issue == "cinemachine-camera:missing")
@@ -912,8 +758,11 @@ namespace Immersive.Framework.Editor.CameraAuthoring
 
         private CameraRigPresentationIntent ResolvePresentationIntent()
         {
-            return (CameraRigPresentationIntent)
-                _presentationIntent.intValue;
+            var definition =
+                _behaviorDefinition.objectReferenceValue as CameraRigBehaviorDefinition;
+            return definition != null
+                ? definition.PresentationIntent
+                : CameraRigPresentationIntent.Undefined;
         }
 
         private CameraRigPresentationIntent ResolveMaterializedPresentationIntent()
@@ -925,35 +774,21 @@ namespace Immersive.Framework.Editor.CameraAuthoring
         private CameraTargetRequirement ResolveEffectiveLookAtRequirement(
             CameraRigPresentationIntent presentation)
         {
-            switch (presentation)
-            {
-                case CameraRigPresentationIntent.Follow:
-                    return (CameraTargetRequirement)
-                        _lookAtRequirement.intValue;
-
-                case CameraRigPresentationIntent.Mounted:
-                case CameraRigPresentationIntent.ThirdPerson:
-                case CameraRigPresentationIntent.Undefined:
-                default:
-                    return CameraTargetRequirement.NotUsed;
-            }
+            var definition =
+                _behaviorDefinition.objectReferenceValue as CameraRigBehaviorDefinition;
+            return definition != null
+                ? definition.LookAtRequirement
+                : CameraTargetRequirement.NotUsed;
         }
 
-        private static CameraTargetRequirement ResolveEffectiveFollowRequirement(
+        private CameraTargetRequirement ResolveEffectiveFollowRequirement(
             CameraRigPresentationIntent presentation)
         {
-            switch (presentation)
-            {
-                case CameraRigPresentationIntent.Follow:
-                case CameraRigPresentationIntent.Mounted:
-                case CameraRigPresentationIntent.ThirdPerson:
-                    return CameraTargetRequirement.Required;
-
-                case CameraRigPresentationIntent.Fixed:
-                case CameraRigPresentationIntent.Undefined:
-                default:
-                    return CameraTargetRequirement.NotUsed;
-            }
+            var definition =
+                _behaviorDefinition.objectReferenceValue as CameraRigBehaviorDefinition;
+            return definition != null
+                ? definition.FollowRequirement
+                : CameraTargetRequirement.NotUsed;
         }
 
         private static string ResolveFollowRoleLabel(

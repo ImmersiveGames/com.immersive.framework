@@ -19,12 +19,12 @@ namespace Immersive.Framework.Editor.CameraAuthoring
                 MessageType.Info);
 
             DrawPropertiesExcluding(serializedObject,
-                "m_Script", "outputId", "scopeId", "requestId", "rigComposer", "targetSource", "precedence", "tieBreakerId",
+                "m_Script", "outputDefinition", "scopeId", "requestId", "rigComposer", "targetSource", "precedence", "tieBreakerId",
                 "logDiagnostics", "overrideActive", "ownerActive", "lastStatus", "lastDiagnostic", "outputSession");
 
             EditorGUILayout.LabelField("Override", EditorStyles.boldLabel);
             _outputs.DrawTopology(serializedObject);
-            _outputs.DrawReference(serializedObject.FindProperty("outputId"));
+            _outputs.DrawReference(serializedObject.FindProperty("outputDefinition"));
             EditorGUILayout.PropertyField(serializedObject.FindProperty("scopeId"));
             EditorGUILayout.PropertyField(serializedObject.FindProperty("requestId"));
             EditorGUILayout.PropertyField(serializedObject.FindProperty("rigComposer"));

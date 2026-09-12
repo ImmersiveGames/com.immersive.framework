@@ -37,7 +37,7 @@ namespace Immersive.Framework.Editor.Camera.Bindings
                 "Log Diagnostics",
                 "Emits non-error Camera Output diagnostics through the framework logger. Errors are still logged when this option is disabled.");
 
-        private SerializedProperty _outputId;
+        private SerializedProperty _outputDefinition;
         private SerializedProperty _unityCamera;
         private SerializedProperty _cinemachineBrain;
         private SerializedProperty _defaultCameraRig;
@@ -53,7 +53,7 @@ namespace Immersive.Framework.Editor.Camera.Bindings
 
         private void OnEnable()
         {
-            _outputId = serializedObject.FindProperty("outputId");
+            _outputDefinition = serializedObject.FindProperty("outputDefinition");
             _unityCamera = serializedObject.FindProperty("unityCamera");
             _cinemachineBrain = serializedObject.FindProperty("cinemachineBrain");
             _defaultCameraRig = serializedObject.FindProperty("defaultCameraRig");
@@ -73,14 +73,9 @@ namespace Immersive.Framework.Editor.Camera.Bindings
                     "Configures one persistent physical Camera Output. Camera request arbitration and Camera Rig authoring remain separate authorities."),
                 EditorStyles.boldLabel);
 
-            CameraIdentityAuthoringGUI.DrawDefinition(_outputId, false);
+            CameraOutputReferenceGUI.DrawDefinitionReference(_outputDefinition, "Output Definition");
             DrawConfiguration();
             DrawValidation();
-
-            if (Application.isPlaying)
-            {
-                DrawRuntimeStatus();
-            }
 
             DrawAdvancedDebug();
 
@@ -218,6 +213,8 @@ namespace Immersive.Framework.Editor.Camera.Bindings
 
             EditorGUILayout.Space(5f);
             DrawTechnicalConfiguration();
+            using (new EditorGUI.DisabledScope(true))
+                EditorGUILayout.TextField("Output ID", ((CameraOutputAuthoring)target).OutputIdText);
 
             EditorGUILayout.Space(5f);
             DrawRuntimeDiagnostics();

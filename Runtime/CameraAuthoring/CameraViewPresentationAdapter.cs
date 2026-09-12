@@ -37,8 +37,7 @@ namespace Immersive.Framework.CameraAuthoring
                     "Stale View presentation input cannot overwrite newer applied membership.");
             }
 
-            if (_composer.PresentationIntent == CameraRigPresentationIntent.Follow &&
-                !_composer.TryValidateSharedFollowSettings(out string settingsIssue))
+            if (!_composer.TryValidateForApply(out string settingsIssue))
             {
                 return ViewApplyResult(
                     CameraViewPresentationApplyStatus.RejectedInvalidSettings,

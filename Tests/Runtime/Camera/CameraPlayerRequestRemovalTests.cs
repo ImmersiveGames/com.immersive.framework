@@ -10,6 +10,7 @@ namespace Immersive.Framework.Camera.Tests
 {
     public sealed class CameraPlayerRequestRemovalTests
     {
+        private readonly CameraDefinitionTestAssets _definitions = new CameraDefinitionTestAssets();
         private readonly List<GameObject> _created = new List<GameObject>();
 
         [TearDown]
@@ -18,6 +19,7 @@ namespace Immersive.Framework.Camera.Tests
             for (int index = _created.Count - 1; index >= 0; index--)
                 if (_created[index] != null) Object.DestroyImmediate(_created[index]);
             _created.Clear();
+            _definitions.Dispose();
         }
 
         [Test]
@@ -66,7 +68,7 @@ namespace Immersive.Framework.Camera.Tests
             Transform target = Subject("route-target").Observation;
             CameraRequestCreateResult request = CameraRequestCreateResult.Create(
                 new CameraRequestId("route-request"),
-                CameraOutputId.Main,
+                new CameraOutputId(CameraDefinitionTestAssets.MainId),
                 new CameraRequestOwner(CameraRequestOwnerKind.Route, new CameraRequestOwnerScopeId("route-owner")),
                 new CameraRequestLifetime(CameraRequestLifetimeKind.Route, new CameraRequestLifetimeScopeId("route-occurrence")),
                 CameraRigReference.FromComposer(routeComposer),
@@ -102,10 +104,8 @@ namespace Immersive.Framework.Camera.Tests
             _created.Add(root);
             CameraSharedComposition composition = root.AddComponent<CameraSharedComposition>();
             composition.Configure(
-                new CameraView(new CameraViewId("shared-view"), "Shared View"),
-                new ViewAssignmentContextId("shared-assignments"),
-                new CameraSubjectAssignmentOwnerId("shared-composition-owner"),
-                CameraOutputId.Main,
+                _definitions.View(),
+                output.OutputDefinition,
                 CameraSharedCompositionSubjectPolicyKind.AllAvailableSubjects);
             composition.AttachOutputSession(output);
             composition.AttachCameraSubjectAvailability(availability);
@@ -117,6 +117,7 @@ namespace Immersive.Framework.Camera.Tests
             var root = new GameObject(name);
             _created.Add(root);
             CameraRigComposer composer = root.AddComponent<CameraRigComposer>();
+            SetField(composer, "behaviorDefinition", _definitions.Behavior<FollowCameraRigBehaviorDefinition>());
             var cameraObject = new GameObject($"{name}-camera");
             cameraObject.transform.SetParent(root.transform, false);
             camera = cameraObject.AddComponent<CinemachineCamera>();
@@ -136,13 +137,16 @@ namespace Immersive.Framework.Camera.Tests
         {
             var root = new GameObject("main-output");
             _created.Add(root);
+            root.SetActive(false);
             UnityEngine.Camera unityCamera = root.AddComponent<UnityEngine.Camera>();
             CinemachineBrain brain = root.AddComponent<CinemachineBrain>();
             CameraOutputAuthoring output = root.AddComponent<CameraOutputAuthoring>();
-            SetField(output, "outputId", CameraOutputId.Main.Value);
+            SetField(output, "outputDefinition", _definitions.Main);
             SetField(output, "unityCamera", unityCamera);
             SetField(output, "cinemachineBrain", brain);
             SetField(output, "defaultCameraRig", defaultComposer);
+            SetField(output, "initializeOnAwake", false);
+            root.SetActive(true);
             Assert.That(output.TryInitialize(out string diagnostic), Is.True, diagnostic);
             return output;
         }
@@ -173,7 +177,7 @@ namespace Immersive.Framework.Camera.Tests
             Assert.That(output.DefaultCameraRig, Is.SameAs(composer));
             Assert.That(output.Applicator.HasAppliedDefault, Is.True);
             Assert.That(output.Applicator.AppliedCamera, Is.SameAs(camera));
-            Assert.That(composition.ViewId, Is.EqualTo(new CameraViewId("shared-view")));
+            Assert.That(composition.ViewId, Is.EqualTo(new CameraViewId(CameraDefinitionTestAssets.ViewId)));
             Assert.That(composition.Snapshot.SubjectCount, Is.EqualTo(subjectCount));
             Assert.That(composer.GetComponentsInChildren<CinemachineCamera>(true), Has.Length.EqualTo(1));
             Assert.That(composer.GetComponentsInChildren<CinemachineCamera>(true)[0], Is.SameAs(camera));

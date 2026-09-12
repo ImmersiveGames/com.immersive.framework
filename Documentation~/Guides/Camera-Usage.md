@@ -133,7 +133,18 @@ Create a local GameObject and add:
 Immersive Framework / Camera / Camera Rig Composer
 ```
 
-Choose a Presentation Model, configure its settings, then use the Inspector actions:
+Create a typed reusable Camera Rig Behavior asset from:
+
+```text
+Assets / Create / Immersive Framework / Camera / Rig Behaviors
+  Fixed
+  Follow
+  Mounted
+  Third Person
+```
+
+Configure the model-specific settings on that asset, assign it to the Composer's
+`Behavior / Definition` field, then use the Inspector actions:
 
 ```text
 Validate Configuration
@@ -154,7 +165,8 @@ CameraOutputAuthoring
 The current relationship is:
 
 ```text
-one CameraRigComposer
+one CameraRigBehaviorDefinition
+  -> one or more CameraRigComposer instances
   -> one local CinemachineCamera
 ```
 
@@ -169,8 +181,9 @@ Mounted
 Third Person
 ```
 
-Changing the Presentation Model changes how the rig behaves. It does not create a new
-physical Output and does not change request precedence.
+Changing the assigned Behavior definition changes how the rig behaves. It does not create
+a new physical Output and does not change request precedence. Runtime View / Subject
+assignment remains independent from the reusable Behavior asset.
 
 ---
 
@@ -859,9 +872,12 @@ consumer.
 
 ## 20. Reusable authoring
 
-For reusable `CameraRigComposer` values, create a Unity Preset from a configured Composer.
+Use typed Camera Rig Behavior definition assets for reusable Presentation intent and tuning.
+The Behavior asset contains no scene objects, Subjects, Outputs or runtime Assignment state.
 
-Do not create a separate Framework Camera Profile merely for symmetry.
+The `CameraRigComposer` remains the concrete rig authority for validation, Apply / Rebuild,
+Cinemachine materialization and provenance. Missing Behavior is invalid; there is no fallback
+to former Composer-local Presentation settings.
 
 ---
 

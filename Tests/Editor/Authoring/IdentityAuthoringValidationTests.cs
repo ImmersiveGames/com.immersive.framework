@@ -1,7 +1,7 @@
 using System.IO;
 using Immersive.Framework.Authoring;
-using Immersive.Framework.Editor.Editor.Authoring;
-using Immersive.Framework.Editor.Editor.Validation;
+using Immersive.Framework.Editor.Authoring;
+using Immersive.Framework.Editor.Validation;
 using NUnit.Framework;
 using UnityEditor;
 using UnityEngine;

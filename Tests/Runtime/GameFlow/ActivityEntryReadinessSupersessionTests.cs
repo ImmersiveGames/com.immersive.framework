@@ -6,10 +6,11 @@ using Immersive.Framework.Authoring;
 using Immersive.Framework.Transition;
 using NUnit.Framework;
 using UnityEngine;
+using Object = UnityEngine.Object;
 
 namespace Immersive.Framework.GameFlow.Tests
 {
-    public sealed class ActivityEntryReadinessSupersessionTests
+    internal sealed class ActivityEntryReadinessSupersessionTests
     {
         [Test]
         public void SupersededWait_MapsToSupersededExecution()
@@ -199,7 +200,11 @@ namespace Immersive.Framework.GameFlow.Tests
                 ResolveActivityContentExecutionParticipants(
                     ActivityContentExecutionParticipantSourceRequest request)
             {
-                return null;
+                return ActivityContentExecutionParticipantSourceResult.SucceededNoParticipants(
+                    request,
+                    request.Source,
+                    request.Reason,
+                    "Test source provides no content execution participants.");
             }
         }
 

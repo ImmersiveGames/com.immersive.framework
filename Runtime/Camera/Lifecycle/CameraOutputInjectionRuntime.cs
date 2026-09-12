@@ -4,18 +4,20 @@ using System.Runtime.CompilerServices;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using Immersive.Framework.ApiStatus;
+using Immersive.Framework.CameraAuthoring;
 
 namespace Immersive.Framework.Camera
 {
     /// <summary>
     /// Session topology dependency injector for camera consumers in loaded scenes.
-    /// Every consumer declares an Output ID and receives only that exact output.
+    /// Stable IDs address the topology; authored consumers additionally require exact definitions.
     /// </summary>
     [FrameworkApiStatus(FrameworkApiStatus.Internal, "Runtime implementation detail; not game-facing API.")]
     internal sealed class CameraOutputInjectionRuntime : IDisposable
     {
         private readonly CameraOutputSessionTopology _topology;
         private readonly CameraViewOutputTopology _viewOutputs;
+        private readonly CameraViewDefinition[] _viewDefinitions;
         private readonly Dictionary<ICameraOutputSessionConsumer, AttachedConsumer>
             _attachedConsumers =
                 new Dictionary<ICameraOutputSessionConsumer, AttachedConsumer>(
@@ -23,10 +25,15 @@ namespace Immersive.Framework.Camera
 
         internal CameraOutputInjectionRuntime(
             CameraOutputSessionTopology topology,
-            CameraViewOutputTopology viewOutputs)
+            CameraViewOutputTopology viewOutputs,
+            IReadOnlyList<CameraViewDefinition> viewDefinitions)
         {
             _topology = topology ?? throw new ArgumentNullException(nameof(topology));
             _viewOutputs = viewOutputs ?? throw new ArgumentNullException(nameof(viewOutputs));
+            if (viewDefinitions == null) throw new ArgumentNullException(nameof(viewDefinitions));
+            _viewDefinitions = new CameraViewDefinition[viewDefinitions.Count];
+            for (int i = 0; i < viewDefinitions.Count; i++) _viewDefinitions[i] = viewDefinitions[i];
+            CameraDefinitionValidation.ValidateViews(_viewDefinitions);
             SceneManager.sceneLoaded += OnSceneLoaded;
 
             for (int index = 0; index < SceneManager.sceneCount; index++)
@@ -104,6 +111,13 @@ namespace Immersive.Framework.Camera
                     "Camera Output injection requires a consumer.");
             }
             CameraOutputId requestedOutputId = consumer.RequestedOutputId;
+            if (!TryValidateDefinitions(consumer, out string definitionDiagnostic))
+            {
+                ForgetAttachment(consumer);
+                consumer.DetachOutputSession(definitionDiagnostic);
+                return CameraOutputInjectionResult.Rejected(
+                    CameraOutputInjectionStatus.RejectedDefinition, definitionDiagnostic);
+            }
             if (TryGetPreviousResult(
                     consumer,
                     requestedOutputId,
@@ -164,6 +178,49 @@ namespace Immersive.Framework.Camera
             return attached;
         }
 
+        private bool TryValidateDefinitions(ICameraOutputSessionConsumer consumer, out string diagnostic)
+        {
+            try
+            {
+                if (consumer is ICameraOutputDefinitionConsumer authored)
+                {
+                    CameraDefinitionValidation.ValidateOutputs(new[] { authored.OutputDefinition });
+                    if (_topology.TryGetOutput(consumer.RequestedOutputId, out var physical, out _))
+                    {
+                        if (!physical.TryValidateDefinition(out string physicalIssue))
+                            throw new InvalidOperationException(physicalIssue);
+                        if (!ReferenceEquals(authored.OutputDefinition, physical.OutputDefinition))
+                            throw new InvalidOperationException(
+                                "Requested Output definition differs from the exact definition of the physical Output.");
+                    }
+                }
+                if (consumer is CameraSharedComposition composition)
+                {
+                    var views = new List<CameraViewDefinition> { composition.ViewDefinition };
+                    views.AddRange(_viewDefinitions);
+                    CameraDefinitionValidation.ValidateViews(views);
+                    bool exactView = false;
+                    foreach (var definition in _viewDefinitions)
+                        if (ReferenceEquals(definition, composition.ViewDefinition)) exactView = true;
+                    if (!exactView)
+                        throw new InvalidOperationException(
+                            "Shared Camera composition requires its exact View definition in the admitted policy.");
+                    foreach (var entry in _attachedConsumers)
+                        if (!ReferenceEquals(entry.Key, consumer) && entry.Value.Result.Succeeded &&
+                            entry.Key is CameraSharedComposition other && other != null)
+                            views.Add(other.ViewDefinition);
+                    CameraDefinitionValidation.ValidateViews(views);
+                }
+                diagnostic = string.Empty;
+                return true;
+            }
+            catch (InvalidOperationException exception)
+            {
+                diagnostic = exception.Message;
+                return false;
+            }
+        }
+
         private bool TryGetPreviousResult(
             ICameraOutputSessionConsumer consumer,
             CameraOutputId requestedOutputId,
@@ -172,7 +229,11 @@ namespace Immersive.Framework.Camera
             if (_attachedConsumers.TryGetValue(
                     consumer,
                     out AttachedConsumer attached) &&
-                attached.OutputId == requestedOutputId)
+                attached.OutputId == requestedOutputId &&
+                ReferenceEquals(attached.OutputDefinition,
+                    (consumer as ICameraOutputDefinitionConsumer)?.OutputDefinition) &&
+                ReferenceEquals(attached.ViewDefinition,
+                    (consumer as CameraSharedComposition)?.ViewDefinition))
             {
                 result = attached.Result;
                 return true;
@@ -190,6 +251,8 @@ namespace Immersive.Framework.Camera
             _attachedConsumers[consumer] =
                 new AttachedConsumer(
                     requestedOutputId,
+                    (consumer as ICameraOutputDefinitionConsumer)?.OutputDefinition,
+                    (consumer as CameraSharedComposition)?.ViewDefinition,
                     result);
         }
 
@@ -203,13 +266,19 @@ namespace Immersive.Framework.Camera
         {
             internal AttachedConsumer(
                 CameraOutputId outputId,
+                CameraOutputDefinition outputDefinition,
+                CameraViewDefinition viewDefinition,
                 CameraOutputInjectionResult result)
             {
                 OutputId = outputId;
+                OutputDefinition = outputDefinition;
+                ViewDefinition = viewDefinition;
                 Result = result;
             }
 
             internal CameraOutputId OutputId { get; }
+            internal CameraOutputDefinition OutputDefinition { get; }
+            internal CameraViewDefinition ViewDefinition { get; }
 
             internal CameraOutputInjectionResult Result { get; }
         }
@@ -239,7 +308,8 @@ namespace Immersive.Framework.Camera
         RejectedMissingConsumer = 3,
         RejectedInvalidOutputId = 4,
         RejectedUnknownOutput = 5,
-        RejectedViewOutputBinding = 6
+        RejectedViewOutputBinding = 6,
+        RejectedDefinition = 7
     }
 
     internal readonly struct CameraOutputInjectionResult

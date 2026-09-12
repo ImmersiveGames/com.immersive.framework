@@ -10,6 +10,7 @@ namespace Immersive.Framework.Camera.Tests
 {
     public sealed class CameraOutputSessionTopologyTests
     {
+        private readonly CameraDefinitionTestAssets _definitions = new CameraDefinitionTestAssets();
         private readonly List<GameObject> _created = new List<GameObject>();
 
         [TearDown]
@@ -18,35 +19,36 @@ namespace Immersive.Framework.Camera.Tests
             for (int index = _created.Count - 1; index >= 0; index--)
                 if (_created[index] != null) Object.DestroyImmediate(_created[index]);
             _created.Clear();
+            _definitions.Dispose();
         }
 
         [Test]
         public void OneOutput_CreatesExactSessionScopedTopology()
         {
-            CameraOutputAuthoring main = Output("camera.output.main");
+            CameraOutputAuthoring main = Output("10000000000000000000000000000001");
 
             Assert.That(CameraOutputSessionTopology.TryCreate(
                 new[] { main }, out CameraOutputSessionTopology topology, out string diagnostic),
                 Is.True, diagnostic);
             Assert.That(topology.OutputCount, Is.EqualTo(1));
-            Assert.That(topology.TryGetOutput(new CameraOutputId("camera.output.main"), out CameraOutputAuthoring resolved, out _), Is.True);
+            Assert.That(topology.TryGetOutput(new CameraOutputId("10000000000000000000000000000001"), out CameraOutputAuthoring resolved, out _), Is.True);
             Assert.That(resolved, Is.SameAs(main));
-            Assert.That(topology.CaptureSnapshot().Outputs[0].OutputId.Value, Is.EqualTo("camera.output.main"));
+            Assert.That(topology.CaptureSnapshot().Outputs[0].OutputId.Value, Is.EqualTo("10000000000000000000000000000001"));
         }
 
         [Test]
         public void TwoOutputs_AreOrderedAndKeepIndependentDefaults()
         {
-            CameraOutputAuthoring outputB = Output("camera.output.b");
-            CameraOutputAuthoring outputA = Output("camera.output.a");
+            CameraOutputAuthoring outputB = Output("10000000000000000000000000000003");
+            CameraOutputAuthoring outputA = Output("10000000000000000000000000000002");
 
             Assert.That(CameraOutputSessionTopology.TryCreate(
                 new[] { outputB, outputA }, out CameraOutputSessionTopology topology, out string diagnostic),
                 Is.True, diagnostic);
             CameraOutputTopologySnapshot snapshot = topology.CaptureSnapshot();
             Assert.That(snapshot.OutputCount, Is.EqualTo(2));
-            Assert.That(snapshot.Outputs[0].OutputId.Value, Is.EqualTo("camera.output.a"));
-            Assert.That(snapshot.Outputs[1].OutputId.Value, Is.EqualTo("camera.output.b"));
+            Assert.That(snapshot.Outputs[0].OutputId.Value, Is.EqualTo("10000000000000000000000000000002"));
+            Assert.That(snapshot.Outputs[1].OutputId.Value, Is.EqualTo("10000000000000000000000000000003"));
             Assert.That(outputA.Applicator.HasAppliedDefault, Is.True);
             Assert.That(outputB.Applicator.HasAppliedDefault, Is.True);
             Assert.That(outputA.Applicator.AppliedCamera, Is.Not.SameAs(outputB.Applicator.AppliedCamera));
@@ -55,24 +57,24 @@ namespace Immersive.Framework.Camera.Tests
         [Test]
         public void DuplicateOrMissingOutputId_IsRejectedWithoutArbitrarySelection()
         {
-            CameraOutputAuthoring first = Output("camera.output.shared");
-            CameraOutputAuthoring duplicate = Output("camera.output.shared");
-            CameraOutputAuthoring missing = Output("camera.output.valid");
-            SetField(missing, "outputId", " ");
+            CameraOutputAuthoring first = Output("10000000000000000000000000000004");
+            CameraOutputAuthoring duplicate = Output("10000000000000000000000000000004");
+            CameraOutputAuthoring missing = Output("10000000000000000000000000000005");
+            SetField<CameraOutputDefinition>(missing, "outputDefinition", null);
 
             Assert.That(CameraOutputSessionTopology.TryCreate(
                 new[] { first, duplicate }, out _, out string duplicateDiagnostic), Is.False);
-            Assert.That(duplicateDiagnostic, Does.Contain("duplicate Output ID 'camera.output.shared'"));
+            Assert.That(duplicateDiagnostic, Does.Contain("stable ID collision"));
             Assert.That(CameraOutputSessionTopology.TryCreate(
                 new[] { missing }, out _, out string missingDiagnostic), Is.False);
-            Assert.That(missingDiagnostic, Does.Contain("invalid Output ID"));
+            Assert.That(missingDiagnostic, Does.Contain("Missing or invalid Camera Output definition"));
         }
 
         [Test]
         public void RouteOnAAndCutsceneOnB_CoexistAndReleaseIndependently()
         {
-            CameraOutputAuthoring outputA = Output("camera.output.a");
-            CameraOutputAuthoring outputB = Output("camera.output.b");
+            CameraOutputAuthoring outputA = Output("10000000000000000000000000000002");
+            CameraOutputAuthoring outputB = Output("10000000000000000000000000000003");
             Assert.That(CameraOutputSessionTopology.TryCreate(
                 new[] { outputA, outputB }, out CameraOutputSessionTopology topology, out string diagnostic), Is.True, diagnostic);
 
@@ -94,21 +96,21 @@ namespace Immersive.Framework.Camera.Tests
         [Test]
         public void Injection_BindsOnlyConsumerRequestedOutputId()
         {
-            CameraOutputAuthoring outputA = Output("camera.output.a");
-            CameraOutputAuthoring outputB = Output("camera.output.b");
+            CameraOutputAuthoring outputA = Output("10000000000000000000000000000002");
+            CameraOutputAuthoring outputB = Output("10000000000000000000000000000003");
             Assert.That(CameraOutputSessionTopology.TryCreate(
                 new[] { outputA, outputB }, out CameraOutputSessionTopology topology, out string diagnostic), Is.True, diagnostic);
-            CameraOutputTestConsumer consumer = Consumer("camera.output.b");
+            CameraOutputTestConsumer consumer = Consumer("10000000000000000000000000000003");
 
             Assert.That(CameraViewOutputTopology.TryCreate(
                 new[]
                 {
                     new CameraViewOutputBinding(
                         new CameraViewId("view.b"),
-                        new CameraOutputId("camera.output.b"),
+                        new CameraOutputId("10000000000000000000000000000003"),
                         new CameraViewport(0f, 0f, 1f, 1f))
                 }, out CameraViewOutputTopology viewOutputs, out diagnostic), Is.True, diagnostic);
-            using var injection = new CameraOutputInjectionRuntime(topology, viewOutputs);
+            using var injection = new CameraOutputInjectionRuntime(topology, viewOutputs, System.Array.Empty<CameraViewDefinition>());
             Assert.That(injection.AttachExact(consumer, out diagnostic), Is.True, diagnostic);
             Assert.That(consumer.Attached, Is.SameAs(outputB));
             Assert.That(consumer.Attached, Is.Not.SameAs(outputA));
@@ -133,22 +135,22 @@ namespace Immersive.Framework.Camera.Tests
         [Test]
         public void PersistentRoots_ReceiveExactDependenciesOnlyOnce()
         {
-            CameraOutputAuthoring output = Output(CameraOutputId.Main.Value);
+            CameraOutputAuthoring output = Output(CameraDefinitionTestAssets.MainId);
             Assert.That(CameraOutputSessionTopology.TryCreate(
                 new[] { output }, out CameraOutputSessionTopology topology, out string diagnostic), Is.True, diagnostic);
             CameraViewOutputTopology viewOutputs = ViewOutputs(
                 "unused-view",
-                CameraOutputId.Main.Value);
+                CameraDefinitionTestAssets.MainId);
             var availability = new CameraSubjectAvailabilityContext(new SubjectAvailabilityContextId("session-subjects"));
             using var outputInjection =
-                new CameraOutputInjectionRuntime(topology, viewOutputs);
+                new CameraOutputInjectionRuntime(topology, viewOutputs, System.Array.Empty<CameraViewDefinition>());
             using var availabilityInjection =
                 new CameraSubjectAvailabilityInjectionRuntime(availability);
             var root = new GameObject("retained-root");
             _created.Add(root);
             CameraPersistentInjectionTestConsumer consumer =
                 root.AddComponent<CameraPersistentInjectionTestConsumer>();
-            consumer.SetRequestedId(CameraOutputId.Main.Value);
+            consumer.SetRequestedId(CameraDefinitionTestAssets.MainId);
 
             outputInjection.AttachRoots(new[] { root });
             availabilityInjection.AttachRoots(new[] { root });
@@ -166,15 +168,16 @@ namespace Immersive.Framework.Camera.Tests
         [Test]
         public void PersistentSharedComposition_ReceivesExactDependenciesAndIsReadyWhileEmpty()
         {
-            CameraOutputAuthoring output = Output(CameraOutputId.Main.Value);
+            CameraOutputAuthoring output = Output(CameraDefinitionTestAssets.MainId);
             Assert.That(CameraOutputSessionTopology.TryCreate(
                 new[] { output }, out CameraOutputSessionTopology topology, out string diagnostic), Is.True, diagnostic);
             CameraViewOutputTopology viewOutputs = ViewOutputs(
-                "shared-view",
-                CameraOutputId.Main.Value);
+                CameraDefinitionTestAssets.ViewId,
+                CameraDefinitionTestAssets.MainId);
             var availability = new CameraSubjectAvailabilityContext(new SubjectAvailabilityContextId("session-subjects"));
+            var viewDefinition = _definitions.View();
             using var outputInjection =
-                new CameraOutputInjectionRuntime(topology, viewOutputs);
+                new CameraOutputInjectionRuntime(topology, viewOutputs, new[] { viewDefinition });
             using var availabilityInjection =
                 new CameraSubjectAvailabilityInjectionRuntime(availability);
             var root = new GameObject("retained-shared-composition");
@@ -182,10 +185,8 @@ namespace Immersive.Framework.Camera.Tests
             CameraSharedComposition composition =
                 root.AddComponent<CameraSharedComposition>();
             composition.Configure(
-                new CameraView(new CameraViewId("shared-view"), "Shared View"),
-                new ViewAssignmentContextId("shared-assignments"),
-                new CameraSubjectAssignmentOwnerId("shared-composition-owner"),
-                CameraOutputId.Main,
+                viewDefinition,
+                output.OutputDefinition,
                 CameraSharedCompositionSubjectPolicyKind.AllAvailableSubjects);
 
             outputInjection.AttachRoots(new[] { root });
@@ -211,20 +212,20 @@ namespace Immersive.Framework.Camera.Tests
         [Test]
         public void PersistentSessionOverride_ReceivesOutputAndRemainsOwnerActive()
         {
-            CameraOutputAuthoring output = Output(CameraOutputId.Main.Value);
+            CameraOutputAuthoring output = Output(CameraDefinitionTestAssets.MainId);
             Assert.That(CameraOutputSessionTopology.TryCreate(
                 new[] { output }, out CameraOutputSessionTopology topology, out string diagnostic), Is.True, diagnostic);
             using var injection = new CameraOutputInjectionRuntime(
                 topology,
-                ViewOutputs("unused-view", CameraOutputId.Main.Value));
+                ViewOutputs("unused-view", CameraDefinitionTestAssets.MainId), System.Array.Empty<CameraViewDefinition>());
             var root = new GameObject("retained-session-override");
             _created.Add(root);
             SessionCameraOverride sessionOverride =
                 root.AddComponent<SessionCameraOverride>();
             SetScopedOverrideField(
                 sessionOverride,
-                "outputId",
-                CameraOutputId.Main.Value);
+                "outputDefinition",
+                output.OutputDefinition);
 
             injection.AttachRoots(new[] { root });
 
@@ -236,12 +237,12 @@ namespace Immersive.Framework.Camera.Tests
         [Test]
         public void SubsequentLoadedScenePath_StillInjectsConsumer()
         {
-            CameraOutputAuthoring output = Output("camera.output.route");
+            CameraOutputAuthoring output = Output("10000000000000000000000000000006");
             Assert.That(CameraOutputSessionTopology.TryCreate(
                 new[] { output }, out CameraOutputSessionTopology topology, out string diagnostic), Is.True, diagnostic);
             using var injection = new CameraOutputInjectionRuntime(
                 topology,
-                ViewOutputs("unused-view", "camera.output.route"));
+                ViewOutputs("unused-view", "10000000000000000000000000000006"), System.Array.Empty<CameraViewDefinition>());
             var availability = new CameraSubjectAvailabilityContext(
                 new SubjectAvailabilityContextId("session-subjects"));
             using var availabilityInjection =
@@ -250,7 +251,7 @@ namespace Immersive.Framework.Camera.Tests
             _created.Add(root);
             CameraPersistentInjectionTestConsumer consumer =
                 root.AddComponent<CameraPersistentInjectionTestConsumer>();
-            consumer.SetRequestedId("camera.output.route");
+            consumer.SetRequestedId("10000000000000000000000000000006");
 
             Scene scene = root.scene;
             injection.AttachScene(scene);
@@ -265,8 +266,8 @@ namespace Immersive.Framework.Camera.Tests
         [Test]
         public void PlayerSubjectJoinLeave_DoesNotChangeOutputCount()
         {
-            CameraOutputAuthoring outputA = Output("camera.output.a");
-            CameraOutputAuthoring outputB = Output("camera.output.b");
+            CameraOutputAuthoring outputA = Output("10000000000000000000000000000002");
+            CameraOutputAuthoring outputB = Output("10000000000000000000000000000003");
             Assert.That(CameraOutputSessionTopology.TryCreate(
                 new[] { outputA, outputB }, out CameraOutputSessionTopology topology, out _), Is.True);
             var availability = new CameraSubjectAvailabilityContext(new SubjectAvailabilityContextId("session-subjects"));
@@ -284,27 +285,27 @@ namespace Immersive.Framework.Camera.Tests
         [Test]
         public void SessionTeardown_TearsDownAllOutputsInStableSnapshotOrder()
         {
-            CameraOutputAuthoring outputB = Output("camera.output.b");
-            CameraOutputAuthoring outputA = Output("camera.output.a");
+            CameraOutputAuthoring outputB = Output("10000000000000000000000000000003");
+            CameraOutputAuthoring outputA = Output("10000000000000000000000000000002");
             Assert.That(CameraOutputSessionTopology.TryCreate(
                 new[] { outputB, outputA }, out CameraOutputSessionTopology topology, out _), Is.True);
 
             topology.Dispose();
             CameraOutputTopologySnapshot snapshot = topology.CaptureSnapshot();
             Assert.That(snapshot.IsTornDown, Is.True);
-            Assert.That(snapshot.Outputs[0].OutputId.Value, Is.EqualTo("camera.output.a"));
-            Assert.That(snapshot.Outputs[1].OutputId.Value, Is.EqualTo("camera.output.b"));
+            Assert.That(snapshot.Outputs[0].OutputId.Value, Is.EqualTo("10000000000000000000000000000002"));
+            Assert.That(snapshot.Outputs[1].OutputId.Value, Is.EqualTo("10000000000000000000000000000003"));
             Assert.That(outputA.IsInitialized, Is.False);
             Assert.That(outputB.IsInitialized, Is.False);
-            Assert.That(topology.TryGetOutput(new CameraOutputId("camera.output.a"), out _, out _), Is.False);
+            Assert.That(topology.TryGetOutput(new CameraOutputId("10000000000000000000000000000002"), out _, out _), Is.False);
             Assert.DoesNotThrow(topology.Dispose);
         }
 
         [Test]
         public void IndividualOutputTeardown_DoesNotMutateOtherOutput()
         {
-            CameraOutputAuthoring outputA = Output("camera.output.a");
-            CameraOutputAuthoring outputB = Output("camera.output.b");
+            CameraOutputAuthoring outputA = Output("10000000000000000000000000000002");
+            CameraOutputAuthoring outputB = Output("10000000000000000000000000000003");
             Assert.That(CameraOutputSessionTopology.TryCreate(
                 new[] { outputA, outputB }, out _, out string diagnostic), Is.True, diagnostic);
             CameraRequest requestB = Request(outputB, "route-b", CameraRequestOwnerKind.Route, 100);
@@ -323,13 +324,16 @@ namespace Immersive.Framework.Camera.Tests
             CameraRigComposer composer = Composer($"{outputId}-default");
             var root = new GameObject(outputId);
             _created.Add(root);
+            root.SetActive(false);
             UnityEngine.Camera unityCamera = root.AddComponent<UnityEngine.Camera>();
             CinemachineBrain brain = root.AddComponent<CinemachineBrain>();
             CameraOutputAuthoring output = root.AddComponent<CameraOutputAuthoring>();
-            SetField(output, "outputId", outputId);
+            SetField(output, "outputDefinition", _definitions.Output(outputId));
             SetField(output, "unityCamera", unityCamera);
             SetField(output, "cinemachineBrain", brain);
             SetField(output, "defaultCameraRig", composer);
+            SetField(output, "initializeOnAwake", false);
+            root.SetActive(true);
             return output;
         }
 
@@ -338,6 +342,7 @@ namespace Immersive.Framework.Camera.Tests
             var root = new GameObject(name);
             _created.Add(root);
             CameraRigComposer composer = root.AddComponent<CameraRigComposer>();
+            SetField(composer, "behaviorDefinition", _definitions.Behavior<FollowCameraRigBehaviorDefinition>());
             var cameraObject = new GameObject($"{name}-camera");
             cameraObject.transform.SetParent(root.transform, false);
             CinemachineCamera camera = cameraObject.AddComponent<CinemachineCamera>();

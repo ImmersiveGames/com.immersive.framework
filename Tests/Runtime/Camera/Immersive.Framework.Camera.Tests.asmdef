@@ -2,7 +2,8 @@
   "name": "Immersive.Framework.Camera.Tests",
   "rootNamespace": "Immersive.Framework.Camera.Tests",
   "references": [
-    "Immersive.Framework.Runtime"
+    "Immersive.Framework.Runtime",
+    "Unity.Cinemachine"
   ],
   "includePlatforms": [],
   "excludePlatforms": [],

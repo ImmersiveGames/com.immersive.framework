@@ -6,6 +6,7 @@ using Immersive.Framework.Editor.Validation;
 using NUnit.Framework;
 using UnityEditor;
 using UnityEngine;
+using Object = UnityEngine.Object;
 
 namespace Immersive.Framework.Authoring.Editor.Tests
 {

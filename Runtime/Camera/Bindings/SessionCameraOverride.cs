@@ -7,9 +7,8 @@ namespace Immersive.Framework.Camera
     /// Scene-authored Session-scoped Camera override.
     ///
     /// Session ownership is expressed by the explicit Scope ID inherited from
-    /// ScopedCameraOverride. The binding intentionally has no
-    /// consumer-project asset reference, so it can live in reusable package
-    /// Scene Templates.
+    /// ScopedCameraOverride. Output identity comes from the exact authored
+    /// CameraOutputDefinition; physical output binding remains scene-owned.
     /// </summary>
     [DisallowMultipleComponent]
     [AddComponentMenu("Immersive Framework/Camera/Session Camera Override")]

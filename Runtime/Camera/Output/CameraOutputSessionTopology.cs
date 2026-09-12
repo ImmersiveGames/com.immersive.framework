@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using Immersive.Framework.ApiStatus;
+using Immersive.Framework.CameraAuthoring;
 using UnityEngine;
 
 namespace Immersive.Framework.Camera
@@ -43,6 +44,18 @@ namespace Immersive.Framework.Camera
             }
 
             var outputs = new CameraOutputAuthoring[authoredOutputs.Count];
+            var definitions = new List<CameraOutputDefinition>();
+            foreach (var authored in authoredOutputs)
+                definitions.Add(authored != null ? authored.OutputDefinition : null);
+            try
+            {
+                CameraDefinitionValidation.ValidateOutputs(definitions);
+            }
+            catch (InvalidOperationException exception)
+            {
+                diagnostic = exception.Message;
+                return false;
+            }
             var ids = new HashSet<CameraOutputId>();
             var physicalBindings = new HashSet<UnityEngine.Object>();
             for (int index = 0; index < authoredOutputs.Count; index++)

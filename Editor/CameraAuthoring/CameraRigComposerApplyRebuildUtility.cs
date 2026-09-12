@@ -16,7 +16,8 @@ namespace Immersive.Framework.Editor.CameraAuthoring
             if (valid && composer.PresentationIntent == CameraRigPresentationIntent.Follow)
                 valid = CameraSharedFollowProvenance.Validate(composer, false, out issue);
             var result = valid
-                ? CameraRigComposerApplyRebuildResult.ValidationSucceeded("Presentation settings and shared Follow provenance are valid; Apply / Rebuild preflights pipeline ownership.")
+                ? CameraRigComposerApplyRebuildResult.ValidationSucceeded(
+                    $"Behavior Definition '{composer.BehaviorDefinition.name}' projects Presentation model '{composer.PresentationIntent}'. Settings and shared Follow provenance are valid; Apply / Rebuild preflights pipeline ownership.")
                 : CameraRigComposerApplyRebuildResult.Failed("ValidationFailed", issue);
             Record(composer, result, logDiagnostics);
             return result;
@@ -51,21 +52,6 @@ namespace Immersive.Framework.Editor.CameraAuthoring
                     CreateCinemachineCameraIfMissing =
                         composer.CreateCinemachineCameraIfMissing,
                     CreateCinemachineFollowIfMissing = true,
-                    FollowOffset = composer.FollowOffset,
-                    MountedPositionDamping =
-                        composer.MountedPositionDamping,
-                    MountedRotationDamping =
-                        composer.MountedRotationDamping,
-                    ThirdPersonShoulderOffset =
-                        composer.ThirdPersonShoulderOffset,
-                    ThirdPersonVerticalArmLength =
-                        composer.ThirdPersonVerticalArmLength,
-                    ThirdPersonCameraSide =
-                        composer.ThirdPersonCameraSide,
-                    ThirdPersonCameraDistance =
-                        composer.ThirdPersonCameraDistance,
-                    ThirdPersonDamping =
-                        composer.ThirdPersonDamping,
                     FrameworkOwnedCinemachineCamera =
                         composer.FrameworkOwnedCinemachineCamera,
                     FrameworkOwnedPositionControl =
@@ -78,6 +64,26 @@ namespace Immersive.Framework.Editor.CameraAuthoring
                     CinemachineCameraObjectName =
                         composer.CinemachineCameraObjectName
                 };
+
+            switch (composer.BehaviorDefinition)
+            {
+                case FollowCameraRigBehaviorDefinition follow:
+                    request.FollowOffset = follow.FollowOffset;
+                    break;
+
+                case MountedCameraRigBehaviorDefinition mounted:
+                    request.MountedPositionDamping = mounted.PositionDamping;
+                    request.MountedRotationDamping = mounted.RotationDamping;
+                    break;
+
+                case ThirdPersonCameraRigBehaviorDefinition thirdPerson:
+                    request.ThirdPersonShoulderOffset = thirdPerson.ShoulderOffset;
+                    request.ThirdPersonVerticalArmLength = thirdPerson.VerticalArmLength;
+                    request.ThirdPersonCameraSide = thirdPerson.CameraSide;
+                    request.ThirdPersonCameraDistance = thirdPerson.CameraDistance;
+                    request.ThirdPersonDamping = thirdPerson.Damping;
+                    break;
+            }
 
 
             CinemachineRigMaterializationReport report = CinemachineRigMaterializer.ApplyOrRebuild(request);

@@ -40,10 +40,18 @@ namespace Immersive.Framework.Editor.CameraAuthoring
 
             ValidateIdentity(binding, issues);
             CameraOutputAuthoringTopology topology = CameraOutputAuthoringResolver.Resolve();
-            string outputIssue = CameraIdentityAuthoringValidation.OutputReferenceIssue(binding.OutputIdText, topology);
+            string outputIssue = binding.OutputDefinition == null
+                ? "Assign an Output Definition asset."
+                : CameraDefinitionIdentityEditorUtility.Validate(binding.OutputDefinition);
             if (outputIssue != null) issues.Add(outputIssue);
             if (!topology.IsResolved)
                 issues.Add($"Active Output topology validation unavailable: {topology.Diagnostic}");
+            else
+            {
+                issues.AddRange(topology.Issues);
+                if (binding.OutputDefinition != null && topology.Count(binding.OutputDefinition) != 1)
+                    issues.Add("The selected Output Definition must have exactly one physical Output in the active Session topology.");
+            }
             ValidateRig(binding.RigComposer, issues);
 
             if (binding.TargetSource == null)

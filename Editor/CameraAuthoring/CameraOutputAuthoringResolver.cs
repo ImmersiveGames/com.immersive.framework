@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using Immersive.Framework.Camera;
+using Immersive.Framework.CameraAuthoring;
 using Immersive.Framework.Editor.Settings;
 using Immersive.Framework.Editor.Validation;
 using UnityEditor;
@@ -11,6 +12,7 @@ namespace Immersive.Framework.Editor.CameraAuthoring
     internal sealed class CameraOutputAuthoringTopology
     {
         internal readonly List<CameraOutputId> Outputs = new List<CameraOutputId>();
+        internal readonly List<CameraOutputDefinition> Definitions = new List<CameraOutputDefinition>();
         internal readonly List<string> Labels = new List<string>();
         internal readonly List<string> Issues = new List<string>();
         internal bool IsResolved;
@@ -24,6 +26,14 @@ namespace Immersive.Framework.Editor.CameraAuthoring
                 if (output == id) count++;
             return count;
         }
+
+        internal int Count(CameraOutputDefinition definition)
+        {
+            int count = 0;
+            foreach (var candidate in Definitions)
+                if (ReferenceEquals(candidate, definition)) count++;
+            return count;
+        }
     }
 
     internal static class CameraOutputAuthoringResolver
@@ -33,7 +43,7 @@ namespace Immersive.Framework.Editor.CameraAuthoring
             var result = new CameraOutputAuthoringTopology();
             if (EditorApplication.isPlayingOrWillChangePlaymode)
             {
-                result.Diagnostic = "Output topology inspection is available in Edit Mode. Manual entry remains available.";
+                result.Diagnostic = "Output topology inspection is available in Edit Mode. Definition references remain available.";
                 return result;
             }
             if (!ImmersiveFrameworkEditorSettingsUtility.TryLoadExistingSettingsAsset(
@@ -66,12 +76,15 @@ namespace Immersive.Framework.Editor.CameraAuthoring
                 {
                     var id = new CameraOutputId(output.OutputIdText);
                     string label = $"{output.name} ({id})";
-                    string definitionIssue = CameraIdentityAuthoringValidation.OutputIdIssue(output.OutputIdText);
+                    string definitionIssue = output.OutputDefinition == null
+                        ? "Assign an Output Definition asset."
+                        : CameraDefinitionIdentityEditorUtility.Validate(output.OutputDefinition);
                     if (definitionIssue != null)
                         result.Issues.Add($"{output.name}: {definitionIssue}");
                     else if (result.Count(id) > 0)
                         result.Issues.Add($"Duplicate Output Id '{id}' in active Session Output topology.");
                     result.Outputs.Add(id);
+                    result.Definitions.Add(output.OutputDefinition);
                     result.Labels.Add(label);
                 }
                 if (result.Outputs.Count == 0)
@@ -82,6 +95,7 @@ namespace Immersive.Framework.Editor.CameraAuthoring
             catch (Exception exception)
             {
                 result.Outputs.Clear();
+                result.Definitions.Clear();
                 result.Labels.Clear();
                 result.Issues.Clear();
                 result.Diagnostic = $"Could not inspect active Output topology: {exception.Message}";
