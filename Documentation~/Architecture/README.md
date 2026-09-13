@@ -263,7 +263,7 @@ Activity-owned discovery model only.
 
 Route spatial entry does not require a Player Actor occurrence `ActorId` to resolve or apply baseline pose; it uses Route/Slot spatial intent and the physical Transform. This keeps spatial authoring outside the pre-preparation occurrence identity boundary.
 
-### Camera topology, presentation and authoring
+### Camera topology, presentation, authoring and layout
 
 Current normative Camera runtime topology and assignment authority:
 
@@ -273,59 +273,70 @@ Current normative Camera product-authoring authority:
 
 [IF-ADR-027 — Camera Authoring Definitions and Composition Authority](ADRs/IF-ADR-027-Camera-Authoring-Definitions-and-Composition-Authority.md)
 
+Current normative Camera Output participation and physical layout authority:
+
+[IF-ADR-028 — Camera Output Participation and Presentation Layout Authority](ADRs/IF-ADR-028-Camera-Output-Participation-and-Presentation-Layout-Authority.md)
+
+Current reconciliation record:
+
+[Camera Output Participation and Layout Authority Reconciliation — 2026-09-12](Reconciliation/IF-CAMERA-OUTPUT-LAYOUT-AUTHORITY-RECONCILIATION-2026-09-12.md)
+
 ```text
-Player / Actor -> Camera Subject(s)
+Player / Actor -> Camera Subject evidence through an explicit integration boundary
 Camera Assignment -> 0..N Subjects per View
 Camera Rig / Presentation -> how resolved Subjects are observed
-Camera Output -> explicit physical rendering destination
-Session -> 1..N explicitly composed outputs
+Camera Output -> explicit physical Camera capacity
+View→Output association -> logical View identity + Output identity
+Output Presentation / Layout -> separate viewport / display / RenderTexture / PiP authority
 ```
 
-Normal authoring uses:
+Output availability and active Camera participation are distinct:
+
+```text
+Session available Outputs      -> 1..N
+current View→Output bindings    -> 0..N subset of available Outputs
+```
+
+Normal Camera authoring uses:
 
 ```text
 Camera Subject
 Camera View Definition
 Camera Rig Behavior Definition
 Camera Output Definition
-Viewport / View→Output association
+logical View→Output association
 ```
 
-Player count does not determine output count. Stable View/Output IDs remain runtime and
-diagnostic evidence; typed definition references are the normal authored links.
+Physical presentation/layout is authored separately. `Viewport` is no longer Camera topology authority.
 
-Current Camera closure state:
+Player count does not determine Output count, active binding count or screen layout. Stable View/Output IDs remain runtime and diagnostic evidence; typed definition references are the normal authored links.
+
+Current Camera architecture state:
 
 ```text
-CAMERA-026-A..H   IMPLEMENTED
-CAMERA-027-A..D   IMPLEMENTED
-CAMERA-027-E      DEFERRED / OPTIONAL
-CAMERA-027-F      NEXT — official Samples/FIRSTGAME migration
-
-Full Camera QA    CERTIFIED — 2026-09-12
-mandatory cases   39/39
-ADR-026 phases    2/2
-certified dims    9/9
-FIRSTGAME/Samples consumer proof  PENDING under 027-F
+CAMERA-026-A..G    IMPLEMENTED / RETAINED
+CAMERA-026-H       PARTIALLY SUPERSEDED
+CAMERA-026-H2      PENDING — partial Output participation
+CAMERA-026-I       PENDING — Player→Camera Subject integration boundary
+CAMERA-027-A..C    IMPLEMENTED / RETAINED
+CAMERA-027-D2      PENDING — logical association without viewport
+CAMERA-027-E       DEFERRED / OPTIONAL
+CAMERA-027-F       FINAL CONSUMER CLOSURE PENDING corrected boundary
+CAMERA-028-A..D    PENDING
+corrected QA       PENDING
 ```
 
-Current technical certification authority:
+Historical integrated Camera evidence:
 
 [Camera Full Technical Certification — 2026-09-12](Reconciliation/IF-CAMERA-FULL-TECHNICAL-CERTIFICATION-2026-09-12.md)
 
-Previous focused Shared Camera evidence:
+The `39/39`, ADR-026 `2/2`, `9/9` run remains valid dated evidence for the viewport-bearing contract that executed on 2026-09-12. It is not certification of the corrected IF-ADR-026/027/028 boundary. The old `viewportSplitTopology` dimension is historical and must be replaced by separate View→Output association, Output participation, layout-authority and PlayerInput-layout proof.
+
+Previous focused Shared Camera evidence remains:
 
 [IF-ADR-026 Shared Camera Technical Certification — 2026-09-09](Reconciliation/IF-ADR-026-SHARED-CAMERA-TECHNICAL-CERTIFICATION-2026-09-09.md)
 
-The 2026-09-12 run proves Subject occurrence safety, Shared Camera behavior,
-Player/Camera decoupling, multi-output, Output isolation, View→Output binding, split
-viewport topology, generic arbitration and negative validation. It includes exact Actor
-Presentation child observation Transform / Mounted consumption, Player Actor replacement,
-stale occurrence rejection, zero ordinary per-Player Camera requests, explicit two-Output
-split, missing-Output rejection and rejection of automatic `PlayerInputManager` split-screen.
-
-The historical 2026-08-15 `53/53` Camera presentation aggregate remains valid dated
-evidence for the older boundary it executed; it is not relabeled as the current aggregate.
+The historical 2026-08-15 `53/53` Camera presentation aggregate also remains valid dated evidence for the older boundary it executed.
 
 ### Camera Default output presentation
 
@@ -357,9 +368,9 @@ Transition presentation forces/releases Default directly through the output sess
 than publishing a fake Session request. The force-default surface is owner-based and
 idempotent.
 
-Sample 00 real-consumer evidence after explicit Default authoring remains historical Stage B
-consumer evidence. The later 2026-09-12 Full Camera aggregate is now the current integrated
-technical certification for the evolved Camera boundary.
+IF-ADR-028 clarifies that forcing Default selects Rig presentation only; it does not grant Transition or Camera request arbitration ownership of viewport/display layout.
+
+Sample 00 real-consumer evidence after explicit Default authoring remains historical Stage B consumer evidence. The 2026-09-12 Full Camera aggregate remains historical integrated evidence for the previous viewport-bearing boundary; Default/force-default semantics themselves remain preserved.
 
 ## Current product-authoring decisions
 
@@ -466,12 +477,13 @@ physical replacement is the separate Manager-Provisioned IF-ADR-024 operation
 
 ### Camera
 
-- IF-ADR-004 — Accepted / reconciled / implemented; current multi-output/request integrity is covered by the 2026-09-12 Full Camera certification.
-- IF-ADR-004D — Implemented; Default-output presentation remains current and participates in the current integrated Camera boundary.
-- IF-ADR-010 — Accepted / reconciled for the implemented Camera product surface.
-- IF-ADR-022 — Presentation family/materialization accepted and preserved; target selection is owned by IF-ADR-026 and reusable behavior authoring is refined by IF-ADR-027.
-- IF-ADR-026 — Accepted / CAMERA-026-A through H implemented / Full Camera technical QA certified 2026-09-12 (`39/39`, ADR-026 `2/2`, dimensions `9/9`). Consumer/sample proof is separate.
-- IF-ADR-027 — Accepted 2026-09-12 / CAMERA-027-A through D implemented. CAMERA-027-E is deferred/optional. CAMERA-027-F is the next official Samples/FIRSTGAME migration and stale-surface-removal cut.
+- IF-ADR-004 — Request/output arbitration and output-owned Default semantics remain accepted/implemented. Multi-output participation/layout portions are governed by corrected IF-ADR-026 and IF-ADR-028; the 2026-09-12 `39/39` aggregate is historical evidence for the prior viewport-bearing boundary.
+- IF-ADR-004D — Implemented and preserved. Default/force-default selects physical Rig presentation; it does not own screen layout.
+- IF-ADR-010 — Accepted product-surface authority; Camera Inspector surfaces must be reconciled with IF-ADR-027-D2 / IF-ADR-028.
+- IF-ADR-022 — Presentation family/materialization accepted and preserved; target selection is owned by IF-ADR-026 and reusable behavior authoring by IF-ADR-027.
+- IF-ADR-026 — **Reopened** 2026-09-12. CAMERA-026-A..G remain implemented; original H all-Output/viewport assumptions are superseded; H2 and I are pending. Previous 39/39 remains historical evidence.
+- IF-ADR-027 — **Reopened** 2026-09-12. CAMERA-027-A/B/C remain implemented; D2 is pending to remove viewport from Camera association authoring; E remains deferred; F final consumer closure waits corrected implementation.
+- IF-ADR-028 — **Accepted architecture / implementation pending**. Defines Output availability vs participation, separate Presentation/Layout authority, single-writer ownership and explicit PlayerInput layout integration.
 
 ## Historical certification records
 
@@ -499,10 +511,7 @@ prepared physical Actor replacement and its integrated Full Player QA `16/16` ru
 Player aggregate/certification counts are preserved for their own executed boundaries and
 are not relabeled as ADR-024 proof.
 
-For Camera, the 2026-08-15 `53/53` presentation certification and the 2026-09-09 focused
-Shared Camera certification remain dated evidence. The 2026-09-12 Full Camera technical
-certification is the current integrated technical authority for the post-IF-ADR-026 and
-CAMERA-027-A..D boundary.
+For Camera, the 2026-08-15 `53/53` presentation certification, the 2026-09-09 focused Shared Camera certification and the 2026-09-12 Full Camera `39/39` certification remain dated evidence for the boundaries they executed. The 2026-09-12 reconciliation and IF-ADR-028 deliberately change Output participation and layout authority; corrected integrated certification is therefore pending.
 
 The package-local Unity Test Framework tests are not claimed as executed by integrated QA
 unless the relevant certification record states that execution.
