@@ -102,17 +102,9 @@ namespace Immersive.Framework.Camera
                     projected.Add(policy.Bindings[index].ToBinding());
             }
 
-            if (projected.Count == 0)
-            {
-                diagnostic =
-                    "Persistent Content requires at least one explicit Camera View-to-Output association.";
-                return false;
-            }
-
             if (!CameraViewOutputTopology.TryCreate(projected, out topology, out diagnostic))
                 return false;
 
-            int physicalCount = 0;
             for (int index = 0; index < physicalOutputs.Count; index++)
             {
                 if (physicalOutputs[index] == null)
@@ -122,15 +114,6 @@ namespace Immersive.Framework.Camera
                     topology = null;
                     return false;
                 }
-                physicalCount++;
-            }
-
-            if (topology.BindingCount != physicalCount)
-            {
-                diagnostic =
-                    $"Camera View-to-Output policy must bind every active Output exactly once. outputs='{physicalCount}' bindings='{topology.BindingCount}'.";
-                topology = null;
-                return false;
             }
 
             for (int index = 0; index < associatedOutputs.Count; index++)

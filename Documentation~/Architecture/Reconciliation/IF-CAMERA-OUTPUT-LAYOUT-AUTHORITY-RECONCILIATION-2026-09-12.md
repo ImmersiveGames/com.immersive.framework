@@ -1,9 +1,11 @@
 # Camera Output Participation and Layout Authority Reconciliation — 2026-09-12
 
-Status: **Architecture reconciled; implementation and recertification pending**  
+Status: **Architecture reconciled; Cut 1 implemented/certified; Cuts 2–7 pending**
+
 Affected decisions: IF-ADR-026, IF-ADR-027 and IF-ADR-028  
 Historical evidence: [Camera Full Technical Certification — 2026-09-12](IF-CAMERA-FULL-TECHNICAL-CERTIFICATION-2026-09-12.md)  
 Execution mapping clarified: **2026-09-13**
+Certification updated: **2026-09-13**
 
 ## Audit finding
 
@@ -79,6 +81,9 @@ CUT 1
 CAMERA-028-A — available Output vs active participation
   satisfies CAMERA-026-H2 — partial Output participation
   one implementation cut, not two
+  status: IMPLEMENTED / TECHNICALLY CERTIFIED — 2026-09-13
+  evidence: 2 available Outputs / 1 participating association / 8/8 PASS
+  cleanup: focused orchestrator restored canonical Shared baseline
 
 CUT 2
 CAMERA-028-B — remove viewport from Camera runtime topology
@@ -165,13 +170,13 @@ Shared-camera multiplayer must remain valid with multiple Players and one active
 This reconciliation closes only after:
 
 ```text
-CAMERA-028-A / CAMERA-026-H2
-CAMERA-028-B + CAMERA-027-D2
-CAMERA-026-I
-CAMERA-028-C
-CAMERA-028-D
-corrected Camera QA recertification
-CAMERA-027-F official consumer proof
+CAMERA-028-A / CAMERA-026-H2                 COMPLETE / TECHNICALLY CERTIFIED
+CAMERA-028-B + CAMERA-027-D2                 PENDING
+CAMERA-026-I                                 PENDING
+CAMERA-028-C                                 PENDING
+CAMERA-028-D                                 PENDING
+corrected Camera QA recertification          PARTIAL — 028-A focused proof only
+CAMERA-027-F official consumer proof         PENDING
 ```
 
 are complete and current documentation no longer describes the superseded viewport-bearing Camera topology as normative.

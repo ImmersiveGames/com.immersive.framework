@@ -405,14 +405,32 @@ namespace Immersive.Framework.Authoring.Editor.Tests
         }
 
         [Test]
-        public void ZeroAssociationSources_Block()
+        public void ZeroAssociationSources_CreateEmptyTopology()
         {
             Assert.That(CameraViewOutputAssociationProjection.TryCreate(
                 Array.Empty<CameraSharedComposition>(),
                 Array.Empty<CameraViewOutputPolicyAuthoring>(),
                 new[] { Physical(Definition<CameraOutputDefinition>()) },
-                out _, out _, out string diagnostic), Is.False);
-            Assert.That(diagnostic, Does.Contain("at least one explicit Camera View-to-Output association"));
+                out CameraViewOutputTopology topology,
+                out IReadOnlyList<CameraViewDefinition> views,
+                out string diagnostic), Is.True, diagnostic);
+            Assert.That(topology.BindingCount, Is.Zero);
+            Assert.That(views, Is.Empty);
+        }
+
+        [Test]
+        public void ExplicitlyPresentEmptyPolicy_RemainsInvalid()
+        {
+            var policy = Component<CameraViewOutputPolicyAuthoring>();
+
+            Assert.That(CameraViewOutputAssociationProjection.TryCreate(
+                Array.Empty<CameraSharedComposition>(),
+                new[] { policy },
+                new[] { Physical(Definition<CameraOutputDefinition>()) },
+                out _,
+                out _,
+                out string diagnostic), Is.False);
+            Assert.That(diagnostic, Does.Contain("requires at least one explicit binding"));
         }
 
         [Test]
@@ -436,7 +454,7 @@ namespace Immersive.Framework.Authoring.Editor.Tests
         }
 
         [Test]
-        public void UnboundPhysicalOutput_BlocksCoverage()
+        public void UnboundPhysicalOutput_AllowsPartialCoverage()
         {
             var view = Definition<CameraViewDefinition>();
             var outputA = Definition<CameraOutputDefinition>();
@@ -446,8 +464,13 @@ namespace Immersive.Framework.Authoring.Editor.Tests
             Assert.That(CameraViewOutputAssociationProjection.TryCreate(
                 new[] { composition }, Array.Empty<CameraViewOutputPolicyAuthoring>(),
                 new[] { Physical(outputA), Physical(outputB) },
-                out _, out _, out string diagnostic), Is.False);
-            Assert.That(diagnostic, Does.Contain("bind every active Output exactly once"));
+                out CameraViewOutputTopology topology,
+                out IReadOnlyList<CameraViewDefinition> views,
+                out string diagnostic), Is.True, diagnostic);
+            Assert.That(topology.BindingCount, Is.EqualTo(1));
+            Assert.That(topology.TryGetBinding(view.ViewId, outputA.OutputId, out _), Is.True);
+            Assert.That(topology.TryGetBinding(outputB.OutputId, out _), Is.False);
+            Assert.That(views, Has.Count.EqualTo(1));
         }
 
         [Test]

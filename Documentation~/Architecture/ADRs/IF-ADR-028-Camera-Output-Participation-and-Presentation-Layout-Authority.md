@@ -1,14 +1,17 @@
 # IF-ADR-028 — Camera Output Participation and Presentation Layout Authority
 
-Status: **Accepted architecture — implementation pending**  
+Status: **Accepted architecture — CAMERA-028-A implemented and technically certified; corrected layout implementation incomplete**
+
 Proposed: **2026-09-12**  
 Accepted: **2026-09-12**  
 Type: architecture / Camera output / presentation layout / integration  
 Extends: corrected IF-ADR-026 and IF-ADR-027  
 Preserves: IF-ADR-004 request arbitration and output-owned Default semantics; IF-ADR-022 rig materialization  
 Supersedes: viewport-bearing Camera View→Output topology and Camera-owned screen-rectangle authority introduced by the original CAMERA-026-H / CAMERA-027-D boundary  
-Implementation: **pending — CAMERA-028-A/B/C/D**  
-Technical certification: **pending**  
+Implementation: **partial — CAMERA-028-A implemented; CAMERA-028-B/C/D pending**
+
+Technical certification: **partial — CAMERA-028-A certified 2026-09-13; overall ADR certification pending**
+
 Historical evidence: [Camera Full Technical Certification — 2026-09-12](../Reconciliation/IF-CAMERA-FULL-TECHNICAL-CERTIFICATION-2026-09-12.md)
 
 ## 1. Context
@@ -292,7 +295,7 @@ Layout integration must not select Subjects, select request winners, materialize
 ## 14. Implementation cuts
 
 ### CAMERA-028-A — Output availability versus participation
-Status: **pending**.
+Status: **implemented / technically certified — 2026-09-13**.
 
 Required result:
 
@@ -304,6 +307,24 @@ unassociated Output remains valid
 missing referenced Output still blocks
 conflicting duplicate Output binding still blocks
 ```
+
+Certification evidence:
+
+```text
+available physical Outputs                              2
+participating View→Output associations                  1
+Partial runtime proof                                   8/8 PASS
+available unassociated Output                           PASS
+Player count 0 → 1 → 0 creates no implicit association PASS
+unavailable Output rejection                            PASS
+Output A/B arbitration isolation                        PASS
+CAMERA-028-A focused orchestrator                       PASS
+canonical Shared baseline Built / Verified              PASS / PASS
+canonical Shared baseline Restored / RestoredAfterRun   PASS / PASS
+```
+
+This certification covers only Output participation. It does not certify viewport removal,
+layout authority or PlayerInput layout integration.
 
 ### CAMERA-028-B — Remove viewport from Camera topology
 Status: **pending**.
@@ -380,10 +401,14 @@ It does not certify this ADR because this ADR changes that contract.
 
 ```text
 architecture decision     ACCEPTED
-implementation            PENDING
-technical certification   PENDING
+implementation            PARTIAL — CAMERA-028-A implemented; CAMERA-028-B/C/D pending
+technical certification   PARTIAL — CAMERA-028-A certified 2026-09-13
 consumer proof             PENDING final corrected layout migration
 ```
+
+IF-ADR-028 is not fully implemented or fully certified. The overall corrected layout
+implementation remains incomplete until CAMERA-028-B, CAMERA-028-C and CAMERA-028-D are
+implemented and certified.
 
 ## 17. Rejected alternatives
 

@@ -40,12 +40,6 @@ namespace Immersive.Framework.Camera
                 diagnostic = "Camera View-to-Output runtime requires explicit Output and binding topologies.";
                 return false;
             }
-            if (topology.BindingCount != outputs.OutputCount)
-            {
-                diagnostic = $"Camera View-to-Output policy must bind every active Output exactly once. outputs='{outputs.OutputCount}' bindings='{topology.BindingCount}'.";
-                return false;
-            }
-
             var candidate = new CameraViewOutputRuntime(outputs);
             if (!candidate.TryApply(topology, out diagnostic))
             {

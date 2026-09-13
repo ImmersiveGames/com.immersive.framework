@@ -1,7 +1,8 @@
 # IF-TRACK — Immersive Framework
 
-Status: **Active — current implemented baseline + Stage B consumer evidence; Camera architecture reopened for IF-ADR-028 implementation**  
-Last updated: **2026-09-12**
+Status: **Active — current implemented baseline + Stage B consumer evidence; CAMERA-028-A certified, corrected Camera layout work remains open**
+
+Last updated: **2026-09-13**
 
 ## Authority and status model
 
@@ -355,14 +356,15 @@ Current closure disposition:
 ```text
 CAMERA-026-A..G    IMPLEMENTED / RETAINED
 CAMERA-026-H       PARTIALLY SUPERSEDED
-CAMERA-026-H2      PENDING — partial Output participation
+CAMERA-026-H2      IMPLEMENTED / TECHNICALLY CERTIFIED — 2026-09-13
 CAMERA-026-I       PENDING — Player→Camera Subject integration boundary
 CAMERA-027-A..C    IMPLEMENTED / RETAINED
 CAMERA-027-D2      PENDING — logical association without viewport
 CAMERA-027-E       DEFERRED / OPTIONAL
 CAMERA-027-F       FINAL CLOSURE PENDING corrected boundary
-CAMERA-028-A..D    PENDING
-corrected QA       PENDING
+CAMERA-028-A       IMPLEMENTED / TECHNICALLY CERTIFIED — 8/8 PASS
+CAMERA-028-B/C/D   PENDING
+corrected QA       PARTIAL — 028-A focused proof complete; layout aggregate pending
 ```
 
 IF-ADR-028 defines the new implementation order: separate available vs participating Outputs, remove viewport from Camera topology, introduce one explicit layout authority, then integrate PlayerInputManager as one selectable layout authority.
@@ -379,7 +381,7 @@ Current reconciliation record:
 
 1. **Player** — Scene Player physical/contextual lifecycle is proven through `GameplayReady`; Player Provisioning and Character Selection are proven. Manager-Provisioned prepared Actor replacement is technically certified in QA. Remaining Getting Started work is game-owned Presentation/gameplay completeness, not Framework Player readiness. Local Multiplayer remains blocked by the public Slot/device/input contract.
 2. **Loading / Readiness** — positive Game Flow consumer lane proven; negative/terminal robustness remains QA-owned.
-3. **Camera** — architecture is now corrected by reopened IF-ADR-026/027 and accepted IF-ADR-028. Do **not** close CAMERA-027-F or expand sample migration before implementing CAMERA-026-H2, CAMERA-026-I, CAMERA-027-D2 and CAMERA-028-A..D, then recertifying the corrected boundary. The 39/39 run remains historical evidence, not current closure.
+3. **Camera** — CAMERA-028-A / CAMERA-026-H2 is implemented and technically certified. Do **not** close CAMERA-027-F or expand sample migration before implementing CAMERA-026-I, CAMERA-027-D2 and CAMERA-028-B/C/D, then recertifying the corrected layout boundary. The 028-A `8/8` run is focused evidence; the 2026-09-12 `39/39` run remains historical evidence for the earlier boundary.
 4. **Pause** — runtime certified; remaining work is consumer authoring/usability only.
 5. **Audio** — BGM technical + consumer integration proven; API maturity promotion is separate.
 6. **Progression Save** — real consumer persistence/usability proof remains.
@@ -393,10 +395,9 @@ Current reconciliation record:
 - heterogeneous per-Slot Host Provisioning;
 - Scene-Provided prepared Actor replacement, pending an explicit physical-ownership contract;
 - generic respawn/checkpoint/dynamic Spawn beyond ADR-021;
-- CAMERA-026-H2 partial Output participation;
 - CAMERA-026-I Player→Camera Subject integration-boundary reconciliation;
 - CAMERA-027-D2 View→Output authoring without viewport;
-- CAMERA-028-A/B/C/D Output participation + layout authority implementation and recertification;
+- CAMERA-028-B/C/D layout authority implementation and recertification;
 - CAMERA-027-F final official Samples/FIRSTGAME Camera migration after corrected technical closure;
 - CAMERA-027-E optional reusable Camera Composition definition, deferred until consumer evidence justifies a grouped asset;
 - application-scoped stable-ID resolver;

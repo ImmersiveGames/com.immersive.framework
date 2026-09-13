@@ -598,12 +598,12 @@ integrity remains useful regression evidence, but the corrected aggregate must e
 
 ---
 
-## 21. Pending implementation sequence
+## 21. Implementation sequence and current status
 
-Do not treat the Camera architecture as closed until these cuts are implemented and tested:
+Do not treat the Camera architecture as closed until every remaining cut is implemented and tested:
 
 ```text
-CAMERA-026-H2
+CAMERA-026-H2 — IMPLEMENTED / TECHNICALLY CERTIFIED 2026-09-13
   allow a strict subset of available Outputs to participate
 
 CAMERA-026-I
@@ -612,7 +612,7 @@ CAMERA-026-I
 CAMERA-027-D2
   author logical View→Output association without viewport
 
-CAMERA-028-A
+CAMERA-028-A — IMPLEMENTED / TECHNICALLY CERTIFIED 2026-09-13
   separate Output availability from active participation
 
 CAMERA-028-B

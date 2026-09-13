@@ -4,8 +4,10 @@ Status: **Reopened — core Subject / Assignment / View / Rig / Output separatio
 Accepted: **2026-09-07**  
 Reopened: **2026-09-12**  
 Type: architecture / Camera runtime topology  
-Implementation state: **CAMERA-026-A through G remain implemented; CAMERA-026-H viewport ownership is superseded by IF-ADR-028; CAMERA-026-I Player→Camera integration-boundary reconciliation is pending**  
-Technical evidence: **The 2026-09-12 Full Camera QA 39/39 remains valid dated evidence for the boundary it executed. It is not certification of the corrected IF-ADR-026 / IF-ADR-028 boundary.**  
+Implementation state: **CAMERA-026-A through G remain implemented; CAMERA-026-H viewport ownership is superseded by IF-ADR-028; CAMERA-026-H2 is implemented/certified; CAMERA-026-I Player→Camera integration-boundary reconciliation is pending**
+
+Technical evidence: **CAMERA-026-H2 partial Output participation was technically certified 8/8 on 2026-09-13. The 2026-09-12 Full Camera QA 39/39 remains valid dated evidence only for the earlier boundary it executed.**
+
 Related decisions: IF-ADR-003, IF-ADR-004, IF-ADR-004C, IF-ADR-010, IF-ADR-019, IF-ADR-020, IF-ADR-022, IF-ADR-023, IF-ADR-025, IF-ADR-027, IF-ADR-028  
 Historical certification: [Camera Full Technical Certification — 2026-09-12](../Reconciliation/IF-CAMERA-FULL-TECHNICAL-CERTIFICATION-2026-09-12.md)  
 Current reconciliation: [Camera Output Participation and Layout Authority Reconciliation — 2026-09-12](../Reconciliation/IF-CAMERA-OUTPUT-LAYOUT-AUTHORITY-RECONCILIATION-2026-09-12.md)
@@ -405,7 +407,7 @@ it does not make those rules current architecture.
 
 ### CAMERA-026-H2 — Partial Output participation
 
-Status: **pending**.
+Status: **implemented / technically certified — 2026-09-13**.
 
 Required result:
 
@@ -414,6 +416,20 @@ registered Outputs may be unassociated
 View→Output topology covers only participating Outputs
 no binding-count equality with all physical Outputs
 conflicting duplicate Output bindings still block
+```
+
+Certification evidence:
+
+```text
+available physical Outputs                              2
+participating View→Output associations                  1
+Partial runtime proof                                   8/8 PASS
+available unassociated Output                           PASS
+Player count 0 → 1 → 0 creates no implicit association PASS
+unavailable Output rejection                            PASS
+Output A/B arbitration isolation                        PASS
+focused certification orchestrator                      PASS
+canonical Shared baseline restore lifecycle             PASS
 ```
 
 ### CAMERA-026-I — Player→Camera Subject integration boundary
@@ -477,7 +493,8 @@ all-Outputs-must-bind rule                       superseded
 viewport inside Camera topology                  superseded
 Camera-owned screen rectangle                    superseded
 Player→Camera integration placement              reopened for boundary reconciliation
-corrected boundary certification                 pending
+partial Output participation                     implemented / certified 2026-09-13
+corrected layout boundary certification          pending
 ```
 
 ## 17. Rejected scope
@@ -497,5 +514,6 @@ The corrected topology supports explicit physical Output capacity independently 
 Camera use. This enables split-screen, spectator, PiP, replay, secondary displays and future
 presentation modes without requiring every available Output to participate continuously.
 
-The architecture is intentionally reopened until CAMERA-026-H2, CAMERA-026-I and IF-ADR-028
-implementation cuts are completed and recertified.
+The architecture remains reopened because CAMERA-026-I, CAMERA-027-D2 and the
+CAMERA-028-B/C/D layout reconciliation are not implemented or certified. CAMERA-026-H2 is
+complete, but it does not close the corrected Camera boundary by itself.

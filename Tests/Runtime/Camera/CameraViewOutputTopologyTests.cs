@@ -112,6 +112,118 @@ namespace Immersive.Framework.Camera.Tests
         }
 
         [Test]
+        public void PartialAssociationProjection_AllowsAvailableUnassociatedOutputs()
+        {
+            CameraOutputAuthoring outputA = Output("10000000000000000000000000000002", new Rect(0f, 0f, 1f, 1f));
+            CameraOutputAuthoring outputB = Output("10000000000000000000000000000003", new Rect(.1f, .1f, .8f, .8f));
+            CameraOutputAuthoring outputC = Output("10000000000000000000000000000004", new Rect(.2f, .2f, .6f, .6f));
+            CameraOutputAuthoring outputD = Output("10000000000000000000000000000005", new Rect(.3f, .3f, .4f, .4f));
+            var root = new GameObject("partial-association");
+            _created.Add(root);
+            CameraSharedComposition composition = root.AddComponent<CameraSharedComposition>();
+            composition.Configure(
+                _definitions.View("20000000000000000000000000000002"),
+                outputA.OutputDefinition,
+                CameraSharedCompositionSubjectPolicyKind.AllAvailableSubjects);
+
+            Assert.That(CameraViewOutputAssociationProjection.TryCreate(
+                new[] { composition },
+                Array.Empty<CameraViewOutputPolicyAuthoring>(),
+                new[] { outputD, outputB, outputA, outputC },
+                out CameraViewOutputTopology topology,
+                out IReadOnlyList<CameraViewDefinition> views,
+                out string diagnostic), Is.True, diagnostic);
+            Assert.That(topology.BindingCount, Is.EqualTo(1));
+            Assert.That(topology.TryGetBinding(new CameraOutputId(outputA.OutputIdText), out _), Is.True);
+            Assert.That(topology.TryGetBinding(new CameraOutputId(outputB.OutputIdText), out _), Is.False);
+            Assert.That(topology.TryGetBinding(new CameraOutputId(outputC.OutputIdText), out _), Is.False);
+            Assert.That(topology.TryGetBinding(new CameraOutputId(outputD.OutputIdText), out _), Is.False);
+            Assert.That(views, Has.Count.EqualTo(1));
+        }
+
+        [Test]
+        public void ZeroAssociationSources_CreateEmptyAggregateTopology()
+        {
+            Assert.That(CameraViewOutputAssociationProjection.TryCreate(
+                Array.Empty<CameraSharedComposition>(),
+                Array.Empty<CameraViewOutputPolicyAuthoring>(),
+                Array.Empty<CameraOutputAuthoring>(),
+                out CameraViewOutputTopology topology,
+                out IReadOnlyList<CameraViewDefinition> views,
+                out string diagnostic), Is.True, diagnostic);
+            Assert.That(topology.BindingCount, Is.Zero);
+            Assert.That(views, Is.Empty);
+        }
+
+        [Test]
+        public void PartialOutputRuntime_AppliesOnlyParticipatingAssociation()
+        {
+            Rect authoredB = new Rect(.1f, .1f, .8f, .8f);
+            Rect authoredC = new Rect(.2f, .2f, .6f, .6f);
+            Rect authoredD = new Rect(.3f, .3f, .4f, .4f);
+            CameraOutputAuthoring outputA = Output("10000000000000000000000000000002", new Rect(0f, 0f, 1f, 1f));
+            CameraOutputAuthoring outputB = Output("10000000000000000000000000000003", authoredB);
+            CameraOutputAuthoring outputC = Output("10000000000000000000000000000004", authoredC);
+            CameraOutputAuthoring outputD = Output("10000000000000000000000000000005", authoredD);
+            Assert.That(CameraOutputSessionTopology.TryCreate(
+                new[] { outputD, outputB, outputA, outputC },
+                out CameraOutputSessionTopology outputs,
+                out string diagnostic), Is.True, diagnostic);
+            CameraViewOutputTopology topology = Policy(
+                Binding("20000000000000000000000000000002", outputA.OutputIdText, 0f, 0f, .25f, 1f));
+
+            Assert.That(CameraViewOutputRuntime.TryCreate(
+                outputs, topology, out CameraViewOutputRuntime runtime, out diagnostic), Is.True, diagnostic);
+            Assert.That(outputA.UnityCamera.rect, Is.EqualTo(new Rect(0f, 0f, .25f, 1f)));
+            Assert.That(outputB.UnityCamera.rect, Is.EqualTo(authoredB));
+            Assert.That(outputC.UnityCamera.rect, Is.EqualTo(authoredC));
+            Assert.That(outputD.UnityCamera.rect, Is.EqualTo(authoredD));
+            runtime.Dispose();
+        }
+
+        [Test]
+        public void EmptyAssociationRuntime_IsValidAndDoesNotMutateAvailableOutput()
+        {
+            Rect authored = new Rect(.1f, .1f, .8f, .8f);
+            CameraOutputAuthoring output = Output("10000000000000000000000000000002", authored);
+            Assert.That(CameraOutputSessionTopology.TryCreate(
+                new[] { output }, out CameraOutputSessionTopology outputs, out string diagnostic), Is.True, diagnostic);
+            CameraViewOutputTopology topology = Policy();
+
+            Assert.That(CameraViewOutputRuntime.TryCreate(
+                outputs, topology, out CameraViewOutputRuntime runtime, out diagnostic), Is.True, diagnostic);
+            Assert.That(runtime.Current.BindingCount, Is.Zero);
+            Assert.That(output.UnityCamera.rect, Is.EqualTo(authored));
+            runtime.Dispose();
+        }
+
+        [Test]
+        public void AssociationReferencingUnavailableOutput_IsRejectedExplicitly()
+        {
+            CameraOutputAuthoring available = Output(
+                "10000000000000000000000000000002",
+                new Rect(0f, 0f, 1f, 1f));
+            CameraOutputDefinition unavailable = _definitions.Output(
+                "10000000000000000000000000000003");
+            var root = new GameObject("unavailable-output-association");
+            _created.Add(root);
+            CameraSharedComposition composition = root.AddComponent<CameraSharedComposition>();
+            composition.Configure(
+                _definitions.View("20000000000000000000000000000002"),
+                unavailable,
+                CameraSharedCompositionSubjectPolicyKind.AllAvailableSubjects);
+
+            Assert.That(CameraViewOutputAssociationProjection.TryCreate(
+                new[] { composition },
+                Array.Empty<CameraViewOutputPolicyAuthoring>(),
+                new[] { available },
+                out _,
+                out _,
+                out string diagnostic), Is.False);
+            Assert.That(diagnostic, Does.Contain("no exact physical Output"));
+        }
+
+        [Test]
         public void SharedComposition_RequiresItsExactViewToOutputBinding()
         {
             CameraOutputAuthoring output = Output("10000000000000000000000000000002", new Rect(0f, 0f, 1f, 1f));

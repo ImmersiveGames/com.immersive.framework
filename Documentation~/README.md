@@ -144,10 +144,10 @@ The previous viewport-bearing implementation remains in code until the pending i
 Current implementation plan:
 
 ```text
-CAMERA-026-H2  partial Output participation
+CAMERA-026-H2  IMPLEMENTED / TECHNICALLY CERTIFIED — partial Output participation
 CAMERA-026-I   Player→Camera Subject integration boundary
 CAMERA-027-D2  logical View→Output authoring without viewport
-CAMERA-028-A   available Output vs active participation
+CAMERA-028-A   IMPLEMENTED / TECHNICALLY CERTIFIED — available Output vs active participation
 CAMERA-028-B   remove viewport from Camera topology
 CAMERA-028-C   explicit Output Presentation / Layout authority
 CAMERA-028-D   PlayerInputManager layout integration
@@ -206,9 +206,9 @@ See the Tracker and IF-ADR-009 reconciliation records for the current boundary.
 | [023](Architecture/ADRs/IF-ADR-023-Player-Actor-Runtime-Host-and-Presentation-Authority.md) | Player Actor Runtime Host and Presentation authority | Accepted / Implemented; occurrence identity reconciled by 023A |
 | [024](Architecture/ADRs/IF-ADR-024-Prepared-Actor-Replacement-Public-Contract.md) | Prepared Actor replacement public contract | Accepted / Reconciled / Manager-Provisioned V1 implemented and certified |
 | [025](Architecture/ADRs/IF-ADR-025-Local-Player-Input-Ownership-and-Device-Association.md) | Local Player input ownership and device association | Accepted / Implemented |
-| [026](Architecture/ADRs/IF-ADR-026-Camera-Subjects-Assignment-and-Multi-Output-Topology.md) | Camera Subjects, Assignment and multi-output topology | **Reopened** — A..G retained; H2 + I pending |
+| [026](Architecture/ADRs/IF-ADR-026-Camera-Subjects-Assignment-and-Multi-Output-Topology.md) | Camera Subjects, Assignment and multi-output topology | **Reopened** — A..G retained; H2 certified; I/layout reconciliation pending |
 | [027](Architecture/ADRs/IF-ADR-027-Camera-Authoring-Definitions-and-Composition-Authority.md) | Camera authoring definitions and composition authority | **Reopened** — A/B/C retained; D2 pending; E deferred; F final closure pending |
-| [028](Architecture/ADRs/IF-ADR-028-Camera-Output-Participation-and-Presentation-Layout-Authority.md) | Camera Output participation and Presentation Layout authority | **Accepted architecture / implementation pending** |
+| [028](Architecture/ADRs/IF-ADR-028-Camera-Output-Participation-and-Presentation-Layout-Authority.md) | Camera Output participation and Presentation Layout authority | **Accepted architecture / partial implementation** — 028-A certified; B/C/D pending |
 
 ## Current reconciliation / certification records
 

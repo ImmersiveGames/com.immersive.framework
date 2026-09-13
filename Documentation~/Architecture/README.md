@@ -316,14 +316,15 @@ Current Camera architecture state:
 ```text
 CAMERA-026-A..G    IMPLEMENTED / RETAINED
 CAMERA-026-H       PARTIALLY SUPERSEDED
-CAMERA-026-H2      PENDING — partial Output participation
+CAMERA-026-H2      IMPLEMENTED / TECHNICALLY CERTIFIED — 2026-09-13
 CAMERA-026-I       PENDING — Player→Camera Subject integration boundary
 CAMERA-027-A..C    IMPLEMENTED / RETAINED
 CAMERA-027-D2      PENDING — logical association without viewport
 CAMERA-027-E       DEFERRED / OPTIONAL
 CAMERA-027-F       FINAL CONSUMER CLOSURE PENDING corrected boundary
-CAMERA-028-A..D    PENDING
-corrected QA       PENDING
+CAMERA-028-A       IMPLEMENTED / TECHNICALLY CERTIFIED — 8/8 PASS
+CAMERA-028-B/C/D   PENDING
+corrected QA       PARTIAL — 028-A focused proof complete; layout aggregate pending
 ```
 
 Historical integrated Camera evidence:
@@ -481,9 +482,9 @@ physical replacement is the separate Manager-Provisioned IF-ADR-024 operation
 - IF-ADR-004D — Implemented and preserved. Default/force-default selects physical Rig presentation; it does not own screen layout.
 - IF-ADR-010 — Accepted product-surface authority; Camera Inspector surfaces must be reconciled with IF-ADR-027-D2 / IF-ADR-028.
 - IF-ADR-022 — Presentation family/materialization accepted and preserved; target selection is owned by IF-ADR-026 and reusable behavior authoring by IF-ADR-027.
-- IF-ADR-026 — **Reopened** 2026-09-12. CAMERA-026-A..G remain implemented; original H all-Output/viewport assumptions are superseded; H2 and I are pending. Previous 39/39 remains historical evidence.
+- IF-ADR-026 — **Reopened** 2026-09-12. CAMERA-026-A..G remain implemented; original H all-Output/viewport assumptions are superseded; H2 is certified; I and layout reconciliation remain pending. Previous 39/39 remains historical evidence.
 - IF-ADR-027 — **Reopened** 2026-09-12. CAMERA-027-A/B/C remain implemented; D2 is pending to remove viewport from Camera association authoring; E remains deferred; F final consumer closure waits corrected implementation.
-- IF-ADR-028 — **Accepted architecture / implementation pending**. Defines Output availability vs participation, separate Presentation/Layout authority, single-writer ownership and explicit PlayerInput layout integration.
+- IF-ADR-028 — **Accepted architecture / partial implementation**. CAMERA-028-A is implemented/certified; CAMERA-028-B/C/D remain pending, so corrected layout implementation is incomplete.
 
 ## Historical certification records
 
