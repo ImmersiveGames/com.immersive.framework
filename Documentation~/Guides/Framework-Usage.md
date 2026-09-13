@@ -1,7 +1,7 @@
 # Framework Usage
 
 Status: Current  
-Last updated: 2026-08-16
+Last updated: 2026-09-12
 
 ## 1. Product workflow
 
@@ -105,11 +105,15 @@ Transition, Loading, Pause presentation, Player provisioning and Audio integrati
 are added only when the game needs them; they are not silently materialized by the
 template pipeline.
 
-The minimal template requires one physical Camera Output. IF-ADR-026 implements explicit
-Session composition of `1..N` outputs; the Shared one-Output runtime boundary is certified,
-while Split runtime remains pending. Player count never creates outputs implicitly. The
-current minimal template also carries one `EventSystem` with
-`InputSystemUIInputModule`.
+The minimal template starts with one physical Camera Output. Corrected IF-ADR-026/028
+supports `1..N` available physical Outputs while allowing the current View topology to
+associate only a subset. Player count never creates Outputs implicitly. Screen viewport,
+display and RenderTexture layout are separate presentation authority under IF-ADR-028 and
+must not be inferred from the persistent Camera hierarchy. The current minimal template
+also carries one `EventSystem` with `InputSystemUIInputModule`.
+
+For current Camera authoring and the pending layout reconciliation, use
+`Camera-Usage.md` together with IF-ADR-026, IF-ADR-027 and IF-ADR-028.
 
 ### 4.1 Game Application Inspector workflow
 
