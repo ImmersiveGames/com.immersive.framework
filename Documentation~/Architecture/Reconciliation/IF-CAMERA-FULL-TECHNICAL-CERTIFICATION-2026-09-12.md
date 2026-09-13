@@ -1,8 +1,8 @@
 # Camera Full Technical Certification — 2026-09-12
 
-Status: **CERTIFIED**
+Status: **CERTIFIED HISTORICAL BOUNDARY — corrected IF-ADR-026/027/028 boundary requires recertification**
 
-Terminal QA result:
+Terminal QA result executed on 2026-09-12:
 
 ```text
 [QA_CAMERA_FULL]
@@ -16,7 +16,7 @@ dimensions='9/9'
 missing='<none>'
 ```
 
-Certified dimensions:
+Certified dimensions at execution time:
 
 ```text
 subjectsOccurrenceSafety = PASS
@@ -30,18 +30,32 @@ genericArbitration = PASS
 negativeValidation = PASS
 ```
 
-IF-ADR-026 Shared proof passed with exact Actor Presentation child observation Transform, Mounted exact-transform consumption, stale occurrence removal, Player replacement/leave/rejoin, and zero ordinary per-Player Camera requests.
+The run remains immutable evidence that the implementation satisfied the contract that existed when it ran. Shared Camera, Subject occurrence safety, zero ordinary per-Player Camera requests, multi-output isolation, request arbitration and owner-lifetime regressions remain valuable dated evidence.
 
-IF-ADR-026 Split proof passed with two explicit Outputs, left/right viewports, Output isolation, rejection of missing Output references, and rejection of `PlayerInputManager` automatic split-screen while Framework Camera composition owns topology.
+## Post-certification architecture reconciliation
 
-The canonical override fixture passed 11/11. ADR-004B negative integrity passed 18/18. ADR-004C owner lifetime integrity passed 10/10.
+A later 2026-09-12 source/consumer audit reopened part of the certified boundary.
 
-The QA orchestrator restored the canonical Shared baseline after the certified run.
+Corrected IF-ADR-026 and IF-ADR-028 now establish:
 
-## Closure
+- a registered/available physical Output does not have to participate in the current View-to-Output association topology;
+- Camera View-to-Output association owns View identity and Output identity, not screen viewport;
+- physical viewport/display/layout belongs to a separate Output Presentation/Layout authority;
+- PlayerInputManager split-screen may be an explicitly selected layout authority rather than being globally rejected merely because Framework Camera topology exists;
+- Player-backed Camera Subject projection requires integration-boundary reconciliation so PlayerParticipation does not become Camera topology authority.
 
-The Framework Camera technical boundary is certified for the current Subject / Assignment / View / Rig / Output topology and arbitration model.
+Therefore the old `viewportSplitTopology` proof is historical and must not be presented as certification of the corrected contract.
 
-IF-ADR-027 CAMERA-027-A through D are the implemented canonical definition-backed authoring surface. CAMERA-027-E remains optional and is not required to close the current architecture. It should only be opened if real consumer work demonstrates repeated composition intent that materially benefits from a grouped Camera Composition definition.
+## Current disposition
 
-The next consumer-facing cut is CAMERA-027-F: migrate official Samples/FIRSTGAME content to the canonical definition-backed authoring surface and remove stale normal-authoring paths where they would create dual authority.
+```text
+2026-09-12 executed 39/39 result    VALID HISTORICAL EVIDENCE
+IF-ADR-026 corrected architecture   REOPENED FOR IMPLEMENTATION
+IF-ADR-027 corrected authoring      REOPENED FOR IMPLEMENTATION
+IF-ADR-028 layout authority         ACCEPTED, IMPLEMENTATION PENDING
+current corrected certification     PENDING
+```
+
+Required replacement coverage is defined by IF-ADR-026 and IF-ADR-028 and must distinguish logical View-to-Output association, Output participation, layout authority and PlayerInput layout integration.
+
+The earlier certification is not deleted or retroactively changed; only its scope is clarified.
