@@ -2,7 +2,8 @@
 
 Status: **Architecture reconciled; implementation and recertification pending**  
 Affected decisions: IF-ADR-026, IF-ADR-027 and IF-ADR-028  
-Historical evidence: [Camera Full Technical Certification — 2026-09-12](IF-CAMERA-FULL-TECHNICAL-CERTIFICATION-2026-09-12.md)
+Historical evidence: [Camera Full Technical Certification — 2026-09-12](IF-CAMERA-FULL-TECHNICAL-CERTIFICATION-2026-09-12.md)  
+Execution mapping clarified: **2026-09-13**
 
 ## Audit finding
 
@@ -18,7 +19,7 @@ Both are superseded.
 The corrected boundary is:
 
 ```text
-available physical Outputs      -> 1..N
+available physical Outputs       -> 1..N
 current View→Output associations -> 0..N subset
 Camera binding                   -> View identity + Output identity
 Output Presentation / Layout     -> viewport / display / RenderTexture / PiP
@@ -69,15 +70,46 @@ It is not certification of the corrected contract because the corrected contract
 
 ## Required implementation cuts
 
+The ADR numbers below describe ownership of the decisions. They do **not** imply duplicate implementation work where two ADRs describe the same runtime correction.
+
+Canonical execution mapping:
+
 ```text
-CAMERA-026-H2  partial Output participation
-CAMERA-026-I   Player→Camera Subject integration boundary
-CAMERA-027-D2  View→Output authoring without viewport
-CAMERA-028-A   available Output vs active participation
-CAMERA-028-B   remove viewport from Camera topology
-CAMERA-028-C   explicit Output Presentation / Layout authority
-CAMERA-028-D   PlayerInputManager layout integration
+CUT 1
+CAMERA-028-A — available Output vs active participation
+  satisfies CAMERA-026-H2 — partial Output participation
+  one implementation cut, not two
+
+CUT 2
+CAMERA-028-B — remove viewport from Camera runtime topology
+CAMERA-027-D2 — reconcile View→Output authoring without viewport
+  coordinated runtime + authoring migration
+
+CUT 3
+CAMERA-026-I — Player→Camera Subject integration boundary
+  move Camera publication responsibility to the Camera/integration side
+  preserve Player-domain evidence and Player lifetime authority
+
+CUT 4
+CAMERA-028-C — explicit Output Presentation / Layout authority
+  introduce the minimum typed single-writer layout boundary
+
+CUT 5
+CAMERA-028-D — PlayerInputManager layout integration
+  allow PlayerInput-managed split layout without making PlayerInput Camera topology authority
+
+CUT 6
+Camera QA recertification
+  replace the superseded viewportSplitTopology dimension
+
+CUT 7
+CAMERA-027-F — official Samples/FIRSTGAME consumer closure
+  only after the corrected runtime/authoring boundary is certified
 ```
+
+`CAMERA-026-H2` remains in IF-ADR-026 because it states the corrected topology obligation owned by that ADR. `CAMERA-028-A` is the implementation vehicle for that obligation.
+
+`CAMERA-027-D2` is not an alias for `CAMERA-028-B`: D2 owns the product-authoring change while 028-B owns the runtime/topology change. They should be implemented together so no viewport-bearing dual authority survives between authoring and runtime.
 
 ## Required QA replacement
 
@@ -90,12 +122,56 @@ layoutAuthority
 playerInputLayoutIntegration
 ```
 
-Minimum new proof includes: strict-subset Output association PASS; unassociated Output PASS; unavailable Output reference FAIL; conflicting Views to one Output FAIL; no viewport in Camera topology PASS; one selected layout writer PASS; conflicting layout writers FAIL; PlayerInput layout isolation PASS; force-default without layout ownership PASS.
+Minimum new proof includes:
+
+```text
+strict-subset Output association                               PASS
+unassociated available Output                                  PASS
+binding references unavailable Output                          explicit FAIL
+conflicting Views target one Output                            explicit FAIL
+Camera topology contains no viewport                           PASS
+one selected layout writer                                     PASS
+conflicting layout writers                                     explicit FAIL
+custom layout applies/releases only owned state                PASS
+PlayerInputManager selected as layout authority                PASS
+PlayerInput layout does not select Subjects/requests           PASS
+force-default changes Rig without taking layout ownership      PASS
+generic Camera arbitration regression                          PASS
+```
+
+The historical `viewportSplitTopology` dimension must not be renamed and reused as if it proved the corrected contract. The new aggregate must test the new boundaries directly.
 
 ## Consumer proof
 
 The Getting Started migration remains useful evidence for typed View, Output and Rig Behavior definitions and explicit Camera Subject authoring. Final CAMERA-027-F closure waits for implementation and QA of the corrected boundary.
 
+For Player-driven split-screen, consumer proof must demonstrate the intended responsibility split:
+
+```text
+Framework Camera
+  supplies explicit physical Output / Unity Camera evidence
+  supplies logical View→Output association
+  does not partition the screen
+
+PlayerInputManager integration
+  receives the appropriate Camera for the participating Player
+  owns split viewport layout when explicitly selected as layout authority
+```
+
+Shared-camera multiplayer must remain valid with multiple Players and one active Output.
+
 ## Closure condition
 
-This reconciliation closes only after CAMERA-026-H2, CAMERA-026-I, CAMERA-027-D2 and CAMERA-028-A/B/C/D are implemented, recertified and reflected in official Samples and current documentation.
+This reconciliation closes only after:
+
+```text
+CAMERA-028-A / CAMERA-026-H2
+CAMERA-028-B + CAMERA-027-D2
+CAMERA-026-I
+CAMERA-028-C
+CAMERA-028-D
+corrected Camera QA recertification
+CAMERA-027-F official consumer proof
+```
+
+are complete and current documentation no longer describes the superseded viewport-bearing Camera topology as normative.
