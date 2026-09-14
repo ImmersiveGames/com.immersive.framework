@@ -326,7 +326,7 @@ namespace Immersive.Framework.GlobalUi
                 if (!playerInputManagers[index].splitScreen) continue;
                 diagnostic =
                     $"PlayerInputManager '{playerInputManagers[index].name}' has automatic split-screen enabled. " +
-                    "Disable it because Framework Camera View-to-Output topology is the viewport authority.";
+                    "Automatic split-screen remains unsupported in the current implementation and must be disabled.";
                 outputSessions = Array.Empty<CameraOutputAuthoring>();
                 return false;
             }

@@ -107,8 +107,7 @@ namespace Immersive.Framework.Camera.Tests
                 {
                     new CameraViewOutputBinding(
                         new CameraViewId("view.b"),
-                        new CameraOutputId("10000000000000000000000000000003"),
-                        new CameraViewport(0f, 0f, 1f, 1f))
+                        new CameraOutputId("10000000000000000000000000000003"))
                 }, out CameraViewOutputTopology viewOutputs, out diagnostic), Is.True, diagnostic);
             using var injection = new CameraOutputInjectionRuntime(topology, viewOutputs, System.Array.Empty<CameraViewDefinition>());
             Assert.That(injection.AttachExact(consumer, out diagnostic), Is.True, diagnostic);
@@ -359,8 +358,7 @@ namespace Immersive.Framework.Camera.Tests
                 {
                     new CameraViewOutputBinding(
                         new CameraViewId(viewId),
-                        new CameraOutputId(outputId),
-                        new CameraViewport(0f, 0f, 1f, 1f))
+                        new CameraOutputId(outputId))
                 },
                 out CameraViewOutputTopology topology,
                 out string diagnostic), Is.True, diagnostic);

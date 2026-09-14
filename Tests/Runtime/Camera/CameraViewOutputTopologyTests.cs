@@ -24,32 +24,36 @@ namespace Immersive.Framework.Camera.Tests
         }
 
         [Test]
-        public void SharedView_BindsOutputAFullScreen()
+        public void IdentityOnlyBinding_RetainsExactViewAndOutputIds()
         {
             CameraViewOutputTopology topology = Policy(
-                Binding("view.main", "10000000000000000000000000000002", 0f, 0f, 1f, 1f));
+                Binding("view.main", "10000000000000000000000000000002"));
 
             Assert.That(topology.TryGetBinding(
                 new CameraViewId("view.main"),
                 new CameraOutputId("10000000000000000000000000000002"),
                 out CameraViewOutputBinding binding), Is.True);
-            Assert.That(binding.Viewport, Is.EqualTo(new CameraViewport(0f, 0f, 1f, 1f)));
+            Assert.That(binding.ViewId, Is.EqualTo(new CameraViewId("view.main")));
+            Assert.That(binding.OutputId, Is.EqualTo(new CameraOutputId("10000000000000000000000000000002")));
+            Assert.That(typeof(CameraViewOutputBinding).GetProperty("Viewport"), Is.Null);
         }
 
         [Test]
-        public void SplitViews_ApplyLeftAndRightToExactOutputCameras()
+        public void FullTopology_InitialApplicationDoesNotMutateCameraRects()
         {
-            CameraOutputAuthoring outputA = Output("10000000000000000000000000000002", new Rect(0f, 0f, 1f, 1f));
-            CameraOutputAuthoring outputB = Output("10000000000000000000000000000003", new Rect(0f, 0f, 1f, 1f));
+            Rect rectA = new Rect(.13f, .17f, .31f, .37f);
+            Rect rectB = new Rect(.41f, .43f, .47f, .53f);
+            CameraOutputAuthoring outputA = Output("10000000000000000000000000000002", rectA);
+            CameraOutputAuthoring outputB = Output("10000000000000000000000000000003", rectB);
             Assert.That(CameraOutputSessionTopology.TryCreate(
                 new[] { outputB, outputA }, out CameraOutputSessionTopology outputs, out string diagnostic), Is.True, diagnostic);
             CameraViewOutputTopology policy = Policy(
-                Binding("view.p2", "10000000000000000000000000000003", .5f, 0f, .5f, 1f),
-                Binding("view.p1", "10000000000000000000000000000002", 0f, 0f, .5f, 1f));
+                Binding("view.p2", "10000000000000000000000000000003"),
+                Binding("view.p1", "10000000000000000000000000000002"));
 
             Assert.That(CameraViewOutputRuntime.TryCreate(outputs, policy, out CameraViewOutputRuntime runtime, out diagnostic), Is.True, diagnostic);
-            Assert.That(outputA.UnityCamera.rect, Is.EqualTo(new Rect(0f, 0f, .5f, 1f)));
-            Assert.That(outputB.UnityCamera.rect, Is.EqualTo(new Rect(.5f, 0f, .5f, 1f)));
+            Assert.That(outputA.UnityCamera.rect, Is.EqualTo(rectA));
+            Assert.That(outputB.UnityCamera.rect, Is.EqualTo(rectB));
             Assert.That(policy.CaptureSnapshot().Bindings[0].OutputId.Value, Is.EqualTo("10000000000000000000000000000002"));
             Assert.That(policy.CaptureSnapshot().Bindings[1].OutputId.Value, Is.EqualTo("10000000000000000000000000000003"));
             runtime.Dispose();
@@ -59,35 +63,23 @@ namespace Immersive.Framework.Camera.Tests
         public void OneViewMayFeedMultipleOutputsWithoutMergingIdentities()
         {
             CameraViewOutputTopology topology = Policy(
-                Binding("20000000000000000000000000000002", "10000000000000000000000000000002", 0f, 0f, 1f, 1f),
-                Binding("20000000000000000000000000000002", "10000000000000000000000000000004", 0f, 0f, 1f, 1f));
+                Binding("20000000000000000000000000000002", "10000000000000000000000000000002"),
+                Binding("20000000000000000000000000000002", "10000000000000000000000000000004"));
 
             Assert.That(topology.GetBindings(new CameraViewId("20000000000000000000000000000002")).Count, Is.EqualTo(2));
             Assert.That(new CameraViewId("shared"), Is.Not.EqualTo(new CameraOutputId("shared")));
         }
 
         [Test]
-        public void DuplicateOutputBindingAndInvalidViewport_AreRejected()
+        public void TwoViewsTargetingSameOutput_AreRejected()
         {
             Assert.That(CameraViewOutputTopology.TryCreate(
                 new[]
                 {
-                    Binding("view.a", "10000000000000000000000000000002", 0f, 0f, 1f, 1f),
-                    Binding("view.b", "10000000000000000000000000000002", .5f, 0f, .5f, 1f)
+                    Binding("view.a", "10000000000000000000000000000002"),
+                    Binding("view.b", "10000000000000000000000000000002")
                 }, out _, out string conflict), Is.False);
             Assert.That(conflict, Does.Contain("conflicting bindings"));
-
-            Assert.That(CameraViewOutputTopology.TryCreate(
-                new[] { Binding("view.a", "10000000000000000000000000000002", 0f, 0f, 0f, 1f) },
-                out _, out string invalid), Is.False);
-            Assert.That(invalid, Does.Contain("invalid normalized viewport"));
-
-            Assert.That(CameraViewOutputTopology.TryCreate(
-                new[] { Binding("view.a", "10000000000000000000000000000002", float.NaN, 0f, 1f, 1f) },
-                out _, out _), Is.False);
-            Assert.That(CameraViewOutputTopology.TryCreate(
-                new[] { Binding("view.a", "10000000000000000000000000000002", .8f, 0f, .3f, 1f) },
-                out _, out _), Is.False);
         }
 
         [Test]
@@ -156,12 +148,13 @@ namespace Immersive.Framework.Camera.Tests
         }
 
         [Test]
-        public void PartialOutputRuntime_AppliesOnlyParticipatingAssociation()
+        public void PartialOutputRuntime_DoesNotMutateAnyAvailableCameraRect()
         {
             Rect authoredB = new Rect(.1f, .1f, .8f, .8f);
             Rect authoredC = new Rect(.2f, .2f, .6f, .6f);
             Rect authoredD = new Rect(.3f, .3f, .4f, .4f);
-            CameraOutputAuthoring outputA = Output("10000000000000000000000000000002", new Rect(0f, 0f, 1f, 1f));
+            Rect authoredA = new Rect(.05f, .07f, .83f, .89f);
+            CameraOutputAuthoring outputA = Output("10000000000000000000000000000002", authoredA);
             CameraOutputAuthoring outputB = Output("10000000000000000000000000000003", authoredB);
             CameraOutputAuthoring outputC = Output("10000000000000000000000000000004", authoredC);
             CameraOutputAuthoring outputD = Output("10000000000000000000000000000005", authoredD);
@@ -170,11 +163,11 @@ namespace Immersive.Framework.Camera.Tests
                 out CameraOutputSessionTopology outputs,
                 out string diagnostic), Is.True, diagnostic);
             CameraViewOutputTopology topology = Policy(
-                Binding("20000000000000000000000000000002", outputA.OutputIdText, 0f, 0f, .25f, 1f));
+                Binding("20000000000000000000000000000002", outputA.OutputIdText));
 
             Assert.That(CameraViewOutputRuntime.TryCreate(
                 outputs, topology, out CameraViewOutputRuntime runtime, out diagnostic), Is.True, diagnostic);
-            Assert.That(outputA.UnityCamera.rect, Is.EqualTo(new Rect(0f, 0f, .25f, 1f)));
+            Assert.That(outputA.UnityCamera.rect, Is.EqualTo(authoredA));
             Assert.That(outputB.UnityCamera.rect, Is.EqualTo(authoredB));
             Assert.That(outputC.UnityCamera.rect, Is.EqualTo(authoredC));
             Assert.That(outputD.UnityCamera.rect, Is.EqualTo(authoredD));
@@ -230,7 +223,7 @@ namespace Immersive.Framework.Camera.Tests
             Assert.That(CameraOutputSessionTopology.TryCreate(
                 new[] { output }, out CameraOutputSessionTopology outputs, out _), Is.True);
             CameraViewOutputTopology policy = Policy(
-                Binding("20000000000000000000000000000002", "10000000000000000000000000000002", 0f, 0f, 1f, 1f));
+                Binding("20000000000000000000000000000002", "10000000000000000000000000000002"));
             var root = new GameObject("shared-composition");
             _created.Add(root);
             CameraSharedComposition composition = root.AddComponent<CameraSharedComposition>();
@@ -244,7 +237,7 @@ namespace Immersive.Framework.Camera.Tests
             Assert.That(composition.Output, Is.SameAs(output));
 
             CameraViewOutputTopology conflicting = Policy(
-                Binding("view.other", "10000000000000000000000000000002", 0f, 0f, 1f, 1f));
+                Binding("view.other", "10000000000000000000000000000002"));
             using var conflictingInjection = new CameraOutputInjectionRuntime(outputs, conflicting, new[] { composition.ViewDefinition });
             Assert.That(conflictingInjection.AttachExact(composition, out diagnostic), Is.False);
             Assert.That(composition.Output, Is.Null);
@@ -252,25 +245,27 @@ namespace Immersive.Framework.Camera.Tests
         }
 
         [Test]
-        public void ChangingOutputAViewport_DoesNotMutateOutputBOrItsArbitration()
+        public void ChangingLogicalTopology_DoesNotMutateCameraRectsOrOutputArbitration()
         {
-            CameraOutputAuthoring outputA = Output("10000000000000000000000000000002", new Rect(0f, 0f, 1f, 1f));
-            CameraOutputAuthoring outputB = Output("10000000000000000000000000000003", new Rect(0f, 0f, 1f, 1f));
+            Rect rectA = new Rect(.11f, .12f, .33f, .34f);
+            Rect rectB = new Rect(.51f, .52f, .35f, .36f);
+            CameraOutputAuthoring outputA = Output("10000000000000000000000000000002", rectA);
+            CameraOutputAuthoring outputB = Output("10000000000000000000000000000003", rectB);
             Assert.That(CameraOutputSessionTopology.TryCreate(
                 new[] { outputA, outputB }, out CameraOutputSessionTopology outputs, out _), Is.True);
             CameraViewOutputTopology first = Policy(
-                Binding("view.a", "10000000000000000000000000000002", 0f, 0f, .5f, 1f),
-                Binding("view.b", "10000000000000000000000000000003", .5f, 0f, .5f, 1f));
+                Binding("view.a", "10000000000000000000000000000002"),
+                Binding("view.b", "10000000000000000000000000000003"));
             Assert.That(CameraViewOutputRuntime.TryCreate(outputs, first, out CameraViewOutputRuntime runtime, out _), Is.True);
             CameraOutputContextSnapshot beforeB = outputB.Context.CaptureSnapshot();
 
             CameraViewOutputTopology changed = Policy(
-                Binding("view.a", "10000000000000000000000000000002", 0f, 0f, .4f, 1f),
-                Binding("view.b", "10000000000000000000000000000003", .5f, 0f, .5f, 1f));
+                Binding("view.c", "10000000000000000000000000000002"),
+                Binding("view.b", "10000000000000000000000000000003"));
             Assert.That(runtime.TryApply(changed, out string diagnostic), Is.True, diagnostic);
 
-            Assert.That(outputA.UnityCamera.rect.width, Is.EqualTo(.4f));
-            Assert.That(outputB.UnityCamera.rect, Is.EqualTo(new Rect(.5f, 0f, .5f, 1f)));
+            Assert.That(outputA.UnityCamera.rect, Is.EqualTo(rectA));
+            Assert.That(outputB.UnityCamera.rect, Is.EqualTo(rectB));
             CameraOutputContextSnapshot afterB = outputB.Context.CaptureSnapshot();
             Assert.That(afterB.AdmittedRequestCount, Is.EqualTo(beforeB.AdmittedRequestCount));
             Assert.That(afterB.HasWinner, Is.EqualTo(beforeB.HasWinner));
@@ -278,7 +273,7 @@ namespace Immersive.Framework.Camera.Tests
         }
 
         [Test]
-        public void RemovingBindingAndTeardown_RestoreAuthoredViewportsWithoutDestroyingOutputs()
+        public void RemovingAssociation_DoesNotMutateOrRestoreCameraRect()
         {
             Rect authoredA = new Rect(.1f, .1f, .8f, .8f);
             CameraOutputAuthoring outputA = Output("10000000000000000000000000000002", authoredA);
@@ -286,27 +281,49 @@ namespace Immersive.Framework.Camera.Tests
             Assert.That(CameraOutputSessionTopology.TryCreate(
                 new[] { outputA, outputB }, out CameraOutputSessionTopology outputs, out _), Is.True);
             CameraViewOutputTopology split = Policy(
-                Binding("view.a", "10000000000000000000000000000002", 0f, 0f, .5f, 1f),
-                Binding("view.b", "10000000000000000000000000000003", .5f, 0f, .5f, 1f));
+                Binding("view.a", "10000000000000000000000000000002"),
+                Binding("view.b", "10000000000000000000000000000003"));
             Assert.That(CameraViewOutputRuntime.TryCreate(outputs, split, out CameraViewOutputRuntime runtime, out _), Is.True);
 
+            Rect externallyOwned = new Rect(.21f, .22f, .23f, .24f);
+            outputA.UnityCamera.rect = externallyOwned;
+
             Assert.That(runtime.TryApply(
-                Policy(Binding("view.b", "10000000000000000000000000000003", 0f, 0f, 1f, 1f)), out _), Is.True);
-            Assert.That(outputA.UnityCamera.rect, Is.EqualTo(authoredA));
+                Policy(Binding("view.b", "10000000000000000000000000000003")), out _), Is.True);
+            Assert.That(outputA.UnityCamera.rect, Is.EqualTo(externallyOwned));
             Assert.That(outputA.IsInitialized, Is.True);
             Assert.That(outputB.IsInitialized, Is.True);
 
             runtime.Dispose();
-            Assert.That(outputB.UnityCamera.rect, Is.EqualTo(new Rect(0f, 0f, 1f, 1f)));
-            Assert.That(outputA != null && outputB != null, Is.True);
+        }
+
+        [Test]
+        public void DisposingRuntime_DoesNotMutateOrRestoreCameraRect()
+        {
+            CameraOutputAuthoring output = Output(
+                "10000000000000000000000000000002",
+                new Rect(.1f, .1f, .8f, .8f));
+            Assert.That(CameraOutputSessionTopology.TryCreate(
+                new[] { output }, out CameraOutputSessionTopology outputs, out _), Is.True);
+            Assert.That(CameraViewOutputRuntime.TryCreate(
+                outputs,
+                Policy(Binding("view.a", "10000000000000000000000000000002")),
+                out CameraViewOutputRuntime runtime,
+                out _), Is.True);
+
+            Rect externallyOwned = new Rect(.31f, .32f, .33f, .34f);
+            output.UnityCamera.rect = externallyOwned;
+
+            runtime.Dispose();
+            Assert.That(output.UnityCamera.rect, Is.EqualTo(externallyOwned));
+            Assert.That(output.IsInitialized, Is.True);
         }
 
         private static CameraViewOutputBinding Binding(
-            string viewId, string outputId, float x, float y, float width, float height) =>
+            string viewId, string outputId) =>
             new CameraViewOutputBinding(
                 new CameraViewId(viewId),
-                new CameraOutputId(outputId),
-                new CameraViewport(x, y, width, height));
+                new CameraOutputId(outputId));
 
         private static CameraViewOutputTopology Policy(params CameraViewOutputBinding[] bindings)
         {
@@ -322,7 +339,7 @@ namespace Immersive.Framework.Camera.Tests
             Assert.That(CameraOutputSessionTopology.TryCreate(
                 new[] { output }, out var outputs, out string diagnostic), Is.True, diagnostic);
             var view = _definitions.View();
-            var policy = Policy(Binding(view.ViewId.Value, output.OutputId.Value, 0, 0, 1, 1));
+            var policy = Policy(Binding(view.ViewId.Value, output.OutputId.Value));
             var root = new GameObject("definition-consumer");
             _created.Add(root);
             var composition = root.AddComponent<CameraSharedComposition>();

@@ -4,30 +4,27 @@ using Immersive.Framework.ApiStatus;
 
 namespace Immersive.Framework.Camera
 {
-    [FrameworkApiStatus(FrameworkApiStatus.Experimental, "CAMERA-026-H explicit View-to-Output binding.")]
+    [FrameworkApiStatus(FrameworkApiStatus.Experimental, "CAMERA-028-B logical View-to-Output identity association (no viewport/layout authority).")]
     public readonly struct CameraViewOutputBinding
     {
         public CameraViewOutputBinding(
             CameraViewId viewId,
-            CameraOutputId outputId,
-            CameraViewport viewport)
+            CameraOutputId outputId)
         {
             ViewId = viewId;
             OutputId = outputId;
-            Viewport = viewport;
         }
 
         public CameraViewId ViewId { get; }
         public CameraOutputId OutputId { get; }
-        public CameraViewport Viewport { get; }
-        public bool IsValid => ViewId.IsValid && OutputId.IsValid && Viewport.IsValid;
+        public bool IsValid => ViewId.IsValid && OutputId.IsValid;
     }
 
     /// <summary>
     /// Immutable composition policy. A View may feed multiple Outputs, while one physical
     /// Output has exactly one View binding in a snapshot.
     /// </summary>
-    [FrameworkApiStatus(FrameworkApiStatus.Experimental, "CAMERA-026-H explicit View-to-Output topology.")]
+    [FrameworkApiStatus(FrameworkApiStatus.Experimental, "CAMERA-028-B logical View-to-Output identity topology (no viewport/layout authority).")]
     public sealed class CameraViewOutputTopology
     {
         private readonly CameraViewOutputBinding[] _bindings;
@@ -83,11 +80,6 @@ namespace Immersive.Framework.Camera
                 if (!binding.OutputId.IsValid)
                 {
                     diagnostic = $"Camera View-to-Output binding at index '{index}' has an invalid Output ID.";
-                    return false;
-                }
-                if (!binding.Viewport.IsValid)
-                {
-                    diagnostic = $"Camera View-to-Output binding for View '{binding.ViewId}' and Output '{binding.OutputId}' has an invalid normalized viewport.";
                     return false;
                 }
                 if (!outputs.Add(binding.OutputId))

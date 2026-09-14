@@ -28,7 +28,6 @@ namespace Immersive.Framework.Editor.CameraAuthoring
                     SerializedProperty view = binding.FindPropertyRelative("viewDefinition");
                     CameraOutputReferenceGUI.DrawDefinitionReference(view, "View Definition");
                     _outputs.DrawReference(binding.FindPropertyRelative("outputDefinition"));
-                    EditorGUILayout.PropertyField(binding.FindPropertyRelative("viewport"));
                     if (GUILayout.Button("Remove Binding"))
                     {
                         bindings.DeleteArrayElementAtIndex(index);
@@ -43,7 +42,6 @@ namespace Immersive.Framework.Editor.CameraAuthoring
                 SerializedProperty added = bindings.GetArrayElementAtIndex(index);
                 added.FindPropertyRelative("viewDefinition").objectReferenceValue = null;
                 added.FindPropertyRelative("outputDefinition").objectReferenceValue = null;
-                added.FindPropertyRelative("viewport").rectValue = new Rect(0, 0, 1, 1);
             }
             serializedObject.ApplyModifiedProperties();
         }

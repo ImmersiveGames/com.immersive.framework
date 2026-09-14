@@ -11,25 +11,21 @@ namespace Immersive.Framework.Camera
     {
         [SerializeField] private CameraViewDefinition viewDefinition;
         [SerializeField] private CameraOutputDefinition outputDefinition;
-        [SerializeField] private Rect viewport = new Rect(0f, 0f, 1f, 1f);
 
         public CameraViewDefinition ViewDefinition => viewDefinition;
         public string ViewIdText => viewDefinition != null && viewDefinition.HasValidId ? viewDefinition.ViewId.Value : string.Empty;
         public CameraOutputDefinition OutputDefinition => outputDefinition;
         public string OutputIdText => outputDefinition != null && outputDefinition.HasValidId ? outputDefinition.OutputId.Value : string.Empty;
-        public Rect Viewport => viewport;
 
         public CameraViewOutputBinding ToBinding() =>
             new CameraViewOutputBinding(
                 viewDefinition.ViewId,
-                outputDefinition.OutputId,
-                new CameraViewport(viewport.x, viewport.y, viewport.width, viewport.height));
+                outputDefinition.OutputId);
 
-        public void Configure(CameraViewDefinition view, CameraOutputDefinition output, CameraViewport targetViewport)
+        public void Configure(CameraViewDefinition view, CameraOutputDefinition output)
         {
             viewDefinition = view;
             outputDefinition = output;
-            viewport = targetViewport.ToRect();
         }
     }
 
@@ -39,7 +35,7 @@ namespace Immersive.Framework.Camera
     /// </summary>
     [DisallowMultipleComponent]
     [AddComponentMenu("Immersive Framework/Camera/Camera View Output Policy")]
-    [FrameworkApiStatus(FrameworkApiStatus.Experimental, "CAMERA-026-H explicit Camera composition policy.")]
+    [FrameworkApiStatus(FrameworkApiStatus.Experimental, "CAMERA-027-D2 logical View-to-Output association policy.")]
     public sealed class CameraViewOutputPolicyAuthoring : MonoBehaviour
     {
         [SerializeField] private List<CameraViewOutputBindingAuthoring> bindings =

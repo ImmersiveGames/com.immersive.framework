@@ -1,6 +1,5 @@
 using Immersive.Framework.CameraAuthoring;
 using UnityEditor;
-using UnityEngine;
 
 namespace Immersive.Framework.Editor.CameraAuthoring
 {
@@ -16,9 +15,6 @@ namespace Immersive.Framework.Editor.CameraAuthoring
             CameraOutputReferenceGUI.DrawDefinitionReference(serializedObject.FindProperty("viewDefinition"), "View Definition");
             EditorGUILayout.PropertyField(serializedObject.FindProperty("subjectPolicy"));
             _outputs.DrawReference(serializedObject.FindProperty("outputDefinition"));
-            EditorGUILayout.PropertyField(serializedObject.FindProperty("viewport"), new GUIContent(
-                "Viewport",
-                "Normalized Output viewport for this View association. Fullscreen is (0, 0, 1, 1)."));
             _advanced = EditorGUILayout.Foldout(_advanced, "Advanced / Debug", true);
             if (_advanced)
             {
@@ -33,7 +29,7 @@ namespace Immersive.Framework.Editor.CameraAuthoring
                     {
                         EditorGUILayout.TextField(
                             "Projected Binding",
-                            $"{binding.ViewId} -> {binding.OutputId} viewport=({binding.Viewport.X}, {binding.Viewport.Y}, {binding.Viewport.Width}, {binding.Viewport.Height})");
+                            $"{binding.ViewId} -> {binding.OutputId}");
                     }
                 }
             }

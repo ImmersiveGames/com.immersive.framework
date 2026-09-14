@@ -576,7 +576,7 @@ namespace Immersive.Framework.Editor.Validation
             {
                 if (!playerInputManagers[managerIndex].splitScreen) continue;
                 report.AddError(
-                    "PlayerInputManager automatic split-screen must be disabled. Framework Camera View-to-Output topology exclusively owns Camera viewport layout.",
+                    "PlayerInputManager automatic split-screen remains unsupported in the current implementation and must be disabled.",
                     playerInputManagers[managerIndex]);
             }
 
@@ -598,12 +598,6 @@ namespace Immersive.Framework.Editor.Validation
                 if (!composition.TryValidateDefinitions(out string compositionIssue))
                 {
                     report.AddError(compositionIssue, composition);
-                }
-                if (!composition.Viewport.IsValid)
-                {
-                    report.AddError(
-                        "Shared Camera Composition requires a valid normalized viewport.",
-                        composition);
                 }
                 if (!composition.RequestedOutputId.IsValid ||
                     !outputIds.TryGetValue(composition.OutputIdText, out CameraOutputAuthoring output))

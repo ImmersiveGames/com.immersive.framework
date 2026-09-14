@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Reflection;
 using Immersive.Framework.Camera;
 using Immersive.Framework.CameraAuthoring;
 using Immersive.Framework.Editor.CameraAuthoring;
@@ -33,7 +34,8 @@ namespace Immersive.Framework.Authoring.Editor.Tests
             Assert.That(composition.OutputDefinition, Is.SameAs(output));
             Assert.That(composition.ViewId, Is.EqualTo(view.ViewId));
             Assert.That(composition.RequestedOutputId, Is.EqualTo(output.OutputId));
-            Assert.That(composition.Viewport, Is.EqualTo(new CameraViewport(0f, 0f, 1f, 1f)));
+            Assert.That(typeof(CameraSharedComposition).GetProperty("Viewport"), Is.Null);
+            Assert.That(new SerializedObject(composition).FindProperty("viewport"), Is.Null);
             Assert.That(composition.TryValidateDefinitions(out _), Is.True);
         }
 
@@ -112,8 +114,8 @@ namespace Immersive.Framework.Authoring.Editor.Tests
             SetId(b, a.ViewId.Value);
             var first = new CameraViewOutputBindingAuthoring();
             var second = new CameraViewOutputBindingAuthoring();
-            first.Configure(a, Definition<CameraOutputDefinition>(), new CameraViewport(0, 0, 1, 1));
-            second.Configure(b, Definition<CameraOutputDefinition>(), new CameraViewport(0, 0, 1, 1));
+            first.Configure(a, Definition<CameraOutputDefinition>());
+            second.Configure(b, Definition<CameraOutputDefinition>());
             var policy = Component<CameraViewOutputPolicyAuthoring>();
             policy.Configure(new[] { first, second });
             Assert.That(policy.TryBuildTopology(out _, out string diagnostic), Is.False);
@@ -173,15 +175,14 @@ namespace Immersive.Framework.Authoring.Editor.Tests
         }
 
         [Test]
-        public void ExplicitPolicy_RequiresExactOutputAssetAndPreservesAuthoredViewport()
+        public void ExplicitPolicy_RequiresExactOutputAssetAndCreatesIdentityOnlyBinding()
         {
             var view = Definition<CameraViewDefinition>();
             var output = Definition<CameraOutputDefinition>();
             var collision = Definition<CameraOutputDefinition>();
             SetId(collision, output.OutputId.Value);
             var binding = new CameraViewOutputBindingAuthoring();
-            var viewport = new CameraViewport(0, 0, .5f, 1);
-            binding.Configure(view, output, viewport);
+            binding.Configure(view, output);
             var policy = Component<CameraViewOutputPolicyAuthoring>();
             policy.Configure(new[] { binding });
             var physical = Component<CameraOutputAuthoring>();
@@ -191,12 +192,16 @@ namespace Immersive.Framework.Authoring.Editor.Tests
             Assert.That(policy.TryValidateOutputs(new[] { physical }, out _), Is.True);
             Assert.That(policy.TryBuildTopology(out var topology, out string diagnostic), Is.True, diagnostic);
             Assert.That(topology.TryGetBinding(view.ViewId, output.OutputId, out var projected), Is.True);
-            Assert.That(projected.Viewport, Is.EqualTo(viewport));
+            Assert.That(projected.ViewId, Is.EqualTo(view.ViewId));
+            Assert.That(projected.OutputId, Is.EqualTo(output.OutputId));
+            Assert.That(typeof(CameraViewOutputBinding).GetProperty("Viewport"), Is.Null);
+            Assert.That(typeof(CameraViewOutputBindingAuthoring).GetField(
+                "viewport", BindingFlags.Instance | BindingFlags.NonPublic), Is.Null);
             Assert.That(policy.ViewDefinitions[0], Is.SameAs(view));
         }
 
         [Test]
-        public void SharedComposition_ProjectsFullscreenBindingWithoutPolicy()
+        public void SharedComposition_ProjectsIdentityOnlyBindingWithoutPolicy()
         {
             var view = Definition<CameraViewDefinition>();
             var output = Definition<CameraOutputDefinition>();
@@ -205,7 +210,7 @@ namespace Immersive.Framework.Authoring.Editor.Tests
             Assert.That(composition.TryCreateAssociationBinding(out var binding, out string diagnostic), Is.True, diagnostic);
             Assert.That(binding.ViewId, Is.EqualTo(view.ViewId));
             Assert.That(binding.OutputId, Is.EqualTo(output.OutputId));
-            Assert.That(binding.Viewport, Is.EqualTo(new CameraViewport(0f, 0f, 1f, 1f)));
+            Assert.That(typeof(CameraViewOutputBinding).GetProperty("Viewport"), Is.Null);
             Assert.That(CameraViewOutputAssociationProjection.TryCreate(
                 new[] { composition }, Array.Empty<CameraViewOutputPolicyAuthoring>(),
                 new[] { Physical(output) }, out var topology, out var views, out diagnostic), Is.True, diagnostic);
@@ -216,32 +221,17 @@ namespace Immersive.Framework.Authoring.Editor.Tests
         }
 
         [Test]
-        public void SharedComposition_ProjectsExactNonFullscreenViewport()
+        public void SharedComposition_HasNoViewportAuthoringSurface()
         {
             var view = Definition<CameraViewDefinition>();
             var output = Definition<CameraOutputDefinition>();
             var composition = Component<CameraSharedComposition>();
-            var viewport = new CameraViewport(0f, 0f, 0.5f, 1f);
-            composition.Configure(view, output, CameraSharedCompositionSubjectPolicyKind.AllAvailableSubjects, viewport);
-            Assert.That(composition.TryCreateAssociationBinding(out var binding, out _), Is.True);
-            Assert.That(binding.Viewport, Is.EqualTo(viewport));
-        }
-
-        [Test]
-        public void InvalidViewport_BlocksTopologyAdmission()
-        {
-            var view = Definition<CameraViewDefinition>();
-            var output = Definition<CameraOutputDefinition>();
-            var composition = Component<CameraSharedComposition>();
-            SetReference(composition, "viewDefinition", view);
-            SetReference(composition, "outputDefinition", output);
-            SetViewport(composition, new Rect(0.5f, 0f, 0.75f, 1f));
-            Assert.That(composition.TryCreateAssociationBinding(out _, out string diagnostic), Is.False);
-            Assert.That(diagnostic, Does.Contain("invalid normalized viewport"));
-            Assert.That(CameraViewOutputAssociationProjection.TryCreate(
-                new[] { composition }, Array.Empty<CameraViewOutputPolicyAuthoring>(),
-                new[] { Physical(output) }, out _, out _, out diagnostic), Is.False);
-            Assert.That(diagnostic, Does.Contain("invalid normalized viewport"));
+            composition.Configure(view, output, CameraSharedCompositionSubjectPolicyKind.AllAvailableSubjects);
+            Assert.That(composition.TryCreateAssociationBinding(out var binding, out string diagnostic), Is.True, diagnostic);
+            Assert.That(binding.ViewId, Is.EqualTo(view.ViewId));
+            Assert.That(binding.OutputId, Is.EqualTo(output.OutputId));
+            Assert.That(typeof(CameraSharedComposition).GetProperty("Viewport"), Is.Null);
+            Assert.That(new SerializedObject(composition).FindProperty("viewport"), Is.Null);
         }
 
         [Test]
@@ -279,7 +269,7 @@ namespace Immersive.Framework.Authoring.Editor.Tests
             var composition = Component<CameraSharedComposition>();
             composition.Configure(simpleView, outputA, CameraSharedCompositionSubjectPolicyKind.AllAvailableSubjects);
             var authored = new CameraViewOutputBindingAuthoring();
-            authored.Configure(policyView, outputB, new CameraViewport(0.5f, 0f, 0.5f, 1f));
+            authored.Configure(policyView, outputB);
             var policy = Component<CameraViewOutputPolicyAuthoring>();
             policy.Configure(new[] { authored });
             Assert.That(CameraViewOutputAssociationProjection.TryCreate(
@@ -300,7 +290,7 @@ namespace Immersive.Framework.Authoring.Editor.Tests
             var composition = Component<CameraSharedComposition>();
             composition.Configure(viewA, outputA, CameraSharedCompositionSubjectPolicyKind.AllAvailableSubjects);
             var authored = new CameraViewOutputBindingAuthoring();
-            authored.Configure(viewB, outputB, new CameraViewport(0.5f, 0f, 0.5f, 1f));
+            authored.Configure(viewB, outputB);
             var policy = Component<CameraViewOutputPolicyAuthoring>();
             policy.Configure(new[] { authored });
             Assert.That(CameraViewOutputAssociationProjection.TryCreate(
@@ -319,8 +309,7 @@ namespace Immersive.Framework.Authoring.Editor.Tests
             var first = Component<CameraSharedComposition>();
             var second = Component<CameraSharedComposition>();
             first.Configure(viewA, outputA, CameraSharedCompositionSubjectPolicyKind.AllAvailableSubjects);
-            second.Configure(viewB, outputB, CameraSharedCompositionSubjectPolicyKind.AllAvailableSubjects,
-                new CameraViewport(0.5f, 0f, 0.5f, 1f));
+            second.Configure(viewB, outputB, CameraSharedCompositionSubjectPolicyKind.AllAvailableSubjects);
             Assert.That(CameraViewOutputAssociationProjection.TryCreate(
                 new[] { second, first }, Array.Empty<CameraViewOutputPolicyAuthoring>(),
                 new[] { Physical(outputB), Physical(outputA) },
@@ -328,8 +317,10 @@ namespace Immersive.Framework.Authoring.Editor.Tests
             Assert.That(topology.BindingCount, Is.EqualTo(2));
             Assert.That(topology.TryGetBinding(viewA.ViewId, outputA.OutputId, out var a), Is.True);
             Assert.That(topology.TryGetBinding(viewB.ViewId, outputB.OutputId, out var b), Is.True);
-            Assert.That(a.Viewport, Is.EqualTo(new CameraViewport(0f, 0f, 1f, 1f)));
-            Assert.That(b.Viewport, Is.EqualTo(new CameraViewport(0.5f, 0f, 0.5f, 1f)));
+            Assert.That(a.ViewId, Is.EqualTo(viewA.ViewId));
+            Assert.That(a.OutputId, Is.EqualTo(outputA.OutputId));
+            Assert.That(b.ViewId, Is.EqualTo(viewB.ViewId));
+            Assert.That(b.OutputId, Is.EqualTo(outputB.OutputId));
         }
 
         [Test]
@@ -354,7 +345,7 @@ namespace Immersive.Framework.Authoring.Editor.Tests
             var view = Definition<CameraViewDefinition>();
             var output = Definition<CameraOutputDefinition>();
             var authored = new CameraViewOutputBindingAuthoring();
-            authored.Configure(view, output, new CameraViewport(0f, 0f, 1f, 1f));
+            authored.Configure(view, output);
             var policy = Component<CameraViewOutputPolicyAuthoring>();
             policy.Configure(new[] { authored });
             Assert.That(CameraViewOutputAssociationProjection.TryCreate(
@@ -374,7 +365,7 @@ namespace Immersive.Framework.Authoring.Editor.Tests
             var composition = Component<CameraSharedComposition>();
             composition.Configure(viewA, outputA, CameraSharedCompositionSubjectPolicyKind.AllAvailableSubjects);
             var authored = new CameraViewOutputBindingAuthoring();
-            authored.Configure(viewB, outputB, new CameraViewport(0.5f, 0f, 0.5f, 1f));
+            authored.Configure(viewB, outputB);
             var policy = Component<CameraViewOutputPolicyAuthoring>();
             policy.Configure(new[] { authored });
             Assert.That(CameraViewOutputAssociationProjection.TryCreate(
@@ -395,7 +386,7 @@ namespace Immersive.Framework.Authoring.Editor.Tests
             var composition = Component<CameraSharedComposition>();
             composition.Configure(viewA, output, CameraSharedCompositionSubjectPolicyKind.AllAvailableSubjects);
             var authored = new CameraViewOutputBindingAuthoring();
-            authored.Configure(viewB, output, new CameraViewport(0.5f, 0f, 0.5f, 1f));
+            authored.Configure(viewB, output);
             var policy = Component<CameraViewOutputPolicyAuthoring>();
             policy.Configure(new[] { authored });
             Assert.That(CameraViewOutputAssociationProjection.TryCreate(
@@ -440,9 +431,8 @@ namespace Immersive.Framework.Authoring.Editor.Tests
             var output = Definition<CameraOutputDefinition>();
             var first = new CameraViewOutputBindingAuthoring();
             var second = new CameraViewOutputBindingAuthoring();
-            first.Configure(view, output, new CameraViewport(0f, 0f, 1f, 1f));
-            second.Configure(Definition<CameraViewDefinition>(), Definition<CameraOutputDefinition>(),
-                new CameraViewport(0f, 0f, 1f, 1f));
+            first.Configure(view, output);
+            second.Configure(Definition<CameraViewDefinition>(), Definition<CameraOutputDefinition>());
             var policyA = Component<CameraViewOutputPolicyAuthoring>();
             var policyB = Component<CameraViewOutputPolicyAuthoring>();
             policyA.Configure(new[] { first });
@@ -519,13 +509,6 @@ namespace Immersive.Framework.Authoring.Editor.Tests
         {
             var serialized = new SerializedObject(definition);
             serialized.FindProperty("stableId").stringValue = value;
-            serialized.ApplyModifiedPropertiesWithoutUndo();
-        }
-
-        private static void SetViewport(CameraSharedComposition composition, Rect viewport)
-        {
-            var serialized = new SerializedObject(composition);
-            serialized.FindProperty("viewport").rectValue = viewport;
             serialized.ApplyModifiedPropertiesWithoutUndo();
         }
 
