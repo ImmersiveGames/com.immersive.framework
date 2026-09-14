@@ -1,6 +1,6 @@
 # Immersive Framework Documentation
 
-Last updated: **2026-09-12**
+Last updated: **2026-09-14**
 
 This directory contains the current product documentation for Immersive Framework.
 
@@ -106,7 +106,7 @@ Scene-Provided prepared physical Actor replacement remains outside the current A
 
 ### Camera
 
-The Camera architecture was reconciled again on **2026-09-12** after the first multi-output/authoring implementation exposed an ownership problem.
+The Camera architecture was reconciled on **2026-09-12** and the corrected logical topology/authoring boundary was technically certified on **2026-09-14**.
 
 Current normative separation:
 
@@ -133,27 +133,27 @@ Output Presentation / Layout
 Current cardinality rule:
 
 ```text
-Session available Outputs       -> 1..N
+Session available Outputs        -> 1..N
 current View→Output associations -> 0..N subset
 ```
 
 An available Output does not have to participate in the current View topology. Player count does not define Output count, active association count or screen layout.
 
-The previous viewport-bearing implementation remains in code until the pending implementation cuts are completed. It is no longer normative architecture.
+The previous viewport-bearing Camera topology is removed from the current implementation. `CameraViewOutputBinding` contains only View and Output identity, and Camera View→Output runtime no longer owns `Camera.rect`.
 
-Current implementation plan:
+Current implementation state:
 
 ```text
-CAMERA-026-H2  IMPLEMENTED / TECHNICALLY CERTIFIED — partial Output participation
-CAMERA-026-I   Player→Camera Subject integration boundary
-CAMERA-027-D2  logical View→Output authoring without viewport
-CAMERA-028-A   IMPLEMENTED / TECHNICALLY CERTIFIED — available Output vs active participation
-CAMERA-028-B   remove viewport from Camera topology
-CAMERA-028-C   explicit Output Presentation / Layout authority
-CAMERA-028-D   PlayerInputManager layout integration
+CAMERA-026-H2  IMPLEMENTED / TECHNICALLY CERTIFIED — revalidated 2026-09-14
+CAMERA-026-I   PENDING — Player→Camera Subject integration boundary
+CAMERA-027-D2  IMPLEMENTED / TECHNICALLY CERTIFIED — 2026-09-14
+CAMERA-028-A   IMPLEMENTED / TECHNICALLY CERTIFIED — Output participation
+CAMERA-028-B   IMPLEMENTED / TECHNICALLY CERTIFIED — viewport-free Camera topology
+CAMERA-028-C   PENDING — explicit Output Presentation / Layout authority
+CAMERA-028-D   PENDING — PlayerInputManager layout integration
 ```
 
-The 2026-09-12 Full Camera QA result remains valid historical evidence:
+Historical 2026-09-12 Full Camera QA remains valid for its previous viewport-bearing contract:
 
 ```text
 39/39 PASS
@@ -161,7 +161,21 @@ ADR-026 phases 2/2
 9/9 dimensions
 ```
 
-It certified the previous viewport-bearing contract. It is **not** current certification of the corrected IF-ADR-026/027/028 boundary. Corrected implementation and recertification are pending.
+Corrected 2026-09-14 evidence:
+
+```text
+Persistent structural regression   12/12 PASS
+CAMERA-028-A Partial                8/8 PASS
+outputParticipation                 PASS
+Full Camera established cases       39/39 PASS
+ADR-026 phases                      2/2 PASS
+active dimensions                   8/8 PASS
+viewOutputAssociation               PASS
+viewportSplitTopology               REMOVED
+Shared baseline restore             PASS
+```
+
+The corrected run certifies CAMERA-028-A/B and CAMERA-027-D2. It does not certify `layoutAuthority` or `playerInputLayoutIntegration`; those remain CAMERA-028-C/D work.
 
 Request arbitration, output-owned Default Rig semantics, force-default ownership, typed View/Output/Rig Behavior definitions and `CameraRigComposer` materialization authority remain preserved.
 
@@ -190,7 +204,7 @@ See the Tracker and IF-ADR-009 reconciliation records for the current boundary.
 | [007](Architecture/ADRs/IF-ADR-007-Activity-Entry-Readiness-and-Reveal-Gating.md) | Activity entry readiness and reveal gating | Accepted / Reconciled |
 | [008](Architecture/ADRs/IF-ADR-008-Persistent-Application-Content-Composition.md) | Persistent application content composition | Accepted / Implemented |
 | [009](Architecture/ADRs/IF-ADR-009-Activity-Local-Visibility-Rules.md) | Activity-local visibility rules | Accepted / Reconciled / Implemented / Current QA certified |
-| [010](Architecture/ADRs/IF-ADR-010-Editor-and-Inspector-Product-Surface-Authority.md) | Editor and Inspector product surface authority | Accepted; Camera surface reconciliation pending 027-D2/028 |
+| [010](Architecture/ADRs/IF-ADR-010-Editor-and-Inspector-Product-Surface-Authority.md) | Editor and Inspector product surface authority | Accepted; Camera viewport-bearing surfaces reconciled by 027-D2/028-B; layout surfaces pending 028-C/D |
 | [011](Architecture/ADRs/IF-ADR-011-Participant-Aware-Activity-Readiness-Loading-Progress.md) | Participant-aware readiness/loading progress | Accepted / Reconciled |
 | [012](Architecture/ADRs/IF-ADR-012-Activity-Player-Participation-Profile-and-Readiness-Compatibility.md) | Activity Player participation profile and readiness compatibility | Accepted / Reconciled / Implemented |
 | [013](Architecture/ADRs/IF-ADR-013-Optional-Audio-BGM-Adapter.md) | Optional Audio/BGM adapter | Accepted / Experimental |
@@ -206,16 +220,16 @@ See the Tracker and IF-ADR-009 reconciliation records for the current boundary.
 | [023](Architecture/ADRs/IF-ADR-023-Player-Actor-Runtime-Host-and-Presentation-Authority.md) | Player Actor Runtime Host and Presentation authority | Accepted / Implemented; occurrence identity reconciled by 023A |
 | [024](Architecture/ADRs/IF-ADR-024-Prepared-Actor-Replacement-Public-Contract.md) | Prepared Actor replacement public contract | Accepted / Reconciled / Manager-Provisioned V1 implemented and certified |
 | [025](Architecture/ADRs/IF-ADR-025-Local-Player-Input-Ownership-and-Device-Association.md) | Local Player input ownership and device association | Accepted / Implemented |
-| [026](Architecture/ADRs/IF-ADR-026-Camera-Subjects-Assignment-and-Multi-Output-Topology.md) | Camera Subjects, Assignment and multi-output topology | **Reopened** — A..G retained; H2 certified; I/layout reconciliation pending |
-| [027](Architecture/ADRs/IF-ADR-027-Camera-Authoring-Definitions-and-Composition-Authority.md) | Camera authoring definitions and composition authority | **Reopened** — A/B/C retained; D2 pending; E deferred; F final closure pending |
-| [028](Architecture/ADRs/IF-ADR-028-Camera-Output-Participation-and-Presentation-Layout-Authority.md) | Camera Output participation and Presentation Layout authority | **Accepted architecture / partial implementation** — 028-A certified; B/C/D pending |
+| [026](Architecture/ADRs/IF-ADR-026-Camera-Subjects-Assignment-and-Multi-Output-Topology.md) | Camera Subjects, Assignment and multi-output topology | **Reopened** — A..G retained; H superseded; H2 certified; I pending |
+| [027](Architecture/ADRs/IF-ADR-027-Camera-Authoring-Definitions-and-Composition-Authority.md) | Camera authoring definitions and composition authority | **Reopened** — A/B/C retained; D2 certified; E deferred; F final closure pending |
+| [028](Architecture/ADRs/IF-ADR-028-Camera-Output-Participation-and-Presentation-Layout-Authority.md) | Camera Output participation and Presentation Layout authority | **Accepted architecture / partial implementation** — 028-A/B certified; C/D pending |
 
 ## Current reconciliation / certification records
 
 Key current or recent records:
 
 - [Camera Output Participation and Layout Authority Reconciliation — 2026-09-12](Architecture/Reconciliation/IF-CAMERA-OUTPUT-LAYOUT-AUTHORITY-RECONCILIATION-2026-09-12.md)
-- [Camera Full Technical Certification — 2026-09-12](Architecture/Reconciliation/IF-CAMERA-FULL-TECHNICAL-CERTIFICATION-2026-09-12.md) — historical boundary after IF-ADR-028 reconciliation
+- [Camera Full Technical Certification — 2026-09-12](Architecture/Reconciliation/IF-CAMERA-FULL-TECHNICAL-CERTIFICATION-2026-09-12.md) — historical viewport-bearing boundary
 - [IF-ADR-026 Shared Camera Technical Certification — 2026-09-09](Architecture/Reconciliation/IF-ADR-026-SHARED-CAMERA-TECHNICAL-CERTIFICATION-2026-09-09.md)
 - [IF-ADR-024 Prepared Actor Replacement Technical Certification — 2026-09-02](Architecture/Reconciliation/IF-ADR-024-PREPARED-ACTOR-REPLACEMENT-TECHNICAL-CERTIFICATION-2026-09-02.md)
 - [IF-ADR-023A Player Actor Occurrence Identity Boundary — 2026-08-31](Architecture/Reconciliation/IF-ADR-023A-PLAYER-ACTOR-OCCURRENCE-IDENTITY-BOUNDARY-2026-08-31.md)
@@ -234,10 +248,10 @@ When architecture changes after certification:
 1. preserve the dated certification result;
 2. mark its scope historical if the certified contract is superseded;
 3. update/reopen the affected ADRs;
-4. add a reconciliation record;
+4. update the reconciliation record;
 5. update the Tracker and current usage guide;
 6. implement the corrected boundary;
-7. recertify with a new dated result.
+7. recertify with fresh evidence.
 ```
 
 Do not keep two current authorities for the same concern.
