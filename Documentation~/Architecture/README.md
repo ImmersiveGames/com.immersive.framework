@@ -1,6 +1,6 @@
 # Immersive Framework Architecture Documentation
 
-Last updated: **2026-09-12**
+Last updated: **2026-09-14**
 
 ## Normative architecture
 
@@ -307,7 +307,7 @@ Camera Output Definition
 logical View→Output association
 ```
 
-Physical presentation/layout is authored separately. `Viewport` is no longer Camera topology authority.
+Physical presentation/layout is separate. The current Camera View→Output topology and authoring contain no viewport authority.
 
 Player count does not determine Output count, active binding count or screen layout. Stable View/Output IDs remain runtime and diagnostic evidence; typed definition references are the normal authored links.
 
@@ -315,23 +315,41 @@ Current Camera architecture state:
 
 ```text
 CAMERA-026-A..G    IMPLEMENTED / RETAINED
-CAMERA-026-H       PARTIALLY SUPERSEDED
-CAMERA-026-H2      IMPLEMENTED / TECHNICALLY CERTIFIED — 2026-09-13
+CAMERA-026-H       SUPERSEDED
+CAMERA-026-H2      IMPLEMENTED / TECHNICALLY CERTIFIED — revalidated 2026-09-14
 CAMERA-026-I       PENDING — Player→Camera Subject integration boundary
 CAMERA-027-A..C    IMPLEMENTED / RETAINED
-CAMERA-027-D2      PENDING — logical association without viewport
+CAMERA-027-D2      IMPLEMENTED / TECHNICALLY CERTIFIED — 2026-09-14
 CAMERA-027-E       DEFERRED / OPTIONAL
 CAMERA-027-F       FINAL CONSUMER CLOSURE PENDING corrected boundary
 CAMERA-028-A       IMPLEMENTED / TECHNICALLY CERTIFIED — 8/8 PASS
-CAMERA-028-B/C/D   PENDING
-corrected QA       PARTIAL — 028-A focused proof complete; layout aggregate pending
+CAMERA-028-B       IMPLEMENTED / TECHNICALLY CERTIFIED — 2026-09-14
+CAMERA-028-C/D     PENDING
+corrected logical QA COMPLETE through CUT 2; physical layout QA pending
 ```
 
 Historical integrated Camera evidence:
 
 [Camera Full Technical Certification — 2026-09-12](Reconciliation/IF-CAMERA-FULL-TECHNICAL-CERTIFICATION-2026-09-12.md)
 
-The `39/39`, ADR-026 `2/2`, `9/9` run remains valid dated evidence for the viewport-bearing contract that executed on 2026-09-12. It is not certification of the corrected IF-ADR-026/027/028 boundary. The old `viewportSplitTopology` dimension is historical and must be replaced by separate View→Output association, Output participation, layout-authority and PlayerInput-layout proof.
+The historical `39/39`, ADR-026 `2/2`, `9/9` run remains valid dated evidence for the viewport-bearing contract that executed on 2026-09-12. It is not relabeled as current corrected evidence.
+
+Corrected 2026-09-14 evidence:
+
+```text
+Persistent Camera Presentation Composition regression  12/12 PASS
+invalid-viewport                                       SupersededByCAMERA028B
+CAMERA-028-A Partial                                   8/8 PASS
+outputParticipation                                    PASS
+Full Camera established cases                          39/39 PASS
+ADR-026 phases                                         2/2 PASS
+active Full Camera dimensions                          8/8 PASS
+viewOutputAssociation                                  PASS
+viewportSplitTopology                                  REMOVED
+Shared baseline restore                                PASS
+```
+
+This current run certifies the logical View→Output / Output-participation boundary through CAMERA-028-B and CAMERA-027-D2. Physical `layoutAuthority` and `playerInputLayoutIntegration` remain pending CAMERA-028-C/D.
 
 Previous focused Shared Camera evidence remains:
 
@@ -371,7 +389,7 @@ idempotent.
 
 IF-ADR-028 clarifies that forcing Default selects Rig presentation only; it does not grant Transition or Camera request arbitration ownership of viewport/display layout.
 
-Sample 00 real-consumer evidence after explicit Default authoring remains historical Stage B consumer evidence. The 2026-09-12 Full Camera aggregate remains historical integrated evidence for the previous viewport-bearing boundary; Default/force-default semantics themselves remain preserved.
+Sample 00 real-consumer evidence after explicit Default authoring remains historical Stage B consumer evidence. Default/force-default semantics remain preserved by the corrected 2026-09-14 Full Camera regression set.
 
 ## Current product-authoring decisions
 
@@ -478,13 +496,13 @@ physical replacement is the separate Manager-Provisioned IF-ADR-024 operation
 
 ### Camera
 
-- IF-ADR-004 — Request/output arbitration and output-owned Default semantics remain accepted/implemented. Multi-output participation/layout portions are governed by corrected IF-ADR-026 and IF-ADR-028; the 2026-09-12 `39/39` aggregate is historical evidence for the prior viewport-bearing boundary.
+- IF-ADR-004 — Request/output arbitration and output-owned Default semantics remain accepted/implemented. Multi-output participation/layout portions are governed by corrected IF-ADR-026 and IF-ADR-028; historical 2026-09-12 evidence remains preserved and corrected 2026-09-14 regression evidence is current through CUT 2.
 - IF-ADR-004D — Implemented and preserved. Default/force-default selects physical Rig presentation; it does not own screen layout.
-- IF-ADR-010 — Accepted product-surface authority; Camera Inspector surfaces must be reconciled with IF-ADR-027-D2 / IF-ADR-028.
+- IF-ADR-010 — Accepted product-surface authority; viewport-bearing Camera Inspector surfaces were reconciled by CAMERA-027-D2 / CAMERA-028-B; physical layout surfaces remain pending CAMERA-028-C/D.
 - IF-ADR-022 — Presentation family/materialization accepted and preserved; target selection is owned by IF-ADR-026 and reusable behavior authoring by IF-ADR-027.
-- IF-ADR-026 — **Reopened** 2026-09-12. CAMERA-026-A..G remain implemented; original H all-Output/viewport assumptions are superseded; H2 is certified; I and layout reconciliation remain pending. Previous 39/39 remains historical evidence.
-- IF-ADR-027 — **Reopened** 2026-09-12. CAMERA-027-A/B/C remain implemented; D2 is pending to remove viewport from Camera association authoring; E remains deferred; F final consumer closure waits corrected implementation.
-- IF-ADR-028 — **Accepted architecture / partial implementation**. CAMERA-028-A is implemented/certified; CAMERA-028-B/C/D remain pending, so corrected layout implementation is incomplete.
+- IF-ADR-026 — **Reopened** 2026-09-12. CAMERA-026-A..G remain implemented; original H all-Output/viewport assumptions are superseded; H2 is certified and revalidated; I remains pending. Corrected Full Camera is 39/39 established cases, ADR-026 2/2, active dimensions 8/8.
+- IF-ADR-027 — **Reopened** 2026-09-12. CAMERA-027-A/B/C remain implemented; D2 is implemented/certified 2026-09-14; E remains deferred; F final consumer closure waits corrected layout/integration implementation.
+- IF-ADR-028 — **Accepted architecture / partial implementation**. CAMERA-028-A/B are implemented/certified; CAMERA-028-C/D remain pending, so physical layout implementation is incomplete.
 
 ## Historical certification records
 
@@ -512,7 +530,7 @@ prepared physical Actor replacement and its integrated Full Player QA `16/16` ru
 Player aggregate/certification counts are preserved for their own executed boundaries and
 are not relabeled as ADR-024 proof.
 
-For Camera, the 2026-08-15 `53/53` presentation certification, the 2026-09-09 focused Shared Camera certification and the 2026-09-12 Full Camera `39/39` certification remain dated evidence for the boundaries they executed. The 2026-09-12 reconciliation and IF-ADR-028 deliberately change Output participation and layout authority; corrected integrated certification is therefore pending.
+For Camera, the 2026-08-15 `53/53` presentation certification, the 2026-09-09 focused Shared Camera certification and the 2026-09-12 Full Camera `39/39` certification remain dated evidence for the boundaries they executed. The corrected 2026-09-14 run is current technical evidence for CAMERA-028-A/B and CAMERA-027-D2 and does not claim physical layout-authority or PlayerInput-layout certification.
 
 The package-local Unity Test Framework tests are not claimed as executed by integrated QA
 unless the relevant certification record states that execution.
