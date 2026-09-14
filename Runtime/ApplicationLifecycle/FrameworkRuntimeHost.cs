@@ -70,6 +70,9 @@ namespace Immersive.Framework.ApplicationLifecycle
         private CameraOutputInjectionRuntime _cameraOutputInjectionRuntime;
         private CameraOutputSessionTopology _cameraOutputTopology;
         private CameraViewOutputRuntime _cameraViewOutputRuntime;
+        private CameraSubjectAvailabilityContext _cameraSubjectAvailabilityContext;
+        private PlayerActorCameraSubjectIntegrationRuntime
+            _playerActorCameraSubjectIntegrationRuntime;
         private CameraSubjectAvailabilityInjectionRuntime _cameraSubjectAvailabilityInjectionRuntime;
         private int _objectEntryRuntimeContextRevision;
         private int _objectEntryRuntimeContextInvalidationCount;
@@ -523,6 +526,9 @@ namespace Immersive.Framework.ApplicationLifecycle
                 _globalUiSceneRuntime.PersistedRoots);
             _cameraSubjectAvailabilityInjectionRuntime?.Dispose();
             _cameraSubjectAvailabilityInjectionRuntime = null;
+            _playerActorCameraSubjectIntegrationRuntime?.Dispose();
+            _playerActorCameraSubjectIntegrationRuntime = null;
+            _cameraSubjectAvailabilityContext = null;
 
             _loadingSurfaceRuntime = CreateLoadingSurfaceRuntime(_globalUiSceneRuntime);
             _pauseSurfaceRuntime = CreatePauseSurfaceRuntime(_globalUiSceneRuntime);
@@ -596,20 +602,28 @@ namespace Immersive.Framework.ApplicationLifecycle
             }
             if (_gameApplication.PlayerSessionEnabled)
             {
-                if (!this.TryGetCameraSubjectAvailabilitySource(
-                        out ICameraSubjectAvailabilitySource cameraSubjectAvailability))
+                if (!this.TryGetPlayerPreparedActorOccurrenceSource(
+                        out IPlayerPreparedActorOccurrenceSource playerActors))
                 {
                     var failed = FrameworkGameFlowStartResult.Failed(
-                        "Session Camera Subject availability could not be exposed to Camera composition.");
+                        "Canonical Player Actor occurrence evidence could not be exposed to Camera integration.");
                     _state = FrameworkRuntimeState.FromGameFlowResult(
                         _gameApplication,
                         failed);
                     return failed;
                 }
 
+                _cameraSubjectAvailabilityContext =
+                    new CameraSubjectAvailabilityContext(
+                        new SubjectAvailabilityContextId(
+                            $"camera-subjects:{playerActors.SessionContextId}"));
+                _playerActorCameraSubjectIntegrationRuntime =
+                    new PlayerActorCameraSubjectIntegrationRuntime(
+                        playerActors,
+                        _cameraSubjectAvailabilityContext);
                 _cameraSubjectAvailabilityInjectionRuntime =
                     new CameraSubjectAvailabilityInjectionRuntime(
-                        cameraSubjectAvailability);
+                        _cameraSubjectAvailabilityContext);
                 _cameraSubjectAvailabilityInjectionRuntime.AttachRoots(
                     _globalUiSceneRuntime.PersistedRoots);
             }
@@ -3004,6 +3018,9 @@ namespace Immersive.Framework.ApplicationLifecycle
             _activityReadinessBinding = null;
             _cameraSubjectAvailabilityInjectionRuntime?.Dispose();
             _cameraSubjectAvailabilityInjectionRuntime = null;
+            _playerActorCameraSubjectIntegrationRuntime?.Dispose();
+            _playerActorCameraSubjectIntegrationRuntime = null;
+            _cameraSubjectAvailabilityContext = null;
             _cameraOutputInjectionRuntime?.Dispose();
             _cameraOutputInjectionRuntime = null;
             _cameraViewOutputRuntime?.Dispose();

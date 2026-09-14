@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using Immersive.Framework.Actors;
 using Immersive.Framework.ApiStatus;
 using Immersive.Framework.ApplicationLifecycle;
-using Immersive.Framework.Camera;
 using Immersive.Framework.PlayerSlots;
 using Immersive.Framework.RouteLifecycle;
 using Immersive.Framework.RuntimeContent;
@@ -22,14 +21,13 @@ namespace Immersive.Framework.PlayerParticipation
         FrameworkApiStatus.Internal,
         "P3J.5/P3J.6 FrameworkRuntimeHost integration for real local Player Actor preparation and Activity lifecycle.")]
     internal sealed partial class PlayerActorPreparationRuntimeHostModule : MonoBehaviour,
-        IRoutePlayerSpatialEntryLifecycleParticipant
+        IRoutePlayerSpatialEntryLifecycleParticipant,
+        IPlayerPreparedActorOccurrenceSource
     {
         private FrameworkRuntimeHost _runtimeHost;
         private PlayerParticipationRuntimeContext _participationContext;
         private PlayerHostEvidenceProjection _hostEvidenceProjection;
         private PlayerActorPreparationRuntimeContext _preparationContext;
-        private CameraSubjectAvailabilityContext _cameraSubjectAvailability;
-        private PlayerCameraSubjectAvailabilityProjection _cameraSubjectProjection;
         private RuntimeScopeContext _sessionPhysicalScopeContext;
         private ActivityPlayerActorLifecycleParticipant _activityLifecycleParticipant;
         private LocalPlayerJoinResult _lastJoinResult;
@@ -42,8 +40,6 @@ namespace Immersive.Framework.PlayerParticipation
             _runtimeHost != null &&
             _participationContext != null &&
             _preparationContext != null &&
-            _cameraSubjectAvailability != null &&
-            _cameraSubjectProjection != null &&
             _activityLifecycleParticipant != null;
 
         internal string Diagnostic => _diagnostic;
@@ -157,11 +153,6 @@ namespace Immersive.Framework.PlayerParticipation
             _participationContext = targetParticipationContext;
             _hostEvidenceProjection = targetHostEvidenceProjection;
             _preparationContext = targetPreparationContext;
-            _cameraSubjectAvailability = new CameraSubjectAvailabilityContext(
-                new SubjectAvailabilityContextId($"camera-subjects:{participationSnapshot.ContextId}"));
-            _cameraSubjectProjection = new PlayerCameraSubjectAvailabilityProjection(
-                participationSnapshot.ContextId,
-                _cameraSubjectAvailability);
             _sessionPhysicalScopeContext = targetSessionPhysicalScopeContext;
             _activityLifecycleParticipant = new ActivityPlayerActorLifecycleParticipant(
                 this,
@@ -177,8 +168,6 @@ namespace Immersive.Framework.PlayerParticipation
                 targetRuntimeHost.SetActivityContentExecutionParticipantSource(null);
                 targetRuntimeHost.SetPauseActivityBindingPlayerEvidence(null);
                 _activityLifecycleParticipant = null;
-                _cameraSubjectProjection = null;
-                _cameraSubjectAvailability = null;
                 _preparationContext = null;
                 _sessionPhysicalScopeContext = default;
                 _hostEvidenceProjection = null;
@@ -197,8 +186,6 @@ namespace Immersive.Framework.PlayerParticipation
                 targetRuntimeHost.SetPauseActivityBindingPlayerEvidence(null);
                 targetRuntimeHost.SetRoutePlayerSpatialEntryParticipant(null, out _);
                 _activityLifecycleParticipant = null;
-                _cameraSubjectProjection = null;
-                _cameraSubjectAvailability = null;
                 _preparationContext = null;
                 _sessionPhysicalScopeContext = default;
                 _hostEvidenceProjection = null;
@@ -599,7 +586,7 @@ namespace Immersive.Framework.PlayerParticipation
                     source,
                     reason);
             _diagnostic = result.ToDiagnosticString();
-            ReconcileCameraSubjectAvailability(playerSlotId);
+            InvalidateCurrentActorOccurrence(playerSlotId);
             return result;
         }
 
@@ -625,7 +612,7 @@ namespace Immersive.Framework.PlayerParticipation
                     source,
                     reason);
             _diagnostic = result.ToDiagnosticString();
-            ReconcileCameraSubjectAvailability(playerSlotId);
+            InvalidateCurrentActorOccurrence(playerSlotId);
             return result;
         }
 
@@ -660,7 +647,7 @@ namespace Immersive.Framework.PlayerParticipation
                     source,
                     reason);
             _diagnostic = result.ToDiagnosticString();
-            ReconcileCameraSubjectAvailability(playerSlotId);
+            InvalidateCurrentActorOccurrence(playerSlotId);
             return result;
         }
 
@@ -805,74 +792,8 @@ namespace Immersive.Framework.PlayerParticipation
                     source,
                     reason);
             _diagnostic = result.ToDiagnosticString();
-            ReconcileCameraSubjectAvailability(replacementRequest.PlayerSlotId);
+            InvalidateCurrentActorOccurrence(replacementRequest.PlayerSlotId);
             return result;
-        }
-
-        internal bool TryGetCameraSubjectAvailabilitySnapshot(
-            out CameraSubjectAvailabilitySnapshot snapshot)
-        {
-            snapshot = _cameraSubjectAvailability?.CreateSnapshot();
-            return snapshot != null;
-        }
-
-        /// <summary>
-        /// CAMERA-026-E typed read-only bridge: exposes the Session-scoped Camera-domain
-        /// availability source (not a Player type) so a Camera composition runtime can bind
-        /// to one explicit context and subscribe without receiving mutation authority. Player
-        /// Participation does not know who, if anyone, consumes this.
-        /// </summary>
-        internal bool TryGetCameraSubjectAvailabilitySource(
-            out ICameraSubjectAvailabilitySource source)
-        {
-            source = _cameraSubjectAvailability;
-            return source != null;
-        }
-
-        private void ReconcileCameraSubjectAvailability(PlayerSlotId playerSlotId)
-        {
-            if (_cameraSubjectProjection == null || _preparationContext == null)
-            {
-                return;
-            }
-
-            if (_preparationContext.TryGetPreparationSummary(
-                    playerSlotId,
-                    out PlayerActorPreparationSummary preparation) &&
-                preparation.IsPrepared)
-            {
-                if (!_preparationContext.TryGetPreparedPhysicalEvidence(
-                        playerSlotId,
-                        preparation.Token,
-                        out _,
-                        out _,
-                        out PlayerActorDeclaration actor,
-                        out PlayerActorMaterializationHandle materialization,
-                        out string evidenceIssue))
-                {
-                    _diagnostic +=
-                        " Camera Subject availability reconciliation failed. " +
-                        evidenceIssue;
-                    return;
-                }
-
-                if (!_cameraSubjectProjection.TryPublishCurrent(
-                        preparation,
-                        actor,
-                        materialization.Presentation,
-                        out string publicationIssue))
-                {
-                    _diagnostic +=
-                        " Camera Subject availability reconciliation failed. " +
-                        publicationIssue;
-                }
-                return;
-            }
-
-            if (!_cameraSubjectProjection.TryRemoveCurrent(playerSlotId, out string removalIssue))
-            {
-                _diagnostic += " Camera Subject availability removal failed. " + removalIssue;
-            }
         }
 
         internal bool TryGetSnapshot(
@@ -949,7 +870,7 @@ namespace Immersive.Framework.PlayerParticipation
                         summary.Token,
                         source,
                         reason);
-                ReconcileCameraSubjectAvailability(summary.PlayerSlotId);
+                InvalidateCurrentActorOccurrence(summary.PlayerSlotId);
                 if (result.Succeeded)
                 {
                     releasedCount++;
@@ -1059,9 +980,7 @@ namespace Immersive.Framework.PlayerParticipation
             }
 
             _hostEvidenceProjection?.ClearAll();
-            _cameraSubjectProjection?.ReleaseScope();
-            _cameraSubjectProjection = null;
-            _cameraSubjectAvailability = null;
+            CurrentActorInvalidated = null;
             _hostEvidenceProjection = null;
             _activityLifecycleParticipant = null;
             _preparationContext = null;
@@ -1176,20 +1095,15 @@ namespace Immersive.Framework.PlayerParticipation
             return module.TryGetSnapshot(out snapshot);
         }
 
-        /// <summary>
-        /// CAMERA-026-E typed same-host access to the read-only Session Camera Subject
-        /// availability source. This is Camera-domain evidence through the Session boundary;
-        /// it does not expose any Player type.
-        /// </summary>
-        internal static bool TryGetCameraSubjectAvailabilitySource(
+        internal static bool TryGetPlayerPreparedActorOccurrenceSource(
             this FrameworkRuntimeHost runtimeHost,
-            out ICameraSubjectAvailabilitySource source)
+            out IPlayerPreparedActorOccurrenceSource source)
         {
-            source = null;
             PlayerActorPreparationRuntimeHostModule module = runtimeHost != null
                 ? runtimeHost.GetComponent<PlayerActorPreparationRuntimeHostModule>()
                 : null;
-            return module != null && module.TryGetCameraSubjectAvailabilitySource(out source);
+            source = module;
+            return module != null && module.IsReady;
         }
     }
 }
