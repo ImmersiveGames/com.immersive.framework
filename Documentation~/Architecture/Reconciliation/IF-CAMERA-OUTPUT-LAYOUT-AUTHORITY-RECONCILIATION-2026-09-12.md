@@ -1,11 +1,12 @@
 # Camera Output Participation and Layout Authority Reconciliation — 2026-09-12
 
-Status: **Architecture reconciled; Cut 1 implemented/certified; Cuts 2–7 pending**
+Status: **Architecture reconciled; CUT 1 and CUT 2 implemented/certified; remaining layout/integration cuts pending**
 
 Affected decisions: IF-ADR-026, IF-ADR-027 and IF-ADR-028  
 Historical evidence: [Camera Full Technical Certification — 2026-09-12](IF-CAMERA-FULL-TECHNICAL-CERTIFICATION-2026-09-12.md)  
-Execution mapping clarified: **2026-09-13**
-Certification updated: **2026-09-13**
+Execution mapping clarified: **2026-09-13**  
+CUT 1 certification: **2026-09-13**  
+CUT 2 certification: **2026-09-14**
 
 ## Audit finding
 
@@ -56,11 +57,11 @@ Camera integration adapter
 Camera Subject availability
 ```
 
-The current Player-backed Subject projection requires implementation reconciliation without singleton, service locator, global registry or silent lookup.
+The current Player-backed Subject projection still requires CAMERA-026-I reconciliation without singleton, service locator, global registry or silent lookup.
 
 ## Certification disposition
 
-The earlier 2026-09-12 Full Camera QA remains valid dated evidence for the contract it executed:
+The 2026-09-12 Full Camera QA remains valid dated evidence for the contract it executed:
 
 ```text
 39/39 PASS
@@ -68,7 +69,24 @@ ADR-026 phases 2/2
 9/9 dimensions
 ```
 
-It is not certification of the corrected contract because the corrected contract changes Output participation, viewport ownership, PlayerInput layout integration and Player→Camera projection placement.
+It remains historical evidence for the former viewport-bearing boundary.
+
+The corrected 2026-09-14 certification establishes CUT 2 without relabeling that historical run:
+
+```text
+Persistent Camera Presentation Composition regression   12/12 PASS
+retired viewport-only case                              invalid-viewport:SupersededByCAMERA028B
+CAMERA-028-A Partial revalidation                       8/8 PASS
+outputParticipation                                     PASS
+Full Camera established cases                           39/39 PASS
+ADR-026 phases                                          2/2 PASS
+current Full Camera dimensions                          8/8 PASS
+viewOutputAssociation                                   PASS
+viewportSplitTopology                                   removed from active certification
+canonical Shared baseline restore                       PASS
+```
+
+No `layoutAuthority` or `playerInputLayoutIntegration` PASS is claimed. Those dimensions remain future work under CAMERA-028-C and CAMERA-028-D.
 
 ## Required implementation cuts
 
@@ -82,6 +100,7 @@ CAMERA-028-A — available Output vs active participation
   satisfies CAMERA-026-H2 — partial Output participation
   one implementation cut, not two
   status: IMPLEMENTED / TECHNICALLY CERTIFIED — 2026-09-13
+  revalidated: 2026-09-14
   evidence: 2 available Outputs / 1 participating association / 8/8 PASS
   cleanup: focused orchestrator restored canonical Shared baseline
 
@@ -89,68 +108,84 @@ CUT 2
 CAMERA-028-B — remove viewport from Camera runtime topology
 CAMERA-027-D2 — reconcile View→Output authoring without viewport
   coordinated runtime + authoring migration
+  status: IMPLEMENTED / TECHNICALLY CERTIFIED — 2026-09-14
+  evidence: structural 12/12; Full Camera 39/39; ADR-026 2/2; dimensions 8/8
+  active dimensions: viewOutputAssociation + outputParticipation
+  obsolete viewportSplitTopology removed, not renamed
 
 CUT 3
 CAMERA-026-I — Player→Camera Subject integration boundary
   move Camera publication responsibility to the Camera/integration side
   preserve Player-domain evidence and Player lifetime authority
+  status: PENDING
 
 CUT 4
 CAMERA-028-C — explicit Output Presentation / Layout authority
   introduce the minimum typed single-writer layout boundary
+  status: PENDING
 
 CUT 5
 CAMERA-028-D — PlayerInputManager layout integration
   allow PlayerInput-managed split layout without making PlayerInput Camera topology authority
+  status: PENDING
 
 CUT 6
-Camera QA recertification
-  replace the superseded viewportSplitTopology dimension
+Camera QA layout recertification
+  add direct layoutAuthority and playerInputLayoutIntegration proof after CUT 4/5
+  status: PENDING
 
 CUT 7
 CAMERA-027-F — official Samples/FIRSTGAME consumer closure
-  only after the corrected runtime/authoring boundary is certified
+  only after the remaining corrected runtime/authoring/layout boundary is certified
+  status: PENDING
 ```
 
 `CAMERA-026-H2` remains in IF-ADR-026 because it states the corrected topology obligation owned by that ADR. `CAMERA-028-A` is the implementation vehicle for that obligation.
 
-`CAMERA-027-D2` is not an alias for `CAMERA-028-B`: D2 owns the product-authoring change while 028-B owns the runtime/topology change. They should be implemented together so no viewport-bearing dual authority survives between authoring and runtime.
+`CAMERA-027-D2` is not an alias for `CAMERA-028-B`: D2 owns the product-authoring change while 028-B owns the runtime/topology change. They were implemented and certified together so no viewport-bearing dual authority survives between authoring and runtime.
 
-## Required QA replacement
+## QA replacement status
 
-The next aggregate must retain unaffected regressions and distinguish:
+The corrected Camera QA now directly distinguishes:
 
 ```text
-viewOutputAssociation
-outputParticipation
-layoutAuthority
-playerInputLayoutIntegration
+viewOutputAssociation   PASS
+outputParticipation     PASS
+layoutAuthority         PENDING CAMERA-028-C
+playerInputLayoutIntegration PENDING CAMERA-028-D
 ```
 
-Minimum new proof includes:
+The active Full Camera aggregate no longer contains `viewportSplitTopology`. Its corrected dimension count is `8/8`, while the 39 established generic/arbitration cases remain `39/39`.
+
+Current proven boundary includes:
 
 ```text
 strict-subset Output association                               PASS
 unassociated available Output                                  PASS
-binding references unavailable Output                          explicit FAIL
-conflicting Views target one Output                            explicit FAIL
+binding references unavailable Output                          explicit rejection PASS
+conflicting Views target one Output                            explicit rejection PASS
 Camera topology contains no viewport                           PASS
-one selected layout writer                                     PASS
-conflicting layout writers                                     explicit FAIL
-custom layout applies/releases only owned state                PASS
-PlayerInputManager selected as layout authority                PASS
-PlayerInput layout does not select Subjects/requests           PASS
-force-default changes Rig without taking layout ownership      PASS
 generic Camera arbitration regression                          PASS
+Player count 0 -> 1 -> 0 creates no implicit association       PASS
+Output A/B arbitration isolation                               PASS
+canonical Shared restore after certification                   PASS
 ```
 
-The historical `viewportSplitTopology` dimension must not be renamed and reused as if it proved the corrected contract. The new aggregate must test the new boundaries directly.
+Still pending:
+
+```text
+one selected layout writer                                     CAMERA-028-C
+conflicting layout writers                                     CAMERA-028-C
+custom layout applies/releases only owned state                CAMERA-028-C
+PlayerInputManager selected as layout authority                CAMERA-028-D
+PlayerInput layout does not select Subjects/requests           CAMERA-028-D
+```
 
 ## Consumer proof
 
-The Getting Started migration remains useful evidence for typed View, Output and Rig Behavior definitions and explicit Camera Subject authoring. Final CAMERA-027-F closure waits for implementation and QA of the corrected boundary.
+The Getting Started migration remains useful evidence for typed View, Output and Rig Behavior definitions and explicit Camera Subject authoring. Final CAMERA-027-F closure waits for implementation and QA of the remaining corrected boundary.
 
-For Player-driven split-screen, consumer proof must demonstrate the intended responsibility split:
+For Player-driven split-screen, future consumer proof must demonstrate the intended responsibility split:
 
 ```text
 Framework Camera
@@ -167,16 +202,17 @@ Shared-camera multiplayer must remain valid with multiple Players and one active
 
 ## Closure condition
 
-This reconciliation closes only after:
+Current state:
 
 ```text
 CAMERA-028-A / CAMERA-026-H2                 COMPLETE / TECHNICALLY CERTIFIED
-CAMERA-028-B + CAMERA-027-D2                 PENDING
+CAMERA-028-B + CAMERA-027-D2                 COMPLETE / TECHNICALLY CERTIFIED
 CAMERA-026-I                                 PENDING
 CAMERA-028-C                                 PENDING
 CAMERA-028-D                                 PENDING
-corrected Camera QA recertification          PARTIAL — 028-A focused proof only
+corrected Camera logical QA recertification  COMPLETE for CUT 1/2
+layout-authority QA recertification          PENDING CUT 4/5
 CAMERA-027-F official consumer proof         PENDING
 ```
 
-are complete and current documentation no longer describes the superseded viewport-bearing Camera topology as normative.
+This reconciliation remains open until the remaining integration/layout cuts and consumer closure are complete. Current documentation must not describe the superseded viewport-bearing Camera topology as normative.
