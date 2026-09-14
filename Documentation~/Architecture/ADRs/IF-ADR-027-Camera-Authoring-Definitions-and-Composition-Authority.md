@@ -1,13 +1,13 @@
 # IF-ADR-027 — Camera Authoring Definitions and Composition Authority
 
-Status: **Reopened for authoring reconciliation — typed View / Output / Rig Behavior authority remains accepted; viewport/layout authoring is superseded by IF-ADR-028**  
+Status: **Reopened for authoring reconciliation — typed View / Output / Rig Behavior authority remains accepted; CAMERA-027-D2 is implemented and technically certified; viewport/layout authoring is superseded by IF-ADR-028**  
 Proposed: **2026-09-11**  
 Accepted: **2026-09-12**  
 Reopened: **2026-09-12**  
 Type: architecture / product authoring / Camera composition  
 Extends: IF-ADR-002, IF-ADR-010, IF-ADR-014  
 Preserves: IF-ADR-004 request arbitration; IF-ADR-022 rig materialization; corrected IF-ADR-026 Subject / Assignment / View / Rig / Output separation  
-Implementation state: **CAMERA-027-A/B/C retained; CAMERA-027-D requires D2 reconciliation; CAMERA-027-E deferred; CAMERA-027-F final closure pending corrected topology/layout implementation**  
+Implementation state: **CAMERA-027-A/B/C retained; CAMERA-027-D2 implemented/certified 2026-09-14; CAMERA-027-E deferred; CAMERA-027-F final closure pending corrected layout/integration implementation**  
 Historical technical evidence: [Camera Full Technical Certification — 2026-09-12](../Reconciliation/IF-CAMERA-FULL-TECHNICAL-CERTIFICATION-2026-09-12.md)  
 Current reconciliation: [Camera Output Participation and Layout Authority Reconciliation — 2026-09-12](../Reconciliation/IF-CAMERA-OUTPUT-LAYOUT-AUTHORITY-RECONCILIATION-2026-09-12.md)
 
@@ -45,13 +45,7 @@ Stable IDs remain strong runtime and diagnostic evidence. They are not the norma
 
 ## 3. Camera View Definition
 
-`CameraViewDefinition` remains authored authority for:
-
-```text
-exact View definition identity
-human-readable intent
-stable CameraViewId projection
-```
+`CameraViewDefinition` remains authored authority for exact View definition identity, human-readable intent and stable `CameraViewId` projection.
 
 Rules:
 
@@ -63,13 +57,7 @@ Rules:
 
 ## 4. Camera Output Definition
 
-`CameraOutputDefinition` remains authored authority for:
-
-```text
-exact Output definition identity
-human-readable intent
-stable CameraOutputId projection
-```
+`CameraOutputDefinition` remains authored authority for exact Output definition identity, human-readable intent and stable `CameraOutputId` projection.
 
 Concrete physical binding remains:
 
@@ -87,39 +75,15 @@ An Output may be registered/available without a current View association under c
 
 ## 5. Camera Rig Behavior Definition
 
-The accepted presentation family remains:
+The accepted presentation family remains Fixed, Follow, Mounted and Third Person.
 
-```text
-Fixed
-Follow
-Mounted
-Third Person
-```
-
-Reusable behavior/tuning is authored through typed Camera Rig Behavior definitions.
-
-```text
-Camera Rig Behavior Definition
-        ↓
-CameraRigComposer
-  validation
-  Apply / Rebuild
-  materialization provenance
-        ↓
-Cinemachine materialization
-```
+Reusable behavior/tuning is authored through typed Camera Rig Behavior definitions and materialized through `CameraRigComposer`.
 
 The Behavior Definition must not select Subjects, Players or Outputs; arbitrate requests; discover scene objects; or own screen layout.
 
 ## 6. Camera Subject authoring
 
 `ActorCameraSubjectAuthoring` remains valid direct authoring for an exact observation Transform belonging to the Actor Presentation.
-
-```text
-Actor Presentation
-  Camera Subject
-    Observation Transform = exact authored Transform
-```
 
 No Camera Subject definition asset is required merely for symmetry. Publication of Player-backed Subject availability follows the integration-boundary rule in reopened IF-ADR-026.
 
@@ -135,14 +99,7 @@ The Framework may deterministically project that relation into runtime binding e
 
 > **Binding is runtime topology; association is authoring intent.**
 
-The corrected normal association is:
-
-```text
-Gameplay View
-  Output = Main Output
-```
-
-Derived:
+Derived runtime binding:
 
 ```text
 CameraViewOutputBinding
@@ -154,13 +111,7 @@ CameraViewOutputBinding
 
 ## 8. Advanced multi-binding authoring
 
-Advanced topology authoring remains valid for explicit logical associations such as:
-
-```text
-Gameplay View A -> Output A
-Gameplay View B -> Output B
-Spectator View  -> Output C
-```
+Advanced topology authoring remains valid for explicit logical associations such as multiple Views and Outputs.
 
 Rules:
 
@@ -183,18 +134,6 @@ They must never be derived from object names, hierarchy, scene order or timing.
 
 IF-ADR-028 owns how an available Camera Output is physically presented.
 
-Examples:
-
-```text
-fullscreen
-split-screen region
-picture-in-picture
-RenderTexture
-target display
-spectator display
-safe-area constrained presentation
-```
-
 Normative separation:
 
 ```text
@@ -213,7 +152,7 @@ Only one active layout authority may write the same physical presentation state.
 
 It must not become Camera Subject, Assignment, View, Output identity or request-arbitration authority.
 
-The Framework must not globally reject automatic split-screen merely because Framework Camera topology exists. Conflict prevention belongs to explicit layout-authority selection under IF-ADR-028.
+The final integration rule is owned by CAMERA-028-D. Until that cut exists, the current implementation may continue to report automatic split-screen as unsupported; this is no longer justified by Camera viewport ownership.
 
 ## 12. Camera Composition Definition remains optional
 
@@ -223,34 +162,13 @@ If introduced later, it may group Camera-domain intent such as View Definition, 
 
 ## 13. Physical Output remains concrete scene authority
 
-A definition asset does not replace the physical Output boundary.
+A definition asset does not replace the physical Output boundary. The concrete Session composition still requires explicit physical evidence: Unity Camera, CinemachineBrain and Default Camera Rig.
 
-The concrete Session composition still requires explicit physical evidence:
-
-```text
-Unity Camera
-CinemachineBrain
-Default Camera Rig
-```
-
-No Output definition may create an implicit global Camera, use `Camera.main`, perform name/tag lookup or create hidden persistent runtime objects.
+No Output definition may create implicit Camera or scene-discovery authority.
 
 ## 14. No silent inference
 
-The Framework must not infer Camera topology from:
-
-```text
-Player count
-Player index
-first Player
-nearest Actor
-Camera.main
-GameObject.Find
-tag
-object name
-hierarchy name
-scene traversal order
-```
+The Framework must not infer Camera topology from Player count, Player index, first Player, object naming, hierarchy or scene traversal order.
 
 Accepted:
 
@@ -259,11 +177,7 @@ Authored: View = Gameplay View, Output = Main Output
 Derived: exact ViewId -> OutputId runtime binding
 ```
 
-Rejected:
-
-```text
-No Output selected -> silently use first CameraOutputAuthoring
-```
+Rejected: silently choosing the first available Output when no Output is authored.
 
 ## 15. Normal versus Advanced / Debug
 
@@ -279,7 +193,7 @@ No indefinite dual authority is accepted between raw identity strings and typed 
 
 No indefinite dual authority is accepted between Camera-owned viewport state and an external layout authority.
 
-Migration tooling may convert existing content explicitly, but runtime must end with one canonical authority per concern.
+CAMERA-027-D2 removed viewport from the current Camera View→Output authoring surface and did not retain a compatibility overload as a second authority.
 
 ## 17. Implementation cuts
 
@@ -293,9 +207,9 @@ Status: **implemented / retained**.
 Status: **implemented / retained**.
 
 ### CAMERA-027-D2 — Logical association authoring reconciliation
-Status: **pending**.
+Status: **implemented / technically certified — 2026-09-14**.
 
-Required result:
+Certified result:
 
 ```text
 normal Camera composition authors View Definition + Output Definition
@@ -305,63 +219,37 @@ advanced multi-binding uses typed definitions only
 available unassociated Outputs remain valid
 ```
 
+Current Unity evidence:
+
+```text
+structural regression               12/12 PASS
+partial participation               8/8 PASS
+Full Camera established cases       39/39 PASS
+ADR-026 phases                      2/2 PASS
+corrected Full Camera dimensions    8/8 PASS
+viewOutputAssociation               PASS
+Shared baseline restore             PASS
+```
+
+The former viewport-only negative case is retired as `invalid-viewport:SupersededByCAMERA028B`; the obsolete `viewportSplitTopology` dimension is removed from active certification rather than renamed.
+
 ### CAMERA-027-E — Optional reusable Camera Composition definition
 Status: **deferred / optional**.
 
 ### CAMERA-027-F — Consumer migration and stale surface removal
-Status: **partially exercised; final closure pending corrected topology/layout implementation**.
+Status: **partially exercised; final closure pending remaining corrected layout/integration implementation**.
 
-Final consumer proof must demonstrate:
-
-```text
-no copied View ID
-no copied Output ID
-no manually invented Assignment Context/Owner IDs
-no hand-authored technical binding for normal one View -> one Output
-no Camera-authored viewport
-one explicit layout authority when layout is required
-Camera Subject explicit
-Rig behavior explicit
-physical Output explicit
-Play Mode behavior correct
-```
+Final consumer proof must demonstrate typed Camera authoring, no copied View/Output IDs, no Camera-authored viewport, one explicit layout authority when layout is required, explicit Camera Subject, explicit Rig behavior, explicit physical Output and correct Play Mode behavior.
 
 ## 18. QA obligations
 
-Required coverage after reconciliation includes:
+Current corrected coverage includes logical View→Output association projection, no viewport in the Camera binding contract, partial Output association acceptance, no Player-count inference and no implicit Output discovery.
 
-```text
-View definition identity
-Output definition identity
-exact definition-reference authority
-ID collision rejection
-missing definition rejection
-no raw-ID fallback
-behavior validation/materialization equivalence
-logical View→Output association projection
-no viewport in Camera binding contract
-partial Output association accepted
-no Player-count inference
-no implicit Output discovery
-layout ownership delegated to IF-ADR-028
-```
-
-The 2026-09-12 39/39 certification remains historical evidence for the previous integrated boundary and must not be relabeled as certification of CAMERA-027-D2 or IF-ADR-028.
+The 2026-09-12 39/39 certification remains historical evidence for the previous viewport-bearing boundary. The 2026-09-14 corrected run certifies CAMERA-027-D2.
 
 ## 19. Preserved decisions
 
-Preserved:
-
-- typed View Definition authority;
-- typed Output Definition authority;
-- stable ID projection and collision blocking;
-- typed Camera Rig Behavior definitions;
-- `CameraRigComposer` materialization/provenance authority;
-- exact Camera Subject observation Transform;
-- concrete `CameraOutputAuthoring` physical references;
-- Assignment context/owner identities as technical infrastructure;
-- direct modular authoring;
-- no global Camera manager or silent lookup.
+Preserved: typed View Definition authority, typed Output Definition authority, stable ID projection and collision blocking, typed Camera Rig Behavior definitions, `CameraRigComposer` materialization/provenance authority, exact Camera Subject observation Transform, concrete physical Output references, Assignment context/owner identities as technical infrastructure, direct modular authoring, and no global Camera manager or silent lookup.
 
 ## 20. Superseded authoring decisions
 
@@ -397,4 +285,4 @@ Separate presentation policy authors:
   viewport / display / RenderTexture / layout
 ```
 
-This preserves strong Camera identities while removing screen-layout authority from the Camera domain.
+CAMERA-027-D2 is complete. IF-ADR-027 remains reopened because CAMERA-027-F still waits for remaining layout/integration implementation and final consumer proof.
