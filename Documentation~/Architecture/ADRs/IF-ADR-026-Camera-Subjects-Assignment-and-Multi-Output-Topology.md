@@ -1,12 +1,12 @@
 # IF-ADR-026 — Camera Subjects, Assignment and Multi-Output Topology
 
-Status: **Reopened — core Subject / Assignment / View / Rig / Output separation remains accepted; Output participation and Player→Camera integration boundaries require reconciliation**  
+Status: **Reopened — core Subject / Assignment / View / Rig / Output separation remains accepted; corrected Output participation and viewport-free View→Output topology are certified; Player→Camera integration boundary remains open**  
 Accepted: **2026-09-07**  
 Reopened: **2026-09-12**  
 Type: architecture / Camera runtime topology  
-Implementation state: **CAMERA-026-A through G remain implemented; CAMERA-026-H viewport ownership is superseded by IF-ADR-028; CAMERA-026-H2 is implemented/certified; CAMERA-026-I Player→Camera integration-boundary reconciliation is pending**
+Implementation state: **CAMERA-026-A through G remain implemented; CAMERA-026-H viewport ownership is superseded by IF-ADR-028; CAMERA-026-H2 is implemented/certified; CAMERA-028-B + CAMERA-027-D2 removed viewport from active Camera topology/authoring; CAMERA-026-I Player→Camera integration-boundary reconciliation is pending**
 
-Technical evidence: **CAMERA-026-H2 partial Output participation was technically certified 8/8 on 2026-09-13. The 2026-09-12 Full Camera QA 39/39 remains valid dated evidence only for the earlier boundary it executed.**
+Technical evidence: **CAMERA-026-H2 partial Output participation was technically certified 8/8 on 2026-09-13 and revalidated 8/8 on 2026-09-14. The corrected 2026-09-14 Full Camera run passed 39/39 established cases, ADR-026 phases 2/2 and 8/8 active dimensions with `viewOutputAssociation='PASS'`. The 2026-09-12 Full Camera QA 39/39 remains dated evidence only for the earlier viewport-bearing boundary it executed.**
 
 Related decisions: IF-ADR-003, IF-ADR-004, IF-ADR-004C, IF-ADR-010, IF-ADR-019, IF-ADR-020, IF-ADR-022, IF-ADR-023, IF-ADR-025, IF-ADR-027, IF-ADR-028  
 Historical certification: [Camera Full Technical Certification — 2026-09-12](../Reconciliation/IF-CAMERA-FULL-TECHNICAL-CERTIFICATION-2026-09-12.md)  
@@ -407,7 +407,7 @@ it does not make those rules current architecture.
 
 ### CAMERA-026-H2 — Partial Output participation
 
-Status: **implemented / technically certified — 2026-09-13**.
+Status: **implemented / technically certified — 2026-09-13; revalidated 2026-09-14**.
 
 Required result:
 
@@ -429,8 +429,11 @@ Player count 0 → 1 → 0 creates no implicit association PASS
 unavailable Output rejection                            PASS
 Output A/B arbitration isolation                        PASS
 focused certification orchestrator                      PASS
+outputParticipation                                     PASS
 canonical Shared baseline restore lifecycle             PASS
 ```
+
+The 2026-09-14 corrected Full Camera run additionally reconfirmed the retained Camera boundary with `39/39` established cases, ADR-026 phases `2/2` and active dimensions `8/8`.
 
 ### CAMERA-026-I — Player→Camera Subject integration boundary
 
@@ -451,24 +454,22 @@ Screen-layout implementation cuts are defined by IF-ADR-028.
 
 ## 15. QA obligations after reopening
 
-The next certification must prove at minimum:
+Current corrected certification proves:
 
 ```text
-1 available Output + 1 associated View = PASS
 N available Outputs + strict subset associated = PASS
 unassociated available Output does not block = PASS
 conflicting two Views -> same Output = FAIL explicitly
 View may feed multiple explicit Outputs = PASS where supported
-Player count change does not mutate Output registration implicitly
-Subject stale occurrence safety remains PASS
-ordinary Player publishes zero Camera requests
-request arbitration remains deterministic
-scope and precedence remain independent
-force-default does not become layout authority
+Player count change does not mutate Output registration implicitly = PASS
+request arbitration remains deterministic = PASS
+viewOutputAssociation = PASS
+outputParticipation = PASS
 ```
 
-The old `viewportSplitTopology` dimension must be replaced by layout-authority coverage under
-IF-ADR-028.
+Retained Subject occurrence safety, ordinary Player request removal, scope/precedence and force-default behavior remain covered by the established Full Camera regression set.
+
+The old `viewportSplitTopology` dimension is removed from the active corrected aggregate. Physical layout-authority coverage remains pending under IF-ADR-028-C/D.
 
 ## 16. Certification disposition
 
@@ -482,19 +483,33 @@ ADR-026 phases 2/2
 
 remains immutable historical evidence for the implementation boundary executed on that date.
 
+The corrected 2026-09-14 run establishes:
+
+```text
+Persistent structural regression    12/12 PASS
+CAMERA-028-A Partial                 8/8 PASS
+Full Camera established cases        39/39 PASS
+ADR-026 phases                       2/2 PASS
+active Full Camera dimensions        8/8 PASS
+viewOutputAssociation                PASS
+outputParticipation                  PASS
+viewportSplitTopology                REMOVED
+Shared baseline restore              PASS
+```
+
 Current disposition:
 
 ```text
 Subject / Assignment / View / Rig separation     accepted, implementation retained
 multi-Output registration/isolation              accepted, implementation retained
 ordinary Player request removal                  accepted, implementation retained
-View→Output explicit identity relation           accepted, implementation retained
+View→Output explicit identity relation           implemented / certified 2026-09-14
 all-Outputs-must-bind rule                       superseded
-viewport inside Camera topology                  superseded
-Camera-owned screen rectangle                    superseded
+viewport inside Camera topology                  removed / superseded
+Camera-owned screen rectangle                    removed / superseded
 Player→Camera integration placement              reopened for boundary reconciliation
-partial Output participation                     implemented / certified 2026-09-13
-corrected layout boundary certification          pending
+partial Output participation                     implemented / certified, revalidated 2026-09-14
+physical layout authority                        pending IF-ADR-028-C/D
 ```
 
 ## 17. Rejected scope
@@ -514,6 +529,4 @@ The corrected topology supports explicit physical Output capacity independently 
 Camera use. This enables split-screen, spectator, PiP, replay, secondary displays and future
 presentation modes without requiring every available Output to participate continuously.
 
-The architecture remains reopened because CAMERA-026-I, CAMERA-027-D2 and the
-CAMERA-028-B/C/D layout reconciliation are not implemented or certified. CAMERA-026-H2 is
-complete, but it does not close the corrected Camera boundary by itself.
+The architecture remains reopened because CAMERA-026-I and the physical layout/integration cuts CAMERA-028-C/D are still pending. CAMERA-026-H2, CAMERA-028-B and CAMERA-027-D2 are complete and technically certified, but they do not close the remaining Player→Camera and physical presentation boundaries.
