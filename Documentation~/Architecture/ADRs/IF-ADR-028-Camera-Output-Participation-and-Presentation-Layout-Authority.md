@@ -1,6 +1,6 @@
 # IF-ADR-028 — Camera Output Participation and Presentation Layout Authority
 
-Status: **Accepted architecture — CAMERA-028-A implemented and technically certified; corrected layout implementation incomplete**
+Status: **Accepted architecture — CAMERA-028-A/B implemented and technically certified; corrected layout implementation incomplete**
 
 Proposed: **2026-09-12**  
 Accepted: **2026-09-12**  
@@ -8,9 +8,9 @@ Type: architecture / Camera output / presentation layout / integration
 Extends: corrected IF-ADR-026 and IF-ADR-027  
 Preserves: IF-ADR-004 request arbitration and output-owned Default semantics; IF-ADR-022 rig materialization  
 Supersedes: viewport-bearing Camera View→Output topology and Camera-owned screen-rectangle authority introduced by the original CAMERA-026-H / CAMERA-027-D boundary  
-Implementation: **partial — CAMERA-028-A implemented; CAMERA-028-B/C/D pending**
+Implementation: **partial — CAMERA-028-A/B implemented; CAMERA-028-C/D pending**
 
-Technical certification: **partial — CAMERA-028-A certified 2026-09-13; overall ADR certification pending**
+Technical certification: **partial — CAMERA-028-A certified 2026-09-13 and revalidated 2026-09-14; CAMERA-028-B certified 2026-09-14; overall ADR certification pending**
 
 Historical evidence: [Camera Full Technical Certification — 2026-09-12](../Reconciliation/IF-CAMERA-FULL-TECHNICAL-CERTIFICATION-2026-09-12.md)
 
@@ -295,7 +295,7 @@ Layout integration must not select Subjects, select request winners, materialize
 ## 14. Implementation cuts
 
 ### CAMERA-028-A — Output availability versus participation
-Status: **implemented / technically certified — 2026-09-13**.
+Status: **implemented / technically certified — 2026-09-13; revalidated 2026-09-14**.
 
 Required result:
 
@@ -319,26 +319,41 @@ Player count 0 → 1 → 0 creates no implicit association PASS
 unavailable Output rejection                            PASS
 Output A/B arbitration isolation                        PASS
 CAMERA-028-A focused orchestrator                       PASS
+outputParticipation                                     PASS
 canonical Shared baseline Built / Verified              PASS / PASS
 canonical Shared baseline Restored / RestoredAfterRun   PASS / PASS
 ```
 
-This certification covers only Output participation. It does not certify viewport removal,
-layout authority or PlayerInput layout integration.
+This certification covers Output participation. It does not certify layout authority or PlayerInput layout integration.
 
 ### CAMERA-028-B — Remove viewport from Camera topology
-Status: **pending**.
+Status: **implemented / technically certified — 2026-09-14**.
 
-Required result:
+Implemented result:
 
 ```text
 CameraViewOutputBinding = View identity + Output identity
 CameraViewOutputTopology contains no viewport authority
-Camera association projection contains no viewport authority
-Camera runtime stops owning layout restoration through binding lifetime
+Camera association authoring contains no viewport authority
+Camera runtime no longer captures, applies or restores Camera.rect through binding lifetime
+CameraViewport removed from the productive Camera contract
 ```
 
-Stale serialized viewport fields must be removed without silent dual authority.
+Technical certification evidence:
+
+```text
+Persistent Camera Presentation Composition regression   12/12 PASS
+retired invalid viewport case                            invalid-viewport:SupersededByCAMERA028B
+Partial Output participation revalidation               8/8 PASS
+viewOutputAssociation                                    PASS
+Full Camera established cases                            39/39 PASS
+ADR-026 runtime phases                                   2/2 PASS
+current Full Camera dimensions                           8/8 PASS
+viewportSplitTopology                                    absent from active certification
+canonical Shared baseline restore                        PASS
+```
+
+The `8/8` Full Camera dimension count is intentional: the obsolete `viewportSplitTopology` dimension was removed rather than renamed. No `layoutAuthority` or `playerInputLayoutIntegration` PASS is claimed by this cut.
 
 ### CAMERA-028-C — Explicit Output Presentation / Layout authority
 Status: **pending**.
@@ -371,44 +386,64 @@ Join/leave may change layout through that integration without implicitly changin
 The corrected boundary must prove at least:
 
 ```text
-4 available Outputs, 1 associated                         PASS
-unassociated available Output                             PASS
-binding references unavailable Output                     explicit FAIL
-two Views target same Output                              explicit FAIL
-Camera topology snapshot contains no screen rectangle     PASS
-two layout writers target same property                   explicit FAIL
-custom layout applies/releases only owned state           PASS
-PlayerInputManager selected as layout authority            PASS
-PlayerInput layout does not select Subjects/requests      PASS
+strict-subset Output association                          PASS — CAMERA-028-A
+unassociated available Output                             PASS — CAMERA-028-A
+binding references unavailable Output                     explicit FAIL proven
+two Views target same Output                              explicit FAIL proven
+Camera topology snapshot contains no screen rectangle     PASS — CAMERA-028-B
+one selected layout writer                                PENDING CAMERA-028-C
+two layout writers target same property                   PENDING CAMERA-028-C
+custom layout applies/releases only owned state           PENDING CAMERA-028-C
+PlayerInputManager selected as layout authority           PENDING CAMERA-028-D
+PlayerInput layout does not select Subjects/requests      PENDING CAMERA-028-D
 generic Camera arbitration regression                     PASS
-force-default changes Rig without taking layout ownership PASS
+force-default changes Rig without taking layout ownership retained regression evidence
 ```
 
-The historical QA dimension `viewportSplitTopology` must be replaced by separate dimensions for:
+The historical QA dimension `viewportSplitTopology` has been removed from the active corrected Camera aggregate. Current corrected dimensions include:
 
 ```text
 viewOutputAssociation
 outputParticipation
+```
+
+Future layout cuts must add direct proof for:
+
+```text
 layoutAuthority
 playerInputLayoutIntegration
 ```
 
-## 16. Historical certification disposition
+without reviving or renaming the obsolete viewport-owned Camera topology contract.
+
+## 16. Historical and current certification disposition
 
 The 2026-09-12 Full Camera QA `39/39` run remains valid evidence that the previous viewport-bearing implementation behaved according to its then-current contract.
 
-It does not certify this ADR because this ADR changes that contract.
+The 2026-09-14 corrected Camera run establishes the post-CAMERA-028-B logical association boundary:
+
+```text
+Persistent structural regression   12/12 PASS
+CAMERA-028-A Partial                8/8 PASS
+Full Camera established cases       39/39 PASS
+ADR-026 phases                      2/2 PASS
+current dimensions                  8/8 PASS
+viewOutputAssociation               PASS
+outputParticipation                 PASS
+viewportSplitTopology               REMOVED
+Shared baseline restore             PASS
+```
+
+It does not certify the future physical Presentation/Layout authority or PlayerInput layout integration.
 
 ```text
 architecture decision     ACCEPTED
-implementation            PARTIAL — CAMERA-028-A implemented; CAMERA-028-B/C/D pending
-technical certification   PARTIAL — CAMERA-028-A certified 2026-09-13
+implementation            PARTIAL — CAMERA-028-A/B implemented; CAMERA-028-C/D pending
+technical certification   PARTIAL — CAMERA-028-A/B certified through 2026-09-14
 consumer proof             PENDING final corrected layout migration
 ```
 
-IF-ADR-028 is not fully implemented or fully certified. The overall corrected layout
-implementation remains incomplete until CAMERA-028-B, CAMERA-028-C and CAMERA-028-D are
-implemented and certified.
+IF-ADR-028 is not fully implemented or fully certified. The overall corrected layout implementation remains incomplete until CAMERA-028-C and CAMERA-028-D are implemented and certified.
 
 ## 17. Rejected alternatives
 
