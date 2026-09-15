@@ -1,12 +1,13 @@
-# Camera Output Participation and Layout Authority Reconciliation — 2026-09-12
+# Camera Output Participation and Physical Presentation Ownership Reconciliation — 2026-09-12 / corrected 2026-09-15
 
-Status: **Architecture reconciled; CUT 1 and CUT 2 implemented/certified; remaining layout/integration cuts pending**
+Status: **Architecture reconciled; CUT 1 and CUT 2 implemented/certified; physical presentation ownership corrected; remaining code reconciliation and PlayerInput integration pending**
 
 Affected decisions: IF-ADR-026, IF-ADR-027 and IF-ADR-028  
 Historical evidence: [Camera Full Technical Certification — 2026-09-12](IF-CAMERA-FULL-TECHNICAL-CERTIFICATION-2026-09-12.md)  
 Execution mapping clarified: **2026-09-13**  
 CUT 1 certification: **2026-09-13**  
-CUT 2 certification: **2026-09-14**
+CUT 2 certification: **2026-09-14**  
+Physical-presentation ownership corrected: **2026-09-15**
 
 ## Audit finding
 
@@ -19,13 +20,23 @@ View→Output binding == owner of physical screen layout
 
 Both are superseded.
 
+A later implementation audit on 2026-09-15 found a third boundary error in the planned replacement: moving viewport ownership out of View→Output topology did **not** mean the Framework should introduce a new generic `Camera.rect` layout authority.
+
 The corrected boundary is:
 
 ```text
-available physical Outputs       -> 1..N
-current View→Output associations -> 0..N subset
-Camera binding                   -> View identity + Output identity
-Output Presentation / Layout     -> viewport / display / RenderTexture / PiP
+available Framework Outputs       -> 1..N
+current View→Output associations  -> 0..N subset
+Camera binding                    -> View identity + Output identity
+physical Camera presentation      -> external owner
+```
+
+External physical-presentation owners include:
+
+```text
+Unity serialized / gameplay-authored Camera state
+PlayerInputManager for Player split-screen
+gameplay-owned custom presentation systems
 ```
 
 An available Output without a current View association is valid. A binding to an unavailable Output remains invalid. Two Views targeting the same Output in one association snapshot remain invalid.
@@ -57,7 +68,17 @@ Camera integration adapter
 Camera Subject availability
 ```
 
-The current Player-backed Subject projection still requires CAMERA-026-I reconciliation without singleton, service locator, global registry or silent lookup.
+For split-screen Player Cameras, physical viewport ownership remains with Unity Input System:
+
+```text
+Framework identifies/integrates the Player Camera
+      ↓
+PlayerInput.camera
+      ↓
+PlayerInputManager owns Camera.rect layout
+```
+
+Framework Camera must not rewrite that rect.
 
 ## Certification disposition
 
@@ -86,7 +107,7 @@ viewportSplitTopology                                   removed from active cert
 canonical Shared baseline restore                       PASS
 ```
 
-No `layoutAuthority` or `playerInputLayoutIntegration` PASS is claimed. Those dimensions remain future work under CAMERA-028-C and CAMERA-028-D.
+No physical-presentation ownership PASS or `playerInputLayoutIntegration` PASS is claimed by those runs.
 
 ## Required implementation cuts
 
@@ -101,42 +122,42 @@ CAMERA-028-A — available Output vs active participation
   one implementation cut, not two
   status: IMPLEMENTED / TECHNICALLY CERTIFIED — 2026-09-13
   revalidated: 2026-09-14
-  evidence: 2 available Outputs / 1 participating association / 8/8 PASS
-  cleanup: focused orchestrator restored canonical Shared baseline
 
 CUT 2
 CAMERA-028-B — remove viewport from Camera runtime topology
 CAMERA-027-D2 — reconcile View→Output authoring without viewport
   coordinated runtime + authoring migration
   status: IMPLEMENTED / TECHNICALLY CERTIFIED — 2026-09-14
-  evidence: structural 12/12; Full Camera 39/39; ADR-026 2/2; dimensions 8/8
-  active dimensions: viewOutputAssociation + outputParticipation
   obsolete viewportSplitTopology removed, not renamed
 
 CUT 3
 CAMERA-026-I — Player→Camera Subject integration boundary
   move Camera publication responsibility to the Camera/integration side
   preserve Player-domain evidence and Player lifetime authority
-  status: PENDING
+  implementation/static work completed separately; runtime certification remains independent
 
 CUT 4
-CAMERA-028-C — explicit Output Presentation / Layout authority
-  introduce the minimum typed single-writer layout boundary
-  status: PENDING
+CAMERA-028-C — external physical-presentation ownership boundary
+  Framework must have zero productive Camera.rect/pixelRect/targetDisplay/targetTexture layout writers
+  preserve gameplay/Unity supplied physical Camera presentation
+  remove/reconcile the superseded 2026-09-15 CameraOutputPresentationRuntime writer before certification
+  status: PENDING RECONCILIATION
 
 CUT 5
 CAMERA-028-D — PlayerInputManager layout integration
-  allow PlayerInput-managed split layout without making PlayerInput Camera topology authority
+  integrate Player Camera with PlayerInput/PlayerInputManager
+  PlayerInputManager remains sole split-screen Camera.rect writer
+  Framework remains Camera topology/rig authority only
   status: PENDING
 
 CUT 6
-Camera QA layout recertification
-  add direct layoutAuthority and playerInputLayoutIntegration proof after CUT 4/5
+Camera QA physical-presentation recertification
+  prove physicalPresentationNonOwnership and playerInputLayoutIntegration after CUT 4/5
   status: PENDING
 
 CUT 7
 CAMERA-027-F — official Samples/FIRSTGAME consumer closure
-  only after the remaining corrected runtime/authoring/layout boundary is certified
+  only after the corrected runtime/integration boundary is certified
   status: PENDING
 ```
 
@@ -146,16 +167,21 @@ CAMERA-027-F — official Samples/FIRSTGAME consumer closure
 
 ## QA replacement status
 
-The corrected Camera QA now directly distinguishes:
+The corrected Camera QA already distinguishes:
 
 ```text
-viewOutputAssociation   PASS
-outputParticipation     PASS
-layoutAuthority         PENDING CAMERA-028-C
-playerInputLayoutIntegration PENDING CAMERA-028-D
+viewOutputAssociation         PASS
+outputParticipation           PASS
 ```
 
-The active Full Camera aggregate no longer contains `viewportSplitTopology`. Its corrected dimension count is `8/8`, while the 39 established generic/arbitration cases remain `39/39`.
+The obsolete `viewportSplitTopology` dimension remains removed.
+
+Future corrected proof must add:
+
+```text
+physicalPresentationNonOwnership   PENDING CAMERA-028-C
+playerInputLayoutIntegration       PENDING CAMERA-028-D
+```
 
 Current proven boundary includes:
 
@@ -174,45 +200,47 @@ canonical Shared restore after certification                   PASS
 Still pending:
 
 ```text
-one selected layout writer                                     CAMERA-028-C
-conflicting layout writers                                     CAMERA-028-C
-custom layout applies/releases only owned state                CAMERA-028-C
-PlayerInputManager selected as layout authority                CAMERA-028-D
-PlayerInput layout does not select Subjects/requests           CAMERA-028-D
+Framework productive Camera.rect writer count == 0             CAMERA-028-C
+Framework preserves external authored rect                     CAMERA-028-C
+PlayerInputManager is sole split-screen Camera.rect writer      CAMERA-028-D
+PlayerInput layout does not select Subjects/requests            CAMERA-028-D
 ```
 
 ## Consumer proof
 
-The Getting Started migration remains useful evidence for typed View, Output and Rig Behavior definitions and explicit Camera Subject authoring. Final CAMERA-027-F closure waits for implementation and QA of the remaining corrected boundary.
+The Getting Started migration remains useful evidence for typed View, Output and Rig Behavior definitions and explicit Camera Subject authoring. Final CAMERA-027-F closure waits for implementation and QA of the corrected boundary.
 
-For Player-driven split-screen, future consumer proof must demonstrate the intended responsibility split:
+For Player-driven split-screen, consumer proof must demonstrate:
 
 ```text
 Framework Camera
-  supplies explicit physical Output / Unity Camera evidence
-  supplies logical View→Output association
+  supplies/uses the explicit Camera required by Framework
+  supplies logical View→Output association where applicable
   does not partition the screen
+  does not rewrite Camera.rect
 
 PlayerInputManager integration
   receives the appropriate Camera for the participating Player
-  owns split viewport layout when explicitly selected as layout authority
+  owns split viewport layout
 ```
 
 Shared-camera multiplayer must remain valid with multiple Players and one active Output.
+
+Gameplay-only Cameras such as PiP, spectator, replay, RenderTexture or other custom presentation Cameras remain consumer/gameplay responsibilities unless they explicitly participate in a Framework Camera contract.
 
 ## Closure condition
 
 Current state:
 
 ```text
-CAMERA-028-A / CAMERA-026-H2                 COMPLETE / TECHNICALLY CERTIFIED
-CAMERA-028-B + CAMERA-027-D2                 COMPLETE / TECHNICALLY CERTIFIED
-CAMERA-026-I                                 PENDING
-CAMERA-028-C                                 PENDING
-CAMERA-028-D                                 PENDING
-corrected Camera logical QA recertification  COMPLETE for CUT 1/2
-layout-authority QA recertification          PENDING CUT 4/5
-CAMERA-027-F official consumer proof         PENDING
+CAMERA-028-A / CAMERA-026-H2                    COMPLETE / TECHNICALLY CERTIFIED
+CAMERA-028-B + CAMERA-027-D2                    COMPLETE / TECHNICALLY CERTIFIED
+CAMERA-026-I                                    IMPLEMENTATION/STATIC CLOSED; RUNTIME CERTIFICATION SEPARATE
+CAMERA-028-C                                    ARCHITECTURE CORRECTED; CODE RECONCILIATION PENDING
+CAMERA-028-D                                    PENDING
+corrected Camera logical QA recertification     COMPLETE for CUT 1/2
+physical-presentation QA recertification        PENDING CUT 4/5
+CAMERA-027-F official consumer proof            PENDING
 ```
 
-This reconciliation remains open until the remaining integration/layout cuts and consumer closure are complete. Current documentation must not describe the superseded viewport-bearing Camera topology as normative.
+This reconciliation remains open until the superseded Framework layout writer is reconciled, PlayerInput integration is certified and consumer closure is complete. Current documentation must not describe either the old viewport-bearing Camera topology or a generic Framework-owned physical layout system as normative.
