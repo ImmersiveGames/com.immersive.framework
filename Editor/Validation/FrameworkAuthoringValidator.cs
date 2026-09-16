@@ -570,63 +570,13 @@ namespace Immersive.Framework.Editor.Validation
                 }
             }
 
-            PlayerCameraOutputPolicyAuthoring[] playerOutputPolicies =
-                GetSceneComponents<PlayerCameraOutputPolicyAuthoring>(scene);
-            var playerOutputSlots = new HashSet<int>();
-            int playerOutputBindingCount = 0;
-            for (int policyIndex = 0; policyIndex < playerOutputPolicies.Length; policyIndex++)
-            {
-                PlayerCameraOutputPolicyAuthoring policy = playerOutputPolicies[policyIndex];
-                IReadOnlyList<PlayerCameraOutputBinding> bindings = policy.Bindings;
-                if (bindings == null)
-                {
-                    report.AddError(
-                        "Player Camera Output Policy requires an explicit bindings collection.",
-                        policy);
-                    continue;
-                }
-
-                for (int bindingIndex = 0; bindingIndex < bindings.Count; bindingIndex++)
-                {
-                    PlayerCameraOutputBinding binding = bindings[bindingIndex];
-                    playerOutputBindingCount++;
-
-                    if (binding.PlayerSlotIndex < 0)
-                    {
-                        report.AddError(
-                            $"Player Camera Output Policy contains invalid Player Slot index '{binding.PlayerSlotIndex}'.",
-                            policy);
-                    }
-                    else if (!playerOutputSlots.Add(binding.PlayerSlotIndex))
-                    {
-                        report.AddError(
-                            $"Player Camera Output Policy contains duplicate Player Slot index '{binding.PlayerSlotIndex}'.",
-                            policy);
-                    }
-
-                    if (!binding.OutputId.IsValid)
-                    {
-                        report.AddError(
-                            $"Player Camera Output Policy for Player Slot '{binding.PlayerSlotIndex}' requires an explicit Camera Output ID.",
-                            policy);
-                    }
-                    else if (!outputIds.ContainsKey(binding.OutputId.Value))
-                    {
-                        report.AddError(
-                            $"Player Camera Output Policy for Player Slot '{binding.PlayerSlotIndex}' references unknown Camera Output ID '{binding.OutputId}'.",
-                            policy);
-                    }
-                }
-            }
-
             PlayerInputManager[] playerInputManagers =
                 GetSceneComponents<PlayerInputManager>(scene);
             for (int managerIndex = 0; managerIndex < playerInputManagers.Length; managerIndex++)
             {
                 if (!playerInputManagers[managerIndex].splitScreen) continue;
-                if (playerOutputBindingCount > 0) continue;
                 report.AddError(
-                    "PlayerInputManager automatic split-screen requires at least one explicit Player Slot-to-Camera Output binding.",
+                    "PlayerInputManager automatic split-screen remains unsupported in the current implementation and must be disabled.",
                     playerInputManagers[managerIndex]);
             }
 
