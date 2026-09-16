@@ -497,6 +497,7 @@ namespace Immersive.Framework.PlayerParticipation
                     0,
                     "Scene Local Player enter rollback had no retained entries.");
             }
+
             if (!ReferenceEquals(_activeRecord.Activity, activity) ||
                 _activeRecord.Owner != owner)
             {
