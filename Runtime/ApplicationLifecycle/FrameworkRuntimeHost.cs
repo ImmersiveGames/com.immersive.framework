@@ -68,7 +68,6 @@ namespace Immersive.Framework.ApplicationLifecycle
         private LoadingSurfaceRuntime _loadingSurfaceRuntime;
         private GlobalUiSceneRuntime _globalUiSceneRuntime;
         private CameraOutputInjectionRuntime _cameraOutputInjectionRuntime;
-        private CameraOutputPresentationRuntime _cameraOutputPresentationRuntime;
         private CameraOutputSessionTopology _cameraOutputTopology;
         private CameraViewOutputRuntime _cameraViewOutputRuntime;
         private CameraSubjectAvailabilityContext _cameraSubjectAvailabilityContext;
@@ -482,26 +481,12 @@ namespace Immersive.Framework.ApplicationLifecycle
                 return failed;
             }
 
-            _cameraOutputPresentationRuntime?.Dispose();
-            _cameraOutputPresentationRuntime = null;
             _cameraOutputTopology?.Dispose();
             if (!CameraOutputSessionTopology.TryCreate(
                     cameraOutputs,
                     out _cameraOutputTopology,
                     out cameraDiagnostic))
             {
-                var failed = FrameworkGameFlowStartResult.Failed(cameraDiagnostic);
-                _state = FrameworkRuntimeState.FromGameFlowResult(_gameApplication, failed);
-                return failed;
-            }
-
-            if (!CameraOutputPresentationRuntime.TryCreate(
-                    _cameraOutputTopology,
-                    out _cameraOutputPresentationRuntime,
-                    out cameraDiagnostic))
-            {
-                _cameraOutputTopology.Dispose();
-                _cameraOutputTopology = null;
                 var failed = FrameworkGameFlowStartResult.Failed(cameraDiagnostic);
                 _state = FrameworkRuntimeState.FromGameFlowResult(_gameApplication, failed);
                 return failed;
@@ -3040,8 +3025,6 @@ namespace Immersive.Framework.ApplicationLifecycle
             _cameraOutputInjectionRuntime = null;
             _cameraViewOutputRuntime?.Dispose();
             _cameraViewOutputRuntime = null;
-            _cameraOutputPresentationRuntime?.Dispose();
-            _cameraOutputPresentationRuntime = null;
             _cameraOutputTopology?.Dispose();
             _cameraOutputTopology = null;
             _pauseTimeScaleRuntime?.RestoreIfCaptured("framework-runtime-host-destroy");
