@@ -1,16 +1,21 @@
 # IF-ADR-027 — Camera Authoring Definitions and Composition Authority
 
-Status: **Reopened for authoring reconciliation — typed View / Output / Rig Behavior authority remains accepted; CAMERA-027-D2 is implemented and technically certified; physical layout authoring is external to Framework Camera under corrected IF-ADR-028**  
-Proposed: **2026-09-11**  
-Accepted: **2026-09-12**  
-Reopened: **2026-09-12**  
-Corrected: **2026-09-15**  
-Type: architecture / product authoring / Camera composition  
-Extends: IF-ADR-002, IF-ADR-010, IF-ADR-014  
-Preserves: IF-ADR-004 request arbitration; IF-ADR-022 rig materialization; corrected IF-ADR-026 Subject / Assignment / View / Rig / Output separation  
-Implementation state: **CAMERA-027-A/B/C retained; CAMERA-027-D2 implemented/certified 2026-09-14; CAMERA-027-E deferred; CAMERA-027-F final closure pending corrected physical-presentation and PlayerInput integration reconciliation**  
-Historical technical evidence: [Camera Full Technical Certification — 2026-09-12](../Reconciliation/IF-CAMERA-FULL-TECHNICAL-CERTIFICATION-2026-09-12.md)  
-Current reconciliation: [Camera Output Participation and Physical Presentation Ownership Reconciliation — 2026-09-12 / corrected 2026-09-15](../Reconciliation/IF-CAMERA-OUTPUT-LAYOUT-AUTHORITY-RECONCILIATION-2026-09-12.md)
+Status: **Reopened for final consumer closure — typed View / Output / Rig Behavior authority remains accepted; CAMERA-027-D2 is implemented and technically certified; physical layout authoring remains external to Framework Camera under corrected IF-ADR-028**
+
+Proposed: **2026-09-11**
+Accepted: **2026-09-12**
+Reopened: **2026-09-12**
+Corrected: **2026-09-15**
+Updated: **2026-09-16**
+Type: architecture / product authoring / Camera composition
+Extends: IF-ADR-002, IF-ADR-010, IF-ADR-014
+Preserves: IF-ADR-004 request arbitration; IF-ADR-022 rig materialization; corrected IF-ADR-026 Subject / Assignment / View / Rig / Output separation
+
+Implementation state: **CAMERA-027-A/B/C retained; CAMERA-027-D2 implemented/certified 2026-09-14; CAMERA-027-E deferred; CAMERA-028-C code reconciliation and CAMERA-028-D Player Camera integration are implemented; CAMERA-027-F final closure still waits for focused physical-presentation / PlayerInput consumer certification**
+
+Historical technical evidence: [Camera Full Technical Certification — 2026-09-12](../Reconciliation/IF-CAMERA-FULL-TECHNICAL-CERTIFICATION-2026-09-12.md)
+Current Camera certification: [Camera Full Technical Certification — 2026-09-16](../Reconciliation/IF-CAMERA-FULL-TECHNICAL-CERTIFICATION-2026-09-16.md)
+Current reconciliation: [Camera Output Participation and Physical Presentation Ownership Reconciliation — 2026-09-12 / corrected 2026-09-16](../Reconciliation/IF-CAMERA-OUTPUT-LAYOUT-AUTHORITY-RECONCILIATION-2026-09-12.md)
 
 ## 1. Context
 
@@ -90,7 +95,7 @@ The Behavior Definition must not select Subjects, Players or Outputs; arbitrate 
 
 `ActorCameraSubjectAuthoring` remains valid direct authoring for an exact observation Transform belonging to the Actor Presentation.
 
-No Camera Subject definition asset is required merely for symmetry. Publication of Player-backed Subject availability follows the integration-boundary rule in reopened IF-ADR-026.
+No Camera Subject definition asset is required merely for symmetry. Publication of Player-backed Subject availability follows the integration-boundary rule in IF-ADR-026, now implemented and technically certified through `PlayerActorCameraSubjectIntegrationRuntime`.
 
 ## 7. View→Output association authoring
 
@@ -153,6 +158,8 @@ External physical presentation
 
 Framework Camera authoring must not add a replacement layout asset or viewport field after removing viewport from View→Output topology.
 
+The superseded experimental Framework `Camera.rect` writer introduced during CAMERA-028-C work was removed/reconciled on 2026-09-16. That removal restores the intended external physical-presentation boundary; focused runtime proof of preservation remains tracked by IF-ADR-028-C.
+
 ## 11. PlayerInputManager integration
 
 `PlayerInputManager` may participate through an explicit integration adapter for Player Cameras.
@@ -161,7 +168,22 @@ When automatic split-screen is active, `PlayerInputManager` remains the sole wri
 
 `PlayerInputManager` must not become Camera Subject, Assignment, View, Output identity or request-arbitration authority.
 
-The final integration rule is owned by CAMERA-028-D. Until that cut exists, the current implementation may continue to report automatic split-screen as unsupported; that rejection is temporary integration debt, not evidence that Framework Camera owns viewport state.
+CAMERA-028-D now provides an explicit typed integration path:
+
+```text
+PlayerCameraOutputPolicyAuthoring
+  PlayerSlotProfile -> CameraOutputDefinition
+        ↓
+PlayerCameraOutputPolicyProjection
+        ↓
+PlayerCameraOutputTopology
+        ↓
+PlayerCameraOutputIntegrationRuntime
+        ↓
+PlayerInput.camera
+```
+
+The authoring path is implemented, but focused certification with `PlayerInputManager.splitScreen=true` remains pending. The canonical Full Camera fixture used for the 2026-09-16 certification deliberately keeps automatic split-screen disabled, so that aggregate does not certify PlayerInput-owned rectangle layout.
 
 ## 12. Camera Composition Definition remains optional
 
@@ -192,6 +214,8 @@ Rejected: silently choosing the first available Output when no Output is authore
 
 Also rejected: introducing a Framework viewport/layout definition merely because a Camera Output exists.
 
+For Player Camera integration, exact `PlayerSlotProfile` and `CameraOutputDefinition` references remain the authoring authority; Player index is not substituted for either identity.
+
 ## 15. Normal versus Advanced / Debug
 
 Normal Camera authoring prioritizes typed definition references, Subject policy, Rig behavior, logical Output association, required physical scene references and validation.
@@ -208,7 +232,7 @@ No Framework Camera-owned viewport authority is accepted alongside an external l
 
 CAMERA-027-D2 removed viewport from the current Camera View→Output authoring surface and did not retain a compatibility overload as a second authority.
 
-The 2026-09-15 experimental Framework `Camera.rect` authority introduced during CAMERA-028-C work is not a new authoring direction; corrected IF-ADR-028 requires it to be removed/reconciled rather than exposed through authoring.
+The 2026-09-15 experimental Framework `Camera.rect` authority introduced during CAMERA-028-C work was removed/reconciled on 2026-09-16 and is not exposed as a supported authoring direction.
 
 ## 17. Implementation cuts
 
@@ -252,17 +276,19 @@ The former viewport-only negative case is retired as `invalid-viewport:Supersede
 Status: **deferred / optional**.
 
 ### CAMERA-027-F — Consumer migration and stale surface removal
-Status: **partially exercised; final closure pending corrected physical-presentation ownership and PlayerInput integration**.
+Status: **partially exercised; final closure pending focused physical-presentation / PlayerInput consumer proof**.
 
-Final consumer proof must demonstrate typed Camera authoring, no copied View/Output IDs, no Framework Camera-authored viewport, explicit Camera Subject, explicit Rig behavior, explicit physical Output where Framework Camera operation is required, preserved externally owned physical presentation state, correct Player Camera integration where applicable, and correct Play Mode behavior.
+The runtime/authoring prerequisites are now present: typed Camera definitions, viewport-free topology, Player→Camera Subject integration, removal of the superseded Framework layout writer, and explicit Player Slot→Camera Output authoring for Player Camera integration.
+
+Final consumer proof must still demonstrate typed Camera authoring, no copied View/Output IDs, no Framework Camera-authored viewport, explicit Camera Subject, explicit Rig behavior, explicit physical Output where Framework Camera operation is required, preserved externally owned physical presentation state, correct Player Camera integration with automatic split-screen where applicable, and correct Play Mode behavior.
 
 ## 18. QA obligations
 
-Current corrected coverage includes logical View→Output association projection, no viewport in the Camera binding contract, partial Output association acceptance, no Player-count inference and no implicit Output discovery.
+Current corrected coverage includes logical View→Output association projection, no viewport in the Camera binding contract, partial Output association acceptance, no Player-count inference, no implicit Output discovery and the certified Player→Camera Subject integration path.
 
-The 2026-09-12 39/39 certification remains historical evidence for the previous viewport-bearing boundary. The 2026-09-14 corrected run certifies CAMERA-027-D2.
+The 2026-09-12 39/39 certification remains historical evidence for the previous viewport-bearing boundary. The 2026-09-14 corrected run certifies CAMERA-027-D2. The 2026-09-16 run adds CAMERA-026-I runtime coverage but deliberately does not claim `playerInputLayoutIntegration` because automatic split-screen is disabled in the canonical Full Camera fixture.
 
-Future certification must not require a Framework layout authoring surface. Instead it must prove physical-presentation non-ownership and the PlayerInput integration boundary defined by corrected IF-ADR-028.
+Future focused certification must prove physical-presentation non-ownership and the PlayerInput integration boundary defined by corrected IF-ADR-028 without requiring a Framework layout authoring surface.
 
 ## 19. Preserved decisions
 
@@ -295,15 +321,21 @@ Designer authors Framework Camera:
   logical View→Output association
   explicit Unity Camera reference where Framework operation is required
 
+For Player Camera integration:
+  Player Slot Profile
+  Camera Output Definition
+  explicit Player Slot -> Output policy
+
 Framework derives Camera:
   stable identity projections
   Assignment infrastructure identities
   logical runtime bindings
   rig/request behavior
+  Player Slot -> Camera Output integration topology
 
 External owner manages physical presentation:
   Unity/gameplay -> Camera rect/display/RenderTexture/custom composition
   PlayerInputManager -> Player split-screen rects
 ```
 
-CAMERA-027-D2 is complete. IF-ADR-027 remains reopened because CAMERA-027-F still waits for physical-presentation reconciliation, PlayerInput integration and final consumer proof.
+CAMERA-027-D2 is complete. IF-ADR-027 remains reopened only for CAMERA-027-F final consumer proof, including focused verification that externally owned physical presentation is preserved and that the implemented PlayerInput integration behaves correctly with automatic split-screen enabled.
