@@ -295,10 +295,14 @@ namespace Immersive.Framework.GlobalUi
             out IReadOnlyList<CameraOutputAuthoring> outputSessions,
             out IReadOnlyList<CameraSharedComposition> compositions,
             out IReadOnlyList<CameraViewOutputPolicyAuthoring> viewOutputPolicies,
+            out IReadOnlyList<PlayerCameraOutputPolicyAuthoring> playerOutputPolicies,
+            out bool automaticSplitScreenEnabled,
             out string diagnostic)
         {
             compositions = Array.Empty<CameraSharedComposition>();
             viewOutputPolicies = Array.Empty<CameraViewOutputPolicyAuthoring>();
+            playerOutputPolicies = Array.Empty<PlayerCameraOutputPolicyAuthoring>();
+            automaticSplitScreenEnabled = false;
             List<CameraOutputAuthoring> outputCandidates =
                 FindAll<CameraOutputAuthoring>();
 
@@ -320,20 +324,30 @@ namespace Immersive.Framework.GlobalUi
                 return false;
             }
 
+            List<PlayerCameraOutputPolicyAuthoring> playerPolicyCandidates =
+                FindAll<PlayerCameraOutputPolicyAuthoring>();
+            if (playerPolicyCandidates.Count > 1)
+            {
+                diagnostic =
+                    $"Persistent Content requires at most one Player Camera Output Policy, but found '{playerPolicyCandidates.Count}'.";
+                outputSessions = Array.Empty<CameraOutputAuthoring>();
+                return false;
+            }
+
             List<PlayerInputManager> playerInputManagers = FindAll<PlayerInputManager>();
             for (int index = 0; index < playerInputManagers.Count; index++)
             {
-                if (!playerInputManagers[index].splitScreen) continue;
-                diagnostic =
-                    $"PlayerInputManager '{playerInputManagers[index].name}' has automatic split-screen enabled. " +
-                    "Automatic split-screen remains unsupported in the current implementation and must be disabled.";
-                outputSessions = Array.Empty<CameraOutputAuthoring>();
-                return false;
+                if (playerInputManagers[index].splitScreen)
+                {
+                    automaticSplitScreenEnabled = true;
+                    break;
+                }
             }
 
             outputSessions = outputCandidates.AsReadOnly();
             compositions = FindAll<CameraSharedComposition>().AsReadOnly();
             viewOutputPolicies = policyCandidates.AsReadOnly();
+            playerOutputPolicies = playerPolicyCandidates.AsReadOnly();
             diagnostic = string.Empty;
             return true;
         }

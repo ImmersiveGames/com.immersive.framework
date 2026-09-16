@@ -49,6 +49,13 @@ namespace Immersive.Framework.PlayerParticipation
         internal int JoinRequestCount => _joinRequestCount;
         internal int PreparationRequestCount => _preparationRequestCount;
 
+        /// <summary>
+        /// Narrow notification that the retained Session physical Host evidence for
+        /// one exact Player Slot changed. Consumers must resolve the current evidence
+        /// through TryGetCurrentSessionPhysicalHost; this event owns no duplicate state.
+        /// </summary>
+        internal event Action<PlayerSlotId> SessionPhysicalHostChanged;
+
         internal static bool TryAttach(
             FrameworkRuntimeHost runtimeHost,
             out PlayerActorPreparationRuntimeHostModule module,
@@ -376,7 +383,7 @@ namespace Immersive.Framework.PlayerParticipation
             string source,
             string reason)
         {
-            return _hostEvidenceProjection != null
+            PlayerHostEvidenceResult result = _hostEvidenceProjection != null
                 ? _hostEvidenceProjection.RegisterSessionPhysicalHost(
                     playerSlotId,
                     host,
@@ -386,6 +393,12 @@ namespace Immersive.Framework.PlayerParticipation
                     "RegisterSessionPhysicalHost",
                     source,
                     reason);
+            if (result.Succeeded)
+            {
+                SessionPhysicalHostChanged?.Invoke(playerSlotId);
+            }
+
+            return result;
         }
 
         internal PlayerHostEvidenceResult ReprojectHostEvidence(
@@ -454,7 +467,7 @@ namespace Immersive.Framework.PlayerParticipation
             string source,
             string reason)
         {
-            return _hostEvidenceProjection != null
+            PlayerHostEvidenceResult result = _hostEvidenceProjection != null
                 ? _hostEvidenceProjection.ReleaseSessionPhysicalHost(
                     playerSlotId,
                     expectedHost,
@@ -464,6 +477,12 @@ namespace Immersive.Framework.PlayerParticipation
                     "ReleaseSessionPhysicalHost",
                     source,
                     reason);
+            if (result.Succeeded)
+            {
+                SessionPhysicalHostChanged?.Invoke(playerSlotId);
+            }
+
+            return result;
         }
 
         internal bool TryGetRetainedHostEvidence(

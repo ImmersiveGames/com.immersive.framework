@@ -577,25 +577,66 @@ namespace Immersive.Framework.PlayerParticipation
             }
 
             var entries = new List<Entry>();
+            int alreadyRetiredCount = 0;
             for (int index = 0; index < _activeRecord.Entries.Count; index++)
             {
                 Entry entry = _activeRecord.Entries[index];
-                if (entry.AdmissionActive && entry.PlayerSlotId == leaveToken.PlayerSlotId)
+                if (!entry.AdmissionActive || entry.PlayerSlotId != leaveToken.PlayerSlotId)
                 {
-                    entries.Add(entry);
+                    continue;
                 }
+
+                bool stillActiveInAdmissionStore =
+                    _module.TryGetActiveToken(
+                        entry.Authoring,
+                        out SceneLocalPlayerAdmissionToken currentToken) &&
+                    currentToken == entry.AdmissionToken;
+                if (!stillActiveInAdmissionStore)
+                {
+                    // ADR-019/ADR-020: an explicit contextual release (e.g. RequestRelease)
+                    // legitimately retires the Activity-scoped admission ahead of Session Leave
+                    // while the Session physical Actor/Host are retained. Treating the missing
+                    // admission record as a safe no-op is only valid when retained Session Scene
+                    // Actor adoption evidence proves the exact same occurrence was already
+                    // released -- never inferred from the mere absence of an admission record.
+                    if (TryConfirmSceneOccurrenceAlreadyRetired(entry, out _))
+                    {
+                        entry.AdmissionActive = false;
+                        alreadyRetiredCount++;
+                        continue;
+                    }
+                }
+
+                entries.Add(entry);
             }
 
             if (entries.Count == 0)
             {
+                for (int index = _activeRecord.Entries.Count - 1; index >= 0; index--)
+                {
+                    if (!_activeRecord.Entries[index].AdmissionActive)
+                    {
+                        _activeRecord.Entries.RemoveAt(index);
+                    }
+                }
+
+                ActivityAsset ownerActivityForNoOp = _activeRecord.Activity;
+                RuntimeContentOwner ownerForNoOp = _activeRecord.Owner;
+                if (_activeRecord.Entries.Count == 0)
+                {
+                    _activeRecord = null;
+                }
+
                 return Success(
                     SceneLocalPlayerAdmissionActivityLifecycleStatus.SucceededAlreadyExited,
-                    _activeRecord.Activity,
-                    _activeRecord.Owner,
+                    ownerActivityForNoOp,
+                    ownerForNoOp,
                     resolvedSource,
                     resolvedReason,
-                    0,
-                    "The current Scene Local Player Activity owner has no active contextual admission for the Leaving Slot.");
+                    alreadyRetiredCount,
+                    alreadyRetiredCount > 0
+                        ? "Scene Local Player Session Leave found the exact current contextual admission already legitimately retired for this occurrence; no conflicting or foreign admission exists."
+                        : "The current Scene Local Player Activity owner has no active contextual admission for the Leaving Slot.");
             }
 
             if (!TryReleaseEntriesForSessionPlayerLeave(
@@ -637,8 +678,40 @@ namespace Immersive.Framework.PlayerParticipation
                 retiredOwner,
                 resolvedSource,
                 resolvedReason,
-                entries.Count,
+                entries.Count + alreadyRetiredCount,
                 "Scene Local Player Session Leave retired the exact current contextual admission and cleared its retained Activity owner when no entries remained.");
+        }
+
+        private bool TryConfirmSceneOccurrenceAlreadyRetired(
+            Entry entry,
+            out string issue)
+        {
+            issue = string.Empty;
+            if (!entry.AdoptionApplied || !entry.AdoptionToken.IsValid)
+            {
+                issue =
+                    "No adopted Session physical occurrence evidence is retained for this entry; a missing admission record cannot be proven as a legitimate prior retirement.";
+                return false;
+            }
+
+            if (_preparationModule == null || !_preparationModule.IsReady)
+            {
+                issue =
+                    "Session physical Actor preparation authority is unavailable to confirm prior contextual retirement.";
+                return false;
+            }
+
+            if (!_preparationModule.TryGetScenePlayerActorAdoption(
+                    entry.PlayerSlotId,
+                    out ScenePlayerActorAdoptionToken currentAdoptionToken) ||
+                currentAdoptionToken != entry.AdoptionToken)
+            {
+                issue =
+                    "Retained Session physical Scene Actor adoption evidence does not match the exact admitted occurrence; contextual retirement cannot be proven as legitimate.";
+                return false;
+            }
+
+            return true;
         }
 
         internal bool TryRetireAllContextForSessionTermination(

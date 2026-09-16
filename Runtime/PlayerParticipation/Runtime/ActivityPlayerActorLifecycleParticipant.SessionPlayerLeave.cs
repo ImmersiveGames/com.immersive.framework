@@ -297,10 +297,21 @@ namespace Immersive.Framework.PlayerParticipation
                         "Activity lifecycle preparation token does not match the retained current Actor representation evidence.");
                 }
 
-                if (!_participationContext.TryGetCurrentAssignment(
+                // ADR-020: for an already-adopted Session-owned Actor, the Activity-scoped
+                // contextual assignment (and its projected Host evidence) may have already been
+                // retired before this Leave began -- e.g. by an explicit Scene-Provided
+                // contextual release (RequestRelease) that legitimately ends the Activity/Route
+                // admission while the Session physical representation is retained. Correlation
+                // must therefore prove the exact retained Session physical representation
+                // directly, never through that now-possibly-absent contextual assignment.
+                if (!_preparationModule.TryGetPreparedPhysicalEvidence(
                         playerSlotId,
-                        out PlayerSlotAssignmentSnapshot assignment) ||
-                    !assignment.IsAssigned)
+                        preparationToken,
+                        out LocalPlayerHostAuthoring preparedHost,
+                        out _,
+                        out _,
+                        out _,
+                        out string preparedEvidenceIssue))
                 {
                     return Result(
                         SessionPlayerActivityRepresentationReleaseStatus.RejectedRepresentationCorrelation,
@@ -309,15 +320,15 @@ namespace Immersive.Framework.PlayerParticipation
                         null,
                         source,
                         reason,
-                        "Current Slot assignment is unavailable for the active contextual representation.");
+                        "Prepared Activity Actor representation does not resolve to exact retained Session physical evidence for the same preparation occurrence. " +
+                            preparedEvidenceIssue);
                 }
 
-                if (!_preparationModule.TryGetRetainedHostEvidence(
+                if (!_preparationModule.TryGetCurrentSessionPhysicalHost(
                         playerSlotId,
-                        out PlayerHostEvidenceSnapshot hostEvidence) ||
-                    !hostEvidence.IsRecorded ||
-                    hostEvidence.AssignmentToken != assignment.AssignmentToken ||
-                    hostEvidence.HostBindingIdentity != assignment.HostBindingIdentity)
+                        out LocalPlayerHostAuthoring retainedHost,
+                        out string retainedHostIssue) ||
+                    !ReferenceEquals(retainedHost, preparedHost))
                 {
                     return Result(
                         SessionPlayerActivityRepresentationReleaseStatus.RejectedRepresentationCorrelation,
@@ -326,7 +337,8 @@ namespace Immersive.Framework.PlayerParticipation
                         null,
                         source,
                         reason,
-                        "Prepared Activity Actor representation does not resolve to the exact retained Host evidence for the same assignment occurrence.");
+                        "Prepared Activity Actor representation does not resolve to the exact retained Session physical Host evidence. " +
+                            retainedHostIssue);
                 }
             }
             else if (_activeRecord != null &&

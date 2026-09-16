@@ -71,6 +71,8 @@ namespace Immersive.Framework.ApplicationLifecycle
         private CameraOutputSessionTopology _cameraOutputTopology;
         private CameraViewOutputRuntime _cameraViewOutputRuntime;
         private CameraSubjectAvailabilityContext _cameraSubjectAvailabilityContext;
+        private PlayerCameraOutputIntegrationRuntime
+            _playerCameraOutputIntegrationRuntime;
         private PlayerActorCameraSubjectIntegrationRuntime
             _playerActorCameraSubjectIntegrationRuntime;
         private CameraSubjectAvailabilityInjectionRuntime _cameraSubjectAvailabilityInjectionRuntime;
@@ -474,6 +476,8 @@ namespace Immersive.Framework.ApplicationLifecycle
                     out IReadOnlyList<CameraOutputAuthoring> cameraOutputs,
                     out IReadOnlyList<CameraSharedComposition> cameraCompositions,
                     out IReadOnlyList<CameraViewOutputPolicyAuthoring> cameraViewOutputPolicies,
+                    out IReadOnlyList<PlayerCameraOutputPolicyAuthoring> playerCameraOutputPolicies,
+                    out bool automaticPlayerSplitScreenEnabled,
                     out string cameraDiagnostic))
             {
                 var failed = FrameworkGameFlowStartResult.Failed(cameraDiagnostic);
@@ -485,6 +489,21 @@ namespace Immersive.Framework.ApplicationLifecycle
             if (!CameraOutputSessionTopology.TryCreate(
                     cameraOutputs,
                     out _cameraOutputTopology,
+                    out cameraDiagnostic))
+            {
+                var failed = FrameworkGameFlowStartResult.Failed(cameraDiagnostic);
+                _state = FrameworkRuntimeState.FromGameFlowResult(_gameApplication, failed);
+                return failed;
+            }
+
+            this.TryGetPlayerParticipationSnapshot(
+                out PlayerParticipationSnapshot playerParticipationSnapshot);
+            if (!PlayerCameraOutputPolicyProjection.TryCreate(
+                    playerCameraOutputPolicies,
+                    _cameraOutputTopology,
+                    playerParticipationSnapshot,
+                    automaticPlayerSplitScreenEnabled,
+                    out PlayerCameraOutputTopology playerCameraOutputTopology,
                     out cameraDiagnostic))
             {
                 var failed = FrameworkGameFlowStartResult.Failed(cameraDiagnostic);
@@ -528,6 +547,8 @@ namespace Immersive.Framework.ApplicationLifecycle
             _cameraSubjectAvailabilityInjectionRuntime = null;
             _playerActorCameraSubjectIntegrationRuntime?.Dispose();
             _playerActorCameraSubjectIntegrationRuntime = null;
+            _playerCameraOutputIntegrationRuntime?.Dispose();
+            _playerCameraOutputIntegrationRuntime = null;
             _cameraSubjectAvailabilityContext = null;
 
             _loadingSurfaceRuntime = CreateLoadingSurfaceRuntime(_globalUiSceneRuntime);
@@ -586,10 +607,11 @@ namespace Immersive.Framework.ApplicationLifecycle
                 LogFields.Field(
                     "receiverCount",
                     activityEntryCompletionReceiverCount));
+            PlayerActorPreparationRuntimeHostModule playerActorPreparation = null;
             if (_gameApplication.PlayerSessionEnabled &&
                 !PlayerActorPreparationRuntimeHostModule.TryAttach(
                     this,
-                    out _,
+                    out playerActorPreparation,
                     out string playerActorPreparationIssue))
             {
                 var failed = FrameworkGameFlowStartResult.Failed(
@@ -599,6 +621,37 @@ namespace Immersive.Framework.ApplicationLifecycle
                     _gameApplication,
                     failed);
                 return failed;
+            }
+            if (_gameApplication.PlayerSessionEnabled &&
+                playerCameraOutputTopology.BindingCount > 0)
+            {
+                if (!this.TryGetPlayerParticipationRuntime(
+                        out PlayerParticipationRuntimeContext playerSession))
+                {
+                    var failed = FrameworkGameFlowStartResult.Failed(
+                        "Player Camera Output integration failed because the canonical Player Session runtime is unavailable.");
+                    _state = FrameworkRuntimeState.FromGameFlowResult(
+                        _gameApplication,
+                        failed);
+                    return failed;
+                }
+
+                if (!PlayerCameraOutputIntegrationRuntime.TryCreate(
+                        playerSession,
+                        playerActorPreparation,
+                        _cameraOutputTopology,
+                        playerCameraOutputTopology,
+                        out _playerCameraOutputIntegrationRuntime,
+                        out string playerCameraOutputIssue))
+                {
+                    var failed = FrameworkGameFlowStartResult.Failed(
+                        "Player Camera Output integration failed. " +
+                        playerCameraOutputIssue);
+                    _state = FrameworkRuntimeState.FromGameFlowResult(
+                        _gameApplication,
+                        failed);
+                    return failed;
+                }
             }
             if (_gameApplication.PlayerSessionEnabled)
             {
@@ -3020,6 +3073,8 @@ namespace Immersive.Framework.ApplicationLifecycle
             _cameraSubjectAvailabilityInjectionRuntime = null;
             _playerActorCameraSubjectIntegrationRuntime?.Dispose();
             _playerActorCameraSubjectIntegrationRuntime = null;
+            _playerCameraOutputIntegrationRuntime?.Dispose();
+            _playerCameraOutputIntegrationRuntime = null;
             _cameraSubjectAvailabilityContext = null;
             _cameraOutputInjectionRuntime?.Dispose();
             _cameraOutputInjectionRuntime = null;
