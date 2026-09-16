@@ -497,7 +497,6 @@ namespace Immersive.Framework.PlayerParticipation
                     0,
                     "Scene Local Player enter rollback had no retained entries.");
             }
-
             if (!ReferenceEquals(_activeRecord.Activity, activity) ||
                 _activeRecord.Owner != owner)
             {
@@ -586,12 +585,20 @@ namespace Immersive.Framework.PlayerParticipation
                     continue;
                 }
 
-                bool stillActiveInAdmissionStore =
+                bool hasActiveAdmission =
                     _module.TryGetActiveToken(
                         entry.Authoring,
-                        out SceneLocalPlayerAdmissionToken currentToken) &&
-                    currentToken == entry.AdmissionToken;
-                if (!stillActiveInAdmissionStore)
+                        out SceneLocalPlayerAdmissionToken currentToken);
+                if (hasActiveAdmission && currentToken != entry.AdmissionToken)
+                {
+                    // A different live admission is positive evidence that the retained Activity
+                    // token is stale. Never reinterpret it as an already-retired occurrence;
+                    // preserve the canonical retirement path so it produces the typed rejection.
+                    entries.Add(entry);
+                    continue;
+                }
+
+                if (!hasActiveAdmission)
                 {
                     // ADR-019/ADR-020: an explicit contextual release (e.g. RequestRelease)
                     // legitimately retires the Activity-scoped admission ahead of Session Leave
@@ -602,6 +609,7 @@ namespace Immersive.Framework.PlayerParticipation
                     if (TryConfirmSceneOccurrenceAlreadyRetired(entry, out _))
                     {
                         entry.AdmissionActive = false;
+                        entry.AdmissionToken = default;
                         alreadyRetiredCount++;
                         continue;
                     }
