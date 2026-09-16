@@ -1,13 +1,15 @@
-# Camera Output Participation and Physical Presentation Ownership Reconciliation — 2026-09-12 / corrected 2026-09-15
+# Camera Output Participation and Physical Presentation Ownership Reconciliation — 2026-09-12 / corrected 2026-09-15 / updated 2026-09-16
 
-Status: **Architecture reconciled; CUT 1 and CUT 2 implemented/certified; physical presentation ownership corrected; remaining code reconciliation and PlayerInput integration pending**
+Status: **Architecture reconciled; CUT 1/2/3 implemented and technically certified; CUT 4 code reconciliation and CUT 5 PlayerInput integration implemented; focused physical-presentation / automatic split-screen certification and final consumer closure remain pending**
 
-Affected decisions: IF-ADR-026, IF-ADR-027 and IF-ADR-028  
-Historical evidence: [Camera Full Technical Certification — 2026-09-12](IF-CAMERA-FULL-TECHNICAL-CERTIFICATION-2026-09-12.md)  
-Execution mapping clarified: **2026-09-13**  
-CUT 1 certification: **2026-09-13**  
-CUT 2 certification: **2026-09-14**  
+Affected decisions: IF-ADR-026, IF-ADR-027 and IF-ADR-028
+Historical evidence: [Camera Full Technical Certification — 2026-09-12](IF-CAMERA-FULL-TECHNICAL-CERTIFICATION-2026-09-12.md)
+Current certification: [Camera Full Technical Certification — 2026-09-16](IF-CAMERA-FULL-TECHNICAL-CERTIFICATION-2026-09-16.md)
+Execution mapping clarified: **2026-09-13**
+CUT 1 certification: **2026-09-13**
+CUT 2 certification: **2026-09-14**
 Physical-presentation ownership corrected: **2026-09-15**
+CUT 3 certification / CUT 4-5 implementation reconciliation: **2026-09-16**
 
 ## Audit finding
 
@@ -58,20 +60,24 @@ precedence -> arbitration policy
 
 Player Actors may contribute Camera Subjects, but PlayerParticipation core must not become Camera topology authority.
 
-Target direction:
+Current productive direction:
 
 ```text
-Player Actor / Presentation evidence
+Player Actor / Presentation occurrence evidence
       ↓
-Camera integration adapter
+PlayerActorCameraSubjectIntegrationRuntime
       ↓
 Camera Subject availability
 ```
 
+CAMERA-026-I was technically certified by the 2026-09-16 Full Camera run.
+
 For split-screen Player Cameras, physical viewport ownership remains with Unity Input System:
 
 ```text
-Framework identifies/integrates the Player Camera
+explicit Player Slot -> Camera Output policy
+      ↓
+PlayerCameraOutputIntegrationRuntime
       ↓
 PlayerInput.camera
       ↓
@@ -79,6 +85,8 @@ PlayerInputManager owns Camera.rect layout
 ```
 
 Framework Camera must not rewrite that rect.
+
+The Player Camera integration path is implemented as of 2026-09-16. Focused certification with automatic `PlayerInputManager.splitScreen` enabled remains pending.
 
 ## Certification disposition
 
@@ -92,7 +100,7 @@ ADR-026 phases 2/2
 
 It remains historical evidence for the former viewport-bearing boundary.
 
-The corrected 2026-09-14 certification establishes CUT 2 without relabeling that historical run:
+The corrected 2026-09-14 certification established CUT 2 without relabeling that historical run:
 
 ```text
 Persistent Camera Presentation Composition regression   12/12 PASS
@@ -107,7 +115,18 @@ viewportSplitTopology                                   removed from active cert
 canonical Shared baseline restore                       PASS
 ```
 
-No physical-presentation ownership PASS or `playerInputLayoutIntegration` PASS is claimed by those runs.
+The 2026-09-16 Full Camera certification adds:
+
+```text
+Full Camera established cases                           39/39 PASS
+ADR-026 phases                                          2/2 PASS
+current Full Camera dimensions                          8/8 PASS
+CAMERA-026-I SceneProvided                              PASS
+Split runtime-host integration regression               8/8 PASS
+canonical baseline restore                              PASS
+```
+
+No `physicalPresentationNonOwnership='PASS'` or `playerInputLayoutIntegration='PASS'` is claimed by that run. The canonical Full Camera topology builder still disables automatic PlayerInput split-screen, so focused CUT 4/5 proof remains distinct.
 
 ## Required implementation cuts
 
@@ -132,32 +151,34 @@ CAMERA-027-D2 — reconcile View→Output authoring without viewport
 
 CUT 3
 CAMERA-026-I — Player→Camera Subject integration boundary
-  move Camera publication responsibility to the Camera/integration side
-  preserve Player-domain evidence and Player lifetime authority
-  implementation/static work completed separately; runtime certification remains independent
+  Camera publication responsibility lives on the Camera/integration side
+  consumes typed Player prepared-Actor occurrence evidence
+  preserves Player-domain evidence and Player lifetime authority
+  status: IMPLEMENTED / TECHNICALLY CERTIFIED — 2026-09-16
 
 CUT 4
 CAMERA-028-C — external physical-presentation ownership boundary
   Framework must have zero productive Camera.rect/pixelRect/targetDisplay/targetTexture layout writers
   preserve gameplay/Unity supplied physical Camera presentation
-  remove/reconcile the superseded 2026-09-15 CameraOutputPresentationRuntime writer before certification
-  status: PENDING RECONCILIATION
+  superseded CameraOutputPresentationRuntime writer removed/reconciled
+  status: IMPLEMENTATION RECONCILED — 2026-09-16; focused runtime preservation certification PENDING
 
 CUT 5
 CAMERA-028-D — PlayerInputManager layout integration
+  explicit Player Slot -> Camera Output policy implemented
   integrate Player Camera with PlayerInput/PlayerInputManager
   PlayerInputManager remains sole split-screen Camera.rect writer
   Framework remains Camera topology/rig authority only
-  status: PENDING
+  status: IMPLEMENTED / EXPERIMENTAL — 2026-09-16; focused automatic split-screen certification PENDING
 
 CUT 6
 Camera QA physical-presentation recertification
-  prove physicalPresentationNonOwnership and playerInputLayoutIntegration after CUT 4/5
+  prove physicalPresentationNonOwnership and playerInputLayoutIntegration with focused CUT 4/5 fixtures
   status: PENDING
 
 CUT 7
 CAMERA-027-F — official Samples/FIRSTGAME consumer closure
-  only after the corrected runtime/integration boundary is certified
+  only after the corrected physical-presentation / PlayerInput runtime boundary is focused-certified
   status: PENDING
 ```
 
@@ -165,22 +186,25 @@ CAMERA-027-F — official Samples/FIRSTGAME consumer closure
 
 `CAMERA-027-D2` is not an alias for `CAMERA-028-B`: D2 owns the product-authoring change while 028-B owns the runtime/topology change. They were implemented and certified together so no viewport-bearing dual authority survives between authoring and runtime.
 
+CAMERA-026-I is similarly distinct from CAMERA-028-D: 026-I publishes Player-backed Camera Subjects; 028-D associates explicit Player Slots with explicit Camera Outputs for PlayerInput integration. Neither responsibility grants physical-layout ownership to Framework Camera.
+
 ## QA replacement status
 
-The corrected Camera QA already distinguishes:
+The corrected Camera QA currently proves:
 
 ```text
-viewOutputAssociation         PASS
-outputParticipation           PASS
+viewOutputAssociation                   PASS
+outputParticipation                     PASS
+CAMERA-026-I Player→Camera integration  PASS
 ```
 
 The obsolete `viewportSplitTopology` dimension remains removed.
 
-Future corrected proof must add:
+Focused corrected proof still must add:
 
 ```text
-physicalPresentationNonOwnership   PENDING CAMERA-028-C
-playerInputLayoutIntegration       PENDING CAMERA-028-D
+physicalPresentationNonOwnership   PENDING CAMERA-028-C focused runtime proof
+playerInputLayoutIntegration       PENDING CAMERA-028-D focused runtime proof
 ```
 
 Current proven boundary includes:
@@ -194,13 +218,21 @@ Camera topology contains no viewport                           PASS
 generic Camera arbitration regression                          PASS
 Player count 0 -> 1 -> 0 creates no implicit association       PASS
 Output A/B arbitration isolation                               PASS
+Player-backed Camera Subject SceneProvided integration         PASS
 canonical Shared restore after certification                   PASS
 ```
 
-Still pending:
+Source/implementation reconciliation now includes:
 
 ```text
-Framework productive Camera.rect writer count == 0             CAMERA-028-C
+superseded CameraOutputPresentationRuntime removed              COMPLETE
+explicit Player Slot -> Camera Output policy                    IMPLEMENTED
+PlayerCameraOutputIntegrationRuntime                             IMPLEMENTED
+```
+
+Still pending focused runtime proof:
+
+```text
 Framework preserves external authored rect                     CAMERA-028-C
 PlayerInputManager is sole split-screen Camera.rect writer      CAMERA-028-D
 PlayerInput layout does not select Subjects/requests            CAMERA-028-D
@@ -208,7 +240,7 @@ PlayerInput layout does not select Subjects/requests            CAMERA-028-D
 
 ## Consumer proof
 
-The Getting Started migration remains useful evidence for typed View, Output and Rig Behavior definitions and explicit Camera Subject authoring. Final CAMERA-027-F closure waits for implementation and QA of the corrected boundary.
+The Getting Started migration remains useful evidence for typed View, Output and Rig Behavior definitions and explicit Camera Subject authoring. Final CAMERA-027-F closure waits for focused QA of the corrected physical-presentation boundary and a representative consumer integration.
 
 For Player-driven split-screen, consumer proof must demonstrate:
 
@@ -216,6 +248,7 @@ For Player-driven split-screen, consumer proof must demonstrate:
 Framework Camera
   supplies/uses the explicit Camera required by Framework
   supplies logical View→Output association where applicable
+  uses explicit Player Slot -> Camera Output identity
   does not partition the screen
   does not rewrite Camera.rect
 
@@ -235,12 +268,12 @@ Current state:
 ```text
 CAMERA-028-A / CAMERA-026-H2                    COMPLETE / TECHNICALLY CERTIFIED
 CAMERA-028-B + CAMERA-027-D2                    COMPLETE / TECHNICALLY CERTIFIED
-CAMERA-026-I                                    IMPLEMENTATION/STATIC CLOSED; RUNTIME CERTIFICATION SEPARATE
-CAMERA-028-C                                    ARCHITECTURE CORRECTED; CODE RECONCILIATION PENDING
-CAMERA-028-D                                    PENDING
-corrected Camera logical QA recertification     COMPLETE for CUT 1/2
-physical-presentation QA recertification        PENDING CUT 4/5
+CAMERA-026-I                                    COMPLETE / TECHNICALLY CERTIFIED — 2026-09-16
+CAMERA-028-C                                    CODE RECONCILIATION COMPLETE; FOCUSED RUNTIME CERTIFICATION PENDING
+CAMERA-028-D                                    IMPLEMENTED / EXPERIMENTAL; FOCUSED SPLIT-SCREEN CERTIFICATION PENDING
+corrected Camera logical QA recertification     COMPLETE, including CAMERA-026-I
+physical-presentation QA recertification        PENDING focused CUT 4/5
 CAMERA-027-F official consumer proof            PENDING
 ```
 
-This reconciliation remains open until the superseded Framework layout writer is reconciled, PlayerInput integration is certified and consumer closure is complete. Current documentation must not describe either the old viewport-bearing Camera topology or a generic Framework-owned physical layout system as normative.
+This reconciliation remains open only for focused physical-presentation / PlayerInput split-screen certification and final consumer closure. Current documentation must not describe either the old viewport-bearing Camera topology or a generic Framework-owned physical layout system as normative, and it must not describe CAMERA-026-I, CAMERA-028-C code reconciliation or CAMERA-028-D implementation as still absent.
