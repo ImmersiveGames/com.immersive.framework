@@ -617,7 +617,7 @@ namespace Immersive.Framework.PlayerParticipation
             return false;
         }
 
-        private bool TryGetContext(out string issue)
+        protected bool TryGetContext(out string issue)
         {
             if (!IsCurrent())
             {
@@ -724,6 +724,13 @@ namespace Immersive.Framework.PlayerParticipation
         internal bool TryGetLegacyObservation(
             out LocalPlayerProvisioningConsumerObservationSnapshot observation)
         {
+            if (!TryGetContext(out string issue))
+            {
+                observation = LocalPlayerProvisioningConsumerObservationSnapshot
+                    .Unavailable(Snapshot.Scope, Snapshot.Owner, issue);
+                return false;
+            }
+
             return _manager.TryGetObservation(
                 Snapshot.Scope,
                 Snapshot.Owner,
@@ -732,6 +739,11 @@ namespace Immersive.Framework.PlayerParticipation
 
         public LocalPlayerJoinResult RequestJoin(LocalPlayerJoinRequest request)
         {
+            if (!TryGetContext(out string issue))
+            {
+                return LocalPlayerJoinResult.RuntimeUnavailable(request, issue);
+            }
+
             return _manager.IsReady
                 ? _manager.RegisterJoinWithActorPreparation(_manager.TryJoin(request))
                 : LocalPlayerJoinResult.RuntimeUnavailable(request,

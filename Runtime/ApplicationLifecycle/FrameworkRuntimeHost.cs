@@ -28,6 +28,7 @@ using Immersive.Framework.Transition;
 using Immersive.Framework.TransitionEffects;
 using Immersive.Framework.Common;
 using Immersive.Framework.Camera;
+using UnityEngine.InputSystem;
 using Immersive.Framework.CameraAuthoring;
 using Immersive.Framework.Common.LifecycleOperations;
 using Immersive.Framework.PlayerParticipation;
@@ -636,9 +637,34 @@ namespace Immersive.Framework.ApplicationLifecycle
                     return failed;
                 }
 
+                PlayerInputManager splitScreenManager = null;
+                if (automaticPlayerSplitScreenEnabled)
+                {
+                    if (!TryResolveLocalPlayerProvisioningAuthoring(
+                            out LocalPlayerProvisioningAuthoring provisioning,
+                            out bool provisioningConfigured,
+                            out string provisioningIssue) ||
+                        !provisioningConfigured ||
+                        provisioning == null ||
+                        provisioning.PlayerInputManager == null ||
+                        !provisioning.PlayerInputManager.splitScreen)
+                    {
+                        var failed = FrameworkGameFlowStartResult.Failed(
+                            "Player Camera Output integration requires the exact configured split-screen PlayerInputManager. " +
+                            provisioningIssue);
+                        _state = FrameworkRuntimeState.FromGameFlowResult(
+                            _gameApplication,
+                            failed);
+                        return failed;
+                    }
+
+                    splitScreenManager = provisioning.PlayerInputManager;
+                }
+
                 if (!PlayerCameraOutputIntegrationRuntime.TryCreate(
                         playerSession,
                         playerActorPreparation,
+                        splitScreenManager,
                         _cameraOutputTopology,
                         playerCameraOutputTopology,
                         out _playerCameraOutputIntegrationRuntime,

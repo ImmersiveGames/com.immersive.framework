@@ -10,7 +10,10 @@ namespace Immersive.Framework.Camera
     /// <summary>
     /// Narrow Session integration that publishes an explicitly bound Framework Camera
     /// to the exact PlayerInput owned by current physical Player Host evidence.
-    /// It owns no Player Session, Camera Output, Subject, arbitration or layout state.
+    /// It owns no Player Session, Camera Output, Subject, arbitration or layout geometry.
+    /// For automatic split-screen it brackets Manager-Provisioned joins so the
+    /// PlayerInputManager performs its own recomposition only after the exact Camera
+    /// association exists.
     /// </summary>
     internal sealed class PlayerCameraOutputIntegrationRuntime : IDisposable
     {
@@ -30,19 +33,24 @@ namespace Immersive.Framework.Camera
 
         private readonly PlayerParticipationRuntimeContext _playerSession;
         private readonly PlayerActorPreparationRuntimeHostModule _physicalPlayers;
+        private readonly PlayerInputManager _splitScreenManager;
         private readonly CameraOutputSessionTopology _outputs;
         private readonly PlayerCameraOutputTopology _bindings;
         private readonly Dictionary<PlayerSlotId, AppliedBinding> _applied = new();
+        private PlayerSlotId _splitScreenJoinSlot;
+        private bool _splitScreenJoinTransactionActive;
         private bool _disposed;
 
         private PlayerCameraOutputIntegrationRuntime(
             PlayerParticipationRuntimeContext playerSession,
             PlayerActorPreparationRuntimeHostModule physicalPlayers,
+            PlayerInputManager splitScreenManager,
             CameraOutputSessionTopology outputs,
             PlayerCameraOutputTopology bindings)
         {
             _playerSession = playerSession;
             _physicalPlayers = physicalPlayers;
+            _splitScreenManager = splitScreenManager;
             _outputs = outputs;
             _bindings = bindings;
             _playerSession.Changed += OnPlayerSessionChanged;
@@ -56,6 +64,7 @@ namespace Immersive.Framework.Camera
         internal static bool TryCreate(
             PlayerParticipationRuntimeContext playerSession,
             PlayerActorPreparationRuntimeHostModule physicalPlayers,
+            PlayerInputManager splitScreenManager,
             CameraOutputSessionTopology outputs,
             PlayerCameraOutputTopology bindings,
             out PlayerCameraOutputIntegrationRuntime runtime,
@@ -73,6 +82,7 @@ namespace Immersive.Framework.Camera
             var candidate = new PlayerCameraOutputIntegrationRuntime(
                 playerSession,
                 physicalPlayers,
+                splitScreenManager,
                 outputs,
                 bindings);
             if (!candidate.ReconcileAll(out diagnostic))
@@ -96,6 +106,7 @@ namespace Immersive.Framework.Camera
             }
 
             _disposed = true;
+            CompleteSplitScreenJoinTransaction();
             _playerSession.Changed -= OnPlayerSessionChanged;
             _physicalPlayers.SessionPhysicalHostChanged -=
                 OnSessionPhysicalHostChanged;
@@ -118,7 +129,22 @@ namespace Immersive.Framework.Camera
                 return;
             }
 
+            if (IsManagerProvisionedReservationStarted(change))
+            {
+                BeginSplitScreenJoinTransaction(change.PlayerSlotId);
+            }
+
             ReconcileObservedSlot(change.PlayerSlotId);
+
+            if (_splitScreenJoinTransactionActive &&
+                change.PlayerSlotId == _splitScreenJoinSlot &&
+                change.CurrentSlot.AllocationState !=
+                    PlayerSlotAllocationState.Reserved &&
+                change.CurrentSlot.AllocationState !=
+                    PlayerSlotAllocationState.Joined)
+            {
+                CompleteSplitScreenJoinTransaction();
+            }
         }
 
         private void OnSessionPhysicalHostChanged(PlayerSlotId playerSlotId)
@@ -129,6 +155,60 @@ namespace Immersive.Framework.Camera
             }
 
             ReconcileObservedSlot(playerSlotId);
+            if (_splitScreenJoinTransactionActive &&
+                playerSlotId == _splitScreenJoinSlot)
+            {
+                CompleteSplitScreenJoinTransaction();
+            }
+        }
+
+        private bool IsManagerProvisionedReservationStarted(
+            PlayerSessionChange change) =>
+            change.CurrentSlot.IsValid &&
+            _playerSession.TryGetHostProvisioningMode(
+                change.PlayerSlotId,
+                out PlayerHostProvisioningMode provisioningMode) &&
+            provisioningMode == PlayerHostProvisioningMode.ManagerProvisioned &&
+            change.CurrentSlot.AllocationState ==
+                PlayerSlotAllocationState.Reserved &&
+            change.PreviousSlot.AllocationState !=
+                PlayerSlotAllocationState.Reserved;
+
+        private void BeginSplitScreenJoinTransaction(PlayerSlotId playerSlotId)
+        {
+            if (_splitScreenManager == null ||
+                !_splitScreenManager.splitScreen)
+            {
+                return;
+            }
+
+            if (_splitScreenJoinTransactionActive)
+            {
+                LastReconciliationSucceeded = false;
+                Diagnostic =
+                    $"PlayerInput split-screen join transaction for Slot '{_splitScreenJoinSlot.StableText}' was still active when Slot '{playerSlotId.StableText}' was reserved.";
+                return;
+            }
+
+            _splitScreenJoinSlot = playerSlotId;
+            _splitScreenJoinTransactionActive = true;
+            _splitScreenManager.splitScreen = false;
+        }
+
+        private void CompleteSplitScreenJoinTransaction()
+        {
+            if (!_splitScreenJoinTransactionActive)
+            {
+                return;
+            }
+
+            _splitScreenJoinTransactionActive = false;
+            _splitScreenJoinSlot = default;
+            if (_splitScreenManager != null &&
+                !_splitScreenManager.splitScreen)
+            {
+                _splitScreenManager.splitScreen = true;
+            }
         }
 
         private void ReconcileObservedSlot(PlayerSlotId playerSlotId)
