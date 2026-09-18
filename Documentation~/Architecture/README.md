@@ -503,11 +503,11 @@ physical replacement is the separate Manager-Provisioned IF-ADR-024 operation
 
 - IF-ADR-004 — Request/output arbitration and output-owned Default semantics remain accepted/implemented. Multi-output participation/layout portions are governed by corrected IF-ADR-026 and IF-ADR-028; historical 2026-09-12 evidence remains preserved and corrected 2026-09-14 regression evidence is current through CUT 2.
 - IF-ADR-004D — Implemented and preserved. Default/force-default selects physical Rig presentation; it does not own screen layout.
-- IF-ADR-010 — Accepted product-surface authority; viewport-bearing Camera Inspector surfaces were reconciled by CAMERA-027-D2 / CAMERA-028-B; physical layout surfaces remain pending CAMERA-028-C/D.
+- IF-ADR-010 — Accepted product-surface authority; viewport-bearing Camera Inspector surfaces were reconciled by CAMERA-027-D2 / CAMERA-028-B; ADR-028 physical presentation remains externally owned and PlayerInput integration is implemented.
 - IF-ADR-022 — Presentation family/materialization accepted and preserved; target selection is owned by IF-ADR-026 and reusable behavior authoring by IF-ADR-027.
 - IF-ADR-026 — **Reopened** 2026-09-12. CAMERA-026-A..G remain implemented; original H all-Output/viewport assumptions are superseded; H2 is certified and revalidated; I remains pending. Corrected Full Camera is 39/39 established cases, ADR-026 2/2, active dimensions 8/8.
 - IF-ADR-027 — **Reopened** 2026-09-12. CAMERA-027-A/B/C remain implemented; D2 is implemented/certified 2026-09-14; E remains deferred; F final consumer closure waits corrected layout/integration implementation.
-- IF-ADR-028 — **Accepted architecture / partial implementation**. CAMERA-028-A/B are implemented/certified; CAMERA-028-C/D remain pending, so physical layout implementation is incomplete.
+- IF-ADR-028 — **Accepted / implemented / tested / integrated; validation open**. CAMERA-028-A/B are certified, CAMERA-028-C focused behavior is PASS, and CAMERA-028-D has 33/33 focused functional PASS. Final validation awaits read-only preflight and cleanup/reentrancy proof.
 
 ## Historical certification records
 
@@ -535,7 +535,7 @@ prepared physical Actor replacement and its integrated Full Player QA `16/16` ru
 Player aggregate/certification counts are preserved for their own executed boundaries and
 are not relabeled as ADR-024 proof.
 
-For Camera, the 2026-08-15 `53/53` presentation certification, the 2026-09-09 focused Shared Camera certification and the 2026-09-12 Full Camera `39/39` certification remain dated evidence for the boundaries they executed. The corrected 2026-09-14 run is current technical evidence for CAMERA-028-A/B and CAMERA-027-D2 and does not claim physical layout-authority or PlayerInput-layout certification.
+For Camera, the 2026-08-15 `53/53` presentation certification, the 2026-09-09 focused Shared Camera certification and the 2026-09-12 Full Camera `39/39` certification remain dated evidence for the boundaries they executed. The corrected 2026-09-14 run remains technical evidence for CAMERA-028-A/B and CAMERA-027-D2; the 2026-09-16 run adds CAMERA-026-I; the 2026-09-17 focused audit adds CAMERA-028-C behavior PASS and CAMERA-028-D 33/33 functional PASS while explicitly withholding final validation.
 
 The package-local Unity Test Framework tests are not claimed as executed by integrated QA
 unless the relevant certification record states that execution.
