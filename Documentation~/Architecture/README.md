@@ -1,6 +1,6 @@
 # Immersive Framework Architecture Documentation
 
-Last updated: **2026-09-14**
+Last updated: **2026-09-17**
 
 ## Normative architecture
 
@@ -281,6 +281,10 @@ Current reconciliation record:
 
 [Camera Output Participation and Layout Authority Reconciliation — 2026-09-12](Reconciliation/IF-CAMERA-OUTPUT-LAYOUT-AUTHORITY-RECONCILIATION-2026-09-12.md)
 
+Focused validation record:
+
+[IF-ADR-028 Focused Physical Presentation / PlayerInput Validation — 2026-09-17](Reconciliation/IF-ADR-028-FOCUSED-VALIDATION-2026-09-17.md)
+
 ```text
 Player / Actor -> Camera Subject evidence through an explicit integration boundary
 Camera Assignment -> 0..N Subjects per View
@@ -317,15 +321,16 @@ Current Camera architecture state:
 CAMERA-026-A..G    IMPLEMENTED / RETAINED
 CAMERA-026-H       SUPERSEDED
 CAMERA-026-H2      IMPLEMENTED / TECHNICALLY CERTIFIED — revalidated 2026-09-14
-CAMERA-026-I       PENDING — Player→Camera Subject integration boundary
+CAMERA-026-I       IMPLEMENTED / TECHNICALLY CERTIFIED — 2026-09-16
 CAMERA-027-A..C    IMPLEMENTED / RETAINED
 CAMERA-027-D2      IMPLEMENTED / TECHNICALLY CERTIFIED — 2026-09-14
 CAMERA-027-E       DEFERRED / OPTIONAL
-CAMERA-027-F       FINAL CONSUMER CLOSURE PENDING corrected boundary
+CAMERA-027-F       FINAL CONSUMER CLOSURE PENDING
 CAMERA-028-A       IMPLEMENTED / TECHNICALLY CERTIFIED — 8/8 PASS
 CAMERA-028-B       IMPLEMENTED / TECHNICALLY CERTIFIED — 2026-09-14
-CAMERA-028-C/D     PENDING
-corrected logical QA COMPLETE through CUT 2; physical layout QA pending
+CAMERA-028-C       IMPLEMENTED; FOCUSED BEHAVIOR PASS — 2026-09-17
+CAMERA-028-D       IMPLEMENTED / TESTED / INTEGRATED; 33/33 FUNCTIONAL PASS — 2026-09-17
+ADR-028 validation OPEN — read-only preflight + cleanup/reentrancy proof pending
 ```
 
 Historical integrated Camera evidence:
@@ -349,7 +354,7 @@ viewportSplitTopology                                  REMOVED
 Shared baseline restore                                PASS
 ```
 
-This current run certifies the logical View→Output / Output-participation boundary through CAMERA-028-B and CAMERA-027-D2. Physical `layoutAuthority` and `playerInputLayoutIntegration` remain pending CAMERA-028-C/D.
+The 2026-09-14 run certifies the logical View→Output / Output-participation boundary through CAMERA-028-B and CAMERA-027-D2. CAMERA-026-I was certified on 2026-09-16. The 2026-09-17 focused session adds CAMERA-028-C physical-presentation behavior PASS and CAMERA-028-D 33/33 functional PASS; final ADR-028 validation remains open on read-only preflight and cleanup/reentrancy evidence.
 
 Previous focused Shared Camera evidence remains:
 
