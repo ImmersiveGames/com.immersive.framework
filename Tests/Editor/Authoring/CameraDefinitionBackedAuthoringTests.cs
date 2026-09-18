@@ -157,21 +157,17 @@ namespace Immersive.Framework.Authoring.Editor.Tests
         }
 
         [Test]
-        public void AssignmentInfrastructure_IsInstanceOwnedAndSurvivesDisableEnable()
+        public void MembershipInfrastructure_IsInstanceOwnedAndSurvivesDisableEnable()
         {
             var first = Component<CameraSharedComposition>();
             var second = Component<CameraSharedComposition>();
-            string context = first.AssignmentContextIdText;
-            string owner = first.AssignmentOwnerIdText;
+            string context = first.MembershipContextIdText;
             Assert.That(Guid.TryParseExact(context, "N", out _), Is.True);
-            Assert.That(Guid.TryParseExact(owner, "N", out _), Is.True);
-            Assert.That(second.AssignmentContextIdText, Is.Not.EqualTo(context));
-            Assert.That(second.AssignmentOwnerIdText, Is.Not.EqualTo(owner));
+            Assert.That(second.MembershipContextIdText, Is.Not.EqualTo(context));
             first.gameObject.SetActive(true);
             first.gameObject.SetActive(false);
             first.gameObject.SetActive(true);
-            Assert.That(first.AssignmentContextIdText, Is.EqualTo(context));
-            Assert.That(first.AssignmentOwnerIdText, Is.EqualTo(owner));
+            Assert.That(first.MembershipContextIdText, Is.EqualTo(context));
         }
 
         [Test]

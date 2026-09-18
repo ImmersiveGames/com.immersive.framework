@@ -14,7 +14,7 @@ namespace Immersive.Framework.CameraAuthoring
     ///
     /// The assigned Behavior definition owns reusable presentation intent and tuning.
     /// The Composer validates and materializes that intent on this concrete local rig.
-    /// The explicit View-input seam receives resolved Subject evidence.
+    /// The explicit presentation-input seam receives resolved Subject evidence.
     ///
     /// It does not create or own a Unity Camera, CinemachineBrain, AudioListener
     /// or runtime Camera Output. It does not select an active camera or arbitrate
@@ -159,6 +159,14 @@ namespace Immersive.Framework.CameraAuthoring
         {
             _presentation ??= new CameraViewPresentationAdapter(this);
             return _presentation.ApplyViewPresentation(input, currentSnapshot);
+        }
+
+        public CameraViewPresentationApplyResult ApplyCompositionPresentation(
+            CameraViewPresentationInput input,
+            CameraCompositionMembershipSnapshot currentSnapshot)
+        {
+            _presentation ??= new CameraViewPresentationAdapter(this);
+            return _presentation.ApplyCompositionPresentation(input, currentSnapshot);
         }
 
         public CameraViewPresentationApplyResult ClearViewPresentation()

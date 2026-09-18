@@ -10,46 +10,43 @@ namespace Immersive.Framework.Camera
     /// </summary>
     [FrameworkApiStatus(
         FrameworkApiStatus.Experimental,
-        "CAMERA-026-E shared Camera composition runtime diagnostic snapshot.")]
+        "CAMERA-029-B composition-owned membership diagnostic snapshot.")]
     public readonly struct CameraSharedCompositionSnapshot
     {
         public CameraSharedCompositionSnapshot(
             bool isReady,
-            string viewId,
             SubjectAvailabilityContextId availabilityContextId,
             int availabilityRevisionConsumed,
-            ViewAssignmentContextId assignmentContextId,
-            int assignmentRevision,
+            CameraCompositionMembershipContextId membershipContextId,
+            int membershipRevision,
             int subjectCount,
-            int addedAssignmentCount,
-            int removedAssignmentCount,
+            int addedMembershipCount,
+            int removedMembershipCount,
             CameraSharedCompositionReconcileStatus lastReconcileStatus,
             string lastBlockingIssue,
             CameraViewPresentationApplyStatus lastPresentationApplyStatus)
         {
             IsReady = isReady;
-            ViewId = viewId.NormalizeText();
             AvailabilityContextId = availabilityContextId;
             AvailabilityRevisionConsumed = availabilityRevisionConsumed;
-            AssignmentContextId = assignmentContextId;
-            AssignmentRevision = assignmentRevision;
+            MembershipContextId = membershipContextId;
+            MembershipRevision = membershipRevision;
             SubjectCount = subjectCount;
-            AddedAssignmentCount = addedAssignmentCount;
-            RemovedAssignmentCount = removedAssignmentCount;
+            AddedMembershipCount = addedMembershipCount;
+            RemovedMembershipCount = removedMembershipCount;
             LastReconcileStatus = lastReconcileStatus;
             LastBlockingIssue = lastBlockingIssue.NormalizeText();
             LastPresentationApplyStatus = lastPresentationApplyStatus;
         }
 
         public bool IsReady { get; }
-        public string ViewId { get; }
         public SubjectAvailabilityContextId AvailabilityContextId { get; }
         public int AvailabilityRevisionConsumed { get; }
-        public ViewAssignmentContextId AssignmentContextId { get; }
-        public int AssignmentRevision { get; }
+        public CameraCompositionMembershipContextId MembershipContextId { get; }
+        public int MembershipRevision { get; }
         public int SubjectCount { get; }
-        public int AddedAssignmentCount { get; }
-        public int RemovedAssignmentCount { get; }
+        public int AddedMembershipCount { get; }
+        public int RemovedMembershipCount { get; }
         public CameraSharedCompositionReconcileStatus LastReconcileStatus { get; }
         public string LastBlockingIssue { get; }
         public CameraViewPresentationApplyStatus LastPresentationApplyStatus { get; }

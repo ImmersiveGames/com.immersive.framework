@@ -23,8 +23,7 @@ namespace Immersive.Framework.Editor.CameraAuthoring
                 {
                     EditorGUILayout.TextField("View ID", composition.ViewIdText);
                     EditorGUILayout.TextField("Output ID", composition.OutputIdText);
-                    EditorGUILayout.TextField("Assignment Context ID", composition.AssignmentContextIdText);
-                    EditorGUILayout.TextField("Assignment Owner ID", composition.AssignmentOwnerIdText);
+                    EditorGUILayout.TextField("Membership Context ID", composition.MembershipContextIdText);
                     if (composition.TryCreateAssociationBinding(out var binding, out _))
                     {
                         EditorGUILayout.TextField(

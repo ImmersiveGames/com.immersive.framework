@@ -3,14 +3,51 @@ using Immersive.Framework.ApiStatus;
 namespace Immersive.Framework.Camera
 {
     /// <summary>
-    /// Explicit projection from one caller-selected logical View snapshot into immutable
-    /// presentation input. It never chooses a View or Subject implicitly.
+    /// Explicit projection into immutable presentation input. Composition membership is the
+    /// productive path; the View overload remains as compatibility until CAMERA-029-E.
     /// </summary>
     [FrameworkApiStatus(
         FrameworkApiStatus.Experimental,
-        "CAMERA-026-C logical View presentation-input projection.")]
+        "CAMERA-029-B Composition presentation-input projection with legacy View compatibility.")]
     public static class CameraViewPresentationInputProjection
     {
+        public static CameraViewPresentationInputResult TryCreate(
+            CameraCompositionMembershipSnapshot snapshot)
+        {
+            if (snapshot == null || !snapshot.ContextId.IsValid ||
+                !snapshot.AvailabilityContextId.IsValid)
+            {
+                return new CameraViewPresentationInputResult(
+                    CameraViewPresentationInputStatus.RejectedInvalidRequest,
+                    null,
+                    "Composition presentation input requires a valid membership snapshot.");
+            }
+
+            var subjects = new CameraSubjectAvailabilityEntry[snapshot.Count];
+            for (int index = 0; index < subjects.Length; index++)
+            {
+                if (!snapshot.Entries[index].IsValid)
+                {
+                    return new CameraViewPresentationInputResult(
+                        CameraViewPresentationInputStatus.RejectedDivergentSnapshot,
+                        null,
+                        "Composition membership contains invalid resolved Subject evidence.");
+                }
+                subjects[index] = snapshot.Entries[index].Subject;
+            }
+
+            var input = new CameraViewPresentationInput(
+                snapshot.ContextId,
+                snapshot.Revision,
+                snapshot.AvailabilityContextId,
+                snapshot.AvailabilityRevision,
+                subjects);
+            return new CameraViewPresentationInputResult(
+                CameraViewPresentationInputStatus.Succeeded,
+                input,
+                $"Projected composition membership with '{subjects.Length}' resolved Subjects.");
+        }
+
         public static CameraViewPresentationInputResult TryCreate(
             CameraViewAssignmentSnapshot snapshot,
             CameraViewId viewId)

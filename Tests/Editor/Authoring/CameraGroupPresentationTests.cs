@@ -89,7 +89,7 @@ namespace Immersive.Framework.Authoring.Editor.Tests
                         false);
                 Assert.That(materialization.Succeeded, Is.True, materialization.BlockingIssue);
 
-                CameraViewPresentationApplyResult applied = composer.ApplyViewPresentation(
+                CameraViewPresentationApplyResult applied = composer.ApplyCompositionPresentation(
                     fixture.Input,
                     fixture.Snapshot);
 
@@ -141,7 +141,7 @@ namespace Immersive.Framework.Authoring.Editor.Tests
                     ((CinemachineFollow)composer.FrameworkOwnedPositionControl).FollowOffset,
                     Is.EqualTo(followOffset));
 
-                CameraViewPresentationApplyResult applied = composer.ApplyViewPresentation(
+                CameraViewPresentationApplyResult applied = composer.ApplyCompositionPresentation(
                     fixture.Input,
                     fixture.Snapshot);
 
@@ -175,6 +175,34 @@ namespace Immersive.Framework.Authoring.Editor.Tests
             }
         }
 
+        [Test]
+        public void OlderCompositionPresentationCannotOverwriteNewerAppliedMembership()
+        {
+            using var fixture = new PresentationFixture("subject-a");
+            CameraViewPresentationInput olderInput = fixture.Input;
+            CameraCompositionMembershipSnapshot olderSnapshot = fixture.Snapshot;
+            CameraCompositionMembershipSnapshot newerSnapshot = fixture.AddSubject("subject-b");
+            CameraViewPresentationInput newerInput =
+                CameraViewPresentationInputProjection.TryCreate(newerSnapshot).Input;
+            var root = new GameObject("stale-composition-presentation-test");
+            var behavior = ScriptableObject.CreateInstance<GroupCameraRigBehaviorDefinition>();
+            try
+            {
+                var composer = root.AddComponent<CameraRigComposer>();
+                SetField(composer, "behaviorDefinition", behavior);
+                Assert.That(CameraRigComposerApplyRebuildUtility.ApplyOrRebuild(
+                    composer, false, false).Succeeded, Is.True);
+                Assert.That(composer.ApplyCompositionPresentation(newerInput, newerSnapshot).Succeeded, Is.True);
+                Assert.That(composer.ApplyCompositionPresentation(olderInput, olderSnapshot).Status,
+                    Is.EqualTo(CameraViewPresentationApplyStatus.RejectedStaleInput));
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(root);
+                UnityEngine.Object.DestroyImmediate(behavior);
+            }
+        }
+
         private static CameraViewTargetProjectionResult Project(
             CameraViewPresentationInput input,
             CameraRigPresentationIntent intent)
@@ -194,61 +222,71 @@ namespace Immersive.Framework.Authoring.Editor.Tests
         private sealed class PresentationFixture : IDisposable
         {
             private readonly List<GameObject> _roots = new List<GameObject>();
+            private readonly CameraSubjectAvailabilityContext _availability;
+            private readonly CameraCompositionMembershipContext _membership;
+            private readonly CameraSubjectAvailabilityOwnerId _availabilityOwner;
+            private readonly Dictionary<string, Transform> _observations =
+                new Dictionary<string, Transform>();
 
             internal PresentationFixture(params string[] subjectIds)
             {
-                var availability = new CameraSubjectAvailabilityContext(
+                _availability = new CameraSubjectAvailabilityContext(
                     new SubjectAvailabilityContextId("group-presentation-subjects"));
-                var availabilityOwner = new CameraSubjectAvailabilityOwnerId(
+                _availabilityOwner = new CameraSubjectAvailabilityOwnerId(
                     "group-presentation-owner");
-                Observations = new Dictionary<string, Transform>();
                 for (int index = 0; index < subjectIds.Length; index++)
                 {
                     string id = subjectIds[index];
                     var root = new GameObject(id);
                     _roots.Add(root);
-                    Observations.Add(id, root.transform);
-                    CameraSubjectAvailabilityResult available = availability.TryMakeAvailable(
+                    _observations.Add(id, root.transform);
+                    CameraSubjectAvailabilityResult available = _availability.TryMakeAvailable(
                         new CameraSubject(new CameraSubjectId(id), root.transform, id),
-                        availabilityOwner);
+                        _availabilityOwner);
                     Assert.That(available.Succeeded, Is.True, available.Message);
                 }
 
-                var view = new CameraView(
-                    new CameraViewId("group-presentation-view"),
-                    "Group presentation test view");
-                var assignments = new CameraViewAssignmentContext(
-                    new ViewAssignmentContextId("group-presentation-assignments"),
-                    availability.ContextId,
-                    view);
-                var assignmentOwner = new CameraSubjectAssignmentOwnerId(
-                    "group-presentation-assignment-owner");
+                _membership = new CameraCompositionMembershipContext(
+                    new CameraCompositionMembershipContextId("group-presentation-membership"),
+                    _availability.ContextId);
                 CameraSubjectAvailabilitySnapshot availabilitySnapshot =
-                    availability.CreateSnapshot();
-                CameraViewAssignmentResult assignmentResult =
-                    assignments.Reconcile(availabilitySnapshot);
+                    _availability.CreateSnapshot();
+                var desired = new List<CameraSubjectId>();
                 for (int index = 0; index < subjectIds.Length; index++)
-                {
-                    assignmentResult = assignments.TryAssign(
-                        view.ViewId,
-                        new CameraSubjectId(subjectIds[index]),
-                        assignmentOwner,
-                        availabilitySnapshot);
-                    Assert.That(assignmentResult.Succeeded, Is.True, assignmentResult.Message);
-                }
+                    desired.Add(new CameraSubjectId(subjectIds[index]));
 
-                Snapshot = assignmentResult.Snapshot;
+                CameraCompositionMembershipResult membershipResult =
+                    _membership.Reconcile(availabilitySnapshot, desired);
+                Assert.That(membershipResult.Succeeded, Is.True, membershipResult.Message);
+                Snapshot = membershipResult.Snapshot;
                 CameraViewPresentationInputResult projection =
-                    CameraViewPresentationInputProjection.TryCreate(
-                        Snapshot,
-                        view.ViewId);
+                    CameraViewPresentationInputProjection.TryCreate(Snapshot);
                 Assert.That(projection.Succeeded, Is.True, projection.Message);
                 Input = projection.Input;
             }
 
-            internal IReadOnlyDictionary<string, Transform> Observations { get; }
-            internal CameraViewAssignmentSnapshot Snapshot { get; }
+            internal IReadOnlyDictionary<string, Transform> Observations => _observations;
+            internal CameraCompositionMembershipSnapshot Snapshot { get; }
             internal CameraViewPresentationInput Input { get; }
+
+            internal CameraCompositionMembershipSnapshot AddSubject(string id)
+            {
+                var root = new GameObject(id);
+                _roots.Add(root);
+                _observations.Add(id, root.transform);
+                CameraSubjectAvailabilityResult available = _availability.TryMakeAvailable(
+                    new CameraSubject(new CameraSubjectId(id), root.transform, id),
+                    _availabilityOwner);
+                Assert.That(available.Succeeded, Is.True, available.Message);
+                var desired = new List<CameraSubjectId>();
+                for (int index = 0; index < Snapshot.Count; index++)
+                    desired.Add(Snapshot.Entries[index].SubjectId);
+                desired.Add(new CameraSubjectId(id));
+                CameraCompositionMembershipResult result =
+                    _membership.Reconcile(_availability.CreateSnapshot(), desired);
+                Assert.That(result.Succeeded, Is.True, result.Message);
+                return result.Snapshot;
+            }
 
             public void Dispose()
             {

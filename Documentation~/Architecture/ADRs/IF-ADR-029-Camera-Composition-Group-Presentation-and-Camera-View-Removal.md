@@ -8,7 +8,7 @@ Reconciles: IF-ADR-004, IF-ADR-022, IF-ADR-026, IF-ADR-027 and IF-ADR-028
 Preserves: IF-ADR-004 request arbitration and output-owned Default semantics; IF-ADR-028 external physical-presentation ownership
 Supersedes: Camera View as an independent runtime/authoring authority, View→Output topology as the normal participation path, and SharedFollow as an implicit cardinality-dependent Follow mode
 
-Implementation: **pending**
+Implementation: **CAMERA-029-A and CAMERA-029-B implemented locally; CAMERA-029-C/D/E/F pending**
 Technical certification: **pending**
 
 ## 1. Context
@@ -633,6 +633,8 @@ no View dependency
 ```
 
 ### CAMERA-029-B — Composition-owned Subject membership
+
+Local implementation status: **implemented; tests authored; static Runtime/test compilation passed; Unity tests pending**
 
 Required result:
 

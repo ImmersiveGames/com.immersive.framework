@@ -5,12 +5,12 @@ using Immersive.Framework.ApiStatus;
 namespace Immersive.Framework.Camera
 {
     /// <summary>
-    /// Immutable View-scoped input presented to Camera presentation. It preserves the
-    /// complete ordered resolved Subject collection and the source snapshot revisions.
+    /// Immutable input presented to Camera presentation. The legacy type name remains until
+    /// CAMERA-029-E; Composition input carries no View identity or View currentness evidence.
     /// </summary>
     [FrameworkApiStatus(
         FrameworkApiStatus.Experimental,
-        "CAMERA-026-C logical View-to-presentation input contract.")]
+        "CAMERA-029-B Composition membership presentation input with legacy View compatibility.")]
     public sealed class CameraViewPresentationInput
     {
         private readonly CameraSubjectAvailabilityEntry[] _subjects;
@@ -35,10 +35,31 @@ namespace Immersive.Framework.Camera
             _subjectView = Array.AsReadOnly(_subjects);
         }
 
+        internal CameraViewPresentationInput(
+            CameraCompositionMembershipContextId membershipContextId,
+            int membershipRevision,
+            SubjectAvailabilityContextId availabilityContextId,
+            int availabilityRevision,
+            CameraSubjectAvailabilityEntry[] subjects)
+        {
+            MembershipContextId = membershipContextId;
+            MembershipRevision = membershipRevision;
+            AvailabilityContextId = availabilityContextId;
+            AvailabilityRevision = availabilityRevision;
+            _subjects = subjects != null
+                ? (CameraSubjectAvailabilityEntry[])subjects.Clone()
+                : Array.Empty<CameraSubjectAvailabilityEntry>();
+            _subjectView = Array.AsReadOnly(_subjects);
+            IsCompositionMembershipInput = true;
+        }
+
         public CameraView View { get; }
         public CameraViewId ViewId => View.ViewId;
         public ViewAssignmentContextId AssignmentContextId { get; }
         public int AssignmentRevision { get; }
+        public CameraCompositionMembershipContextId MembershipContextId { get; }
+        public int MembershipRevision { get; }
+        public bool IsCompositionMembershipInput { get; }
         public SubjectAvailabilityContextId AvailabilityContextId { get; }
         public int AvailabilityRevision { get; }
         public IReadOnlyList<CameraSubjectAvailabilityEntry> Subjects => _subjectView;
@@ -51,16 +72,16 @@ namespace Immersive.Framework.Camera
                     : CameraViewSubjectCardinality.Many;
 
         public bool IsValid =>
-            View.IsValid &&
-            AssignmentContextId.IsValid &&
-            AssignmentRevision >= 0 &&
+            (IsCompositionMembershipInput
+                ? MembershipContextId.IsValid && MembershipRevision >= 0
+                : View.IsValid && AssignmentContextId.IsValid && AssignmentRevision >= 0) &&
             AvailabilityContextId.IsValid &&
             AvailabilityRevision >= 0 &&
             AllSubjectsAreValid();
 
         public bool IsCurrentFor(CameraViewAssignmentSnapshot snapshot)
         {
-            if (snapshot == null ||
+            if (IsCompositionMembershipInput || snapshot == null ||
                 AssignmentContextId != snapshot.ContextId ||
                 AssignmentRevision != snapshot.Revision ||
                 AvailabilityContextId != snapshot.AvailabilityContextId ||
@@ -79,6 +100,26 @@ namespace Immersive.Framework.Camera
                 }
             }
 
+            return true;
+        }
+
+        public bool IsCurrentFor(CameraCompositionMembershipSnapshot snapshot)
+        {
+            if (!IsCompositionMembershipInput || snapshot == null ||
+                MembershipContextId != snapshot.ContextId ||
+                MembershipRevision != snapshot.Revision ||
+                AvailabilityContextId != snapshot.AvailabilityContextId ||
+                AvailabilityRevision != snapshot.AvailabilityRevision ||
+                snapshot.Count != SubjectCount)
+            {
+                return false;
+            }
+
+            for (int index = 0; index < _subjects.Length; index++)
+            {
+                if (_subjects[index].Token != snapshot.Entries[index].Subject.Token)
+                    return false;
+            }
             return true;
         }
 

@@ -62,7 +62,7 @@ namespace Immersive.Framework.Camera
             if (input.Cardinality == CameraViewSubjectCardinality.Many)
             {
                 const string issue =
-                    "Multiple View Subjects require explicit Group presentation; Follow remains single-target.";
+                    "Multiple Subjects require explicit Group presentation; Follow remains single-target.";
                 return new CameraViewTargetProjectionResult(
                     CameraViewTargetProjectionStatus.BlockedMultipleSubjectsUnsupported,
                     input,

@@ -8,7 +8,7 @@ namespace Immersive.Framework.Camera
     /// </summary>
     [FrameworkApiStatus(
         FrameworkApiStatus.Experimental,
-        "CAMERA-026-E shared Camera composition reconciliation status.")]
+        "CAMERA-029-B composition-owned membership reconciliation status.")]
     public enum CameraSharedCompositionReconcileStatus
     {
         None = 0,
@@ -18,9 +18,9 @@ namespace Immersive.Framework.Camera
         SucceededStopped = 40,
         RejectedForeignAvailabilityContext = 100,
         RejectedStaleAvailabilitySnapshot = 110,
-        BlockedInvalidView = 120,
+        BlockedInvalidMembership = 120,
         BlockedInvalidComposer = 130,
-        BlockedAssignmentFailure = 140,
+        BlockedMembershipFailure = 140,
         BlockedProjectionFailure = 150,
         BlockedPresentationFailure = 160
     }
