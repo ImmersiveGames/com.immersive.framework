@@ -1,11 +1,12 @@
 # IF-ADR-028 — Camera Output Participation and Physical Presentation Ownership
 
-Status: **Accepted architecture — CAMERA-028-A/B technically certified; CAMERA-028-C code reconciliation and CAMERA-028-D Player Camera integration implemented; focused physical-presentation / PlayerInput split-screen certification remains pending**
+Status: **Accepted architecture — CAMERA-028-A/B technically certified; CAMERA-028-C focused runtime evidence PASS; CAMERA-028-D implemented/tested/integrated with 33/33 focused functional PASS; final validation remains open for read-only preflight and cleanup/reentrancy proof**
 
 Proposed: **2026-09-12**
 Accepted: **2026-09-12**
 Corrected: **2026-09-15**
 Implementation reconciled: **2026-09-16**
+Focused validation audit: **2026-09-17**
 Type: architecture / Camera output / physical presentation / integration
 Extends: corrected IF-ADR-026 and IF-ADR-027
 Preserves: IF-ADR-004 request arbitration and output-owned Default semantics; IF-ADR-022 rig materialization
@@ -13,10 +14,11 @@ Supersedes: viewport-bearing Camera View→Output topology and any Framework-own
 
 Implementation: **CAMERA-028-A/B/C/D implemented. The superseded 2026-09-15 Framework `Camera.rect` writer was removed/reconciled on 2026-09-16. CAMERA-028-D now provides explicit typed Player Slot→Camera Output integration.**
 
-Technical certification: **partial — CAMERA-028-A certified 2026-09-13 and revalidated 2026-09-14; CAMERA-028-B certified 2026-09-14; the 2026-09-16 Full Camera run recertified the current logical boundary and CAMERA-026-I, but focused CAMERA-028-C external-presentation preservation and CAMERA-028-D automatic PlayerInput split-screen proofs remain pending.**
+Technical certification: **partial — CAMERA-028-A certified 2026-09-13 and revalidated 2026-09-14; CAMERA-028-B certified 2026-09-14; the 2026-09-16 Full Camera run recertified the current logical boundary and CAMERA-026-I; the 2026-09-17 focused evidence records CAMERA-028-C behavior PASS and CAMERA-028-D 33/33 functional PASS. Final ADR-028 validation is still open because the certification harness does not yet prove read-only preflight, device cleanup before terminal PASS, or a second run from the post-cleanup state without reparative preparation.**
 
 Historical evidence: [Camera Full Technical Certification — 2026-09-12](../Reconciliation/IF-CAMERA-FULL-TECHNICAL-CERTIFICATION-2026-09-12.md)
 Current Camera certification: [Camera Full Technical Certification — 2026-09-16](../Reconciliation/IF-CAMERA-FULL-TECHNICAL-CERTIFICATION-2026-09-16.md)
+Focused ADR-028 validation audit: [IF-ADR-028 Focused Physical Presentation / PlayerInput Validation — 2026-09-17](../Reconciliation/IF-ADR-028-FOCUSED-VALIDATION-2026-09-17.md)
 
 ## 1. Context
 
@@ -395,7 +397,7 @@ canonical Shared baseline restore                        PASS
 The `8/8` Full Camera dimension count is intentional: the obsolete `viewportSplitTopology` dimension was removed rather than renamed.
 
 ### CAMERA-028-C — External physical-presentation ownership boundary
-Status: **implementation reconciled — 2026-09-16; focused runtime certification pending**.
+Status: **implementation reconciled — 2026-09-16; focused runtime behavior evidence PASS — 2026-09-17; final ADR validation remains open on harness cleanliness/reentrancy**.
 
 Required result:
 
@@ -409,10 +411,10 @@ no global lookup or implicit Camera creation
 
 The superseded `CameraOutputPresentationRuntime` and its Framework `Camera.rect` ownership were removed from the productive source on 2026-09-16. Current source inspection finds no productive `CameraOutputPresentationRuntime` surface.
 
-This closes the code-reconciliation portion of CAMERA-028-C. Focused runtime proof must still demonstrate that externally authored `Camera.rect` state survives Framework startup, Camera request changes, force-default transitions and teardown without Framework writes.
+The 2026-09-17 focused CAMERA-028-C evidence demonstrates that externally authored `Camera.rect` state survives Framework startup, Camera request changes, force-default transitions and teardown without Framework writes. This closes the focused behavioral proof for CAMERA-028-C; the overall ADR-028 validation gate remains open because the combined certification harness still lacks read-only preflight and post-cleanup reentrancy proof.
 
 ### CAMERA-028-D — PlayerInput split-layout integration
-Status: **implemented / experimental — 2026-09-16; focused runtime certification pending**.
+Status: **implemented / tested / integrated — 2026-09-17; focused functional run 33/33 PASS; final validation open**.
 
 Implemented path:
 
@@ -432,7 +434,7 @@ The projection validates exact physical Output identity and requires complete co
 
 Join/leave may change layout through Unity's PlayerInput integration without implicitly changing Framework Output identity, Camera Subject assignment or request arbitration.
 
-The 2026-09-16 Full Camera run does not close this cut because its canonical topology builder disables automatic PlayerInput split-screen. A focused fixture must run with split-screen enabled and prove that `PlayerInputManager` is the sole rectangle writer.
+The 2026-09-16 Full Camera run did not close this cut because its canonical topology builder disables automatic PlayerInput split-screen. The 2026-09-17 focused fixture runs with split-screen enabled and provides 33/33 functional evidence for exact Player Camera association, PlayerInput-owned physical split behavior, semantic Camera preservation and incomplete-coverage rejection. Final validation is withheld until the harness proves a clean read-only preflight, verifies QA-owned device cleanup before terminal PASS, and proves reentrancy with a second run that does not depend on reparative Prepare/Build/Repair.
 
 ## 15. QA obligations
 
@@ -445,9 +447,12 @@ binding references unavailable Output                     explicit FAIL proven
 two Views target same Output                              explicit FAIL proven
 Camera topology snapshot contains no screen rectangle     PASS — CAMERA-028-B
 Framework productive Camera.rect writer surface           removed — CAMERA-028-C source reconciliation
-external authored rect preserved by Framework             PENDING focused CAMERA-028-C runtime proof
-PlayerInputManager is sole split-screen rect writer       PENDING focused CAMERA-028-D runtime proof
-PlayerInput layout does not select Subjects/requests      PENDING focused CAMERA-028-D runtime proof
+external authored rect preserved by Framework             PASS — focused CAMERA-028-C evidence 2026-09-17
+PlayerInput split-screen functional ownership path         PASS — CAMERA-028-D 33/33 focused run 2026-09-17
+PlayerInput layout preserves Subjects/requests/rig         PASS — focused semantic preservation evidence 2026-09-17
+read-only preflight before Prepare/Build/Repair             PENDING — validation blocker
+QA-owned device cleanup before terminal PASS                PENDING — validation blocker
+second run from post-cleanup state without repair           PENDING — validation blocker
 generic Camera arbitration regression                     PASS
 force-default changes Rig without layout ownership        retained regression evidence
 ```
@@ -493,16 +498,33 @@ canonical baseline restore          PASS
 
 That run is not a focused CAMERA-028-C/D certification because automatic PlayerInput split-screen is disabled in the canonical fixture.
 
+The 2026-09-17 focused validation session adds:
+
+```text
+CAMERA-028-C focused physical-presentation behavior       PASS
+CAMERA-028-D focused functional run                       33/33 PASS
+adjacent C9R regression                                   39/39 PASS
+adjacent Player Q1 regression                             39/39 PASS
+adjacent Player Q2 regression                             36/36 PASS
+adjacent ADR020-H regression                              26/26 PASS
+read-only preflight                                       NOT PROVEN
+post-cleanup device inventory before terminal verdict     NOT PROVEN
+second run without reparative preparation                 NOT PROVEN
+```
+
+No runtime residue was confirmed. The remaining gap is certification observability and reentrancy, not Camera ownership or functional split-screen behavior.
+
 Current disposition:
 
 ```text
 architecture decision     ACCEPTED / CORRECTED 2026-09-15
-implementation            CAMERA-028-A/B/C/D implemented; 028-D remains Experimental API
-technical certification   CAMERA-028-A/B certified; focused 028-C/D runtime proof pending
-consumer proof             PENDING Player Camera split-screen integration and final consumer closure
+implementation            CAMERA-028-A/B/C/D implemented
+focused test/integration   CAMERA-028-C PASS; CAMERA-028-D 33/33 PASS
+technical validation      OPEN — read-only preflight + cleanup/reentrancy proof pending
+consumer proof             PENDING final consumer closure
 ```
 
-IF-ADR-028 is implemented in code but is not yet fully technically certified across the physical-presentation / automatic split-screen boundary.
+IF-ADR-028 is implemented, tested and integrated across the focused physical-presentation / automatic split-screen boundary, but is not yet fully validated because the harness cannot currently prove a clean read-only starting/post-cleanup state or make QA-owned device cleanup part of the terminal verdict.
 
 ## 17. Rejected alternatives
 
@@ -524,4 +546,4 @@ silently overwrite gameplay-authored physical Camera state
 
 The Framework keeps explicit Camera Output identity and deterministic Camera behavior only for Cameras it needs to operate, while physical presentation remains owned by the game/Unity integration that presents those Cameras.
 
-The corrected architecture supports shared multiplayer Camera and the implemented PlayerInput Camera integration path without turning Framework Camera into a generic screen compositor. Focused automatic split-screen certification remains required before claiming the PlayerInput layout boundary fully certified. Gameplay-specific PiP, spectator, replay, RenderTexture, secondary-display and similar Cameras remain gameplay responsibilities unless a future accepted requirement explicitly brings a narrowly defined integration into Framework scope.
+The corrected architecture supports shared multiplayer Camera and the implemented PlayerInput Camera integration path without turning Framework Camera into a generic screen compositor. Functional automatic split-screen evidence now exists; final validation remains gated by certification-harness preflight, cleanup ordering and reentrancy evidence. Gameplay-specific PiP, spectator, replay, RenderTexture, secondary-display and similar Cameras remain gameplay responsibilities unless a future accepted requirement explicitly brings a narrowly defined integration into Framework scope.
