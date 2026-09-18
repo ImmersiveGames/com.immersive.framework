@@ -1,6 +1,6 @@
 # Immersive Framework Documentation
 
-Last updated: **2026-09-14**
+Last updated: **2026-09-17**
 
 This directory contains the current product documentation for Immersive Framework.
 
@@ -42,6 +42,7 @@ ADRs decide architecture. Reconciliation records preserve what was actually impl
 - [IF-ADR-027 — Camera Authoring Definitions and Composition Authority](Architecture/ADRs/IF-ADR-027-Camera-Authoring-Definitions-and-Composition-Authority.md)
 - [IF-ADR-028 — Camera Output Participation and Presentation Layout Authority](Architecture/ADRs/IF-ADR-028-Camera-Output-Participation-and-Presentation-Layout-Authority.md)
 - [Camera Output Participation and Layout Authority Reconciliation — 2026-09-12](Architecture/Reconciliation/IF-CAMERA-OUTPUT-LAYOUT-AUTHORITY-RECONCILIATION-2026-09-12.md)
+- [IF-ADR-028 Focused Physical Presentation / PlayerInput Validation — 2026-09-17](Architecture/Reconciliation/IF-ADR-028-FOCUSED-VALIDATION-2026-09-17.md)
 - [Camera Usage](Guides/Camera-Usage.md)
 
 Historical Camera evidence:
@@ -145,12 +146,13 @@ Current implementation state:
 
 ```text
 CAMERA-026-H2  IMPLEMENTED / TECHNICALLY CERTIFIED — revalidated 2026-09-14
-CAMERA-026-I   PENDING — Player→Camera Subject integration boundary
+CAMERA-026-I   IMPLEMENTED / TECHNICALLY CERTIFIED — 2026-09-16
 CAMERA-027-D2  IMPLEMENTED / TECHNICALLY CERTIFIED — 2026-09-14
 CAMERA-028-A   IMPLEMENTED / TECHNICALLY CERTIFIED — Output participation
 CAMERA-028-B   IMPLEMENTED / TECHNICALLY CERTIFIED — viewport-free Camera topology
-CAMERA-028-C   PENDING — explicit Output Presentation / Layout authority
-CAMERA-028-D   PENDING — PlayerInputManager layout integration
+CAMERA-028-C   IMPLEMENTED — focused physical-presentation behavior PASS 2026-09-17
+CAMERA-028-D   IMPLEMENTED / TESTED / INTEGRATED — focused functional 33/33 PASS 2026-09-17
+ADR-028        VALIDATED = NO — clean-start / cleanup / reentrancy proof pending
 ```
 
 Historical 2026-09-12 Full Camera QA remains valid for its previous viewport-bearing contract:
@@ -175,7 +177,7 @@ viewportSplitTopology               REMOVED
 Shared baseline restore             PASS
 ```
 
-The corrected run certifies CAMERA-028-A/B and CAMERA-027-D2. It does not certify `layoutAuthority` or `playerInputLayoutIntegration`; those remain CAMERA-028-C/D work.
+The 2026-09-14 corrected run certifies CAMERA-028-A/B and CAMERA-027-D2. CAMERA-026-I was certified on 2026-09-16. Focused 2026-09-17 evidence records CAMERA-028-C behavior PASS and CAMERA-028-D 33/33 functional PASS; final ADR-028 validation remains open because the harness does not yet prove read-only clean state and cleanup/reentrancy.
 
 Request arbitration, output-owned Default Rig semantics, force-default ownership, typed View/Output/Rig Behavior definitions and `CameraRigComposer` materialization authority remain preserved.
 
@@ -222,7 +224,7 @@ See the Tracker and IF-ADR-009 reconciliation records for the current boundary.
 | [025](Architecture/ADRs/IF-ADR-025-Local-Player-Input-Ownership-and-Device-Association.md) | Local Player input ownership and device association | Accepted / Implemented |
 | [026](Architecture/ADRs/IF-ADR-026-Camera-Subjects-Assignment-and-Multi-Output-Topology.md) | Camera Subjects, Assignment and multi-output topology | **Reopened** — A..G retained; H superseded; H2 certified; I pending |
 | [027](Architecture/ADRs/IF-ADR-027-Camera-Authoring-Definitions-and-Composition-Authority.md) | Camera authoring definitions and composition authority | **Reopened** — A/B/C retained; D2 certified; E deferred; F final closure pending |
-| [028](Architecture/ADRs/IF-ADR-028-Camera-Output-Participation-and-Presentation-Layout-Authority.md) | Camera Output participation and Presentation Layout authority | **Accepted architecture / partial implementation** — 028-A/B certified; C/D pending |
+| [028](Architecture/ADRs/IF-ADR-028-Camera-Output-Participation-and-Presentation-Layout-Authority.md) | Camera Output participation and Presentation Layout authority | **Accepted / implemented / tested / integrated; validation open** — A/B certified; C focused PASS; D 33/33 functional PASS; read-only preflight + cleanup/reentrancy proof pending |
 
 ## Current reconciliation / certification records
 
