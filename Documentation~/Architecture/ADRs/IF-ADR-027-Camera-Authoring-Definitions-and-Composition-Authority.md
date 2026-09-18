@@ -11,7 +11,7 @@ Type: architecture / product authoring / Camera composition
 Extends: IF-ADR-002, IF-ADR-010, IF-ADR-014
 Preserves: IF-ADR-004 request arbitration; IF-ADR-022 rig materialization; corrected IF-ADR-026 Subject / Assignment / View / Rig / Output separation
 
-Implementation state: **CAMERA-027-A/B/C retained; CAMERA-027-D2 implemented/certified 2026-09-14; CAMERA-027-E deferred; CAMERA-028-C code reconciliation and CAMERA-028-D Player Camera integration are implemented; CAMERA-027-F final closure still waits for focused physical-presentation / PlayerInput consumer certification**
+Implementation state: **CAMERA-027-A/B/C retained; CAMERA-027-D2 implemented/certified 2026-09-14; CAMERA-027-E deferred; CAMERA-028-C focused behavior PASS and CAMERA-028-D implemented/tested/integrated with 33/33 functional PASS as of 2026-09-17; CAMERA-027-F final closure waits for ADR-028 validation-harness closure and consumer proof**
 
 Historical technical evidence: [Camera Full Technical Certification — 2026-09-12](../Reconciliation/IF-CAMERA-FULL-TECHNICAL-CERTIFICATION-2026-09-12.md)
 Current Camera certification: [Camera Full Technical Certification — 2026-09-16](../Reconciliation/IF-CAMERA-FULL-TECHNICAL-CERTIFICATION-2026-09-16.md)
@@ -158,7 +158,7 @@ External physical presentation
 
 Framework Camera authoring must not add a replacement layout asset or viewport field after removing viewport from View→Output topology.
 
-The superseded experimental Framework `Camera.rect` writer introduced during CAMERA-028-C work was removed/reconciled on 2026-09-16. That removal restores the intended external physical-presentation boundary; focused runtime proof of preservation remains tracked by IF-ADR-028-C.
+The superseded experimental Framework `Camera.rect` writer introduced during CAMERA-028-C work was removed/reconciled on 2026-09-16. That removal restores the intended external physical-presentation boundary; focused runtime preservation evidence passed on 2026-09-17 and is recorded under IF-ADR-028.
 
 ## 11. PlayerInputManager integration
 
@@ -183,7 +183,7 @@ PlayerCameraOutputIntegrationRuntime
 PlayerInput.camera
 ```
 
-The authoring path is implemented, but focused certification with `PlayerInputManager.splitScreen=true` remains pending. The canonical Full Camera fixture used for the 2026-09-16 certification deliberately keeps automatic split-screen disabled, so that aggregate does not certify PlayerInput-owned rectangle layout.
+The authoring path is implemented. The canonical Full Camera fixture used for the 2026-09-16 certification deliberately keeps automatic split-screen disabled, so that aggregate does not certify PlayerInput-owned rectangle layout; the separate 2026-09-17 focused CAMERA-028-D run enables the path and passes 33/33 functional cases. Final ADR-028 validation remains open on clean-state/cleanup/reentrancy evidence.
 
 ## 12. Camera Composition Definition remains optional
 
@@ -276,7 +276,7 @@ The former viewport-only negative case is retired as `invalid-viewport:Supersede
 Status: **deferred / optional**.
 
 ### CAMERA-027-F — Consumer migration and stale surface removal
-Status: **partially exercised; final closure pending focused physical-presentation / PlayerInput consumer proof**.
+Status: **focused physical-presentation / PlayerInput behavior exercised and passing; final closure pending ADR-028 validation-harness closure plus consumer proof**.
 
 The runtime/authoring prerequisites are now present: typed Camera definitions, viewport-free topology, Player→Camera Subject integration, removal of the superseded Framework layout writer, and explicit Player Slot→Camera Output authoring for Player Camera integration.
 
@@ -286,9 +286,9 @@ Final consumer proof must still demonstrate typed Camera authoring, no copied Vi
 
 Current corrected coverage includes logical View→Output association projection, no viewport in the Camera binding contract, partial Output association acceptance, no Player-count inference, no implicit Output discovery and the certified Player→Camera Subject integration path.
 
-The 2026-09-12 39/39 certification remains historical evidence for the previous viewport-bearing boundary. The 2026-09-14 corrected run certifies CAMERA-027-D2. The 2026-09-16 run adds CAMERA-026-I runtime coverage but deliberately does not claim `playerInputLayoutIntegration` because automatic split-screen is disabled in the canonical Full Camera fixture.
+The 2026-09-12 39/39 certification remains historical evidence for the previous viewport-bearing boundary. The 2026-09-14 corrected run certifies CAMERA-027-D2. The 2026-09-16 run adds CAMERA-026-I runtime coverage but deliberately does not claim `playerInputLayoutIntegration` because automatic split-screen is disabled in the canonical Full Camera fixture. The separate 2026-09-17 focused audit records CAMERA-028-C behavior PASS and CAMERA-028-D 33/33 functional PASS while withholding final validation.
 
-Future focused certification must prove physical-presentation non-ownership and the PlayerInput integration boundary defined by corrected IF-ADR-028 without requiring a Framework layout authoring surface.
+Final ADR-028 validation must now prove the certification harness starts from and returns to a clean read-only state, including QA-owned device cleanup before terminal PASS and a second run without reparative preparation. This does not require or justify a Framework layout authoring surface.
 
 ## 19. Preserved decisions
 
@@ -338,4 +338,4 @@ External owner manages physical presentation:
   PlayerInputManager -> Player split-screen rects
 ```
 
-CAMERA-027-D2 is complete. IF-ADR-027 remains reopened only for CAMERA-027-F final consumer proof, including focused verification that externally owned physical presentation is preserved and that the implemented PlayerInput integration behaves correctly with automatic split-screen enabled.
+CAMERA-027-D2 is complete. IF-ADR-027 remains reopened only for CAMERA-027-F final consumer proof after ADR-028 validation-harness closure. Externally owned physical presentation and the implemented automatic PlayerInput split-screen path now have focused passing behavioral evidence.
