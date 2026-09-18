@@ -1,11 +1,11 @@
 # Camera Usage
 
-Status: **Current transitional guide — CAMERA-028-A/B and CAMERA-027-D2 are implemented/certified; CAMERA-026-I and CAMERA-028-C/D remain pending**  
-Last updated: **2026-09-14**
+Status: **Current guide — CAMERA-026-I and CAMERA-028-A/B are technically certified; CAMERA-028-C focused behavior PASS; CAMERA-028-D implemented/tested/integrated with 33/33 focused functional PASS; final ADR-028 validation remains open**  
+Last updated: **2026-09-17**
 
-This guide describes the current implemented Camera boundary after the viewport-bearing View→Output contract was removed, while keeping the remaining physical Presentation/Layout work explicit.
+This guide describes the current implemented Camera boundary after the viewport-bearing View→Output contract was removed, including the external physical-presentation ownership rule and the explicit PlayerInput split-screen integration.
 
-Do not restore viewport ownership to Camera View→Output topology. Physical layout authority is a separate pending boundary under IF-ADR-028.
+Do not restore viewport ownership to Camera View→Output topology. Physical layout remains externally owned; Framework Camera does not become a `Camera.rect` writer.
 
 See:
 
@@ -13,6 +13,7 @@ See:
 - [IF-ADR-027 — Camera Authoring Definitions and Composition Authority](../Architecture/ADRs/IF-ADR-027-Camera-Authoring-Definitions-and-Composition-Authority.md)
 - [IF-ADR-028 — Camera Output Participation and Presentation Layout Authority](../Architecture/ADRs/IF-ADR-028-Camera-Output-Participation-and-Presentation-Layout-Authority.md)
 - [Camera Output Participation and Layout Authority Reconciliation — 2026-09-12](../Architecture/Reconciliation/IF-CAMERA-OUTPUT-LAYOUT-AUTHORITY-RECONCILIATION-2026-09-12.md)
+- [IF-ADR-028 Focused Physical Presentation / PlayerInput Validation — 2026-09-17](../Architecture/Reconciliation/IF-ADR-028-FOCUSED-VALIDATION-2026-09-17.md)
 - [Camera Full Technical Certification — 2026-09-12](../Architecture/Reconciliation/IF-CAMERA-FULL-TECHNICAL-CERTIFICATION-2026-09-12.md)
 - [IF-ADR-004D — Camera Default Output Presentation Authority](../Architecture/Reconciliation/IF-ADR-004D-Camera-Default-Output-Presentation-Authority-2026-08-17.md)
 - [IF-ADR-022 — Camera Rig Presentation Models](../Architecture/ADRs/IF-ADR-022-Camera-Rig-Presentation-Models-and-Materialization-Authority.md)
@@ -95,17 +96,20 @@ Camera View→Output runtime Camera.rect writer  REMOVED
 viewport validation in Camera topology         REMOVED
 ```
 
-What is still pending is physical presentation authority:
+The current physical-presentation boundary is implemented as non-ownership:
 
 ```text
 CAMERA-028-C
-  explicit Output Presentation / Layout authority
+  Framework owns no Camera.rect / pixelRect / targetDisplay / targetTexture layout policy
+  externally supplied Camera presentation is preserved
 
 CAMERA-028-D
-  explicit PlayerInputManager layout integration
+  explicit Player Slot -> Camera Output integration
+  PlayerInput.camera receives the exact participating Camera
+  PlayerInputManager owns automatic split-screen rect recomposition
 ```
 
-Until CAMERA-028-D exists, `PlayerInputManager` automatic split-screen may remain explicitly unsupported by current validation. That temporary state is not evidence that Camera topology owns viewport layout.
+The 2026-09-17 focused run provides 33/33 functional evidence for the PlayerInput path. Final validation is still open because the certification harness lacks a read-only clean-state preflight and emits runtime PASS before QA-owned InputSystem device cleanup has been verified.
 
 ---
 
@@ -242,7 +246,7 @@ physical presentation target
 
 Possible targets include fullscreen viewport, split-screen viewport, RenderTexture, target display, picture-in-picture, spectator display or no current visible region.
 
-The exact reusable authoring type is intentionally not frozen yet. CAMERA-028-C must first establish the smallest explicit runtime authority with ownership-safe cleanup and validation.
+No reusable Framework Output Layout asset is required by the current ADR-028 boundary. CAMERA-028-C establishes external physical-presentation ownership instead of introducing a Framework layout writer.
 
 ### Single-writer rule
 
@@ -254,22 +258,22 @@ One physical presentation property has one active writer. Conflicting writers mu
 
 The previous rule that Framework Camera ownership itself globally invalidates PlayerInput automatic split-screen is superseded.
 
-Target rule:
+Current rule:
 
 ```text
-selected layout authority = PlayerInputManager
+PlayerInputManager automatic split-screen enabled
+  -> explicit Player Slot -> Camera Output policy is required
+  -> Framework associates the exact Camera through PlayerInput.camera
   -> PlayerInputManager owns viewport partitioning
 
-selected layout authority = Framework/game layout policy
-  -> that policy owns viewport partitioning
-
-multiple selected writers
-  -> explicit failure
+Framework/game custom physical presentation
+  -> external gameplay/Unity owner controls presentation
+  -> Framework remains non-writer for Camera.rect
 ```
 
 `PlayerInputManager` never becomes authority for Camera Subject, Camera Assignment, Camera View, Camera Output identity or Camera request arbitration.
 
-CAMERA-028-D implements and proves this integration. Until then automatic split-screen remains an explicitly unsupported implementation state rather than a competing viewport authority.
+CAMERA-028-D implements this integration. The focused 2026-09-17 run passes 33/33 functional cases, including exact inverted Slot→Output binding, 0→1→2→1 Player lifecycle, coherent two-player viewport behavior, semantic Camera preservation and explicit incomplete-coverage rejection. Final validation remains open only on harness clean-state/cleanup/reentrancy evidence.
 
 ---
 
@@ -430,7 +434,20 @@ viewportSplitTopology                                  REMOVED
 Shared baseline restore                                PASS
 ```
 
-This certifies CAMERA-028-A/B and CAMERA-027-D2. It does not certify physical `layoutAuthority` or `playerInputLayoutIntegration`, which remain pending.
+This certifies CAMERA-028-A/B and CAMERA-027-D2. CAMERA-026-I was subsequently certified on 2026-09-16.
+
+The focused 2026-09-17 validation session adds:
+
+```text
+CAMERA-028-C physical-presentation behavior        PASS
+CAMERA-028-D focused functional run                33/33 PASS
+C9R adjacent regression                            39/39 PASS
+Player Q1 adjacent regression                      39/39 PASS
+Player Q2 adjacent regression                      36/36 PASS
+ADR020-H adjacent regression                       26/26 PASS
+```
+
+This is sufficient to mark ADR-028 implemented, tested and integrated, but not validated. The focused harness still needs read-only preflight, cleanup before terminal verdict and a second no-repair run from the post-cleanup state.
 
 ---
 
@@ -440,8 +457,8 @@ This certifies CAMERA-028-A/B and CAMERA-027-D2. It does not certify physical `l
 CAMERA-026-H2 — IMPLEMENTED / TECHNICALLY CERTIFIED
   revalidated 2026-09-14
 
-CAMERA-026-I — PENDING
-  reconcile Player→Camera Subject integration boundary
+CAMERA-026-I — IMPLEMENTED / TECHNICALLY CERTIFIED 2026-09-16
+  Player→Camera Subject integration boundary
 
 CAMERA-027-D2 — IMPLEMENTED / TECHNICALLY CERTIFIED 2026-09-14
   logical View→Output authoring without viewport
@@ -452,14 +469,18 @@ CAMERA-028-A — IMPLEMENTED / TECHNICALLY CERTIFIED
 CAMERA-028-B — IMPLEMENTED / TECHNICALLY CERTIFIED 2026-09-14
   viewport/layout ownership removed from Camera topology/runtime
 
-CAMERA-028-C — PENDING
-  explicit Output Presentation / Layout authority
+CAMERA-028-C — IMPLEMENTED / FOCUSED BEHAVIOR PASS 2026-09-17
+  external physical-presentation ownership; Framework has no rect/layout writer
 
-CAMERA-028-D — PENDING
-  PlayerInputManager as one selectable layout authority
+CAMERA-028-D — IMPLEMENTED / TESTED / INTEGRATED
+  focused functional run 33/33 PASS 2026-09-17
+  PlayerInputManager owns automatic split-screen layout
+
+ADR-028 VALIDATION — OPEN
+  read-only preflight + QA-device cleanup-before-verdict + reentrant second run pending
 ```
 
-After CAMERA-026-I and CAMERA-028-C/D are certified, close remaining integrated QA and official Samples/FIRSTGAME consumer work under CAMERA-027-F.
+After the ADR-028 validation harness proves clean-state/reentrancy and cleanup participates in the terminal verdict, close remaining official Samples/FIRSTGAME consumer work under CAMERA-027-F.
 
 ---
 
@@ -478,14 +499,25 @@ outputParticipation                                     PASS
 generic request arbitration regression                  PASS
 ```
 
-Still pending physical layout proof:
+Focused physical-presentation / PlayerInput evidence:
 
 ```text
-one selected layout writer                              CAMERA-028-C
-conflicting layout writers                              CAMERA-028-C
-custom layout ownership cleanup                         CAMERA-028-C
-PlayerInputManager selected as layout authority          CAMERA-028-D
-PlayerInput layout does not alter Camera identities     CAMERA-028-D
+Framework preserves external Camera.rect                PASS — CAMERA-028-C
+Framework productive rect writer                        ABSENT — static audit
+PlayerInputManager automatic split path                 PASS — CAMERA-028-D 33/33
+exact Player Slot -> Camera Output association           PASS
+PlayerInput layout preserves Camera identities           PASS
+PlayerInput layout preserves Subject/request/rig state   PASS
+```
+
+Still pending final validation evidence:
+
+```text
+read-only preflight before Prepare / Build / Repair      PENDING
+QA-owned device inventory clean before terminal PASS     PENDING
+first failure preserved through cleanup                  PENDING
+post-cleanup read-only baseline confirmation             PENDING
+second run without reparative preparation                PENDING
 ```
 
 The old `viewportSplitTopology` dimension is retired. Do not rename it and reuse its old semantics.
@@ -498,7 +530,7 @@ The Getting Started migration remains useful evidence for typed Camera View Defi
 
 Current Camera composition authoring is logical View→Output association only; do not add viewport data back to `CameraSharedComposition` or `CameraViewOutputPolicyAuthoring`.
 
-Final CAMERA-027-F consumer closure occurs only after the remaining Player→Camera integration and physical layout cuts are implemented and recertified.
+Final CAMERA-027-F consumer closure occurs only after the remaining ADR-028 validation-harness gate is closed.
 
 Until then, preserve existing working sample behavior where compatible, avoid dependencies on Camera-owned viewport, avoid using Camera View→Output policy as a layout authority and avoid treating every available Output as necessarily active.
 
@@ -506,7 +538,7 @@ Until then, preserve existing working sample behavior where compatible, avoid de
 
 ## 24. Next-cut planning checklist
 
-Before starting the remaining Camera cuts, confirm the plan preserves:
+Before final ADR-028 validation and CAMERA-027-F consumer closure, confirm the plan preserves:
 
 ```text
 [ ] Subject / Assignment / View / Rig / Output separation
