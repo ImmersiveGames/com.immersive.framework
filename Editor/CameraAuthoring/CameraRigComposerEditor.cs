@@ -17,8 +17,8 @@ namespace Immersive.Framework.Editor.CameraAuthoring
         private SerializedProperty _frameworkOwnedCinemachineCamera;
         private SerializedProperty _frameworkOwnedPositionControl;
         private SerializedProperty _frameworkOwnedRotationControl;
-        private SerializedProperty _frameworkOwnedSharedFollowTargetGroup;
-        private SerializedProperty _frameworkOwnedSharedFollowGroupFraming;
+        private SerializedProperty _frameworkOwnedGroupTargetGroup;
+        private SerializedProperty _frameworkOwnedGroupFraming;
         private SerializedProperty _materializationRevision;
         private SerializedProperty _logApplyRebuildDiagnostics;
         private SerializedProperty _lastApplyRebuildStatus;
@@ -45,10 +45,10 @@ namespace Immersive.Framework.Editor.CameraAuthoring
                 serializedObject.FindProperty("frameworkOwnedPositionControl");
             _frameworkOwnedRotationControl =
                 serializedObject.FindProperty("frameworkOwnedRotationControl");
-            _frameworkOwnedSharedFollowTargetGroup =
-                serializedObject.FindProperty("frameworkOwnedSharedFollowTargetGroup");
-            _frameworkOwnedSharedFollowGroupFraming =
-                serializedObject.FindProperty("frameworkOwnedSharedFollowGroupFraming");
+            _frameworkOwnedGroupTargetGroup =
+                serializedObject.FindProperty("frameworkOwnedGroupTargetGroup");
+            _frameworkOwnedGroupFraming =
+                serializedObject.FindProperty("frameworkOwnedGroupFraming");
             _materializationRevision =
                 serializedObject.FindProperty("materializationRevision");
             _logApplyRebuildDiagnostics =
@@ -285,7 +285,7 @@ namespace Immersive.Framework.Editor.CameraAuthoring
                     if (GUILayout.Button(
                             new GUIContent(
                                 "Validate",
-                                "Validates structural Camera Rig settings and shared Follow provenance without requiring runtime Subjects."),
+                                "Validates structural Camera Rig settings and Group provenance without requiring runtime Subjects."),
                             GUILayout.Width(96f)))
                     {
                         RunValidation();
@@ -626,12 +626,12 @@ namespace Immersive.Framework.Editor.CameraAuthoring
                         "Owned Cinemachine Camera"));
 
                 EditorGUILayout.PropertyField(
-                    _frameworkOwnedSharedFollowTargetGroup,
-                    new GUIContent("Owned Shared Follow Target Group"));
+                    _frameworkOwnedGroupTargetGroup,
+                    new GUIContent("Owned Group Target Group"));
 
                 EditorGUILayout.PropertyField(
-                    _frameworkOwnedSharedFollowGroupFraming,
-                    new GUIContent("Owned Shared Follow Group Framing"));
+                    _frameworkOwnedGroupFraming,
+                    new GUIContent("Owned Group Framing"));
             }
 
             DrawPipelineEvidence(local);
@@ -801,6 +801,9 @@ namespace Immersive.Framework.Editor.CameraAuthoring
 
                 case CameraRigPresentationIntent.ThirdPerson:
                     return "Tracking Pivot";
+
+                case CameraRigPresentationIntent.Group:
+                    return "Group Target";
 
                 default:
                     return "Tracking / Follow";

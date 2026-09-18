@@ -4,7 +4,7 @@ using UnityEngine;
 namespace Immersive.Framework.Camera
 {
     /// <summary>
-    /// Presentation adapter for zero/single-Subject targets and shared Follow intent.
+    /// Presentation adapter for zero/single-Subject targets and explicit Group intent.
     /// Physical Cinemachine group projection remains a separate Composer operation.
     /// </summary>
     [FrameworkApiStatus(
@@ -47,21 +47,22 @@ namespace Immersive.Framework.Camera
                     "Fixed presentation consumes no Camera Subjects as tracking targets.");
             }
 
+            if (presentationIntent == CameraRigPresentationIntent.Group &&
+                input.Cardinality != CameraViewSubjectCardinality.Zero)
+            {
+                return new CameraViewTargetProjectionResult(
+                    CameraViewTargetProjectionStatus.SucceededGroup,
+                    input,
+                    CameraResolvedTargets.None,
+                    System.Array.Empty<CameraIssue>(),
+                    string.Empty,
+                    $"Group presentation retained '{input.SubjectCount}' ordered Subjects for physical group projection.");
+            }
+
             if (input.Cardinality == CameraViewSubjectCardinality.Many)
             {
-                if (presentationIntent == CameraRigPresentationIntent.Follow)
-                {
-                    return new CameraViewTargetProjectionResult(
-                        CameraViewTargetProjectionStatus.SucceededSharedFollow,
-                        input,
-                        CameraResolvedTargets.None,
-                        System.Array.Empty<CameraIssue>(),
-                        string.Empty,
-                        "Logical View Subjects require shared Follow group presentation; no single target was fabricated.");
-                }
-
                 const string issue =
-                    "Multiple View Subjects are supported only by Follow presentation in CAMERA-026-D.";
+                    "Multiple View Subjects require explicit Group presentation; Follow remains single-target.";
                 return new CameraViewTargetProjectionResult(
                     CameraViewTargetProjectionStatus.BlockedMultipleSubjectsUnsupported,
                     input,
@@ -73,7 +74,7 @@ namespace Immersive.Framework.Camera
                             issue)
                     },
                     issue,
-                    "Logical View remains valid; Mounted and Third Person multi-Subject presentation remain unsupported.");
+                    "Logical View remains valid; no implicit presentation transformation was applied.");
             }
 
             if (input.Cardinality == CameraViewSubjectCardinality.Zero)

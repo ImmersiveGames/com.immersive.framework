@@ -19,6 +19,11 @@ Technical closure record: [Camera Presentation Technical Certification — 2026-
 > runtime is certified; Split/full aggregate remain pending. Historical certification
 > below remains scoped to the former baseline.
 
+> CAMERA-029-A extends this family with explicit `Group = 50`. It supersedes the
+> IF-ADR-026 implicit SharedFollow interpretation without changing the previously
+> certified serialized values. Group-focused Unity test execution remains tracked by
+> IF-ADR-029 rather than being covered by the historical certification below.
+
 ## 1. Context
 
 IF-ADR-004 already defines the Camera authority chain:
@@ -168,9 +173,10 @@ Follow = 10
 Fixed = 20
 Mounted = 30
 ThirdPerson = 40
+Group = 50
 ```
 
-`Follow = 10` is frozen for serialized compatibility.
+The existing values through `ThirdPerson = 40` are frozen for serialized compatibility.
 
 No migration may reinterpret existing `Follow` content as another model.
 
@@ -253,7 +259,8 @@ Rotation Control
   CinemachineHardLookAt when Look At participates
 ```
 
-`FollowOffset` belongs only to Follow.
+Follow owns only its single-target offset and target policy. It owns no group membership
+or framing settings.
 
 A configured Look At target is not considered complete unless a supported
 rotation stage actually consumes it.
@@ -355,6 +362,26 @@ Damping
 The game may rotate an explicit Player/Actor camera pivot through its own
 gameplay/input architecture. Camera Presentation does not read `PlayerInput`
 directly.
+
+### 7.5 Group
+
+Product intent:
+
+```text
+present one ordered set of 1..N observable Subjects as one framed group
+```
+
+Materialization:
+
+```text
+CinemachineFollow
+CinemachineTargetGroup
+CinemachineGroupFraming
+```
+
+Group owns its tracking offset, member weight/radius and framing, damping, FOV, dolly
+and orthographic size ranges. `Follow + Many Subjects` is rejected; it never transforms
+implicitly into Group.
 
 ## 8. Position and rotation are distinct technical stages
 
@@ -892,7 +919,6 @@ Orbital / Free Look
 camera input-axis authority
 recenter policy
 Spline / Dolly
-Group Framing implementation
 2D Framed Follow product model
 camera shake/noise product authoring
 Cinemachine impulse product authoring
@@ -911,6 +937,9 @@ boundary and implements them through CAMERA-026-A through H. Shared runtime is c
 Split runtime, the Full Camera aggregate and FIRSTGAME proof remain pending. The other
 items remain deferred architecture/product decisions.
 
+IF-ADR-029 supersedes SharedFollow specifically: Group Framing is now owned by the
+first-class `Group` presentation model introduced by CAMERA-029-A.
+
 ## 29. Implementation closure
 
 ### C1 — Presentation contracts and Composer shape — CLOSED
@@ -924,6 +953,7 @@ CameraRigPresentationIntent
   Fixed = 20
   Mounted = 30
   ThirdPerson = 40
+  Group = 50
 
 model-valid target semantics
 model-specific serialized values
@@ -953,6 +983,7 @@ Follow completion/repair
 Fixed
 Mounted
 Third Person
+Group (CAMERA-029-A; certification pending)
 ```
 
 Technical shapes:
@@ -974,6 +1005,11 @@ Mounted
 Third Person
   CinemachineThirdPersonFollow
   no extra generic Aim
+
+Group
+  CinemachineFollow
+  + CinemachineTargetGroup
+  + CinemachineGroupFraming
 ```
 
 Model switching preflights Body + Aim before mutation.

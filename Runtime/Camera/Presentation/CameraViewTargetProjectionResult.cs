@@ -6,7 +6,7 @@ namespace Immersive.Framework.Camera
 {
     /// <summary>
     /// Explicit result of adapting View Subjects to current presentation capability.
-    /// Shared Follow retains multiple Subjects on Input and never fabricates one target.
+    /// Group retains its complete ordered Subject set on Input and never fabricates one target.
     /// </summary>
     [FrameworkApiStatus(
         FrameworkApiStatus.Experimental,
@@ -38,7 +38,7 @@ namespace Immersive.Framework.Camera
         public bool Succeeded => Status is
             CameraViewTargetProjectionStatus.SucceededNoTargets or
             CameraViewTargetProjectionStatus.SucceededSingleSubject or
-            CameraViewTargetProjectionStatus.SucceededSharedFollow;
+            CameraViewTargetProjectionStatus.SucceededGroup;
         public bool Blocked => Status is
             CameraViewTargetProjectionStatus.BlockedRequiredSubjectMissing or
             CameraViewTargetProjectionStatus.BlockedMultipleSubjectsUnsupported;

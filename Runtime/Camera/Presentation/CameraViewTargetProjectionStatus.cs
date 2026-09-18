@@ -10,7 +10,7 @@ namespace Immersive.Framework.Camera
         None = 0,
         SucceededNoTargets = 10,
         SucceededSingleSubject = 20,
-        SucceededSharedFollow = 30,
+        SucceededGroup = 30,
         BlockedRequiredSubjectMissing = 100,
         BlockedMultipleSubjectsUnsupported = 110,
         RejectedInvalidInput = 120,

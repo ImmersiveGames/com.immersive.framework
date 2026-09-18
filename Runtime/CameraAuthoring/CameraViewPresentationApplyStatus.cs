@@ -10,7 +10,7 @@ namespace Immersive.Framework.CameraAuthoring
         None = 0,
         SucceededFixedNoTargets = 10,
         SucceededSingleSubject = 20,
-        SucceededSharedFollow = 30,
+        SucceededGroup = 30,
         SucceededCleared = 40,
         BlockedRequiredSubjectMissing = 100,
         BlockedUnsupportedPresentation = 110,

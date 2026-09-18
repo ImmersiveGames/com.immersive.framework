@@ -223,6 +223,7 @@ namespace Immersive.Framework.Editor.Camera.Cinemachine
                     break;
 
                 case CameraRigPresentationIntent.Follow:
+                case CameraRigPresentationIntent.Group:
 
                     if (!IsFinite(request.FollowOffset))
                     {
@@ -287,6 +288,7 @@ namespace Immersive.Framework.Editor.Camera.Cinemachine
                     return;
 
                 case CameraRigPresentationIntent.Follow:
+                case CameraRigPresentationIntent.Group:
                     position = PositionControlKind.Follow;
                     rotation = request.LookAtRequirement != CameraTargetRequirement.NotUsed
                         ? RotationControlKind.HardLookAt
@@ -632,6 +634,7 @@ namespace Immersive.Framework.Editor.Camera.Cinemachine
             switch (request.PresentationIntent)
             {
                 case CameraRigPresentationIntent.Follow:
+                case CameraRigPresentationIntent.Group:
                     if (control is CinemachineFollow follow)
                     {
                         SetVector3(

@@ -4,6 +4,7 @@ using Immersive.Framework.Common;
 using Immersive.Framework.ApiStatus;
 using Unity.Cinemachine;
 using UnityEngine;
+using UnityEngine.Serialization;
 
 namespace Immersive.Framework.CameraAuthoring
 {
@@ -53,10 +54,12 @@ namespace Immersive.Framework.CameraAuthoring
         private Component frameworkOwnedRotationControl;
 
         [SerializeField, HideInInspector]
-        private CinemachineTargetGroup frameworkOwnedSharedFollowTargetGroup;
+        [FormerlySerializedAs("frameworkOwnedSharedFollowTargetGroup")]
+        private CinemachineTargetGroup frameworkOwnedGroupTargetGroup;
 
         [SerializeField, HideInInspector]
-        private CinemachineGroupFraming frameworkOwnedSharedFollowGroupFraming;
+        [FormerlySerializedAs("frameworkOwnedSharedFollowGroupFraming")]
+        private CinemachineGroupFraming frameworkOwnedGroupFraming;
 
         private CameraViewPresentationAdapter _presentation;
 
@@ -85,13 +88,14 @@ namespace Immersive.Framework.CameraAuthoring
 
         public CameraTargetRequirement LookAtRequirement => EffectiveLookAtRequirement;
         public Vector3 FollowOffset => RequireFollowBehavior().FollowOffset;
-        public float SharedFollowMemberWeight => RequireFollowBehavior().SharedFollowMemberWeight;
-        public float SharedFollowMemberRadius => RequireFollowBehavior().SharedFollowMemberRadius;
-        public float SharedFollowFramingSize => RequireFollowBehavior().SharedFollowFramingSize;
-        public float SharedFollowDamping => RequireFollowBehavior().SharedFollowDamping;
-        public Vector2 SharedFollowFovRange => RequireFollowBehavior().SharedFollowFovRange;
-        public Vector2 SharedFollowDollyRange => RequireFollowBehavior().SharedFollowDollyRange;
-        public Vector2 SharedFollowOrthoSizeRange => RequireFollowBehavior().SharedFollowOrthoSizeRange;
+        public Vector3 GroupFollowOffset => RequireGroupBehavior().FollowOffset;
+        public float GroupMemberWeight => RequireGroupBehavior().MemberWeight;
+        public float GroupMemberRadius => RequireGroupBehavior().MemberRadius;
+        public float GroupFramingSize => RequireGroupBehavior().FramingSize;
+        public float GroupDamping => RequireGroupBehavior().Damping;
+        public Vector2 GroupFovRange => RequireGroupBehavior().FovRange;
+        public Vector2 GroupDollyRange => RequireGroupBehavior().DollyRange;
+        public Vector2 GroupOrthoSizeRange => RequireGroupBehavior().OrthoSizeRange;
         public float MountedPositionDamping => RequireMountedBehavior().PositionDamping;
         public float MountedRotationDamping => RequireMountedBehavior().RotationDamping;
         public Vector3 ThirdPersonShoulderOffset => RequireThirdPersonBehavior().ShoulderOffset;
@@ -119,11 +123,11 @@ namespace Immersive.Framework.CameraAuthoring
         public Component FrameworkOwnedRotationControl =>
             frameworkOwnedRotationControl;
 
-        public CinemachineTargetGroup FrameworkOwnedSharedFollowTargetGroup =>
-            frameworkOwnedSharedFollowTargetGroup;
+        public CinemachineTargetGroup FrameworkOwnedGroupTargetGroup =>
+            frameworkOwnedGroupTargetGroup;
 
-        public CinemachineGroupFraming FrameworkOwnedSharedFollowGroupFraming =>
-            frameworkOwnedSharedFollowGroupFraming;
+        public CinemachineGroupFraming FrameworkOwnedGroupFraming =>
+            frameworkOwnedGroupFraming;
 
         public int MaterializationRevision =>
             materializationRevision;
@@ -175,9 +179,17 @@ namespace Immersive.Framework.CameraAuthoring
             if (behaviorDefinition.PresentationIntent != CameraRigPresentationIntent.Fixed &&
                 behaviorDefinition.PresentationIntent != CameraRigPresentationIntent.Follow &&
                 behaviorDefinition.PresentationIntent != CameraRigPresentationIntent.Mounted &&
-                behaviorDefinition.PresentationIntent != CameraRigPresentationIntent.ThirdPerson)
+                behaviorDefinition.PresentationIntent != CameraRigPresentationIntent.ThirdPerson &&
+                behaviorDefinition.PresentationIntent != CameraRigPresentationIntent.Group)
             {
                 issue = $"Camera Rig Behavior Definition '{behaviorDefinition.name}' has unsupported Presentation model '{behaviorDefinition.PresentationIntent}'.";
+                return false;
+            }
+
+            if (behaviorDefinition.PresentationIntent == CameraRigPresentationIntent.Group &&
+                !(behaviorDefinition is GroupCameraRigBehaviorDefinition))
+            {
+                issue = $"Camera Rig Behavior Definition '{behaviorDefinition.name}' must use GroupCameraRigBehaviorDefinition for Group presentation settings.";
                 return false;
             }
 
@@ -197,20 +209,13 @@ namespace Immersive.Framework.CameraAuthoring
                 EffectiveLookAtRequirement);
         }
 
-        internal bool TryValidateSharedFollowSettings(out string issue)
-        {
-            if (!(behaviorDefinition is FollowCameraRigBehaviorDefinition follow))
-            {
-                issue = $"CameraRigComposer requires a Follow Camera Rig Behavior Definition for Presentation model '{PresentationIntent}'.";
-                return false;
-            }
-
-            return follow.TryValidate(out issue);
-        }
-
         private FollowCameraRigBehaviorDefinition RequireFollowBehavior() =>
             behaviorDefinition as FollowCameraRigBehaviorDefinition ??
             throw new InvalidOperationException("The assigned Camera Rig Behavior Definition is not Follow.");
+
+        private GroupCameraRigBehaviorDefinition RequireGroupBehavior() =>
+            behaviorDefinition as GroupCameraRigBehaviorDefinition ??
+            throw new InvalidOperationException("The assigned Camera Rig Behavior Definition is not Group.");
 
         private MountedCameraRigBehaviorDefinition RequireMountedBehavior() =>
             behaviorDefinition as MountedCameraRigBehaviorDefinition ??
@@ -270,10 +275,10 @@ namespace Immersive.Framework.CameraAuthoring
             lastMaterializationSummary = materializationSummary.NormalizeText();
         }
 
-        public void EditorSetSharedFollowMaterialization(CinemachineTargetGroup group, CinemachineGroupFraming framing)
+        public void EditorSetGroupMaterialization(CinemachineTargetGroup group, CinemachineGroupFraming framing)
         {
-            frameworkOwnedSharedFollowTargetGroup = group;
-            frameworkOwnedSharedFollowGroupFraming = framing;
+            frameworkOwnedGroupTargetGroup = group;
+            frameworkOwnedGroupFraming = framing;
         }
 
         private void Reset()
@@ -289,8 +294,8 @@ namespace Immersive.Framework.CameraAuthoring
             frameworkOwnedCinemachineCamera = null;
             frameworkOwnedPositionControl = null;
             frameworkOwnedRotationControl = null;
-            frameworkOwnedSharedFollowTargetGroup = null;
-            frameworkOwnedSharedFollowGroupFraming = null;
+            frameworkOwnedGroupTargetGroup = null;
+            frameworkOwnedGroupFraming = null;
             materializationRevision = 0;
         }
 #endif

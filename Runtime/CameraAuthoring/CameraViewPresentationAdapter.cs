@@ -56,9 +56,9 @@ namespace Immersive.Framework.CameraAuthoring
             CameraViewTargetProjectionResult projection =
                 _composer.ResolveViewPresentationTargets(input);
 
-            if (projection.Status == CameraViewTargetProjectionStatus.SucceededSharedFollow)
+            if (projection.Status == CameraViewTargetProjectionStatus.SucceededGroup)
             {
-                if (!CameraSharedFollowProvenance.Validate(_composer, true, out string ownershipIssue))
+                if (!CameraGroupProvenance.Validate(_composer, true, out string ownershipIssue))
                 {
                     return ViewApplyResult(
                         CameraViewPresentationApplyStatus.RejectedOwnershipConflict,
@@ -66,24 +66,24 @@ namespace Immersive.Framework.CameraAuthoring
                         ownershipIssue);
                 }
 
-                ReconcileSharedFollowMembers(input);
-                ConfigureSharedFollowFraming();
-                _composer.FrameworkOwnedSharedFollowGroupFraming.enabled = true;
-                _composer.CinemachineCamera.Follow = _composer.FrameworkOwnedSharedFollowTargetGroup.transform;
+                ReconcileGroupMembers(input);
+                ConfigureGroupFraming();
+                _composer.FrameworkOwnedGroupFraming.enabled = true;
+                _composer.CinemachineCamera.Follow = _composer.FrameworkOwnedGroupTargetGroup.transform;
                 _composer.CinemachineCamera.LookAt =
                     _composer.EffectiveLookAtRequirement == CameraTargetRequirement.NotUsed
                         ? null
-                        : _composer.FrameworkOwnedSharedFollowTargetGroup.transform;
+                        : _composer.FrameworkOwnedGroupTargetGroup.transform;
                 RecordAppliedEvidence(input);
                 return ViewApplyResult(
-                    CameraViewPresentationApplyStatus.SucceededSharedFollow,
+                    CameraViewPresentationApplyStatus.SucceededGroup,
                     input,
-                    $"Applied shared Follow presentation with '{input.SubjectCount}' ordered Subjects.");
+                    $"Applied Group presentation with '{input.SubjectCount}' ordered Subjects.");
             }
 
             if (projection.Status == CameraViewTargetProjectionStatus.SucceededSingleSubject)
             {
-                ClearOwnedSharedFollowProjection();
+                ClearOwnedGroupProjection();
                 _composer.CinemachineCamera.Follow = projection.Targets.FollowTarget;
                 _composer.CinemachineCamera.LookAt = projection.Targets.LookAtTarget;
                 RecordAppliedEvidence(input);
@@ -93,7 +93,7 @@ namespace Immersive.Framework.CameraAuthoring
                     "Applied direct single-Subject presentation to the existing Cinemachine Camera.");
             }
 
-            ClearOwnedSharedFollowProjection();
+            ClearOwnedGroupProjection();
             _composer.CinemachineCamera.Follow = null;
             _composer.CinemachineCamera.LookAt = null;
             RecordAppliedEvidence(input);
@@ -116,7 +116,7 @@ namespace Immersive.Framework.CameraAuthoring
 
         public CameraViewPresentationApplyResult ClearViewPresentation()
         {
-            ClearOwnedSharedFollowProjection();
+            ClearOwnedGroupProjection();
             if (_composer.CinemachineCamera != null)
             {
                 _composer.CinemachineCamera.Follow = null;
@@ -133,63 +133,63 @@ namespace Immersive.Framework.CameraAuthoring
                 "Cleared explicit View presentation without releasing the Composer, Cinemachine Camera or output.");
         }
 
-        private void ReconcileSharedFollowMembers(CameraViewPresentationInput input)
+        private void ReconcileGroupMembers(CameraViewPresentationInput input)
         {
-            _composer.FrameworkOwnedSharedFollowTargetGroup.Targets ??=
+            _composer.FrameworkOwnedGroupTargetGroup.Targets ??=
                 new List<CinemachineTargetGroup.Target>();
-            _composer.FrameworkOwnedSharedFollowTargetGroup.Targets.Clear();
+            _composer.FrameworkOwnedGroupTargetGroup.Targets.Clear();
             for (int index = 0; index < input.SubjectCount; index++)
             {
-                _composer.FrameworkOwnedSharedFollowTargetGroup.Targets.Add(
+                _composer.FrameworkOwnedGroupTargetGroup.Targets.Add(
                     new CinemachineTargetGroup.Target
                     {
                         Object = input.Subjects[index].Subject.Observation,
-                        Weight = _composer.SharedFollowMemberWeight,
-                        Radius = _composer.SharedFollowMemberRadius
+                        Weight = _composer.GroupMemberWeight,
+                        Radius = _composer.GroupMemberRadius
                     });
             }
 
-            _composer.FrameworkOwnedSharedFollowTargetGroup.PositionMode =
+            _composer.FrameworkOwnedGroupTargetGroup.PositionMode =
                 CinemachineTargetGroup.PositionModes.GroupCenter;
-            _composer.FrameworkOwnedSharedFollowTargetGroup.RotationMode =
+            _composer.FrameworkOwnedGroupTargetGroup.RotationMode =
                 CinemachineTargetGroup.RotationModes.Manual;
-            _composer.FrameworkOwnedSharedFollowTargetGroup.UpdateMethod =
+            _composer.FrameworkOwnedGroupTargetGroup.UpdateMethod =
                 CinemachineTargetGroup.UpdateMethods.LateUpdate;
         }
 
-        private void ConfigureSharedFollowFraming()
+        private void ConfigureGroupFraming()
         {
-            _composer.FrameworkOwnedSharedFollowGroupFraming.FramingMode =
+            _composer.FrameworkOwnedGroupFraming.FramingMode =
                 CinemachineGroupFraming.FramingModes.HorizontalAndVertical;
-            _composer.FrameworkOwnedSharedFollowGroupFraming.SizeAdjustment =
+            _composer.FrameworkOwnedGroupFraming.SizeAdjustment =
                 CinemachineGroupFraming.SizeAdjustmentModes.DollyThenZoom;
-            _composer.FrameworkOwnedSharedFollowGroupFraming.LateralAdjustment =
+            _composer.FrameworkOwnedGroupFraming.LateralAdjustment =
                 CinemachineGroupFraming.LateralAdjustmentModes.ChangePosition;
-            _composer.FrameworkOwnedSharedFollowGroupFraming.FramingSize =
-                _composer.SharedFollowFramingSize;
-            _composer.FrameworkOwnedSharedFollowGroupFraming.Damping =
-                _composer.SharedFollowDamping;
-            _composer.FrameworkOwnedSharedFollowGroupFraming.FovRange =
-                _composer.SharedFollowFovRange;
-            _composer.FrameworkOwnedSharedFollowGroupFraming.DollyRange =
-                _composer.SharedFollowDollyRange;
-            _composer.FrameworkOwnedSharedFollowGroupFraming.OrthoSizeRange =
-                _composer.SharedFollowOrthoSizeRange;
+            _composer.FrameworkOwnedGroupFraming.FramingSize =
+                _composer.GroupFramingSize;
+            _composer.FrameworkOwnedGroupFraming.Damping =
+                _composer.GroupDamping;
+            _composer.FrameworkOwnedGroupFraming.FovRange =
+                _composer.GroupFovRange;
+            _composer.FrameworkOwnedGroupFraming.DollyRange =
+                _composer.GroupDollyRange;
+            _composer.FrameworkOwnedGroupFraming.OrthoSizeRange =
+                _composer.GroupOrthoSizeRange;
         }
 
-        private void ClearOwnedSharedFollowProjection()
+        private void ClearOwnedGroupProjection()
         {
-            if (_composer.FrameworkOwnedSharedFollowTargetGroup != null &&
-                _composer.FrameworkOwnedSharedFollowTargetGroup.transform.IsChildOf(_composer.transform))
+            if (_composer.FrameworkOwnedGroupTargetGroup != null &&
+                _composer.FrameworkOwnedGroupTargetGroup.transform.IsChildOf(_composer.transform))
             {
-                _composer.FrameworkOwnedSharedFollowTargetGroup.Targets?.Clear();
+                _composer.FrameworkOwnedGroupTargetGroup.Targets?.Clear();
             }
 
-            if (_composer.FrameworkOwnedSharedFollowGroupFraming != null &&
+            if (_composer.FrameworkOwnedGroupFraming != null &&
                 _composer.CinemachineCamera != null &&
-                _composer.FrameworkOwnedSharedFollowGroupFraming.gameObject == _composer.CinemachineCamera.gameObject)
+                _composer.FrameworkOwnedGroupFraming.gameObject == _composer.CinemachineCamera.gameObject)
             {
-                _composer.FrameworkOwnedSharedFollowGroupFraming.enabled = false;
+                _composer.FrameworkOwnedGroupFraming.enabled = false;
             }
         }
 
@@ -222,8 +222,8 @@ namespace Immersive.Framework.CameraAuthoring
                 status,
                 input,
                 _composer.CinemachineCamera,
-                _composer.FrameworkOwnedSharedFollowTargetGroup,
-                _composer.FrameworkOwnedSharedFollowGroupFraming,
+                _composer.FrameworkOwnedGroupTargetGroup,
+                _composer.FrameworkOwnedGroupFraming,
                 diagnostic);
         }
     }

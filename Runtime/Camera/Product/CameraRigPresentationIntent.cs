@@ -14,6 +14,7 @@ namespace Immersive.Framework.Camera
         Follow = 10,
         Fixed = 20,
         Mounted = 30,
-        ThirdPerson = 40
+        ThirdPerson = 40,
+        Group = 50
     }
 }

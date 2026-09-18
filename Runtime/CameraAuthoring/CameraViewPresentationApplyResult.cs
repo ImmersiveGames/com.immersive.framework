@@ -39,7 +39,7 @@ namespace Immersive.Framework.CameraAuthoring
         public bool Succeeded => Status is
             CameraViewPresentationApplyStatus.SucceededFixedNoTargets or
             CameraViewPresentationApplyStatus.SucceededSingleSubject or
-            CameraViewPresentationApplyStatus.SucceededSharedFollow or
+            CameraViewPresentationApplyStatus.SucceededGroup or
             CameraViewPresentationApplyStatus.SucceededCleared;
     }
 }

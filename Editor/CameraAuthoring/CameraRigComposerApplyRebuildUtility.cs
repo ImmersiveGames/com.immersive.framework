@@ -13,11 +13,17 @@ namespace Immersive.Framework.Editor.CameraAuthoring
             if (composer == null) return CameraRigComposerApplyRebuildResult.Failed("ValidationFailed", "Composer is missing.");
             string issue;
             bool valid = composer.TryValidateForApply(out issue);
-            if (valid && composer.PresentationIntent == CameraRigPresentationIntent.Follow)
-                valid = CameraSharedFollowProvenance.Validate(composer, false, out issue);
+            if (valid && composer.PresentationIntent == CameraRigPresentationIntent.Group)
+            {
+                valid = CameraGroupProvenance.Validate(composer, false, out issue);
+            }
+            else if (valid && CameraGroupProvenance.HasRecordedMaterialization(composer))
+            {
+                valid = CameraGroupProvenance.ValidateForRemoval(composer, out issue);
+            }
             var result = valid
                 ? CameraRigComposerApplyRebuildResult.ValidationSucceeded(
-                    $"Behavior Definition '{composer.BehaviorDefinition.name}' projects Presentation model '{composer.PresentationIntent}'. Settings and shared Follow provenance are valid; Apply / Rebuild preflights pipeline ownership.")
+                    $"Behavior Definition '{composer.BehaviorDefinition.name}' projects Presentation model '{composer.PresentationIntent}'. Settings and Group provenance are valid; Apply / Rebuild preflights pipeline ownership.")
                 : CameraRigComposerApplyRebuildResult.Failed("ValidationFailed", issue);
             Record(composer, result, logDiagnostics);
             return result;
@@ -71,6 +77,10 @@ namespace Immersive.Framework.Editor.CameraAuthoring
                     request.FollowOffset = follow.FollowOffset;
                     break;
 
+                case GroupCameraRigBehaviorDefinition groupBehavior:
+                    request.FollowOffset = groupBehavior.FollowOffset;
+                    break;
+
                 case MountedCameraRigBehaviorDefinition mounted:
                     request.MountedPositionDamping = mounted.PositionDamping;
                     request.MountedRotationDamping = mounted.RotationDamping;
@@ -98,9 +108,13 @@ namespace Immersive.Framework.Editor.CameraAuthoring
                     report.Evidence.RotationControl,
                     report.Evidence.RotationControlOwnership == CinemachineRigMaterializationOwnership.FrameworkOwned,
                     report.Evidence.MaterializationRevision);
-                if (composer.PresentationIntent == CameraRigPresentationIntent.Follow)
+                if (composer.PresentationIntent == CameraRigPresentationIntent.Group)
                 {
-                    CameraSharedFollowMaterializer.Materialize(composer, useUndo, report);
+                    CameraGroupMaterializer.Materialize(composer, useUndo, report);
+                }
+                else if (CameraGroupProvenance.HasRecordedMaterialization(composer))
+                {
+                    CameraGroupMaterializer.Dematerialize(composer, useUndo, report);
                 }
             }
             var result = CameraRigComposerApplyRebuildResult.Applied(

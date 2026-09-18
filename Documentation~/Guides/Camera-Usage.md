@@ -295,24 +295,26 @@ The authored Cinemachine Camera Transform owns pose. Optional/required Look At r
 
 ---
 
-## 12. Follow and shared multi-target framing
+## 12. Follow and Group
 
-Follow observes resolved target evidence through the supported Follow materialization.
+Follow presents exactly one resolved Subject through the supported Follow materialization.
 
-Shared Follow may frame an explicitly assigned Subject set:
+Group presents an explicitly assigned set of one or more Subjects:
 
 ```text
 Gameplay View
   Subjects = {P1, P2, P3}
         ↓
-Follow / group projection
+Group presentation
         ↓
 one Camera Rig
 ```
 
 Another Player joining changes Subject availability/assignment. It does not imply another Camera Rig or Output.
 
-Cinemachine Target Group / Group Framing are projection mechanisms, never assignment or composition authority.
+`Follow + Many Subjects` is rejected and never becomes Group implicitly. Cinemachine
+Target Group / Group Framing are Group projection mechanisms, never assignment or
+composition authority.
 
 ---
 
@@ -557,4 +559,4 @@ Before final ADR-028 validation and CAMERA-027-F consumer closure, confirm the p
 [ ] historical QA remains historical rather than being relabeled
 ```
 
-Use IF-ADR-026, IF-ADR-027 and IF-ADR-028 together as the normative baseline for the next implementation work.
+Use IF-ADR-026 through IF-ADR-029 together as the normative baseline for the next implementation work.
