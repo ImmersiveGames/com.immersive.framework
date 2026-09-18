@@ -117,7 +117,7 @@ Local Multiplayer remains blocked by public Slot/device/InputUser/control-scheme
 | 001 | ACCEPTED / RECONCILED / IMPLEMENTED | core evidence preserved; Editor startup isolation proven | current |
 | 002 | ACCEPTED / RECONCILED / IMPLEMENTED | feature-owned | current |
 | 003 | ACCEPTED / RECONCILED / IMPLEMENTED; ADR-023 structural reconciliation current | Player aggregate 27/27 + Manager functional 14/14 | current |
-| 004 | ACCEPTED / REOPENED BY 026/028 for evolved output topology/layout; request arbitration and Default semantics preserved | 2026-09-12 historical + 2026-09-14 corrected Camera regression evidence | request/output core retained; physical layout closure pending |
+| 004 | ACCEPTED / REOPENED BY 026/028 for evolved output topology/layout; request arbitration and Default semantics preserved | historical + corrected Camera regression evidence retained | request/output core retained; ADR-028 final validation/consumer closure pending |
 | 005 | ACCEPTED / RECONCILED / IMPLEMENTED | Input Gate / Restart / Pause certified | current |
 | 006 | ACCEPTED / RECONCILED / IMPLEMENTED | technical Transition/Loading certified | Game Flow consumer PASS |
 | 007 | ACCEPTED / RECONCILED / IMPLEMENTED | readiness policies certified | Game Flow consumer PASS |
@@ -398,7 +398,7 @@ Current reconciliation record:
 
 1. **Player** — Scene Player physical/contextual lifecycle is proven through `GameplayReady`; Player Provisioning and Character Selection are proven. Manager-Provisioned prepared Actor replacement is technically certified in QA. Remaining Getting Started work is game-owned Presentation/gameplay completeness, not Framework Player readiness. Local Multiplayer remains blocked by the public Slot/device/input contract.
 2. **Loading / Readiness** — positive Game Flow consumer lane proven; negative/terminal robustness remains QA-owned.
-3. **Camera** — CAMERA-028-A/B, CAMERA-026-H2 and CAMERA-027-D2 are implemented and technically certified. Do **not** close CAMERA-027-F or expand final sample migration before CAMERA-026-I and CAMERA-028-C/D are implemented and certified. The next architecture work is physical Output Presentation/Layout authority, not a return to Camera-owned viewport topology.
+3. **Camera** — CAMERA-026-H2/I, CAMERA-027-D2 and CAMERA-028-A/B are technically certified; CAMERA-028-C has focused behavior PASS and CAMERA-028-D is implemented/tested/integrated with 33/33 focused functional PASS. Do **not** close CAMERA-027-F before ADR-028 clean-state/cleanup/reentrancy validation is proven. No new Framework physical-layout authority is required.
 4. **Pause** — runtime certified; remaining work is consumer authoring/usability only.
 5. **Audio** — BGM technical + consumer integration proven; API maturity promotion is separate.
 6. **Progression Save** — real consumer persistence/usability proof remains.
