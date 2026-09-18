@@ -1,8 +1,8 @@
 # IF-TRACK — Immersive Framework
 
-Status: **Active — current implemented baseline + Stage B consumer evidence; CAMERA-028-A/B and CAMERA-027-D2 certified, remaining Camera layout/integration work open**
+Status: **Active — current implemented baseline + Stage B consumer evidence; CAMERA-028 A/B certified, C focused behavior PASS, D implemented/tested/integrated with 33/33 functional PASS; final ADR-028 validation and consumer closure remain open**
 
-Last updated: **2026-09-14**
+Last updated: **2026-09-17**
 
 ## Authority and status model
 
@@ -139,9 +139,9 @@ Local Multiplayer remains blocked by public Slot/device/InputUser/control-scheme
 | 023 | ACCEPTED / authored composition implementation complete; ADR-023A occurrence identity boundary current | Manager functional 14/14 + Pause/Input/Gate 8/8 + FIRSTGAME Scene-Provided readiness PASS | Physical Scene-Provided validation/resolution/adoption is canonical; derived evidence, runtime evidence validation, Player Apply/Rebuild and obsolete evidence type removed |
 | 024 | ACCEPTED / RECONCILED / IMPLEMENTED — Manager-Provisioned V1 | Full Player QA 16/16 PASS including positive `actor-replace` | public `RequestReplacePreparedActor(...)` current; Scene-Provided prepared physical replacement deferred |
 | 025 | ACCEPTED / IMPLEMENTATION STATUS OWNED BY PLAYER TRACK | feature-owned | Camera remains outside the Player input contract |
-| 026 | REOPENED — A..G retained; H superseded; H2 certified; I pending | corrected Full Camera 39/39 + ADR-026 2/2 + Partial 8/8 | viewport-free topology current; Player→Camera integration reconciliation pending |
+| 026 | REOPENED — A..G retained; H superseded; H2 certified; I certified 2026-09-16 | corrected Full Camera 39/39 + ADR-026 2/2 + Player→Camera integration PASS | viewport-free topology and Player→Camera Subject integration current |
 | 027 | REOPENED — A/B/C retained; D2 certified; E deferred; F final closure waits corrected boundary | D2 corrected logical association certified 2026-09-14 | authoring viewport removed; final consumer closure pending |
-| 028 | ACCEPTED ARCHITECTURE / PARTIAL IMPLEMENTATION — A/B certified; C/D pending | corrected logical Camera QA certified through CUT 2 | Output participation + viewport-free Camera topology current; physical layout authority pending |
+| 028 | ACCEPTED / IMPLEMENTED — A/B certified; C focused behavior PASS; D implemented/tested/integrated | CAMERA-028-D 33/33 focused functional PASS; adjacent regressions PASS | VALIDATION OPEN — read-only preflight + cleanup/reentrancy proof pending |
 
 ## Current Activity content / visibility closure — IF-ADR-009 — 2026-08-30
 
@@ -290,7 +290,7 @@ Certification and reconciliation records:
 - [IF-ADR-023A Player Actor Occurrence Identity Boundary — 2026-08-31](../Reconciliation/IF-ADR-023A-PLAYER-ACTOR-OCCURRENCE-IDENTITY-BOUNDARY-2026-08-31.md)
 - [IF-ADR-024 Prepared Actor Replacement Technical Certification — 2026-09-02](../Reconciliation/IF-ADR-024-PREPARED-ACTOR-REPLACEMENT-TECHNICAL-CERTIFICATION-2026-09-02.md)
 
-## Current Camera architecture — IF-ADR-026 / IF-ADR-027 / IF-ADR-028 — 2026-09-14
+## Current Camera architecture — IF-ADR-026 / IF-ADR-027 / IF-ADR-028 — 2026-09-17
 
 Current normative model:
 
@@ -333,7 +333,7 @@ Camera Output Definition
 logical View→Output association
 ```
 
-Physical Output Presentation/Layout remains separate and is not yet implemented by CAMERA-028-C/D.
+Physical presentation remains externally owned. CAMERA-028-C code reconciliation is implemented and has focused preservation evidence; CAMERA-028-D integrates explicit Player Slot → Camera Output identity with `PlayerInput.camera` while Unity `PlayerInputManager` remains the split-screen layout writer.
 
 The designer does not normally transport `CameraViewId`, `CameraOutputId`, Assignment Context ID, Assignment Owner ID or technical binding text between official Camera Inspectors. Typed definition references remain authoring authority; stable IDs remain runtime/diagnostic projections.
 
@@ -372,18 +372,19 @@ Current closure disposition:
 CAMERA-026-A..G    IMPLEMENTED / RETAINED
 CAMERA-026-H       SUPERSEDED
 CAMERA-026-H2      IMPLEMENTED / TECHNICALLY CERTIFIED — revalidated 2026-09-14
-CAMERA-026-I       PENDING — Player→Camera Subject integration boundary
+CAMERA-026-I       IMPLEMENTED / TECHNICALLY CERTIFIED — 2026-09-16
 CAMERA-027-A..C    IMPLEMENTED / RETAINED
 CAMERA-027-D2      IMPLEMENTED / TECHNICALLY CERTIFIED — 2026-09-14
 CAMERA-027-E       DEFERRED / OPTIONAL
-CAMERA-027-F       FINAL CLOSURE PENDING remaining corrected boundary
+CAMERA-027-F       FINAL CONSUMER CLOSURE PENDING
 CAMERA-028-A       IMPLEMENTED / TECHNICALLY CERTIFIED — 8/8 PASS
 CAMERA-028-B       IMPLEMENTED / TECHNICALLY CERTIFIED — 2026-09-14
-CAMERA-028-C/D     PENDING
-corrected logical QA COMPLETE through CUT 2; physical layout QA PENDING CUT 4/5
+CAMERA-028-C       IMPLEMENTED; FOCUSED BEHAVIOR PASS — 2026-09-17
+CAMERA-028-D       IMPLEMENTED / TESTED / INTEGRATED; 33/33 FUNCTIONAL PASS — 2026-09-17
+ADR-028 validation OPEN — read-only preflight + cleanup/reentrancy proof pending
 ```
 
-IF-ADR-028 now proceeds from the certified logical topology boundary to explicit physical layout authority, then PlayerInputManager layout integration.
+IF-ADR-028 implementation and focused integration work are present. The remaining technical gate is validation of clean-state/reentrancy: read-only preflight before repair, QA-owned device cleanup before terminal PASS, post-cleanup verification, and a second run without reparative preparation.
 
 Historical certification record:
 
@@ -411,8 +412,8 @@ Current reconciliation record:
 - heterogeneous per-Slot Host Provisioning;
 - Scene-Provided prepared Actor replacement, pending an explicit physical-ownership contract;
 - generic respawn/checkpoint/dynamic Spawn beyond ADR-021;
-- CAMERA-026-I Player→Camera Subject integration-boundary reconciliation;
-- CAMERA-028-C/D physical layout authority implementation and PlayerInput layout integration;
+- ADR-028 validation-harness clean-start / cleanup / reentrancy closure;
+- CAMERA-028-D final validation after read-only preflight and device-cleanup ordering are proven;
 - CAMERA-027-F final official Samples/FIRSTGAME Camera migration after corrected technical closure;
 - CAMERA-027-E optional reusable Camera Composition definition, deferred until consumer evidence justifies a grouped asset;
 - application-scoped stable-ID resolver;
@@ -434,6 +435,7 @@ Current reconciliation record:
 - [IF-ADR-027 — Camera Authoring Definitions and Composition Authority](../ADRs/IF-ADR-027-Camera-Authoring-Definitions-and-Composition-Authority.md)
 - [IF-ADR-028 — Camera Output Participation and Presentation Layout Authority](../ADRs/IF-ADR-028-Camera-Output-Participation-and-Presentation-Layout-Authority.md)
 - [Camera Output Participation and Layout Authority Reconciliation — 2026-09-12](../Reconciliation/IF-CAMERA-OUTPUT-LAYOUT-AUTHORITY-RECONCILIATION-2026-09-12.md)
+- [IF-ADR-028 Focused Physical Presentation / PlayerInput Validation — 2026-09-17](../Reconciliation/IF-ADR-028-FOCUSED-VALIDATION-2026-09-17.md)
 - [Camera Full Technical Certification — 2026-09-12](../Reconciliation/IF-CAMERA-FULL-TECHNICAL-CERTIFICATION-2026-09-12.md)
 - [IF-ADR-026 Shared Camera Technical Certification — 2026-09-09](../Reconciliation/IF-ADR-026-SHARED-CAMERA-TECHNICAL-CERTIFICATION-2026-09-09.md)
 - [IF-ADR-023 — Player Actor Runtime Host and Presentation Authority](../ADRs/IF-ADR-023-Player-Actor-Runtime-Host-and-Presentation-Authority.md)
