@@ -1,6 +1,6 @@
-# Camera Output Participation and Physical Presentation Ownership Reconciliation — 2026-09-12 / corrected 2026-09-15 / updated 2026-09-16
+# Camera Output Participation and Physical Presentation Ownership Reconciliation — 2026-09-12 / corrected 2026-09-15 / updated 2026-09-17
 
-Status: **Architecture reconciled; CUT 1/2/3 implemented and technically certified; CUT 4 code reconciliation and CUT 5 PlayerInput integration implemented; focused physical-presentation / automatic split-screen certification and final consumer closure remain pending**
+Status: **Architecture reconciled; CUT 1/2/3 technically certified; CUT 4 focused behavior PASS; CUT 5 implemented/tested/integrated with 33/33 focused functional PASS; final validation remains open for read-only preflight and cleanup/reentrancy proof, followed by consumer closure**
 
 Affected decisions: IF-ADR-026, IF-ADR-027 and IF-ADR-028
 Historical evidence: [Camera Full Technical Certification — 2026-09-12](IF-CAMERA-FULL-TECHNICAL-CERTIFICATION-2026-09-12.md)
@@ -10,6 +10,8 @@ CUT 1 certification: **2026-09-13**
 CUT 2 certification: **2026-09-14**
 Physical-presentation ownership corrected: **2026-09-15**
 CUT 3 certification / CUT 4-5 implementation reconciliation: **2026-09-16**
+Focused CUT 4/5 validation audit: **2026-09-17**
+Focused validation record: [IF-ADR-028 Focused Physical Presentation / PlayerInput Validation — 2026-09-17](IF-ADR-028-FOCUSED-VALIDATION-2026-09-17.md)
 
 ## Audit finding
 
@@ -86,7 +88,7 @@ PlayerInputManager owns Camera.rect layout
 
 Framework Camera must not rewrite that rect.
 
-The Player Camera integration path is implemented as of 2026-09-16. Focused certification with automatic `PlayerInputManager.splitScreen` enabled remains pending.
+The Player Camera integration path is implemented as of 2026-09-16. The 2026-09-17 focused run exercises automatic `PlayerInputManager.splitScreen` and passes 33/33 functional cases. Final validation remains open because the coordinator still prepares/repairs before runs and QA-owned device cleanup occurs after the runtime PASS is emitted.
 
 ## Certification disposition
 
@@ -161,7 +163,7 @@ CAMERA-028-C — external physical-presentation ownership boundary
   Framework must have zero productive Camera.rect/pixelRect/targetDisplay/targetTexture layout writers
   preserve gameplay/Unity supplied physical Camera presentation
   superseded CameraOutputPresentationRuntime writer removed/reconciled
-  status: IMPLEMENTATION RECONCILED — 2026-09-16; focused runtime preservation certification PENDING
+  status: IMPLEMENTATION RECONCILED — 2026-09-16; focused runtime preservation behavior PASS — 2026-09-17
 
 CUT 5
 CAMERA-028-D — PlayerInputManager layout integration
@@ -169,12 +171,13 @@ CAMERA-028-D — PlayerInputManager layout integration
   integrate Player Camera with PlayerInput/PlayerInputManager
   PlayerInputManager remains sole split-screen Camera.rect writer
   Framework remains Camera topology/rig authority only
-  status: IMPLEMENTED / EXPERIMENTAL — 2026-09-16; focused automatic split-screen certification PENDING
+  status: IMPLEMENTED / TESTED / INTEGRATED — 2026-09-17; focused functional run 33/33 PASS; final validation OPEN
 
 CUT 6
-Camera QA physical-presentation recertification
-  prove physicalPresentationNonOwnership and playerInputLayoutIntegration with focused CUT 4/5 fixtures
-  status: PENDING
+Camera QA physical-presentation recertification / validation
+  focused CUT 4 behavior and CUT 5 functional execution are present
+  final closure must prove read-only preflight, cleanup before terminal verdict and reentrancy without reparative preparation
+  status: PARTIAL — functional evidence PASS; validation harness closure PENDING
 
 CUT 7
 CAMERA-027-F — official Samples/FIRSTGAME consumer closure
@@ -203,8 +206,11 @@ The obsolete `viewportSplitTopology` dimension remains removed.
 Focused corrected proof still must add:
 
 ```text
-physicalPresentationNonOwnership   PENDING CAMERA-028-C focused runtime proof
-playerInputLayoutIntegration       PENDING CAMERA-028-D focused runtime proof
+physicalPresentationNonOwnership   PASS — focused CAMERA-028-C evidence 2026-09-17
+playerInputLayoutIntegration       PASS functional — CAMERA-028-D 33/33 focused run 2026-09-17
+validationHarnessCleanStart        PENDING read-only preflight
+validationHarnessDeviceCleanup     PENDING cleanup before terminal PASS
+validationHarnessReentrancy        PENDING second run without Prepare/Build/Repair
 ```
 
 Current proven boundary includes:
@@ -230,12 +236,22 @@ explicit Player Slot -> Camera Output policy                    IMPLEMENTED
 PlayerCameraOutputIntegrationRuntime                             IMPLEMENTED
 ```
 
-Still pending focused runtime proof:
+Focused 2026-09-17 evidence:
 
 ```text
-Framework preserves external authored rect                     CAMERA-028-C
-PlayerInputManager is sole split-screen Camera.rect writer      CAMERA-028-D
-PlayerInput layout does not select Subjects/requests            CAMERA-028-D
+Framework preserves external authored rect                     PASS — CAMERA-028-C
+PlayerInput automatic split-screen functional path              PASS 33/33 — CAMERA-028-D
+PlayerInput layout preserves Camera semantic authorities        PASS — CAMERA-028-D
+```
+
+Still pending final validation evidence:
+
+```text
+read-only preflight before any Prepare / Build / Repair         PENDING
+QA-owned InputSystem device inventory clean before terminal PASS PENDING
+first failure preserved through cleanup                         PENDING
+post-run read-only baseline check                               PENDING
+second run from clean state without reparative preparation      PENDING
 ```
 
 ## Consumer proof
@@ -269,11 +285,11 @@ Current state:
 CAMERA-028-A / CAMERA-026-H2                    COMPLETE / TECHNICALLY CERTIFIED
 CAMERA-028-B + CAMERA-027-D2                    COMPLETE / TECHNICALLY CERTIFIED
 CAMERA-026-I                                    COMPLETE / TECHNICALLY CERTIFIED — 2026-09-16
-CAMERA-028-C                                    CODE RECONCILIATION COMPLETE; FOCUSED RUNTIME CERTIFICATION PENDING
-CAMERA-028-D                                    IMPLEMENTED / EXPERIMENTAL; FOCUSED SPLIT-SCREEN CERTIFICATION PENDING
+CAMERA-028-C                                    CODE RECONCILIATION COMPLETE; FOCUSED BEHAVIOR PASS 2026-09-17
+CAMERA-028-D                                    IMPLEMENTED / TESTED / INTEGRATED; 33/33 FOCUSED FUNCTIONAL PASS
 corrected Camera logical QA recertification     COMPLETE, including CAMERA-026-I
-physical-presentation QA recertification        PENDING focused CUT 4/5
+ADR-028 final validation                        OPEN — preflight + cleanup/reentrancy proof pending
 CAMERA-027-F official consumer proof            PENDING
 ```
 
-This reconciliation remains open only for focused physical-presentation / PlayerInput split-screen certification and final consumer closure. Current documentation must not describe either the old viewport-bearing Camera topology or a generic Framework-owned physical layout system as normative, and it must not describe CAMERA-026-I, CAMERA-028-C code reconciliation or CAMERA-028-D implementation as still absent.
+This reconciliation remains open for final ADR-028 validation-harness closure and final consumer closure. Focused physical-presentation behavior and PlayerInput split-screen functionality now have passing evidence; the unresolved gate is clean-state/reentrancy certification, not implementation. Current documentation must not describe either the old viewport-bearing Camera topology or a generic Framework-owned physical layout system as normative, and it must not describe CAMERA-026-I, CAMERA-028-C code reconciliation or CAMERA-028-D implementation as still absent.
