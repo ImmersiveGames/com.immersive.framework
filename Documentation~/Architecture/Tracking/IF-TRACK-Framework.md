@@ -290,101 +290,32 @@ Certification and reconciliation records:
 - [IF-ADR-023A Player Actor Occurrence Identity Boundary — 2026-08-31](../Reconciliation/IF-ADR-023A-PLAYER-ACTOR-OCCURRENCE-IDENTITY-BOUNDARY-2026-08-31.md)
 - [IF-ADR-024 Prepared Actor Replacement Technical Certification — 2026-09-02](../Reconciliation/IF-ADR-024-PREPARED-ACTOR-REPLACEMENT-TECHNICAL-CERTIFICATION-2026-09-02.md)
 
-## Current Camera architecture — IF-ADR-026 / IF-ADR-027 / IF-ADR-028 — 2026-09-17
+## Current Camera architecture — IF-ADR-029 — 2026-09-19
 
 Current normative model:
 
 ```text
-Camera Subject
-  -> observable evidence
-
-Camera Assignment
-  -> 0..N Subjects per logical View
-
-Camera Rig / Presentation
-  -> observes resolved Subjects
-
-Camera Output
-  -> explicit physical Camera capacity
-
-View→Output association
-  -> logical View identity + Output identity only
-
-Output Presentation / Layout
-  -> separate authority for viewport / display / RenderTexture / PiP
+Camera Subject(s)
+  -> Camera Composition
+  -> CameraRigComposer
+  -> CameraRequest
+  -> CameraOutputSession
+  -> Camera Output
 ```
 
-Output registration and View participation are distinct:
+Composition owns Subject membership, revision/stale protection and current presentation input. Rig owns local behavior and Cinemachine materialization. Request owns Output participation. Output owns the physical Camera, Fixed Default Rig and arbitration/session. `PlayerInputManager` remains the physical split count and `Camera.rect` writer.
+
+Current disposition:
 
 ```text
-Session available Outputs       -> 1..N
-current View→Output bindings     -> 0..N subset
+CAMERA-029-A..E  IMPLEMENTED / COMMITTED
+CAMERA-029-F     IMPLEMENTED LOCALLY
+Unity tested     NO
+Validated        NO
+Certified        NO
 ```
 
-An available Output without a current View binding is valid. Player count does not determine Output count or binding count.
-
-Current Camera authoring:
-
-```text
-Camera Subject
-Camera View Definition
-Camera Rig Behavior Definition
-Camera Output Definition
-logical View→Output association
-```
-
-Physical presentation remains externally owned. CAMERA-028-C code reconciliation is implemented and has focused preservation evidence; CAMERA-028-D integrates explicit Player Slot → Camera Output identity with `PlayerInput.camera` while Unity `PlayerInputManager` remains the split-screen layout writer.
-
-The designer does not normally transport `CameraViewId`, `CameraOutputId`, Assignment Context ID, Assignment Owner ID or technical binding text between official Camera Inspectors. Typed definition references remain authoring authority; stable IDs remain runtime/diagnostic projections.
-
-The viewport-bearing Camera association is now removed from the active Camera topology/authoring contract.
-
-Historical integrated evidence:
-
-```text
-[QA_CAMERA_FULL]
-2026-09-12
-39/39 PASS
-ADR-026 phases 2/2
-9/9 dimensions
-```
-
-This remains valid evidence for the earlier viewport-bearing boundary and is not relabeled.
-
-Current corrected evidence:
-
-```text
-Persistent Camera Presentation Composition regression  12/12 PASS
-invalid-viewport                                       SupersededByCAMERA028B
-CAMERA-028-A Partial                                   8/8 PASS
-outputParticipation                                    PASS
-Full Camera established cases                          39/39 PASS
-ADR-026 phases                                         2/2 PASS
-current dimensions                                     8/8 PASS
-viewOutputAssociation                                  PASS
-viewportSplitTopology                                  REMOVED
-Shared baseline restore                                PASS
-```
-
-Current closure disposition:
-
-```text
-CAMERA-026-A..G    IMPLEMENTED / RETAINED
-CAMERA-026-H       SUPERSEDED
-CAMERA-026-H2      IMPLEMENTED / TECHNICALLY CERTIFIED — revalidated 2026-09-14
-CAMERA-026-I       IMPLEMENTED / TECHNICALLY CERTIFIED — 2026-09-16
-CAMERA-027-A..C    IMPLEMENTED / RETAINED
-CAMERA-027-D2      IMPLEMENTED / TECHNICALLY CERTIFIED — 2026-09-14
-CAMERA-027-E       DEFERRED / OPTIONAL
-CAMERA-027-F       FINAL CONSUMER CLOSURE PENDING
-CAMERA-028-A       IMPLEMENTED / TECHNICALLY CERTIFIED — 8/8 PASS
-CAMERA-028-B       IMPLEMENTED / TECHNICALLY CERTIFIED — 2026-09-14
-CAMERA-028-C       IMPLEMENTED; FOCUSED BEHAVIOR PASS — 2026-09-17
-CAMERA-028-D       IMPLEMENTED / TESTED / INTEGRATED; 33/33 FUNCTIONAL PASS — 2026-09-17
-ADR-028 validation OPEN — read-only preflight + cleanup/reentrancy proof pending
-```
-
-IF-ADR-028 implementation and focused integration work are present. The remaining technical gate is validation of clean-state/reentrancy: read-only preflight before repair, QA-owned device cleanup before terminal PASS, post-cleanup verification, and a second run without reparative preparation.
+Historical Camera evidence remains under `Architecture/Reconciliation` and is not relabeled as proof of the final IF-ADR-029 boundary. The next gate is Unity import, focused Framework tests and consumer boot/join/leave/rejoin validation.
 
 Historical certification record:
 
@@ -398,7 +329,7 @@ Current reconciliation record:
 
 1. **Player** — Scene Player physical/contextual lifecycle is proven through `GameplayReady`; Player Provisioning and Character Selection are proven. Manager-Provisioned prepared Actor replacement is technically certified in QA. Remaining Getting Started work is game-owned Presentation/gameplay completeness, not Framework Player readiness. Local Multiplayer remains blocked by the public Slot/device/input contract.
 2. **Loading / Readiness** — positive Game Flow consumer lane proven; negative/terminal robustness remains QA-owned.
-3. **Camera** — CAMERA-026-H2/I, CAMERA-027-D2 and CAMERA-028-A/B are technically certified; CAMERA-028-C has focused behavior PASS and CAMERA-028-D is implemented/tested/integrated with 33/33 focused functional PASS. Do **not** close CAMERA-027-F before ADR-028 clean-state/cleanup/reentrancy validation is proven. No new Framework physical-layout authority is required.
+3. **Camera** — CAMERA-029-A..E are committed and F is implemented locally. Unity import/tests and ManagerProvisioned/JoiningControl lifecycle validation remain pending; no new Framework physical-layout authority is required.
 4. **Pause** — runtime certified; remaining work is consumer authoring/usability only.
 5. **Audio** — BGM technical + consumer integration proven; API maturity promotion is separate.
 6. **Progression Save** — real consumer persistence/usability proof remains.

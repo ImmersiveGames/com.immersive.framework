@@ -1,6 +1,6 @@
 # IF-ADR-029 — Camera Composition, Group Presentation and Camera View Removal
 
-Status: **Accepted architecture — implementation in progress**
+Status: **Accepted architecture — CAMERA-029-A through E committed; CAMERA-029-F implemented locally**
 Proposed: **2026-09-18**
 Accepted: **2026-09-18**
 Type: architecture / Camera composition / presentation / output participation
@@ -8,8 +8,10 @@ Reconciles: IF-ADR-004, IF-ADR-022, IF-ADR-026, IF-ADR-027 and IF-ADR-028
 Preserves: IF-ADR-004 request arbitration and output-owned Default semantics; IF-ADR-028 external physical-presentation ownership
 Supersedes: Camera View as an independent runtime/authoring authority, View→Output topology as the normal participation path, and SharedFollow as an implicit cardinality-dependent Follow mode
 
-Implementation: **CAMERA-029-A/B/C/D/E implemented locally; CAMERA-029-F pending**
-Technical certification: **pending**
+Implementation: **A implemented; B implemented; C implemented; D implemented; E implemented; F implemented locally**
+Unity tested: **NO**
+Technically validated: **NO**
+Certified: **NO**
 
 ## 1. Context
 
@@ -874,10 +876,12 @@ Group presentation intent                 ACCEPTED
 SharedFollow implicit multi-target mode   SUPERSEDED
 PlayerInputManager split layout authority RETAINED
 physical Camera layout outside Framework  RETAINED
-implementation                            PARTIAL — CAMERA-029-A/B/C/D/E implemented locally
-technical certification                   PENDING
-consumer migration                        PENDING
+implementation                            A/B/C/D/E committed; F implemented locally
+Unity tested                              NO
+technically validated                     NO
+certified                                 NO
+consumer/documentation migration          IMPLEMENTED LOCALLY
 ```
 
-The next step is CAMERA-029-F after Unity validation of the focused Framework tests for
-CAMERA-029-A through CAMERA-029-E.
+The next gate is Unity import, focused Framework test execution and consumer lifecycle
+validation. Static checks do not promote this ADR to technically validated or certified.

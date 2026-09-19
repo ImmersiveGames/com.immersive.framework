@@ -286,51 +286,24 @@ Focused validation record:
 [IF-ADR-028 Focused Physical Presentation / PlayerInput Validation — 2026-09-17](Reconciliation/IF-ADR-028-FOCUSED-VALIDATION-2026-09-17.md)
 
 ```text
-Player / Actor -> Camera Subject evidence through an explicit integration boundary
-Camera Assignment -> 0..N Subjects per View
-Camera Rig / Presentation -> how resolved Subjects are observed
-Camera Output -> explicit physical Camera capacity
-View→Output association -> logical View identity + Output identity
-Output Presentation / Layout -> separate viewport / display / RenderTexture / PiP authority
+Camera Subject(s)
+  -> Camera Composition
+  -> CameraRigComposer
+  -> CameraRequest
+  -> CameraOutputSession
+  -> Camera Output
 ```
 
-Output availability and active Camera participation are distinct:
-
-```text
-Session available Outputs      -> 1..N
-current View→Output bindings    -> 0..N subset of available Outputs
-```
-
-Normal Camera authoring uses:
-
-```text
-Camera Subject
-Camera View Definition
-Camera Rig Behavior Definition
-Camera Output Definition
-logical View→Output association
-```
-
-Physical presentation/layout is separate. The current Camera View→Output topology and authoring contain no viewport authority.
-
-Player count does not determine Output count, active binding count or screen layout. Stable View/Output IDs remain runtime and diagnostic evidence; typed definition references are the normal authored links.
+Composition owns membership, stale protection and current presentation input. Rig owns local behavior/materialization. Request owns Output participation. Output owns the physical Camera, Default Rig and arbitration/session. `PlayerInputManager` owns physical split-screen layout.
 
 Current Camera architecture state:
 
 ```text
-CAMERA-026-A..G    IMPLEMENTED / RETAINED
-CAMERA-026-H       SUPERSEDED
-CAMERA-026-H2      IMPLEMENTED / TECHNICALLY CERTIFIED — revalidated 2026-09-14
-CAMERA-026-I       IMPLEMENTED / TECHNICALLY CERTIFIED — 2026-09-16
-CAMERA-027-A..C    IMPLEMENTED / RETAINED
-CAMERA-027-D2      IMPLEMENTED / TECHNICALLY CERTIFIED — 2026-09-14
-CAMERA-027-E       DEFERRED / OPTIONAL
-CAMERA-027-F       FINAL CONSUMER CLOSURE PENDING
-CAMERA-028-A       IMPLEMENTED / TECHNICALLY CERTIFIED — 8/8 PASS
-CAMERA-028-B       IMPLEMENTED / TECHNICALLY CERTIFIED — 2026-09-14
-CAMERA-028-C       IMPLEMENTED; FOCUSED BEHAVIOR PASS — 2026-09-17
-CAMERA-028-D       IMPLEMENTED / TESTED / INTEGRATED; 33/33 FUNCTIONAL PASS — 2026-09-17
-ADR-028 validation OPEN — read-only preflight + cleanup/reentrancy proof pending
+CAMERA-029-A..E  IMPLEMENTED / COMMITTED
+CAMERA-029-F     IMPLEMENTED LOCALLY
+Unity tested     NO
+Validated        NO
+Certified        NO
 ```
 
 Historical integrated Camera evidence:

@@ -107,79 +107,36 @@ Scene-Provided prepared physical Actor replacement remains outside the current A
 
 ### Camera
 
-The Camera architecture was reconciled on **2026-09-12** and the corrected logical topology/authoring boundary was technically certified on **2026-09-14**.
+The current Camera architecture is governed by IF-ADR-029. Earlier certification records remain dated evidence and do not certify this final boundary.
 
 Current normative separation:
 
 ```text
-Camera Subject
-  -> observable evidence
-
-Camera Assignment
-  -> Subjects assigned to a logical View
-
-Camera Rig / Presentation
-  -> how resolved Subjects are observed
-
-Camera Output
-  -> explicit physical Camera capacity
-
-View→Output association
-  -> logical View identity + Output identity
-
-Output Presentation / Layout
-  -> separate viewport / display / RenderTexture / PiP authority
+Camera Subject(s)
+  -> Camera Composition
+  -> CameraRigComposer
+  -> CameraRequest
+  -> CameraOutputSession
+  -> Camera Output
 ```
 
-Current cardinality rule:
+Presentation intents are `Fixed`, `Follow`, `Mounted`, `ThirdPerson` and `Group`. Composition owns Subject membership and request participation; Rig owns local presentation; Output owns the Unity Camera, CinemachineBrain, Default Rig and arbitration/session.
 
-```text
-Session available Outputs        -> 1..N
-current View→Output associations -> 0..N subset
-```
-
-An available Output does not have to participate in the current View topology. Player count does not define Output count, active association count or screen layout.
-
-The previous viewport-bearing Camera topology is removed from the current implementation. `CameraViewOutputBinding` contains only View and Output identity, and Camera View→Output runtime no longer owns `Camera.rect`.
+`PlayerInputManager` remains responsible only for physical split count, `Camera.rect` and split recomposition. Player count does not determine Output count.
 
 Current implementation state:
 
 ```text
-CAMERA-026-H2  IMPLEMENTED / TECHNICALLY CERTIFIED — revalidated 2026-09-14
-CAMERA-026-I   IMPLEMENTED / TECHNICALLY CERTIFIED — 2026-09-16
-CAMERA-027-D2  IMPLEMENTED / TECHNICALLY CERTIFIED — 2026-09-14
-CAMERA-028-A   IMPLEMENTED / TECHNICALLY CERTIFIED — Output participation
-CAMERA-028-B   IMPLEMENTED / TECHNICALLY CERTIFIED — viewport-free Camera topology
-CAMERA-028-C   IMPLEMENTED — focused physical-presentation behavior PASS 2026-09-17
-CAMERA-028-D   IMPLEMENTED / TESTED / INTEGRATED — focused functional 33/33 PASS 2026-09-17
-ADR-028        VALIDATED = NO — clean-start / cleanup / reentrancy proof pending
+CAMERA-029-A..E  IMPLEMENTED / COMMITTED
+CAMERA-029-F     IMPLEMENTED LOCALLY
+Unity tested     NO
+Validated        NO
+Certified        NO
 ```
 
-Historical 2026-09-12 Full Camera QA remains valid for its previous viewport-bearing contract:
+See `Architecture/Reconciliation/` for historical certification records scoped to their original boundaries.
 
-```text
-39/39 PASS
-ADR-026 phases 2/2
-9/9 dimensions
-```
-
-Corrected 2026-09-14 evidence:
-
-```text
-Persistent structural regression   12/12 PASS
-CAMERA-028-A Partial                8/8 PASS
-outputParticipation                 PASS
-Full Camera established cases       39/39 PASS
-ADR-026 phases                      2/2 PASS
-active dimensions                   8/8 PASS
-viewOutputAssociation               PASS
-viewportSplitTopology               REMOVED
-Shared baseline restore             PASS
-```
-
-The 2026-09-14 corrected run certifies CAMERA-028-A/B and CAMERA-027-D2. CAMERA-026-I was certified on 2026-09-16. Focused 2026-09-17 evidence records CAMERA-028-C behavior PASS and CAMERA-028-D 33/33 functional PASS; final ADR-028 validation remains open because the harness does not yet prove read-only clean state and cleanup/reentrancy.
-
-Request arbitration, output-owned Default Rig semantics, force-default ownership, typed View/Output/Rig Behavior definitions and `CameraRigComposer` materialization authority remain preserved.
+Request arbitration, output-owned Default Rig semantics, force-default ownership, typed Output/Rig Behavior definitions and `CameraRigComposer` materialization authority remain preserved.
 
 ### Activity content / visibility
 
@@ -218,13 +175,14 @@ See the Tracker and IF-ADR-009 reconciliation records for the current boundary.
 | [019](Architecture/ADRs/IF-ADR-019-Session-Player-Lifetime-and-Activity-Representation-Authority.md) | Session Player lifetime and Activity representation authority | Accepted / Reconciled / Implemented |
 | [020](Architecture/ADRs/IF-ADR-020-Session-Player-Leave-and-Resource-Release-Authority.md) | Session Player Leave and resource release authority | Accepted / Reconciled / Implemented |
 | [021](Architecture/ADRs/IF-ADR-021-Activity-Player-Actor-Initial-Placement-Authority.md) | Route Spatial Entry and Activity explicit relocation | Accepted / Reconciled / Implemented |
-| [022](Architecture/ADRs/IF-ADR-022-Camera-Rig-Presentation-Models-and-Materialization-Authority.md) | Camera Rig presentation models and materialization authority | Accepted / Implemented; preserved by 026/027/028 |
+| [022](Architecture/ADRs/IF-ADR-022-Camera-Rig-Presentation-Models-and-Materialization-Authority.md) | Camera Rig presentation models and materialization authority | Accepted / Implemented; Group added by 029 |
 | [023](Architecture/ADRs/IF-ADR-023-Player-Actor-Runtime-Host-and-Presentation-Authority.md) | Player Actor Runtime Host and Presentation authority | Accepted / Implemented; occurrence identity reconciled by 023A |
 | [024](Architecture/ADRs/IF-ADR-024-Prepared-Actor-Replacement-Public-Contract.md) | Prepared Actor replacement public contract | Accepted / Reconciled / Manager-Provisioned V1 implemented and certified |
 | [025](Architecture/ADRs/IF-ADR-025-Local-Player-Input-Ownership-and-Device-Association.md) | Local Player input ownership and device association | Accepted / Implemented |
-| [026](Architecture/ADRs/IF-ADR-026-Camera-Subjects-Assignment-and-Multi-Output-Topology.md) | Camera Subjects, Assignment and multi-output topology | **Reopened** — A..G retained; H superseded; H2 certified; I pending |
-| [027](Architecture/ADRs/IF-ADR-027-Camera-Authoring-Definitions-and-Composition-Authority.md) | Camera authoring definitions and composition authority | **Reopened** — A/B/C retained; D2 certified; E deferred; F final closure pending |
-| [028](Architecture/ADRs/IF-ADR-028-Camera-Output-Participation-and-Presentation-Layout-Authority.md) | Camera Output participation and Presentation Layout authority | **Accepted / implemented / tested / integrated; validation open** — A/B certified; C focused PASS; D 33/33 functional PASS; read-only preflight + cleanup/reentrancy proof pending |
+| [026](Architecture/ADRs/IF-ADR-026-Camera-Subjects-Assignment-and-Multi-Output-Topology.md) | Camera Subjects, Composition and multi-output topology | Accepted / reconciled by 029 |
+| [027](Architecture/ADRs/IF-ADR-027-Camera-Authoring-Definitions-and-Composition-Authority.md) | Camera authoring definitions and composition authority | Accepted / reconciled by 029 |
+| [028](Architecture/ADRs/IF-ADR-028-Camera-Output-Participation-and-Presentation-Layout-Authority.md) | Camera Output participation and physical presentation ownership | Accepted / participation reconciled by 029 |
+| [029](Architecture/ADRs/IF-ADR-029-Camera-Composition-Group-Presentation-and-Camera-View-Removal.md) | Camera Composition, Group presentation and removal of the former intermediate authority | A–E committed; F implemented locally; Unity validation pending |
 
 ## Current reconciliation / certification records
 

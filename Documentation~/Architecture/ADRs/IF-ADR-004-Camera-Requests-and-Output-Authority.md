@@ -12,8 +12,8 @@ Current reconciliation: [IF-ADR-004A](../Reconciliation/IF-ADR-004A-Camera-Autho
 > IF-ADR-022 extends local Camera rig presentation/materialization only.
 > IF-ADR-004D separates persistent Default output presentation from normal Camera request arbitration.
 > Presentation Model and Default presentation never become request precedence policy.
-> IF-ADR-026 reopens output cardinality and separates Camera Subject, Assignment,
-> Rig/Presentation and Output. Where this ADR says the product has exactly one output or
+> IF-ADR-029 establishes the current Subject → Composition → Rig → Request → Output
+> chain. Where this ADR says the product has exactly one output or
 > treats ordinary Local Player participation as a complete Player-owned request, that is
 > the implemented historical baseline, not the accepted target architecture.
 
@@ -173,6 +173,7 @@ Fixed
 Follow
 Mounted
 Third Person
+Group
 ```
 
 The serialized identity of `Follow` remains:
@@ -358,8 +359,8 @@ IF-ADR-022 materialization does not change this transactional boundary.
 
 ## 9. Scope ownership and component lifetime
 
-The implemented request-publication baseline has two lifetime layers. IF-ADR-026 adds
-independent Subject, Assignment, Rig/View and Output lifetimes; the rules below remain
+The implemented request-publication baseline has two lifetime layers. IF-ADR-029 keeps
+Subject, Composition, Rig, Request and Output lifetimes explicit; the rules below remain
 valid only for request ownership/publication.
 
 ### 9.1 Logical owner lifetime
@@ -431,9 +432,8 @@ Player Group
 
 Only explicit Transform authoring is implemented in the package today; `PlayerGroup` is
 an enum value without an implemented provider or multi-target resolved contract.
-IF-ADR-026 generalizes the future model to Camera Subjects and non-Player-specific
-Subject Sets. Assignment selects Subjects; `CameraRigComposer` consumes resolved target
-evidence for presentation.
+IF-ADR-029 generalizes the model to Camera Subjects and non-Player-specific Subject Sets.
+Composition selects Subjects; `CameraRigComposer` consumes resolved presentation input.
 
 Required target failures block.
 
@@ -759,12 +759,11 @@ This ADR continues to reject:
 - implicit Pause-to-Camera authority.
 
 Presentation features deliberately deferred by IF-ADR-022 include Orbital /
-Free Look input authority, spline/dolly, group framing product models, 2D framed
-follow, shake/noise/impulse product authoring, Third Person Aim, advanced camera
+Free Look input authority, spline/dolly, 2D framed follow, shake/noise/impulse
+product authoring, Third Person Aim, advanced camera
 collision policy, cinematic sequencing, advanced blend policy and XR Camera authority.
-Group framing, multi-output and split-screen are implemented through IF-ADR-026 A-H and
-are no longer architecturally rejected. Shared runtime is certified; Split remains
-runtime-pending.
+Group framing is owned by the first-class `Group` intent. Multi-output and split-screen
+remain explicit Output and `PlayerInputManager` concerns.
 
 ## 17. Current disposition
 
@@ -775,8 +774,8 @@ Architecture
 Package — prior single-output authority
   IMPLEMENTED HISTORICAL BASELINE
 
-Package — IF-ADR-026 Subject / Assignment / explicit multi-output topology
-  CAMERA-026-A THROUGH H IMPLEMENTED
+Package — IF-ADR-029 Subject / Composition / Rig / Request / Output
+  CAMERA-029-A THROUGH E COMMITTED; F IMPLEMENTED LOCALLY
 
 Package — explicit Default output authority / IF-ADR-004D
   IMPLEMENTED ON MASTER

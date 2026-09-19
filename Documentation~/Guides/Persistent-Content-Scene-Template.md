@@ -84,17 +84,17 @@ otherwise
 `SessionCameraOverride` remains optional when a real Session-scoped Camera request is
 required. It must not be authored merely to keep the baseline persistent Camera visible.
 
-## Output availability is not active View participation
+## Output availability is not active Composition participation
 
-Corrected IF-ADR-026/028 defines:
+IF-ADR-029 defines:
 
 ```text
 Session available Outputs       -> 1..N
-current View→Output associations -> 0..N subset
+normal Composition requests      -> 0..N
 ```
 
-Therefore a Persistent Content scene may contain physical Output capacity that is not
-currently associated with a Camera View.
+Therefore a Persistent Content scene may contain physical Output capacity without a
+current normal Composition request; the Output presents its Default Rig.
 
 The template must not require every authored Output to participate continuously merely
 because the physical Output exists.
@@ -201,28 +201,26 @@ The Scene Template itself is never a runtime reference from `GameApplicationAsse
 
 ## Camera reconciliation and template refresh
 
-The previous package template lineage predates the corrected IF-ADR-026/027/028 layout
-boundary. Do not update the template by preserving obsolete viewport ownership simply to match
-the current implementation.
+The previous package template lineage predates IF-ADR-029. Do not update the template by
+preserving obsolete participation or viewport ownership merely to match an older implementation.
 
 Template refresh belongs **after** the corrected runtime/authoring cuts:
 
 ```text
-CAMERA-026-H2  partial Output participation
-CAMERA-026-I   Player→Camera Subject integration boundary
-CAMERA-027-D2  logical View→Output authoring without viewport
-CAMERA-028-A   available Output vs active participation
-CAMERA-028-B   remove viewport from Camera topology
-CAMERA-028-C   explicit Output Presentation / Layout authority
-CAMERA-028-D   PlayerInput layout integration
+CAMERA-029-A  first-class Group presentation
+CAMERA-029-B  Composition membership authority
+CAMERA-029-C  Composition presentation input
+CAMERA-029-D  transactional Composition request participation
+CAMERA-029-E  removal of obsolete intermediate runtime/authoring
+CAMERA-029-F  current docs and consumer migration
 ```
 
 After those cuts compile and pass focused QA:
 
 ```text
 1. audit the physical package source scene;
-2. migrate it to typed Output/View authoring where applicable;
-3. remove stale viewport-bearing Camera topology authoring;
+2. migrate it to typed Output and Rig Behavior authoring;
+3. author Composition -> Rig -> Request -> Output explicitly;
 4. author layout only through the selected new layout authority when required;
 5. validate the source scene;
 6. refresh the SceneTemplateAsset explicitly;

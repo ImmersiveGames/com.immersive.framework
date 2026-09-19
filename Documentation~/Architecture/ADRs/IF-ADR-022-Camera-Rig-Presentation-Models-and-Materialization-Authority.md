@@ -15,12 +15,11 @@ Technical closure record: [Camera Presentation Technical Certification — 2026-
 > This ADR's `Fixed`, `Follow`, `Mounted` and `Third Person` presentation family and
 > materialization rules remain accepted. IF-ADR-026 later reopened target-selection and
 > output-cardinality boundaries: presentation no longer owns the decision about which
-> Subjects a View observes, and multi-output is implemented by IF-ADR-026 A-H. Shared
-> runtime is certified; Split/full aggregate remain pending. Historical certification
+> Subjects a Composition selects, and multi-output remains explicit. Historical certification
 > below remains scoped to the former baseline.
 
 > CAMERA-029-A extends this family with explicit `Group = 50`. It supersedes the
-> IF-ADR-026 implicit SharedFollow interpretation without changing the previously
+> IF-ADR-026 implicit multi-target Follow interpretation without changing the previously
 > certified serialized values. Group-focused Unity test execution remains tracked by
 > IF-ADR-029 rather than being covered by the historical certification below.
 
@@ -493,7 +492,8 @@ explicit materialization path
         ├─ Fixed
         ├─ Follow
         ├─ Mounted
-        └─ Third Person
+        ├─ Third Person
+        └─ Group
 ```
 
 Implementation may use an explicit `switch`, small typed internal helpers and
@@ -640,6 +640,7 @@ Fixed
 Follow
 Mounted
 Third Person
+Group
 ```
 
 The Inspector is model-specific.
@@ -757,6 +758,7 @@ Fixed rig
 Follow rig
 Mounted rig
 Third Person rig
+Group rig
         ↓
 same CameraRequest / arbitration
 ```
@@ -937,8 +939,8 @@ boundary and implements them through CAMERA-026-A through H. Shared runtime is c
 Split runtime, the Full Camera aggregate and FIRSTGAME proof remain pending. The other
 items remain deferred architecture/product decisions.
 
-IF-ADR-029 supersedes SharedFollow specifically: Group Framing is now owned by the
-first-class `Group` presentation model introduced by CAMERA-029-A.
+IF-ADR-029 supersedes implicit multi-target Follow specifically: Group Framing is now
+owned by the first-class `Group` presentation model introduced by CAMERA-029-A.
 
 ## 29. Implementation closure
 
