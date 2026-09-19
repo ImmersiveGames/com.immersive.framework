@@ -15,6 +15,8 @@ namespace Immersive.Framework.Editor.CameraAuthoring
             CameraOutputReferenceGUI.DrawDefinitionReference(serializedObject.FindProperty("viewDefinition"), "View Definition");
             EditorGUILayout.PropertyField(serializedObject.FindProperty("subjectPolicy"));
             _outputs.DrawReference(serializedObject.FindProperty("outputDefinition"));
+            EditorGUILayout.PropertyField(serializedObject.FindProperty("compositionRig"));
+            EditorGUILayout.PropertyField(serializedObject.FindProperty("requestPrecedence"));
             _advanced = EditorGUILayout.Foldout(_advanced, "Advanced / Debug", true);
             if (_advanced)
             {
@@ -24,6 +26,8 @@ namespace Immersive.Framework.Editor.CameraAuthoring
                     EditorGUILayout.TextField("View ID", composition.ViewIdText);
                     EditorGUILayout.TextField("Output ID", composition.OutputIdText);
                     EditorGUILayout.TextField("Membership Context ID", composition.MembershipContextIdText);
+                    EditorGUILayout.TextField("Request ID", composition.RequestId.ToString());
+                    EditorGUILayout.Toggle("Request Published", composition.IsRequestPublished);
                     if (composition.TryCreateAssociationBinding(out var binding, out _))
                     {
                         EditorGUILayout.TextField(

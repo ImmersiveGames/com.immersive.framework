@@ -16,6 +16,7 @@ namespace Immersive.Framework.Camera
         PlayerSlot = 30,
         Route = 40,
         Activity = 50,
-        PlayerGroup = 60
+        PlayerGroup = 60,
+        Composition = 70
     }
 }

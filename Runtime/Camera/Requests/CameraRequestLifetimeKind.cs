@@ -15,6 +15,7 @@ namespace Immersive.Framework.Camera
         Activity = 2,
         ExplicitOperation = 4,
         SpectatorSession = 5,
-        Session = 6
+        Session = 6,
+        Composition = 7
     }
 }

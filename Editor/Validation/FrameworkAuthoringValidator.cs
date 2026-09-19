@@ -612,6 +612,18 @@ namespace Immersive.Framework.Editor.Validation
                         "Shared Camera Composition requires a Default Camera Rig on its explicitly identified Output.",
                         composition);
                 }
+                else if (composition.CompositionRig == null)
+                {
+                    report.AddError(
+                        "Shared Camera Composition requires an explicit Composition Camera Rig.",
+                        composition);
+                }
+                else if (ReferenceEquals(composition.CompositionRig, output.DefaultCameraRig))
+                {
+                    report.AddError(
+                        "Shared Camera Composition Rig must be distinct from the Output Default Camera Rig.",
+                        composition);
+                }
                 else if (viewOutputTopology != null &&
                          !viewOutputTopology.TryGetBinding(
                              composition.ViewId,

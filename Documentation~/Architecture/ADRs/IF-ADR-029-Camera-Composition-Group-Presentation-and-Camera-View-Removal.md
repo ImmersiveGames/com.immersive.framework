@@ -8,7 +8,7 @@ Reconciles: IF-ADR-004, IF-ADR-022, IF-ADR-026, IF-ADR-027 and IF-ADR-028
 Preserves: IF-ADR-004 request arbitration and output-owned Default semantics; IF-ADR-028 external physical-presentation ownership
 Supersedes: Camera View as an independent runtime/authoring authority, View→Output topology as the normal participation path, and SharedFollow as an implicit cardinality-dependent Follow mode
 
-Implementation: **CAMERA-029-A and CAMERA-029-B implemented locally; CAMERA-029-C/D/E/F pending**
+Implementation: **CAMERA-029-A, CAMERA-029-B and CAMERA-029-C implemented locally; CAMERA-029-D/E/F pending**
 Technical certification: **pending**
 
 ## 1. Context
@@ -264,6 +264,13 @@ A new `Composition` owner/lifetime enum value is also not accepted by default. E
 Session, Route, Activity or explicit-operation semantics should be used when they accurately
 represent the consumer lifetime. A new owner kind requires separate concrete evidence that
 Composition lifetime is semantically independent from all existing scopes.
+
+CAMERA-029-C established that evidence: the request exists while one Composition is enabled
+and its current presentation is presentable, independently of Session, Route, Activity and
+explicit-operation lifetimes. The accepted minimum extension is therefore
+`CameraRequestOwnerKind.Composition`, `CameraRequestLifetimeKind.Composition` and the logical,
+diagnostic-only `CameraTargetSourceKind.Composition`. All three use the Composition's explicit
+runtime context identity; none infer scope from Player, hierarchy, scene order or naming.
 
 No scope may be inferred from:
 
@@ -646,6 +653,8 @@ existing occurrence safety preserved
 ```
 
 ### CAMERA-029-C — Composition request participation
+
+Local implementation status: **implemented; tests authored; static Runtime/test compilation passed; Unity tests pending**
 
 Required result:
 

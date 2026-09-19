@@ -22,6 +22,8 @@ namespace Immersive.Framework.Camera
         BlockedInvalidComposer = 130,
         BlockedMembershipFailure = 140,
         BlockedProjectionFailure = 150,
-        BlockedPresentationFailure = 160
+        BlockedPresentationFailure = 160,
+        BlockedCompositionRigIsDefault = 170,
+        BlockedRequestFailure = 180
     }
 }
